@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
@@ -30,6 +31,10 @@ func runRelease(ctx context.Context, args []string, out io.Writer) int {
 	bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: args[1], ExecutablePath: program, ManifestSHA256: args[2], Scope: enrollment.General})
 	if err != nil {
 		return enrollmentReport(out, "enrollment-refused", 1)
+	}
+	facts, ok := bundle.Facts()
+	if !ok || facts.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return enrollmentReport(out, "release-incompatible", 1)
 	}
 	in, ok := initialReleaseInputs(bundle, ref)
 	if !ok {
@@ -85,14 +90,14 @@ func initialReleaseInputs(bundle enrollment.Bundle, ref time.Time) (release.Inpu
 	if f.Headless {
 		for _, command := range []string{"ardents-node", "ardents-custody"} {
 			name := command + "-" + f.Platform
-			if runtime.GOOS == "windows" {
+			if strings.HasPrefix(f.Platform, "windows-") {
 				name += ".exe"
 			}
 			excluded[name] = true
 		}
 	}
 	if f.Protected {
-		for _, name := range []string{"protected-endpoint.json", "ardents-linux-amd64", "ardents-text-linux-amd64", "ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader@.socket", "ardents-text-publisher@.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"} {
+		for _, name := range []string{"protected-endpoint.json", "ardents-linux-amd64", "ardents-text-linux-amd64", "ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader.socket", "ardents-text-publisher.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"} {
 			excluded[name] = true
 		}
 	}

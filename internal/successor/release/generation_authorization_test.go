@@ -34,7 +34,7 @@ func TestTwoFreshTargetsShareMetadataAndRejectSubstitutedGeneration(t *testing.T
 	// These are independently assembled signed target bytes. Resource parsing
 	// and coherent installation remain with Enrollment/Installation.
 	resources := map[string]string{}
-	for _, name := range []string{"ardents-linux-amd64", "ardents-text-linux-amd64", "ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader@.socket", "ardents-text-publisher@.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"} {
+	for _, name := range []string{"ardents-linux-amd64", "ardents-text-linux-amd64", "ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader.socket", "ardents-text-publisher.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"} {
 		b := []byte("test-resource:" + name)
 		if name == "ardents-linux-amd64" {
 			b = h.input.Artifact

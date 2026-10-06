@@ -17,23 +17,34 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
 // The fixture signs actual compiled consumer bytes with ephemeral test keys.
 // Its inventory and custom fields are encoded independently of product codecs.
-func signedConsumerBundle(t *testing.T) (string, string, string) {
+func signedConsumerProfile(t *testing.T, protected bool) (string, string, string) {
+	platform := runtime.GOOS + "-" + runtime.GOARCH
+	if protected {
+		platform = "linux-amd64"
+	}
+	return signedConsumerPlatform(t, platform, protected)
+}
+
+func signedConsumerPlatform(t *testing.T, platform string, protected bool) (string, string, string) {
 	t.Helper()
 	binary, err := os.ReadFile(compiledCommand(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	platform := runtime.GOOS + "-" + runtime.GOARCH
 	program := "ardents-" + platform
 	control := "ardents-control-" + platform
-	if runtime.GOOS == "windows" {
+	if !protected && runtime.GOOS == "windows" {
 		program += ".exe"
+	}
+	if strings.HasPrefix(platform, "windows-") {
 		control += ".exe"
 	}
 	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
@@ -119,6 +130,26 @@ func signedConsumerBundle(t *testing.T) (string, string, string) {
 	}
 	descriptor := fmt.Sprintf("schema=ardents-closed-alpha-enrollment-v3\ncohort=release-test\nrelease=new-release-fixture\nplatform=%s\nenvironment=h3-test\nnetwork=new-release-test\ntarget_path=%s\nartifact=%s\ntrusted_root=1.root.json\ncontrol_catalog=catalog.ac1\ndisclosure_root=catalog.pub\ncontrol_release=release.ac1\ncontrol_network=network.ac1\ncontrol_compatibility=compatibility.ac1\ncontrol_release_root=release.pub\ncontrol_network_root=network.pub\ncontrol_compatibility_root=compatibility.pub\ncorpus_authority=corpus.pub\ncontrol_artifact=%s\n", platform, targetPath, program, control)
 	files := map[string][]byte{"RELEASE": []byte(descriptor), program: binary, "1.root.json": rootBytes, "timestamp.json": timestampBytes, "1.snapshot.json": snapshotBytes, "1.targets.json": targetBytes}
+	if protected {
+		files["ardents-node-linux-amd64"] = []byte("independent Node companion")
+		files["ardents-custody-linux-amd64"] = []byte("independent Custody companion")
+		// Exact ADR-0119 names, independently spelled rather than projected
+		// from the consumer's exclusion list.
+		names := []string{"ardents-linux-amd64", "ardents-text-linux-amd64", "ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader.socket", "ardents-text-publisher.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"}
+		digests := make(map[string]string)
+		for _, name := range names {
+			if name != program {
+				files[name] = []byte("independent protected resource " + name)
+			}
+			digest := sha256.Sum256(files[name])
+			digests[name] = hex.EncodeToString(digest[:])
+		}
+		encoded, err := json.Marshal(digests)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files["protected-endpoint.json"] = []byte("{\"schema\":\"ardents-protected-endpoint-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"new-release-fixture\",\"release_version\":1,\"files\":" + string(encoded) + "}\n")
+	}
 	for _, name := range []string{"catalog.ac1", "catalog.pub", "release.ac1", "network.ac1", "compatibility.ac1", "release.pub", "network.pub", "compatibility.pub", "corpus.pub", control} {
 		files[name] = []byte("independent static companion " + name)
 	}
@@ -151,8 +182,75 @@ func signedConsumerBundle(t *testing.T) (string, string, string) {
 	return directory, fmt.Sprintf("%x", pin), programPath
 }
 
+func TestReleaseInitialProtectedInventoryUsesOnlyMetadata(t *testing.T) {
+	directory, pin, program := signedConsumerProfile(t, true)
+	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.General})
+	if err != nil {
+		t.Fatal(err)
+	}
+	facts, ok := bundle.Facts()
+	if !ok || !facts.Protected || !facts.Headless || len(bundle.Names()) != 27 {
+		t.Fatal("fixture lacks genuinely verified protected inventory")
+	}
+	input, ok := initialReleaseInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
+	if !ok {
+		t.Fatal("verified inventory projection refused")
+	}
+	verifier, err := release.Open(filepath.Join(t.TempDir(), "history"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := verifier.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	for _, expected := range []release.Outcome{release.OutcomeReleaseAccepted, release.OutcomeNoUpdate} {
+		decision := verifier.Evaluate(t.Context(), input)
+		if _, ok := decision.Authorization(); !ok || decision.Outcome != expected {
+			t.Fatalf("genuine protected bundle refused: %s: %v", decision.Outcome, decision.Err())
+		}
+	}
+	if len(input.Files) != 3 {
+		t.Fatalf("static inventory escaped into metadata: got %d metadata files, want 3", len(input.Files))
+	}
+	for _, name := range []string{"timestamp.json", "1.snapshot.json", "1.targets.json"} {
+		if _, ok := input.Files["https://release.invalid/metadata/"+name]; !ok {
+			t.Fatalf("missing actual metadata %s", name)
+		}
+	}
+}
+
+func TestReleaseCompiledForeignPlatformRefusesBeforeHistory(t *testing.T) {
+	foreign := "linux-amd64"
+	if runtime.GOOS == "linux" {
+		foreign = "windows-amd64"
+	}
+	directory, pin, program := signedConsumerPlatform(t, foreign, false)
+	history := filepath.Join(t.TempDir(), "absent-history")
+	cmd := exec.CommandContext(t.Context(), program, "release", "verify-initial", directory, pin, history, "2030-01-02T03:04:05Z")
+	out, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(out), "release-incompatible") {
+		t.Fatalf("signed foreign platform was not refused: %v: %s", err, out)
+	}
+	if _, err := os.Lstat(history); !os.IsNotExist(err) {
+		t.Fatalf("foreign platform opened history: %v", err)
+	}
+}
+
 func TestReleaseCompiledInitialVerificationAndRetainedRetry(t *testing.T) {
-	directory, pin, program := signedConsumerBundle(t)
+	t.Run("general", func(t *testing.T) { verifyCompiledReleaseProfile(t, false) })
+	// Actual protected executable invocation is selected only where the
+	// current linux-amd64 artifact contract applies. Its portable projection
+	// is independently exercised on every native test platform above.
+	if runtime.GOOS == "linux" && runtime.GOARCH == "amd64" {
+		t.Run("protected", func(t *testing.T) { verifyCompiledReleaseProfile(t, true) })
+	}
+}
+
+func verifyCompiledReleaseProfile(t *testing.T, protected bool) {
+	t.Helper()
+	directory, pin, program := signedConsumerProfile(t, protected)
 	history := filepath.Join(t.TempDir(), "release-history")
 	for _, wanted := range []string{"release-accepted", "no-update"} {
 		cmd := exec.CommandContext(t.Context(), program, "release", "verify-initial", directory, pin, history, "2030-01-02T03:04:05Z")

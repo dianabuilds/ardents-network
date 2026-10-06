@@ -1524,6 +1524,13 @@ func TestRouteBootstrapObtainsStockFromActualIssuer(t *testing.T) {
 			if issues.Load() != 2 || admits.Load() != 0 {
 				t.Fatal("stock bypassed real bootstrap issuer", issues.Load(), admits.Load())
 			}
+			// Match the real Prefix's healthy close ordering. An abrupt inner
+			// Close can interrupt the relay's CREDIT, and cannot be used as an
+			// oracle for clean receiving retirement. FinishRole observes TLS
+			// reverse termination and the exact lower peer CLOSE before join.
+			if err := interiorSession.FinishRole(); err != nil {
+				t.Fatal("bootstrap Interior role did not finish", err)
+			}
 			if err := interiorSession.Close(); err != nil {
 				t.Fatal(err)
 			}

@@ -167,6 +167,14 @@ facts. Он вызывает настоящий verifier, закрывает е�
 реальное принятие/отказ и durable reopen; он не запускает artifact и не
 заменяет Installation или qualified Execution успешной заглушкой.
 
+Consumer сравнивает подтверждённую platform с фактическими GOOS/GOARCH до
+открытия history. Подтверждённые static companions, включая точные `.socket`
+имена и headless Node/Custody pair, не становятся metadata; суффиксы берутся
+из подтверждённой platform. Переносимая проверка полного 27-entry inventory
+проходит через настоящие Enrollment и Release. Собранный consumer проверяет
+свою native platform; Linux дополнительно проходит защищённый inventory.
+Подписанный комплект для чужой platform отказывает до создания history.
+
 Independent signed fixtures пересекают публичный verification Interface.
 Обязательны: genuine signature success, threshold/signature/expiry отказ,
 Root rotation/reopen, rollback и same-version conflict, actual byte/local
