@@ -70,11 +70,11 @@ func TestClosedForwardingSessionSharesOneOuterHelloAndDemultiplexesChildren(t *t
 		t.Fatal(err)
 	}
 	open := route.ClosedOpen{NextNodeID: [32]byte{5}, NextDutyGeneration: 6, Purpose: ardp.PurposeForwarding, Deadline: deadline}
-	first, firstReverse, err := session.attach(open, route.ClosedChildOrdinary, nil, nil)
+	first, firstReverse, err := session.attach(t.Context(), open, route.ClosedChildOrdinary, nil, nil)
 	if err != nil || first != 1 {
 		t.Fatalf("first child = %d / %v", first, err)
 	}
-	second, secondReverse, err := session.attach(open, route.ClosedChildOrdinary, nil, nil)
+	second, secondReverse, err := session.attach(t.Context(), open, route.ClosedChildOrdinary, nil, nil)
 	if err != nil || second != 3 {
 		t.Fatalf("second child = %d / %v", second, err)
 	}
@@ -322,7 +322,7 @@ func TestClosedForwardingSessionsReuseReadyCarrierWhileOtherHelloBlocks(t *testi
 		t.Fatalf("ready Carrier reuse = %p / %p / %v", reused, ready, err)
 	}
 	open := route.ClosedOpen{NextNodeID: [32]byte{5}, NextDutyGeneration: 6, Purpose: ardp.PurposeForwarding, Deadline: helloDeadline}
-	lane, reverse, err := reused.attach(open, route.ClosedChildOrdinary, nil, nil)
+	lane, reverse, err := reused.attach(t.Context(), open, route.ClosedChildOrdinary, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

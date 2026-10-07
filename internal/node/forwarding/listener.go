@@ -390,6 +390,11 @@ func (server *forwardServer) serveDirect(ctx context.Context, connection net.Con
 		if acceptErr != nil {
 			return acceptErr
 		}
+		if frame.Kind == ardp.KindClose {
+			if link := links[frame.Lane]; link != nil {
+				link.reverse.markLocalClose()
+			}
+		}
 		if frame.Kind == 2 {
 			accepted, frameErr := ardp.AcceptFrame(0, 64<<10)
 			if frameErr != nil {

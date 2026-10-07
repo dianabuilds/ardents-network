@@ -46,7 +46,7 @@ func TestClosedForwardingConcurrentAttachPreservesWireIDOrder(t *testing.T) {
 	for range count {
 		workers.Go(func() {
 			<-start
-			_, _, err := session.attach(open, route.ClosedChildOrdinary, nil, nil)
+			_, _, err := session.attach(t.Context(), open, route.ClosedChildOrdinary, nil, nil)
 			results <- err
 		})
 	}
@@ -79,7 +79,7 @@ func TestClosedForwardingQueuesFragmentedBytesAndTerminalWithinByteBudget(t *tes
 	go func() { _, err := ardp.ReadFrame(peer); opened <- err }()
 	session := &session{carrier: local, children: make(map[uint32]*frameQueue), retired: make(map[uint32]struct{})}
 	reserved := 0
-	lane, reverse, err := session.attach(route.ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ardp.PurposeIssuer,
+	lane, reverse, err := session.attach(t.Context(), route.ClosedOpen{NextNodeID: [32]byte{1}, NextDutyGeneration: 1, Purpose: ardp.PurposeIssuer,
 		Deadline: time.Now().UTC().Truncate(time.Second).Add(time.Second)}, route.ClosedChildIssuerBootstrap,
 		func(ardp.Frame) error { reserved++; return nil }, nil)
 	if err != nil {
