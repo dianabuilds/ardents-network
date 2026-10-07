@@ -88,10 +88,17 @@ the genuine `recover-initial` consumer obtains fresh proofs, reloads and archive
 the exact intent, then Check accepts local integrity. All ten fixed resources
 retain original bytes, inodes and access; selection and Release floors remain
 unchanged. Endpoint and worker stay stopped. Signing/builders are fixtures, and
-this one process-crash boundary does not complete the interruption matrix or
+another fresh private manager exercises a second crash after successful sync of
+the installed-stopped phase and journal directory, after reload and typed stopped
+observation but before intent archival. Original threads join and the writer
+lease is released; pending Check refuses. Genuine fresh-proof recovery preserves
+the original installed-stopped record, completes the exact intent and passes
+Check with unchanged fixed bytes/inodes/access, selection and floors within that
+separate installation. A shared generation digest does not merge native bindings
+or histories. These two process-crash boundaries do not complete the interruption matrix or
 qualify power loss, installed runtime or privacy. The separate test-manager's
 original processes and cgroup are absent after an outer stop that retained a
-timeout result; clean manager shutdown is not claimed.
+timeout result in each case; clean manager shutdown is not claimed.
 
 The new initial stopped transaction now checks typed effective Endpoint Unit
 and Service properties before its completion record, before intent archival

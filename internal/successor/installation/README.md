@@ -203,7 +203,15 @@ pending Check отказывает. Новый `recover-initial` получае�
 возвращает `installed-recovered-stopped`, архивирует exact intent и сохраняет
 все десять fixed bytes/inodes/access, selection и Release floors. Read-only Check
 после этого возвращает `local-integrity-verified`. Endpoint и worker не запускались.
-Это один process-crash boundary, не полная interruption matrix, power-loss,
+Второй receipt в отдельном свежем manager прерывает настоящий `provision` после
+успешного sync `0007.json` и journal directory: reload и typed stopped observation
+уже состоялись, но intent ещё не архивирован. Исходные threads joined, lease
+освобождена; pending Check отказывает. Genuine fresh-proof recovery сохраняет
+исходный `0007.json`, завершает exact intent и возвращает stopped result с
+успешным read-only Check. Все десять fixed bytes/inodes/access, selection и floors
+не меняются внутри этой отдельной установки. Совпадение generation digest между
+receipts не объединяет их native identities или истории.
+Это два process-crash boundaries, не полная interruption matrix, power-loss,
 independent builders/custody или installed qualification. Исходные процессы и
 cgroup отдельного test-manager отсутствуют после outer stop с retained timeout
 result; clean manager shutdown не заявлен.
