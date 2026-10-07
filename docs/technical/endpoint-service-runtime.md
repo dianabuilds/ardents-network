@@ -65,6 +65,11 @@ bounds cannot be renewed by another context. Reload/stopped observations precede
 completion and archival of the exact intent and first failures. Explicit retry
 after archival still needs exact selected provenance and new proofs. Live scopes
 and missing/substituted ownership refuse; this operation starts no process.
+Retries of one immutable intent retain its first recovery failure even after
+archival. A later refusal remains in the current returned outcome. Recovery
+resynchronizes the observed first record before retaining an active copy of
+those exact bytes; a later archive must not introduce a conflicting second
+failure for that intent.
 An isolated Ubuntu24/systemd255 receipt now exercises exact selected archive
 retry, same-inode authorized-prefix repair, foreign-prefix refusal and first
 failure archival with unchanged selection and Release floors. Endpoint and

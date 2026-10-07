@@ -568,10 +568,24 @@ func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, auth
 		if returnedErr != nil {
 			bounded, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 			defer cancel()
-			body, err := canonicalJSON(generationTransition{Schema: "ardents-endpoint-installation-transition-v1", GenerationDigest: r.intent.Candidate.GenerationDigest, BindingDigest: r.intent.Candidate.BindingDigest, Phase: "initial-recovery-failed", OriginalError: returnedErr.Error()})
 			filename := filepath.Join(r.journal, "recovery-failure.json")
-			if _, retained := r.reader.files[filename]; !retained && err == nil {
-				err = r.writePrivate(bounded, filename, body)
+			var err error
+			if _, retained := r.reader.files[filename]; retained {
+				err = r.syncObserved(bounded, filename)
+			} else if archive := filepath.Join(r.journal, "recovery-failure-archived.json"); r.reader.files[archive].identity != nil {
+				// All retries still belong to this immutable intent. Keep its
+				// first failure rather than manufacturing a conflicting second
+				// archive. The current refusal remains in the returned outcome.
+				err = r.syncObserved(bounded, archive)
+				if err == nil {
+					err = r.writePrivate(bounded, filename, r.reader.files[archive].body)
+				}
+			} else {
+				var body []byte
+				body, err = canonicalJSON(generationTransition{Schema: "ardents-endpoint-installation-transition-v1", GenerationDigest: r.intent.Candidate.GenerationDigest, BindingDigest: r.intent.Candidate.BindingDigest, Phase: "initial-recovery-failed", OriginalError: returnedErr.Error()})
+				if err == nil {
+					err = r.writePrivate(bounded, filename, body)
+				}
 			}
 			returnedErr = errors.Join(ErrRepairRequired, returnedErr, err)
 		}

@@ -170,6 +170,10 @@ Candidate без initial pin и открывает только complete retaine
 архивирования проверяет exact selected completed intent и получает fresh proofs.
 Read-only Check также отказывает при pending recovery failure. Старые roots без
 directory birth evidence сохраняются; новый recovery не усыновляет их молча.
+Все explicit retries относятся к одному immutable intent и сохраняют его первую
+recovery failure, включая уже архивированную. Поздний отказ возвращается caller
+как текущая ошибка; запись первой ошибки заново sync перед удержанием active
+copy, чтобы последующее архивирование не конфликтовало с исходным archive.
 Один native recovery lifetime владеет frozen observations, журналами и ремонтом
 на исходных inode; его cohesive implementation держит эти проверки рядом, без
 generic callbacks или отдельного пакета для каждого syscall.
