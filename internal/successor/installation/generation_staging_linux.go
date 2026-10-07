@@ -28,14 +28,6 @@ type generationBirth struct {
 	Inode            uint64 `json:"inode"`
 }
 
-type initialTransitionIntent struct {
-	Schema           string              `json:"schema"`
-	Previous         generationSelection `json:"previous"`
-	Candidate        generationSelection `json:"candidate"`
-	CandidateBinding generationBinding   `json:"candidate_binding"`
-	Request          installationRequest `json:"request"`
-}
-
 // Retain all borrowed directory handles until staging and its failure record
 // physically finish. The Installation owner closes this before returning lease.
 type generationStage struct {
@@ -43,6 +35,7 @@ type generationStage struct {
 	directories         []*stagingDirectory
 	journal, generation *stagingDirectory
 	creations           *stagingDirectory
+	directoryCreations  *stagingDirectory
 	fixed               map[string]fixedFileObservation
 	fixedDirectories    map[string]os.FileInfo
 	selected            generationSelection

@@ -18,6 +18,13 @@ import (
 // Authentication and stopped provisioning retain separate acceptance results.
 // Neither starts a worker or establishes Service readiness.
 func runInstallation(ctx context.Context, args []string, out io.Writer) int {
+	if len(args) == 3 && args[0] == "recover-initial" {
+		reference, err := time.Parse(time.RFC3339Nano, args[2])
+		if err != nil || reference.UTC().Format(time.RFC3339Nano) != args[2] {
+			return enrollmentReport(out, "invalid-input", 2)
+		}
+		return runInitialRecovery(ctx, args[1], reference, out)
+	}
 	if len(args) == 2 && args[0] == "check" {
 		result, err := installation.Check(ctx, args[1])
 		if err != nil {
@@ -121,6 +128,37 @@ func runInstallation(ctx context.Context, args []string, out io.Writer) int {
 	return enrollmentReport(out, "authenticated-generation", 0)
 }
 
+func runInitialRecovery(ctx context.Context, root string, reference time.Time, out io.Writer) int {
+	owner, err := installation.OpenInitialRecovery(ctx, root, reference)
+	if err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	candidate, err := enrollment.ReadCandidate(ctx, owner.BundleRoot(), enrollment.Headless)
+	if err != nil {
+		return installationFailure(ctx, out, errors.Join(err, owner.Close()))
+	}
+	input, ok := candidateReleaseInputs(candidate, owner.ReferenceTime())
+	if !ok || input.Local.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return installationFailure(ctx, out, errors.Join(installation.ErrBinding, owner.Close()))
+	}
+	verifier, err := release.OpenRetained(owner.ReleaseHistoryRoot())
+	if err != nil {
+		return installationFailure(ctx, out, errors.Join(err, owner.Close()))
+	}
+	authorization, err := installation.AuthenticateCandidate(ctx, verifier, candidate, input)
+	var result installation.ProvisionResult
+	if err == nil {
+		result, err = owner.Complete(authorization)
+	}
+	// Retain the independent Release lease until Installation's original physical
+	// borrowers have closed. No initial-pin bootstrap or floor reset is possible.
+	err = errors.Join(err, owner.Close(), verifier.Close(), ctx.Err())
+	if err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	return enrollmentReport(out, result.Status, 0)
+}
+
 func runInstallationProvision(ctx context.Context, filename string, out io.Writer) int {
 	request, err := installation.ReadProvisionRequest(ctx, filename)
 	if err != nil {
@@ -182,6 +220,9 @@ func installationFailure(ctx context.Context, out io.Writer, err error) int {
 	}
 	if errors.Is(err, release.ErrTrustUnavailable) {
 		return enrollmentReport(out, "installation-trust-unavailable", 1)
+	}
+	if errors.Is(err, installation.ErrRepairRequired) {
+		return enrollmentReport(out, "installation-repair-required", 1)
 	}
 	return enrollmentReport(out, "installation-refused", 1)
 }

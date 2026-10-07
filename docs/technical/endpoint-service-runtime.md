@@ -41,9 +41,38 @@ opens no Release history and returns no private authorization or live invocation
 proof. Enrollment supplies the static descriptor/resource grammar without pin
 provenance; Installation owns local binding and native inspection. These consumers
 have component controls, not a complete successful native installation receipt.
-New installed startup, predecessor join and explicit recovery remain absent;
+New installed startup, predecessor join and successor recovery remain absent;
 the current fixed Endpoint command must acquire a genuine new runtime consumer
 before any successful startup is claimed. No old runtime bridge is permitted.
+
+New initial provisioning also retains root-private directory birth/access
+records in its generation journal. An exclusively created directory is synced
+with its parent before its original device/inode and intended mode/group are
+recorded; the record and journal are synced before ownership/access changes.
+The fixed worker root's final read-only promotion has a separate record on that
+same inode. Cancellation retains the recorded residue, and another initial
+attempt does not adopt it. These records are recovery provenance, not a fresh
+Release proof or accepted recovery operation.
+
+New `installation recover-initial <root> <UTC-reference-time>` has a bounded
+stopped consumer with original leased custody before Release effects. It uses
+Candidate plus complete retained Release history and two fresh exact-byte
+authorizations; original request, plans and binding remain unchanged. Complete
+birth inventories and every authorized prefix precede repair, and retained
+records are synchronized again before changing their original inodes. Copies
+of its opaque handle share the same completion latch; the opening's caller and
+bounds cannot be renewed by another context. Reload/stopped observations precede
+completion and archival of the exact intent and first failures. Explicit retry
+after archival still needs exact selected provenance and new proofs. Live scopes
+and missing/substituted ownership refuse; this operation starts no process.
+An isolated Ubuntu24/systemd255 receipt now exercises exact selected archive
+retry, same-inode authorized-prefix repair, foreign-prefix refusal and first
+failure archival with unchanged selection and Release floors. Endpoint and
+worker remain stopped. These are controlled filesystem faults, not process
+crash or power-loss evidence. The original test-manager processes/cgroup joined
+after its outer stop retained a timeout result; clean manager shutdown is not
+claimed. The full interruption matrix, live predecessor join and installed
+startup remain separate obligations.
 
 The new initial stopped transaction now checks typed effective Endpoint Unit
 and Service properties before its completion record, before intent archival

@@ -9,6 +9,60 @@ import (
 	"syscall"
 )
 
+// Root-controlled presence alone does not identify a directory created by this
+// transaction. Retain the original inode and intended access before mutation;
+// explicit recovery must validate these bytes rather than adopt a pathname.
+type fixedDirectoryCreation struct {
+	Schema           string `json:"schema"`
+	GenerationDigest string `json:"generation_digest"`
+	Path             string `json:"path"`
+	Device           uint64 `json:"device"`
+	Inode            uint64 `json:"inode"`
+	PreviousMode     uint32 `json:"previous_mode"`
+	PreviousGID      uint32 `json:"previous_gid"`
+	Mode             uint32 `json:"mode"`
+	GID              uint32 `json:"gid"`
+}
+
+func (stage *generationStage) recordFixedDirectory(ctx context.Context, directory string, original os.FileInfo, mode os.FileMode, gid uint32, promotion bool) error {
+	if stage == nil || stage.journal == nil || original == nil || !canonicalPath(directory) || directory == "/" ||
+		(mode != 0700 && mode != 0755 && mode != 0555 && mode != 0710) ||
+		((mode == 0710) != (gid != 0)) {
+		return ErrInput
+	}
+	if _, intent := stage.journal.files["0003.json"]; !intent {
+		return ErrBinding
+	}
+	native, ok := original.Sys().(*syscall.Stat_t)
+	if !ok || !privateJournalDirectory(original) || native.Ino == 0 || native.Dev == 0 {
+		return ErrBinding
+	}
+	if promotion && mode != 0555 {
+		return ErrBinding
+	}
+	if err := stage.observe(); err != nil {
+		return err
+	}
+	if stage.directoryCreations == nil {
+		created, err := stage.birth(ctx, stage.journal.root, "directory-creations")
+		if err != nil {
+			return err
+		}
+		stage.directoryCreations = created
+	}
+	record := fixedDirectoryCreation{Schema: "ardents-endpoint-directory-creation-v1", GenerationDigest: stage.selected.GenerationDigest,
+		Path: directory, Device: uint64(native.Dev), Inode: native.Ino, PreviousMode: uint32(original.Mode().Perm()), PreviousGID: native.Gid, Mode: uint32(mode), GID: gid}
+	body, err := canonicalJSON(record)
+	if err != nil {
+		return err
+	}
+	name := digestHex([]byte(directory))
+	if promotion {
+		name += "-access"
+	}
+	return stage.directoryCreations.write(ctx, name+".json", body, 0600, 0)
+}
+
 // Initial fixed publication retains stopped manager observations and the
 // original preparation. This private operation grants no platform admission.
 func (owned *initialPreparation) installFixedResources(ctx context.Context, request Request) error {
@@ -145,6 +199,13 @@ func (stage *generationStage) ensureRootParent(ctx context.Context, directory st
 }
 
 func (stage *generationStage) birthFixedDirectory(ctx context.Context, directory string, mode os.FileMode, gid uint32) (returnedErr error) {
+	if stage == nil || stage.journal == nil || !canonicalPath(directory) || directory == "/" ||
+		(mode != 0700 && mode != 0755 && mode != 0555 && mode != 0710) || ((mode == 0710) != (gid != 0)) {
+		return ErrInput
+	}
+	if _, intent := stage.journal.files["0003.json"]; !intent {
+		return ErrBinding
+	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -168,6 +229,20 @@ func (stage *generationStage) birthFixedDirectory(ctx context.Context, directory
 	birth, err := file.Stat()
 	pathBirth, pathErr := os.Lstat(directory)
 	if err != nil || pathErr != nil || !privateJournalDirectory(birth) || !os.SameFile(birth, pathBirth) {
+		return errors.Join(ErrBinding, err, pathErr)
+	}
+	if err := errors.Join(file.Sync(), syncDirectDirectory(filepath.Dir(directory))); err != nil {
+		return err
+	}
+	if err := stage.recordFixedDirectory(ctx, directory, birth, mode, gid, false); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	current, err := file.Stat()
+	currentPath, pathErr := os.Lstat(directory)
+	if err != nil || pathErr != nil || !sameStagingDirectory(birth, current) || !sameStagingDirectory(birth, currentPath) {
 		return errors.Join(ErrBinding, err, pathErr)
 	}
 	if err := file.Chown(0, int(gid)); err != nil {
@@ -211,6 +286,21 @@ func (stage *generationStage) changeFixedDirectoryMode(ctx context.Context, dire
 	before, err := file.Stat()
 	if err != nil || !sameStagingDirectory(original, before) {
 		return errors.Join(ErrBinding, err)
+	}
+	native, ok := before.Sys().(*syscall.Stat_t)
+	if !ok {
+		return ErrBinding
+	}
+	if err := stage.recordFixedDirectory(ctx, directory, before, mode, native.Gid, true); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	current, err := file.Stat()
+	currentPath, pathErr := os.Lstat(directory)
+	if err != nil || pathErr != nil || !sameStagingDirectory(before, current) || !sameStagingDirectory(before, currentPath) {
+		return errors.Join(ErrBinding, err, pathErr)
 	}
 	if err := file.Chmod(mode); err != nil {
 		return err

@@ -38,6 +38,15 @@ func TestInstallationCheckOriginalCancellationBeforeInputOrFloors(t *testing.T) 
 	}
 }
 
+func TestInstallationRecoveryOriginalCancellationBeforeInputOrFloors(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	var out bytes.Buffer
+	if code := runInstallation(ctx, []string{"recover-initial", filepath.Join(t.TempDir(), "absent-installation"), "2030-01-02T03:04:05Z"}, &out); code != 130 || !strings.Contains(out.String(), "installation-canceled") {
+		t.Fatal("recovery lost pre-effect original cancellation", code, out.String())
+	}
+}
+
 func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 	directory, pin, program := signedConsumerTargets(t, "linux-amd64", true, true, 1)
 	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.Headless})

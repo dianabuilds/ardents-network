@@ -6,7 +6,9 @@ portable admission canonical request и свежую связную автори
 native initial provision имеет собственные lease/journals, fixed resources,
 stopped selection и intent archive. Read-only check сверяет выбранные bytes,
 account и roots без Release effects. Predecessor join, installed start и recovery
-ещё не реализованы; полная native transaction не принята или квалифицирована.
+ещё не реализованы для successor transition; bounded initial stopped recovery
+имеет отдельную command composition и actual stopped manager receipt, но полная
+interruption matrix ещё не проверена. Полная native transaction не принята или квалифицирована.
 Этот документ не выбирает implementation slice и не доказывает
 установленную работоспособность. GitHub остаётся журналом выполнения.
 Installation — самостоятельный владелец внутри семейства Software acceptance.
@@ -141,6 +143,47 @@ Read-only `installation-check` не открывает Release history, не р�
 файлы и возвращает только integrity observation. Restart сохраняет floors и
 не обещает Publication/Connection continuity.
 
+Начальная native transaction отдельно сохраняет `directory-creations` в своём
+generation journal. После exclusive mkdir и sync исходного закрытого каталога
+запись связывает generation, путь, device/inode и исходные и требуемые mode/GID;
+sync записи и journal предшествует chown/chmod. Перевод worker-root в read-only
+доступ имеет отдельную запись на том же исходном inode до изменения mode.
+Отмена удерживает записи и каталог в достигнутом состоянии. Начальная операция
+не усыновляет оставшуюся запись при повторном вызове. Эти данные дают native
+recovery необходимую provenance, но не заменяют свежие Release proofs и не
+означают, что полное recovery принято или квалифицировано.
+
+`ardents-next installation recover-initial <root> <UTC-reference-time>` удерживает
+existing Installation writer lease до физического закрытия. Открытие проверяет
+original intent, preparation/generation journals, account/roots и complete
+file/directory birth inventories до Release effects. Composition загружает
+Candidate без initial pin и открывает только complete retained Release history;
+две новые proofs должны разрешать те же program/generation bytes и identities
+при новом времени проверки. Original request, plans, unit и binding не
+пересобираются с новым reference time. Все actual resource prefixes проверяются
+до первого ремонта; visible birth records повторно sync до изменения записанных
+объектов. Копии opaque handle разделяют один admission latch и lease; завершение
+использует только original opening context и не может продлить его новым caller.
+Операция оставляет установку stopped, сохраняет first failures в archive и
+отказывает при live scopes, unknown ownership или недостающих birth records.
+Отсутствие pending cursor само по себе не разрешает работу: explicit retry после
+архивирования проверяет exact selected completed intent и получает fresh proofs.
+Read-only Check также отказывает при pending recovery failure. Старые roots без
+directory birth evidence сохраняются; новый recovery не усыновляет их молча.
+Один native recovery lifetime владеет frozen observations, журналами и ремонтом
+на исходных inode; его cohesive implementation держит эти проверки рядом, без
+generic callbacks или отдельного пакета для каждого syscall.
+
+Изолированный Ubuntu24/systemd255 receipt проверяет genuine initial provision,
+recovery по exact selected archive после удаления cursor, same-inode authorized
+prefix repair, foreign-prefix refusal и сохранение first failure при успешном
+retry. Selection и Release floors не изменились; Endpoint и worker не запускались.
+Это controlled filesystem faults, не process crash или power-loss qualification.
+Native reader сохраняет joined filesystem errors; отсутствие optional record
+распознаётся через error tree, а foreign cursor не разрешает archive fallback.
+После проверки исходные процессы и cgroup тестового manager физически завершены;
+его outer stop сохранил timeout result, поэтому clean manager shutdown не заявлен.
+
 ## Недостающие seams до реализации
 
 Новый Enrollment экспортирует `Verify` и opaque `Bundle` с первичной provenance,
@@ -176,7 +219,9 @@ mutable roots отказывают до эффектов. `authenticate-initial 
 bundle/pin/history/reference inputs через настоящие Enrollment/Release.
 Декодирование не открывает State, Source credentials или grants; bounded
 command-file reading не доказывает root-owned custody. Новая runtime
-composition начальной остановленной установки и read-only inspection имеют новые consumers; installed start и successor/recovery пока отсутствуют. Их компонентные проверки не доказывают принятую native установку.
+composition начальной остановленной установки, read-only inspection и bounded
+initial stopped recovery имеют новые consumers; installed start и successor
+transition/recovery пока отсутствуют. Их компонентные проверки не доказывают принятую native установку.
 Старый `internal/endpoint/runtimeplan` остаётся независимым владельцем
 predecessor consumers; его импорт в новый путь запрещён.
 

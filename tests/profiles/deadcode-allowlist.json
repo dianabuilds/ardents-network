@@ -105,6 +105,7 @@
           "internal/successor/installation.preparationRecordBytes",
           "internal/successor/installation.quoteUnitPath",
           "internal/successor/installation.readOwnedRequest",
+          "internal/successor/installation.recoveryGeneration",
           "internal/successor/installation.renderEndpointUnit",
           "internal/successor/installation.targetObservation.observation",
           "internal/successor/installation.unitPath",
@@ -113,7 +114,7 @@
           "internal/successor/installation.writableDirectories"
         ],
         "classification": "portable Installation rules behind actual Linux installation consumers",
-        "rationale": "Linux ardents-next installation provision reaches ReadProvisionRequest, genuine Enrollment/Release authentication, native preparation and assembleGeneration; installation check reaches native leased inspection, inspectGeneration and Enrollment static-group validation. Native preparation owns ordered journals and fixed-unit rendering; completion/archive/final handoff consume the typed manager predicates. Windows refuses native provisioning/inspection and cannot supply root-owned custody, UID/inode or system-manager evidence. These exact portable rules remain tested on both platforms. Linux production must reach them, and both test projections must remain empty; no checker or import exception is changed.",
+        "rationale": "Linux ardents-next installation provision reaches ReadProvisionRequest, genuine Enrollment/Release authentication, native preparation and assembleGeneration; installation check reaches native leased inspection, inspectGeneration and Enrollment static-group validation. Native preparation owns ordered journals and fixed-unit rendering; completion/archive/final handoff consume the typed manager predicates. The actual recover-initial consumer retains native ownership, uses Candidate/OpenRetained and two fresh proofs; completeInitialRecovery reaches recoveryGeneration to match original bytes and plans without recreating authority from public observations. Windows refuses native provisioning/inspection/recovery and cannot supply root-owned custody, UID/inode or system-manager evidence. These exact portable rules remain tested on both platforms. Linux production must reach them, and both test projections must remain empty; no checker or import exception is changed.",
         "owner": "Installation and Enrollment; docs/technical/endpoint-service-runtime.md and internal/successor/installation/README.md",
         "retirement": "Remove each exact Windows entry when a separately accepted genuine Windows installation consumer reaches it, or when its owning operation is removed. Preserve exact production results and empty Windows/Linux test results."
       },

@@ -185,3 +185,67 @@ func TestInstallationNativeFixedDirectoryPromotionRetainsChildIdentity(t *testin
 		t.Fatal("promotion adopted a same-byte replacement child")
 	}
 }
+
+func TestInstallationNativeFixedDirectoryBirthIsRecordedBeforeAccess(t *testing.T) {
+	stage := fixedCreationStage(t)
+	directory := filepath.Join(nativeRequestDirectory(t), "worker-root")
+	recordPath := filepath.Join(stage.lease.path, "journals", stage.selected.GenerationDigest, "directory-creations", digestHex([]byte(directory))+".json")
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	err := stage.birthFixedDirectory(&cancellationAtCreationRecord{Context: ctx, cancel: cancel, filename: recordPath}, directory, 0710, 65534)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatal("access proceeded after recorded birth cancelled its original caller", err)
+	}
+	info, err := os.Lstat(directory)
+	if err != nil || !privateJournalDirectory(info) {
+		t.Fatal("cancelled directory birth changed access or removed its residue", err)
+	}
+	body, err := os.ReadFile(recordPath)
+	if err != nil {
+		t.Fatal("durable directory birth missing", err)
+	}
+	var record struct {
+		Schema           string `json:"schema"`
+		GenerationDigest string `json:"generation_digest"`
+		Path             string `json:"path"`
+		Device           uint64 `json:"device"`
+		Inode            uint64 `json:"inode"`
+		PreviousMode     uint32 `json:"previous_mode"`
+		PreviousGID      uint32 `json:"previous_gid"`
+		Mode             uint32 `json:"mode"`
+		GID              uint32 `json:"gid"`
+	}
+	native := info.Sys().(*syscall.Stat_t)
+	if err := json.Unmarshal(body, &record); err != nil || record.Schema != "ardents-endpoint-directory-creation-v1" || record.GenerationDigest != stage.selected.GenerationDigest || record.Path != directory || record.Device != uint64(native.Dev) || record.Inode != native.Ino || record.PreviousMode != 0700 || record.PreviousGID != 0 || record.Mode != 0710 || record.GID != 65534 {
+		t.Fatal("directory birth does not identify its original inode and intended access", err)
+	}
+}
+
+func TestInstallationNativeFixedDirectoryPromotionRecordsBeforeChange(t *testing.T) {
+	stage := fixedCreationStage(t)
+	directory := filepath.Join(nativeRequestDirectory(t), "worker-root")
+	if err := stage.birthFixedDirectory(t.Context(), directory, 0700, 0); err != nil {
+		t.Fatal(err)
+	}
+	original, err := os.Lstat(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	recordPath := filepath.Join(stage.lease.path, "journals", stage.selected.GenerationDigest, "directory-creations", digestHex([]byte(directory))+"-access.json")
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	err = stage.changeFixedDirectoryMode(&cancellationAtCreationRecord{Context: ctx, cancel: cancel, filename: recordPath}, directory, 0555)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatal("promotion proceeded after recorded access cancelled its original caller", err)
+	}
+	current, err := os.Lstat(directory)
+	if err != nil || !sameStagingDirectory(original, current) {
+		t.Fatal("cancelled promotion changed the original directory", err)
+	}
+	if _, err := os.Stat(recordPath); err != nil {
+		t.Fatal("promotion intent lost", err)
+	}
+	if err := stage.changeFixedDirectoryMode(t.Context(), directory, 0555); err == nil {
+		t.Fatal("initial operation silently adopted retained promotion intent")
+	}
+}

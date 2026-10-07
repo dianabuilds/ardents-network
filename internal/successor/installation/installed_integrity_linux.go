@@ -54,6 +54,9 @@ func checkInstalled(ctx context.Context, directory string) (result CheckResult, 
 	if _, err := reader.lease.root.Lstat(filepath.Join("journals", selected.GenerationDigest, "original-transition-failure.json")); !os.IsNotExist(err) {
 		return CheckResult{}, errors.Join(ErrBinding, err)
 	}
+	if _, err := reader.lease.root.Lstat(filepath.Join("journals", selected.GenerationDigest, "recovery-failure.json")); !os.IsNotExist(err) {
+		return CheckResult{}, errors.Join(ErrBinding, err)
+	}
 	bindingRaw, err := reader.read(ctx, filepath.Join(generationPath, "binding.json"), 32<<10, 0640, reader.gid)
 	if err != nil {
 		return CheckResult{}, err
@@ -160,6 +163,12 @@ func (reader *installedInspection) pinGenerationDirectory(directory string) erro
 }
 
 func (reader *installedInspection) read(ctx context.Context, filename string, maximum int64, mode os.FileMode, gid uint32) (body []byte, returnedErr error) {
+	return reader.readObserved(ctx, filename, maximum, mode, gid, false)
+}
+
+// Recovery may observe an empty or partial owned birth. Ordinary inspection
+// still requires complete nonempty bytes and never repairs a file.
+func (reader *installedInspection) readObserved(ctx context.Context, filename string, maximum int64, mode os.FileMode, gid uint32, allowEmpty bool) (body []byte, returnedErr error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -197,7 +206,7 @@ func (reader *installedInspection) read(ctx context.Context, filename string, ma
 	}()
 	name := filepath.Base(filename)
 	before, err := root.Lstat(name)
-	if err != nil || before == nil || !before.Mode().IsRegular() || before.Mode() != mode || before.Size() <= 0 || before.Size() > maximum {
+	if err != nil || before == nil || !before.Mode().IsRegular() || before.Mode() != mode || before.Size() < 0 || (!allowEmpty && before.Size() == 0) || before.Size() > maximum {
 		return nil, errors.Join(ErrBinding, err)
 	}
 	native, ok := before.Sys().(*syscall.Stat_t)
@@ -257,7 +266,11 @@ func (reader *installedInspection) observe(ctx context.Context) error {
 		}
 	}
 	for filename, expected := range reader.files {
-		if _, err := reader.read(ctx, filename, int64(len(expected.body)), expected.mode, expected.gid); err != nil {
+		maximum := int64(len(expected.body))
+		if maximum == 0 {
+			maximum = 1
+		}
+		if _, err := reader.readObserved(ctx, filename, maximum, expected.mode, expected.gid, len(expected.body) == 0); err != nil {
 			return err
 		}
 	}
