@@ -195,6 +195,19 @@ staging и fixed-resource write: исходный child joined, kernel writer le
 Enrollment/Release/account/manager authority; он не доказывает успешное recovery
 или полную actual-manager interruption matrix и power-loss qualification.
 
+Отдельный actual-manager receipt на Ubuntu24/systemd255 использует настоящий
+новый `provision` с signed-byte fixture. Внешний syscall controller завершает
+исходный процесс через SIGKILL после успешного sync `0006.json` и его journal
+directory, до manager reload. Исходные threads joined и writer lease освобождена;
+pending Check отказывает. Новый `recover-initial` получает две fresh proofs,
+возвращает `installed-recovered-stopped`, архивирует exact intent и сохраняет
+все десять fixed bytes/inodes/access, selection и Release floors. Read-only Check
+после этого возвращает `local-integrity-verified`. Endpoint и worker не запускались.
+Это один process-crash boundary, не полная interruption matrix, power-loss,
+independent builders/custody или installed qualification. Исходные процессы и
+cgroup отдельного test-manager отсутствуют после outer stop с retained timeout
+result; clean manager shutdown не заявлен.
+
 ## Недостающие seams до реализации
 
 Новый Enrollment экспортирует `Verify` и opaque `Bundle` с первичной provenance,

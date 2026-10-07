@@ -79,6 +79,20 @@ after its outer stop retained a timeout result; clean manager shutdown is not
 claimed. The full interruption matrix, live predecessor join and installed
 startup remain separate obligations.
 
+A separate isolated Ubuntu24/systemd255 receipt exercises an actual process
+crash during the new initial transaction. An external syscall controller sends
+SIGKILL after successful sync of the reloading-manager phase record and its
+journal directory, before reload. It joins the original process threads and
+verifies release of the original writer lease. Pending read-only Check refuses;
+the genuine `recover-initial` consumer obtains fresh proofs, reloads and archives
+the exact intent, then Check accepts local integrity. All ten fixed resources
+retain original bytes, inodes and access; selection and Release floors remain
+unchanged. Endpoint and worker stay stopped. Signing/builders are fixtures, and
+this one process-crash boundary does not complete the interruption matrix or
+qualify power loss, installed runtime or privacy. The separate test-manager's
+original processes and cgroup are absent after an outer stop that retained a
+timeout result; clean manager shutdown is not claimed.
+
 The new initial stopped transaction now checks typed effective Endpoint Unit
 and Service properties before its completion record, before intent archival
 and at final handoff. It requires the exact command/arguments/flags, fixed
