@@ -2,8 +2,12 @@
 
 Проект по действующим контрактам, проверенный по исходникам на
 `dev@edaa76ce9db8afa04d5983980b2ea86f74279e11`. Первый Go Module реализует
-portable admission canonical request и свежую связную авторизацию программы/поколения; native installation,
-journal, predecessor join, start и recovery ещё не реализованы. Этот документ не выбирает implementation slice и не доказывает
+portable admission canonical request и свежую связную авторизацию программы/поколения;
+native initial provision имеет собственные lease/journals, fixed resources,
+stopped selection и intent archive. Read-only check сверяет выбранные bytes,
+account и roots без Release effects. Predecessor join, installed start и recovery
+ещё не реализованы; полная native transaction не принята или квалифицирована.
+Этот документ не выбирает implementation slice и не доказывает
 установленную работоспособность. GitHub остаётся журналом выполнения.
 Installation — самостоятельный владелец внутри семейства Software acceptance.
 
@@ -172,7 +176,7 @@ mutable roots отказывают до эффектов. `authenticate-initial 
 bundle/pin/history/reference inputs через настоящие Enrollment/Release.
 Декодирование не открывает State, Source credentials или grants; bounded
 command-file reading не доказывает root-owned custody. Новая runtime
-composition и actual generation preparation пока отсутствуют.
+composition начальной остановленной установки и read-only inspection имеют новые consumers; installed start и successor/recovery пока отсутствуют. Их компонентные проверки не доказывают принятую native установку.
 Старый `internal/endpoint/runtimeplan` остаётся независимым владельцем
 predecessor consumers; его импорт в новый путь запрещён.
 

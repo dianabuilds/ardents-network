@@ -30,6 +30,40 @@ fresh program/generation proof pair. They neither load Source credentials nor
 create declared runtime roots, prepare an installed binding or establish
 runtime readiness. The predecessor parser and runtime remain independent.
 
+New `ardents-next installation provision --request` separately composes native
+initial preflight, new Enrollment and fresh Release authorization with its own
+Installation lease, journals, fixed resources, stopped selection and exact
+intent archive. The Release verifier stays open through Installation cleanup.
+New `installation check <root>` is read-only: it retains the existing Installation
+writer lease while checking canonical selection/binding, root-controlled exact
+bytes, account and mutable-root identities and fixed-resource integrity. It
+opens no Release history and returns no private authorization or live invocation
+proof. Enrollment supplies the static descriptor/resource grammar without pin
+provenance; Installation owns local binding and native inspection. These consumers
+have component controls, not a complete successful native installation receipt.
+New installed startup, predecessor join and explicit recovery remain absent;
+the current fixed Endpoint command must acquire a genuine new runtime consumer
+before any successful startup is claimed. No old runtime bridge is permitted.
+
+The new initial stopped transaction now checks typed effective Endpoint Unit
+and Service properties before its completion record, before intent archival
+and at final handoff. It requires the exact command/arguments/flags, fixed
+account, writable paths, mandatory protection, finite stop timeout and no
+started command history, then reobserves stopped Endpoint/socket identity.
+Duplicate variants, lost signatures or missing required observations refuse.
+The existing admitted manager profiles and their narrowly selected lifetime
+rules remain unchanged; these checks do not implement the separate capability
+admission repair. Read-only inspection keeps its original five-second bound
+and still joins physical reads/cleanup before returning a result.
+
+The new stopped observation reads typed `GetAll` at the fixed Endpoint object
+path. It does not require a previous short-lived client's `GetUnit` object to
+survive collection. Systemd loads that object's configuration during property
+dispatch; the exact Unit identity, fragment, protections and stopped state
+remain mandatory, with stopped identity checked again after both observations.
+This mechanism follows [systemd v255's object lookup](https://raw.githubusercontent.com/systemd/systemd/v255/src/core/dbus.c),
+checked 2026-10-07, and starts no Endpoint or worker.
+
 `internal/endpoint/installation` composes the two fresh Release evaluations from
 one frozen set of enrolled metadata and the same local/reference facts. It
 checks complete resource bytes and coherent authenticated target identities and

@@ -27,6 +27,7 @@ const generationTarget = "ardents/linux-amd64/protected-endpoint"
 // bytes. It is not serializable installation or restart authority. Its zero
 // value grants nothing; installed ownership and admission remain separate.
 type Authorization struct {
+	initial             enrollment.Bundle
 	program, generation release.Authorization
 	descriptor          []byte
 	resources           map[string][]byte
@@ -52,7 +53,13 @@ func AuthenticateInitial(ctx context.Context, v *release.Verifier, b enrollment.
 	if !ok {
 		return Authorization{}, ErrInput
 	}
-	return authenticate(ctx, v, b, f, in)
+	accepted, err := authenticate(ctx, v, b, f, in)
+	if err == nil {
+		// Preserve genuine initial-pin provenance privately. A candidate pair
+		// cannot acquire it by carrying the same public descriptor or Decision.
+		accepted.initial = b
+	}
+	return accepted, err
 }
 
 // AuthenticateCandidate requires already established complete Release floors.

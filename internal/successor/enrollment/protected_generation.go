@@ -19,6 +19,27 @@ func protectedNames() []string {
 		"50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"}
 }
 
+// ValidateProtectedGeneration checks only the canonical static resource group.
+// It supplies no initial pin provenance, Release proof or installed authority.
+func ValidateProtectedGeneration(descriptor []byte, resources map[string][]byte, releaseIdentity string) error {
+	if len(resources) != len(protectedNames()) {
+		return ErrInventory
+	}
+	files := make(map[string][]byte, len(resources)+1)
+	for name, body := range resources {
+		files[name] = body
+	}
+	files["protected-endpoint.json"] = descriptor
+	protected, err := verifyProtected(files, "linux-amd64", "ardents-linux-amd64", releaseIdentity)
+	if err != nil {
+		return err
+	}
+	if !protected {
+		return ErrInventory
+	}
+	return nil
+}
+
 func verifyProtected(files map[string][]byte, platform, artifact, release string) (bool, error) {
 	reserved := append([]string{"protected-endpoint.json"}, protectedNames()[1:]...)
 	present := 0

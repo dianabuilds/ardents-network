@@ -1,0 +1,125 @@
+//go:build installation_native
+
+package installation
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+// This fixture advances filesystem records only; it does not attest actual
+// global resource creation, account admission or a stopped system manager.
+func archiveStage(t *testing.T) *generationStage {
+	t.Helper()
+	stage := accessStage(t)
+	if err := stage.promoteAccess(t.Context(), 65534); err != nil {
+		t.Fatal(err)
+	}
+	if err := stage.fixedPhase(t.Context(), "0005.json", "publishing-selection"); err != nil {
+		t.Fatal(err)
+	}
+	body, err := canonicalJSON(stage.selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := stage.createFixedFile(t.Context(), filepath.Join(stage.lease.path, "selection.json"), body, 0640, 65534); err != nil {
+		t.Fatal(err)
+	}
+	if err := stage.fixedPhase(t.Context(), "0006.json", "reloading-manager"); err != nil {
+		t.Fatal(err)
+	}
+	if err := stage.fixedPhase(t.Context(), "0007.json", "installed-stopped"); err != nil {
+		t.Fatal(err)
+	}
+	return stage
+}
+
+func TestInstallationNativeIntentArchiveRetainsExactBytesAndRefusesSubstitution(t *testing.T) {
+	stage := archiveStage(t)
+	original := bytes.Clone(stage.intent.body)
+	if err := stage.archiveIntent(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stage.lease.root.Lstat("transition.json"); !os.IsNotExist(err) {
+		t.Fatal("pending intent survived completed archive", err)
+	}
+	body, err := stage.journal.root.ReadFile("completed-intent.json")
+	if err != nil || !bytes.Equal(body, original) {
+		t.Fatal("archive changed original bytes", err)
+	}
+	if err := stage.observe(); err != nil {
+		t.Fatal(err)
+	}
+	if err := stage.archiveIntent(t.Context()); !errors.Is(err, ErrBinding) {
+		t.Fatal("completed operation was re-executed", err)
+	}
+	if err := stage.journal.root.Remove("completed-intent.json"); err != nil {
+		t.Fatal(err)
+	}
+	if err := stage.journal.root.WriteFile("completed-intent.json", body, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := stage.observe(); !errors.Is(err, ErrBinding) {
+		t.Fatal("same-byte foreign archive inode accepted", err)
+	}
+}
+
+type archiveCancellation struct {
+	context.Context
+	stage *generationStage
+}
+
+func (ctx archiveCancellation) Err() error {
+	if _, err := ctx.stage.journal.root.Lstat("completed-intent.json"); err == nil {
+		return context.Canceled
+	}
+	return ctx.Context.Err()
+}
+
+func TestInstallationNativeIntentArchiveCancellationPreservesPendingOriginal(t *testing.T) {
+	stage := archiveStage(t)
+	ctx := archiveCancellation{Context: t.Context(), stage: stage}
+	if err := stage.archiveIntent(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatal("original cancellation lost", err)
+	}
+	if stage.archivedIntent != nil {
+		t.Fatal("cancellation fabricated archive completion")
+	}
+	if err := observeStagedFile(stage.lease.root, "transition.json", stage.intent); err != nil {
+		t.Fatal("pending original removed after cancellation", err)
+	}
+	if _, err := stage.journal.root.Lstat("completed-intent.json"); err != nil {
+		t.Fatal("copy-before-unlink boundary was not reached", err)
+	}
+	if err := stage.observe(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInstallationNativeIntentArchiveRefusesPrematureOrForeignArchive(t *testing.T) {
+	t.Run("premature", func(t *testing.T) {
+		stage := accessStage(t)
+		if err := stage.archiveIntent(t.Context()); !errors.Is(err, ErrBinding) {
+			t.Fatal("incomplete generation archived", err)
+		}
+		if _, err := stage.journal.root.Lstat("completed-intent.json"); !os.IsNotExist(err) {
+			t.Fatal("archive created before completion", err)
+		}
+	})
+	t.Run("foreign", func(t *testing.T) {
+		stage := archiveStage(t)
+		if err := stage.journal.root.WriteFile("completed-intent.json", stage.intent.body, 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := stage.archiveIntent(t.Context()); !errors.Is(err, ErrBinding) {
+			t.Fatal("foreign archive adopted", err)
+		}
+		if err := observeStagedFile(stage.lease.root, "transition.json", stage.intent); err != nil {
+			t.Fatal("foreign archive retired pending intent", err)
+		}
+	})
+}

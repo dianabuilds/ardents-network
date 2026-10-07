@@ -15,9 +15,19 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
-// These commands authenticate generation bytes only. They do not provision,
-// change installed selection, start a worker or establish Service readiness.
+// Authentication and stopped provisioning retain separate acceptance results.
+// Neither starts a worker or establishes Service readiness.
 func runInstallation(ctx context.Context, args []string, out io.Writer) int {
+	if len(args) == 2 && args[0] == "check" {
+		result, err := installation.Check(ctx, args[1])
+		if err != nil {
+			return installationFailure(ctx, out, err)
+		}
+		return enrollmentReport(out, result.Status, 0)
+	}
+	if len(args) == 3 && args[0] == "provision" && args[1] == "--request" {
+		return runInstallationProvision(ctx, args[2], out)
+	}
 	// A canonical Installation request supplies the same byte-authentication
 	// inputs after its declarations have passed their own portable admission.
 	// This branch does not provision the declared roots or load credentials.
@@ -109,6 +119,42 @@ func runInstallation(ctx context.Context, args []string, out io.Writer) int {
 		return enrollmentReport(out, "installation-refused", 1)
 	}
 	return enrollmentReport(out, "authenticated-generation", 0)
+}
+
+func runInstallationProvision(ctx context.Context, filename string, out io.Writer) int {
+	request, err := installation.ReadProvisionRequest(ctx, filename)
+	if err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	program, err := os.Executable()
+	if err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: request.BundleRoot(), ExecutablePath: program,
+		ManifestSHA256: request.ManifestSHA256(), Scope: enrollment.Headless})
+	if err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	input, ok := initialReleaseInputs(bundle, request.ReferenceTime())
+	if !ok || input.Local.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return enrollmentReport(out, "installation-incompatible", 1)
+	}
+	verifier, err := release.Open(request.ReleaseHistoryRoot())
+	if err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	authorization, err := installation.AuthenticateInitial(ctx, verifier, bundle, input)
+	var result installation.ProvisionResult
+	if err == nil {
+		result, err = installation.ProvisionInitial(ctx, request, authorization)
+	}
+	// The separate Release history lease outlives Installation's physical
+	// borrowers. Late refusal preserves floors and cannot publish success.
+	err = errors.Join(err, verifier.Close(), ctx.Err())
+	if err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	return enrollmentReport(out, result.Status, 0)
 }
 
 func candidateReleaseInputs(c enrollment.Candidate, ref time.Time) (release.Inputs, bool) {

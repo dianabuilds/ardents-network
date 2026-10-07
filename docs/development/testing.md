@@ -370,6 +370,16 @@ projection and remain in its platform allowance because Linux production
 still has retained Route consumers. That allowance does not permit removing
 or reconnecting shared mechanics in the one-engine retirement slice.
 
+The same exact platform classification covers new Installation's portable
+assembly, inspection, journal and typed manager rules reached by genuine Linux
+`ardents-next installation provision/check` consumers. Windows refuses their
+native effects. Their individual Windows entries grant no Linux allowance,
+successful installation or runtime qualification; both test projections must
+still be empty. The native custody representation is Linux-only, while portable
+request and byte rules retain the same sources and behavior controls on both
+platforms. Assembly separately refuses complete stored observations without
+fresh private Release proofs.
+
 The headless command inventory declares the four-command Network artifact lane;
 the text-worker inventory declares its separately owned Application lane under
 `tests/profiles/`. Architecture tests check actual transitive dependency
@@ -449,6 +459,49 @@ the registry entry.
 
 The maintained local profiles are:
 
+- `installation-native-linux`, invoked by `make installation-native-check`,
+  selects the `installation_native` Linux tests in new Installation. It requires
+  a root driver and `ARDENTS_INSTALLATION_NATIVE_ROOT` naming an existing direct
+  root:root temporary parent with trusted non-writable ancestors outside the
+  repository. It tests real file ownership, links, inode/content/ancestor changes
+  during request reading and original cancellation. Its preparation-journal
+  mechanisms check durable ordered phases, refusal of retained/foreign residue
+  and preservation of an actually written phase after cancellation. These
+  records describe filesystem effects without granting account or recovery
+  authority. The initial-root mechanism checks an actual exclusive kernel lease,
+  physical release, refusal of existing roots and changed root/lock identities;
+  request custody is reobserved against the original inode and bytes. Generation
+  staging checks exclusive directory birth, intent-before-write, root-owned exact
+  files, complete owned inventories, retained first refusal and post-write
+  cancellation without selection or lease release. Filesystem fixtures supply
+  no installation of global paths. Fixed-creation mechanisms check actual
+  inode records before payload, refusal without the original phase, exclusive
+  file/directory birth and cancellation retaining an empty recorded leaf. They supply
+  no manager completion. Access/selection components check same-inode group/mode
+  promotion with the original kernel lease, pre-intent refusal, exact selected
+  bytes and bounded stopped-unit observation grammar. Intent archival checks
+  exact durable copy before original unlink, original cancellation with the
+  pending inode retained, and refusal of premature or substituted archives.
+  These filesystem records do not attest genuine manager completion.
+  Installed inspection components check a retained existing kernel lease,
+  original same-byte inode substitution and mutable-ancestor replacement with
+  the leaf inode unchanged. Portable stored-observation controls check exact
+  canonical binding, descriptor/resources and rendered declarations; public
+  observation data cannot recreate Release authorization. They do not qualify
+  a successful installed account/resource/manager composition.
+  Portable stopped-manager controls preserve D-Bus signatures and exact integer
+  observations, reject duplicate/unknown variant fields, and require configured
+  Endpoint identity, protection, command/arguments/flags and an unstarted command
+  history. Missing/null/wrong-type fields and weaker values refuse. The existing
+  249-only absence of selectable lifetime properties is kept explicitly;
+  unsupported managers remain refused. These are configuration-rule controls,
+  not real loaded Endpoint, containment or installed-start qualification.
+  Manager property fixtures
+  are parser evidence; they do not invoke reload or qualify a stopped installation. They supply
+  no Enrollment, Release or Endpoint-account authority. Missing prerequisites fail;
+  this filesystem component profile supplies no systemd, installed-start or
+  confinement qualification. Ordinary quick checks cross-compile its tagged
+  tests into the external quality cache;
 - developer, deterministic, process, package-e2e, headless-network, race, and fuzz;
 - `qualification`, the aggregate selected Ubuntu Endpoint lifecycle profile;
 - `endpoint-portable-ubuntu` and `endpoint-replacement-ubuntu`;

@@ -3,4 +3,6 @@
 // it grants no Release, installation, execution or Network authority.
 // ReadCandidate separately retains self-consistent untrusted bytes without
 // first-pin or running-program provenance for a later Release evaluation.
+// ValidateProtectedGeneration checks the static descriptor/resource grammar
+// for Installation's root-controlled inspection without minting pin provenance.
 package enrollment

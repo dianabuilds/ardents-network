@@ -18,7 +18,10 @@ import (
 // Request retains checked local declarations only. It grants no Release,
 // Network, native ownership or runtime authority. Paths use the selected Linux
 // installation grammar on every host; native admission is a later operation.
-type Request struct{ declared *installationRequest }
+type Request struct {
+	declared *installationRequest
+	custody  *requestCustody
+}
 
 // DecodeRequest checks one canonical bounded request before byte authentication.
 // Initial input requires the independent pin; successor input forbids it.

@@ -56,7 +56,7 @@ INSTALLED_TAG_COMPILE_MKDIR = mkdir -p "$(INSTALLED_TAG_COMPILE_ROOT)"
 endif
 
 override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false
-QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check release-operation-compile-check
+QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check release-operation-compile-check installation-native-compile-check
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
@@ -296,6 +296,17 @@ diagnostics-check:
 	go test ./scripts/diagnostics/diagnostic-command.go ./scripts/diagnostics/diagnostic-capture.go ./scripts/diagnostics/diagnostic-view.go ./scripts/diagnostics/diagnostic-report.go ./scripts/diagnostics/diagnostic-monitor.go scripts/diagnostics/diagnostic-monitor-view.go scripts/diagnostics/diagnostic-monitor-collector.go scripts/diagnostics/diagnostic-monitor_test.go ./scripts/diagnostics/diagnostic-log-retention.go ./scripts/diagnostics/diagnostic-log-retention_test.go ./scripts/diagnostics/diagnostic-capture_test.go ./scripts/diagnostics/diagnostic-report_test.go ./scripts/diagnostics/diagnostic-evidence.go ./scripts/diagnostics/diagnostic-evidence_test.go -count=1 -timeout=1m
 
 .PHONY: hosting-check
+.PHONY: installation-native-check installation-native-compile-check
+installation-native-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "installation-native-check requires Linux"; exit 2)
+	@test "$$(id -u)" = 0 || (echo "installation-native-check requires root"; exit 2)
+	@test -n "$(ARDENTS_INSTALLATION_NATIVE_ROOT)" || (echo "ARDENTS_INSTALLATION_NATIVE_ROOT must name a trusted root-owned temporary parent"; exit 2)
+	go test -race -tags installation_native ./internal/successor/installation -run '^TestInstallationNative' -count=1 -timeout=1m
+
+installation-native-compile-check:
+	$(INSTALLED_TAG_COMPILE_MKDIR)
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-native.test" ./internal/successor/installation
+
 .PHONY: route-check
 route-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/network/... ./internal/successor/admission/... ./internal/successor/hosting ./internal/successor/publication/... ./internal/successor/reachability/... ./internal/successor/enrollment/... ./internal/successor/release/... ./internal/successor/installation/... ./internal/successor/route/... ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))

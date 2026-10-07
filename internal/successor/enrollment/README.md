@@ -142,6 +142,11 @@ qualification. Поведение на других ОС определяетс�
 
 ## Проверяемая приёмка
 
+`ValidateProtectedGeneration` предоставляет Installation ту же canonical
+descriptor/static-resource проверку для root-controlled installed snapshot.
+Этот narrow Interface не проверяет независимый pin, не возвращает Bundle или
+Release proof и не утверждает filesystem ownership либо готовность запуска.
+
 Тесты пересекают тот же Interface, что consumer, с независимо собранными
 manifest/descriptor и реальными временными файлами. Положительный сценарий
 проверяет полный snapshot и оригинальную привязку программы. Отрицательные

@@ -20,6 +20,24 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
+func TestInstallationProvisionOriginalCancellationBeforeInputOrFloors(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	var out bytes.Buffer
+	if code := runInstallation(ctx, []string{"provision", "--request", filepath.Join(t.TempDir(), "absent-request")}, &out); code != 130 || !strings.Contains(out.String(), "installation-canceled") {
+		t.Fatal("provision lost pre-effect original cancellation", code, out.String())
+	}
+}
+
+func TestInstallationCheckOriginalCancellationBeforeInputOrFloors(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	var out bytes.Buffer
+	if code := runInstallation(ctx, []string{"check", filepath.Join(t.TempDir(), "absent-installation")}, &out); code != 130 || !strings.Contains(out.String(), "installation-canceled") {
+		t.Fatal("check lost pre-effect original cancellation", code, out.String())
+	}
+}
+
 func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 	directory, pin, program := signedConsumerTargets(t, "linux-amd64", true, true, 1)
 	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: directory, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.Headless})

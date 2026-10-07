@@ -54,6 +54,29 @@ func TestProtectedCompleteGroupIsInitialProvenanceOnly(t *testing.T) {
 	}
 }
 
+func TestValidateProtectedGenerationKeepsStaticGrammarWithoutPinAuthority(t *testing.T) {
+	_, files := protectedFixture(t)
+	resources := make(map[string][]byte)
+	for _, name := range protectedNames() {
+		resources[name] = files[name]
+	}
+	if err := ValidateProtectedGeneration(files["protected-endpoint.json"], resources, "release"); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateProtectedGeneration(files["protected-endpoint.json"], resources, "foreign"); !errors.Is(err, ErrBinding) {
+		t.Fatal("foreign release accepted", err)
+	}
+	resources["foreign"] = []byte("extra")
+	if err := ValidateProtectedGeneration(files["protected-endpoint.json"], resources, "release"); !errors.Is(err, ErrInventory) {
+		t.Fatal("extra static file accepted", err)
+	}
+	delete(resources, "foreign")
+	resources["ardents-text-linux-amd64"] = []byte("foreign worker")
+	if err := ValidateProtectedGeneration(files["protected-endpoint.json"], resources, "release"); !errors.Is(err, ErrBinding) {
+		t.Fatal("foreign worker accepted", err)
+	}
+}
+
 func TestProtectedCanonicalIdentityAndResourceRefusals(t *testing.T) {
 	for _, test := range []struct {
 		name   string
