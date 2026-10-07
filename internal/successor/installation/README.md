@@ -188,6 +188,13 @@ Native reader сохраняет joined filesystem errors; отсутствие 
 После проверки исходные процессы и cgroup тестового manager физически завершены;
 его outer stop сохранил timeout result, поэтому clean manager shutdown не заявлен.
 
+Отдельный native subprocess control проверяет реальный SIGKILL после generation
+staging и fixed-resource write: исходный child joined, kernel writer lease
+освобождена, исходные records/bytes/inodes сохранены, повторный initial owner
+отказывает при существующем root. Это filesystem-mechanism fixture без
+Enrollment/Release/account/manager authority; он не доказывает успешное recovery
+или полную actual-manager interruption matrix и power-loss qualification.
+
 ## Недостающие seams до реализации
 
 Новый Enrollment экспортирует `Verify` и opaque `Bundle` с первичной provenance,
