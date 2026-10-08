@@ -31,8 +31,8 @@ copy/sync/removal; initial и successor completion допускаются отд
 Эти изменения следуют ответственности и реальным callers, без нового пакета
 или изменения принимающего контракта. Методы одного владельца собраны рядом: `generation_staging_linux.go` — original staging
 с parent custody, seal/access и close; `initial_preparation_linux.go` — initial
-preflight, account, preparation и публикация stopped selection; `initial_resources_linux.go` — recorded initial
-fixed-resource birth; `successor_replacement_linux.go` — original replacement
+preflight, account, preparation, fixed-resource publication и публикация stopped selection;
+`fixed_resource_creation_linux.go` — recorded birth, same-inode access promotion и retained fixed-file observations; `successor_replacement_linux.go` — original replacement
 records и mutation; `successor_transition_linux.go` — successor lifecycle, intent
 и ordering; `installed_inspection_linux.go` — leased inspection и retained private
 record durability. Грамматика completion frame принадлежит `completion/frame.go`: один Encoder

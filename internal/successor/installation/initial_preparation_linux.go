@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -385,6 +386,93 @@ func observeAbsentInstallationUnits(ctx context.Context) error {
 		return errors.Join(ErrNativeUnavailable, err)
 	}
 	return ctx.Err()
+}
+
+// Initial fixed publication retains stopped manager observations and the
+// original preparation. This private operation grants no platform admission.
+func (owned *initialPreparation) installFixedResources(ctx context.Context, request Request) error {
+	if err := owned.observe(ctx, request); err != nil {
+		return err
+	}
+	if err := observeAbsentInstallationUnits(ctx); err != nil {
+		return err
+	}
+	for filename := range fixedResourceNames() {
+		if err := requireAbsentManagedPath(filename); err != nil {
+			return err
+		}
+	}
+	for _, filename := range []string{"/usr/lib/ardents/text-worker-root", "/etc/ardents/text-worker-artifact.json", "/run/ardents-text"} {
+		if err := requireAbsentManagedPath(filename); err != nil {
+			return err
+		}
+	}
+	stage := owned.stage
+	if err := stage.fixedPhase(ctx, "0003.json", "installing-fixed-resources"); err != nil {
+		return err
+	}
+	workerRoot := "/usr/lib/ardents/text-worker-root"
+	if err := stage.birthFixedDirectory(ctx, workerRoot, 0700, 0); err != nil {
+		return err
+	}
+	for _, name := range []string{"dev", "proc", "sys", "run", "tmp", "etc", "root", "usr", "var", "var/tmp"} {
+		if err := stage.birthFixedDirectory(ctx, filepath.Join(workerRoot, name), 0555, 0); err != nil {
+			return err
+		}
+	}
+	resources := fixedResourceNames()
+	paths := make([]string, 0, len(resources))
+	for filename := range resources {
+		paths = append(paths, filename)
+	}
+	sort.Strings(paths)
+	digests := make(map[string]string)
+	for _, filename := range paths {
+		name := resources[filename]
+		if name == "ardents-endpoint.service" {
+			name = "endpoint-unit.service"
+		}
+		body := stage.generation.Bytes(name)
+		if len(body) == 0 {
+			return ErrBinding
+		}
+		if err := stage.ensureRootParent(ctx, filepath.Dir(filename)); err != nil {
+			return err
+		}
+		mode := os.FileMode(0644)
+		if filename == filepath.Join(workerRoot, "ardents-text") {
+			mode = 0555
+		}
+		if err := stage.createFixedFile(ctx, filename, body, mode, 0); err != nil {
+			return err
+		}
+		if name != "endpoint-unit.service" && name != "ardents-text.conf" {
+			digests[filename] = digestHex(body)
+		}
+	}
+	if err := stage.changeFixedDirectoryMode(ctx, workerRoot, 0555); err != nil {
+		return err
+	}
+	manifest, err := canonicalJSON(struct {
+		Schema string            `json:"schema"`
+		Files  map[string]string `json:"files"`
+	}{"ardents-text-worker-artifact-v1", digests})
+	if err != nil {
+		return err
+	}
+	if err := stage.ensureRootParent(ctx, "/etc/ardents"); err != nil {
+		return err
+	}
+	if err := stage.createFixedFile(ctx, "/etc/ardents/text-worker-artifact.json", manifest, 0644, 0); err != nil {
+		return err
+	}
+	if err := stage.birthFixedDirectory(ctx, "/run/ardents-text", 0710, owned.prepared.gid); err != nil {
+		return err
+	}
+	if err := owned.observe(ctx, request); err != nil {
+		return err
+	}
+	return stage.fixedPhase(ctx, "0004.json", "fixed-resources-installed")
 }
 
 func (owned *initialPreparation) publishInitialSelection(ctx context.Context, request Request) error {
