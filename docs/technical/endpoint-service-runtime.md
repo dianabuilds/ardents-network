@@ -50,8 +50,9 @@ bound includes acquisition; physical Close retains unfinished work after expiry
 and the separate Release lease remains open until Installation closes. Full ACK
 is irreversible: late cleanup, cancellation or Release-close failure reports
 `installed-started-recovery-required` with nonzero status. These are implemented
-composition rules, not a positive actual-manager start/ACK receipt. The fixed
-Endpoint command still needs a genuine new accepting runtime consumer. New
+composition rules. A genuine new non-root consumer separately exercises actual
+manager startup, original Root archival/ACK and bounded Source/permission
+bootstrap, as described below; this is not complete installed acceptance. New
 successor recovery separately admits owned interrupted prefixes and fresh-proof
 continuations; complete interruption/start/ACK acceptance remains unproven. No
 old runtime bridge is permitted. The new successor recovery owner collects its

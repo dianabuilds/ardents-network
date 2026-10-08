@@ -10,8 +10,9 @@
 // failures, leaving the generation stopped. One opaque successor lifetime
 // authenticates fresh proofs against the installed binding, stages, joins the
 // original predecessor and attempts barrier-controlled startup. Full ACK remains
-// accepted through late cleanup failure. The accepting new startup consumer and
-// complete interruption coverage remain separate dependencies. Explicit
+// accepted through late cleanup failure. A genuine new command consumer admits
+// bounded installed Source/permission startup; complete interruption coverage
+// and private Service acceptance remain separate. Explicit
 // completion recovery uses fresh proofs and independently retains the original
 // running invocation before same-inode terminal cleanup and first-error archive;
 // that terminal path never replays ACK or starts/stops a replacement. A complete
@@ -46,5 +47,5 @@
 // Bound generation-writing failure requires an exact durable first-error copy
 // before physical retirement of its failed phase slot; successful phase2 follows
 // the complete seal. This grants no pending Start, ACK replay or installed
-// startup authority; the accepting new runtime remains a separate dependency.
+// startup authority; runtime independently consumes the retained startup lifetime.
 package installation

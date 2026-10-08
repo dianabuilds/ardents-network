@@ -7,7 +7,10 @@ native initial provision имеет собственные lease/journals, fixed
 stopped selection и intent archive. Read-only check сверяет выбранные bytes,
 account и roots без Release effects. Публичный successor lifetime теперь соединяет
 fresh proofs, staging, original predecessor join, replacement/selection и
-barrier-controlled попытку старта; positive installed start/ACK и полная successor recovery остаются недоказанными; bounded initial stopped recovery
+barrier-controlled попытку старта. Настоящий non-root consumer проверен через actual
+manager, Root archival/ACK и bounded Source/permission bootstrap; terminal guard
+recovery имеет отдельный actual-manager receipt. Полная successor interruption
+matrix и installed Service acceptance остаются недоказанными; bounded initial stopped recovery
 имеет отдельную command composition и actual stopped manager receipt, но полная
 interruption matrix ещё не проверена. Полная native transaction не принята или квалифицирована.
 Этот документ не выбирает implementation slice и не доказывает
@@ -104,8 +107,9 @@ cleanup: если original work или quiescence не доказаны, Close �
 и ожидает реальные observations без нового Stop/ACK/admission. Полный ACK
 сохраняет `installed-started-recovery-required` и ненулевой exit при поздней
 ошибке, включая закрытие отдельного Release owner. Такой исход не означает
-Service readiness. Новый принимающий runtime пока отсутствует: команда не
-подменяет его old runtime, READY marker или successful test peer.
+Service readiness. Настоящий новый consumer в `ardents-next` независимо допускает
+non-root startup и bounded Source/permission bootstrap через новых владельцев.
+Private Publication/Connection и полная installed acceptance остаются отдельными.
 
 `successor.go` владеет публичным one-use lifetime, `successor_transition_linux.go` — его
 native последовательностью и физическим закрытием. `candidate_linux.go`
@@ -130,6 +134,17 @@ Proofs
 до удаления active copy. Она не повторяет ACK, Start или Stop. Существующий
 runtime не получает новые права из recovery receipt. Shared one-use handle
 сохраняет исходный двухминутный bound и закрывает только свои observations.
+
+Отдельный [actual-manager receipt](https://github.com/dianabuilds/ardents-network/issues/506#issuecomment-6070342817)
+проверяет crash после полного original ACK и durable трёх removal records,
+перед unlink guard. Fresh-proof recovery удаляет только original guard,
+сохраняет ту же running invocation и Release floors. Более ранние archive/ACK
+prefixes дают отказ без mutation. Для terminal trial внешний test-only gate
+удерживает настоящие fixture Source/clock/Candidate до recovery; production
+artifacts и bounds не изменены. Исходный Root SIGKILL остаётся native fixture
+FAIL, а outer manager timeout — отдельной ошибкой. Это не passing qualification
+profile, полная interruption matrix или installed Service acceptance.
+
 Отдельный pending путь допускает exact complete staged prefix до первой fixed
 mutation: original selection/fixed bytes должны остаться predecessor, оба поколения
 должны быть complete sealed, а journal содержать два phase records, candidate directory birth
@@ -151,8 +166,8 @@ selection/reload и guarded start sequence. До этой admission Close зак
 сохраняет post-acceptance result при late failure. Presence не заменяет ни одну
 из этих проверок. Pending start, first failures вне bound generation-writing
 grammar и более ранние неподдержанные cleanup prefixes пока дают
-`repair-required`; positive actual-manager recovery остаётся зависимостью
-настоящего нового runtime. Native filesystem tests проверяют механизм и
+`repair-required`; positive actual-manager pending recovery ещё не подтверждена.
+Настоящий принимающий runtime уже имеет bounded startup consumer. Native filesystem tests проверяют механизм и
 causal refusals, не успешную installed recovery.
 
 
@@ -309,11 +324,11 @@ root, sealed Snapshot и собственный non-root процесс. `instal
 фактический PID/UID/GID caller; root-only `Retain` предшественника сохраняется.
 Оба пути сверяют kernel supplementary groups наряду с UID/GID и capabilities.
 Startup сверяет точные live Endpoint/activation properties между повторными
-наблюдениями собственных bytes/process. Этот private владелец ещё не имеет
-принимающего command/runtime consumer: завершение root-операции и final runtime
-handoff остаются необходимыми. Его открытие не разрешает participant effects и не
-является успешным installed start. Native credential-drop refusal проверяет
-реальный non-root процесс, но не положительный managed Endpoint invocation.
+наблюдениями собственных bytes/process. Настоящий command/runtime consumer
+удерживает этот lifetime через завершение root-операции и final runtime handoff.
+Одно открытие по-прежнему не разрешает participant effects. Actual-manager
+startup receipt проверяет non-root invocation и Root archival/ACK; credential-drop
+refusal отдельно проверяет отрицательную границу.
 
 `completion/` — самостоятельный Module одного bounded Unix exchange. Он открывает
 собственный read-only root, удерживает metadata root-private guard/socket record
@@ -363,9 +378,9 @@ live proc observation. Отказ подтвердить текущую invocati
 но не отменяет этот join; уже завершённый исходный scope допускает только
 повторную проверку quiescent manager, отсутствия queued Job и пустого inventory.
 Partial scope с MainPID=0 и ошибкой inventory также остаётся у исходной попытки,
-а первая ошибка не исчезает после stop/join. Accepting command/runtime consumer отсутствует;
-positive archived ACK и полная start/failure sequence через actual manager
-ещё не проверены. Private post-ACK cleanup требует того же accepted pin,
+а первая ошибка не исчезает после stop/join. Настоящий command/runtime consumer
+прошёл actual-manager startup с original archived ACK; полная start/failure
+matrix остаётся отдельной проверкой. Private post-ACK cleanup требует того же accepted pin,
 full frame, exact synced started record и original intent archive. Он закрывает
 исходные connection/listener до unlink, проверяет original socket/record/guard,
 синхронизирует parent после каждого удаления и убирает guard последним.
@@ -698,11 +713,11 @@ Unknown/missing protection никогда не является принимаю
 
 ## Приёмка и execution profiles
 
-### Контракт с будущим новым installed runtime
+### Контракт с новым installed runtime
 
 Fixed ExecStart сохраняет `endpoint start-installed <installation-root>` и
-точный generation executable. Его новый consumer должен жить в command
-composition, не в Installation или старом Endpoint. До participant effects
+точный generation executable. Его новый consumer находится в `ardents-next` command
+composition и удерживает Installation startup lifetime. До participant effects
 Installation самостоятельно наблюдает свой actual non-root process и read-only
 selected generation, account/roots/fixed bytes, original executable/argv/groups,
 cgroup и actual MainPID/InvocationID, включая обе activation sockets. Этот
@@ -713,14 +728,16 @@ process и manager. EOF или timeout не заменяют ACK.
 
 Новая runtime composition потребляет только bound неизменяемые Headless/Source
 declarations после final Installation handoff. Она отдельно создаёт настоящие
-Network/Admission/Route и будущие Execution/Publication/Connection owners;
+Network/Admission/Route и отдельный Execution; private Publication/Connection
+остаются будущими владельцами;
 Installation не выдаёт Job/Grant, Service readiness или Connection authority.
 Runtime закрывает собственные ресурсы и retains terminal result на исходном
 caller. Положительный root archival/ACK receipt требует именно этого настоящего
 consumer. Простое чтение Snapshot, test peer, filesystem marker или новый
 `start-installed`, который после ACK печатает результат и выходит, его не заменяет.
-До появления consumer positive successor startup и post-ACK interruption trials
-остаются dependency, а не тестовой достижимостью или установленной квалификацией.
+Actual-manager startup и отдельные archive/ACK interruption trials уже
+воспроизведены через этот consumer. Полная interruption matrix и installed
+Service acceptance остаются самостоятельными границами.
 
 ### Проверки Installation
 
@@ -791,8 +808,8 @@ I/O исходный объект проверяется повторно до u
 scoped commit/push и проверенной `dev`. Полная installed acceptance отдельно
 требует двух отдельных admitted system managers/Endpoint principals, public
 commands, actual containment/empty scopes и publish/link/read/refresh/withdraw/
-restart на TCP/TLS и QUIC. Без новых Execution/Publication/Instance/Connection
-эти положительные сценарии остаются недоказанными. Нельзя закрыть Installation
+restart на TCP/TLS и QUIC. Bounded Execution consumer уже реализован; без
+private Publication/Instance/Connection эти полные сценарии остаются недоказанными. Нельзя закрыть Installation
 или всю цель Route по одной только паре разрешений или остановленной установке.
 
 ### Recovery остановленного reload prefix
@@ -808,7 +825,8 @@ original provenance resync continuation не повторяет earlier fixed-fi
 checks, затем appends 0007; существующий 0007 только resync-ится без reload или
 перезаписи original record. Guarded start остаётся отдельным lifetime. Typed
 fixtures проверяют pure configuration/phase rules, filesystem probes — original
-provenance/resync; positive actual-manager recovery/start всё ещё не доказан.
+provenance/resync; positive actual-manager recovery этих reload prefixes
+всё ещё не доказана. Startup и terminal guard recovery проверены отдельно.
 
 ## Original generation file provenance
 
