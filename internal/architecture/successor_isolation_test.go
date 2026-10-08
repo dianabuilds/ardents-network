@@ -334,7 +334,18 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/reachability":            {"publication"},
 		"internal/successor/enrollment":              {},
 		"internal/successor/release":                 {},
-		"internal/successor/installation":            {"enrollment", "release"},
+		"internal/successor/execution":               {},
+		"internal/successor/execution/runtime":       {"execution", "execution/worker"},
+		"internal/successor/execution/worker":        {"installation/systemd", "installation/unit"},
+		"internal/successor/installation":            {"enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit"},
+		"internal/successor/installation/cgroup":     {},
+		"internal/successor/installation/systemd":    {},
+		"internal/successor/installation/journal":    {},
+		"internal/successor/installation/process":    {},
+		"internal/successor/installation/generation": {},
+		"internal/successor/installation/completion": {},
+		"internal/successor/installation/fixedfile":  {},
+		"internal/successor/installation/unit":       {"installation/systemd"},
 		"internal/successor/route":                   {},
 		"internal/successor/route/ardp":              {},
 		"internal/successor/route/issuer":            {"route/ardp", "admission"},
@@ -352,6 +363,18 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                           {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if source == "cmd/ardents-next/installed_endpoint_linux.go" && (dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/execution/runtime") {
+			return true
+		}
+		if source == "cmd/ardents-next/installed_source_linux.go" && (dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/network/source") {
+			return true
+		}
+		if (source == "cmd/ardents-next/execution_holder.go" || source == "cmd/ardents-next/admission_holder.go") && dependency == modulePath+"/internal/successor/execution/runtime" {
+			return true
+		}
+		if source == "cmd/ardents-next/execution_holder.go" && dependency == modulePath+"/internal/successor/execution" {
+			return true
+		}
 		if (source == "cmd/ardents-next/installation.go" || source == "cmd/ardents-next/installation_test.go") && (dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
@@ -371,6 +394,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if dependency == modulePath+"/internal/successor/route/transport" {
+			if source == "cmd/ardents-next/execution_installed_linux_test.go" {
+				return true
+			}
 			if source == "cmd/ardents-next/route_descriptor_linux_test.go" {
 				return true
 			}
@@ -412,10 +438,16 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		return false
 	}
+	if source == "internal/successor/execution/runtime/initialization_linux.go" && dependency == modulePath+"/internal/application/textdocument" {
+		return true
+	}
 	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
 	if owner == "internal/successor/route/transport/quic" && dependency == "github.com/quic-go/quic-go" {
+		return true
+	}
+	if source == "internal/successor/installation/systemd/endpoint_reference_linux.go" && dependency == "github.com/godbus/dbus/v5" {
 		return true
 	}
 	if (owner == "internal/successor/admission/spending" || owner == "internal/successor/network/duty" || owner == "internal/successor/network/state/durable") && dependency == "golang.org/x/sys/windows" {
@@ -491,6 +523,17 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"Execution launch borrows only Text INIT grammar", "internal/successor/execution/runtime/initialization_linux.go", modulePath + "/internal/application/textdocument", true},
+		{"Execution rules cannot borrow Text runtime", "internal/successor/execution/job.go", modulePath + "/internal/application/textdocument", false},
+		{"common Execution launch has no native Text exception", "internal/successor/execution/runtime/launch.go", modulePath + "/internal/application/textdocument", false},
+		{"other Execution composition has no Text exception", "internal/successor/execution/runtime/other_linux.go", modulePath + "/internal/application/textdocument", false},
+		{"Execution cannot borrow old Endpoint authority", "internal/successor/execution/runtime/initialization_linux.go", modulePath + "/internal/endpoint", false},
+		{"Execution cannot borrow old Broker", "internal/successor/execution/authority.go", modulePath + "/internal/application/broker", false},
+		{"old Endpoint cannot consume new Execution", "internal/endpoint/worker_grant_linux.go", modulePath + "/internal/successor/execution", false},
+		{"native original manager reference owns bus client", "internal/successor/installation/systemd/endpoint_reference_linux.go", "github.com/godbus/dbus/v5", true},
+		{"manager transport excludes bus client", "internal/successor/installation/systemd/reference_transport_linux.go", "github.com/godbus/dbus/v5", false},
+		{"Installation decisions exclude bus client", "internal/successor/installation/predecessor_linux.go", "github.com/godbus/dbus/v5", false},
+		{"unregistered manager file excludes bus client", "internal/successor/installation/systemd/other_linux.go", "github.com/godbus/dbus/v5", false},
 		{"Reachability verifies public delegation", "internal/successor/reachability/descriptor.go", modulePath + "/internal/successor/publication", true},
 		{"Prefix completes genuine private lookup", "internal/successor/route/prefix/descriptor_exchange.go", modulePath + "/internal/successor/reachability", true},
 		{"Receiver uses genuine Descriptor Store", "internal/successor/route/receiver/descriptor_linux.go", modulePath + "/internal/successor/reachability", true},
@@ -553,6 +596,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"transport exporter cannot import QUIC adapter", "internal/successor/route/transport/role_exporter.go", modulePath + "/internal/successor/route/transport/quic", false},
 		{"production command excludes lower contract", "cmd/ardents-next/route_linux.go", modulePath + "/internal/successor/route/transport", false},
 		{"bootstrap scenario uses shared contract", "cmd/ardents-next/route_bootstrap_linux_test.go", modulePath + "/internal/successor/route/transport", true},
+		{"installed Execution scenario uses shared Carrier identity", "cmd/ardents-next/execution_installed_linux_test.go", modulePath + "/internal/successor/route/transport", true},
+		{"installed Execution scenario excludes direct TLS construction", "cmd/ardents-next/execution_installed_linux_test.go", modulePath + "/internal/successor/route/transport/tls", false},
+		{"installed Execution scenario excludes direct QUIC construction", "cmd/ardents-next/execution_installed_linux_test.go", modulePath + "/internal/successor/route/transport/quic", false},
 		{"bootstrap scenario excludes TLS construction", "cmd/ardents-next/route_bootstrap_linux_test.go", modulePath + "/internal/successor/route/transport/tls", false},
 		{"bootstrap scenario excludes QUIC construction", "cmd/ardents-next/route_bootstrap_linux_test.go", modulePath + "/internal/successor/route/transport/quic", false},
 		{"unregistered scenario excludes lower contract", "cmd/ardents-next/route_other_linux_test.go", modulePath + "/internal/successor/route/transport", false},

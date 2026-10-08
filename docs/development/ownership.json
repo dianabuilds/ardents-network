@@ -141,7 +141,27 @@
       ]
     }
   ],
-  "qualification_lanes": [
+    "qualification_lanes": [
+      {
+        "id": "execution-recovery",
+        "owner": "network",
+        "path": "tests/qualification/execution-recovery"
+      },
+      {
+        "id": "execution-escape",
+        "owner": "network",
+        "path": "tests/qualification/execution-escape"
+      },
+      {
+        "id": "execution-tree",
+        "owner": "network",
+        "path": "tests/qualification/execution-tree"
+      },
+    {
+      "id": "execution-installed",
+      "owner": "network",
+      "path": "tests/qualification/execution-installed"
+    },
     {
       "id": "protected-installation",
       "owner": "network",

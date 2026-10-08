@@ -219,6 +219,21 @@ type routeIssuerFixture struct {
 	stopIssuer                                                                    context.CancelFunc
 	bootstrapHolds, bootstrapReturns, admissions, ordinaryIssues, bootstrapIssues atomic.Int32
 	issuerAdmissionCalls, issuerAdmissions, issuerReturns                         atomic.Int32
+	spends                                                                        []*routeFixtureSpends
+}
+
+// Retained by the test observer, separately from the production receiver. Only
+// successfully admitted canonical tokens are copied; these facts mint no rights.
+type routeFixtureSpends struct {
+	owner   *receiving.Owner
+	root    string
+	binding receiving.Receiver
+	observe func() (receiving.Observation, error)
+	mu      sync.Mutex
+	tokens  []struct {
+		class admission.Class
+		raw   []byte
+	}
 }
 
 func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, afterIssue func(context.Context, bool, []byte, []byte) error, afterIssuerReturn func() error, admissionPoint func(string), issuerObservation func(int)) *routeIssuerFixture {
@@ -247,6 +262,16 @@ func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, after
 		if err != nil {
 			t.Fatal(err)
 		}
+		spent := &routeFixtureSpends{owner: owner, root: root, binding: binding,
+			observe: func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) }}
+		x.spends = append(x.spends, spent)
+		t.Cleanup(func() {
+			spent.mu.Lock()
+			defer spent.mu.Unlock()
+			for _, token := range spent.tokens {
+				clear(token.raw)
+			}
+		})
 		t.Cleanup(func() {
 			if err := owner.Close(); err != nil {
 				t.Error(err)
@@ -298,6 +323,12 @@ func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, after
 					})
 				})
 				if err == nil {
+					spent.mu.Lock()
+					spent.tokens = append(spent.tokens, struct {
+						class admission.Class
+						raw   []byte
+					}{class: class, raw: bytes.Clone(raw)})
+					spent.mu.Unlock()
 					x.admissions.Add(1)
 					if isIssuer {
 						x.issuerAdmissions.Add(1)

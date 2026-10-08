@@ -2,8 +2,9 @@ package installation
 
 import "context"
 
-// ProvisionResult reports one completed stopped installation, not qualified
-// Execution, accepting Service readiness or a reusable Release authorization.
+// ProvisionResult reports the Installation outcome, not qualified Execution,
+// accepting Service readiness or a reusable Release authorization. A successor
+// result may retain an irreversible full ACK together with a cleanup error.
 type ProvisionResult struct {
 	Status           string
 	GenerationDigest string

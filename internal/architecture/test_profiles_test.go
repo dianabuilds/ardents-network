@@ -153,6 +153,12 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
+		"execution-lifecycle":               false,
+		"execution-route":                   false,
+		"execution-installed":               false,
+		"execution-tree":                    false,
+		"execution-escape":                  false,
+		"execution-recovery":                false,
 		"installation-native-linux":         false,
 		"route-prefix-linux":                false,
 		"admission-ledger-linux":            false,

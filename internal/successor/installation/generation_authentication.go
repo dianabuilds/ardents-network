@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
 	"path"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
@@ -74,10 +76,7 @@ func AuthenticateCandidate(ctx context.Context, v *release.Verifier, c enrollmen
 	if err != nil {
 		return Authorization{}, err
 	}
-	if floors.RootVersion < 1 || len(floors.RootDigest) != sha256.Size ||
-		floors.TimestampVersion < 1 || len(floors.TimestampDigest) != sha256.Size ||
-		floors.SnapshotVersion < 1 || len(floors.SnapshotDigest) != sha256.Size ||
-		floors.TargetsVersion < 1 || len(floors.TargetsDigest) != sha256.Size {
+	if !completeReleaseFloors(floors) {
 		return Authorization{}, release.ErrTrustUnavailable
 	}
 	return authenticate(ctx, v, c, enrollment.Facts(f), in)
@@ -187,4 +186,31 @@ func coherentTargets(p, g release.Decision, d generationDeclaration) bool {
 		p.Network == g.Network && p.ReferenceTime.Equal(g.ReferenceTime) &&
 		p.Floors.TargetsVersion == g.Floors.TargetsVersion &&
 		bytes.Equal(p.Floors.TargetsDigest, g.Floors.TargetsDigest)
+}
+
+func completeReleaseFloors(f release.FloorSet) bool {
+	return f.RootVersion > 0 && len(f.RootDigest) == sha256.Size &&
+		f.TimestampVersion > 0 && len(f.TimestampDigest) == sha256.Size &&
+		f.SnapshotVersion > 0 && len(f.SnapshotDigest) == sha256.Size &&
+		f.TargetsVersion > 0 && len(f.TargetsDigest) == sha256.Size
+}
+
+// Local stored facts constrain continuity, never create fresh authorization.
+// The caller must supply these facts from its still-leased native inspection.
+func successorContinuity(previous generationBinding, floors release.FloorSet, local release.LocalEnvironment) error {
+	g := previous.Generation
+	if !completeReleaseFloors(floors) || g.TargetsVersion < 1 || !canonicalDigest(g.TargetsDigest) ||
+		floors.TargetsVersion < g.TargetsVersion ||
+		(floors.TargetsVersion == g.TargetsVersion && hex.EncodeToString(floors.TargetsDigest) != g.TargetsDigest) {
+		return release.ErrTrustUnavailable
+	}
+	if local.Platform != g.Platform || local.Architecture != g.Architecture ||
+		local.Environment != g.Environment || local.Network != g.Network {
+		return ErrBinding
+	}
+	before, err := time.Parse(time.RFC3339Nano, g.ReferenceTime)
+	if err != nil || local.RefTime.IsZero() || local.RefTime.Before(before) {
+		return ErrBinding
+	}
+	return nil
 }

@@ -177,8 +177,11 @@ before returning its native lease. New Installation additionally consumes two
 fresh exact-target authorizations from this owner. Its successor byte consumer
 uses `OpenRetained`, which requires complete persisted floors for all four
 top-level roles and cannot create cold trust. These pair checks grant no
-installed predecessor continuity or runtime readiness; the installed transaction
-remains separately owned and unimplemented in the new domain.
+installed predecessor continuity or runtime readiness. New Installation separately
+owns initial stopped provisioning, successor replacement and bounded fresh-proof
+recovery through genuine command consumers. Accepting installed startup and the
+complete interruption/installed acceptance remain unproven; these consumers do
+not borrow the predecessor runtime or Release history.
 Portable metadata/target/safety rules remain
 distinct from native history mechanisms. The new-domain
 [design](../../internal/successor/release/README.md) preserves the accepted

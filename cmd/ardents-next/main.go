@@ -7,18 +7,25 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	code := run(ctx, os.Args[1:], os.Stdout, os.Stderr)
 	stop()
 	os.Exit(code)
 }
 
 func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && args[0] == "endpoint" {
+		return runInstalledEndpoint(ctx, args[1:], diagnostic)
+	}
+	if len(args) > 0 && args[0] == "execution" {
+		return runExecution(ctx, args[1:], out)
+	}
 	if len(args) > 0 && args[0] == "installation" {
 		return runInstallation(ctx, args[1:], out)
 	}

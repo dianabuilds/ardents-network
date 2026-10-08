@@ -53,20 +53,121 @@ remain proposed until their current contracts and real consumers are verified.
 | **Admission:** which finite rights can be obtained and spent? | Allocation; issuance quota; private material and retained results; holder permission/pending batch/stock; presentation history; receiving verification, allowance and durable spend are separate owners; opaque one-use fresh receiving-root creation fact belongs to storage lifecycle | Network authenticity, transport scheduling, Introduction slots and their independent history, provider budget, Local Grants, Custody keys and file delivery; a creation fact grants no token or transport authority | [new Admission boundary](../technical/successor-admission-boundary.md), [implemented owner map](../../internal/successor/admission/README.md) |
 | **Hosting:** which physical allowance can this owner reserve? | One provider-period Tx/Rx accounting policy, coherent measurements, durable budget, work/termination reservations and their exact release | Token authority/debit, Node assignment, role envelope calculation, transport stop/join, CPU/RAM/cgroups or global process monitor | [new Hosting](../technical/successor-hosting-budget.md), `internal/successor/hosting` |
 | **Route:** which protected leg and role channel may this operation use? | Entry/Interior selection and retention; role-purpose rules; prefix/lanes and credit; forwarding parents/children and permitted parent refill transport; receiving Introduction slots/delivery/floors; JOIN pairing and physical termination | State acceptance, Admission quotas/verification/spend, Hosting budget, publication readiness, Descriptor authority/history, Instance authentication and logical recovery | [Route owner map](route-domain-boundary-analysis.md), [migration contract](route-migration-contract.md), [implemented retained prefix](../technical/successor-route-prefix.md), [registration owner](../technical/successor-route-introduction.md) and [JOIN owner](../technical/successor-route-join.md); `internal/successor/route`, `selection`, `ardp`, `channel`, `role`, `issuer`, `prefix`, `join`, `receiver`, `transport/tls`, `transport/quic` and `introduction` with real `ardents-next` consumers. Lower `transport` owns no operation or adapter selection; former `carrier` and `operation` are removed. Genuine forwarding-parent refill and issuer Control use real Admission/Hosting owners. Descriptor Control composes separately owned Reachability Store/history. Opaque delivery remains a responsibility under the [remaining behavior design](route-delivery-join-boundary.md). These implemented boundaries are not the complete domain |
-| **Local Application execution:** may this process invocation perform this operation? | Volatile Local Grant generation; local session with exact current/last Job and one-use handoff; separate supervisor cleanup capacity and terminal admission latch; qualified launch and joined original worker descendants. Job is a lifetime entity within the session consistency boundary, not an independent network Context | Token allowance, Service authority, Target/path choice, private routing history, remote publication, Connection recovery, software acceptance, global resource pressure, text semantics and qualification Run | [Source-backed boundary/model](application-execution-domain-boundary-analysis.md), current evidence `application/broker`, Endpoint Job/worker and scattered Service effect/handoff checks; [confinement owner](../technical/application-confinement.md). This is verified design inventory, not a new implementation or installed qualification |
+| **Local Application execution:** may this process invocation perform this operation? | Volatile Local Grant generation; local session with exact current/last Job and one-use handoff; separate supervisor cleanup capacity and terminal admission latch; qualified launch and joined original worker descendants. Job is a lifetime entity within the session consistency boundary, not an independent network Context | Token allowance, Service authority, Target/path choice, private routing history, remote publication, Connection recovery, software acceptance, global resource pressure, text semantics and qualification Run | [Source-backed boundary/model](application-execution-domain-boundary-analysis.md), current evidence `application/broker`, Endpoint Job/worker and scattered Service effect/handoff checks; [confinement owner](../technical/application-confinement.md). New `internal/successor/execution` implements local authority/session/Job and independent cleanup supervision; `execution/worker` implements fixed native mechanisms; `execution/runtime` has genuine permission-preparation and bounded live Route-holder consumers. One exact operation retains qualified original cleanup through Route borrower join; private Service operations, accepting installed participant and installed qualification remain absent |
 | **Service Publication:** which authorized Instance is accepting work? | Publication generation/revision, current/pending/predecessor registration pair, private recipient lifetime, ACK/readiness, refresh and withdrawal; Instance authority/material remain purpose-scoped | Credential root signing, raw Route transport, Descriptor Store conflict floors, logical Connection recovery, Local Grant/Job mutation and worker cleanup; retain an exact live Execution operation instead | Proposed new boundary; current source evidence: Instance/publication, Endpoint registration/Introduction; [Service owner](../technical/endpoint-service-runtime.md), [private reachability](../technical/private-reachability.md), [Execution seam](application-execution-domain-boundary-analysis.md#source-inventory-collect-split-and-leave) |
 | **Reachability:** what current proof is valid for this Target? | Receiving Descriptor Store and durable conflicts; local lookup verification/history is a separate owner at another principal | Publication readiness, admission spend, path choice, Service Instance authentication and logical Connection | `internal/successor/reachability` implements portable proof/conflict/history rules and native receiving Store mechanisms; real Route Prefix/Receiver and `ardents-next` consume them. [Reachability contract](../technical/private-reachability.md) records signed-input acceptance and its limits. Predecessor `service/reachability`, Endpoint history and Node resolution remain independent; their complete Service consumers are not transferred by this boundary |
 | **Service Connection:** how does one authenticated logical stream retain its identity? | Immutable destination/provenance, exact Instance TLS authentication, ordered byte state, Attachment generation, continuity/recovery deadline and retained Service terminal outcome; checks the exact retained Execution operation at effects and final handoffs | New Target/Application operation, new Grant, Job mutation/worker cleanup, publication authority, path policy and independent physical reservations | Proposed new boundary; current source evidence: `service/connection`, Endpoint Service/binding/recovery; [Service owner](../technical/endpoint-service-runtime.md), [Execution seam](application-execution-domain-boundary-analysis.md#source-inventory-collect-split-and-leave) |
-| **Software acceptance:** which exact generation may be installed or run? | Enrollment pin, Release authorization/monotonic floors, installation/replacement/recovery transaction are separate authority and state owners | Network membership, admission permissions, Service authority, generic signing and automatic rollback | New `internal/successor/enrollment` owns initial pinned byte verification under the [Enrollment contract](../technical/enrollment-verification.md); new `internal/successor/release` owns isolated offline authorization and its own history; new Installation separately authenticates the program/generation pair; its native initial stopped transaction and read-only inspection have new command consumers; bounded initial stopped recovery has a genuine leased consumer, while successor join/start/recovery remain absent and no installed acceptance is established. This family is not one aggregate; [Release/Custody owner](../technical/release-update-custody.md) retains their current contracts |
+| **Software acceptance:** which exact generation may be installed or run? | Enrollment pin, Release authorization/monotonic floors, installation/replacement/recovery transaction are separate authority and state owners | Network membership, admission permissions, Service authority, generic signing and automatic rollback | New `internal/successor/enrollment` owns initial pinned byte verification under the [Enrollment contract](../technical/enrollment-verification.md); new `internal/successor/release` owns isolated offline authorization and its own history; new Installation separately authenticates the program/generation pair; its native initial stopped transaction and read-only inspection have new command consumers; bounded initial stopped recovery has a genuine leased consumer, while a public successor lifetime now composes original predecessor join and guarded start; accepting new startup and complete interrupted successor recovery remain absent; bounded terminal cleanup and complete staged-prefix recovery have a fresh-proof command consumer, and no installed acceptance is established. This family is not one aggregate; [Release/Custody owner](../technical/release-update-custody.md) retains their current contracts |
 | **Authority Custody** (supporting boundary) | Purpose-specific encrypted authority storage, approved signing commitments and recovery floors; authority kinds never become one signing right | Generic `Sign`, exported private authority, Network/Service/Admission decisions assigned to their own domains; runtime Instance/Node keys | Existing current Custody is source evidence; new integration remains explicit future work; [Custody contract](../technical/release-update-custody.md) |
 
 ## Supporting mechanisms and composition
+
+The partial new installed Endpoint composition retains an opaque Installation
+startup lifetime across a separately bounded root completion exchange and final
+original observations. It consumes copied bound plans, qualified joined Execution
+permission preparation, genuine Network Source intake and Stock verification.
+Public request/response file custody belongs to command composition; Admission
+retains holder secrets and import authority. State owns background Source work;
+completed preparation provenance is retired after permission bootstrap and never
+used as a live worker permit. Source Epoch intake does not manufacture an accepted
+closed profile: missing genuine retained authority refuses permission work.
+Its bounded installed bootstrap has an actual fresh-manager command scenario:
+the canonical non-root participant independently completes Root exchange,
+qualified joined preparation and genuine Stock import; original proc and kernel
+event-descriptor observers prove physical join. This is not private Service
+readiness, complete installed acceptance or whole-host qualification. Signing,
+Source and clock infrastructure remains under one fixture controller.
+
+Generation's completed byte mutation retains a matched read-only descriptor to
+the original inode before joining its writer close. Installation still owns
+birth journaling, immutable selection and Start admission; the file mechanism
+grants no execution right. This preserves live custody without retaining a
+writable executable descriptor across actual exec.
+
+Execution's separately pinned hostile-tree component retains independent
+original kernel event and proc-directory observers. It checks parent/child/
+grandchild hardening and TERM refusal, joins the victim while the other local
+surface retains its exact sibling invocation and operation, and denies effects
+on original attachment loss before borrower join. An ordinary artifact's absent
+descendants fail the control. Local owner authorization is supplied by the
+fixture; no Service progress, logical recovery, escape or whole-host protection
+is established by those observations. The [profile owner](../../tests/qualification/execution-tree/README.md)
+retains the artifact and environment boundary.
+
+Execution's separate escape component uses genuine qualified launch and an
+exact operation with independently positive-controlled host TCP/UDP/DNS/IPC
+observers. Original kernel/proc descriptors establish worker join; the pinned
+adversarial artifact cannot be selected by an Application. These mechanisms
+grant no Service authority, logical recovery or whole-host qualification; the
+[profile owner](../../tests/qualification/execution-escape/README.md) retains
+their separate artifact and environment boundary.
+
+Execution's separate Endpoint-death component keeps its Root observer outside
+the held qualification Endpoint. Original pidfd SIGKILL cannot execute Go
+cleanup; independently pinned kernel/proc descriptors require disappearance
+of the original Endpoint and both hostile worker trees. Explicit fresh start
+requires new Endpoint/worker invocations, local generation and Job commitments.
+The failed signal result is retained, and no copied readiness fact grants
+permission or join. This is local physical lifetime evidence; logical Service
+recovery and installed product acceptance remain with their separate owners.
+Its [profile owner](../../tests/qualification/execution-recovery/README.md)
+retains the Root/non-root actors and artifact/environment bounds.
+
+For successor replacement, Installation's predecessor lifetime retains one
+original fixed Endpoint unit reference through configuration observation,
+fixed-file mutation and admitted reload. The systemd Module owns its private
+connection, original manager identity, bounded scalar decoding admission and
+joined transport close; Installation owns expected configuration, phase
+admission and original predecessor join before releasing that reference. Unit
+retention does not grant Release, process, start or readiness authority.
+
+The original successor barrier synchronizes a start intention before contacting
+the manager and rechecks guard/socket custody after journal I/O. Installation
+owns this intention's exact intent/socket binding; journal admits only its closed
+name and physical durability. Presence is neither a successful invocation nor
+ACK/replay authority, and absence in an older journal cannot prove no Start.
+Terminal recovery validates an optional intention against independently retained
+original removal provenance, preserving the older grammar and finite capacity.
+
+Original candidate cleanup consumes a distinct stopped-attempt observation:
+the fixed-unit Module may verify retained failed/failed state with completed
+execution and no queued Job. Installation still owns original attempt/proc/scope
+custody, repeated stopped activation and absent workers before physical release.
+This does not broaden fresh-stopped or recovery admission, erase manager failure
+or grant a new Start, ACK or runtime right.
+
+Candidate start retention, failed-attempt join and its exact observation,
+archival and ACK sequence reside together in `candidate_linux.go`. Successor
+transaction admission and staging/selection/reload remain outside that lifetime;
+the original guard/socket belongs to the barrier. This locality changes neither
+the private Interface nor the resource/authority transfer.
+
+Generation-writing first-failure recovery separately classifies the original
+failed phase and its exact first-error copy. Installation retains fresh-proof
+and original birth-prefix admission; journal owns resync and physical retirement
+of only the failed phase slot after a byte-identical durable copy. Independent
+complete seal precedes successful phase2. First-error provenance grants no
+pending Start, ACK replay or completion of an old Start actor.
+
+The systemd Module retains each fixed subprocess's creating OS thread until
+Run joins its original child, with Linux parent-death SIGKILL. Installation still
+owns effect admission, actual unit/process/scope observation and recovery policy.
+Kernel termination of a helper prevents its later submission after fatal caller
+death; it neither cancels an already accepted manager request nor grants pending
+Start recovery. Detached stopped/NoJob facts remain distinct from original actor
+completion. No neighbor acquires a shared caller, root lease or runtime permit.
 
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | New `nodeidentity` | Imported offline Node signing material and validated issuer-profile signing purpose, as its current `doc.go` states | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
 | Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route |
 | State/Hosting/Route physical adapters | Byte verification, durable transactions, counters, sockets and Carrier mechanisms under their declared owners | Mechanisms cannot mint authority, reset floors or copy a second domain decision implementation |
+| Installation native observations | `installation/cgroup` owns bounded actual kernel inventory and original event-descriptor observations; `installation/systemd` owns bounded typed facts, canonical manager version, fixed unit/instance inventory and joined subprocess mechanisms for daemon-reload, fixed Endpoint start and fixed sockets/Endpoint stop | The separate `installation/process` owns original proc-directory/start clock and exact executable/argv/credentials/supplementary groups/cgroup/InvocationID observations. Root-only predecessor opening and actual non-root self opening remain separate; private startup inspection retains its own read Snapshot and process observations, with no accepting runtime consumer or root archival/ACK operation yet. Installation retains Release admission, expected generation/protection and process binding, original lease, stop decision and first failure. Native Modules have no parent import, shared lease or startup authority; Installation admits stop/reload and retains original physical join; its root manager_binding_linux.go collects request projection and actual manager/activation checks across initial, predecessor, candidate and recovery lifetimes; typed bus facts and kernel observations do not qualify an installed invocation |
+| Installation fixed-unit contract | `installation/unit` owns pure expected Endpoint/activation protection, typed execution/invocation and distinct fresh-stopped/quiescent/running observations | Installation admits request write roots and transaction effects, systemd obtains actual typed manager facts, process/cgroup retain original physical custody. Detached configuration and property maps grant no Release or start/recovery authority |
+| Installation journals | `installation/journal` owns closed preparation grammar/order and opaque original preparation/transition directory/file custody; transition owns finite creation/directory/replacement groups, exact record bytes/access, durable append/resync and partial/first-failure custody through physical close; independently reopened recovery may retain an exact original replacement group and synchronize its directory links, including an empty group | Installation retains transition record schemas/phases, original caller/lease, Release proofs, account/root/fixed-resource effects and barrier ordering. Recovery consumes preparation grammar through separate provenance/fresh-proof admission. Detached journal bytes and presence grant no adoption, mutation, generation selection or startup right |
+| Installation local completion exchange | `installation/completion` owns the shared closed 160-byte frame encoding/validation consumed by root start-barrier production and independent startup inspection; it independently owns one original Unix connection, read-only directory/guard/socket-record metadata, actual root peer PID/UID/GID and exact finite frame/reply under its original deadline; cancellation physically joins its callback and Close | Private startup inspection consumes Connect/Wait between independent generation/process/manager observations. The exchange neither reads private intent nor borrows a writer lease or grants runtime/readiness authority. Root retains start observation, durable archival and ACK decision. A private producer now orders actual retained process/peer checks, a synced start record, archival and ACK; a private candidate-start lifetime now retains original process/scope custody and failed-attempt quiescence until join, while a positive actual-manager start/ACK/cleanup scenario and the accepting new runtime remain absent |
+| Installation fixed-file mutation | `installation/fixedfile` owns independent original parent/file descriptors, exclusive empty birth, bounded prefix repair on an original inode, access/ctime rechecks after journal I/O, physical writes/sync and retained original cancellation through Close | Installation keeps allowed paths/bytes/access, exact birth/replacement records and phase admission, original lease, Release proofs, predecessor join, selection and recovery. Neither a detached inode nor this physical mechanism grants mutation authorization or installed startup; no shared live root or parent import |
+| Installation immutable generation files | `installation/generation` owns closed artifact names, exclusively created original directory/files, exact finite inventory, same-inode read-access promotion, detached bytes and retained partial/failure custody through physical close; independent read-only Snapshot owns sealed fifteen-file custody with its own descriptors, original file ctime/bytes and caller failure, without a writer lease or creation ownership | Installation records a mandatory closed file-inventory marker and each original per-file birth before artifact bytes; compatible complete recovery independently matches recorded native inodes and fresh-bound target facts. Installation retains fresh exact-byte proofs, original lease and caller, birth journal before writes, phase-appropriate container access, fixed-resource effects, selection, original predecessor join and startup. An independent physical Prefix retains recorded original incomplete leaves and directory, checks complete preimages, repairs only original inodes and seals complete inventory; Installation separately owns ordered writing-generation admission and fresh-proof continuation. Original successor recovery admission, continuation, terminal cleanup and close are collected with one retained owner in successor_recovery_linux.go; independent Prefix/Snapshot/process custody remains distinct. Filesystem/race admission and causal ordering controls do not prove actual-manager recovery or process-crash acceptance. Sealed files and copied physical facts grant no Release, adoption, selection or startup authority |
 | Process resource/lifecycle owner | Process-wide observation, pressure availability, supervision and terminal process outcome | It is distinct from Network accepted-state policy and Hosting provider-period budget; final new implementation is not assumed present |
 | Provisioning composition and signing owner | Subsequent purpose-specific approval and signing of prepared public Node/Epoch/profile material | New Network's unsigned grammar preparation grants neither a signature nor current authority; private profile signing and a new Control implementation are absent, not silently absorbed into Network |
 | Integration/regression harness | Registered test composition across genuine new public/application contracts | It is not a product domain, production coordinator or new test-only command; domain-local tests remain with domain rules |
@@ -116,9 +217,9 @@ real consumer before package or implementation admission.
 ## Realization and design limits
 
 The [source-tree scaffold](../../internal/successor/README.md#каркас-доменов)
-provides README-only destinations for Execution, Connection
+provides README-only destinations for Connection
 and Custody. New Installation has its first portable coherent generation
-authentication Module and genuine command consumers; native initial stopped preparation and read-only installed inspection retain their own lease and observations. Bounded initial stopped recovery has its own retained caller/lease and fresh-proof composition; successor transition/start/recovery and installed acceptance remain absent. These directories grant no Go import or
+authentication Module and genuine command consumers; native initial stopped preparation and read-only installed inspection retain their own lease and observations. Bounded initial stopped recovery has its own retained caller/lease and fresh-proof composition; public successor transition now has command composition, while accepting new startup, complete interrupted successor recovery and installed acceptance remain absent; bounded terminal completion and complete staged-prefix recovery have independent fresh observations. These directories grant no Go import or
 runtime authority. New Enrollment has its own portable first-pin verification
 Module, bounded root-contained physical reads, native ownership/open adapters
 and private frozen inventory consumed by the real read-only `ardents-next`
@@ -145,7 +246,7 @@ New Network, Admission and Hosting have maintained owners and genuine consumers;
 their precise source/evidence is recorded below. New Route has implemented
 prefix, registration and paired JOIN owners, not the complete transport domain. Local
 Application execution has a source-backed tactical design and class model;
-the new implementation and installed qualification are absent. Publication,
+the new local rules, native mechanisms, permission-preparation and bounded live Route-holder consumers are implemented. Common command/lifetime composition joins explicit unsupported native refusal without participant effects; qualification remains confined to the selected Linux mechanisms. One exact qualified operation retains original cleanup through Route borrower join; private Service operations, accepting installed participant and installed qualification remain absent. Publication,
 Reachability, Service Connection, Software acceptance and Custody keep their
 identified predecessor responsibilities and current contracts; a proposed new
 boundary is not proof that its implementation has transferred. Text, IPC,
@@ -170,8 +271,17 @@ consumer authenticates both targets through new Release, whose retained-only
 opening cannot create cold trust. Installation now owns portable canonical request admission and private
 Headless/Source declarations, consumed by actual byte-authentication commands.
 These rules use the selected Linux path grammar independently of the checking
-host, without importing old runtime parsers or opening credentials. New initial provisioning and read-only inspection have actual command composition; bounded initial recovery retains exact owned provenance and obtains new proofs before prefix repair; successor transition, installed startup and successor recovery remain unimplemented;
-complete floors alone grant no installed binding or readiness. A portable
+host, without importing old runtime parsers or opening credentials. New initial provisioning and read-only inspection have actual command composition; bounded initial recovery retains exact owned provenance and obtains new proofs before prefix repair; successor transition has a genuine public command consumer, while accepting installed startup and complete interrupted successor recovery remain unimplemented; terminal completion recovery now independently matches fresh proofs and original process/removal provenance; complete staged-prefix recovery separately retains a sealed Snapshot, exact phase journal and optional independently observed replacement record-group prefix before fresh proofs, original predecessor join and guarded start; complete sealed preimages, ordered same-inode torn fixed copies with all nine records and pre-proof actual quiescence remain Installation decisions;
+exact fixed-resources-replaced completion before selection requires all nine original records and complete candidate images, with pre-proof quiescence even for unchanged static bytes and original completion-record resync after fresh proofs;
+publishing-selection separately admits only original intent-bound selection images and original provenance after all nine fixed records and complete candidate files, retaining pre-proof quiescence and original intention resync; pending selection bytes never become a trusted generation pointer;
+exact reload/stopped prefixes require full candidate selection and all ten records, independently retained actual loaded configuration and quiescence, separate from original predecessor process custody; fresh-proof continuation resyncs existing stopped completion without reload/Stop/ACK replay;
+Initial preparation, generation-access promotion, selection publication, reload,
+stopped completion and initial archival admission share
+the retained `initialPreparation` owner in `initial_preparation_linux.go`;
+the generation and intent-file mechanisms remain with `generationStage`, as does
+the independent selection-byte/order test.
+This locality changes no authority, phase ordering or physical ownership.
+Complete floors alone grant no installed binding or readiness. A portable
 rule does not establish a native installation profile;
 the unresolved capability-admission repair remains distinct from this design.
 

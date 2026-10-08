@@ -5,6 +5,7 @@ go 1.27.1
 require (
 	github.com/aymanbagabas/go-pty v0.2.3
 	github.com/cloudflare/circl v1.6.5
+	github.com/godbus/dbus/v5 v5.2.2
 	github.com/quic-go/quic-go v0.63.0
 	github.com/sigstore/sigstore v1.11.0
 	github.com/theupdateframework/go-tuf/v2 v2.4.2

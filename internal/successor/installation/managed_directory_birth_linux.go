@@ -126,3 +126,35 @@ func finishManagedDirectory(ctx context.Context, path string, file *os.File, uid
 	created[path] = current
 	return ctx.Err()
 }
+
+func privateJournalDirectory(info os.FileInfo) bool {
+	return rootDirectory(info) && info.Mode().Perm() == 0700
+}
+
+func syncDirectDirectory(directory string) (returnedErr error) {
+	before, err := os.Lstat(directory)
+	if err != nil || before == nil || !before.IsDir() || before.Mode().Perm()&0022 != 0 {
+		return errors.Join(ErrNativeUnavailable, err)
+	}
+	owner, ok := before.Sys().(*syscall.Stat_t)
+	if !ok || owner.Uid != 0 {
+		return ErrNativeUnavailable
+	}
+	file, err := os.Open(directory)
+	if err != nil {
+		return err
+	}
+	defer func() { returnedErr = errors.Join(returnedErr, file.Close()) }()
+	opened, err := file.Stat()
+	if err != nil || !os.SameFile(before, opened) {
+		return errors.Join(ErrNativeUnavailable, err)
+	}
+	if err := file.Sync(); err != nil {
+		return err
+	}
+	after, err := os.Lstat(directory)
+	if err != nil || !os.SameFile(before, after) || before.Mode() != after.Mode() {
+		return errors.Join(ErrNativeUnavailable, err)
+	}
+	return nil
+}

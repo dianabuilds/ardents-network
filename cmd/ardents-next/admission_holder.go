@@ -9,6 +9,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
+	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 )
@@ -30,15 +32,30 @@ type holderCommand struct {
 	Target        [32]byte             `json:"target,omitzero"`
 }
 
-func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser, out, diagnostic io.Writer) (code int) {
-	var config struct {
-		Root    string                   `json:"root"`
-		Profile string                   `json:"profile"`
-		Network *networkAuthorityPlan    `json:"network,omitempty"`
-		Role    admission.AllocationRole `json:"role"`
-		Route   *routePrefixPlan         `json:"route,omitempty"`
+type holderPlan struct {
+	Root    string                   `json:"root"`
+	Profile string                   `json:"profile"`
+	Network *networkAuthorityPlan    `json:"network,omitempty"`
+	Role    admission.AllocationRole `json:"role"`
+	Route   *routePrefixPlan         `json:"route,omitempty"`
+}
+
+func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser, out, diagnostic io.Writer) int {
+	var config holderPlan
+	if admissionConfig(args, &config) != nil {
+		return 2
 	}
-	if ctx == nil || admissionConfig(args, &config) != nil || !absoluteAdmissionPath(config.Root) || !validAdmissionAuthority(config.Profile, config.Network, config.Root) {
+	return runHolderPlan(ctx, config, input, out, diagnostic, nil)
+}
+
+func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, out, diagnostic io.Writer, preparation executionruntime.Permission) (code int) {
+	retainCleanup := func(err error) error {
+		if operation, live := preparation.(*executionruntime.Operation); live {
+			operation.RetainCleanup(err)
+		}
+		return err
+	}
+	if ctx == nil || !absoluteAdmissionPath(config.Root) || !validAdmissionAuthority(config.Profile, config.Network, config.Root) {
 		return 2
 	}
 	if config.Route != nil && (config.Network == nil || !independentRouteRoots(config.Network.Root, config.Root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.HostingRoot)) {
@@ -54,8 +71,22 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 	if err != nil {
 		return 1
 	}
+	if preparation != nil {
+		original := authority.current
+		if original == nil {
+			_ = authority.close()
+			return 1
+		}
+		authority = networkAdmissionAuthority(func() (network.RuntimeView, error) {
+			if err := preparation.Check(); err != nil {
+				return network.RuntimeView{}, err
+			}
+			view, err := original()
+			return view, errors.Join(err, preparation.Check())
+		}, authority.close)
+	}
 	defer func() {
-		if authority.close() != nil {
+		if retainCleanup(authority.close()) != nil {
 			code = 1
 		}
 	}()
@@ -64,7 +95,7 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		return 1
 	}
 	defer func() {
-		if o.Close() != nil {
+		if retainCleanup(o.Close()) != nil {
 			code = 1
 		}
 		_ = json.NewEncoder(diagnostic).Encode(map[string]any{"operation": "admission.holder", "phase": "closed", "exit_code": code})
@@ -81,22 +112,22 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 	closeRoute := func() error {
 		var result error
 		if joined != nil {
-			result = joined.Close()
+			result = retainCleanup(joined.Close())
 		}
 		// Prefix closure stops and joins all physical children before returning
 		// its reservations. Retrieve the child's retained result before Stock
 		// and Network roots may close, including an explicit console close.
 		if prefix.close != nil {
-			result = errors.Join(result, prefix.close())
+			result = errors.Join(result, retainCleanup(prefix.close()))
 		}
 		if registration.close != nil {
-			result = errors.Join(result, registration.close())
+			result = errors.Join(result, retainCleanup(registration.close()))
 		}
 		if routeContext.close != nil {
-			result = errors.Join(result, routeContext.close())
+			result = errors.Join(result, retainCleanup(routeContext.close()))
 		}
-		result = errors.Join(result, lookupHistory.Close())
-		return result
+		result = errors.Join(result, retainCleanup(lookupHistory.Close()))
+		return retainCleanup(result)
 	}
 	defer func() {
 		if closeRoute() != nil {
@@ -104,9 +135,20 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		}
 	}()
 	return admissionConsole(ctx, input, out, func(ctx context.Context, raw []byte) (any, bool, error) {
+		if preparation != nil {
+			if err := preparation.Check(); err != nil {
+				return nil, true, err
+			}
+		}
 		var c holderCommand
 		if err := decodeAdmissionObject(raw, &c); err != nil {
 			return nil, false, err
+		}
+		if _, joined := preparation.(*executionruntime.Preparation); joined && !preparationOperation(c.Operation) {
+			return nil, false, errors.New("joined preparation grants only permission bootstrap")
+		}
+		if _, live := preparation.(*executionruntime.Operation); live && !executionRouteOperation(c.Operation) {
+			return nil, false, errors.New("execution holder grants only bounded Route preparation and Control")
 		}
 		var err error
 		result := map[string]any{"outcome": "completed"}
@@ -237,7 +279,7 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 				err = errors.New("route prefix absent")
 				break
 			}
-			err = prefix.close()
+			err = retainCleanup(prefix.close())
 			if err == nil {
 				prefix = routeHandle{}
 			}
@@ -295,8 +337,13 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		case "status":
 			result["stock"] = o.Status()
 		case "close":
-			if err := errors.Join(closeRoute(), o.Close()); err != nil {
+			if err := errors.Join(closeRoute(), retainCleanup(o.Close())); err != nil {
 				return nil, true, err
+			}
+			if preparation != nil {
+				if err := preparation.Check(); err != nil {
+					return nil, true, err
+				}
 			}
 			return result, true, nil
 		default:
@@ -310,6 +357,36 @@ func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser,
 			}
 			return map[string]string{"outcome": "refused", "stage": stage}, false, err
 		}
+		if preparation != nil {
+			if err := preparation.Check(); err != nil {
+				return nil, true, err
+			}
+		}
 		return result, false, nil
 	})
+}
+
+// Completed launch provenance supports only the original permission/bootstrap
+// purpose. JOIN, application byte effects and publication need a live Job and
+// genuine neighboring owners; a joined worker's Grant cannot authorize them.
+func preparationOperation(operation string) bool {
+	switch operation {
+	case "request", "import", "bootstrap-open", "bootstrap-close", "issuer-issue", "status", "close":
+		return true
+	}
+	return false
+}
+
+// This live invocation consumer drives only genuine protected setup and
+// Control. Private Publication/Connection and their Service effects remain
+// unavailable even while a qualified worker is live.
+func executionRouteOperation(operation string) bool {
+	switch operation {
+	case "request", "import", "bootstrap-open", "bootstrap-close", "issuer-issue",
+		"prefix-open", "prefix-replenish", "prefix-close", "descriptor-lookup",
+		"begin", "complete", "discard", "take", "refill-plan", "status", "close":
+		return true
+	default:
+		return false
+	}
 }

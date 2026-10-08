@@ -18,6 +18,16 @@ import (
 // Authentication and stopped provisioning retain separate acceptance results.
 // Neither starts a worker or establishes Service readiness.
 func runInstallation(ctx context.Context, args []string, out io.Writer) int {
+	if len(args) == 3 && args[0] == "recover-installed" {
+		reference, err := time.Parse(time.RFC3339Nano, args[2])
+		if err != nil || reference.UTC().Format(time.RFC3339Nano) != args[2] {
+			return enrollmentReport(out, "invalid-input", 2)
+		}
+		return runSuccessorRecovery(ctx, args[1], reference, out)
+	}
+	if len(args) == 3 && args[0] == "upgrade-installed" && args[1] == "--request" {
+		return runInstallationSuccessor(ctx, args[2], out)
+	}
 	if len(args) == 3 && args[0] == "recover-initial" {
 		reference, err := time.Parse(time.RFC3339Nano, args[2])
 		if err != nil || reference.UTC().Format(time.RFC3339Nano) != args[2] {
@@ -128,6 +138,38 @@ func runInstallation(ctx context.Context, args []string, out io.Writer) int {
 	return enrollmentReport(out, "authenticated-generation", 0)
 }
 
+func runInstallationSuccessor(ctx context.Context, filename string, out io.Writer) int {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	owner, err := installation.OpenSuccessor(ctx, filename)
+	if err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	request := owner.Request()
+	candidate, err := enrollment.ReadCandidate(ctx, request.BundleRoot(), enrollment.Headless)
+	if err != nil {
+		return installationFailure(ctx, out, errors.Join(err, owner.Close()))
+	}
+	input, ok := candidateReleaseInputs(candidate, request.ReferenceTime())
+	if !ok || input.Local.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return installationFailure(ctx, out, errors.Join(installation.ErrBinding, owner.Close()))
+	}
+	verifier, err := release.OpenRetained(request.ReleaseHistoryRoot())
+	if err != nil {
+		return installationFailure(ctx, out, errors.Join(err, owner.Close()))
+	}
+	result, err := owner.Complete(verifier, candidate, input)
+	err = errors.Join(err, owner.Close(), verifier.Close(), ctx.Err())
+	if result.Status != "" && err != nil {
+		// Release-close, output and original cancellation cannot revoke a full ACK.
+		return enrollmentReport(out, "installed-started-recovery-required", 1)
+	}
+	if err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	return enrollmentReport(out, result.Status, 0)
+}
+
 func runInitialRecovery(ctx context.Context, root string, reference time.Time, out io.Writer) int {
 	owner, err := installation.OpenInitialRecovery(ctx, root, reference)
 	if err != nil {
@@ -154,6 +196,36 @@ func runInitialRecovery(ctx context.Context, root string, reference time.Time, o
 	// borrowers have closed. No initial-pin bootstrap or floor reset is possible.
 	err = errors.Join(err, owner.Close(), verifier.Close(), ctx.Err())
 	if err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	return enrollmentReport(out, result.Status, 0)
+}
+
+func runSuccessorRecovery(ctx context.Context, root string, reference time.Time, out io.Writer) int {
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	owner, err := installation.OpenSuccessorRecovery(ctx, root, reference)
+	if err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	candidate, err := enrollment.ReadCandidate(ctx, owner.BundleRoot(), enrollment.Headless)
+	if err != nil {
+		return installationFailure(ctx, out, errors.Join(err, owner.Close()))
+	}
+	input, ok := candidateReleaseInputs(candidate, owner.ReferenceTime())
+	if !ok || input.Local.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return installationFailure(ctx, out, errors.Join(installation.ErrBinding, owner.Close()))
+	}
+	verifier, err := release.OpenRetained(owner.ReleaseHistoryRoot())
+	if err != nil {
+		return installationFailure(ctx, out, errors.Join(err, owner.Close()))
+	}
+	result, err := owner.Complete(verifier, candidate, input)
+	err = errors.Join(err, owner.Close(), verifier.Close(), ctx.Err())
+	if err != nil {
+		if result.Status != "" {
+			return enrollmentReport(out, "installed-started-recovery-required", 1)
+		}
 		return installationFailure(ctx, out, err)
 	}
 	return enrollmentReport(out, result.Status, 0)

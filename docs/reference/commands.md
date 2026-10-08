@@ -15,7 +15,55 @@ configuration format or an authority source.
 
 ## `ardents`
 
+The isolated `ardents-next execution prepare-permission --config <file>`
+operation consumes a local Grant, executes empty INIT through a verified fixed
+installed reader or Publisher worker and joins that original worker before
+opening signed Network and holder Stock. Its configuration contains `generation`,
+`principal` and a `holder` object with the existing holder plan. A signed `network`
+is mandatory; asserted profile files refuse. The finite owned console retains
+the holder key while its request/import and issuer-bootstrap operations
+execute, checking the exact completed-current preparation before authority
+effects and response handoffs. This is permission preparation, not installed
+Endpoint startup, Service readiness, private Publication/Connection or a
+qualification receipt. The selected active fixed Endpoint and genuine artifact
+are prerequisites; missing prerequisites refuse before holder/root effects.
+
+`ardents-next execution route-holder --config <file>` uses the same configuration
+with a mandatory `holder.route`. It retains one live qualified worker operation
+for genuine protected Route setup, issuer Control and Descriptor lookup. Local
+permission checks surround signed currentness, effects and response handoffs.
+Route/Stock/Network resources join before the operation and original worker;
+physical cleanup failure closes local generation admission. Private Descriptor
+publication, registration and JOIN/Service operations refuse. This bounded
+consumer establishes neither Service readiness nor installed startup acceptance.
+
 ### Protected installation commands — qualification incomplete
+
+The isolated new consumer `ardents-next installation upgrade-installed --request
+<file>` retains one original replacement lifetime and uses Candidate plus complete
+retained Release history, with two fresh proofs. It joins its original predecessor
+before replacement and attempts guarded fixed-unit start. A full ACK followed by
+failure retains `installed-started-recovery-required` and a nonzero exit status.
+The accepting new installed runtime and complete interrupted successor recovery are absent;
+no successful installed start, Service readiness or qualification follows from
+the command's presence. Physical cleanup may continue beyond its two-minute
+replacement bound; a timeout is not joined completion.
+
+`ardents-next installation recover-installed <installation-root>
+<canonical-UTC-reference-time>` recovers terminal completion of
+the still-running exact successor. That path requires the archived intent, complete
+original removal/replacement provenance, independent process/manager observations
+and two fresh floor-compatible proofs. It finishes original guard removal and
+archives the retained first transition failure without another ACK, Start or
+Stop. A separate pending path admits a complete `generation-staged` prefix
+before fixed replacement: exact previous selection/resources, sealed candidate,
+original directory birth and a closed journal precede fresh proofs and resync.
+It then performs original predecessor join, replacement/selection/reload and
+guarded start. Other prefixes, including existing transition failures, still
+return `installation-repair-required`. Full ACK survives late errors with
+`installed-started-recovery-required` and nonzero exit.
+Successful command composition and filesystem controls do not establish a
+positive installed recovery; the genuine new runtime consumer remains required.
 
 ADR-0119's successor selects `endpoint provision <request-file>`,
 `endpoint installation-check <installation-root>`,

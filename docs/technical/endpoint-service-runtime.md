@@ -41,9 +41,25 @@ opens no Release history and returns no private authorization or live invocation
 proof. Enrollment supplies the static descriptor/resource grammar without pin
 provenance; Installation owns local binding and native inspection. These consumers
 have component controls, not a complete successful native installation receipt.
-New installed startup, predecessor join and successor recovery remain absent;
-the current fixed Endpoint command must acquire a genuine new runtime consumer
-before any successful startup is claimed. No old runtime bridge is permitted.
+New `installation upgrade-installed --request` consumes an opaque successor
+lifetime: native custody precedes Candidate/OpenRetained, two fresh proofs are
+checked against the original installed binding, and staging precedes original
+predecessor join, fixed replacement/selection, reload and guarded start. Copies
+share one completion latch and the original caller. Its two-minute replacement
+bound includes acquisition; physical Close retains unfinished work after expiry
+and the separate Release lease remains open until Installation closes. Full ACK
+is irreversible: late cleanup, cancellation or Release-close failure reports
+`installed-started-recovery-required` with nonzero status. These are implemented
+composition rules, not a positive actual-manager start/ACK receipt. The fixed
+Endpoint command still needs a genuine new accepting runtime consumer. New
+successor recovery separately admits owned interrupted prefixes and fresh-proof
+continuations; complete interruption/start/ACK acceptance remains unproven. No
+old runtime bridge is permitted. The new successor recovery owner collects its
+independently retained intent/journal, writing or sealed image admission,
+fresh-proof continuation, terminal cleanup and physical close in
+`successor_recovery_linux.go`. State-specific records keep their original checks;
+this source consolidation establishes no positive installed start or complete
+recovery evidence.
 
 New initial provisioning also retains root-private directory birth/access
 records in its generation journal. An exclusively created directory is synced
@@ -119,6 +135,18 @@ remain mandatory, with stopped identity checked again after both observations.
 This mechanism follows [systemd v255's object lookup](https://raw.githubusercontent.com/systemd/systemd/v255/src/core/dbus.c),
 checked 2026-10-07, and starts no Endpoint or worker.
 
+The new successor predecessor owner additionally retains an original private
+system-bus reference to the fixed Endpoint unit before observing its loaded
+configuration. The reference survives fixed-file replacement and explicit
+reload, preventing inactive-unit collection from loading candidate bytes before
+the admitted reload boundary. It pins the original manager's unique bus identity
+and does not reconnect. Installation retains phase-specific configuration
+checks and the reference until its original physical predecessor join; the
+systemd mechanism bounds authentication and scalar replies before library
+decoding and interrupts/joins original transport I/O on close. A retained unit
+reference grants no Release, start or readiness authority. Actual successor
+recovery/start acceptance remains a separate source-matched obligation.
+
 `internal/endpoint/installation` composes the two fresh Release evaluations from
 one frozen set of enrolled metadata and the same local/reference facts. It
 checks complete resource bytes and coherent authenticated target identities and
@@ -128,6 +156,32 @@ its readiness remains general enrollment, not protected installation. Failure
 of the second evaluation retains any already committed Release floors and
 cannot return a partial accepting pair. Provisioning, immutable selection and
 actual manager identity binding are separate from this authentication.
+
+The new `ardents-next endpoint start-installed` composition retains those
+observations through an opaque Installation startup lifetime. Its root completion
+exchange has a separate two-minute bound, capped by the original caller's deadline;
+that socket is physically joined before final original-process/manager/file
+reobservation. The post-ACK observation lifetime retains the original caller.
+Copied bound Headless/Source declarations confer no runtime authority.
+The partial consumer obtains qualified joined permission preparation,
+uses actual Source refresh and Stock verification, and publishes an owner-private
+public request with exact retry and file/directory durability. It refuses foreign
+or partial request bytes. Permission waiting retains the original request's hour
+boundary; malformed responses are terminal. After genuine Stock import and its
+final currentness check, a public permission-accepted diagnostic carries only
+the role and original public request digest. It is bootstrap progress, never
+Service readiness or a reusable permission. Background Source work belongs to
+State, separately from permission preparation. This composition does not expose
+private Publication/Connection readiness. The checked fresh installed startup
+scenario now exercises this bounded permission bootstrap in the actual non-root
+participant after genuine Root completion; it is not a full installed Service
+or qualification receipt.
+
+Completed Generation writes retain a matched read-only descriptor to the same
+original inode before joining the writer close. Failed read opening, identity
+matching or writer close denies completion and retains the original failure.
+Immutable-byte observations and original custody remain live; a writable
+executable descriptor cannot survive into manager Start and cause ETXTBSY.
 
 `start-installed` rechecks root-owned selection, all generation and fixed bytes,
 actual mutable root identities, this process's UID/GID/executable/arguments and
@@ -150,7 +204,13 @@ stop; cleanup removes only that recorded socket. An unrecorded or substituted
 socket refuses even with matching Root ownership and mode, retaining the guard.
 Endpoint verifies its root peer and waits before participant composition;
 root verifies the connecting MainPID/UID and the exact InvocationID, generation
-and binding digests. Root sends completion only after the start observation and
+and binding digests.
+
+New Installation consumes one closed frame encoder/validator in its completion
+Module from both the root start barrier and independent startup inspection.
+Installation selection admission remains with the native barrier; detached
+frame bytes grant no Release, process, manager or runtime authority.
+Root sends completion only after the start observation and
 archive directory syncs succeed. Cursor absence alone grants no transition
 admission. EOF, unavailable owner, substituted identity or the existing startup
 deadline refuses. The guard retains explicit recovery provenance if root dies;
@@ -292,7 +352,13 @@ conflicting same-version floor digest, changed Release environment or Network,
 equal generation release or changed durable roots refuses. The root-only
 successor intent binds previous selection, candidate selection and public
 candidate binding facts. Generation staging records its newly created physical
-directory identity before writing artifacts. Actual predecessor MainPID and
+directory identity before writing artifacts. It additionally synchronizes an
+exact file-inventory marker and per-artifact native birth/expected bytes/access
+record before writing each original empty leaf. Original descriptors and ctime
+rechecks survive failures through Close. Sealed recovery validates the complete
+new record set and native inodes; old complete directory-only prefixes retain
+their existing constraints. Partial new provenance refuses, and private/torn
+phase1 file recovery is not established by this ordering. Actual predecessor MainPID and
 InvocationID are rechecked after pinning its original cgroup; both activation
 sockets are stopped with the fixed service. Stop success alone is insufficient:
 all original pins, stopped fixed units, loaded worker inventory and remaining
@@ -327,9 +393,147 @@ successor failure-injection matrix remains acceptance work. The receipts `instal
 the complete two-Endpoint journey. Component tests exercise these controls;
 actual admitted manager/namespace/seccomp/empty-scope receipts remain required.
 
+The new `ardents-next installation recover-installed <root> <UTC-reference>`
+consumer implements the terminal completion boundary. It retains
+an independent writer, sealed previous/candidate generation observations and
+the original running invocation; it requires the completed successor intent,
+complete preparation and exact replacement/removal provenance before obtaining
+fresh proofs. Socket and socket-record must already be absent in their recorded
+order. A remaining guard is removed only on its recorded original inode with
+matching bytes/access/timestamps after provenance is resynchronized. The exact
+first transition failure is archived before its active copy is retired. No ACK,
+Start or Stop is replayed. A separate pending path admits only the complete
+`generation-staged` prefix before fixed mutation, optionally including the exact
+0003 replacement-intention record and an independently retained original
+replacement group, empty or the exact pathname-ordered prefix of nine fixed
+resource records. Each record binds unchanged original inode/access and both
+byte digests; gaps, selection records, foreign groups and later phases refuse.
+It requires original predecessor
+selection/fixed bytes, both sealed generations, recorded candidate directory
+birth and the two original phase records. Independent Snapshot and retained journal
+custody do not fabricate creation ownership. Two fresh proofs matching the
+original candidate and resynchronized provenance/bytes/group directory links
+(including an empty group) precede actual original
+predecessor pin/stop/join and the existing replacement/selection/reload/guarded
+start sequence. Full ACK retains its post-acceptance result on late failure.
+Pending start prefixes and first failures outside the separately bound
+generation-writing grammar remain repair-required;
+this narrower implementation does not complete the selected recovery contract
+or establish a positive actual-manager receipt without the new installed runtime.
+
+Before selection publication the pending new recovery also admits a complete
+nine-record group with ordered same-inode fixed-copy interruption: complete
+candidate images, at most one empty/torn old-or-candidate prefix, then complete
+predecessor images. Any changed image requires all nine exact records. Complete
+preimages derive from the independent sealed predecessor; current bytes and
+native identity remain separate actual observations. Foreign images/inodes,
+second torn images and candidate images after an old boundary refuse. Opening
+observes actual quiescent units and empty scopes before Release composition;
+a live predecessor refuses without Stop. Fresh proofs, repeated quiescence and
+original provenance resync still precede every repair. Exact 0004
+`fixed-resources-replaced` also admits continuation before selection, requiring
+all nine original records and complete candidate images. It requires actual
+quiescence even when predecessor and candidate static bytes are identical. The
+original completion record is resynchronized without rewriting or replacing its
+inode after fresh proof admission and repeated physical observations. Missing
+intention, incomplete inventory/images or a recorded first failure refuse.
+Exact 0005 `publishing-selection` additionally admits unchanged predecessor
+selection before its replacement record, or recorded old/empty/old-or-candidate
+prefixes and complete candidate on the original selection inode. Its record
+follows all nine fixed records; every fixed image must already be complete
+candidate. Complete selection preimages derive from the canonical original
+intent, independently of current observed bytes. Pending selection is a bounded
+physical image, never a trusted generation pointer. Missing selection provenance
+for changed bytes, foreign images, wrong inode/access/digests or early selection
+records refuse before Release composition. Fresh proofs, repeated quiescence
+and resync of original selection/publishing records precede repair. The original
+publishing intention is not rewritten. Exact 0006 reloading-manager and 0007
+successor-reloaded-stopped additionally require complete candidate selection and
+all ten original replacement records. Before Release composition, actual typed
+manager configuration must match the complete predecessor or candidate at 0006,
+and only candidate at 0007; repeated exact observations, stopped activation
+units, absent workers and empty scopes establish continuing quiescence. Loaded
+configuration is retained separately from original predecessor process custody
+and join. Fresh proofs and original provenance resync precede continuation:
+0006 may perform an admitted reload and independently observe candidate before
+appending 0007; existing 0007 is resynchronized without reload or record rewrite.
+No earlier fixed-file mutation or Stop/ACK is replayed. Actual candidate
+configuration updates only retained loaded facts, never original process pins.
+Guarded start remains the existing separate lifetime. Interrupted start phases
+and first-failure recovery remain outside this bounded path. Filesystem probes
+establish no positive actual-manager start or installed acceptance.
+
+Original pre-ACK failed-attempt cleanup separately observes a completed
+`failed/failed` Endpoint when the manager retains failure after successful Stop.
+Exact configuration, MainPID zero, typed absence of Job and complete failed
+execution clocks/PID/result are necessary; repeated stopped activation,
+absent worker instances and original kernel join remain separate requirements.
+This observation retains the first failure and guard, grants no runtime or
+fresh provisioning/recovery admission, and performs no reset-failed. A separate
+current-source actual-manager trial exercises the genuine command's failed Start
+and normal joined cleanup after the new executable refuses its missing startup
+consumer. Independent audit retains all ten original replacements, exact intent,
+selection, failure-committed floors and phase7; guard/socket and first failure
+remain, writer releases and original scopes are empty before outer manager stop.
+No manual disposal or failure reset precedes that audit; the original guest/scope
+physically joins afterwards. This failed-attempt evidence grants no accepting
+startup/ACK or installed qualification.
+
+Generation-writing failure has a distinct pending recovery boundary. Its exact
+bound `generation-write-failed` phase and original birth prefix precede two fresh
+proofs. A byte-identical first-error copy is synchronized and reobserved before
+only the original failed phase slot is retired and its directory synchronized.
+Complete independently observed seal precedes a new successful phase2. Existing
+first-error bytes survive later failures and terminal archival; their presence
+grants neither pending Start nor ACK or old actor completion. Native physical
+tests alone do not establish full actual-command or crash/reopen acceptance.
+An isolated actual-command sequence separately interrupts the original caller
+after durable failed phase before cleanup copy, after durable exact first-error
+copy, and after failed-slot retirement and directory sync. Independent audits
+retain the partial original program inode, error bytes, journal, fixed resources,
+predecessor selection and failure-committed floors between fresh-proof callers.
+The final caller completes the original generation/fixed replacements through
+durable stopped reload before Start; original tasks and the test-manager scope
+physically join. A separate actual-command sequence also interrupts immediately
+after successful failed-slot unlink, before journal-directory sync, with the exact
+first-error copy already file/directory-synced. Independent audit observes the
+absent slot, unchanged original copy, partial inode, predecessor and committed
+floors; the next fresh-proof caller completes the original generation and fixed
+replacements through stopped reload. Original callers and manager scope join.
+These selected process-crash boundaries do not attest power loss, accepting
+startup or ACK.
+
+Before a new successor Start contacts the manager, its original barrier writes
+and synchronizes a closed `start-attempt.json` intention in the transition journal,
+binding the exact intent and original socket-birth-record digest. It rechecks the
+original guard/socket after journal I/O. Cancellation, uncertain durability or
+substitution refuses this Start. The record grants no successful invocation,
+ACK or replay authority. Absence in an older journal proves no absence of Start.
+Terminal recovery accepts that historical grammar; a present intention must
+match the exact intent and socket reconstructed from original removal provenance.
+The existing sixteen ordinary record slots and independent birth slots remain
+unchanged. A source-matched actual-command trial interrupts after intention
+file/directory sync and before manager Start. The original caller joins and its
+writer releases; a fresh recover-installed caller refuses with unchanged retained
+inventory, all ten original fixed replacements, guard/socket, floors and actual
+stopped candidate manager. The original guest/scope physically joins. This
+establishes pre-Start refusal, not completion of an actor whose manager request
+already began. Pending start recovery and actual accepting startup remain
+separate obligations.
+
 All root installation subprocesses use fixed absolute programs and only
 `PATH=/usr/bin:/bin`, `LANG=C`, `LC_ALL=C`; caller-supplied system bus, unit
-lookup and loader environment overrides are not inherited.
+lookup and loader environment overrides are not inherited. Their subprocess
+mechanism locks the creating OS thread through Run/join and installs Linux
+parent-death SIGKILL; Go's kernel signal follows that thread's death. Actual
+scheduling evidence on the preceding source retained a live Start helper after
+root caller join and typed absence of manager Job; releasing it caused a late
+Start. On the repaired source a fresh actual manager observes kernel SIGKILL and
+physical join of that original helper, no Endpoint execution and unchanged
+stopped manager/inventory with fresh recovery refusal. This proves the selected
+helper-death boundary, not cancellation of a request already accepted by manager
+or permission to recover pending Start. Ordinary cancellation separately waits
+for the original child; a command error alone never establishes scope join.
 
 Retaining predecessor bytes is not permission to activate an older Release.
 Recovery must finish a valid selected candidate or obtain a fresh floor-compatible

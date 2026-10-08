@@ -5,6 +5,15 @@ Status: **selected closed Ubuntu design**, for the Product Owner's
 R-099's job/platform prerequisite is now resolved for this scope.
 No Windows, generic browser or arbitrary-Application profile is admitted.
 
+New Execution command and lifetime composition are portable, with a separate
+native worker adapter. The unsupported-platform adapter yields only refusal
+and no activation, artifact or cleanup pin; the common owner joins its exact
+refused local Job before returning cleanup capacity. Actual Windows consumer
+checks require no participant input/output or durable-root effects. Repeated
+refused launches exceed the 64-session capacity without leaking slots or
+poisoning the local generation. This verifies refusal and portable ordering,
+not a Windows confinement or Application execution profile.
+
 ## Selected boundary
 
 Use the distribution-maintained systemd system manager on Ubuntu 24.04 LTS,
@@ -48,6 +57,20 @@ or semantics that keep the parent active after its main process exits refuse
 before worker activation. This manager-owned lifetime dependency covers an
 Endpoint exit that cannot run its Go cleanup; socket EOF is insufficient.
 
+The new Execution Endpoint-death component measures this lifetime with an
+external Root controller and two genuine held operations. Original pidfd
+SIGKILL cannot execute Endpoint cleanup; independent kernel/proc observers
+require disappearance of both original TERM-ignoring child/grandchild trees.
+The qualified actor's failed signal result remains retained. Explicit fresh
+start uses new Endpoint/worker invocations and local Job commitments, with
+no old permission or physical observer adopted by that new opening. Hostile
+descendants retain attachment descriptors despite EOF and have no parent-death
+signal; their one-minute failure watchdog cannot satisfy the controller's
+fifteen-second original-join bound. The [component profile](../../tests/qualification/execution-recovery/README.md)
+defines the separately pinned artifacts and Root/non-root actors. These
+observations supply no logical Service recovery, product installed acceptance,
+power-loss or whole-host qualification.
+
 The trusted Endpoint connects the socket and verifies the installed unit,
 executable and sandbox-root identity against the selected local artifact.
 The system manager applies confinement before ExecStart. Only then can the
@@ -58,6 +81,17 @@ handoff, closes a rejected late Grant, retires the invocation and publishes its
 first joined cleanup result. The Context retains only the exact admission
 reservation; a replacement cannot inherit any of those Job-owned values.
 Worker HELLO alone is never proof of isolation on an unverified unit.
+
+The new Execution worker verifies the effective fixed activation socket before
+dial and again when observing the original invocation after READY. Its pure
+fixed-unit predicate requires the exact listening identity, no drop-ins,
+Endpoint dependency, owner/access, finite connection limit and no command
+hooks. This observation is distinct from the pinned on-disk socket bytes and
+grants no Installation or runtime authority. An isolated native control with
+unchanged artifact bytes and an effective reader `MaxConnections=63` drop-in
+refused before activation; restoring the original effective socket allowed the
+same lifecycle consumer to pass. That control does not qualify the complete
+installed participant or hostile-worker profiles.
 
 The separate fixed qualification caller creates one private qualification Run.
 Only that Run owns its Init, progress observer, report destination, sampling
@@ -415,6 +449,132 @@ doc.go, exact imports and callers. There is no speculative launcher framework
 or library for arbitrary child programs.
 
 ## Evidence and qualification boundary
+
+The new Execution preparation component also ran both Connection and
+Administration surfaces with the genuine fixed Text artifact in an isolated
+Ubuntu24/systemd255 manager on WSL. The new runtime consumer activated and
+initialized each worker, reobserved its original artifact/invocation, joined
+its pinned cleanup, and returned only completed-current preparation provenance.
+The post-run worker inventory was empty. Independent original proc/cgroup
+descriptors established fixture-manager descendant termination and cgroup
+removal after Stop returned 0; the manager retained a stop-timeout failure and
+required SIGKILL, so clean shutdown is unclaimed. The source and evidence are recorded with
+the [Execution owner](https://github.com/dianabuilds/ardents-network/issues/507).
+This is self-reviewed component evidence, not an accepting installed participant,
+live Service operation, hostile-tree/escape/network/recovery result or
+whole-host/privacy qualification. The initial guest overlay-permission failure
+remains separate failed environment evidence.
+
+A later source-matched Execution lifecycle component run exercised joined
+preparation and a live single-use operation on both local surfaces. Retirement
+denied effects and interrupted the operation while original invocation close
+waited for operation join; successful physical cleanup supplied exact last-Job
+provenance without restoring byte permission. A control injected an error from
+an already joined borrower while genuine reader and Publisher workers were
+live: both local surfaces refused synchronously, each original worker joined,
+late successful sibling completion refused, and repeated generation close
+retained the first error. The component and Endpoint terminal result passed;
+the fixture manager's pinned original processes/cgroup physically joined after
+Stop returned 0 but again retained timeout/SIGKILL. This remains WSL component
+self-review, with no accepting startup, Service bytes or qualification-matrix
+claim.
+
+The separate installed Execution Route component exercised the production
+live holder inside the original non-root Endpoint MainPID through genuine new
+signed State, permission/Stock, bootstrap and admitted issuing owners on TCP/TLS
+and QUIC. Bootstrap retirement preceded fresh token spending; Route borrowers
+and the original worker joined, and Hosting reopened without reservations.
+Its first TCP trial expired during the fixture's pre-operation real-hour wait;
+moving the consumer bound after that preparation let both Carriers pass without
+changing the operation deadline. Both original fixture managers physically
+joined their pinned processes/cgroups while retaining stop-timeout/SIGKILL.
+Signing and infrastructure principals are test fixtures. This proves neither
+installed accepting startup, private Service operations, worker-loss behavior
+during Route I/O nor the complete qualification/regression matrix.
+
+The later attachment observer was exercised with genuine installed workers on
+both local surfaces, including a native race-instrumented lifecycle binary.
+Unexpected attachment loss interrupted the exact operation, withheld completion
+until operation join and retained a failed invocation result; clean physical
+cleanup allowed fresh preparation without making that result current. The
+race fixture's cleanup helper refused after its original manager had already
+hit the outer runtime limit; terminal timeout/SIGKILL was observed, but no
+pinned join receipt was obtained for that fixture.
+The production Route holder then passed both Carriers on the changed runtime.
+A further causal scenario independently stopped its sole original reader while
+an already spent Prefix remained open: the holder interrupted and joined
+without console EOF or caller cancellation, performed no later issuance and
+reopened Hosting without reservations. Both positive and loss subcases passed.
+Their fixture managers joined pinned original processes/cgroups while retaining
+timeout/SIGKILL. These are self-reviewed WSL components; loss during active
+remote I/O, durable spend replay/reopen, accepting Installation startup and the
+full qualification matrices remain distinct evidence obligations.
+
+A separate active-I/O control now delays the genuine ordinary signed RESULT
+after actual admission/spend and issuer signing, then stops the independently
+observed original reader. Both Carriers refuse completed output, join the holder
+and receiving owners, return Hosting reservations and reopen the holder budget.
+The positive, open-Prefix loss and active-I/O loss cases passed in canonical and
+native race-instrumented consumers. The input/output fixture actor also joins.
+This demonstrates worker-loss behavior at that RESULT boundary; it establishes
+neither independent durable spent-token replay after reopen nor State/caller
+loss at that boundary, accepting installed startup or complete qualification.
+
+The original cleanup mechanism now reports its first definite physical failure
+to the bound launch Job before continuing descendant observation. A controlled
+failed-Stop test requires that report before the next pinned read and rejects a
+second report; generation rules separately establish synchronous sibling denial.
+Unknown manager observation can still resolve to verified original cgroup removal
+without falsely reporting cleanup failure. Linux Execution race tests and fresh
+genuine installed lifecycle/Route positive and loss profiles passed on the
+resulting source. The controlled failed-Stop schedule is module evidence, not
+an injected native manager failure or complete installed qualification.
+
+The installed Route component subsequently reopened every genuine receiving
+spend owner after physical borrower join. All accepted tokens still passed
+signature/current-authority verification and refused specifically as already
+spent, with their new real Hosting reservations returned exactly once. The
+joined, open-Prefix loss and signed-RESULT loss cases passed on both Carriers;
+worker loss did not refund those retained histories. The fresh isolated manager
+physically joined its original pinned processes/cgroup with retained outer
+timeout/SIGKILL. This is executor self-review, not accepting startup, State/caller
+loss during RESULT, private Service work or complete qualification evidence.
+The initial native race trial retained an actual QUIC CREDIT physical-write
+failure after deliberate worker loss. Requiring clean receiving shutdown in
+that negative case contradicted the retained physical-error contract. The
+corrected oracle requires Done and an identical repeated Close result; only
+exact native peer-retirement causes may be retained there, with every other
+failure still refusing the case. Three source-matched native race repetitions
+passed, two observing and retaining that same failed receiving retirement.
+No production error is suppressed, and positive retirement remains clean.
+
+The separately pinned new Execution hostile-tree component uses actual qualified
+launches on both local surfaces. Original kernel event and proc-directory
+descriptors independently observe the live parent/child/grandchild lineage,
+worker UID, inherited hardening and TERM-ignoring descendants. Victim retirement
+joins that original tree while the other surface retains its exact sibling
+invocation, live tree and operation. A fresh worker's attachment loss denies
+effects before operation join and preserves the failed-use result after physical
+cleanup. An ordinary Text artifact fails the descendant positive control on
+both surfaces. The profile supplies local owner authorization and a separately
+root-installed adversarial artifact; it is neither a Service snapshot/stream
+consumer nor accepting product startup, logical recovery, escape qualification
+or whole-host protection. The descendant watchdog and test deadline never prove
+join. See the [Execution tree profile](../../tests/qualification/execution-tree/README.md).
+
+The new Execution escape component separately root-pins the adversarial Text
+artifact and runs both local surfaces through actual qualified launch and one
+exact operation. Independent host TCP/UDP/DNS/Unix listeners observe positive
+controls before launch and after original physical join; any other contact
+fails. A world-readable host-only file prevents UID permissions from supplying
+its refusal oracle. Original kernel event and proc-directory descriptors prove
+worker cleanup. A wrong independent artifact digest refuses before Endpoint
+activation. The component passed on isolated Ubuntu24/systemd255 under WSL;
+the outer manager physically joined its original scope/processes while retaining
+timeout/SIGKILL. Its temporary root was removed after that join. This is executor
+self-review, with fixture local authority and no Service, logical recovery,
+independent security or whole-host qualification. See the
+[Execution escape profile](../../tests/qualification/execution-escape/README.md).
 
 The disposable systemd probe ran in Ubuntu 24.04.4 / systemd
 255.4-1ubuntu8.14 on WSL's 6.6.87.2 kernel. Fourteen parent/child attempts had

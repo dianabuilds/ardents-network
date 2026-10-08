@@ -6,10 +6,17 @@ fail() { printf '%s\n' "$*" >&2; exit 1; }
 maximum_polls=1500
 case "${1-lifecycle}" in
     lifecycle) test_root=TestInstalledTextWorkerLifecycle ;;
+    execution) test_root=TestInstalledExecutionLifecycle ;;
+    execution-route) test_root=TestInstalledExecutionRouteBothCarriers ;;
+    execution-recovery) test_root=TestInstalledExecutionEndpointDeath ;;
     network) test_root=TestInstalledTextWorkersReadTargetThroughJoinedNetwork; maximum_polls=10000 ;;
     recovery) test_root=TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork; maximum_polls=3600 ;;
-    tree)
-        test_root=TestInstalledTextWorkerHostileTree
+    tree|execution-tree)
+        if [ "$1" = execution-tree ]; then
+            test_root=TestInstalledExecutionHostileTree
+        else
+            test_root=TestInstalledTextWorkerHostileTree
+        fi
         worker=/usr/lib/ardents/text-worker-root/ardents-text
         [ -n "${ARDENTS_TEXT_HOSTILE_WORKER_SHA256-}" ] || fail 'hostile worker independent digest required'
         [ -f "$worker" ] && [ ! -L "$worker" ] && [ "$(stat -c %u:%g:%a "$worker")" = 0:0:555 ] ||
@@ -17,8 +24,12 @@ case "${1-lifecycle}" in
         printf '%s  %s\n' "$ARDENTS_TEXT_HOSTILE_WORKER_SHA256" "$worker" | sha256sum --check --status ||
             fail 'invalid environment: hostile artifact differs from declared candidate'
         ;;
-    escape)
-        test_root=TestInstalledTextWorkerEscapeMatrix
+    escape|execution-escape)
+        if [ "$1" = execution-escape ]; then
+            test_root=TestInstalledExecutionEscapeMatrix
+        else
+            test_root=TestInstalledTextWorkerEscapeMatrix
+        fi
         worker=/usr/lib/ardents/text-worker-root/ardents-text
         [ -n "${ARDENTS_TEXT_ESCAPE_WORKER_SHA256-}" ] || fail 'escape worker independent digest required'
         [ -f "$worker" ] && [ ! -L "$worker" ] && [ "$(stat -c %u:%g:%a "$worker")" = 0:0:555 ] ||
@@ -36,6 +47,21 @@ done
     fail 'invalid environment: Ubuntu 24.04 x86-64 required'
 [ "$(stat -fc %T /sys/fs/cgroup)" = cgroup2fs ] || fail 'invalid environment: cgroup v2 required'
 binary=/usr/lib/ardents/qualification/endpoint.test
+if [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ]; then
+    binary=/usr/lib/ardents/qualification/execution-runtime.test
+fi
+if [ "$test_root" = TestInstalledExecutionEndpointDeath ]; then
+    binary=/usr/lib/ardents/qualification/execution-runtime.test
+    worker=/usr/lib/ardents/text-worker-root/ardents-text
+    [ -n "${ARDENTS_TEXT_HOSTILE_WORKER_SHA256-}" ] || fail 'hostile worker independent digest required'
+    [ -f "$worker" ] && [ ! -L "$worker" ] && [ "$(stat -c %u:%g:%a "$worker")" = 0:0:555 ] ||
+        fail 'invalid environment: pinned hostile artifact required'
+    printf '%s  %s\n' "$ARDENTS_TEXT_HOSTILE_WORKER_SHA256" "$worker" | sha256sum --check --status ||
+        fail 'invalid environment: hostile artifact differs from declared candidate'
+fi
+if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ]; then
+    binary=/usr/lib/ardents/qualification/execution-command.test
+fi
 unit=/run/systemd/system/ardents-endpoint.service
 [ -n "$ARDENTS_TEXT_LIFECYCLE_SHA256" ] && [ -n "$ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256" ] ||
     fail 'invalid environment: independent binary and unit digests required'
@@ -53,6 +79,26 @@ printf '%s  %s\n' "$ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256" "$unit" | sha256sum --ch
     fail 'invalid environment: Endpoint is not fresh and inactive'
 [ -z "$(systemctl show ardents-endpoint.service -p DropInPaths --value)" ] ||
     fail 'invalid environment: qualification unit has drop-ins'
+if [ "$test_root" = TestInstalledExecutionEndpointDeath ]; then
+    # The Root observer runs outside Endpoint and intentionally retains its
+    # two failed SIGKILL invocations. No killed actor may supply a PASS result.
+    controller_argument=${2--timeout=2m}
+    [ "$controller_argument" = -timeout=2m ] || fail 'invalid environment: Endpoint-death controller requires its fixed two-minute bound'
+    controller_timeout=${controller_argument#-timeout=}
+    if journal=$("$binary" -test.run='^TestInstalledExecutionEndpointDeath$' -test.v "-test.timeout=$controller_timeout"); then
+        controller_exit=0
+    else
+        controller_exit=$?
+    fi
+    printf '%s\n' "$journal"
+    [ "$controller_exit" = 0 ] || fail 'original Endpoint-death controller failed'
+    for test in "$test_root" "$test_root/initial" "$test_root/restart"; do
+        [ "$(printf '%s\n' "$journal" | grep -c "^[[:space:]]*--- PASS: $test (" || true)" = 1 ] ||
+            fail 'Endpoint-death profile lacks exact executed controller evidence'
+    done
+    printf 'installed-profile=%s; result=passed; whole-host-qualification=not-established\n' "$test_root"
+    exit 0
+fi
 systemctl start ardents-endpoint.service
 invocation=$(systemctl show ardents-endpoint.service -p InvocationID --value)
 [ -n "$invocation" ] || fail 'installed test has no exact running invocation'
@@ -75,6 +121,18 @@ printf '%s\n' "$journal"
     [ "$(systemctl show ardents-endpoint.service -p ExecMainStatus --value)" = 0 ] ||
     fail 'installed text-worker lifecycle failed or did not terminate'
 set -- "$test_root" "$test_root/reader" "$test_root/publisher"
+if [ "$test_root" = TestInstalledExecutionLifecycle ]; then
+    set -- "$test_root" "$test_root/connection" "$test_root/connection/live-operation" "$test_root/connection/attachment-loss" "$test_root/administration" "$test_root/administration/live-operation" "$test_root/administration/attachment-loss" "$test_root/cleanup-failure"
+fi
+if [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ]; then
+    set -- "$test_root" "$test_root/connection" "$test_root/administration"
+fi
+if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ]; then
+    set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2" "$test_root/ardents-carrier-quic-v2"
+    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+        set -- "$@" "$test_root/$carrier/joined" "$test_root/$carrier/worker-loss" "$test_root/$carrier/worker-loss-io" "$test_root/$carrier/clock-loss-io" "$test_root/$carrier/caller-loss-io"
+    done
+fi
 if [ "$test_root" = TestInstalledTextWorkersReadTargetThroughJoinedNetwork ]; then
     set -- "$test_root"
     for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do

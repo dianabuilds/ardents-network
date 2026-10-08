@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"io"
 	"os"
 	"path/filepath"
@@ -161,17 +164,17 @@ func (r *recoveryNative) readPreparation(ctx context.Context, requestDigest stri
 		return err
 	}
 	r.inventories[directory] = allowed
-	var previous preparationRecord
+	var previous journal.Record
 	for _, name := range []string{"0001.json", "0002.json", "0003.json", "failure.json"} {
 		body, err := r.reader.read(ctx, filepath.Join(directory, name), 64<<10, 0600, 0)
 		if name == "failure.json" && errors.Is(err, os.ErrNotExist) {
 			continue
 		}
-		var current preparationRecord
+		var current journal.Record
 		if err != nil || decodeCanonical(body, 64<<10, &current) != nil || current.RequestDigest != requestDigest || current.GenerationDigest != r.intent.Candidate.GenerationDigest {
 			return errors.Join(ErrBinding, err)
 		}
-		next, err := preparationNext(previous, current)
+		next, err := journal.Next(previous, current)
 		if err != nil || next != name {
 			return errors.Join(ErrBinding, err)
 		}
@@ -191,6 +194,9 @@ func (r *recoveryNative) readJournal(ctx context.Context) error {
 		"original-preparation-failure-archived.json": false, "original-transition-failure-archived.json": false, "recovery-failure-archived.json": false}
 	for name := range phases {
 		allowed[name] = name <= "0005.json"
+	}
+	if _, err := readGenerationFileBirths(ctx, r.reader, r.journal, r.intent.Candidate, r.intent.CandidateBinding, nil, allowed); err != nil {
+		return err
 	}
 	if err := recoveryInventory(r.journal, allowed); err != nil {
 		return err
@@ -213,12 +219,12 @@ func (r *recoveryNative) readJournal(ctx context.Context) error {
 		}
 	}
 	if body, err := r.reader.read(ctx, filepath.Join(r.journal, "original-preparation-failure-archived.json"), 64<<10, 0600, 0); !errors.Is(err, os.ErrNotExist) {
-		var record preparationRecord
+		var record journal.Record
 		requestBody, requestErr := canonicalJSON(r.intent.Request)
 		if err != nil || requestErr != nil || decodeCanonical(body, 64<<10, &record) != nil || record.Phase != "preparation-failed" || record.OriginalError == "" || record.GenerationDigest != r.intent.Candidate.GenerationDigest || record.RequestDigest != digestHex(requestBody) || record.UID != r.intent.CandidateBinding.UID || record.GID != r.intent.CandidateBinding.GID {
 			return errors.Join(ErrBinding, err, requestErr)
 		}
-		if _, err := preparationRecordBytes(record); err != nil {
+		if _, err := journal.Bytes(record); err != nil {
 			return err
 		}
 	}
@@ -489,11 +495,11 @@ func (r *recoveryNative) observe(ctx context.Context) error {
 		if err := observeStoppedManager(ctx); err != nil {
 			return err
 		}
-		version, err := observeSystemManagerVersion(ctx)
+		version, err := systemd.Version(ctx)
 		if err != nil {
 			return err
 		}
-		unit, service, err := readEndpointManagerProperties(ctx)
+		unit, service, err := systemd.Endpoint(ctx)
 		if err != nil {
 			return err
 		}
@@ -501,65 +507,7 @@ func (r *recoveryNative) observe(ctx context.Context) error {
 			return err
 		}
 	}
-	return observeEmptyInstallationScopes(ctx)
-}
-
-// This initial stopped path refuses live scopes. Original live predecessor
-// termination belongs to the separate transition join owner, not a timeout or
-// a successful systemctl exit. No process is started by initial recovery.
-func observeEmptyInstallationScopes(ctx context.Context) (returnedErr error) {
-	const directory = "/sys/fs/cgroup/system.slice"
-	if _, err := rootDirectoryAncestors(directory); err != nil {
-		return err
-	}
-	root, err := os.OpenRoot(directory)
-	if err != nil {
-		return err
-	}
-	defer func() { returnedErr = errors.Join(returnedErr, root.Close(), ctx.Err()) }()
-	file, err := root.Open(".")
-	if err != nil {
-		return err
-	}
-	names, readErr := file.Readdirnames(4097)
-	closeErr := file.Close()
-	if len(names) > 4096 || (readErr != nil && !errors.Is(readErr, io.EOF)) || closeErr != nil {
-		return errors.Join(ErrBinding, readErr, closeErr)
-	}
-	for _, name := range names {
-		if name != "ardents-endpoint.service" && !strings.HasPrefix(name, "ardents-text-reader@") && !strings.HasPrefix(name, "ardents-text-publisher@") {
-			continue
-		}
-		scope, err := root.OpenRoot(name)
-		if err != nil {
-			return err
-		}
-		info, infoErr := scope.Stat(".")
-		if infoErr != nil || !rootDirectory(info) {
-			return errors.Join(ErrBinding, infoErr, scope.Close())
-		}
-		events, err := scope.OpenFile("cgroup.events", os.O_RDONLY|syscall.O_NOFOLLOW, 0)
-		if err != nil {
-			return errors.Join(err, scope.Close())
-		}
-		body, readErr := io.ReadAll(io.LimitReader(events, 4097))
-		closeErr := errors.Join(events.Close(), scope.Close())
-		if readErr != nil || closeErr != nil || len(body) > 4096 {
-			return errors.Join(ErrBinding, readErr, closeErr)
-		}
-		seen := make(map[string]bool)
-		for _, line := range strings.Split(strings.TrimSuffix(string(body), "\n"), "\n") {
-			parts := strings.Fields(line)
-			if len(parts) != 2 || seen[parts[0]] || (parts[0] != "populated" && parts[0] != "frozen") || (parts[1] != "0" && parts[1] != "1") || (parts[0] == "populated" && parts[1] != "0") {
-				return ErrBinding
-			}
-			seen[parts[0]] = true
-		}
-		if !seen["populated"] {
-			return ErrBinding
-		}
-	}
-	return ctx.Err()
+	return cgroup.ObserveEmpty(ctx)
 }
 
 func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, authorization Authorization) (result ProvisionResult, returnedErr error) {
@@ -571,20 +519,20 @@ func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, auth
 			filename := filepath.Join(r.journal, "recovery-failure.json")
 			var err error
 			if _, retained := r.reader.files[filename]; retained {
-				err = r.syncObserved(bounded, filename)
+				err = r.reader.syncObserved(bounded, filename)
 			} else if archive := filepath.Join(r.journal, "recovery-failure-archived.json"); r.reader.files[archive].identity != nil {
 				// All retries still belong to this immutable intent. Keep its
 				// first failure rather than manufacturing a conflicting second
 				// archive. The current refusal remains in the returned outcome.
-				err = r.syncObserved(bounded, archive)
+				err = r.reader.syncObserved(bounded, archive)
 				if err == nil {
-					err = r.writePrivate(bounded, filename, r.reader.files[archive].body)
+					err = r.reader.writePrivate(bounded, filename, r.reader.files[archive].body)
 				}
 			} else {
 				var body []byte
 				body, err = canonicalJSON(generationTransition{Schema: "ardents-endpoint-installation-transition-v1", GenerationDigest: r.intent.Candidate.GenerationDigest, BindingDigest: r.intent.Candidate.BindingDigest, Phase: "initial-recovery-failed", OriginalError: returnedErr.Error()})
 				if err == nil {
-					err = r.writePrivate(bounded, filename, body)
+					err = r.reader.writePrivate(bounded, filename, body)
 				}
 			}
 			returnedErr = errors.Join(ErrRepairRequired, returnedErr, err)
@@ -592,6 +540,9 @@ func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, auth
 	}()
 	checked, err := recoveryGeneration(ctx, r.intent, owner.reference, authorization)
 	if err != nil {
+		return ProvisionResult{}, err
+	}
+	if _, err := readGenerationFileBirths(ctx, r.reader, r.journal, r.intent.Candidate, checked.binding, checked.files, r.inventories[r.journal]); err != nil {
 		return ProvisionResult{}, err
 	}
 	wanted := make(map[string][]byte, 25)
@@ -645,7 +596,7 @@ func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, auth
 	}
 	sort.Strings(metadata)
 	for _, filename := range metadata {
-		if err := r.syncObserved(ctx, filename); err != nil {
+		if err := r.reader.syncObserved(ctx, filename); err != nil {
 			return ProvisionResult{}, err
 		}
 	}
@@ -678,7 +629,7 @@ func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, auth
 	if err := r.observe(ctx); err != nil {
 		return ProvisionResult{}, err
 	}
-	if _, err := installationManager(ctx, "daemon-reload"); err != nil {
+	if err := systemd.Reload(ctx); err != nil {
 		return ProvisionResult{}, err
 	}
 	if err := observeStoppedManager(ctx); err != nil {
@@ -691,14 +642,14 @@ func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, auth
 	if err != nil {
 		return ProvisionResult{}, err
 	}
-	if err := r.writePrivate(ctx, filepath.Join(r.journal, "initial-recovered.json"), body); err != nil {
+	if err := r.reader.writePrivate(ctx, filepath.Join(r.journal, "initial-recovered.json"), body); err != nil {
 		return ProvisionResult{}, err
 	}
 	body, err = canonicalJSON(r.intent)
 	if err != nil {
 		return ProvisionResult{}, err
 	}
-	if err := r.writePrivate(ctx, filepath.Join(r.journal, "completed-intent.json"), body); err != nil {
+	if err := r.reader.writePrivate(ctx, filepath.Join(r.journal, "completed-intent.json"), body); err != nil {
 		return ProvisionResult{}, err
 	}
 	for source, target := range map[string]string{
@@ -707,16 +658,16 @@ func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, auth
 		filepath.Join(r.journal, "recovery-failure.json"):                 "recovery-failure-archived.json",
 	} {
 		if original, exists := r.reader.files[source]; exists {
-			if err := r.writePrivate(ctx, filepath.Join(r.journal, target), original.body); err != nil {
+			if err := r.reader.writePrivate(ctx, filepath.Join(r.journal, target), original.body); err != nil {
 				return ProvisionResult{}, err
 			}
-			if err := r.removeObserved(ctx, source); err != nil {
+			if err := r.reader.removeObserved(ctx, source); err != nil {
 				return ProvisionResult{}, err
 			}
 		}
 	}
 	if _, retained := r.reader.files[filepath.Join(r.reader.lease.path, "transition.json")]; retained {
-		if err := r.removeObserved(ctx, filepath.Join(r.reader.lease.path, "transition.json")); err != nil {
+		if err := r.reader.removeObserved(ctx, filepath.Join(r.reader.lease.path, "transition.json")); err != nil {
 			return ProvisionResult{}, err
 		}
 	}
@@ -724,29 +675,6 @@ func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, auth
 		return ProvisionResult{}, err
 	}
 	return ProvisionResult{Status: "installed-recovered-stopped", GenerationDigest: checked.selected.GenerationDigest}, ctx.Err()
-}
-
-func (r *recoveryNative) syncObserved(ctx context.Context, filename string) (returnedErr error) {
-	observed, exists := r.reader.files[filename]
-	if !exists {
-		return ErrBinding
-	}
-	if _, err := r.reader.readObserved(ctx, filename, int64(len(observed.body))+1, observed.mode, observed.gid, len(observed.body) == 0); err != nil {
-		return err
-	}
-	file, err := os.OpenFile(filename, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
-	if err != nil {
-		return err
-	}
-	defer func() { returnedErr = errors.Join(returnedErr, file.Close(), ctx.Err()) }()
-	info, err := file.Stat()
-	if err != nil || !sameReadIdentity(observed.identity, info) {
-		return errors.Join(ErrBinding, err)
-	}
-	if err := file.Sync(); err != nil {
-		return err
-	}
-	return syncDirectDirectory(filepath.Dir(filename))
 }
 
 func (r *recoveryNative) repairDirectory(ctx context.Context, filename string) (returnedErr error) {
@@ -794,7 +722,7 @@ func (r *recoveryNative) repairFile(ctx context.Context, filename string, body [
 	}
 	observed := r.reader.files[filename]
 	if bytes.Equal(observed.body, body) && observed.mode == mode && observed.gid == gid {
-		return r.syncObserved(ctx, filename)
+		return r.reader.syncObserved(ctx, filename)
 	}
 	file, err := os.OpenFile(filename, os.O_RDWR|syscall.O_NOFOLLOW, 0)
 	if err != nil {
@@ -835,53 +763,4 @@ func (r *recoveryNative) repairFile(ctx context.Context, filename string, body [
 	}
 	r.reader.files[filename] = stagedFile{identity: after, body: bytes.Clone(body), mode: mode, gid: gid}
 	return syncDirectDirectory(filepath.Dir(filename))
-}
-
-func (r *recoveryNative) writePrivate(ctx context.Context, filename string, body []byte) (returnedErr error) {
-	if existing, retained := r.reader.files[filename]; retained {
-		if !bytes.Equal(existing.body, body) {
-			return ErrBinding
-		}
-		return r.syncObserved(ctx, filename)
-	}
-	if err := r.reader.lease.observe(); err != nil {
-		return err
-	}
-	root, err := os.OpenRoot(filepath.Dir(filename))
-	if err != nil {
-		return err
-	}
-	defer func() { returnedErr = errors.Join(returnedErr, root.Close()) }()
-	info, err := root.Stat(".")
-	if err != nil || !sameStagingDirectory(r.reader.directories[filepath.Dir(filename)], info) || !privateJournalDirectory(info) {
-		return errors.Join(ErrBinding, err)
-	}
-	created, err := writeStagedFile(ctx, root, filepath.Base(filename), body, 0600, 0)
-	if created.identity != nil {
-		r.reader.files[filename] = created
-	}
-	return errors.Join(err, syncStagingRoot(root), ctx.Err())
-}
-
-func (r *recoveryNative) removeObserved(ctx context.Context, filename string) (returnedErr error) {
-	if err := r.syncObserved(ctx, filename); err != nil {
-		return err
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	root, err := os.OpenRoot(filepath.Dir(filename))
-	if err != nil {
-		return err
-	}
-	defer func() { returnedErr = errors.Join(returnedErr, root.Close(), ctx.Err()) }()
-	info, err := root.Lstat(filepath.Base(filename))
-	if err != nil || !sameReadIdentity(r.reader.files[filename].identity, info) {
-		return errors.Join(ErrBinding, err)
-	}
-	if err := root.Remove(filepath.Base(filename)); err != nil {
-		return err
-	}
-	delete(r.reader.files, filename)
-	return syncStagingRoot(root)
 }

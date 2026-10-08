@@ -1,33 +1,53 @@
 package installation
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"os"
-	"os/exec"
 	"runtime"
 	"strings"
 	"syscall"
-	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 )
 
 // Preserve current native refusal while #359's separate capability repair is
 // unresolved. This is not another accepting version policy or qualification.
 func observeInstallationPlatform(ctx context.Context) error {
+	if ctx == nil {
+		return ErrInput
+	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	if os.Geteuid() != 0 || runtime.GOARCH != "amd64" {
 		return ErrNativeUnavailable
 	}
+	return observeNativePlatform(ctx)
+}
+
+func observeStartupPlatform(ctx context.Context) error {
+	if ctx == nil {
+		return ErrInput
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if os.Geteuid() == 0 || runtime.GOARCH != "amd64" {
+		return ErrNativeUnavailable
+	}
+	return observeNativePlatform(ctx)
+}
+
+// Both openings retain the same admitted OS/manager pairs and cgroup2 rule;
+// their distinct credential checks above cannot be selected by a caller flag.
+func observeNativePlatform(ctx context.Context) error {
 	release, err := observePlatformRelease(ctx)
 	if err != nil {
 		return err
 	}
-	version, err := observeSystemManagerVersion(ctx)
+	version, err := systemd.Version(ctx)
 	if err != nil {
 		return err
 	}
@@ -91,33 +111,4 @@ func observePlatformRelease(ctx context.Context) (result string, returnedErr err
 		}
 	}
 	return fields["VERSION_ID"], ctx.Err()
-}
-
-func observeSystemManagerVersion(ctx context.Context) (string, error) {
-	bounded, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	command := exec.CommandContext(bounded, "/usr/bin/busctl", "--system", "--json=short", "--no-pager", "get-property", "org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "Version")
-	command.Env = []string{"PATH=/usr/bin:/bin", "LANG=C", "LC_ALL=C"}
-	command.WaitDelay = 5 * time.Second
-	var output, diagnostic boundedManagerOutput
-	command.Stdout, command.Stderr = &output, &diagnostic
-	if err := errors.Join(command.Run(), bounded.Err(), ctx.Err()); err != nil {
-		return "", err
-	}
-	if diagnostic.body.Len() != 0 {
-		return "", ErrNativeUnavailable
-	}
-	var answer struct {
-		Type string `json:"type"`
-		Data string `json:"data"`
-	}
-	body := []byte(strings.TrimSpace(output.body.String()))
-	if err := json.Unmarshal(body, &answer); err != nil {
-		return "", err
-	}
-	canonical, err := json.Marshal(answer)
-	if err != nil || !bytes.Equal(body, canonical) || answer.Type != "s" || answer.Data == "" {
-		return "", errors.Join(ErrNativeUnavailable, err)
-	}
-	return answer.Data, ctx.Err()
 }

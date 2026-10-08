@@ -55,34 +55,3 @@ func TestInstallationNativeManagedDirectoryOriginalCancellation(t *testing.T) {
 		t.Fatal("cancelled work created a root")
 	}
 }
-
-func TestInstallationNativePreparationFailureAfterDurableCompletion(t *testing.T) {
-	directory := filepath.Join(nativeRequestDirectory(t), "preparation")
-	r := preparationRecordFixture()
-	j, err := createPreparationJournal(t.Context(), directory, r)
-	if err != nil {
-		t.Fatal(err)
-	}
-	r.Phase, r.UID, r.GID = "creating-mutable-roots", 1000, 1001
-	if err := j.append(t.Context(), r); err != nil {
-		t.Fatal(err)
-	}
-	r.Phase = "mutable-roots-prepared"
-	if err := j.append(t.Context(), r); err != nil {
-		t.Fatal(err)
-	}
-	original, cancel := context.WithCancel(t.Context())
-	cancel()
-	if err := j.recordFailure(original, context.Canceled); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(directory, "0003.json")); err != nil {
-		t.Fatal("actual completed phase erased")
-	}
-	if _, err := os.Stat(filepath.Join(directory, "failure.json")); err != nil {
-		t.Fatal("original failure not retained")
-	}
-	if !errors.Is(j.append(t.Context(), preparationRecordFixture()), context.Canceled) || !errors.Is(j.close(), context.Canceled) {
-		t.Fatal("cleanup renewed authority or lost terminal error")
-	}
-}

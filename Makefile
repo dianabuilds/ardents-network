@@ -47,7 +47,7 @@ HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLES
 # packages from any host; the test binaries land in the quality cache, never in
 # the repository.
 INSTALLED_TAG_COMPILE_ROOT := $(QUALITY_CACHE_ROOT)/installed-tag-compile
-INSTALLED_TAG_COMPILE_PACKAGES := ./internal/endpoint ./tests/e2e/node
+INSTALLED_TAG_COMPILE_PACKAGES := ./internal/endpoint ./tests/e2e/node ./internal/successor/execution/runtime ./cmd/ardents-next
 
 ifeq ($(OS),Windows_NT)
 INSTALLED_TAG_COMPILE_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(INSTALLED_TAG_COMPILE_ROOT)') | Out-Null"
@@ -281,6 +281,30 @@ text-command-network-check:
 text-worker-escape-check:
 	sh ./tests/qualification/text-worker-escape/run-ubuntu.sh
 
+.PHONY: execution-lifecycle-check
+execution-lifecycle-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh execution
+
+.PHONY: execution-route-check
+execution-route-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh execution-route
+
+.PHONY: execution-tree-check
+execution-tree-check:
+	sh ./tests/qualification/execution-tree/run-ubuntu.sh
+
+.PHONY: execution-escape-check
+execution-escape-check:
+	sh ./tests/qualification/execution-escape/run-ubuntu.sh
+
+.PHONY: execution-recovery-check
+execution-recovery-check:
+	sh ./tests/qualification/execution-recovery/run-ubuntu.sh -timeout=2m
+
+.PHONY: execution-installed-check
+execution-installed-check:
+	sh ./tests/qualification/execution-installed/run-ubuntu.sh -timeout=4m
+
 .PHONY: text-role-durable-state-capture
 text-role-durable-state-capture:
 	@test "$$(go env GOOS)" = linux || (echo "text-role-durable-state-capture requires Linux"; exit 1)
@@ -301,15 +325,25 @@ installation-native-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "installation-native-check requires Linux"; exit 2)
 	@test "$$(id -u)" = 0 || (echo "installation-native-check requires root"; exit 2)
 	@test -n "$(ARDENTS_INSTALLATION_NATIVE_ROOT)" || (echo "ARDENTS_INSTALLATION_NATIVE_ROOT must name a trusted root-owned temporary parent"; exit 2)
-	go test -race -tags installation_native ./internal/successor/installation -run '^TestInstallationNative' -count=1 -timeout=1m
+	go test -race -tags installation_native ./internal/successor/installation/... -run '^TestInstallationNative' -count=1 -timeout=1m
 
+installation-native-compile-check: export GOOS := linux
+installation-native-compile-check: export GOARCH := amd64
+installation-native-compile-check: export CGO_ENABLED := 0
 installation-native-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-native.test" ./internal/successor/installation
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-native.test" ./internal/successor/installation
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-cgroup-native.test" ./internal/successor/installation/cgroup
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-native.test" ./internal/successor/installation/systemd
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-journal-native.test" ./internal/successor/installation/journal
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-process-native.test" ./internal/successor/installation/process
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-generation-native.test" ./internal/successor/installation/generation
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-completion-native.test" ./internal/successor/installation/completion
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-fixedfile-native.test" ./internal/successor/installation/fixedfile
 
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/network/... ./internal/successor/admission/... ./internal/successor/hosting ./internal/successor/publication/... ./internal/successor/reachability/... ./internal/successor/enrollment/... ./internal/successor/release/... ./internal/successor/installation/... ./internal/successor/route/... ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/network/... ./internal/successor/admission/... ./internal/successor/hosting ./internal/successor/publication/... ./internal/successor/reachability/... ./internal/successor/enrollment/... ./internal/successor/release/... ./internal/successor/installation/... ./internal/successor/execution/... ./internal/successor/route/... ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired)$$' -count=1
 
 hosting-check:

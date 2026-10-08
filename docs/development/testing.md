@@ -1,5 +1,119 @@
 # Testing
 
+The execution-installed-check target selects the root-native
+TestInstalledExecutionStartup with text_worker_installed. Its driver requires
+a fresh dedicated Ubuntu24/systemd255 manager without Ardents accounts or fixed
+resources. Actual installation provision and upgrade-installed consumers
+create these objects and start the canonical non-root participant program; the
+root test binary never becomes Endpoint MainPID. Genuine signed Epoch/profile
+intake, two actual State-owned TLS servers, the original Root completion exchange,
+qualified permission preparation and Stock import precede an original-invocation
+permission-accepted diagnostic. The independently observed original process and
+kernel scope must physically join before fixture infrastructure closes. The
+driver pins its test binary and nine-resource inventory independently and refuses
+missing prerequisites. Signing, Source and clock infrastructure has one fixture
+controller. This selected scenario grants no private Service readiness, complete
+recovery matrix, independent custody/time/family or whole-host qualification.
+
+`TestExecutionSignedInstalledResources` in the Linux command profile builds the
+actual canonical participant and Text programs, combines the seven maintained
+packaging resources with independently encoded signed Enrollment/Release inventory,
+and executes genuine initial generation byte authentication. A coherent signed
+candidate advances the same retained Root and history; the older signed snapshot
+must then refuse as a candidate. Its ephemeral signing
+and builder facts are fixtures. It does not start a manager, supply a completion
+peer or establish installed startup, containment or independent release custody.
+Changing the actual Text binary with the original pin and signed inventory must
+refuse before a fresh Release history directory exists.
+The ordinary metadata fixture retains its separate synthetic static-byte scope.
+
+`TestInstalledSourceInputsRetainGenuineNetworkAuthority` exercises the new command's
+bound Source credential projection against two genuine State-owned TLS servers,
+signed Epoch bytes and a live clock-observation file. Epoch acquisition alone must
+refuse runtime authority. A real compiled `network accept-profile` consumer commits
+the signed profile under the same retained participant root before an independent
+reopen observes authority. A later automatic wave accepts a signed successor from
+both original servers and must refuse reuse of the old profile. All infrastructure
+has one fixture controller; declaration labels establish no independent families.
+The credential projection's callback isolates that mechanism and supplies no
+Installation lifetime. This proves neither a completion exchange nor accepting
+installed startup, Execution effects, Service readiness or privacy qualification.
+
+`make execution-lifecycle-check` selects `TestInstalledExecutionLifecycle`
+under the shared fixed-worker profile driver. Build its test binary
+with `text_worker_installed` from `internal/successor/execution/runtime` and
+install it at `/usr/lib/ardents/qualification/execution-runtime.test` in the
+dedicated manager. The driver requires independent binary/unit digests through
+the existing `ARDENTS_TEXT_LIFECYCLE_SHA256` and
+`ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256` inputs. Both local surfaces must execute
+and pass with genuine installed workers, for joined preparation and a live
+single-use operation. Retirement must interrupt the operation before waiting
+for its join; original worker cleanup follows. A joined-borrower error control
+and attachment-loss cases on both surfaces must execute. Loss interrupts the
+operation, withholds completion until its join, preserves the failed result and
+permits a fresh preparation only after successful original physical cleanup.
+The joined-borrower error control requires synchronous denial of both live
+local surfaces, retained first failure
+and refusal of late completed-current provenance. Compilation establishes no
+runtime result. This profile does not establish accepting Installation startup, live
+Service work, the escape/network/recovery matrices or whole-host qualification.
+
+`make execution-route-check` selects `TestInstalledExecutionRouteBothCarriers`
+from the tagged `cmd/ardents-next` test binary installed at
+`/usr/lib/ardents/qualification/execution-command.test`. The same independently
+pinned unit/binary inputs and original non-root Endpoint MainPID prerequisites
+apply, with private temporary roots and loopback TCP/UDP. The production live
+holder must obtain genuine signed permission, bootstrap real stock, retire
+bootstrap, spend through fresh admitted Prefix/issuer channels on both Carriers,
+join physical owners and reopen Hosting without retained reservations. It
+also stops the independently observed sole original reader while a spent Prefix
+remains open. Both Carriers must interrupt and join the holder without console
+EOF or caller cancellation as the trigger; no later issuer operation may occur.
+An additional worker-loss-io case on each Carrier delays the genuine ordinary
+signed RESULT after real admission/spend and signing, then stops the original
+reader. The holder must refuse completed output, join all borrowers and return
+reservations; the ordinary issue and admission still occurred. The fixture
+supplies no successful authority or tokens and joins its input/output actor.
+The clock-loss-io case independently joins the clock observation updater and
+retires its file while the genuine signed RESULT is held. The holder must refuse
+that RESULT while its caller is still live; only then does fixture cancellation
+retire the remaining local console and worker. Independently reopened State
+must refuse specifically because clock confidence is unavailable. The separate
+caller-loss-io case cancels the original production caller while RESULT is held.
+Neither case cancels the verification context or resets an operation deadline.
+After physical receiver join, every original receiving owner closes and reopens
+its actual durable root. Each previously accepted token must still verify under
+current signed authority and refuse specifically as already spent, with the
+new real Hosting reservation returned exactly once. These checks run in all ten
+cases, including late signed RESULT after worker, clock or caller loss; expiry or unavailable
+authority cannot stand in for the replay refusal.
+The deliberate-loss cases retain a failed receiving terminal result when the
+actual Carrier reports exact peer retirement during physical output; repeated
+Close must return that same result after Done. Every cause must have the native
+peer-retirement classification, and unrelated or local failures remain test
+failures. Positive joined retirement still requires a clean result. A retained
+negative-case physical error is never reported as clean receiving shutdown.
+Exact joined, worker-loss, worker-loss-io, clock-loss-io and caller-loss-io
+identities on each Carrier are mandatory driver checks.
+This establishes no accepting Installation startup, Service bytes or privacy claim.
+
+`make execution-recovery-check` selects the separately pinned runtime binary's
+Root `TestInstalledExecutionEndpointDeath` controller outside the Endpoint
+unit. Its independently pinned temporary unit selects only the non-root
+held-workers actor. Both local surfaces retain genuine qualified operations
+and independently observed hostile parent/child/grandchild trees. Root matches
+original manager tuples, kernel event/proc descriptors and the Endpoint pidfd,
+then sends SIGKILL to that original MainPID. No Endpoint Go cleanup or Root
+worker Stop may supply completion. Original Endpoint and worker scopes and
+all pinned processes must disappear, with the exact failed signal/9 outcome
+retained. Explicit fresh start repeats this proof with different Endpoint,
+worker, local generation and Job commitments. Exact initial/restart controller
+PASS receipts are required; the killed actor cannot pass. The ordinary worker's
+absent hostile descendants fail the environment control. This is local physical
+lifetime evidence, not logical Service recovery, installed product acceptance,
+power-loss or whole-host qualification. The [profile owner](../../tests/qualification/execution-recovery/README.md)
+retains its artifact, privilege and environment requirements.
+
 Ardents separates deterministic Module checks, local process behavior,
 artifact profiles, and explicitly selected qualifications. A historical result
 is evidence about its exact candidate; it is not an entrypoint for current
@@ -18,6 +132,42 @@ An internal audit uses the separate [audit method](deep-audit.md) and cannot
 substitute for independent review.
 
 ## Ordinary checks
+
+Installation's staging, selection, Unix completion and staged-recovery filesystem
+scenarios, including generation-file birth refusal cases, run independently in
+parallel with distinct temporary installation roots, writer leases, original
+journals, sockets and file descriptors. Their
+scenario-local subcase scheduling is retained; no shared manager/account effects
+are made parallel. They use one actual initial generation staging per case to isolate the sealed
+provenance reader, without unrelated predecessor/fixed-resource setup. A separate
+positive checks the complete original birth inventory; all nine foreign/missing
+record cases perform their stated mutations. They neither mutate a shared
+manager/account nor substitute native authority. Pure reload configuration matching consumes detached typed
+request/selection fixtures and performs no durable setup; separate provenance
+and reopen probes retain actual filesystem observations. All cases, assertions
+and native terminal bounds remain in the selected profile.
+
+Native start-intention checks cover exact durable bytes/private inode, same-inode
+resync, cancellation before and after visible journal write, and socket mutation
+after journal I/O. Terminal recovery checks exact optional intent/socket binding,
+foreign schema/digests/noncanonical bytes and hardlinks, retaining historical
+no-intention compatibility. These filesystem probes establish no manager Start,
+accepting invocation or delivered ACK.
+
+Original replacement-group prefix and conflict subcases also run independently
+in parallel. Each constructs its own physical preimages, journal directory and
+retained record group; no manager or account effects occur. The prefix counts,
+mutations, resync checks, original-byte assertions and native timeout are retained.
+
+Writing-generation prefix, invalid-prefix and staged-journal refusal subcases
+also run independently in parallel. Each creates and retains its own candidate,
+journal, lease, selection inode and original descriptors before its stated mutation.
+Their reader fixture stages one real generation; the previous selection is a
+detached expected byte image, without unrelated predecessor installation or
+archival. It supplies no inspected predecessor, Release proof or manager fact.
+Production successor staging and original predecessor custody have separate
+checks. They share no live state or manager/account effects; complete inventories,
+exact birth checks, refusal cases and the selected native deadline remain unchanged.
 
 The genuine issuer exclusive-work, signed-State-loss and receiver-cancellation
 scenarios in `cmd/ardents-next/route_bootstrap_linux_test.go` and receiving
@@ -103,6 +253,7 @@ the separate permission-only holder/compiled issuer scenario above.
 
 - `make route-check` runs only the new Network, Admission, Hosting,
   Publication public-proof, Reachability, Enrollment, Release, Installation and Route
+  plus Execution local rules, installed preparation and physical mechanisms
   owners plus `ardents-next`, with Linux race execution, both selected real
   Carriers, compiled prefix/receiver processes and causal lifecycle cases.
   Focused architecture checks enforce isolation and registered profiles.
@@ -460,7 +611,23 @@ the registry entry.
 The maintained local profiles are:
 
 - `installation-native-linux`, invoked by `make installation-native-check`,
-  selects the `installation_native` Linux tests in new Installation. It requires
+  exercises the original manager-reference transport with actual Unix I/O:
+  bounded outer/inner length refusal before exposing bytes, exact validated
+  frame remainder, original blocked read/write interruption and synchronous
+  Close join, and late-call refusal. These physical controls provide no successful
+  manager reference, Release, startup or readiness facts. Actual RefUnit and
+  manager replacement/reload evidence requires a separately owned real manager.
+  It also exercises the fixed-file Module through its actual Create/Replace/Commit/Close
+  Interface: exclusive empty birth, detached input bytes, original parent/inode/
+  access/link/ctime refusal after journal I/O, same-inode writes, original
+  cancellation and kernel descriptor absence after Close. Root integration
+  controls retain journal-before-payload and same-record torn-prefix repair.
+  These physical fixtures grant no Release, manager or startup authority.
+  also exercises the local completion Module: actual root peer credentials,
+  exact/rejected/short replies, original guard/socket-record/socket substitution
+  before output, retained cancellation and physical descriptor/callback join.
+  Wire fixtures grant no root archival, startup, manager or runtime authority.
+  The profile selects the `installation_native` Linux tests in new Installation. It requires
   a root driver and `ARDENTS_INSTALLATION_NATIVE_ROOT` naming an existing direct
   root:root temporary parent with trusted non-writable ancestors outside the
   repository. It tests real file ownership, links, inode/content/ancestor changes
@@ -1012,6 +1179,34 @@ requires an empty unreachable-function set. This does not qualify Windows
 durable composition; the checker and its exact comparison are unchanged.
 
 ### New Installation generation authentication
+
+The public successor handle has a real `installation upgrade-installed --request`
+consumer. Portable tests refuse detached handles and cancelled openings; the
+compiled command refuses unavailable native/request prerequisites before trust.
+The native copied-handle regression uses an actual writer descriptor and a
+cancelled original caller, with no successful Release/manager/startup substitute;
+it requires physical close, the shared one-use latch and retained cancellation.
+These refusal/lifetime checks do not prove a positive successor start or ACK.
+The accepting new installed runtime and explicit successor recovery/interruption
+matrix remain separate evidence obligations. Candidate process/scope lifetime
+lives in `candidate_linux.go`, independently of transition admission/staging.
+Its unchanged native missing-custody and unjoined-writer checks reside in
+`candidate_native_linux_test.go`, while transaction/selection checks stay with
+successor transition. Completion record and ACK sequencing share the candidate
+implementation; genuine accepting runtime remains a separate obligation.
+
+Fixed-unit behavior tests separately observe a completed failed start without
+turning failed manager state into fresh-stopped or recovery admission. They
+refuse live PID, queued/missing Job, changed protection/program, incomplete or
+reversed execution clocks, ambiguous result and noncanonical numbers. Candidate
+cleanup still repeats actual activation/worker/kernel observations; pure typed
+fixtures do not establish that a manager attempted, stopped or joined work.
+
+Completion grammar tests use independently spelled 160-byte frames, reject
+noncanonical/oversized digests and zero InvocationID, and retain detached return
+values. The root selection-schema refusal and exact byte oracle live with the
+native start barrier; both producers consume the completion Module grammar.
+These checks grant no accepting startup or installed evidence.
 
 Portable Installation checks consume genuine pinned Enrollment Bundle or
 untrusted Candidate snapshots and actual Release authorizations. Command

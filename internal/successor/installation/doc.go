@@ -7,7 +7,44 @@
 // observes the installed bytes/account/roots without opening Release history.
 // Explicit initial recovery retains original ownership/caller and obtains fresh
 // Candidate/Release proofs before repairing recorded prefixes and archiving
-// failures, leaving the generation stopped. Installed start and successor join
-// and recovery remain separate;
-// component verification establishes no installed or runtime qualification.
+// failures, leaving the generation stopped. One opaque successor lifetime
+// authenticates fresh proofs against the installed binding, stages, joins the
+// original predecessor and attempts barrier-controlled startup. Full ACK remains
+// accepted through late cleanup failure. The accepting new startup consumer and
+// complete interruption coverage remain separate dependencies. Explicit
+// completion recovery uses fresh proofs and independently retains the original
+// running invocation before same-inode terminal cleanup and first-error archive;
+// that terminal path never replays ACK or starts/stops a replacement. A complete
+// staged pending prefix, optionally including a replacement intention and exact
+// original pre-mutation record-group prefix, retains its sealed Snapshot and
+// exact journal directory/records. A complete nine-record group also admits an
+// ordered same-inode torn fixed copy before selection publication, retaining
+// actual bytes separately from sealed preimages and requiring actual quiescence
+// before Release composition. Exact fixed-resources-replaced completion requires
+// all nine original records and complete candidate bytes, including unchanged
+// static resources; its original record is resynchronized without rewriting;
+// then obtains fresh proofs before original predecessor join and guarded start;
+// Exact publishing-selection also admits old selection before its record, or
+// recorded old/empty/old-or-candidate prefixes and complete candidate on the
+// original inode after all nine fixed records and complete candidate images.
+// Original intent supplies complete selection preimages; observed bytes never
+// become a trusted pointer. Fresh proofs, quiescence and original record resync
+// precede repair. Reload prefixes require full candidate selection/all records
+// and independently retained loaded configuration/quiescence, separate from
+// original process custody. Existing stopped completion resyncs without
+// reload/Stop/ACK replay. Component verification
+// establishes no installed or runtime qualification.
+//
+// Canonical generation assembly freezes its closed binding/inventory before
+// staging. Fresh-pair admission retains complete-floor and local continuity
+// constraints together, without treating stored facts as fresh proofs. Shared
+// intent archival preserves separate initial and successor completion checks.
+// Per-file original birth records precede artifact bytes; compatible sealed
+// recovery checks their actual inodes and exact complete inventory. Ordered
+// incomplete generation prefixes separately retain their recorded original
+// inodes and complete preimages before fresh-proof repair and independent seal.
+// Bound generation-writing failure requires an exact durable first-error copy
+// before physical retirement of its failed phase slot; successful phase2 follows
+// the complete seal. This grants no pending Start, ACK replay or installed
+// startup authority; the accepting new runtime remains a separate dependency.
 package installation

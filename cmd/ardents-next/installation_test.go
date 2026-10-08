@@ -427,3 +427,33 @@ func TestInstallationCompiledRequestAdmissionPrecedesTrust(t *testing.T) {
 		t.Fatalf("genuine retained request refused: %v %s", err, out)
 	}
 }
+
+func TestInstallationSuccessorCommandRefusesBeforeTrust(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	var out bytes.Buffer
+	if code := runInstallation(ctx, []string{"upgrade-installed", "--request", "/missing-request"}, &out); code != 130 || !strings.Contains(out.String(), "installation-canceled") {
+		t.Fatal("successor command lost original cancellation", code, out.String())
+	}
+	cmd := exec.CommandContext(t.Context(), compiledCommand(t), "installation", "upgrade-installed", "--request", filepath.Join(t.TempDir(), "absent.json"))
+	output, err := cmd.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "installation-refused") {
+		t.Fatalf("actual successor consumer absent or accepting: %v %s", err, output)
+	}
+}
+
+func TestInstallationSuccessorRecoveryCommandRefusesBeforeTrust(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	var out bytes.Buffer
+	if code := runInstallation(ctx, []string{"recover-installed", "/missing-installation", "2030-01-02T03:04:05Z"}, &out); code != 130 || !strings.Contains(out.String(), "installation-canceled") {
+		t.Fatal("recovery renewed canceled acquisition", code, out.String())
+	}
+	cmd := exec.CommandContext(t.Context(), compiledCommand(t), "installation", "recover-installed", filepath.Join(t.TempDir(), "absent"), "2030-01-02T03:04:05Z")
+	output, err := cmd.CombinedOutput()
+	// Linux refuses missing native custody; other platforms refuse the native
+	// profile. Both must reach the actual new consumer before any trust effects.
+	if err == nil || !strings.Contains(string(output), "installation-") || strings.Contains(string(output), "invalid-input") || strings.Contains(string(output), "installed-recovered-started") {
+		t.Fatalf("actual recovery consumer absent or accepting: %v %s", err, output)
+	}
+}

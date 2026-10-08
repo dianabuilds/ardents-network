@@ -38,7 +38,7 @@ func provisionInitial(ctx context.Context, request Request, authorization Author
 		if returnedErr != nil {
 			owned.terminal = returnedErr
 			owned.stage.retainFailure(ctx, returnedErr)
-			owned.terminal = errors.Join(owned.terminal, owned.journal.recordFailure(ctx, returnedErr))
+			owned.terminal = errors.Join(owned.terminal, owned.journal.RecordFailure(ctx, returnedErr))
 		}
 		returnedErr = errors.Join(returnedErr, owned.close(), ctx.Err())
 		if returnedErr != nil {

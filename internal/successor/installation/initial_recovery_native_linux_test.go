@@ -234,10 +234,10 @@ func TestInstallationNativeRecoveryRetainsFirstFailureAfterItWasArchived(t *test
 			t.Fatal(err)
 		}
 	}
-	if err := retry.writePrivate(t.Context(), archive, active); err != nil {
+	if err := retry.reader.writePrivate(t.Context(), archive, active); err != nil {
 		t.Fatal("retained first error blocks the next exact archive sync", err)
 	}
-	if err := retry.removeObserved(t.Context(), filepath.Join(native.journal, "recovery-failure.json")); err != nil {
+	if err := retry.reader.removeObserved(t.Context(), filepath.Join(native.journal, "recovery-failure.json")); err != nil {
 		t.Fatal("joined archive could not retire its active copy", err)
 	}
 	if _, err := os.Lstat(filepath.Join(native.journal, "recovery-failure.json")); !errors.Is(err, os.ErrNotExist) {

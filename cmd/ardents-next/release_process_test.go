@@ -38,24 +38,25 @@ func signedConsumerPlatform(t *testing.T, platform string, protected bool) (stri
 }
 
 func signedConsumerTargets(t *testing.T, platform string, protected, generation bool, generationVersion int64) (string, string, string) {
+	return signedConsumerResources(t, platform, protected, generation, generationVersion, nil)
+}
+
+func signedConsumerResources(t *testing.T, platform string, protected, generation bool, generationVersion int64, resources map[string][]byte) (string, string, string) {
+	return signedConsumerRelease(t, platform, protected, generation, generationVersion, resources, nil, 1, 1)
+}
+
+// One fixture authority signs consecutive snapshots without manufacturing a
+// second first-pin or replacing the retained Root's five distinct public keys.
+type consumerReleaseAuthority struct {
+	rootBytes []byte
+	signers   []signature.Signer
+}
+
+func newConsumerReleaseAuthority(t *testing.T, expires time.Time) *consumerReleaseAuthority {
 	t.Helper()
-	binary, err := os.ReadFile(compiledCommand(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	program := "ardents-" + platform
-	control := "ardents-control-" + platform
-	if !protected && runtime.GOOS == "windows" {
-		program += ".exe"
-	}
-	if strings.HasPrefix(platform, "windows-") {
-		control += ".exe"
-	}
-	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
-	expires := ref.Add(365 * 24 * time.Hour)
 	root := metadata.Root(expires)
 	root.Signed.UnrecognizedFields = map[string]any{"ardents_schema_version": 1, "ardents_profile": "ardents-h3-release-v1", "ardents_environment": "h3-test", "ardents_network": "new-release-test"}
-	var signers []signature.Signer
+	owned := &consumerReleaseAuthority{}
 	var ids []string
 	for range 5 {
 		public, private, err := ed25519.GenerateKey(rand.Reader)
@@ -76,25 +77,53 @@ func signedConsumerTargets(t *testing.T, platform string, protected, generation 
 		}
 		root.Signed.Keys[id] = key
 		ids = append(ids, id)
-		signers = append(signers, signer)
+		owned.signers = append(owned.signers, signer)
 	}
 	for _, role := range []string{"root", "timestamp", "snapshot", "targets"} {
 		root.Signed.Roles[role] = &metadata.Role{KeyIDs: append([]string(nil), ids...), Threshold: 3}
 	}
+	for _, signer := range owned.signers[:3] {
+		if _, err := root.Sign(signer); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var err error
+	owned.rootBytes, err = root.ToBytes(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return owned
+}
+
+func signedConsumerRelease(t *testing.T, platform string, protected, generation bool, generationVersion int64, resources map[string][]byte, authority *consumerReleaseAuthority, metadataVersion, releaseVersion int64) (string, string, string) {
+	t.Helper()
+	binary, err := os.ReadFile(compiledCommand(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := "ardents-" + platform
+	control := "ardents-control-" + platform
+	if !protected && runtime.GOOS == "windows" {
+		program += ".exe"
+	}
+	if strings.HasPrefix(platform, "windows-") {
+		control += ".exe"
+	}
+	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
+	expires := ref.Add(365 * 24 * time.Hour)
+	if authority == nil {
+		authority = newConsumerReleaseAuthority(t, expires)
+	}
 	sign := func(value interface {
 		Sign(signature.Signer) (*metadata.Signature, error)
 	}) {
-		for _, signer := range signers[:3] {
+		for _, signer := range authority.signers[:3] {
 			if _, err := value.Sign(signer); err != nil {
 				t.Fatal(err)
 			}
 		}
 	}
-	sign(root)
-	rootBytes, err := root.ToBytes(false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	rootBytes := authority.rootBytes
 	protectedFiles := map[string][]byte{program: binary}
 	if protected {
 		protectedFiles["ardents-node-linux-amd64"] = []byte("independent Node companion")
@@ -105,7 +134,11 @@ func signedConsumerTargets(t *testing.T, platform string, protected, generation 
 		digests := make(map[string]string)
 		for _, name := range names {
 			if name != program {
-				protectedFiles[name] = []byte("independent protected resource " + name)
+				if supplied, ok := resources[name]; ok {
+					protectedFiles[name] = supplied
+				} else {
+					protectedFiles[name] = []byte("independent protected resource " + name)
+				}
 			}
 			digest := sha256.Sum256(protectedFiles[name])
 			digests[name] = hex.EncodeToString(digest[:])
@@ -114,11 +147,12 @@ func signedConsumerTargets(t *testing.T, platform string, protected, generation 
 		if err != nil {
 			t.Fatal(err)
 		}
-		protectedFiles["protected-endpoint.json"] = []byte("{\"schema\":\"ardents-protected-endpoint-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"new-release-fixture\",\"release_version\":1,\"files\":" + string(encoded) + "}\n")
+		protectedFiles["protected-endpoint.json"] = []byte(fmt.Sprintf("{\"schema\":\"ardents-protected-endpoint-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"new-release-fixture\",\"release_version\":%d,\"files\":%s}\n", releaseVersion, encoded))
 	}
 	digest := sha256.Sum256(binary)
 	hexDigest := hex.EncodeToString(digest[:])
 	customFields := map[string]any{"schema_version": 1, "profile": "ardents-h3-release-v1", "platform": platform, "architecture": runtime.GOARCH, "environment": "h3-test", "network": "new-release-test", "release_identity": "new-release-fixture", "release_version": int64(1), "source_revision": "test-source", "build_input_commitment": "test-inputs", "build_identity": "test-build", "dependency_identity": "test-dependencies", "sbom_identity": "test-sbom", "attestation_policy": "two-builder", "qualification": "qualified", "build_state": "current", "protocol_phase": "announced", "build_safety_no_new_work_after": ref.Add(30 * 24 * time.Hour), "build_safety_terminate_after": ref.Add(180 * 24 * time.Hour)}
+	customFields["release_version"] = releaseVersion
 	var attestations []map[string]string
 	for _, id := range []string{"test-builder-one", "test-builder-two"} {
 		attestations = append(attestations, map[string]string{"builder_identity": id, "build_identity": "test-build", "source_revision": "test-source", "build_input_commitment": "test-inputs", "target_sha256": hexDigest})
@@ -130,6 +164,7 @@ func signedConsumerTargets(t *testing.T, platform string, protected, generation 
 	}
 	raw := json.RawMessage(custom)
 	target := metadata.Targets(expires)
+	target.Signed.Version = metadataVersion
 	targetPath := "ardents/" + platform + "/endpoint"
 	target.Signed.Targets[targetPath] = &metadata.TargetFiles{Length: int64(len(binary)), Hashes: metadata.Hashes{"sha256": digest[:]}, Path: targetPath, Custom: &raw}
 	if generation {
@@ -160,7 +195,8 @@ func signedConsumerTargets(t *testing.T, platform string, protected, generation 
 	}
 	targetDigest := sha256.Sum256(targetBytes)
 	snapshot := metadata.Snapshot(expires)
-	snapshot.Signed.Meta["targets.json"] = &metadata.MetaFiles{Version: 1, Length: int64(len(targetBytes)), Hashes: metadata.Hashes{"sha256": targetDigest[:]}}
+	snapshot.Signed.Version = metadataVersion
+	snapshot.Signed.Meta["targets.json"] = &metadata.MetaFiles{Version: metadataVersion, Length: int64(len(targetBytes)), Hashes: metadata.Hashes{"sha256": targetDigest[:]}}
 	sign(snapshot)
 	snapshotBytes, err := snapshot.ToBytes(false)
 	if err != nil {
@@ -168,14 +204,15 @@ func signedConsumerTargets(t *testing.T, platform string, protected, generation 
 	}
 	snapshotDigest := sha256.Sum256(snapshotBytes)
 	timestamp := metadata.Timestamp(expires)
-	timestamp.Signed.Meta["snapshot.json"] = &metadata.MetaFiles{Version: 1, Length: int64(len(snapshotBytes)), Hashes: metadata.Hashes{"sha256": snapshotDigest[:]}}
+	timestamp.Signed.Version = metadataVersion
+	timestamp.Signed.Meta["snapshot.json"] = &metadata.MetaFiles{Version: metadataVersion, Length: int64(len(snapshotBytes)), Hashes: metadata.Hashes{"sha256": snapshotDigest[:]}}
 	sign(timestamp)
 	timestampBytes, err := timestamp.ToBytes(false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	descriptor := fmt.Sprintf("schema=ardents-closed-alpha-enrollment-v3\ncohort=release-test\nrelease=new-release-fixture\nplatform=%s\nenvironment=h3-test\nnetwork=new-release-test\ntarget_path=%s\nartifact=%s\ntrusted_root=1.root.json\ncontrol_catalog=catalog.ac1\ndisclosure_root=catalog.pub\ncontrol_release=release.ac1\ncontrol_network=network.ac1\ncontrol_compatibility=compatibility.ac1\ncontrol_release_root=release.pub\ncontrol_network_root=network.pub\ncontrol_compatibility_root=compatibility.pub\ncorpus_authority=corpus.pub\ncontrol_artifact=%s\n", platform, targetPath, program, control)
-	files := map[string][]byte{"RELEASE": []byte(descriptor), program: binary, "1.root.json": rootBytes, "timestamp.json": timestampBytes, "1.snapshot.json": snapshotBytes, "1.targets.json": targetBytes}
+	files := map[string][]byte{"RELEASE": []byte(descriptor), program: binary, "1.root.json": rootBytes, "timestamp.json": timestampBytes, fmt.Sprintf("%d.snapshot.json", metadataVersion): snapshotBytes, fmt.Sprintf("%d.targets.json", metadataVersion): targetBytes}
 	for name, data := range protectedFiles {
 		files[name] = data
 	}

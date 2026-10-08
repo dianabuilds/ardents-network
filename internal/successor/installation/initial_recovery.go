@@ -119,6 +119,13 @@ func (r *Recovery) Close() error {
 }
 
 func recoveryGeneration(ctx context.Context, intent initialTransitionIntent, reference time.Time, authorization Authorization) (inspectedGeneration, error) {
+	return recoverBoundGeneration(ctx, intent.Candidate, intent.CandidateBinding, intent.Request, reference, authorization)
+}
+
+// Initial and successor recovery share exact-byte proof matching, not intent
+// admission or native effects. Each caller separately verifies its own schema,
+// physical provenance, phase and original process lifetime.
+func recoverBoundGeneration(ctx context.Context, selected generationSelection, binding generationBinding, request installationRequest, reference time.Time, authorization Authorization) (inspectedGeneration, error) {
 	if err := ctx.Err(); err != nil {
 		return inspectedGeneration{}, err
 	}
@@ -128,7 +135,7 @@ func recoveryGeneration(ctx context.Context, intent initialTransitionIntent, ref
 		return inspectedGeneration{}, ErrAuthorization
 	}
 	for _, pair := range []struct{ old, fresh targetObservation }{
-		{intent.CandidateBinding.Program, observeTarget(p)}, {intent.CandidateBinding.Generation, observeTarget(g)},
+		{binding.Program, observeTarget(p)}, {binding.Generation, observeTarget(g)},
 	} {
 		old, fresh := pair.old, pair.fresh
 		before, err := time.Parse(time.RFC3339Nano, old.ReferenceTime)
@@ -144,14 +151,13 @@ func recoveryGeneration(ctx context.Context, intent initialTransitionIntent, ref
 		files[name] = bytes.Clone(body)
 	}
 	files["protected-endpoint.json"] = bytes.Clone(authorization.descriptor)
-	request := intent.Request
 	var err error
 	files["request.json"], err = canonicalJSON(request)
 	if err != nil {
 		return inspectedGeneration{}, err
 	}
 	plan := request.Headless
-	plan.NetworkSourcePlan = path.Join(request.InstallationRoot, "generations", intent.Candidate.GenerationDigest, "source.json")
+	plan.NetworkSourcePlan = path.Join(request.InstallationRoot, "generations", selected.GenerationDigest, "source.json")
 	files["headless.json"], err = canonicalJSON(plan)
 	if err != nil {
 		return inspectedGeneration{}, err
@@ -160,14 +166,14 @@ func recoveryGeneration(ctx context.Context, intent initialTransitionIntent, ref
 	if err != nil {
 		return inspectedGeneration{}, err
 	}
-	files["endpoint-unit.service"], err = renderEndpointUnit(files["ardents-endpoint.service"], request, path.Join(request.InstallationRoot, "generations", intent.Candidate.GenerationDigest))
+	files["endpoint-unit.service"], err = renderEndpointUnit(files["ardents-endpoint.service"], request, path.Join(request.InstallationRoot, "generations", selected.GenerationDigest))
 	if err != nil {
 		return inspectedGeneration{}, err
 	}
-	selected, selectionErr := canonicalJSON(intent.Candidate)
-	binding, bindingErr := canonicalJSON(intent.CandidateBinding)
+	selectedBody, selectionErr := canonicalJSON(selected)
+	bindingBody, bindingErr := canonicalJSON(binding)
 	if err := errors.Join(selectionErr, bindingErr, ctx.Err()); err != nil {
 		return inspectedGeneration{}, err
 	}
-	return inspectGeneration(request.InstallationRoot, selected, binding, files)
+	return inspectGeneration(request.InstallationRoot, selectedBody, bindingBody, files)
 }

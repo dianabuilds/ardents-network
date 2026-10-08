@@ -191,7 +191,76 @@ exchange. Full acceptance needs real new holder and issuer consumers through
 both selected Carriers, including ordinary issuance after bootstrap retirement.
 No Publication or Service authority substitute is needed for this boundary.
 
-**Descriptor Control:** Route selects the current resolution duty from coherent
+### Issuer exchange consistency and implementation seams
+
+The confidential exchange has distinct cooperating owners, not one shared issuer
+aggregate. Route retains the exact Source selection, physical generation,
+bootstrap restriction and terminal channel. Admission Stock retains the exact
+pending blind batch, permission, original issuance kind and delivery binding.
+Receiving Admission owns ordinary class-1 spend. Issuing Admission owns the
+separate quota, private key and retained-result transactions. Hosting retains
+the actual reservations until Route joins every borrower. None of these owners
+may substitute its identity for another owner's authority.
+
+Existing `stock.Owner.Begin`, `Attempt.Request`, `Complete` and `Discard` already
+separate the pending batch from transport. The exchange runs outside Stock's
+mutex. Retain its exact operation and binding through I/O and check them before
+finalization; no later Source generation can receive an obsolete result. A
+same-process exact retry keeps request bytes, request ID, issuance kind,
+blinding state, delivery binding and original deadline. It is not an automatic
+retry or permission to recreate lost blinding state after restart. A failed
+transport does not return reserved permission quota or presented tokens.
+
+`issuer.IssueCurrent` already checks genuine current Admission facts before
+debit, result generation and final export. It opens independent quota, key and
+result roots, retains cleanup outcomes and suppresses export on cleanup failure.
+The network receiver uses that owner, including its exact retry/conflict rules;
+Route neither copies its quota/signing logic nor obtains private keys. Concurrent
+requests require bounded operation admission and the actual exclusive root
+ownership. No unbounded goroutine/queue or successful callback bypasses a busy,
+uncertain or unavailable issuer. Transport kind comes from the authenticated
+ordinary/bootstrap channel state, never an untrusted request flag.
+
+The existing holder prefix requires forwarding tokens at Entry and Interior.
+It cannot establish bootstrap before those tokens exist. Bootstrap therefore
+has its own finite transport lifetime using the same retained selection and
+verified Network owners. Entry derives restriction 1 from its real bootstrap
+reservation; each Node child retains it before inner TLS allocation and carries
+it onward. Retiring this lifetime joins children, readers, writers and capacity
+before opening fresh genuinely admitted parents. Obtaining tokens does not
+change any old child's restriction or permit a private OPEN through it.
+
+Ordinary issuance retains the exact admitted Source prefix, opens a fresh
+purpose-1 terminal and presents a genuine class-1 token. Its original allowance
+is 64 KiB/30 seconds including admission and terminal frames, shortened by all
+parent/authority bounds. Bootstrap remains 128 KiB/10 seconds at each hop.
+Neither path replenishes its dedicated issuer terminal or extends its original
+deadline. Public-evidence bootstrap, Name and Descriptor operations do not
+become accepting paths merely because issuer bootstrap is implemented.
+
+The real consumer must obtain verified stock through the confidential exchange,
+retire bootstrap, then use that stock for an admitted prefix and ordinary
+issuance on TCP/TLS and QUIC. Console-supplied batch/result bytes remain an
+offline operation, not evidence of this path. Issued/exhausted/withdrawn/
+unavailable responses retain the exact Admission result encoding and fixed
+16,384-byte terminal RESULT; transport failure is never a fabricated issued
+result. Correlate only the terminal's own request nonce; do not export permission,
+request, Target or cross-hop identities into diagnostics.
+
+Independent controls include exact 49/50-byte OPEN grammars; missing/unknown or
+Endpoint-injected restriction; a valid private token on a restricted child;
+mixed restricted/ordinary children sharing one Node Carrier; all per-adjacency,
+per-duty, queue, output-rate and burst limits; both permitted bootstrap batches
+and refusal of an additional batch without a fresh debit; same-kind exact retry
+and changed-digest/kind refusal; lost result and durable reopen; cancellation or
+State loss across reservation, debit, signing, output and finalization. Preserve
+fractional rate credit on refused sends. Observe the actual public consumer and
+original caller, not only a lower-level helper. Physical failure controls retain
+late writer errors and every reservation until joined termination.
+
+### Descriptor Control
+
+Route selects the current resolution duty from coherent
 Network facts, authenticates a fresh purpose-3 terminal TLS channel, composes
 real class-1 admission and carries one lane-zero lookup (operation 2) or publish
 (operation 6). Lookup body is 4096 bytes, publish body is 16384 bytes and RESULT
@@ -222,11 +291,12 @@ TLS exporter, peer/purpose, original deadline, children and cumulative accountin
 survive a refill. A new Grant is another finite reservation lifetime within that
 same parent, not a replacement channel or permission to redraw a prefix.
 
-The inspected new session rejects all lane-zero frames after initial admission;
-its Receiver config exposes initial Admit only. New Admission already has
-`receiving.Owner.Refill` with original-Grant/deadline checks and irreversible
-spend. The real receiving command reserves Hosting through `Channel.HoldReservation`.
-These are the source seams to extend, not evidence of completed wire refill.
+The [implemented prefix owner](../technical/successor-route-prefix.md#requested-forwarding-parent-replenishment)
+now describes the genuine receiving refill and holder `Prefix.Replenish` paths.
+Receiving Admission keeps original-Grant/deadline checks and irreversible spend;
+the command connects its refill reservation to the exact original Hosting owner.
+This design states their required boundary, not a replacement for source-matched
+regression or evidence of complete Route delivery.
 
 Route checks the exact admitted forwarding state before any refill callback,
 Hosting reservation or token spend. Only a complete class-2 ADMIT on lane zero
@@ -436,11 +506,10 @@ No actor closes or mutates a replacement owner to finish an obsolete operation.
 
 The old shared admission-root slot lease is superseded for new Route by its
 independent durable floor design. The Admission source inventory distinguishes the old contradictory JOIN-refill
-path from accepted forwarding-parent refill under ADR-0085. New Receiving has
-refill component behavior; the current new Route session still rejects lane-zero
-ADMIT and has no refill caller. That missing forwarding-parent wire behavior
-remains a full Route obligation. JOIN must refuse it before reserve or spend;
-component Admission passes do not prove accepting Route refill integration.
+path from accepted forwarding-parent refill under ADR-0085. New Route now has
+an explicit holder refill caller and a genuine receiving path described by the
+prefix owner. JOIN must still refuse refill before reserve or spend; component
+Admission passes alone do not prove that Route integration or its caller lifetime.
 
 ## Independent acceptance and regression oracles
 

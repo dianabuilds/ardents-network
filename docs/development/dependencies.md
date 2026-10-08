@@ -1,5 +1,66 @@
 # Dependency register
 
+## Installation retained system-manager connection
+
+Reviewed 2026-10-08 for the native Installation owner. Select
+`github.com/godbus/dbus/v5` v5.2.2 (BSD-2-Clause) as the private D-Bus client
+mechanism for an original Endpoint unit reference. Short-lived `busctl` clients
+cannot retain that reference across fixed-file replacement: an inactive unit
+can be collected and its new file loaded before the explicit daemon reload.
+This library implements the already selected system-bus mechanism; it selects
+no new manager profile, authority, runtime, or public protocol.
+
+Primary evidence, accessed 2026-10-08: [upstream release](https://github.com/godbus/dbus/releases/tag/v5.2.2),
+[security policy](https://github.com/godbus/dbus/blob/master/SECURITY.md),
+[license](https://github.com/godbus/dbus/blob/v5.2.2/LICENSE), and
+[source](https://github.com/godbus/dbus/tree/v5.2.2). Upstream supports security
+fixes only in its latest release; the module proxy's `latest` query returned
+v5.2.2. Maintenance and private reporting are on a volunteer best-effort basis,
+with no separate support term for older patches. Recheck the latest supported
+release and advisories at integration and replace an unsupported client.
+
+The downloaded tag identifies commit
+`a8ac15ba63645f02ffd57f4b443203279ab40b30`, module sum
+`h1:TUR3TgtSVDmjiXOgAAyaZbYmIeP3DPkld3jgKGV8mXQ=`, and go.mod sum
+`h1:3AAv2+hPq5rdnr5txxxRwiGjPXamgoIHgz9FPBfOp3c=`. Its Go 1.20 minimum fits
+the selected toolchain. Its module graph requires x/sys v0.27.0; Ardents keeps
+its existing reviewed v0.48.0. External Linux/Windows amd64 candidate probes
+with Go 1.27.1 found no known vulnerability in their scanned package closure.
+These probes are dependency-review evidence, not product binary or integration
+acceptance; the complete owning artifact and repository gates remain required.
+
+Owner: `installation/systemd`, through one private fixed-address connection
+and the original manager's unique bus identity. No shared singleton, environment
+address discovery, cookie authentication, reconnect, exported object, or Unix
+FD negotiation is selected. Root privileges permit the fixed RefUnit/UnrefUnit
+operation; no credential, permission, plan or artifact bytes enter this client.
+Installation retains generation/protection checks, Release proofs, original
+caller and process quiescence. A unit reference grants no start or readiness.
+
+Source review shows that client Close interrupts the connection but exposes no
+reader join. The owning implementation must therefore bound authentication and
+messages, own and join original transport I/O and cancellation, retain uncertain
+reference acquisition through cleanup, and reject manager replacement and late
+results. Closing a context alone is not accepted physical completion.
+
+The pinned decoder allocates string and array storage from their inner declared
+length before it has verified the remaining message bytes. Bounding only the
+outer message is insufficient. The selected transport validates the complete
+finite frame before exposing any bytes to that decoder: exact scalar header
+variants, bounded scalar lengths within their original envelope, only empty or
+single-string bodies, and no nested values or method calls. Native negative
+controls include a small frame with a maximum inner string length, an array
+variant and a declared oversized outer body. This is a scoped mitigation for
+the selected private connection, not a claim that the upstream decoder is safe
+for arbitrary peer messages or that vulnerability scanning proves it safe.
+
+Alternatives: retaining a Python helper would introduce another product runtime;
+a private D-Bus implementation would add protocol maintenance; accepting an
+unexpected candidate configuration would change phase admission. The selected
+client is confined behind systemd's native lifetime Interface. Removing it
+requires replacing that physical mechanism and rechecking its lifecycle tests,
+not changing Installation's journal, Release, or manager-profile contract.
+
 ## Successor finite inspection OpenTelemetry selection
 
 Reviewed 2026-10-02 for issue 478. Select OpenTelemetry Go v1.47.0 API,

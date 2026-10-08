@@ -178,7 +178,7 @@ func runAdmissionLocal(ctx context.Context, operation string, args []string, out
 	if ctx == nil {
 		return 2
 	}
-	if operation == "holder" || operation == "receiver" {
+	if operation == "holder" || operation == "receiver" || operation == "execution-holder" || operation == "execution-holder-live" {
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 		defer cancel()
 		input, err := admissionConsoleFile(os.Stdin)
@@ -212,6 +212,12 @@ func runAdmissionLocal(ctx context.Context, operation string, args []string, out
 		}()
 		if operation == "holder" {
 			return runAdmissionHolder(ctx, args, input, writers[0], writers[1])
+		}
+		if operation == "execution-holder" {
+			return runExecutionPreparation(ctx, args, input, writers[0], writers[1])
+		}
+		if operation == "execution-holder-live" {
+			return runExecutionRouteHolder(ctx, args, input, writers[0], writers[1])
 		}
 		return runAdmissionReceiver(ctx, args, input, writers[0], writers[1])
 	}

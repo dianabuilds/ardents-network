@@ -10,6 +10,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/generation"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
@@ -172,3 +173,35 @@ func digestBytes(body []byte) []byte {
 }
 
 func digestHex(body []byte) string { return hex.EncodeToString(digestBytes(body)) }
+
+// Freeze a closed artifact inventory before native staging. These bytes and
+// public binding facts grant no fresh Release or native ownership authority.
+func freezeGenerationInventory(request Request, root string, files map[string][]byte, selected generationSelection, gid uint32) (map[string][]byte, generationBinding, error) {
+	if request.declared == nil || gid == 0 || selected.Schema != "ardents-endpoint-installation-selection-v1" ||
+		!canonicalDigest(selected.GenerationDigest) || !canonicalDigest(selected.BindingDigest) ||
+		selected.BindingDigest != digestHex(files["binding.json"]) {
+		return nil, generationBinding{}, ErrBinding
+	}
+	var binding generationBinding
+	if err := json.Unmarshal(files["binding.json"], &binding); err != nil {
+		return nil, binding, err
+	}
+	body, err := canonicalJSON(binding)
+	if err != nil || !bytes.Equal(body, files["binding.json"]) || binding.InstallationRoot != root ||
+		request.declared.InstallationRoot != root || binding.GenerationDigest != selected.GenerationDigest ||
+		selected.GenerationDigest != digestHex(files["protected-endpoint.json"]) || binding.UID == 0 || binding.GID != gid || len(files) != 15 || len(binding.Files) != 14 {
+		return nil, binding, ErrBinding
+	}
+	allowed := map[string]bool{}
+	for _, name := range generation.Names() {
+		allowed[name] = true
+	}
+	frozen := make(map[string][]byte, len(files))
+	for name, body := range files {
+		if !allowed[name] || (name != "binding.json" && binding.Files[name] != digestHex(body)) {
+			return nil, binding, ErrBinding
+		}
+		frozen[name] = bytes.Clone(body)
+	}
+	return frozen, binding, nil
+}
