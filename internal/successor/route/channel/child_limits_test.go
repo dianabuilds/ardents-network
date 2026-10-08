@@ -166,15 +166,24 @@ func TestOutputBudgetRefusesBeforeWireAndPreservesOrdinarySibling(t *testing.T) 
 			if n, err := limited.Write([]byte("refuse")); n != 0 || !errors.Is(err, capacity) {
 				t.Fatal("output was not refused by its real gate", n, err)
 			}
-			physical.mu.Lock()
-			before := len(physical.output)
-			physical.mu.Unlock()
-			if before != 0 || limited.trafficUsed != 100 {
-				t.Fatal("refused output consumed wire or lane bytes", before, limited.trafficUsed)
-			}
 			closeErr := limited.Close()
 			if prepaid && closeErr != nil || !prepaid && !errors.Is(closeErr, capacity) || terminalCalls != 1 {
 				t.Fatal("terminal ownership lost", closeErr, terminalCalls)
+			}
+			// Refusal cancels the incoming handler, which can send its prepaid
+			// CLOSE before this caller reaches Close. Join that once-only output
+			// before inspecting the wire; refused payload must never be present.
+			physical.mu.Lock()
+			wire := bytes.NewReader(bytes.Clone(physical.output))
+			physical.mu.Unlock()
+			if prepaid {
+				frame, err := ardp.ReadFrame(wire)
+				if err != nil || frame.Kind != ardp.KindClose || frame.Lane != limited.id || len(frame.Body) != 1 || frame.Body[0] > 1 {
+					t.Fatal("refusal emitted something other than its prepaid CLOSE", frame, err)
+				}
+			}
+			if wire.Len() != 0 || limited.trafficUsed != 100 {
+				t.Fatal("refused output consumed wire or lane bytes", wire.Len(), limited.trafficUsed)
 			}
 			if !s.Live() || s.PhysicalFailure() != nil {
 				t.Fatal("pre-output refusal became a Carrier failure")
