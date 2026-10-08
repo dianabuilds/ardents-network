@@ -480,7 +480,9 @@ decoded binding/request и fixed resources проверяются заново. 
 его executable. Detached bytes и копия lease handles не создают нового
 владельца; native tests проверяют эти границы на настоящих файлах без manager
 или Release substitutes. Private candidate-start/lifetime теперь реализован в том же владельце;
-положительный accepting start/ACK остаётся недоказанным. Отдельный source-matched
+bounded installed Source/permission consumer теперь подтверждает actual start/ACK
+и original physical join в fresh Ubuntu24/systemd255 manager. Полный Service
+путь и installed qualification остаются отдельными обязательствами. Ранее отдельный source-matched
 actual failed-Start trial подтверждает штатный joined cleanup после отказа
 нового executable из-за отсутствующего consumer: ten original replacements,
 selection/intent/floors/phase7 неизменны, first failure и guard/socket сохранены,
@@ -661,8 +663,10 @@ bundle/pin/history/reference inputs через настоящие Enrollment/Rel
 command-file reading не доказывает root-owned custody. Новая runtime
 composition начальной остановленной установки, read-only inspection и bounded
 initial stopped recovery имеют новые consumers; successor transition имеет
-публичную command composition, но accepting installed runtime и successor
-recovery пока отсутствуют. Их компонентные проверки не доказывают принятую native установку.
+публичную command composition; bounded independently admitted installed startup
+выполняет genuine Source refresh и qualified permission bootstrap. Successor
+recovery имеет собственные bounded consumers; полная interruption matrix и
+installed acceptance остаются отдельными обязательствами.
 Старый `internal/endpoint/runtimeplan` остаётся независимым владельцем
 predecessor consumers; его импорт в новый путь запрещён.
 
