@@ -184,7 +184,13 @@ func TestSupervisorRevokesAllBeforeJoiningBlockedJob(t *testing.T) {
 	t.Cleanup(func() { job.Retire(); _ = job.Finish(nil) })
 	go func() { done <- supervisor.Close() }()
 	<-second.Context().Done()
-	if second.Check() == nil || job.Context().Err() == nil {
+	// One cancelled lease does not mean the generation-wide revoke loop has
+	// finished. Observe its synchronous latch before checking the blocked Job;
+	// Close must still retain that Job until its original physical join.
+	supervisor.mu.Lock()
+	jobCancelled := job.Context().Err() != nil
+	supervisor.mu.Unlock()
+	if second.Check() == nil || !jobCancelled {
 		t.Fatal("sibling waited for another Job join before revoke")
 	}
 	select {
