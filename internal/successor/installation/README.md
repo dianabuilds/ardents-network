@@ -99,8 +99,12 @@ inspection и independent staged-generation matching под тем же private 
 `start_barrier_linux.go` отдельно допускает Installation selection; frame не
 получает authority из schema или digest. Отдельные корневые frame-файлы удалены;
 точный byte oracle и отказы сохранены у completion и native barrier.
-Read-only physical files остаются в `installed_files_linux.go`:
-их использует и non-root startup, который не получает writer lease.
+Read-only physical files остаются в `installed_files_linux.go`: original
+file/directory retention, bounded reads и sealed-generation observations.
+Shared account/mutable-root и exact fixed-resource integrity policy находится
+в `installed_inspection_linux.go`; root inspection/recovery и non-root startup
+используют её через собственные независимые observations. Non-root startup
+не получает writer lease. Policy locality не меняет original checks или ordering.
 
 Такое объединение следует state/lifecycle ownership: отдельный phase helper
 не получает самостоятельного владельца или пакета. Файл может быть длинным,

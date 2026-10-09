@@ -25,6 +25,9 @@
 // manager observation and Root completion exchange. Its bounded Source/permission
 // consumer establishes no private Service readiness.
 //
+// Native read observations and shared installed-integrity policy remain separate
+// responsibilities, consumed through each original root or non-root lifetime.
+//
 // Component checks, detached observations and prepared generations establish
 // neither full interrupted-start coverage nor installed/privacy qualification.
 package installation

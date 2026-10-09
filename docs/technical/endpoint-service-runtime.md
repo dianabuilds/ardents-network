@@ -29,7 +29,12 @@ is manufactured. Unsupported native operations
 share `platform_refusal_other.go`, preserving their existing no-effect refusals.
 This source layout changes no accepted bytes, authorization, effect ordering or
 physical ownership; distinct replacement, recovery and startup lifetimes remain
-with their original owners.
+with their original owners. Native root/lease and private recovery-record custody
+reside in installation_root_linux.go. Shared account/mutable-root and fixed-resource
+integrity policy resides in installed_inspection_linux.go, while installed_files_linux.go
+retains native read/retention and sealed-generation observations. Root inspection,
+recovery and non-root startup each retain independent observations; shared policy
+code neither lends the root writer lease to startup nor grants recovery authority.
 
 
 The following bounded command contract selects ADR-0119's installation

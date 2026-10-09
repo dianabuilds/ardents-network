@@ -133,9 +133,11 @@ initial lease creation, retained existing-root opening, repeated original
 observations and private recovery-record sync/create/remove. `installedRoot`
 keeps that original writer lease and file observations together; recovery owns
 effect admission. `installed_inspection_linux.go` separately owns public Check,
-selected-generation inspection and independent staged-generation matching.
-Non-root startup retains its own independent file observations without this
-writer. The related native root-custody tests are collected with their resource
+selected-generation inspection, independent staged-generation matching and
+shared account/mutable-root and exact fixed-resource integrity policy. Native
+read/retention and sealed-generation observations stay in installed_files_linux.go.
+Root inspection/recovery and non-root startup consume the same policy through
+their own independent observations; startup has no writer lease. The related native root-custody tests are collected with their resource
 owner; this locality changes no lease, guard, record or completion authority.
 
 The original successor barrier synchronizes a start intention before contacting
