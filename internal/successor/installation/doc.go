@@ -30,7 +30,10 @@
 // original inode after all nine fixed records and complete candidate images.
 // Original intent supplies complete selection preimages; observed bytes never
 // become a trusted pointer. Fresh proofs, quiescence and original record resync
-// precede repair. Reload prefixes require full candidate selection/all records
+// precede repair. Exact fixed completion permits independently matched complete
+// predecessor or candidate loaded configuration; stopped completion requires
+// candidate only. These observations grant no selection or execution authority.
+// Reload prefixes require full candidate selection/all records
 // and independently retained loaded configuration/quiescence, separate from
 // original process custody. Existing stopped completion resyncs without
 // reload/Stop/ACK replay. Component verification

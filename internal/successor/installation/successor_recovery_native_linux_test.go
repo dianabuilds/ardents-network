@@ -1290,11 +1290,22 @@ func reloadTypedFixture(t *testing.T, request installationRequest, digest string
 	return unit, service
 }
 
-func TestInstallationNativeReloadConfigurationMatchPreservesPhase(t *testing.T) {
+func TestInstallationNativeRecoveryConfigurationMatchPreservesPhase(t *testing.T) {
 	t.Parallel() // Independent private filesystem/typed observations; no manager effects.
-	for _, phase := range []int{5, 6, 7} {
+	for _, admission := range []struct {
+		phase                              int
+		fixedComplete, previous, candidate bool
+	}{
+		{3, false, true, false},
+		{4, true, true, true},
+		{5, true, true, true},
+		{5, false, true, false},
+		{6, true, true, true},
+		{7, true, false, true},
+	} {
+		phase := admission.phase
 		for _, image := range []string{"previous", "candidate", "foreign", "running"} {
-			t.Run(fmt.Sprintf("%d-%s", phase, image), func(t *testing.T) {
+			t.Run(fmt.Sprintf("%d-%t-%s", phase, admission.fixedComplete, image), func(t *testing.T) {
 				t.Parallel()
 				// This pure rule consumes only detached declarations/selections.
 				// Actual journal, inode and manager custody have separate probes.
@@ -1305,7 +1316,7 @@ func TestInstallationNativeReloadConfigurationMatchPreservesPhase(t *testing.T) 
 				previous := generationSelection{GenerationDigest: digestHex([]byte("previous configuration"))}
 				candidate := generationSelection{GenerationDigest: digestHex([]byte("candidate configuration"))}
 				r := &successorRecoveryNative{intent: successorTransitionIntent{Previous: previous, Candidate: candidate, Request: request}, previous: inspectedGeneration{request: request, selected: previous}, checked: inspectedGeneration{request: request, selected: candidate}}
-				r.inventory = map[string]bool{"0006.json": phase >= 6, "0007.json": phase >= 7}
+				r.inventory = map[string]bool{"0004.json": admission.fixedComplete, "0006.json": phase >= 6, "0007.json": phase >= 7}
 				digest := r.intent.Previous.GenerationDigest
 				if image == "candidate" {
 					digest = r.intent.Candidate.GenerationDigest
@@ -1319,7 +1330,7 @@ func TestInstallationNativeReloadConfigurationMatchPreservesPhase(t *testing.T) 
 				}
 				owned := &successorPreparation{previous: r.previous, recovery: r}
 				_, got, err := owned.matchQuiescentConfiguration("255.4", unit, service)
-				want := (image == "previous" && phase < 7) || (image == "candidate" && phase >= 6)
+				want := (image == "previous" && admission.previous) || (image == "candidate" && admission.candidate)
 				if want && (err != nil || got != digest) {
 					t.Fatal("exact configuration refused", got, err)
 				}

@@ -273,6 +273,12 @@ Headless/Source declarations, consumed by actual byte-authentication commands.
 These rules use the selected Linux path grammar independently of the checking
 host, without importing old runtime parsers or opening credentials. New initial provisioning and read-only inspection have actual command composition; bounded initial recovery retains exact owned provenance and obtains new proofs before prefix repair; successor transition has a genuine public command consumer, with independently admitted bounded Source/permission startup; complete interrupted successor recovery remains unimplemented; terminal completion recovery now independently matches fresh proofs and original process/removal provenance; complete staged-prefix recovery separately retains a sealed Snapshot, exact phase journal and optional independently observed replacement record-group prefix before fresh proofs, original predecessor join and guarded start; complete sealed preimages, ordered same-inode torn fixed copies with all nine records and pre-proof actual quiescence remain Installation decisions;
 exact fixed-resources-replaced completion before selection requires all nine original records and complete candidate images, with pre-proof quiescence even for unchanged static bytes and original completion-record resync after fresh proofs;
+after that durable completion, actual loaded configuration may exactly match
+the complete predecessor or candidate, independently of pending selection;
+fresh manager retention can load candidate bytes after original reference loss.
+Earlier mixed fixed-copy prefixes still require predecessor configuration,
+and stopped completion requires candidate only. No loaded fact grants Release,
+pointer repair or Start authority;
 publishing-selection separately admits only original intent-bound selection images and original provenance after all nine fixed records and complete candidate files, retaining pre-proof quiescence and original intention resync; pending selection bytes never become a trusted generation pointer;
 exact reload/stopped prefixes require full candidate selection and all ten records, independently retained actual loaded configuration and quiescence, separate from original predecessor process custody; fresh-proof continuation resyncs existing stopped completion without reload/Stop/ACK replay;
 Initial preparation, generation-access promotion, selection publication, reload,

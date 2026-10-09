@@ -201,7 +201,13 @@ proofs и original record/directory resync остаются обязательн
 Exact `0004.json` (`fixed-resources-replaced`) также допускается до selection:
 все девять original records и complete candidate bytes обязательны. Даже если
 static bytes двух поколений совпали, эта phase требует actual quiescence до
-Release composition. После fresh proofs и повторных observations исходный
+Release composition. С этой durable completion actual loaded configuration
+может точно совпадать с complete predecessor либо candidate: после смерти
+исходного caller новый manager reference может загрузить уже заменённый unit.
+Все девять complete candidate images и original records проверяются до этого
+match; pending selection не становится authority. До completion этот путь
+по-прежнему требует predecessor configuration; `0007` требует только candidate.
+После fresh proofs и повторных observations исходный
 completion record синхронизируется повторно без перезаписи или смены inode.
 Missing intention, incomplete inventory/bytes, first error и selection phase
 отказывают. Эти filesystem механизмы не доказывают positive managed startup/recovery.

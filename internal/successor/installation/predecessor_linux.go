@@ -326,7 +326,11 @@ func (owned *successorPreparation) matchQuiescentConfiguration(version string, u
 	if owned == nil {
 		return installationRequest{}, "", ErrInput
 	}
-	if owned.recovery != nil && owned.recovery.inventory["0006.json"] {
+	// Fresh manager retention can load candidate unit bytes after the original
+	// reference dies, before selection or reload completes. Exact fixed completion
+	// already requires all nine original records and complete candidate images.
+	// This matches loaded facts only; fresh proofs still precede every effect.
+	if owned.recovery != nil && (owned.recovery.inventory["0004.json"] || owned.recovery.inventory["0006.json"]) {
 		candidate := owned.recovery.checked
 		err := verifyQuiescentEndpointProperties(version, unit, service, candidate.request, candidate.selected.GenerationDigest)
 		if err == nil {

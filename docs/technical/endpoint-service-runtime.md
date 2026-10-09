@@ -438,6 +438,13 @@ original provenance resync still precede every repair. Exact 0004
 `fixed-resources-replaced` also admits continuation before selection, requiring
 all nine original records and complete candidate images. It requires actual
 quiescence even when predecessor and candidate static bytes are identical. The
+loaded configuration may match complete predecessor or candidate after that
+durable fixed completion: fresh unit retention can load candidate bytes when
+the original reference dies before selection or reload. All nine original
+records and complete candidate files precede that match; pending selection
+grants no authority. Earlier mixed prefixes still require predecessor
+configuration, and stopped completion requires candidate only. Fresh proofs
+remain mandatory before pointer repair, reload or Start. The
 original completion record is resynchronized without rewriting or replacing its
 inode after fresh proof admission and repeated physical observations. Missing
 intention, incomplete inventory/images or a recorded first failure refuse.
