@@ -235,6 +235,9 @@ func TestInstalledExecutionStartup(t *testing.T) {
 		candidateResources[name] = append([]byte(nil), body...)
 	}
 	candidateResources["ardents-endpoint.service"] = append([]byte("# signed successor fixture\n"), candidateResources["ardents-endpoint.service"]...)
+	// Exercise a signed static-resource successor as well as the Endpoint
+	// template: its distinct manifest requires an actual fixed-file replacement.
+	candidateResources["50-ardents-text.rules"] = append([]byte("// signed successor fixture\n"), candidateResources["50-ardents-text.rules"]...)
 	candidate, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 2, candidateResources, rootAuthority, 2, 2)
 	candidateRequest := strings.Replace(request, quoted(bundle), quoted(candidate), 1)
 	candidateRequest = strings.Replace(candidateRequest, ",\"manifest_sha256\":"+quoted(pin), "", 1)
