@@ -81,7 +81,7 @@ and storage. Add no generic application or persistence framework.
 
 Acceptance uses independent synthetic signed fixtures, real temporary files,
 process leases/crash/reopen and compiled CLI; bounded local OTLP capture checks
-actual protobuf. Run quick/full repository gates and pinned Go1.27.1 Linux
+actual protobuf. Run quick/full repository gates and pinned Go1.27.2 Linux
 behavior/race profile. Preserve failed evidence/source identities in an external
 checkpoint. No complete-network or C0 qualification claim follows.
 

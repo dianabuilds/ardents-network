@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.27.1-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195
+FROM golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61
 ENV GOENV=off GOTOOLCHAIN=local GOTELEMETRY=off GOFLAGS=-mod=readonly
 RUN apt-get update && apt-get install -y --no-install-recommends \
     make git ca-certificates gcc libc6-dev pkg-config dpkg util-linux \
@@ -9,6 +9,8 @@ WORKDIR /build
 COPY Makefile go.mod go.sum ./
 COPY tests/profiles/ ./tests/profiles/
 COPY scripts/diagnostics/install-powershell.sh ./scripts/diagnostics/install-powershell.sh
+COPY scripts/install-quality-analyzer.go ./scripts/install-quality-analyzer.go
+COPY scripts/check-tools.go ./scripts/check-tools.go
 RUN make tools-install DIAGNOSTIC_TOOLS=1
 RUN go mod download && go mod verify
 COPY scripts/diagnostics/diagnostic-command.go scripts/diagnostics/diagnostic-capture.go scripts/diagnostics/diagnostic-view.go scripts/diagnostics/diagnostic-report.go scripts/diagnostics/diagnostic-monitor.go scripts/diagnostics/diagnostic-monitor-view.go scripts/diagnostics/diagnostic-monitor-collector.go scripts/diagnostics/diagnostic-log-retention.go scripts/diagnostics/diagnostic-evidence.go ./

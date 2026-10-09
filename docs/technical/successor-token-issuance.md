@@ -103,6 +103,6 @@ rule; initialization checks destinations before creating persistent state.
 | Shared lifecycle/durability | successor Admission/Issuance filesystem | faults, pending/partial, links/substitution, lease/crash |
 | Actual operation | ardents-next composition | compiled issue/retry/export/conflict/collector OTLP |
 
-Before commit: quick/full checks and pinned Go1.27.1 Docker Linux race/process
+Before commit: quick/full checks and pinned Go1.27.2 Docker Linux race/process
 profile, with real files and independent crypto client. Preserve every attempt
 and source identity outside Git; scoped dev commit preserves unrelated files.

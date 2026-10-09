@@ -332,7 +332,7 @@ in the package map with the owning implementation change.
    the Route owner before changing the algorithm.
 
 5. **Source and build descriptions: corrected without rewriting historical
-   evidence.** The protected owner now references the current Go 1.27.1
+   evidence.** The protected owner now references the current Go 1.27.2
    selection and separates Carrier family from exact-version dependency
    acceptance. The earlier extraction record marks its old graph as a baseline,
    removes current dependence on the absent `route/credential`, describes

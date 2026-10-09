@@ -172,6 +172,7 @@ standalone-staticcheck-linux:
 # Ignored entrypoints are separate programs; select-pr owns two files together.
 	staticcheck ./scripts/check-deadcode.go
 	staticcheck ./scripts/check-tools.go
+	staticcheck ./scripts/install-quality-analyzer.go
 	staticcheck ./scripts/enrollment-artifact-name.go
 	staticcheck ./scripts/prepare-qualification-alpha-catalog.go
 	staticcheck ./scripts/prepare-qualification-alpha-evidence.go
@@ -243,13 +244,14 @@ tools-install:
 	go build -trimpath -buildvcs=false -o "$(DIAGNOSTIC_PARSER_ROOT)/pprof$(HEADLESS_SUFFIX)" cmd/pprof
 	go build -trimpath -buildvcs=false -o "$(DIAGNOSTIC_PARSER_ROOT)/trace$(HEADLESS_SUFFIX)" cmd/trace
 ifneq ($(DIAGNOSTIC_PARSERS_ONLY),1)
-	go install honnef.co/go/tools/cmd/staticcheck@2026.2.1
+	go run ./scripts/install-quality-analyzer.go -tool staticcheck -cache "$(QUALITY_CACHE_ROOT)" -output "$(DIAGNOSTIC_PARSER_ROOT)"
 	go install golang.org/x/vuln/cmd/govulncheck@v1.8.0
 	go install golang.org/x/tools/cmd/deadcode@v0.50.0
 ifeq ($(DIAGNOSTIC_TOOLS),1)
 	go install github.com/go-delve/delve/cmd/dlv@v1.27.2
-	go install github.com/kisielk/errcheck@v1.20.0
+	go run ./scripts/install-quality-analyzer.go -tool errcheck -cache "$(QUALITY_CACHE_ROOT)" -output "$(DIAGNOSTIC_PARSER_ROOT)"
 	sh ./scripts/diagnostics/install-powershell.sh
+	go run ./scripts/check-tools.go -diagnostic
 endif
 endif
 

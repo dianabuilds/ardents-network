@@ -593,7 +593,7 @@ authorization to begin its later security, concurrency, or wire tracks.
 `hosting-budget-linux` runs `make hosting-check`: isolated durable Hosting and
 test-only Admission/Hosting I/O composition and compiled command lifecycle with race checks on Linux amd64.
 It covers shared persisted samples, deadline/cancellation handoff, independent
-concurrent owners, join-before-release, genuine token spending and replay refusal. The pinned Go 1.27.1
+concurrent owners, join-before-release, genuine token spending and replay refusal. The pinned Go 1.27.2
 bookworm image already selected for diagnostics can provide this component
 environment with read-only sources and caches outside Git. It requires actual
 proc/sys counters, loopback, flock, rename, fsync and a race-capable C compiler;
@@ -1054,7 +1054,7 @@ no build-error-based filtering or passing platform skip supplies that membership
 The separate `issuer-key-material-linux` profile runs `make issuance-check`:
 real RSA keys, owner-only files, exclusive lifetime leases, fault/crash/reopen,
 compiled initialize/inspect/export commands, Admission SPKI compatibility and
-actual OTLP. It uses the same pinned Go 1.27.1 bookworm image and shares the
+actual OTLP. It uses the same pinned Go 1.27.2 bookworm image and shares the
 immutable command build. It requires proc/sys/loopback for the existing command
 tests. Windows cannot replace Linux acceptance; filesystem tests do not qualify
 power loss, full storage rollback or network security.
@@ -1066,7 +1066,7 @@ crash/reopen and concurrency tests. Compiled `ardents-next` commands exercise
 holder/allocation/current-issuer/receiver operations, SIGINT with inherited stdin,
 exact replay and refill, plus actual Hosting budget and OTLP checks. The checked
 profile is `admission-ledger-linux`; the Docker acceptance image is
-`golang:1.27.1-bookworm@sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195`.
+`golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61`.
 Command tests share one immutable compiled executable while keeping separate
 mutable roots. Linux prerequisites cannot be replaced by a Windows passing
 result. These tests provide no live issuer/State, power-loss storage or whole
@@ -1079,7 +1079,7 @@ confirmation, quota retention, journal pairs/floors, faults, crash/replay and OT
 CIRCL uses the populated reviewed module cache. No power-loss/rollback claim.
 
 The active `issuer-profile-linux` profile uses `make issuer-profile-check` on the
-pinned Go 1.27.1 Linux image. It exercises Admission, its Issuerprofile/Issuance/Issuer children,
+pinned Go 1.27.2 Linux image. It exercises Admission, its Issuerprofile/Issuance/Issuer children,
 Nodeidentity and compiled ardents-next with real files, lease/crash processes,
 race detection, actual OTLP and the prior durable token cycle. It also mutation-
 fuzzes FuzzIssuerProfile and FuzzNodeIdentityPEM for 30 seconds each, two workers

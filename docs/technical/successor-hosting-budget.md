@@ -45,7 +45,7 @@ Acceptance requires arithmetic and continuity cases, shared-process concurrency,
 release ambiguity, actual filesystem failures, crash retention, real Linux
 counters and CLI lifecycle, refusal of both foreign formats and OTLP privacy.
 Run Windows quick/full gates and Linux Hosting behavior/race in the pinned
-Go 1.27.1 image. Missing Linux prerequisites fail; no installed Endpoint, Node
+Go 1.27.2 image. Missing Linux prerequisites fail; no installed Endpoint, Node
 switch-over or C0 qualification is claimed.
 
 ## Command growth policy

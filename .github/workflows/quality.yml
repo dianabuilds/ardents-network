@@ -30,7 +30,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.27.1
+          go-version: 1.27.2
           cache: true
       - name: Select affected tests and consumers
         id: selection
@@ -86,7 +86,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.27.1
+          go-version: 1.27.2
           cache: true
       - name: Install standard Go diagnostic parsers
         if: matrix.package == 'github.com/dianabuilds/ardents-network/internal/architecture'
@@ -147,7 +147,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.27.1
+          go-version: 1.27.2
           cache: true
       - name: Install pinned quality tools
         run: make tools-install

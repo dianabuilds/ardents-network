@@ -59,7 +59,7 @@ recognized state directory and its descendants, with a second check at export.
 | Independent root format | approved slice contract | reciprocal legacy refusal without effects |
 | Bounded export and telemetry | successor command composition | real CLI exact retry/conflict, OTLP payload and failed collector |
 
-Selected execution: host quick/full checks and pinned Go1.27.1 Linux Docker
+Selected execution: host quick/full checks and pinned Go1.27.2 Linux Docker
 behavior/race/process profile with real files and compiled command, proc/sys/lo
 available for existing command tests. Fault controls are private test inputs;
 no mock supplies missing production behavior. Evidence and source identities

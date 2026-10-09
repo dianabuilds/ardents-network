@@ -56,7 +56,7 @@ bounds the handshake. Listener idle time consumes no peer handshake allowance;
 no HELLO, admission, parent or authority deadline is extended.
 Use the exact Node/role key from authenticated State, not Web PKI or DNS.
 
-Use the Go 1.27.1 build baseline selected by the
+Use the Go 1.27.2 build baseline selected by the
 [dependency register](../development/dependencies.md), which supersedes the
 Go 1.26.8 successor baseline. Historical component evidence retains its actual
 compiler. Fix TLS key exchange to X25519MLKEM768 and

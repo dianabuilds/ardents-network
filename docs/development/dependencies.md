@@ -1,5 +1,136 @@
 # Dependency register
 
+## Go and HTTP security renewal
+
+Reviewed 2026-10-09 after the fresh repository vulnerability gate found the
+2026-10-08 advisories in Go 1.27.1 and x/net v0.59.0. Select the fixing Go
+1.27.2 patch and x/net v0.60.0 before further integration. This supersedes the
+current compiler/container pins below, while historical receipts retain their
+actual compiler. It changes no domain authority, native platform admission,
+Carrier set or persisted grammar. The earlier Installation process-cut receipts
+are evidence of their original artifacts; renewed artifacts require fresh gates
+and native evidence before candidate acceptance.
+
+Primary sources accessed 2026-10-09: [Go release history](https://go.dev/doc/devel/release#go1.27.0),
+[Go security policy](https://go.dev/doc/security/policy),
+[x/net source](https://go.googlesource.com/net/+/refs/tags/v0.60.0),
+and the reviewed Go database records
+[GO-2026-6617](https://pkg.go.dev/vuln/GO-2026-6617),
+[GO-2026-6613](https://pkg.go.dev/vuln/GO-2026-6613),
+[GO-2026-6612](https://pkg.go.dev/vuln/GO-2026-6612),
+[GO-2026-6611](https://pkg.go.dev/vuln/GO-2026-6611),
+[GO-2026-6610](https://pkg.go.dev/vuln/GO-2026-6610),
+[GO-2026-6608](https://pkg.go.dev/vuln/GO-2026-6608),
+[GO-2026-6607](https://pkg.go.dev/vuln/GO-2026-6607),
+[GO-2026-6605](https://pkg.go.dev/vuln/GO-2026-6605),
+[GO-2026-6604](https://pkg.go.dev/vuln/GO-2026-6604), and
+[GO-2026-6603](https://pkg.go.dev/vuln/GO-2026-6603).
+Their affected ranges name Go 1.27.2 and, where applicable, x/net v0.60.0 as
+fixing versions. These findings are fixed by version selection rather than
+waived on severity or conservative call-graph traces. Other imported-package,
+module-only and build/tool findings still require their own current assessment.
+
+Go's supported 1.27 branch retains its BSD license and security fix path;
+upstream supports the two most recent major branches. x/net retains its
+Go-authors BSD license and the same Go security reporting/fix path. Existing
+HTTP/TLS consumers keep ownership; engineering owns compiler and tool renewal.
+The x/net fixing tag is
+commit `18ece0ce30bc35fa81fe72028bf309bb3ff3f4a5`, with module sum
+`h1:79p50tfZlm0J9YfoDsSi639qSXNGVwEzOPLCxM2FsYU=` and go.mod sum
+`h1:2DA/G1UfVbCpQPeWTmMPGY7Cs2PkBkwu743bVX5PIVg=`. Its Go 1.26 minimum and
+x/crypto v0.57.0, x/sys v0.48.0, x/term v0.46.0 and x/text v0.42.0 requirements
+match the existing graph; no new runtime module or HTTP protocol is selected.
+Public module downloads retain proxy and sum.golang.org authentication.
+
+The official Go 1.27.2 Bookworm image index is
+`sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61`;
+its Linux amd64 manifest is
+`sha256:55395706e9703db746cc507abfc4eb2aea75918f8a8024e4848e2cb81004f5ad`,
+from docker-library/golang commit
+`8380885ec449224702b989d8792d2e1470a46e89`. Exact compiler, OS packages,
+module/cache integrity and artifact scans remain build evidence. CI, registered
+profile prerequisites, diagnostics image and tool-build guards follow this
+patch. Install/rebuild quality and diagnostic parser tools only through explicit
+`make tools-install`; its `GOTOOLCHAIN=go1.27.2` bootstrap uses the authenticated
+Go toolchain mechanism. Normal checks keep `GOTOOLCHAIN=local` and install nothing.
+The renewed candidate must reproduce support/closure review, source and binary
+scans, full regression and applicable native startup/recovery; selection alone
+does not make those checks pass. The failed fresh gate remains retained.
+
+
+### Staticcheck compiler-format compatibility candidate
+
+Reviewed 2026-10-09 after the Go 1.27.2 full gate reproduced
+[upstream issue 1832](https://github.com/dominikh/go-tools/issues/1832).
+Rebuilding Staticcheck 2026.2.1 with the new compiler does not update its
+x/tools decoder, which accepts export versions only through 4; Go 1.27.2 emits
+version 5. The required check remains enabled and its failure is retained.
+
+Select a bounded development-tool compatibility candidate from
+[upstream PR 1834](https://github.com/dominikh/go-tools/pull/1834), accessed
+2026-10-09: `github.com/stefanb/go-tools` revision
+`a0a7f6a7b6af6eaa66e22ff3a5f78725e27decf2`, authenticated module version
+`v0.7.0-0.dev.0.20261008215554-a0a7f6a7b6af`, sum
+`h1:3rKlGcVFB2S4ULUqeV8rT12r7zFyZiWuuN8QTDTXOsg=` and go.mod sum
+`h1:xG1Q4n+mg3bKZrO6RWFA9jFlkqplflmDRHGeuexiLDs=`. This is an open
+upstream proposal, not a released or upstream-accepted Staticcheck version.
+The ten-file delta from v0.8.1 includes the already upstream nilness fixes and
+their regression inputs, devel version metadata, CI, x/tools v0.51.0,
+x/mod v0.41.0, x/sync v0.23.0 and the explicit local call classification that
+replaces removed internal linknames. The decoder supports version 5. The
+remaining source and BSD license are unchanged; source comparison and actual
+analyzer tests, scans and both-platform gates must qualify this candidate.
+
+Engineering owns this temporary downstream tool build and its replacement.
+Build it only through explicit `make tools-install`, with its generated build
+module and all caches outside the repository. The product module is unchanged.
+The normal guard requires the exact replacement module/version/sum, x/tools
+version and fixing compiler; a released v0.8.1 binary cannot satisfy that guard.
+Retain actual build metadata, source checksums, behavior and vulnerability
+receipts. Replace the candidate with an authenticated upstream fixing release
+once reviewed; if this source cannot be maintained or qualified, it remains an
+unfinished gate prerequisite. No analyzer disablement, older vulnerable compiler,
+severity waiver or claimed independent validation is selected.
+
+### Errcheck compiler-format compatibility build
+
+Reviewed 2026-10-09 after the rebuilt diagnostic image's version-only doctor
+passed but its actual errcheck invocation refused even an imported `fmt` package.
+The selected upstream v1.20.0 and current upstream main still select x/tools
+v0.44.0, whose export decoder supports only versions through 4. The fixing
+compiler emits version 5; preserve that failed operational receipt.
+
+Keep the unchanged MIT-licensed [errcheck v1.20.0 source](https://github.com/kisielk/errcheck/tree/v1.20.0),
+module sum `h1:9rwHBNKzd4wkDWcROy3DvFGNqEPlkxBg305rvk7HabI=` and go.mod sum
+`h1:O+f80MKNwX8Oor2jwgpeQ9An7uJm+hRSgT+h22knRJU=`. Build its diagnostic
+command in a separate external module selecting the already reviewed x/tools
+v0.51.0, with its x/mod v0.41.0 and x/sync v0.23.0 graph. This changes tool
+dependencies, not errcheck source, its error-checking policy or product go.mod.
+It is an engineering-owned compatibility build, not an upstream errcheck release.
+Only explicit `make tools-install DIAGNOSTIC_TOOLS=1` installs it. The same
+closed analyzer builder installs Staticcheck and errcheck; callers choose one
+of those exact reviewed definitions, never an arbitrary module or command.
+
+Require exact source/compiler/dependency metadata, upstream behavior tests,
+actual positive and refusal invocations, current vulnerability review and the
+real rebuilt image/doctor before acceptance. Diagnostic-tool guard must reject
+the earlier v0.44.0 build. Replace the override with a reviewed upstream fixing
+release when available; do not disable the analyzer or downgrade the compiler.
+
+The unchanged upstream test suite also fails under Go 1.27.2: one failure-message
+format uses `%q` for integer exit status, and the analyzer matrix requests the
+removed `gotypesalias=0` setting. Preserve that failure. An independently compared
+external source copy changes only that message to `%v` and runs all existing
+analyzer fixtures with the selected compiler's default alias implementation;
+production source and assertions remain unchanged. Its full race suite and
+module verification pass. This is adapted upstream test evidence, not a pass of
+the unchanged suite or qualification of the unavailable legacy alias mode.
+Actual CLI controls separately accept checked errors and detect an unchecked
+error, blank error assignment and unchecked type assertion. The rebuilt image's
+eight Go tool binaries have current no-finding scan receipts; source integrity,
+continued maintenance and the temporary override's removal remain separate
+obligations. See [Go's GODEBUG history](https://go.dev/doc/godebug#go-127).
+
 ## Installation retained system-manager connection
 
 Reviewed 2026-10-08 for the native Installation owner. Select
@@ -145,6 +276,21 @@ contains an early missing-authority rejection (SHA256
 Reproduce with the closure command above, canonical `go build -trimpath
 -buildvcs=false`, and `govulncheck -mode=binary -show verbose` on each artifact;
 keep complete logs and artifact/source hashes outside Git.
+
+Reassessment on 2026-10-09 preserves those earlier failed binary receipts.
+The current [GO-2026-6443 record](https://pkg.go.dev/vuln/GO-2026-6443), modified
+2026-10-06, closes its 1.84 development interval at
+`1.84.0-dev.0.20260825144003-d5a41119e0e3`; selected release v1.84.0 is outside
+every current affected interval. The new canonical Go1.27.2 participant and
+tagged startup binaries still retain `http2Server.HandleStreams`, but current
+verbose binary scans report no affected symbols or imported packages. Their
+module-only OpenPGP finding remains separate: complete Linux/amd64
+`text_worker_installed` dependency/test closures with CGO off/on have no OpenPGP
+or gRPC xDS imports and no package/dependency errors. Normal-tag Windows/Linux
+closures were separately rechecked. This establishes scoped advisory
+applicability for those exact artifacts and closures, not general dependency
+safety or installed qualification; changed source, tags, compiler, versions or
+advisory ranges require renewed assessment.
 
 Updated closure releases were inspected on 2026-10-02:
 [OTLP schema v1.11.1](https://github.com/open-telemetry/opentelemetry-proto-go/releases/tag/v1.11.1),
@@ -946,8 +1092,8 @@ artifact qualification runner. Any version or runtime use repeats this review.
 
 | Tool | Version | Purpose |
 |---|---:|---|
-| Go | 1.27.1 | compiler, formatter, tests, vet |
-| Staticcheck | 2026.2.1 | additional correctness analysis |
+| Go | 1.27.2 | compiler, formatter, tests, vet |
+| Staticcheck | v0.8.1 with exact PR1834 compatibility source above | additional correctness analysis; temporary reviewed build candidate |
 | govulncheck | v1.8.0 | reachable Go vulnerability analysis |
 | deadcode | v0.50.0 (`golang.org/x/tools`) | reachability analysis for reviewed production code and test-only code |
 
@@ -957,8 +1103,8 @@ and quick-check targets never install or upgrade tools implicitly.
 ## Local diagnostic tools
 
 The engineering diagnostics owner is [local-diagnostics.md](local-diagnostics.md).
-The image uses Go 1.27.1 and the digest-pinned official Debian Bookworm Go image
-`sha256:69a7b9788769bec032d238959b61854e9ae87f57be9029ec04e9885fabf99195`.
+The image uses Go 1.27.2 and the digest-pinned official Debian Bookworm Go image
+`sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61`.
 The existing accepted quality tools retain their reviewed pins; normal gates do
 not install additional tools. Explicit `make tools-install DIAGNOSTIC_TOOLS=1`
 adds **Delve v1.27.2**, module `github.com/go-delve/delve/cmd/dlv`, MIT, solely

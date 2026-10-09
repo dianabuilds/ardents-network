@@ -6,6 +6,8 @@
 !tests/profiles/
 !tests/profiles/**
 !scripts/
+!scripts/install-quality-analyzer.go
+!scripts/check-tools.go
 !scripts/diagnostics/
 !scripts/diagnostics/diagnostic-*.go
 !scripts/diagnostics/install-powershell.sh

@@ -86,7 +86,7 @@ operation retains its primary result and every owner cleanup outcome.
 | Offline binding preparation | successor Admission ledger binding | State digest/duty/authority preserved, exact independently pinned keys |
 | Real composition | successor admission/issuer and ardents-next | compiled import/profile/binding/debit/issue/replay and OTLP |
 
-Acceptance requires host quick/full gates, pinned Go1.27.1 Linux behavior/race/
+Acceptance requires host quick/full gates, pinned Go1.27.2 Linux behavior/race/
 process, bounded PEM/profile fuzzing, prior token-issuance regressions, all-attempt
 source checkpoint and scoped local dev commit. This is not power-loss/full-
 rollback or network qualification evidence.
