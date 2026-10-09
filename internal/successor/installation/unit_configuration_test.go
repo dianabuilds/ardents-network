@@ -128,3 +128,19 @@ func TestGenerationWriteAllowancesRefuseImmutableAncestors(t *testing.T) {
 		t.Fatal("unit path control character accepted")
 	}
 }
+
+func TestUnitConfigurationRetainsTemplateBeforeWritePolicyRefusal(t *testing.T) {
+	request, err := decodeInstallationRequest(requestFixture())
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.BundleRoot = "/permissions/private"
+	directory := "/installation/generations/" + strings.Repeat("01", 32)
+	weakened := strings.Replace(endpointTemplateFixture, "ProtectSystem=strict", "ProtectSystem=full", 1)
+	if body, err := renderEndpointUnit([]byte(weakened), request, directory); body != nil || err == nil || !strings.Contains(err.Error(), "template differs from its fixed contract") {
+		t.Fatal("template refusal no longer precedes write policy", err)
+	}
+	if body, err := renderEndpointUnit([]byte(endpointTemplateFixture), request, directory); body != nil || err == nil || !strings.Contains(err.Error(), "write allowance overlaps immutable or Release roots") {
+		t.Fatal("checked template bypassed immutable-root write refusal", err)
+	}
+}

@@ -10,13 +10,6 @@ import (
 
 type managerProperties = systemd.Properties
 
-// Request write-root admission stays with Installation. The fixed unit Module
-// receives detached expected facts, never the private request or live custody.
-func expectedUnit(request installationRequest) (endpointunit.Configuration, error) {
-	paths, err := writableDirectories(request)
-	return endpointunit.Configuration{InstallationRoot: request.InstallationRoot, WritePaths: paths}, err
-}
-
 func unitObservationError(err error) error {
 	if err == nil {
 		return nil

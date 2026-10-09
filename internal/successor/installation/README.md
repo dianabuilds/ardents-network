@@ -34,6 +34,14 @@ Installation — самостоятельный владелец внутри с
 для lease, staging и inspection: она не является request provenance.
 
 
+`unit/endpoint_template.go` проверяет closed template и его command paths до
+write-root admission, удерживает оригинальные immutable bytes и формирует unit
+из отдельно допущенных путей. Корневой `unit_configuration.go` собирает выбор
+writable roots, защиту immutable/Release roots и один expected Configuration
+для rendering и actual-manager predicates. Template, first-refusal order и
+write policy проверяются отдельными byte/refusal oracles; rendered bytes не
+выдают Release, manager, process или startup authority.
+
 Корень сохраняет Installation admission и владельцев транзакций. Portable
 `generation_assembly.go` собирает canonical immutable generation и замораживает
 его closed inventory перед native staging: binding, digests и detached bytes

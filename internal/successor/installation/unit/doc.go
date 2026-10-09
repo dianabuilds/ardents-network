@@ -1,4 +1,5 @@
-// Package unit verifies the fixed installed Endpoint and activation-socket
+// Package unit validates and retains the closed Endpoint template, renders
+// caller-admitted write paths, and verifies the fixed installed Endpoint and activation-socket
 // contracts against typed systemd observations. Fresh never-started, retained
 // quiescent and exact running invocation checks are distinct.
 // Failed-attempt termination is a separate cleanup observation; failed state

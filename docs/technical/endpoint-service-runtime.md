@@ -2,6 +2,14 @@
 
 ## Selected protected installation handoff
 
+The fixed Endpoint template is validated and retained by the separately owned
+Installation unit Module before the root admits writable directories. It renders
+only that admitted path projection; root unit_configuration.go owns immutable/Release
+root exclusion and supplies the same expected Configuration to manager checks.
+Original template bytes, command binding and first-refusal order remain fixed.
+Rendered configuration grants no Release, manager, process or startup authority.
+
+
 The following bounded command contract selects ADR-0119's installation
 boundary. The initial stopped provisioning, read-only integrity and installed
 startup consumers are implemented but not yet qualified on an admitted installed
