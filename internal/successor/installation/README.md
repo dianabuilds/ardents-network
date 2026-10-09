@@ -52,15 +52,20 @@ write policy проверяются отдельными byte/refusal oracles; r
 выдают Release, manager, process или startup authority.
 
 Корень сохраняет Installation admission и владельцев транзакций. Portable
-`generation_assembly.go` собирает canonical immutable generation и замораживает
+`generation_binding.go` собирает canonical immutable generation и замораживает
 его closed inventory перед native staging: binding, digests и detached bytes
-проверяются рядом, не в отдельном staging helper. Здесь же общий
+проверяются рядом с независимым чтением и проверкой того же closed binding.
+`inspection.go` сохраняет отдельный публичный read-only Check с собственным
+ограничением времени. Здесь же общий
 `recoverBoundGeneration` восстанавливает exact bound bytes по свежим proofs
 для initial и successor recovery; их intent admission, phase и native lifetime
 остаются у отдельных владельцев восстановления. `generation_authentication.go`
 собирает fresh-pair admission, complete Release floors и ограничения successor
 continuity; сохранённые local facts по-прежнему не создают private proofs или
-native custody. `intent_archive_linux.go` удерживает общую exact intent custody,
+native custody. `generation_authentication_linux.go` сохраняет private
+fresh-proof composition установленного successor только для его реального
+native consumer; проверки исходных floors предшествуют обеим fresh evaluations.
+`intent_archive_linux.go` удерживает общую exact intent custody,
 copy/sync/removal; initial и successor completion допускаются отдельными checks.
 Эти владельцы следуют ответственности и реальным callers, сохраняя
 принимающий контракт. `installation_transaction_linux.go`
@@ -72,8 +77,12 @@ seal/access и проверку original generation-file provenance при recov
 Это один владелец транзакции: проверка всех original handles и порядок их
 закрытия должны оставаться под исходным lease. Разделение файлов следует
 разным причинам меняться; отдельный phase package или shared lease не возникает.
+`request.go` содержит корневой Request consumer; `request_test.go` проверяет
+его декларации и исходную файловую custody, оставляя механизм в `request`.
+`platform_refusal_other.go` собирает единый no-effect native отказ на остальных
+платформах; compilation не расширяет поддерживаемую installation platform.
 `initial_preparation_linux.go` — initial
-preflight, account, preparation, fixed-resource publication и публикация stopped selection;
+request acquisition, preflight, account, preparation, fixed-resource publication и публикация stopped selection;
 `fixed_resource_creation_linux.go` — recorded birth, same-inode access promotion и retained fixed-file observations; `successor_replacement_linux.go` — original replacement
 records, допуск access/phase и mutation исходного fixed file, включая selection;
 `successor_transition_linux.go` — successor lifecycle, intent
@@ -753,7 +762,7 @@ Unknown/missing protection никогда не является принимаю
 | Coherent fresh pair | `internal/endpoint/installation/release_authentication.go` | Перепроверить по новому Enrollment/Release; private proofs вместо mutable public Decision |
 | Existing trust continuity | `successor_authentication_linux.go` | Portable rule; actual complete floors и binding constraints, никакого initial-pin bootstrap |
 | Request and declaration consistency | `request.go`, `internal/endpoint/runtimeplan` | Сохранить grammar/limits; отделить pure declarations от acquisition/credentials |
-| Frozen generation assembly | `generation_assembly.go`, `unit_rendering.go` | Portable deterministic bytes; actual inode/account facts проверяются native owner |
+| Frozen generation assembly | `generation_binding.go`, `unit_configuration.go` | Portable deterministic bytes; actual inode/account facts проверяются native owner |
 | Ownership and journal writes | `generation_ownership_linux.go`, `resource_creation_linux.go`, `resource_replacement_linux.go` | Native identity/durability; canonical records и переходы отдельно от syscalls |
 | Original process termination | `predecessor_linux.go` | Exact invocation + original pins, no replacement-generation completion |
 | Selection/reload/start/ACK | `transition_finishing_linux.go`, `start_guard_linux.go`, `start_completion_linux.go` | Самостоятельный transition lifetime, retained errors и explicit barrier |

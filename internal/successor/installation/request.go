@@ -50,18 +50,21 @@ func (r Request) BundleRoot() string {
 	}
 	return r.declared.BundleRoot
 }
+
 func (r Request) ManifestSHA256() string {
 	if r.declared == nil {
 		return ""
 	}
 	return r.declared.ManifestSHA256
 }
+
 func (r Request) ReleaseHistoryRoot() string {
 	if r.declared == nil {
 		return ""
 	}
 	return r.declared.ReleaseFloorRoot
 }
+
 func (r Request) ReferenceTime() time.Time {
 	if r.declared == nil {
 		return time.Time{}
@@ -73,6 +76,7 @@ func (r Request) ReferenceTime() time.Time {
 func decodeInstallationRequest(raw []byte) (installationRequest, error) {
 	return requestinput.DecodeDeclaration(raw)
 }
+
 func mutableRoots(plan requestinput.Headless) []string {
 	return requestinput.MutableRoots(plan)
 }

@@ -1,3 +1,4 @@
+// Fresh generation authorization and original installed continuity admission.
 package installation
 
 import (
@@ -24,6 +25,7 @@ var (
 )
 
 const programTarget = "ardents/linux-amd64/endpoint"
+
 const generationTarget = "ardents/linux-amd64/protected-endpoint"
 
 // Authorization retains two private fresh proofs and their exact generation

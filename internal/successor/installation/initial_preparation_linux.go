@@ -1,12 +1,9 @@
+// Initial preparation and stopped completion share one retained effect owner.
 package installation
 
 import (
 	"context"
 	"errors"
-	manageddirectory "github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
-	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"os"
 	"os/exec"
 	"os/user"
@@ -15,6 +12,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	manageddirectory "github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 )
 
 // One operation retains all journal/root borrowers before returning its kernel
@@ -480,4 +482,53 @@ func (owned *initialPreparation) publishInitialSelection(ctx context.Context, re
 		return err
 	}
 	return stage.fixedPhase(ctx, "0007.json", "installed-stopped")
+}
+
+func readProvisionRequest(ctx context.Context, filename string) (Request, error) {
+	if ctx == nil {
+		return Request{}, ErrInput
+	}
+	if err := observeInstallationPlatform(ctx); err != nil {
+		return Request{}, err
+	}
+	request, err := ReadOwnedRequest(ctx, filename, true)
+	if err != nil {
+		return Request{}, err
+	}
+	if err := preflightInitialEffects(ctx, request); err != nil {
+		return Request{}, err
+	}
+	return request, nil
+}
+
+func provisionInitial(ctx context.Context, request Request, authorization Authorization) (result ProvisionResult, returnedErr error) {
+	if ctx == nil {
+		return ProvisionResult{}, ErrInput
+	}
+	if err := observeInstallationPlatform(ctx); err != nil {
+		return ProvisionResult{}, err
+	}
+	owned, err := prepareInitialNative(ctx, request, authorization)
+	if err != nil {
+		return ProvisionResult{}, err
+	}
+	defer func() {
+		returnedErr = errors.Join(returnedErr, ctx.Err())
+		if returnedErr != nil {
+			owned.terminal = returnedErr
+			owned.stage.retainFailure(ctx, returnedErr)
+			owned.terminal = errors.Join(owned.terminal, owned.journal.RecordFailure(ctx, returnedErr))
+		}
+		returnedErr = errors.Join(returnedErr, owned.close(), ctx.Err())
+		if returnedErr != nil {
+			result = ProvisionResult{}
+		}
+	}()
+	if err := owned.observe(ctx, request); err != nil {
+		return ProvisionResult{}, err
+	}
+	if err := owned.observeStoppedInstallation(ctx, request); err != nil {
+		return ProvisionResult{}, err
+	}
+	return ProvisionResult{Status: "installed-stopped", GenerationDigest: owned.stage.selected.GenerationDigest}, nil
 }

@@ -302,7 +302,7 @@ reside together in `successor_replacement_linux.go`. Selection keeps its distinc
 preimages, access and phase under the same transaction; this relocation changes
 no admitted bytes, effects, lease or physical close.
 Shared fresh-proof reconstruction of recovered bound generation bytes belongs
-with immutable generation assembly in `generation_assembly.go`. Initial and
+with closed generation construction and inspection in `generation_binding.go`. Initial and
 successor recovery retain distinct intent/phase admission, original native
 custody and cleanup; shared byte construction grants none of those rights.
 Closed fixed-resource paths, generation-byte images and the canonical artifact

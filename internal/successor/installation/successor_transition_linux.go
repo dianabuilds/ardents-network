@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"path/filepath"
+	"slices"
+	"syscall"
+	"time"
+
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
-	"path/filepath"
-	"slices"
-	"syscall"
-	"time"
 )
 
 // This private preparation retains one native inspection before candidate and
@@ -632,33 +633,6 @@ func closeSuccessor(owned *successorPreparation) (error, bool) {
 		// timeout cannot manufacture physical completion or release the writer.
 		<-ticker.C
 	}
-}
-
-func authenticateSuccessor(ctx context.Context, verifier *release.Verifier, candidate enrollment.Candidate, input release.Inputs, previous generationBinding) (Authorization, error) {
-	if ctx == nil || verifier == nil {
-		return Authorization{}, ErrInput
-	}
-	floors, err := verifier.CurrentFloors(ctx)
-	if err != nil {
-		return Authorization{}, err
-	}
-	// Compare the original history before either fresh evaluation can advance it.
-	if err := successorContinuity(previous, floors, input.Local); err != nil {
-		return Authorization{}, err
-	}
-	authorized, err := AuthenticateCandidate(ctx, verifier, candidate, input)
-	if err != nil {
-		return Authorization{}, err
-	}
-	_, generation := authorized.Targets()
-	decision, valid := generation.AcceptedDecision()
-	if !valid || decision.ReleaseVersion <= previous.Generation.ReleaseVersion {
-		return Authorization{}, ErrBinding
-	}
-	if err := ctx.Err(); err != nil {
-		return Authorization{}, errors.Join(ErrAuthorization, err)
-	}
-	return authorized, nil
 }
 
 // Continue an already published selection after fresh proofs and original resync.

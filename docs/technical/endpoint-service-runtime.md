@@ -17,6 +17,20 @@ reobserved device/inode facts into its binding. Independent installed inspection
 uses native property checks without acquiring birth/adoption provenance. These
 observations grant no recovery, selection, manager or startup authority.
 
+Root Installation keeps canonical generation construction, frozen inventory,
+independent binding inspection and fresh-proof byte reconstruction together in
+`generation_binding.go`. Public read-only Check admission stays in `inspection.go`.
+Initial request acquisition and stopped preparation share the retained owner in
+`initial_preparation_linux.go`; successor fresh-pair and continuity admission
+reside together in `generation_authentication.go`, with the installed-successor
+proof composition in its Linux-only companion `generation_authentication_linux.go`.
+Its genuine caller retains native installed facts; no Windows caller or allowance
+is manufactured. Unsupported native operations
+share `platform_refusal_other.go`, preserving their existing no-effect refusals.
+This source layout changes no accepted bytes, authorization, effect ordering or
+physical ownership; distinct replacement, recovery and startup lifetimes remain
+with their original owners.
+
 
 The following bounded command contract selects ADR-0119's installation
 boundary. The initial stopped provisioning, read-only integrity and installed
