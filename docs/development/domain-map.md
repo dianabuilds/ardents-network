@@ -128,6 +128,16 @@ directory and expected-access checks. This owner carries no request provenance
 or live descriptor; admitted I/O and joined close remain with their original
 transaction and read lifetimes.
 
+Installation's native root custody resides in `installation_root_linux.go`:
+initial lease creation, retained existing-root opening, repeated original
+observations and private recovery-record sync/create/remove. `installedRoot`
+keeps that original writer lease and file observations together; recovery owns
+effect admission. `installed_inspection_linux.go` separately owns public Check,
+selected-generation inspection and independent staged-generation matching.
+Non-root startup retains its own independent file observations without this
+writer. The related native root-custody tests are collected with their resource
+owner; this locality changes no lease, guard, record or completion authority.
+
 The original successor barrier synchronizes a start intention before contacting
 the manager and rechecks guard/socket custody after journal I/O. Installation
 owns this intention's exact intent/socket binding; journal admits only its closed

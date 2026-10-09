@@ -12,21 +12,21 @@ import (
 // lease independently of the kernel observation. Kernel facts grant no authority.
 type installedProcessPin struct {
 	ctx         context.Context
-	reader      *installedInspection
+	reader      *installedRoot
 	previous    inspectedGeneration
 	pid         uint32
 	invocation  [16]byte
 	observation *process.Invocation
 }
 
-func pinInstalledProcess(ctx context.Context, reader *installedInspection, previous inspectedGeneration, pid uint32, invocation [16]byte) (pin *installedProcessPin, returnedErr error) {
+func pinInstalledProcess(ctx context.Context, reader *installedRoot, previous inspectedGeneration, pid uint32, invocation [16]byte) (pin *installedProcessPin, returnedErr error) {
 	return pinOriginalProcess(ctx, ctx, reader, previous, pid, invocation)
 }
 
 // Failure-only cleanup may take physical observations after original
 // cancellation. The retained pin still carries the original admission caller;
 // the cleanup context can never authorize completion or renew its deadline.
-func pinOriginalProcess(original, observationContext context.Context, reader *installedInspection, previous inspectedGeneration, pid uint32, invocation [16]byte) (pin *installedProcessPin, returnedErr error) {
+func pinOriginalProcess(original, observationContext context.Context, reader *installedRoot, previous inspectedGeneration, pid uint32, invocation [16]byte) (pin *installedProcessPin, returnedErr error) {
 	if original == nil || observationContext == nil || reader == nil || pid == 0 || invocation == [16]byte{} {
 		return nil, ErrInput
 	}

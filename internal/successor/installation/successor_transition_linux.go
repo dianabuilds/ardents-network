@@ -21,7 +21,7 @@ import (
 type successorPreparation struct {
 	ctx           context.Context
 	request       Request
-	inspection    *installedInspection
+	inspection    *installedRoot
 	previous      inspectedGeneration
 	terminal      error
 	predecessor   *installedPredecessor
@@ -43,7 +43,7 @@ func prepareSuccessorNative(ctx context.Context, filename string) (result *succe
 	if err != nil {
 		return nil, err
 	}
-	reader, err := openInstalledInspection(ctx, request.declared.InstallationRoot)
+	reader, err := openInstalledRoot(ctx, request.declared.InstallationRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func (owned *successorPreparation) stageSuccessor() error {
 
 // A native byte-staging mechanism, not fresh proof admission. Its only product
 // caller is the still-leased preparation with its genuine retained fresh pair.
-func stageSuccessorGeneration(ctx context.Context, reader *installedInspection, request Request, previous generationSelection, files map[string][]byte, selected generationSelection, gid uint32) (result *installationTransaction, returnedErr error) {
+func stageSuccessorGeneration(ctx context.Context, reader *installedRoot, request Request, previous generationSelection, files map[string][]byte, selected generationSelection, gid uint32) (result *installationTransaction, returnedErr error) {
 	if ctx == nil || reader == nil || reader.lease == nil || request.declared == nil || request.ManifestSHA256() != "" ||
 		previous.Schema != "ardents-endpoint-installation-selection-v1" || !canonicalDigest(previous.GenerationDigest) ||
 		!canonicalDigest(previous.BindingDigest) || previous.GenerationDigest == selected.GenerationDigest {

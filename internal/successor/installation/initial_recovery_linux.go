@@ -17,7 +17,7 @@ import (
 )
 
 type recoveryNative struct {
-	reader      *installedInspection
+	reader      *installedRoot
 	intent      initialTransitionIntent
 	journal     string
 	generation  string
@@ -30,7 +30,7 @@ func openInitialRecovery(ctx context.Context, root string, reference time.Time) 
 	if err := observeInstallationPlatform(ctx); err != nil {
 		return nil, err
 	}
-	reader, err := openInstalledInspection(ctx, root)
+	reader, err := openInstalledRoot(ctx, root)
 	if err != nil {
 		return nil, errors.Join(ErrRepairRequired, err)
 	}
@@ -135,7 +135,7 @@ func openInitialRecovery(ctx context.Context, root string, reference time.Time) 
 // A missing pending cursor permits only inspection of the exact selected
 // archive. The reader retains joined filesystem errors, including ErrBinding;
 // classify absence through that error tree rather than discarding its causes.
-func readInitialRecoveryIntent(ctx context.Context, reader *installedInspection) ([]byte, error) {
+func readInitialRecoveryIntent(ctx context.Context, reader *installedRoot) ([]byte, error) {
 	root := reader.lease.path
 	body, err := reader.read(ctx, filepath.Join(root, "transition.json"), 128<<10, 0600, 0)
 	if !errors.Is(err, os.ErrNotExist) {

@@ -378,7 +378,7 @@ func (stage *installationTransaction) generationIdentity() generation.Identity {
 // A complete sealed prefix may have the old directory-only provenance, or all
 // fifteen new exact file births. A partial new set cannot look like an old one.
 // These facts constrain original custody; fresh Release proofs remain separate.
-func readGenerationFileBirths(ctx context.Context, reader *installedInspection, directory string, selected generationSelection, binding generationBinding, expected map[string][]byte, inventory map[string]bool) (map[string]journal.RetainedRecord, error) {
+func readGenerationFileBirths(ctx context.Context, reader *installedRoot, directory string, selected generationSelection, binding generationBinding, expected map[string][]byte, inventory map[string]bool) (map[string]journal.RetainedRecord, error) {
 	records := make(map[string]journal.RetainedRecord)
 	markerPath := filepath.Join(directory, "generation-files.json")
 	marker, markerErr := reader.read(ctx, markerPath, 4<<10, 0600, 0)

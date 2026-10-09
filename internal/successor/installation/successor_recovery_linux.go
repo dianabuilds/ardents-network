@@ -24,7 +24,7 @@ import (
 // This recovery owns fresh independent read/process/scope observations. It does
 // not adopt a creation Owner, stage, listener or a former caller's ACK latch.
 type successorRecoveryNative struct {
-	reader             *installedInspection
+	reader             *installedRoot
 	intent             successorTransitionIntent
 	intentBody         []byte
 	checked            inspectedGeneration
@@ -44,7 +44,7 @@ func openSuccessorRecovery(ctx context.Context, root string, reference time.Time
 	if err := observeInstallationPlatform(ctx); err != nil {
 		return nil, request, err
 	}
-	reader, err := openInstalledInspection(ctx, root)
+	reader, err := openInstalledRoot(ctx, root)
 	if err != nil {
 		return nil, request, errors.Join(ErrRepairRequired, err)
 	}

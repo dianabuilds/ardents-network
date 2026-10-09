@@ -90,8 +90,11 @@ request acquisition, preflight, account, preparation, fixed-resource publication
 `fixed_resource_creation_linux.go` — recorded birth, same-inode access promotion и retained fixed-file observations; `successor_replacement_linux.go` — original replacement
 records, допуск access/phase и mutation исходного fixed file, включая selection;
 `successor_transition_linux.go` — successor lifecycle, intent
-и ordering; `installed_inspection_linux.go` — leased inspection и retained private
-record durability. Грамматика completion frame принадлежит `completion/frame.go`: один Encoder
+и ordering; `installation_root_linux.go` — native root/lease creation и retained
+root custody, repeated observations и private recovery record effects.
+`installed_inspection_linux.go` сохраняет public Check admission, selected-generation
+inspection и independent staged-generation matching под тем же private root.
+Грамматика completion frame принадлежит `completion/frame.go`: один Encoder
 и validator обслуживают root producer и независимый startup peer. Native
 `start_barrier_linux.go` отдельно допускает Installation selection; frame не
 получает authority из schema или digest. Отдельные корневые frame-файлы удалены;
@@ -266,7 +269,7 @@ resync-ится без перезаписи. Foreign bytes, missing selection re
 records отказывают. start/ACK prefixes пока не допускаются
 этим recovery prefix; filesystem tests не являются managed startup receipt.
 
-`installed_inspection_linux.go` владеет physical resync/copy/remove исходных private
+`installation_root_linux.go` владеет physical resync/copy/remove исходных private
 records под Installation writer. Initial и terminal successor recovery
 используют один механизм, сохраняя отдельные intent schemas, phase admission,
 proofs и process policy. Recovery не фабрикует creation Owner или новый journal.

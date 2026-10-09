@@ -50,13 +50,13 @@ func TestInstallationNativeSuccessorCopiedHandleRetainsOriginalCancellation(t *t
 
 // Advance filesystem fixtures only, not Enrollment/Release/account/manager
 // authority. Native staging is separately constrained by the genuine caller.
-func successorStagingFixture(t *testing.T) (*installedInspection, Request, generationSelection, map[string][]byte, generationSelection) {
+func successorStagingFixture(t *testing.T) (*installedRoot, Request, generationSelection, map[string][]byte, generationSelection) {
 	t.Helper()
 	previous := archiveStage(t)
 	if err := previous.archiveIntent(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	reader := &installedInspection{lease: previous.lease, installedFiles: &installedFiles{directory: previous.lease.path, gid: 65534, files: map[string]fileObservation{}, directories: map[string]os.FileInfo{}, mutableDirectories: map[string]os.FileInfo{}}}
+	reader := &installedRoot{lease: previous.lease, installedFiles: &installedFiles{directory: previous.lease.path, gid: 65534, files: map[string]fileObservation{}, directories: map[string]os.FileInfo{}, mutableDirectories: map[string]os.FileInfo{}}}
 	reader.directories[previous.lease.path] = previous.lease.identity
 	reader.files[filepath.Join(previous.lease.path, "selection.json")] = previous.fixed[filepath.Join(previous.lease.path, "selection.json")].file
 	for _, name := range generation.Names() {

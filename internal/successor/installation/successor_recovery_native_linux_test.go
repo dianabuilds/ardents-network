@@ -371,7 +371,7 @@ func stagedRecoveryFixture(t *testing.T) (*successorRecoveryNative, Request) {
 	if err := syncStagingRoot(lease.root); err != nil {
 		t.Fatal(err)
 	}
-	reader := &installedInspection{lease: lease, installedFiles: &installedFiles{directory: lease.path, gid: 65534, files: map[string]fileObservation{
+	reader := &installedRoot{lease: lease, installedFiles: &installedFiles{directory: lease.path, gid: 65534, files: map[string]fileObservation{
 		filepath.Join(lease.path, "transition.json"): intentFile,
 		filepath.Join(lease.path, "selection.json"):  selection,
 	}, directories: map[string]os.FileInfo{lease.path: lease.identity}, mutableDirectories: map[string]os.FileInfo{}}}
@@ -1362,7 +1362,7 @@ func stagedGenerationBirthFixture(t *testing.T) *successorRecoveryNative {
 	if err := json.Unmarshal(files["binding.json"], &binding); err != nil {
 		t.Fatal(err)
 	}
-	reader := &installedInspection{lease: lease, installedFiles: &installedFiles{
+	reader := &installedRoot{lease: lease, installedFiles: &installedFiles{
 		directory: lease.path, gid: 65534, files: map[string]fileObservation{},
 		directories: map[string]os.FileInfo{}, mutableDirectories: map[string]os.FileInfo{},
 	}}
@@ -1514,7 +1514,7 @@ func completionRecoveryFixture(t *testing.T, retainGuard bool, withAttempt ...bo
 		t.Fatal("unexpected cleanup prefix", err)
 	}
 	return &successorRecoveryNative{
-		reader:  &installedInspection{lease: stage.lease, installedFiles: &installedFiles{directory: stage.lease.path, gid: stage.lease.identity.Sys().(*syscall.Stat_t).Gid, files: make(map[string]fileObservation), directories: map[string]os.FileInfo{stage.lease.path: stage.lease.identity}, mutableDirectories: make(map[string]os.FileInfo)}},
+		reader:  &installedRoot{lease: stage.lease, installedFiles: &installedFiles{directory: stage.lease.path, gid: stage.lease.identity.Sys().(*syscall.Stat_t).Gid, files: make(map[string]fileObservation), directories: map[string]os.FileInfo{stage.lease.path: stage.lease.identity}, mutableDirectories: make(map[string]os.FileInfo)}},
 		journal: filepath.Join(stage.lease.path, "journals", stage.selected.GenerationDigest), intentBody: stage.intent.body,
 	}
 }

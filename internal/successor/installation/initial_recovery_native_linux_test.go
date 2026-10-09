@@ -65,7 +65,7 @@ func nativeRecoveryLifetime(t *testing.T, ctx context.Context) *Recovery {
 	if err := stage.lease.close(); err != nil {
 		t.Fatal(err)
 	}
-	reader, err := openInstalledInspection(t.Context(), stage.lease.path)
+	reader, err := openInstalledRoot(t.Context(), stage.lease.path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestInstallationNativeRecoveryCopiesShareOriginalLeaseAndAdmission(t *testi
 	owner := nativeRecoveryLifetime(t, t.Context())
 	directory := owner.state.native.reader.lease.path
 	copy := *owner
-	if other, err := openInstalledInspection(t.Context(), directory); other != nil || !errors.Is(err, syscall.EWOULDBLOCK) {
+	if other, err := openInstalledRoot(t.Context(), directory); other != nil || !errors.Is(err, syscall.EWOULDBLOCK) {
 		t.Fatal("retained recovery did not hold original writer", err)
 	}
 	if err := copy.Close(); err != nil {
@@ -87,7 +87,7 @@ func TestInstallationNativeRecoveryCopiesShareOriginalLeaseAndAdmission(t *testi
 	if _, err := owner.Complete(Authorization{}); !errors.Is(err, ErrInput) {
 		t.Fatal("handle copy created another completion", err)
 	}
-	other, err := openInstalledInspection(t.Context(), directory)
+	other, err := openInstalledRoot(t.Context(), directory)
 	if err != nil {
 		t.Fatal("physical close failed to release original lease", err)
 	}
@@ -105,7 +105,7 @@ func TestInstallationNativeRecoveryCannotRenewOriginalCancelledCaller(t *testing
 	if _, err := owner.Complete(Authorization{}); !errors.Is(err, context.Canceled) {
 		t.Fatal("another caller renewed the cancelled original operation", err)
 	}
-	other, err := openInstalledInspection(t.Context(), directory)
+	other, err := openInstalledRoot(t.Context(), directory)
 	if err != nil {
 		t.Fatal("cancelled completion left physical writer live", err)
 	}
@@ -122,7 +122,7 @@ func TestInstallationNativeRecoveryPinsEmptyOwnedPrefixWithoutAdoption(t *testin
 	if err := stage.lease.close(); err != nil {
 		t.Fatal(err)
 	}
-	reader, err := openInstalledInspection(t.Context(), stage.lease.path)
+	reader, err := openInstalledRoot(t.Context(), stage.lease.path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func TestInstallationNativeRecoveryRetainsFirstFailureAfterItWasArchived(t *test
 	// Reopen the actual writer and exercise only the physical archive step.
 	// Equal first-error bytes can be synced before the active copy is removed;
 	// this lower mechanism supplies no authorization or successful recovery.
-	reopened, err := openInstalledInspection(t.Context(), reader.lease.path)
+	reopened, err := openInstalledRoot(t.Context(), reader.lease.path)
 	if err != nil {
 		t.Fatal(err)
 	}
