@@ -483,10 +483,10 @@ Exact configuration, MainPID zero, typed absence of Job and complete failed
 execution clocks/PID/result are necessary; repeated stopped activation,
 absent worker instances and original kernel join remain separate requirements.
 This observation retains the first failure and guard, grants no runtime or
-fresh provisioning/recovery admission, and performs no reset-failed. A separate
-current-source actual-manager trial exercises the genuine command's failed Start
-and normal joined cleanup after the new executable refuses its missing startup
-consumer. Independent audit retains all ten original replacements, exact intent,
+fresh provisioning/recovery admission, and performs no reset-failed. A retained
+actual-manager failed-Start receipt on preceding source exercises genuine command
+refusal and normal joined cleanup; it does not describe current startup support.
+Its audit retains all ten original replacements, exact intent,
 selection, failure-committed floors and phase7; guard/socket and first failure
 remain, writer releases and original scopes are empty before outer manager stop.
 No manual disposal or failure reset precedes that audit; the original guest/scope
@@ -532,8 +532,9 @@ writer releases; a fresh recover-installed caller refuses with unchanged retaine
 inventory, all ten original fixed replacements, guard/socket, floors and actual
 stopped candidate manager. The original guest/scope physically joins. This
 establishes pre-Start refusal, not completion of an actor whose manager request
-already began. Pending start recovery and actual accepting startup remain
-separate obligations.
+already began. Pending start recovery and complete installed Service acceptance
+remain separate obligations. The independently admitted bounded Source/permission
+startup has its own genuine consumer and actual-manager start/ACK/join evidence.
 
 All root installation subprocesses use fixed absolute programs and only
 `PATH=/usr/bin:/bin`, `LANG=C`, `LC_ALL=C`; caller-supplied system bus, unit
