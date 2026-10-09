@@ -266,7 +266,7 @@ func TestInstallationNativeWritingRecoveryRetainsFirstFailurePrefixes(t *testing
 					t.Fatal(err)
 				}
 				t.Cleanup(func() { _ = retained.Close() })
-				stage := &generationStage{journal: retained, selected: r.intent.Candidate}
+				stage := &installationTransaction{journal: retained, selected: r.intent.Candidate}
 				if err := stage.record(t.Context(), "generation-write-failed", errors.New("different later cleanup error")); err != nil {
 					t.Fatal(err)
 				}
@@ -281,7 +281,7 @@ func TestInstallationNativeWritingRecoveryRetainsFirstFailurePrefixes(t *testing
 					t.Fatal(err)
 				}
 				t.Cleanup(func() { _ = retained.Close() })
-				stage := &generationStage{journal: retained, selected: r.intent.Candidate}
+				stage := &installationTransaction{journal: retained, selected: r.intent.Candidate}
 				_ = stage.record(t.Context(), "generation-write-failed", errors.New("later failed repair"))
 				actual, err := os.ReadFile(filepath.Join(r.journal, name))
 				if err != nil || !bytes.Equal(actual, body) {
@@ -407,7 +407,7 @@ func TestInstallationNativeStagedRecoveryRetainsSealedReadCustody(t *testing.T) 
 		_ = snapshot.Close()
 		t.Fatal(err)
 	}
-	stage := &generationStage{lease: r.reader.lease, selected: r.intent.Candidate, sealed: snapshot, sealedIdentity: r.reader.directories[directory], journal: retained, intent: r.reader.files[filepath.Join(r.reader.lease.path, "transition.json")]}
+	stage := &installationTransaction{lease: r.reader.lease, selected: r.intent.Candidate, sealed: snapshot, sealedIdentity: r.reader.directories[directory], journal: retained, intent: r.reader.files[filepath.Join(r.reader.lease.path, "transition.json")]}
 	t.Cleanup(func() { _ = stage.close() })
 	if stage.generation != nil {
 		t.Fatal("recovery fabricated exclusive creation owner")
@@ -863,7 +863,7 @@ func TestInstallationNativeStagedFixedCompletionRetainsOriginalRecord(t *testing
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = owner.Close() })
-			stage := &generationStage{selected: r.intent.Candidate, journal: owner}
+			stage := &installationTransaction{selected: r.intent.Candidate, journal: owner}
 			before := records["0004.json"]
 			for range 2 {
 				if err := stage.recordFixedReplacementCompletion(t.Context()); err != nil {
@@ -1012,7 +1012,7 @@ func TestInstallationNativeStagedSelectionRepairsOriginalPrefix(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = owner.Close() })
-			stage := &generationStage{lease: r.reader.lease, selected: r.intent.Candidate, intent: r.reader.files[filepath.Join(r.reader.lease.path, "transition.json")], journal: owner, fixed: make(map[string]fixedFileObservation)}
+			stage := &installationTransaction{lease: r.reader.lease, selected: r.intent.Candidate, intent: r.reader.files[filepath.Join(r.reader.lease.path, "transition.json")], journal: owner, fixed: make(map[string]fixedFileObservation)}
 			phase := records["0005.json"]
 			for range 2 {
 				if err := stage.recordSelectionPublication(t.Context()); err != nil {

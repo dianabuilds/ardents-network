@@ -462,7 +462,20 @@ No earlier fixed-file mutation or Stop/ACK is replayed. Actual candidate
 configuration updates only retained loaded facts, never original process pins.
 Guarded start remains the existing separate lifetime. Interrupted start phases
 and first-failure recovery remain outside this bounded path. Filesystem probes
-establish no positive actual-manager start or installed acceptance.
+alone establish no positive actual-manager start or installed acceptance.
+Separate external actual-manager trials kill the original public successor
+process after exact phase6 file/directory sync before reload, after reload
+before phase7 creation, and after exact phase7 file/directory sync before Start.
+The loaded predecessor/candidate configuration is independently observed before
+SIGKILL; original threads join before fresh public recovery. Recovery starts the
+candidate, archives the exact intent and preserves every original file member,
+fixed resource, immutable generation and Release floor. Existing phase7 retains
+its original bytes and inode. The new Endpoint reaches permission-pending;
+independent original proc and kernel-event observations prove its subsequent
+physical join. These trials use an explicit external cleanup hold of genuine
+fixture Source/clock/Candidate owners and retain the killed Root's native FAIL,
+plus the outer manager's timeout result. They are not registered qualification
+profile passes, complete interruption coverage or installed Service acceptance.
 
 Original pre-ACK failed-attempt cleanup separately observes a completed
 `failed/failed` Endpoint when the manager retains failure after successful Stop.

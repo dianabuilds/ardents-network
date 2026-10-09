@@ -86,7 +86,7 @@ type completionSocketBirth struct {
 
 // Native birth mechanism. Only its genuine retained owner supplies admission;
 // this method itself can neither start a unit nor send completion bytes.
-func prepareNativeStartBarrier(ctx context.Context, stage *generationStage) (result *installedStartBarrier, returnedErr error) {
+func prepareNativeStartBarrier(ctx context.Context, stage *installationTransaction) (result *installedStartBarrier, returnedErr error) {
 	if ctx == nil || stage == nil || stage.lease == nil || stage.barrier != nil {
 		return nil, ErrInput
 	}
@@ -262,7 +262,7 @@ func (barrier *installedStartBarrier) observeRecordedCompletion() error {
 // Only the original full-ACK owner may retire the recorded completion objects.
 // A failed cleanup retains the irreversible ACK fact and original provenance;
 // it grants no second ACK, process stop or runtime readiness.
-func (barrier *installedStartBarrier) cleanupArchivedStart(stage *generationStage, pin *installedProcessPin) error {
+func (barrier *installedStartBarrier) cleanupArchivedStart(stage *installationTransaction, pin *installedProcessPin) error {
 	if barrier == nil || stage == nil || pin == nil || barrier.owner == nil || barrier.owner.stage != stage ||
 		stage.barrier != barrier || barrier.accepted != pin || !barrier.ackAttempted || !barrier.ackWritten ||
 		!stage.archivedIntent || barrier.owner.started == nil || barrier.owner.started.process != pin ||
@@ -548,7 +548,7 @@ func (barrier *installedStartBarrier) acceptCompletion(pin *installedProcessPin)
 
 // Only the original transaction's actual accepted process/peer and durable
 // archival permit this send. Detached records grant no startup authority.
-func (barrier *installedStartBarrier) acknowledgeArchivedStart(stage *generationStage, pin *installedProcessPin) (returnedErr error) {
+func (barrier *installedStartBarrier) acknowledgeArchivedStart(stage *installationTransaction, pin *installedProcessPin) (returnedErr error) {
 	if barrier == nil || stage == nil || pin == nil || barrier.owner == nil ||
 		barrier.owner.stage != stage || stage.barrier != barrier || barrier.accepted != pin ||
 		barrier.connection == nil || barrier.ackAttempted || !stage.archivedIntent {

@@ -563,7 +563,7 @@ func (r *successorRecoveryNative) openWritingTransition(ctx context.Context) err
 		return err
 	}
 	directory := filepath.Join(parent, r.intent.Candidate.GenerationDigest)
-	stage := &generationStage{lease: r.reader.lease, selected: r.intent.Candidate, intent: r.reader.files[filepath.Join(r.reader.lease.path, "transition.json")], fixed: make(map[string]fixedFileObservation)}
+	stage := &installationTransaction{lease: r.reader.lease, selected: r.intent.Candidate, intent: r.reader.files[filepath.Join(r.reader.lease.path, "transition.json")], fixed: make(map[string]fixedFileObservation)}
 	owned := &successorPreparation{ctx: ctx, request: request, inspection: r.reader, previous: previous, stage: stage, recovery: r}
 	r.pending = owned // Register partial custody before reopening any descriptor.
 	stage.prefix, err = generation.OpenPrefix(ctx, parent, r.reader.directories[parent], r.reader.directories[directory], r.intent.Candidate.GenerationDigest, r.reader.gid, images)
@@ -944,7 +944,7 @@ func (r *successorRecoveryNative) retainStagedTransition(ctx context.Context) er
 	if err != nil {
 		return err
 	}
-	stage := &generationStage{lease: r.reader.lease, selected: r.intent.Candidate, intent: r.reader.files[filepath.Join(r.reader.lease.path, "transition.json")], fixed: make(map[string]fixedFileObservation), sealedIdentity: info}
+	stage := &installationTransaction{lease: r.reader.lease, selected: r.intent.Candidate, intent: r.reader.files[filepath.Join(r.reader.lease.path, "transition.json")], fixed: make(map[string]fixedFileObservation), sealedIdentity: info}
 	owned := &successorPreparation{ctx: ctx, request: request, inspection: r.reader, previous: r.previous, stage: stage, recovery: r}
 	r.pending = owned // Register partial handles before any subsequent open fails.
 	parent := filepath.Dir(directory)

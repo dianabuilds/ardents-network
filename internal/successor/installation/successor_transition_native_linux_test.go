@@ -269,7 +269,7 @@ func TestInstallationNativeFailedIntentCloseRetainsUnjoinedCustody(t *testing.T)
 
 // Filesystem phases only, without any successful Release/manager/predecessor
 // substitute. These tests cannot establish a reloaded or started Installation.
-func successorSelectionFixture(t *testing.T, publishing bool) (*generationStage, string, fixedFileObservation, []byte) {
+func successorSelectionFixture(t *testing.T, publishing bool) (*installationTransaction, string, fixedFileObservation, []byte) {
 	t.Helper()
 	reader, request, previous, files, selected := successorStagingFixture(t)
 	stage, err := stageSuccessorGeneration(t.Context(), reader, request, previous, files, selected, 65534)

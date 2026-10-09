@@ -26,7 +26,7 @@ type fixedDirectoryCreation struct {
 	GID              uint32 `json:"gid"`
 }
 
-func (stage *generationStage) recordFixedDirectory(ctx context.Context, directory string, original os.FileInfo, mode os.FileMode, gid uint32, promotion bool) error {
+func (stage *installationTransaction) recordFixedDirectory(ctx context.Context, directory string, original os.FileInfo, mode os.FileMode, gid uint32, promotion bool) error {
 	if stage == nil || stage.journal == nil || original == nil || !canonicalPath(directory) || directory == "/" ||
 		(mode != 0700 && mode != 0755 && mode != 0555 && mode != 0710) ||
 		((mode == 0710) != (gid != 0)) {
@@ -61,7 +61,7 @@ func (stage *generationStage) recordFixedDirectory(ctx context.Context, director
 	return stage.journal.Write(ctx, journal.DirectoryCreations, name+".json", body)
 }
 
-func (stage *generationStage) fixedPhase(ctx context.Context, name, phase string) error {
+func (stage *installationTransaction) fixedPhase(ctx context.Context, name, phase string) error {
 	if name == "0003.json" && phase == "installing-fixed-resources" {
 		if len(stage.journal.Bytes(journal.Transitions, "0002.json")) == 0 {
 			return ErrBinding
@@ -101,7 +101,7 @@ func (stage *generationStage) fixedPhase(ctx context.Context, name, phase string
 	return stage.journal.Write(ctx, journal.Transitions, name, body)
 }
 
-func (stage *generationStage) ensureRootParent(ctx context.Context, directory string) error {
+func (stage *installationTransaction) ensureRootParent(ctx context.Context, directory string) error {
 	if _, err := os.Lstat(directory); os.IsNotExist(err) {
 		return stage.birthFixedDirectory(ctx, directory, 0755, 0)
 	}
@@ -109,7 +109,7 @@ func (stage *generationStage) ensureRootParent(ctx context.Context, directory st
 	return err
 }
 
-func (stage *generationStage) birthFixedDirectory(ctx context.Context, directory string, mode os.FileMode, gid uint32) (returnedErr error) {
+func (stage *installationTransaction) birthFixedDirectory(ctx context.Context, directory string, mode os.FileMode, gid uint32) (returnedErr error) {
 	if stage == nil || stage.journal == nil || !canonicalPath(directory) || directory == "/" ||
 		(mode != 0700 && mode != 0755 && mode != 0555 && mode != 0710) || ((mode == 0710) != (gid != 0)) {
 		return ErrInput
@@ -181,7 +181,7 @@ func (stage *generationStage) birthFixedDirectory(ctx context.Context, directory
 	return errors.Join(syncDirectDirectory(filepath.Dir(directory)), ctx.Err())
 }
 
-func (stage *generationStage) changeFixedDirectoryMode(ctx context.Context, directory string, mode os.FileMode) (returnedErr error) {
+func (stage *installationTransaction) changeFixedDirectoryMode(ctx context.Context, directory string, mode os.FileMode) (returnedErr error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -262,7 +262,7 @@ type fixedFileObservation struct {
 // The transaction must observe manager absence and its original account/roots
 // before selecting fixed effects. This mechanism itself grants no admission.
 // Every failure retains the born leaf and journal for explicit repair.
-func (stage *generationStage) createFixedFile(ctx context.Context, filename string, body []byte, mode os.FileMode, gid uint32) (returnedErr error) {
+func (stage *installationTransaction) createFixedFile(ctx context.Context, filename string, body []byte, mode os.FileMode, gid uint32) (returnedErr error) {
 	if stage == nil || stage.journal == nil || ctx == nil || !canonicalPath(filename) || filename == "/" || len(body) == 0 || len(body) > 64<<20 ||
 		(mode != 0644 && mode != 0555 && mode != 0640) {
 		return ErrInput

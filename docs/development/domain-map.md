@@ -278,9 +278,17 @@ exact reload/stopped prefixes require full candidate selection and all ten recor
 Initial preparation, generation-access promotion, selection publication, reload,
 stopped completion and initial archival admission share
 the retained `initialPreparation` owner in `initial_preparation_linux.go`;
-the generation and intent-file mechanisms remain with `generationStage`, as does
+the generation and intent-file mechanisms remain with `installationTransaction`, as does
 the independent selection-byte/order test.
 This locality changes no authority, phase ordering or physical ownership.
+The private original filesystem transaction has one retained owner in
+`installation_transaction_linux.go`: borrowed parents/containers, journal,
+generation/Prefix/Snapshot, fixed resources, intent, barrier and joined close.
+`generation_staging_linux.go` separately collects generation-writing and exact
+birth-provenance rules. These are responsibilities within the same Installation
+lease, not independently admitted phases or a new package. Reobserving all
+original resources and closing them before returning that lease remain joint
+transaction invariants.
 Complete floors alone grant no installed binding or readiness. A portable
 rule does not establish a native installation profile;
 the unresolved capability-admission repair remains distinct from this design.
@@ -427,6 +435,40 @@ Network performed that neighboring change.
 | New Execution owns exact volatile local permission, original qualified Job/operation and joined physical cleanup, with genuine new consumers | [Execution boundary](https://github.com/dianabuilds/ardents-network/issues/507), implementation `65873d011631d76cfbaca49561283909d82b5ca0`. Real permission preparation, live Route holder and independently admitted bounded installed Source/Stock bootstrap use genuine new owners. Final 999-member source manifest SHA256 `8f1a1d5949136179948a59a8a60254838ba2af8965790b2cbd7601f37415cc1d`; Windows full gate, Linux full new-domain race/both-Carrier/architecture and ordinary commit hook passed. Native/race lifecycle, hostile-tree, escape, ten-case authority/caller loss and original Endpoint pidfd SIGKILL/fresh-start components retain independent original observations and causal refusal controls. Actual canonical non-root installed startup completes Root archival/ACK, qualified preparation and signed Stock import before original physical join. This owning correction changes documentation only | Executor self-review, not independent validation. Earlier failures and the unexplained intermittent permission-input failure remain retained; later passes establish no timing-stability claim. Fixture signing, Sources and clock have one controller. Original outer manager timeout/SIGKILL failures remain explicit. Local physical restart establishes no logical Service recovery. Private Publication/Connection, complete Installation interruption matrix, installed product acceptance, power-loss and whole-host/privacy qualification remain separate obligations |
 
 | New Installation has genuine non-root Root completion and explicit original guard cleanup after a full ACK | [Installation receipt](https://github.com/dianabuilds/ardents-network/issues/506#issuecomment-6070342817), canonical product at `25cd074ab47203accf6893699f0b1c4a795e2fbf`; base 999-member manifest SHA256 `199510d102606bc068d46e63e6381bc336e521300db07ad3afaf4d08f38d6b33`. The executor reproduced actual-manager startup through the separately owned Source/permission consumer. External original-process cuts exercise successful archive file/directory sync, intent unlink before parent sync/ACK, full original 160-byte ACK, and all three original removal records before guard unlink. Early cuts safely refuse fresh recovery without inventory/floor changes. At the last boundary genuine fresh-pair recovery returns `installed-recovered-started`, removes only the original guard and retains the same active invocation and floors; independent original Endpoint/outer-manager proc and kernel-event observations prove physical join | Executor self-review, not independent validation. Terminal recovery uses unchanged product artifacts and an explicit external test-only cleanup gate retaining genuine original Source/clock/Candidate owners for at most40s; the deliberately killed Root still produces native fixture FAIL. It is not a registered qualification-profile PASS. Earlier native-access, fixture-lifetime and driver failures remain retained; outer manager timeout/SIGKILL exit1 remains explicit. No Start/ACK replay, replacement adoption, automatic rollback, power-loss, independent signing/time/family, private Service or full installed/privacy qualification is established |
+
+Installation's initial fixed-resource publication now resides with its existing
+`initialPreparation` owner; `fixed_resource_creation_linux.go` retains recorded
+birth, access promotion and fixed-file observations. This is exact method/import
+relocation and source/test naming, with unchanged native test bytes, authority,
+phase ordering and physical lifetime; it adds no package or neighboring owner.
+The owning result is `692566ccb42f0349173bcf34d0abc108b7b1eaa8`, with the separate
+Execution test-oracle correction `3a190769052545771aad46e49a16e966d38fd86d`.
+The executor verified exact scoped commits, actual remote `dev`, all 999 tested
+working members and 996 committed members against manifest SHA256
+`e18548e05286948030dbb42b9eeac1c49286a7642d4eebf36c1081140a462c0c`, excluding
+three preserved uncommitted instruction documents and allowing 23 exact Git
+text normalizations. Windows quick/full logs, full Linux new-domain race,
+both-Carrier command/architecture and unchanged-bound root-native receipts
+cover that implementation; the first native timeout and both test-oracle
+failures remain retained. This is executor self-review, not independent validation.
+
+On that same implementation, three separate fresh actual-manager trials kill
+the original successor before reload after durable phase6, after reload before
+phase7 creation, and after durable phase7 before Start. Independent observations
+retain actual loaded configuration, exact successful phase file/directory sync
+and original thread join. Genuine fresh-pair public recovery returns
+`installed-recovered-started`; original journal members, fixed resources,
+immutable generations and Release floors remain unchanged, and existing phase7
+retains its bytes and inode. The recovered Endpoint reaches permission-pending
+before independently observed original process/scope join. An external hold
+retains genuine fixture Source/clock/Candidate owners, while original Root SIGKILL
+still produces native FAIL; outer manager timeout/SIGKILL remains recorded.
+The first trial's external observer used a host path outside the manager's mount
+namespace and failed after successful public recovery; its failed receipt remains
+separate from the corrected fresh trials. This evidence establishes neither a
+registered qualification-profile pass nor complete interrupted start/first-failure,
+power-loss, independent custody, private Service or installed/privacy acceptance.
+These subsequent owner-document additions change no runtime source.
 
 ## Updating after a completed slice
 

@@ -17,7 +17,7 @@ type installedInspection struct {
 // Read custody is independent of creation custody. Retain the candidate's
 // original sealed files before manager start, under this same writer lease;
 // a fresh path or copied bytes cannot replace the stage's original directory.
-func (reader *installedInspection) retainStagedGeneration(ctx context.Context, stage *generationStage) (binding []byte, files map[string][]byte, returnedErr error) {
+func (reader *installedInspection) retainStagedGeneration(ctx context.Context, stage *installationTransaction) (binding []byte, files map[string][]byte, returnedErr error) {
 	if ctx == nil || reader == nil || reader.installedFiles == nil || reader.lease == nil ||
 		stage == nil || stage.lease != reader.lease || stage.generation == nil && stage.sealed == nil || !canonicalDigest(stage.selected.GenerationDigest) {
 		return nil, nil, ErrBinding

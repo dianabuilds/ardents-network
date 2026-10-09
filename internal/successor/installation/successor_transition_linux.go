@@ -27,7 +27,7 @@ type successorPreparation struct {
 	terminal      error
 	predecessor   *installedPredecessor
 	authorization *Authorization
-	stage         *generationStage
+	stage         *installationTransaction
 	candidate     *inspectedGeneration
 	started       *installedCandidate
 	recovery      *successorRecoveryNative
@@ -202,7 +202,7 @@ func (owned *successorPreparation) stageSuccessor() error {
 
 // A native byte-staging mechanism, not fresh proof admission. Its only product
 // caller is the still-leased preparation with its genuine retained fresh pair.
-func stageSuccessorGeneration(ctx context.Context, reader *installedInspection, request Request, previous generationSelection, files map[string][]byte, selected generationSelection, gid uint32) (result *generationStage, returnedErr error) {
+func stageSuccessorGeneration(ctx context.Context, reader *installedInspection, request Request, previous generationSelection, files map[string][]byte, selected generationSelection, gid uint32) (result *installationTransaction, returnedErr error) {
 	if ctx == nil || reader == nil || reader.lease == nil || request.declared == nil || request.ManifestSHA256() != "" ||
 		previous.Schema != "ardents-endpoint-installation-selection-v1" || !canonicalDigest(previous.GenerationDigest) ||
 		!canonicalDigest(previous.BindingDigest) || previous.GenerationDigest == selected.GenerationDigest {
@@ -222,7 +222,7 @@ func stageSuccessorGeneration(ctx context.Context, reader *installedInspection, 
 	if err := reader.observe(ctx); err != nil {
 		return nil, err
 	}
-	stage := &generationStage{lease: lease, selected: selected, fixed: map[string]fixedFileObservation{selectionPath: {parent: lease.identity, file: selection}}}
+	stage := &installationTransaction{lease: lease, selected: selected, fixed: map[string]fixedFileObservation{selectionPath: {parent: lease.identity, file: selection}}}
 	defer func() {
 		if returnedErr != nil {
 			stage.retainFailure(ctx, returnedErr)
@@ -293,7 +293,7 @@ func stageSuccessorGeneration(ctx context.Context, reader *installedInspection, 
 
 // Selection has a different access and phase boundary from root-only resource
 // copies. Neither a supplied mode/GID nor a replacement record chooses it.
-func (stage *generationStage) validateReplacementAccess(filename string, previous fixedFileObservation, candidate []byte) error {
+func (stage *installationTransaction) validateReplacementAccess(filename string, previous fixedFileObservation, candidate []byte) error {
 	if stage == nil || stage.lease == nil || stage.journal == nil {
 		return ErrInput
 	}
@@ -326,7 +326,7 @@ func (stage *generationStage) validateReplacementAccess(filename string, previou
 	return stage.verifyTransitionPhase(name, phase)
 }
 
-func (stage *generationStage) verifyTransitionPhase(name, phase string) error {
+func (stage *installationTransaction) verifyTransitionPhase(name, phase string) error {
 	if stage == nil || stage.journal == nil {
 		return ErrInput
 	}
@@ -340,7 +340,7 @@ func (stage *generationStage) verifyTransitionPhase(name, phase string) error {
 
 // Physical intention only. Its transaction caller retains fresh proofs, exact
 // complete fixed images and actual predecessor quiescence before selection.
-func (stage *generationStage) recordSelectionPublication(ctx context.Context) error {
+func (stage *installationTransaction) recordSelectionPublication(ctx context.Context) error {
 	if ctx == nil || stage == nil || stage.journal == nil {
 		return ErrInput
 	}

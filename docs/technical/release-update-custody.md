@@ -180,7 +180,13 @@ top-level roles and cannot create cold trust. These pair checks grant no
 installed predecessor continuity or runtime readiness. New Installation separately
 owns initial stopped provisioning, successor replacement and bounded fresh-proof
 recovery through genuine command consumers. Bounded accepting non-root startup
-has an actual-manager Root archival/ACK and Source/permission receipt. The
+has an actual-manager Root archival/ACK and Source/permission receipt. Separate
+actual process cuts exercise fresh-proof successor recovery before reload,
+after reload before phase7 creation, and after durable phase7 before Start.
+Original fixed resources, immutable generations, journal members and Release
+floors are preserved; the recovered Endpoint reaches permission-pending. These
+external trials retain the deliberately killed Root's failure and do not qualify
+the installed Service. The
 complete interruption matrix and installed Service acceptance remain unproven; these consumers do
 not borrow the predecessor runtime or Release history.
 Portable metadata/target/safety rules remain

@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-func fixedCreationStage(t *testing.T) *generationStage {
+func fixedCreationStage(t *testing.T) *installationTransaction {
 	t.Helper()
 	lease, request, files, selected := nativeStagingFixture(t)
 	stage, err := stageInitialGeneration(t.Context(), lease, request, files, selected, 65534)

@@ -131,7 +131,7 @@ func TestInstallationNativeStartIntentionRetainsCancellationBeforeAndAfterWrite(
 
 // Filesystem/Unix-socket mechanism only. Fixture phases are not successful
 // manager, Release, predecessor, started invocation or completion evidence.
-func startBarrierFixture(t *testing.T) *generationStage {
+func startBarrierFixture(t *testing.T) *installationTransaction {
 	t.Helper()
 	stage, filename, previous, body := successorSelectionFixture(t, true)
 	if err := stage.recordFixedReplacement(t.Context(), filename, previous, previous.file.body, body); err != nil {

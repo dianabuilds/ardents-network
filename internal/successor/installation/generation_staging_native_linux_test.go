@@ -255,7 +255,7 @@ func TestInstallationNativeGenerationRetainsCompletedCancellation(t *testing.T) 
 	}
 }
 
-func accessStage(t *testing.T) *generationStage {
+func accessStage(t *testing.T) *installationTransaction {
 	t.Helper()
 	stage := fixedCreationStage(t)
 	// This profile exercises metadata and the kernel lease only. It cannot

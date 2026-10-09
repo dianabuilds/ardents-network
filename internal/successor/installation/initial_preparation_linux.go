@@ -24,7 +24,7 @@ type initialPreparation struct {
 	lease    *installationLease
 	journal  *journal.Owner
 	prepared preparedInstallation
-	stage    *generationStage
+	stage    *installationTransaction
 	created  map[string]os.FileInfo
 	terminal error
 }

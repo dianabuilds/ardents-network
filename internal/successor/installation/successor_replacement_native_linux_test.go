@@ -16,7 +16,7 @@ import (
 
 // Filesystem mechanism fixture only: no successful manager, Release pair or
 // predecessor join is supplied. It cannot establish upgrade acceptance.
-func replacementRecordFixture(t *testing.T) (*generationStage, string, fixedFileObservation) {
+func replacementRecordFixture(t *testing.T) (*installationTransaction, string, fixedFileObservation) {
 	t.Helper()
 	reader, request, previous, files, selected := successorStagingFixture(t)
 	stage, err := stageSuccessorGeneration(t.Context(), reader, request, previous, files, selected, 65534)

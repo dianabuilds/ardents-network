@@ -9,7 +9,11 @@ account и roots без Release effects. Публичный successor lifetime �
 fresh proofs, staging, original predecessor join, replacement/selection и
 barrier-controlled попытку старта. Настоящий non-root consumer проверен через actual
 manager, Root archival/ACK и bounded Source/permission bootstrap; terminal guard
-recovery имеет отдельный actual-manager receipt. Полная successor interruption
+recovery и reload-prefix recovery имеют отдельные actual-manager receipts. Три
+process cuts проверяют восстановление до reload, после reload до записи phase7
+и после durable phase7 до Start; они сохраняют original journal, fixed bytes и
+Release floors. Восстановленный Endpoint достигает permission-pending, не полной
+Service readiness. Полная successor interruption
 matrix и installed Service acceptance остаются недоказанными; bounded initial stopped recovery
 имеет отдельную command composition и actual stopped manager receipt, но полная
 interruption matrix ещё не проверена. Полная native transaction не принята или квалифицирована.
@@ -29,8 +33,16 @@ continuity; сохранённые local facts по-прежнему не соз
 native custody. `intent_archive_linux.go` удерживает общую exact intent custody,
 copy/sync/removal; initial и successor completion допускаются отдельными checks.
 Эти изменения следуют ответственности и реальным callers, без нового пакета
-или изменения принимающего контракта. Методы одного владельца собраны рядом: `generation_staging_linux.go` — original staging
-с parent custody, seal/access и close; `initial_preparation_linux.go` — initial
+или изменения принимающего контракта. `installation_transaction_linux.go`
+собирает original filesystem custody одного private `installationTransaction`:
+lease, borrowed parents/containers, journal, generation/Prefix/Snapshot,
+fixed-resource observations, intent и barrier, общий observe и joined close.
+`generation_staging_linux.go` содержит generation birth/write/failure,
+seal/access и проверку original generation-file provenance при recovery.
+Это один владелец транзакции: проверка всех original handles и порядок их
+закрытия должны оставаться под исходным lease. Разделение файлов следует
+разным причинам меняться; отдельный phase package или shared lease не возникает.
+`initial_preparation_linux.go` — initial
 preflight, account, preparation, fixed-resource publication и публикация stopped selection;
 `fixed_resource_creation_linux.go` — recorded birth, same-inode access promotion и retained fixed-file observations; `successor_replacement_linux.go` — original replacement
 records и mutation; `successor_transition_linux.go` — successor lifecycle, intent
@@ -73,7 +85,7 @@ initial selection: их используют initial, predecessor, candidate и 
 lifetimes. Они собраны рядом с manager binding. Публикация initial selection,
 reload и stopped completion находятся рядом с состоянием и cleanup
 `initialPreparation`; отдельный файл по этой фазе удалён. Независимый byte/order
-тест selection находится у `generationStage` в staging-тестах, поскольку он
+тест selection находится у `installationTransaction` в staging-тестах, поскольку он
 проверяет original stage custody, а не успешную manager transaction.
 Корень не дублирует fixed-unit policy. `systemd/` по-прежнему
 владеет физическими manager observations и joined subprocess. Перенос policy

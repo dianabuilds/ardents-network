@@ -84,7 +84,7 @@ func (owned *successorPreparation) recordFixedReplacements() (returnedErr error)
 	return errors.Join(owned.observe(), owned.predecessor.observeQuiescent(owned.ctx))
 }
 
-func successorFixedResources(stage *generationStage) (map[string][]byte, error) {
+func successorFixedResources(stage *installationTransaction) (map[string][]byte, error) {
 	if stage == nil || stage.generation == nil && stage.sealed == nil {
 		return nil, ErrInput
 	}
@@ -116,7 +116,7 @@ func successorFixedResources(stage *generationStage) (map[string][]byte, error) 
 
 // Native record mechanism; its product caller supplies the closed inventory
 // from the same leased inspection. It never changes a fixed resource.
-func (stage *generationStage) recordFixedReplacement(ctx context.Context, filename string, previous fixedFileObservation, preimage, candidate []byte) (returnedErr error) {
+func (stage *installationTransaction) recordFixedReplacement(ctx context.Context, filename string, previous fixedFileObservation, preimage, candidate []byte) (returnedErr error) {
 	if ctx == nil || stage == nil || stage.lease == nil || stage.journal == nil || previous.file.identity == nil || previous.parent == nil ||
 		!canonicalPath(filename) || filename == "/" || len(preimage) == 0 || len(preimage) > 64<<20 || len(candidate) == 0 || len(candidate) > 64<<20 {
 		return ErrInput
@@ -165,7 +165,7 @@ func (stage *generationStage) recordFixedReplacement(ctx context.Context, filena
 	return errors.Join(stage.syncReplacementRecord(ctx, name), observeFixedFile(filename, previous), ctx.Err())
 }
 
-func (stage *generationStage) syncReplacementRecord(ctx context.Context, name string) error {
+func (stage *installationTransaction) syncReplacementRecord(ctx context.Context, name string) error {
 	if ctx == nil || stage == nil || stage.journal == nil || !stage.journal.HasCollection(journal.Replacements) {
 		return ErrInput
 	}
@@ -243,7 +243,7 @@ func (owned *successorPreparation) replaceFixedResources() (returnedErr error) {
 // The transaction calls this only after all exact candidate files are synced
 // and actual quiescence is reobserved. Reopened completion is original physical
 // provenance: resync it rather than replacing it or treating visibility as ACK.
-func (stage *generationStage) recordFixedReplacementCompletion(ctx context.Context) error {
+func (stage *installationTransaction) recordFixedReplacementCompletion(ctx context.Context) error {
 	if ctx == nil || stage == nil || stage.journal == nil {
 		return ErrInput
 	}
@@ -268,7 +268,7 @@ func (stage *generationStage) recordFixedReplacementCompletion(ctx context.Conte
 
 // Repair only authorized torn prefixes on the original inode. This lower
 // mechanism supplies no fresh proof, manager admission or recovery consumer.
-func (stage *generationStage) replaceRecordedFixedFile(ctx context.Context, filename string, previous fixedFileObservation, preimage, candidate []byte) (result stagedFile, returnedErr error) {
+func (stage *installationTransaction) replaceRecordedFixedFile(ctx context.Context, filename string, previous fixedFileObservation, preimage, candidate []byte) (result stagedFile, returnedErr error) {
 	if ctx == nil || stage == nil || stage.journal == nil || !stage.journal.HasCollection(journal.Replacements) || previous.parent == nil || previous.file.identity == nil || len(preimage) == 0 || len(candidate) == 0 || len(preimage) > 64<<20 || len(candidate) > 64<<20 || !canonicalPath(filename) || filename == "/" {
 		return stagedFile{}, ErrInput
 	}

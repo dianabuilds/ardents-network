@@ -10,7 +10,7 @@ import (
 
 // Copy/sync the exact owned intent before removing its original inode. A
 // retained archive is refused here; explicit recovery has separate admission.
-func (stage *generationStage) archiveIntent(ctx context.Context) error {
+func (stage *installationTransaction) archiveIntent(ctx context.Context) error {
 	if ctx == nil || stage == nil || stage.journal == nil {
 		return ErrInput
 	}
@@ -29,7 +29,7 @@ func (stage *generationStage) archiveIntent(ctx context.Context) error {
 
 // Physical archival only. Each caller admits its own exact completion before
 // reaching this mechanism; an archive is not a process or startup proof.
-func (stage *generationStage) copyAndRemoveIntent(ctx context.Context) error {
+func (stage *installationTransaction) copyAndRemoveIntent(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (stage *generationStage) copyAndRemoveIntent(ctx context.Context) error {
 	return ctx.Err()
 }
 
-func (stage *generationStage) observeIntent() error {
+func (stage *installationTransaction) observeIntent() error {
 	if !stage.archivedIntent {
 		return observeStagedFile(stage.lease.root, "transition.json", stage.intent)
 	}

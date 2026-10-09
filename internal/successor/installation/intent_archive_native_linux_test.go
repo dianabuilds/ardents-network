@@ -13,7 +13,7 @@ import (
 
 // This fixture advances filesystem records only; it does not attest actual
 // global resource creation, account admission or a stopped system manager.
-func archiveStage(t *testing.T) *generationStage {
+func archiveStage(t *testing.T) *installationTransaction {
 	t.Helper()
 	stage := accessStage(t)
 	if err := stage.promoteAccess(t.Context(), 65534); err != nil {
@@ -95,7 +95,7 @@ func TestInstallationNativeInitialArchiveRefusesStoppedSuccessorIntent(t *testin
 
 type archiveCancellation struct {
 	context.Context
-	stage *generationStage
+	stage *installationTransaction
 }
 
 func (ctx archiveCancellation) Err() error {
