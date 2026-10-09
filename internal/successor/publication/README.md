@@ -2,8 +2,11 @@
 
 Go-пакет проверяет публичные Credential и Publication v3: подписи Authority и
 Instance, точный Target/Network, validity и отдельные права чтения и публикации.
-Это проверка подписанного входа, а не живой Publisher: private Instance,
-регистрация, refresh/withdraw и accepting readiness здесь ещё не реализованы.
+Отдельный `durable` владеет исключительным v3 root, canonical floor и
+восстановлением подписанного public record. Настоящая команда
+`ardents-next publication prepare-root` возвращает проверенную public history;
+она не восстанавливает private Instance или accepting readiness. Живой Publisher,
+refresh/withdraw и приватный получатель здесь ещё не реализованы.
 
 **Вопрос домена:** какой авторизованный Service Instance сейчас принимает работу?
 

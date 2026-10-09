@@ -1115,6 +1115,17 @@ Publication startup joins any ownership/preparation or restore refusal with a
 failed exclusive-root release, returning no owner. Retained root evidence and
 floors are not reset as part of failure cleanup.
 
+The isolated new `publication/durable` owner prepares and reopens its own v3
+root through `ardents-next publication prepare-root <root> <target> <network>`.
+It holds an exclusive native lease, checks finite exact layout and canonical
+uint64 floor, and verifies retained signed records against the selected Target
+and Network at their signed NotBefore. Reopen resynchronizes retained floor,
+record and pointer barriers; an exact unavailable orphan is retired without
+lowering the floor. Foreign residue, lost floors and inconsistent records refuse.
+The command returns `publication-root-prepared` and a detached floor observation;
+it grants no Instance signing authority or accepting readiness. Predecessor roots
+remain independent. Native directory-flush refusal remains failure.
+
 Publication persists public proof and its non-decreasing generation floor but
 never persists a live Instance private key. The supported generation floor
 comes only from the current Publication root's floor file. Its persisted encoding

@@ -15,6 +15,15 @@ REGISTER/WITHDRAW implementation and its joined lifetime over the actual
 `prefix.IntroductionChannel`. The holder opens no durable root and shares no
 receiving Registry/History state. Prefix owns OPEN, inner TLS and role admission;
 Registration owns its operation bytes, ACK checks and terminal result.
+Its immutable `Receipt` retains the original channel and copied Network/profile,
+Introduction Node, slot, revision, creation time and original expiry.
+Its acknowledgement is SHA-256 of the complete verified REGISTER RESULT body,
+preserving the current public Publication's transport-commitment provenance.
+`CheckReceipt` reobserves the actual Prefix/duty/caller outside its lifecycle
+lock, then checks retirement, withdrawal and expiry synchronously. Detached
+`RegistrationFacts` and a retained receipt alone grant no current authority.
+Creation precedes REGISTER output; ACK delay cannot move the refresh origin.
+This transport receipt supplies no Descriptor Store ACK or Service readiness.
 Receiving composition retains its native Admission/root dependency separately.
 The receiving REGISTER/RESULT/owning WITHDRAW exchange now belongs directly to
 `introduction.Registry.ServeRegistration`. It consumes the original HELLO,
@@ -127,7 +136,8 @@ stage. It never turns failed cleanup into graceful completion or token refund.
 With genuine Network and Publisher Stock configured, `admission holder` exposes
 `registration-open` with positive `revision`, `registration-withdraw` and
 `registration-close` after `prefix-open`. The open result contains the opaque
-slot only. Explicit holder close joins Route before Stock and Network roots.
+slot and detached public registration facts from the checked original receipt.
+Explicit holder close joins Route before Stock and Network roots.
 `route receive` requires independent `introduction_root` for the exact Domain 4
 delivery duty; its directory must be private. Other duties cannot borrow that
 root or its receiving initialization fact.

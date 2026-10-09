@@ -8,6 +8,9 @@
 // receiving composition; holder and receiving lifetimes are distinct. Holder
 // Registration consumes an opaque Prefix terminal and owns its exact request,
 // reader, withdrawal attempt and joined result; it shares no live Registry root.
+// Its immutable original-channel Receipt supplies public binding facts; each
+// consuming effect checks live registration again through CheckReceipt.
+// A receipt is neither Descriptor acknowledgement nor accepting Publication.
 // Canonical slot snapshots, History rules and Registry transitions are portable.
 // A private Linux file adapter opens, verifies, commits and releases the actual
 // independently leased root. Core callers cannot inject a persistence backend;

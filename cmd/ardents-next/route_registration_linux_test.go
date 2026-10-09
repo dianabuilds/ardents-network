@@ -257,6 +257,10 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 				if registration.slot == [32]byte{} || forwards.Load() != 2 || registrations.Load() != 1 {
 					t.Fatal("missing genuine accepted operations", forwards.Load(), registrations.Load())
 				}
+				facts := registration.facts
+				if facts.Slot != registration.slot || facts.Node != ([32]byte{16}) || facts.Network != f.profile.NetworkID || facts.Profile != f.profile.Digest || facts.Revision != 1 || (!registrationEnd.IsZero() && !facts.Expiry.Equal(registrationEnd)) || facts.Expiry.After(plan.Deadline) || facts.Created.IsZero() || !facts.Created.Before(time.Now()) || !facts.Created.Before(facts.Expiry) || facts.Acknowledgement == ([32]byte{}) {
+					t.Fatal("receipt differs from actual registration", facts)
+				}
 				select {
 				case <-registration.done:
 					t.Fatal("registration already retired")

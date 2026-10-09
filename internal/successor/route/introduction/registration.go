@@ -3,6 +3,7 @@ package introduction
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"net"
 	"sync"
@@ -31,6 +32,7 @@ type HolderRegistration struct {
 	conn     net.Conn
 	terminal *prefix.IntroductionChannel
 	request  Request
+	receipt  Receipt
 	ctx      context.Context
 	cancel   context.CancelFunc
 	check    func() error
@@ -66,6 +68,7 @@ func Register(ctx context.Context, p *prefix.Prefix, config RegistrationConfig) 
 	}()
 	child, cancel, check := t.Context(), t.Cancel, t.Check
 	secured := t.Stream()
+	created := time.Now()
 	request := Request{Revision: config.Revision, Expiry: config.Deadline}
 	if _, err := rand.Read(request.Nonce[:]); err != nil {
 		return nil, err
@@ -101,6 +104,7 @@ func Register(ctx context.Context, p *prefix.Prefix, config RegistrationConfig) 
 		return nil, err
 	}
 	r := &HolderRegistration{conn: secured, terminal: t, request: request, ctx: child, cancel: cancel, check: check, reply: make(chan error, 1), readerDone: make(chan struct{}), watcherDone: make(chan struct{}), physicalDone: make(chan struct{}), retiring: make(chan struct{})}
+	r.receipt = Receipt{owner: r, facts: RegistrationFacts{Network: config.Duty.Epoch.Network, Profile: t.ProfileDigest(), Node: config.Duty.NodeID, Slot: request.Slot, Revision: request.Revision, Created: created, Expiry: request.Expiry, Acknowledgement: sha256.Sum256(frame.Body)}}
 	r.borrow = t.Borrow(func() { r.stop(nil) }, r.Close, func() bool {
 		r.mu.Lock()
 		defer r.mu.Unlock()

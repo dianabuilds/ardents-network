@@ -10,6 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
 )
 
 type routePrefixPlan struct {
@@ -77,4 +78,5 @@ type routeRegistration struct {
 	withdraw func(context.Context) error
 	done     <-chan struct{}
 	slot     [32]byte
+	facts    introduction.RegistrationFacts
 }

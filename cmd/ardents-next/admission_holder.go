@@ -209,6 +209,7 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 			registration, err = prefix.register(ctx, c.Revision)
 			if err == nil {
 				result["slot"] = registration.slot
+				result["registration"] = registration.facts
 			}
 		case "registration-withdraw":
 			if registration.withdraw == nil {

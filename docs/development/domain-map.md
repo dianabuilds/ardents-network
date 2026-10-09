@@ -247,9 +247,11 @@ Release floor and grants no installed or Execution authority. New Release has a 
 initial result and optional protected group remain scoped data; Release,
 Installation and qualified Execution are separate necessary owners. These
 source responsibilities do not establish complete Software acceptance or installed
-qualification. New Publication currently has only portable public
-Credential/Publication proof verification, with a real Reachability verifier
-caller. New Reachability currently verifies exact-Target private Descriptors;
+qualification. New Publication has portable public Credential/Publication
+proof verification, with a real Reachability verifier caller, and a separately
+owned native durable root with a real preparation command consumer. Neither
+restored proof nor floor observation grants live Instance or readiness.
+New Reachability currently verifies exact-Target private Descriptors;
 its separate receiving Store implements durable signed conflict floors and
 bounded interrupted-write recovery through native Linux/Windows mechanisms.
 Separate portable local lookup history retains only monotonic facts and the
@@ -271,6 +273,15 @@ identified predecessor responsibilities and current contracts; a proposed new
 boundary is not proof that its implementation has transferred. Text, IPC,
 resource pressure, disclosure and qualification mechanisms remain in the
 inventory even though they are not extra network authority domains.
+
+New `publication/durable` separately owns native exclusive root preparation,
+canonical floor and signed retained-record reconciliation. Its real
+`ardents-next publication prepare-root` consumer returns public history only;
+no floor observation restores private Instance or accepting Publication.
+Route Introduction's sealed original-channel receipt now exposes immutable
+registration facts and actual verified REGISTER ACK commitment, with explicit
+original currentness checks. Descriptor Store ACK and qualified Publisher
+readiness remain separate prerequisites.
 
 This section states realized architecture and its limits, not live task status.
 The GitHub ledger alone selects the next executable slice and records progress.

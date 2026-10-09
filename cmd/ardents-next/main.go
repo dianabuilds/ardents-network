@@ -20,6 +20,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && args[0] == "publication" {
+		return runPublication(ctx, args[1:], out)
+	}
 	if len(args) > 0 && args[0] == "endpoint" {
 		return runInstalledEndpoint(ctx, args[1:], diagnostic)
 	}

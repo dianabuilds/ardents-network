@@ -131,7 +131,12 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 			if err != nil {
 				return routeRegistration{}, err
 			}
-			return routeRegistration{close: registration.Close, withdraw: registration.Withdraw, done: registration.Done(), slot: registration.Slot()}, nil
+			receipt, err := registration.Receipt()
+			if err != nil {
+				return routeRegistration{}, errors.Join(err, registration.Close())
+			}
+			facts := receipt.Facts()
+			return routeRegistration{close: registration.Close, withdraw: registration.Withdraw, done: registration.Done(), slot: registration.Slot(), facts: facts}, nil
 		}}, nil
 }
 

@@ -331,6 +331,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/nodeidentity":            {"admission/issuerprofile"},
 		"internal/successor/hosting":                 {},
 		"internal/successor/publication":             {},
+		"internal/successor/publication/durable":     {"publication"},
 		"internal/successor/reachability":            {"publication"},
 		"internal/successor/enrollment":              {},
 		"internal/successor/release":                 {},
@@ -365,6 +366,9 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                           {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if source == "cmd/ardents-next/publication.go" && dependency == modulePath+"/internal/successor/publication/durable" {
+			return true
+		}
 		if source == "cmd/ardents-next/installed_endpoint_linux.go" && (dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/execution/runtime") {
 			return true
 		}
@@ -456,6 +460,9 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if source == "internal/successor/reachability/store_platform_windows.go" && dependency == "golang.org/x/sys/windows" {
+		return true
+	}
+	if source == "internal/successor/publication/durable/lease_windows.go" && dependency == "golang.org/x/sys/windows" {
 		return true
 	}
 	if source == "internal/successor/release/history_native_windows.go" && dependency == "golang.org/x/sys/windows" {

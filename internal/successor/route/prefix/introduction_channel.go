@@ -30,6 +30,7 @@ type IntroductionChannel struct {
 	release      func()
 	joinCaller   func()
 	interruption prefixSetupInterruption
+	profile      [32]byte
 }
 
 func (p *Prefix) OpenIntroductionChannel(ctx context.Context, duty network.RetainedDuty, end time.Time) (_ *IntroductionChannel, result error) {
@@ -37,7 +38,7 @@ func (p *Prefix) OpenIntroductionChannel(ctx context.Context, duty network.Retai
 	if err != nil {
 		return nil, err
 	}
-	t := &IntroductionChannel{ctx: child, caller: ctx, cancel: cancel, opening: opening}
+	t := &IntroductionChannel{ctx: child, caller: ctx, cancel: cancel, opening: opening, profile: p.config.Leg.Profile.Digest}
 	defer func() {
 		if result != nil {
 			result = errors.Join(result, t.CloseSetup())
@@ -185,6 +186,10 @@ func (t *IntroductionChannel) Cancel() { t.cancel() }
 
 // Check reobserves the original physical Prefix and exact recipient bounds.
 func (t *IntroductionChannel) Check() error { return t.check() }
+
+// ProfileDigest is the original authenticated profile binding, not a live
+// permission. Check must still succeed at each consuming effect/handoff.
+func (t *IntroductionChannel) ProfileDigest() [32]byte { return t.profile }
 
 // Stream supplies ordered role bytes without exposing the lower parent/hold.
 func (t *IntroductionChannel) Stream() net.Conn { return t.conn }
