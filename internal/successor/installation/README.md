@@ -39,8 +39,12 @@ trusted-root/sync helpers для fixed resources и recovery; чужой кат�
 и независимо проверяет прежние bytes/access перед эффектами. Корень сохраняет
 совместимый `Request` consumer, Installation admission, Release proofs и
 транзакции; происхождение запроса не выдаёт ни одного из этих прав.
-`root_ownership_linux.go` сохраняет отдельно проверку trusted root-owned paths
-для lease, staging и inspection: она не является request provenance.
+`root_ownership_linux.go` собирает private native identity predicates для lease,
+staging, inspection и recovery, а также detached `fileObservation` без descriptors
+или lease. Root-owned file admission, independent read retention с ctime,
+directory identity и проверка expected staged access остаются разными правилами.
+Они не являются request provenance; I/O, admission и physical close сохраняют
+своих исходных владельцев.
 
 
 `unit/endpoint_template.go` проверяет closed template и его command paths до

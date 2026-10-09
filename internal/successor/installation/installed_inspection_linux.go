@@ -194,7 +194,7 @@ func openInstalledInspection(ctx context.Context, directory string) (result *ins
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	return &installedInspection{lease: lease, installedFiles: &installedFiles{directory: directory, gid: native.Gid, files: make(map[string]stagedFile), directories: ancestors, mutableDirectories: make(map[string]os.FileInfo)}}, nil
+	return &installedInspection{lease: lease, installedFiles: &installedFiles{directory: directory, gid: native.Gid, files: make(map[string]fileObservation), directories: ancestors, mutableDirectories: make(map[string]os.FileInfo)}}, nil
 }
 
 func (reader *installedInspection) observe(ctx context.Context) error {
@@ -226,7 +226,7 @@ func (reader *installedInspection) syncObserved(ctx context.Context, filename st
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, file.Close(), ctx.Err()) }()
 	info, err := file.Stat()
-	if err != nil || !sameReadIdentity(observed.identity, info) {
+	if err != nil || !sameObservedFile(observed.identity, info) {
 		return errors.Join(ErrBinding, err)
 	}
 	if err := file.Sync(); err != nil {
@@ -251,7 +251,7 @@ func (reader *installedInspection) writePrivate(ctx context.Context, filename st
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, root.Close()) }()
 	info, err := root.Stat(".")
-	if err != nil || !sameStagingDirectory(reader.directories[filepath.Dir(filename)], info) || !privateJournalDirectory(info) {
+	if err != nil || !sameObservedDirectory(reader.directories[filepath.Dir(filename)], info) || !privateJournalDirectory(info) {
 		return errors.Join(ErrBinding, err)
 	}
 	created, err := writeStagedFile(ctx, root, filepath.Base(filename), body, 0600, 0)
@@ -274,7 +274,7 @@ func (reader *installedInspection) removeObserved(ctx context.Context, filename 
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, root.Close(), ctx.Err()) }()
 	info, err := root.Lstat(filepath.Base(filename))
-	if err != nil || !sameReadIdentity(reader.files[filename].identity, info) {
+	if err != nil || !sameObservedFile(reader.files[filename].identity, info) {
 		return errors.Join(ErrBinding, err)
 	}
 	if err := root.Remove(filepath.Base(filename)); err != nil {

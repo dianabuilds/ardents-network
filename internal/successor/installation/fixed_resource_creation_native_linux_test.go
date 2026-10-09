@@ -120,7 +120,7 @@ func TestInstallationNativeFixedCreationCancellationRetainsEmptyRecordedLeaf(t *
 		t.Fatal("original cancellation lost", err)
 	}
 	info, err := os.Lstat(filename)
-	if err != nil || !ownedRequestFile(info) || info.Size() != 0 || info.Mode().Perm() != 0600 {
+	if err != nil || !rootOwnedFile(info) || info.Size() != 0 || info.Mode().Perm() != 0600 {
 		t.Fatal("cancelled write changed or removed its empty leaf", err)
 	}
 	if _, err := os.Stat(recordPath); err != nil {
@@ -239,7 +239,7 @@ func TestInstallationNativeFixedDirectoryPromotionRecordsBeforeChange(t *testing
 		t.Fatal("promotion proceeded after recorded access cancelled its original caller", err)
 	}
 	current, err := os.Lstat(directory)
-	if err != nil || !sameStagingDirectory(original, current) {
+	if err != nil || !sameObservedDirectory(original, current) {
 		t.Fatal("cancelled promotion changed the original directory", err)
 	}
 	if _, err := os.Stat(recordPath); err != nil {

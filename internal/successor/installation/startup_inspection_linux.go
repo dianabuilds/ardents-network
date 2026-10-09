@@ -142,7 +142,7 @@ func openStartupInspection(ctx context.Context, directory string) (result *start
 	}
 	ancestors[directory] = info
 	s := &startupInspection{ctx: ctx, root: root, identity: info, files: &installedFiles{
-		directory: directory, gid: native.Gid, files: make(map[string]stagedFile),
+		directory: directory, gid: native.Gid, files: make(map[string]fileObservation),
 		directories: ancestors, mutableDirectories: make(map[string]os.FileInfo),
 	}}
 	defer func() {
@@ -228,7 +228,7 @@ func (s *startupInspection) observe() (returnedErr error) {
 		return err
 	}
 	current, err := s.root.Stat(".")
-	if err != nil || !sameStagingDirectory(s.identity, current) {
+	if err != nil || !sameObservedDirectory(s.identity, current) {
 		return errors.Join(ErrBinding, err)
 	}
 	if err := s.files.observe(s.ctx); err != nil {

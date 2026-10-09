@@ -25,7 +25,7 @@ type installationTransaction struct {
 	fixed            map[string]fixedFileObservation
 	fixedDirectories map[string]os.FileInfo
 	selected         generationSelection
-	intent           stagedFile
+	intent           fileObservation
 	archivedIntent   bool
 	terminal         error
 	parents          []*stagingParent
@@ -40,13 +40,6 @@ type installationContainer struct {
 	identity     os.FileInfo
 	generations  map[string]*generation.Owner
 	journals     map[string]*journal.Transition
-}
-
-type stagedFile struct {
-	identity os.FileInfo
-	body     []byte
-	gid      uint32
-	mode     os.FileMode
 }
 
 func (stage *installationTransaction) createContainer(ctx context.Context, parent *os.Root, name string) (*installationContainer, error) {
@@ -134,7 +127,7 @@ func (stage *installationTransaction) observe() (returnedErr error) {
 	}
 	for directory, expected := range stage.fixedDirectories {
 		info, err := os.Lstat(directory)
-		if err != nil || !sameStagingDirectory(expected, info) {
+		if err != nil || !sameObservedDirectory(expected, info) {
 			return errors.Join(ErrBinding, err)
 		}
 	}
@@ -152,7 +145,7 @@ func (dir *installationContainer) observe() error {
 	rootInfo, rootErr := dir.root.Stat(".")
 	fdInfo, fdErr := dir.file.Stat()
 	for _, info := range []os.FileInfo{pathInfo, rootInfo, fdInfo} {
-		if !sameStagingDirectory(dir.identity, info) {
+		if !sameObservedDirectory(dir.identity, info) {
 			return errors.Join(ErrBinding, pathErr, rootErr, fdErr)
 		}
 	}
@@ -187,52 +180,43 @@ func (dir *installationContainer) observe() error {
 	return nil
 }
 
-func sameStagingDirectory(original, current os.FileInfo) bool {
-	if original == nil || current == nil || !current.IsDir() || !os.SameFile(original, current) || original.Mode() != current.Mode() {
-		return false
-	}
-	a, aOK := original.Sys().(*syscall.Stat_t)
-	b, bOK := current.Sys().(*syscall.Stat_t)
-	return aOK && bOK && a.Uid == 0 && b.Uid == 0 && a.Gid == b.Gid && current.Mode().Perm()&0022 == 0
-}
-
-func writeStagedFile(ctx context.Context, root *os.Root, name string, body []byte, mode os.FileMode, gid uint32) (result stagedFile, returnedErr error) {
+func writeStagedFile(ctx context.Context, root *os.Root, name string, body []byte, mode os.FileMode, gid uint32) (result fileObservation, returnedErr error) {
 	if err := ctx.Err(); err != nil {
-		return stagedFile{}, err
+		return fileObservation{}, err
 	}
 	file, err := root.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0600)
 	if err != nil {
-		return stagedFile{}, err
+		return fileObservation{}, err
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, file.Close()) }()
 	birth, err := file.Stat()
-	if err != nil || !ownedRequestFile(birth) || birth.Mode().Perm() != 0600 || birth.Size() != 0 {
-		return stagedFile{}, errors.Join(ErrBinding, err)
+	if err != nil || !rootOwnedFile(birth) || birth.Mode().Perm() != 0600 || birth.Size() != 0 {
+		return fileObservation{}, errors.Join(ErrBinding, err)
 	}
 	written, err := file.Write(body)
 	if err != nil || written != len(body) {
-		return stagedFile{}, errors.Join(io.ErrShortWrite, err)
+		return fileObservation{}, errors.Join(io.ErrShortWrite, err)
 	}
 	if err := file.Chown(0, int(gid)); err != nil {
-		return stagedFile{}, err
+		return fileObservation{}, err
 	}
 	if err := file.Chmod(mode); err != nil {
-		return stagedFile{}, err
+		return fileObservation{}, err
 	}
 	if err := file.Sync(); err != nil {
-		return stagedFile{}, err
+		return fileObservation{}, err
 	}
 	info, err := file.Stat()
 	if err != nil || !os.SameFile(birth, info) {
-		return stagedFile{}, errors.Join(ErrBinding, err)
+		return fileObservation{}, errors.Join(ErrBinding, err)
 	}
-	result = stagedFile{identity: info, body: bytes.Clone(body), gid: gid, mode: mode}
+	result = fileObservation{identity: info, body: bytes.Clone(body), gid: gid, mode: mode}
 	return result, errors.Join(observeStagedFile(root, name, result), ctx.Err())
 }
 
-func observeStagedFile(root *os.Root, name string, expected stagedFile) (returnedErr error) {
+func observeStagedFile(root *os.Root, name string, expected fileObservation) (returnedErr error) {
 	before, err := root.Lstat(name)
-	if err != nil || !stagedFileMatches(expected, before) {
+	if err != nil || !observedFileMatches(expected, before) {
 		return errors.Join(ErrBinding, err)
 	}
 	file, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
@@ -241,7 +225,7 @@ func observeStagedFile(root *os.Root, name string, expected stagedFile) (returne
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, file.Close()) }()
 	info, err := file.Stat()
-	if err != nil || !stagedFileMatches(expected, info) {
+	if err != nil || !observedFileMatches(expected, info) {
 		return errors.Join(ErrBinding, err)
 	}
 	body, err := io.ReadAll(io.LimitReader(file, int64(len(expected.body))+1))
@@ -250,19 +234,10 @@ func observeStagedFile(root *os.Root, name string, expected stagedFile) (returne
 	}
 	final, err := root.Lstat(name)
 	finalHandle, handleErr := file.Stat()
-	if err != nil || handleErr != nil || !stagedFileMatches(expected, final) || !stagedFileMatches(expected, finalHandle) {
+	if err != nil || handleErr != nil || !observedFileMatches(expected, final) || !observedFileMatches(expected, finalHandle) {
 		return errors.Join(ErrBinding, err, handleErr)
 	}
 	return nil
-}
-
-func stagedFileMatches(expected stagedFile, info os.FileInfo) bool {
-	if expected.identity == nil || info == nil || !info.Mode().IsRegular() || !os.SameFile(expected.identity, info) ||
-		info.Mode() != expected.mode || info.Size() != int64(len(expected.body)) || !info.ModTime().Equal(expected.identity.ModTime()) {
-		return false
-	}
-	native, ok := info.Sys().(*syscall.Stat_t)
-	return ok && native.Uid == 0 && native.Gid == expected.gid && native.Nlink == 1
 }
 
 func syncStagingRoot(root *os.Root) (returnedErr error) {
@@ -371,7 +346,7 @@ func (stage *installationTransaction) borrowParent(ctx context.Context, name str
 		}
 	} else {
 		native, ok := before.Sys().(*syscall.Stat_t)
-		if !sameStagingDirectory(expected, before) || !ok || native.Uid != 0 || native.Gid != gid || before.Mode() != os.ModeDir|0750 {
+		if !sameObservedDirectory(expected, before) || !ok || native.Uid != 0 || native.Gid != gid || before.Mode() != os.ModeDir|0750 {
 			return nil, ErrBinding
 		}
 	}
@@ -406,7 +381,7 @@ func (parent *stagingParent) observe() error {
 	rootInfo, rootErr := parent.root.Stat(".")
 	fileInfo, fileErr := parent.file.Stat()
 	for _, info := range []os.FileInfo{pathInfo, rootInfo, fileInfo} {
-		if !sameStagingDirectory(parent.identity, info) {
+		if !sameObservedDirectory(parent.identity, info) {
 			return errors.Join(ErrBinding, pathErr, rootErr, fileErr)
 		}
 	}

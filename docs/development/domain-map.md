@@ -121,6 +121,13 @@ joined transport close; Installation owns expected configuration, phase
 admission and original predecessor join before releasing that reference. Unit
 retention does not grant Release, process, start or readiness authority.
 
+Root Installation's private native identity predicates and detached file
+observations reside together in `root_ownership_linux.go`. Lease, staging,
+independent inspection and recovery retain distinct root-owned, read-ctime,
+directory and expected-access checks. This owner carries no request provenance
+or live descriptor; admitted I/O and joined close remain with their original
+transaction and read lifetimes.
+
 The original successor barrier synchronizes a start intention before contacting
 the manager and rechecks guard/socket custody after journal I/O. Installation
 owns this intention's exact intent/socket binding; journal admits only its closed

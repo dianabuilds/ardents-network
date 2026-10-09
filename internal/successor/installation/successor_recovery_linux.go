@@ -642,7 +642,7 @@ func (r *successorRecoveryNative) readWritingJournal(ctx context.Context) (map[s
 	if !ok || native.Uid != 0 || uint64(native.Dev) != directoryBirth.Device || native.Ino != directoryBirth.Inode || !((info.Mode() == os.ModeDir|0700 && (native.Gid == 0 || native.Gid == r.reader.gid)) || (info.Mode() == os.ModeDir|0750 && native.Gid == r.reader.gid)) {
 		return nil, nil, ErrBinding
 	}
-	if original, known := r.reader.directories[directory]; known && !sameStagingDirectory(original, info) {
+	if original, known := r.reader.directories[directory]; known && !sameObservedDirectory(original, info) {
 		return nil, nil, ErrBinding
 	}
 	r.reader.directories[directory] = info
@@ -1189,7 +1189,7 @@ func (r *successorRecoveryNative) readStagedReplacements(ctx context.Context, id
 		paths = append(paths, selection)
 	}
 	directory := filepath.Join(r.journal, "replacements")
-	if original, known := r.reader.directories[directory]; known && !sameStagingDirectory(original, identity) {
+	if original, known := r.reader.directories[directory]; known && !sameObservedDirectory(original, identity) {
 		return ErrBinding
 	}
 	r.reader.directories[directory] = identity

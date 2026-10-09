@@ -371,7 +371,7 @@ func stagedRecoveryFixture(t *testing.T) (*successorRecoveryNative, Request) {
 	if err := syncStagingRoot(lease.root); err != nil {
 		t.Fatal(err)
 	}
-	reader := &installedInspection{lease: lease, installedFiles: &installedFiles{directory: lease.path, gid: 65534, files: map[string]stagedFile{
+	reader := &installedInspection{lease: lease, installedFiles: &installedFiles{directory: lease.path, gid: 65534, files: map[string]fileObservation{
 		filepath.Join(lease.path, "transition.json"): intentFile,
 		filepath.Join(lease.path, "selection.json"):  selection,
 	}, directories: map[string]os.FileInfo{lease.path: lease.identity}, mutableDirectories: map[string]os.FileInfo{}}}
@@ -592,7 +592,7 @@ func stagedReplacementPrefixFixture(t *testing.T, count int) (*successorRecovery
 			t.Fatal(err)
 		}
 		physical[filename] = leaf
-		r.reader.files[filename] = stagedFile{identity: info, body: body, mode: 0644, gid: 0}
+		r.reader.files[filename] = fileObservation{identity: info, body: body, mode: 0644, gid: 0}
 		if index < count {
 			native := info.Sys().(*syscall.Stat_t)
 			// Independent explicit persisted grammar, including its canonical order.
@@ -703,7 +703,7 @@ func observeFixtureFixedBytes(t *testing.T, r *successorRecoveryNative, logical,
 	if err := os.WriteFile(physical, body, 0644); err != nil {
 		t.Fatal(err)
 	}
-	reader := &installedFiles{files: make(map[string]stagedFile), directories: make(map[string]os.FileInfo)}
+	reader := &installedFiles{files: make(map[string]fileObservation), directories: make(map[string]os.FileInfo)}
 	if _, err := reader.readObserved(t.Context(), physical, 64<<20, 0644, 0, true); err != nil {
 		t.Fatal(err)
 	}
@@ -871,7 +871,7 @@ func TestInstallationNativeStagedFixedCompletionRetainsOriginalRecord(t *testing
 				}
 			}
 			after, err := os.Lstat(filepath.Join(r.journal, "0004.json"))
-			if err != nil || !sameReadIdentity(before.Identity, after) || !bytes.Equal(before.Bytes, owner.Bytes(journal.Transitions, "0004.json")) {
+			if err != nil || !sameObservedFile(before.Identity, after) || !bytes.Equal(before.Bytes, owner.Bytes(journal.Transitions, "0004.json")) {
 				t.Fatal("completion resync recreated or rewrote original record", err)
 			}
 			if _, err := os.Lstat(filepath.Join(r.journal, "0005.json")); !errors.Is(err, os.ErrNotExist) {
@@ -967,7 +967,7 @@ func observeFixtureSelection(t *testing.T, r *successorRecoveryNative, filename 
 	if err := os.WriteFile(filename, body, 0640); err != nil {
 		t.Fatal(err)
 	}
-	reader := &installedFiles{files: make(map[string]stagedFile), directories: map[string]os.FileInfo{r.reader.lease.path: r.reader.lease.identity}}
+	reader := &installedFiles{files: make(map[string]fileObservation), directories: map[string]os.FileInfo{r.reader.lease.path: r.reader.lease.identity}}
 	if _, err := reader.readObserved(t.Context(), filename, 4<<10, 0640, 65534, true); err != nil {
 		t.Fatal(err)
 	}
@@ -1036,11 +1036,11 @@ func TestInstallationNativeStagedSelectionRepairsOriginalPrefix(t *testing.T) {
 			}
 			actual, readErr := os.ReadFile(filename)
 			recordAfter, statErr := os.Lstat(recordPath)
-			if readErr != nil || statErr != nil || !bytes.Equal(actual, after) || !sameReadIdentity(recordBefore, recordAfter) {
+			if readErr != nil || statErr != nil || !bytes.Equal(actual, after) || !sameObservedFile(recordBefore, recordAfter) {
 				t.Fatal("physical selection bytes or original replacement record differ", readErr, statErr)
 			}
 			current, err := os.Lstat(filepath.Join(r.journal, "0005.json"))
-			if err != nil || !sameReadIdentity(phase.Identity, current) {
+			if err != nil || !sameObservedFile(phase.Identity, current) {
 				t.Fatal("publishing record rewritten", err)
 			}
 			if _, err := os.Lstat(filepath.Join(r.journal, "0006.json")); !errors.Is(err, os.ErrNotExist) {
@@ -1185,7 +1185,7 @@ func TestInstallationNativeStagedReloadRetainsOriginalRecords(t *testing.T) {
 					}
 				}
 				current, err := os.Lstat(filepath.Join(r.journal, name))
-				if err != nil || !sameReadIdentity(original.Identity, current) || !bytes.Equal(original.Bytes, owner.Bytes(journal.Transitions, name)) {
+				if err != nil || !sameObservedFile(original.Identity, current) || !bytes.Equal(original.Bytes, owner.Bytes(journal.Transitions, name)) {
 					t.Fatal("original reload record rewritten", err)
 				}
 			}
@@ -1363,7 +1363,7 @@ func stagedGenerationBirthFixture(t *testing.T) *successorRecoveryNative {
 		t.Fatal(err)
 	}
 	reader := &installedInspection{lease: lease, installedFiles: &installedFiles{
-		directory: lease.path, gid: 65534, files: map[string]stagedFile{},
+		directory: lease.path, gid: 65534, files: map[string]fileObservation{},
 		directories: map[string]os.FileInfo{}, mutableDirectories: map[string]os.FileInfo{},
 	}}
 	directory := filepath.Join(lease.path, "generations", selected.GenerationDigest)
@@ -1514,7 +1514,7 @@ func completionRecoveryFixture(t *testing.T, retainGuard bool, withAttempt ...bo
 		t.Fatal("unexpected cleanup prefix", err)
 	}
 	return &successorRecoveryNative{
-		reader:  &installedInspection{lease: stage.lease, installedFiles: &installedFiles{directory: stage.lease.path, gid: stage.lease.identity.Sys().(*syscall.Stat_t).Gid, files: make(map[string]stagedFile), directories: map[string]os.FileInfo{stage.lease.path: stage.lease.identity}, mutableDirectories: make(map[string]os.FileInfo)}},
+		reader:  &installedInspection{lease: stage.lease, installedFiles: &installedFiles{directory: stage.lease.path, gid: stage.lease.identity.Sys().(*syscall.Stat_t).Gid, files: make(map[string]fileObservation), directories: map[string]os.FileInfo{stage.lease.path: stage.lease.identity}, mutableDirectories: make(map[string]os.FileInfo)}},
 		journal: filepath.Join(stage.lease.path, "journals", stage.selected.GenerationDigest), intentBody: stage.intent.body,
 	}
 }

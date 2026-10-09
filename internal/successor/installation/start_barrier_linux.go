@@ -21,7 +21,7 @@ type installedStartBarrier struct {
 	ctx              context.Context
 	lease            *installationLease
 	journal          *journal.Transition
-	guard, record    stagedFile
+	guard, record    fileObservation
 	socket           os.FileInfo
 	listener         *net.UnixListener
 	guardAttempted   bool

@@ -56,7 +56,7 @@ func successorStagingFixture(t *testing.T) (*installedInspection, Request, gener
 	if err := previous.archiveIntent(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	reader := &installedInspection{lease: previous.lease, installedFiles: &installedFiles{directory: previous.lease.path, gid: 65534, files: map[string]stagedFile{}, directories: map[string]os.FileInfo{}, mutableDirectories: map[string]os.FileInfo{}}}
+	reader := &installedInspection{lease: previous.lease, installedFiles: &installedFiles{directory: previous.lease.path, gid: 65534, files: map[string]fileObservation{}, directories: map[string]os.FileInfo{}, mutableDirectories: map[string]os.FileInfo{}}}
 	reader.directories[previous.lease.path] = previous.lease.identity
 	reader.files[filepath.Join(previous.lease.path, "selection.json")] = previous.fixed[filepath.Join(previous.lease.path, "selection.json")].file
 	for _, name := range generation.Names() {
@@ -65,7 +65,7 @@ func successorStagingFixture(t *testing.T) (*installedInspection, Request, gener
 		if err != nil {
 			t.Fatal(err)
 		}
-		reader.files[filename] = stagedFile{identity: info, body: previous.generation.Bytes(name), gid: 65534, mode: info.Mode()}
+		reader.files[filename] = fileObservation{identity: info, body: previous.generation.Bytes(name), gid: 65534, mode: info.Mode()}
 	}
 	for _, directory := range previous.directories {
 		if directory.parent == previous.lease.root && directory.name == "generations" {
@@ -309,7 +309,7 @@ func TestInstallationNativeSuccessorSelectionPreservesOriginalInodeAndGroup(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	recordFile := stagedFile{identity: identity, body: stage.journal.Bytes(journal.Replacements, name), mode: 0600}
+	recordFile := fileObservation{identity: identity, body: stage.journal.Bytes(journal.Replacements, name), mode: 0600}
 	var record fixedReplacementRecord
 	if err := json.Unmarshal(recordFile.body, &record); err != nil || record.Mode != 0640 || record.GID != 65534 || record.PreviousDigest != digestHex(previous.file.body) || record.CandidateDigest != digestHex(body) {
 		t.Fatal("selection access or byte binding differs", err)
@@ -330,7 +330,7 @@ func TestInstallationNativeSuccessorSelectionPreservesOriginalInodeAndGroup(t *t
 	}
 	actual, readErr := os.ReadFile(recordPath)
 	after, statErr := os.Lstat(recordPath)
-	if readErr != nil || statErr != nil || !stagedFileMatches(recordFile, after) || !bytes.Equal(actual, recordFile.body) {
+	if readErr != nil || statErr != nil || !observedFileMatches(recordFile, after) || !bytes.Equal(actual, recordFile.body) {
 		t.Fatal("retry changed original record", readErr, statErr)
 	}
 	for _, name := range []string{"0006.json", "0007.json"} {

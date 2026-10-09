@@ -72,7 +72,7 @@ func observePlatformRelease(ctx context.Context) (result string, returnedErr err
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, root.Close()) }()
 	before, err := root.Lstat("os-release")
-	if err != nil || !ownedRequestFile(before) || before.Size() <= 0 || before.Size() > 16<<10 {
+	if err != nil || !rootOwnedFile(before) || before.Size() <= 0 || before.Size() > 16<<10 {
 		return "", errors.Join(ErrNativeUnavailable, err)
 	}
 	file, err := root.OpenFile("os-release", os.O_RDONLY|syscall.O_NOFOLLOW, 0)
@@ -81,7 +81,7 @@ func observePlatformRelease(ctx context.Context) (result string, returnedErr err
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, file.Close()) }()
 	info, err := file.Stat()
-	if err != nil || !sameRequestFile(before, info) {
+	if err != nil || !sameOwnedFile(before, info) {
 		return "", errors.Join(ErrNativeUnavailable, err)
 	}
 	body, err := io.ReadAll(io.LimitReader(file, (16<<10)+1))
@@ -101,7 +101,7 @@ func observePlatformRelease(ctx context.Context) (result string, returnedErr err
 	}
 	final, err := file.Stat()
 	pathFinal, pathErr := root.Lstat("os-release")
-	if err != nil || pathErr != nil || !sameRequestFile(before, final) || !sameRequestFile(before, pathFinal) || fields["ID"] != "ubuntu" {
+	if err != nil || pathErr != nil || !sameOwnedFile(before, final) || !sameOwnedFile(before, pathFinal) || fields["ID"] != "ubuntu" {
 		return "", errors.Join(ErrNativeUnavailable, err, pathErr)
 	}
 	for name, original := range ancestors {

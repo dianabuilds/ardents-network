@@ -19,7 +19,7 @@ import (
 type installedFiles struct {
 	directory          string
 	gid                uint32
-	files              map[string]stagedFile
+	files              map[string]fileObservation
 	directories        map[string]os.FileInfo
 	mutableDirectories map[string]os.FileInfo
 }
@@ -33,7 +33,7 @@ func (reader *installedFiles) pinGenerationDirectory(directory string) error {
 	if !ok || native.Uid != 0 || native.Gid != reader.gid || info.Mode() != os.ModeDir|0750 {
 		return ErrBinding
 	}
-	if original, known := reader.directories[directory]; known && !sameStagingDirectory(original, info) {
+	if original, known := reader.directories[directory]; known && !sameObservedDirectory(original, info) {
 		return ErrBinding
 	}
 	reader.directories[directory] = info
@@ -59,7 +59,7 @@ func (reader *installedFiles) readObserved(ctx context.Context, filename string,
 			return nil, err
 		}
 		if original, known := reader.directories[directory]; known {
-			if !sameStagingDirectory(original, info) {
+			if !sameObservedDirectory(original, info) {
 				return nil, ErrBinding
 			}
 		} else {
@@ -102,7 +102,7 @@ func (reader *installedFiles) readObserved(ctx context.Context, filename string,
 		}
 	}()
 	opened, err := file.Stat()
-	if err != nil || !sameReadIdentity(before, opened) {
+	if err != nil || !sameObservedFile(before, opened) {
 		return nil, errors.Join(ErrBinding, err)
 	}
 	body, err = io.ReadAll(io.LimitReader(file, maximum+1))
@@ -111,32 +111,23 @@ func (reader *installedFiles) readObserved(ctx context.Context, filename string,
 	}
 	final, fileErr := file.Stat()
 	pathFinal, pathErr := root.Lstat(name)
-	if fileErr != nil || pathErr != nil || !sameReadIdentity(before, final) || !sameReadIdentity(before, pathFinal) {
+	if fileErr != nil || pathErr != nil || !sameObservedFile(before, final) || !sameObservedFile(before, pathFinal) {
 		return nil, errors.Join(ErrBinding, fileErr, pathErr)
 	}
 	if original, known := reader.files[filename]; known {
-		if !sameReadIdentity(original.identity, before) || !bytes.Equal(original.body, body) {
+		if !sameObservedFile(original.identity, before) || !bytes.Equal(original.body, body) {
 			return nil, ErrBinding
 		}
 	} else {
-		reader.files[filename] = stagedFile{identity: before, body: bytes.Clone(body), gid: gid, mode: mode}
+		reader.files[filename] = fileObservation{identity: before, body: bytes.Clone(body), gid: gid, mode: mode}
 	}
 	return body, ctx.Err()
-}
-
-func sameReadIdentity(before, after os.FileInfo) bool {
-	if before == nil || after == nil || !os.SameFile(before, after) || before.Mode() != after.Mode() || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) {
-		return false
-	}
-	a, aOK := before.Sys().(*syscall.Stat_t)
-	b, bOK := after.Sys().(*syscall.Stat_t)
-	return aOK && bOK && a.Uid == b.Uid && a.Gid == b.Gid && a.Nlink == 1 && b.Nlink == 1 && a.Ctim == b.Ctim
 }
 
 func (reader *installedFiles) observe(ctx context.Context) error {
 	for directory, original := range reader.directories {
 		current, err := os.Lstat(directory)
-		if err != nil || !sameStagingDirectory(original, current) {
+		if err != nil || !sameObservedDirectory(original, current) {
 			return errors.Join(ErrBinding, err)
 		}
 	}
@@ -262,11 +253,11 @@ func (reader *installedFiles) readSealedGeneration(ctx context.Context, digest s
 			return nil, nil, errors.Join(ErrBinding, err)
 		}
 		if original, known := reader.files[filename]; known {
-			if !sameReadIdentity(original.identity, info) || !bytes.Equal(original.body, body) {
+			if !sameObservedFile(original.identity, info) || !bytes.Equal(original.body, body) {
 				return nil, nil, ErrBinding
 			}
 		} else {
-			reader.files[filename] = stagedFile{identity: info, body: bytes.Clone(body), gid: reader.gid, mode: info.Mode()}
+			reader.files[filename] = fileObservation{identity: info, body: bytes.Clone(body), gid: reader.gid, mode: info.Mode()}
 		}
 		if name == "binding.json" {
 			binding = body

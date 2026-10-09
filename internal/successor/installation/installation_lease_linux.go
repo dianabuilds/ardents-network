@@ -58,7 +58,7 @@ func createInitialLease(ctx context.Context, directory string) (lease *installat
 	}
 	owned.writer = writer
 	info, err := writer.Stat()
-	if err != nil || !ownedRequestFile(info) || info.Mode().Perm() != 0600 || info.Size() != 0 {
+	if err != nil || !rootOwnedFile(info) || info.Mode().Perm() != 0600 || info.Size() != 0 {
 		return nil, errors.Join(ErrNativeUnavailable, err)
 	}
 	if err := syscall.Flock(int(writer.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
@@ -88,13 +88,13 @@ func (lease *installationLease) observe() error {
 	}
 	pathInfo, pathErr := os.Lstat(lease.path)
 	handleInfo, handleErr := lease.root.Stat(".")
-	if err := errors.Join(pathErr, handleErr); err != nil || !sameStagingDirectory(lease.identity, pathInfo) ||
-		!sameStagingDirectory(lease.identity, handleInfo) {
+	if err := errors.Join(pathErr, handleErr); err != nil || !sameObservedDirectory(lease.identity, pathInfo) ||
+		!sameObservedDirectory(lease.identity, handleInfo) {
 		return errors.Join(ErrNativeUnavailable, err)
 	}
 	pathWriter, pathErr := lease.root.Lstat("writer.lock")
 	handleWriter, handleErr := lease.writer.Stat()
-	if err := errors.Join(pathErr, handleErr); err != nil || !sameRequestFile(pathWriter, handleWriter) ||
+	if err := errors.Join(pathErr, handleErr); err != nil || !sameOwnedFile(pathWriter, handleWriter) ||
 		handleWriter.Mode().Perm() != 0600 || handleWriter.Size() != 0 {
 		return errors.Join(ErrNativeUnavailable, err)
 	}

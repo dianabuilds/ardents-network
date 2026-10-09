@@ -10,7 +10,7 @@ import (
 
 // These predicates admit trusted root-owned paths for the Installation lease,
 // staging and independent inspection; they carry no request-file provenance.
-func ownedRequestFile(info os.FileInfo) bool {
+func rootOwnedFile(info os.FileInfo) bool {
 	if info == nil || !info.Mode().IsRegular() || info.Mode().Perm()&0022 != 0 {
 		return false
 	}
@@ -18,8 +18,8 @@ func ownedRequestFile(info os.FileInfo) bool {
 	return ok && native.Uid == 0 && native.Gid == 0 && native.Nlink == 1
 }
 
-func sameRequestFile(before, after os.FileInfo) bool {
-	if !ownedRequestFile(before) || !ownedRequestFile(after) || !os.SameFile(before, after) ||
+func sameOwnedFile(before, after os.FileInfo) bool {
+	if !rootOwnedFile(before) || !rootOwnedFile(after) || !os.SameFile(before, after) ||
 		before.Size() != after.Size() || before.Mode() != after.Mode() || !before.ModTime().Equal(after.ModTime()) {
 		return false
 	}
@@ -102,4 +102,43 @@ func directoryObservationError(err error) error {
 	default:
 		return err
 	}
+}
+
+// fileObservation is detached file identity and bytes, shared by staged writes
+// and independent installed reads. It owns no descriptor, lease or admission.
+type fileObservation struct {
+	identity os.FileInfo
+	body     []byte
+	gid      uint32
+	mode     os.FileMode
+}
+
+// Independent reads retain ctime as well as access, size and modification time.
+func sameObservedFile(before, after os.FileInfo) bool {
+	if before == nil || after == nil || !os.SameFile(before, after) || before.Mode() != after.Mode() || before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) {
+		return false
+	}
+	a, aOK := before.Sys().(*syscall.Stat_t)
+	b, bOK := after.Sys().(*syscall.Stat_t)
+	return aOK && bOK && a.Uid == b.Uid && a.Gid == b.Gid && a.Nlink == 1 && b.Nlink == 1 && a.Ctim == b.Ctim
+}
+
+func sameObservedDirectory(original, current os.FileInfo) bool {
+	if original == nil || current == nil || !current.IsDir() || !os.SameFile(original, current) || original.Mode() != current.Mode() {
+		return false
+	}
+	a, aOK := original.Sys().(*syscall.Stat_t)
+	b, bOK := current.Sys().(*syscall.Stat_t)
+	return aOK && bOK && a.Uid == 0 && b.Uid == 0 && a.Gid == b.Gid && current.Mode().Perm()&0022 == 0
+}
+
+// Staged-file matching checks the caller's expected final size and access;
+// unlike independent read retention, it does not compare the original ctime.
+func observedFileMatches(expected fileObservation, info os.FileInfo) bool {
+	if expected.identity == nil || info == nil || !info.Mode().IsRegular() || !os.SameFile(expected.identity, info) ||
+		info.Mode() != expected.mode || info.Size() != int64(len(expected.body)) || !info.ModTime().Equal(expected.identity.ModTime()) {
+		return false
+	}
+	native, ok := info.Sys().(*syscall.Stat_t)
+	return ok && native.Uid == 0 && native.Gid == expected.gid && native.Nlink == 1
 }

@@ -47,7 +47,7 @@ func replacementRecordFixture(t *testing.T) (*installationTransaction, string, f
 	if err != nil {
 		t.Fatal(err)
 	}
-	return stage, filename, fixedFileObservation{parent: parent, file: stagedFile{identity: info, body: previousBytes, mode: 0644, gid: 0}}
+	return stage, filename, fixedFileObservation{parent: parent, file: fileObservation{identity: info, body: previousBytes, mode: 0644, gid: 0}}
 }
 
 func TestInstallationNativeReplacementRecordRetainsOriginalAndExactDigests(t *testing.T) {
@@ -57,7 +57,7 @@ func TestInstallationNativeReplacementRecordRetainsOriginalAndExactDigests(t *te
 		t.Fatal(err)
 	}
 	name := digestHex([]byte(filename)) + ".json"
-	first := stagedFile{body: stage.journal.Bytes(journal.Replacements, name), mode: 0600}
+	first := fileObservation{body: stage.journal.Bytes(journal.Replacements, name), mode: 0600}
 	var statErr error
 	first.identity, statErr = os.Lstat(filepath.Join(stage.lease.path, "journals", stage.selected.GenerationDigest, "replacements", name))
 	if statErr != nil {
@@ -91,7 +91,7 @@ func TestInstallationNativeReplacementRecordRetainsOriginalAndExactDigests(t *te
 	if err := stage.recordFixedReplacement(t.Context(), filename, previous, previous.file.body, candidate); err != nil {
 		t.Fatal("exact retry refused", err)
 	}
-	retried := stagedFile{body: stage.journal.Bytes(journal.Replacements, name), mode: 0600}
+	retried := fileObservation{body: stage.journal.Bytes(journal.Replacements, name), mode: 0600}
 	retried.identity, statErr = os.Lstat(filepath.Join(stage.lease.path, "journals", stage.selected.GenerationDigest, "replacements", name))
 	if statErr != nil {
 		t.Fatal(statErr)
@@ -128,7 +128,7 @@ func TestInstallationNativeReplacementSeparatesObservedAndCompletePreimage(t *te
 			if err := os.WriteFile(filename, body, 0644); err != nil {
 				t.Fatal(err)
 			}
-			reader := &installedFiles{files: make(map[string]stagedFile), directories: make(map[string]os.FileInfo)}
+			reader := &installedFiles{files: make(map[string]fileObservation), directories: make(map[string]os.FileInfo)}
 			if _, err := reader.readObserved(t.Context(), filename, 64<<20, 0644, 0, true); err != nil {
 				t.Fatal(err)
 			}
@@ -145,7 +145,7 @@ func TestInstallationNativeReplacementSeparatesObservedAndCompletePreimage(t *te
 			if err != nil || !os.SameFile(written.identity, original.file.identity) || !bytes.Equal(written.body, candidate) || !bytes.Equal(record, stage.journal.Bytes(journal.Replacements, name)) {
 				t.Fatal("same-inode repair changed original provenance", err)
 			}
-			if image == "candidate" && !sameReadIdentity(current.file.identity, written.identity) {
+			if image == "candidate" && !sameObservedFile(current.file.identity, written.identity) {
 				t.Fatal("complete candidate was rewritten instead of resynchronized")
 			}
 		})

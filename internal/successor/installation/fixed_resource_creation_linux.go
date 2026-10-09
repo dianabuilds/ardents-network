@@ -153,7 +153,7 @@ func (stage *installationTransaction) birthFixedDirectory(ctx context.Context, d
 	}
 	current, err := file.Stat()
 	currentPath, pathErr := os.Lstat(directory)
-	if err != nil || pathErr != nil || !sameStagingDirectory(birth, current) || !sameStagingDirectory(birth, currentPath) {
+	if err != nil || pathErr != nil || !sameObservedDirectory(birth, current) || !sameObservedDirectory(birth, currentPath) {
 		return errors.Join(ErrBinding, err, pathErr)
 	}
 	if err := file.Chown(0, int(gid)); err != nil {
@@ -167,7 +167,7 @@ func (stage *installationTransaction) birthFixedDirectory(ctx context.Context, d
 	}
 	info, err := file.Stat()
 	pathInfo, pathErr := os.Lstat(directory)
-	if err != nil || pathErr != nil || !os.SameFile(birth, info) || !sameStagingDirectory(info, pathInfo) || info.Mode() != os.ModeDir|mode {
+	if err != nil || pathErr != nil || !os.SameFile(birth, info) || !sameObservedDirectory(info, pathInfo) || info.Mode() != os.ModeDir|mode {
 		return errors.Join(ErrBinding, err, pathErr)
 	}
 	native, ok := info.Sys().(*syscall.Stat_t)
@@ -195,7 +195,7 @@ func (stage *installationTransaction) changeFixedDirectoryMode(ctx context.Conte
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, file.Close()) }()
 	before, err := file.Stat()
-	if err != nil || !sameStagingDirectory(original, before) {
+	if err != nil || !sameObservedDirectory(original, before) {
 		return errors.Join(ErrBinding, err)
 	}
 	native, ok := before.Sys().(*syscall.Stat_t)
@@ -210,7 +210,7 @@ func (stage *installationTransaction) changeFixedDirectoryMode(ctx context.Conte
 	}
 	current, err := file.Stat()
 	currentPath, pathErr := os.Lstat(directory)
-	if err != nil || pathErr != nil || !sameStagingDirectory(before, current) || !sameStagingDirectory(before, currentPath) {
+	if err != nil || pathErr != nil || !sameObservedDirectory(before, current) || !sameObservedDirectory(before, currentPath) {
 		return errors.Join(ErrBinding, err, pathErr)
 	}
 	if err := file.Chmod(mode); err != nil {
@@ -221,7 +221,7 @@ func (stage *installationTransaction) changeFixedDirectoryMode(ctx context.Conte
 	}
 	info, err := file.Stat()
 	pathInfo, pathErr := os.Lstat(directory)
-	if err != nil || pathErr != nil || !os.SameFile(original, info) || !sameStagingDirectory(info, pathInfo) || info.Mode() != os.ModeDir|mode {
+	if err != nil || pathErr != nil || !os.SameFile(original, info) || !sameObservedDirectory(info, pathInfo) || info.Mode() != os.ModeDir|mode {
 		return errors.Join(ErrBinding, err, pathErr)
 	}
 	stage.fixedDirectories[directory] = info
@@ -230,7 +230,7 @@ func (stage *installationTransaction) changeFixedDirectoryMode(ctx context.Conte
 	// the new parent mode rather than treating our promotion as substitution.
 	for filename, observation := range stage.fixed {
 		if filepath.Dir(filename) == directory {
-			if !sameStagingDirectory(original, observation.parent) {
+			if !sameObservedDirectory(original, observation.parent) {
 				return ErrBinding
 			}
 			observation.parent = info
@@ -256,7 +256,7 @@ type fixedCreationRecord struct {
 
 type fixedFileObservation struct {
 	parent os.FileInfo
-	file   stagedFile
+	file   fileObservation
 }
 
 // The transaction must observe manager absence and its original account/roots
@@ -298,7 +298,7 @@ func (stage *installationTransaction) createFixedFile(ctx context.Context, filen
 	parentInfo, err := os.Lstat(filepath.Dir(filename))
 	trustedParent := rootDirectory(parentInfo)
 	if isSelection {
-		trustedParent = sameStagingDirectory(stage.lease.identity, parentInfo)
+		trustedParent = sameObservedDirectory(stage.lease.identity, parentInfo)
 	}
 	if err != nil || !trustedParent {
 		return errors.Join(ErrBinding, err)
@@ -337,7 +337,7 @@ func (stage *installationTransaction) createFixedFile(ctx context.Context, filen
 		if stage.fixed == nil {
 			stage.fixed = make(map[string]fixedFileObservation)
 		}
-		stage.fixed[filename] = fixedFileObservation{parent: parentInfo, file: stagedFile{identity: info, body: frozen, mode: mode, gid: gid}}
+		stage.fixed[filename] = fixedFileObservation{parent: parentInfo, file: fileObservation{identity: info, body: frozen, mode: mode, gid: gid}}
 	}
 	return fixedResourceError(err)
 }
@@ -355,7 +355,7 @@ func fixedResourceError(err error) error {
 
 func observeFixedFile(filename string, expected fixedFileObservation) (returnedErr error) {
 	parentInfo, err := os.Lstat(filepath.Dir(filename))
-	if err != nil || !sameStagingDirectory(expected.parent, parentInfo) {
+	if err != nil || !sameObservedDirectory(expected.parent, parentInfo) {
 		return errors.Join(ErrBinding, err)
 	}
 	root, err := os.OpenRoot(filepath.Dir(filename))
@@ -364,14 +364,14 @@ func observeFixedFile(filename string, expected fixedFileObservation) (returnedE
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, root.Close()) }()
 	handle, err := root.Stat(".")
-	if err != nil || !sameStagingDirectory(expected.parent, handle) {
+	if err != nil || !sameObservedDirectory(expected.parent, handle) {
 		return errors.Join(ErrBinding, err)
 	}
 	if err := observeStagedFile(root, filepath.Base(filename), expected.file); err != nil {
 		return err
 	}
 	after, err := os.Lstat(filepath.Dir(filename))
-	if err != nil || !sameStagingDirectory(expected.parent, after) {
+	if err != nil || !sameObservedDirectory(expected.parent, after) {
 		return errors.Join(ErrBinding, err)
 	}
 	return nil

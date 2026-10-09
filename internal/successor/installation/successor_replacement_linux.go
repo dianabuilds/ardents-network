@@ -109,7 +109,7 @@ func (stage *installationTransaction) validateReplacementAccess(filename string,
 	if filename == filepath.Join(stage.lease.path, "selection.json") {
 		native, ok := stage.lease.identity.Sys().(*syscall.Stat_t)
 		if !ok || native.Gid == 0 || native.Gid != previous.file.gid || previous.file.mode != 0640 ||
-			stage.lease.identity.Mode() != os.ModeDir|0750 || !sameStagingDirectory(stage.lease.identity, previous.parent) {
+			stage.lease.identity.Mode() != os.ModeDir|0750 || !sameObservedDirectory(stage.lease.identity, previous.parent) {
 			return ErrBinding
 		}
 		var intent successorTransitionIntent
@@ -288,27 +288,27 @@ func (stage *installationTransaction) recordFixedReplacementCompletion(ctx conte
 
 // Repair only authorized torn prefixes on the original inode. This lower
 // mechanism supplies no fresh proof, manager admission or recovery consumer.
-func (stage *installationTransaction) replaceRecordedFixedFile(ctx context.Context, filename string, previous fixedFileObservation, preimage, candidate []byte) (result stagedFile, returnedErr error) {
+func (stage *installationTransaction) replaceRecordedFixedFile(ctx context.Context, filename string, previous fixedFileObservation, preimage, candidate []byte) (result fileObservation, returnedErr error) {
 	if ctx == nil || stage == nil || stage.journal == nil || !stage.journal.HasCollection(journal.Replacements) || previous.parent == nil || previous.file.identity == nil || len(preimage) == 0 || len(candidate) == 0 || len(preimage) > 64<<20 || len(candidate) > 64<<20 || !canonicalPath(filename) || filename == "/" {
-		return stagedFile{}, ErrInput
+		return fileObservation{}, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
-		return stagedFile{}, err
+		return fileObservation{}, err
 	}
 	if err := stage.observe(); err != nil {
-		return stagedFile{}, err
+		return fileObservation{}, err
 	}
 	if err := stage.validateReplacementAccess(filename, previous, candidate); err != nil {
-		return stagedFile{}, err
+		return fileObservation{}, err
 	}
 	native, ok := previous.file.identity.Sys().(*syscall.Stat_t)
 	if !ok || native.Uid != 0 || native.Gid != previous.file.gid || native.Nlink != 1 {
-		return stagedFile{}, ErrBinding
+		return fileObservation{}, ErrBinding
 	}
 	name := digestHex([]byte(filename)) + ".json"
 	var record fixedReplacementRecord
 	if err := decodeCanonical(stage.journal.Bytes(journal.Replacements, name), 4<<10, &record); err != nil || record != (fixedReplacementRecord{Schema: "ardents-endpoint-installation-replacement-v1", GenerationDigest: stage.selected.GenerationDigest, Path: filename, Device: uint64(native.Dev), Inode: native.Ino, Mode: uint32(previous.file.mode), GID: previous.file.gid, PreviousDigest: digestHex(preimage), CandidateDigest: digestHex(candidate)}) {
-		return stagedFile{}, errors.Join(ErrBinding, err)
+		return fileObservation{}, errors.Join(ErrBinding, err)
 	}
 	frozen := bytes.Clone(candidate)
 	mutation, err := fixedfile.Replace(ctx, filename, previous.parent, previous.file.identity, preimage, frozen, previous.file.mode, previous.file.gid)
@@ -316,14 +316,14 @@ func (stage *installationTransaction) replaceRecordedFixedFile(ctx context.Conte
 		defer func() { returnedErr = errors.Join(returnedErr, fixedResourceError(mutation.Close())) }()
 	}
 	if err != nil {
-		return stagedFile{}, fixedResourceError(err)
+		return fileObservation{}, fixedResourceError(err)
 	}
 	if err := stage.syncReplacementRecord(ctx, name); err != nil {
-		return stagedFile{}, err
+		return fileObservation{}, err
 	}
 	info, err := mutation.Commit()
 	if info != nil {
-		result = stagedFile{identity: info, body: frozen, mode: previous.file.mode, gid: previous.file.gid}
+		result = fileObservation{identity: info, body: frozen, mode: previous.file.mode, gid: previous.file.gid}
 	}
 	return result, fixedResourceError(err)
 }

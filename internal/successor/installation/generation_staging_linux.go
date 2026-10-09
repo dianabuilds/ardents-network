@@ -294,7 +294,7 @@ func promoteReadDirectory(ctx context.Context, path string, root *os.Root, origi
 	}
 	pathInfo, pathErr := os.Lstat(path)
 	rootInfo, rootErr := root.Stat(".")
-	if pathErr != nil || rootErr != nil || !sameStagingDirectory(original, pathInfo) || !sameStagingDirectory(original, rootInfo) {
+	if pathErr != nil || rootErr != nil || !sameObservedDirectory(original, pathInfo) || !sameObservedDirectory(original, rootInfo) {
 		return nil, errors.Join(ErrBinding, pathErr, rootErr)
 	}
 	native, ok := original.Sys().(*syscall.Stat_t)
@@ -313,7 +313,7 @@ func promoteReadDirectory(ctx context.Context, path string, root *os.Root, origi
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, file.Close()) }()
 	before, err := file.Stat()
-	if err != nil || !sameStagingDirectory(original, before) {
+	if err != nil || !sameObservedDirectory(original, before) {
 		return nil, errors.Join(ErrBinding, err)
 	}
 	if err := file.Chown(0, int(gid)); err != nil {
@@ -335,7 +335,7 @@ func promoteReadDirectory(ctx context.Context, path string, root *os.Root, origi
 	}
 	pathInfo, pathErr = os.Lstat(path)
 	rootInfo, rootErr = root.Stat(".")
-	if pathErr != nil || rootErr != nil || !sameStagingDirectory(info, pathInfo) || !sameStagingDirectory(info, rootInfo) {
+	if pathErr != nil || rootErr != nil || !sameObservedDirectory(info, pathInfo) || !sameObservedDirectory(info, rootInfo) {
 		return nil, errors.Join(ErrBinding, pathErr, rootErr)
 	}
 	// Preserve the changed same inode even if the original caller goes after

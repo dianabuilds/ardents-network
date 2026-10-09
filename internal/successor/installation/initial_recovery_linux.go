@@ -692,7 +692,7 @@ func (r *recoveryNative) repairDirectory(ctx context.Context, filename string) (
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, file.Close(), ctx.Err()) }()
 	info, err := file.Stat()
-	if err != nil || !sameStagingDirectory(before, info) {
+	if err != nil || !sameObservedDirectory(before, info) {
 		return errors.Join(ErrBinding, err)
 	}
 	if err := ctx.Err(); err != nil {
@@ -709,7 +709,7 @@ func (r *recoveryNative) repairDirectory(ctx context.Context, filename string) (
 	}
 	after, err := file.Stat()
 	pathInfo, pathErr := os.Lstat(filename)
-	if err != nil || pathErr != nil || !os.SameFile(before, after) || !sameStagingDirectory(after, pathInfo) || after.Mode() != os.ModeDir|os.FileMode(record.Mode) || after.Sys().(*syscall.Stat_t).Gid != record.GID {
+	if err != nil || pathErr != nil || !os.SameFile(before, after) || !sameObservedDirectory(after, pathInfo) || after.Mode() != os.ModeDir|os.FileMode(record.Mode) || after.Sys().(*syscall.Stat_t).Gid != record.GID {
 		return errors.Join(ErrBinding, err, pathErr)
 	}
 	r.reader.directories[filename] = after
@@ -730,7 +730,7 @@ func (r *recoveryNative) repairFile(ctx context.Context, filename string, body [
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, file.Close(), ctx.Err()) }()
 	info, err := file.Stat()
-	if err != nil || !sameReadIdentity(observed.identity, info) {
+	if err != nil || !sameObservedFile(observed.identity, info) {
 		return errors.Join(ErrBinding, err)
 	}
 	if err := ctx.Err(); err != nil {
@@ -751,7 +751,7 @@ func (r *recoveryNative) repairFile(ctx context.Context, filename string, body [
 	}
 	after, err := file.Stat()
 	pathInfo, pathErr := os.Lstat(filename)
-	if err != nil || pathErr != nil || !os.SameFile(observed.identity, after) || !sameReadIdentity(after, pathInfo) || after.Mode() != mode || after.Sys().(*syscall.Stat_t).Gid != gid || after.Size() != int64(len(body)) {
+	if err != nil || pathErr != nil || !os.SameFile(observed.identity, after) || !sameObservedFile(after, pathInfo) || after.Mode() != mode || after.Sys().(*syscall.Stat_t).Gid != gid || after.Size() != int64(len(body)) {
 		return errors.Join(ErrBinding, err, pathErr)
 	}
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
@@ -761,6 +761,6 @@ func (r *recoveryNative) repairFile(ctx context.Context, filename string, body [
 	if err != nil || !bytes.Equal(actual, body) {
 		return errors.Join(ErrBinding, err)
 	}
-	r.reader.files[filename] = stagedFile{identity: after, body: bytes.Clone(body), mode: mode, gid: gid}
+	r.reader.files[filename] = fileObservation{identity: after, body: bytes.Clone(body), mode: mode, gid: gid}
 	return syncDirectDirectory(filepath.Dir(filename))
 }
