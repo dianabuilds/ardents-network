@@ -11,6 +11,9 @@ import (
 // Preparation reconciles only durable public history. A ready result is never
 // emitted by this operation: Instance and live qualified Publisher are separate.
 func runPublication(ctx context.Context, args []string, out io.Writer) int {
+	if len(args) > 0 && (args[0] == "instance-initialize" || args[0] == "instance-request" || args[0] == "instance-accept") {
+		return runInstance(ctx, args, out)
+	}
 	if len(args) != 4 || args[0] != "prepare-root" {
 		return enrollmentReport(out, "publication-invalid", 2)
 	}

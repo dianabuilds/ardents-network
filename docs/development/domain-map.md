@@ -278,6 +278,14 @@ New `publication/durable` separately owns native exclusive root preparation,
 canonical floor and signed retained-record reconciliation. Its real
 `ardents-next publication prepare-root` consumer returns public history only;
 no floor observation restores private Instance or accepting Publication.
+New `publication/instance` separately owns host-generated private key, canonical
+public approval request and exact durable response transition. Its genuine
+initialization/request/response commands expose only public bytes and verified
+facts. Original native Linux custody and terminal/ambiguous refusal retain their
+own root history; private signing binding and actual floor-backed consumed
+lifetime are not established by this public preparation boundary. The low-level
+public Publication verifier now also seals independently verified Credentials;
+its read and publish proof semantics and wire bytes remain unchanged.
 Route Introduction's sealed original-channel receipt now exposes immutable
 registration facts and actual verified REGISTER ACK commitment, with explicit
 original currentness checks. Descriptor Store ACK and qualified Publisher

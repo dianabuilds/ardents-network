@@ -3,7 +3,6 @@ package publication
 import (
 	"crypto/ed25519"
 	"crypto/sha256"
-	"encoding/binary"
 	"errors"
 	"time"
 )
@@ -55,23 +54,9 @@ func verify(record []byte, target, network [32]byte, at time.Time, required uint
 		return Proof{}, errors.New("publication public proof input invalid")
 	}
 	raw := record[len(publicationDomain) : len(publicationDomain)+credentialSize]
-	if binary.BigEndian.Uint16(raw[:2]) != 3 {
-		return Proof{}, errors.New("publication Credential version invalid")
-	}
-	var value Delegation
-	copy(value.Authority[:], raw[2:34])
-	copy(value.Target[:], raw[34:66])
-	copy(value.Instance[:], raw[66:98])
-	value.Generation = binary.BigEndian.Uint64(raw[98:106])
-	before, after := binary.BigEndian.Uint64(raw[106:114]), binary.BigEndian.Uint64(raw[114:122])
-	copy(value.Network[:], raw[122:154])
-	caps := binary.BigEndian.Uint32(raw[154:158])
-	if before > 1<<63-1 || after > 1<<63-1 || before >= after || value.Authority == [32]byte{} || value.Instance == [32]byte{} || value.Generation == 0 || value.Network != network || value.Target != target || Target(value.Authority) != target || caps&required != required {
-		return Proof{}, errors.New("publication Credential binding or capability invalid")
-	}
-	value.NotBefore, value.NotAfter = time.Unix(int64(before), 0).UTC(), time.Unix(int64(after), 0).UTC()
-	if at.Before(value.NotBefore) || !at.Before(value.NotAfter) || !ed25519.Verify(ed25519.PublicKey(value.Authority[:]), raw[:credentialBodySize], raw[credentialBodySize:]) {
-		return Proof{}, errors.New("publication Credential validity or signature invalid")
+	value, err := verifyCredential(raw, target, network, at, required)
+	if err != nil {
+		return Proof{}, err
 	}
 	commitment := sha256.Sum256(record[:len(record)-ed25519.SignatureSize])
 	if !ed25519.Verify(ed25519.PublicKey(value.Instance[:]), commitment[:], record[len(record)-ed25519.SignatureSize:]) {

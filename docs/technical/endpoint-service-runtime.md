@@ -1115,6 +1115,21 @@ Publication startup joins any ownership/preparation or restore refusal with a
 failed exclusive-root release, returning no owner. Retained root evidence and
 floors are not reset as part of failure cleanup.
 
+The isolated new `publication/instance` owner generates its own Ed25519 key,
+stable canonical public request and exact external signed-response transition.
+`publication instance-initialize <root> <network> <not-before> <not-after>` and
+`instance-request <root>` return the public request as JSON base64;
+`instance-accept <root> <response-file>` consumes untrusted raw response bytes.
+Exact accepted retries preserve the same public Credential digest. Foreign or
+changed responses terminally conflict; malformed pending responses reject.
+Terminal records redact private material. Ambiguous post-rename sync or original
+caller loss stops further receipts and clears the open owner's private bytes;
+reopen independently reconciles the persisted response state. Private custody
+uses original native Linux root/lease identities and real directory barriers;
+other platforms refuse before key or filesystem creation. This mechanism does
+not broaden ordinary Ubuntu24/systemd255 qualification. It grants no generic
+signer, Authority custody, floor-backed live binding or accepting readiness.
+
 The isolated new `publication/durable` owner prepares and reopens its own v3
 root through `ardents-next publication prepare-root <root> <target> <network>`.
 It holds an exclusive native lease, checks finite exact layout and canonical

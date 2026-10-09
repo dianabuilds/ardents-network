@@ -8,6 +8,14 @@ Instance, точный Target/Network, validity и отдельные права
 она не восстанавливает private Instance или accepting readiness. Живой Publisher,
 refresh/withdraw и приватный получатель здесь ещё не реализованы.
 
+`instance` генерирует host key и владеет canonical public request, принятием
+внешнего подписанного response и durable terminal states. Команды
+`publication instance-initialize`, `instance-request` и `instance-accept`
+возвращают только public input/result. Native private custody сейчас Linux;
+остальные платформы отказывают до key/filesystem effects. Это не qualification
+Service host. Signing binding, actual floor-backed consumption и accepting
+Publisher остаются отдельной границей; generic signer и Authority key не выдаются.
+
 **Вопрос домена:** какой авторизованный Service Instance сейчас принимает работу?
 
 **Входит:** поколение и материал Instance по назначению, ревизия публикации,
