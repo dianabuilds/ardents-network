@@ -2,6 +2,7 @@ package installation
 
 import (
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -51,5 +52,54 @@ func rootDirectoryAncestors(directory string) (map[string]os.FileInfo, error) {
 			return observed, nil
 		}
 		directory = parent
+	}
+}
+
+func privateJournalDirectory(info os.FileInfo) bool {
+	return rootDirectory(info) && info.Mode().Perm() == 0700
+}
+
+func syncDirectDirectory(directory string) (returnedErr error) {
+	before, err := os.Lstat(directory)
+	if err != nil || before == nil || !before.IsDir() || before.Mode().Perm()&0022 != 0 {
+		return errors.Join(ErrNativeUnavailable, err)
+	}
+	owner, ok := before.Sys().(*syscall.Stat_t)
+	if !ok || owner.Uid != 0 {
+		return ErrNativeUnavailable
+	}
+	file, err := os.Open(directory)
+	if err != nil {
+		return err
+	}
+	defer func() { returnedErr = errors.Join(returnedErr, file.Close()) }()
+	opened, err := file.Stat()
+	if err != nil || !os.SameFile(before, opened) {
+		return errors.Join(ErrNativeUnavailable, err)
+	}
+	if err := file.Sync(); err != nil {
+		return err
+	}
+	after, err := os.Lstat(directory)
+	if err != nil || !os.SameFile(before, after) || before.Mode() != after.Mode() {
+		return errors.Join(ErrNativeUnavailable, err)
+	}
+	return nil
+}
+
+// Translate physical directory refusals without giving that Module admission.
+func directoryObservationError(err error) error {
+	if err == nil {
+		return nil
+	}
+	switch {
+	case errors.Is(err, directory.ErrInput):
+		return errors.Join(ErrInput, err)
+	case errors.Is(err, directory.ErrBinding):
+		return errors.Join(ErrBinding, err)
+	case errors.Is(err, directory.ErrNativeUnavailable):
+		return errors.Join(ErrNativeUnavailable, err)
+	default:
+		return err
 	}
 }

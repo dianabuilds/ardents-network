@@ -637,7 +637,13 @@ The maintained local profiles are:
   records describe filesystem effects without granting account or recovery
   authority. The initial-root mechanism checks an actual exclusive kernel lease,
   physical release, refusal of existing roots and changed root/lock identities;
-  request custody is reobserved against the original inode and bytes. Generation
+  request custody is reobserved against the original inode and bytes. The
+  separately owned directory Module retains its own original caller and private
+  born inode state: actual filesystem tests exercise exclusive creation, own
+  sibling reuse, foreign-root refusal, same-owner/mode inode substitution,
+  detached device/inode mutation and original cancellation before birth. Root
+  preparation and independently admitted installed inspection are real callers;
+  the Module supplies no account selection, journal/lease or startup authority. Generation
   staging checks exclusive directory birth, intent-before-write, root-owned exact
   files, complete owned inventories, retained first refusal and post-write
   cancellation without selection or lease release. Filesystem fixtures supply

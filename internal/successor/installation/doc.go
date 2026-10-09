@@ -4,6 +4,8 @@
 // request admission checks declarations without acquiring runtime resources.
 // The request Module owns canonical declarations, original root-owned input
 // and private provenance reobservation; this package retains effect admission.
+// The directory Module retains private original mutable-directory birth
+// observations; this package selects paths/account and admits all effects.
 // Native initial provisioning retains its own lease, journals and fixed-resource
 // observations through stopped selection and intent archival. Read-only Check
 // observes the installed bytes/account/roots without opening Release history.

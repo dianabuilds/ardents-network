@@ -3,6 +3,7 @@ package installation
 import (
 	"context"
 	"errors"
+	manageddirectory "github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
@@ -13,7 +14,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -25,7 +25,7 @@ type initialPreparation struct {
 	journal  *journal.Owner
 	prepared preparedInstallation
 	stage    *installationTransaction
-	created  map[string]os.FileInfo
+	created  *manageddirectory.Creation
 	terminal error
 }
 
@@ -98,20 +98,21 @@ func prepareInitialNative(ctx context.Context, request Request, authorization Au
 	if err != nil {
 		return nil, err
 	}
-	created := make(map[string]os.FileInfo)
-	owned.created = created
+	owned.created, err = manageddirectory.New(ctx, uid, gid)
+	if err != nil {
+		return nil, directoryObservationError(err)
+	}
 	for _, path := range paths {
-		if err := createManagedDirectory(ctx, path, uid, gid, created); err != nil {
-			return nil, err
+		if err := owned.created.Create(path); err != nil {
+			return nil, directoryObservationError(err)
 		}
 	}
 	for _, path := range mutableRoots(request.declared.Headless) {
-		info, err := os.Lstat(path)
-		if err != nil || !managedDirectory(info, uid, gid) || !os.SameFile(created[path], info) {
-			return nil, errors.Join(ErrBinding, err)
+		identity, err := owned.created.Identity(path)
+		if err != nil {
+			return nil, directoryObservationError(err)
 		}
-		native := info.Sys().(*syscall.Stat_t)
-		owned.prepared.roots = append(owned.prepared.roots, rootIdentity{Path: path, Device: uint64(native.Dev), Inode: native.Ino})
+		owned.prepared.roots = append(owned.prepared.roots, rootIdentity{Path: path, Device: identity.Device, Inode: identity.Inode})
 	}
 	record.Phase = "mutable-roots-prepared"
 	if err := owned.journal.Append(ctx, record); err != nil {
@@ -183,11 +184,8 @@ func (owned *initialPreparation) observe(ctx context.Context, request Request) e
 	if err != nil || uid != owned.prepared.uid || gid != owned.prepared.gid {
 		return errors.Join(ErrBinding, err)
 	}
-	for path, original := range owned.created {
-		info, err := os.Lstat(path)
-		if err != nil || !managedDirectory(info, uid, gid) || !os.SameFile(original, info) {
-			return errors.Join(ErrBinding, err)
-		}
+	if err := owned.created.Observe(); err != nil {
+		return directoryObservationError(err)
 	}
 	if err := owned.lease.observe(); err != nil {
 		return err

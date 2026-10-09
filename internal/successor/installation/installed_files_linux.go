@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	manageddirectory "github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/generation"
 )
 
@@ -158,7 +159,7 @@ func (reader *installedFiles) observeAccountAndRoots(checked inspectedGeneration
 	}
 	for _, root := range checked.binding.MutableRoots {
 		info, err := os.Lstat(root.Path)
-		if err != nil || !managedDirectory(info, uid, gid) {
+		if err != nil || !manageddirectory.Matches(info, uid, gid) {
 			return errors.Join(ErrBinding, err)
 		}
 		native := info.Sys().(*syscall.Stat_t)

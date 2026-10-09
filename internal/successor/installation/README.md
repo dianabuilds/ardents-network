@@ -24,6 +24,15 @@ Installation — самостоятельный владелец внутри с
 
 ## Компоновка Implementation
 
+`directory` удерживает original caller и закрытую карту исходных inode одной
+последовательности создания mutable-каталогов. Initial preparation передаёт
+допущенные пути/account, получает только проверенные detached device/inode
+facts и повторно наблюдает тот же Creation. Независимая installed inspection
+использует native property check без acquisition creation provenance. Root
+сохраняет NSS/request/Release, journal/lease, phase/effect admission и общие
+trusted-root/sync helpers для fixed resources и recovery; чужой каталог не
+принимается из публичной map или похожих UID/mode.
+
 `request` отдельно владеет canonical request-v1, Headless-v2 и Source-v1
 декларациями, их связностью и чтением direct root-owned исходного файла.
 `Document` выдаёт detached copies; `Origin` скрывает исходные path/digest/inode

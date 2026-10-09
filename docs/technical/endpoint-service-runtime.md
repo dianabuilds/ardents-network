@@ -9,6 +9,14 @@ root exclusion and supplies the same expected Configuration to manager checks.
 Original template bytes, command binding and first-refusal order remain fixed.
 Rendered configuration grants no Release, manager, process or startup authority.
 
+New Installation retains mutable-directory creation in the physical directory
+Module: one original caller and private original inode state span exclusive birth,
+same-inode account/mode promotion and synchronization. Root preparation selects
+paths/account, admits journal/Release/lease effects and projects only independently
+reobserved device/inode facts into its binding. Independent installed inspection
+uses native property checks without acquiring birth/adoption provenance. These
+observations grant no recovery, selection, manager or startup authority.
+
 
 The following bounded command contract selects ADR-0119's installation
 boundary. The initial stopped provisioning, read-only integrity and installed
