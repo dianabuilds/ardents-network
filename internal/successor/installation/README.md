@@ -755,14 +755,14 @@ Unknown/missing protection никогда не является принимаю
 
 ## Source inventory: что разобрать, что оставить
 
-Исходники ниже — named provenance в текущем checkout, не dependencies.
+Исходники ниже — named provenance прежнего владельца в текущем checkout, не dependencies. Без полного пути имена в этой таблице относятся к `internal/endpoint/installation`; текущая компоновка нового владельца описана выше.
 
 | Прежняя ответственность | Проверенный source | Решение для нового владельца |
 |---|---|---|
 | Coherent fresh pair | `internal/endpoint/installation/release_authentication.go` | Перепроверить по новому Enrollment/Release; private proofs вместо mutable public Decision |
 | Existing trust continuity | `successor_authentication_linux.go` | Portable rule; actual complete floors и binding constraints, никакого initial-pin bootstrap |
 | Request and declaration consistency | `request.go`, `internal/endpoint/runtimeplan` | Сохранить grammar/limits; отделить pure declarations от acquisition/credentials |
-| Frozen generation assembly | `generation_binding.go`, `unit_configuration.go` | Portable deterministic bytes; actual inode/account facts проверяются native owner |
+| Frozen generation assembly | `generation_assembly.go`, `unit_rendering.go` | Portable deterministic bytes; actual inode/account facts проверяются native owner |
 | Ownership and journal writes | `generation_ownership_linux.go`, `resource_creation_linux.go`, `resource_replacement_linux.go` | Native identity/durability; canonical records и переходы отдельно от syscalls |
 | Original process termination | `predecessor_linux.go` | Exact invocation + original pins, no replacement-generation completion |
 | Selection/reload/start/ACK | `transition_finishing_linux.go`, `start_guard_linux.go`, `start_completion_linux.go` | Самостоятельный transition lifetime, retained errors и explicit barrier |
