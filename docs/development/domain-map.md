@@ -289,6 +289,10 @@ birth-provenance rules. These are responsibilities within the same Installation
 lease, not independently admitted phases or a new package. Reobserving all
 original resources and closing them before returning that lease remain joint
 transaction invariants.
+Recorded replacement access/phase admission and both real mutation callers
+reside together in `successor_replacement_linux.go`. Selection keeps its distinct
+preimages, access and phase under the same transaction; this relocation changes
+no admitted bytes, effects, lease or physical close.
 Complete floors alone grant no installed binding or readiness. A portable
 rule does not establish a native installation profile;
 the unresolved capability-admission repair remains distinct from this design.

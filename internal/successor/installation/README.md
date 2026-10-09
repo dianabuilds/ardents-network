@@ -45,7 +45,8 @@ seal/access и проверку original generation-file provenance при recov
 `initial_preparation_linux.go` — initial
 preflight, account, preparation, fixed-resource publication и публикация stopped selection;
 `fixed_resource_creation_linux.go` — recorded birth, same-inode access promotion и retained fixed-file observations; `successor_replacement_linux.go` — original replacement
-records и mutation; `successor_transition_linux.go` — successor lifecycle, intent
+records, допуск access/phase и mutation исходного fixed file, включая selection;
+`successor_transition_linux.go` — successor lifecycle, intent
 и ordering; `installed_inspection_linux.go` — leased inspection и retained private
 record durability. Грамматика completion frame принадлежит `completion/frame.go`: один Encoder
 и validator обслуживают root producer и независимый startup peer. Native
@@ -837,8 +838,11 @@ original provenance resync continuation не повторяет earlier fixed-fi
 checks, затем appends 0007; существующий 0007 только resync-ится без reload или
 перезаписи original record. Guarded start остаётся отдельным lifetime. Typed
 fixtures проверяют pure configuration/phase rules, filesystem probes — original
-provenance/resync; positive actual-manager recovery этих reload prefixes
-всё ещё не доказана. Startup и terminal guard recovery проверены отдельно.
+provenance/resync. Три отдельные actual-manager process-crash trials проверяют
+fresh-proof recovery до reload, после reload до phase7 и после durable phase7
+до Start; original records, fixed resources и floors сохраняются. Recovered
+Endpoint достигает permission-pending, не полной Service readiness. Startup
+и terminal guard recovery имеют отдельные проверки.
 
 ## Original generation file provenance
 
@@ -886,6 +890,15 @@ test-manager физически joined. Подписывающие builders и �
 остаются fixtures. Эта одна граница не доказывает torn writes, power-loss,
 полную interruption matrix, accepting startup/ACK или installed qualification.
 Filesystem fixtures сами по себе не заменяют эти проверки.
+
+Отдельное actual-command прерывание после успешной записи 128 КиБ original
+program до failed phase и first-error record проверяет fresh-proof continuation
+того же inode до complete inventory и durable stopped reload. Original writing
+и file-birth records, committed floors и exact bytes сохраняются; исходные
+caller и manager scope физически joins. Неуспешная первая попытка наблюдения
+остаётся отдельным receipt; fresh trial с ранним наблюдением подтверждён audit.
+Deliberately interrupted repair не является completed public success или
+qualification-profile pass. Эти наблюдения не подтверждают power loss.
 
 ### Generation-write first failure
 

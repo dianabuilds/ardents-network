@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
+	"os"
 	"path/filepath"
 	"sort"
 	"syscall"
@@ -112,6 +113,41 @@ func successorFixedResources(stage *installationTransaction) (map[string][]byte,
 	}
 	resources["/etc/ardents/text-worker-artifact.json"] = manifest
 	return resources, nil
+}
+
+// Selection has a different access and phase boundary from root-only resource
+// copies. Neither a supplied mode/GID nor a replacement record chooses it.
+func (stage *installationTransaction) validateReplacementAccess(filename string, previous fixedFileObservation, candidate []byte) error {
+	if stage == nil || stage.lease == nil || stage.journal == nil {
+		return ErrInput
+	}
+	name, phase := "0003.json", "replacing-fixed-resources"
+	if filename == filepath.Join(stage.lease.path, "selection.json") {
+		native, ok := stage.lease.identity.Sys().(*syscall.Stat_t)
+		if !ok || native.Gid == 0 || native.Gid != previous.file.gid || previous.file.mode != 0640 ||
+			stage.lease.identity.Mode() != os.ModeDir|0750 || !sameStagingDirectory(stage.lease.identity, previous.parent) {
+			return ErrBinding
+		}
+		var intent successorTransitionIntent
+		if err := decodeCanonical(stage.intent.body, 128<<10, &intent); err != nil || intent.Schema != "ardents-endpoint-installation-successor-v1" || intent.Candidate != stage.selected {
+			return errors.Join(ErrBinding, err)
+		}
+		oldBytes, oldErr := canonicalJSON(intent.Previous)
+		newBytes, newErr := canonicalJSON(stage.selected)
+		if oldErr != nil || newErr != nil || !fixedfile.ReplacementPrefixAllowed(previous.file.body, oldBytes, newBytes) || !bytes.Equal(candidate, newBytes) {
+			return errors.Join(ErrBinding, oldErr, newErr)
+		}
+		if !bytes.Equal(previous.file.body, oldBytes) && len(stage.journal.Bytes(journal.Replacements, digestHex([]byte(filename))+".json")) == 0 {
+			return ErrBinding
+		}
+		if err := stage.verifyTransitionPhase("0004.json", "fixed-resources-replaced"); err != nil {
+			return err
+		}
+		name, phase = "0005.json", "publishing-selection"
+	} else if (previous.file.mode != 0644 && previous.file.mode != 0555) || previous.file.gid != 0 {
+		return ErrBinding
+	}
+	return stage.verifyTransitionPhase(name, phase)
 }
 
 // Native record mechanism; its product caller supplies the closed inventory

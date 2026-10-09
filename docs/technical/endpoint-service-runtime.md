@@ -493,6 +493,17 @@ No manual disposal or failure reset precedes that audit; the original guest/scop
 physically joins afterwards. This failed-attempt evidence grants no accepting
 startup/ACK or installed qualification.
 
+A separate actual-command process crash interrupts the successful original
+program write return after a partial prefix, before any failed phase or
+first-error record. Fresh-proof recovery completes that same inode through
+complete generation and durable stopped reload before Start, retaining the
+original writing/file-birth records and committed floors. Independent audit
+checks canonical bytes, all fifteen files, ten replacement records, actual
+stopped configuration and original caller/manager physical join. The deliberately
+interrupted repair retains its nonzero result; an earlier missed observer
+boundary remains a separate failed receipt. This is process-crash evidence,
+not power-loss, a qualification-profile pass or complete installed acceptance.
+
 Generation-writing failure has a distinct pending recovery boundary. Its exact
 bound `generation-write-failed` phase and original birth prefix precede two fresh
 proofs. A byte-identical first-error copy is synchronized and reobserved before
