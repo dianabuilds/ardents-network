@@ -37,7 +37,9 @@
 // establishes no installed or runtime qualification.
 //
 // Canonical generation assembly freezes its closed binding/inventory before
-// staging. Fresh-pair admission retains complete-floor and local continuity
+// staging and reconstructs the same bound bytes for initial and successor
+// recovery. Each recovery retains its own intent, phase and native lifetime.
+// Fresh-pair admission retains complete-floor and local continuity
 // constraints together, without treating stored facts as fresh proofs. Shared
 // intent archival preserves separate initial and successor completion checks.
 // Per-file original birth records precede artifact bytes; compatible sealed

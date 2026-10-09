@@ -561,6 +561,20 @@ helper-death boundary, not cancellation of a request already accepted by manager
 or permission to recover pending Start. Ordinary cancellation separately waits
 for the original child; a command error alone never establishes scope join.
 
+Two separate actual-manager trials use ordinary canonical artifacts. The first
+interrupts the original Root after successful Start-helper exit but before Root
+observation or its started-invocation record. Original helper and Endpoint join;
+fresh public recovery refuses with unchanged retained inventory and floors.
+The second kills only the independently pidfd-pinned original Endpoint at that
+boundary while Root remains alive. Root retains its exact first failure, executes
+its own Stop/join and releases the original writer lock before fresh recovery
+refuses. Guard/socket, replacement records and floors remain unchanged. Original
+proc/kernel observations and a separate receipt audit establish these bounded
+outcomes. Original native FAIL and outer exit1 remain retained; receipt review
+is executor self-review, not independent validation. This is component refusal
+and physical cleanup evidence, not a qualification-profile pass, complete
+interruption matrix, power-loss evidence or installed Service acceptance.
+
 Retaining predecessor bytes is not permission to activate an older Release.
 Recovery must finish a valid selected candidate or obtain a fresh floor-compatible
 explicit rollback authorization; otherwise report repair-required and stay

@@ -293,6 +293,10 @@ Recorded replacement access/phase admission and both real mutation callers
 reside together in `successor_replacement_linux.go`. Selection keeps its distinct
 preimages, access and phase under the same transaction; this relocation changes
 no admitted bytes, effects, lease or physical close.
+Shared fresh-proof reconstruction of recovered bound generation bytes belongs
+with immutable generation assembly in `generation_assembly.go`. Initial and
+successor recovery retain distinct intent/phase admission, original native
+custody and cleanup; shared byte construction grants none of those rights.
 Complete floors alone grant no installed binding or readiness. A portable
 rule does not establish a native installation profile;
 the unresolved capability-admission repair remains distinct from this design.

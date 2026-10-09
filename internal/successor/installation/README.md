@@ -27,7 +27,10 @@ Installation — самостоятельный владелец внутри с
 Корень сохраняет Installation admission и владельцев транзакций. Portable
 `generation_assembly.go` собирает canonical immutable generation и замораживает
 его closed inventory перед native staging: binding, digests и detached bytes
-проверяются рядом, не в отдельном staging helper. `generation_authentication.go`
+проверяются рядом, не в отдельном staging helper. Здесь же общий
+`recoverBoundGeneration` восстанавливает exact bound bytes по свежим proofs
+для initial и successor recovery; их intent admission, phase и native lifetime
+остаются у отдельных владельцев восстановления. `generation_authentication.go`
 собирает fresh-pair admission, complete Release floors и ограничения successor
 continuity; сохранённые local facts по-прежнему не создают private proofs или
 native custody. `intent_archive_linux.go` удерживает общую exact intent custody,
@@ -784,6 +787,20 @@ request; Endpoint не исполняется, stopped manager и весь retai
 сохраняются, fresh recovery отказывает. Нативный cancellation probe отдельно
 проверяет join исходного child при удержанном proc descriptor. Завершение helper
 не отменяет запрос, уже принятый manager, и не разрешает pending Start recovery.
+
+Две отдельные actual-manager trials используют обычные canonical artifacts.
+Первая прерывает original Root после успешного завершения Start helper, но до
+Root observation/started-invocation record: original helper и Endpoint физически
+joins, fresh recovery отказывает без изменения retained inventory и floors.
+Вторая завершает только original Endpoint через independently pinned pidfd в
+той же точке, оставляя Root живым. Root сам сохраняет exact first failure,
+выполняет собственный Stop/join и освобождает original writer lock; fresh recovery
+отказывает, сохраняя guard/socket, все replacement records и floors. Original
+proc/kernel observers и отдельная проверка receipt подтверждают эти границы.
+Исходные native FAIL и outer exit1 сохранены; проверка receipt — executor
+self-review, не independent validation. Это component refusal/cleanup evidence,
+не qualification-profile pass, complete interruption matrix или installed Service
+acceptance; power loss не проверен.
 
 Тесты portable rules выполняются на Windows/Linux без `_linux_test.go`.
 Тесты actual UID/inode, systemd, cgroup pins и Unix completion credentials

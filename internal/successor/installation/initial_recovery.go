@@ -1,10 +1,8 @@
 package installation
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"path"
 	"sync"
 	"time"
 )
@@ -120,60 +118,4 @@ func (r *Recovery) Close() error {
 
 func recoveryGeneration(ctx context.Context, intent initialTransitionIntent, reference time.Time, authorization Authorization) (inspectedGeneration, error) {
 	return recoverBoundGeneration(ctx, intent.Candidate, intent.CandidateBinding, intent.Request, reference, authorization)
-}
-
-// Initial and successor recovery share exact-byte proof matching, not intent
-// admission or native effects. Each caller separately verifies its own schema,
-// physical provenance, phase and original process lifetime.
-func recoverBoundGeneration(ctx context.Context, selected generationSelection, binding generationBinding, request installationRequest, reference time.Time, authorization Authorization) (inspectedGeneration, error) {
-	if err := ctx.Err(); err != nil {
-		return inspectedGeneration{}, err
-	}
-	p, programOK := authorization.program.AcceptedDecision()
-	g, generationOK := authorization.generation.AcceptedDecision()
-	if !programOK || !generationOK || !p.ReferenceTime.Equal(reference) || !g.ReferenceTime.Equal(reference) {
-		return inspectedGeneration{}, ErrAuthorization
-	}
-	for _, pair := range []struct{ old, fresh targetObservation }{
-		{binding.Program, observeTarget(p)}, {binding.Generation, observeTarget(g)},
-	} {
-		old, fresh := pair.old, pair.fresh
-		before, err := time.Parse(time.RFC3339Nano, old.ReferenceTime)
-		if err != nil || reference.Before(before) || old.Path != fresh.Path || old.Digest != fresh.Digest || old.Length != fresh.Length ||
-			old.ReleaseIdentity != fresh.ReleaseIdentity || old.ReleaseVersion != fresh.ReleaseVersion || old.Platform != fresh.Platform || old.Architecture != fresh.Architecture ||
-			old.Environment != fresh.Environment || old.Network != fresh.Network || fresh.TargetsVersion < old.TargetsVersion ||
-			(fresh.TargetsVersion == old.TargetsVersion && fresh.TargetsDigest != old.TargetsDigest) {
-			return inspectedGeneration{}, ErrBinding
-		}
-	}
-	files := make(map[string][]byte, 14)
-	for name, body := range authorization.resources {
-		files[name] = bytes.Clone(body)
-	}
-	files["protected-endpoint.json"] = bytes.Clone(authorization.descriptor)
-	var err error
-	files["request.json"], err = canonicalJSON(request)
-	if err != nil {
-		return inspectedGeneration{}, err
-	}
-	plan := request.Headless
-	plan.NetworkSourcePlan = path.Join(request.InstallationRoot, "generations", selected.GenerationDigest, "source.json")
-	files["headless.json"], err = canonicalJSON(plan)
-	if err != nil {
-		return inspectedGeneration{}, err
-	}
-	files["source.json"], err = canonicalJSON(request.Source)
-	if err != nil {
-		return inspectedGeneration{}, err
-	}
-	files["endpoint-unit.service"], err = renderEndpointUnit(files["ardents-endpoint.service"], request, path.Join(request.InstallationRoot, "generations", selected.GenerationDigest))
-	if err != nil {
-		return inspectedGeneration{}, err
-	}
-	selectedBody, selectionErr := canonicalJSON(selected)
-	bindingBody, bindingErr := canonicalJSON(binding)
-	if err := errors.Join(selectionErr, bindingErr, ctx.Err()); err != nil {
-		return inspectedGeneration{}, err
-	}
-	return inspectGeneration(request.InstallationRoot, selectedBody, bindingBody, files)
 }
