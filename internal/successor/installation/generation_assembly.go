@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/generation"
@@ -260,4 +261,31 @@ func recoverBoundGeneration(ctx context.Context, selected generationSelection, b
 		return inspectedGeneration{}, err
 	}
 	return inspectGeneration(request.InstallationRoot, selectedBody, bindingBody, files)
+}
+
+func decodeCanonical(raw []byte, maximum int, target any) error {
+	if len(raw) == 0 || len(raw) > maximum {
+		return errors.New("installation document exceeds its bound")
+	}
+	if err := json.Unmarshal(raw, target); err != nil {
+		return errors.New("installation document is invalid")
+	}
+	canonical, err := json.Marshal(target)
+	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) {
+		return errors.New("installation document is not canonical")
+	}
+	return nil
+}
+
+func canonicalDigest(value string) bool {
+	digest, err := hex.DecodeString(value)
+	return err == nil && len(digest) == 32 && hex.EncodeToString(digest) == value
+}
+
+func canonicalPath(value string) bool {
+	return path.IsAbs(value) && path.Clean(value) == value && !strings.ContainsAny(value, "\x00\r\n")
+}
+
+func pathsOverlap(left, right string) bool {
+	return left == right || strings.HasPrefix(left, right+"/") || strings.HasPrefix(right, left+"/")
 }

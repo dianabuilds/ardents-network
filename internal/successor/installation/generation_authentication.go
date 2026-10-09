@@ -13,11 +13,12 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
 var (
-	ErrInput         = errors.New("installation: invalid generation authentication input")
+	ErrInput         = requestinput.ErrInput
 	ErrBinding       = errors.New("installation: generation binding differs")
 	ErrAuthorization = errors.New("installation: fresh Release authorization refused")
 )

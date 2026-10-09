@@ -1,6 +1,6 @@
 //go:build installation_native
 
-package installation
+package request
 
 import (
 	"context"
@@ -50,7 +50,7 @@ func TestInstallationNativeRequestDirectFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := ReadOwnedRequest(t.Context(), filename, true)
+	request, err := ReadOwned(t.Context(), filename, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestInstallationNativeRequestRefusesForeignCustody(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			request, err := ReadOwnedRequest(t.Context(), filename, true)
+			request, err := ReadOwned(t.Context(), filename, true)
 			if !errors.Is(err, ErrNativeUnavailable) || request.declared != nil || request.custody != nil {
 				t.Fatalf("foreign custody returned a request: %v", err)
 			}
@@ -126,7 +126,7 @@ func TestInstallationNativeRequestRefusesMutationDuringRead(t *testing.T) {
 				t.Fatal(err)
 			}
 			filename := writeNativeRequest(t, parent)
-			// The third original-context observation is DecodeRequest's handoff,
+			// The third original-context observation is Decode's handoff,
 			// after physical read and before native identity reobservation.
 			ctx := &nativeRequestReadMutation{Context: t.Context(), at: 3, mutate: func() {
 				var err error
@@ -166,7 +166,7 @@ func TestInstallationNativeRequestRefusesMutationDuringRead(t *testing.T) {
 					t.Fatal(err)
 				}
 			}}
-			request, err := ReadOwnedRequest(ctx, filename, true)
+			request, err := ReadOwned(ctx, filename, true)
 			if !errors.Is(err, ErrNativeUnavailable) || request.declared != nil || request.custody != nil {
 				t.Fatalf("changed native input acquired custody: %v", err)
 			}
@@ -181,9 +181,43 @@ func TestInstallationNativeRequestOriginalCancellation(t *testing.T) {
 			original, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			ctx := &nativeRequestReadMutation{Context: original, at: at, mutate: cancel}
-			request, err := ReadOwnedRequest(ctx, filename, true)
+			request, err := ReadOwned(ctx, filename, true)
 			if !errors.Is(err, context.Canceled) || request.declared != nil || request.custody != nil {
 				t.Fatalf("cancelled handoff returned native provenance: %v", err)
+			}
+		})
+	}
+}
+
+func TestInstallationNativeRequestOriginReobservation(t *testing.T) {
+	for _, change := range []string{"unchanged", "declaration", "same-byte-replacement"} {
+		t.Run(change, func(t *testing.T) {
+			filename := writeNativeRequest(t, nativeRequestDirectory(t))
+			document, err := ReadOwned(t.Context(), filename, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			declared, ok := document.Declaration()
+			if !ok || document.Origin() == nil {
+				t.Fatal("owned read lost provenance")
+			}
+			if change == "declaration" {
+				declared.Source.Sources[0].Family = "different"
+			}
+			if change == "same-byte-replacement" {
+				if err := os.Rename(filename, filename+".original"); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filename, requestFixture(), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			err = document.Origin().Observe(t.Context(), declared)
+			if change == "unchanged" && err != nil {
+				t.Fatal(err)
+			}
+			if change != "unchanged" && !errors.Is(err, ErrChanged) {
+				t.Fatalf("changed origin admitted: %v", err)
 			}
 		})
 	}

@@ -24,6 +24,16 @@ Installation — самостоятельный владелец внутри с
 
 ## Компоновка Implementation
 
+`request` отдельно владеет canonical request-v1, Headless-v2 и Source-v1
+декларациями, их связностью и чтением direct root-owned исходного файла.
+`Document` выдаёт detached copies; `Origin` скрывает исходные path/digest/inode
+и независимо проверяет прежние bytes/access перед эффектами. Корень сохраняет
+совместимый `Request` consumer, Installation admission, Release proofs и
+транзакции; происхождение запроса не выдаёт ни одного из этих прав.
+`root_ownership_linux.go` сохраняет отдельно проверку trusted root-owned paths
+для lease, staging и inspection: она не является request provenance.
+
+
 Корень сохраняет Installation admission и владельцев транзакций. Portable
 `generation_assembly.go` собирает canonical immutable generation и замораживает
 его closed inventory перед native staging: binding, digests и detached bytes
@@ -35,8 +45,8 @@ Installation — самостоятельный владелец внутри с
 continuity; сохранённые local facts по-прежнему не создают private proofs или
 native custody. `intent_archive_linux.go` удерживает общую exact intent custody,
 copy/sync/removal; initial и successor completion допускаются отдельными checks.
-Эти изменения следуют ответственности и реальным callers, без нового пакета
-или изменения принимающего контракта. `installation_transaction_linux.go`
+Эти владельцы следуют ответственности и реальным callers, сохраняя
+принимающий контракт. `installation_transaction_linux.go`
 собирает original filesystem custody одного private `installationTransaction`:
 lease, borrowed parents/containers, journal, generation/Prefix/Snapshot,
 fixed-resource observations, intent и barrier, общий observe и joined close.

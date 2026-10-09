@@ -104,6 +104,7 @@ github.com/dianabuilds/ardents-network/internal/successor/route/join
 github.com/dianabuilds/ardents-network/internal/successor/route/prefix
 github.com/dianabuilds/ardents-network/internal/successor/release
 github.com/dianabuilds/ardents-network/internal/successor/installation
+github.com/dianabuilds/ardents-network/internal/successor/installation/request
 github.com/dianabuilds/ardents-network/internal/successor/execution
 github.com/dianabuilds/ardents-network/internal/successor/execution/runtime
 github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup

@@ -1376,3 +1376,11 @@ Empty input creates no diagnostic resources; configured admission failures
 precede product dispatch and diagnostic cleanup is joined to command outcome.
 The diagnostic interface reports process observations; existing owner events
 remain the source of readiness and typed product failure.
+
+Installation's `request` Module owns canonical local declarations and independent
+original root-owned request-file reobservation. Its detached `Document` data and
+opaque `Origin` do not authorize Release, filesystem transactions, generation
+selection or startup. The existing Installation request facade remains the
+command/transaction consumer; original Root effect admission checks that same
+provenance. General trusted-path observations for lease, staging and inspection
+remain distinct from request-file provenance.

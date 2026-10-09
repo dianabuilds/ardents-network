@@ -2,6 +2,8 @@
 // generation together through fresh new Release authorizations. Initial pinned
 // inventory and untrusted successor inventory remain distinct. Canonical local
 // request admission checks declarations without acquiring runtime resources.
+// The request Module owns canonical declarations, original root-owned input
+// and private provenance reobservation; this package retains effect admission.
 // Native initial provisioning retains its own lease, journals and fixed-resource
 // observations through stopped selection and intent archival. Read-only Check
 // observes the installed bytes/account/roots without opening Release history.

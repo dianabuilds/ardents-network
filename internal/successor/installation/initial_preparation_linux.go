@@ -2,9 +2,9 @@ package installation
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"os"
 	"os/exec"
@@ -328,21 +328,15 @@ func preflightInitialEffects(ctx context.Context, request Request) error {
 	return observeRequestCustody(ctx, request)
 }
 
-func observeRequestCustody(ctx context.Context, request Request) error {
-	if ctx == nil || request.custody == nil || request.declared == nil {
+func observeRequestCustody(ctx context.Context, input Request) error {
+	if ctx == nil || input.custody == nil || input.declared == nil {
 		return ErrInput
 	}
-	fresh, err := ReadOwnedRequest(ctx, request.custody.path, request.ManifestSHA256() != "")
-	if err != nil {
-		return err
+	err := input.custody.Observe(ctx, *input.declared)
+	if errors.Is(err, requestinput.ErrChanged) {
+		return ErrBinding
 	}
-	wanted, err := canonicalJSON(*request.declared)
-	if err != nil || fresh.custody == nil || fresh.custody.digest != request.custody.digest ||
-		sha256.Sum256(wanted) != request.custody.digest ||
-		!sameRequestFile(request.custody.identity, fresh.custody.identity) {
-		return errors.Join(ErrBinding, err)
-	}
-	return ctx.Err()
+	return err
 }
 
 func requireAbsentManagedPath(filename string) error {
