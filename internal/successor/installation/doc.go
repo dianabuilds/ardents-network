@@ -39,6 +39,8 @@
 // Canonical generation assembly freezes its closed binding/inventory before
 // staging and reconstructs the same bound bytes for initial and successor
 // recovery. Each recovery retains its own intent, phase and native lifetime.
+// Fixed-resource paths, generation-byte images and canonical artifact manifest
+// share one Linux byte-construction owner; effects and selection stay separate.
 // Fresh-pair admission retains complete-floor and local continuity
 // constraints together, without treating stored facts as fresh proofs. Shared
 // intent archival preserves separate initial and successor completion checks.

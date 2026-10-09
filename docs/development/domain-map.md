@@ -297,6 +297,11 @@ Shared fresh-proof reconstruction of recovered bound generation bytes belongs
 with immutable generation assembly in `generation_assembly.go`. Initial and
 successor recovery retain distinct intent/phase admission, original native
 custody and cleanup; shared byte construction grants none of those rights.
+Closed fixed-resource paths, generation-byte images and the canonical artifact
+manifest reside together in `fixed_resource_images_linux.go`. Successor and recovery
+use one detached nine-image projection; initial retains its creation order and
+uses the same manifest encoding. Selection, fresh proofs, original custody,
+mutation admission and physical completion remain with their distinct owners.
 Complete floors alone grant no installed binding or readiness. A portable
 rule does not establish a native installation profile;
 the unresolved capability-admission repair remains distinct from this design.

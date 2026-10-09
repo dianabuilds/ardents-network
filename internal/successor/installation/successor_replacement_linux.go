@@ -89,30 +89,14 @@ func successorFixedResources(stage *installationTransaction) (map[string][]byte,
 	if stage == nil || stage.generation == nil && stage.sealed == nil {
 		return nil, ErrInput
 	}
-	resources := make(map[string][]byte)
-	digests := make(map[string]string)
-	for filename, name := range fixedResourceNames() {
+	files := make(map[string][]byte)
+	for _, name := range fixedResourceNames() {
 		if name == "ardents-endpoint.service" {
 			name = "endpoint-unit.service"
 		}
-		body := stage.generationBytes(name)
-		if len(body) == 0 {
-			return nil, ErrBinding
-		}
-		resources[filename] = body
-		if name != "endpoint-unit.service" && name != "ardents-text.conf" {
-			digests[filename] = digestHex(body)
-		}
+		files[name] = stage.generationBytes(name)
 	}
-	manifest, err := canonicalJSON(struct {
-		Schema string            `json:"schema"`
-		Files  map[string]string `json:"files"`
-	}{"ardents-text-worker-artifact-v1", digests})
-	if err != nil {
-		return nil, err
-	}
-	resources["/etc/ardents/text-worker-artifact.json"] = manifest
-	return resources, nil
+	return fixedResourceImages(files)
 }
 
 // Selection has a different access and phase boundary from root-only resource

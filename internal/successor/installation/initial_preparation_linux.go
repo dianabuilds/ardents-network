@@ -285,21 +285,6 @@ func (output *boundedAccountOutput) Write(body []byte) (int, error) {
 	return output.body.Write(body)
 }
 
-// These are the accepted fixed destinations. Their absence never authorizes
-// adoption of a later foreign inode or grants platform/Execution admission.
-func fixedResourceNames() map[string]string {
-	return map[string]string{
-		"/usr/lib/ardents/text-worker-root/ardents-text":      "ardents-text-linux-amd64",
-		"/etc/systemd/system/ardents-text-reader@.service":    "ardents-text-reader@.service",
-		"/etc/systemd/system/ardents-text-publisher@.service": "ardents-text-publisher@.service",
-		"/etc/systemd/system/ardents-text-reader.socket":      "ardents-text-reader.socket",
-		"/etc/systemd/system/ardents-text-publisher.socket":   "ardents-text-publisher.socket",
-		"/usr/share/polkit-1/rules.d/50-ardents-text.rules":   "50-ardents-text.rules",
-		"/usr/lib/tmpfiles.d/ardents-text.conf":               "ardents-text.conf",
-		"/etc/systemd/system/ardents-endpoint.service":        "ardents-endpoint.service",
-	}
-}
-
 // Preflight is an observation inside native preparation, not a reusable proof.
 // Platform/protection admission must precede it in the actual provision owner.
 // Repeat these observations under that operation's lease before native effects.
@@ -453,10 +438,7 @@ func (owned *initialPreparation) installFixedResources(ctx context.Context, requ
 	if err := stage.changeFixedDirectoryMode(ctx, workerRoot, 0555); err != nil {
 		return err
 	}
-	manifest, err := canonicalJSON(struct {
-		Schema string            `json:"schema"`
-		Files  map[string]string `json:"files"`
-	}{"ardents-text-worker-artifact-v1", digests})
+	manifest, err := fixedArtifactManifest(digests)
 	if err != nil {
 		return err
 	}

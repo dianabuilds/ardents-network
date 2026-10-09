@@ -258,28 +258,10 @@ func (r *successorRecoveryNative) readJournal(ctx context.Context) error {
 }
 
 func recoveryFixedBytes(checked inspectedGeneration) (map[string][]byte, error) {
-	resources, digests := make(map[string][]byte), make(map[string]string)
-	for filename, name := range fixedResourceNames() {
-		if name == "ardents-endpoint.service" {
-			name = "endpoint-unit.service"
-		}
-		body := checked.files[name]
-		if len(body) == 0 {
-			return nil, ErrBinding
-		}
-		resources[filename] = body
-		if name != "endpoint-unit.service" && name != "ardents-text.conf" {
-			digests[filename] = digestHex(body)
-		}
-	}
-	manifest, err := canonicalJSON(struct {
-		Schema string            `json:"schema"`
-		Files  map[string]string `json:"files"`
-	}{"ardents-text-worker-artifact-v1", digests})
+	resources, err := fixedResourceImages(checked.files)
 	if err != nil {
 		return nil, err
 	}
-	resources["/etc/ardents/text-worker-artifact.json"] = manifest
 	resources[filepath.Join(checked.binding.InstallationRoot, "selection.json")], err = canonicalJSON(checked.selected)
 	return resources, err
 }

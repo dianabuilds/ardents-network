@@ -967,3 +967,14 @@ record, включая phase label и первую ошибку. Изменен�
 error text нарушает byte-identical provenance и запрещает retirement. Existing
 conflicting copies сохраняются и отказывают; такой отказ не разрешает переписать
 историческую ошибку или автоматически выбрать одну из неоднозначных записей.
+
+`fixed_resource_images_linux.go` собирает closed fixed-resource paths, образы из
+retained generation bytes и canonical artifact manifest. Initial, successor
+и recovery используют одну схему manifest; successor и recovery — один
+построитель девяти образов. Selection не входит в этот набор: её байты,
+original provenance и отдельный порядок публикации остаются у транзакции.
+Это private сборка detached bytes в том же пакете, без filesystem custody,
+Release proofs, mutation permission или lifetime. Initial сохраняет свой
+порядок creation/access/manifest, successor — original replacement records,
+recovery — independent admission и fresh proofs. Разделение устраняет две
+копии byte policy, не создаёт новый package или shared mutable owner.

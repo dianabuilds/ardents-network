@@ -33,7 +33,10 @@ runtime readiness. The predecessor parser and runtime remain independent.
 New `ardents-next installation provision --request` separately composes native
 initial preflight, new Enrollment and fresh Release authorization with its own
 Installation lease, journals, fixed resources, stopped selection and exact
-intent archive. The Release verifier stays open through Installation cleanup.
+intent archive. Shared Linux fixed-resource image assembly constructs
+only detached bytes and the closed canonical artifact manifest; initial creation,
+successor replacement and independently admitted recovery retain their distinct
+authority, original custody and effect/close ordering. Selection is separate. The Release verifier stays open through Installation cleanup.
 New `installation check <root>` is read-only: it retains the existing Installation
 writer lease while checking canonical selection/binding, root-controlled exact
 bytes, account and mutable-root identities and fixed-resource integrity. It
