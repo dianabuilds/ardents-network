@@ -12,7 +12,6 @@ import (
 
 	manageddirectory "github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
-	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 )
 
@@ -284,17 +283,6 @@ func preflightInitialEffects(ctx context.Context, request Request) error {
 		return err
 	}
 	return observeRequestCustody(ctx, request)
-}
-
-func observeRequestCustody(ctx context.Context, input Request) error {
-	if ctx == nil || input.custody == nil || input.declared == nil {
-		return ErrInput
-	}
-	err := input.custody.Observe(ctx, *input.declared)
-	if errors.Is(err, requestinput.ErrChanged) {
-		return ErrBinding
-	}
-	return err
 }
 
 func requireAbsentManagedPath(filename string) error {

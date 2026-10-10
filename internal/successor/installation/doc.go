@@ -31,6 +31,11 @@
 // responsibilities, consumed through each original root or non-root lifetime.
 // Shared account mechanisms are separate from initial effect ordering; bounded
 // directory inventory reads serve both recovery owners without continuation rights.
+// Native request-origin projection serves both preparation owners independently;
+// each retains its own effect admission and original lifetime.
+// Transaction state, generation-writing, intent observation/archival and joined
+// close remain together. Fixed-resource images and recorded creation/replacement
+// share one policy file; predecessor/manager composition stays with its operation.
 //
 // Component checks, detached observations and prepared generations establish
 // neither full interrupted-start coverage nor installed/privacy qualification.

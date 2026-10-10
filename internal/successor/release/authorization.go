@@ -1,6 +1,7 @@
 package release
 
 import (
+	"crypto/sha256"
 	"time"
 )
 
@@ -62,6 +63,16 @@ type FloorSet struct {
 	TargetsVersion int64
 	// TargetsDigest is the SHA-256 of the durable top-level targets bytes.
 	TargetsDigest []byte
+}
+
+// Complete reports whether all four metadata roles have positive versions and
+// SHA-256 digests. These detached observations do not authenticate metadata or
+// grant target authorization; Root-only history is deliberately incomplete.
+func (f FloorSet) Complete() bool {
+	return f.RootVersion > 0 && len(f.RootDigest) == sha256.Size &&
+		f.TimestampVersion > 0 && len(f.TimestampDigest) == sha256.Size &&
+		f.SnapshotVersion > 0 && len(f.SnapshotDigest) == sha256.Size &&
+		f.TargetsVersion > 0 && len(f.TargetsDigest) == sha256.Size
 }
 
 type targetIdentity struct {

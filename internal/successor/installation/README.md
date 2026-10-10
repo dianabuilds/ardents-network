@@ -41,6 +41,10 @@ trusted-root/sync helpers для fixed resources и recovery; чужой кат�
 и независимо проверяет прежние bytes/access перед эффектами. Корень сохраняет
 совместимый `Request` consumer, Installation admission, Release proofs и
 транзакции; происхождение запроса не выдаёт ни одного из этих прав.
+`request_origin_linux.go` связывает native Origin с корневым Request и сохраняет
+Installation error semantics для initial и successor preparation. Повторная
+проверка исходного запроса не принадлежит initial lifecycle; каждый caller
+сохраняет собственное время проверки, effect admission и original lifetime.
 `root_ownership_linux.go` собирает private native identity predicates для lease,
 staging, inspection и recovery, а также detached `fileObservation` без descriptors
 или lease. Root-owned file admission, independent read retention с ctime,
@@ -67,22 +71,22 @@ write policy проверяются отдельными byte/refusal oracles; r
 для initial и successor recovery; их intent admission, phase и native lifetime
 остаются у отдельных владельцев восстановления. `generation_authentication.go`
 собирает fresh-pair admission, complete Release floors и ограничения successor
-continuity; сохранённые local facts по-прежнему не создают private proofs или
+continuity; полнота floors проверяется через `release.FloorSet.Complete`,
+единое правило владельца Release. Сохранённые local facts не создают private proofs или
 native custody. `generation_authentication_linux.go` сохраняет private
 fresh-proof composition установленного successor только для его реального
 native consumer; проверки исходных floors предшествуют обеим fresh evaluations.
-`intent_archive_linux.go` удерживает общую exact intent custody,
-copy/sync/removal; initial и successor completion допускаются отдельными checks.
-Эти владельцы следуют ответственности и реальным callers, сохраняя
-принимающий контракт. `installation_transaction_linux.go`
-собирает original filesystem custody одного private `installationTransaction`:
+`installation_transaction_linux.go` собирает original filesystem custody
+одного private `installationTransaction`:
 lease, borrowed parents/containers, journal, generation/Prefix/Snapshot,
 fixed-resource observations, intent и barrier, общий observe и joined close.
-`generation_staging_linux.go` содержит generation birth/write/failure,
-seal/access и проверку original generation-file provenance при recovery.
+В том же файле находятся initial/successor generation birth/write/failure,
+seal/access, exact intent copy/sync/removal и проверка original generation-file
+provenance при recovery. Initial и successor completion допускаются разными checks.
 Это один владелец транзакции: проверка всех original handles и порядок их
-закрытия должны оставаться под исходным lease. Разделение файлов следует
-разным причинам меняться; отдельный phase package или shared lease не возникает.
+закрытия должны оставаться под исходным lease. Состояние, generation-writing,
+intent observation и joined close находятся рядом: один retained lifetime
+не разбит между файлами по фазам. Отдельный phase package или shared lease не возникает.
 `request.go` содержит корневой Request consumer; `request_test.go` проверяет
 его декларации и исходную файловую custody, оставляя механизм в `request`.
 `platform_refusal_other.go` собирает единый no-effect native отказ на остальных
@@ -97,9 +101,12 @@ installed inspection отдельно проверяет ожидаемые UID/
 получает Linux parent-death SIGKILL. Аварийная гибель caller не оставляет helper
 для поздних account effects; это не допускает recovery/adoption незавершённого
 создания account. Отмена сохраняет исходный subprocess result и physical join.
-`fixed_resource_creation_linux.go` — recorded birth, same-inode access promotion и retained fixed-file observations; `successor_replacement_linux.go` — original replacement
-records, допуск access/phase и mutation исходного fixed file, включая selection;
-`successor_transition_linux.go` — successor lifecycle, intent
+`fixed_resources_linux.go` собирает closed resource images, recorded birth,
+same-inode access promotion, original replacement records и retained fixed-file
+observations. Creation и replacement сохраняют разные access/phase admission;
+selection имеет отдельные preimages и условия. Здесь нет predecessor lifetime
+или manager orchestration: их проверяют initial/successor/recovery owners.
+`successor_transition_linux.go` — successor lifecycle, intent, replacement composition
 и ordering; `installation_root_linux.go` — native root/lease creation и retained
 root custody, repeated observations и private recovery record effects.
 `installed_inspection_linux.go` сохраняет public Check admission, selected-generation
@@ -1059,7 +1066,7 @@ error text нарушает byte-identical provenance и запрещает reti
 conflicting copies сохраняются и отказывают; такой отказ не разрешает переписать
 историческую ошибку или автоматически выбрать одну из неоднозначных записей.
 
-`fixed_resource_images_linux.go` собирает closed fixed-resource paths, образы из
+`fixed_resources_linux.go` собирает closed fixed-resource paths, образы из
 retained generation bytes и canonical artifact manifest. Initial, successor
 и recovery используют одну схему manifest; successor и recovery — один
 построитель девяти образов. Selection не входит в этот набор: её байты,

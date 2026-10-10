@@ -191,6 +191,13 @@ reads in `installed_files_linux.go`, serving both initial and successor recovery
 Each recovery retains its roster, phase admission and physical lifetime. This
 locality changes no admitted effects, bytes, ordering or authority.
 
+Root `request_origin_linux.go` projects independent native request Origin
+reobservation and unchanged Installation error semantics for both initial and
+successor preparation. Request's Module retains original input provenance;
+each preparation owns its observation timing, effect admission and lifetime.
+The shared projection belongs to neither preparation sequence and grants no
+Release, transaction, recovery or startup authority.
+
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | New `nodeidentity` | Imported offline Node signing material and validated issuer-profile signing purpose, as its current `doc.go` states | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
@@ -326,13 +333,15 @@ This locality changes no authority, phase ordering or physical ownership.
 The private original filesystem transaction has one retained owner in
 `installation_transaction_linux.go`: borrowed parents/containers, journal,
 generation/Prefix/Snapshot, fixed resources, intent, barrier and joined close.
-`generation_staging_linux.go` separately collects generation-writing and exact
-birth-provenance rules. These are responsibilities within the same Installation
+The same file collects initial/successor generation-writing, exact birth
+provenance, intent archival and selection intention. These are responsibilities within the same Installation
 lease, not independently admitted phases or a new package. Reobserving all
 original resources and closing them before returning that lease remain joint
 transaction invariants.
 Recorded replacement access/phase admission and both real mutation callers
-reside together in `successor_replacement_linux.go`. Selection keeps its distinct
+reside together in `fixed_resources_linux.go`; original predecessor/fresh-proof
+composition stays with `successorPreparation` in `successor_transition_linux.go`.
+Selection keeps its distinct
 preimages, access and phase under the same transaction; this relocation changes
 no admitted bytes, effects, lease or physical close.
 Shared fresh-proof reconstruction of recovered bound generation bytes belongs
@@ -340,11 +349,16 @@ with closed generation construction and inspection in `generation_binding.go`. I
 successor recovery retain distinct intent/phase admission, original native
 custody and cleanup; shared byte construction grants none of those rights.
 Closed fixed-resource paths, generation-byte images and the canonical artifact
-manifest reside together in `fixed_resource_images_linux.go`. Successor and recovery
+manifest reside together in `fixed_resources_linux.go`, alongside recorded birth,
+access promotion and exact original replacement. Successor and recovery
 use one detached nine-image projection; initial retains its creation order and
 uses the same manifest encoding. Selection, fresh proofs, original custody,
 mutation admission and physical completion remain with their distinct owners.
-Complete floors alone grant no installed binding or readiness. A portable
+Complete floors alone grant no installed binding or readiness.
+Release owns the completeness rule exposed by `FloorSet.Complete`; both retained
+history opening and Installation candidate/continuity admission consume it.
+The detached observation does not authenticate metadata or grant authorization.
+A portable
 rule does not establish a native installation profile;
 the unresolved capability-admission repair remains distinct from this design.
 

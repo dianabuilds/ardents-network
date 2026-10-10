@@ -130,7 +130,7 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 	if err != nil {
 		return nil, err
 	}
-	if retained && !completeFloors(floors) {
+	if retained && !floors.Complete() {
 		return nil, ErrTrustUnavailable
 	}
 	if err = s.recoverWriterResidue(); err != nil {
@@ -140,13 +140,6 @@ func openFloorStoreMode(path string, retained bool) (result *floorStore, resultE
 		return nil, err
 	}
 	return s, nil
-}
-
-func completeFloors(f FloorSet) bool {
-	return f.RootVersion > 0 && len(f.RootDigest) == sha256.Size &&
-		f.TimestampVersion > 0 && len(f.TimestampDigest) == sha256.Size &&
-		f.SnapshotVersion > 0 && len(f.SnapshotDigest) == sha256.Size &&
-		f.TargetsVersion > 0 && len(f.TargetsDigest) == sha256.Size
 }
 
 func (s *floorStore) ReadFloors() (FloorSet, error) {

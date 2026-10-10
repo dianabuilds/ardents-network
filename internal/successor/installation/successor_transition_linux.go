@@ -6,7 +6,7 @@ import (
 	"errors"
 	"path/filepath"
 	"slices"
-	"syscall"
+	"sort"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
@@ -197,134 +197,6 @@ func (owned *successorPreparation) stageSuccessor() error {
 		}
 	}
 	return owned.observe()
-}
-
-// A native byte-staging mechanism, not fresh proof admission. Its only product
-// caller is the still-leased preparation with its genuine retained fresh pair.
-func stageSuccessorGeneration(ctx context.Context, reader *installedRoot, request Request, previous generationSelection, files map[string][]byte, selected generationSelection, gid uint32) (result *installationTransaction, returnedErr error) {
-	if ctx == nil || reader == nil || reader.lease == nil || request.declared == nil || request.ManifestSHA256() != "" ||
-		previous.Schema != "ardents-endpoint-installation-selection-v1" || !canonicalDigest(previous.GenerationDigest) ||
-		!canonicalDigest(previous.BindingDigest) || previous.GenerationDigest == selected.GenerationDigest {
-		return nil, ErrBinding
-	}
-	lease := reader.lease
-	frozen, binding, err := freezeGenerationInventory(request, lease.path, files, selected, gid)
-	if err != nil {
-		return nil, err
-	}
-	previousRaw, err := canonicalJSON(previous)
-	selectionPath := filepath.Join(lease.path, "selection.json")
-	selection := reader.files[selectionPath]
-	if err != nil || selection.identity == nil || selection.gid != gid || selection.mode != 0640 || !bytes.Equal(selection.body, previousRaw) {
-		return nil, errors.Join(ErrBinding, err)
-	}
-	if err := reader.observe(ctx); err != nil {
-		return nil, err
-	}
-	stage := &installationTransaction{lease: lease, selected: selected, fixed: map[string]fixedFileObservation{selectionPath: {parent: lease.identity, file: selection}}}
-	defer func() {
-		if returnedErr != nil {
-			stage.retainFailure(ctx, returnedErr)
-			if stage.intentAttempted {
-				result = stage
-				returnedErr = stage.terminal
-			} else {
-				returnedErr = stage.close()
-			}
-		}
-	}()
-	journalParent, err := stage.borrowParent(ctx, "journals", gid, nil)
-	if err != nil {
-		return nil, err
-	}
-	generationParent, err := stage.borrowParent(ctx, "generations", gid, reader.directories[filepath.Join(lease.path, "generations")])
-	if err != nil {
-		return nil, err
-	}
-	// Refuse both forms of candidate residue before writing even the intent.
-	for _, parent := range []*stagingParent{journalParent, generationParent} {
-		if _, err := parent.root.Lstat(selected.GenerationDigest); !errors.Is(err, syscall.ENOENT) {
-			return nil, errors.Join(ErrBinding, err)
-		}
-	}
-	intent := successorTransitionIntent{Schema: "ardents-endpoint-installation-successor-v1", Previous: previous, Candidate: selected, CandidateBinding: binding, Request: *request.declared}
-	intentBody, err := canonicalJSON(intent)
-	if err != nil || len(intentBody) > 128<<10 {
-		return nil, errors.Join(ErrBinding, err)
-	}
-	// Even a failed exclusive write may have created an incomplete original
-	// inode. Quiescence custody starts before the attempt, not at successful sync.
-	stage.intentAttempted = true
-	stage.intent, err = writeStagedFile(ctx, lease.root, "transition.json", intentBody, 0600, 0)
-	if err != nil {
-		return nil, err
-	}
-	if err := syncStagingRoot(lease.root); err != nil {
-		return nil, err
-	}
-	stage.journal, err = stage.createTransition(ctx, journalParent.root)
-	if err != nil {
-		return nil, err
-	}
-	if err := stage.record(ctx, "writing-generation", nil); err != nil {
-		return nil, err
-	}
-	stage.generation, err = stage.createGeneration(ctx, generationParent.root, gid)
-	if err != nil {
-		return nil, err
-	}
-	native := stage.generation.Identity()
-	birth, err := canonicalJSON(generationBirth{Schema: "ardents-endpoint-generation-directory-v1", GenerationDigest: selected.GenerationDigest, Device: native.Device, Inode: native.Inode})
-	if err != nil {
-		return nil, err
-	}
-	if err := stage.journal.Write(ctx, journal.Transitions, "generation-directory.json", birth); err != nil {
-		return nil, err
-	}
-	if err := stage.writeGeneration(ctx, frozen); err != nil {
-		return nil, err
-	}
-	if err := reader.observe(ctx); err != nil {
-		return nil, err
-	}
-	return stage, nil
-}
-
-func (stage *installationTransaction) verifyTransitionPhase(name, phase string) error {
-	if stage == nil || stage.journal == nil {
-		return ErrInput
-	}
-	var observed generationTransition
-	if err := decodeCanonical(stage.journal.Bytes(journal.Transitions, name), 64<<10, &observed); err != nil || observed.Schema != "ardents-endpoint-installation-transition-v1" ||
-		observed.GenerationDigest != stage.selected.GenerationDigest || observed.BindingDigest != stage.selected.BindingDigest || observed.Phase != phase || observed.OriginalError != "" {
-		return errors.Join(ErrBinding, err)
-	}
-	return nil
-}
-
-// Physical intention only. Its transaction caller retains fresh proofs, exact
-// complete fixed images and actual predecessor quiescence before selection.
-func (stage *installationTransaction) recordSelectionPublication(ctx context.Context) error {
-	if ctx == nil || stage == nil || stage.journal == nil {
-		return ErrInput
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if err := stage.verifyTransitionPhase("0004.json", "fixed-resources-replaced"); err != nil {
-		return err
-	}
-	if len(stage.journal.Bytes(journal.Transitions, "0005.json")) != 0 {
-		if err := stage.verifyTransitionPhase("0005.json", "publishing-selection"); err != nil {
-			return err
-		}
-		return stage.journal.Resync(ctx, journal.Transitions, "0005.json")
-	}
-	phase, err := canonicalJSON(generationTransition{Schema: "ardents-endpoint-installation-transition-v1", GenerationDigest: stage.selected.GenerationDigest, BindingDigest: stage.selected.BindingDigest, Phase: "publishing-selection"})
-	if err != nil {
-		return err
-	}
-	return stage.journal.Write(ctx, journal.Transitions, "0005.json", phase)
 }
 
 func (owned *successorPreparation) publishSuccessorSelection() error {
@@ -679,4 +551,122 @@ func (owned *successorPreparation) resumeReload() error {
 		}
 	}
 	return owned.prepareStartBarrier()
+}
+
+// The original fresh-pair owner reaches this only after staging and real
+// quiescence. Keep every preimage unchanged while establishing repair provenance.
+func (owned *successorPreparation) recordFixedReplacements() (returnedErr error) {
+	if owned == nil || owned.ctx == nil || owned.authorization == nil || owned.stage == nil || owned.predecessor == nil || !owned.predecessor.joined {
+		return ErrBinding
+	}
+	defer func() {
+		if returnedErr != nil {
+			owned.terminal = errors.Join(owned.terminal, returnedErr)
+			owned.stage.retainFailure(owned.ctx, returnedErr)
+		}
+	}()
+	if err := owned.observe(); err != nil {
+		return err
+	}
+	if err := owned.predecessor.observeQuiescent(owned.ctx); err != nil {
+		return err
+	}
+	stage := owned.stage
+	if len(stage.journal.Bytes(journal.Transitions, "0003.json")) == 0 {
+		if len(stage.journal.Bytes(journal.Transitions, "0002.json")) == 0 {
+			return ErrBinding
+		}
+		body, err := canonicalJSON(generationTransition{Schema: "ardents-endpoint-installation-transition-v1", GenerationDigest: stage.selected.GenerationDigest, BindingDigest: stage.selected.BindingDigest, Phase: "replacing-fixed-resources"})
+		if err != nil {
+			return err
+		}
+		if err := stage.journal.Write(owned.ctx, journal.Transitions, "0003.json", body); err != nil {
+			return err
+		}
+	}
+	resources, err := successorFixedResources(stage)
+	if err != nil {
+		return err
+	}
+	preimages, err := recoveryFixedBytes(owned.previous)
+	if err != nil {
+		return err
+	}
+	paths := make([]string, 0, len(resources))
+	for filename := range resources {
+		paths = append(paths, filename)
+	}
+	sort.Strings(paths)
+	for _, filename := range paths {
+		if err := owned.observe(); err != nil {
+			return err
+		}
+		if err := owned.predecessor.observeQuiescent(owned.ctx); err != nil {
+			return err
+		}
+		previous := fixedFileObservation{parent: owned.inspection.directories[filepath.Dir(filename)], file: owned.inspection.files[filename]}
+		if err := stage.recordFixedReplacement(owned.ctx, filename, previous, preimages[filename], resources[filename]); err != nil {
+			return err
+		}
+	}
+	return errors.Join(owned.observe(), owned.predecessor.observeQuiescent(owned.ctx))
+}
+
+// This operation retains the same fresh-pair owner, original lease and joined
+// predecessor. Filesystem provenance never substitutes for those admissions.
+func (owned *successorPreparation) replaceFixedResources() (returnedErr error) {
+	if owned == nil || owned.ctx == nil || owned.authorization == nil || owned.stage == nil || owned.predecessor == nil || !owned.predecessor.joined {
+		return ErrBinding
+	}
+	defer func() {
+		if returnedErr != nil {
+			owned.terminal = errors.Join(owned.terminal, returnedErr)
+			if owned.stage.terminal == nil {
+				owned.stage.retainFailure(owned.ctx, returnedErr)
+			}
+		}
+	}()
+	if err := owned.recordFixedReplacements(); err != nil {
+		return err
+	}
+	resources, err := successorFixedResources(owned.stage)
+	if err != nil {
+		return err
+	}
+	preimages, err := recoveryFixedBytes(owned.previous)
+	if err != nil {
+		return err
+	}
+	paths := make([]string, 0, len(resources))
+	for filename := range resources {
+		paths = append(paths, filename)
+	}
+	sort.Strings(paths)
+	for _, filename := range paths {
+		if err := owned.observe(); err != nil {
+			return err
+		}
+		if err := owned.predecessor.observeQuiescent(owned.ctx); err != nil {
+			return err
+		}
+		previous := fixedFileObservation{parent: owned.inspection.directories[filepath.Dir(filename)], file: owned.inspection.files[filename]}
+		written, err := owned.stage.replaceRecordedFixedFile(owned.ctx, filename, previous, preimages[filename], resources[filename])
+		if written.identity != nil {
+			owned.inspection.files[filename] = written
+			owned.stage.fixed[filename] = fixedFileObservation{parent: previous.parent, file: written}
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err := owned.observe(); err != nil {
+		return err
+	}
+	if err := owned.predecessor.observeQuiescent(owned.ctx); err != nil {
+		return err
+	}
+	if err := owned.stage.recordFixedReplacementCompletion(owned.ctx); err != nil {
+		return err
+	}
+	return owned.publishSuccessorSelection()
 }

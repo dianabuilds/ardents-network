@@ -49,7 +49,7 @@ func TestOpenRetainedRequiresCompleteAuthenticatedFloors(t *testing.T) {
 		t.Fatalf("substituted artifact accepted: %s", decision.Outcome)
 	}
 	floors, err := v.CurrentFloors(t.Context())
-	if err != nil || floors.RootVersion != 1 || floors.TargetsVersion != 0 {
+	if err != nil || floors.RootVersion != 1 || floors.TargetsVersion != 0 || floors.Complete() {
 		_ = v.Close()
 		t.Fatal("fixture did not establish actual Root-only history")
 	}
@@ -69,6 +69,11 @@ func TestOpenRetainedRequiresCompleteAuthenticatedFloors(t *testing.T) {
 	if decision := v.Evaluate(t.Context(), h.input); decision.Outcome != OutcomeReleaseAccepted {
 		_ = v.Close()
 		t.Fatalf("genuine initial metadata refused: %s", decision.Outcome)
+	}
+	floors, err = v.CurrentFloors(t.Context())
+	if err != nil || !floors.Complete() {
+		_ = v.Close()
+		t.Fatalf("authenticated metadata did not establish complete floors: %v", err)
 	}
 	if err := v.Close(); err != nil {
 		t.Fatal(err)
