@@ -16,7 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/execution"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation"
+	installation "github.com/dianabuilds/ardents-network/internal/successor/installation/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 )
 

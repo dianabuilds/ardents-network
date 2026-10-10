@@ -5,13 +5,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
 	"path"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
@@ -24,9 +22,11 @@ var (
 	ErrAuthorization = errors.New("installation: fresh Release authorization refused")
 )
 
-const programTarget = "ardents/linux-amd64/endpoint"
+// ProgramTarget is the executable target in the closed authorization pair.
+const ProgramTarget = "ardents/linux-amd64/endpoint"
 
-const generationTarget = "ardents/linux-amd64/protected-endpoint"
+// GenerationTarget is the static generation target paired with ProgramTarget.
+const GenerationTarget = "ardents/linux-amd64/protected-endpoint"
 
 // Authorization retains two private fresh proofs and their exact generation
 // bytes. It is not serializable installation or restart authority. Its zero
@@ -48,6 +48,20 @@ func (a Authorization) Descriptor() []byte { return bytes.Clone(a.descriptor) }
 func (a Authorization) Resource(name string) ([]byte, bool) {
 	b, ok := a.resources[name]
 	return bytes.Clone(b), ok
+}
+
+// InitialFacts reports the independent initial-pin provenance retained only by
+// AuthenticateInitial. These detached facts grant no native effect authority.
+func (a Authorization) InitialFacts() (enrollment.Facts, bool) { return a.initial.Facts() }
+
+// Resources returns detached copies of the exact static inventory. These copies
+// cannot recreate the private Release proofs or independent initial pin.
+func (a Authorization) Resources() map[string][]byte {
+	copied := make(map[string][]byte, len(a.resources))
+	for name, body := range a.resources {
+		copied[name] = bytes.Clone(body)
+	}
+	return copied
 }
 
 // AuthenticateInitial consumes genuine independent-pin provenance. Composition
@@ -91,7 +105,8 @@ type inventory interface {
 	MetadataNames() []string
 }
 
-type generationDeclaration struct {
+// GenerationDeclaration contains detached descriptor facts, never authorization.
+type GenerationDeclaration struct {
 	Platform        string            `json:"platform"`
 	ReleaseIdentity string            `json:"release_identity"`
 	ReleaseVersion  int64             `json:"release_version"`
@@ -100,8 +115,8 @@ type generationDeclaration struct {
 
 func authenticate(ctx context.Context, v *release.Verifier, files inventory, f enrollment.Facts, in release.Inputs) (Authorization, error) {
 	if ctx == nil || v == nil || !f.Protected || !f.Headless ||
-		f.Platform != "linux-amd64" || f.TargetPath != programTarget ||
-		in.TargetPath != programTarget || in.Local.Platform != f.Platform ||
+		f.Platform != "linux-amd64" || f.TargetPath != ProgramTarget ||
+		in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform ||
 		in.Local.Architecture != "amd64" || in.Local.Environment != f.Environment ||
 		in.Local.Network != f.Network || in.Local.RefTime.IsZero() {
 		return Authorization{}, ErrInput
@@ -118,7 +133,7 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 	}
 	// Decode only already inventory-checked descriptor facts. Enrollment retains
 	// canonical grammar, exact resource set and digest validation ownership.
-	var declaration generationDeclaration
+	var declaration GenerationDeclaration
 	if err := json.Unmarshal(descriptor, &declaration); err != nil {
 		return Authorization{}, errors.Join(ErrBinding, err)
 	}
@@ -159,7 +174,7 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 	if !ok {
 		return Authorization{}, errors.Join(ErrAuthorization, fmt.Errorf("program: %s", p.Outcome), p.Err())
 	}
-	in.TargetPath, in.Artifact = generationTarget, descriptor
+	in.TargetPath, in.Artifact = GenerationTarget, descriptor
 	g := v.Evaluate(ctx, in)
 	generationProof, ok := g.Authorization()
 	if !ok {
@@ -167,7 +182,7 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 	}
 	acceptedProgram, programOK := programProof.AcceptedDecision()
 	acceptedGeneration, generationOK := generationProof.AcceptedDecision()
-	if !programOK || !generationOK || !coherentTargets(acceptedProgram, acceptedGeneration, declaration) {
+	if !programOK || !generationOK || !CoherentTargets(acceptedProgram, acceptedGeneration, declaration) {
 		return Authorization{}, ErrBinding
 	}
 	programDigest, generationDigest := sha256.Sum256(program), sha256.Sum256(descriptor)
@@ -180,8 +195,10 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 	return Authorization{program: programProof, generation: generationProof, descriptor: descriptor, resources: resources}, nil
 }
 
-func coherentTargets(p, g release.Decision, d generationDeclaration) bool {
-	return p.Path == programTarget && g.Path == generationTarget &&
+// CoherentTargets checks agreement of detached target and descriptor facts.
+// It creates no proof or installed effect authority.
+func CoherentTargets(p, g release.Decision, d GenerationDeclaration) bool {
+	return p.Path == ProgramTarget && g.Path == GenerationTarget &&
 		p.ReleaseIdentity == d.ReleaseIdentity && g.ReleaseIdentity == d.ReleaseIdentity &&
 		p.ReleaseVersion == d.ReleaseVersion && g.ReleaseVersion == d.ReleaseVersion &&
 		p.Platform == d.Platform && g.Platform == d.Platform &&
@@ -189,24 +206,4 @@ func coherentTargets(p, g release.Decision, d generationDeclaration) bool {
 		p.Network == g.Network && p.ReferenceTime.Equal(g.ReferenceTime) &&
 		p.Floors.TargetsVersion == g.Floors.TargetsVersion &&
 		bytes.Equal(p.Floors.TargetsDigest, g.Floors.TargetsDigest)
-}
-
-// Local stored facts constrain continuity, never create fresh authorization.
-// The caller must supply these facts from its still-leased native inspection.
-func successorContinuity(previous generationBinding, floors release.FloorSet, local release.LocalEnvironment) error {
-	g := previous.Generation
-	if !floors.Complete() || g.TargetsVersion < 1 || !canonicalDigest(g.TargetsDigest) ||
-		floors.TargetsVersion < g.TargetsVersion ||
-		(floors.TargetsVersion == g.TargetsVersion && hex.EncodeToString(floors.TargetsDigest) != g.TargetsDigest) {
-		return release.ErrTrustUnavailable
-	}
-	if local.Platform != g.Platform || local.Architecture != g.Architecture ||
-		local.Environment != g.Environment || local.Network != g.Network {
-		return ErrBinding
-	}
-	before, err := time.Parse(time.RFC3339Nano, g.ReferenceTime)
-	if err != nil || local.RefTime.IsZero() || local.RefTime.Before(before) {
-		return ErrBinding
-	}
-	return nil
 }

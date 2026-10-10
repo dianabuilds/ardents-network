@@ -62,6 +62,18 @@ remain proposed until their current contracts and real consumers are verified.
 
 ## Supporting mechanisms and composition
 
+The Installation family has two concrete policy Modules. Portable
+`internal/successor/installation` owns fresh coherent program/generation
+authorization and its private initial-pin and immutable-byte provenance.
+`internal/successor/installation/endpoint` owns installed generation binding,
+native effect admission and original initial/replacement/recovery/startup
+lifetimes. Its real command callers consume the two owners directly; there is
+no delegating root facade. Endpoint consumes opaque Release proofs and detached
+copied inventory through the portable owner, never its private fields.
+Continuity against the still-leased installed binding remains Endpoint policy.
+The native Installation filenames below belong to this Endpoint package;
+physical sibling Modules retain their exact import direction and lifetimes.
+
 The partial new installed Endpoint composition retains an opaque Installation
 startup lifetime across a separately bounded root completion exchange and final
 original observations. It consumes copied bound plans, qualified joined Execution
