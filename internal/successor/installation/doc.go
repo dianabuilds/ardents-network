@@ -29,6 +29,8 @@
 //
 // Native read observations and shared installed-integrity policy remain separate
 // responsibilities, consumed through each original root or non-root lifetime.
+// Shared account mechanisms are separate from initial effect ordering; bounded
+// directory inventory reads serve both recovery owners without continuation rights.
 //
 // Component checks, detached observations and prepared generations establish
 // neither full interrupted-start coverage nor installed/privacy qualification.

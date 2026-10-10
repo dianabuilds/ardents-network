@@ -89,7 +89,11 @@ seal/access и проверку original generation-file provenance при recov
 платформах; compilation не расширяет поддерживаемую installation platform.
 `initial_preparation_linux.go` — initial
 request acquisition, preflight, account, preparation, fixed-resource publication и публикация stopped selection;
-фиксированный account helper удерживает создающий OS thread до joined Run и
+`endpoint_account_linux.go` собирает общие native account-механизмы: создание
+фиксированного account, его независимое NSS-наблюдение и bounded subprocess I/O.
+Initial preparation допускает создание после durable preparation record;
+installed inspection отдельно проверяет ожидаемые UID/GID. Эти callers не
+заимствуют состояние initial preparation. Фиксированный account helper удерживает создающий OS thread до joined Run и
 получает Linux parent-death SIGKILL. Аварийная гибель caller не оставляет helper
 для поздних account effects; это не допускает recovery/adoption незавершённого
 создания account. Отмена сохраняет исходный subprocess result и physical join.
@@ -107,6 +111,9 @@ inspection и independent staged-generation matching под тем же private 
 точный byte oracle и отказы сохранены у completion и native barrier.
 Read-only physical files остаются в `installed_files_linux.go`: original
 file/directory retention, bounded reads и sealed-generation observations.
+Здесь же bounded проверка exact required/optional directory inventory для
+initial и successor recovery. Каждый recovery owner задаёт свой roster и
+сохраняет phase admission; наблюдение каталога не допускает продолжение или запись.
 Shared account/mutable-root и exact fixed-resource integrity policy находится
 в `installed_inspection_linux.go`; root inspection/recovery и non-root startup
 используют её через собственные независимые observations. Non-root startup

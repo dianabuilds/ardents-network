@@ -200,3 +200,38 @@ func (reader *installedFiles) readSealedGeneration(ctx context.Context, digest s
 	}
 	return binding, files, ctx.Err()
 }
+
+// Recovery callers supply the exact required/optional roster. This bounded
+// native read grants no continuation, mutation or journal authority.
+func recoveryInventory(directory string, allowed map[string]bool) (returnedErr error) {
+	info, err := os.Lstat(directory)
+	if err != nil || info == nil || !info.IsDir() || info.Mode().Perm()&0022 != 0 {
+		return errors.Join(ErrBinding, err)
+	}
+	file, err := os.OpenFile(directory, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return err
+	}
+	defer func() { returnedErr = errors.Join(returnedErr, file.Close()) }()
+	opened, err := file.Stat()
+	if err != nil || !os.SameFile(info, opened) {
+		return errors.Join(ErrBinding, err)
+	}
+	names, err := file.Readdirnames(len(allowed) + 1)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
+	seen := make(map[string]bool)
+	for _, name := range names {
+		if _, known := allowed[name]; !known {
+			return ErrBinding
+		}
+		seen[name] = true
+	}
+	for name, required := range allowed {
+		if required && !seen[name] {
+			return ErrBinding
+		}
+	}
+	return nil
+}

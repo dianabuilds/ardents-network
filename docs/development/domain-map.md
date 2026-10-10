@@ -183,6 +183,14 @@ still owns account admission, preparation provenance and interrupted-prefix
 refusal. Helper termination grants no adoption or recovery of partial account
 creation and does not broaden the stopped initial recovery grammar.
 
+Shared native account creation, NSS observation and bounded helper output reside
+in `endpoint_account_linux.go`; initial preparation retains durable effect
+admission, and installed inspection independently checks expected UID/GID.
+Bounded required/optional directory inventory reads reside with other native
+reads in `installed_files_linux.go`, serving both initial and successor recovery.
+Each recovery retains its roster, phase admission and physical lifetime. This
+locality changes no admitted effects, bytes, ordering or authority.
+
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | New `nodeidentity` | Imported offline Node signing material and validated issuer-profile signing purpose, as its current `doc.go` states | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
