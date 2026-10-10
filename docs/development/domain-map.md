@@ -78,8 +78,9 @@ event-descriptor observers prove physical join. This is not private Service
 readiness, complete installed acceptance or whole-host qualification. Signing,
 Source and clock infrastructure remains under one fixture controller.
 
-Generation's completed byte mutation retains a matched read-only descriptor to
-the original inode before joining its writer close. Installation still owns
+Generation's completed creation write and original Prefix repair retain a
+matched read-only descriptor to the original inode before joining the writer
+close and reobserving exact bytes. Installation still owns
 birth journaling, immutable selection and Start admission; the file mechanism
 grants no execution right. This preserves live custody without retaining a
 writable executable descriptor across actual exec.

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -260,5 +261,59 @@ func TestInstallationNativePrefixRefusesForeignPreimageBeforeAnyRepair(t *testin
 	actual, err := os.ReadFile(filepath.Join(directory, "50-ardents-text.rules"))
 	if err != nil || !bytes.Equal(actual, []byte("foreign prefix")) {
 		t.Fatal("refused prefix was mutated", err)
+	}
+}
+
+// A completed recovery must retain exact read custody without keeping the
+// executable open for mutation. This is a real kernel exec, not Start authority.
+func TestInstallationNativePrefixCompletedProgramExecutesBeforeCustodyClose(t *testing.T) {
+	directory, p, full := prefixFixture(t, t.Context())
+	program, err := os.ReadFile("/proc/self/exe")
+	if err != nil {
+		t.Fatal("native test executable", err)
+	}
+	// Independently confirm that the native executable can run on this host.
+	if out, err := exec.Command("/proc/self/exe", "-test.run=^$", "-test.count=1").CombinedOutput(); err != nil {
+		t.Fatalf("original executable control: %v: %s", err, out)
+	}
+	full["ardents-linux-amd64"] = program
+	if err := p.Match(full); err != nil {
+		t.Fatal(err)
+	}
+	var writer *os.File
+	for _, name := range Names() {
+		if name != "50-ardents-text.rules" {
+			if _, err := p.CreateFile(name); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if name == "ardents-linux-amd64" {
+			writer = p.files[name].file
+		}
+		if err := p.Repair(name, full[name]); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := p.Seal(); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(filepath.Join(directory, "ardents-linux-amd64"), "-test.run=^$", "-test.count=1").CombinedOutput(); err != nil {
+		t.Fatalf("completed original program could not execute with custody retained: %v: %s", err, out)
+	}
+	if _, err := writer.Stat(); !errors.Is(err, os.ErrClosed) {
+		t.Fatal("completed recovery retained its writable program descriptor", err)
+	}
+	reader := p.files["ardents-linux-amd64"].file
+	if _, err := reader.Stat(); err != nil {
+		t.Fatal("completed recovery lost original read custody", err)
+	}
+	if err := p.Observe(); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reader.Stat(); !errors.Is(err, os.ErrClosed) {
+		t.Fatal("original read custody survived Close", err)
 	}
 }

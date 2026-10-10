@@ -42,10 +42,14 @@ func writeFile(ctx context.Context, root *os.Root, name string, original fileObs
 		return result, errors.Join(ErrBinding, err)
 	}
 	result = fileObservation{file: file, identity: info, body: bytes.Clone(body), gid: gid, mode: mode, complete: true}
-	// Retain the same original inode read-only once mutation is complete. A
-	// writable executable descriptor would make the later real exec fail with
-	// ETXTBSY even after its mode and bytes were sealed. Open and match the
-	// reader before closing the writer; failure still retains original custody.
+	return retainReadOnlyFile(ctx, root, name, result)
+}
+
+// Both creation and recovered prefix repair hand off a completed mutation to
+// same-inode read custody before any later exec. Open and match the reader
+// before closing the writer; a failed handoff retains its original custody.
+func retainReadOnlyFile(ctx context.Context, root *os.Root, name string, original fileObservation) (result fileObservation, returnedErr error) {
+	result = original
 	reader, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return result, err
@@ -55,10 +59,9 @@ func writeFile(ctx context.Context, root *os.Root, name string, original fileObs
 		return result, errors.Join(ErrBinding, err, reader.Close())
 	}
 	result.file = reader
-	closeErr := file.Close()
+	closeErr := original.file.Close()
 	return result, errors.Join(closeErr, observeFile(root, name, result), ctx.Err())
 }
-
 func observeFile(root *os.Root, name string, expected fileObservation) (returnedErr error) {
 	if expected.file != nil {
 		info, err := expected.file.Stat()

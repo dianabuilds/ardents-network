@@ -286,7 +286,12 @@ func (p *Prefix) Repair(name string, body []byte) (returnedErr error) {
 	if err != nil || !os.SameFile(observed.identity, info) {
 		return errors.Join(ErrBinding, err)
 	}
-	p.files[name] = fileObservation{file: file, identity: info, body: bytes.Clone(body), mode: mode, gid: p.gid, complete: true}
+	completed := fileObservation{file: file, identity: info, body: bytes.Clone(body), mode: mode, gid: p.gid, complete: true}
+	retained, err := retainReadOnlyFile(p.ctx, p.root, name, completed)
+	p.files[name] = retained
+	if err != nil {
+		return err
+	}
 	return p.Observe()
 }
 

@@ -376,6 +376,14 @@ Installation: Module проверяет тот же container inode и толь�
 access states, а caller отдельно проверяет metadata, допустимые в своей фазе.
 Барьер запуска физически завершается до закрытия generation descriptors.
 
+После завершённого `Write` или `Prefix.Repair` Module открывает read-only
+descriptor, проверяет тот же original inode/access/ctime, затем физически
+закрывает writer и повторно наблюдает exact bytes. Незавершённая передача
+сохраняет первую ошибку и доступное исходное custody до `Close`. Это позволяет
+настоящий exec при retained generation custody; writable executable descriptor
+после ремонта иначе вызывает kernel `ETXTBSY`. Передача дескриптора не даёт
+Release, selection или Start authority: эти проверки остаются у Installation.
+
 `generation.Snapshot` отдельно открывает sealed generation для чтения. Он
 удерживает собственные parent/root/file descriptors, проверяет полный закрытый
 inventory, исходные inode/access/ctime и bytes и возвращает только копии байтов
@@ -1014,6 +1022,19 @@ original generation и fixed replacements до stopped reload. Это не до�
 power loss или accepting continuation. Этот путь не допускает pending Start,
 guard/socket или ACK replay
 и не решает provenance старых Start actors.
+
+Отдельные source-matched actual-manager сценарии проверяют полную natural
+continuation прерванной записи и durable generation-write failure через
+публичный recovery. Они сохраняют original partial inode, writing/file-birth
+records, all fifteen sealed births и committed floors; first-failure сценарий
+также сохраняет exact original failed record до completed-intent archival.
+Actual non-root candidate проходит Start/ACK и достигает permission-pending;
+original proc и kernel scope физически joins до закрытия инфраструктуры.
+Внешний test-only hold удерживает настоящих Source/clock/Candidate владельцев
+не более 40 секунд; product не подменяется, а исходный Root SIGKILL сохраняет
+native fixture FAIL. Это executor self-review конкретных recovery boundaries,
+не qualification-profile PASS, private Service readiness, power-loss или полная
+installed acceptance.
 
 Повторный cleanup generation-writing failure копирует весь original failed
 record, включая phase label и первую ошибку. Изменение label даже при одинаковом

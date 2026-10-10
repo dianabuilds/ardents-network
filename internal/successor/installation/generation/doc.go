@@ -14,8 +14,9 @@
 // Methods require serialized ownership. A failed operation retains its first
 // error and physical descriptors, including each original file birth, until
 // Close; same-inode metadata resets refuse. A fresh context cannot renew it.
-// A completed write retains a matched read-only descriptor to the same inode
-// before joining its writer close; retained executable custody cannot block exec.
+// Both completed creation writes and Prefix repairs retain a matched read-only
+// descriptor to the same inode before joining their writer close; retained
+// executable custody cannot block exec. This physical handoff grants no Start.
 package generation
 
 import "errors"
