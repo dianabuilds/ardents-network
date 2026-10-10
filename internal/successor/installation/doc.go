@@ -12,6 +12,8 @@
 //
 // Initial provisioning completes stopped selection and intent archival. Read-only
 // Check observes exact installed bytes/account/roots without Release effects.
+// Its fixed account helper retains the creating OS thread through joined Run;
+// Linux parent-death termination grants no interrupted-account adoption.
 // Replacement retains its original caller, lease and predecessor through staging,
 // joined retirement, selection, reload and barrier-controlled startup. Copies of
 // opaque handles share one admission latch; cleanup keeps unfinished borrowers

@@ -8,9 +8,11 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	manageddirectory "github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
@@ -231,7 +233,18 @@ func createEndpointAccount(ctx context.Context) error {
 	command.WaitDelay = 5 * time.Second
 	var output, diagnostic boundedAccountOutput
 	command.Stdout, command.Stderr = &output, &diagnostic
-	return errors.Join(command.Run(), bounded.Err(), ctx.Err())
+	return errors.Join(runOriginalAccountCommand(command), bounded.Err(), ctx.Err())
+}
+
+func runOriginalAccountCommand(command *exec.Cmd) error {
+	// Linux binds the parent-death signal to the creating OS thread. Retain
+	// that thread until Run joins the exact account helper, including failure.
+	// Fatal caller death cannot leave the helper to make later account changes;
+	// this grants no recovery or adoption of an interrupted account creation.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	command.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
+	return command.Run()
 }
 
 func observeEndpointAccount() (uint32, uint32, error) {

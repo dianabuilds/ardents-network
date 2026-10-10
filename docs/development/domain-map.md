@@ -177,6 +177,12 @@ death; it neither cancels an already accepted manager request nor grants pending
 Start recovery. Detached stopped/NoJob facts remain distinct from original actor
 completion. No neighbor acquires a shared caller, root lease or runtime permit.
 
+Initial preparation separately retains its fixed account helper's creating OS
+thread through joined Run, with Linux parent-death SIGKILL. Root Installation
+still owns account admission, preparation provenance and interrupted-prefix
+refusal. Helper termination grants no adoption or recovery of partial account
+creation and does not broaden the stopped initial recovery grammar.
+
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | New `nodeidentity` | Imported offline Node signing material and validated issuer-profile signing purpose, as its current `doc.go` states | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
