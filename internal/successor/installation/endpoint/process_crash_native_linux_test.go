@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,21 +28,38 @@ type crashWriterObservation struct {
 func TestInstallationCrashWriterChild(t *testing.T) {
 	phase := os.Getenv("ARDENTS_INSTALLATION_CRASH_PHASE")
 	ready := os.Getenv("ARDENTS_INSTALLATION_CRASH_READY")
-	if (phase != "generation-staged" && phase != "fixed-written") || ready == "" {
+	barrierPhase := phase == "start-barrier-prepared" || phase == "start-intention-recorded"
+	if (phase != "generation-staged" && phase != "fixed-written" && !barrierPhase) || ready == "" {
 		t.Fatal("invalid environment: crash writer requires its selected parent")
 	}
-	lease, request, files, selected := nativeStagingFixture(t)
-	stage, err := stageInitialGeneration(t.Context(), lease, request, files, selected, 65534)
-	if err != nil {
-		t.Fatal(err)
+	var stage *installationTransaction
+	if barrierPhase {
+		stage = startBarrierFixture(t)
+		barrier, err := prepareNativeStartBarrier(t.Context(), stage)
+		stage.barrier = barrier
+		if err != nil {
+			t.Fatal(err)
+		}
+		if phase == "start-intention-recorded" {
+			if err := barrier.recordStartAttempt(); err != nil {
+				t.Fatal(err)
+			}
+		}
+	} else {
+		lease, request, files, selected := nativeStagingFixture(t)
+		var err error
+		stage, err = stageInitialGeneration(t.Context(), lease, request, files, selected, 65534)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	defer stage.close()
-	observation := crashWriterObservation{Root: lease.path, Generation: selected.GenerationDigest}
+	observation := crashWriterObservation{Root: stage.lease.path, Generation: stage.selected.GenerationDigest}
 	if phase == "fixed-written" {
 		if err := stage.fixedPhase(t.Context(), "0003.json", "installing-fixed-resources"); err != nil {
 			t.Fatal(err)
 		}
-		observation.Fixed = filepath.Join(filepath.Dir(lease.path), "fixed-resource")
+		observation.Fixed = filepath.Join(filepath.Dir(stage.lease.path), "fixed-resource")
 		if err := stage.createFixedFile(t.Context(), observation.Fixed, []byte("owned crash-test resource\n"), 0644, 0); err != nil {
 			t.Fatal(err)
 		}
@@ -66,9 +84,25 @@ func TestInstallationCrashWriterChild(t *testing.T) {
 }
 
 func TestInstallationNativeProcessCrashRetainsOwnedStageAndRefusesInitialAdoption(t *testing.T) {
-	for _, phase := range []string{"generation-staged", "fixed-written"} {
+	for _, phase := range []string{"generation-staged", "fixed-written", "start-barrier-prepared", "start-intention-recorded"} {
 		t.Run(phase, func(t *testing.T) {
 			parent := nativeRequestDirectory(t)
+			barrierPhase := phase == "start-barrier-prepared" || phase == "start-intention-recorded"
+			if barrierPhase {
+				// Nested fixture roots must still fit the native Unix address
+				// limit. Keep this child's parent short under the same checked
+				// profile root; neither socket names nor production bounds change.
+				shortParent, err := os.MkdirTemp(filepath.Dir(parent), "c-")
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() {
+					if err := os.RemoveAll(shortParent); err != nil {
+						t.Error(err)
+					}
+				})
+				parent = shortParent
+			}
 			ready := filepath.Join(parent, "ready.json")
 			executable, err := os.Executable()
 			if err != nil {
@@ -141,6 +175,27 @@ func TestInstallationNativeProcessCrashRetainsOwnedStageAndRefusesInitialAdoptio
 			}
 			journal := filepath.Join(observation.Root, "journals", observation.Generation)
 			paths := []string{filepath.Join(observation.Root, "transition.json"), filepath.Join(journal, "generation-directory.json"), filepath.Join(journal, "0002.json")}
+			var socketBefore os.FileInfo
+			if barrierPhase {
+				paths = append(paths, filepath.Join(observation.Root, "selection.json"), filepath.Join(observation.Root, "start-guard.json"), filepath.Join(observation.Root, "start-socket.json"), filepath.Join(journal, "0007.json"))
+				if phase == "start-intention-recorded" {
+					paths = append(paths, filepath.Join(journal, "start-attempt.json"))
+				}
+				socketPath := filepath.Join(observation.Root, "start-completion.socket")
+				socketBefore, err = os.Lstat(socketPath)
+				if err != nil || socketBefore.Mode() != os.ModeSocket|0660 {
+					t.Fatal("original completion socket absent before crash", err)
+				}
+				// Positive control: this is the child's actual live listener, not
+				// merely a socket-shaped pathname left by an earlier process.
+				connection, err := net.DialTimeout("unix", socketPath, time.Second)
+				if err != nil {
+					t.Fatal("original completion listener was not live", err)
+				}
+				if err := connection.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
 			if phase == "fixed-written" {
 				if observation.Fixed != filepath.Join(filepath.Dir(observation.Root), "fixed-resource") {
 					t.Fatal("fixed resource escaped its owned parent")
@@ -195,7 +250,30 @@ func TestInstallationNativeProcessCrashRetainsOwnedStageAndRefusesInitialAdoptio
 					t.Fatal("crash or refused adoption changed original bytes/inode/access", path, readErr, statErr)
 				}
 			}
-			if _, err := os.Lstat(filepath.Join(observation.Root, "selection.json")); !errors.Is(err, os.ErrNotExist) {
+			if barrierPhase {
+				socketPath := filepath.Join(observation.Root, "start-completion.socket")
+				socketAfter, err := os.Lstat(socketPath)
+				if err != nil || !completionSocketMatches(socketBefore, socketAfter, socketBefore.Sys().(*syscall.Stat_t).Gid) {
+					t.Fatal("joined crash changed original socket custody", err)
+				}
+				connection, err := net.DialTimeout("unix", socketPath, time.Second)
+				if connection != nil {
+					_ = connection.Close()
+				}
+				if !errors.Is(err, syscall.ECONNREFUSED) {
+					t.Fatal("retained socket residue concealed a live listener or different refusal", err)
+				}
+				for _, name := range []string{"started-invocation.json", "completion-guard-removal.json"} {
+					if _, err := os.Lstat(filepath.Join(journal, name)); !errors.Is(err, os.ErrNotExist) {
+						t.Fatal("crashed intention manufactured invocation or completion", name, err)
+					}
+				}
+				if phase == "start-barrier-prepared" {
+					if _, err := os.Lstat(filepath.Join(journal, "start-attempt.json")); !errors.Is(err, os.ErrNotExist) {
+						t.Fatal("barrier preparation manufactured a start intention", err)
+					}
+				}
+			} else if _, err := os.Lstat(filepath.Join(observation.Root, "selection.json")); !errors.Is(err, os.ErrNotExist) {
 				t.Fatal("staged crash residue became selected", err)
 			}
 		})

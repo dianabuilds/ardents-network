@@ -72,9 +72,10 @@ write policy проверяются отдельными byte/refusal oracles; r
 ограничением времени. Здесь же общий
 `recoverBoundGeneration` восстанавливает exact bound bytes по свежим proofs
 для initial и successor recovery; их intent admission, phase и native lifetime
-остаются у отдельных владельцев восстановления. `generation_authentication.go`
-собирает fresh-pair admission, complete Release floors и ограничения successor
-continuity; полнота floors проверяется через `release.FloorSet.Complete`,
+остаются у отдельных владельцев восстановления. `generation_authorization.go`
+собирает opaque pair projection и ограничения installed successor continuity;
+fresh-pair admission находится в `../generation_authentication.go`. Полнота
+Release floors проверяется через `release.FloorSet.Complete`,
 единое правило владельца Release. Сохранённые local facts не создают private proofs или
 native custody. `generation_authentication_linux.go` сохраняет private
 fresh-proof composition установленного successor только для его реального
@@ -177,9 +178,11 @@ expected configuration остаются решениями корня Installati
 
 ## Внутренняя структура
 
-Корневой пакет владеет Installation-решениями и последовательностью операций:
-проверкой запроса и пары разрешений, поколением, установкой, восстановлением и
-заменой. Системные наблюдения не получают эти полномочия при выделении в Module.
+Пакет `endpoint` владеет installed Installation-решениями и последовательностью
+операций: проверкой запроса, binding свежей пары разрешений к установленному
+поколению, установкой, восстановлением и заменой. Корневой `installation`
+аутентифицирует саму пару. Системные наблюдения не получают эти полномочия
+при выделении в Module.
 
 `Successor` удерживает исходный caller, writer lease и единственный completion
 latch, общий для копий handle. `OpenSuccessor` проверяет native request и
@@ -202,7 +205,7 @@ native последовательностью и физическим закры
 удерживает ресурсы одной попытки fixed-unit start: original proc/cgroup custody,
 quiescence и irreversible ACK latch. Эти ресурсы изменяются независимо от
 fresh-proof/staging/selection решений в `successor_transition_linux.go`, поэтому
-их Implementation отделён в корневом пакете без нового package или импорта.
+их Implementation отделён внутри `endpoint`, без дополнительного package.
 
 `SuccessorRecovery` и `installation recover-installed <root> <UTC-reference>`
 восстанавливают завершение уже запущенного exact successor. Открытие удерживает
@@ -230,6 +233,15 @@ prefixes дают отказ без mutation. Для terminal trial внешни
 artifacts и bounds не изменены. Исходный Root SIGKILL остаётся native fixture
 FAIL, а outer manager timeout — отдельной ошибкой. Это не passing qualification
 profile, полная interruption matrix или installed Service acceptance.
+
+`process_crash_native_linux_test.go` отдельно проверяет SIGKILL после создания
+original start barrier и после durable start intention. Независимый parent
+сначала подключается к настоящему listener, затем joins убитый child, проверяет
+освобождение kernel writer lease и неизменность original records/selection и
+socket inode/access. Оставшийся socket отказывает с `ECONNREFUSED`; initial
+creation не принимает residue. Это filesystem/socket crash evidence на явно
+механическом fixture, без manager, свежих Release proofs, Start или ACK;
+оно не заменяет actual-manager recovery и установленную приёмку.
 
 Отдельный pending путь допускает exact complete staged prefix до первой fixed
 mutation: original selection/fixed bytes должны остаться predecessor, оба поколения
