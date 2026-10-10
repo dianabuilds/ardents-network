@@ -1,25 +1,27 @@
-# Installation and Replacement — проект нового владельца
+# Installation and Replacement — текущий владелец
 
-Проект по действующим контрактам, проверенный по исходникам на
-`dev@edaa76ce9db8afa04d5983980b2ea86f74279e11`. Первый Go Module реализует
-portable admission canonical request и свежую связную авторизацию программы/поколения;
-native initial provision имеет собственные lease/journals, fixed resources,
-stopped selection и intent archive. Read-only check сверяет выбранные bytes,
-account и roots без Release effects. Публичный successor lifetime теперь соединяет
-fresh proofs, staging, original predecessor join, replacement/selection и
-barrier-controlled попытку старта. Настоящий non-root consumer проверен через actual
-manager, Root archival/ACK и bounded Source/permission bootstrap; terminal guard
-recovery и reload-prefix recovery имеют отдельные actual-manager receipts. Три
-process cuts проверяют восстановление до reload, после reload до записи phase7
-и после durable phase7 до Start; они сохраняют original journal, fixed bytes и
-Release floors. Восстановленный Endpoint достигает permission-pending, не полной
-Service readiness. Полная successor interruption
-matrix и installed Service acceptance остаются недоказанными; bounded initial stopped recovery
-имеет отдельную command composition и actual stopped manager receipt, но полная
-interruption matrix ещё не проверена. Полная native transaction не принята или квалифицирована.
-Этот документ не выбирает implementation slice и не доказывает
-установленную работоспособность. GitHub остаётся журналом выполнения.
 Installation — самостоятельный владелец внутри семейства Software acceptance.
+Он допускает canonical request и свежую связную авторизацию программы/поколения
+через отдельные новые Enrollment и Release. Native initial provision удерживает
+собственные lease/journals и fixed resources, завершает stopped selection и
+intent archive. Read-only Check независимо сверяет выбранные bytes, account и
+roots без Release effects. Successor lifetime связывает fresh proofs, staging,
+original predecessor join, replacement/selection, reload и guarded start.
+
+Explicit recovery независимо открывает original provenance и получает новые
+точные Release proofs перед продолжением: поддерживаются bound generation-writing
+prefix и его первая ошибка, sealed replacement/selection и stopped reload prefixes,
+а также отдельная terminal guard cleanup. Неподдержанный prefix сохраняется с
+repair-required; записи и floors не создают adoption, rollback или Start/ACK replay.
+
+Actual non-root startup consumer завершает Root archival/ACK и отдельно допускает
+bounded Source/permission bootstrap. Permission-pending не означает private Service
+readiness. Компонентные filesystem, race и process-crash проверки не квалифицируют
+power loss, полную interruption matrix или установленный Service на двух Endpoint.
+Полная установленная приёмка требует реальных Execution/Publication/Instance/
+Connection consumers и действующего native protection admission.
+Этот документ описывает контракт и владельцев; GitHub выбирает задачи и хранит
+их выполнение и приёмку.
 
 
 ## Компоновка Implementation
@@ -229,9 +231,12 @@ selection/reload и guarded start sequence. До этой admission Close зак
 сохраняет post-acceptance result при late failure. Presence не заменяет ни одну
 из этих проверок. Pending start, first failures вне bound generation-writing
 grammar и более ранние неподдержанные cleanup prefixes пока дают
-`repair-required`; positive actual-manager pending recovery ещё не подтверждена.
-Настоящий принимающий runtime уже имеет bounded startup consumer. Native filesystem tests проверяют механизм и
-causal refusals, не успешную installed recovery.
+`repair-required`. Actual-manager receipts отдельно покрывают bound generation-writing
+и first-failure continuation, stopped reload и terminal guard cleanup через
+настоящий bounded startup consumer. Эти selected boundaries не означают приёмку
+каждого pending prefix или full installed Service. Native filesystem tests проверяют
+механизмы и causal refusals; фактический Start/ACK и original physical join
+требуют отдельных process/manager наблюдений.
 
 
 До selection publication pending recovery также допускает interrupted fixed-copy
@@ -718,7 +723,7 @@ independent builders/custody или installed qualification. Исходные п
 cgroup отдельного test-manager отсутствуют после outer stop с retained timeout
 result; clean manager shutdown не заявлен.
 
-## Недостающие seams до реализации
+## Связи с отдельными владельцами и пределы
 
 Новый Enrollment экспортирует `Verify` и opaque `Bundle` с первичной provenance,
 а также отдельный `ReadCandidate` и opaque `Candidate` с теми же bounded reads
@@ -733,8 +738,8 @@ private proofs и удерживают exact generation bytes; отказ вто
 не возвращает floors. Настоящие `ardents-next installation authenticate-initial`
 и `authenticate-candidate` выполняют эти операции, закрывают Release owner и
 возвращают только `authenticated-generation`. Это не `installed` и не readiness.
-До successor transition ещё требуется собственная installed binding/history
-continuity и actual native transaction; одна полная Release history их не заменяет.
+Successor transition отдельно удерживает installed binding/history continuity
+и actual native transaction; одна полная Release history их не заменяет.
 Candidate не возвращает `Bundle` и не принимает искусственно вычисленный
 «первичный pin». Read-only классификация inventory на metadata и static files
 остаётся у Enrollment, а fixed metadata URLs и Release inputs собирает
@@ -743,8 +748,9 @@ Installation не должны поддерживать разные списк�
 
 Новый Installation проверяет canonical request и вложенные Headless/Source
 declarations через `DecodeRequest`, сохраняя текущие schemas, порядок полей
-и ограничения байтов. Эти declarations приватны внутри текущего Module:
-отдельный пакет без самостоятельного runtime consumer не создаётся.
+и ограничения байтов. Их canonical grammar и native original input custody
+принадлежат `request`; корень Installation потребляет private `Document`/`Origin`
+через свой совместимый Request и отдельно допускает транзакцию.
 Root declarations выбранного Linux-профиля используют одну POSIX grammar
 на всех hosts; это не native filesystem проверка или Windows installation.
 Нормализованные дубликаты public keys, invalid threshold и перекрывающиеся
