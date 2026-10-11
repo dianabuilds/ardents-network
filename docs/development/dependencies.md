@@ -468,7 +468,7 @@ Version selection and a successful scanner exit do not grant integration or
 qualification.
 
 Go 1.26.8/1.27.1 inventories, removed Naming/OHTTP call paths and their dated
-scan results are retained in the [earlier register](../archive/development/dependencies-before-consolidation.md).
+scan results are retained in the [earlier register](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/development/dependencies-before-consolidation.md).
 They cannot qualify today's compiler, imports, tools or artifacts. Current
 scoped advisory evidence and all failed receipts remain with their exact source
 identities above and at the unresolved finding boundary below.

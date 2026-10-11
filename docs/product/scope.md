@@ -176,7 +176,7 @@ v2 remains the sole accepted headless startup schema. The separate
 has its own selected retirement boundary; neither decision retires the
 Administration interface.
 
-[ADR-0088](../archive/adr/0088-retire-alpha-service-links-and-corpus-intake.md)
+[ADR-0088](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0088-retire-alpha-service-links-and-corpus-intake.md)
 selects final retirement of Alpha Service Links and fresh corpus intake rather
 than a grace period or conversion. Both transitions are integrated: intake
 refuses before floor effects, and the Endpoint has no accepting Alpha
@@ -187,7 +187,7 @@ a separate data decision. The
 [Endpoint contract](../technical/endpoint-service-runtime.md#alpha-destination-retirement)
 owns the exact effect and compatibility boundary.
 
-[ADR-0089](../archive/adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
+[ADR-0089](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
 retires every new old Node-role, Source-profile, and Transit-issuer start
 rather than keeping a second accepting network path. The selected closed Node
 duties, closed Source profile, and closed issuer remain unchanged.
@@ -200,7 +200,7 @@ profile identity remain evidence, not migration or execution authority. The
 [Network/Node owner](../technical/network-route-node.md#old-start-retirement)
 defines the exact selectors and effect boundary.
 
-[ADR-0090](../archive/adr/0090-retire-name-operator-network-adapters.md) retired the
+[ADR-0090](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0090-retire-name-operator-network-adapters.md) retired the
 old operator `name resolve` and `name control` HTTP/OHTTP
 adapters before any file, State, transport, output, or Namespace effect;
 [ADR-0113](../adr/0113-retire-retained-alpha-compatibility-surface.md) then
@@ -269,7 +269,7 @@ Application Interface remains a neutral shared seam.
 
 The former Browser implementation and qualification lanes are retired by
 [ADR-0069](../adr/0069-retire-active-browser-implementation.md), and
-[ADR-0091](../archive/adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
+[ADR-0091](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
 in-tree Firefox/Endpoint compatibility source. Its accepted ADRs, research
 records, and immutable audit receipts remain non-executable evidence only.
 They do not inherit a Network security claim, Browser isolation claim, Web PKI

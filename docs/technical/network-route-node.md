@@ -148,7 +148,7 @@ permission, registration or protocol deadline.
 
 ## Old start retirement
 
-[ADR-0089](../archive/adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
+[ADR-0089](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
 selects an effect-free refusal for every new old execution selection:
 
 - Node reservations `rendezvous`, `initiator`, `introduction`, `responder`,
@@ -765,13 +765,13 @@ ever surfaced, stay on disk with no reader.
   retains bounded functional integration evidence for its exact candidate.
   It supplies no current Route, privacy, host-profile, or public-operation
   qualification.
-- [ADR-0024](../archive/adr/0024-native-interactive-route-foundation.md),
+- [ADR-0024](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0024-native-interactive-route-foundation.md),
 	[ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md),
-  [ADR-0025](../archive/adr/0025-state-referenced-entry-invites.md),
-  [ADR-0072](../archive/adr/0072-adopt-offline-enrollment-route-v2.md), which
+  [ADR-0025](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0025-state-referenced-entry-invites.md),
+  [ADR-0072](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0072-adopt-offline-enrollment-route-v2.md), which
   supersedes their C0 Route/Entry selection,
   [ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md), and
-  [ADR-0049](../archive/adr/0049-defer-blocked-entry-profile.md) define the selected
+  [ADR-0049](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0049-defer-blocked-entry-profile.md) define the selected
   native Route and Carrier facts.
 - [R-092](../archive/research/records/r-092-native-node-operating-profile.md) retains the
   measured dedicated-host Rendezvous Functional Alpha result for its original

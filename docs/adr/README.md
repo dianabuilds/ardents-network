@@ -66,7 +66,9 @@ and [protocol](../technical/protected-route-protocol.md) state the current rules
 ## Former editions and rationale
 
 [Archived decisions](../archive/README.md#architecture-decisions) retain
-superseded, withdrawn, proposed and retired-subsystem records unchanged, with
-their replacement/current owner. The archive manifest distinguishes a replaced
-edition from a withdrawal; it does not repeal surviving accepted constraints.
+needed historical decision evidence unchanged, with its current owner. The
+complete earlier archive and manifest remain available at the pinned Git
+snapshot, including superseded, withdrawn, proposed and retired-subsystem
+editions. Their recorded dispositions do not repeal surviving accepted
+constraints.
 Create a new ADR only for a consequential, hard-to-reverse accepted trade-off.

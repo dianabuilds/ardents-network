@@ -216,7 +216,7 @@ subsystem or a compromised endpoint has already met it.
 ## Autonomous shared-state contract
 
 Status: **future public requirements under R-149; mechanism remains unselected.**
-[Proposed ADR-0080](../archive/adr/0080-separate-public-state-acceptance-obligations.md)
+[Proposed ADR-0080](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0080-separate-public-state-acceptance-obligations.md)
 remains unaccepted evidence, not the selected closed State contract.
 [ADR-0074](../adr/0074-target-non-administrative-public-operation.md) fixes the
 authority target. This section prepares its semantics; it does not replace any

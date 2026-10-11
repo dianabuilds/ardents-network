@@ -66,7 +66,7 @@ cannot silently change the Carrier of a live attachment.
 
 ## Compliance
 
-- [ADR-0024](../archive/adr/0024-native-interactive-route-foundation.md) remains the Route and
+- [ADR-0024](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0024-native-interactive-route-foundation.md) remains the Route and
   authentication foundation.
 - [R-094](../archive/research/records/r-094-hostile-network-carrier-profiles.md) is the
   original `v0.61.0` dependency and behavior evidence.

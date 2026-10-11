@@ -53,7 +53,7 @@ remain H4-6-controlled operations.
 
 ## Compliance
 
-- [R-116](../archive/research/records/r-116-canonical-name-time-materialization.md)
+- [R-116](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-116-canonical-name-time-materialization.md)
   records the evaluation and proof-level evidence.
 - Namespace tests cover own- and parent-deadline Grace derivation, static Grace
   compatibility, released refusal, and renewal while the signed Grace interval

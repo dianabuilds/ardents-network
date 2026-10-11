@@ -147,7 +147,7 @@ readiness, full issue acceptance, repository integration and qualification are
 different results. [GitHub #497](https://github.com/dianabuilds/ardents-network/issues/497)
 owns their dependency order and live criteria. Exact earlier source hashes,
 failed attempts, inspected/reproduced distinctions and fixture limits remain
-in the [archived map](../archive/development/domain-map-before-consolidation.md)
+in the [archived map](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/development/domain-map-before-consolidation.md)
 and issue receipts. Consolidation does not upgrade their evidence level.
 
 ## Collaborations to review

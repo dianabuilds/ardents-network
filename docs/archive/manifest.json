@@ -2,643 +2,14 @@
   "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
   "entries": [
     {
-      "original_path": "docs/adr/0002-greenfield-main.md",
-      "archive_path": "docs/archive/adr/0002-greenfield-main.md",
-      "sha256": "675fad7113cecc86a20322ff0fcf77c1f2d77acc9f3107b793c4979f95f625f7",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed greenfield repository reset; no current implementation plan.",
-      "current_owner": "docs/development/repository-layout.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0012-select-webtunnel-for-h3-camouflage.md",
-      "archive_path": "docs/archive/adr/0012-select-webtunnel-for-h3-camouflage.md",
-      "sha256": "0aa14b8ba9b0cf4cc103f1a2bd4f6020e4ad2c110fbc06314cf219bf92f3b5d4",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Superseded by ADR-0024; selected closed Carriers are now ADR-0048/0081.",
-      "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0013-stage-6-cryptographic-suite.md",
-      "archive_path": "docs/archive/adr/0013-stage-6-cryptographic-suite.md",
-      "sha256": "2b61984a40bdc12b494a09702dc2246a3cd3f3dae91f7fe100e3eaaa7bd849ad",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Withdrawn cryptographic-suite candidate; never a current dependency selection.",
-      "current_owner": "docs/development/dependencies.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0014-private-naming-ohttp.md",
-      "archive_path": "docs/archive/adr/0014-private-naming-ohttp.md",
-      "sha256": "3c37bd71e32fde7761bd2ae486edf1dde343ae15e53a9915832609ad72e62843",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0016-bind-and-isolate-launcher-born-application-principals.md",
-      "archive_path": "docs/archive/adr/0016-bind-and-isolate-launcher-born-application-principals.md",
-      "sha256": "7b65135c91680a4bd4ee225da213f6983a8c7aea014a37a0b827f60adbb5edda",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Generic launcher/Broker design superseded by the bounded protected Application contract in ADR-0081.",
-      "current_owner": "docs/technical/application-confinement.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0017-authenticated-name-claim-ordering.md",
-      "archive_path": "docs/archive/adr/0017-authenticated-name-claim-ordering.md",
-      "sha256": "5aeb7be908eea866f21b9704b27f5525d42156d0099269ca540950306605a2b4",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0018-threshold-recovery-multisignatures.md",
-      "archive_path": "docs/archive/adr/0018-threshold-recovery-multisignatures.md",
-      "sha256": "c22241a51551975497703446772823763b31f1eaefd60395a25e29963be9efed",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0019-bounded-anonymous-name-admission.md",
-      "archive_path": "docs/archive/adr/0019-bounded-anonymous-name-admission.md",
-      "sha256": "9437c2aa77051217fc80c94a84ddd5c617bb4cc7735825675d76497614603f13",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0020-authenticate-current-namespace-materialization.md",
-      "archive_path": "docs/archive/adr/0020-authenticate-current-namespace-materialization.md",
-      "sha256": "19b3c4aba2a14589dff3cc67638e1ee7de14e6bc147a8c5f13c26eba84a42556",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0022-bind-name-record-validity.md",
-      "archive_path": "docs/archive/adr/0022-bind-name-record-validity.md",
-      "sha256": "271759af48db4f9050c70c3e558335fce819fce35e69cc42bdbb1c4ca73402b8",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0023-pending-signed-namespace-successors.md",
-      "archive_path": "docs/archive/adr/0023-pending-signed-namespace-successors.md",
-      "sha256": "0f95738bb832aabecfc57fa82c9ebc05387025e1db87d27605893ae5ddd86dc9",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0024-native-interactive-route-foundation.md",
-      "archive_path": "docs/archive/adr/0024-native-interactive-route-foundation.md",
-      "sha256": "52418a6484a5717d4e4b2bf2d7d63a228f25a5511da54c274fb01ef0a7f40024",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Route/Entry edition and assembly; current closed Route is governed by ADR-0081/0082/0083/0085 and the current protocol. Entry invites retired by ADR-0106.",
-      "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0025-state-referenced-entry-invites.md",
-      "archive_path": "docs/archive/adr/0025-state-referenced-entry-invites.md",
-      "sha256": "1e0761a446a727b27c2f1bf5687cbaded0206b71a98aac301e575cd6945cd752",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Entry invitation/attachment retirement steps completed; ADR-0106 owns final subsystem removal.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0026-interactive-route-v1-wire.md",
-      "archive_path": "docs/archive/adr/0026-interactive-route-v1-wire.md",
-      "sha256": "09e07ceae30d79067320aa45c3fb7b476d720929c6af80667110150182dcab7f",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Route/Entry edition and assembly; current closed Route is governed by ADR-0081/0082/0083/0085 and the current protocol. Entry invites retired by ADR-0106.",
-      "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0027-entry-binding-v1.md",
-      "archive_path": "docs/archive/adr/0027-entry-binding-v1.md",
-      "sha256": "fd2f15ad1b5297702147ced37e3d5701a67d34f0d8f0a1cf48ba5d47b4c73e91",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Route/Entry edition and assembly; current closed Route is governed by ADR-0081/0082/0083/0085 and the current protocol. Entry invites retired by ADR-0106.",
-      "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0028-native-service-connection-v1.md",
-      "archive_path": "docs/archive/adr/0028-native-service-connection-v1.md",
-      "sha256": "7de367cb04bb943da6699d0d3c82e31e9cdbb85386059242147624bdb77704ae",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier closed Service byte edition; ADR-0117 selects v3. Security/lifecycle rules survive at the current Service/Reachability owners; terminal receipts are preserved.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0029-retire-update-v0-custody-evidence.md",
-      "archive_path": "docs/archive/adr/0029-retire-update-v0-custody-evidence.md",
-      "sha256": "b3411e5668a9bbd0597d63b029b9d0b7fe57cda34c110a0ed2b339e6242ed782",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed update-v0 custody evidence retirement; ADR-0030 and current Release/Custody contract retain no accepting update-v0 path.",
-      "current_owner": "docs/technical/release-update-custody.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0032-target-link-v1.md",
-      "archive_path": "docs/archive/adr/0032-target-link-v1.md",
-      "sha256": "be79a96e5a94a007c4e0ccb5a621b0fd143555d636002e4174cdef576b562564",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier closed Service byte edition; ADR-0117 selects v3. Security/lifecycle rules survive at the current Service/Reachability owners; terminal receipts are preserved.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0033-route-relay-setup-v1.md",
-      "archive_path": "docs/archive/adr/0033-route-relay-setup-v1.md",
-      "sha256": "b6a21c40c2d85fc19b5423e568a83c8a238decf027b1f0b307d76809833059f1",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Route/Entry edition and assembly; current closed Route is governed by ADR-0081/0082/0083/0085 and the current protocol. Entry invites retired by ADR-0106.",
-      "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0034-service-introduction-hpke-credential-v2.md",
-      "archive_path": "docs/archive/adr/0034-service-introduction-hpke-credential-v2.md",
-      "sha256": "6e723000914adcf5d1cd67e679c617c3e1dc82726d59144aeb05946623dfac4e",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier closed Service byte edition; ADR-0117 selects v3. Security/lifecycle rules survive at the current Service/Reachability owners; terminal receipts are preserved.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0035-live-introduction-slots-and-transit-binding-v1.md",
-      "archive_path": "docs/archive/adr/0035-live-introduction-slots-and-transit-binding-v1.md",
-      "sha256": "1b74cbb7b79b25bf663821fd98028d23aa357f66570075c861b6d5c80bc991cb",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Sealed Introduction v1 grammar superseded by ADR-0094; current protected Introduction contract replaces the accepting grammar.",
-      "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0036-target-private-reachability-v1.md",
-      "archive_path": "docs/archive/adr/0036-target-private-reachability-v1.md",
-      "sha256": "3e768ee596707038642d44d9dfd5c69cae268bb37a06e2313865d79a24496b17",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier closed Service byte edition; ADR-0117 selects v3. Security/lifecycle rules survive at the current Service/Reachability owners; terminal receipts are preserved.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0037-private-reachability-entry-carrier.md",
-      "archive_path": "docs/archive/adr/0037-private-reachability-entry-carrier.md",
-      "sha256": "b986dfae14e494191d8517437e282b1fa38bf045c35b07632744cff5d2b51421",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Route/Entry edition and assembly; current closed Route is governed by ADR-0081/0082/0083/0085 and the current protocol. Entry invites retired by ADR-0106.",
-      "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0039-state-authorized-transit-grants-v1.md",
-      "archive_path": "docs/archive/adr/0039-state-authorized-transit-grants-v1.md",
-      "sha256": "2330974755006a6ead5bb775ee184759426bdc748897fe5ee044523224839521",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier generic Transit/Publisher chain or its retirement; ADR-0092/0093/0107 remove that path. Current Admission rights and durable refusal floors remain separate.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0040-bounded-alpha-name-overlay.md",
-      "archive_path": "docs/archive/adr/0040-bounded-alpha-name-overlay.md",
-      "sha256": "3271e507954c751446e2f87f0146871b54c586c6707c2a8ab043e500f3e5abc5",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0041-alpha-control-corpus-component-v2.md",
-      "archive_path": "docs/archive/adr/0041-alpha-control-corpus-component-v2.md",
-      "sha256": "3bc912fba5c99b38fe2976f2e4f75bf162cca200828e1c3425aac75de3ef02b6",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier functional-alpha corpus/bootstrap/ceremony edition; ACA2 inspection retired by ADR-0110. Current ACA1 disclosure and authority separation remain at their owner.",
-      "current_owner": "docs/technical/alpha-control-transition.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0042-bind-alpha-control-command-to-v3-enrollment.md",
-      "archive_path": "docs/archive/adr/0042-bind-alpha-control-command-to-v3-enrollment.md",
-      "sha256": "05115fe1582f54c33ceb7a7189ccd4d91ced5503cec2d0c16b197e5936eb57ed",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier functional-alpha corpus/bootstrap/ceremony edition; ACA2 inspection retired by ADR-0110. Current ACA1 disclosure and authority separation remain at their owner.",
-      "current_owner": "docs/technical/alpha-control-transition.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0044-revalidate-browser-entry-proxy-authentication.md",
-      "archive_path": "docs/archive/adr/0044-revalidate-browser-entry-proxy-authentication.md",
-      "sha256": "dac656a10f91db4a81d0caadf2f32c0466bdcc5b974464d8d6eefbdce1c06b69",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Former browser Entry selection/profile; active Browser implementation retired by ADR-0069, later compatibility reader retired by ADR-0091.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0045-firefox-first-unlisted-browser-entry-delivery.md",
-      "archive_path": "docs/archive/adr/0045-firefox-first-unlisted-browser-entry-delivery.md",
-      "sha256": "a451065c62f7fbf8a4d15bff3ad36bbbe73e11cce9f05f6929b4e13665bcbecd",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Former browser Entry selection/profile; active Browser implementation retired by ADR-0069, later compatibility reader retired by ADR-0091.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0046-state-selected-destination-resolution-gateway.md",
-      "archive_path": "docs/archive/adr/0046-state-selected-destination-resolution-gateway.md",
-      "sha256": "01b9dcdc8f331cddc58df4dc5861caa30d8c43ffcc11863efa49f7ec7c4bc9df",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Former private-resolution transport and its completed removal; new Descriptor Control uses current Reachability proof/Store rules.",
-      "current_owner": "docs/technical/private-reachability.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0047-dynamic-membership-transit-grants.md",
-      "archive_path": "docs/archive/adr/0047-dynamic-membership-transit-grants.md",
-      "sha256": "066e47d2890d9971ac478d34f117627322fd3e3f7ae0af6c4b03a1e7767f40bc",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Route/Entry edition and assembly; current closed Route is governed by ADR-0081/0082/0083/0085 and the current protocol. Entry invites retired by ADR-0106.",
-      "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0049-defer-blocked-entry-profile.md",
-      "archive_path": "docs/archive/adr/0049-defer-blocked-entry-profile.md",
-      "sha256": "1b0706f08838633f2b2b4840b6f7ac2c32e8e25bb4f71471d01aa2b4dc14ceb6",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Former browser Entry selection/profile; active Browser implementation retired by ADR-0069, later compatibility reader retired by ADR-0091.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0050-separate-local-release-seed-custody.md",
-      "archive_path": "docs/archive/adr/0050-separate-local-release-seed-custody.md",
-      "sha256": "7d8cb8300c68b451fce2e072afb8201f44bf7e5629464ff6938627a30363a71a",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed local seed/static-input/planning-generator ceremony; retired by ADR-0059/0060/0067, not a current release procedure.",
-      "current_owner": "docs/technical/release-update-custody.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0051-confirm-local-release-seed-public-receipt.md",
-      "archive_path": "docs/archive/adr/0051-confirm-local-release-seed-public-receipt.md",
-      "sha256": "3f441c6fd0ac612b6b83e90f42019de4d53c8506f30562c6cc24fc331a2321de",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed local seed/static-input/planning-generator ceremony; retired by ADR-0059/0060/0067, not a current release procedure.",
-      "current_owner": "docs/technical/release-update-custody.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0052-build-fixed-alpha-static-inputs.md",
-      "archive_path": "docs/archive/adr/0052-build-fixed-alpha-static-inputs.md",
-      "sha256": "5f99d1f60d363bcf46bb9bd00e24f1e2157337699a972a9d1310e7f3eb6650c8",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed local seed/static-input/planning-generator ceremony; retired by ADR-0059/0060/0067, not a current release procedure.",
-      "current_owner": "docs/technical/release-update-custody.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0053-bootstrap-functional-alpha-network-state.md",
-      "archive_path": "docs/archive/adr/0053-bootstrap-functional-alpha-network-state.md",
-      "sha256": "40309ed44ebfb759ead70fd87c03524ac968b909a16076f9cf7667bdf160df27",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier functional-alpha corpus/bootstrap/ceremony edition; ACA2 inspection retired by ADR-0110. Current ACA1 disclosure and authority separation remain at their owner.",
-      "current_owner": "docs/technical/alpha-control-transition.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0055-close-h4-6c-with-project-control-simulation.md",
-      "archive_path": "docs/archive/adr/0055-close-h4-6c-with-project-control-simulation.md",
-      "sha256": "e315d00dfe889851290b2cfe3c0e47e9ebc4fa510a33ff38c481b9add5dec738",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier functional-alpha corpus/bootstrap/ceremony edition; ACA2 inspection retired by ADR-0110. Current ACA1 disclosure and authority separation remain at their owner.",
-      "current_owner": "docs/technical/alpha-control-transition.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0056-simulate-h4-6d-controlled-project-control-transitions.md",
-      "archive_path": "docs/archive/adr/0056-simulate-h4-6d-controlled-project-control-transitions.md",
-      "sha256": "314a14dd448a16810f5e348128c0c23eec99c9efe08f9aa308141a53a0fe8334",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier functional-alpha corpus/bootstrap/ceremony edition; ACA2 inspection retired by ADR-0110. Current ACA1 disclosure and authority separation remain at their owner.",
-      "current_owner": "docs/technical/alpha-control-transition.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0057-simulate-h4-4b-canonical-name-lifecycle.md",
-      "archive_path": "docs/archive/adr/0057-simulate-h4-4b-canonical-name-lifecycle.md",
-      "sha256": "3eae4c7e019ae9d0f03491f3e6ef1bc259bed37daba7e75b36babe3b12d7163e",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0058-simulate-h4-4c-root-claims.md",
-      "archive_path": "docs/archive/adr/0058-simulate-h4-4c-root-claims.md",
-      "sha256": "4f721b5c616b49651cf27ea6842e3c0c722fa8507d32373e456bb46e3150abcf",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0059-retire-fixed-alpha-candidate-assembly.md",
-      "archive_path": "docs/archive/adr/0059-retire-fixed-alpha-candidate-assembly.md",
-      "sha256": "ee5b81d7c6b640d513a4477130d24fb7c41f2a68b3ba2df3f11e6aaef7c9f093",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed local seed/static-input/planning-generator ceremony; retired by ADR-0059/0060/0067, not a current release procedure.",
-      "current_owner": "docs/technical/release-update-custody.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0060-retire-completed-planning-campaign-generators.md",
-      "archive_path": "docs/archive/adr/0060-retire-completed-planning-campaign-generators.md",
-      "sha256": "59d122a0136050e135eb2379ea93d3cc9e78fb9b73c3c962e2ca4c4e254aa538",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed local seed/static-input/planning-generator ceremony; retired by ADR-0059/0060/0067, not a current release procedure.",
-      "current_owner": "docs/technical/release-update-custody.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0061-retain-firefox-entry-as-compatibility-evidence.md",
-      "archive_path": "docs/archive/adr/0061-retain-firefox-entry-as-compatibility-evidence.md",
-      "sha256": "a9943b2509ee81c3b1c4025e1493082e02cfd9218008cfa232c0786b93a64112",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Former browser Entry selection/profile; active Browser implementation retired by ADR-0069, later compatibility reader retired by ADR-0091.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0062-scope-online-transit-grant-signing.md",
-      "archive_path": "docs/archive/adr/0062-scope-online-transit-grant-signing.md",
-      "sha256": "2301679e35721bd1787a577fc82b693b049e716408bf684a48e7c55efe0074aa",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier generic Transit/Publisher chain or its retirement; ADR-0092/0093/0107 remove that path. Current Admission rights and durable refusal floors remain separate.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0063-bootstrap-transit-issuer-from-owner-root.md",
-      "archive_path": "docs/archive/adr/0063-bootstrap-transit-issuer-from-owner-root.md",
-      "sha256": "bdcb7577ea374ab505dbe5a45d240edc634f3d325765bfff75026d8f1c0a42eb",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier generic Transit/Publisher chain or its retirement; ADR-0092/0093/0107 remove that path. Current Admission rights and durable refusal floors remain separate.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0066-use-role-scoped-transit-grant-requests.md",
-      "archive_path": "docs/archive/adr/0066-use-role-scoped-transit-grant-requests.md",
-      "sha256": "0c870214f540e87e70c7f2c716ebdbdf525ec6dcb83aeca26cab9418314cd4ca",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier generic Transit/Publisher chain or its retirement; ADR-0092/0093/0107 remove that path. Current Admission rights and durable refusal floors remain separate.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0068-bind-transit-issuer-roots-to-state-generation.md",
-      "archive_path": "docs/archive/adr/0068-bind-transit-issuer-roots-to-state-generation.md",
-      "sha256": "98e6f355f797e8e66cd5b9b937bef51c907469bcf8f50609873dddf8cf882abe",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier generic Transit/Publisher chain or its retirement; ADR-0092/0093/0107 remove that path. Current Admission rights and durable refusal floors remain separate.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0072-adopt-offline-enrollment-route-v2.md",
-      "archive_path": "docs/archive/adr/0072-adopt-offline-enrollment-route-v2.md",
-      "sha256": "4368063faf2ed104bf4340a17c91537f9cf78bd597739f57ea8e45940381c49d",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Route/Entry edition and assembly; current closed Route is governed by ADR-0081/0082/0083/0085 and the current protocol. Entry invites retired by ADR-0106.",
-      "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0073-bound-h1-offline-enrollment-transaction.md",
-      "archive_path": "docs/archive/adr/0073-bound-h1-offline-enrollment-transaction.md",
-      "sha256": "429bd98ee53a3ecaae068fe259c498fc655ea4890c86bee6c0e0244a3e2f3347",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Proposed H1 transaction, never accepted; removed enrollment artifact cannot authorize implementation. Surviving witness contract is ADR-0071.",
-      "current_owner": "docs/technical/enrollment-verification.md",
-      "mode": "move"
-    },
-    {
       "original_path": "docs/adr/0075-service-connection-v2-terminal-receipt.md",
       "archive_path": "docs/archive/adr/0075-service-connection-v2-terminal-receipt.md",
       "sha256": "f70e3eabd52cdea3e47c9adaf23bc1cef89f6cd5bfe2df25bbae0a72f8312fef",
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Earlier closed Service byte edition; ADR-0117 selects v3. Security/lifecycle rules survive at the current Service/Reachability owners; terminal receipts are preserved.",
       "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0076-separate-update-freshness-from-public-operation.md",
-      "archive_path": "docs/archive/adr/0076-separate-update-freshness-from-public-operation.md",
-      "sha256": "be6210b6c171eba41f5104b24126a89d0112f63863dfcf1e870bdd71abeebd3e",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Proposed public update-freshness design, never accepted; current Release and scope constraints remain unchanged.",
-      "current_owner": "docs/technical/release-update-custody.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0080-separate-public-state-acceptance-obligations.md",
-      "archive_path": "docs/archive/adr/0080-separate-public-state-acceptance-obligations.md",
-      "sha256": "c5ea6d883d833d65c53edb31e4f590f58715af54e3a9a45899eeb34f3248a6ae",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Proposed future public State acceptance obligations, never accepted; current closed Network contract remains selected and public autonomy remains unselected.",
-      "current_owner": "docs/technical/successor-network-state.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0088-retire-alpha-service-links-and-corpus-intake.md",
-      "archive_path": "docs/archive/adr/0088-retire-alpha-service-links-and-corpus-intake.md",
-      "sha256": "7397eade146eaa55ed5ae0b6cdd0f1f48b7438b8cfd0ad361239fbc5f0bca343",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed predecessor retirement step; current scope and command/technical owners retain exact refusal and no-start boundaries. ADR-0113/0114 finish removal of retained compatibility machinery.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0089-retire-old-node-starts-preserve-owned-shutdown.md",
-      "archive_path": "docs/archive/adr/0089-retire-old-node-starts-preserve-owned-shutdown.md",
-      "sha256": "fac55fb5422a932d9e5d09fe673101dfa85e9e22a08bba85e81093f33d628aa9",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed predecessor retirement step; current scope and command/technical owners retain exact refusal and no-start boundaries. ADR-0113/0114 finish removal of retained compatibility machinery.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0090-retire-name-operator-network-adapters.md",
-      "archive_path": "docs/archive/adr/0090-retire-name-operator-network-adapters.md",
-      "sha256": "3203c48dbc8410dafc10a2404974f94a8ae7dc141169a3d79a1401ca981a503d",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0091-retire-uncomposed-legacy-artifacts.md",
-      "archive_path": "docs/archive/adr/0091-retire-uncomposed-legacy-artifacts.md",
-      "sha256": "82420b06c910ce50d0210c26382b75099e8da38bd50844ad1be5fcad836f4dcd",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier functional-alpha corpus/bootstrap/ceremony edition; ACA2 inspection retired by ADR-0110. Current ACA1 disclosure and authority separation remain at their owner.",
-      "current_owner": "docs/technical/alpha-control-transition.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0092-retire-generic-publisher-transit-chain.md",
-      "archive_path": "docs/archive/adr/0092-retire-generic-publisher-transit-chain.md",
-      "sha256": "11778be40623f1df042d2acafacf1c1a1073699dcd7f13ec99e0c9662c96283f",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier generic Transit/Publisher chain or its retirement; ADR-0092/0093/0107 remove that path. Current Admission rights and durable refusal floors remain separate.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0093-retire-route-v2-execution-closure.md",
-      "archive_path": "docs/archive/adr/0093-retire-route-v2-execution-closure.md",
-      "sha256": "7df3c0e2a2806ba283614bdcfffb684491522543954db6d1ff82c3cb2e626a33",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier generic Transit/Publisher chain or its retirement; ADR-0092/0093/0107 remove that path. Current Admission rights and durable refusal floors remain separate.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0094-retire-sealed-introduction-v1-grammar.md",
-      "archive_path": "docs/archive/adr/0094-retire-sealed-introduction-v1-grammar.md",
-      "sha256": "ad867096ee47b801e3bb5056b14ce9148549f3ba9888ff3990b781acc7795357",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed predecessor retirement step; current scope and command/technical owners retain exact refusal and no-start boundaries. ADR-0113/0114 finish removal of retained compatibility machinery.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0095-retire-entry-attachment-machinery.md",
-      "archive_path": "docs/archive/adr/0095-retire-entry-attachment-machinery.md",
-      "sha256": "a109eedaa71df1c3864a90e181515e2cb78fe6da9e03901851d10e42694b64da",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Entry invitation/attachment retirement steps completed; ADR-0106 owns final subsystem removal.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0096-reject-entry-issuance-candidate.md",
-      "archive_path": "docs/archive/adr/0096-reject-entry-issuance-candidate.md",
-      "sha256": "3011dfc6de590b63d157d8a908a9888d156f390249ba885238966de412234f70",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Entry invitation/attachment retirement steps completed; ADR-0106 owns final subsystem removal.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0097-retire-exact-count-stream-run.md",
-      "archive_path": "docs/archive/adr/0097-retire-exact-count-stream-run.md",
-      "sha256": "d49763656b729ef85df4fbac681f1d53e9ebe48d2ddde3fc8bfb1f409f92480e",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed predecessor retirement step; current scope and command/technical owners retain exact refusal and no-start boundaries. ADR-0113/0114 finish removal of retained compatibility machinery.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0098-remove-naming-service-link-tracer.md",
-      "archive_path": "docs/archive/adr/0098-remove-naming-service-link-tracer.md",
-      "sha256": "1d142b2e61081a00ead0f2ee4574ee4dda2e14a1aad37c44a21085160cfe07d1",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Name/Namespace design or simulation; accepting Namespace/Alpha Link routes retired by ADR-0105/0113. Future Service Names remain unselected.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0099-retire-bounded-process-tracers.md",
-      "archive_path": "docs/archive/adr/0099-retire-bounded-process-tracers.md",
-      "sha256": "19427c9f3e10cd366fd4e8970ebb3c8dfe50baa72d8733410bd5a39d4e277bbe",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Completed predecessor retirement step; current scope and command/technical owners retain exact refusal and no-start boundaries. ADR-0113/0114 finish removal of retained compatibility machinery.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0100-remove-private-resolution-transport.md",
-      "archive_path": "docs/archive/adr/0100-remove-private-resolution-transport.md",
-      "sha256": "799e054c146e41a3e23381fe78924b6b1e4483526844692f9ec86789d78592fc",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Former private-resolution transport and its completed removal; new Descriptor Control uses current Reachability proof/Store rules.",
-      "current_owner": "docs/technical/private-reachability.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0101-test-scope-node-duty-projection.md",
-      "archive_path": "docs/archive/adr/0101-test-scope-node-duty-projection.md",
-      "sha256": "8f18c4c1b3594b45f18bea7abb44557161cb0f9a9afdcb1bc079cb72a53e6590",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "DutyView projection replaced, then removed by ADR-0115; new Network accepted observation/retained duty is the current boundary.",
-      "current_owner": "docs/technical/successor-network-state.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0102-stop-legacy-introduction-key-emission.md",
-      "archive_path": "docs/archive/adr/0102-stop-legacy-introduction-key-emission.md",
-      "sha256": "22c84d1d8f092a3fbee9c2f0d3cb54711c7f7c7951581ef06d7fa6be6b2d8e5a",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier closed Service byte edition; ADR-0117 selects v3. Security/lifecycle rules survive at the current Service/Reachability owners; terminal receipts are preserved.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0104-replace-duty-view-facade-with-copied-state-value.md",
-      "archive_path": "docs/archive/adr/0104-replace-duty-view-facade-with-copied-state-value.md",
-      "sha256": "d7d92c68034f4f585a0330c0ffa6b62003b114a42cf81f41fde7c60f18fe6e01",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "DutyView projection replaced, then removed by ADR-0115; new Network accepted observation/retained duty is the current boundary.",
-      "current_owner": "docs/technical/successor-network-state.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/adr/0109-refuse-legacy-reachability-records.md",
-      "archive_path": "docs/archive/adr/0109-refuse-legacy-reachability-records.md",
-      "sha256": "d75305f73b3eb82ce38748a8932f7af45f06d4433237458c8ccdad42bc11e73f",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier closed Service byte edition; ADR-0117 selects v3. Security/lifecycle rules survive at the current Service/Reachability owners; terminal receipts are preserved.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/application-execution-domain-boundary-analysis.md",
-      "archive_path": "docs/archive/development/application-execution-domain-boundary-analysis.md",
-      "sha256": "bf018a2a6fb462a05f0d1e156e7d01eaa49c549b483ab9648a326be379aecfb5",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Original proposed/source-inventory design; implemented Execution contract is promoted to its technical owner.",
-      "current_owner": "docs/technical/application-execution.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/application-execution-domain-model.puml",
-      "archive_path": "docs/archive/development/application-execution-domain-model.puml",
-      "sha256": "5cb052d550a5263d27c476056847b350e2ebf4f14fc58816388c9a5b65989789",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Original conceptual class diagram; current technical owner describes implemented consistency boundaries.",
-      "current_owner": "docs/technical/application-execution.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Surviving Terminal receipt, confirmation and control-tail rules; ADR-0117 replaces byte identities only."
     },
     {
       "original_path": "docs/development/audit-receipts/architecture-reconstruction-dev-merge-qualification.md",
@@ -647,7 +18,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Immutable earlier-candidate audit receipt; exact failures and evidence limits remain historical, not current qualification.",
       "current_owner": "docs/development/deep-audit.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Immutable source/artifact hashes, failures, results and fixture limits for earlier reconstruction findings."
     },
     {
       "original_path": "docs/development/audit-receipts/c0-run-2-gate-a-remediation.md",
@@ -656,7 +28,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Immutable earlier-candidate audit receipt; exact failures and evidence limits remain historical, not current qualification.",
       "current_owner": "docs/development/deep-audit.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Immutable remediation evidence and its original candidate/scope limits."
     },
     {
       "original_path": "docs/development/audit-receipts/c0-run-2-track-a.md",
@@ -665,115 +38,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Immutable earlier-candidate audit receipt; exact failures and evidence limits remain historical, not current qualification.",
       "current_owner": "docs/development/deep-audit.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/c0-component-reconstruction.md",
-      "archive_path": "docs/archive/development/c0-component-reconstruction.md",
-      "sha256": "57c7fa96e3f5f307c200b279d511ad3e7691d0bd0d6049b21307c52c29299073",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Previous reconstruction plan; domain ownership and actual packages supersede its candidate destinations.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/component-execution-contract.md",
-      "archive_path": "docs/archive/development/component-execution-contract.md",
-      "sha256": "ba977528483d40c7e6c2b53019ffdd60d043ddc1c573d2174dd50e33b5598493",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Previous draft execution contract; current agent workflow and Route migration rules own execution.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/contracts-dependency-map.md",
-      "archive_path": "docs/archive/development/contracts-dependency-map.md",
-      "sha256": "0c3f73814678534c616830854e208599d6af83260ee15ae823170d52a99bd8c0",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Previous dependency snapshot; current owner map and GitHub #497 own dependencies and sequencing.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/ddd-transition-design.md",
-      "archive_path": "docs/archive/development/ddd-transition-design.md",
-      "sha256": "80aaf654118778479b756a93206740a5948339d15e5746df046843f0cdee0929",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Original strategic DDD proposal; realized exclusive ownership is maintained in the domain map.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/dependencies.md",
-      "archive_path": "docs/archive/development/dependencies-before-consolidation.md",
-      "sha256": "20d021ca083639b0595d87803ee77753447664940d1c2f20a2bac036ab06df6c",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier dependency register and version/scan snapshots; current register retains exact present pins, continuing acceptance and unresolved finding obligations.",
-      "current_owner": "docs/development/dependencies.md",
-      "mode": "snapshot"
-    },
-    {
-      "original_path": "docs/development/domain-map.md",
-      "archive_path": "docs/archive/development/domain-map-before-consolidation.md",
-      "sha256": "358bc640e776b933ab8c6a487345464843dcace4fcba8e36a58e80a148133827",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Snapshot before consolidation; current map preserves semantic owners and collaborations while receipts remain historical.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "snapshot"
-    },
-    {
-      "original_path": "docs/development/endpoint-architecture-refactoring.md",
-      "archive_path": "docs/archive/development/endpoint-architecture-refactoring.md",
-      "sha256": "dcd83deb2e73b88178a43b0116e366a76c9bc3aa1645e60cf238a3bdbbc6595e",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Previous Endpoint decomposition/source inventory; retained responsibilities are in the current domain map and Service contract.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/network-boundary-reassessment.md",
-      "archive_path": "docs/archive/development/network-boundary-reassessment.md",
-      "sha256": "d8930b9d1cdac9a6aed365da9901cdad8fc83cf3b0e0199e4609ef1e25dde230",
-      "source_revision": null,
-      "disposition": "Pre-existing untracked Network reassessment draft, preserved unchanged. Unselected proposal; it does not supersede current Network ownership.",
-      "current_owner": "docs/technical/successor-network-state.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/network-core-transition.md",
-      "archive_path": "docs/archive/development/network-core-transition.md",
-      "sha256": "3e9fdc131fd4596a69f39c02c9d496d3356d061b46705f2d0cbf246e97413a05",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Unselected alternative network-core proposal; never an accepted replacement for the current closed protocol.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/network-core-wire-proposal.md",
-      "archive_path": "docs/archive/development/network-core-wire-proposal.md",
-      "sha256": "b4a1affcf9868d0f5aa224b8adc44dbaec548789cc6c63699351faf341752fd6",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Unselected wire candidate; current protected Route protocol alone owns selected bytes.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/network-domain-boundary-analysis.md",
-      "archive_path": "docs/archive/development/network-domain-boundary-analysis.md",
-      "sha256": "9de99f5448cda478c586b00ecff4f0c6a3c4e1ef2f503ac926b1884ec0e537ee",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Previous Network source analysis; successor Network contract and actual package map own the realized boundary.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/node-architecture-refactoring.md",
-      "archive_path": "docs/archive/development/node-architecture-refactoring.md",
-      "sha256": "310c3344154609c5cf652b9cc661bd9cd43f8abb9406998bf9dd15d594c99f0b",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Previous Node decomposition/source inventory; current domain/package maps retain its responsibilities.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Immutable qualification receipt, failures and candidate/scope limits."
     },
     {
       "original_path": "docs/development/repository-reconstruction-findings.md",
@@ -782,106 +48,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Historical reconstruction findings and dispositions; neither archive nor later component passes close unresolved findings.",
       "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/route-channel-runtime-design.md",
-      "archive_path": "docs/archive/development/route-channel-runtime-design.md",
-      "sha256": "088f671763f6ab8b21a859049551beb27e84f56192e6fe09b3a7f07b83bc0a4a",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Implementation design now realized by Route channel/transport/prefix owners; current technical contract replaces source chronology.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/route-delivery-join-boundary.md",
-      "archive_path": "docs/archive/development/route-delivery-join-before-consolidation.md",
-      "sha256": "99203297d48b13b79894a7d78835b9d7123a76f987bfbbef8597b8ce79876a93",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier full design/source inventory before consolidation; current integration contract retains cross-domain rules and remaining acceptance boundaries.",
-      "current_owner": "docs/development/route-delivery-join-boundary.md",
-      "mode": "snapshot"
-    },
-    {
-      "original_path": "docs/development/route-domain-boundary-analysis.md",
-      "archive_path": "docs/archive/development/route-domain-boundary-analysis.md",
-      "sha256": "3ccbad6d5604134027a1b31a47ff339d717d09650f6aef0cf7fa42b20bef8f73",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Previous mixed-source Route inventory; current domain map, migration rules and technical Route owners replace it.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/route-domain-boundary-analysis.puml",
-      "archive_path": "docs/archive/development/route-domain-boundary-analysis.puml",
-      "sha256": "5f230b9f6731cc80c1c9c7490d7e9a573a1127efbe7ccc40026fcddd26a94f1d",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Diagram of the previous source analysis; current domain map owns semantic boundaries.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/route-introduction-registration-boundary.md",
-      "archive_path": "docs/archive/development/route-introduction-registration-boundary.md",
-      "sha256": "a11af45360e2af4cb3e4f3afae13ef550e79cf8b73160b9bffd1d2b382f6ef29",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Registration implementation design now realized; successor Route Introduction contract owns current rules.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/route-refactoring-boundary.md",
-      "archive_path": "docs/archive/development/route-refactoring-boundary.md",
-      "sha256": "3728cfcd8cc2b573659d7602743d372d6920a90719710f4c7063075a5158e35a",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Previous Route refactoring/retirement inventory; current protocol and migration contract govern the new domain.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/service-boundary-proposal.md",
-      "archive_path": "docs/archive/development/service-boundary-proposal.md",
-      "sha256": "c8a2c92a39590ae3174f997b922001fdb0ea2b6ff1af5af9b7e528de1462a6b1",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Earlier Service boundary proposal; current Publication, Reachability, Connection and Execution owners replace its mixed boundary.",
-      "current_owner": "docs/development/domain-map.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/testdata/s7.2/c0-happy-path-v1.json",
-      "archive_path": "docs/archive/development/testdata/s7.2/c0-happy-path-v1.json",
-      "sha256": "38e766a3350fbb3ae06d91017f26f05df353f162d69988c4bdc90cf4853445ca",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Fixture of a retired planning campaign; no current code consumer.",
-      "current_owner": "docs/development/testing.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/testdata/s7.2/previous-payload-v1.txt",
-      "archive_path": "docs/archive/development/testdata/s7.2/previous-payload-v1.txt",
-      "sha256": "8bdad9bde29bb6ee2a9d1d7005ec8ba2461b2bad3627372ee8458693c1fc08af",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Fixture of a retired planning campaign; no current code consumer.",
-      "current_owner": "docs/development/testing.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/development/testing.md",
-      "archive_path": "docs/archive/development/testing-before-consolidation.md",
-      "sha256": "5aed5a3c2aa226c54aa15dc92cd109b1da68045d495cad121badcd994d9a5d13",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Historical candidate verdicts before extraction; current testing owner retains required profiles and honest evidence limits.",
-      "current_owner": "docs/development/testing.md",
-      "mode": "snapshot"
-    },
-    {
-      "original_path": "docs/product/future-product-catalog.md",
-      "archive_path": "docs/archive/product/future-product-catalog.md",
-      "sha256": "141885c13e647b8646bf39ac3cb929f68ebb169e4971e929379f501d78bbb1e3",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Unselected exploratory catalogue; future product choices remain open, outside current C0.",
-      "current_owner": "docs/research/questions.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Finding dispositions still require reconciliation with the new owners; no newer closure is recorded."
     },
     {
       "original_path": "docs/research/records/r-092-native-node-operating-profile.md",
@@ -890,7 +58,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: decided; dedicated Rendezvous Functional Alpha selected. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/technical/network-route-node.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Evidence for selected Node duties and operating limits."
     },
     {
       "original_path": "docs/research/records/r-093-voluntary-endpoint-contribution.md",
@@ -899,7 +68,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: deferred; no co-resident experiment selected. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/research/questions.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Unresolved deferred co-resident Contributor question, criteria and limits."
     },
     {
       "original_path": "docs/research/records/r-094-hostile-network-carrier-profiles.md",
@@ -908,331 +78,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-095-portable-endpoint-alpha-lifecycle.md",
-      "archive_path": "docs/archive/research/records/r-095-portable-endpoint-alpha-lifecycle.md",
-      "sha256": "80a9ebba46e7e53a36ecb415fc90fb8eb3bfe3b14c2c0760d3f2822eec570b68",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-096-browser-adapter-alpha-contract.md",
-      "archive_path": "docs/archive/research/records/r-096-browser-adapter-alpha-contract.md",
-      "sha256": "535141cba220e5626b754bfc21fb55f91c9f575f8ae318199cb27ab4bd6cdbe5",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-097-named-alpha-private-resolution.md",
-      "archive_path": "docs/archive/research/records/r-097-named-alpha-private-resolution.md",
-      "sha256": "032de785bc90587a31354a577646c0eb8e8ab2ec567a7c6291b61869bb36e273",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; implementation-linked. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-098-alpha-control-manifest.md",
-      "archive_path": "docs/archive/research/records/r-098-alpha-control-manifest.md",
-      "sha256": "dd8c48a06035a40b06b581baaf4ed52fb441c68b3ba1a3159e9ad4b58c8c4979",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/alpha-control-transition.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-099-protected-application-profile.md",
-      "archive_path": "docs/archive/research/records/r-099-protected-application-profile.md",
-      "sha256": "40f459a365d06357b8e56c63d664613cd64aac54b5d6da50f148afcc5bd5c89c",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: completed. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/application-confinement.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-100-alpha-qualification-closure.md",
-      "archive_path": "docs/archive/research/records/r-100-alpha-qualification-closure.md",
-      "sha256": "b97017a689f6720a23c9446f1ab90077fcf3b96e7d8fed0843a1874914bcba5e",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: concluded. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/development/privacy-qualification.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-101-endpoint-state-attachment-profile.md",
-      "archive_path": "docs/archive/research/records/r-101-endpoint-state-attachment-profile.md",
-      "sha256": "12abb3e832a2d7377f615954745fc618cc4ae2b66b2580e2e71737db1019758c",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-102-endpoint-liveness-lock.md",
-      "archive_path": "docs/archive/research/records/r-102-endpoint-liveness-lock.md",
-      "sha256": "e8fc07ab63ac1eeec497e22f28436a1b2cc5b66641eec53432b209e8797d8607",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-103-target-link-v1.md",
-      "archive_path": "docs/archive/research/records/r-103-target-link-v1.md",
-      "sha256": "878b26181d0aa2032d643f6749d036689f9c3530924d4226240905cab7c8f9a2",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-104-route-relay-setup-v1.md",
-      "archive_path": "docs/archive/research/records/r-104-route-relay-setup-v1.md",
-      "sha256": "6b5719525abde9692c4919f6dd967252e5ad49d8b2120af667a4d4825296f8f5",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-105-service-introduction-handoff-v1.md",
-      "archive_path": "docs/archive/research/records/r-105-service-introduction-handoff-v1.md",
-      "sha256": "c5ee3a1a321e0f2c4dfbe6747c8dd3a2422dc0710690edf594c8065cba5a3a45",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; implementation-linked. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-106-target-reachability-alpha.md",
-      "archive_path": "docs/archive/research/records/r-106-target-reachability-alpha.md",
-      "sha256": "6c886f638e76d1b8d853d37cd97380329eb9ea23ff2fb82799ac9b39f3b1a860",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/private-reachability.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-107-private-lookup-entry-carrier.md",
-      "archive_path": "docs/archive/research/records/r-107-private-lookup-entry-carrier.md",
-      "sha256": "0c84a493ac54e4f2a2e76555c08d5ee8ff0f0ef2ee87451d7af551dbcfb43982",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/private-reachability.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-108-alpha-control-reader-v1.md",
-      "archive_path": "docs/archive/research/records/r-108-alpha-control-reader-v1.md",
-      "sha256": "5c2103561ea27eaf658b118b455b1d6f02c746b173ec3af410ecff995a841aaf",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/alpha-control-transition.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-109-state-transit-grant-v1.md",
-      "archive_path": "docs/archive/research/records/r-109-state-transit-grant-v1.md",
-      "sha256": "9d2022da35e36c3facd70816f40907b3fb295d089fa6f40298e1ac514acc9470",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-110-safe-endpoint-replacement.md",
-      "archive_path": "docs/archive/research/records/r-110-safe-endpoint-replacement.md",
-      "sha256": "84b26555d361625df21cb3ee68a0162dd7179a803613abe365f70b3b4761976c",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/release-update-custody.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-111-authority-recovery-removal.md",
-      "archive_path": "docs/archive/research/records/r-111-authority-recovery-removal.md",
-      "sha256": "75f3638a9d3e5ed01b60c55c35864b74296bf83021be57bed7f218f405601d5c",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/release-update-custody.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-112-ubuntu-installed-profile.md",
-      "archive_path": "docs/archive/research/records/r-112-ubuntu-installed-profile.md",
-      "sha256": "eeca4bdc2ae3d50fc98f3895c8eaa835bc833b6c60b45306371d342cc7d382db",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-113-alpha-corpus-distribution-floor.md",
-      "archive_path": "docs/archive/research/records/r-113-alpha-corpus-distribution-floor.md",
-      "sha256": "fa459e39da2786185a0a8b790b751adac0da986d0b5fb7ceeec9c4036b4bd129",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; implementation-linked. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/alpha-control-transition.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-114-application-transparent-browser-service.md",
-      "archive_path": "docs/archive/research/records/r-114-application-transparent-browser-service.md",
-      "sha256": "62e402917914087323757f56ac177d578f78618eca2dce16aec2d4834e80ea6b",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; qualification-linked. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-115-named-browser-entry.md",
-      "archive_path": "docs/archive/research/records/r-115-named-browser-entry.md",
-      "sha256": "ed66c14f80dee9347eb713cf0b436a126fb9198f8c2df368c289d478a6d7f460",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: closed. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-116-canonical-name-time-materialization.md",
-      "archive_path": "docs/archive/research/records/r-116-canonical-name-time-materialization.md",
-      "sha256": "c76e7fd5c27bcf3a32b19d197c5532f9b7d886bf92f43e8fa8f23b13c4e4ec37",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-117-firefox-browser-entry-delivery.md",
-      "archive_path": "docs/archive/research/records/r-117-firefox-browser-entry-delivery.md",
-      "sha256": "17f898f25cbcd9347be0ae91510d1b195afd053c3d74c25b4013c2d6e563caf2",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: closed; participant delivery selection superseded. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-118-participant-transit-credential-lifecycle.md",
-      "archive_path": "docs/archive/research/records/r-118-participant-transit-credential-lifecycle.md",
-      "sha256": "9e0a3296033ee92604e256b7c4f964e0082ad96fe1e49d3d3cb791261aebc8af",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; implementation-linked. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-119-closed-alpha-release-signing-operation.md",
-      "archive_path": "docs/archive/research/records/r-119-closed-alpha-release-signing-operation.md",
-      "sha256": "3d661a54c233f527a3d86992b9c462abe2a2807fd8bddf58e0539ba2f6bf7f18",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/release-update-custody.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-120-bounded-alpha-input-signing.md",
-      "archive_path": "docs/archive/research/records/r-120-bounded-alpha-input-signing.md",
-      "sha256": "053362610dbee8835d8a6a7647f733a1986608cdbd927bdd497073fa0897100b",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/alpha-control-transition.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-121-functional-alpha-state-authority.md",
-      "archive_path": "docs/archive/research/records/r-121-functional-alpha-state-authority.md",
-      "sha256": "faf9a6affb17c715f8529d56be8afe66396dde8f1aae73d4892c4634c67b51aa",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/network-route-node.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-122-rc3-successor-qualification-continuity.md",
-      "archive_path": "docs/archive/research/records/r-122-rc3-successor-qualification-continuity.md",
-      "sha256": "0d8087e6dc39cd797746f5f420034489385c0aa54c616e8403f7668d7fc9bd19",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/development/privacy-qualification.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-123-separated-alpha-transition-contracts.md",
-      "archive_path": "docs/archive/research/records/r-123-separated-alpha-transition-contracts.md",
-      "sha256": "d223abb13789c9ff31d2285832a6d8275555bcf3e96a2cced15c6884fc12b46f",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/alpha-control-transition.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-124-public-control-candidate-evidence.md",
-      "archive_path": "docs/archive/research/records/r-124-public-control-candidate-evidence.md",
-      "sha256": "781ae89055df623f95ec76e0ab18fdaa96dc083398fed361514f2aa21fe2e381",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-125-controlled-project-control-transitions.md",
-      "archive_path": "docs/archive/research/records/r-125-controlled-project-control-transitions.md",
-      "sha256": "bd6563c82beb30c1cbf9353eb116c62e76b0321c5a69fd60dc86d4896706d925",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/operating-model.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-126-project-control-canonical-name-lifecycle.md",
-      "archive_path": "docs/archive/research/records/r-126-project-control-canonical-name-lifecycle.md",
-      "sha256": "6b3e385d655b8feb35ba08973816ce61d57eec85408c428a9ab1e95c465426c5",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-127-project-control-root-claims.md",
-      "archive_path": "docs/archive/research/records/r-127-project-control-root-claims.md",
-      "sha256": "9f6845caa0e4b81cf32ac5f3252b10fdb9ad06bb42f3bf10396cd812a449d83d",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-128-headless-participant-acquisition.md",
-      "archive_path": "docs/archive/research/records/r-128-headless-participant-acquisition.md",
-      "sha256": "7afa05119242d86cbbbbd72fd78b7dd3ec4a74122ad1fe98e15dbe9060f49277",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; implementation-linked. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-129-headless-network-product-boundary.md",
-      "archive_path": "docs/archive/research/records/r-129-headless-network-product-boundary.md",
-      "sha256": "17c0dd55e53a0dcb60e6ac95fccca9077b828347035fa87251328c33a44c87e4",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; implementation-linked. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-130-transit-issuer-bootstrap.md",
-      "archive_path": "docs/archive/research/records/r-130-transit-issuer-bootstrap.md",
-      "sha256": "4f8e7ffc8dd8937ec41d83c561b33d845ba393ce839bb55714c75db334c680ab",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; promoted to ADR-0063. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Unrepeated Carrier, MTU, NAT and loss measurements with their applicability limits."
     },
     {
       "original_path": "docs/research/records/r-131-headless-publisher-authority-acquisition.md",
@@ -1241,7 +88,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: decided; promoted to ADR-0064. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Evidence for the current Service Authority/Instance separation under ADR-0064."
     },
     {
       "original_path": "docs/research/records/r-132-headless-publication-readiness.md",
@@ -1250,43 +98,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-133-role-scoped-transit-grant-acquisition.md",
-      "archive_path": "docs/archive/research/records/r-133-role-scoped-transit-grant-acquisition.md",
-      "sha256": "aa39946638c071ddd04bf553fe0785732374b53eef2ccff0bc2cb13fddadcbae",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: completed; option 1 accepted. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-134-retire-completed-local-ceremonies.md",
-      "archive_path": "docs/archive/research/records/r-134-retire-completed-local-ceremonies.md",
-      "sha256": "cb961bc482b4778b831274d4be462b3096b5f2280e6ebfcf0777aa7bd9f4509b",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: completed; retirement accepted. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/adr/0067-retire-completed-local-alpha-ceremonies.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-135-transit-issuer-generation-continuity.md",
-      "archive_path": "docs/archive/research/records/r-135-transit-issuer-generation-continuity.md",
-      "sha256": "080c594dbcd91bc3dec6464c965ee0576eda9ae49b1cbba3d4d352ede12f0278",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; promoted to ADR-0068. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/private-admission.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-136-user-route-orchestration-ownership.md",
-      "archive_path": "docs/archive/research/records/r-136-user-route-orchestration-ownership.md",
-      "sha256": "981790e03916ecc7530eddddff6e343ede38c201a31e2556f59a2e7ba074af17",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: closed. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/network-route-node.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Evidence for current Publication readiness, ACK and refresh boundaries under ADR-0065."
     },
     {
       "original_path": "docs/research/records/r-137-c0-stress-test.md",
@@ -1295,7 +108,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: deferred. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/research/questions.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Incomplete stress result and unresolved causal uncertainty; no successor qualification exists."
     },
     {
       "original_path": "docs/research/records/r-140-quic-go-v0-62-c0-requalification.md",
@@ -1304,52 +118,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/development/dependencies.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-141-publisher-early-supersession.md",
-      "archive_path": "docs/archive/research/records/r-141-publisher-early-supersession.md",
-      "sha256": "977cd2272465f62b104a877b8bbb5ffa132b15cd032b2b39c025c9b72e9b4e33",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; C0 retains expiry-gated successor pending a separately selected Authority-currentness topology. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/endpoint-service-runtime.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-142-service-credential-renewal.md",
-      "archive_path": "docs/archive/research/records/r-142-service-credential-renewal.md",
-      "sha256": "c7606bc2be9abc71a48e6ddcbcf7207fd8cc601db9427fb4b86121ba8e499e38",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; C0 retains explicit interactive issuance and no automatic renewal. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/release-update-custody.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-143-source-tls-renewal.md",
-      "archive_path": "docs/archive/research/records/r-143-source-tls-renewal.md",
-      "sha256": "15071e29084594f1a0294f15b9ec27b7f21bb3ada4c0ac8c4bde2d4423cb54ea",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; C0 uses controlled restart and same-key leaf renewal only. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/network-route-node.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-144-headless-bootstrap-delivery.md",
-      "archive_path": "docs/archive/research/records/r-144-headless-bootstrap-delivery.md",
-      "sha256": "28981c7f7266262537529f6297e0007e797e659a19d79b07e029c2c06321f2f9",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; governed by ADR-0071. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/adr/0071-recipient-bound-offline-headless-enrollment.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-145-offline-enrollment-owner-contracts.md",
-      "archive_path": "docs/archive/research/records/r-145-offline-enrollment-owner-contracts.md",
-      "sha256": "0dcbfc5679b6814052acf17d09db140fec77d5907068021c18f012b60c2b0460",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided; governed by ADR-0072. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/enrollment-verification.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Unresolved exact-version external QUIC qualification retained by the dependency owner."
     },
     {
       "original_path": "docs/research/records/r-146-non-administrative-network-consensus.md",
@@ -1358,7 +128,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/adr/0074-target-non-administrative-public-operation.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Rationale for the accepted public autonomy direction under ADR-0074."
     },
     {
       "original_path": "docs/research/records/r-147-contributor-resource-controls.md",
@@ -1367,7 +138,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: open. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/research/questions.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Unresolved resource policy and co-resident contribution question."
     },
     {
       "original_path": "docs/research/records/r-148-shared-resource-contributor-benefits.md",
@@ -1376,7 +148,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: open. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/research/questions.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Unresolved incentives and future product question, without implementation selection."
     },
     {
       "original_path": "docs/research/records/r-149-autonomy-transition.md",
@@ -1385,7 +158,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: open. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/research/questions.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Unresolved public autonomy, influence, admission, finality and privacy gates."
     },
     {
       "original_path": "docs/research/records/r-149-voting-core-design.md",
@@ -1394,7 +168,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: open. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/research/questions.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Unresolved B1-B5 architecture gates and evidence assessment for the future voting core."
     },
     {
       "original_path": "docs/research/records/r-149-voting-work-packages.md",
@@ -1403,7 +178,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: draft-not-ready. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/research/questions.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Unique conditional V01-V13 handoff and selection blockers; remains draft-not-ready."
     },
     {
       "original_path": "docs/research/records/r-150-common-protection-baseline.md",
@@ -1412,16 +188,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/adr/0077-evolve-one-common-protection-baseline.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-151-privacy-anonymity-integration.md",
-      "archive_path": "docs/archive/research/records/r-151-privacy-anonymity-integration.md",
-      "sha256": "5706dd8b960dd8594682cff9131164256c4598e3cb68b7de5dded4e7ee8e2b87",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/development/privacy-anonymity-map.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Rationale for ADR-0077 and its source-matched dependency observation."
     },
     {
       "original_path": "docs/research/records/r-152-closed-scheme-contract.md",
@@ -1430,7 +198,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: completed. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Evidence for the selected closed Service scope and domain limits under ADR-0081."
     },
     {
       "original_path": "docs/research/records/r-152-common-privacy-design.md",
@@ -1439,7 +208,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: completed. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Comparison and evidence behind the accepted split-circuit architecture under ADR-0078."
     },
     {
       "original_path": "docs/research/records/r-153-bootstrap-child-restriction.md",
@@ -1448,7 +218,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: completed. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Evidence for the current authority-bearing bootstrap restriction under ADR-0082."
     },
     {
       "original_path": "docs/research/records/r-154-join-data-lane-transition.md",
@@ -1457,25 +228,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: completed. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/technical/protected-route-protocol.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-155-retire-old-node-starts.md",
-      "archive_path": "docs/archive/research/records/r-155-retire-old-node-starts.md",
-      "sha256": "58b128af7901dfa0ac17c7f5916cb57f3c1a9d8931f3cb426680903b23ff0be2",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: completed. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/technical/network-route-node.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/research/records/r-156-retire-name-operator-network-adapters.md",
-      "archive_path": "docs/archive/research/records/r-156-retire-name-operator-network-adapters.md",
-      "sha256": "8f7f7e612bb08f27226cbaa0ce33a97f8da71ab930011bba4fe5bbb2cbaecbea",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Research provenance; recorded status: completed. Archival does not decide an open/deferred proposal or activate work.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Evidence for the current JOIN result, data and credit transition under ADR-0083."
     },
     {
       "original_path": "docs/research/records/r-168-service-v3-format-reset.md",
@@ -1484,7 +238,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/adr/0117-reset-closed-service-formats-to-v3.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Exact reset/refusal scope and surviving clauses under ADR-0117."
     },
     {
       "original_path": "docs/research/records/r-169-source-duty-lifetime.md",
@@ -1493,7 +248,8 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/technical/network-route-node.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Current Source guard lifetime and withdrawal evidence under ADR-0118."
     },
     {
       "original_path": "docs/research/records/r-170-unified-protected-endpoint-artifact.md",
@@ -1502,16 +258,15 @@
       "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
       "disposition": "Research provenance; recorded status: decided. Archival does not decide an open/deferred proposal or activate work.",
       "current_owner": "docs/technical/enrollment-verification.md",
-      "mode": "move"
-    },
-    {
-      "original_path": "docs/technical/naming.md",
-      "archive_path": "docs/archive/technical/naming.md",
-      "sha256": "02abbd60a55bfa3551b7fc1d20f6e583c31c59a90447b329cafda442699cb648",
-      "source_revision": "17f98b669cea8c518c027a8528b77e2ec48fee44",
-      "disposition": "Retirement record, explicitly not a maintained naming contract; current scope owns absence of an accepting Name/Namespace path.",
-      "current_owner": "docs/product/scope.md",
-      "mode": "move"
+      "mode": "move",
+      "retention_reason": "Current exact-artifact, installation and initial-pin boundary under ADR-0119."
     }
-  ]
+  ],
+  "historical_snapshot": {
+    "revision": "c58268d72f1eaeae173144e76d32d50986de2a77",
+    "manifest_url": "https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/manifest.json",
+    "index_url": "https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/README.md",
+    "captured_records": 168,
+    "removed_checkout_copies": 142
+  }
 }

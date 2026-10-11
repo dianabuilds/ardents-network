@@ -58,6 +58,6 @@ identities.
 
 ## Compliance
 
-- [R-134](../archive/research/records/r-134-retire-completed-local-ceremonies.md)
-- [ADR-0059](../archive/adr/0059-retire-fixed-alpha-candidate-assembly.md)
+- [R-134](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-134-retire-completed-local-ceremonies.md)
+- [ADR-0059](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0059-retire-fixed-alpha-candidate-assembly.md)
 - [Current command surface](../development/command-surface.md)

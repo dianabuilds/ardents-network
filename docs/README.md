@@ -33,9 +33,10 @@ unselected. The [scope](product/scope.md) owns these boundaries.
 ## Decisions, evidence and execution
 
 [Current decisions](adr/README.md) index surviving selections. The
-[archive](archive/README.md) retains superseded editions, completed research,
-retired plans, unselected proposals and exact audit receipts, with disposition,
-current owner and source identity. An archived proposal is not a contract;
+[archive](archive/README.md) retains selected decision evidence, unresolved
+findings and exact audit receipts, with disposition, current owner and source
+identity. Other historical editions and retired plans are recoverable from its
+pinned Git snapshot. An archived proposal is not a contract;
 archiving an accepted edition does not withdraw its explicitly retained rules.
 The [research queue](research/questions.md) distinguishes undecided questions
 from selected execution; read its evidence only for a named decision.

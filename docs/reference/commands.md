@@ -365,7 +365,7 @@ the actual enrolled flows and Git history; no participant or qualification
 profile called either route.
 
 The four completed planning-campaign `simulate-*` routes were retired by
-[ADR-0060](../archive/adr/0060-retire-completed-planning-campaign-generators.md).
+[ADR-0060](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0060-retire-completed-planning-campaign-generators.md).
 Their historical command lines, JSON schema identities, and receipts remain
 unchanged in the accepted ADRs, research records, external evidence, and Git
 history; they are not current command compatibility promises.

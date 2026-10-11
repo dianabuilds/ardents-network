@@ -156,5 +156,5 @@ their own artifact and observer contracts. Local worker restart does not prove
 logical Service recovery. Portable compilation does not qualify native
 confinement, a complete installed Service, whole-host protection or anonymity.
 The [domain map](../development/domain-map.md) records collaborations; GitHub
-owns delivery/acceptance. The [original design and source inventory](../archive/development/application-execution-domain-boundary-analysis.md)
+owns delivery/acceptance. The [original design and source inventory](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/development/application-execution-domain-boundary-analysis.md)
 remain historical provenance, not an alternate new-runtime destination.

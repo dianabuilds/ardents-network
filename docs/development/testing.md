@@ -924,7 +924,7 @@ profile. R-119 through R-121 retain the exact historical result; current test
 inventories contain no compatibility exception or hidden replacement route for
 those writers.
 
-[ADR-0091](../archive/adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
+[ADR-0091](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
 `tests/compatibility/browser-endpoint-v4` non-executable source tree that
 ADR-0061 had retained pending an explicit supersede or retirement decision.
 Completed experiments, the former `reference-c2` fixture, and the retired
@@ -934,7 +934,7 @@ records.
 ## Historical qualification provenance
 
 Earlier RC candidate verdicts and exact evidence limits are retained in the
-[archived testing snapshot](../archive/development/testing-before-consolidation.md#historical-qualification-provenance).
+[archived testing snapshot](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/development/testing-before-consolidation.md#historical-qualification-provenance).
 They are not current profile results and cannot be aggregated into a later C0
 claim. Required current profiles and candidate bounds remain in this owner.
 

@@ -496,7 +496,7 @@ No actor closes or mutates a replacement owner to finish an obsolete operation.
 
 Use the [current domain map](domain-map.md), [package map](package-map.md) and
 technical Prefix, Introduction and JOIN owners for new implementation. The
-[earlier source inventory](../archive/development/route-delivery-join-before-consolidation.md#source-inventory-collect-split-and-leave)
+[earlier source inventory](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/development/route-delivery-join-before-consolidation.md#source-inventory-collect-split-and-leave)
 is predecessor provenance only; no old import, shared mutex/root, callback or
 successful substitute for a missing domain is permitted. Admission's finite
 rights, Hosting reservations, Publication readiness and Connection logical

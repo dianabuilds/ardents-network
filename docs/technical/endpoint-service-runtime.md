@@ -807,7 +807,7 @@ Administration remains separately authorized. The selected text Publisher
 imports a bounded snapshot and invokes `PublishSnapshot`; its bodyless
 `Publish` refuses because the generic `StartPublisher` transaction was
 retired by
-[ADR-0092](../archive/adr/0092-retire-generic-publisher-transit-chain.md).
+[ADR-0092](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0092-retire-generic-publisher-transit-chain.md).
 The `ardents endpoint publish` command refuses at dispatch before dialing its
 Administration socket and directs the operator to `ardents-text publish` with
 an explicit document file. The local bodyless protocol refusal remains intact.
@@ -1516,7 +1516,7 @@ this removal creates none.
 ### Alpha destination retirement
 
 Under
-[ADR-0088](../archive/adr/0088-retire-alpha-service-links-and-corpus-intake.md),
+[ADR-0088](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0088-retire-alpha-service-links-and-corpus-intake.md),
 the Alpha Service Link transition is an explicit final refusal, not a grace
 period. Fresh `accept-alpha-corpus` intake now returns its stable retirement
 refusal before parsing arguments or opening, creating, or changing either named
@@ -1610,9 +1610,9 @@ Application. Endpoint never substitutes another Target or an Internet path.
 
 The Endpoint contains no Browser presentation or Browser Entry state. The
 former Browser implementation and qualification lanes are retired, and
-[ADR-0091](../archive/adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
+[ADR-0091](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
 in-tree Firefox compatibility source; it survives only in Git history in
-accordance with [ADR-0061](../archive/adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
+accordance with [ADR-0061](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0061-retain-firefox-entry-as-compatibility-evidence.md)
 and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
 
 ## Verification and related decisions
@@ -1624,7 +1624,7 @@ and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
   through their public Interfaces. AAI3 rejects the removed AAI2 request before
   Application owner I/O. Architecture tests forbid a second Endpoint-local
   transport owner and enforce the command dependency graphs.
-- [ADR-0024](../archive/adr/0024-native-interactive-route-foundation.md) selects the
+- [ADR-0024](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0024-native-interactive-route-foundation.md) selects the
   native Route foundation; [ADR-0075](../archive/adr/0075-service-connection-v2-terminal-receipt.md)
   selects the closed Service Connection grammar.
 - The Broker is limited to its explicit generic/unqualified contract; it makes

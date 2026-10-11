@@ -226,15 +226,15 @@ Attachment or Service readiness.
 
 ## Retired generation-2 Store evidence
 
-[ADR-0036](../archive/adr/0036-target-private-reachability-v1.md) and
-[ADR-0037](../archive/adr/0037-private-reachability-entry-carrier.md) record the
-former OHTTP lookup and Descriptor authority. [ADR-0091](../archive/adr/0091-retire-uncomposed-legacy-artifacts.md)
+[ADR-0036](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0036-target-private-reachability-v1.md) and
+[ADR-0037](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0037-private-reachability-entry-carrier.md) record the
+former OHTTP lookup and Descriptor authority. [ADR-0091](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0091-retire-uncomposed-legacy-artifacts.md)
 retired its unwired Client/Relay/Gateway adapter and GatewayProfile codec.
 The former Endpoint-to-Initiator-to-Gateway operation is not a maintained C0
 lookup route; its detailed implementation remains in Git history.
 
 ADR-0105 retired the uncalled legacy `Issue`, `Store.Publish`, and
-`Store.Lookup` generation-2 writers; [ADR-0109](../archive/adr/0109-refuse-legacy-reachability-records.md)
+`Store.Lookup` generation-2 writers; [ADR-0109](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0109-refuse-legacy-reachability-records.md)
 (F-32) then deleted the retained v1/v2 decoder and the legacy branches of the
 floor comparison. Under ADR-0117, a root holding an old envelope refuses
 to open as a whole with a format error; the historical bytes

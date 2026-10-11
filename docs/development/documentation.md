@@ -13,8 +13,10 @@ Product scope, journeys, and honest promises belong in `docs/product/`.
 Threats, protected information, adversaries, conditions, measurements, and
 limitations belong in `docs/security/`. Surviving hard-to-reverse decisions live
 in `docs/adr/`; active decision work and its method live in `docs/research/`.
-`docs/archive/` retains superseded decision editions, completed research,
-retired plans and immutable receipts with their original source identity.
+`docs/archive/` retains selected decision evidence, unresolved findings and
+immutable receipts with their original source identity. Superseded copies and
+retired plans without a unique current use remain recoverable from the pinned
+Git snapshot in the archive index.
 `docs/development/` owns engineering policy, factual source maps, and developer
 workflow. Implementation and operator facts belong in the smallest current
 technical, operations, or reference document that has the responsible Module
@@ -37,16 +39,19 @@ compatibility/retirement conditions, and honest limitations where applicable.
 An ADR or research record remains rationale/evidence after that promotion; it
 does not become the operator manual.
 
-Retain accepted ADRs, completed research records, and immutable audit receipts
-as decision evidence. Move superseded editions, completed records, retired
-procedures and unselected historical proposals to `docs/archive/` after
-promoting unique current facts and repairing current links. The archive index
-records disposition, original path/source/hash and the current owner. An
-archived accepted decision retains any explicitly surviving clauses; archival
+Retain current accepted ADRs in their decision owner. Keep historical records
+locally when they supply needed decision evidence, unique measurements, unresolved
+findings or immutable audit receipts. After unique current facts are promoted,
+remove superseded copies, retired procedures and unused historical proposals
+from the checkout; repair inbound references to their pinned Git source. The
+archive index links the complete historical snapshot and records disposition,
+original path/source/hash, current owner and retention reason for local records.
+An archived accepted decision retains any explicitly surviving clauses; pruning
 never accepts a proposal, closes a finding or qualifies a newer candidate.
-Preserve immutable record bytes; their original relative links resolve against
-the pinned source revision exposed by the archive index. A historical path quoted in a completed record identifies
-that record's source revision; it does not promise a current procedure.
+Preserve retained immutable record bytes; their original relative links resolve
+against the pinned source revision exposed by the archive index. A historical
+path quoted in a completed record identifies that record's source revision;
+it does not promise a current procedure.
 
 Completed experiment source and one-off file, dependency or behavior inventories
 belong to their recorded Git revision once no selected ongoing work consumes
