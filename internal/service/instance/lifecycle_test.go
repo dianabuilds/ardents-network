@@ -178,13 +178,13 @@ func issuedResponse(t *testing.T, root *Root, authority ed25519.PrivateKey, gene
 	if err != nil {
 		t.Fatal(err)
 	}
-	credential, err := (publication.Credential{InstancePublic: view.InstancePublic,
+	credential, err := signFixtureCredential(publication.Credential{InstancePublic: view.InstancePublic,
 		Generation: generation, NotBefore: view.NotBefore, NotAfter: view.NotAfter, NetworkID: view.NetworkID,
-		Capabilities: publication.CapabilityPublish | publication.CapabilityConnect}).Issue(authority)
+		Capabilities: publication.CapabilityPublish | publication.CapabilityConnect}, authority)
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err := BuildResponse(request, credential)
+	response, err := fixtureServiceResponse(request, credential)
 	if err != nil {
 		t.Fatal(err)
 	}

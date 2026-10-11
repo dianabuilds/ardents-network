@@ -54,15 +54,15 @@ func acceptedInstanceBinding(t *testing.T, rootPath string, network [32]byte, au
 	if err != nil {
 		t.Fatal(err)
 	}
-	credential, err := (servicepublication.Credential{
+	credential, err := signFixtureCredential(servicepublication.Credential{
 		InstancePublic: view.InstancePublic,
 		Generation:     1, NotBefore: view.NotBefore, NotAfter: view.NotAfter, NetworkID: view.NetworkID,
 		Capabilities: servicepublication.CapabilityPublish | servicepublication.CapabilityConnect,
-	}).Issue(authority)
+	}, authority)
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err := instance.BuildResponse(request, credential)
+	response, err := fixtureServiceResponse(request, credential)
 	if err != nil {
 		t.Fatal(err)
 	}

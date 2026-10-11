@@ -83,7 +83,7 @@ func serviceFixture(t *testing.T) (*serviceBinding, *serviceBinding, servicepubl
 		Generation: 1, NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Hour).Unix(),
 		Capabilities: servicepublication.CapabilityPublish | servicepublication.CapabilityConnect}
 	copy(credential.InstancePublic[:], instancePublic)
-	credential, err = credential.Issue(authority)
+	credential, err = signFixtureCredential(credential, authority)
 	if err != nil {
 		t.Fatal(err)
 	}

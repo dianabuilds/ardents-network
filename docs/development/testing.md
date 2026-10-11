@@ -1442,8 +1442,13 @@ and the fixed 256 MiB Argon2 workspace. It exercises the new encrypted Custody
 owner and real Allocation, original Close/cancel/join, canonical envelope vector,
 native RLIMIT_FSIZE partial write, native floor failure and exact authenticated
 pending-successor reopen, quarantine export/restore/purge and canonical built
-terminal Admission commands. The same registered Service process suite retains
-existing separate Service Credential behavior. Official exact-version Argon2
+terminal Admission and Service commands. The registered Linux Service Custody
+process scenario builds genuine `ardents-next` request/acceptance and no-echo
+`ardents-custody` creation/issuance, with independent public verification and
+signature-byte oracle. Service fault controls cover real partial writes, floor
+failure after successor publication and exact pending completion after expiry.
+These cases do not qualify live Publisher/Connection or installed Service.
+Official exact-version Argon2
 vectors run too. Unknown prerequisites fail; reconstructed torn/missing journal
 states are explicitly distinct from syscall fault controls.
 

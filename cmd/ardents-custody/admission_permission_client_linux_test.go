@@ -80,7 +80,7 @@ func TestAdmissionAuthorityCommandsKeepPermissionOutOfPublicReceipt(t *testing.T
 		defer func() { _ = vault.Close() }()
 		verified, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationVerifyVaultRecord, RecordID: created.RecordID,
 			Expected: custody.AuthorityBinding{Environment: environment, Network: network, Root: authorityRoot, Kind: custody.AuthorityAdmission, IDCommitment: id}},
-			custodyTerminal{&sequenceCommandSecrets{values: [][]byte{password}}})
+			&sequenceCommandSecrets{values: [][]byte{password}})
 		if err != nil {
 			t.Fatal(err)
 		}

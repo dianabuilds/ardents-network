@@ -1,7 +1,7 @@
 {
   "schema": "ardents-test-profiles-v1",
     "profiles": [
-      {"id":"custody-native-linux","state":"active","make_target":"custody-check","surface":"encrypted Admission birth, new Allocation issuance/retry, retained floors, real native partial-write/floor refusals, original cancellation/join, quarantine lifecycle, official Argon2 vectors and canonical built terminal commands including preserved Service issuance; no platform/crash qualification","prerequisites":["Linux private local filesystem with flock, hardlinks, atomic rename and directory fsync","Go 1.27.2 and race-capable C compiler","256 MiB fixed Argon2 workspace per original serialized operation","real PTY and populated immutable module cache"],"invalid_environment":"selected Custody native environment unavailable; no passing skips","timeout":"3m"},
+      {"id":"custody-native-linux","state":"active","make_target":"custody-check","surface":"encrypted Admission birth, new Allocation issuance/retry, retained floors, real native partial-write/floor refusals, original cancellation/join, quarantine lifecycle, official Argon2 vectors and canonical built terminal commands including genuine new Instance request/acceptance and Service issuance, Service expiry/generation/pending-floor checks; no platform/crash qualification","prerequisites":["Linux private local filesystem with flock, hardlinks, atomic rename and directory fsync","Go 1.27.2 and race-capable C compiler","256 MiB fixed Argon2 workspace per original serialized operation","real PTY and populated immutable module cache"],"invalid_environment":"selected Custody native environment unavailable; no passing skips","timeout":"3m"},
       {
         "id": "publication-timing",
         "state": "active",

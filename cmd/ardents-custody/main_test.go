@@ -7,8 +7,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 	"os"
 	"path/filepath"
 	"testing"
@@ -73,13 +73,13 @@ func TestVerifyRecordUsesCustodyWithoutPrintingSecretMaterial(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = vault.Close() })
-	state := commandAuthorityState()
+	binding := commandAuthorityBinding()
 	password := []byte("correct horse battery staple")
-	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateVaultRecord, Authority: state}, commandSecrets{values: [][]byte{password, password}})
+	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateServiceAuthority, Binding: binding}, commandSecrets{values: [][]byte{password, password}})
 	if err != nil {
 		t.Fatalf("create vault record: %v", err)
 	}
-	binding := state.Binding
+	binding = created.Authority.Binding
 	arguments := []string{"verify-record", "-vault-root", root, "-record", created.RecordID,
 		"-environment-commitment", hex.EncodeToString(binding.Environment[:]),
 		"-network-commitment", hex.EncodeToString(binding.Network[:]),
@@ -89,7 +89,7 @@ func TestVerifyRecordUsesCustodyWithoutPrintingSecretMaterial(t *testing.T) {
 	if err := run(t.Context(), arguments, &output, commandSecrets{values: [][]byte{password}}); err != nil {
 		t.Fatalf("verify record: %v", err)
 	}
-	if bytes.Contains(output.Bytes(), state.RootMaterial) || bytes.Contains(output.Bytes(), password) {
+	if bytes.Contains(output.Bytes(), password) {
 		t.Fatal("verify command returned secret material")
 	}
 	var result struct {
@@ -159,6 +159,33 @@ func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testin
 		"-environment-commitment", hex.EncodeToString(environment[:]),
 		"-network-commitment", hex.EncodeToString(network[:]), "-root-commitment", hex.EncodeToString(authorityRoot[:]),
 		"-kind", "service", "-id-commitment", created.IDCommitment}
+	// Output refusal follows the committed encrypted transition. Recover only
+	// its exact response; neither a file conflict nor a receipt failure refunds it.
+	responsePath := issueArguments[8]
+	if err := os.WriteFile(responsePath, []byte("conflicting public response"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var refusedOutput bytes.Buffer
+	if err := run(t.Context(), issueArguments, &refusedOutput,
+		&sequenceCommandSecrets{values: [][]byte{password}, commitments: [][32]byte{requestDigest}}); err == nil || refusedOutput.Len() != 0 {
+		t.Fatal("conflicting response output acknowledged")
+	}
+	floorPath := filepath.Join(vaultRoot, "authority-floors.json")
+	committedFloor, err := os.ReadFile(floorPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(responsePath); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(t.Context(), issueArguments, failedServiceOutput{},
+		&sequenceCommandSecrets{values: [][]byte{password}, commitments: [][32]byte{requestDigest}}); err == nil {
+		t.Fatal("failed receipt output acknowledged")
+	}
+	committedResponse, err := os.ReadFile(responsePath)
+	if err != nil {
+		t.Fatal("receipt refusal lost committed public file", err)
+	}
 	var issuedOutput bytes.Buffer
 	if err := run(t.Context(), issueArguments, &issuedOutput,
 		&sequenceCommandSecrets{values: [][]byte{password}, commitments: [][32]byte{requestDigest}}); err != nil {
@@ -177,9 +204,20 @@ func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testin
 		t.Fatalf("parse command response: %v", err)
 	}
 	persistedResponse, err := os.ReadFile(issueArguments[8])
-	if err != nil || !bytes.Equal(persistedResponse, issued.Response) {
+	if err != nil || !bytes.Equal(persistedResponse, issued.Response) || !bytes.Equal(committedResponse, issued.Response) {
 		t.Fatalf("persisted public response differs: %v", err)
 	}
+	afterFloor, err := os.ReadFile(floorPath)
+	entries, listErr := os.ReadDir(filepath.Join(vaultRoot, "records"))
+	if err != nil || listErr != nil || !bytes.Equal(committedFloor, afterFloor) || len(entries) != 2 {
+		t.Fatal("output recovery changed committed generation", err, listErr)
+	}
+}
+
+type failedServiceOutput struct{}
+
+func (failedServiceOutput) Write([]byte) (int, error) {
+	return 0, errors.New("injected Service receipt output refusal")
 }
 
 func TestIssueServiceCredentialRejectsSubstitutedRequestBeforePasswordOrMutation(t *testing.T) {
@@ -260,21 +298,21 @@ func TestRecoveryBundleCommandsKeepAuthorityLockedOnRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = vault.Close() })
-	state := commandAuthorityState()
+	binding := commandAuthorityBinding()
 	vaultPassword := []byte("source vault password")
-	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateVaultRecord, Authority: state}, &sequenceCommandSecrets{values: [][]byte{vaultPassword, vaultPassword}})
+	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateServiceAuthority, Binding: binding}, &sequenceCommandSecrets{values: [][]byte{vaultPassword, vaultPassword}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	bundle := filepath.Join(t.TempDir(), "recovery-bundle.json")
-	bindingArguments := custodyBindingArguments(state.Binding)
+	bindingArguments := custodyBindingArguments(created.Authority.Binding)
 	exportArguments := append([]string{"export-recovery-bundle", "-vault-root", sourceRoot, "-record", created.RecordID, "-bundle", bundle}, bindingArguments...)
 	var exportOutput bytes.Buffer
 	bundlePassword := []byte("separate bundle password")
 	if err := run(t.Context(), exportArguments, &exportOutput, &sequenceCommandSecrets{values: [][]byte{vaultPassword, bundlePassword, bundlePassword}}); err != nil {
 		t.Fatalf("export recovery bundle: %v", err)
 	}
-	if bytes.Contains(exportOutput.Bytes(), state.RootMaterial) || bytes.Contains(exportOutput.Bytes(), bundlePassword) {
+	if bytes.Contains(exportOutput.Bytes(), bundlePassword) {
 		t.Fatal("export command returned secret material")
 	}
 	restoreArguments := append([]string{"restore-recovery-bundle", "-vault-root", t.TempDir(), "-bundle", bundle}, bindingArguments...)
@@ -299,18 +337,18 @@ func TestPurgeRecordRequiresConfirmedCustodyTransition(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = vault.Close() })
-	state := commandAuthorityState()
+	binding := commandAuthorityBinding()
 	password := []byte("purge command password")
-	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateVaultRecord, Authority: state}, &sequenceCommandSecrets{values: [][]byte{password, password}})
+	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateServiceAuthority, Binding: binding}, &sequenceCommandSecrets{values: [][]byte{password, password}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	arguments := append([]string{"purge-record", "-vault-root", root, "-record", created.RecordID}, custodyBindingArguments(state.Binding)...)
+	arguments := append([]string{"purge-record", "-vault-root", root, "-record", created.RecordID}, custodyBindingArguments(created.Authority.Binding)...)
 	var output bytes.Buffer
 	if err := run(t.Context(), arguments, &output, &sequenceCommandSecrets{values: [][]byte{password}, confirmations: []bool{true}}); err != nil {
 		t.Fatalf("purge record: %v", err)
 	}
-	if bytes.Contains(output.Bytes(), state.RootMaterial) || bytes.Contains(output.Bytes(), password) {
+	if bytes.Contains(output.Bytes(), password) {
 		t.Fatal("purge command returned secret material")
 	}
 	var receipt map[string]any
@@ -409,14 +447,14 @@ func custodyBindingArguments(binding custody.AuthorityBinding) []string {
 		"-kind", string(binding.Kind), "-id-commitment", hex.EncodeToString(binding.IDCommitment[:])}
 }
 
-func commandAuthorityState() custody.AuthorityState {
+func commandAuthorityBinding() custody.AuthorityBinding {
 	var binding custody.AuthorityBinding
 	for index := range binding.Environment {
 		binding.Environment[index] = byte(index + 1)
 		binding.Network[index] = byte(index + 2)
 		binding.Root[index] = byte(index + 3)
-		binding.IDCommitment[index] = byte(index + 4)
+
 	}
 	binding.Kind = custody.AuthorityService
-	return custody.AuthorityState{Binding: binding, RootMaterial: []byte("command-authority-root-material"), Generation: 3, Revision: 7, Watermarks: []custody.Watermark{{Domain: "credential-generation", Value: 3}}}
+	return binding
 }

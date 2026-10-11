@@ -15,8 +15,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 )
 
 // Actual Custody and files; authenticated State and worker qualification remain
@@ -36,7 +36,7 @@ func TestTextPermissionFilesConsumeActualCustodyApproval(t *testing.T) {
 		}
 	})
 	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateAdmissionAuthority,
-		Authority: custody.AuthorityState{Binding: custody.AuthorityBinding{Environment: fixtureID(221), Network: fixtureID(222), Root: fixtureID(223), Kind: custody.AuthorityAdmission}}}, permissionSecretFixture{})
+		Binding: custody.AuthorityBinding{Environment: fixtureID(221), Network: fixtureID(222), Root: fixtureID(223), Kind: custody.AuthorityAdmission}}, permissionSecretFixture{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestTextPermissionFilesConsumeActualCustodyApproval(t *testing.T) {
 	if err != nil || sha256.Sum256(request) != digest {
 		t.Fatalf("public export differs: %v", err)
 	}
-	decoded, err := admission.DecodePermissionRequest(request)
+	decoded, err := decodeFixturePermissionRequest(request)
 	if err != nil || decoded.Role != admission.AllocationPublisher {
 		t.Fatalf("publisher request: %v", err)
 	}

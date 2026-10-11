@@ -10,7 +10,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 )
 
 type serviceRequestCommitmentInput interface {
@@ -47,12 +47,12 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 			return err
 		}
 		operation = custody.Operation{Kind: custody.OperationCreateServiceAuthority,
-			Authority: custody.AuthorityState{Binding: binding}}
+			Binding: binding}
 	case "issue-service-credential":
 		if record == "" || requestPath == "" || responsePath == "" {
 			return errors.New("issue-service-credential requires record, request, and response")
 		}
-		binding, err := legacyCommandBinding(environment, network, authorityRoot, kind, identity)
+		binding, err := commandBinding(environment, network, authorityRoot, kind, identity)
 		if err != nil || binding.Kind != custody.AuthorityService {
 			return errors.New("issue-service-credential requires one exact Service Authority binding")
 		}

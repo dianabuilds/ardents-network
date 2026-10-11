@@ -40,8 +40,8 @@ func newDescriptorFixture(t *testing.T) descriptorFixture {
 	}
 	var instance [32]byte
 	copy(instance[:], instancePublic)
-	credential, err := (publication.Credential{InstancePublic: instance, Generation: 1,
-		NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Minute).Unix(), NetworkID: network, Capabilities: 3}).Issue(authorityPrivate)
+	credential, err := signFixtureCredential(publication.Credential{InstancePublic: instance, Generation: 1,
+		NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Minute).Unix(), NetworkID: network, Capabilities: 3}, authorityPrivate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,8 +82,8 @@ func newStoreFixture(t *testing.T) storeFixture {
 	}
 	var fixedInstance [32]byte
 	copy(fixedInstance[:], instancePublic)
-	credential, err := (publication.Credential{InstancePublic: fixedInstance, Generation: 1,
-		NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Minute).Unix(), NetworkID: network, Capabilities: 3}).Issue(authorityKey)
+	credential, err := signFixtureCredential(publication.Credential{InstancePublic: fixedInstance, Generation: 1,
+		NotBefore: now.Add(-time.Minute).Unix(), NotAfter: now.Add(time.Minute).Unix(), NetworkID: network, Capabilities: 3}, authorityKey)
 	if err != nil {
 		t.Fatal(err)
 	}

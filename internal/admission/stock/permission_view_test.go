@@ -17,6 +17,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
+	publicadmission "github.com/dianabuilds/ardents-network/internal/successor/admission"
 )
 
 type permissionHost struct {
@@ -54,11 +55,11 @@ func TestPermissionObservationCannotOverwriteOrRestoreOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := admission.DecodePermissionRequest(raw)
+	request, err := publicadmission.DecodePermissionRequest(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	grant := request.Permission
+	grant := admission.Permission(request.Permission)
 	copy(grant.Signature[:], ed25519.Sign(authority, admission.PermissionTranscript(grant)))
 	signed, err := admission.EncodePermission(grant)
 	if err != nil {

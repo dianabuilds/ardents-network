@@ -15,27 +15,6 @@ type ResponseView struct {
 	Credential        publication.Credential
 }
 
-// BuildResponse binds one signed Credential to its exact canonical request.
-func BuildResponse(request []byte, credential publication.Credential) ([]byte, error) {
-	view, err := ParseRequest(request)
-	if err != nil || !credentialMatchesRequest(credential, view) {
-		return nil, ErrInvalid
-	}
-	if err := publication.Validate(credential, credential.AuthorityPublic, view.NetworkID,
-		time.Unix(view.NotBefore, 0).UTC(), publication.CapabilityPublish|publication.CapabilityConnect); err != nil {
-		return nil, ErrInvalid
-	}
-	credentialBytes, err := publication.EncodeCredential(credential)
-	if err != nil {
-		return nil, ErrInvalid
-	}
-	response := make([]byte, len(responseDomain)+32+len(credentialBytes))
-	offset := copy(response, responseDomain)
-	offset += copy(response[offset:], view.Commitment[:])
-	copy(response[offset:], credentialBytes)
-	return response, nil
-}
-
 // ParseResponse accepts only a self-consistent signed response. The pending
 // Root performs the additional exact-request and at-most-once checks.
 func ParseResponse(raw []byte) (ResponseView, error) {

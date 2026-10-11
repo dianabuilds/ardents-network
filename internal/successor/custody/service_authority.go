@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 )
 
 const serviceCredentialWatermark = "credential-generation"
@@ -16,20 +16,23 @@ func (vault *Vault) createServiceAuthority(ctx context.Context, operation Operat
 	if secrets == nil || !validServiceAuthorityCreation(operation) {
 		return Receipt{}, ErrInvalid
 	}
+	if err := vault.admitIndependentRoot(); err != nil {
+		return Receipt{}, err
+	}
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return Receipt{}, err
 	}
 	defer zero(private)
-	state := AuthorityState{
-		Binding:    operation.Authority.Binding,
+	state := authorityState{
+		Binding:    operation.Binding,
 		Generation: 1,
 		Watermarks: []Watermark{{Domain: serviceCredentialWatermark, Value: 0},
 			{Domain: serviceCredentialNotAfterWatermark, Value: 0}},
 	}
 	state.Binding.IDCommitment = sha256.Sum256(public)
 	state.RootMaterial = private
-	receipt, err := vault.createRecord(ctx, Operation{Kind: OperationCreateVaultRecord, Authority: state}, secrets)
+	receipt, err := vault.createRecord(ctx, Operation{Kind: operationCreateVaultRecord, authority: state}, secrets)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -41,9 +44,8 @@ func (vault *Vault) createServiceAuthority(ctx context.Context, operation Operat
 }
 
 func validServiceAuthorityCreation(operation Operation) bool {
-	binding := operation.Authority.Binding
+	binding := operation.Binding
 	return operation.RecordID == "" && operation.Path == "" && operation.Expected == (AuthorityBinding{}) &&
 		binding.Kind == AuthorityService && binding.Environment != [32]byte{} && binding.Network != [32]byte{} &&
-		binding.Root != [32]byte{} && binding.IDCommitment == [32]byte{} && len(operation.Authority.RootMaterial) == 0 &&
-		operation.Authority.Generation == 0 && operation.Authority.Revision == 0 && len(operation.Authority.Watermarks) == 0
+		binding.Root != [32]byte{} && binding.IDCommitment == [32]byte{} && isZeroAuthorityState(operation.authority)
 }

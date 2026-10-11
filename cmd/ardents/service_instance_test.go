@@ -65,14 +65,14 @@ func TestServiceInstanceInitializePublishesOnlyStableRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	credential, err := (publication.Credential{InstancePublic: view.InstancePublic,
+	credential, err := signFixtureCredential(publication.Credential{InstancePublic: view.InstancePublic,
 		Generation: 1, NotBefore: view.NotBefore,
 		NotAfter: view.NotAfter, NetworkID: view.NetworkID,
-		Capabilities: publication.CapabilityPublish | publication.CapabilityConnect}).Issue(authorityPrivate)
+		Capabilities: publication.CapabilityPublish | publication.CapabilityConnect}, authorityPrivate)
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err := instance.BuildResponse(receipt.Request, credential)
+	response, err := fixtureServiceResponse(receipt.Request, credential)
 	if err != nil {
 		t.Fatal(err)
 	}

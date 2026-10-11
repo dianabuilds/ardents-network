@@ -56,7 +56,7 @@ There is no second live issuer implementation in this tree.
 
 | Source | Admission-owned part | What remains outside |
 | --- | --- | --- |
-| internal/custody/admission_authority.go | Allocation decisions and permission grammar already represented by allocation and Permission | Durable encrypted commit, signing key and custody operation |
+| [Retired Custody source](https://github.com/dianabuilds/ardents-network/blob/e269c74744df91588f77c90b14d4e81b3908b472/internal/custody/admission_authority.go) | Allocation decisions and permission grammar now owned by new Allocation and public Permission | New Custody owns durable encrypted commit, signing key and custody operation; the retired backend supplies no runtime authority |
 | internal/endpoint/participant_linux.go; internal/endpoint/runtimeplan/permission_paths.go | Aggregate role maxima represented by allocation.ValidateMaxima | Selecting the user's context/role and configuring file paths |
 | internal/endpoint/permission.go; internal/endpoint/issuance.go | Holder request, accepted permission, pending batch and stock | Context authorization, choosing an exchange, joining network work |
 | internal/node/authority/token.go; internal/node/admission.go | Receiver token verification and spend scenario represented by receiving | Current authority observation, host reservation and actual channel ownership |
@@ -67,9 +67,11 @@ There is no second live issuer implementation in this tree.
 | internal/successor/network/closedprofile/token_spki.go and profile key fields | Canonical token key grammar represented by issuerprofile | Signed profile acceptance, membership and currentness |
 | internal/admission/spending/introduction_slots.go | None: slot replay belongs to Route's receiving Introduction owner | Whole slot history and registration lifetime |
 
-This is a responsibility review of the named current paths, not a claim that
+This is a responsibility review of the named sources, not a claim that
 every line in the repository has been semantically classified. The old runtime
-still uses its existing implementations. Switching it is a separate integration
+still uses its retained implementations; its Linux holder keeps its finite
+RoleLimit consumer. The unused Custody backend and allocation issuer/journal
+helpers are retired. Switching other runtime owners is a separate integration
 step, not evidence that this successor is complete.
 
 ## Implemented ownership boundaries

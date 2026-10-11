@@ -7,6 +7,10 @@ import (
 )
 
 const (
+	// OperationCreateServiceAuthority generates a separate offline Authority.
+	OperationCreateServiceAuthority OperationKind = "create-service-authority"
+	// OperationIssueServiceCredential signs one independently approved request.
+	OperationIssueServiceCredential OperationKind = "issue-service-credential"
 	// operationCreateVaultRecord is internal encrypted record creation.
 	operationCreateVaultRecord OperationKind = "create-vault-record"
 	// OperationCreateAdmissionAuthority generates one separate offline
@@ -54,8 +58,9 @@ type VaultConfig struct {
 type OperationKind string
 
 // Operation contains only public input for a purpose-specific operation.
-// AdmissionRequest is snapshotted at Execute; callers must not mutate it during entry.
-// Binding is used only for independent Admission Authority creation; Expected
+// AdmissionRequest and ServiceRequest are snapshotted at Execute; callers must
+// not mutate them during entry. Binding is used only for independent Admission
+// or Service Authority creation; Expected
 // selects an exact existing record. No operation accepts private root material.
 type Operation struct {
 	Kind                       OperationKind
@@ -65,6 +70,8 @@ type Operation struct {
 	Path                       string
 	AdmissionRequest           []byte
 	AdmissionRequestCommitment [32]byte
+	ServiceRequest             []byte
+	ServiceRequestCommitment   [32]byte
 	authority                  authorityState // exclusively generated inside the owner
 }
 
@@ -105,8 +112,15 @@ type Receipt struct {
 	Authority           AuthorityReceipt
 	AdmissionAuthority  AdmissionAuthorityReceipt
 	AdmissionPermission []byte
+	ServiceAuthority    ServiceAuthorityReceipt
+	ServiceResponse     []byte
 	TestRestored        bool
 	State               RecordState
+}
+
+// ServiceAuthorityReceipt contains only the public Authority and its Target.
+type ServiceAuthorityReceipt struct {
+	Public, Target [32]byte
 }
 
 // AdmissionAuthorityReceipt identifies the public key that a signed closed

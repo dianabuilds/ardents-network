@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/allocation"
+	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 	"sort"
 )
 
@@ -43,6 +44,7 @@ type authorityState struct {
 	Binding          AuthorityBinding
 	RootMaterial     []byte
 	AdmissionJournal []byte
+	ServiceJournal   []byte
 	Generation       uint64
 	Revision         uint64
 	Watermarks       []Watermark
@@ -63,6 +65,7 @@ type encodedAuthority struct {
 	IDCommitment     string        `json:"id_commitment"`
 	RootMaterial     string        `json:"root_material"`
 	AdmissionJournal string        `json:"admission_journal,omitempty"`
+	ServiceJournal   string        `json:"service_journal,omitempty"`
 	Generation       uint64        `json:"generation"`
 	Revision         uint64        `json:"revision"`
 	Watermarks       []Watermark   `json:"watermarks"`
@@ -84,6 +87,7 @@ func encodeAuthorityState(purpose Purpose, state authorityState) ([]byte, error)
 			IDCommitment:     hex.EncodeToString(state.Binding.IDCommitment[:]),
 			RootMaterial:     base64.RawURLEncoding.EncodeToString(state.RootMaterial),
 			AdmissionJournal: base64.RawURLEncoding.EncodeToString(state.AdmissionJournal),
+			ServiceJournal:   base64.RawURLEncoding.EncodeToString(state.ServiceJournal),
 			Generation:       state.Generation,
 			Revision:         state.Revision,
 			Watermarks:       append([]Watermark(nil), state.Watermarks...),
@@ -133,9 +137,19 @@ func decodeAuthorityState(raw []byte, expectedPurpose Purpose) (authorityState, 
 		}
 		state.AdmissionJournal = journal
 	}
+	if encoded.Authority.ServiceJournal != "" {
+		journal, journalErr := decodeRawURL(encoded.Authority.ServiceJournal)
+		if journalErr != nil || len(journal) > 1024 {
+			zero(root)
+			zero(state.AdmissionJournal)
+			return authorityState{}, ErrInvalid
+		}
+		state.ServiceJournal = journal
+	}
 	if err := validateAuthorityState(state); err != nil {
 		zero(root)
 		zero(state.AdmissionJournal)
+		zero(state.ServiceJournal)
 		return authorityState{}, err
 	}
 	return state, nil
@@ -165,10 +179,19 @@ func validateAuthorityState(state authorityState) error {
 		}
 	}
 	if state.Binding.Kind == AuthorityAdmission {
+		if len(state.ServiceJournal) != 0 {
+			return ErrInvalid
+		}
 		return validateAdmissionAuthorityState(state)
 	}
 	if len(state.AdmissionJournal) != 0 {
 		return ErrInvalid
+	}
+	if len(state.ServiceJournal) != 0 {
+		request, err := publication.ParseServiceRequest(state.ServiceJournal)
+		if err != nil || state.Binding.Kind != AuthorityService || request.NetworkID != state.Binding.Network {
+			return ErrInvalid
+		}
 	}
 	return nil
 }
@@ -183,5 +206,5 @@ func isASCII(value string) bool {
 }
 
 func isZeroAuthorityState(state authorityState) bool {
-	return state.Binding == (AuthorityBinding{}) && len(state.RootMaterial) == 0 && len(state.AdmissionJournal) == 0 && state.Generation == 0 && state.Revision == 0 && len(state.Watermarks) == 0
+	return state.Binding == (AuthorityBinding{}) && len(state.RootMaterial) == 0 && len(state.AdmissionJournal) == 0 && len(state.ServiceJournal) == 0 && state.Generation == 0 && state.Revision == 0 && len(state.Watermarks) == 0
 }

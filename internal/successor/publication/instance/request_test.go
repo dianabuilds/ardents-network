@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 	"reflect"
 	"testing"
 )
@@ -42,7 +43,7 @@ func TestHostGeneratedRequestAndIndependentGrammar(t *testing.T) {
 	independent = binary.BigEndian.AppendUint64(independent, 1900003600)
 	commitment := sha256.Sum256(independent)
 	independent = append(independent, commitment[:]...)
-	if !bytes.Equal(independent, encodeRequest(view)) || commitment != view.Commitment {
+	if !bytes.Equal(independent, publication.EncodeServiceRequest(view)) || commitment != view.Commitment {
 		t.Fatal("canonical public request changed")
 	}
 	parsed, err := ParseRequest(independent)
@@ -57,7 +58,7 @@ func TestHostGeneratedRequestAndIndependentGrammar(t *testing.T) {
 	if second.request.InstancePublic == view.InstancePublic {
 		t.Fatal("host factory reused key")
 	}
-	for _, offset := range []int{0, len(requestDomain), len(independent) - 1} {
+	for _, offset := range []int{0, len("ardents-service-instance-request-v3\x00"), len(independent) - 1} {
 		bad := append([]byte(nil), independent...)
 		bad[offset] ^= 1
 		if _, err := ParseRequest(bad); err == nil {
@@ -82,7 +83,7 @@ func TestSignedResponseExactRequestBinding(t *testing.T) {
 	}
 	defer value.erase()
 	valid := fixtureResponse(value.request, 7, 3)
-	credential, err := verifyResponse(valid, value.request)
+	credential, err := publication.VerifyServiceResponse(valid, value.request)
 	if err != nil || credential.Delegation().Generation != 7 || credential.Delegation().Instance != value.request.InstancePublic {
 		t.Fatal(credential, err)
 	}
@@ -117,7 +118,7 @@ func TestSignedResponseExactRequestBinding(t *testing.T) {
 			case "overflow":
 				binary.BigEndian.PutUint64(raw[len(responseDomain)+32+106:], 1<<63)
 			}
-			if _, err := verifyResponse(raw, value.request); !errors.Is(err, want) {
+			if _, err := publication.VerifyServiceResponse(raw, value.request); !errors.Is(err, want) {
 				t.Fatalf("response %s: %v", mode, err)
 			}
 		})

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 )
 
 type Acceptance struct {
@@ -31,7 +32,7 @@ func (root *Root) Accept(ctx context.Context, raw []byte) (Acceptance, error) {
 		}
 		return Acceptance{}, root.terminal(ctx, Conflicting, raw)
 	case Pending:
-		credential, err := verifyResponse(raw, root.state.request)
+		credential, err := publication.VerifyServiceResponse(raw, root.state.request)
 		if err != nil {
 			phase := Rejected
 			if errors.Is(err, ErrUnavailable) {
@@ -72,7 +73,7 @@ func (root *Root) terminal(ctx context.Context, phase State, raw []byte) error {
 }
 
 func (root *Root) acceptance() (Acceptance, error) {
-	credential, err := verifyResponse(root.state.response, root.state.request)
+	credential, err := publication.VerifyServiceResponse(root.state.response, root.state.request)
 	if err != nil {
 		return Acceptance{}, err
 	}

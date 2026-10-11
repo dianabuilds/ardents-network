@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 )
 
 type State string
@@ -52,7 +53,7 @@ func generateState(network [32]byte, before, after int64) (generationState, erro
 	}
 	value := generationState{phase: Pending, private: private, request: RequestView{NetworkID: network, NotBefore: before, NotAfter: after}}
 	copy(value.request.InstancePublic[:], public)
-	value.request.Commitment = requestCommitment(value.request)
+	value.request.Commitment = publication.ServiceRequestCommitment(value.request)
 	if err = value.validate(); err != nil {
 		value.erase()
 		return generationState{}, err
@@ -61,7 +62,7 @@ func generateState(network [32]byte, before, after int64) (generationState, erro
 }
 
 func (value generationState) validate() error {
-	if _, err := ParseRequest(encodeRequest(value.request)); err != nil {
+	if _, err := ParseRequest(publication.EncodeServiceRequest(value.request)); err != nil {
 		return err
 	}
 	if len(value.private) != 0 {
@@ -77,7 +78,7 @@ func (value generationState) validate() error {
 	}
 	hasResponse := len(value.response) != 0
 	if hasResponse {
-		if _, err := verifyResponse(value.response, value.request); err != nil {
+		if _, err := publication.VerifyServiceResponse(value.response, value.request); err != nil {
 			return ErrInvalid
 		}
 	}

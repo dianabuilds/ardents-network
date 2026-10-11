@@ -122,8 +122,8 @@ func resolutionProof(t *testing.T, source *sourceStateFixture) ([32]byte, []byte
 	defer clear(signer)
 	var instance [32]byte
 	copy(instance[:], instancePublic)
-	credential, err := (servicepublication.Credential{InstancePublic: instance, Generation: 1,
-		NotBefore: now.Add(-time.Second).Unix(), NotAfter: profile.NotAfter.Unix(), NetworkID: profile.NetworkID, Capabilities: 3}).Issue(authority)
+	credential, err := signFixtureCredential(servicepublication.Credential{InstancePublic: instance, Generation: 1,
+		NotBefore: now.Add(-time.Second).Unix(), NotAfter: profile.NotAfter.Unix(), NetworkID: profile.NetworkID, Capabilities: 3}, authority)
 	if err != nil {
 		t.Fatal(err)
 	}

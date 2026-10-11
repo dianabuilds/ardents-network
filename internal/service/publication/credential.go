@@ -21,26 +21,6 @@ const (
 	credentialSize     = credentialBodySize + ed25519.SignatureSize
 )
 
-// Issue signs a bounded public delegation for one exclusive Service Instance.
-func (value Credential) Issue(authority ed25519.PrivateKey) (Credential, error) {
-	if len(authority) != ed25519.PrivateKeySize || value.InstancePublic == [32]byte{} || value.Generation == 0 ||
-		value.NotBefore >= value.NotAfter || value.NetworkID == [32]byte{} || value.Capabilities == 0 {
-		return Credential{}, errors.New("publication credential request is invalid")
-	}
-	public, ok := authority.Public().(ed25519.PublicKey)
-	if !ok || len(public) != ed25519.PublicKeySize {
-		return Credential{}, errors.New("publication Authority key is invalid")
-	}
-	var authorityPublic [32]byte
-	copy(authorityPublic[:], public)
-	if value.AuthorityPublic != [32]byte{} && subtle.ConstantTimeCompare(value.AuthorityPublic[:], authorityPublic[:]) != 1 {
-		return Credential{}, errors.New("publication credential Authority does not match signer")
-	}
-	value.AuthorityPublic, value.Target, value.Signature = authorityPublic, targetFor(authorityPublic), [64]byte{}
-	copy(value.Signature[:], ed25519.Sign(authority, credentialBody(value)))
-	return value, nil
-}
-
 func validateCredential(value Credential, authority, network [32]byte, at time.Time, capability uint32) error {
 	if value.AuthorityPublic != authority || value.Target != targetFor(authority) || value.NetworkID != network ||
 		value.InstancePublic == [32]byte{} || value.Generation == 0 ||
@@ -113,14 +93,6 @@ func decodeCredential(encoded []byte) (Credential, error) {
 	value.Capabilities = binary.BigEndian.Uint32(encoded[offset : offset+4])
 	copy(value.Signature[:], encoded[credentialBodySize:])
 	return value, nil
-}
-
-// EncodeCredential returns the one canonical public Credential encoding.
-func EncodeCredential(value Credential) ([]byte, error) {
-	if value.Signature == ([64]byte{}) {
-		return nil, errors.New("publication Credential is unsigned")
-	}
-	return encodeCredential(value), nil
 }
 
 // DecodeCredential accepts only the one canonical public Credential encoding.

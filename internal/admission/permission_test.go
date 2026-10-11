@@ -17,9 +17,9 @@ func TestPermissionCanonicalVerification(t *testing.T) {
 		PermissionID: permissionIdentifier(4), HolderKey: permissionIdentifier(5), NotBefore: now.Truncate(time.Hour),
 		NotAfter: now.Truncate(time.Hour).Add(time.Hour), Maxima: [3]uint32{32, 0, 16}}
 	copy(permission.Signature[:], ed25519.Sign(private, PermissionTranscript(permission)))
-	raw, err := EncodePermission(permission)
-	if err != nil || len(raw) != PermissionSize {
-		t.Fatalf("encode permission = %d bytes, %v", len(raw), err)
+	raw := append(permissionUnsigned(permission), permission.Signature[:]...)
+	if len(raw) != PermissionSize {
+		t.Fatalf("fixture permission = %d bytes", len(raw))
 	}
 	decoded, err := DecodePermission(raw)
 	if err != nil || decoded != permission {

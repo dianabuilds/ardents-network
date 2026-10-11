@@ -35,13 +35,14 @@ func (vault *Vault) exportBundle(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer func() { zero(state.RootMaterial); zero(state.AdmissionJournal) }()
+	defer func() { zero(state.RootMaterial); zero(state.AdmissionJournal); zero(state.ServiceJournal) }()
 	if state.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
 	}
 	if state.Binding.Kind == AuthorityAdmission && sourceState == RecordActive {
 		zero(state.RootMaterial)
 		zero(state.AdmissionJournal)
+		zero(state.ServiceJournal)
 		state, _, err = vault.openCurrentAdmissionAuthority(operation.RecordID, vaultPassword, operation.Expected)
 		if err != nil {
 			return Receipt{}, err
@@ -286,7 +287,7 @@ func testRestoreBundle(path string, password []byte, expected AuthorityBinding) 
 	if err != nil {
 		return EnvelopeInfo{}, err
 	}
-	defer func() { zero(state.RootMaterial); zero(state.AdmissionJournal) }()
+	defer func() { zero(state.RootMaterial); zero(state.AdmissionJournal); zero(state.ServiceJournal) }()
 	if state.Binding != expected {
 		return EnvelopeInfo{}, ErrInvalid
 	}

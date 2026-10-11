@@ -535,9 +535,9 @@ func (fixture publicationFixture) input(t *testing.T, generation uint64) Publish
 	t.Helper()
 	var instance [32]byte
 	copy(instance[:], fixture.public)
-	credential, err := (Credential{InstancePublic: instance, Generation: generation,
+	credential, err := signFixtureCredential(Credential{InstancePublic: instance, Generation: generation,
 		NotBefore: fixture.now.Add(-time.Minute).Unix(), NotAfter: fixture.now.Add(time.Minute).Unix(),
-		NetworkID: fixture.network, Capabilities: publishCapability | connectCapability}).Issue(fixture.authPriv)
+		NetworkID: fixture.network, Capabilities: publishCapability | connectCapability}, fixture.authPriv)
 	if err != nil {
 		t.Fatal(err)
 	}

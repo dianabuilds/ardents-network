@@ -17,8 +17,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/route/client"
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 )
 
 func prepareIssuancePermission(t *testing.T, owner *dutyContext, source *sourceStateFixture) string {
@@ -44,7 +44,7 @@ func prepareIssuancePermissionWithIdentity(t *testing.T, owner *dutyContext, sou
 		}
 	})
 	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateAdmissionAuthority,
-		Authority: custody.AuthorityState{Binding: custody.AuthorityBinding{Environment: fixtureID(231), Network: owner.endpoint.network, Root: fixtureID(232), Kind: custody.AuthorityAdmission}}}, permissionSecretFixture{})
+		Binding: custody.AuthorityBinding{Environment: fixtureID(231), Network: owner.endpoint.network, Root: fixtureID(232), Kind: custody.AuthorityAdmission}}, permissionSecretFixture{})
 	if err != nil {
 		t.Fatal(err)
 	}

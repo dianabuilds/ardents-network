@@ -162,7 +162,7 @@ func (root *Root) Request(ctx context.Context) ([]byte, error) {
 	if root.state.phase == "" {
 		return nil, ErrInvalid
 	}
-	return encodeRequest(root.state.request), nil
+	return publication.EncodeServiceRequest(root.state.request), nil
 }
 
 // Credential supplies only verified public evidence for floor reconciliation.

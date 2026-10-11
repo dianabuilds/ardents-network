@@ -314,7 +314,7 @@ func resolutionPublication(t *testing.T, network [32]byte, now, until time.Time)
 	t.Cleanup(func() { clear(signer) })
 	var instance [32]byte
 	copy(instance[:], instancePublic)
-	grant, err := (publication.Credential{InstancePublic: instance, Generation: 1, NotBefore: now.Add(-time.Second).Unix(), NotAfter: until.Unix(), NetworkID: network, Capabilities: 3}).Issue(authority)
+	grant, err := signFixtureCredential(publication.Credential{InstancePublic: instance, Generation: 1, NotBefore: now.Add(-time.Second).Unix(), NotAfter: until.Unix(), NetworkID: network, Capabilities: 3}, authority)
 	if err != nil {
 		t.Fatal(err)
 	}

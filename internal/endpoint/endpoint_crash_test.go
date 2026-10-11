@@ -108,11 +108,11 @@ func TestTextEndpointCrashDropsVolatileAuthorityAndRetainsSpend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := admission.DecodePermissionRequest(requestRaw)
+	request, err := decodeFixturePermissionRequest(requestRaw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	oldRequest, err := admission.DecodePermissionRequest(boundary.PermissionRequest)
+	oldRequest, err := decodeFixturePermissionRequest(boundary.PermissionRequest)
 	if err != nil {
 		t.Fatal(err)
 	}

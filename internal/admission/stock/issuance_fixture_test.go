@@ -92,7 +92,7 @@ func issuedStockFixture(t *testing.T) (*Owner, *spendHostFixture, ardp.Hello) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := admission.DecodePermissionRequest(raw)
+	request, err := decodeFixturePermissionRequest(raw)
 	if err != nil {
 		t.Fatal(err)
 	}

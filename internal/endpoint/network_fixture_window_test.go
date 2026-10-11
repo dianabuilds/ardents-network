@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 )
 
 func TestTextNetworkFixtureWindowAvoidsExpiredPermissionImport(t *testing.T) {
@@ -50,7 +50,7 @@ func networkFixturePermission(t *testing.T, current *time.Time) (*dutyContext, n
 		t.Fatal(err)
 	}
 	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateAdmissionAuthority,
-		Authority: custody.AuthorityState{Binding: custody.AuthorityBinding{Environment: fixtureID(241), Network: fixtureID(242), Root: fixtureID(243), Kind: custody.AuthorityAdmission}}}, permissionSecretFixture{})
+		Binding: custody.AuthorityBinding{Environment: fixtureID(241), Network: fixtureID(242), Root: fixtureID(243), Kind: custody.AuthorityAdmission}}, permissionSecretFixture{})
 	if err != nil {
 		_ = vault.Close()
 		t.Fatal(err)

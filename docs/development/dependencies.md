@@ -705,9 +705,7 @@ Authority Custody uses `golang.org/x/crypto/argon2` from module
 owners select the same module version; integration must produce one shared
 exact root-module version, never parallel copies.
 
-`internal/custody` (separate Service/evidence predecessor) and
-`internal/successor/custody/canonical_envelope.go` (new encrypted-record/Admission
-owner) are the exact maintained Argon2 callers. It uses only
+`internal/successor/custody/canonical_envelope.go` (new encrypted-record/Admission/Service owner) is the exact maintained Argon2 caller. It uses only
 `argon2.IDKey` with the fixed v1 profile and passes the derived
 32-byte key to the selected Go standard-library `crypto/aes` and
 `cipher.NewGCMWithRandomNonce`. No other
@@ -779,8 +777,9 @@ portable public API. `go-pty` exposes one `io.ReadWriteCloser` plus an
 `exec.Cmd`-like command boundary on both selected development platforms. The
 test waits for each exact custody prompt before writing a fixed test-only
 password and asserts that the terminal transcript never contains that secret.
-It executes the exact built `ardents-custody` and `ardents` files; it neither
-imports `internal/custody` nor constructs a credential response itself.
+It executes the exact built product commands, including `ardents-custody`,
+`ardents` and the new Instance consumer `ardents-next`; it neither imports a
+Custody backend nor constructs a credential response itself.
 
 **Maintenance, security, and distribution review:** the current tagged
 `v0.2.3` release was published on 2026-05-17 from a GitHub-verified commit; its

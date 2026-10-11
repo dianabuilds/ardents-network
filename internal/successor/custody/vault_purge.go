@@ -32,13 +32,14 @@ func (vault *Vault) purgeRecord(ctx context.Context, operation Operation, secret
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer func() { zero(authority.RootMaterial); zero(authority.AdmissionJournal) }()
+	defer func() { zero(authority.RootMaterial); zero(authority.AdmissionJournal); zero(authority.ServiceJournal) }()
 	if authority.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
 	}
 	if authority.Binding.Kind == AuthorityAdmission && state == RecordActive {
 		zero(authority.RootMaterial)
 		zero(authority.AdmissionJournal)
+		zero(authority.ServiceJournal)
 		authority, info, err = vault.openCurrentAdmissionAuthority(operation.RecordID, password, operation.Expected)
 		if err != nil {
 			return Receipt{}, err

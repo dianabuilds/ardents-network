@@ -23,15 +23,6 @@ type Permission struct {
 	Signature                                        [ed25519.SignatureSize]byte
 }
 
-// EncodePermission returns the canonical 228-byte signed permission.
-func EncodePermission(permission Permission) ([]byte, error) {
-	if err := validatePermission(permission); err != nil {
-		return nil, err
-	}
-	raw := permissionUnsigned(permission)
-	return append(raw, permission.Signature[:]...), nil
-}
-
 // DecodePermission parses one canonical fixed-size permission without
 // accepting a caller-provided validity result.
 func DecodePermission(raw []byte) (Permission, error) {

@@ -23,10 +23,12 @@ The [qualification release operation](../operations/qualification-release.md)
 owns preparation, protected key files, bounded signing, retained refusals and
 the completed public bootstrap receipt. It changes no runtime verifier policy.
 
-`internal/successor/custody` owns the bounded encrypted-record and Admission
-operations consumed directly by `cmd/ardents-custody`. The separate Service
-Credential commands retain `internal/custody`; they never delegate the new
-owner through that predecessor backend. Each uses independent development
+`internal/successor/custody` owns the bounded encrypted-record, Admission and
+Service operations consumed directly by `cmd/ardents-custody`. Pure
+`internal/successor/publication` owns Service v3 request/response bytes,
+unsigned fixed-purpose Credential transcript and exact public verification.
+Neither Custody nor its command imports live Publication/Instance for parsing
+or delegates signing through the predecessor backend. Each uses independent development
 roots; format compatibility grants no predecessor adoption or floor reset. Its
 canonical `ardents-authority-envelope-v1` Vault and Recovery Bundle formats use
 the accepted fixed Argon2id/AES-GCM profile from ADR-0021. Callers receive only
@@ -78,6 +80,12 @@ validity interval not to overlap its predecessor for the same Target. An exact
 retry of the same request is idempotent; it is not a reusable authorization for
 a future request. New issuance rechecks current validity after unlock and after
 password-derived encryption, immediately before the first successor write.
+Each new Service successor authenticates its exact canonical public request
+in the encrypted `service_journal` field. Floors and a deterministic filename
+alone cannot prove exact retry: copied authentic ciphertext for another request
+refuses even if generation and terminal bound match. Generic predecessor evidence
+without this journal gains no signing adoption. The outer envelope/KDF and public
+v3 grammar remain unchanged.
 An elapsed Service request or admission hour cannot begin a new durable
 issuance. Once a successor is persisted, its monotonic floor completion
 remains recoverable; this does not renew its terminal validity. Admission exact
@@ -119,7 +127,7 @@ late success retains the original cancellation and cleanup failure. Erasure
 covers owned byte buffers; these checks do not establish whole-process memory
 scrubbing of Go/crypto runtime allocations. Its state
 mutex does not cover foreign I/O/join. Only a fresh independently marked root
-can create Admission signing authority. Existing generic Service/Name records
+can create Admission or Service signing authority. Existing predecessor Service/Name records
 and quarantine remain inspectable/verifiable/exportable/purgeable evidence.
 Purge removes the selected active Admission ledger too, while retaining floors.
 A missing, malformed or skipped journal/floor refuses; one authenticated exact
@@ -166,7 +174,7 @@ implementation defects in the current Module.
 ## Evidence
 
 - [ADR-0021](../adr/0021-use-password-derived-authority-custody.md)
-- `internal/custody/vault_operation_test.go` (separate Service/evidence predecessor)
+- `internal/successor/custody/record_refusal_test.go` and `bundle_publication_test.go` (retained envelope/refusal and Bundle publication oracles)
 - `internal/successor/custody` behavior, independent envelope and native failure tests
 - `tests/e2e/service/admission_custody_process_test.go` (canonical built terminal consumer)
 - `make custody-check` and the ordinary checked deterministic/process/race inventories

@@ -12,8 +12,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/admission"
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 )
 
 // These tests exercise the local permission owner and actual Custody ledger.
@@ -68,8 +68,8 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = vault.Close() })
 	created, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationCreateAdmissionAuthority,
-		Authority: custody.AuthorityState{Binding: custody.AuthorityBinding{Environment: fixtureID(221), Network: fixtureID(222),
-			Root: fixtureID(223), Kind: custody.AuthorityAdmission}}}, permissionSecretFixture{})
+		Binding: custody.AuthorityBinding{Environment: fixtureID(221), Network: fixtureID(222),
+			Root: fixtureID(223), Kind: custody.AuthorityAdmission}}, permissionSecretFixture{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +85,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err != nil || sha256.Sum256(public) != digest {
 		t.Fatalf("prepare: %v", err)
 	}
-	request, err := admission.DecodePermissionRequest(public)
+	request, err := decodeFixturePermissionRequest(public)
 	if err != nil || request.Role != admission.AllocationUser {
 		t.Fatalf("reader role: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	otherRequest, err := admission.DecodePermissionRequest(otherRaw)
+	otherRequest, err := decodeFixturePermissionRequest(otherRaw)
 	if err != nil || otherRequest.Role != request.Role || otherRequest.Permission.HolderKey == request.Permission.HolderKey ||
 		otherRequest.Permission.PermissionID == request.Permission.PermissionID || otherDigest == digest {
 		t.Fatalf("same-role contexts shared issuer identity: %v", err)
@@ -164,7 +164,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	publisherRequest, err := admission.DecodePermissionRequest(publisherRaw)
+	publisherRequest, err := decodeFixturePermissionRequest(publisherRaw)
 	if err != nil || publisherRequest.Role != admission.AllocationPublisher || publisherRequest.Permission.HolderKey == request.Permission.HolderKey {
 		t.Fatal("Publisher inherited reader role or holder")
 	}
@@ -207,7 +207,7 @@ func TestTextPermissionCustodyRoundTripAndContextOwnership(t *testing.T) {
 	if err != nil || newDigest == digest {
 		t.Fatalf("next-hour holder: %v", err)
 	}
-	newRequest, err := admission.DecodePermissionRequest(newRaw)
+	newRequest, err := decodeFixturePermissionRequest(newRaw)
 	if err != nil || newRequest.Permission.HolderKey == request.Permission.HolderKey {
 		t.Fatal("holder reused across hours")
 	}

@@ -10,7 +10,12 @@ Instance, точный Target/Network, validity и отдельные права
 native acceptance, открытие приватной capsule и replay ещё требуют реализации
 или source-matched проверки.
 
-`instance` генерирует host key и владеет canonical public request, принятием
+Pure `publication` владеет единым canonical v3 request/response codec,
+commitment, unsigned fixed-purpose Credential transcript и exact verification
+для настоящих Custody и Instance consumers. Public verification не выдаёт
+private signing, current validity или readiness authority.
+
+`instance` генерирует host key и владеет исходным public request, принятием
 внешнего подписанного response и durable terminal states. Команды
 `publication instance-initialize`, `instance-request` и `instance-accept`
 возвращают только public input/result. Native private custody сейчас Linux;

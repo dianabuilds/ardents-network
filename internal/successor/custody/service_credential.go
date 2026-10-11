@@ -12,8 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/service/instance"
-	"github.com/dianabuilds/ardents-network/internal/service/publication"
+	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 )
 
 const maximumServiceCredentialLifetime = 24 * time.Hour
@@ -23,7 +22,10 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	if secrets == nil || !validServiceIssuance(operation) {
 		return Receipt{}, ErrInvalid
 	}
-	request, err := instance.ParseRequest(operation.ServiceRequest)
+	if err := vault.requireIndependentRoot(); err != nil {
+		return Receipt{}, err
+	}
+	request, err := publication.ParseServiceRequest(operation.ServiceRequest)
 	if err != nil || request.NetworkID != operation.Expected.Network {
 		return Receipt{}, ErrInvalid
 	}
@@ -43,6 +45,7 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	if err != nil {
 		return Receipt{}, err
 	}
+	defer zero(sourceRaw)
 	password, err := readPassword(ctx, secrets, SecretPromptVaultUnlock)
 	if err != nil {
 		return Receipt{}, err
@@ -53,14 +56,12 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 		return Receipt{}, err
 	}
 	defer zero(source.RootMaterial)
-	successor, credential, err := serviceSuccessor(source, request)
+	defer zero(source.ServiceJournal)
+	successor, transcript, err := serviceSuccessor(source, request)
 	if err != nil {
 		return Receipt{}, err
 	}
-	response, err := instance.BuildResponse(operation.ServiceRequest, credential)
-	if err != nil {
-		return Receipt{}, err
-	}
+	defer zero(successor.ServiceJournal)
 	floors, err := vault.readFloors()
 	if err != nil {
 		return Receipt{}, err
@@ -74,10 +75,27 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 		return Receipt{}, ErrInvalid
 	}
 	sourceCurrent, successorCurrent := floorEqualsState(floor, source), floorEqualsState(floor, successor)
-	if (!sourceCurrent && !successorCurrent) || (expired && !successorCurrent) {
+	if !sourceCurrent && !successorCurrent {
 		return Receipt{}, ErrInvalid
 	}
-	successorRaw, info, err := vault.ensureServiceSuccessor(successorID, successor, password, sourceCurrent, request)
+	if expired {
+		// Prove the original authenticated exact successor already exists before
+		// returning its deterministic response or completing its pending floor.
+		raw, _, err := vault.ensureServiceSuccessor(successorID, successor, password, false, request)
+		zero(raw)
+		if err != nil {
+			return Receipt{}, err
+		}
+	}
+	if err := vault.check(); err != nil {
+		return Receipt{}, err
+	}
+	credential := append(transcript, ed25519.Sign(ed25519.PrivateKey(source.RootMaterial), transcript)...)
+	response, err := publication.BuildServiceResponse(operation.ServiceRequest, credential)
+	if err != nil {
+		return Receipt{}, err
+	}
+	successorRaw, info, err := vault.ensureServiceSuccessor(successorID, successor, password, sourceCurrent && !expired, request)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -96,7 +114,7 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 			Target: publication.Target(public)}, ServiceResponse: response, State: RecordActive}, nil
 }
 
-func serviceCredentialValidity(request instance.RequestView, at time.Time) (expired bool, supported bool) {
+func serviceCredentialValidity(request publication.RequestView, at time.Time) (expired bool, supported bool) {
 	if request.NotBefore < 0 || request.NotAfter < 0 || request.NotAfter <= request.NotBefore {
 		return false, false
 	}
@@ -116,37 +134,47 @@ func validServiceIssuance(operation Operation) bool {
 	return validRecordID(operation.RecordID) && operation.Expected.Kind == AuthorityService &&
 		operation.Expected != (AuthorityBinding{}) && len(operation.ServiceRequest) != 0 && operation.Path == "" &&
 		operation.ServiceRequestCommitment == requestCommitment &&
-		isZeroAuthorityState(operation.Authority)
+		isZeroAuthorityState(operation.authority)
 }
 
-func openServiceAuthority(raw, password []byte, expected AuthorityBinding) (AuthorityState, EnvelopeInfo, error) {
+func openServiceAuthority(raw, password []byte, expected AuthorityBinding) (authorityState, EnvelopeInfo, error) {
 	purpose, plaintext, info, err := openEnvelope(raw, password)
 	if err != nil {
-		return AuthorityState{}, EnvelopeInfo{}, err
+		return authorityState{}, EnvelopeInfo{}, err
 	}
 	defer zero(plaintext)
 	if purpose != PurposeVault {
-		return AuthorityState{}, EnvelopeInfo{}, ErrInvalid
+		return authorityState{}, EnvelopeInfo{}, ErrInvalid
 	}
 	state, err := decodeAuthorityState(plaintext, PurposeVault)
 	if err != nil {
-		return AuthorityState{}, EnvelopeInfo{}, err
+		return authorityState{}, EnvelopeInfo{}, err
 	}
 	private := ed25519.PrivateKey(state.RootMaterial)
 	if len(private) != ed25519.PrivateKeySize {
 		zero(state.RootMaterial)
-		return AuthorityState{}, EnvelopeInfo{}, ErrInvalid
+		zero(state.ServiceJournal)
+		return authorityState{}, EnvelopeInfo{}, ErrInvalid
 	}
 	public, ok := private.Public().(ed25519.PublicKey)
 	if state.Binding != expected || state.Binding.Kind != AuthorityService || !ok ||
 		sha256.Sum256(public) != state.Binding.IDCommitment {
 		zero(state.RootMaterial)
-		return AuthorityState{}, EnvelopeInfo{}, ErrInvalid
+		zero(state.ServiceJournal)
+		return authorityState{}, EnvelopeInfo{}, ErrInvalid
+	}
+	derived := ed25519.NewKeyFromSeed(private[:32])
+	matches := bytes.Equal(derived, private)
+	zero(derived)
+	if !matches {
+		zero(state.RootMaterial)
+		zero(state.ServiceJournal)
+		return authorityState{}, EnvelopeInfo{}, ErrInvalid
 	}
 	return state, info, nil
 }
 
-func serviceSuccessor(source AuthorityState, request instance.RequestView) (AuthorityState, publication.Credential, error) {
+func serviceSuccessor(source authorityState, request publication.RequestView) (authorityState, []byte, error) {
 	if source.Generation == math.MaxUint64 || source.Revision == math.MaxUint64 || len(source.Watermarks) != 2 ||
 		source.Watermarks[0].Domain != serviceCredentialWatermark ||
 		source.Watermarks[1].Domain != serviceCredentialNotAfterWatermark ||
@@ -154,21 +182,31 @@ func serviceSuccessor(source AuthorityState, request instance.RequestView) (Auth
 		source.Generation != source.Watermarks[0].Value+1 || source.Revision != source.Watermarks[0].Value ||
 		request.NotBefore < int64(source.Watermarks[1].Value) ||
 		request.NotAfter <= request.NotBefore || request.NotAfter < 0 {
-		return AuthorityState{}, publication.Credential{}, ErrInvalid
+		return authorityState{}, nil, ErrInvalid
+	}
+	if source.Generation == 1 && len(source.ServiceJournal) != 0 || source.Generation > 1 && len(source.ServiceJournal) == 0 {
+		return authorityState{}, nil, ErrInvalid
+	}
+	if source.Generation > 1 {
+		previous, err := publication.ParseServiceRequest(source.ServiceJournal)
+		if err != nil || previous.NetworkID != source.Binding.Network || uint64(previous.NotAfter) != source.Watermarks[1].Value {
+			return authorityState{}, nil, ErrInvalid
+		}
 	}
 	generation := source.Watermarks[0].Value + 1
-	successor := AuthorityState{Binding: source.Binding, RootMaterial: source.RootMaterial,
-		Generation: source.Generation + 1, Revision: source.Revision + 1,
+	successor := authorityState{Binding: source.Binding, RootMaterial: source.RootMaterial,
+		ServiceJournal: publication.EncodeServiceRequest(request),
+		Generation:     source.Generation + 1, Revision: source.Revision + 1,
 		Watermarks: []Watermark{{Domain: serviceCredentialWatermark, Value: generation},
 			{Domain: serviceCredentialNotAfterWatermark, Value: uint64(request.NotAfter)}}}
-	credential, err := (publication.Credential{InstancePublic: request.InstancePublic,
-		Generation: generation,
-		NotBefore:  request.NotBefore, NotAfter: request.NotAfter, NetworkID: request.NetworkID,
-		Capabilities: publication.CapabilityPublish | publication.CapabilityConnect}).Issue(ed25519.PrivateKey(source.RootMaterial))
+	private := ed25519.PrivateKey(source.RootMaterial)
+	var public [32]byte
+	copy(public[:], private.Public().(ed25519.PublicKey))
+	transcript, err := publication.ServiceCredentialTranscript(request, public, generation)
 	if err != nil {
-		return AuthorityState{}, publication.Credential{}, err
+		return authorityState{}, nil, err
 	}
-	return successor, credential, nil
+	return successor, transcript, nil
 }
 
 func serviceSuccessorRecordID(recordID string, commitment [32]byte) string {
@@ -177,23 +215,19 @@ func serviceSuccessorRecordID(recordID string, commitment [32]byte) string {
 	return hex.EncodeToString(digest[:16])
 }
 
-func (vault *Vault) ensureServiceSuccessor(recordID string, expected AuthorityState, password []byte, allowCreation bool, request instance.RequestView) ([]byte, EnvelopeInfo, error) {
+func (vault *Vault) ensureServiceSuccessor(recordID string, expected authorityState, password []byte, allowCreation bool, request publication.RequestView) ([]byte, EnvelopeInfo, error) {
 	path := filepath.Join(vault.records, "record-"+recordID+".json")
 	raw, err := readEnvelopeFile(path)
 	if err == nil {
 		state, info, openErr := openServiceAuthority(raw, password, expected.Binding)
 		if openErr != nil || !sameAuthorityState(state, expected) {
 			zero(state.RootMaterial)
+			zero(state.ServiceJournal)
 			zero(raw)
 			return nil, EnvelopeInfo{}, ErrInvalid
 		}
 		zero(state.RootMaterial)
-		if allowCreation {
-			if expired, supported := serviceCredentialValidity(request, vault.now().UTC()); expired || !supported {
-				zero(raw)
-				return nil, EnvelopeInfo{}, ErrInvalid
-			}
-		}
+		zero(state.ServiceJournal)
 		return raw, info, nil
 	}
 	if !errors.Is(err, os.ErrNotExist) {
@@ -227,15 +261,4 @@ func (vault *Vault) ensureServiceSuccessor(recordID string, expected AuthoritySt
 		return nil, EnvelopeInfo{}, err
 	}
 	return envelope, info, err
-}
-
-func floorEqualsState(floor authorityFloor, state AuthorityState) bool {
-	return floor.Generation == state.Generation && floor.Revision == state.Revision &&
-		equalWatermarks(floor.Watermarks, state.Watermarks)
-}
-
-func sameAuthorityState(left, right AuthorityState) bool {
-	return left.Binding == right.Binding && left.Generation == right.Generation && left.Revision == right.Revision &&
-		equalWatermarks(left.Watermarks, right.Watermarks) && bytes.Equal(left.RootMaterial, right.RootMaterial) &&
-		bytes.Equal(left.AdmissionJournal, right.AdmissionJournal)
 }

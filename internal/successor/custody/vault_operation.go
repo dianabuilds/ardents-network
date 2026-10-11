@@ -20,10 +20,11 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 	if ctx == nil || secrets == nil {
 		return Receipt{}, ErrInvalid
 	}
-	if len(operation.AdmissionRequest) > 512 {
+	if len(operation.AdmissionRequest) > 512 || len(operation.ServiceRequest) > 1024 {
 		return Receipt{}, ErrInvalid
 	}
 	operation.AdmissionRequest = bytes.Clone(operation.AdmissionRequest)
+	operation.ServiceRequest = bytes.Clone(operation.ServiceRequest)
 	original, finish, err := vault.begin(ctx)
 	if err != nil {
 		return Receipt{}, err
@@ -35,7 +36,7 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 		}
 	}()
 	ctx = original
-	if operation.Kind != OperationCreateAdmissionAuthority && operation.Binding != (AuthorityBinding{}) {
+	if operation.Kind != OperationCreateAdmissionAuthority && operation.Kind != OperationCreateServiceAuthority && operation.Binding != (AuthorityBinding{}) {
 		return Receipt{}, ErrInvalid
 	}
 	operationLock, err := acquireVaultOperationLock(vault.root)
@@ -46,7 +47,14 @@ func (vault *Vault) Execute(ctx context.Context, operation Operation, secrets Se
 	if operation.Kind != OperationIssueAdmissionPermission && (len(operation.AdmissionRequest) != 0 || operation.AdmissionRequestCommitment != [32]byte{}) {
 		return Receipt{}, ErrInvalid
 	}
+	if operation.Kind != OperationIssueServiceCredential && (len(operation.ServiceRequest) != 0 || operation.ServiceRequestCommitment != [32]byte{}) {
+		return Receipt{}, ErrInvalid
+	}
 	switch operation.Kind {
+	case OperationCreateServiceAuthority:
+		return vault.createServiceAuthority(ctx, operation, secrets)
+	case OperationIssueServiceCredential:
+		return vault.issueServiceCredential(ctx, operation, secrets)
 	case OperationCreateAdmissionAuthority:
 		return vault.createAdmissionAuthority(ctx, operation, secrets)
 	case OperationIssueAdmissionPermission:
@@ -136,13 +144,14 @@ func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer func() { zero(state.RootMaterial); zero(state.AdmissionJournal) }()
+	defer func() { zero(state.RootMaterial); zero(state.AdmissionJournal); zero(state.ServiceJournal) }()
 	if state.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
 	}
 	if state.Binding.Kind == AuthorityAdmission && recordState == RecordActive {
 		zero(state.RootMaterial)
 		zero(state.AdmissionJournal)
+		zero(state.ServiceJournal)
 		state, info, err = vault.openCurrentAdmissionAuthority(operation.RecordID, password, operation.Expected)
 		if err != nil {
 			return Receipt{}, err

@@ -41,7 +41,7 @@ func TestPrivateStoreConflictPreservesLongestCredentialExpiry(t *testing.T) {
 					candidate.credential.NotBefore = start.Unix()
 					candidate.credential.NotAfter = end.Unix()
 					var err error
-					candidate.credential, err = candidate.credential.Issue(candidate.authorityKey)
+					candidate.credential, err = signFixtureCredential(candidate.credential, candidate.authorityKey)
 					if err != nil {
 						t.Fatal(err)
 					}

@@ -39,8 +39,8 @@ func floorPublication(t *testing.T, authority ed25519.PrivateKey, network [32]by
 	t.Cleanup(func() { clear(signer) })
 	var instance [32]byte
 	copy(instance[:], public)
-	credential, err := (publication.Credential{InstancePublic: instance,
-		Generation: generation, NotBefore: from.Unix(), NotAfter: until.Unix(), NetworkID: network, Capabilities: 3}).Issue(authority)
+	credential, err := signFixtureCredential(publication.Credential{InstancePublic: instance,
+		Generation: generation, NotBefore: from.Unix(), NotAfter: until.Unix(), NetworkID: network, Capabilities: 3}, authority)
 	if err != nil {
 		t.Fatal(err)
 	}

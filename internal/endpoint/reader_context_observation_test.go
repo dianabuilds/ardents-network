@@ -139,7 +139,7 @@ func startReaderContextProcess(t *testing.T, source *sourceStateFixture, target 
 		process.stopAfterFailure()
 		t.Fatalf("reader %s permission request: %v", id, err)
 	}
-	if _, err := admission.DecodePermissionRequest(process.request); err != nil {
+	if _, err := decodeFixturePermissionRequest(process.request); err != nil {
 		process.stopAfterFailure()
 		t.Fatalf("reader %s permission request framing: %v", id, err)
 	}
@@ -213,7 +213,7 @@ func (process *readerContextProcess) lookup(repeat bool) {
 	if err := process.decoder.Decode(&proof); err != nil || !bytes.Equal(proof, process.input.Expected) {
 		process.t.Fatalf("reader %s lookup proof: %v", process.id, err)
 	}
-	request, err := admission.DecodePermissionRequest(process.request)
+	request, err := decodeFixturePermissionRequest(process.request)
 	if err != nil {
 		process.t.Fatalf("decode reader permission request after lookup: %v", err)
 	}
@@ -301,7 +301,7 @@ func (process *readerContextProcess) writeEvidence() readerContextEvidence {
 	if err != nil {
 		process.t.Fatal(err)
 	}
-	request, err := admission.DecodePermissionRequest(process.request)
+	request, err := decodeFixturePermissionRequest(process.request)
 	if err != nil {
 		process.t.Fatal(err)
 	}
@@ -326,11 +326,11 @@ func observeIndependentReaderContexts(t *testing.T, source *sourceStateFixture, 
 	second.issueAndImport()
 	second.lookup(false)
 	second.stop()
-	firstRequest, err := admission.DecodePermissionRequest(first.request)
+	firstRequest, err := decodeFixturePermissionRequest(first.request)
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondRequest, err := admission.DecodePermissionRequest(second.request)
+	secondRequest, err := decodeFixturePermissionRequest(second.request)
 	if err != nil || firstRequest.Role != admission.AllocationUser || secondRequest.Role != admission.AllocationUser || firstRequest.Permission.NotBefore != secondRequest.Permission.NotBefore || firstRequest.Permission.NotAfter != secondRequest.Permission.NotAfter || firstRequest.Permission.Maxima != [3]uint32{64, 64, 0} || secondRequest.Permission.Maxima != [3]uint32{64, 64, 0} {
 		t.Fatalf("reader contexts did not retain the selected permission/hour scope: %#v / %#v / %v", firstRequest.Permission, secondRequest.Permission, err)
 	}

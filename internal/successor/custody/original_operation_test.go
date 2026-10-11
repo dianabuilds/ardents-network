@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"time"
 )
 
 type heldTerminal struct {
@@ -25,6 +26,49 @@ func (*heldTerminal) Confirm(context.Context, ConfirmationPrompt) (bool, error) 
 }
 
 func TestCloseInterruptsAndJoinsOriginalTerminalBeforeLeaseReturn(t *testing.T) {
+	checkCloseOriginalTerminal(t, OperationCreateAdmissionAuthority, AuthorityAdmission)
+}
+
+func TestServiceCloseInterruptsAndJoinsOriginalTerminalBeforeLeaseReturn(t *testing.T) {
+	checkCloseOriginalTerminal(t, OperationCreateServiceAuthority, AuthorityService)
+}
+
+func TestServiceIssuanceCancellationJoinsUnlockBeforeAnySuccessor(t *testing.T) {
+	f := newServiceVaultFixture(t)
+	op := f.request(f.now, f.now.Add(time.Hour), f.created.RecordID)
+	floor, err := os.ReadFile(f.vault.floors)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := &heldTerminal{make(chan struct{}), make(chan struct{}), make(chan struct{}), bytes.Clone(f.password)}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	result := make(chan error, 1)
+	go func() { _, err := f.vault.Execute(ctx, op, input); result <- err }()
+	<-input.started
+	cancel()
+	<-input.interrupted
+	select {
+	case err := <-result:
+		t.Fatal("issuance returned before physical unlock join", err)
+	default:
+	}
+	close(input.joined)
+	if err := <-result; !errors.Is(err, context.Canceled) {
+		t.Fatal("late unlock replaced original cancellation", err)
+	}
+	if !bytes.Equal(input.password, make([]byte, len(input.password))) {
+		t.Fatal("late signing password retained")
+	}
+	after, err := os.ReadFile(f.vault.floors)
+	entries, listErr := os.ReadDir(f.vault.records)
+	if err != nil || listErr != nil || !bytes.Equal(floor, after) || len(entries) != 1 {
+		t.Fatal("cancelled issuance committed successor", err, listErr)
+	}
+}
+
+func checkCloseOriginalTerminal(t *testing.T, kind OperationKind, authority AuthorityKind) {
+	t.Helper()
 	vault, err := Open(VaultConfig{Root: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
@@ -32,7 +76,7 @@ func TestCloseInterruptsAndJoinsOriginalTerminalBeforeLeaseReturn(t *testing.T) 
 	input := &heldTerminal{make(chan struct{}), make(chan struct{}), make(chan struct{}), []byte("held original terminal password")}
 	result := make(chan error, 1)
 	go func() {
-		_, err := vault.Execute(t.Context(), Operation{Kind: OperationCreateAdmissionAuthority, Binding: AuthorityBinding{Kind: AuthorityAdmission, Environment: [32]byte{1}, Network: [32]byte{2}, Root: [32]byte{3}}}, input)
+		_, err := vault.Execute(t.Context(), Operation{Kind: kind, Binding: AuthorityBinding{Kind: authority, Environment: [32]byte{1}, Network: [32]byte{2}, Root: [32]byte{3}}}, input)
 		result <- err
 	}()
 	<-input.started

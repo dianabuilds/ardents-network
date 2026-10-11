@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/custody"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 )
 
 func TestReplacePreservesAuthorityVaultAndReleaseFloors(t *testing.T) {
@@ -188,13 +188,10 @@ func replacementCreateVault(t *testing.T, root string) error {
 		binding.Environment[index] = byte(index + 1)
 		binding.Network[index] = byte(index + 2)
 		binding.Root[index] = byte(index + 3)
-		binding.IDCommitment[index] = byte(index + 4)
 	}
 	binding.Kind = custody.AuthorityService
-	state := custody.AuthorityState{Binding: binding, RootMaterial: []byte("replacement authority root material"),
-		Generation: 3, Revision: 7, Watermarks: []custody.Watermark{{Domain: "credential-generation", Value: 3}}}
-	_, executeErr := vault.Execute(context.Background(), custody.Operation{Kind: custody.OperationCreateVaultRecord,
-		Authority: state}, &replacementSecrets{values: [][]byte{password, password}})
+	_, executeErr := vault.Execute(context.Background(), custody.Operation{Kind: custody.OperationCreateServiceAuthority,
+		Binding: binding}, &replacementSecrets{values: [][]byte{password, password}})
 	return errors.Join(executeErr, vault.Close())
 }
 

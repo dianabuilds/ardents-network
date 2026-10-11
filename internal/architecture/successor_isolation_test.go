@@ -311,13 +311,16 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if !inZone {
+		if source == "tests/e2e/service/service_custody_process_linux_test.go" && dependency == modulePath+"/internal/successor/publication" {
+			return true
+		}
 		if dependency == modulePath+"/internal/successor/custody" {
 			switch source {
-			case "cmd/ardents-custody/command.go", "cmd/ardents-custody/admission_authority.go", "cmd/ardents-custody/verify_record.go", "cmd/ardents-custody/recovery_bundle.go", "cmd/ardents-custody/purge_record.go", "cmd/ardents-custody/inspect_envelope.go", "cmd/ardents-custody/admission_permission_client_linux_test.go":
+			case "cmd/ardents-custody/command.go", "cmd/ardents-custody/terminal_secret.go", "cmd/ardents-custody/main_test.go", "cmd/ardents-custody/service_authority.go", "cmd/ardents-custody/admission_authority.go", "cmd/ardents-custody/verify_record.go", "cmd/ardents-custody/recovery_bundle.go", "cmd/ardents-custody/purge_record.go", "cmd/ardents-custody/inspect_envelope.go", "cmd/ardents-custody/admission_permission_client_linux_test.go", "internal/endpoint/permission_test.go", "internal/endpoint/issuance_test.go", "internal/endpoint/permission_files_linux_test.go", "internal/endpoint/network_fixture_window_test.go", "internal/endpoint/replacement/custody_nonmutation_test.go":
 				return true
 			}
 		}
-		if (source == "cmd/ardents-custody/admission_permission_client_linux_test.go" || source == "tests/e2e/service/admission_custody_process_test.go") && dependency == modulePath+"/internal/successor/admission" {
+		if (source == "cmd/ardents-custody/admission_permission_client_linux_test.go" || source == "tests/e2e/service/admission_custody_process_test.go" || source == "internal/endpoint/permission_request_fixture_test.go" || source == "internal/admission/stock/permission_request_fixture_test.go" || source == "internal/admission/stock/permission_view_test.go") && dependency == modulePath+"/internal/successor/admission" {
 			return true
 		}
 		return !zoneDependency
@@ -335,7 +338,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/admission":               {"admission/issuerprofile"},
 		"internal/successor/admission/issuerprofile": {},
 		"internal/successor/admission/allocation":    {"admission"},
-		"internal/successor/custody":                 {"admission", "admission/allocation"},
+		"internal/successor/custody":                 {"admission", "admission/allocation", "publication"},
 		"internal/successor/admission/attempts":      {},
 		"internal/successor/admission/spending":      {},
 		"internal/successor/admission/token":         {"admission", "admission/issuerprofile"},
@@ -719,7 +722,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"custody excludes old backend", "internal/successor/custody/vault.go", modulePath + "/internal/custody", false},
 		{"custody excludes live Instance parser", "internal/successor/custody/authority_state.go", modulePath + "/internal/successor/publication/instance", false},
 		{"custody excludes Route", "internal/successor/custody/vault.go", modulePath + "/internal/successor/route", false},
-		{"Service command cannot delegate new custody", "cmd/ardents-custody/service_authority.go", modulePath + "/internal/successor/custody", false},
+		{"Service command uses genuine new custody", "cmd/ardents-custody/service_authority.go", modulePath + "/internal/successor/custody", true},
 		{"unregistered caller", "internal/successor/future/file.go", modulePath + "/internal/successor/admission", false},
 		{"unregistered dependency", "cmd/ardents-next/main.go", modulePath + "/internal/successor/future", false},
 		{"standard", "internal/successor/admission/check.go", "context", true},
