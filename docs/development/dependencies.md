@@ -705,7 +705,9 @@ Authority Custody uses `golang.org/x/crypto/argon2` from module
 owners select the same module version; integration must produce one shared
 exact root-module version, never parallel copies.
 
-`internal/custody` is the only maintained Argon2 caller. It uses only
+`internal/custody` (separate Service/evidence predecessor) and
+`internal/successor/custody/canonical_envelope.go` (new encrypted-record/Admission
+owner) are the exact maintained Argon2 callers. It uses only
 `argon2.IDKey` with the fixed v1 profile and passes the derived
 32-byte key to the selected Go standard-library `crypto/aes` and
 `cipher.NewGCMWithRandomNonce`. No other
@@ -715,10 +717,37 @@ store, DPAPI/Secret Service wrapper, cgo, or `unsafe` is selected. The current
 owns the maintained boundary.
 
 `cmd/ardents-custody` is the separate interactive Adapter. It imports only
-`golang.org/x/term` to reject a non-terminal descriptor and read a password
-without echo. It accepts no
+`golang.org/x/term v0.46.0` to reject non-terminals and retain/restore terminal
+mode. Exact Linux `terminal_line_linux.go` uses reviewed `x/sys v0.48.0/unix`
+Poll/Read for bounded original input; Windows `terminal_line_windows.go` uses
+`x/sys/windows` console modes and original-thread CancelSynchronousIo, with
+standard-library Unicode console reading. Both disable echo before showing the
+password prompt, bound input, preserve cancellation/restore/close errors and
+join physical reads before returning. These are existing exact root-module
+versions, with no new dependency or public platform support selection. It accepts no
 password from arguments, environment, configuration, nor a stream shared with
 Application data; it exposes no decrypted material.
+
+Source/license review accessed 2026-10-11: [official exact `x/crypto v0.57.0` Argon2 source/tests](https://pkg.go.dev/golang.org/x/crypto@v0.57.0/argon2)
+and its BSD-3-Clause LICENSE, exact `x/term v0.46.0`
+Windows/Unix terminal mechanisms and `x/sys v0.48.0` native APIs. The selected
+Go standard library supplies AES-GCM and Ed25519; no primitive is implemented
+locally. Official Argon2 SSE4/generic vectors and an independently constructed
+fixed-profile AES-GCM vector are checked by the native lane. [Microsoft CancelSynchronousIo documentation](https://learn.microsoft.com/en-us/windows/win32/api/ioapiset/nf-ioapiset-cancelsynchronousio) requires original-thread retention and notes
+that cancellation is a request: the command waits for actual read completion,
+retires the interrupt handle and joins that original locked thread. Native
+race/filesystem/PTY execution is development evidence; source/advisory review
+and `go mod verify`/`make vuln` repeat for final-source integration.
+
+The 2026-10-11 verbose scan retains module-only
+[GO-2026-5932](https://pkg.go.dev/vuln/GO-2026-5932), whose affected packages are
+`golang.org/x/crypto/openpgp` and children, with no fixed version. Custody imports
+only `argon2` from that module. `go list -deps -test ./cmd/... ./internal/...
+./tests/...` under Windows and Linux and the canonical Custody binary scan
+reproduce exclusion of every affected package; the whole source scan reports
+zero affected imported packages/symbols. This is scoped non-applicability,
+not a severity waiver or permission to import OpenPGP. A changed closure or
+advisory invalidates it and requires the same explicit acceptance rule.
 
 Before a supported custody handoff,
 integration must run official exact-version Argon2id vectors, the fixed 256 MiB

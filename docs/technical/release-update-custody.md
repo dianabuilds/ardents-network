@@ -23,7 +23,11 @@ The [qualification release operation](../operations/qualification-release.md)
 owns preparation, protected key files, bounded signing, retained refusals and
 the completed public bootstrap receipt. It changes no runtime verifier policy.
 
-`internal/custody` exclusively unlocks and uses Authority root material. Its
+`internal/successor/custody` owns the bounded encrypted-record and Admission
+operations consumed directly by `cmd/ardents-custody`. The separate Service
+Credential commands retain `internal/custody`; they never delegate the new
+owner through that predecessor backend. Each uses independent development
+roots; format compatibility grants no predecessor adoption or floor reset. Its
 canonical `ardents-authority-envelope-v1` Vault and Recovery Bundle formats use
 the accepted fixed Argon2id/AES-GCM profile from ADR-0021. Callers receive only
 bounded public receipts, never a password, derived key, root, or generic
@@ -59,10 +63,12 @@ record for one closed Network. `issue-admission-permission` accepts only the
 exact holder-signed `ARDPAR01` request after the operator re-enters its
 independently transferred SHA-256 commitment. It returns a public digest
 receipt and writes the signed 228-byte permission only to the specified
-owner-only, same-directory no-replace output. The [Admission allocation owner](../../internal/admission/allocation/doc.go)
+owner-only, same-directory no-replace output. Linux exact output retry refuses
+group/other access and checks the originally observed file before reading it.
+The [Admission allocation owner](../../internal/successor/admission/allocation/doc.go)
 validates the current-hour request and journal transition. Custody retains the
 key, signing and serialized encrypted persistence. The Vault record advances its
-encrypted allocation successor before acknowledgement; neither command accepts
+encrypted allocation successor, exact readback and monotonic floor before acknowledgement; neither command accepts
 a private key, permission body, or password in argv, environment, or public
 output. This authority cannot sign State, Name, Service, or Release inputs.
 
@@ -74,7 +80,9 @@ a future request. New issuance rechecks current validity after unlock and after
 password-derived encryption, immediately before the first successor write.
 An elapsed Service request or admission hour cannot begin a new durable
 issuance. Once a successor is persisted, its monotonic floor completion
-remains recoverable; this does not renew its terminal validity. A committed
+remains recoverable; this does not renew its terminal validity. Admission exact
+retry still requires its original current hour and never receives the Service
+post-expiry exception. A committed
 exact Service retry may return the same response after expiry. Custody has no automatic renewal route, password file,
 argument, environment, or configuration bypass. The service's published-root
 restart limitation remains an Endpoint implementation limit, rather than a
@@ -103,6 +111,19 @@ the recovered state. ADR-0105 retired both the witness producer and the
 `activate-recovered-authority` operation, so a restored quarantine record is
 terminal: it remains export-only and can never sign. No activation route
 creates a runtime Instance Key or Local Grant.
+
+The new owner keeps one original operation and native lease through terminal
+input, crypto and durable work. Close synchronously denies new effects, cancels
+and physically joins that user before secret erasure/lease return completes;
+late success retains the original cancellation and cleanup failure. Erasure
+covers owned byte buffers; these checks do not establish whole-process memory
+scrubbing of Go/crypto runtime allocations. Its state
+mutex does not cover foreign I/O/join. Only a fresh independently marked root
+can create Admission signing authority. Existing generic Service/Name records
+and quarantine remain inspectable/verifiable/exportable/purgeable evidence.
+Purge removes the selected active Admission ledger too, while retaining floors.
+A missing, malformed or skipped journal/floor refuses; one authenticated exact
+pending successor may finish its floor under a new original operation.
 
 ## Custody disposition
 
@@ -145,7 +166,10 @@ implementation defects in the current Module.
 ## Evidence
 
 - [ADR-0021](../adr/0021-use-password-derived-authority-custody.md)
-- `internal/custody/vault_operation_test.go`
+- `internal/custody/vault_operation_test.go` (separate Service/evidence predecessor)
+- `internal/successor/custody` behavior, independent envelope and native failure tests
+- `tests/e2e/service/admission_custody_process_test.go` (canonical built terminal consumer)
+- `make custody-check` and the ordinary checked deterministic/process/race inventories
 
 ## Release and Update ownership
 

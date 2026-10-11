@@ -375,3 +375,8 @@ issuer-profile-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/admission/issuerprofile ./internal/successor/nodeidentity ./internal/successor/admission/issuance ./internal/successor/admission/issuer ./cmd/ardents-next -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
 	go test ./internal/successor/admission/issuerprofile -run '^$$' -fuzz '^FuzzIssuerProfile$$' -fuzztime=30s -parallel=2 -timeout=90s
 	go test ./internal/successor/nodeidentity -run '^$$' -fuzz '^FuzzNodeIdentityPEM$$' -fuzztime=30s -parallel=2 -timeout=90s
+
+.PHONY: custody-check
+custody-check:
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/custody ./cmd/ardents-custody ./tests/e2e/service -count=1 -timeout=3m,$(error custody-check requires Linux))
+	go test golang.org/x/crypto/argon2 -run '^(TestArgon2|TestVectors)$$' -count=1

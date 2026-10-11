@@ -85,6 +85,14 @@ func runInteractiveProductCommandResult(t *testing.T, directory, binary string, 
 		}
 	}
 	waitErr := command.Wait()
+	var terminalCauseErr error
+	for _, input := range inputs {
+		if input.value == "\x03" {
+			// Retain the command's actual error before closing ConPTY output handles;
+			// process exit alone cannot prove why terminal input was refused.
+			terminalCauseErr = waitForInteractivePrompt(ctx, capture, "context canceled")
+		}
+	}
 	closeErr := terminal.Close()
 	select {
 	case copyErr := <-copyDone:
@@ -96,6 +104,9 @@ func runInteractiveProductCommandResult(t *testing.T, directory, binary string, 
 		t.Fatalf("interactive product output did not close: %v", ctx.Err())
 	}
 	output := capture.bytes()
+	if terminalCauseErr != nil {
+		t.Fatalf("terminal cancellation cause not observed: %v / %s", terminalCauseErr, output)
+	}
 	return output, errors.Join(waitErr, closeErr)
 }
 

@@ -31,14 +31,14 @@ its contract, tests and non-test consumer are implemented together.
 | [enrollment/](enrollment/README.md) | Первичное закрепление доверенного комплекта | Отдельная проверка portable v3 комплекта по независимому pin, закрытый snapshot и реальный read-only consumer; не разрешение Release или запуска |
 | [release/](release/README.md) | Разрешение на точные программные артефакты | Реализованы offline-проверка точных байтов, отдельные floors/history и реальные команды; разрешение не устанавливает и не запускает |
 | [installation/](installation/README.md) | Установка, замена и восстановление поколения | Реализованы generation authentication и ограниченные native transaction/recovery/startup потребители; полный установленный Service не принят |
-| [custody/](custody/README.md) | Хранение корневых полномочий и подпись по назначению | Только каркас |
+| [custody/](custody/README.md) | Encrypted Authority records and purpose-specific signing | Vault/Bundle, original lifetime, Admission through new Allocation and real terminal commands; Service issuance and platform qualification remain separate |
 | `nodeidentity/` | Узкое назначение импортированного материала Node | Существующий вспомогательный владелец |
 
 Enrollment, Release и Installation составляют семейство Software acceptance,
 но сохраняют разные полномочия и транзакции. Для общего `software`-агрегата
 или универсального `identity`-домена каталог не создаётся.
 
-README-only Custody не создаёт Go-пакет или runtime-право.
+Custody implements bounded encrypted-record and Admission operations through the real command.
 Состав реальных пакетов определяется конкретными инвариантами и потребителями.
 Существующие Text Application, IPC, наблюдение ресурсов, диагностика,
 Qualification и композиция Endpoint/Node сохраняют места и обязанности,

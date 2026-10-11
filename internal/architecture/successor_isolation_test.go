@@ -304,7 +304,22 @@ func successorImportAllowed(source, dependency string) bool {
 			}
 		}
 	}
+	if source == "internal/successor/custody/canonical_envelope.go" && dependency == "golang.org/x/crypto/argon2" {
+		return true
+	}
+	if (source == "internal/successor/custody/vault_lock_windows.go" || source == "internal/successor/custody/durability_windows.go") && dependency == "golang.org/x/sys/windows" {
+		return true
+	}
 	if !inZone {
+		if dependency == modulePath+"/internal/successor/custody" {
+			switch source {
+			case "cmd/ardents-custody/command.go", "cmd/ardents-custody/admission_authority.go", "cmd/ardents-custody/verify_record.go", "cmd/ardents-custody/recovery_bundle.go", "cmd/ardents-custody/purge_record.go", "cmd/ardents-custody/inspect_envelope.go", "cmd/ardents-custody/admission_permission_client_linux_test.go":
+				return true
+			}
+		}
+		if (source == "cmd/ardents-custody/admission_permission_client_linux_test.go" || source == "tests/e2e/service/admission_custody_process_test.go") && dependency == modulePath+"/internal/successor/admission" {
+			return true
+		}
 		return !zoneDependency
 	}
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
@@ -320,6 +335,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/admission":               {"admission/issuerprofile"},
 		"internal/successor/admission/issuerprofile": {},
 		"internal/successor/admission/allocation":    {"admission"},
+		"internal/successor/custody":                 {"admission", "admission/allocation"},
 		"internal/successor/admission/attempts":      {},
 		"internal/successor/admission/spending":      {},
 		"internal/successor/admission/token":         {"admission", "admission/issuerprofile"},
@@ -699,6 +715,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"issuance public grammar", "internal/successor/admission/issuance/profile.go", modulePath + "/internal/successor/admission/issuerprofile", true},
 		{"no inherited nested imports", "internal/successor/admission/issuance/nested/file.go", modulePath + "/internal/successor/admission", false},
 		{"no inherited nested third party", "internal/successor/admission/issuance/nested/file.go", "github.com/cloudflare/circl/blindsign/blindrsa", false},
+		{"custody allocation owner", "internal/successor/custody/admission_authority.go", modulePath + "/internal/successor/admission/allocation", true},
+		{"custody excludes old backend", "internal/successor/custody/vault.go", modulePath + "/internal/custody", false},
+		{"custody excludes live Instance parser", "internal/successor/custody/authority_state.go", modulePath + "/internal/successor/publication/instance", false},
+		{"custody excludes Route", "internal/successor/custody/vault.go", modulePath + "/internal/successor/route", false},
+		{"Service command cannot delegate new custody", "cmd/ardents-custody/service_authority.go", modulePath + "/internal/successor/custody", false},
 		{"unregistered caller", "internal/successor/future/file.go", modulePath + "/internal/successor/admission", false},
 		{"unregistered dependency", "cmd/ardents-next/main.go", modulePath + "/internal/successor/future", false},
 		{"standard", "internal/successor/admission/check.go", "context", true},

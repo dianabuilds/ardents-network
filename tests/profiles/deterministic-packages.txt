@@ -123,3 +123,4 @@ github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile
 github.com/dianabuilds/ardents-network/internal/successor/installation/unit
 github.com/dianabuilds/ardents-network/internal/successor/execution/worker
 github.com/dianabuilds/ardents-network/internal/successor/connection
+github.com/dianabuilds/ardents-network/internal/successor/custody

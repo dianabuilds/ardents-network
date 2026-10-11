@@ -7,7 +7,7 @@ import (
 	"flag"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 )
 
 func inspectEnvelope(arguments []string, output io.Writer) error {

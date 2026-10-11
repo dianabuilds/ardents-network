@@ -7,7 +7,7 @@ import (
 	"flag"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 )
 
 // purgeRecord is the separately confirmed destructive Custody action. It can

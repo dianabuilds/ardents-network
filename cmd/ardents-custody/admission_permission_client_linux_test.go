@@ -7,8 +7,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/dianabuilds/ardents-network/internal/admission"
-	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 	"os"
 	"path/filepath"
 	"testing"
@@ -80,7 +80,7 @@ func TestAdmissionAuthorityCommandsKeepPermissionOutOfPublicReceipt(t *testing.T
 		defer func() { _ = vault.Close() }()
 		verified, err := vault.Execute(t.Context(), custody.Operation{Kind: custody.OperationVerifyVaultRecord, RecordID: created.RecordID,
 			Expected: custody.AuthorityBinding{Environment: environment, Network: network, Root: authorityRoot, Kind: custody.AuthorityAdmission, IDCommitment: id}},
-			&sequenceCommandSecrets{values: [][]byte{password}})
+			custodyTerminal{&sequenceCommandSecrets{values: [][]byte{password}}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,5 +132,20 @@ func TestAdmissionAuthorityCommandsKeepPermissionOutOfPublicReceipt(t *testing.T
 	if err != nil || !bytes.Equal(permission, repeated) || currentGeneration() != 2 {
 		t.Fatal("stable output retry changed bytes or debit")
 	}
-
+	if err := os.Chmod(permissionPath, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var exposedOutput bytes.Buffer
+	if err := run(t.Context(), issueArguments, &exposedOutput, &sequenceCommandSecrets{values: [][]byte{password}, commitments: [][32]byte{sha256.Sum256(requestRaw)}}); err == nil {
+		t.Fatal("retry accepted permission exposed to other users")
+	}
+	if exposedOutput.Len() != 0 || currentGeneration() != 2 {
+		t.Fatal("unsafe output retry published success or changed debit")
+	}
+	if err := os.Chmod(permissionPath, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := run(t.Context(), issueArguments, &repeatedOutput, &sequenceCommandSecrets{values: [][]byte{password}, commitments: [][32]byte{sha256.Sum256(requestRaw)}}); err != nil {
+		t.Fatalf("protected exact output retry: %v", err)
+	}
 }

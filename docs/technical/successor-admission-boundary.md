@@ -114,8 +114,13 @@ state and opaque confirmation; no compatibility facade remains at the root.
 Stock and Receiving have maintained local command consumers in ardents-next.
 The compiled-process scenario covers allocation, issuance, presentation,
 redemption, restart and interruption. Allocation returns an unsigned decision;
-external Custody commits before signing. Its encrypted storage is outside this
-domain and is not qualified by the local signing fixture. Acceptance requires
+new `internal/successor/custody` calls `allocation.Prepare` and original
+`Request.Decide`, signs the exact decision internally and commits encrypted
+successor/readback/floor before public handoff. Allocation supplies no signature,
+durable ACK or private key. The genuine `ardents-custody` terminal consumer and
+native custody lane independently cover that collaboration; the earlier local
+signing fixture does not qualify encrypted storage. Exact retry retains its
+original hour, and output failure never refunds allocation. Acceptance requires
 the full repository gate in addition to these functional checks; execution
 results and integration status belong to the selected issue ledger.
 

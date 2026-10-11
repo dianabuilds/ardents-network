@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -29,8 +28,7 @@ func (input terminalSecretInput) ReadSecret(ctx context.Context, prompt custody.
 	if input.terminal == nil || !term.IsTerminal(int(input.terminal.Fd())) {
 		return nil, errors.New("custody secret input requires an interactive terminal")
 	}
-	fmt.Fprintf(input.prompts, "%s password: ", prompt)
-	value, err := term.ReadPassword(int(input.terminal.Fd()))
+	value, err := readTerminalLine(ctx, input.terminal, true, func() { fmt.Fprintf(input.prompts, "%s password: ", prompt) })
 	fmt.Fprintln(input.prompts)
 	if err != nil {
 		return nil, fmt.Errorf("read terminal password: %w", err)
@@ -50,7 +48,9 @@ func (input terminalSecretInput) Confirm(ctx context.Context, prompt custody.Con
 		confirmation = "purge"
 	}
 	fmt.Fprintf(input.prompts, "confirm %s by typing %s: ", prompt, confirmation)
-	line, err := bufio.NewReader(input.terminal).ReadString('\n')
+	raw, err := readTerminalLine(ctx, input.terminal, false, nil)
+	line := string(raw)
+	clear(raw)
 	if err != nil {
 		return false, fmt.Errorf("read terminal confirmation: %w", err)
 	}
@@ -73,7 +73,9 @@ func (input terminalSecretInput) readRequestCommitment(ctx context.Context, name
 		return [32]byte{}, errors.New(name + " commitment requires an interactive terminal")
 	}
 	fmt.Fprintf(input.prompts, "%s SHA-256 from the requesting Endpoint: ", name)
-	line, err := bufio.NewReader(input.terminal).ReadString('\n')
+	raw, err := readTerminalLine(ctx, input.terminal, false, nil)
+	line := string(raw)
+	clear(raw)
 	if err != nil {
 		return [32]byte{}, fmt.Errorf("read %s commitment: %w", name, err)
 	}

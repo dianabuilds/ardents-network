@@ -52,7 +52,7 @@ func serviceAuthority(ctx context.Context, mode string, arguments []string, outp
 		if record == "" || requestPath == "" || responsePath == "" {
 			return errors.New("issue-service-credential requires record, request, and response")
 		}
-		binding, err := commandBinding(environment, network, authorityRoot, kind, identity)
+		binding, err := legacyCommandBinding(environment, network, authorityRoot, kind, identity)
 		if err != nil || binding.Kind != custody.AuthorityService {
 			return errors.New("issue-service-credential requires one exact Service Authority binding")
 		}

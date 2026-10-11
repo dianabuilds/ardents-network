@@ -1433,3 +1433,23 @@ refusal before history creation. `internal/successor/release/retained_history_te
 covers absent/empty history, genuinely committed Root-only history and complete
 reopen. These are byte authentication and native history checks, not installed
 journal, predecessor join, manager start or installed/privacy qualification.
+
+## Bounded Authority Custody native lane
+
+`make custody-check` requires Linux, Go 1.27.2, a race-capable compiler,
+private actual filesystem with flock/hardlinks/rename/directory fsync, a PTY
+and the fixed 256 MiB Argon2 workspace. It exercises the new encrypted Custody
+owner and real Allocation, original Close/cancel/join, canonical envelope vector,
+native RLIMIT_FSIZE partial write, native floor failure and exact authenticated
+pending-successor reopen, quarantine export/restore/purge and canonical built
+terminal Admission commands. The same registered Service process suite retains
+existing separate Service Credential behavior. Official exact-version Argon2
+vectors run too. Unknown prerequisites fail; reconstructed torn/missing journal
+states are explicitly distinct from syscall fault controls.
+
+The new package belongs to the existing deterministic and derived race
+inventory; `tests/e2e/service` owns its compiled PTY consumer under process.
+Native Windows command/PTY checks add development evidence, not a Windows or
+Ubuntu supported Vault permissions/crash/power-loss profile. One fixed-profile
+vector verifies 256 MiB derivation, not weakest-host performance qualification.
+No fixture root signing or old backend supplies successful new Custody behavior.

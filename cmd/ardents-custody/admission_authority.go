@@ -12,8 +12,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 
-	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 )
 
 const maximumAdmissionPermissionBytes = 228
@@ -51,7 +52,7 @@ func admissionAuthority(ctx context.Context, mode string, arguments []string, ou
 		if err != nil {
 			return err
 		}
-		operation = custody.Operation{Kind: custody.OperationCreateAdmissionAuthority, Authority: custody.AuthorityState{Binding: binding}}
+		operation = custody.Operation{Kind: custody.OperationCreateAdmissionAuthority, Binding: binding}
 	case "issue-admission-permission":
 		if record == "" || requestPath == "" || permissionPath == "" {
 			return errors.New("issue-admission-permission requires record, request, and permission-output")
@@ -192,12 +193,18 @@ func publishStableCustodyPrivateFile(path string, body []byte) (resultErr error)
 
 func readStableCustodyPrivateFile(path string) ([]byte, error) {
 	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Size() != maximumAdmissionPermissionBytes {
+	if err != nil || !info.Mode().IsRegular() || info.Size() != maximumAdmissionPermissionBytes ||
+		(runtime.GOOS == "linux" && info.Mode().Perm()&0o077 != 0) {
 		return nil, errors.New("admission permission is invalid")
 	}
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err
+	}
+	opened, statErr := file.Stat()
+	if statErr != nil || !os.SameFile(info, opened) ||
+		(runtime.GOOS == "linux" && opened.Mode().Perm()&0o077 != 0) {
+		return nil, errors.Join(statErr, file.Close(), errors.New("admission permission is invalid"))
 	}
 	body, readErr := io.ReadAll(io.LimitReader(file, maximumAdmissionPermissionBytes+1))
 	closeErr := file.Close()
