@@ -196,5 +196,9 @@ Final acceptance включает новый command и все затронут�
 architecture/profile/static/race, обязательные quick/check и normal hooks,
 source-matched scoped commit/push в dev и owner-map reconciliation.
 Это Release acceptance, не installed/Service/privacy qualification.
-Genuine opaque Route delivery всё ещё требует настоящих Installation,
-Execution, Publication и Connection; отдельный Release pass не закрывает Route.
+Genuine opaque Route delivery потребляет существующий artifact/startup
+компонент Installation и настоящие Execution, Publication и Connection.
+Это не требует предварительного закрытия полной Installation: полный Route
+принимается с genuine Connection consumer, а полная installed acceptance
+следует за интегрированным Service по условиям [#497](https://github.com/dianabuilds/ardents-network/issues/497).
+Отдельный Release pass не закрывает Route.

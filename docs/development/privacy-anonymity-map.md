@@ -1,6 +1,6 @@
 # Privacy and anonymity implementation path
 
-Status: **selected closed design and dependency order** under
+Status: **selected closed design and component coverage map** under
 [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) and its
 [authenticated child restriction amendment](../adr/0082-bind-bootstrap-restriction-to-node-child.md).
 GitHub Issues in the C0 Closed Alpha milestone owns execution and status.
@@ -45,106 +45,50 @@ Route or require copying old campaign implementations.
 
 ## Dependency disposition map
 
+The [dependency register](dependencies.md) owns exact admitted versions,
+findings and continued acceptance; `go.mod` and the build/tool inventories
+record actual candidate inputs. This map does not maintain a second version
+register. Historical exact-version receipts cannot qualify changed inputs.
+
 | Component or obligation | Selected disposition |
 |---|---|
-| Go toolchain and standard TLS/RSA/Ed25519 | Select supported-branch patch 1.26.8 for the successor; old 1.26.6 receipts retain their actual identity. Update build/CI/tool pins and run actual candidate checks before integration. |
-| CIRCL v1.6.5 HPKE and ordinary blindrsa | Retain HPKE; select the exact new blind-token use in the admission owner after the R-152 review. No generic cryptographic framework or private fork. |
-| quic-go v0.62.0 | Retain both accepted Carriers; qualify the same inner composition on each. |
-| Current OHTTP/twoway/bhttp and transitive closure | Keep while a maintained generation-2 use exists. Remove only with the last migrated owner and verified dependency closure. A new TLS design alone does not delete them. |
-| x/crypto, x/sys, x/term and other retained modules/tools | Reuse matching evidence and check changed inputs/current advisories. The unused OpenPGP advisory has scoped evidence; it does not exempt new imports or label all x/crypto abandoned. |
-| Ubuntu/kernel/systemd | Select the stated supported family and required mechanisms; record exact security-updated package inventory and installed-artifact tests for each candidate. WSL is mechanism evidence only. |
-| Source, State, time, enrollment and custody | Preserve independently pinned authorities and monotonic floors. Add authenticated closed-profile projection without accepting caller-made validity flags. |
-| Public Name production and autonomous admission | Separate next-stage design, not a hidden dependency or pretend service inside the Link-first implementation. |
+| Go toolchain, standard TLS/RSA/Ed25519, CIRCL and quic-go | Use the current admitted baseline and reviewed HPKE/blind-token uses from the dependency and technical owners; retain both selected Carriers and qualify the same inner composition on each. No generic cryptographic framework or private fork. |
+| Other runtime modules and build/test tools | Review the actual dependency closure and current advisories under the register's acceptance rule. Removed Naming/OHTTP dependencies do not remain obligations of the selected Link-first path. |
+| Ubuntu/kernel/systemd | Use the selected supported family and required mechanisms; record exact security-updated package inventory and installed-artifact tests for each candidate. WSL is mechanism evidence only. |
+| Source, State, time, Enrollment and Custody | Preserve independently pinned authorities and monotonic floors. Current authenticated owners, not caller-made validity flags, supply accepted facts. |
+| Public Name production and autonomous admission | Separate unselected design, not a hidden dependency or pretend service inside the Link-first implementation. |
 | Mixing networks, Sphinx, traffic shuffling, general sandboxes | Not selected dependencies. Retain only decision-relevant research evidence; no implementation tickets for speculative candidates. |
 
 ## Implementation order and coverage
 
-The execution parent is [#50](https://github.com/dianabuilds/ardents-network/issues/50).
-The following links identify the detailed work packages; their live state belongs
-only in GitHub and the C0 Closed Alpha milestone.
+[#497](https://github.com/dianabuilds/ardents-network/issues/497) owns the live
+domain order, selected work and exact transition conditions. The
+[domain map](domain-map.md) owns semantic dependencies and exclusions. The table
+below explains component prerequisites, not a separate issue queue or acceptance
+checklist.
 
-| Work package | Issue | Depends on |
+| Consumer boundary | Required genuine components | Current contract owner |
 |---|---|---|
-| Integrate the selected closed privacy design and retire conflicting guidance | [#51](https://github.com/dianabuilds/ardents-network/issues/51) | — |
-| Admit the selected Go and cryptographic dependency baseline for the successor | [#52](https://github.com/dianabuilds/ardents-network/issues/52) | [#51](https://github.com/dianabuilds/ardents-network/issues/51) |
-| Provision and verify the finite closed State profile and scoped issuance permissions | [#53](https://github.com/dianabuilds/ardents-network/issues/53) | [#52](https://github.com/dianabuilds/ardents-network/issues/52) |
-| Issue blind tokens through bounded confidential bootstrap on both Carriers | [#54](https://github.com/dianabuilds/ardents-network/issues/54) | [#53](https://github.com/dianabuilds/ardents-network/issues/53), tested local ownership foundation from [#56](https://github.com/dianabuilds/ardents-network/issues/56) |
-| Enforce receiver-local one-use admission and bounded protected lane forwarding | [#55](https://github.com/dianabuilds/ardents-network/issues/55) | [#54](https://github.com/dianabuilds/ardents-network/issues/54) |
-| Install and bind confined Ubuntu text workers to Endpoint-owned local authority | [#56](https://github.com/dianabuilds/ardents-network/issues/56) | [#52](https://github.com/dianabuilds/ardents-network/issues/52) |
-| Publish and refresh private reachability through protected Introduction channels | [#57](https://github.com/dianabuilds/ardents-network/issues/57) | [#55](https://github.com/dianabuilds/ardents-network/issues/55) |
-| Complete the confined Target-Link text read over the common protected Route | [#58](https://github.com/dianabuilds/ardents-network/issues/58) | [#56](https://github.com/dianabuilds/ardents-network/issues/56), [#57](https://github.com/dianabuilds/ardents-network/issues/57) |
-| Preserve logical authority and ordered streams across protected Attachment recovery | [#59](https://github.com/dianabuilds/ardents-network/issues/59) | [#58](https://github.com/dianabuilds/ardents-network/issues/58) |
-| Enforce whole-owner resource budgets and retained concurrent-stream workloads | [#60](https://github.com/dianabuilds/ardents-network/issues/60) | [#59](https://github.com/dianabuilds/ardents-network/issues/59) |
-| Adopt the complete protected candidate without losing floors or reopening retired paths | [#61](https://github.com/dianabuilds/ardents-network/issues/61) | [#60](https://github.com/dianabuilds/ardents-network/issues/60) |
-| Qualify the complete closed protected text-Service journey and publish its evidence | [#62](https://github.com/dianabuilds/ardents-network/issues/62) | [#61](https://github.com/dianabuilds/ardents-network/issues/61) |
+| Protected Route transport | Authenticated Network observations, finite Admission rights/spend and physical Hosting reservations | [Route protocol](../technical/protected-route-protocol.md), [migration contract](route-migration-contract.md) |
+| Qualified local operation | Authorized installed bytes and native invocation checks; separate Execution session, Job and joined original worker | [Installation](../../internal/successor/installation/README.md), [Execution](../technical/application-execution.md), [confinement](../technical/application-confinement.md) |
+| Accepting publication | Live Execution operation, purpose-scoped Instance, Route REGISTER and independent Reachability Store ACK | [Publication/Service](../technical/endpoint-service-runtime.md), [Reachability](../technical/private-reachability.md) |
+| Authenticated logical Service stream | Exact Target proof and recipient, live original Execution, Publication authority and existing Route delivery/JOIN | [Connection/Service](../technical/endpoint-service-runtime.md), [delivery/JOIN](route-delivery-join-boundary.md) |
+| Complete installed journey | Accepted Service consumers, genuine installed manager/artifact inputs and the full interruption/protection matrix | [Installation](../../internal/successor/installation/README.md), [qualification](privacy-qualification.md) |
 
-The issue bodies supply implementation mechanisms, acceptance cases and
-dependencies. All entries refer to the already selected owner contracts.
-A predecessor may be implementation work, never an unresolved consequential
-design choice passed to an executor.
+Installation's existing artifact/startup component supports Execution and
+Connection without requiring full Installation acceptance. Connection consumes
+existing Route transport; full Route acceptance then requires the genuine
+authenticated Connection consumer. Full Installation acceptance follows that
+integrated Service boundary. These are different result levels, so no pair of
+issues waits for the other's full closure. Exact source-matched gates and the
+current implementation hold remain in #497.
 
-| Order | Observable result | Receiving owners | Main acceptance |
-|---|---|---|---|
-| 1 | Reviewable, integrated design bundle and current toolchain/dependency baseline | Documentation, build, dependencies | Owner links, ADR identities, exact inventory, fresh findings and required checks |
-| 2 | Operator provisions and State accepts one real closed profile and finite permissions | State/Source, Credential, existing commands | Pin/authority separation, canonical bytes, conflict/expiry, durable allocation and restart |
-| 3 | Endpoint owns each authorized Isolation Context and Publisher role before issuance | Endpoint, Broker | Exact local authorization and verified Principal/Grant binding; worker loss preserves a surviving context; revoke, replacement and Endpoint loss reject stale use |
-| 4 | An Endpoint privately obtains and spends tokens through bounded forwarding on either Carrier | Entry/Route/Node, Credential, Resource | Tested local owner from #56; no token cycle; role/receiver binding; duplicate spend and reservation ambiguity; finite flood/refusal |
-| 5 | Real installed reader/Publisher workers exchange a bounded local job with Endpoint | Application, Broker, Endpoint, install | Verified launch before Grant, descriptor audit, malicious child/sibling and joined revoke/cleanup |
-| 6 | Owner publishes and User reads the intended text by Target Link over both legs | Instance/Publication, Reachability, Route, Service Connection, Endpoint | Recipient-only join, exact Target/content, first/warm access, withdrawal, no worker escape |
-| 7 | Sustained and concurrent Service streams retain authority, fairness and bounded recovery | Route/Connection, Node, Resource, Endpoint | 64/256 open and 16/64 active, real byte replenishment, immutable context, fresh attachments, no request replay |
-| 8 | One complete candidate migrates/adopts without resurrecting old state or accepting an older path | Release/install and every persistent owner | Interrupted conversion, rollback restrictions, tombstones/floors, owned worker inventory |
-| 9 | The installed complete journey passes its declared system trials | Existing test/operations owners | P1–P11, both Carriers, real Ubuntu, hostile/cost/idle/overlap cases and complete evidence |
-
-Implementation starts with #52, #53, the local ownership foundation from #56,
-then #54 and #55. Installed-host checks from #56 consume that local foundation.
-Its full acceptance also requires real command consumers and the complete
-repository gate: the Publisher consumer needs #57's protected registration and
-Descriptor publication, and the protected read consumer needs #58's complete
-Attachment, including the independent Responder-domain forwarding owner and
-actual Rendezvous pairing; a delivered capsule alone is not that Attachment.
-Those already selected integration dependencies may therefore be
-implemented before reporting full #56 acceptance; they do not create a second
-in-progress issue or new authority. #59 through #62 follow the complete read.
-#56 depends on #52; #54 also consumes its tested local ownership capability.
-Capability readiness is distinct from full installed-host acceptance of #56.
-The ordinary issuance integration depends on the retained source prefix and
-its terminal-channel owner, plus Endpoint stock and journal consumption; a
-receiving issuer implementation alone does not satisfy that dependency.
-The #54 integration joins the context-owned pending batch and retained source
-Entry/Interior sets to the real issuer exchange; #55 consumes the resulting
-one-use stock on fresh admitted channels. Ordinary issuance consumes a genuine
-class-1 token at the issuer through those admitted parents; its receiver spend
-root and signing reservation root stay owned until listener shutdown joins.
-The Node command supplies the forwarding receiver's local reservation through
-its exclusive closed-duty plan; the accepted State projection supplies its
-actual role, listener and recipients. Configuring this consumer is distinct
-from qualifying a complete Endpoint-to-Service journey.
-This enables issuance beyond the two bootstrap batches without enlarging any
-permission or duty quota. Bootstrap network tests alone do not complete that
-ownership and admission chain. A receiving implementation and its network tests
-also do not replace the Endpoint's retained terminal-channel consumer.
-The trusted text client consumes AAI3 and independently escaped presentation.
-Its local conformance does not satisfy the separate Endpoint runtime dependency:
-permission provisioning must retain the live authorized context, and reader/
-Publisher work must consume that context through verified worker launch and
-the actual protected Service path. That composition retains the Service record
-grammar while supplying the successor's immutable context and fresh Attachment
-exporter. Its initial Instance and Continuity checks are one flight and yield
-only the Connection owner's private initial-state receipt; tested record or
-handshake mechanics do not substitute for this Endpoint consumer. The private
-text-Service binding connects those contexts and authentication to actual
-worker exchanges while retaining exact job ownership. It consumes an already
-admitted Route transport and verified capsule digest; it cannot replace the
-private Introduction producer or make a standalone stream test an end-to-end
-read. The trusted Publisher client imports its selected file and transfers only
-the stable bounded snapshot through Administration; that transport requires an
-implementing publication owner and cannot substitute for Endpoint publication.
-Endpoint AAI3 admission, snapshot publication ownership and installed-host
-confinement remain separate required dependencies before full acceptance.
-Preserve unfinished branch work while connecting the real consumers; a failing
-quality gate remains a failure. Reordering admitted implementation to match
-these existing owners introduces no new authority. Live status belongs only in
-the linked issues under #50.
+Installation grants no Job, Local Grant or Service readiness; Route grants no
+Instance authentication or logical recovery. A delivered capsule, Store ACK,
+local Interface conformance or successful standalone stream test cannot replace
+the corresponding live owner. The trusted text clients use AAI3 and bounded
+Administration snapshots; actual Endpoint composition must still retain the
+original authorized Job and enforce those owners at effects and final handoff.
 
 The retained network capacity workload is broader than the 4 MiB text job.
 Its declared harness is a test input using real Service streams, never a
@@ -154,8 +98,10 @@ security checks until the end.
 
 ## Verification and test environment map
 
-[Qualification P1–P11](privacy-qualification.md#acceptance-matrix) is the one
-acceptance matrix. Test the real product commands and deep Modules. Fix exact
+[Qualification P1–P11](privacy-qualification.md#acceptance-matrix) owns the
+whole-candidate privacy acceptance matrix. Domain acceptance and transition
+conditions belong to #497 and its selected child issues; a component pass does
+not satisfy P1–P11. Test the real product commands and deep Modules. Fix exact
 source/artifact/profile identities, role/family placement, platform,
 impairments and prerequisites before collecting results. Real common operator
 control is disclosed even when synthetic role facts exercise a positive path.
@@ -175,9 +121,12 @@ unavailable prerequisite invalidates the affected run.
 
 ## Change and handoff rules
 
-Only one C0 implementation issue may be in progress; this ordering does not
-start all work at once. R-152 and R-099 have completed their bounded selections. R-149 remains
-separate future design, not simultaneous implementation. No additional human team is assumed.
+The [repository WIP policy](../../AGENTS.md#c0-work-in-progress-limit) owns
+the selected count; available capacity does not authorize another slice. Follow
+the [current selection](agent-execution.md#current-selection-takes-precedence)
+and #497 before implementation. R-152 and R-099 have completed their bounded
+selections. R-149 remains separate future design, not simultaneous
+implementation. No additional human team is assumed.
 
 An executor may choose routine internal algorithms and file splits within the
 contract. A new authority, weaker condition, changed privacy relation, wire

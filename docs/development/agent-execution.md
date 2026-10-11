@@ -20,9 +20,11 @@ The Product Owner delegated the entire DDD transition on 2026-10-04, including
 domain design, visible implementation threads, verification and delivery into
 `dev`. The orchestrator carries this program to completion. A bounded issue,
 implementation slice, thread turn or context compaction does not end the
-assignment. Do not ask the Product Owner to select the next slice or repeat
-permission already granted for this program. GitHub records the concrete
-selection and execution status; this section records the execution contract.
+assignment. Continue routine slices within the existing selected scope
+without repeating permission. Starting or resuming another domain requires the
+current selection to permit it; the hold above takes precedence over the earlier
+automatic transition mandate. GitHub records selection and execution status;
+this section records the execution contract.
 
 Repeat the following cycle until every maintained project scenario is carried
 by the completed domain model:
@@ -38,8 +40,10 @@ by the completed domain model:
    distinct from domain authority; do not manufacture aggregates for simple
    adapters. Resolve design from current authoritative evidence rather than
    repeatedly interviewing or requesting routine decisions from the Product Owner.
-2. **Assign a goal to a visible executor.** For each next domain, create an
-   ordinary visible Codex thread and give its implementer the verified design,
+2. **Assign a goal to a visible executor within current selection.** Only
+   when the latest Product Owner selection authorizes the next domain and its
+   execution arrangement, assign its ordinary visible Codex thread and give
+   its implementer the verified design,
    source identity, actual consumers, all acceptance parameters, required profiles
    and a concrete goal: implemented domain behavior, full regression with the new
    domains, scoped commits and integration into `dev`. Continue the existing
@@ -92,6 +96,37 @@ visible executor, design, source, evidence and next result. Read the Route
 migration contract in full whenever Route is involved and preserve its isolation
 and acceptance rules. The Product Owner instructed the orchestrator not to edit
 `AGENTS.md`; maintain this execution owner and the domain owners instead.
+
+## Ownership and evidence rules
+
+Keep the assigned implementation owner and execution arrangement. Verify them
+in the current ledger; a historical assignment or idle thread is not a current
+selection. The assigned executor also owns task framing, self-review and map
+reconciliation when the Product Owner has explicitly delegated that arrangement;
+an inactive orchestrator's approval is not a prerequisite. Identify self-review
+as such. Do not take over or concurrently edit another owner's implementation
+or index. Correct a confirmed deviation through that owner with its exact
+source location, violated contract and bounded required correction.
+
+Keep the main domain goal, active slice, progress, decisions, source and evidence
+observable in its ordinary visible thread. Bounded internal subtasks need an
+explicit result and disjoint file/lifecycle ownership; they cannot turn the
+visible owner into a status relay. Do not create or reactivate unattended
+automation, scheduling or monitoring without authorization.
+
+Verify committed prerequisite components and source-matched evidence before
+dependent work. A component's readiness, full issue acceptance, repository
+integration and installed qualification are distinct. Use #497's transition
+conditions rather than requiring every prerequisite issue's full closure.
+For Route, the [migration contract](route-migration-contract.md) additionally
+owns checkout, isolation, physical lifetime and restart requirements.
+
+Reported evidence, inspected receipts and independently reproduced results are
+different levels. Name the actual level and source identity; never imply wider
+integration, installed qualification or independent security validation from a
+narrow pass. Keep an invariant-to-evidence map for a selected boundary: rule,
+owner, genuine consumer, effect/commit point, positive and causal refusal case,
+source identity and observed result.
 
 ## Resume from evidence
 

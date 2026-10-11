@@ -9,13 +9,11 @@ worktree, agent, checkpoint or source-file rename.
 
 ## Current selection takes precedence
 
-The latest direct Product Owner instruction and selected GitHub ledger control
-work admission. The delegated transition cycle below operates within that
-selection; it cannot restore an older automatic next-domain assignment. GitHub
-[#497](https://github.com/dianabuilds/ardents-network/issues/497) records the current
-instruction: Connection continues; new implementations are held until explicitly
-selected. Documentation cleanup, archival and a completed predecessor do not
-select another implementation, research question, branch, worktree or thread.
+The [execution owner's current-selection rule](agent-execution.md#current-selection-takes-precedence)
+and [#497](https://github.com/dianabuilds/ardents-network/issues/497) govern work
+admission. This contract cannot restore an earlier automatic next-domain
+assignment; a committed prerequisite or documentation correction selects no
+implementation.
 
 ## Read before editing
 
@@ -53,10 +51,13 @@ The Product Owner explicitly directed this migration to continue in the existing
 project checkout on 2026-10-04: development is required; another worktree is not.
 Use `C:/Users/vitek/code/ardents-network`, preserve its existing branch and mixed
 work, and keep one implementation owner. Do not create or require another Route
-worktree. Network completion and the dependent Route implementation are one
-sequential chain: commit and verify the predecessor, then develop the dependent
-domain in this checkout. They cannot be parallel implementations. A committed
-predecessor is a source requirement, not a reason to create another checkout.
+worktree. A needed Network component and its dependent Route operation form
+a sequential chain: commit and verify that exact prerequisite before selected
+dependent implementation in this checkout. They cannot be parallel
+implementations. Component readiness does not require full acceptance of every
+Network responsibility. #497 owns full-domain transition gates. A committed
+prerequisite is a source requirement, not permission to start another domain or
+create another checkout.
 
 This is not a general ban on worktrees. Separately selected, genuinely independent
 tasks may use branches or worktrees under the repository's existing ownership,
@@ -249,261 +250,78 @@ authority contradictions must be surfaced, not silently worked around.
 
 ## Orchestration and domain integrity
 
-On 2026-10-06 the Product Owner directly instructed the current visible Route
-executor to continue without the separate orchestrator. For that arrangement,
-the executor also owns task framing, completed-slice review, evidence assessment
-and domain-map reconciliation in the existing checkout. Review of its own work
-must be identified as such; it is not independent validation. No message to, or
-approval from, the inactive orchestrator is a prerequisite for this continuation.
-The complete Route goal, selected-issue/WIP admission, source-matched acceptance,
-scoped Git delivery and R01-R08 remain mandatory. This instruction changes the
-execution arrangement, not protocol, authority, domain or qualification bounds.
-
-The Product Owner assigned the supervising agent an orchestration role after
-Network completion and then delegated the complete project-wide DDD transition
-on 2026-10-04. Follow the [delegated transition cycle](agent-execution.md#delegated-project-wide-domain-transition):
-design and verify the whole domain, assign a concrete goal in a visible executor
-thread, implement and run full new-domain regression, commit and integrate into
-`dev`, reconcile the result, then design the next domain until the project is
-fully transferred. The orchestrator selects and records dependency-ready work
-within that mandate and the existing WIP policy. A completed slice does not end
-the domain assignment. The mandate does not weaken accepted protocol, authority,
-isolation or qualification requirements.
-The orchestrator owns task framing, boundary review and assessment of evidence.
-It also maintains the [domain ownership map](domain-map.md): complete inventory,
-exclusive owners, exclusions, inter-domain contracts and realized architectural
-results linked to source/evidence. Reread it after every compaction and reconcile
-it with each completed slice. Keep future domains visible and GitHub as the
-execution ledger; no domain is silently dropped or broadened by a source move.
-The implementer owns one concrete slice, diagnosis, implementation and repair.
-They must not edit the same implementation concurrently.
-
-### Product Owner execution rules
-
-These rules record the Product Owner's corrections to orchestration. They apply
-after every restart, compaction and handoff. Delegation permission alone does
-not authorize changing the execution arrangement.
-
-1. **Keep the assigned role.** The orchestrator frames work, maintains domain
-   ownership, reviews completed boundaries and verifies evidence. The assigned
-   implementer owns code and repairs. The orchestrator does not take over
-   implementation or replace its owner without a direct Product Owner decision.
-2. **Keep the main task observable.** The domain migration and its active slice
-   remain owned in an ordinary visible Codex thread. The Product Owner can inspect
-   its assignment, progress, decisions, source changes, checks and acceptance.
-   Identify that thread explicitly when assigning or reporting the main work.
-   Internal agents are allowed for bounded subtasks such as investigating a
-   named owner, implementing a defined fragment, reviewing a completed delta or
-   running a specified scenario. Give each one a concrete result and explicit
-   file/lifecycle ownership; prevent concurrent edits to the same implementation.
-   Do not move the entire migration or active slice into an internal agent and
-   leave the visible thread as a status relay. Keep the overall plan, dependencies,
-   integration, evidence assessment and next action in the visible thread. Report
-   meaningful subtask results there with their verification limits. A subagent's
-   "started" event is not observable main-task progress. This rule introduces no
-   general subagent ban or extra approval gate for authorized bounded subtasks.
-   The delegated program authorizes a new ordinary implementation thread for each
-   next domain after its design is verified. Continue the existing visible owner
-   for the active domain; do not create a duplicate implementation.
-3. **Match the workspace to actual independence.** This domain migration is
-   sequential: the next owner starts after the predecessor is committed and
-   verified, in the existing project checkout and branch. Do not create a second
-   worktree or parallel implementation for this chain, switch branches or
-   relocate its work by initiative. Preserve unrelated files, staged work and
-   predecessor changes. Independently selected tasks may use worktrees under
-   the normal repository rules; this instruction introduces no general ban or
-   extra approval gate for them. Available tools or WIP capacity are not evidence
-   that two tasks can run independently.
-4. **Do not add unattended scheduling by initiative.** No recurring automation,
-   scheduler or monitoring task is created or reactivated without authorization.
-   Orchestration itself does not select scheduled work. Bounded internal agents
-   working on the current visible task follow rule 2; they are not a substitute
-   for visible ownership or a reason to introduce unattended scheduling.
-5. **Retain the existing selection.** Route was selected as the successor to
-   Network. Verify the selected slice and WIP in GitHub, preserving the human
-   instruction. Do not ask the Product Owner to select the same domain again
-   because of compaction, a tool choice or an orchestration mistake. A tracker
-   record documents selection; it cannot manufacture an additional assignment.
-6. **Verify the predecessor before dependent work.** Require its scoped commit,
-   actual new owners and consumers, and evidence matching the last source
-   change. Distinguish component readiness, full issue acceptance, repository
-   integration and installed qualification. Idle, issue closure or a dirty
-   passing snapshot alone does not establish that dependency.
-7. **Assign implemented domain behavior.** Give the executor the verified domain
-   design, complete release goal, current contracts, domain owners, real consumers,
-   success and causal refusal criteria, full regression and integration obligations
-   and explicit exclusions. Work through bounded use cases without treating one
-   slice as completion of the domain. A source move, plan or package skeleton is
-   not the goal. Preserve already prepared implementation.
-8. **Protect exclusive domain ownership.** Verify rules, authority, state,
-   resources and termination against the domain map and actual code. Apply
-   R01-R08, including old/new isolation, genuine new owners, immutable bounds,
-   irreversible spending and joined physical cleanup. Do not import old bugs
-   or accept unapproved quota, selection or retry changes as migration policy.
-9. **Correct through the same executor.** Return a confirmed deviation with its
-   precise source location, violated contract and required bounded correction.
-   Do not edit that implementation concurrently, start a second implementation
-   or require approval for each routine choice or individual failing test.
-10. **Keep development moving within authorization.** Do not summon the Product
-    Owner or stop the development thread at a slice boundary or ordinary failure.
-    Diagnose contract contradictions at their current owners, repair prerequisites
-    and defects, resolve ownership overlap, and repeat verification as often as
-    needed. Continue useful work within the accepted product and security contract.
-    Safely refusing or joining a failed physical operation does not stop its
-    development assignment. Keep real missing evidence explicit; organizational
-    errors and unavailable convenience tools do not require another human decision.
-11. **Accept only source-matched behavior.** Inspect code and real callers;
-    assess integration and regression of every affected new owner. Cover the
-    selected Carriers, authority loss during I/O, persistence/reopen, spend and
-    reservation ordering, cancellation/join/release and races as applicable.
-    Run required gates without weakening them. Preserve earlier failures and
-    invalid-environment receipts. No fake success or prior-revision acceptance.
-12. **Name the evidence level honestly.** A report from another thread is
-    reported evidence; reading its receipt is inspected evidence; independently
-    running the check on its exact source is reproduced evidence. Never label
-    one as another or imply wider integration or qualification from a narrow pass.
-13. **Complete scoped Git delivery and integration.** A ready domain includes its
-    owning documents, verification, scoped commits and confirmed integration/push
-    into `dev`. The Product Owner already authorized commits, pushes, merges into
-    `dev`, and GitHub tasks/results for the program; neither agent requests repeat
-    permission. Verify repository integration separately from component readiness
-    or installed qualification. Do not leave a predecessor uncommitted and build a
-    dependent copy to conceal it. Never collect unrelated mixed changes into a
-    commit or alter another owner's index to simplify delivery.
-14. **Maintain the complete map.** Keep implemented and future domains visible,
-    with exclusive owners and inter-domain contracts. After accepted work,
-    reconcile actual ownership, update both neighbors of any transfer and record
-    exact source, scenarios and evidence limits. GitHub alone owns unfinished
-    tasks and execution status; architecture documents are not another ledger.
-15. **Report plainly.** State who is working, in which existing directory, what
-    concrete behavior is being delivered, what is checked, what remains and the
-    next observable result. Issue numbers, file counts and "started" tool events
-    do not substitute for that explanation. Do not claim an active executor
-    without checking it or report a plan as implementation.
-16. **Resume from authoritative files.** Reread AGENTS.md, this entire contract
-    and domain-map.md; verify the current human instruction, executor, source,
-    index, process handles and selected issue. Update the external checkpoint
-    when the Product Owner corrects the arrangement. An old summary, scheduled
-    reminder or tool capability cannot restore a rejected arrangement. Preserve
-    the full program mandate: after verified domain release and `dev` integration,
-    design and verify the next domain within the latest human selection; assign
-    its visible executor only when that selection permits implementation.
-    A current hold prevents an automatic successor start. The program ends only when the
-    whole maintained project has completed the transition.
+[Agent execution](agent-execution.md#delegated-project-wide-domain-transition)
+owns the common design, visible ownership, correction, evidence, scoped Git
+delivery and handoff workflow. Verify the current selected executor and
+arrangement in #497 and the selected child issue; historical Route assignments
+are not a second live ledger. The [domain map](domain-map.md) owns exclusive
+responsibilities and collaborations. Reread it after compaction and reconcile
+both neighbors of any accepted ownership transfer without dropping future
+domains. Execution arrangement changes no rule in R01–R08.
 
 ### Confirm the predecessor and admit the task
 
-Verify Network's completed scope from the current issue, latest Product Owner
-corrections, actual new owners/callers, source identity and verification receipts.
-A thread becoming idle, a closed issue alone, or an earlier passing regression
-before the last change does not prove completion. Do not restore superseded
-requirements to connect old runtime. Distinguish domain completion, verified
-integration of new owners, repository integration and installed qualification.
+Verify the exact needed Network/Admission/Hosting components from their current
+owners, actual callers, scoped commits and source-matched receipts. Idle, issue
+closure or a dirty passing snapshot alone is insufficient. Component readiness
+is distinct from full domain acceptance, repository integration and installed
+qualification. Do not restore old-runtime integration requirements.
 
-Require a scoped predecessor commit and source-matched evidence for its exact
-contents before preparing the Route checkout or delegating implementation.
-Uncommitted code and receipts from a superseded snapshot do not satisfy this
-handoff, even if the earlier component checks passed.
-
-After that verification, refresh Admission/Hosting/Network contracts and the
-Route owner map. Verify a selected Route issue, its milestone, WIP, existing
-checkout, visible assigned thread and lack of another active implementer before
-delegation. Under the delegated program, the orchestrator verifies the domain
-design, records the next concrete goal and issue admission in GitHub within WIP,
-and continues without repeat Product Owner selection. A finished predecessor
-alone still cannot replace verified design or an observable acceptance boundary.
+Refresh those contracts and the Route owner map. Before dependent implementation
+verify the selected issue, milestone/WIP, current human selection, existing
+checkout, visible assigned executor and exclusive ownership. A finished
+predecessor cannot replace design, a real acceptance boundary or permission
+under the current hold. Follow #497's exact full-domain handoff conditions.
 
 ### Give the implementer a bounded objective
 
-Every assignment includes:
+Every selected Route assignment includes this contract and its mandatory
+disk-read preamble; source/worktree/branch identity; the verified Route question,
+invariants, final owners and exclusions; a real new consumer with observable
+success/refusal/cleanup; narrow Network/Admission/Hosting seams; confirmed
+defects and independent byte/behavioral oracles; selected test profiles and
+integration evidence; and unresolved decisions that cannot be made implicitly.
 
-- selected issue and current accepted scope, source/worktree/branch identity;
-- this contract and the mandatory disk-read/compaction preamble;
-- domain concepts, invariants and final owners, including decisions currently
-  outside their proper owner and old responsibilities excluded from Route;
-- real new consumer and exactly observable success/refusal/cleanup outcomes;
-- interfaces with new Network, Admission and Hosting and their authority limits;
-- existing confirmed defects and independent behavioral oracles to retain;
-- required test profiles, integration scenarios and evidence to return;
-- explicit exclusions and unresolved decisions that cannot be made implicitly.
+The objective is implemented domain behavior, not file movement, old structs,
+callbacks or package counts. Check reused source for defects. Repair confirmed
+defects within the accepted contract with causal regression; use R06 for a
+consequential contract change. Neither a goal nor a passing test supersedes
+this contract.
 
-The objective is implemented domain behavior, not file movement, preservation
-of old structs/callbacks or a specified number of packages. A task goal does
-not supersede this contract. Source reuse must be checked for old defects;
-undesired behavior is not an invariant merely because an old test pins it.
-For a confirmed defect, repair within the accepted contract and retain a causal
-regression. For a consequential contract change, follow R06 instead.
+### Inspect completed boundaries and verify integration
 
-### Inspect completed boundaries and correct deviations
+At a completed use-case boundary, consequential owner/dependency change, handoff
+or delivery, inspect actual code and callers in both directions. Route rules
+belong to Route; neighboring authority, state and termination stay with their
+named owners. Inspect behavioral/process bridges as well as imports, exact
+authority provenance, linearization and resource lifetimes. A legal package
+path can still contain the wrong owner.
 
-At a completed use-case boundary, a consequential dependency/owner change, a
-handoff or candidate delivery, inspect the actual diff and callers against the
-assignment. Recheck both directions of responsibility: collect Route rules
-from neighboring old source, and keep non-Route rules with their new owners.
-Review new interfaces, state and resource lifetimes, imported dependencies,
-authority provenance, linearization and termination. Inspect behavioral bridges
-as well as import edges. A legal package path can still contain the wrong model.
+Cross-domain regression composition belongs in registered test owners and
+`_test.go` harnesses outside pure implementation. Do not invent a production
+regression domain, test-only command or duplicated coordinator merely to make
+a harness reachable. Genuine product composition and the scenario exercising
+it have different responsibilities.
 
-Do not impose a separate approval round for routine choices or every failing
-test. The implementer diagnoses and fixes those. When a deviation is confirmed,
-provide its exact source/contract contradiction and required bounded correction
-to the same implementer. Stop dependent acceptance or implementation that would
-continue the violation; preserve unrelated work. Do not launch a second
-implementation to conceal the first one's unfinished boundary.
+For Network, Admission, Hosting and Route together, applicable evidence covers
+signed current State, genuine tokens and durable roots; no spend/reservation
+on pre-admission authority loss; no refund after durable spend; state change
+during I/O; expiry/cancellation; exactly-once ownership transfer/release;
+retained reservations until physical join; durable reopen/uncertain writes;
+accepted canonical bytes; and both TCP/TLS and QUIC. Race checks exercise shared
+budget, parent/child progress, revocation and late completion where applicable.
+Check neighboring behavior too; a Route pass cannot hide a regression or
+duplicated policy. Use causal negative controls and independent byte oracles.
 
-### Verify integration and regression of new domains
-
-Maintain an invariant-to-evidence map for the assigned slice: rule, owning
-domain, actual consumer, operation/commit boundary, positive and causal refusal
-scenario, source identity and observed result. Tests must call genuine owners,
-not successful substitutes for authority, spend, persistence or readiness.
-
-Cross-domain integration/regression orchestration stays in registered test
-owners and `_test.go` harnesses outside pure domain implementation. Domain-local
-unit tests remain with their own rules. Do not invent a production `admittedwork`,
-regression domain, test-only product command or duplicated coordinator solely
-to make the cross-domain harness reachable. Genuine product operations may
-require production application composition; distinguish that operation from
-the test scenario exercising it.
-
-For Network, Admission, Hosting and Route together, applicable evidence must
-cover current signed State, genuine tokens and durable roots; no spend or
-reservation on pre-admission authority loss; no refund after durable spend;
-state change during I/O; expiry and cancellation; exactly-once ownership
-transfer/release; retained reservation until all physical work joins; durable
-reopen/uncertain writes; unchanged accepted bytes; and both TCP/TLS and QUIC.
-Concurrency/race coverage must exercise shared budget, parent/child progress,
-revocation and late completion where those lifetimes exist in the slice.
-
-Check existing new Admission, Hosting and Network behavior as well as the new
-Route scenario. A passing Route test cannot hide a neighboring regression or
-duplicated policy. Inspect whether tests would fail for the specific missing
-check or wrong ordering; useful negative controls and independent byte oracles
-are stronger evidence than repeating the implementation in assertions.
-
-Run required gates on the final candidate identity. Investigate a failure at
-its actual owner and classify unrelated moving-work/environment failures
-explicitly. Do not demand an old-runtime bridge to satisfy old integration
-tests and do not waive a required repository gate. A component can be locally
-verified while repository integration remains unfinished. Re-run affected
-evidence after changed source; old receipts never qualify the new candidate.
-
-### Retain the role across compaction
-
-The orchestrator rereads this contract just as the implementer does. Its compact
-external checkpoint retains predecessor readiness, selected issue/owner, active
-implementer identity and worktree, last reviewed source, verified invariants,
-remaining evidence, deviations and one next action. GitHub remains the execution
-ledger; this policy file is not a running status report.
-
-Reports to the Product Owner state what is verified, what is still missing and
-the next observable result. Accept a slice only from code and reproducible
-evidence, then separately assess its integration. Missing future Service owners
-remain explicit. No claim of independent security validation follows from the
-orchestrator reviewing another agent's work.
+Run the required gates on the final source identity. Classify unrelated
+moving-work/environment failures explicitly without waiving a gate or adding
+an old-runtime bridge. Changed source invalidates affected receipts. Missing
+genuine Service consumers and installed/privacy qualification remain explicit.
 
 ## Acceptance checklist
 
+This checklist owns Route engineering obligations for a selected slice;
+#497 and the selected child issue own full-domain acceptance and transition.
 For each completed slice verify, with source and evidence identity:
 
 - [ ] Selected issue/WIP and current owners verified; no unrelated work lost.

@@ -844,8 +844,9 @@ process и manager. EOF или timeout не заменяют ACK.
 
 Новая runtime composition потребляет только bound неизменяемые Headless/Source
 declarations после final Installation handoff. Она отдельно создаёт настоящие
-Network/Admission/Route и отдельный Execution; private Publication/Connection
-остаются будущими владельцами;
+Network/Admission/Route и отдельный Execution. Реализованные компоненты
+Publication и начальная Connection binding ещё не составляют полный private
+Service consumer этой installed composition.
 Installation не выдаёт Job/Grant, Service readiness или Connection authority.
 Runtime закрывает собственные ресурсы и retains terminal result на исходном
 caller. Положительный root archival/ACK receipt требует именно этого настоящего
@@ -939,7 +940,8 @@ scoped commit/push и проверенной `dev`. Полная installed accep
 требует двух отдельных admitted system managers/Endpoint principals, public
 commands, actual containment/empty scopes и publish/link/read/refresh/withdraw/
 restart на TCP/TLS и QUIC. Bounded Execution consumer уже реализован; без
-private Publication/Instance/Connection эти полные сценарии остаются недоказанными. Нельзя закрыть Installation
+полного интегрированного private Publication/Instance/Connection consumer
+эти полные сценарии остаются недоказанными. Нельзя закрыть Installation
 или всю цель Route по одной только паре разрешений или остановленной установке.
 
 ### Recovery остановленного reload prefix

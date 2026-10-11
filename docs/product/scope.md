@@ -4,9 +4,10 @@
 selects one authenticated protected Endpoint distribution and one independently
 delivered initial pin. Executable and static text-worker generation are separate
 targets in the same signed Release set; installation-specific plans and mutable
-roots remain separate. This selected installation successor is not implemented
-or qualified by its acceptance. Product acceptance still requires two separate
-installed Endpoints, both selected Carriers and honest restart/refusal outcomes.
+roots remain separate. Selection alone does not establish implementation
+or qualification of the complete installed journey. Product acceptance still
+requires two separate installed Endpoints, both selected Carriers and honest
+restart/refusal outcomes.
 
 Status: **current C0 candidate contract.** This document names the maintained
 product surfaces that may enter the next architecture and security audit. It is
@@ -44,8 +45,9 @@ The maintained contract requires:
   Network State, and local Application privileges;
 - a host-generated non-exporting Service Instance key and a separately issued
   public Credential for publication;
-- explicit Target Links and separately authenticated name resolution, with no
-  ordinary DNS, Internet, same-looking name, or alternate-Target fallback;
+- explicit Target Links for the selected journey, with no ordinary DNS,
+  Internet, same-looking name, or alternate-Target fallback; future authenticated
+  Service Name access remains a separate unselected model;
 - finite budgets, bounded work lifetimes, joined cleanup, explicit overload,
   and durable floors where rollback would change authority or safety; and
 - honest privacy claims: payload encryption is not anonymity, multiple Nodes
@@ -181,8 +183,9 @@ selects final retirement of Alpha Service Links and fresh corpus intake rather
 than a grace period or conversion. Both transitions are integrated: intake
 refuses before floor effects, and the Endpoint has no accepting Alpha
 destination adapter or Target-Link fallback. Human-facing Service Names remain
-a product function over the protected protocol; they do not keep the legacy
-Alpha network path alive. Existing floor bytes remain retained evidence pending
+a broader future product function requiring a separately selected protected
+contract; they do not keep the legacy Alpha network path alive. Existing floor
+bytes remain retained evidence pending
 a separate data decision. The
 [Endpoint contract](../technical/endpoint-service-runtime.md#alpha-destination-retirement)
 owns the exact effect and compatibility boundary.
@@ -220,7 +223,7 @@ The Network audit candidate is the headless maintained product surface:
 
 - `ardents`, `ardents-node`, `ardents-control`, and `ardents-custody`;
 - Network State and Source, Entry, Route and Carrier, Node duties, Endpoint,
-  Service publication/connection/instance/reachability, naming, enrollment,
+  Service publication/connection/instance/reachability, enrollment,
   Release, Custody, control-inspection, and resource Modules;
 - the `internal/application/broker` used by the Network Endpoint for local
   Grant admission and session lifecycle;
@@ -242,14 +245,16 @@ recipient Node Records.
 Missing, conflicting, expired, or mismatched State makes that path unavailable;
 the Application cannot choose Route peers or State identities.
 
-The C0 Network candidate is ready to be *audited*, not qualified for public
-operation. The audit must use the exact frozen commit and artifact identities
-defined at activation by the [deep-audit method](../development/deep-audit.md).
+These surfaces define the permitted audit boundary, not a claim of complete
+domain acceptance or installed readiness. Audit activation freezes the exact
+source/artifact identities and admitted scope under the
+[deep-audit method](../development/deep-audit.md); live acceptance status belongs
+to the selected GitHub ledger. An audit does not qualify public operation.
 
 ## C0 Application Interface
 
-The maintained Connection surface is the typed v2 contract in
-`internal/application/connection`; its Target-Link request is
+The maintained local Connection Interface is the typed v2 contract with
+AAI3 grammar in `internal/application/connection`; its Target-Link request is
 admitted only by the protected text composition and does not authorize a
 generic workload. The maintained Administration surface remains the separate
 v1 contract in `internal/application/administration`. Each owns its
@@ -264,8 +269,11 @@ host, extension, or enrollment-v4 artifact is a current product surface.
 [`ownership.json`](../development/ownership.json) is the machine-checked source,
 test, command, packaging, qualification, Interface, and historical-evidence
 inventory. Each maintained owned file and lane has exactly one owner. The
-current artifact set contains only the four headless commands, while the
-Application Interface remains a neutral shared seam.
+current artifact lanes include the headless commands and fixed text worker
+inventory defined by [Enrollment](../technical/enrollment-verification.md).
+The Application Interface remains a neutral shared seam; the isolated new
+command consumers have their explicit [command contracts](../reference/commands.md)
+and do not imply full installed product acceptance.
 
 The former Browser implementation and qualification lanes are retired by
 [ADR-0069](../adr/0069-retire-active-browser-implementation.md), and
@@ -350,11 +358,13 @@ accepted ADR where it creates consequential lock-in.
 | Subject | Current owner |
 |---|---|
 | Domain language | [CONTEXT.md](../../CONTEXT.md) |
+| Domain boundaries and collaborations | [Domain map](../development/domain-map.md) |
 | Product requirements and journeys | [functional map](functional-map.md), [journeys](journeys.md), [operating model](operating-model.md) |
 | Security and privacy claims | [threat model](../security/threat-model.md) |
 | Network/Route/Node | [Network Route and Node](../technical/network-route-node.md) |
 | Endpoint/Service/Application seam | [Endpoint and Service runtime](../technical/endpoint-service-runtime.md) |
-| Naming and private resolution | [Naming](scope.md), [Private reachability](../technical/private-reachability.md) |
+| Exact-Target private reachability | [Private reachability](../technical/private-reachability.md) |
+| Future Service Names and retired Naming surface | [Current scope](#c0-command-roles-state-and-outcomes); no accepting Naming owner is selected |
 | Enrollment and artifacts | [Enrollment verification](../technical/enrollment-verification.md) |
 | Release, replacement, and custody | [Release and update custody](../technical/release-update-custody.md) |
 | Commands, packages, and checks | [command reference](../reference/commands.md), [package map](../development/package-map.md), [testing](../development/testing.md) |

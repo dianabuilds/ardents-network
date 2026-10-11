@@ -101,7 +101,7 @@ across long runs. No test-only issuer, unlimited quota, clock rollback or
 ledger reset may manufacture enough successful samples. Failures count even
 when a later retry succeeds. Run each seed on both selected Carriers.
 
-For issue #60, NET-32 uses a declared ten-minute observation and conservative 24-hour projection; no 24-hour campaign is part of this issue. The receipt states both durations and cannot be treated as an observed-day result. Before effects, the idle runner reserves floor(window × 1,000,000,000 / 24 h) + 1 bytes per direction (6,944,445 for ten minutes), plus a separate 8 MiB termination reserve per direction. The shared Hosting owner applies the provider's tx, rx, or tx+rx accounting to both reserves.
+The bounded NET-32 component measurement uses a declared ten-minute observation and conservative 24-hour projection; this component measurement is not a 24-hour campaign. The receipt states both durations and cannot be treated as an observed-day result. Before effects, the idle runner reserves floor(window × 1,000,000,000 / 24 h) + 1 bytes per direction (6,944,445 for ten minutes), plus a separate 8 MiB termination reserve per direction. The shared Hosting owner applies the provider's tx, rx, or tx+rx accounting to both reserves.
 
 The installed NET-32 runner retains Hosting wall timestamps only for log
 correlation and continuity checks. Its projection denominator uses one host's
@@ -199,47 +199,61 @@ candidate results. No such stronger claim is admitted by P9 here.
 
 ## Integration and migration contract
 
-| Existing owner | Change / retained contract |
+The [domain map](domain-map.md) owns exclusive responsibilities; current
+technical owners define their exact accepted contracts. This integration map
+does not transfer authority or permit connections to predecessor runtime.
+
+| Owner | Integration / retained boundary |
 |---|---|
-| State/Source/Enrollment | Authenticate the selected closed profile and issuer/permission roots; preserve current authority, time/freshness/conflict checks and public-only Source effects |
-| Entry/Route/Node | Implement the one generation-3 forwarding/lane lifecycle behind the existing deep Route owner; retain Endpoint selection and finite resource ownership |
-| Naming/Reachability | Replace successor OHTTP transport with terminal TLS; preserve canonical proof/currentness/floors; migrate only the new reachability payload |
-| Credential/Duty | Add the selected blind-token and closed-permission contracts; preserve exclusive roots, exact current duty binding and durable one-use semantics |
-| Publication/Instance | Own independent Introduction keys/revisions and bounded readiness; retain Authority separation, withdrawal and non-resurrection |
-| Service Connection | Preserve its existing ordered stream and continuity; bind immutable Connection and fresh Attachment contexts separately |
-| Endpoint/Broker/Application | Admit only verified confined workers for the successor; add typed Name/Link local Interface version 2 and the fixed text Application without arbitrary execution authority |
-| Resource/Release/install | Admit one complete candidate inventory with root-owned units and worker; enforce host periods, authenticated adoption and drain; preserve release/authority floors |
+| Network | Authenticate current State/profile/member/time facts and preserve conflict/freshness floors; public Source effects grant no private signing authority |
+| Admission and Hosting | Keep permission, issuance/presentation/spend and physical provider budget as separate owners; reserve before irreversible spend and retain reservations through joined work |
+| Route | Use the isolated new Route and new command composition under the [migration contract](route-migration-contract.md); own physical paths/channels, Introduction and JOIN, not Service readiness or logical continuity |
+| Publication/Instance and Reachability | Keep live publication/recipient authority separate from Descriptor Store/history; registration ACK, Store ACK and exact-Instance authentication are distinct facts |
+| Connection | Retain immutable logical authority, ordered bytes, bounded recovery and joined terminal outcome; fresh Attachment changes no Target, Job or Grant |
+| Execution and Application | Admit verified confined workers through the [Execution owner](../technical/application-execution.md); AAI3 Target-Link requests and separate Administration do not grant Service or software authority. Name input is refused before work |
+| Enrollment, Release and Installation | Keep first pin, exact-byte authorization/floors and native install/replacement/recovery/startup as separate owners; installed bytes and ACK do not qualify a Service journey |
+| Custody | Retain purpose-specific private authority and approved signing; no generic signing right or shared authority across domains |
 
-Compatibility is explicit: the current C0 generation retains its persisted and
-network identities, but the uncalled local AAI2 implementation is removed.
-Prepare successor binaries,
-configuration, units and validated state conversion without accepting new
-successor traffic. Quiesce new old-generation jobs, drain at most 5 seconds,
-terminate remaining work, then atomically adopt one generation and its exact
-artifact/profile digest. Mixed or unknown peer generations are unavailable.
+Compatibility follows each current owner and accepted ADR, not a universal
+state-conversion procedure. [ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md)
+selects fresh Service v3 roots and Links: no old Service reader, fallback,
+adoption or conversion; old bytes remain untouched and are refused before
+effects. [ADR-0113](../adr/0113-retire-retained-alpha-compatibility-surface.md)
+retires Naming and corpus readers without conversion or deletion. The separate
+Application Interface remains its typed v2 contract with AAI3 grammar; removed
+AAI2 requests are refused before Application owner I/O.
 
-Preserve State, Name, Instance, publication, withdrawal, release and budget
-floors. Do not migrate unused old Transit Grants, live joins, private cache
-entries or volatile keys into the new generation. Keep old spend tombstones
-through their former expiry. Initialize new issuer/receiver ledgers under
-fresh signed duty/key generations and separate exclusive roots.
+Prepare the authorized candidate's exact binaries, configuration and units
+before accepting its traffic. Installed replacement quiesces new predecessor
+Jobs, permits at most the existing five-second drain, terminates and joins
+remaining work, and adopts only the authenticated exact artifact/generation.
+Mixed or unknown peer generations are unavailable. Installation's journal,
+fresh Release proofs and original predecessor/startup custody govern interrupted
+replacement and recovery; a generic conversion phase or copied facts grant no
+permission to mutate, select or start a generation.
 
-No automatic conversion grants a new Service Credential or revives a published
-Instance whose private key was erased. The current no-overlap successor rule
-remains. An interrupted conversion reads its durable phase and resumes only
-the same authenticated conversion; deletion/reset of roots is not recovery.
+Preserve every retained State, Admission, Publication/withdrawal, Release and
+Hosting floor under its owner. Fresh Service roots do not authorize resetting
+unrelated histories. Do not migrate unused old Transit Grants, live joins,
+private caches or volatile keys; retain applicable spend tombstones through
+their former expiry. Issuer/receiver roots use their authenticated duty/key and
+explicit creation/reopen contracts. No conversion issues a Service Credential
+or resurrects erased Instance material. Deletion/reset is not recovery.
 
-Rollback of executable bytes requires the existing fresh Release authorization
-and a candidate supporting the adopted protection generation. A predecessor
-that only implements the retired generation cannot resume network work.
-Restoring old state backups cannot lower floors or resurrect old admissions.
+Rollback of executable bytes requires fresh Release authorization and a
+candidate supporting the adopted protection generation. A predecessor that
+only implements a retired generation cannot resume network work. Restoring
+backups cannot lower floors or resurrect admissions.
 
-The implementation dependency order is: shared encodings and receiving
-contracts -> real authority/admission and forwarding owners -> discovery/
-publication/Connection composition -> qualified local job/install integration
--> complete migration and system trials. Each layer uses the already selected
-contract of its dependencies. This is a design dependency graph, not issues,
-assigned work or authorization to start multiple C0 slices.
+Component dependencies and full-domain acceptance are different boundaries.
+Existing Installation artifact/startup and qualified Execution components
+support Publication/Connection using already implemented Route transport.
+Full Route acceptance consumes the genuine Connection result; complete
+Installation acceptance consumes the integrated Service journey. The exact
+handoff gates, source identities and current hold belong to
+[#497](https://github.com/dianabuilds/ardents-network/issues/497), not another
+implementation queue here. Complete migration and P1–P11 system trials remain
+required for whole-candidate qualification.
 
 ## Consolidation verification
 
