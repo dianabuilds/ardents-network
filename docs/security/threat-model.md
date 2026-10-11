@@ -173,7 +173,7 @@ throughout a Gateway key configuration's lifetime; evaluate key capture, rotatio
 retained ciphertext and combined Relay/Gateway observations separately. No lookup
 post-compromise guarantee follows from payload encryption. The source and
 solution boundary are recorded in
-[R-149](../research/records/r-149-autonomy-transition.md#additional-primary-evidence-for-these-proposals).
+[R-149](../archive/research/records/r-149-autonomy-transition.md#additional-primary-evidence-for-these-proposals).
 
 No source of initial truth is magically self-authenticating. An installed
 program cannot authenticate its own first execution, nor does a timestamp or
@@ -183,7 +183,7 @@ operator is independent or that its host will continue forwarding traffic.
 
 The concrete tasks are grouped in the
 [functional map](../product/functional-map.md#outcomes-before-mechanisms).
-[R-149](../research/records/r-149-autonomy-transition.md#outcome-first-decision-preparation)
+[R-149](../archive/research/records/r-149-autonomy-transition.md#outcome-first-decision-preparation)
 records source evidence and unresolved decision boundaries. This clarification
 changes neither the selected C0 mechanisms nor the qualification status of any
 claim. Public-target details remain under the accepted authority order.
@@ -205,7 +205,7 @@ new target is not permission to bypass them.
   compatible implementations, and independently supported privacy/role claims.
 - **Measurement:** the founder-removal, fresh/restarted/long-offline participant,
   invalid-majority, partition, state-withholding, release, and migration gates
-  specified in [R-149](../research/records/r-149-autonomy-transition.md).
+  specified in [R-149](../archive/research/records/r-149-autonomy-transition.md).
 - **Limitation:** removing administrative commands does not prevent censorship,
   stalling, social influence, resource capture, or incompatible voluntary forks.
   Unknown software flaws have no guaranteed automatic cure. Missing evidence

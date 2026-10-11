@@ -11,8 +11,10 @@ documents disagree. Reader order is not authority order.
 
 Product scope, journeys, and honest promises belong in `docs/product/`.
 Threats, protected information, adversaries, conditions, measurements, and
-limitations belong in `docs/security/`. Accepted hard-to-reverse decisions live
-in `docs/adr/`; decision evidence and falsification live in `docs/research/`.
+limitations belong in `docs/security/`. Surviving hard-to-reverse decisions live
+in `docs/adr/`; active decision work and its method live in `docs/research/`.
+`docs/archive/` retains superseded decision editions, completed research,
+retired plans and immutable receipts with their original source identity.
 `docs/development/` owns engineering policy, factual source maps, and developer
 workflow. Implementation and operator facts belong in the smallest current
 technical, operations, or reference document that has the responsible Module
@@ -36,9 +38,14 @@ An ADR or research record remains rationale/evidence after that promotion; it
 does not become the operator manual.
 
 Retain accepted ADRs, completed research records, and immutable audit receipts
-as decision evidence. Retire superseded procedures, design templates, and
-experiment instructions to Git history after promoting unique current facts
-and repairing links. A historical path quoted in a completed record identifies
+as decision evidence. Move superseded editions, completed records, retired
+procedures and unselected historical proposals to `docs/archive/` after
+promoting unique current facts and repairing current links. The archive index
+records disposition, original path/source/hash and the current owner. An
+archived accepted decision retains any explicitly surviving clauses; archival
+never accepts a proposal, closes a finding or qualifies a newer candidate.
+Preserve immutable record bytes; their original relative links resolve against
+the pinned source revision exposed by the archive index. A historical path quoted in a completed record identifies
 that record's source revision; it does not promise a current procedure.
 
 Completed experiment source and one-off file, dependency or behavior inventories
@@ -94,7 +101,7 @@ component that can change those contracts blocks dependent implementation;
 an assumed honest service, mock proof or unchecked callback cannot close the gap.
 Future application scenarios need not all be specified, but their supported
 extension/effect boundary must be explicit. The
-[research readiness assessment](../research/records/r-149-autonomy-transition.md#participant-selection-and-voting-core-readiness)
+[research readiness assessment](../archive/research/records/r-149-autonomy-transition.md#participant-selection-and-voting-core-readiness)
 records open obligations; it is not the selected runtime specification.
 
 ### Task admission after completed design
@@ -242,7 +249,7 @@ The selected issue tracker owns execution and status. Keep the existing C0
 milestone prerequisite and follow the
 [repository C0 work-in-progress policy](../../AGENTS.md#c0-work-in-progress-limit);
 the workstream does not activate all of its areas at once. Its framing is recorded by
-[R-150](../research/records/r-150-common-protection-baseline.md), and the current
+[R-150](../archive/research/records/r-150-common-protection-baseline.md), and the current
 R-149 subject remains separate design. Completed R-152/R-099 selections live
 in their current owners and ADR-0081; their former unanswered choices are not
 active research prerequisites for the Link-first scope.

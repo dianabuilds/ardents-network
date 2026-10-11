@@ -621,7 +621,7 @@ or fetch tools. Process/output/deadline limits remain unchanged.
 
 ### Selected backend filesystem budget observation
 
-The local observability experiment now exposes a private metadata-only
+The retained local observability experiment exposes a private metadata-only
 filesystem inventory for an explicitly selected Compose project. It joins only
 that container's PID namespace under the same UID, with no added capabilities,
 and observes fixed state, temporary and image-declared data roots. It reads no
@@ -634,7 +634,7 @@ This observer and its bounded experimental mounts are engineering preparation.
 They do not select a production storage layout or establish complete disk-budget
 coverage. Docker log bytes, external writable evidence and persistence remain
 separate obligations. Reproducible invocation belongs to the
-[experiment recipe](../../experiments/r-171-local-observability/README.md#selected-native-filesystem-inventory).
+[retained experiment recipe](https://github.com/dianabuilds/ardents-network/blob/63e3b4239d9a803ea0af3d74f07c3f24d9ed7303/experiments/r-171-local-observability/README.md#selected-native-filesystem-inventory).
 
 ### Collector storage-refusal observation
 
@@ -788,4 +788,4 @@ NoData/query failure, measured-health semantics and notification authority befor
 that requirement is accepted. The operator-note convention records an action;
 it does not change health, assign exclusive incident ownership or deduplicate
 operator acknowledgements automatically. Its explicit recipe belongs to the
-[R171 experiment](../../experiments/r-171-local-observability/README.md#native-incident-history-trial).
+[retained R171 experiment](https://github.com/dianabuilds/ardents-network/blob/63e3b4239d9a803ea0af3d74f07c3f24d9ed7303/experiments/r-171-local-observability/README.md#native-incident-history-trial).

@@ -176,7 +176,7 @@ general Rendezvous choice and preselected-alternative lifecycle above. Its
 Interior pair is deterministically derived from the retained Entry pair and
 Role Domain, then retained by the local owner; independently owned contexts
 can therefore derive the same pair. The
-[Route boundary analysis](../development/route-domain-boundary-analysis.md#contract-and-implementation-gaps)
+[Route boundary analysis](../development/domain-map.md)
 distinguishes that implementation limitation from the unresolved interpretation
 of Interior selection independence. These observations do not narrow the
 selected contract or authorize resampling during a package move.

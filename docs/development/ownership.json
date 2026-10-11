@@ -20,6 +20,7 @@
       "owner": "historical-evidence",
       "include_prefixes": [
         "docs/research/",
+        "docs/archive/",
         "experiments/",
         "tests/compatibility/"
       ]
@@ -68,6 +69,7 @@
       ],
       "exclude_prefixes": [
         "docs/research/",
+        "docs/archive/",
         "experiments/",
         "internal/application/administration/",
         "tests/compatibility/",

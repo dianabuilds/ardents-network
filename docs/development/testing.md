@@ -924,7 +924,7 @@ profile. R-119 through R-121 retain the exact historical result; current test
 inventories contain no compatibility exception or hidden replacement route for
 those writers.
 
-[ADR-0091](../adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
+[ADR-0091](../archive/adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
 `tests/compatibility/browser-endpoint-v4` non-executable source tree that
 ADR-0061 had retained pending an explicit supersede or retirement decision.
 Completed experiments, the former `reference-c2` fixture, and the retired
@@ -933,15 +933,10 @@ records.
 
 ## Historical qualification provenance
 
-Only the concise verdicts below remain in the current documentation surface.
-Detailed runners, process chronology, and split-candidate ledgers are historical
-Git material.
-
-| Exact source | Retained result | Limitation |
-|---|---|---|
-| [`70bf425eec937edcc22e8f0534db992aa2002a16`](https://github.com/dianabuilds/ardents-network/commit/70bf425eec937edcc22e8f0534db992aa2002a16) | Historical RC1 supplied A1-A10 bounded project-operated evidence. | It has no A11/A12 closure and does not qualify C0. |
-| [`2c18bdf92f11f84075915576f595202f48eb05bc`](https://github.com/dianabuilds/ardents-network/commit/2c18bdf92f11f84075915576f595202f48eb05bc) | Historical RC2 supplied a separate two-fresh-Endpoint control result and accepted A11 campaign. | It does not inherit RC1 A1-A10; no candidate has an aggregate A1-A12 result. |
-| [`fbb42034757513ac009114a00b933aefa76d8ddf`](https://github.com/dianabuilds/ardents-network/commit/fbb42034757513ac009114a00b933aefa76d8ddf) | Last source snapshot containing the retired experiment implementations, `reference-c2`, generic Update tracer, stage runners, and planning chronology. | Provenance only; none of those sources qualifies or belongs to the cleaned C0 candidate. |
+Earlier RC candidate verdicts and exact evidence limits are retained in the
+[archived testing snapshot](../archive/development/testing-before-consolidation.md#historical-qualification-provenance).
+They are not current profile results and cannot be aggregated into a later C0
+claim. Required current profiles and candidate bounds remain in this owner.
 
 ## Ownership
 

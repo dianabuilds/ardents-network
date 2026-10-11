@@ -101,7 +101,7 @@ fresh start requires fresh Endpoint/worker invocations, volatile local generatio
 and Job commitments before repeating that observation. It is local physical
 lifetime evidence, not private Service continuity or installed-product acceptance.
 
-Current contracts: [boundary/model](../../../docs/development/application-execution-domain-boundary-analysis.md),
+Current contracts: [boundary/model](../../../docs/technical/application-execution.md),
 [confinement](../../../docs/technical/application-confinement.md),
 [domain map](../../../docs/development/domain-map.md), and exact imports in
 [package map](../../../docs/development/package-map.md).

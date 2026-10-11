@@ -15,8 +15,9 @@ Service authentication, confined reader and Publisher, resource exhaustion,
 recovery, migration and controlled installation. No public autonomy,
 canonical Name producer, general browser or Windows confinement is assumed.
 
-Then design and qualify canonical naming with its real authority/close producer,
-and public autonomous eligibility/admission under R-149. Neither can inherit
+Future canonical naming needs its real authority/close producer, and public
+autonomous eligibility/admission needs a separately selected R-149 design.
+Neither is a next implementation authorized by this map. Neither can inherit
 closed operator appointments as a permanent public authority. Stronger
 traffic-correlation protection is a separately measured claim that may revise
 the one common construction; it is not a parallel privacy mode.
@@ -33,12 +34,14 @@ the one common construction; it is not a parallel privacy mode.
 | OS boundary, installed units, local interfaces, workers and cleanup | [Application confinement](../technical/application-confinement.md) |
 | Selected components and continued acceptance | [Dependency register](dependencies.md) |
 | Parameters, complete test matrix and state/artifact migration | [Qualification](privacy-qualification.md) |
-| Why these choices and what the experiments actually establish | [R-152 contract assessment](../research/records/r-152-closed-scheme-contract.md) |
+| Why these choices and what the experiments actually establish | [R-152 contract assessment](../archive/research/records/r-152-closed-scheme-contract.md) |
 
-Current Network, Endpoint, reachability, naming, Application and release owners
-describe generation-2 implementation facts and compatibility obligations.
-Their successor sections point to this contract. They do not select another
-live Route or require copying old campaign implementations.
+Current Network, Endpoint, Reachability, Application and Release owners state
+their retained implementation and compatibility bounds; the domain map names
+new owners and collaborations. There is no maintained accepting Naming owner.
+Exact wire/root editions belong to their current technical contracts, without
+a shared delivery-generation label. These owners do not select another live
+Route or require copying old campaign implementations.
 
 ## Dependency disposition map
 

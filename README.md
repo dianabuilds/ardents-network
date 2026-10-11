@@ -1,81 +1,37 @@
 # Ardents Network
 
-Ardents is a greenfield Go project researching and building an application
-network for private, location-independent Services in hostile environments. It
-is not production-ready networking software and makes no current anonymity,
-independent-operation, public deployment, availability, or supported Node-host
-claim.
-
-The maintained system now has an explicit C0 audit boundary around the headless
-Network product and its neutral Application Interface. That boundary is a
-candidate for architecture and security review, not a usable, released, or
-qualified public product. Public operation, platform qualification,
-independent-control, availability, anonymity, and censorship-resistance claims
-remain withheld. The active Browser implementation and qualification lanes are
-retired; Firefox material remains only as immutable compatibility evidence.
-
-Completed delivery labels survive only in immutable Git, accepted records, and
-wire/persisted compatibility obligations. Current product, package, executable,
-test, profile, and documentation identities use domain language.
-
-The former implementation remains on the remote
-[`old`](https://github.com/dianabuilds/ardents-network/tree/old) branch as
-historical evidence only. It is not an architecture, dependency, or protocol
-source for the maintained tree.
-
-## What the project does and does not promise
-
-Applications connect to a Service Target and may use a human-readable Service
-Name. The network carries opaque Application bytes over a live Service
-Connection; Node IDs are neither User nor Application identities. The current
-native Route and private-resolution code are technical tracers, not Route
-Qualification.
-
-Ardents does not provide a public directory, messenger, global identity,
-wallet/token, clearnet exit, VPN, offline delivery, replicated content, or a
-general Application runtime. Encryption is not an anonymity claim, and a
-generic local Broker does not provide a qualified isolation claim.
+Ardents is a Go project building an application network for private,
+location-independent Services in hostile environments. The selected closed
+contract is a bounded Ubuntu text-Service using Target Links, one common
+protection baseline and TCP/TLS plus QUIC Carriers. It is not a qualified public
+product. Component results establish no current anonymity, availability,
+censorship-resistance, independent-operation or supported Node-host claim.
 
 ## Start here
 
-For maintained C0 work, read in this order:
+[Current documentation](docs/README.md) is the entry point: product scope,
+threat model, domain language and the exact technical owner for the operation.
+The [domain map](docs/development/domain-map.md) names exclusive rules and
+collaborations; the [package map](docs/development/package-map.md) owns actual
+Go packages and imports. GitHub [#497](https://github.com/dianabuilds/ardents-network/issues/497)
+owns the domain completion plan and acceptance criteria.
 
-1. [C0 product scope](docs/product/scope.md) and the
-   [threat model](docs/security/threat-model.md);
-2. [Domain language](CONTEXT.md), then only the affected current technical
-   contract — [naming](docs/technical/naming.md),
-   [network/route/node](docs/technical/network-route-node.md),
-   [endpoint/service](docs/technical/endpoint-service-runtime.md),
-   [private reachability](docs/technical/private-reachability.md),
-   [private admission](docs/technical/private-admission.md),
-   [enrollment verification](docs/technical/enrollment-verification.md),
-   [release/update/custody](docs/technical/release-update-custody.md), or
-   [alpha-control transitions](docs/technical/alpha-control-transition.md);
-3. the applicable current engineering owner in
-   [development documentation](docs/development/README.md), especially the
-   [package map](docs/development/package-map.md), testing model, and command
-   reference; and
-4. an ADR or research record only when a current owner links to it for a
-   decision or evidence question.
-
-[Architecture decisions](docs/adr/README.md), the
-[research queue](docs/research/questions.md), audit receipts, completed
-experiments, and compatibility trees are retained provenance. They are not a
-default implementation route. Follow [CONTRIBUTING.md](CONTRIBUTING.md) for
-the maintained change workflow.
+[Current ADRs](docs/adr/README.md) record surviving decisions.
+[Archived documentation](docs/archive/README.md) preserves former editions,
+completed evidence, retired plans and unselected proposals with their current
+owners. Historical material is read for named provenance, not as an alternate
+implementation plan. The former Go/Waku implementation on
+[`old`](https://github.com/dianabuilds/ardents-network/tree/old) remains historical
+evidence only.
 
 ## Working on the repository
 
-Maintained Go code belongs in thin `cmd/<name>` adapters and cohesive
-`internal/<domain>` Modules. Run `make quick-check` while making a change and
-`make check` before integration. The package map and dependency register are
-part of the architecture contract.
-
-Accepted ADRs and completed research records remain decision provenance outside
-the current implementation route. Superseded stage procedures and completed
-experiment implementations are retired to Git after their unique facts are
-promoted. Their former presence creates no new compatibility requirement; see
-[documentation policy](docs/development/documentation.md#promotion-and-retirement).
+Follow [CONTRIBUTING.md](CONTRIBUTING.md) and [repository instructions](AGENTS.md).
+Maintained Go code belongs in thin command adapters and cohesive domain Modules.
+Run `make quick-check` while changing code and `make check` before integration;
+package and dependency registration are part of the architecture contract.
+The current human instruction keeps Connection working and holds new
+implementations; documentation cleanup selects no additional slice.
 
 ## License
 

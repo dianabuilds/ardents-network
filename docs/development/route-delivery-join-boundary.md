@@ -1,8 +1,10 @@
-# Remaining Route: terminal transport, opaque delivery and Rendezvous JOIN
+# Route integration: terminal transport, opaque delivery and Rendezvous JOIN
 
-Maintained source-backed design for the remaining Route responsibilities. This
-design changes no implementation, package registration, execution
-selection or acceptance. The Route migration contract and accepted technical
+Maintained integration and acceptance contract. Prefix/channel, registration,
+JOIN, parent refill, issuer/Descriptor Control and opaque transport have actual
+new owners; the current technical contracts record those realized boundaries.
+The rules below preserve their collaborations and full Service integration
+obligations. They select no additional implementation or acceptance. The Route migration contract and accepted technical
 owners remain authoritative. It preserves the complete Route goal, rather than
 treating the accepted prefix or registration as the whole domain.
 
@@ -490,26 +492,15 @@ completion. Keep the retained terminal result, including late physical failures,
 and distinguish ordinary peer refusal from cleanup failure by actual provenance.
 No actor closes or mutates a replacement owner to finish an obsolete operation.
 
-## Source inventory: collect, split and leave
+## Source and owner route
 
-| Current source | Route behavior to recover | Behavior left with another owner |
-|---|---|---|
-| internal/node/introduction/delivery.go | Exact opaque relay, byte/rate/pending/writer bounds, local even lanes, RESULT/CLOSE and withdraw | Server composition/old Admission root must not be imported |
-| internal/route/capsule/{submission.go,capsule.go,crypto_linux.go} | Inspected canonical envelope and selected crypto mechanism | Instance private recipient and authority remain Publication; parsed plaintext is not authority |
-| internal/route/closed_join_pairing.go; closed_join_stream.go; client/closed_join_client_stream.go | Pairing/confirmations, frame budgets, queues, retained bytes and joined termination | ClosedOuterBridgeLane and old receiving callbacks cannot transfer |
-| internal/route/closed_join_replenishment.go; internal/node/join/listener.go | Evidence of the forbidden old JOIN-refill path to reject | No new JOIN refill mechanism or successful old refill oracle |
-| internal/route/client/closed_terminal_recipient.go | Current public duty verification and known conflicts | Old second-candidate refusal is not uniform Rendezvous choice |
-| internal/endpoint/source/lifecycle.go; responder_prefix.go; join_service.go | Exact Route acquisition, peer/presentation/final stream identity and cleanup | Job admission, Connection orchestration and old Context mutex |
-| internal/endpoint/introduction_accept.go; introduction_exchange.go; introduction_dispatch.go | Genuine consumer ordering to preserve through new composition | Publication/Instance authority, recipient replay/rate, exact Job and Connection/recovery decisions |
-| internal/endpoint/introduction/{registration.go,pair_lifecycle.go,admission.go} | Boundary evidence for physical registration handle only | Local accepting state, refresh/overlap/withdraw barrier, recipient history |
-| internal/service/instance; publication; reachability; connection | Named provenance of real prerequisite contracts | Whole implementations stay with their proper new domains |
-
-The old shared admission-root slot lease is superseded for new Route by its
-independent durable floor design. The Admission source inventory distinguishes the old contradictory JOIN-refill
-path from accepted forwarding-parent refill under ADR-0085. New Route now has
-an explicit holder refill caller and a genuine receiving path described by the
-prefix owner. JOIN must still refuse refill before reserve or spend; component
-Admission passes alone do not prove that Route integration or its caller lifetime.
+Use the [current domain map](domain-map.md), [package map](package-map.md) and
+technical Prefix, Introduction and JOIN owners for new implementation. The
+[earlier source inventory](../archive/development/route-delivery-join-before-consolidation.md#source-inventory-collect-split-and-leave)
+is predecessor provenance only; no old import, shared mutex/root, callback or
+successful substitute for a missing domain is permitted. Admission's finite
+rights, Hosting reservations, Publication readiness and Connection logical
+state retain their distinct owners.
 
 ## Independent acceptance and regression oracles
 
@@ -554,8 +545,8 @@ Instance/Execution allow Publication readiness; those plus Connection binding
 and real Responder permit genuine successful recipient delivery; paired Route
 JOIN plus Instance authentication permit Service Connection and Application I/O.
 
-Route JOIN can be implemented and genuinely exercised at its protected transport
-boundary without pretending to be Publication or Service Connection. This does
+Route JOIN is implemented and exercised at its protected transport boundary;
+Publication and Service Connection retain separate authority and lifetimes. This does
 not discharge complete capsule-recipient proof. Preserve every broader Route
 obligation and missing genuine neighbor explicitly; prepare the needed real
 owner designs before assigning dependencies. This design starts no additional

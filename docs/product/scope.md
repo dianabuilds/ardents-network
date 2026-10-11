@@ -20,7 +20,7 @@ package, release, wire, or persisted identities. Existing accepted wire or
 persisted identities that contain an earlier label remain compatibility
 obligations until a separately researched migration retires them.
 For the exact closed Service identities inventoried in
-[R-168](../research/records/r-168-service-v3-format-reset.md),
+[R-168](../archive/research/records/r-168-service-v3-format-reset.md),
 [ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md) selects a
 fresh-root v3 replacement instead: there are no supported old Service clients,
 and old formats receive only refusal without conversion or automatic deletion.
@@ -176,7 +176,7 @@ v2 remains the sole accepted headless startup schema. The separate
 has its own selected retirement boundary; neither decision retires the
 Administration interface.
 
-[ADR-0088](../adr/0088-retire-alpha-service-links-and-corpus-intake.md)
+[ADR-0088](../archive/adr/0088-retire-alpha-service-links-and-corpus-intake.md)
 selects final retirement of Alpha Service Links and fresh corpus intake rather
 than a grace period or conversion. Both transitions are integrated: intake
 refuses before floor effects, and the Endpoint has no accepting Alpha
@@ -187,7 +187,7 @@ a separate data decision. The
 [Endpoint contract](../technical/endpoint-service-runtime.md#alpha-destination-retirement)
 owns the exact effect and compatibility boundary.
 
-[ADR-0089](../adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
+[ADR-0089](../archive/adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
 retires every new old Node-role, Source-profile, and Transit-issuer start
 rather than keeping a second accepting network path. The selected closed Node
 duties, closed Source profile, and closed issuer remain unchanged.
@@ -200,7 +200,7 @@ profile identity remain evidence, not migration or execution authority. The
 [Network/Node owner](../technical/network-route-node.md#old-start-retirement)
 defines the exact selectors and effect boundary.
 
-[ADR-0090](../adr/0090-retire-name-operator-network-adapters.md) retired the
+[ADR-0090](../archive/adr/0090-retire-name-operator-network-adapters.md) retired the
 old operator `name resolve` and `name control` HTTP/OHTTP
 adapters before any file, State, transport, output, or Namespace effect;
 [ADR-0113](../adr/0113-retire-retained-alpha-compatibility-surface.md) then
@@ -209,7 +209,7 @@ maintained surface presents or consumes Service Names. The successor
 protected wire, Resolver/Gateway topology, authority, governance, migration,
 and AAI3 integration remain unselected; future protected Service Name access
 requires an entirely new scoped design. The
-[Naming owner](../technical/naming.md#name-command-family-retirement)
+[Current scope](#c0-command-roles-state-and-outcomes)
 defines the retired surface and state boundary. The refusal is integrated and
 the command-owned HTTP/OHTTP adapters are absent; this does not make protected
 Service Name access available.
@@ -269,7 +269,7 @@ Application Interface remains a neutral shared seam.
 
 The former Browser implementation and qualification lanes are retired by
 [ADR-0069](../adr/0069-retire-active-browser-implementation.md), and
-[ADR-0091](../adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
+[ADR-0091](../archive/adr/0091-retire-uncomposed-legacy-artifacts.md) retired the
 in-tree Firefox/Endpoint compatibility source. Its accepted ADRs, research
 records, and immutable audit receipts remain non-executable evidence only.
 They do not inherit a Network security claim, Browser isolation claim, Web PKI
@@ -354,7 +354,7 @@ accepted ADR where it creates consequential lock-in.
 | Security and privacy claims | [threat model](../security/threat-model.md) |
 | Network/Route/Node | [Network Route and Node](../technical/network-route-node.md) |
 | Endpoint/Service/Application seam | [Endpoint and Service runtime](../technical/endpoint-service-runtime.md) |
-| Naming and private resolution | [Naming](../technical/naming.md), [Private reachability](../technical/private-reachability.md) |
+| Naming and private resolution | [Naming](scope.md), [Private reachability](../technical/private-reachability.md) |
 | Enrollment and artifacts | [Enrollment verification](../technical/enrollment-verification.md) |
 | Release, replacement, and custody | [Release and update custody](../technical/release-update-custody.md) |
 | Commands, packages, and checks | [command reference](../reference/commands.md), [package map](../development/package-map.md), [testing](../development/testing.md) |

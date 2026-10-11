@@ -52,9 +52,11 @@ resources.
 8. Promote a decided contract to its current owner: an ADR for a consequential
    irreversible choice, technical/product/security documentation for the
    maintained contract, or both.
-9. Retain the completed record as decision provenance outside the main current
-   reading route. Delete its disposable experiment and stage material after
-   promotion; immutable Git history preserves their exact evidence.
+9. Move the completed record to `docs/archive/research/records/` with its
+   source identity and current owner in the archive manifest. Retain original
+   record bytes and evidence limitations; repair current inbound links. Retire
+   disposable experiment/stage instructions after promotion; Git preserves
+   their exact source. Unselected proposal archival does not decide its question.
 
 ## Evidence labels
 

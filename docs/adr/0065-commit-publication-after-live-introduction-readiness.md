@@ -53,6 +53,6 @@ semantics change.
 
 ## Compliance
 
-[R-132](../research/records/r-132-headless-publication-readiness.md) records the
+[R-132](../archive/research/records/r-132-headless-publication-readiness.md) records the
 accepted trade-off and rejected alternatives. The Product Owner accepted the
 exact R-132 statement on 2026-08-31.

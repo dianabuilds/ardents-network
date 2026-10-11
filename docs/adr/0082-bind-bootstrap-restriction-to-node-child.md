@@ -8,7 +8,7 @@ date: 2026-09-09
 ## Context
 
 The Product Owner approved the authenticated child restriction proposed during
-implementation on 2026-09-09. [R-153](../research/records/r-153-bootstrap-child-restriction.md)
+implementation on 2026-09-09. [R-153](../archive/research/records/r-153-bootstrap-child-restriction.md)
 explains why ADR-0081's49-byte outer OPEN cannot preserve an Entry's issuer-only
 bootstrap restriction through opaque inner TLS. An otherwise valid Interior
 ADMIT does not prove that the Entry admitted private forwarding.

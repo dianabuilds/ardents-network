@@ -58,6 +58,6 @@ identities.
 
 ## Compliance
 
-- [R-134](../research/records/r-134-retire-completed-local-ceremonies.md)
-- [ADR-0059](0059-retire-fixed-alpha-candidate-assembly.md)
+- [R-134](../archive/research/records/r-134-retire-completed-local-ceremonies.md)
+- [ADR-0059](../archive/adr/0059-retire-fixed-alpha-candidate-assembly.md)
 - [Current command surface](../development/command-surface.md)

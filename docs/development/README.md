@@ -1,88 +1,26 @@
 # Development documentation
 
-This directory owns current engineering policy, factual source maps, and
-developer workflow. It is the maintained route for contributors; it does not
-make stage briefs, experiments, plans, or generated receipts a second
-specification.
+This directory owns engineering policy and factual architecture maps. Start
+from the [current documentation route](../README.md) and the affected technical
+owner. GitHub owns task selection, implementation progress and acceptance.
 
-## Current engineering route
+## Engineering route
 
-- [Documentation ownership and promotion](documentation.md) defines which
-  document owns a fact and how stage material is retired.
-- [Contributing](../../CONTRIBUTING.md) defines change prerequisites, research
-  entry, local setup, and the integration workflow.
-- [Repository layout and growth rules](repository-layout.md) define Go code
-  rules, architecture review, subsystem hierarchy, and permitted growth.
-- [Testing model](testing.md) defines the selected execution profiles.
-- [Deep audit campaign](deep-audit.md) defines the whole-codebase review,
-  proof, remediation, and requalification method for an exact frozen C0
-  candidate.
-- [Dependency register](dependencies.md) records reviewed runtime dependencies.
-- [Scoped risk exceptions](scoped-risk-exceptions.md) records any accepted,
-  bounded exception to the normal engineering rules.
-- [Current package map](package-map.md) is the factual register of maintained
-  Go packages and their permitted imports.
-- [Command surface inventory](command-surface.md) records the process, artifact,
-  route, retirement, and future-decision boundaries for every maintained binary.
+- [Documentation ownership](documentation.md) and [contributing](../../CONTRIBUTING.md).
+- [Domain map](domain-map.md): exclusive rules, state, resources and collaborations.
+- [Package map](package-map.md) and [repository layout](repository-layout.md): actual packages and exact imports.
+- [Agent execution](agent-execution.md) and [Route migration contract](route-migration-contract.md): authorized execution, isolation and handoff.
+- [Testing](testing.md), [privacy acceptance](privacy-qualification.md) and [deep audit](deep-audit.md): evidence profiles and candidate qualification boundaries.
+- [Dependencies](dependencies.md) and [scoped risk exceptions](scoped-risk-exceptions.md).
+- [Command surface](command-surface.md), [command reference](../reference/commands.md) and [local diagnostics](local-diagnostics.md).
+- [Privacy coverage and dependency map](privacy-anonymity-map.md).
+- [Route integration boundaries](route-delivery-join-boundary.md): retained cross-domain transport and acceptance obligations.
 
-## Current technical references
+## Historical material
 
-- [Network State, Entry, Route, and Node](../technical/network-route-node.md)
-- [Protected Route protocol](../technical/protected-route-protocol.md)
-- [Private admission](../technical/private-admission.md)
-- [Private reachability](../technical/private-reachability.md)
-- [Endpoint and Service runtime](../technical/endpoint-service-runtime.md)
-- [Application confinement](../technical/application-confinement.md)
-- [Common privacy architecture](../technical/common-privacy-architecture.md)
-- [Private naming and namespace](../technical/naming.md)
-- [Release update and authority custody](../technical/release-update-custody.md)
-- [Closed-alpha enrollment verification](../technical/enrollment-verification.md)
-- [Alpha control transition](../technical/alpha-control-transition.md)
-- [Current command reference](../reference/commands.md)
-
-Read the affected owner for the task at hand. Completed experiments, obsolete
-inventory snapshots and retired Transit design instructions are preserved in
-Git history. Research and decision records link to their exact source revision.
-
-## Proposed domain transition
-
-The [DDD transition design](ddd-transition-design.md) maps the proposed contexts
-to current state owners, describes the first Admission restructuring and defines
-the migration and fault-verification method. Its first Admission slice is
-implemented; [the domain entry point](../../internal/successor/admission/README.md)
-shows the actual operation and invariants. The wider context map remains a
-proposal; the package map owns current import policy and Issues own execution.
-
-## Working network-core proposal
-
-The [transition proposal](network-core-transition.md) and
-[wire candidate](network-core-wire-proposal.md) are read for a named design
-question. Neither defines current runtime behavior or an accepted protocol.
-The technical references above own current facts; the selected GitHub milestone
-and its issues own execution order and delivery state. Retire obsolete proposal
-chronology after its unique decisions have current owners and links are
-repaired under the [documentation policy](documentation.md#promotion-and-retirement).
-
-## Retained audit receipts
-
-- [C0 run-2 Track A receipt](audit-receipts/c0-run-2-track-a.md) retains the
-  exact blocked Gate A identity and external evidence digest; it is historical
-  evidence, not a current product or Qualification claim.
-- [C0 run-2 Gate A remediation receipt](audit-receipts/c0-run-2-gate-a-remediation.md)
-  records the exact accepted source-artifact candidate, all 15 finding
-  dispositions, repeated affected-cell evidence, and reproducible artifact
-  digests. Track B remains unstarted.
-
-## Historical provenance
-
-Completed research records and accepted ADRs remain decision evidence outside
-the normal reading route. Superseded stage procedures and disposable
-experiments are retired to Git after their unique current facts gain an owner,
-as defined by [documentation policy](documentation.md#promotion-and-retirement).
-Neither a retained record nor Git history is a current command, package, or
-Qualification contract.
-
-Retired experiment source is available from Git history and its research
-record. Experiment trees still present in the repository are research
-material, not maintained product modules or current Qualification claims;
-their removal preserves needed evidence and repairs current instructions.
+[The archive](../archive/README.md) contains former decomposition proposals,
+source inventories, alternative network-core/wire candidates and immutable
+audit receipts. The current domain map replaces the original strategic
+proposal; the technical owners replace completed component design snapshots.
+An unresolved finding remains unresolved after archival. A receipt qualifies
+only its exact candidate and stated boundary, never the current tree by inheritance.

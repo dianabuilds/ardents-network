@@ -12,7 +12,7 @@ Route/Resolution roles while exposure and derived work remain. Today State's
 serving Duty ends at the Epoch `ValidUntil` even while its Source server can
 answer from retained bytes, and an outbound wave's initial Duty ends at its
 15-second journal deadline even if contact or verification has not joined.
-[R-169](../research/records/r-169-source-duty-lifetime.md) records the evidence.
+[R-169](../archive/research/records/r-169-source-duty-lifetime.md) records the evidence.
 
 ## Decision
 

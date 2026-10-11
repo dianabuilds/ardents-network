@@ -7,6 +7,16 @@ contract change. The root [repository instructions](../../AGENTS.md) require
 reading it after every compaction and handoff. Its rules survive a new chat,
 worktree, agent, checkpoint or source-file rename.
 
+## Current selection takes precedence
+
+The latest direct Product Owner instruction and selected GitHub ledger control
+work admission. The delegated transition cycle below operates within that
+selection; it cannot restore an older automatic next-domain assignment. GitHub
+[#497](https://github.com/dianabuilds/ardents-network/issues/497) records the current
+instruction: Connection continues; new implementations are held until explicitly
+selected. Documentation cleanup, archival and a completed predecessor do not
+select another implementation, research question, branch, worktree or thread.
+
 ## Read before editing
 
 Before the first edit, after every compaction/handoff, and before accepting a
@@ -28,9 +38,9 @@ checkpoint as current, perform this sequence:
    owner, [package map](package-map.md), [testing](testing.md), and
    [agent execution](agent-execution.md). Follow linked ADRs for consequential
    contradictions, not historical source as a competing requirement.
-5. Read the [owner map](route-domain-boundary-analysis.md). Verify affected
-   owners and callers against current source; its old-source inventory is
-   evidence, not an integration destination or permission to import it.
+5. Read the [domain ownership map](domain-map.md). Verify affected owners and
+   callers against current source. Archived predecessor inventories are evidence,
+   not an integration destination or permission to import old runtime.
 6. Resume from verified evidence. An earlier recommendation, summary, passing
    narrower test or report of completion is not a new authorization.
 
@@ -89,9 +99,9 @@ for the real accepted boundary. Summaries do not override the contract.
 
 ### R01: Isolate both directions
 
-New Route belongs in the new-domain tree, with `internal/successor/route` as
-the proposed source destination. Its first real composition consumer belongs
-in `cmd/ardents-next`. Exact packages require the normal complete registration.
+New Route belongs in the new-domain tree at `internal/successor/route`.
+Its real composition consumer belongs in `cmd/ardents-next`. Exact packages
+require the normal complete registration.
 
 New Route must not import or execute old `internal/route`, `internal/entry`,
 `internal/endpoint`, `internal/node`, `internal/admission`, `internal/hosting`,
@@ -176,10 +186,10 @@ any later migration needs an explicit validated compatibility contract.
 
 ### R06: Separate policy changes from package migration
 
-The [boundary analysis](route-domain-boundary-analysis.md#contract-and-implementation-gaps)
-records quota, Rendezvous and Interior selection gaps; its
-[recommendations](route-domain-boundary-analysis.md#recommended-resolution)
-are not accepted amendments. Do not silently select 8 MiB, change selection
+The [private admission contract](../technical/private-admission.md),
+[protected Route protocol](../technical/protected-route-protocol.md) and
+[domain map](domain-map.md) own quota and selection rules. Historical boundary
+recommendations are not accepted amendments. Do not silently select 8 MiB, change selection
 randomness, expand retries, rotate a retained set or weaken a refusal merely
 because the implementation is being moved.
 
@@ -376,8 +386,9 @@ not authorize changing the execution arrangement.
     when the Product Owner corrects the arrangement. An old summary, scheduled
     reminder or tool capability cannot restore a rejected arrangement. Preserve
     the full program mandate: after verified domain release and `dev` integration,
-    design and verify the next domain and assign its visible executor without
-    waiting for another Product Owner prompt. The program ends only when the
+    design and verify the next domain within the latest human selection; assign
+    its visible executor only when that selection permits implementation.
+    A current hold prevents an automatic successor start. The program ends only when the
     whole maintained project has completed the transition.
 
 ### Confirm the predecessor and admit the task

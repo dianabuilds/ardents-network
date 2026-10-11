@@ -13,7 +13,7 @@ the complete first scheme in a closed network, text publication/read with
 confinement on Ubuntu, and subsequently Target Link first. The delegated design
 must settle mechanisms before implementation tasks.
 
-[R-152's contract assessment](../research/records/r-152-closed-scheme-contract.md)
+[R-152's contract assessment](../archive/research/records/r-152-closed-scheme-contract.md)
 records source review, component evidence, rejected alternatives and the cost
 model. It supports a bounded design selection, not implementation qualification.
 

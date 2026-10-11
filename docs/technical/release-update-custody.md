@@ -42,7 +42,7 @@ The current `ardents-service-instance-request-v3` public request binds the
 Network, Instance public key, validity interval, and request commitment. The
 signed Service Instance Credential v3 delegates that Instance with its Target,
 Authority, Network, generation, validity interval, and capabilities. Neither
-format contains the retired Introduction recipient field. [ADR-0102](../adr/0102-stop-legacy-introduction-key-emission.md)
+format contains the retired Introduction recipient field. [ADR-0102](../archive/adr/0102-stop-legacy-introduction-key-emission.md)
 retired that key emission; [ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md)
 selects the current v3 format identities. Service Credential is the glossary's
 short form for the same public credential.

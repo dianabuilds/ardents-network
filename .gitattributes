@@ -6,3 +6,7 @@
 *.toml text eol=lf
 *.sh text eol=lf
 *.ps1 text eol=crlf
+
+# Historical records keep their exact captured bytes, CRLF and final blank lines.
+# Current source/documents retain the normal text and whitespace rules above.
+docs/archive/** -text whitespace=cr-at-eol,-blank-at-eof

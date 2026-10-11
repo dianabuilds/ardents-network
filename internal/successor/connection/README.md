@@ -44,5 +44,5 @@ Execution — worker; эти обязанности не переходят к C
 как междоменный контракт.
 
 **Основа:** [Service](../../../docs/technical/endpoint-service-runtime.md),
-[граница Execution](../../../docs/development/application-execution-domain-boundary-analysis.md),
+[граница Execution](../../../docs/technical/application-execution.md),
 [карта доменов](../../../docs/development/domain-map.md).

@@ -72,19 +72,19 @@ as such instead of inventing an honest operator, a trustworthy majority, or a
 safe local execution environment.
 
 The [threat model](../security/threat-model.md#hostile-environment-premise-and-residual-assumptions)
-owns these conditions and limits. [R-149](../research/records/r-149-autonomy-transition.md#outcome-first-decision-preparation)
+owns these conditions and limits. [R-149](../archive/research/records/r-149-autonomy-transition.md#outcome-first-decision-preparation)
 owns the open decision questions. Its existing proposed verification brief does
 not outrank this task definition or select a public mechanism.
-The [solution comparison](../research/records/r-149-autonomy-transition.md#solution-proposals-by-outcome)
+The [solution comparison](../archive/research/records/r-149-autonomy-transition.md#solution-proposals-by-outcome)
 now proposes an approach, alternatives, assumptions and implementation boundary
 for every outcome; public mechanisms remain subject to their individual gates.
 The Product Owner's task-first clarification makes PoW optional, including its
 complete absence. Local authorization, replication, conflict agreement,
 freshness and admission are evaluated separately before composing a solution.
-The [mechanism comparison](../research/records/r-149-autonomy-transition.md#task-first-mechanism-comparison)
+The [mechanism comparison](../archive/research/records/r-149-autonomy-transition.md#task-first-mechanism-comparison)
 retains the alternatives; one illustrative work-based experiment cannot impose
 its blocks, confirmation delays or history requirements on the product.
-The [first operation/candidate assessment](../research/records/r-149-autonomy-transition.md#operation-level-findings-and-candidate-assessment)
+The [first operation/candidate assessment](../archive/research/records/r-149-autonomy-transition.md#operation-level-findings-and-candidate-assessment)
 records semantic counterexamples and finite quorum checks. These are research
 evidence, not an implemented protocol or new public guarantee.
 
@@ -290,8 +290,8 @@ conditions remain binding until a selected successor replaces the exact rule.
 Their signature thresholds are not a selected public consensus quorum.
 
 The rows below extend this registry, not the C0 backlog. **Working** rows are
-prepared for decision through [ADR-0080](../adr/0080-separate-public-state-acceptance-obligations.md)
-and [R-149](../research/records/r-149-autonomy-transition.md). The
+prepared for decision through [ADR-0080](../archive/adr/0080-separate-public-state-acceptance-obligations.md)
+and [R-149](../archive/research/records/r-149-autonomy-transition.md). The
 [operating model](operating-model.md#autonomous-shared-state-contract) owns the
 lifecycle semantics; no additional numeric budget is fixed here.
 
@@ -305,7 +305,7 @@ lifecycle semantics; no additional numeric budget is fixed here.
 | NET-24 | Under the selected fault model, committed owner authority cannot silently roll back. A candidate with residual reorganization risk declares its probability assumptions and post-commit conflict/recovery behavior before selection. | working | Preserve the current no-silent-authority-resurrection boundary; do not disguise probabilistic confirmation as absolute finality. |
 | NET-25 | Consensus participation has an explicit Sybil/resource argument. Equal key count, advertised power, per-key limits, useful traffic, and presumed lack of attack profit do not establish voting weight or independent control. | fixed | ADR-0074 plus R-146's retained threat/resource requirements; no weight formula, committee size, or scarce resource is selected. |
 | NET-26 | Network ordering inputs and their infrastructure projection contain only necessary infrastructure facts and permitted opaque Name inputs; Namespace verification retains its separate data boundary. Neither records User traffic/query history or a session routing graph. | fixed | ADR-0074, existing naming and Route privacy contracts. A separate Namespace validity/availability path remains necessary. |
-| NET-27 | Public software provenance, local safety policy, and continued protocol participation have separate powers; optional publisher evidence cannot acquire a universal renewal or shutdown command. | working | ADR-0074 fixes the direction; [proposed ADR-0076](../adr/0076-separate-update-freshness-from-public-operation.md) details the successor policy. Current Release Safety is unchanged. |
+| NET-27 | Public software provenance, local safety policy, and continued protocol participation have separate powers; optional publisher evidence cannot acquire a universal renewal or shutdown command. | working | ADR-0074 fixes the direction; [proposed ADR-0076](../archive/adr/0076-separate-update-freshness-from-public-operation.md) details the successor policy. Current Release Safety is unchanged. |
 | NET-28 | Before a public verification slice is selected, its proof, freshness, formats, storage/failure rules, and finite role budgets are concrete; incomplete evidence cannot be replaced by an unchecked trusted flag. | working | ADR-0075 and the R-149 development-readiness checklist; the package map remains a factual inventory. |
 
 ## Common protection requirement

@@ -332,7 +332,7 @@ returns 8 MiB, as recorded by the
 [predecessor Introduction receiver description](network-route-node.md#closed-introduction-registration-receiver).
 That increase is not an accepted policy, and the predecessor is not switched or
 rewritten by the isolated migration. The
-[Route boundary analysis](../development/route-domain-boundary-analysis.md#contract-and-implementation-gaps)
+[Route boundary analysis](../development/domain-map.md)
 records the workload limitation and proposed policy investigation; it does not
 authorize increasing the new allowance or promise 256 deliveries per slot.
 
@@ -585,7 +585,7 @@ Changing those semantics requires a new authenticated generation and review;
 the closed permission format cannot become a permanent public administrator.
 
 Evidence and limitations are in the
-[R-152 contract research](../research/records/r-152-closed-scheme-contract.md).
+[R-152 contract research](../archive/research/records/r-152-closed-scheme-contract.md).
 
 ## Spend journal failure containment
 

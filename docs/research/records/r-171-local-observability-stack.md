@@ -236,7 +236,7 @@ of those backend outcomes.
 
 **Measurement:** On the selected Docker Desktop Linux/amd64 host, registry
 manifest inspection resolved immutable platform digests for the five Alloy-stack
-candidates. [Experiment tooling](../../../experiments/r-171-local-observability/README.md)
+candidates. [Experiment tooling](https://github.com/dianabuilds/ardents-network/blob/63e3b4239d9a803ea0af3d74f07c3f24d9ed7303/experiments/r-171-local-observability/README.md)
 records those inputs. Explicit `make tools-install` downloaded and checked all
 five platform/digest identities; receipt `ardents-r171-images-b/receipt.json`
 records completion, per-image IDs, defaults and sizes. No candidate service ran.

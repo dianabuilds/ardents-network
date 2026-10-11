@@ -4,6 +4,16 @@ This engineering workflow applies to the authorized closed text-Service work.
 It changes neither the product contract nor the repository authority order.
 GitHub Issues in the C0 milestone own delivery state; this file is not a ledger.
 
+## Current selection takes precedence
+
+The latest direct Product Owner instruction and selected GitHub ledger control
+work admission. The delegated transition cycle below operates within that
+selection; it cannot restore an older automatic next-domain assignment. GitHub
+[#497](https://github.com/dianabuilds/ardents-network/issues/497) records the current
+instruction: Connection continues; new implementations are held until explicitly
+selected. Documentation cleanup, archival and a completed predecessor do not
+select another implementation, research question, branch, worktree or thread.
+
 ## Delegated project-wide domain transition
 
 The Product Owner delegated the entire DDD transition on 2026-10-04, including
@@ -59,10 +69,12 @@ by the completed domain model:
    confirm the integrated source and remote revision. The orchestrator checks
    boundaries and evidence, reconciles the complete domain map and owning
    documents, and returns precise defects to the same executor when necessary.
-6. **Continue to the next domain.** After the domain's complete release boundary
-   and `dev` integration are verified, the orchestrator designs and verifies the
-   dependency-ready next domain, then repeats this cycle without waiting for a
-   Product Owner prompt. Do not close the program while any maintained scenario,
+6. **Prepare the next domain within the current selection.** After complete
+   release and `dev` integration, design and verify dependency-ready work and
+   record its acceptance boundary in GitHub. Assign its implementation only
+   within the latest direct Product Owner selection. The current hold permits
+   preparation of the plan, without an automatic next-domain implementation.
+   A completed slice does not complete the program while a maintained scenario,
    domain responsibility, real consumer or required release proof is missing.
 
 Do not summon the Product Owner or stop the implementation thread because a

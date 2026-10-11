@@ -148,7 +148,7 @@ permission, registration or protocol deadline.
 
 ## Old start retirement
 
-[ADR-0089](../adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
+[ADR-0089](../archive/adr/0089-retire-old-node-starts-preserve-owned-shutdown.md)
 selects an effect-free refusal for every new old execution selection:
 
 - Node reservations `rendezvous`, `initiator`, `introduction`, `responder`,
@@ -395,7 +395,7 @@ changes.
 
 This contract is selected by
 [ADR-0118](../adr/0118-retain-direct-source-guards-through-dependent-work.md)
-from [R-169](../research/records/r-169-source-duty-lifetime.md). Serving Duty
+from [R-169](../archive/research/records/r-169-source-duty-lifetime.md). Serving Duty
 still stores Epoch `ValidUntil`, but `direct-source/live` conflict truth follows
 explicit owner release; State holds accepted-handler predecessors through their
 joined close. Outbound contact uses an owner-held live guard across the journal
@@ -765,15 +765,15 @@ ever surfaced, stay on disk with no reader.
   retains bounded functional integration evidence for its exact candidate.
   It supplies no current Route, privacy, host-profile, or public-operation
   qualification.
-- [ADR-0024](../adr/0024-native-interactive-route-foundation.md),
+- [ADR-0024](../archive/adr/0024-native-interactive-route-foundation.md),
 	[ADR-0070](../adr/0070-own-volatile-user-route-orchestration.md),
-  [ADR-0025](../adr/0025-state-referenced-entry-invites.md),
-  [ADR-0072](../adr/0072-adopt-offline-enrollment-route-v2.md), which
+  [ADR-0025](../archive/adr/0025-state-referenced-entry-invites.md),
+  [ADR-0072](../archive/adr/0072-adopt-offline-enrollment-route-v2.md), which
   supersedes their C0 Route/Entry selection,
   [ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md), and
-  [ADR-0049](../adr/0049-defer-blocked-entry-profile.md) define the selected
+  [ADR-0049](../archive/adr/0049-defer-blocked-entry-profile.md) define the selected
   native Route and Carrier facts.
-- [R-092](../research/records/r-092-native-node-operating-profile.md) retains the
+- [R-092](../archive/research/records/r-092-native-node-operating-profile.md) retains the
   measured dedicated-host Rendezvous Functional Alpha result for its original
   recorded candidate. That historical result does not qualify the current C0
   candidate, select another duty, or establish public capacity, availability,

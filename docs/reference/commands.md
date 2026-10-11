@@ -162,7 +162,7 @@ the [bounded closure receipt](../development/testing.md#reachability-audit),
 whose exact scope is owned by Testing.
 
 The old Name operator network adapters have their own selected
-[retirement boundary](../technical/naming.md#name-command-family-retirement).
+[retirement boundary](../product/scope.md).
 ADR-0113 subsequently retired `name encode` itself and deleted the canonical
 Naming wire grammar with its package; the whole `name` verb family now
 refuses, and protected Service Name access is still not delivered. The
@@ -365,7 +365,7 @@ the actual enrolled flows and Git history; no participant or qualification
 profile called either route.
 
 The four completed planning-campaign `simulate-*` routes were retired by
-[ADR-0060](../adr/0060-retire-completed-planning-campaign-generators.md).
+[ADR-0060](../archive/adr/0060-retire-completed-planning-campaign-generators.md).
 Their historical command lines, JSON schema identities, and receipts remain
 unchanged in the accepted ADRs, research records, external evidence, and Git
 history; they are not current command compatibility promises.

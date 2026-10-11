@@ -12,7 +12,7 @@ The maintained closed Service has no supported earlier clients or roots that
 must migrate. Its
 accepted formats nevertheless carry independent v1/v2/v3 labels, and the
 retained Service Connection profile names a retired Route. The Product Owner
-selected a direct v3 target and fresh-root cutover. [R-168](../research/records/r-168-service-v3-format-reset.md)
+selected a direct v3 target and fresh-root cutover. [R-168](../archive/research/records/r-168-service-v3-format-reset.md)
 records the format inventory and the unverified deployment assumption.
 
 ## Decision

@@ -14,9 +14,9 @@ joined them under ADR-0110: the exact route returns `inspect-alpha-corpus is
 retired` before parsing arguments or opening any file, root, or floor, and no
 ACA2 verifier remains in the tree.
 Eight separately classified Portable routes remain maintained, but their
-per-user readiness does not start the protected text Service. Old writers
-inside shared packages such as Reachability and Instance are tracked in the
-component reconstruction. The F-08 operator-surface reduction is complete:
+per-user readiness does not start the protected text Service. Retired writers and retained compatibility bounds belong to the current
+Service/Reachability owners; historical reconstruction findings do not select
+new work. The F-08 operator-surface reduction is complete:
 the Invite root's data obligation was resolved as typed incompatibility
 (existing roots stay on disk byte-for-byte), the import writer is stopped,
 and the read-only recipient command is retired with it.
@@ -32,10 +32,11 @@ boundaries; they are not alpha-bundle artifacts.
 
 | Artifact lane | Binary | Disposition | Boundary |
 |---|---|---|---|
-| Network participant | ardents | keep and deepen | Headless Endpoint, Network State, Service Instance, Entry, and current naming adapters. |
+| Network participant | ardents | keep and deepen | Headless Endpoint, Network State and selected closed Service interfaces; Entry Invite and Name routes are retired. |
 | Network participant | ardents-node | keep | Source, Node duty, and closed issuer process lifecycle. |
-| Network participant | ardents-control | keep after contraction | Enrollment-pinned alpha-control/corpus reader and bounded closed-profile operator adapter; it has no corpus-floor mutation authority. |
+| Network participant | ardents-control | keep after contraction | Enrollment-pinned ACA1 disclosure/transition reader and bounded closed-profile operator adapter; ACA2 corpus intake/inspection are retired. |
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
+| Isolated domain composition | ardents-next | maintained domain consumer | New-domain commands and bounded native consumers; no old-runtime imports, installed Service or final artifact cutover implied. |
 | Installed Application | ardents-text | keep | Trusted local text UI and fixed confined Reader/Publisher worker entrypoints. |
 | Installed qualification | ardents-qualification | keep as verification tooling | Drives the selected installed network qualification run and records evidence. |
 | Installed qualification | ardents-stream-qualification | keep as verification tooling | Fixed NET-14 stream-test Application worker entrypoints. |

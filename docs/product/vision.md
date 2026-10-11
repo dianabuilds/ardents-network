@@ -9,7 +9,7 @@ is defined in [the product operating model](operating-model.md). What may be
 built now is controlled separately by the
 [product scope and audit boundary](scope.md).
 
-The [future product catalogue](future-product-catalog.md) collects exploratory
+The [future product catalogue](../archive/product/future-product-catalog.md) collects exploratory
 product ideas and concrete usage scenarios without selecting delivery order
 or expanding this accepted contract.
 

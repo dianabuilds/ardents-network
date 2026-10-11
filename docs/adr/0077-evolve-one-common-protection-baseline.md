@@ -6,7 +6,7 @@ date: 2026-09-07
 # Evolve one common protection baseline
 
 The Product Owner chooses protection in ordinary use of the whole Ardents
-system. [R-150](../research/records/r-150-common-protection-baseline.md) records
+system. [R-150](../archive/research/records/r-150-common-protection-baseline.md) records
 the contract comparison and the former Horizon 5 provenance. The intended
 product has one common protection baseline, improved through explicit protocol
 evolution, rather than parallel ordinary and stronger security modes.

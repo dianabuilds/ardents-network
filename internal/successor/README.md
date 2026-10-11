@@ -24,13 +24,13 @@ its contract, tests and non-test consumer are implemented together.
 | `admission/` | Выдача, хранение, предъявление и необратимое расходование прав | Существующая реализация |
 | `hosting/` | Физический бюджет провайдера и резервирование | Существующая реализация |
 | `route/` | Защищённые маршруты, ролевые каналы и завершение транспорта | Существующая частичная реализация |
-| [execution/](execution/README.md) | Локальные полномочия Application, сессия, Job и завершение worker | Только каркас |
-| [publication/](publication/README.md) | Жизненный цикл публикации Service Instance | Публичная проверка подписанных proofs; живой Instance и readiness ещё отсутствуют |
+| [execution/](execution/README.md) | Локальные полномочия Application, сессия, Job и завершение worker | Реализованы локальные правила, native worker и реальные runtime-потребители; полная установленная Service-квалификация остаётся отдельной границей |
+| [publication/](publication/README.md) | Жизненный цикл публикации Service Instance | Реализованы public proof, consumed Instance и живой qualified Publisher; REGISTER и Descriptor Store ACK предшествуют accepting Link |
 | [reachability/](reachability/README.md) | Descriptor Store и проверка достижимости точного Target | Проверка private Descriptor, отдельные долговечный Store и локальная история поиска; реальные receiving и holder потребители через Route |
 | [connection/](connection/README.md) | Неизменная начальная привязка logical/Attachment context | Ограниченная привязка к Publication и исходной Execution operation; Service TLS, continuity, ordered stream и recovery остаются будущими обязанностями |
 | [enrollment/](enrollment/README.md) | Первичное закрепление доверенного комплекта | Отдельная проверка portable v3 комплекта по независимому pin, закрытый snapshot и реальный read-only consumer; не разрешение Release или запуска |
-| [release/](release/README.md) | Разрешение на точные программные артефакты | Только каркас |
-| [installation/](installation/README.md) | Установка, замена и восстановление поколения | Только каркас |
+| [release/](release/README.md) | Разрешение на точные программные артефакты | Реализованы offline-проверка точных байтов, отдельные floors/history и реальные команды; разрешение не устанавливает и не запускает |
+| [installation/](installation/README.md) | Установка, замена и восстановление поколения | Реализованы generation authentication и ограниченные native transaction/recovery/startup потребители; полный установленный Service не принят |
 | [custody/](custody/README.md) | Хранение корневых полномочий и подпись по назначению | Только каркас |
 | `nodeidentity/` | Узкое назначение импортированного материала Node | Существующий вспомогательный владелец |
 
@@ -38,7 +38,7 @@ Enrollment, Release и Installation составляют семейство Soft
 но сохраняют разные полномочия и транзакции. Для общего `software`-агрегата
 или универсального `identity`-домена каталог не создаётся.
 
-Внутри будущих доменов пока нет каталогов слоёв, репозиториев, DTO или событий.
+README-only Custody не создаёт Go-пакет или runtime-право.
 Состав реальных пакетов определяется конкретными инвариантами и потребителями.
 Существующие Text Application, IPC, наблюдение ресурсов, диагностика,
 Qualification и композиция Endpoint/Node сохраняют места и обязанности,

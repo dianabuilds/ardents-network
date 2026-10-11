@@ -451,343 +451,54 @@ applicability decision above. Preserve unsuccessful attempts and corrections.
 
 ## Selected successor design uses
 
-[ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) selects an
-[architecture](../technical/common-privacy-architecture.md) built on maintained
-Go TLS/HPKE and a publicly verifiable blind-token family. The TLS component
-experiment is byte-cost evidence, not full protocol or security acceptance.
-[ADR-0081](../adr/0081-select-closed-protected-service-contract.md) selects
-CIRCL v1.6.5 ordinary blindrsa SHA384PSSDeterministic for the exact
-[admission construction](../technical/private-admission.md), beyond its then-retained HPKE
-use; ADR-0100 removed the last HPKE importer together with the uncomposed
-private-resolution package. The [R-152 assessment](../research/records/r-152-closed-scheme-contract.md)
-records dated source/support/license/advisory review, exact three-package plus
-standard-library closure, checksum verification, upstream tests and the composed
-probe. Its live owners are `internal/admission/token` (holder and receiver)
-and `internal/admission/issuer` (private issuing). The separately admitted
-offline successor closure remains independent. Do not import other CIRCL schemes
-or serialize opaque blinding State. A changed use or upstream/support/advisory
-fact invalidates that evidence; update or replace within this owner, never
-maintain a private cryptographic fork.
+ADR-0078/0081 and the current [Admission contract](../technical/private-admission.md)
+select the closed token construction. CIRCL ordinary blindrsa uses only
+SHA384PSSDeterministic at its exact registered holder/receiver/issuer owners;
+opaque blinding State is never serialized and no other CIRCL scheme or private
+cryptographic fork is admitted. Route capsule uses the selected standard-library
+HPKE mechanism; it does not restore the removed OHTTP/Naming importer.
 
-The Product Owner selected Go 1.27.1 on 2026-10-02 while updating Sigstore to
-v1.11.0, which requires Go 1.27. This supersedes the Go 1.26.8 successor build
-baseline. The [official release history](https://go.dev/doc/devel/release#go1.27.1),
-accessed 2026-10-02, identifies the supported patch and compiler/runtime/package
-fixes. `go.mod`, CI, active qualification containers and their prerequisites
-must use the selected patch; historical evidence keeps its actual compiler.
-Every changed candidate still runs fresh source, test, tool, advisory and
-artifact checks on that selected patch. Ubuntu/systemd package inventory and
-built-artifact inspection also remain candidate evidence. No documentation
-decision marks those checks already passed. Tools are installed only through
-make tools-install.
+The current compiler is Go 1.27.2, with the fixing x/net v0.60.0 closure and
+exact compatibility tool builds specified above. Sigstore v1.11.0 and
+go-containerregistry v0.22.1 replace their earlier selections. `go.mod` and
+`go.sum` pin the full present closure; table entries below identify the same
+versions, never an alternate build baseline. Changed artifacts need fresh
+support, source/tool/binary scan and applicable native/profile evidence.
+Version selection and a successful scanner exit do not grant integration or
+qualification.
 
-The Go 1.27.1 tool baseline selects Staticcheck 2026.2.1 (`honnef.co/go/tools`
-v0.8.1), govulncheck v1.8.0 (`golang.org/x/vuln`) and deadcode v0.50.0
-(`golang.org/x/tools`), rebuilt using that compiler through `make tools-install`.
-The previous Staticcheck 2025.1.1 cannot decode Go 1.27 export data, and the
-previous govulncheck cannot analyze the new standard-library syntax.
-Primary [Staticcheck release](https://github.com/dominikh/go-tools/releases/tag/2026.2.1)
-and [govulncheck release](https://github.com/golang/vuln/releases/tag/v1.8.0),
-accessed 2026-10-02, identify the selected supported source revisions. Existing
-licenses and explicit integration checks apply; rebuilding does not waive the
-binary/source vulnerability closure review.
-
-The rebuilt Go 1.27.1 govulncheck v1.8.0 and deadcode v0.50.0 binaries reported
-no findings in `govulncheck -mode=binary -show verbose`. Staticcheck 2026.2.1
-reported module-only GO-2026-6180 and GO-2026-6179 in x/mod v0.35.0; neither
-affected package nor symbol is imported. `go list -deps -mod=readonly
-./cmd/staticcheck` in the immutable honnef.co/go/tools v0.8.1 source returned
-486 packages and zero x/mod/sumdb packages. `go tool nm` on the exact rebuilt
-binary also returned zero x/mod/sumdb symbols. Its go/packages subprocess uses
-the selected Go 1.27.1 toolchain instead. This scoped non-applicability fails
-on any changed tool source, imported closure, compiler, invocation or advisory.
-Keep the verbose binary scan and import/symbol evidence with the candidate;
-successful scanner exit alone is not the justification.
-
-The Product Owner's Sigstore renewal selects `github.com/sigstore/sigstore`
-v1.11.0, source integrity `h1:66TQEtd0aMw79qT9EiGnuOxgK6r8Kkpzszi3KUPGt7c=`.
-The [upstream release](https://github.com/sigstore/sigstore/releases/tag/v1.11.0),
-accessed 2026-10-02, explains its Go 1.27 requirement and maintained update path.
-The Release verification use and Apache-2.0 license remain unchanged; the new
-KMS/retry and ML-DSA surfaces are not selected by this renewal. Its current
-`github.com/google/go-containerregistry` closure is v0.22.1, integrity
-`h1:RZuuSYhTvlDvtsK+NkutoCZ//C0X2ebLK8X8l3ULs84=`; the
-[upstream release](https://github.com/google/go-containerregistry/releases/tag/v0.22.1)
-contains a canonical-IP SSRF guard fix. These immutable current selections
-supersede the old snapshot tables below without rewriting historical evidence.
-Current root module sums and source verification cover the complete selected
-closure; candidate gates still own behavior and vulnerability acceptance.
-
-On the Go 1.27.1 root closure, `go list -deps -test ./...` returned zero
-OpenPGP imports on Windows/amd64 (698 packages with CGO off or on) and
-Linux/amd64 (745 packages with CGO off, 746 with CGO on). The current x/crypto
-version is v0.57.0. The module-only GO-2026-5932 finding remains inapplicable
-to these normal-build production/test closures. This does not cover additional
-build tags or targets; changed imports, source versions, toolchain or advisory
-facts require a new assessment. Import enumeration does not constitute Linux
-runtime or installed Endpoint qualification.
-
-### Go 1.26.8 successor-baseline admission evidence
-
-Candidate evidence captured 2026-09-08 on Windows/amd64 with `CGO_ENABLED=1`,
-no build tags, `GOENV=off`, `GOTOOLCHAIN=local`, and the exact
-  `go1.26.8` binary selected by the build environment. Its SHA-256 was
-  `21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9`.
-
-- `go mod verify` and `go mod tidy -diff` passed. The direct selected module
-  identities were CIRCL `v1.6.5`
-  (`h1:O64F26HEqNhznd/hrC5KZXVKYuKM2rx4deZDTc4ihQA=`), quic-go `v0.62.0`
-  (`h1:ZHDjCk5OacATwGvs8PWE97CTvX7AqZiVoW7++ZOXTf8=`), OHTTP `v0.0.80`
-  (`h1:LsDWRCU55vfI+mes1zuMGGKDZ8MsgbnlEr9IDd6jG9Y=`), and x/crypto
-    `v0.56.0` (`h1:GUh5Ii4J5jtcseSMiRqr1jXCNHoxjeV9Fmekc2oLy6Y=`).
-    Its retained OHTTP closure was twoway `v0.0.80`
-    (`h1:pojOC5jRtsN04/ZwzZM7FIgt0qGj/rxefb388Eb1jKU=`) and bhttp `v0.0.80`
-    (`h1:Zq0FiWIZCOqzrpMBzrEV7J0Jrc+20n0rPWVXpuKqwPQ=`). The complete closure
-    was 181 `go list -m -json all` records; its exact `go.mod` SHA-256 was
-    `a5e05aceb2ec1fa5afbfd7a9ff657cfca7ff04de43095fee692af7bb48872026`
-    and its exact `go.sum` SHA-256 was
-    `5167264d35ddb70683f5b7a3fbc6cffac8fa0ec6cb15d72c1d4747a7976627a2`.
-- `make tools-install` rebuilt the pinned Staticcheck 2025.1.1,
-  govulncheck v1.1.4, and deadcode v0.48.0 binaries with Go 1.26.8;
-  `tools-check` now rejects a tool binary built by any other Go patch. Their
-  Windows/amd64 SHA-256 values were respectively
-  `e25257acb31418dac0f491c4909df49e8a359793442281407b9411b93f80bede`,
-  `6713173da52bd0b8b1e5960a6baa0eae5311f9011f52a2db77b9738fb39f2b54`,
-  and `0fb70a59d2139e4267cf0252f53439887663d0fcf78d55d66eeb87fc4c5f28e7`.
-  - CIRCL's exact `blindsign/blindrsa` package passed its upstream RFC-9474
-    vector suite under Go 1.26.8 with
-    `go test github.com/cloudflare/circl/blindsign/blindrsa -run '^TestVectors$' -count=1`.
-    The compressed upstream fixture
-    `test_vectors_rfc9474.json.gz` had SHA-256
-    `374ba388a53cd9017aecff92afd2174188c7d5c7e8f0947d8af466043f134ff7`.
-    RFC-9474's fixture supplies RSA integer inputs rather than an SPKI or key
-    ID. The credential-owner baseline therefore separately constructs and
-    parses the selected 346-byte RFC-9578 RSA-PSS SPKI, requires its SHA-256
-    key ID to survive parse/re-encode unchanged, and rejects generic RSA SPKI.
-    It uses a fresh 32-byte nonce with only `SHA384PSSDeterministic`, rejects a
-    malformed length through CIRCL, and independently verifies its finalized
-    signature with Go's `crypto/rsa.VerifyPSS`. No opaque blinding State is
-    serialized and no other CIRCL scheme is admitted.
-- `govulncheck -json ./...` used database `https://vuln.go.dev`, last modified
-  `2026-09-02T19:12:04Z`, scanner v1.1.4 and Go 1.26.8. It reported only
-    module-level `GO-2026-5932`. `go list -deps` and `go list -deps -test`
-    found zero `golang.org/x/crypto/openpgp` packages in all four selected
-    closures: Windows/amd64 with CGO disabled (367 production, 498 test
-    packages), Windows/amd64 with CGO enabled (367, 498), Linux/amd64 with CGO
-    disabled (370, 504), and Linux/amd64 with CGO enabled (371, 505). This
-    non-applicability holds only for those four closures; a new import, target,
-    build tag, x/crypto version, scanner database update, or advisory change
-    requires reassessment.
-
-The trusted snapshot/Administration client and Node forwarding command imports
-were reassessed on 2026-09-09 with the same Go 1.26.8, scanner v1.1.4,
-x/crypto v0.56.0 and database modification time above. A fresh
-`govulncheck -json ./...` again reported only the module-level GO-2026-5932
-finding. Fresh `go list -deps ./...` and `go list -deps -test ./...` found no
-openpgp package in any normal-build closure: Windows/amd64 CGO off/on each had
-374 production and 510 test packages; Linux/amd64 CGO off had 377/517 and CGO
-on 378/518. The scoped non-applicability argument therefore still holds for
-these changed closures. This does not cover additional build tags or qualify
-the installed worker artifact; those boundaries retain their own checks.
-
-This is source/tool evidence only. The required Ubuntu package inventory,
-installed-artifact inspection, and platform execution remain separate candidate
-and qualification evidence; Windows or cross-target analysis cannot replace
-them.
-
-### `cmd/ardents` Linux dependency projection
-
-**Current import-graph check, 2026-09-26.** At architecture-worktree revision
-`53f02e64`, Linux/amd64 with cgo disabled, `go list -mod=readonly -deps`
-completed for all four participant/control commands. The package counts
-below include standard-library packages. None of these four closures now
-contains `openpcc/ohttp` or `openpcc/twoway`; all four still contain CIRCL
-and quic-go through their current imports. OHTTP remained at that revision only
-for the retained, then-uncomposed `internal/naming/resolution` package;
-ADR-0100 has since removed that package, and `go mod tidy` dropped
-`openpcc/ohttp`, `openpcc/twoway`, `openpcc/bhttp`, `cespare/xxhash/v2`,
-`go.opentelemetry.io/otel`, `go.opentelemetry.io/otel/trace`, and
-`golang.org/x/text` from `go.mod` and `go.sum`.
-This is static reachability, not executed network behavior or a linked-binary
-measurement.
-
-| Command | Current packages | OHTTP package imports | QUIC package import |
-| --- | ---: | ---: | ---: |
-| `cmd/ardents` | 312 | 0 | yes |
-| `cmd/ardents-node` | 220 | 0 | yes |
-| `cmd/ardents-control` | 296 | 0 | yes |
-| `cmd/ardents-custody` | 229 | 0 | yes |
-
-**Prior projection at `e48d4c3c`.** The following package/module counts and
-representative import paths were captured before ADR-0092 using
-`go list -mod=readonly -deps -e`. They are provenance, not current command
-closures. That check inspected empty `Error` and `DepsErrors` fields.
-
-| Command | Packages | External packages | External modules |
-| --- | ---: | ---: | ---: |
-| `cmd/ardents` | 357 | 120 | 22 |
-| `cmd/ardents-node` | 283 | 71 | 12 |
-| `cmd/ardents-control` | 340 | 120 | 22 |
-| `cmd/ardents-custody` | 292 | 74 | 13 |
-
-At that prior revision, `cmd/ardents` paths included
-`endpoint -> service/reachability -> circl/hpke`,
-`endpoint -> route/credential -> openpcc/ohttp`, and
-`route -> quic-go`. Control reaches the same network libraries through its
-public issuer-profile decoder in `route/credential`; Custody reaches them
-through that package's offline permission grammar. Those were
-package-boundary overhead; ADR-0092 removed their OHTTP Transit source.
-That earlier projection also found Control/Custody inheriting QUIC through
-the then-live `route/credential` adapter (F-28). The current split uses the
-offline `internal/admission` grammar: a fresh Windows Go 1.27.1 `go list -deps`
-of both commands on 2026-10-03 contains no QUIC or CIRCL package. This does not
-remove the live network dependencies required by Endpoint and Node.
-
-To repeat the check, use the PowerShell environment assignments in the dated
-projection below, set `GOCACHE` to a writable directory outside the repository,
-and run the same `go list` format for each of the four `./cmd/...` paths above.
-Inspect `Error` and `DepsErrors` rather than relying only on the exit code of
-`go list -e`. No dependency disposition is changed by this observation.
-
-Status: **dated import-closure evidence, not whole-repository or runtime-call
-reachability.** On 2026-09-22 the exact `dev` source revision
-`ebe30149d03e3b149ed0fed5b9d6ef1877185fc4` was projected for
-`./cmd/ardents` with Go 1.26.8, `GOOS=linux`, `GOARCH=amd64`,
-`GOAMD64=v1`, `CGO_ENABLED=0`, the toolchain-default experiment set,
-`GOFIPS140=off`, default build tags, module mode, no workspace and no
-downloads. The
-`go.exe` SHA-256 was
-`21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9`;
-`go.mod` and `go.sum` SHA-256 were respectively
-`a5e05aceb2ec1fa5afbfd7a9ff657cfca7ff04de43095fee692af7bb48872026`
-and
-`5167264d35ddb70683f5b7a3fbc6cffac8fa0ec6cb15d72c1d4747a7976627a2`.
-This owning change alters only this register, so the recorded source and module
-inputs are the ones classified below.
-
-The reproducible PowerShell command was:
-
-```powershell
-$env:GOOS = 'linux'
-$env:GOARCH = 'amd64'
-$env:GOAMD64 = 'v1'
-$env:CGO_ENABLED = '0'
-$env:GOEXPERIMENT = ''
-$env:GOFIPS140 = 'off'
-$env:GO111MODULE = 'on'
-$env:GOENV = 'off'
-$env:GOTOOLCHAIN = 'local'
-$env:GOWORK = 'off'
-$env:GOFLAGS = ''
-$env:GOPROXY = 'off'
-$env:GOSUMDB = 'off'
-go list -mod=readonly -deps -e -f '{{.ImportPath}}|{{with .Module}}{{.Path}}@{{.Version}}{{end}}|{{join .Imports ","}}|{{with .Error}}{{.Err}}{{end}}|{{range .DepsErrors}}{{.Err}} || {{end}}' ./cmd/ardents
-```
-
-The fourth and fifth fields retain each package `Error` and `DepsErrors`;
-stderr remains visible for Go warnings. The captured run returned 358
-packages—202 standard-library, 36 repository-owned and 120 external—from 22
-external module versions. All 358 lines parsed, both error fields were empty,
-and stderr contained no warning. `GOPROXY=off` makes a missing module-cache
-input a failed or incomplete observation rather than a download.
-
-Every external module present in this one projection is listed here. The
-package count is a classification aid, not a claim that every package symbol
-executes:
-
-| Module version | Packages |
-|---|---:|
-| `github.com/cespare/xxhash/v2@v2.3.0` | 1 |
-| `github.com/cloudflare/circl@v1.6.5` | 19 |
-| `github.com/google/go-containerregistry@v0.21.9` | 1 |
-| `github.com/opencontainers/go-digest@v1.0.0` | 1 |
-| `github.com/openpcc/bhttp@v0.0.80` | 1 |
-| `github.com/openpcc/ohttp@v0.0.80` | 3 |
-| `github.com/openpcc/twoway@v0.0.80` | 2 |
-| `github.com/quic-go/quic-go@v0.62.0` | 16 |
-| `github.com/secure-systems-lab/go-securesystemslib@v0.11.1` | 2 |
-| `github.com/sigstore/protobuf-specs@v0.5.2` | 1 |
-| `github.com/sigstore/sigstore@v1.10.9` | 4 |
-| `github.com/theupdateframework/go-tuf/v2@v2.4.2` | 2 |
-| `github.com/youmark/pkcs8@v0.0.0-20240726163527-a2c0da244d78` | 1 |
-| `go.opentelemetry.io/otel@v1.45.0` | 5 |
-| `go.opentelemetry.io/otel/trace@v1.45.0` | 4 |
-| `golang.org/x/crypto@v0.56.0` | 11 |
-| `golang.org/x/net@v0.58.0` | 7 |
-| `golang.org/x/sys@v0.47.0` | 2 |
-| `golang.org/x/term@v0.45.0` | 1 |
-| `golang.org/x/text@v0.41.0` | 4 |
-| `google.golang.org/genproto/googleapis/api@v0.0.0-20260819154853-08b0e4226688` | 2 |
-| `google.golang.org/protobuf@v1.36.12` | 30 |
-
-The direct `go.mod` requirements have the following exact status. A path is a
-shortest package-import path in this projection, not a runtime execution trace:
-
-| Direct module | Status in this projection | Representative import path |
-|---|---|---|
-| `github.com/aymanbagabas/go-pty@v0.2.3` | Absent | No path. This supports only the `cmd/ardents` Linux projection; the module remains required by repository test/qualification consumers. |
-| `github.com/cloudflare/circl@v1.6.5` | Present | `cmd/ardents → internal/naming/resolution → circl/hpke` |
-| `github.com/openpcc/ohttp@v0.0.80` | Present | `cmd/ardents → internal/naming/resolution → openpcc/ohttp` |
-| `github.com/quic-go/quic-go@v0.62.0` | Present | `cmd/ardents → internal/route → quic-go` |
-| `github.com/sigstore/sigstore@v1.10.9` | Present, transitively | `cmd/ardents → internal/release → go-tuf/v2/metadata → sigstore/pkg/cryptoutils` |
-| `github.com/theupdateframework/go-tuf/v2@v2.4.2` | Present | `cmd/ardents → internal/release → go-tuf/v2/metadata` |
-| `golang.org/x/crypto@v0.56.0` | Present | `cmd/ardents → internal/naming/resolution → circl/hpke → x/crypto/chacha20poly1305` |
-| `golang.org/x/sys@v0.47.0` | Present | `cmd/ardents → internal/endpoint/replacement → x/sys/unix` |
-| `golang.org/x/term@v0.45.0` | Present, transitively | `cmd/ardents → internal/release → go-tuf/v2/metadata → sigstore/pkg/cryptoutils → x/term` |
-
-Sigstore is therefore part of this product-shaped command closure even though
-Ardents has no direct production import of it. The four selected packages are
-`pkg/cryptoutils`, `pkg/signature`, `pkg/signature/options` and
-`pkg/signature/payload`; both `cryptoutils` and `signature` enter through
-`go-tuf/v2/metadata`. Conversely, absence of `go-pty`, `creack/pty` and
-`u-root` from this projection does not make them unnecessary to the repository
-or qualify their test execution environment.
-
-This evidence does not cover another command, target, architecture, cgo mode,
-build tag, test/build tool, runtime call reachability, linked artifact or
-vulnerability/support status. Any such claim requires its own projection or
-candidate evidence.
-
-The successor confidential control channels can replace OHTTP transport only
-with the explicit new grammar and migration. ADR-0100 removed the last maintained
-OHTTP importer, so the full OHTTP closure has left `go.mod`; a successor
-channel would reintroduce dependencies only through a fresh review with
-dependency/compatibility evidence.
+Go 1.26.8/1.27.1 inventories, removed Naming/OHTTP call paths and their dated
+scan results are retained in the [earlier register](../archive/development/dependencies-before-consolidation.md).
+They cannot qualify today's compiler, imports, tools or artifacts. Current
+scoped advisory evidence and all failed receipts remain with their exact source
+identities above and at the unresolved finding boundary below.
 
 ## Current runtime dependencies
 
-The maintained product-shaped Modules use the Go standard library, the
-Windows-only `golang.org/x/sys/windows` surfaces described below, CIRCL
-Blind RSA for the closed-token Route credential, and `golang.org/x/crypto`
-for the Custody canonical envelope. ADR-0091 retired the unwired OHTTP
-adapter from `internal/service/reachability`; ADR-0100 then removed
-`internal/naming/resolution`, the last maintained OHTTP importer, and
-`go mod tidy` dropped the whole reviewed OHTTP closure (`openpcc/ohttp`,
-`openpcc/twoway`, `openpcc/bhttp`, `cespare/xxhash/v2`,
-`go.opentelemetry.io/otel`, `go.opentelemetry.io/otel/trace`, and
-`golang.org/x/text`) from `go.mod`. `golang.org/x/net` remains only as an
-indirect module-graph entry with no maintained package import. ADR-0014's
-reviewed-set decision and R-047/R-026 remain the historical selection
-evidence for a future confidential Name exchange; that exchange would
-require a fresh dependency review rather than reuse of the retired set.
+The module pins in this register describe the current root `go.mod`; they do
+not themselves prove dependency admission or ongoing support. New use and any
+version/import/configuration change retain the full acceptance rule above.
+The removed OHTTP/Naming tree has no maintained accepting caller. OTel is a
+separately reviewed finite command-composition use; it is not restored by that
+historical dependency chain.
 
-| Module | Reviewed version | License | Purpose |
-|---|---:|---|---|
-| `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause | reviewed Blind RSA implementation for the closed-token Route credential |
-| `github.com/quic-go/quic-go` | `v0.62.0` | MIT | maintained QUIC v1 Carrier Adapter |
-| `github.com/go-logr/logr` | `v1.4.4` | Apache-2.0 | indirect logging interface inside the go-tuf/sigstore release-verifier chain |
-| `golang.org/x/crypto` | `v0.56.0` | BSD-3-Clause | selected cryptographic support closure |
-| `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | Windows owner-only DACL/locking and registry enforcement plus platform atomic replacement support; Linux-only Endpoint durable-state behavior tests use descriptor-relative no-follow capture |
+| Module | Present pin | Owned use / admission boundary |
+|---|---|---|
+| `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause; exact reviewed blindrsa token mechanisms, separate holder/receiver/issuer owners |
+| `github.com/quic-go/quic-go` | `v0.63.0` | MIT; existing selected QUIC Carrier. Earlier v0.62.0 finding below remains unresolved; the newer pin is not proof of its closure |
+| `github.com/godbus/dbus/v5` | `v5.2.2` | BSD-2-Clause; private original system-manager connection, reviewed above |
+| `golang.org/x/crypto` | `v0.57.0` | BSD-3-Clause; selected support closure and purpose-scoped Custody Argon2 |
+| `golang.org/x/sys` | `v0.48.0` | BSD-3-Clause; native platform observations, ACL/locking and atomic file mechanisms |
+| `golang.org/x/term` | `v0.46.0` | BSD-3-Clause; separate interactive no-echo Custody adapter |
+| `golang.org/x/net` | `v0.60.0` | BSD-3-Clause; reviewed network/HTTP support closure, fixing renewal and exact source identities above |
+| `golang.org/x/text` | `v0.42.0` | BSD-3-Clause; transitive Go text support in the reviewed library graph; version required by the current x/net closure |
 
-**Need and owner:** `internal/route/credential` owns the CIRCL Blind RSA
-closed-token issuer; `internal/custody` owns the `golang.org/x/crypto`
-canonical envelope; `internal/route` owns the QUIC Carrier Adapter.
-Reachability's private Descriptor proof and stored-record reader are
-separate owners. None is a general HTTP proxy. A change repeats the
-affected current-owner conformance, dependency and observer checks.
-R-047/R-026 retain the historical OHTTP selection evidence; they are not
-instructions to reopen the original research or a second current
-specification.
+The present QUIC pin differs from the earlier v0.62.0 reviewed profile. This
+consolidation records that fact and preserves the open exact-profile finding;
+it selects no fix, new probe, fork or gate waiver. Profile-specific renewed
+admission evidence remains required under the same continuing acceptance rule.
+The separately reviewed OTel, Release, test-only PTY and development tool
+closures are enumerated at their owners below/above.
 
 **Windows platform use:** current platform-specific owners use
 `golang.org/x/sys/windows` on Windows to apply a protected DACL granting the
@@ -800,43 +511,20 @@ the selected version has the existing checksum/license review, passes the
 repository's offline build/tests and reachable vulnerability scan, and the
 remaining callers use no cgo or first-party `unsafe`.
 
-**Maintenance and security review:** the OHTTP-closure maintenance history
-(versioned releases, the three raised dependency advisories, and the Go 1.26.6
-checksum, upstream role-view, offline build/test and reachable `govulncheck`
-evidence) is preserved in ADR-0014, the Go 1.26.8 admission evidence above,
-and earlier revisions of this register; since ADR-0100 it describes no
-maintained dependency. The retained modules pass checksums, offline
-build/test with cgo disabled, and reachable `govulncheck`; their reachable Go
-packages have no cgo files or `unsafe` imports. CIRCL contains optimized
-assembly behind portable Go APIs; Ardents selects no custom cryptographic suite.
+**Maintenance and security review:** exact current source, import, tool and
+artifact closures require their own dated support/advisory assessment.
+Earlier OHTTP and Go/compiler scan snapshots remain provenance in the archive.
+CIRCL's optimized assembly behind portable APIs does not select custom
+cryptography. First-party cgo and `unsafe` remain forbidden by project policy.
 
-**Alternatives:** the OHTTP implementation comparison (`chris-wood/ohttp-go`,
-first-party OHTTP/PIR, local lookup, direct/DNS/HTTP resolution, alternate
-Namespace, cached-success fallback) is historical ADR-0014 selection evidence;
-since ADR-0100 no maintained OHTTP use remains to re-select.
-
-For Windows ACL enforcement, an external PowerShell/`icacls` subprocess breaks
-the no-process import contract, while raw first-party system calls require the
-forbidden `unsafe` surface. Default inherited ACLs are not owner-only and fail
-closed security requirements. Remove the direct use when the Go standard
-library exposes equivalent protected-DACL construction and inspection; a
-version change repeats dependency, license, advisory, Windows behavior, and
-offline-build review.
-
-**QUIC Carrier use:** `internal/route` directly imports pinned
-`github.com/quic-go/quic-go v0.62.0` for the maintained
-`ardents-carrier-quic-v1` Adapter selected by ADR-0048. The module is pure Go,
-MIT licensed, supports the repository toolchain, and publishes security
-reporting. R-140 verifies its exact source, checksum, Go 1.26.6 compatibility,
-local TLS peer binding, LegBinding, timeout, cleanup, and no-fallback behavior.
-The external selective-blocking, loss/reorder, MTU-1280, NAT-rebinding,
-resource, and separate-host matrix must be rerun for the exact frozen C0
-artifact; R-094's `v0.61.0` results do not carry forward. `golang.org/x/net/quic` was
-rejected because upstream still describes it as work in progress; a first-party
-QUIC implementation is forbidden cryptographic/protocol work; TCP-only cannot
-exercise the required second Carrier seam. Remove this direct use if QUIC is
-withdrawn as a maintained profile. Any version change repeats license,
-advisory, MTU, cancellation, resource, and hostile-network qualification.
+**QUIC Carrier use:** ADR-0048 retains both selected Carriers. Current adapters
+pin v0.63.0 in `go.mod`; older v0.61.0/v0.62.0 trials cannot qualify that artifact.
+Reproduce the supported-platform, exact TLS/ALPN/configuration, hostile-network,
+MTU, cancellation, accounting and resource evidence required by the current
+protocol and test profiles. The open local finding below is retained with its
+original observations, source and admission blocker. TCP-only cannot satisfy
+the selected second Carrier boundary; a first-party QUIC implementation is
+unselected protocol/cryptographic work.
 
 ### Existing QUIC finding: return-path reply budget
 
@@ -934,8 +622,10 @@ qualification requirements.
 to a Docker build with `--network=none`. No vendor tree, module cache, generated
 dependency, or Gateway key is committed.
 
-**Removal plan:** the complete closure leaves only when the product private
-resolution Adapter is removed. A changed version or
+**Removal plan:** a dependency leaves after its last maintained caller and
+registered-use obligation are retired or replaced. QUIC is still required by
+the selected closed Carrier set; removed private-resolution callers do not
+remove that obligation. A changed version or
 dependency graph repeats the affected current-owner checks. An exploitable or unresolved
 vulnerability of any severity, loss of support, unacceptable license,
 offline-build failure or broken role split stops admission under the
@@ -945,23 +635,24 @@ does not authorize a first-party fork.
 ## Current release-verifier closure
 
 Status: **current maintained dependency.** R-049 selected the following exact
-reviewed module closure; the current `internal/release` package, behavior
-tests, non-test caller, and package-map entry now own it.
+reviewed module closure. Maintained `internal/release` and separately isolated
+`internal/successor/release` verification owners consume the reviewed library
+mechanisms under their own behavior tests, callers and exact package-map imports.
 
-| Module | Proposed version | License | Purpose |
+| Module | Present pin | License | Purpose |
 |---|---:|---|---|
 | `github.com/theupdateframework/go-tuf/v2` | `v2.4.2`, commit `f5edbde31e5507f46db2069402dc38903fe6d9d4` | Apache-2.0 | TUF metadata and trusted-metadata workflow |
 | `github.com/cenkalti/backoff/v5` | `v5.0.3` | MIT | transitive go-tuf module dependency; absent from the maintained package import path |
-| `github.com/google/go-containerregistry` | `v0.21.9` | Apache-2.0 | signature/key conversion closure |
+| `github.com/google/go-containerregistry` | `v0.22.1` | Apache-2.0 | signature/key conversion closure |
 | `github.com/opencontainers/go-digest` | `v1.0.0` | Apache-2.0 | digest conversion closure |
 | `github.com/secure-systems-lab/go-securesystemslib` | `v0.11.1` | MIT | maintained signing-verification support used by go-tuf metadata |
 | `github.com/sigstore/protobuf-specs` | `v0.5.2` | Apache-2.0 | signature verification type closure |
-| `github.com/sigstore/sigstore` | `v1.10.9` | Apache-2.0 | public-key verification adapter used by maintained Release verification and its behavior fixtures |
+| `github.com/sigstore/sigstore` | `v1.11.0` | Apache-2.0 | public-key verification adapter used by maintained Release verification and its behavior fixtures |
 | `github.com/youmark/pkcs8` | `v0.0.0-20240726163527-a2c0da244d78` | MIT | PKCS#8 parsing closure required by Sigstore |
-| `golang.org/x/crypto` | `v0.56.0` | BSD-3-Clause | raised cryptographic support closure |
-| `golang.org/x/sys` | `v0.47.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
-| `golang.org/x/term` | `v0.45.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody`; also present in the reviewed sigstore closure |
-| `google.golang.org/genproto/googleapis/api` | `v0.0.0-20260819154853-08b0e4226688` | Apache-2.0 | protobuf API type closure |
+| `golang.org/x/crypto` | `v0.57.0` | BSD-3-Clause | raised cryptographic support closure |
+| `golang.org/x/sys` | `v0.48.0` | BSD-3-Clause | raised platform support closure; already selected elsewhere |
+| `golang.org/x/term` | `v0.46.0` | BSD-3-Clause | no-echo terminal secret input for `cmd/ardents-custody`; also present in the reviewed sigstore closure |
+| `google.golang.org/genproto/googleapis/api` | `v0.0.0-20260928230214-8a89bd6388cc` | Apache-2.0 | protobuf API type closure |
 | `google.golang.org/protobuf` | `v1.36.12` | BSD-3-Clause | signature protobuf runtime |
 
 **Need and owner:** the Release Decision Module owns verification.
@@ -988,7 +679,7 @@ and the reachable scan. The raised three-module set preserved upstream and
 profile tests. `govulncheck` reported no symbol or imported-package
 vulnerability; its remaining module-only finding is the unimported and
 unmaintained `x/crypto/openpgp` package. This is dated selection evidence;
-[the 2026-09-07 source check](../research/records/r-150-common-protection-baseline.md#dependency-baseline-observation)
+[the 2026-09-07 source check](../archive/research/records/r-150-common-protection-baseline.md#dependency-baseline-observation)
 records its current bounded applicability result. Integration repeats the
 applicable scans and support review. Any exploitable or unresolved advisory,
 regardless of severity, fails the
@@ -1010,13 +701,13 @@ belongs in the repository.
 
 Status: **current maintained dependency under ADR-0021.** Password-derived
 Authority Custody uses `golang.org/x/crypto/argon2` from module
-`golang.org/x/crypto v0.56.0` (BSD-3-Clause). Other maintained cryptographic
+`golang.org/x/crypto v0.57.0` (BSD-3-Clause). Other maintained cryptographic
 owners select the same module version; integration must produce one shared
 exact root-module version, never parallel copies.
 
 `internal/custody` is the only maintained Argon2 caller. It uses only
 `argon2.IDKey` with the fixed v1 profile and passes the derived
-32-byte key to Go 1.26 standard-library `crypto/aes` and
+32-byte key to the selected Go standard-library `crypto/aes` and
 `cipher.NewGCMWithRandomNonce`. No other
 Argon2 variant, dynamic parameter negotiation, signing primitive, password
 store, DPAPI/Secret Service wrapper, cgo, or `unsafe` is selected. The current
@@ -1170,8 +861,9 @@ GO-2026-6179 for x/mod 0.35.0, with no affected imported packages or symbols.
 The vulnerable packages are x/mod/sumdb and x/mod/sumdb/tlog; inspect the exact
 source closure with `go list -deps .` inside errcheck's pinned module, and the
 binary with `go tool nm /go/bin/errcheck`. Neither package participates in this
-analyzer executable. Its `go/packages` subprocess uses the separately reviewed
-Go 1.26.8 toolchain, not errcheck's embedded sumdb implementation. This scoped
+analyzer executable. That older binary's subprocess used Go 1.26.8; this is historical evidence,
+not admission of the current compatibility build. The current exact compiler
+and analyzer dependency closure are specified above and require renewed scans. This scoped
 non-applicability is invalidated by a changed tool version, imported closure,
 Go toolchain, or invocation that admits a sumdb implementation. Retain verbose
 binary scan and closure evidence; module-only findings are not erased by a
@@ -1188,7 +880,7 @@ Rebuild on upstream/security fixes; validate the actual required scripts.
 
 ### Prebuilt standard Go diagnostic parsers
 
-The local diagnostics owner uses the selected Go 1.26.8 source packages
+The local diagnostics owner uses the selected Go 1.27.2 source packages
 `cmd/pprof` and `cmd/trace`, with the Go distribution license, to parse explicitly
 selected private profiles offline. Explicit `make tools-install` builds them into
 `GOBIN` or `GOPATH/bin`; `DIAGNOSTIC_PARSERS_ONLY=1` installs only this pair. They

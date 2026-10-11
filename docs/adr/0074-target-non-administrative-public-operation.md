@@ -7,7 +7,7 @@ amends: ADR-0004 and ADR-0006, public authority target only
 # Target public operation without appointed network administrators
 
 The Product Owner accepts the architectural direction evaluated in
-[R-146](../research/records/r-146-non-administrative-network-consensus.md):
+[R-146](../archive/research/records/r-146-non-administrative-network-consensus.md):
 owner-authorized actions, locally checked rules, minimal open agreement for
 necessary shared facts, and voluntary protocol adoption. The public target has
 no appointed party whose continuing permission is indispensable to ordinary
@@ -50,7 +50,7 @@ resource concentration and social influence.
 
 The [operating model](../product/operating-model.md#public-autonomy-target) owns
 the selected product boundary. The [threat model](../security/threat-model.md#public-autonomy-target)
-owns its claim limits. [R-149](../research/records/r-149-autonomy-transition.md)
+owns its claim limits. [R-149](../archive/research/records/r-149-autonomy-transition.md)
 defines migration questions and acceptance gates. Promotion replaces one exact
 contract at a time, verifies the full dependent journey, and never makes
 administrative and autonomous proofs interchangeable. C0 remains the bounded

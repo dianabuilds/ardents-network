@@ -1,7 +1,7 @@
 # Isolated Route Introduction registration
 
 The [protected Route protocol](protected-route-protocol.md) owns accepted bytes,
-role purposes and bounds. The [registration boundary design](../development/route-introduction-registration-boundary.md)
+role purposes and bounds. The [registration boundary design](successor-route-introduction.md)
 and [migration contract](../development/route-migration-contract.md) preserve
 separate authority and lifetime owners. This operation establishes bounded
 registration transport, not Publication readiness or complete Route acceptance.
