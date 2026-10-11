@@ -2,6 +2,7 @@ package channel
 
 import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 	"io"
 	"net"
 )
@@ -20,7 +21,7 @@ func WriteFrame(conn net.Conn, frame ardp.Frame) FrameOutput {
 	if err != nil {
 		return FrameOutput{failure: err}
 	}
-	out := writePhysicalOutput(conn, frame.Kind, raw, nil, nil)
+	out := writePhysicalOutput(conn, frame.Kind, raw, nil)
 	result := FrameOutput{failure: out.err}
 	if out.err != nil && out.physical {
 		result.physical = &physicalWriteFailure{kind: frame.Kind, cause: out.err}
@@ -38,18 +39,17 @@ type physicalOutput struct {
 
 // writePhysicalOutput is shared by the session writer and the dedicated JOIN
 // relay. The caller owns serialization, accounting, deadlines and subsequent
-// join. beforeNative runs exactly once immediately before direct physical I/O.
-func writePhysicalOutput(conn net.Conn, kind uint8, raw []byte, initial error, beforeNative func()) physicalOutput {
+// join. The active writer remains retained until whole-write provenance is known.
+func writePhysicalOutput(conn net.Conn, kind uint8, raw []byte, initial error) physicalOutput {
 	lower := lowerFramingLane(conn)
 	before := lower.retirementWitness()
 	out := physicalOutput{err: initial, nested: lower != nil}
+	emitted := false
 	if out.err == nil {
 		for len(raw) > 0 {
-			if !out.attempted && lower == nil && beforeNative != nil {
-				beforeNative()
-			}
 			out.attempted = true
 			n, err := conn.Write(raw)
+			emitted = emitted || n > 0
 			if err != nil {
 				out.err = err
 				break
@@ -62,7 +62,7 @@ func writePhysicalOutput(conn net.Conn, kind uint8, raw []byte, initial error, b
 		}
 	}
 	after := lower.retirementWitness()
-	out.physical = out.attempted && (lower == nil || after.payload != before.payload)
+	out.physical = out.attempted && ((lower == nil && (emitted || !transport.IsUnstartedWrite(out.err))) || (lower != nil && after.payload != before.payload))
 	if out.err == io.EOF && lower != nil && cleanUnemittedRetirement(kind, before, after) {
 		out.err = nil
 	}

@@ -234,7 +234,7 @@ func TestSessionLifecycleLaneCloseAfterParentRetirementDoesNotResetDeadline(t *t
 // already denies child deadline effects; joining still retains the writer's
 // actual late error. Prepared reading isolates that exact scheduling window.
 func TestSessionLifecycleOriginalCancellationDeniesDeadlineBeforeRetirementCallback(t *testing.T) {
-	for _, operation := range []string{"deadline", "close"} {
+	for _, operation := range []string{"deadline", "close", "interrupt"} {
 		t.Run(operation, func(t *testing.T) {
 			physical := &retiredDeadlineConn{newLifecycleConn(true)}
 			physical.writeIgnoresClose = true
@@ -261,6 +261,10 @@ func TestSessionLifecycleOriginalCancellationDeniesDeadlineBeforeRetirementCallb
 			if operation == "deadline" {
 				if err := l.SetWriteDeadline(end); !errors.Is(err, net.ErrClosed) {
 					t.Fatal("canceled parent allowed a new deadline", err)
+				}
+			} else if operation == "interrupt" {
+				if err := l.InterruptIO(); err != nil {
+					t.Fatal("retired parent permitted redundant physical interruption", err)
 				}
 			} else {
 				go func() { closed <- l.Close() }()

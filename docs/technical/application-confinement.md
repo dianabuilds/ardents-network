@@ -239,6 +239,11 @@ Endpoint cleanup retains the original cgroup v2 `cgroup.events` descriptor
 before readiness. It rechecks the exact systemd InvocationID and fixed
 control-group stop policy, uses noninteractive `systemctl stop` with a finite
 join deadline, and verifies that the pinned subtree has no live processes.
+Cleanup reads typed properties through the original InvocationID bus path.
+The [systemd 255 path resolver](https://github.com/systemd/systemd/blob/v255/src/core/manager.c#L3013-L3052)
+can reload a collected unit's configuration through its name path, but an
+unknown invocation path remains unavailable. Neither a reloaded name nor an
+empty InvocationID grants original identity or Stop permission.
 If manager properties are unavailable or identify another invocation, cleanup
 keeps observing the original pinned cgroup through that deadline without
 stopping the replacement. A changed invocation remains a cleanup failure even

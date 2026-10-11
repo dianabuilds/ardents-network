@@ -1,6 +1,22 @@
 {
   "schema": "ardents-test-profiles-v1",
     "profiles": [
+      {
+        "id": "publication-timing",
+        "state": "active",
+        "make_target": "publication-timing-check",
+        "surface": "genuine qualified Publisher automatic refresh at original registration creation+300s and bounded predecessor overlap on both Carriers with unchanged clocks; no complete installed Service or privacy qualification",
+        "prerequisites": [
+          "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+          "genuine fixed root-installed Text snapshot artifact and activation units",
+          "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test",
+          "root driver and pinned temporary unit selecting only TestInstalledPublicationElapsedBothCarriers with test timeout15m, RuntimeMaxSec920s and TimeoutStopSec30s",
+          "sixteen minutes remaining in the original token hour before admission",
+          "private temporary durable roots, loopback TCP/UDP and independent original process/cgroup join observers"
+        ],
+        "invalid_environment": "elapsed Publication prerequisites unavailable; no clock override, deadline reset or passing skip",
+        "timeout": "15m"
+      },
       {"id":"execution-recovery","state":"active","make_target":"execution-recovery-check","surface":"new Execution original Endpoint pidfd SIGKILL, independently pinned hostile worker descendants joined by manager lifetime, fresh Endpoint/worker/Job identities after explicit restart; no logical Service recovery or whole-host qualification","prerequisites":["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager and kernel pidfd support","separately pinned text_worker_hostile artifact and matching fixed root manifest","root-owned independently pinned text_worker_installed runtime test binary","fresh inactive temporary Endpoint unit selecting only TestInstalledExecutionEndpointDeathHeldWorkers under the original non-root Endpoint account","Root controller outside the Endpoint unit, readable original kernel cgroup/proc descriptors and actual manager journal"],"invalid_environment":"selected Endpoint-death Execution component environment unavailable; missing original identities, descendants or prerequisites fail without passing skips","timeout":"2m"},
       {"id":"execution-escape","state":"active","make_target":"execution-escape-check","surface":"new Execution genuine qualified escape-artifact launch, independent positive-controlled host TCP/UDP/DNS/IPC observers and original physical join on both local surfaces; no Service or whole-host qualification","prerequisites":["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager","separately pinned text_worker_escape artifact and matching fixed root manifest","original non-root Endpoint MainPID running independently pinned text_worker_installed Execution runtime test binary","root-owned independently pinned temporary qualification unit selecting TestInstalledExecutionEscapeMatrix with a two-minute test deadline","root driver and actual kernel cgroup/proc observers plus positive-controlled IPv4/IPv6/Unix listeners"],"invalid_environment":"selected escape Execution component environment unavailable; missing artifact, controls or prerequisites fail without passing skips"},
       {"id":"execution-tree","state":"active","make_target":"execution-tree-check","surface":"new Execution qualified hostile-worker parent/child/grandchild join, synchronous operation denial after attachment loss and original sibling operation survival on both local surfaces; no private Service or whole-host qualification","prerequisites":["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager","separately pinned text_worker_hostile artifact and matching fixed root manifest","original non-root Endpoint MainPID running independently pinned text_worker_installed Execution runtime test binary","root-owned independently pinned temporary qualification unit selecting TestInstalledExecutionHostileTree with a two-minute test deadline","root driver and actual readable kernel cgroup/proc observers"],"invalid_environment":"selected hostile Execution component environment unavailable; missing descendants or prerequisites fail without passing skips"},

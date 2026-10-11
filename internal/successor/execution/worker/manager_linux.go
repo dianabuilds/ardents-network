@@ -5,6 +5,7 @@ package worker
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -45,17 +46,38 @@ func validUnit(unit, role string) bool {
 }
 
 func readProperties(ctx context.Context, unit, role string) (properties, properties, error) {
-	if ctx == nil || !validUnit(unit, role) {
+	return readNamedProperties(ctx, unit, role, managerCall)
+}
+
+type managerQuery func(context.Context, string, string, string, string, ...string) (value, error)
+
+func readCleanupProperties(ctx context.Context, instance Instance, query managerQuery) (properties, properties, error) {
+	if ctx == nil || query == nil || !validUnit(instance.Name, instance.Role) || instance.Invocation == [16]byte{} {
+		return nil, nil, errors.New("text worker cleanup identity is invalid")
+	}
+	// A name path may load a collected unit again without its invocation.
+	// The original invocation path only resolves that retained invocation;
+	// its disappearance remains unavailable, never a replacement Stop right.
+	path := "/org/freedesktop/systemd1/unit/" + hex.EncodeToString(instance.Invocation[:])
+	return readPropertiesAtPath(ctx, path, query)
+}
+
+func readNamedProperties(ctx context.Context, unit, role string, query managerQuery) (properties, properties, error) {
+	if ctx == nil || query == nil || !validUnit(unit, role) {
 		return nil, nil, errors.New("text worker unit identity is invalid")
 	}
 	var paths []string
-	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "GetUnit", "s", unit)
+	answer, err := query(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "GetUnit", "s", unit)
 	if err != nil || answer.Type != "o" || json.Unmarshal(answer.Data, &paths) != nil || len(paths) != 1 || !strings.HasPrefix(paths[0], "/org/freedesktop/systemd1/unit/") {
 		return nil, nil, errors.New("text worker system manager binding is unavailable")
 	}
+	return readPropertiesAtPath(ctx, paths[0], query)
+}
+
+func readPropertiesAtPath(ctx context.Context, path string, query managerQuery) (properties, properties, error) {
 	var observations [2]properties
 	for index, kind := range []string{"Unit", "Service"} {
-		answer, err := managerCall(ctx, paths[0], "org.freedesktop.DBus.Properties", "GetAll", "s", "org.freedesktop.systemd1."+kind)
+		answer, err := query(ctx, path, "org.freedesktop.DBus.Properties", "GetAll", "s", "org.freedesktop.systemd1."+kind)
 		var payload []properties
 		if err != nil || answer.Type != "a{sv}" || json.Unmarshal(answer.Data, &payload) != nil || len(payload) != 1 || payload[0] == nil {
 			return nil, nil, errors.New("text worker effective properties are unavailable")

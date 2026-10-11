@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
 
 const Window = uint32(64 << 10)
@@ -258,7 +259,7 @@ func (s *Session) read() {
 			}
 			s.mu.Unlock()
 			if !stopped {
-				s.Retire(err)
+				s.Retire(transport.RetainedPeerReadCause(s.conn, err))
 			}
 			return
 		}
@@ -568,28 +569,19 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 	}
 	err = s.conn.SetWriteDeadline(end)
 	s.mu.Unlock()
-	output := writePhysicalOutput(s.conn, f.Kind, raw, err, func() {
-		s.mu.Lock()
-		l.physicalAttempts++
-		if f.Kind != ardp.KindCredit {
-			l.payloadAttempts++
-		}
-		s.mu.Unlock()
-	})
+	output := writePhysicalOutput(s.conn, f.Kind, raw, err)
 	err = output.err
-	if output.nested && output.physical {
-		s.mu.Lock()
+	s.mu.Lock()
+	// The selected writer stays active until native provenance and failure are
+	// published together. An adapter refusal cannot mint a lower-lane attempt;
+	// nested TLS still retains every preceding physical record from this write.
+	if output.physical {
 		l.physicalAttempts++
 		if f.Kind != ardp.KindCredit {
 			l.payloadAttempts++
 		}
-		s.mu.Unlock()
 	}
-	s.mu.Lock()
-	s.active = nil
-	s.mu.Unlock()
 	if err != nil {
-		s.mu.Lock()
 		if output.physical {
 			l.physicalWriteFailed = true
 			err = &physicalWriteFailure{owner: s, kind: f.Kind, cause: err}
@@ -601,7 +593,10 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 			l.physicalWriteFailed = true
 			s.writeErr = errors.Join(s.writeErr, err)
 		}
-		s.mu.Unlock()
+	}
+	s.active = nil
+	s.mu.Unlock()
+	if err != nil {
 		// A lower refusal/local closure with no new lower output remains this
 		// channel's failed terminal result, not a fabricated physical failure
 		// of its receiving owner. Actual lower failures stay with that owner.

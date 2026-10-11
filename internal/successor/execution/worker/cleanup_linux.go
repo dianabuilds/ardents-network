@@ -76,7 +76,9 @@ func (owner *Cleanup) join() error {
 	// selected two-second stop is inside this independent finite join bound.
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
-	return owner.joinObserved(ctx, readCgroup, readProperties, stopInstance)
+	return owner.joinObserved(ctx, readCgroup, func(ctx context.Context, _, _ string) (properties, properties, error) {
+		return readCleanupProperties(ctx, owner.instance, managerCall)
+	}, stopInstance)
 }
 
 func (owner *Cleanup) joinObserved(

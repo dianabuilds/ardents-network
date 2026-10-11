@@ -23,7 +23,7 @@ type nodeCarrier struct {
 
 func (carrier *nodeCarrier) Read(buffer []byte) (int, error) {
 	if carrier.closed.Load() {
-		return 0, net.ErrClosed
+		return 0, closedIOError(carrier.connection)
 	}
 	n, err := carrier.stream.Read(buffer)
 	return n, classifyIOError(err)
@@ -31,7 +31,7 @@ func (carrier *nodeCarrier) Read(buffer []byte) (int, error) {
 
 func (carrier *nodeCarrier) Write(buffer []byte) (int, error) {
 	if carrier.closed.Load() {
-		return 0, net.ErrClosed
+		return 0, closedIOError(carrier.connection)
 	}
 	n, err := carrier.stream.Write(buffer)
 	return n, classifyIOError(err)

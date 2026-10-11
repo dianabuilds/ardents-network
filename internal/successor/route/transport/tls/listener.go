@@ -49,7 +49,8 @@ func (listener *sharedListener) Accept(ctx context.Context, handshakeTimeout tim
 	}
 admitted:
 	deadline := time.Now().Add(handshakeTimeout)
-	secured := tls.Server(raw, transport.SharedServerTLS(listener.certificate))
+	socket := &nativeSocket{Conn: raw}
+	secured := tls.Server(socket, transport.SharedServerTLS(listener.certificate))
 	if err := secured.SetDeadline(deadline); err != nil {
 		_ = raw.Close()
 		return transport.ClosedSharedCarrier{}, transport.MarkSharedPeerFailure(err)
@@ -69,7 +70,7 @@ admitted:
 	}
 	classified.Connection = secured
 	if classified.Kind == transport.ClosedSharedNode {
-		classified.Connection = &nodeCarrier{Conn: secured}
+		classified.Connection = &nodeCarrier{Conn: secured, socket: socket}
 	}
 	return classified, nil
 }

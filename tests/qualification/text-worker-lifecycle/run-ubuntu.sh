@@ -8,6 +8,10 @@ case "${1-lifecycle}" in
     lifecycle) test_root=TestInstalledTextWorkerLifecycle ;;
     execution) test_root=TestInstalledExecutionLifecycle ;;
     execution-route) test_root=TestInstalledExecutionRouteBothCarriers ;;
+    publication-timing)
+        [ "${2--timeout=15m}" = -timeout=15m ] || fail 'invalid environment: elapsed Publication requires its fixed fifteen-minute bound'
+        test_root=TestInstalledPublicationElapsedBothCarriers; maximum_polls=9000
+        ;;
     execution-recovery) test_root=TestInstalledExecutionEndpointDeath ;;
     network) test_root=TestInstalledTextWorkersReadTargetThroughJoinedNetwork; maximum_polls=10000 ;;
     recovery) test_root=TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork; maximum_polls=3600 ;;
@@ -59,7 +63,7 @@ if [ "$test_root" = TestInstalledExecutionEndpointDeath ]; then
     printf '%s  %s\n' "$ARDENTS_TEXT_HOSTILE_WORKER_SHA256" "$worker" | sha256sum --check --status ||
         fail 'invalid environment: hostile artifact differs from declared candidate'
 fi
-if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ]; then
+if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ] || [ "$test_root" = TestInstalledPublicationElapsedBothCarriers ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
 fi
 unit=/run/systemd/system/ardents-endpoint.service
@@ -121,8 +125,14 @@ printf '%s\n' "$journal"
     [ "$(systemctl show ardents-endpoint.service -p ExecMainStatus --value)" = 0 ] ||
     fail 'installed text-worker lifecycle failed or did not terminate'
 set -- "$test_root" "$test_root/reader" "$test_root/publisher"
+if [ "$test_root" = TestInstalledPublicationElapsedBothCarriers ]; then
+    set -- "$test_root"
+    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+        set -- "$@" "$test_root/$carrier" "$test_root/$carrier/initial-delayed-ack" "$test_root/$carrier/creation-refresh" "$test_root/$carrier/bounded-overlap"
+    done
+fi
 if [ "$test_root" = TestInstalledExecutionLifecycle ]; then
-    set -- "$test_root" "$test_root/connection" "$test_root/connection/live-operation" "$test_root/connection/attachment-loss" "$test_root/administration" "$test_root/administration/live-operation" "$test_root/administration/attachment-loss" "$test_root/cleanup-failure"
+    set -- "$test_root" "$test_root/Publisher-snapshot-operation" "$test_root/connection" "$test_root/connection/live-operation" "$test_root/connection/attachment-loss" "$test_root/administration" "$test_root/administration/live-operation" "$test_root/administration/attachment-loss" "$test_root/cleanup-failure"
 fi
 if [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ]; then
     set -- "$test_root" "$test_root/connection" "$test_root/administration"
@@ -130,7 +140,13 @@ fi
 if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ]; then
     set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2" "$test_root/ardents-carrier-quic-v2"
     for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
-        set -- "$@" "$test_root/$carrier/joined" "$test_root/$carrier/worker-loss" "$test_root/$carrier/worker-loss-io" "$test_root/$carrier/clock-loss-io" "$test_root/$carrier/caller-loss-io"
+        set -- "$@" "$test_root/$carrier/publication-worker-ack" "$test_root/$carrier/publication-worker-ack/initial" "$test_root/$carrier/publication-worker-ack/replacement"
+        set -- "$@" "$test_root/$carrier/publication-worker-ack/initial/accepted-history" "$test_root/$carrier/publication-worker-ack/retained-history"
+        set -- "$@" "$test_root/$carrier/publication-network-ack" "$test_root/$carrier/publication-network-ack/initial" "$test_root/$carrier/publication-network-ack/replacement"
+        set -- "$@" "$test_root/$carrier/publication-decoded-network-ack" "$test_root/$carrier/publication-decoded-network-ack/initial" "$test_root/$carrier/publication-decoded-network-ack/replacement"
+        set -- "$@" "$test_root/$carrier/publication-delivery-close" "$test_root/$carrier/publication-delivery-close/initial" "$test_root/$carrier/publication-delivery-close/replacement" "$test_root/$carrier/publication-delivery-close/retained-replay"
+        set -- "$@" "$test_root/$carrier/publication/delivery" "$test_root/$carrier/publication/delivery/accepted" "$test_root/$carrier/publication/delivery/accepted/concurrent" "$test_root/$carrier/publication/delivery/replay" "$test_root/$carrier/publication/delivery/retained-replay"
+        set -- "$@" "$test_root/$carrier/publication" "$test_root/$carrier/publication-ack" "$test_root/$carrier/publication-ack/initial" "$test_root/$carrier/publication-ack/replacement" "$test_root/$carrier/publication-withdraw-ack" "$test_root/$carrier/publication-withdraw-ack/initial" "$test_root/$carrier/publication-withdraw-ack/replacement" "$test_root/$carrier/publication-caller-ack" "$test_root/$carrier/publication-caller-ack/initial" "$test_root/$carrier/publication-caller-ack/replacement" "$test_root/$carrier/joined" "$test_root/$carrier/worker-loss" "$test_root/$carrier/worker-loss-io" "$test_root/$carrier/clock-loss-io" "$test_root/$carrier/caller-loss-io"
     done
 fi
 if [ "$test_root" = TestInstalledTextWorkersReadTargetThroughJoinedNetwork ]; then

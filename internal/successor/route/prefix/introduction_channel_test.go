@@ -10,7 +10,22 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 )
+
+// The exact recipient reobservation can fail after the preceding leg check.
+// Failure-only inputs cannot supply a member, ACK or accepting registration.
+func TestRegistrationRecipientObservationRetainsOriginalFailure(t *testing.T) {
+	physical := errors.New("original Network observation physical failure")
+	for _, cause := range []error{context.Canceled, physical, errors.Join(context.Canceled, physical)} {
+		p := &Prefix{}
+		a := role.Authority{Current: func() (network.RuntimeView, error) { return network.RuntimeView{}, cause }}
+		err := p.checkIntroductionDuty(a, time.Now().Add(time.Minute))
+		if err != cause {
+			t.Errorf("failed recipient observation acquired a different terminal cause: got %v, want %v", err, cause)
+		}
+	}
+}
 
 // These controls use physical parents only. They deliberately supply no
 // successful Network observation, Stock presentation, receiving spend or ACK.
@@ -37,6 +52,26 @@ func TestRegistrationRetiredOriginalCallerRefusesBeforeEffects(t *testing.T) {
 	}
 	if err := p.Close(); err != nil || returns.Load() != 1 {
 		t.Fatal("original parents did not join and return once", err, returns.Load())
+	}
+}
+
+func TestSubmissionRetiredCallerRefusesBeforeObservationOrPresentation(t *testing.T) {
+	p, _, returns, cleanup := terminalSetupPhysicalPrefix(t)
+	defer cleanup()
+	var observations, presentations atomic.Int32
+	p.config.Current = func() (network.RuntimeView, error) {
+		observations.Add(1)
+		return network.RuntimeView{}, errors.New("unexpected observation")
+	}
+	p.config.Present = func(context.Context, ardp.Hello) ([]byte, error) {
+		presentations.Add(1)
+		return nil, errors.New("unexpected presentation")
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	terminal, err := p.OpenSubmissionChannel(ctx, network.RetainedDuty{}, time.Now().Add(8*time.Second).UTC().Truncate(time.Second), nil)
+	if terminal != nil || !errors.Is(err, context.Canceled) || observations.Load() != 0 || presentations.Load() != 0 || returns.Load() != 0 {
+		t.Fatal("retired submission caller crossed an effect or lost refusal", terminal, err)
 	}
 }
 

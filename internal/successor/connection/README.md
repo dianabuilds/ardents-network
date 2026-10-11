@@ -1,6 +1,24 @@
-# Service Connection — каркас
+# Service Connection
 
-Только описание будущего владельца; Go-пакета и реализации здесь пока нет.
+Начальная ограниченная реализация связывает проверенную Publication и поля
+приватной капсулы с исходной квалифицированной Execution operation. Она вычисляет
+неизменяемый logical context и отдельный Attachment context, отказывает при
+подмене Target/Network/profile и расширении исходных Work Safety пределов.
+Publication runtime потребляет эту привязку после собственных проверок реальной
+регистрации, Instance и независимо разрешённого Rendezvous. Привязка не является
+успешным Service Connection: Instance TLS, continuity, ordered bytes, recovery
+и терминальный исход полного потока ещё не реализованы этим владельцем.
+
+## Interface и Implementation
+
+`BindRecipient` требует исходную живую Publisher operation и sealed Publication
+proof. `RecipientBinding.Check` проверяет ту же operation и исходный capsule
+deadline перед первой передачей результата; `Contexts` возвращает только копии
+transcript commitments. `recipient_binding.go` хранит эти неизменяемые факты
+без сетевых эффектов, приватного ключа или отдельного cleanup ресурса.
+Поведение проверяется независимыми signed-input/transcript fixtures и отказами
+при подмене, расширении пределов и отсутствии исходной operation. Эти fixtures
+не квалифицируют worker, принимающий Publisher или Service stream.
 
 **Вопрос домена:** как один аутентифицированный логический поток сохраняет идентичность?
 

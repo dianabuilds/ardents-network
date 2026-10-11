@@ -37,6 +37,13 @@ Source opening; original caller, retained duty and signed Descriptor expiry
 are checked again before the proof is returned. History stores monotonic facts,
 never proof bytes, and survives worker loss until its exact context retires.
 
+Source's `DescriptorAcknowledgedFailure` retains the original failure after
+decoding a matching successful publish RESULT on that authenticated exchange.
+It preserves every final-currentness, role/lower termination and physical Close
+cause. This diagnostic fact grants neither joined cleanup nor current authority
+or Publisher readiness. The private response-termination responsibility remains
+inside Prefix; lookup and refusal do not create an acknowledged publish result.
+
 Proof verification, conflict rules, History and the Prefix exchange are
 portable. Store lease and durable publication use explicit Linux/Windows
 adapters; unsupported native targets refuse before filesystem effects. The

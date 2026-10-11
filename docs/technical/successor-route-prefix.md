@@ -49,13 +49,21 @@ The actual `prefix` package owns these physical generations and exposes opaque
 Borrow, JoinBorrow and terminal channel lifetimes. It imports neither
 Introduction nor JOIN consumers. `introduction.HolderRegistration` and holder JOIN keep operation bytes,
 readers/writers and their retained terminal result; they cannot access Prefix
-configuration, generation locks or lower lane/control-return callbacks. Native
-JOIN Context binds its concrete original Prefix objects once; its private
+configuration, generation locks or lower lane/control-return callbacks.
+Introduction terminal frame reads preserve Transport's actual peer EOF before
+local Close, without decoding an operation's status or granting successful
+termination. The original elapsed terminal bound remains an explicit refusal.
+Native JOIN Context binds its concrete original Prefix objects once; its private
 lifetime seam preserves absent/partial-opening cleanup without exposing a
 successful test factory. Pair identity/lock-order tests stay in Prefix;
 acquisition and nested-stream tests exercise consumer retirement separately.
 
 Exact package/import directions are in the [package map](../development/package-map.md).
+
+`CheckResponderRendezvous` refuses a foreign original Source before observation
+and independently checks the exact Rendezvous from both retained physical legs.
+Publication consumes this narrow check after genuine Source-bound Responder
+opening. It supplies neither nonce acceptance nor JOIN/Connection authority.
 
 One independently leased Introduction History transfers to one receiving
 Registry. Its pending positions and durable non-reclaim claims share that
@@ -128,6 +136,15 @@ and Responder acquisition/handoff retain their original lock order and observe
 the real caller after waiting for those locks; changing the retained record
 does not permit a sealed generation or a delayed caller to publish new work.
 
+`BorrowLifetime` retains an already opened physical generation during bounded
+quiet ownership. It requires the original finite deadline and grants no token,
+recipient selection or JOIN authority. Publication uses this borrow for its
+actual Source and opened Responder. The interruption callback seals Publication;
+the join callback waits for its original users before Prefix Close retires the
+physical parents. The callback cannot recursively close that Prefix. A portable
+idle-event test checks retention and original user join; it does not qualify
+elapsed publication refresh or overlap timing.
+
 Each channel reserves separate 16 KiB control capacity within its principal's
 aggregate ceiling. Data queues fit 4 MiB per prefix/session and 64 MiB per
 receiving Node, with 64 KiB lane receive windows and at most 16 KiB frames.
@@ -136,6 +153,18 @@ service and then alternates with queued data. Waiting for credit holds no
 physical writer. Queue cancellation consumes no emitted bytes or credit and
 cannot alter a sibling's active deadline. A failed started physical frame
 poisons its shared framing boundary and retains its failure.
+
+The TCP Node adapter guards writes to its original socket beneath TLS record
+serialization. Closing that socket seals new record admission before interrupting
+started I/O. A complete TLS write may identify an unstarted refusal only when
+its native attempt count did not change, no native writer remains active, no
+earlier native failure exists and the socket guard itself refused output.
+Partial output and any started native failure retain their physical witnesses.
+This refusal remains a failed TLS operation; it is neither peer authentication
+nor clean completion. The framing writer remains selected until its output
+count and retained failure are published together under the session lock.
+Nested sessions use actual lower payload progress, so an unstarted lower refusal
+cannot manufacture an upper physical attempt or erase earlier emitted bytes.
 
 The portable `receiver/carrier_pool.go` and its physical retirement tests execute
 on Windows and Linux; listener and receiving Grant composition retain their
@@ -149,6 +178,14 @@ speculative dialing. Every child retains its own original bounds and admission.
 QUIC physical deadlines attach the current local monotonic clock to the exact
 supplied absolute instant. A wall-clock adjustment since library startup must
 not shift physical expiry; this conversion changes no wire or authority bound.
+Retired QUIC I/O preserves the original connection's native ApplicationError.
+A framing reader's local adapter Close cannot replace an already observed
+remote close with a bare local closed sentinel before a selected writer enters
+Write. Local close still retains a local failure; only the existing exact
+native remote code/reason classifier grants the diagnostic peer category.
+Real role/Node adapter tests independently observe remote retirement before
+local Close and require the same native error identity afterwards. No failure
+is converted into clean completion or used instead of physical join.
 OPEN allocation and complete emission are serialized together, with one
 immutable setup deadline no later than ten seconds or the original child/parent
 bound. Waiting for that operation is cancellable and grants no child authority.

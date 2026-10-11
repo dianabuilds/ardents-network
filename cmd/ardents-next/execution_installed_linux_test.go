@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/ed25519"
@@ -35,6 +36,14 @@ func TestInstalledExecutionRouteBothCarriers(t *testing.T) {
 	}
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
+			t.Run("publication", func(t *testing.T) { runInstalledPublisher(t, carrier) })
+			t.Run("publication-ack", func(t *testing.T) { runInstalledPublisherACK(t, carrier, "") })
+			t.Run("publication-withdraw-ack", func(t *testing.T) { runInstalledPublisherACK(t, carrier, "withdraw") })
+			t.Run("publication-caller-ack", func(t *testing.T) { runInstalledPublisherACK(t, carrier, "caller") })
+			t.Run("publication-worker-ack", func(t *testing.T) { runInstalledPublisherACK(t, carrier, "worker") })
+			t.Run("publication-network-ack", func(t *testing.T) { runInstalledPublisherACK(t, carrier, "network") })
+			t.Run("publication-decoded-network-ack", func(t *testing.T) { runInstalledPublisherACK(t, carrier, "decoded-network") })
+			t.Run("publication-delivery-close", func(t *testing.T) { runInstalledPublisherACK(t, carrier, "delivery-close") })
 			for _, mode := range []string{"joined", "worker-loss", "worker-loss-io", "clock-loss-io", "caller-loss-io"} {
 				t.Run(mode, func(t *testing.T) { runInstalledExecutionRoute(t, carrier, mode) })
 			}
@@ -140,7 +149,7 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 			t.Log("joined installed holder diagnostics", diagnostics.String())
 		}
 	})
-	encoder, decoder := json.NewEncoder(sendInput), json.NewDecoder(readOutput)
+	encoder, replies := json.NewEncoder(sendInput), bufio.NewReader(readOutput)
 	send := func(command any) localAdmissionReply {
 		t.Helper()
 		named, ok := command.(holderCommand)
@@ -151,7 +160,7 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 			t.Fatalf("installed holder %s input: %v", named.Operation, err)
 		}
 		var reply localAdmissionReply
-		if err := decoder.Decode(&reply); err != nil {
+		if err := readConsoleReply(replies, &reply); err != nil {
 			t.Fatalf("installed holder %s output: %v", named.Operation, err)
 		}
 		return reply
@@ -174,7 +183,7 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 			var result commandResult
 			result.err = encoder.Encode(holderCommand{Operation: "issuer-issue", Class: 2})
 			if result.err == nil {
-				result.err = decoder.Decode(&result.reply)
+				result.err = readConsoleReply(replies, &result.reply)
 			}
 			pending <- result
 		}()
@@ -185,7 +194,7 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 		}
 	}
 	if workerLoss {
-		stopInstalledExecutionReader(t, ctx)
+		stopInstalledExecutionWorker(t, ctx, "reader")
 	}
 	if mode == "clock-loss-io" {
 		// Retire the real observation updater before removing its file. The
@@ -258,6 +267,7 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 	if x.bootstrapIssues.Load() != 2 || x.ordinaryIssues.Load() != ordinaryIssues || x.admissions.Load() != admissions {
 		t.Fatal("installed holder bypassed actual bootstrap, spend or issuing owners")
 	}
+	waitRouteIssuerReceivingBorrowers(t, ctx, x)
 	for _, server := range x.servers {
 		joinedErr := server.Close()
 		select {
@@ -269,7 +279,7 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 			t.Fatal("receiver lost its first joined terminal result")
 		}
 		if joinedErr != nil {
-			// Deliberate retirement can interrupt an already started CREDIT.
+			// Deliberate retirement can interrupt an already started frame.
 			// The actual adapter's exact peer-retirement classification is
 			// diagnostic, never a clean result. Every other leaf still fails.
 			if !retirement || !transport.IsPeerRetirementCause(joinedErr) {
@@ -347,8 +357,11 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 // This independent fixture actor stops the sole observed original reader while
 // its production holder retains a spent, open Prefix. No replacement or second
 // launch runs in this fixture; the runtime owns interruption and physical join.
-func stopInstalledExecutionReader(t *testing.T, ctx context.Context) {
+func stopInstalledExecutionWorker(t *testing.T, ctx context.Context, role string) {
 	t.Helper()
+	if role != "reader" && role != "publisher" {
+		t.Fatal("invalid environment: unknown fixed worker role")
+	}
 	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	command := func(args ...string) string {
@@ -357,18 +370,18 @@ func stopInstalledExecutionReader(t *testing.T, ctx context.Context) {
 		child.Env = []string{"PATH=/usr/bin:/bin", "LANG=C", "LC_ALL=C"}
 		body, err := child.Output()
 		if err != nil {
-			t.Fatal("independent original reader observation/stop", err)
+			t.Fatal("independent original worker observation/stop", err)
 		}
 		return strings.TrimSpace(string(body))
 	}
-	listing := command("--system", "--no-pager", "--plain", "--no-legend", "list-units", "--state=active", "ardents-text-reader@*.service")
+	listing := command("--system", "--no-pager", "--plain", "--no-legend", "list-units", "--state=active", "ardents-text-"+role+"@*.service")
 	rows := strings.Split(listing, "\n")
 	if len(rows) != 1 {
-		t.Fatal("loss fixture requires exactly one active original reader")
+		t.Fatal("loss fixture requires exactly one active original worker")
 	}
 	fields := strings.Fields(rows[0])
-	if len(fields) == 0 || !regexp.MustCompile(`^ardents-text-reader@[0-9]+-[1-9][0-9]*-[1-9][0-9]*\.service$`).MatchString(fields[0]) {
-		t.Fatal("loss fixture reader identity is unavailable")
+	if len(fields) == 0 || !regexp.MustCompile(`^ardents-text-`+role+`@[0-9]+-[1-9][0-9]*-[1-9][0-9]*\.service$`).MatchString(fields[0]) {
+		t.Fatal("loss fixture worker identity is unavailable")
 	}
 	unit := fields[0]
 	observe := func() string {
@@ -379,14 +392,14 @@ func stopInstalledExecutionReader(t *testing.T, ctx context.Context) {
 	for _, row := range strings.Split(original, "\n") {
 		name, value, ok := strings.Cut(row, "=")
 		if !ok || facts[name] != "" {
-			t.Fatal("loss fixture original reader observation is malformed")
+			t.Fatal("loss fixture original worker observation is malformed")
 		}
 		facts[name] = value
 	}
 	if !regexp.MustCompile(`^[0-9a-f]{32}$`).MatchString(facts["InvocationID"]) ||
 		!regexp.MustCompile(`^[1-9][0-9]*$`).MatchString(facts["MainPID"]) ||
 		facts["ControlGroup"] != "/system.slice/"+unit || original != observe() {
-		t.Fatal("loss fixture original reader changed before stop")
+		t.Fatal("loss fixture original worker changed before stop")
 	}
 	command("--system", "--no-ask-password", "--no-pager", "stop", unit)
 }

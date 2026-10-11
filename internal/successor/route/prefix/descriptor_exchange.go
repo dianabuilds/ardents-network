@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
@@ -23,6 +24,26 @@ type DescriptorRefusal struct{ Status uint8 }
 
 func (err DescriptorRefusal) Error() string {
 	return fmt.Sprintf("route Descriptor refused (%d)", err.Status)
+}
+
+// DescriptorAcknowledgedFailure retains a failure after this original publish
+// exchange decoded a matching successful Store RESULT. It is diagnostic evidence
+// only: neither this result nor its remote ACK grants joined cleanup, current
+// authority or Publisher readiness. Its cause is constructed solely by Source.
+type DescriptorAcknowledgedFailure struct{ cause error }
+
+func (err *DescriptorAcknowledgedFailure) Error() string {
+	if err == nil || err.cause == nil {
+		return "route Descriptor acknowledgement failure absent"
+	}
+	return "route Descriptor failed after matching Store ACK: " + err.cause.Error()
+}
+
+func (err *DescriptorAcknowledgedFailure) Unwrap() error {
+	if err == nil {
+		return nil
+	}
+	return err.cause
 }
 
 // PublishDescriptor carries untrusted public signed input to a genuine receiving
@@ -144,6 +165,14 @@ func (p *Prefix) descriptor(caller context.Context, end time.Time, request ardp.
 // exchangeDescriptor joins every role/lower resource before history completion.
 // Its caller retains the original opening, context and copy reservation throughout.
 func (p *Prefix) exchangeDescriptor(ctx, caller context.Context, end time.Time, authority role.Authority, request ardp.DescriptorRequest, body []byte, check func() error) (payload []byte, result error) {
+	acknowledged := false
+	defer func() {
+		// This runs after all original physical Close results have joined.
+		// Preserve their exact causes even when the remote Store already ACKed.
+		if acknowledged && result != nil {
+			result = &DescriptorAcknowledgedFailure{cause: result}
+		}
+	}()
 	releaseControl, err := p.interior.HoldControl()
 	if err != nil {
 		return nil, err
@@ -200,6 +229,14 @@ func (p *Prefix) exchangeDescriptor(ctx, caller context.Context, end time.Time, 
 	if err != nil {
 		return nil, err
 	}
+	acknowledged = request.Operation == ardp.DescriptorPublish && status == 0
+	return finishDescriptorResponse(conn, lane, borrowed, status, check)
+}
+
+// finishDescriptorResponse retains the decoded original RESULT through final
+// currentness and ordered role/lower termination. Its sole caller owns the
+// authenticated connection, original lane and every physical Close obligation.
+func finishDescriptorResponse(conn net.Conn, lower io.Reader, borrowed []byte, status uint8, check func() error) (payload []byte, result error) {
 	if err := check(); err != nil {
 		return nil, err
 	}
@@ -215,7 +252,7 @@ func (p *Prefix) exchangeDescriptor(ctx, caller context.Context, end time.Time, 
 	if n, err := conn.Read(extra[:]); n != 0 || !errors.Is(err, io.EOF) {
 		return payload, errors.Join(errors.New("route Descriptor TLS peer termination required"), err)
 	}
-	if n, err := lane.Read(extra[:]); n != 0 || !errors.Is(err, io.EOF) {
+	if n, err := lower.Read(extra[:]); n != 0 || !errors.Is(err, io.EOF) {
 		return payload, errors.Join(errors.New("route Descriptor lower peer terminal required"), err)
 	}
 	if err := check(); err != nil {

@@ -23,6 +23,26 @@ type Session struct {
 
 func (session *Session) Context() context.Context { return session.lease.Context() }
 
+// Done closes after this original session reports its Job cleanup result to the
+// supervisor. Failure retains cleanup capacity; consult Completion for that
+// result. Job retirement alone does not close this signal.
+func (session *Session) Done() <-chan struct{} { return session.done }
+
+// Completion observes the original retained cleanup result without revoking or
+// joining this session. A closed Done signal can carry failed cleanup; only a
+// completed nil result establishes successful retirement.
+func (session *Session) Completion() (error, bool) {
+	if session == nil {
+		return errors.New("execution session is absent"), false
+	}
+	select {
+	case <-session.done:
+		return session.result, true
+	default:
+		return nil, false
+	}
+}
+
 func (session *Session) liveLocked() bool {
 	if session == nil || session.closed || session.lease == nil || session.lease.Context().Err() != nil {
 		return false

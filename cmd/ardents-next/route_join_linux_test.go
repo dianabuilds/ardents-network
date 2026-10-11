@@ -18,7 +18,85 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 )
+
+// This proves prepared role-3 selection/reservation -> actual Source-bound
+// forwarding on both Carriers. It supplies no qualified Publisher, capsule,
+// accepted nonce or successful delivery RESULT.
+func TestPublicationPreparedResponderOpensWithOriginalSourceBothCarriers(t *testing.T) {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			f, sockets, certificates := newJoinRouteFixture(t, carrier)
+			holder := joinRouteStock(t, f, admission.AllocationPublisher)
+			startJoinRouteReceivers(t, f, sockets, certificates)
+			root := t.TempDir()
+			plan := routePrefixPlan{Deadline: time.Now().Add(40 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+			installation, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: filepath.Join(root, "entry"), Current: f.authority.current})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := installation.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
+			sourceSelection, err := installation.Borrow(selection.RoleConfig{InteriorRoot: filepath.Join(root, "source"), Domain: 1})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := sourceSelection.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
+			responderSelection, err := installation.Borrow(selection.RoleConfig{InteriorRoot: filepath.Join(root, "responder"), Domain: 3})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := responderSelection.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
+			budget, err := hosting.Open(routeProcessBudget(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := budget.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
+			source, _, err := openPublicationPrefix(t.Context(), plan, sourceSelection, budget, f.authority, holder)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := source.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
+			prepared, err := preparePublicationPrefix(t.Context(), plan, responderSelection, budget, f.authority, holder)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := prepared.Release(); err != nil {
+					t.Error(err)
+				}
+			}()
+			responder, err := prefix.OpenResponder(t.Context(), source, prepared)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := responder.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
 
 func TestRouteGenuinePairedJoinBothCarriers(t *testing.T) {
 	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {

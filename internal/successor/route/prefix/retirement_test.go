@@ -8,6 +8,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -41,6 +42,7 @@ func idlePhysicalPrefix(t *testing.T, gate chan struct{}, failure error) (*Prefi
 	interior := &prefixIdleConn{Conn: interiorConn, readStarted: make(chan struct{}), readReturned: make(chan struct{})}
 	queues := framing.NewBudget(4 << 20)
 	p := &Prefix{ctx: ctx, caller: ctx, cancel: cancel, done: make(chan struct{}), closing: make(chan struct{}), entry: framing.New(ctx, entry, end, 32<<20, nil, false, queues, nil), interior: framing.New(ctx, interior, end, 32<<20, nil, false, queues, nil)}
+	p.config.Deadline = end
 	released := new(atomic.Int32)
 	p.release = func() error {
 		for _, reader := range []<-chan struct{}{p.entry.Done(), p.interior.Done()} {
@@ -73,6 +75,70 @@ func idlePhysicalPrefix(t *testing.T, gate chan struct{}, failure error) (*Prefi
 	}
 	cleanup := func() { unblock(); _ = p.Close(); _ = entryPeer.Close(); _ = interiorPeer.Close(); cancel() }
 	return p, entry, idle, released, cleanup
+}
+
+// The virtual clock and manually delivered idle event isolate physical loan
+// retention; they do not qualify the real300+60 Publication timing boundary.
+func TestBoundedLifetimeSurvivesQuietIdleThenJoinsOriginalUsers(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		p, entry, idle, released, cleanup := idlePhysicalPrefix(t, nil, nil)
+		defer cleanup()
+		ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+		defer cancel()
+		interrupted, userJoined := make(chan struct{}), make(chan struct{})
+		defer func() {
+			select {
+			case <-userJoined:
+			default:
+				close(userJoined)
+			}
+		}()
+		var once sync.Once
+		late := errors.New("original quiet operation join failed")
+		var borrow *Borrow
+		var err error
+		borrow, err = p.BorrowLifetime(ctx, func() { once.Do(func() { close(interrupted) }) }, func() error {
+			<-userJoined
+			borrow.ReturnJoined()
+			return late
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		idle <- time.Now()
+		synctest.Wait()
+		select {
+		case <-p.Done():
+			t.Fatal("quiet bounded operation lost its original physical prefix")
+		default:
+		}
+		select {
+		case <-interrupted:
+			t.Fatal("idle revoked a live bounded operation")
+		default:
+		}
+		if released.Load() != 0 {
+			t.Fatal("quiet lifetime returned resources")
+		}
+		cancel()
+		idle <- time.Now()
+		synctest.Wait()
+		select {
+		case <-interrupted:
+		default:
+			t.Fatal("retirement failed to synchronously interrupt original users")
+		}
+		select {
+		case <-entry.readReturned:
+			t.Fatal("physical parent retired before original users joined")
+		default:
+		}
+		close(userJoined)
+		synctest.Wait()
+		if err := p.Close(); !errors.Is(err, late) || p.Close() != err || released.Load() != 1 {
+			t.Fatal("quiet lifetime lost its joined failure or resource ownership", err, released.Load())
+		}
+	})
 }
 
 func TestPrefixIdleReadinessJoinsAndReleasesBeforeDone(t *testing.T) {

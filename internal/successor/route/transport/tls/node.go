@@ -26,7 +26,8 @@ func OpenNode(ctx context.Context, input transport.ClosedNodeCarrierRequest) (tr
 	if err != nil {
 		return nil, err
 	}
-	secured := tls.Client(raw, transport.NodeClientTLS(input.Certificate, input.ExpectedPeerKey))
+	socket := &nativeSocket{Conn: raw}
+	secured := tls.Client(socket, transport.NodeClientTLS(input.Certificate, input.ExpectedPeerKey))
 	if err := secured.SetDeadline(input.Deadline); err != nil {
 		_ = raw.Close()
 		return nil, err
@@ -43,5 +44,5 @@ func OpenNode(ctx context.Context, input transport.ClosedNodeCarrierRequest) (tr
 		_ = raw.Close()
 		return nil, err
 	}
-	return &nodeCarrier{Conn: secured}, nil
+	return &nodeCarrier{Conn: secured, socket: socket}, nil
 }

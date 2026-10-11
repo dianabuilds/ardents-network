@@ -294,6 +294,18 @@ func (l *Lane) RemoteAddr() net.Addr { return l.s.conn.RemoteAddr() }
 func (l *Lane) SetDeadline(t time.Time) error {
 	return errors.Join(l.SetReadDeadline(t), l.SetWriteDeadline(t))
 }
+
+// InterruptIO denies this lane's read/write progress and interrupts its actual
+// selected payload writer. Parent retirement already interrupts the physical
+// stream; this operation then performs no new deadline effect. The parent still
+// owns writer/reader join and retains every actual physical failure.
+func (l *Lane) InterruptIO() error {
+	l.s.mu.Lock()
+	defer l.s.mu.Unlock()
+	l.readEnd, l.writeEnd = time.Now(), time.Now()
+	l.signalLocked()
+	return l.interruptOutputLocked()
+}
 func (l *Lane) SetReadDeadline(t time.Time) error {
 	l.s.mu.Lock()
 	defer l.s.mu.Unlock()

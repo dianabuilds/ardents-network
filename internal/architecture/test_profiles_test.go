@@ -155,6 +155,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	required := map[string]bool{
 		"execution-lifecycle":               false,
 		"execution-route":                   false,
+		"publication-timing":                false,
 		"execution-installed":               false,
 		"execution-tree":                    false,
 		"execution-escape":                  false,

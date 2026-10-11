@@ -49,6 +49,29 @@ func TestPublicPrefixOpeningRefusesCanceledCallerAndSealedOriginalBeforeEffects(
 	}
 }
 
+func TestResponderRecipientRefusesForeignSourceBeforeObservation(t *testing.T) {
+	source, _, _, closeSource := terminalSetupPhysicalPrefix(t)
+	defer closeSource()
+	source.config.Leg.EntryMember.RoleDomain = 1
+	foreign := &Prefix{}
+	responder, _, _, closeResponder := terminalSetupPhysicalPrefix(t)
+	defer closeResponder()
+	responder.source = foreign
+	responder.config.Leg.EntryMember.RoleDomain = 3
+	observations := 0
+	observe := func() (network.RuntimeView, error) {
+		observations++
+		return network.RuntimeView{}, errors.New("no successful authority fixture")
+	}
+	source.config.Current, responder.config.Current = observe, observe
+	if err := source.CheckResponderRendezvous(responder, network.RetainedDuty{}, nil); err == nil {
+		t.Fatal("foreign Source supplied recipient authority")
+	}
+	if observations != 0 {
+		t.Fatal("foreign Source reached Network observation", observations)
+	}
+}
+
 // This wrapper injects only cleanup failures around a real physical pipe.
 // Every deadline and Close operation still reaches that original connection.
 type prefixSetupFaultConn struct {

@@ -22,6 +22,8 @@ type Operation struct {
 	once               sync.Once
 	resultMu           sync.Mutex
 	firstCleanup       error
+	publisher          bool
+	administration     AdministrationContext
 }
 
 func (*Operation) localPermission() {}
@@ -33,6 +35,15 @@ func (operation *Operation) Check() error {
 		return errors.New("execution operation is absent")
 	}
 	return errors.Join(operation.job.Check(), operation.lease.Context().Err(), operation.ctx.Err(), operation.caller.Err())
+}
+
+// CheckPublisher requires the original qualified snapshot worker invocation.
+// It is local execution authority, never a Credential or accepting Service.
+func (operation *Operation) CheckPublisher() error {
+	if operation == nil || !operation.publisher {
+		return errors.New("qualified Publisher operation is absent")
+	}
+	return operation.Check()
 }
 
 // Close joins the operation caller’s cancellation callback and completes its

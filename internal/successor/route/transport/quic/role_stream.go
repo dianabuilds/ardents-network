@@ -19,7 +19,7 @@ type roleCarrier struct {
 
 func (carrier *roleCarrier) Read(value []byte) (int, error) {
 	if carrier.closed.Load() {
-		return 0, net.ErrClosed
+		return 0, closedIOError(carrier.connection)
 	}
 	n, err := carrier.stream.Read(value)
 	return n, classifyIOError(err)
@@ -27,9 +27,10 @@ func (carrier *roleCarrier) Read(value []byte) (int, error) {
 func (carrier *roleCarrier) Write(value []byte) (int, error) {
 	// A late child must not attempt a new frame after this owner retired the
 	// physical stream. Preserve errors from writes already in flight; only a
-	// new call after local Close receives the standard closed sentinel.
+	// new call after local Close receives a closed error retaining the original
+	// native connection cause when present.
 	if carrier.closed.Load() {
-		return 0, net.ErrClosed
+		return 0, closedIOError(carrier.connection)
 	}
 	n, err := carrier.stream.Write(value)
 	return n, classifyIOError(err)

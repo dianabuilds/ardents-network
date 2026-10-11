@@ -37,6 +37,50 @@ func (p *Prefix) CheckRendezvous(incoming network.RetainedDuty, excluded []route
 	return nil
 }
 
+// CheckResponderRendezvous observes both original physical legs and refuses a
+// Responder belonging to any other Source. The recipient must be eligible from
+// both legs; this check neither opens JOIN nor publishes a Connection binding.
+func (p *Prefix) CheckResponderRendezvous(responder *Prefix, incoming network.RetainedDuty, excluded []route.Member) error {
+	if p == nil || responder == nil || responder.source != p || p.config.Leg.EntryMember.RoleDomain != 1 || responder.config.Leg.EntryMember.RoleDomain != 3 {
+		return errors.New("route Responder original Source mismatch")
+	}
+	return errors.Join(p.CheckRendezvous(incoming, excluded), responder.CheckRendezvous(incoming, excluded))
+}
+
+// ResolveRendezvous independently resolves capsule candidate identifiers through
+// this original Source observation. The sole issuer and resolution duty are
+// excluded by identity, key and known family in the same observation. Neither
+// a copied duty nor a requester endpoint can supply an accepting recipient.
+func (p *Prefix) ResolveRendezvous(node [32]byte, generation uint64, excluded []route.Member) (network.RetainedDuty, time.Time, error) {
+	if p == nil || p.config.Leg.EntryMember.RoleDomain != 1 {
+		return network.RetainedDuty{}, time.Time{}, errors.New("original Source recipient unavailable")
+	}
+	view, err := p.observeOriginal()
+	if err != nil {
+		return network.RetainedDuty{}, time.Time{}, err
+	}
+	issuer, err := p.config.Leg.IssuerDuty(view)
+	if err != nil {
+		return network.RetainedDuty{}, time.Time{}, err
+	}
+	resolution, err := p.config.Leg.ResolutionDuty(view, excluded)
+	if err != nil {
+		return network.RetainedDuty{}, time.Time{}, err
+	}
+	known := append([]route.Member(nil), excluded...)
+	for _, duty := range []network.RetainedDuty{issuer, resolution} {
+		known = append(known, route.Member{NodeID: duty.NodeID, PublicKey: duty.PublicKey, FamilyID: duty.FamilyID})
+	}
+	duty, err := p.config.Leg.RendezvousDuty(view, node, generation, known)
+	if err != nil {
+		return network.RetainedDuty{}, time.Time{}, err
+	}
+	end := minDeadline(p.config.Deadline, p.config.Leg.Profile.NotAfter)
+	end = minDeadline(end, duty.Epoch.ValidUntil)
+	end = minDeadline(end, duty.RecordValidUntil)
+	return duty, end, nil
+}
+
 // joinRecipient keeps every original parent, recipient, Epoch and profile
 // horizon at the frame-effect boundary. The acquisition checks its caller and
 // each original lifetime on both sides of these potentially durable reads.

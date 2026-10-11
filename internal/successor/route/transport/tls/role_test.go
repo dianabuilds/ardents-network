@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	stdtls "crypto/tls"
 	"crypto/x509"
+	"errors"
 	"io"
 	"math/big"
 	"net"
@@ -39,6 +40,64 @@ func roleCertificate(t *testing.T, start, end time.Time) (stdtls.Certificate, [3
 type roleAcceptance struct {
 	connection *stdtls.Conn
 	err        error
+}
+
+func TestRetainedTLSReadPreservesOriginalPeerEOFProvenance(t *testing.T) {
+	for _, localClose := range []bool{false, true} {
+		t.Run(map[bool]string{false: "peer", true: "local"}[localClose], func(t *testing.T) {
+			now := time.Now()
+			certificate, key := roleCertificate(t, now.Add(-time.Minute), now.Add(time.Minute))
+			raw, accepted, end := roleServer(t, certificate)
+			client, err := roletls.OpenRole(t.Context(), raw, key, end)
+			if err != nil {
+				t.Fatal(err)
+			}
+			server := <-accepted
+			if server.err != nil {
+				t.Fatal(server.err)
+			}
+			if err := client.SetDeadline(end); err != nil {
+				t.Fatal(err)
+			}
+			if err := server.connection.SetDeadline(end); err != nil {
+				t.Fatal(err)
+			}
+			retained := transport.Retain(client)
+			closed := make(chan error, 1)
+			if localClose {
+				closed <- retained.Close()
+			} else {
+				go func() { closed <- server.connection.CloseWrite() }()
+			}
+			var extra [1]byte
+			n, readErr := retained.Read(extra[:])
+			if err := <-closed; err != nil {
+				t.Fatal("original close", err)
+			}
+			if n != 0 || readErr == nil {
+				t.Fatal("original retirement result absent", n, readErr)
+			}
+			if !localClose && readErr != io.EOF {
+				t.Fatal("Read changed actual TLS EOF", readErr)
+			}
+			observed := transport.RetainedPeerReadCause(retained, readErr)
+			if transport.IsPeerRetirementCause(observed) == localClose || !errors.Is(observed, readErr) {
+				t.Fatal("peer/local cause or original failure differs", observed)
+			}
+			if localClose && transport.IsPeerRetirementCause(transport.RetainedPeerReadCause(retained, io.EOF)) {
+				t.Fatal("local Close manufactured peer EOF")
+			}
+			foreign := errors.New("EOF")
+			for _, failure := range []error{foreign, errors.Join(io.EOF, foreign)} {
+				if transport.RetainedPeerReadCause(retained, failure) != failure || transport.IsPeerRetirementCause(failure) {
+					t.Fatal("foreign/mixed failure borrowed original read provenance", failure)
+				}
+			}
+			if err := retained.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
 }
 
 // Real TLS runs over a pipe. These tests exercise transport authentication and
