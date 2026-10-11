@@ -29,7 +29,12 @@ is manufactured. Unsupported native operations
 share `platform_refusal_other.go`, preserving their existing no-effect refusals.
 This source layout changes no accepted bytes, authorization, effect ordering or
 physical ownership; distinct replacement, recovery and startup lifetimes remain
-with their original owners.
+with their original owners. Native root/lease and private recovery-record custody
+reside in installation_root_linux.go. Shared account/mutable-root and fixed-resource
+integrity policy resides in installed_inspection_linux.go, while installed_files_linux.go
+retains native read/retention and sealed-generation observations. Root inspection,
+recovery and non-root startup each retain independent observations; shared policy
+code neither lends the root writer lease to startup nor grants recovery authority.
 
 
 The following bounded command contract selects ADR-0119's installation
@@ -86,14 +91,18 @@ is irreversible: late cleanup, cancellation or Release-close failure reports
 composition rules. A genuine new non-root consumer separately exercises actual
 manager startup, original Root archival/ACK and bounded Source/permission
 bootstrap, as described below; this is not complete installed acceptance. New
-successor recovery separately admits owned interrupted prefixes and fresh-proof
-continuations; complete interruption/start/ACK acceptance remains unproven. No
+successor recovery separately admits owned generation-writing and first-failure
+prefixes, complete staged/replacement/selection prefixes and stopped reload
+prefixes through fresh-proof continuation. Terminal guard cleanup independently
+retains the original invocation. Actual-manager generation-writing and first-error
+continuations exercise genuine non-root Start/ACK and original physical join;
+these component results establish no complete installed Service acceptance. No
 old runtime bridge is permitted. The new successor recovery owner collects its
 independently retained intent/journal, writing or sealed image admission,
 fresh-proof continuation, terminal cleanup and physical close in
 `successor_recovery_linux.go`. State-specific records keep their original checks;
-this source consolidation establishes no positive installed start or complete
-recovery evidence.
+source layout itself supplies no Start/recovery evidence or authority; the
+separate original process/manager receipts retain their own bounded scope.
 
 New initial provisioning also retains root-private directory birth/access
 records in its generation journal. An exclusively created directory is synced

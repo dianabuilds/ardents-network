@@ -53,6 +53,9 @@ Enrollment подтверждает независимое происхожде�
 `OpenRetained` открывает только полную сохранённую историю: отсутствие корня,
 marker или floors любой верхней роли не создаёт initial trust. Он использует
 ту же exclusive lease, recovery и durability confirmation, что обычный `Open`.
+`FloorSet.Complete` принадлежит Release и проверяет наличие versions/digests
+всех четырёх ролей; retained opening и Installation используют одно правило.
+Полная detached проекция не аутентифицирует metadata и не выдаёт authorization.
 Новый Installation аутентифицирует пару через реальные последовательные
 `Evaluate`; отказ второй оценки не возвращает floors первой.
 Installation сохраняет свою транзакцию и проверяет соответствие конкретных

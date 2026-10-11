@@ -11,7 +11,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/installation"
+	installation "github.com/dianabuilds/ardents-network/internal/successor/installation/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
@@ -115,9 +116,9 @@ func runInstallation(ctx context.Context, args []string, out io.Writer) int {
 	}
 	var authorization installation.Authorization
 	if initial {
-		authorization, err = installation.AuthenticateInitial(ctx, verifier, bundle, input)
+		authorization, err = generationauthorization.AuthenticateInitial(ctx, verifier, bundle, input)
 	} else {
-		authorization, err = installation.AuthenticateCandidate(ctx, verifier, candidate, input)
+		authorization, err = generationauthorization.AuthenticateCandidate(ctx, verifier, candidate, input)
 	}
 	err = errors.Join(err, verifier.Close(), ctx.Err())
 	if err != nil {
@@ -187,7 +188,7 @@ func runInitialRecovery(ctx context.Context, root string, reference time.Time, o
 	if err != nil {
 		return installationFailure(ctx, out, errors.Join(err, owner.Close()))
 	}
-	authorization, err := installation.AuthenticateCandidate(ctx, verifier, candidate, input)
+	authorization, err := generationauthorization.AuthenticateCandidate(ctx, verifier, candidate, input)
 	var result installation.ProvisionResult
 	if err == nil {
 		result, err = owner.Complete(authorization)
@@ -253,7 +254,7 @@ func runInstallationProvision(ctx context.Context, filename string, out io.Write
 	if err != nil {
 		return installationFailure(ctx, out, err)
 	}
-	authorization, err := installation.AuthenticateInitial(ctx, verifier, bundle, input)
+	authorization, err := generationauthorization.AuthenticateInitial(ctx, verifier, bundle, input)
 	var result installation.ProvisionResult
 	if err == nil {
 		result, err = installation.ProvisionInitial(ctx, request, authorization)
