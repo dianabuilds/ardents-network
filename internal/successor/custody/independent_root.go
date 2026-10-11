@@ -31,6 +31,27 @@ func (vault *Vault) admitIndependentRoot() error {
 	if !empty {
 		return ErrInvalid
 	}
+	// Empty record directories alone do not prove an independent root: another
+	// owner may already retain state here. Birth admits only the empty native
+	// layout Open prepared, never unrelated files, directories or symlinks.
+	entries, err := os.ReadDir(vault.root)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		switch entry.Name() {
+		case vaultLockName:
+			if !entry.Type().IsRegular() {
+				return ErrInvalid
+			}
+		case "records", "quarantine":
+			if !entry.IsDir() {
+				return ErrInvalid
+			}
+		default:
+			return ErrInvalid
+		}
+	}
 	if _, err := os.Lstat(vault.floors); !errors.Is(err, os.ErrNotExist) {
 		return ErrInvalid
 	}

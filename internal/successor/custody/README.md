@@ -16,7 +16,9 @@ refunds allocation. Admission retry has no post-expiry exception.
 The fixed `ardents-authority-envelope-v1` Argon2id/AES-GCM grammar and existing
 floors remain compatibility obligations. Only independently born development
 roots receive Admission or Service signing provenance; existing records/floors without
-that provenance cannot acquire it. This is no predecessor migration/adoption.
+that provenance cannot acquire it. Birth refuses unrelated root entries and
+symlinked record directories, even when the record inventory is empty.
+This is no predecessor migration/adoption.
 Predecessor Service and retired Name records remain encrypted evidence, with no
 signing adoption. Restored records remain in separate quarantine and can
 be verified, exported and purged, never activated or signed. Purge retains floors.

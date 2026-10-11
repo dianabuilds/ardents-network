@@ -129,6 +129,8 @@ scrubbing of Go/crypto runtime allocations. Its state
 mutex does not cover foreign I/O/join. Only a fresh independently marked root
 can create Admission or Service signing authority. Existing predecessor Service/Name records
 and quarantine remain inspectable/verifiable/exportable/purgeable evidence.
+Birth admits only the empty native Vault layout; unrelated root files,
+directories or symlinked record directories cannot gain signing provenance.
 Purge removes the selected active Admission ledger too, while retaining floors.
 A missing, malformed or skipped journal/floor refuses; one authenticated exact
 pending successor may finish its floor under a new original operation.
