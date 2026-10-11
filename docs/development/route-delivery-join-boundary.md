@@ -41,7 +41,10 @@ release. No shared old Context mutex or live root is a permitted shortcut.
 
 These are semantic owners, not permission for Go imports. Exact non-test callers
 and cohesive package/import registration are part of each implemented change.
-All identified future domains remain in domain-map.md.
+The [domain map](domain-map.md) retains all identified future domains and owns
+the general [interaction contract](domain-map.md#inter-domain-interaction-contract).
+This document supplies Route-specific ordering and acceptance obligations;
+neither document selects another implementation.
 
 ## Tactical consistency boundaries
 
@@ -51,7 +54,8 @@ to that registration: pending count, writer waiters, next even lane, local nonce
 acknowledgement state and finite byte reservation must transition coherently.
 There is no independently persisted Delivery repository or durable restored
 channel. Slot hash/expiry/time history is the separate durable Route owner
-implemented by the registration owner and designed in route-introduction-registration-boundary.md.
+implemented by the registration owner under the current
+[Introduction history contract](../technical/successor-route-introduction.md#independent-durable-history).
 
 JOIN has a bounded pairing root at the Rendezvous. Each live pair retains at
 most two opposite side entities with immutable secret/context/profile facts,

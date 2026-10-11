@@ -40,6 +40,10 @@ by the completed domain model:
    distinct from domain authority; do not manufacture aggregates for simple
    adapters. Resolve design from current authoritative evidence rather than
    repeatedly interviewing or requesting routine decisions from the Product Owner.
+   Use the domain map's [interaction contract](domain-map.md#inter-domain-interaction-contract)
+   and [interface checklist](domain-map.md#interface-checklist-for-development-plans)
+   to record each cross-domain operation in the selected brief. Both neighbors
+   retain their authority, effects and physical completion obligations.
 2. **Assign a goal to a visible executor within current selection.** Only
    when the latest Product Owner selection authorizes the next domain and its
    execution arrangement, assign its ordinary visible Codex thread and give

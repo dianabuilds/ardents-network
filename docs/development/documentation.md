@@ -135,6 +135,14 @@ product scenarios do not block a bounded scope with a defined extension and
 effect boundary. If new evidence invalidates a selected decision, return the
 affected scope to design before dependent work continues.
 
+For every affected cross-domain operation, use the domain map's
+[interaction contract](domain-map.md#inter-domain-interaction-contract) and
+[interface checklist](domain-map.md#interface-checklist-for-development-plans).
+The brief identifies both owners, the genuine producer/consumer, proof or borrow,
+effect/handoff ordering, partial failure and physical completion. Link exact
+technical rules instead of copying them into another architecture plan. Keep
+component readiness distinct from full issue acceptance and installed qualification.
+
 After these conditions are met, prepare one bounded issue/brief with:
 
 - the observable outcome, affected current owner and exact scope/non-goals;

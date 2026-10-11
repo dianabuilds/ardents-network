@@ -7,7 +7,10 @@ owner. GitHub owns task selection, implementation progress and acceptance.
 ## Engineering route
 
 - [Documentation ownership](documentation.md) and [contributing](../../CONTRIBUTING.md).
-- [Domain map](domain-map.md): exclusive rules, state, resources and collaborations.
+- [Domain map](domain-map.md): exclusive rules, state, resources and collaborations;
+  [interaction contract](domain-map.md#inter-domain-interaction-contract) and
+  [interface checklist](domain-map.md#interface-checklist-for-development-plans)
+  for preparing cross-domain work.
 - [Package map](package-map.md) and [repository layout](repository-layout.md): actual packages and exact imports.
 - [Agent execution](agent-execution.md) and [Route migration contract](route-migration-contract.md): authorized execution, isolation and handoff.
 - [Testing](testing.md), [privacy acceptance](privacy-qualification.md) and [deep audit](deep-audit.md): evidence profiles and candidate qualification boundaries.

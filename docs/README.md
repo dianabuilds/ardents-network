@@ -20,7 +20,7 @@ unselected. The [scope](product/scope.md) owns these boundaries.
 |---|---|
 | Selected journeys, outcomes and limits | [Scope](product/scope.md), [protected workload](product/protected-service-workload.md), [journeys](product/journeys.md); [functional map](product/functional-map.md) owns requirements and budgets, [operating model](product/operating-model.md) owns lifecycle |
 | Protected information and actual claim limits | [Threat model](security/threat-model.md), [common privacy construction](technical/common-privacy-architecture.md) |
-| Domain rules, collaborations, state and completion | [Domain map](development/domain-map.md); actual Go imports belong to the [package map](development/package-map.md) |
+| Domain rules, collaborations, state and completion | [Domain map](development/domain-map.md), including the [interaction contract](development/domain-map.md#inter-domain-interaction-contract) and [planning checklist](development/domain-map.md#interface-checklist-for-development-plans); actual Go imports belong to the [package map](development/package-map.md) |
 | Authenticated Network facts | [New Network](technical/successor-network-state.md), [Network/Node contract](technical/network-route-node.md) |
 | Finite rights and physical capacity | [Admission](technical/successor-admission-boundary.md), [private admission](technical/private-admission.md), [Hosting](technical/successor-hosting-budget.md) |
 | Protected physical transport | [Protocol](technical/protected-route-protocol.md), [Prefix/channel](technical/successor-route-prefix.md), [Introduction](technical/successor-route-introduction.md), [JOIN](technical/successor-route-join.md), [integration boundaries](development/route-delivery-join-boundary.md) |

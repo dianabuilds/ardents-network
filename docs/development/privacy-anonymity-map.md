@@ -63,9 +63,10 @@ register. Historical exact-version receipts cannot qualify changed inputs.
 
 [#497](https://github.com/dianabuilds/ardents-network/issues/497) owns the live
 domain order, selected work and exact transition conditions. The
-[domain map](domain-map.md) owns semantic dependencies and exclusions. The table
-below explains component prerequisites, not a separate issue queue or acceptance
-checklist.
+[domain map](domain-map.md) owns semantic dependencies and exclusions; its
+[interaction contract](domain-map.md#inter-domain-interaction-contract) defines
+how owners exchange facts, rights, resources and completion. The table below
+explains component prerequisites, not a separate issue queue or acceptance checklist.
 
 | Consumer boundary | Required genuine components | Current contract owner |
 |---|---|---|

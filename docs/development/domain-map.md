@@ -2,7 +2,7 @@
 
 This is the maintained semantic map for the DDD transition. The Product Owner
 assigned its upkeep to the orchestrator on 2026-10-04. It records responsibilities,
-exclusions, collaborations and realized architectural results. It does not
+exclusions, interaction mechanisms and realized architectural results. It does not
 select work, accept a protocol change or replace the GitHub execution ledger.
 
 Accepted ADRs and current product/security/technical owners remain authoritative.
@@ -10,6 +10,36 @@ Accepted ADRs and current product/security/technical owners remain authoritative
 [package-map.md](package-map.md) owns actual Go packages and permitted imports.
 Earlier strategic proposals and source receipts are in the [archive](../archive/README.md).
 This map records current ownership; proposed future boundaries remain proposals.
+
+## Reading and planning route
+
+Use this document to prepare a domain change:
+
+1. Find the domain's question, rules and exclusions in
+   [Domains and boundaries](#domains-and-boundaries).
+2. Identify its state, physical borrowers and terminal owner in the
+   [completion inventory](#consistency-resources-and-completion-inventory).
+3. Select the permitted interaction from the
+   [inter-domain contract](#inter-domain-interaction-contract) and
+   [collaboration matrix](#collaborations-to-review).
+4. Describe each affected operation using the
+   [interface checklist](#interface-checklist-for-development-plans), then
+   check its actual source and current technical owner.
+5. Verify task selection and acceptance in GitHub before implementation.
+
+| Planning question | One current owner |
+|---|---|
+| Product outcomes, non-goals and threat conditions | [Scope](../product/scope.md), [threat model](../security/threat-model.md) and their linked contracts |
+| Domain boundaries, responsibility and inter-domain interaction | This map; the affected technical owner supplies exact rules and formats |
+| Actual package/import direction and dependency admission | [Package map](package-map.md), [dependency register](dependencies.md) |
+| Component prerequisites and whole-journey coverage | [Privacy integration map](privacy-anonymity-map.md), [Route integration](route-delivery-join-boundary.md) |
+| Work selection, domain order, transition conditions and full issue acceptance | [GitHub #497](https://github.com/dianabuilds/ardents-network/issues/497), its selected child issues and the C0 milestone |
+| Execution, handoff and verification method | [Agent execution](agent-execution.md), [testing](testing.md), [privacy qualification](privacy-qualification.md) |
+
+An interaction described here is a contract to preserve, not evidence that its
+complete consumer is implemented. The [realized boundaries](#realized-boundaries-and-their-limits)
+record integrated component behavior and limits. A draft, prepared interface or
+successful narrower test cannot upgrade that result or select the next domain.
 
 ## How to preserve the map
 
@@ -152,7 +182,11 @@ and issue receipts. Consolidation does not upgrade their evidence level.
 
 ## Collaborations to review
 
-| Collaboration | Evidence or right passed | Consumer check / prohibited expansion |
+Apply the interaction contract below to these collaborations. The matrix names
+semantic dependencies; the package map separately permits each implemented
+import. The technical owner defines the exact callable or wire Interface.
+
+| Collaboration | Mechanism and evidence or right passed | Consumer check / prohibited expansion |
 |---|---|---|
 | Network to Admission/Route application | `CurrentRuntime` with coherent authenticated profile/member/time; `RetainDuty` from that same observation and `MatchDuty` against a fresh one | Reobserve at effect/commit points; no diagnostic Snapshot/receipt authority, successor rebinding, cached approval or callback into an already locked owner; exact role/Purpose and actual peer authentication remain consumer rules |
 | Admission to Route | Purpose/receiver-bound finite accepted allowance and exactly transferred reservation lifetime | Admission owns the Control, Forward and Registration class bounds in the [private admission contract](../technical/private-admission.md); this map does not maintain another numeric register. No token refund, new deadline, second claim or transport authorization based only on Node identity. Receiving Admission may request reservation rollback; Route's `Channel.HoldReservation` retains its physical return until joined retirement, including refusal without a Grant |
@@ -162,10 +196,114 @@ and issue receipts. Consolidation does not upgrade their evidence level.
 | Execution to permission preparation composition | Private retained provenance of a successfully joined verified preparation launch under its still-live local session | It is not a live worker permit or network authority; Network/Admission still verify current facts and permission. Do not retain a dead worker's rights through this proof |
 | Software acceptance to Execution launch | Exact authorized installed artifact/binding; distinct runtime byte/invocation checks | Execution cannot mint Release authorization, reset floors, choose arbitrary executables or install privilege; worker compatibility is not product platform qualification |
 | Publication through Route and Reachability | Authorized registration/revision and signed bounded Descriptor | Receiving slot transport, publication readiness and Store ACK remain different facts |
+| Publication/Instance to Connection | Owner methods lend purpose-specific non-exporting Instance TLS/proof use under the original accepting generation and exact live Execution operation | Connection verifies Service authentication and owns continuity; Publication retains readiness/replay/withdrawal and Instance erasure. Join all key users before returning the borrow; no raw private key, generic signer or supplied established flag. Full authenticated consumers remain a separate acceptance boundary |
 | Reachability to Connection | Verified exact-Target proof with its bounds and provenance | Descriptor verification is not Instance authentication, readiness or an accepting stream |
 | Connection to Route | Already authorized fresh Attachment attempt within original logical bounds | Route cannot change destination, restart an Application operation or own the recovery decision |
 | Domain decision to Custody | Exact purpose-specific approved signing commitment | Custody does not acquire the caller's policy, and the domain does not receive a private root |
-| Software acceptance to installation/runtime | Fresh exact-artifact authorization with retained floors | Files alone do not grant authorization, and recovery cannot introduce rollback |
+| Enrollment to Release/Installation composition | Independently pinned, verified immutable inventory and retained initial-pin provenance passed through the owning public contract | Pin/inventory verification cannot sign, authorize a successor Release or install. Consumers use the same verified bytes; copied identifiers cannot recreate initial-pin provenance |
+| Release to Installation | Fresh exact-artifact authorizations through the retained verifier; Installation binds the coherent program/generation pair and immutable inventory | Release retains trust/floors; Installation retains transition admission and native effects. Files alone grant no authorization, and recovery cannot introduce rollback |
+| Installation startup to installed runtime composition | `endpoint.OpenStartup`, retained `Startup.Check` and detached `Plans` after original generation/process/manager observations and root completion | Recheck the same startup before participant effects. Plans/ACK do not grant a Job, token, Publication readiness or Service permission; each Service operation additionally retains its genuine live Execution permit. Preparation provenance remains limited to its separately admitted purpose |
+| Text Application and local IPC to Execution/Connection composition | Closed AAI3/Administration requests and bounded worker/stream handoffs through their registered Interfaces | Text owns document semantics; Execution owns local admission/worker cleanup; Connection owns authenticated logical bytes. No destination, Service key or Route authority crosses into the worker. IPC/READY alone cannot attest a qualified Job |
+
+## Inter-domain interaction contract
+
+The project uses narrow owner Interfaces inside one modular Go codebase.
+Command/runtime composition constructs genuine owners, orders their calls and
+supervises transfers; the receiving owner still decides its own policy. Remote
+roles use the accepted protected wire contracts, and local Applications use
+the accepted IPC/worker contracts. A domain collaboration selects no new
+service, message bus, generic repository or protocol.
+
+### Forms of interaction
+
+| Form | What crosses the boundary | Required behavior |
+|---|---|---|
+| Detached data or verified observation | Canonical bytes, copied facts, public proof or declarations; examples include Network observations and Installation plans | State what was verified and when. Reverify original signed bytes where mutable projections could be substituted; reobserve current authority at required effects. A copied value is neither a live permit nor resource ownership |
+| Owner-specific right or borrow | An opaque handle tied to the original owner, purpose, caller/generation and finite bounds; examples include an Execution operation or Hosting reservation | Check it through its owner; preserve revocation and original identity. It grants only its stated purpose. Borrowing another domain's resource does not transfer that domain's policy, mutable state or private key |
+| Request to perform an owned effect | A typed owner operation over admitted inputs; examples include Admission presentation/spend, Reachability Store publication and Installation transition | The owner validates, orders and records its own effect. The caller cannot write its journal, mutate its aggregate or replace validation with an accepting boolean/callback |
+| Physical ownership transfer | The exact original stream/acquisition, reservation or launch lifetime and its completion obligation | Define the handoff point and who owns a partial result. After transfer the recipient joins it; before transfer the creator joins rejected work. An error after a real transfer does not silently return ownership or permit double release |
+| Result or notification | A bounded outcome, original completion or notification after an owned transition | Preserve the result's scope and original failure. A notification, ACK, cancellation or timeout cannot substitute for synchronous revoke, current authority or physical join |
+
+These forms may be combined in one use case, but their meanings stay distinct.
+No universal authority token or common mutable context combines Network,
+Admission, Execution, Publication and Installation rights.
+
+### Checks, handoff and termination
+
+Every affected operation preserves this ordering at its owning boundaries:
+
+1. Bind the exact caller, principal, purpose, destination where applicable,
+   original generation and bounds. Obtain genuine authority and reservations
+   before the admitted effect, in the order required by the technical owner.
+2. Recheck the relevant live owners before effects, after asynchronous I/O and
+   at the final commit/handoff. An observation or earlier successful check is
+   not indefinite permission. A late result cannot bind to a replacement owner.
+3. Publish a successful handoff only under the original owner's admission
+   barrier. Disarm and join a setup-only cancellation callback that could close
+   the transferred resource; retain the admitted operation's own cancellation
+   and authority checks. Join rejected/partial resources through their original
+   owner and retain their actual cleanup failures.
+4. On revoke or close, deny new dependent effects synchronously and interrupt
+   affected work before waiting. Each domain joins its own borrowers; composition
+   orders the dependencies. Wait for actual readers, writers, callbacks and
+   descendants before returning their reservations or erasing needed material.
+5. Return the original retained terminal result. A later success cannot erase
+   a definite failure; timeout or path absence is not joined completion. Spent
+   rights and durable conflict/replay/time floors keep their owning semantics.
+
+Application completion and physical resource retirement may differ where the
+accepted owner explicitly requires it, including a Connection Terminal-control
+tail. Such a result retains every still-needed authority/resource borrow until
+the tail joins; it cannot release Execution cleanup or Instance material early.
+Exact ordering remains with [Execution](../technical/application-execution.md#required-lifecycle-and-linearization),
+[Service](../technical/endpoint-service-runtime.md#publication-and-connection-lifecycle)
+and the [Route migration contract](route-migration-contract.md#r05-preserve-authority-bytes-and-failure-ordering).
+
+Across an owner boundary, do not hold a state lock while waiting for another
+owner's physical I/O/join or call back into an already locked owner. A narrow
+synchronous commit check may compare original local state only under its
+documented lock ordering; it cannot perform foreign network/filesystem work or
+become a foreign policy callback. Each owner still serializes its own durable
+effects as its technical contract requires. Asynchronous notifications may
+follow a synchronous transition, never implement its revoke.
+
+### Dependency and information boundaries
+
+Keep production and test imports acyclic and exactly registered. A shared
+codec/transcript/typed-observation leaf grants no permission for its live parent
+owner and must retain its own declared imports. For example, fixed-unit/systemd
+facts used by Execution do not grant Installation transaction/startup authority.
+Route's Entry selection retained per installation is Route state, not software
+installation/replacement policy.
+
+Use only the fields and identities permitted to that role by the current
+product/threat/wire owner. Do not pass raw private authority, a whole private
+Context/path, shared cross-role history or a new tracing identity through a
+convenient request structure. Diagnostics never supply authority. New Route
+remains isolated from old runtime in both directions, including tests, wrappers,
+callbacks, process bridges and mutable roots.
+
+## Interface checklist for development plans
+
+For each changed cross-domain operation, record these fields in its selected
+issue/brief and link the current owners. Do not create a parallel contract file
+or export a speculative API merely to fill the checklist.
+
+| Field | What the plan must make reviewable |
+|---|---|
+| Rule and owners | One semantic decision owner; separate authority, state, physical resource and terminal owners; explicit exclusions |
+| Producer and consumer | Genuine non-test caller, exact incoming/outgoing Interface and composition responsibility |
+| Input and proof | What is copied, verified, borrowed or transferred; original provenance, principal/purpose/generation/bounds; fields hidden from the recipient |
+| Effects and linearization | Checks before/after I/O, durable effect/commit order and the exact successful ownership handoff |
+| Failure and completion | Refusal, cancellation, expiry, late/foreign result, partial transfer, stop/interrupt/join/release and retained error behavior |
+| Dependencies | Specific ready component and source/Interface/evidence identity; distinguish component readiness, full domain acceptance, integration and installed qualification |
+| Verification | Positive and causal refusal cases for both neighbors, applicable race/reopen/Carrier/native profiles, actual candidate identity and honest limits |
+| Owning updates | Changes to both neighbors' exclusions/collaboration, technical owner, exact package/import registration and affected oracles |
+
+Missing authority or a missing real producer is a named prerequisite, never a
+successful fixture. Required rules stay with their owner when implementation is
+incomplete. The selected issue owns unresolved evidence and acceptance; preparing
+this contract does not start another domain under the current implementation hold.
 
 ## Updating after a completed slice
 
