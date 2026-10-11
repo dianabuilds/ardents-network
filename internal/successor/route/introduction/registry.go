@@ -68,6 +68,7 @@ type Registration struct {
 	channel                          [32]byte
 	used, maximum                    uint64
 	acknowledged, retired, withdrawn bool
+	dispatch                         *registrationDispatch
 }
 
 // NewRegistry transfers an already durable, independently owned Route history
@@ -93,7 +94,7 @@ func (registry *Registry) Register(capacity *Capacity, request Request, channel 
 	}
 	// Register operation/result plus owning withdraw operation/result. No
 	// delivery may borrow this reserve; no Admission class policy is duplicated.
-	const exchanges = uint64(2 * (16 + 4096 + 16 + 16384))
+	const exchanges = registrationExchangeBytes
 	if used > maximum || exchanges > maximum-used {
 		return nil, errors.New("introduction registration withdrawal reserve exhausted")
 	}

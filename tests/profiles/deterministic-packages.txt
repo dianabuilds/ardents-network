@@ -70,6 +70,7 @@ github.com/dianabuilds/ardents-network/internal/successor/hosting
 github.com/dianabuilds/ardents-network/internal/successor/publication
 github.com/dianabuilds/ardents-network/internal/successor/publication/durable
 github.com/dianabuilds/ardents-network/internal/successor/publication/instance
+github.com/dianabuilds/ardents-network/internal/successor/publication/runtime
 github.com/dianabuilds/ardents-network/internal/successor/reachability
 github.com/dianabuilds/ardents-network/internal/successor/enrollment
 github.com/dianabuilds/ardents-network/internal/successor/admission/issuance
@@ -102,6 +103,7 @@ github.com/dianabuilds/ardents-network/internal/successor/route/transport
 github.com/dianabuilds/ardents-network/internal/successor/route/transport/tls
 github.com/dianabuilds/ardents-network/internal/successor/route/transport/quic
 github.com/dianabuilds/ardents-network/internal/successor/route/introduction
+github.com/dianabuilds/ardents-network/internal/successor/route/capsule
 github.com/dianabuilds/ardents-network/internal/successor/route/join
 github.com/dianabuilds/ardents-network/internal/successor/route/prefix
 github.com/dianabuilds/ardents-network/internal/successor/release
@@ -119,3 +121,4 @@ github.com/dianabuilds/ardents-network/internal/successor/installation/completio
 github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile
 github.com/dianabuilds/ardents-network/internal/successor/installation/unit
 github.com/dianabuilds/ardents-network/internal/successor/execution/worker
+github.com/dianabuilds/ardents-network/internal/successor/connection

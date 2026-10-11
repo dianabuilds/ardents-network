@@ -1128,7 +1128,197 @@ reopen independently reconciles the persisted response state. Private custody
 uses original native Linux root/lease identities and real directory barriers;
 other platforms refuse before key or filesystem creation. This mechanism does
 not broaden ordinary Ubuntu24/systemd255 qualification. It grants no generic
-signer, Authority custody, floor-backed live binding or accepting readiness.
+signer, Authority custody or accepting readiness. Its separate private binding
+reconciles a concrete original Publication durable owner; a supplied scalar
+floor cannot create it. Consumption advances that reserved generation first,
+then persists consumed redaction, retaining the key only in the original
+volatile binding. A spent floor redacts a still-accepted root before returning
+successor-required. The signing purpose accepts one genuine original REGISTER
+receipt and retains identical public record bytes for exact retry; it never
+accepts an arbitrary digest or acknowledgement. These mechanisms have native
+and genuine both-Carrier registration tests; public preparation commands do not
+drive the complete qualified Publisher/Descriptor ACK lifetime.
+
+The same binding persists its exact signed public record through its original
+durable reservation before returning that public proof. The owner requires the
+already advanced floor and exact Credential digest, synchronizes the staging
+link, record/staging directory, renamed generation and current pointer/root,
+and preserves original record/pointer inodes on exact retry. Ambiguous effects
+deny further receipts until reopen. Only an exact floor-bound empty or fully
+verified staging generation can retire as unavailable residue; malformed or
+foreign inventory refuses. Binding close retires the pointer before the record,
+with both directory barriers, while the original reservation retains the lease.
+These public persistence facts grant no Descriptor Store ACK or readiness.
+
+Reachability now constructs the canonical public Descriptor transcript; the
+Instance's purpose-specific producer supplies the signature using its retained
+key and exact real registration receipt. Independent volatile X25519 recipients
+require consumed authority and strictly increasing registration revisions, with
+at most two retained owners. Exact Descriptor retries retain the same key,
+validity and signed bytes. Registration currentness is rechecked outside the
+private-material lock after key creation and before final signed-proof return.
+This signing mechanism exposes neither private bytes nor a generic signer and
+does not select an accepting pair or attest a receiving Store acknowledgement.
+
+The Instance recipient additionally opens only the fixed v3 capsule through the
+selected standard HPKE suite and a retained original Registration receipt.
+Header slot/revision and original expiry, the exact profile, Network, Target and
+Publication digest remain bound; no legacy bytes are accepted. Its opaque
+opening handle supplies bounded candidate facts and the plaintext digest while
+the original caller/recipient/registration/expiry remain usable. It retains the
+private recipient through downstream checks; Close seals acquisition, joins
+users outside the root lock, erases private material and only then returns the
+two-recipient capacity. Root/binding close joins those same users before releasing
+the original durable reservation. This operation is not downstream acceptance,
+replay commit or an authenticated Connection. Rate/replay admission and actual
+incoming delivery remain with their separate lifecycle and composition owners.
+
+The bounded new Connection recipient binding derives the immutable logical
+context from independently verified Publication fields and the exact candidate
+tuple. Its Attachment context binds the complete canonical plaintext digest;
+a supplied mismatching digest refuses. Work Safety fields cannot extend the
+original local/Network terminal bound or Credential validity, and incompatible
+fields refuse instead of silently shortening them. Initial handoff retains the
+original qualified operation and private-opening cancellation. Publication
+resolves the claimed Rendezvous through its original Source observation,
+excluding issuer, resolution and Introduction identities, keys and known
+families, then rechecks that same retained duty before handing out the binding.
+This establishes neither accepted replay nor real Responder readiness, incoming
+RESULT/CLOSE, Instance TLS or authenticated recovery.
+
+The first acknowledged replacement also synchronously shortens the original
+recipient's local accepting window. New openings and retained candidate reads
+check that exact bound independently of the physical retirement scheduler.
+Repeated restrictions can only shorten it; the original signed Descriptor and
+registration expiry stay unchanged. Genuine both-Carrier registration controls
+keep those original facts valid while checking refusal after the local cutoff.
+This component evidence does not prove the elapsed sixty-second overlap run.
+
+The new `publication/runtime` owner has a genuine non-test consumer in the
+qualified snapshot holder console. Its optional `holder.publication` names
+independent Instance and Publication roots; Domain4 `holder.route` additionally
+names separate Source and Responder Interior roots (`source_interior_root` and
+`responder_interior_root`). All declared roots must remain independent. The consumer opens one installation
+Entry selection and shared Hosting budget, borrows independent Source and
+Introduction selections, and opens both actual prefixes under the original
+operation. It prepares a distinct role-3 selection and finite reservation
+without dialing. The actual Responder opens only through that original Source
+after private capsule binding and nonce commitment; original caller cancellation
+interrupts opening and is joined before transfer to the Publisher lifetime.
+Unused preparation and failed opening retain their once-owned reservation until
+cleanup. Private initial handoff retains the exact delivery nonce, capsule-bound
+deadline, Connection binding and original opening. Successful RESULT is attempted
+only after those checks and actual Responder preparation; matching child CLOSE
+and final original observations precede retained handoff. This implementation
+has an isolated qualified snapshot-console incoming scenario on both Carriers:
+an independent actual Source submits a sealed capsule using the receiving
+Store's independently verified proof; the actual Publisher prepares its
+Source-bound Responder and completes successful RESULT/matching CLOSE.
+Immediate identical replay receives the exact typed refusal with physical join.
+Two simultaneous submissions use separate actual role channels and finite
+tokens; exactly one succeeds and one receives the same joined refusal.
+A freshly sealed valid capsule with the same delivery nonce also refuses after
+the original eight-second capsule deadline. Removing only accepted-history
+commitment makes that later replay accept while immediate replay still refuses;
+the control distinguishes retained acceptance from a pending reservation.
+A separate native case holds actual receiving CLOSE after the genuine Publisher
+RESULT on an acknowledged predecessor, until the original capsule expires.
+The original Registration retains its emitted-successful-RESULT failure through
+owning withdrawal and repeated Close. Fresh valid bytes carrying the same nonce
+refuse through the independently acknowledged current recipient; a new nonce
+succeeds there under the same original Publisher and Administration context.
+Two separately admitted Sources retain their own finite User allocations and
+original bootstrap bounds. Failed Source results remain failures through physical
+join; no spent Stock, caller or Publisher operation is renewed or refunded.
+These observations establish no JOIN, Service TLS or Application bytes, full
+original-registration-expiry+60s retention. The separate worker-loss case first
+completes genuine delivery, then physically joins the original Publisher and
+worker and observes retained accepted history under the exact context. A failed
+context terminal report also retains that history; revocation grants no erasure.
+After original users join, this native oracle compares retained replay expiry
+with the independently verified original Store Descriptor expiry+60s. The
+private accounting oracle separately checks refusal immediately before that
+horizon and release at it; no capsule or replacement deadline supplies the bound.
+`publication-open` retains custody but exposes no accepting Link;
+`publication-publish`, `publication-refresh`, `publication-link` and
+`publication-withdraw` consume that same live owner. A completed preparation
+or setup-only worker cannot select this path.
+
+The owner retains a single opaque Instance publication lifetime. Registration,
+canonical signing and the exact Source Store exchange precede current-pair
+selection; final original operation, caller, binding, receipt and Descriptor
+checks follow actual synced ACK and physical exchange join. Pending proofs
+cannot supply a Link. The real-clock scheduler uses REGISTER creation+300s,
+preserves old current while a replacement awaits ACK, and caps a joined
+predecessor at first switch+60s/original expiry. Acquisition stops before
+pending cancellation, owning withdrawal and physical joins; the Instance key
+and durable reservation remain retained until that original lifetime returns.
+Publication seals each handed-out original Registration before canceling its
+owned flight contexts. Registration handoff shares that stop barrier; a late
+REGISTER owner is sealed and retained for physical join. This ordering does
+not discharge a canceled original caller or erase a prior physical failure.
+The Responder's physical caller retains the original Publisher caller and
+absolute deadline through bounded physical Close. Local Publication stop
+interrupts private users without canceling that physical caller before join;
+original caller, Execution or Instance loss still interrupts both lifetimes.
+Physical cancellation follows prefix join on an ordinary local withdrawal.
+The qualified operation exposes an opaque identity for its original admitted
+Administration Session. Publication matches that identity to the exact live
+operation at effects and handoffs. Session revocation and joined retirement
+are separate from worker/Job retirement; a joined Job cannot complete or replace
+its still-retained context. This identifies the lifetime required by context
+history, without implementing replay acceptance or authenticating a Connection.
+The selected native execution-route profile exercises the production snapshot
+console through genuine REGISTER and synced receiving Store ACK on both
+Carriers. It independently checks the committed Descriptor, unchanged exact
+retry, fresh replacement slot/key, third-recipient refusal, withdrawal, physical
+worker/receiver join, retained Store reopen and consumed Instance restart
+refusal. Authority approval and offline blind issuance are explicit fixture
+inputs; neither supplies the qualified operation or ACK. A separate genuine
+snapshot operation invokes the same production holder composition while a
+receiving authority observation waits after the actual public record changes.
+Initial Link refuses until the real Store exchange completes; during replacement
+the prior Link remains available. Independent signed-record verification and
+matching Store bytes follow the actual ACK and physical exchange join on both
+Carriers. This Link evidence establishes no private capsule selection.
+The separate delayed-ACK withdrawal case closes the original current and pending
+registration owners before releasing the receiving observation. Link refuses
+before and after release, while the actual Store retains the signed replacement
+record. Registration cancellation seals its stop barrier before interrupting
+the idle reader; previously observed failures and physical Close or WITHDRAW
+errors remain retained. This is withdrawal coverage, not worker or Network loss.
+This isolated Ubuntu24/systemd255 component does not establish accepting
+Installation startup, the full replay-history/loss matrix or successful Service
+Connection. The separate unchanged-clock `publication-timing` profile checks
+actual creation+300s automatic refresh after a twelve-second initial ACK delay,
+pending refusal and old-pair acceptance, genuine replacement ACK, exact retry,
+third-recipient refusal and delivery before/after the bounded switch+60s cutoff
+on both Carriers. Independent call/commit brackets bound creation and switching;
+no substituted clock or forced Refresh supplies the timing result. Its
+[profile owner](../../tests/qualification/publication-timing/README.md) retains
+the selected native actors, fifteen-minute test bound and finite permissions.
+Separate original-worker-loss and signed-profile-conflict cases exercise held
+Store responses on both Carriers. Worker loss retains its complete use failure
+separately from the original joined cleanup receipt. Signed conflict leaves the
+caller live and denies accepting Link before and after the exchange joins;
+the Store keeps its actual signed record. Full repeated Close preserves failed
+Network and native peer outcomes. The signed-conflict fixture's receiving side
+independently verifies the same signed Epoch/profile in a separate State root
+and stays current after Publisher conflict and original exchange join. Replacing
+it with shared State causally fails the currentness observation on both Carriers.
+The held-record oracle still does not prove successful late ACK decoding at
+Source after Publisher-only authority loss. Signing and clock infrastructure
+remain under one fixture controller.
+The separate post-decode case pauses the genuine Source currentness observation
+after a matching successful Store RESULT, then commits Publisher-only signed
+conflict. Failed final processing retains the original acknowledged-failure
+cause, denies Link and joins physical work while receiving State stays current.
+This verifies late ACK processing; decoding occurs before authority loss and
+does not establish successful ACK arrival/decoding after that loss.
+Retained TLS peer-read provenance changes diagnostic categorization only;
+raw/local/mixed failures cannot acquire it or become successful completion.
+A shorter explicit refresh cannot
+prove the scheduling and overlap timing boundary.
 
 The isolated new `publication/durable` owner prepares and reopens its own v3
 root through `ardents-next publication prepare-root <root> <target> <network>`.
@@ -1195,6 +1385,16 @@ After Publication reaches root-lease release, it retains that terminal cleanup
 result for repeated and concurrent Close callers. Earlier failed withdrawal or
 generation drain remains retryable under the existing lifecycle; a retained
 release error never recreates a signer or resets the publication floor.
+
+New Execution has a selected-snapshot launch seam consumed by
+`execution route-holder` with its explicit `snapshot` input. Stable local file
+import belongs to Text; the original qualified Administration invocation owns
+INIT/READY, one exact operation and joined cleanup. Its sole post-READY reader
+uses Text's bounded protocol instead of the setup consumer's byte/EOF observer.
+No Connection stream is fabricated. The installed lifecycle profile includes
+this snapshot operation, and must run on the selected actual native stand before
+it can establish installed execution evidence. This seam alone supplies no
+Credential, registration, Descriptor Store acknowledgement or accepting Link.
 
 ## Service credential and publication limit
 

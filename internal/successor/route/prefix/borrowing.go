@@ -21,6 +21,29 @@ type Borrow struct {
 	active    func() bool
 }
 
+// BorrowLifetime retains this already opened physical generation for one
+// bounded live operation, including quiet intervals between its exchanges.
+// It supplies no token, recipient or JOIN authority. Interrupt must only seal;
+// join runs outside the generation lock and must finish the borrower's users,
+// not recursively Close this Prefix. ReturnJoined follows that actual join.
+func (p *Prefix) BorrowLifetime(ctx context.Context, interrupt func(), join func() error) (*Borrow, error) {
+	if p == nil || ctx == nil || interrupt == nil || join == nil {
+		return nil, errors.New("route retained physical lifetime absent")
+	}
+	end, bounded := ctx.Deadline()
+	if !bounded || p.config.Deadline.IsZero() || end.After(p.config.Deadline) || !time.Now().Before(end) {
+		return nil, errors.New("route retained physical lifetime exceeds original bound")
+	}
+	p.lifetimeMu.Lock()
+	defer p.lifetimeMu.Unlock()
+	if err := errors.Join(ctx.Err(), p.localCurrent()); err != nil {
+		return nil, err
+	}
+	borrow := &Borrow{owner: p, interrupt: interrupt, join: join, active: func() bool { return ctx.Err() == nil }}
+	p.retainBorrowLocked(borrow)
+	return borrow, nil
+}
+
 // retainBorrowLocked is part of the existing synchronous handoff: callers
 // hold the original generation lock and have checked its seal and caller.
 func (p *Prefix) retainBorrowLocked(borrow *Borrow) {

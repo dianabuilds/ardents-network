@@ -2,6 +2,7 @@ package transport
 
 import (
 	"errors"
+	"io"
 	"net"
 	"testing"
 )
@@ -10,6 +11,22 @@ type halfCloseProbe struct {
 	net.Conn
 	halfCloses, closes int
 	halfErr, closeErr  error
+}
+
+func TestRetainedPlainReadCannotAttestPeerTLSEOF(t *testing.T) {
+	local, remote := net.Pipe()
+	retained := Retain(local)
+	defer retained.Close()
+	if err := remote.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var extra [1]byte
+	if n, err := retained.Read(extra[:]); n != 0 || err != io.EOF {
+		t.Fatal("original pipe EOF changed", n, err)
+	}
+	if got := RetainedPeerReadCause(retained, io.EOF); got != io.EOF || IsPeerRetirementCause(got) {
+		t.Fatal("plain stream manufactured authenticated TLS read provenance", got)
+	}
 }
 
 func (c *halfCloseProbe) CloseWrite() error { c.halfCloses++; return c.halfErr }

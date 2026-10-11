@@ -167,6 +167,9 @@ func (r *Receiver) peer(key [32]byte) (network.Member, error) {
 	allowedDomain := peer.RoleDomain == m.RoleDomain
 	if m.Subrole == 3 {
 		expectedSubrole = 2
+		if m.RoleDomain == 4 {
+			allowedDomain = peer.RoleDomain == 1 || peer.RoleDomain == 4
+		}
 	}
 	if m.RoleDomain == 2 && m.Subrole == 4 {
 		expectedSubrole = 2
@@ -393,7 +396,10 @@ func (r *Receiver) serveOuter(ctx context.Context, accepted transport.ClosedShar
 		// The frame check reobserves this same immutable outer binding.
 		// Capacity preparation adds no storage observation to the sole reader.
 		m := member
-		if !((m.Subrole == 2 && opened.Purpose == 7) || (m.RoleDomain == 4 && m.Subrole == 3 && opened.Purpose == 4) || (m.RoleDomain == 2 && m.Subrole == 4 && opened.Purpose == 6) || (m.RoleDomain == 2 && m.Subrole == 5 && opened.Purpose == 3) || (m.RoleDomain == 2 && m.Subrole == 6 && opened.Purpose == 1)) {
+		if m.RoleDomain == 4 && m.Subrole == 3 && !introductionChildPermitted(peer.RoleDomain, opened.Purpose) {
+			return errors.New("route Introduction child purpose differs from adjacent Node")
+		}
+		if !((m.Subrole == 2 && opened.Purpose == 7) || (m.RoleDomain == 4 && m.Subrole == 3 && (opened.Purpose == 4 || opened.Purpose == 5)) || (m.RoleDomain == 2 && m.Subrole == 4 && opened.Purpose == 6) || (m.RoleDomain == 2 && m.Subrole == 5 && opened.Purpose == 3) || (m.RoleDomain == 2 && m.Subrole == 6 && opened.Purpose == 1)) {
 			return errors.New("route Interior child unavailable")
 		}
 		if nodeOpen.Restriction == ardp.IssuerBootstrapChild {
@@ -463,6 +469,13 @@ func (r *Receiver) finishSession(s *framing.Session) error {
 		r.record(fmt.Errorf("route receiving framing retirement: %w", physical))
 	}
 	return err
+}
+
+// The outer Carrier accepts both Introduction and Source Interiors, but each
+// retains its own permitted child purpose before any role TLS or admission.
+func introductionChildPermitted(parentDomain, purpose uint8) bool {
+	return parentDomain == 4 && purpose == uint8(ardp.PurposeIntroduction) ||
+		parentDomain == 1 && purpose == uint8(ardp.PurposeSubmission)
 }
 
 func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.Lane, opened *ardp.Open, bootstrapClaim *bootstrap.Claim) (result error) {
@@ -561,7 +574,16 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 		return r.serveDescriptor(ctx, conn, h, grant.Allowance().Bytes()-role.AdmissionWireBytes, check)
 	}
 	if h.Purpose == ardp.PurposeIntroduction {
+		if outer == nil {
+			return errors.New("route Introduction original lane unavailable")
+		}
 		return r.registrations.ServeRegistration(ctx, conn, capacity.registration, introduction.RegistrationChannel{
+			Hello: h, Authority: r.config.Authority, Bytes: grant.Allowance().Bytes(),
+			Deadline: grant.Allowance().Deadline(), Record: r.record, InterruptIO: outer.InterruptIO,
+		})
+	}
+	if h.Purpose == ardp.PurposeSubmission {
+		return r.registrations.ServeSubmission(ctx, conn, introduction.RegistrationChannel{
 			Hello: h, Authority: r.config.Authority, Bytes: grant.Allowance().Bytes(),
 			Deadline: grant.Allowance().Deadline(), Record: r.record,
 		})
@@ -628,10 +650,11 @@ func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ard
 	join := (local.RoleDomain == 1 || local.RoleDomain == 3) && local.Subrole == 2 && opened.Purpose == 6
 	issuance := local.RoleDomain == 1 && local.Subrole == 2 && opened.Purpose == uint8(ardp.PurposeIssuer)
 	resolution := local.RoleDomain == 1 && local.Subrole == 2 && opened.Purpose == uint8(ardp.PurposeReachability)
+	submission := local.RoleDomain == 1 && local.Subrole == 2 && opened.Purpose == uint8(ardp.PurposeSubmission)
 	if restriction == ardp.IssuerBootstrapChild && (local.RoleDomain != 1 || (!forwarding && !issuance)) {
 		return errors.New("restricted forwarding destination unavailable")
 	}
-	if (!forwarding && !registration && !join && !issuance && !resolution) || opened.Deadline.After(parent.Deadline) {
+	if (!forwarding && !registration && !join && !issuance && !resolution && !submission) || opened.Deadline.After(parent.Deadline) {
 		return errors.New("route prefix next-hop unavailable")
 	}
 	if err := source.Bound(opened.Deadline); err != nil {
@@ -646,6 +669,9 @@ func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ard
 	expectedDomain := local.RoleDomain
 	if registration {
 		expectedSubrole = 3
+	}
+	if submission {
+		expectedSubrole, expectedDomain = 3, 4
 	}
 	if join {
 		expectedSubrole, expectedDomain = 4, 2

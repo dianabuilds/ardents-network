@@ -55,7 +55,7 @@ func (c Channel) HoldReservation(release func() error) (func() error, error) {
 		c.capacity.join = position
 		r.release = func() error { position.Release(); return release() }
 	}
-	if c.capacity.registry != nil {
+	if c.Hello.Purpose == ardp.PurposeIntroduction && c.capacity.registry != nil {
 		if c.capacity.registration != nil {
 			return r.request, errors.New("route registration capacity already held")
 		}

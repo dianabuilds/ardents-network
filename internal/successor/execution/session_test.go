@@ -28,6 +28,44 @@ func executionFixture(t *testing.T, surface Surface) (*Authority, *Supervisor, *
 	return authority, supervisor, session
 }
 
+// This exercises genuine local admission and joined state ordering only; it
+// supplies no worker confinement or successful physical cleanup evidence.
+func TestSessionCompletionWaitsForOriginalJob(t *testing.T) {
+	authority, _, session := executionFixture(t, Administration)
+	job, err := session.BeginJob()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { job.Retire(); _ = job.Finish(nil) })
+	authority.Close()
+	if err, completed := session.Completion(); err != nil || completed {
+		t.Fatalf("revocation supplied terminal cleanup: %v, %v", err, completed)
+	}
+	if session.Context().Err() == nil || job.Check() == nil {
+		t.Fatal("original session revocation retained Job authority")
+	}
+	select {
+	case <-session.Done():
+		t.Fatal("original session completed before its Job joined")
+	default:
+	}
+	job.Retire()
+	if err := job.Finish(nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := session.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err, completed := session.Completion(); err != nil || !completed {
+		t.Fatalf("joined original result unavailable: %v, %v", err, completed)
+	}
+	select {
+	case <-session.Done():
+	default:
+		t.Fatal("joined original session lacks completion")
+	}
+}
+
 func TestJobOneClaimAndExactLastCompletion(t *testing.T) {
 	_, _, session := executionFixture(t, Connection)
 	first, err := session.BeginJob()
@@ -157,6 +195,11 @@ func TestCleanupFailureSynchronouslyClosesIdleSiblingAndRetainsFirstResult(t *te
 	}
 	if job.Finish(nil) != failure || session.Close() != failure || supervisor.Close() != failure || supervisor.Close() != failure {
 		t.Fatal("repeated completion erased first failure")
+	}
+	for range 2 {
+		if err, completed := session.Completion(); err != failure || !completed {
+			t.Fatalf("completion erased retained cleanup failure: %v, %v", err, completed)
+		}
 	}
 	supervisor.mu.Lock()
 	_, retained := supervisor.sessions[session]

@@ -28,7 +28,7 @@ func TestOpenIndependentCanonicalRecipientBytes(t *testing.T) {
 	}
 	// The vector is intentionally expired. Codec success grants no current
 	// authority and cannot depend on the execution host's wall clock.
-	for _, purpose := range []uint8{1, 3, 4, 6} {
+	for _, purpose := range []uint8{1, 3, 4, 5, 6} {
 		body := append([]byte(nil), want...)
 		body[40] = purpose
 		decoded, err := DecodeOpen(body)

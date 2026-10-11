@@ -24,6 +24,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/capsule"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
 
@@ -35,6 +36,17 @@ func releaseRouteReservation(reservation *hosting.Reservation) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return reservation.Release(ctx)
+}
+
+// Native composition retains the genuine original channel alongside console
+// projections. Unsupported platforms expose no original registration owner.
+type routeRegistration struct {
+	original *introduction.HolderRegistration
+	close    func() error
+	withdraw func(context.Context) error
+	done     <-chan struct{}
+	slot     [32]byte
+	facts    introduction.RegistrationFacts
 }
 
 func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admissionAuthority, holder *stock.Owner) (_ routeHandle, result error) {
@@ -99,7 +111,39 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 	if err != nil {
 		return routeHandle{}, errors.Join(err, release())
 	}
+	submit := func(ctx context.Context, recipient routeRecipient, envelope capsule.Envelope) error {
+		view, err := authority.current()
+		if err != nil {
+			return err
+		}
+		duty, err := leg.SubmissionDuty(view, recipient.Node, recipient.Generation, plan.Exclusions)
+		if err != nil {
+			return err
+		}
+		return introduction.Submit(ctx, prefix, duty, envelope, plan.Exclusions)
+	}
 	return routeHandle{close: prefix.Close, done: prefix.Done(), replenish: prefix.Replenish,
+		sealSubmitCapsule: func(ctx context.Context, recipient routeRecipient, input routeCapsuleIntent) error {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			request, err := capsule.ParseRequest(input.Request)
+			if err != nil {
+				return err
+			}
+			envelope, _, err := capsule.Seal(capsule.Header{Slot: input.Slot, DeliveryNonce: input.DeliveryNonce, Revision: input.Revision, Expiry: input.Expiry}, input.RecipientKey, request)
+			if err != nil {
+				return err
+			}
+			return submit(ctx, recipient, envelope)
+		},
+		submitCapsule: func(ctx context.Context, recipient routeRecipient, raw []byte) error {
+			envelope, err := capsule.Parse(raw)
+			if err != nil {
+				return err
+			}
+			return submit(ctx, recipient, envelope)
+		},
 		publishDescriptor: func(ctx context.Context, raw []byte) error {
 			end := minRouteDeadline(plan.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
 			return prefix.PublishDescriptor(ctx, end, raw, plan.Exclusions)
@@ -136,7 +180,7 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 				return routeRegistration{}, errors.Join(err, registration.Close())
 			}
 			facts := receipt.Facts()
-			return routeRegistration{close: registration.Close, withdraw: registration.Withdraw, done: registration.Done(), slot: registration.Slot(), facts: facts}, nil
+			return routeRegistration{original: registration, close: registration.Close, withdraw: registration.Withdraw, done: registration.Done(), slot: registration.Slot(), facts: facts}, nil
 		}}, nil
 }
 

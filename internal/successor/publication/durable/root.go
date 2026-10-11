@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 )
 
 const (
@@ -23,14 +25,21 @@ type Config struct {
 // Root retains original directory identity and an exclusive process lease.
 // Its public floor is an observation, never authority to sign or accept work.
 type Root struct {
-	mu       sync.Mutex
-	path     string
-	identity os.FileInfo
-	config   Config
-	lease    rootLease
-	floor    uint64
-	closed   bool
-	closeErr error
+	mu          sync.Mutex
+	path        string
+	identity    os.FileInfo
+	config      Config
+	lease       rootLease
+	floor       uint64
+	predecessor publication.Delegation
+	current     bool
+	flush       func(string) error
+	failure     error
+	reserved    *Generation
+	drained     chan struct{}
+	closing     chan struct{}
+	closed      bool
+	closeErr    error
 }
 
 // Open creates the owned layout or reconciles an existing v3 root. It never
@@ -121,7 +130,7 @@ func openWith(ctx context.Context, config Config, flush func(string) error) (*Ro
 			return fail(err)
 		}
 	}
-	root := &Root{path: path, identity: identity, config: config, lease: lease}
+	root := &Root{path: path, identity: identity, config: config, lease: lease, flush: flush}
 	if err = root.restore(flush); err != nil {
 		return fail(err)
 	}
@@ -132,12 +141,16 @@ func openWith(ctx context.Context, config Config, flush func(string) error) (*Ro
 }
 
 func (root *Root) check(ctx context.Context) error {
-	if root.closed {
-		return errors.New("publication root closed")
+	if root.closed || root.failure != nil {
+		return errors.Join(errors.New("publication root unavailable"), root.failure)
 	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	return root.checkOriginal()
+}
+
+func (root *Root) checkOriginal() error {
 	info, err := os.Lstat(root.path)
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || !os.SameFile(info, root.identity) {
 		return errors.New("publication original root unavailable")
@@ -164,10 +177,24 @@ func (root *Root) Close() error {
 		return nil
 	}
 	root.mu.Lock()
-	defer root.mu.Unlock()
-	if !root.closed {
-		root.closed = true
-		root.closeErr = root.lease.release()
+	if root.closing != nil {
+		done := root.closing
+		root.mu.Unlock()
+		<-done
+		root.mu.Lock()
+		defer root.mu.Unlock()
+		return root.closeErr
 	}
+	root.closed = true // Deny new effects before waiting for the original owner.
+	root.closing = make(chan struct{})
+	drained := root.drained
+	root.mu.Unlock()
+	if drained != nil {
+		<-drained
+	}
+	root.mu.Lock()
+	defer root.mu.Unlock()
+	root.closeErr = errors.Join(root.failure, root.lease.release())
+	close(root.closing)
 	return root.closeErr
 }

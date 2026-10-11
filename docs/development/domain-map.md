@@ -54,7 +54,7 @@ remain proposed until their current contracts and real consumers are verified.
 | **Hosting:** which physical allowance can this owner reserve? | One provider-period Tx/Rx accounting policy, coherent measurements, durable budget, work/termination reservations and their exact release | Token authority/debit, Node assignment, role envelope calculation, transport stop/join, CPU/RAM/cgroups or global process monitor | [new Hosting](../technical/successor-hosting-budget.md), `internal/successor/hosting` |
 | **Route:** which protected leg and role channel may this operation use? | Entry/Interior selection and retention; role-purpose rules; prefix/lanes and credit; forwarding parents/children and permitted parent refill transport; receiving Introduction slots/delivery/floors; JOIN pairing and physical termination | State acceptance, Admission quotas/verification/spend, Hosting budget, publication readiness, Descriptor authority/history, Instance authentication and logical recovery | [Route owner map](route-domain-boundary-analysis.md), [migration contract](route-migration-contract.md), [implemented retained prefix](../technical/successor-route-prefix.md), [registration owner](../technical/successor-route-introduction.md) and [JOIN owner](../technical/successor-route-join.md); `internal/successor/route`, `selection`, `ardp`, `channel`, `role`, `issuer`, `prefix`, `join`, `receiver`, `transport/tls`, `transport/quic` and `introduction` with real `ardents-next` consumers. Lower `transport` owns no operation or adapter selection; former `carrier` and `operation` are removed. Genuine forwarding-parent refill and issuer Control use real Admission/Hosting owners. Descriptor Control composes separately owned Reachability Store/history. Opaque delivery remains a responsibility under the [remaining behavior design](route-delivery-join-boundary.md). These implemented boundaries are not the complete domain |
 | **Local Application execution:** may this process invocation perform this operation? | Volatile Local Grant generation; local session with exact current/last Job and one-use handoff; separate supervisor cleanup capacity and terminal admission latch; qualified launch and joined original worker descendants. Job is a lifetime entity within the session consistency boundary, not an independent network Context | Token allowance, Service authority, Target/path choice, private routing history, remote publication, Connection recovery, software acceptance, global resource pressure, text semantics and qualification Run | [Source-backed boundary/model](application-execution-domain-boundary-analysis.md), current evidence `application/broker`, Endpoint Job/worker and scattered Service effect/handoff checks; [confinement owner](../technical/application-confinement.md). New `internal/successor/execution` implements local authority/session/Job and independent cleanup supervision; `execution/worker` implements fixed native mechanisms; `execution/runtime` has genuine permission-preparation and bounded live Route-holder consumers. One exact operation retains qualified original cleanup through Route borrower join; private Service operations and full installed qualification remain absent; bounded installed Source/permission bootstrap has a genuine independently admitted consumer |
-| **Service Publication:** which authorized Instance is accepting work? | Publication generation/revision, current/pending/predecessor registration pair, private recipient lifetime, ACK/readiness, refresh and withdrawal; Instance authority/material remain purpose-scoped | Credential root signing, raw Route transport, Descriptor Store conflict floors, logical Connection recovery, Local Grant/Job mutation and worker cleanup; retain an exact live Execution operation instead | Proposed new boundary; current source evidence: Instance/publication, Endpoint registration/Introduction; [Service owner](../technical/endpoint-service-runtime.md), [private reachability](../technical/private-reachability.md), [Execution seam](application-execution-domain-boundary-analysis.md#source-inventory-collect-split-and-leave) |
+| **Service Publication:** which authorized Instance is accepting work? | Publication generation/revision, current/pending/predecessor registration pair, private recipient lifetime, ACK/readiness, refresh and withdrawal; Instance authority/material remain purpose-scoped | Credential root signing, raw Route transport, Descriptor Store conflict floors, logical Connection recovery, Local Grant/Job mutation and worker cleanup; retain an exact live Execution operation instead | `internal/successor/publication` public proof rules, `publication/durable` exclusive floors, `publication/instance` purpose-scoped private lifetime and `publication/runtime` live qualified Publisher have real `ardents-next` consumers; [Service owner](../technical/endpoint-service-runtime.md), [private reachability](../technical/private-reachability.md), [Execution seam](application-execution-domain-boundary-analysis.md#source-inventory-collect-split-and-leave) |
 | **Reachability:** what current proof is valid for this Target? | Receiving Descriptor Store and durable conflicts; local lookup verification/history is a separate owner at another principal | Publication readiness, admission spend, path choice, Service Instance authentication and logical Connection | `internal/successor/reachability` implements portable proof/conflict/history rules and native receiving Store mechanisms; real Route Prefix/Receiver and `ardents-next` consume them. [Reachability contract](../technical/private-reachability.md) records signed-input acceptance and its limits. Predecessor `service/reachability`, Endpoint history and Node resolution remain independent; their complete Service consumers are not transferred by this boundary |
 | **Service Connection:** how does one authenticated logical stream retain its identity? | Immutable destination/provenance, exact Instance TLS authentication, ordered byte state, Attachment generation, continuity/recovery deadline and retained Service terminal outcome; checks the exact retained Execution operation at effects and final handoffs | New Target/Application operation, new Grant, Job mutation/worker cleanup, publication authority, path policy and independent physical reservations | Proposed new boundary; current source evidence: `service/connection`, Endpoint Service/binding/recovery; [Service owner](../technical/endpoint-service-runtime.md), [Execution seam](application-execution-domain-boundary-analysis.md#source-inventory-collect-split-and-leave) |
 | **Software acceptance:** which exact generation may be installed or run? | Enrollment pin, Release authorization/monotonic floors, installation/replacement/recovery transaction are separate authority and state owners | Network membership, admission permissions, Service authority, generic signing and automatic rollback | New `internal/successor/enrollment` owns initial pinned byte verification under the [Enrollment contract](../technical/enrollment-verification.md); new `internal/successor/release` owns isolated offline authorization and its own history; new Installation separately authenticates the program/generation pair; its native initial stopped transaction and read-only inspection have new command consumers; bounded initial stopped recovery has a genuine leased consumer, while a public successor lifetime now composes original predecessor join and guarded start; bounded independently admitted startup has Source/permission composition, while complete interrupted successor recovery remains absent; bounded terminal cleanup and complete staged-prefix recovery have a fresh-proof command consumer, and no installed acceptance is established. This family is not one aggregate; [Release/Custody owner](../technical/release-update-custody.md) retains their current contracts |
@@ -236,8 +236,10 @@ real consumer before package or implementation admission.
 ## Realization and design limits
 
 The [source-tree scaffold](../../internal/successor/README.md#каркас-доменов)
-provides README-only destinations for Connection
-and Custody. New Installation has its first portable coherent generation
+retains a README-only destination for Custody. Connection now has an initial
+immutable recipient binding under one original qualified operation and verified
+Publication; its full authentication, continuity, stream and recovery owners
+remain future responsibilities. New Installation has its first portable coherent generation
 authentication Module and genuine command consumers; native initial stopped preparation and read-only installed inspection retain their own lease and observations. Bounded initial stopped recovery has its own retained caller/lease and fresh-proof composition; public successor transition now has command composition, with bounded independently admitted Source/permission startup, while complete interrupted successor recovery and installed acceptance remain absent; bounded terminal completion and complete staged-prefix recovery have independent fresh observations. These directories grant no Go import or
 runtime authority. New Enrollment has its own portable first-pin verification
 Module, bounded root-contained physical reads, native ownership/open adapters
@@ -282,14 +284,223 @@ New `publication/instance` separately owns host-generated private key, canonical
 public approval request and exact durable response transition. Its genuine
 initialization/request/response commands expose only public bytes and verified
 facts. Original native Linux custody and terminal/ambiguous refusal retain their
-own root history; private signing binding and actual floor-backed consumed
-lifetime are not established by this public preparation boundary. The low-level
+own root history. Its separate private binding now reconciles the actual durable
+owner, retains its original generation reservation through Close, advances the
+floor and persists consumed redaction before volatile use. Its record-signing
+purpose requires the genuine original REGISTER receipt and preserves exact retry
+bytes. Preparation commands still establish no qualified live Publisher or
+Descriptor Store ACK/readiness. The low-level
 public Publication verifier now also seals independently verified Credentials;
 its read and publish proof semantics and wire bytes remain unchanged.
 Route Introduction's sealed original-channel receipt now exposes immutable
 registration facts and actual verified REGISTER ACK commitment, with explicit
 original currentness checks. Descriptor Store ACK and qualified Publisher
 readiness remain separate prerequisites.
+
+That private binding now persists its exact signed public record/current through
+the original reserved durable owner, with staging, generation and pointer
+directory barriers and unavailable exact-residue reconciliation. Joined binding
+close retires the pointer before the record without resetting the floor.
+Reachability owns canonical Descriptor transcript construction; Instance owns
+the narrow signing purpose and independent volatile X25519 recipient material.
+Only genuine registration facts supply its Node/slot/revision/profile; exact
+retries preserve signed bytes and key, and two retained recipients exhaust
+capacity. These mechanisms do not attest Store acknowledgement, accepting pair
+selection, capsule opening or complete qualified Publisher readiness.
+
+Route's separate `capsule` mechanism now owns only the closed fixed envelope,
+recipient-only request grammar and selected standard HPKE public-key sealing.
+Instance consumes those bytes through a purpose-specific opening under its
+original genuine Registration receipt. Slot, revision, expiry, Network, Target,
+Publication and profile checks retain the exact bound recipient; the opening
+exposes copied candidate facts, never its private key or crypto context. Recipient
+and binding retirement seal acquisition before joining original opening users
+outside the private-material lock, then erase the key and return recipient
+capacity. An opening does not accept a Rendezvous/Connection/Work Safety fact,
+commit replay history or establish successful incoming delivery.
+
+Publisher's first replacement switch synchronously restricts that original
+recipient's local acceptance deadline. The private owner checks it on both new
+opening and retained candidate access; timer delay and repeated restrictions
+cannot extend it. Signed expiry remains the original replay-retention fact,
+and physical erasure still waits for original users rather than returning their
+capacity at the logical cutoff.
+
+New `publication/runtime` owns the original qualified snapshot operation's
+pending/current/predecessor pairs and concrete Source/Introduction exchanges,
+with a genuine holder-console consumer. Its exclusive Instance lifetime borrow
+keeps private erasure and generation release behind original Publisher join.
+Publication's stop barrier seals handed-out Route Registrations before its own
+context cancellation; Route's non-joining Stop retains original failure and
+Close still owns physical completion. Late REGISTER handoff is synchronized
+with that barrier and remains a retained cleanup obligation.
+Command composition opens one Entry selection, two independent role selections
+and a shared Hosting budget; those histories remain outside Publication.
+Actual receiving Store ACK and final original checks select current; creation
+time drives refresh and first switch bounds predecessor retirement. The selected
+native execution-route profile has a genuine qualified snapshot-console case
+on both Carriers, with actual registration/Store ACK, independently verified
+proof and retained Store reopen, exact retry, explicit replacement, bounded
+recipient capacity, withdrawal and consumed Instance restart refusal. Ephemeral
+Authority approval and offline blind issuance remain fixture inputs. Separate
+held-ACK native subcases invoke genuine installed snapshot operations and the
+production holder composition directly: initial Link refuses while the actual
+response waits, prior Link survives replacement, and exact actual Store proof
+matches after ACK and physical exchange join. These observations do not prove
+private capsule selection. Separate delayed-ACK withdrawal cases join the current
+and pending Registration before releasing the receiving observation; Link stays
+unavailable while the independent Store retains its signed replacement. The Route
+cancellation callback seals stop before interrupting its idle reader and retains
+previous failures, physical Close and WITHDRAW errors. This isolated component is not accepting installed startup, late-ACK/authority-loss
+coverage, elapsed timing qualification, capsule/replay acceptance or Service
+Connection delivery.
+
+Separate held-response cases stop the exact original worker through the actual
+manager or commit a signed same-Epoch profile conflict in genuine State. Both
+Carriers deny Link after loss and preserve failed original outcomes through
+joined repeated Close. Execution's read-only cleanup receipt separates original
+physical completion from worker-use failure; it grants no replacement permit.
+The conflict fixture's receiving side independently accepts the same signed
+Epoch/profile in a separate genuine State root and retains current authority
+after Publisher-only conflict and original exchange join. A shared-State causal
+control fails this observation on both Carriers. Its held-record oracle still
+does not prove successful late ACK decoding at Source after Network loss.
+The separate post-decode case pauses genuine Source observation after the actual
+matching successful Store RESULT. Publisher-only signed conflict then refuses
+final processing and accepting Link, while receiving State stays current.
+Source retains a sealed acknowledged-failure category and all original causes
+through physical join. ACK decoding precedes loss in this case; it does not
+prove successful decoding after authority already ended or grant readiness.
+Disabling only that original ACK provenance causes the actual replacement
+oracle to fail on both Carriers without changing authority or cleanup checks.
+Transport privately observes original TLS peer EOF
+before local Close, while channel retains its original EOF decisions and failed
+result. This diagnostic evidence does not authenticate a Service or erase failure.
+
+Execution's selected-snapshot launch is a distinct consumer of the same original
+Administration session/Job. Text imports the stable bounded input and owns INIT
+and the sole post-READY protocol reader; Execution retains actual launch, local
+operation checks and original descendant cleanup. The command's explicit
+snapshot input consumes this seam. Its empty incoming stream inventory grants
+no successful Service Connection or delivery; native installed evidence remains
+with the selected lifecycle profile, rather than portable compilation.
+The qualified operation also retains an opaque original Administration-context
+identity, with separate session revocation and joined retirement signals.
+Publication checks that identity against its exact live operation; worker/Job
+retirement cannot substitute another context or complete the retained context.
+This seam supplies no replay acceptance or Service Connection authority.
+
+Connection's initial recipient binding separately checks the exact sealed
+Publication and requester tuple against original local/Network terminal bounds.
+It derives the accepted logical and Attachment transcripts and retains the
+original qualified operation and private-opening cancellation for initial
+handoff. Publication consumes it after independent capsule and live pair checks.
+Source independently resolves the claimed Rendezvous Node/duty from one current
+observation, excluding the original issuer, resolution and Introduction peers
+by identity, key and known family; it does not accept a copied candidate address
+or select an alternative. No nonce commit, Responder readiness, successful wire
+delivery, Service TLS or recovery follows from this initial binding.
+
+The read-only original Session completion now retains its exact terminal cleanup
+error separately from revocation and the completion signal. A failed report
+does not authorize erasing context-private history or returning failed cleanup
+capacity. Publication's private nonce/rate owner is keyed by that sealed original
+Administration context, with pending reservations before capsule opening and
+accepted retention bounded by the original registration expiry plus60s. Its
+terminal watcher joins original opening users before erasure and retains a sealed
+history after failed original cleanup. Private accounting tests establish no
+downstream Connection acceptance or successful incoming wire delivery.
+
+Publication now consumes a separate prepared Responder role selection and finite
+Hosting reservation from command composition. It commits the checked private
+nonce under its accepting-pair/original Source barrier before actual Source-bound
+Responder opening, retaining that history after later failure. Opening observes
+both exact legs and joins the private caller cancellation before retaining the
+prefix under the original Publisher lifetime. Unused preparation and failed
+opening remain cleanup obligations. Private initial handoff retains the exact
+delivery nonce, original capsule deadline and opaque Connection binding through
+matching RESULT/CLOSE and final observations. Original user join precedes return
+of bounded Source/Responder lifetime borrows and physical prefix retirement.
+The isolated qualified snapshot-console scenario now completes actual incoming
+RESULT/matching CLOSE and exact immediate replay refusal on both Carriers,
+using a separately admitted Source and independently verified Store proof.
+Two concurrent actual submissions produce exactly one success and one refusal.
+A freshly sealed valid replay with the same delivery nonce refuses after the
+original eight-second deadline; a causal removal of accepted-history commitment
+accepts that replay while immediate replay still refuses. This distinguishes
+retained history from the original pending delivery user.
+The separate native failure case holds actual receiving CLOSE after Publisher
+RESULT, allowing only the original capsule deadline to interrupt the predecessor.
+Its original Registration retains emitted-successful-RESULT provenance and all
+failed causes through owning withdrawal and repeated Close. An independently
+acknowledged current recipient refuses the same nonce in fresh valid bytes,
+while a distinct nonce succeeds under the same original Publisher/context.
+Two separately admitted Sources retain their own unchanged finite allocations
+and bootstrap bounds; failed original Source cleanup stays failed after join.
+No new Publisher authority, Stock refund or failed-Source retry supplies success.
+The original Responder physical caller survives local Publication stop until
+prefix join, while original caller/Execution/Instance loss still interrupts it.
+Native withdrawal joins that Responder, registrations and original worker;
+A separate original-worker-loss case first completes an actual accepted capsule,
+then stops and joins that exact worker/operation and Publisher. After their
+writers join, the sealed original Administration context retains the accepted
+nonce with no delivery users. A failed context terminal report also retains
+history; worker revocation grants no erasure. The joined native oracle
+independently matches original signed Store expiry+60s, alongside the private
+accounting owner's exact before/at-horizon checks. These observations do not
+establish the full original-registration-expiry+60s matrix, JOIN, Service TLS
+or Application bytes.
+Selection roots and shared Hosting remain
+command-owned.
+
+The separately selected native `publication-timing` profile preserves actual
+clocks and independently bounds registration creation before and after its
+network call. Initial Store ACK is held twelve seconds; automatic refresh
+reaches the replacement Store after creation+300s and before delayed-ACK+300s.
+Pending refuses while the old pair accepts. Genuine ACK switches the pair;
+third-recipient refusal and exact retry preserve the retained predecessor and
+Store bytes. Actual old-recipient delivery succeeds within overlap, refuses
+after the independently bounded switch+60s, and a fresh current-recipient
+delivery succeeds. Both TCP/TLS and QUIC complete these cases. This establishes
+the selected elapsed component boundary, not the full registration-expiry
+history matrix, Service TLS/recovery or installed/private-product qualification.
+Its [profile owner](../../tests/qualification/publication-timing/README.md)
+retains the unchanged-clock, finite permission and native environment bounds.
+
+Route Introduction's receiving Registry retains a separate original dispatch
+lifetime on its authenticated registration stream. Purpose-5 admitted submission
+passes only sealed bytes; original registration allowance, rolling admission and
+dispatch rates, pending users and channel-local nonce history bound delivery.
+One writer orders even lanes and complete OPERATION/CLOSE output; original
+retirement seals admission and joins pending users before physical return,
+retaining late failures. Receiver's Control reservation borrows no registration
+position. These mechanics grant no capsule decryption, Publication readiness or
+Connection authority. Source Submit now owns its actual purpose-5 exchange over
+the original Prefix and exact current Introduction duty, with retained identity,
+key and known-family exclusions, original caller/capsule bounds and joined
+terminal cleanup. Receiver admits Domain 1 Interiors for submission and Domain 4
+Interiors for registration, then checks that exact parent-purpose relation before
+inner TLS. The holder command consumes Submit with either sealed bytes or local canonical
+candidate preparation through standard HPKE. Preparation grants no candidate
+authority and reaches the same original admitted Source exchange. Owning
+withdrawal joins TLS/lower peer termination before canceling its terminal.
+Qualified recipient acceptance remains a separate consumer/evidence boundary;
+opaque transport refusal establishes no successful Connection or Publication.
+
+Execution worker cleanup reads manager properties through its original
+InvocationID path, independently of name-based activation observation.
+Collection cannot turn a name reload into another accepting cleanup identity.
+The original pinned cgroup still owns removal proof; unavailable manager
+identity alone grants neither joined cleanup nor Stop of another invocation.
+
+TCP Node transport retains original native socket-write admission beneath TLS.
+Its closed guard distinguishes an unstarted failed record from original native
+I/O; no peer or success authority follows. Channel framing publishes actual
+output counts and failures before releasing its selected writer, and nested
+channels retain actual lower payload progress. Earlier/partial output and
+physical failures remain with their original sessions. Introduction separately
+retains original recipient-observation errors before checking a member's duty;
+an unavailable observation cannot supply a mismatched or accepting member.
 
 This section states realized architecture and its limits, not live task status.
 The GitHub ledger alone selects the next executable slice and records progress.

@@ -40,7 +40,9 @@ Installation lifetime. This proves neither a completion exchange nor accepting
 installed startup, Execution effects, Service readiness or privacy qualification.
 
 `make execution-lifecycle-check` selects `TestInstalledExecutionLifecycle`
-under the shared fixed-worker profile driver. Build its test binary
+under the shared fixed-worker profile driver, including its original
+selected-snapshot Publisher operation and sole Text protocol reader. That
+operation grants no Service Connection or readiness. Build its test binary
 with `text_worker_installed` from `internal/successor/execution/runtime` and
 install it at `/usr/lib/ardents/qualification/execution-runtime.test` in the
 dedicated manager. The driver requires independent binary/unit digests through
@@ -48,7 +50,13 @@ the existing `ARDENTS_TEXT_LIFECYCLE_SHA256` and
 `ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256` inputs. Both local surfaces must execute
 and pass with genuine installed workers, for joined preparation and a live
 single-use operation. Retirement must interrupt the operation before waiting
-for its join; original worker cleanup follows. A joined-borrower error control
+for its join; original worker cleanup follows. The snapshot case also obtains
+the sealed original Administration-context identity from its qualified operation.
+Job retirement must deny operation effects while that context remains retained;
+joined Job cleanup cannot close its context-completion signal. The original
+generation's joined close must complete it. Detached operations and a foreign
+operation refuse. These checks identify lifetime ownership, not replay acceptance.
+A joined-borrower error control
 and attachment-loss cases on both surfaces must execute. Loss interrupts the
 operation, withholds completion until its join, preserves the failed result and
 permits a fresh preparation only after successful original physical cleanup.
@@ -58,11 +66,135 @@ and refusal of late completed-current provenance. Compilation establishes no
 runtime result. This profile does not establish accepting Installation startup, live
 Service work, the escape/network/recovery matrices or whole-host qualification.
 
+`TestCleanupCollectedUnitQueryCannotReloadItsName` exercises the private worker
+manager-query mechanism with a collected name's actual empty `ay` shape and
+separate original-cgroup observations. Original invocation unavailability must
+wait for removal proof and cannot authorize Stop by name. Its typed query and
+kernel-observation fixtures establish no installed authority or native join;
+genuine native lifecycle and Route profiles remain separate obligations.
+
 `make execution-route-check` selects `TestInstalledExecutionRouteBothCarriers`
 from the tagged `cmd/ardents-next` test binary installed at
 `/usr/lib/ardents/qualification/execution-command.test`. The same independently
 pinned unit/binary inputs and original non-root Endpoint MainPID prerequisites
-apply, with private temporary roots and loopback TCP/UDP. The production live
+apply, with private temporary roots and loopback TCP/UDP. Publication ACK
+subcases on both Carriers also invoke the production holder
+composition under a genuine selected-snapshot operation. An authority-observation
+gate holds all receiving observers after the actual public record changes;
+the genuine Store and transport still produce the eventual ACK. Independent
+physical record verification requires an unacknowledged initial pair to refuse
+Link, and the old current to retain Link while replacement waits. Matching
+actual Store bytes and joined exchange are required after release. These Link
+observations do not prove capsule selection, worker/Network-loss refusal or
+elapsed refresh/overlap timing. The profile requires both initial and replacement
+subcases explicitly.
+The `publication/delivery` case requires independent Source permission and
+Stock, an actual verified Store Descriptor and HPKE capsule, and the original
+qualified console Publisher on both Carriers. Its `accepted/concurrent` child
+submits identical sealed bytes concurrently using separate actual role channels,
+tokens and request nonces; exactly one matching RESULT/CLOSE succeeds and the
+other receives the exact joined refusal. Its `replay` child submits identical sealed
+bytes and requires only the exact typed refusal, with strict physical cleanup.
+Its `retained-replay` child waits for the original capsule's actual eight-second
+deadline, then submits a freshly sealed valid capsule with the same delivery
+nonce. The exact refusal must survive original delivery-user retirement.
+An external causal control removes only accepted-history commitment: initial
+delivery and immediate replay still pass, while the later valid replay accepts
+and must fail the maintained assertion. This is not full registration-expiry+60s
+or worker-loss history qualification. Four finite Control rights remain within
+the original two bounded bootstrap batches; no per-operation allowance grows.
+The separate required `publication-delivery-close` case first acknowledges
+current and predecessor through actual Store exchanges. Its `retained-replay`
+child holds receiving CLOSE after the real Publisher RESULT until the original
+capsule deadline, then uses the current recipient for a freshly valid same-nonce
+refusal and distinct-nonce success. Original emitted-successful-RESULT failure,
+interrupted child and all physical causes remain visible through owning
+withdrawal and repeated Close. Peer EOF requires Transport's original read
+evidence; raw, local or foreign/mixed failures cannot pass that classification.
+The failed and replay Sources have separate genuine User permissions, each
+bounded to its original [4,4,0] allocation and two bootstrap batches. Failed
+Source cleanup stays failed after join; no Stock refund or original-caller
+renewal supplies the replay oracle. Removing only accepted-history commitment
+must make the same-nonce delivery accept and fail this assertion. This case
+does not establish full registration-expiry+60s or worker-loss history.
+The signed fixture includes a separate Rendezvous duty and issues four later
+admitted Forward rights for Responder peers without expanding Bootstrap.
+These required scenarios do not establish a native pass by compilation, Service
+TLS, JOIN, Application bytes or the complete replay/loss/timing matrix.
+The separate `publication-withdraw-ack` case first obtains a genuine current
+pair, then withdraws while replacement Store output is held. Withdrawal must
+join original Publisher borrowers and deny Link before the receiving gate is
+released; the late flight refuses and cannot restore Link. The independent
+Store retains its actual signed replacement record despite lost readiness.
+Both original current/initial and pending/replacement subcases are mandatory
+on each Carrier. The cancellation-order regression previously retained EOF
+from the pending Registration's idle reader; current WITHDRAW and both Prefix
+closes stayed clean. No failed physical output is converted to success.
+The separate `publication-caller-ack` case cancels the original Publication
+construction caller while the replacement response is held. It requires Link
+refusal before release and after the failed flight joins, unchanged actual Store
+proof, physically joined original workers and stable repeated Close. Cleanup
+must retain the deliberately canceled outcome; every error leaf must be exactly
+`context.Canceled`. EOF, physical errors and mixed trees fail. The Invocation
+must refuse completed-current provenance. Both phases on both Carriers remain
+mandatory; this supplies no worker-loss, Network-loss or capsule-delivery proof.
+
+The `publication-worker-ack` case stops the exact original Publisher worker
+through the real manager while caller and Network remain live. Its held response
+cannot restore Link. Invocation's read-only `CleanupResult` becomes available
+only after original operation, callbacks and descendants join; full Close retains
+the worker-use failure separately and denies completed-current provenance.
+Its initial `accepted-history` subcase completes genuine incoming RESULT/CLOSE
+before worker loss. After original Publisher, opening users and worker join,
+`retained-history` observes that private accepted nonce. A live context retains
+it; a failed original terminal cleanup also retains it. Successful context
+retirement remains the only erasure boundary. Read-only private observation
+after writer join supplies no new runtime authority or successful substitute.
+
+`make publication-timing-check` separately selects
+`TestInstalledPublicationElapsedBothCarriers` with unchanged real clocks, the
+same fixed artifact and genuine owners, a fifteen-minute test deadline and
+920-second unit bound. Both Carriers must execute delayed initial ACK,
+automatic creation+300s refresh and bounded overlap subcases. Original finite
+Stock and Registration bounds remain unchanged; missing time in the original
+token hour is an invalid environment. The [profile owner](../../tests/qualification/publication-timing/README.md)
+defines independent timing brackets, real capsule success/refusal controls,
+exact retry, required evidence and physical join. It changes no ordinary
+execution-route limit and establishes no full Service or privacy qualification.
+
+The `publication-network-ack` case commits a genuinely signed conflicting
+profile under the same authenticated Epoch after actual Store persistence.
+Original caller stays live; genuine State refusal denies Link before and after
+the held exchange joins. Both phases on both Carriers are required. Receiving
+uses a separate genuine State root which independently verifies the same signed
+Epoch/profile and stays current after Publisher conflict and exchange join.
+A shared-State causal control fails that observation on both Carriers. Signing
+and clock infrastructure still have one fixture controller. The held-record
+oracle does not prove successful late ACK decoding at Source after authority loss.
+Deliberate loss retains failed Network/peer outcomes through repeated Close.
+Only actual observed State causes and native peer categories are recognized;
+raw EOF, foreign or mixed unknown failures cannot pass by matching a message.
+
+The required `publication-decoded-network-ack` case separately pauses Source's
+genuine post-decode currentness observation through test-only call-stack
+scheduling. Its actual successful Store RESULT precedes Publisher-only signed
+conflict; no cached observation is supplied. Independent receiving State remains
+current. The original failed exchange must retain `DescriptorAcknowledgedFailure`
+with its cause, deny Link and physically join; initial and replacement phases on
+both Carriers are required. This proves late processing of a decoded ACK, not
+successful decoding of an ACK first arriving after Network loss.
+Disabling only the original successful-RESULT provenance makes the replacement
+oracle fail on both Carriers while the other native cases remain passing.
+
+Retained TLS reads preserve their exact result while privately observing EOF on
+the original completed TLS channel before local physical Close. Channel uses that
+observation only for diagnostic peer retirement after its original dedicated and
+orderly-role EOF decisions. No failure becomes clean completion or joined cleanup.
+Real TLS peer/local-close controls and a plain pipe control verify the boundary;
+disabling only that observation makes the real peer control fail. This is not
+Service authentication or whole-host qualification.
+
+The production live
 holder must obtain genuine signed permission, bootstrap real stock, retire
 bootstrap, spend through fresh admitted Prefix/issuer channels on both Carriers,
 join physical owners and reopen Hosting without retained reservations. It
@@ -81,6 +213,11 @@ retire the remaining local console and worker. Independently reopened State
 must refuse specifically because clock confidence is unavailable. The separate
 caller-loss-io case cancels the original production caller while RESULT is held.
 Neither case cancels the verification context or resets an operation deadline.
+Before stopping fixture listeners, the native scenario observes actual receiving
+Hosting reservations and bootstrap returns until the original borrowers have
+joined, within that same operation context. Holder-local join alone is not a
+remote join receipt. Listener Close must not introduce a second local interruption
+into the peer-loss control; all retained terminal-error assertions still apply.
 After physical receiver join, every original receiving owner closes and reopens
 its actual durable root. Each previously accepted token must still verify under
 current signed authority and refuse specifically as already spent, with the
@@ -96,6 +233,28 @@ negative-case physical error is never reported as clean receiving shutdown.
 Exact joined, worker-loss, worker-loss-io, clock-loss-io and caller-loss-io
 identities on each Carrier are mandatory driver checks.
 This establishes no accepting Installation startup, Service bytes or privacy claim.
+
+The genuine issuer lost-RESULT/holder-reopen test deliberately cancels after
+actual signing. It observes receiving reservations under the original Route
+deadline before fixture Listener Close, requires Done and the identical repeated
+Close result, and retains a failed terminal result only when every physical cause
+has the adapter's exact peer-retirement classification. Its durable issuer retry,
+unchanged histories and refusal to reconstruct holder authority remain required.
+A selected BYTES write interrupted by that cancellation is failed physical
+retirement, not clean receiving shutdown; local and unrelated failures still fail.
+
+The same execution-route profile requires its `publication` case on each Carrier.
+Production holder composition imports the selected snapshot into an original
+qualified Administration worker, obtains genuine Publisher permission and Stock,
+registers the actual Introduction channel and publishes its signed Descriptor to
+the real receiving Store. Pending and withdrawn Links refuse. Exact retry,
+explicit replacement with independent slot/key, third-recipient refusal,
+physical worker/receiver join, independent Store reopen and consumed Instance
+restart are mandatory assertions. External fixture Authority approval and blind
+issuance provide signed public inputs, never a successful operation or ACK.
+This case does not exercise private capsule/Connection acceptance or the real
+300-second refresh and 60-second overlap timing boundary. Compilation alone
+does not establish its native result.
 
 `make execution-recovery-check` selects the separately pinned runtime binary's
 Root `TestInstalledExecutionEndpointDeath` controller outside the Endpoint
@@ -531,6 +690,14 @@ request and byte rules retain the same sources and behavior controls on both
 platforms. Assembly separately refuses complete stored observations without
 fresh private Release proofs.
 
+The same platform rule covers the live Publication holder's exact Linux closure:
+qualified snapshot operation, private Instance binding, durable generation,
+Descriptor production and original REGISTER receipt. Windows retains native
+refusal before snapshot file I/O; the command obtains that refusal from Execution's
+own Publisher launch method. These entries confer no Linux allowance, and both
+test projections must remain empty. The public verifier's newly reached Windows
+functions are removed from its older exact platform entry.
+
 The headless command inventory declares the four-command Network artifact lane;
 the text-worker inventory declares its separately owned Application lane under
 `tests/profiles/`. Architecture tests check actual transitive dependency
@@ -812,6 +979,20 @@ environment.
 
 ## Route mechanism and composition tests
 
+Prefix's bounded lifetime-borrow test drives an actual pipe generation through
+quiet idle events, original caller cancellation and a held user join. It checks
+that live ownership prevents idle retirement and that original readers/resources
+remain retained until the user joins, including its terminal failure. Its virtual
+clock controls mechanics only; real elapsed 300s refresh and 60s overlap still
+require genuine Publication evidence with unchanged clocks.
+
+Receiving Introduction pipe/accounting tests separately check original byte
+debits, writer-waiter capacity, retained channel-local nonces and a matching
+refusal RESULT/CLOSE with a held physical writer. Original retirement waits for
+that writer and preserves its late failure after earlier cancellation. They
+provide no durable slot claim, admitted channel, qualified Publisher or successful
+recipient authority; genuine both-Carrier submission remains separate evidence.
+
 Route tests state which guarantee they establish. Mechanism tests control
 physical I/O, scheduling or completion; they supply no successful Network,
 Admission, Hosting or Service authority. Genuine composition tests call those
@@ -851,6 +1032,9 @@ Neither category substitutes for the other.
 | Original parent cancellation denies new child deadline effects before the framing retirement callback runs; physical join still retains the exact late writer failure | `internal/successor/route/channel/session_lifecycle_test.go`, `TestSessionLifecycleOriginalCancellationDeniesDeadlineBeforeRetirementCallback`; prepared physical reading isolates the unscheduled callback, an actual started writer remains gated through socket close, and deadline/child-close controls execute on Windows and Linux. Live Registration expiry tests qualify the admitted composition separately |
 | Inner role TLS: exact server key/certificate times, TLS 1.3 and accepted ALPN, absence of client identity, matching authenticated exporters and actual ordered bytes; invalid original bounds refuse before output | `internal/successor/route/transport/tls/role_test.go`; portable real TLS over pipes. Shared authentication also serves the QUIC handshake; this test establishes no successful Network observation or Admission right |
 | TCP transport ownership: shared listener classifies direct and mutual Node identities before payload, both carry actual ordered bytes, and a wrong selected profile refuses before dial | `internal/successor/route/transport/tls/listener_test.go`; portable real TCP/TLS, using the same production listener and dial as Route. Certificate fixtures establish only the stated transport mechanics |
+| Native TCP output admission: a record refused by an already closed original socket performs no native write; a started write interrupted by Close retains its original physical failure | `internal/successor/route/transport/tls/native_output_test.go`; actual pipe sockets and independently counted underlying writes. Common `transport/write_refusal_test.go` denies the marker for raw or mixed failures and prevents peer classification. These are mechanism controls, not qualified authority or complete TLS/Route acceptance |
+| Nested physical output: an exact unstarted lower refusal remains failure without advancing either session's physical witness; the selected writer publishes counts and failure before becoming inactive | `internal/successor/route/channel/native_refusal_test.go`; actual nested framing owners with a failure-only lower connection, no successful authority. An independent pipe reader observes the first byte of a partial direct frame before a later native refusal; that earlier output and raw/mixed physical failures remain physical. Retained Close results remain failures. Genuine native both-Carrier composition is separate evidence |
+| Introduction recipient reobservation preserves the exact original cancellation, physical failure and mixed cause without inventing a duty mismatch | `internal/successor/route/prefix/introduction_channel_test.go`, `TestRegistrationRecipientObservationRetainsOriginalFailure`; failure-only observations exercise the same member-check owner used by actual registration. Successful signed authority and ACK remain genuine command scenarios |
 | Handshake failure category: a refused peer cannot hide an unrelated listener or cleanup failure in a joined error | `internal/successor/route/transport/handshake_failure_test.go`; portable complete-tree classification, with original error causes retained. Receiving composition uses this category to decide whether its listener remains usable |
 | QUIC mechanisms: native absolute deadlines retain the local monotonic clock; accepted queued connections cannot replace their arrival bound; connection close interrupts a real partial writer without concurrent stream FIN | `internal/successor/route/transport/quic/deadline_test.go`, `handshake_test.go` and `interruption_test.go`; portable real UDP/TLS/QUIC and bounded flow-control output, with no substitute for Route joined cleanup |
 | Principal separation at exporter access: real direct QUIC roles share the same exporter transcript, while neither side of a mutual Node transport exposes that role capability | `internal/successor/route/transport/quic/exporter_test.go`; actual handshakes and consumed stream bytes before the check. Common exporter access imports no concrete adapter or private QUIC state |
@@ -864,6 +1048,30 @@ qualification claim. Test filenames follow their rule owner when extraction
 changes its package. A mechanically injected failure establishes the named
 ordering guarantee; it cannot establish successful authenticated admission,
 publication readiness or recipient acknowledgement.
+
+`route/capsule/envelope_test.go` independently encodes the accepted private
+offsets and checks exact 344/360/474-byte bounds, overflow, fixed domain/header
+transcript and actual HPKE tampering refusals. Instance's
+`capsule_opening_test.go` opens the static RFC9180 base-mode selected-suite
+sequence-zero vector from CIRCL v1.6.5's pinned RFC corpus, matching Go's published
+key/encapsulation/info; this is suite evidence, not live authority.
+`recipient_lifetime_test.go` retains an original failure-only user across Close
+and requires key/capacity erasure after its join. Genuine signed Network,
+host-generated Instance and both-Carrier REGISTER composition in
+`cmd/ardents-next/publication_registration_linux_test.go` exercises the same
+borrowed fixed opening and exact foreign-binding refusal. Candidate Rendezvous,
+Connection and Work Safety fields in that scenario remain unaccepted input;
+this evidence establishes no replay commit or successful downstream delivery.
+The same genuine control shortens the recipient's local cutoff while original
+registration, signed Descriptor and capsule expiry remain valid. A later limit
+cannot extend it; new openings and retained candidate reads must both refuse
+without waiting for physical retirement. Actual root close separately interrupts
+the original opening and retains custody until that user returns. The short
+cutoff control proves the refusal mechanism, not real elapsed overlap timing.
+The genuine Registration `caller-cancel` case joins Close immediately after
+canceling its original caller, before waiting for the asynchronous retirement
+signal. Both Carriers must retain that cancellation and the same repeated Close
+result; successful owning withdrawal remains a separate positive control.
 Receiving JOIN matching, setup/HELLO bounds, the two actual RESULT writes before
 data, capacity retention, cancellation and both-side interruption live in
 `internal/successor/route/join/pair_test.go`. Relay credit, forbidden refill,

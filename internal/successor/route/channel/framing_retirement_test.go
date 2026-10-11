@@ -221,34 +221,42 @@ func (c *physicalDeadlineFailureConn) SetWriteDeadline(end time.Time) error {
 }
 
 func TestLowerPhysicalDeadlineFailureRemainsWithItsOwner(t *testing.T) {
-	physical := &physicalDeadlineFailureConn{lifecycleConn: newLifecycleConn(true)}
-	physical.writeIgnoresClose = true
-	end := time.Now().Add(5 * time.Second)
-	s := New(t.Context(), physical, end, 32<<20, nil, false, &Budget{maximum: 64 << 20}, nil)
-	defer s.Close()
-	l := lifecycleLane(t, s, 1)
-	written := make(chan error, 1)
-	go func() { _, err := l.Write([]byte("original lower output")); written <- err }()
-	select {
-	case <-physical.writes:
-	case <-time.After(time.Second):
-		t.Fatal("lower physical writer did not start")
-	}
-	failure := errors.New("actual lower deadline operation failed")
-	physical.mu.Lock()
-	physical.failure = failure
-	physical.mu.Unlock()
-	if err := l.SetWriteDeadline(end); err != failure {
-		t.Fatal("physical deadline refusal changed", err)
-	}
-	s.Retire(failure)
-	close(physical.writeGate)
-	_ = lifecycleResult(t, written)
-	if err := s.Close(); !errors.Is(err, failure) {
-		t.Fatal("joined lower failure lost", err)
-	}
-	if err := s.PhysicalFailure(); !errors.Is(err, failure) {
-		t.Fatal("actual lower deadline failure was treated as an unemitted upper refusal", err)
+	for _, operation := range []string{"deadline", "interrupt"} {
+		t.Run(operation, func(t *testing.T) {
+			physical := &physicalDeadlineFailureConn{lifecycleConn: newLifecycleConn(true)}
+			physical.writeIgnoresClose = true
+			end := time.Now().Add(5 * time.Second)
+			s := New(t.Context(), physical, end, 32<<20, nil, false, &Budget{maximum: 64 << 20}, nil)
+			defer s.Close()
+			l := lifecycleLane(t, s, 1)
+			written := make(chan error, 1)
+			go func() { _, err := l.Write([]byte("original lower output")); written <- err }()
+			select {
+			case <-physical.writes:
+			case <-time.After(time.Second):
+				t.Fatal("lower physical writer did not start")
+			}
+			failure := errors.New("actual lower deadline operation failed")
+			physical.mu.Lock()
+			physical.failure = failure
+			physical.mu.Unlock()
+			interrupt := func() error { return l.SetWriteDeadline(end) }
+			if operation == "interrupt" {
+				interrupt = l.InterruptIO
+			}
+			if err := interrupt(); err != failure {
+				t.Fatal("physical deadline refusal changed", err)
+			}
+			s.Retire(failure)
+			close(physical.writeGate)
+			_ = lifecycleResult(t, written)
+			if err := s.Close(); !errors.Is(err, failure) {
+				t.Fatal("joined lower failure lost", err)
+			}
+			if err := s.PhysicalFailure(); !errors.Is(err, failure) {
+				t.Fatal("actual lower deadline failure was treated as an unemitted upper refusal", err)
+			}
+		})
 	}
 }
 

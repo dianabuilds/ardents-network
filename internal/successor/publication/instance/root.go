@@ -33,6 +33,8 @@ type Root struct {
 	lease             rootLease
 	flush             func(string) error
 	state             generationState
+	binding           *Binding
+	closing           chan struct{}
 	closed            bool
 	failure, closeErr error
 }
@@ -191,12 +193,27 @@ func (root *Root) Close() error {
 		return nil
 	}
 	root.mu.Lock()
-	defer root.mu.Unlock()
-	if !root.closed {
-		root.closed = true
-		root.state.erase()
-		root.closeErr = errors.Join(root.failure, root.lease.release())
+	if root.closing != nil {
+		done := root.closing
+		root.mu.Unlock()
+		<-done
+		root.mu.Lock()
+		defer root.mu.Unlock()
+		return root.closeErr
 	}
+	root.closed = true
+	root.closing = make(chan struct{})
+	binding := root.binding
+	// Pending/unconsumed preparation has no live key borrowers. Consumed
+	// material belongs solely to the binding and is erased by its joined Close.
+	root.state.redact()
+	root.mu.Unlock()
+	bindingErr := binding.Close()
+	root.mu.Lock()
+	defer root.mu.Unlock()
+	root.state.erase()
+	root.closeErr = errors.Join(root.failure, bindingErr, root.lease.release())
+	close(root.closing)
 	return root.closeErr
 }
 

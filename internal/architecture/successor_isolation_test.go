@@ -332,7 +332,9 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/hosting":                 {},
 		"internal/successor/publication":             {},
 		"internal/successor/publication/durable":     {"publication"},
-		"internal/successor/publication/instance":    {"publication"},
+		"internal/successor/publication/instance":    {"publication", "publication/durable", "reachability", "route/introduction", "route/capsule"},
+		"internal/successor/publication/runtime":     {"connection", "execution/runtime", "network", "publication", "publication/instance", "reachability", "route", "route/introduction", "route/prefix", "route/capsule"},
+		"internal/successor/connection":              {"execution/runtime", "publication", "route/capsule"},
 		"internal/successor/reachability":            {"publication"},
 		"internal/successor/enrollment":              {},
 		"internal/successor/release":                 {},
@@ -358,7 +360,8 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/route/bootstrap":         {"route/ardp", "route/channel"},
 		"internal/successor/route/transport/tls":     {"route/transport"},
 		"internal/successor/route/transport/quic":    {"route/transport"},
-		"internal/successor/route/introduction":      {"admission/spending", "route/ardp", "route/role", "route/prefix", "network", "admission"},
+		"internal/successor/route/introduction":      {"admission/spending", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "network", "admission"},
+		"internal/successor/route/capsule":           {},
 		"internal/successor/route/selection":         {"route", "network"},
 		"internal/successor/route/role":              {"route", "route/ardp", "route/channel", "route/transport", "network", "admission"},
 		"internal/successor/route/join":              {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "network", "admission"},
@@ -367,10 +370,34 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                           {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if source == "cmd/ardents-next/publication_network_linux_test.go" && (dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/publication_ack_installed_linux_test.go" && (dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/execution/runtime" || dependency == modulePath+"/internal/successor/publication" || dependency == modulePath+"/internal/successor/reachability" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/publication_installed_linux_test.go" && (dependency == modulePath+"/internal/successor/publication" || dependency == modulePath+"/internal/successor/publication/instance" || dependency == modulePath+"/internal/successor/reachability" || dependency == modulePath+"/internal/successor/route/transport" || dependency == modulePath+"/internal/successor/route/capsule") {
+			return true
+		}
+		if source == "cmd/ardents-next/publication_registration_linux_test.go" && (dependency == modulePath+"/internal/successor/publication" || dependency == modulePath+"/internal/successor/publication/durable" || dependency == modulePath+"/internal/successor/publication/instance" || dependency == modulePath+"/internal/successor/reachability" || dependency == modulePath+"/internal/successor/route/capsule") {
+			return true
+		}
+		if (source == "cmd/ardents-next/route_linux.go" || source == "cmd/ardents-next/route_submission_linux_test.go") && dependency == modulePath+"/internal/successor/route/capsule" {
+			return true
+		}
 		if source == "cmd/ardents-next/publication_instance.go" && dependency == modulePath+"/internal/successor/publication/instance" {
 			return true
 		}
+		if source == "cmd/ardents-next/publication_holder_linux.go" && (dependency == modulePath+"/internal/successor/publication/durable" || dependency == modulePath+"/internal/successor/publication/instance" || dependency == modulePath+"/internal/successor/publication/runtime" || dependency == modulePath+"/internal/successor/execution/runtime") {
+			return true
+		}
+		if source == "cmd/ardents-next/publication_holder_other.go" && dependency == modulePath+"/internal/successor/execution/runtime" {
+			return true
+		}
 		if source == "cmd/ardents-next/publication.go" && dependency == modulePath+"/internal/successor/publication/durable" {
+			return true
+		}
+		if (source == "cmd/ardents-next/execution_publisher_linux.go" || source == "cmd/ardents-next/execution_publisher_other.go") && dependency == modulePath+"/internal/successor/execution/runtime" {
 			return true
 		}
 		if source == "cmd/ardents-next/installed_endpoint_linux.go" && (dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/execution/runtime") {
@@ -404,6 +431,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if dependency == modulePath+"/internal/successor/route/transport" {
+			if source == "cmd/ardents-next/route_submission_linux_test.go" {
+				return true
+			}
 			if source == "cmd/ardents-next/execution_installed_linux_test.go" {
 				return true
 			}
@@ -449,6 +479,15 @@ func successorImportAllowed(source, dependency string) bool {
 		return false
 	}
 	if source == "internal/successor/execution/runtime/initialization_linux.go" && dependency == modulePath+"/internal/application/textdocument" {
+		return true
+	}
+	if (source == "internal/successor/execution/runtime/publisher_worker_linux.go" || source == "internal/successor/execution/runtime/publisher_worker_linux_test.go") && dependency == modulePath+"/internal/application/textdocument" {
+		return true
+	}
+	if source == "internal/successor/execution/runtime/publisher_worker_linux.go" && dependency == modulePath+"/internal/application/connection" {
+		return true
+	}
+	if source == "cmd/ardents-next/execution_publisher_linux.go" && dependency == modulePath+"/internal/application/textdocument" {
 		return true
 	}
 	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
@@ -536,6 +575,26 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"delayed ACK fixture retains genuine installed operation", "cmd/ardents-next/publication_ack_installed_linux_test.go", modulePath + "/internal/successor/execution/runtime", true},
+		{"receiving Network fixture selects accepted profile", "cmd/ardents-next/publication_network_linux_test.go", modulePath + "/internal/successor/network/epoch", true},
+		{"receiving Network fixture names selected Carriers", "cmd/ardents-next/publication_network_linux_test.go", modulePath + "/internal/successor/route/transport", true},
+		{"receiving Network fixture has no concrete TLS adapter", "cmd/ardents-next/publication_network_linux_test.go", modulePath + "/internal/successor/route/transport/tls", false},
+		{"receiving Network fixture has no concrete QUIC adapter", "cmd/ardents-next/publication_network_linux_test.go", modulePath + "/internal/successor/route/transport/quic", false},
+		{"receiving Network fixture grants no Publisher runtime", "cmd/ardents-next/publication_network_linux_test.go", modulePath + "/internal/successor/publication/runtime", false},
+		{"delayed ACK fixture invokes command composition", "cmd/ardents-next/publication_ack_installed_linux_test.go", modulePath + "/internal/successor/publication/runtime", false},
+		{"delayed ACK fixture cannot reserve durable authority", "cmd/ardents-next/publication_ack_installed_linux_test.go", modulePath + "/internal/successor/publication/durable", false},
+		{"native Publisher scenario independently checks public proof", "cmd/ardents-next/publication_installed_linux_test.go", modulePath + "/internal/successor/publication", true},
+		{"native Publisher scenario prepares genuine host Instance", "cmd/ardents-next/publication_installed_linux_test.go", modulePath + "/internal/successor/publication/instance", true},
+		{"native Publisher scenario reopens real receiving Store", "cmd/ardents-next/publication_installed_linux_test.go", modulePath + "/internal/successor/reachability", true},
+		{"native Publisher scenario names selected Carrier", "cmd/ardents-next/publication_installed_linux_test.go", modulePath + "/internal/successor/route/transport", true},
+		{"native Publisher scenario cannot bypass command lifecycle", "cmd/ardents-next/publication_installed_linux_test.go", modulePath + "/internal/successor/publication/runtime", false},
+		{"native Publisher scenario has no direct durable reservation", "cmd/ardents-next/publication_installed_linux_test.go", modulePath + "/internal/successor/publication/durable", false},
+		{"native Publisher scenario excludes concrete TLS adapter", "cmd/ardents-next/publication_installed_linux_test.go", modulePath + "/internal/successor/route/transport/tls", false},
+		{"native Publisher scenario excludes concrete QUIC adapter", "cmd/ardents-next/publication_installed_linux_test.go", modulePath + "/internal/successor/route/transport/quic", false},
+		{"another native test has no Publisher exception", "cmd/ardents-next/unregistered_installed_linux_test.go", modulePath + "/internal/successor/publication/instance", false},
+		{"qualified Publisher uses only native Text protocol", "internal/successor/execution/runtime/publisher_worker_linux.go", modulePath + "/internal/application/textdocument", true},
+		{"qualified Publisher uses Application stream grammar", "internal/successor/execution/runtime/publisher_worker_linux.go", modulePath + "/internal/application/connection", true},
+		{"selected Publisher input uses Text import", "cmd/ardents-next/execution_publisher_linux.go", modulePath + "/internal/application/textdocument", true},
 		{"Execution launch borrows only Text INIT grammar", "internal/successor/execution/runtime/initialization_linux.go", modulePath + "/internal/application/textdocument", true},
 		{"Execution rules cannot borrow Text runtime", "internal/successor/execution/job.go", modulePath + "/internal/application/textdocument", false},
 		{"common Execution launch has no native Text exception", "internal/successor/execution/runtime/launch.go", modulePath + "/internal/application/textdocument", false},
@@ -590,6 +649,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"role cannot spend Admission", "internal/successor/route/role/authority.go", modulePath + "/internal/successor/admission/receiving", false},
 		{"role consumes Network observations", "internal/successor/route/role/authority.go", modulePath + "/internal/successor/network", true},
 		{"Introduction exchange uses role binding", "internal/successor/route/introduction/receiving.go", modulePath + "/internal/successor/route/role", true},
+		{"Source command parses sealed capsule", "cmd/ardents-next/route_linux.go", modulePath + "/internal/successor/route/capsule", true},
+		{"submission fixture parses sealed capsule", "cmd/ardents-next/route_submission_linux_test.go", modulePath + "/internal/successor/route/capsule", true},
+		{"other commands cannot acquire capsule consumer", "cmd/ardents-next/admission_holder.go", modulePath + "/internal/successor/route/capsule", false},
+		{"submission consumes retained exclusions", "internal/successor/route/introduction/submission.go", modulePath + "/internal/successor/route", true},
 		{"Introduction cannot own receiving Grant", "internal/successor/route/introduction/receiving.go", modulePath + "/internal/successor/admission/receiving", false},
 		{"Introduction cannot call listener composition", "internal/successor/route/introduction/receiving.go", modulePath + "/internal/successor/route/receiver", false},
 		{"channel cannot import Admission", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/admission", false},

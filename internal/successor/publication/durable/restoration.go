@@ -64,11 +64,23 @@ func (root *Root) restore(flush func(string) error) error {
 		return nil
 	}
 	name := fmt.Sprintf("%016x", floor)
-	if !entries[0].IsDir() || entries[0].Name() != name || (hasPointer && string(pointer) != name+"\n") {
+	stage := !hasPointer && entries[0].Name() == ".publication-staging-"+name
+	if !entries[0].IsDir() || (entries[0].Name() != name && !stage) || (hasPointer && string(pointer) != name+"\n") {
 		return errors.New("publication generation and pointer disagree with floor")
 	}
-	path := filepath.Join(generations, name)
+	path := filepath.Join(generations, entries[0].Name())
 	leaves, err := scan(path, 1)
+	if err == nil && len(leaves) == 0 && !hasPointer {
+		// A canonical floor and exact empty generation directory can only be
+		// retired as unavailable residue. No signature or readiness is restored.
+		if err = flush(path); err != nil {
+			return err
+		}
+		if err = os.Remove(path); err != nil {
+			return err
+		}
+		return flush(generations)
+	}
 	if err != nil || len(leaves) != 1 || leaves[0].Name() != "publication.bin" {
 		return errors.Join(errors.New("publication immutable record inventory invalid"), err)
 	}
@@ -86,6 +98,7 @@ func (root *Root) restore(flush func(string) error) error {
 	if err != nil || proof.Delegation().Generation != floor {
 		return errors.Join(errors.New("publication retained proof invalid"), err)
 	}
+	root.predecessor = proof.Delegation()
 	if !hasPointer {
 		// An exact committed orphan is unavailable, never restored as readiness.
 		if err = os.Remove(filepath.Join(path, "publication.bin")); err != nil {
@@ -110,7 +123,11 @@ func (root *Root) restore(flush func(string) error) error {
 	if err = resyncFile(filepath.Join(root.path, "current")); err != nil {
 		return err
 	}
-	return flush(root.path)
+	if err = flush(root.path); err != nil {
+		return err
+	}
+	root.current = true
+	return nil
 }
 
 func readFloor(path string) (uint64, bool, error) {

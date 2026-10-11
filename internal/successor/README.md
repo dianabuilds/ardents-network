@@ -27,7 +27,7 @@ its contract, tests and non-test consumer are implemented together.
 | [execution/](execution/README.md) | Локальные полномочия Application, сессия, Job и завершение worker | Только каркас |
 | [publication/](publication/README.md) | Жизненный цикл публикации Service Instance | Публичная проверка подписанных proofs; живой Instance и readiness ещё отсутствуют |
 | [reachability/](reachability/README.md) | Descriptor Store и проверка достижимости точного Target | Проверка private Descriptor, отдельные долговечный Store и локальная история поиска; реальные receiving и holder потребители через Route |
-| [connection/](connection/README.md) | Аутентифицированный логический Service Connection | Только каркас |
+| [connection/](connection/README.md) | Неизменная начальная привязка logical/Attachment context | Ограниченная привязка к Publication и исходной Execution operation; Service TLS, continuity, ordered stream и recovery остаются будущими обязанностями |
 | [enrollment/](enrollment/README.md) | Первичное закрепление доверенного комплекта | Отдельная проверка portable v3 комплекта по независимому pin, закрытый snapshot и реальный read-only consumer; не разрешение Release или запуска |
 | [release/](release/README.md) | Разрешение на точные программные артефакты | Только каркас |
 | [installation/](installation/README.md) | Установка, замена и восстановление поколения | Только каркас |

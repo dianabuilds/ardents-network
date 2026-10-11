@@ -10,19 +10,19 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
 )
 
 type routePrefixPlan struct {
-	EntryRoot          string          `json:"entry_root"`
-	InteriorRoot       string          `json:"interior_root"`
-	SourceInteriorRoot string          `json:"source_interior_root,omitempty"`
-	HostingRoot        string          `json:"hosting_root"`
-	Domain             uint8           `json:"domain"`
-	Deadline           time.Time       `json:"deadline"`
-	Work               hosting.Traffic `json:"work"`
-	Termination        hosting.Traffic `json:"termination"`
-	Exclusions         []route.Member  `json:"exclusions,omitempty"`
+	EntryRoot             string          `json:"entry_root"`
+	InteriorRoot          string          `json:"interior_root"`
+	SourceInteriorRoot    string          `json:"source_interior_root,omitempty"`
+	ResponderInteriorRoot string          `json:"responder_interior_root,omitempty"`
+	HostingRoot           string          `json:"hosting_root"`
+	Domain                uint8           `json:"domain"`
+	Deadline              time.Time       `json:"deadline"`
+	Work                  hosting.Traffic `json:"work"`
+	Termination           hosting.Traffic `json:"termination"`
+	Exclusions            []route.Member  `json:"exclusions,omitempty"`
 }
 
 func independentRouteRoots(roots ...string) bool {
@@ -50,6 +50,8 @@ type routeHandle struct {
 	join              func(context.Context, routeJoinIntent) (net.Conn, error)
 	publishDescriptor func(context.Context, []byte) error
 	lookupDescriptor  func(context.Context, [32]byte, *reachability.History) ([]byte, error)
+	submitCapsule     func(context.Context, routeRecipient, []byte) error
+	sealSubmitCapsule func(context.Context, routeRecipient, routeCapsuleIntent) error
 }
 
 type routeJoinContext struct {
@@ -73,10 +75,12 @@ type routeJoinIntent struct {
 	SetupDeadline time.Time `json:"setup_deadline"`
 }
 
-type routeRegistration struct {
-	close    func() error
-	withdraw func(context.Context) error
-	done     <-chan struct{}
-	slot     [32]byte
-	facts    introduction.RegistrationFacts
+// Local candidate bytes grant no receiving or Connection authority.
+type routeCapsuleIntent struct {
+	Slot          [32]byte  `json:"slot"`
+	DeliveryNonce [32]byte  `json:"delivery_nonce"`
+	Revision      uint64    `json:"revision"`
+	Expiry        time.Time `json:"expiry"`
+	RecipientKey  [32]byte  `json:"recipient_key"`
+	Request       []byte    `json:"request"`
 }

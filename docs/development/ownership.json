@@ -143,6 +143,11 @@
   ],
     "qualification_lanes": [
       {
+        "id": "publication-timing",
+        "owner": "network",
+        "path": "tests/qualification/publication-timing"
+      },
+      {
         "id": "execution-recovery",
         "owner": "network",
         "path": "tests/qualification/execution-recovery"

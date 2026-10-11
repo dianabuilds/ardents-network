@@ -20,7 +20,10 @@ Introduction Node, slot, revision, creation time and original expiry.
 Its acknowledgement is SHA-256 of the complete verified REGISTER RESULT body,
 preserving the current public Publication's transport-commitment provenance.
 `CheckReceipt` reobserves the actual Prefix/duty/caller outside its lifecycle
-lock, then checks retirement, withdrawal and expiry synchronously. Detached
+lock, then checks retirement, withdrawal and expiry synchronously.
+Recipient reobservation retains its original unavailable, cancellation or
+physical error before checking the observed member's role, exclusions and bounds;
+failed observation does not manufacture a second duty-mismatch cause. Detached
 `RegistrationFacts` and a retained receipt alone grant no current authority.
 Creation precedes REGISTER output; ACK delay cannot move the refresh origin.
 This transport receipt supplies no Descriptor Store ACK or Service readiness.
@@ -34,6 +37,45 @@ own the listener, Admission Grant or physical return: receiving composition
 interrupts and joins its connection before releasing those resources. This
 exchange is portable; genuine successful claims still require the independently
 leased durable History and genuine Admission/Hosting command composition.
+
+The receiving Registry also dispatches one opaque purpose-5/class-1 submission
+to the exact live purpose-4 registration. Its original registration stream has
+one RESULT reader and a shared frame writer. It reserves the full 20529-byte
+delivery exchange before output, separately from the 41024-byte registration and
+owning-withdrawal reserve. At most 16 users, including writer waiters, remain
+pending; admission and dispatch each permit at most four starts per rolling
+second. Even lane allocation and OPERATION emission share the writer. Fresh
+registration-local request nonces never copy source or sealed delivery nonces
+and remain recorded after user join. Exact fixed RESULT precedes matching CLOSE;
+invalid, expired or incomplete protocol retires the original channel without
+slot reclaim or debit refund. Physical users and late failures remain retained
+through receiving join. Owning withdrawal with pending delivery refuses and
+retires that channel rather than acknowledging an unfinished child.
+Registration cancellation and protocol/read failures remain in that original
+operation's joined result. Receiving composition separately records actual
+output and interruption failures. Interruption uses the original lower lane:
+it denies new read/write progress and interrupts its selected output, while
+an already retired parent performs no redundant physical deadline effect.
+Every actual interruption or late writer failure remains retained through join;
+this distinction does not classify error values as successful cleanup.
+The actual Receiver routes admitted purpose-5 work to this owner; its Control
+reservation consumes no new registration position. Portable pipe/accounting
+controls establish these mechanics, not genuine successful capsule delivery.
+Source submission retains its original Domain 1 Prefix and resolves the claimed
+Introduction duty from the same authenticated observation, with identity, key
+and known-family exclusions for its retained legs, issuer, resolution and caller
+inventory. It opens fresh purpose-5/class-1 TLS and forwards only the sealed
+capsule. Introduction accepts an authenticated Domain 1 Interior only for that
+submission purpose; Domain 4 Interiors retain registration purpose. These child
+checks precede role TLS and Admission. A matching Source-local RESULT, actual TLS
+and lower termination, physical cleanup and final original caller/duty checks
+complete Submit. A typed refusal never grants retry or Connection authority.
+Prefix's actual frame reader retains Transport's original TLS peer-EOF evidence
+before local Close; it leaves kind/lane/nonce/status interpretation with Submit.
+Raw or local EOF cannot acquire that evidence or become successful completion.
+Both-Carrier qualified recipient acceptance remains a separate prerequisite
+for successful private delivery evidence.
+
 Holder and receiving principals have independent state and lifetimes in this
 package; actual `receiver` composition dispatches the admitted channel. The
 intermediate operation owner is removed.
@@ -90,6 +132,29 @@ stops active registration handles. It joins those borrowers before retiring
 their framing parents and returning reservations. Registration Close joins its
 reader, watcher, physical interrupt and entire owning withdrawal attempt and returns the
 same retained outcome. Done signals retirement; it does not replace Close.
+Its original child-cancellation callback seals the Registration stop barrier
+before physically interrupting the idle reader, matching explicit Close.
+That barrier retains cancellation of the original REGISTER caller even when
+explicit Close beats the asynchronous callback. Cancellation of the private
+terminal after a successful owning stop does not cancel that original caller
+or replace the already retained outcome.
+Unexpected cancellation of that original child remains a failed outcome even
+while the REGISTER caller is live. An earlier successful owning stop keeps its
+already retained result; the cancellation callback cannot relabel it.
+The owning `Stop` operation seals acquisition and interrupts this original
+Registration without joining. Publication uses it before canceling its own
+flight contexts; `Close` remains mandatory before returning physical resources.
+Stop still records an already canceled original REGISTER caller and preserves
+the first observed failure. It grants no receipt, accepting pair or replacement.
+Previously observed reader failures, physical Close errors and whole WITHDRAW
+results remain separately retained; this ordering supplies no clean-write
+classification or waiver of an interrupted physical output.
+`DeliveryResultFailure` identifies a failed Reply after this original child
+emitted and checked status0 RESULT. It retains every original cause in the
+Registration's joined outcome; it proves no peer receipt or matching CLOSE.
+The original expired-terminal, interrupted-delivery and unavailable-withdrawal
+error values retain their existing messages and distinct failed outcomes.
+None supplies an ACK, accepting authority, refund or physical join receipt.
 The original Prefix terminal keeps its lower lane, control-capacity return and
 original cancellation callback. Registration retains that terminal rather than
 copying those resources into separate fields. It joins the callback before its
@@ -112,6 +177,10 @@ an already canceled caller. The whole attempt remains held through ACK and
 that final check; concurrent Close cannot return its Prefix borrow or publish a
 terminal result before the withdrawal's retained error is recorded. These
 checks change no wire bytes, slot floor, deadline, retry or spent right.
+The sole holder reader completes TLS and lower peer termination after the
+matching owning ACK, before publishing its reply and canceling the terminal.
+This keeps original receiving withdrawal alive until it has consumed holder
+EOF; ACK receipt alone cannot return its physical channel or parents.
 
 After emitting the owning WITHDRAW result, the receiving channel remains held
 until the holder closes it or its original deadline/cancellation interrupts it.
@@ -138,6 +207,15 @@ With genuine Network and Publisher Stock configured, `admission holder` exposes
 `registration-close` after `prefix-open`. The open result contains the opaque
 slot and detached public registration facts from the checked original receipt.
 Explicit holder close joins Route before Stock and Network roots.
+The Source holder's `capsule-submit` command takes the exact Introduction
+Node/duty generation and either sealed capsule bytes in `payload` or a local
+`capsule` preparation input, never both. Preparation takes the exact slot,
+delivery nonce, revision, whole-second expiry, public recipient key and canonical
+344-byte untrusted request. Standard HPKE produces the same 474-byte envelope
+before the actual Submit operation. Request bytes are not returned in the result
+and the command clears its decoded request buffer after use. This mechanism
+supplies no capsule authentication, Work Safety, Connection authority or
+Publisher readiness; the recipient independently checks every candidate fact.
 `route receive` requires independent `introduction_root` for the exact Domain 4
 delivery duty; its directory must be private. Other duties cannot borrow that
 root or its receiving initialization fact.

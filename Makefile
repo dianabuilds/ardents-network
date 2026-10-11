@@ -291,6 +291,10 @@ execution-lifecycle-check:
 execution-route-check:
 	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh execution-route
 
+.PHONY: publication-timing-check
+publication-timing-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh publication-timing -timeout=15m
+
 .PHONY: execution-tree-check
 execution-tree-check:
 	sh ./tests/qualification/execution-tree/run-ubuntu.sh

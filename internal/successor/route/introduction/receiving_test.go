@@ -14,7 +14,7 @@ import (
 // reserved position, authenticated channel, token, successful claim or ACK.
 type unadmittedRegistrationConn struct {
 	net.Conn
-	reads, writes, closes int
+	reads, writes, closes, interrupts int
 }
 
 func (c *unadmittedRegistrationConn) Read([]byte) (int, error) {
@@ -29,6 +29,11 @@ func (c *unadmittedRegistrationConn) Write([]byte) (int, error) {
 
 func (c *unadmittedRegistrationConn) Close() error { c.closes++; return nil }
 
+func (c *unadmittedRegistrationConn) interrupt() error {
+	c.interrupts++
+	return errors.New("unadmitted stream interruption")
+}
+
 func TestReceivingRegistrationCanceledCallerCannotReachChannel(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
@@ -38,8 +43,9 @@ func TestReceivingRegistrationCanceledCallerCannotReachChannel(t *testing.T) {
 	capacity := &Capacity{registry: registry}
 	err := registry.ServeRegistration(ctx, conn, capacity, RegistrationChannel{
 		Hello: ardp.Hello{Purpose: ardp.PurposeIntroduction}, Record: func(error) { recorded++ },
+		InterruptIO: conn.interrupt,
 	})
-	if !errors.Is(err, context.Canceled) || conn.reads != 0 || conn.writes != 0 || conn.closes != 0 || recorded != 0 {
+	if !errors.Is(err, context.Canceled) || conn.reads != 0 || conn.writes != 0 || conn.closes != 0 || conn.interrupts != 0 || recorded != 0 {
 		t.Fatal("canceled caller reached channel or lost its original refusal", err, conn, recorded)
 	}
 	if registry.pending != 1 {
@@ -67,8 +73,9 @@ func TestReceivingRegistrationPlainStreamCannotReachOperation(t *testing.T) {
 	recorded := 0
 	err := registry.ServeRegistration(t.Context(), conn, &Capacity{registry: registry}, RegistrationChannel{
 		Hello: hello, Record: func(error) { recorded++ },
+		InterruptIO: conn.interrupt,
 	})
-	if err == nil || conn.reads != 0 || conn.writes != 0 || conn.closes != 0 || recorded != 0 {
+	if err == nil || conn.reads != 0 || conn.writes != 0 || conn.closes != 0 || conn.interrupts != 0 || recorded != 0 {
 		t.Fatal("plain stream reached operation or transferred physical ownership", err, conn, recorded)
 	}
 }

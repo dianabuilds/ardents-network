@@ -362,3 +362,53 @@ func routeTestOpenEndpoint(ctx context.Context, input transport.ClosedRoleCarrie
 		return nil, errors.New("closed role carrier profile is unsupported")
 	}
 }
+
+func publicationRouteNetwork(t *testing.T, carrier transport.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+	return newRoleRouteFixtureConfigured(t, carrier, 1, false, false, func(f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate) {
+		for _, id := range [][32]byte{{17}, {21}, {22}, {23}, {24}, {25}, {31}, {32}, {33}, {34}, {41}} {
+			_, key, err := ed25519.GenerateKey(rand.Reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { clear(key) })
+			var address string
+			if carrier == transport.ClosedCarrierTCP {
+				listener, err := net.Listen("tcp", "127.0.0.1:0")
+				if err != nil {
+					t.Fatal(err)
+				}
+				address = listener.Addr().String()
+				reservations[id] = func() { _ = listener.Close() }
+			} else {
+				socket, err := net.ListenPacket("udp", "127.0.0.1:0")
+				if err != nil {
+					t.Fatal(err)
+				}
+				address = socket.LocalAddr().String()
+				reservations[id] = func() { _ = socket.Close() }
+			}
+			t.Cleanup(reservations[id])
+			domain, subrole := byte(4), byte(1)
+			if id[0] >= 23 {
+				subrole = 2
+			}
+			if id == [32]byte{25} {
+				subrole = 3
+			}
+			if id == [32]byte{17} {
+				domain, subrole = 2, 5
+			}
+			if id[0] >= 31 {
+				domain, subrole = 3, 1
+				if id[0] >= 33 {
+					subrole = 2
+				}
+			}
+			if id == [32]byte{41} {
+				domain, subrole = 2, 4
+			}
+			f.spec.Nodes = append(f.spec.Nodes, networkfixture.ClosedNode{RecordSpec: networkfixture.RecordSpec{NodeID: id, Generation: 9, ValidFrom: f.spec.NotBefore, ValidUntil: f.spec.NotAfter, Endpoint: address, Carrier: string(carrier), Capability: 2, Capacity: 1, PrivateKey: key}, RoleDomain: domain, Subrole: subrole})
+			certificates[id] = routeTestCertificate(t, key)
+		}
+	})
+}

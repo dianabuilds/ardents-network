@@ -5,11 +5,30 @@ package receiver
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+func TestSubmissionReservationCannotConsumeRegistrationPosition(t *testing.T) {
+	// An incomplete Registry supplies no capacity or successful claim. If a
+	// purpose-5 channel incorrectly asks it for a slot, this cannot pass.
+	lifetime := &admissionRetirement{registry: &introduction.Registry{}}
+	returned := 0
+	release, err := (Channel{Hello: ardp.Hello{Purpose: ardp.PurposeSubmission}, capacity: lifetime}).HoldReservation(func() error { returned++; return nil })
+	if err != nil || lifetime.registration != nil {
+		t.Fatal("submission borrowed a registration position", err)
+	}
+	if err := release(); err != nil || returned != 0 {
+		t.Fatal("submission reservation returned before physical join", err)
+	}
+	if err := lifetime.finish(); err != nil || returned != 1 {
+		t.Fatal("joined original reservation unavailable", err)
+	}
+}
 
 func TestAdmissionRollbackRetainsCapacityUntilPhysicalJoin(t *testing.T) {
 	physical := newLifecycleConn(false)

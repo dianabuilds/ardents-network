@@ -267,9 +267,20 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 				default:
 				}
 				var terminal error
+				var checkPublicationRetired func()
+				if mode == "withdraw" {
+					checkPublicationRetired = exerciseRegisteredInstanceRecord(t, registration.original)
+				}
 				if mode == "caller-cancel" || mode == "expiry" || mode == "clock-loss" {
 					if mode == "caller-cancel" {
 						cancelRegistration()
+						// Close may beat the asynchronous interruption callback.
+						// The original caller was already canceled, so neither
+						// scheduling order may publish graceful completion.
+						terminal = registration.close()
+						if !errors.Is(terminal, context.Canceled) {
+							t.Fatal("joined registration lost original caller cancellation", terminal)
+						}
 					} else if mode == "clock-loss" {
 						select {
 						case <-prefix.done:
@@ -319,6 +330,9 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 					}
 				} else if err := prefix.close(); err != nil {
 					t.Fatal("prefix joined registration", err)
+				}
+				if checkPublicationRetired != nil {
+					checkPublicationRetired()
 				}
 				select {
 				case <-registration.done:

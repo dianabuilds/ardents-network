@@ -25,11 +25,18 @@ func runExecutionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		Holder     holderPlan `json:"holder"`
 		Generation [32]byte   `json:"generation"`
 		Principal  [32]byte   `json:"principal"`
+		Snapshot   string     `json:"snapshot,omitempty"`
 	}
 	if ctx == nil || admissionConfig(args, &config) != nil || config.Holder.Network == nil || !validAdmissionAuthority("", config.Holder.Network, config.Holder.Root) || config.Holder.Profile != "" {
 		return 2
 	}
 	if live && config.Holder.Route == nil {
+		return 2
+	}
+	if config.Snapshot != "" && (!live || config.Holder.Role != admission.AllocationPublisher) {
+		return 2
+	}
+	if config.Holder.Publication != nil && (!live || config.Snapshot == "" || config.Holder.Role != admission.AllocationPublisher) {
 		return 2
 	}
 	surface := execution.Connection
@@ -48,7 +55,12 @@ func runExecutionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		}
 	}()
 	if live {
-		invocation, err := owner.Launch(ctx, config.Principal, surface)
+		var invocation *executionruntime.Invocation
+		if config.Snapshot != "" {
+			invocation, err = launchSelectedPublisher(ctx, owner, config.Principal, config.Snapshot)
+		} else {
+			invocation, err = owner.Launch(ctx, config.Principal, surface)
+		}
 		if err != nil {
 			return 1
 		}

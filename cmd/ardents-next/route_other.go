@@ -6,8 +6,18 @@ import (
 	"context"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
 	"io"
 )
+
+// The unsupported composition has no original native registration owner.
+type routeRegistration struct {
+	close    func() error
+	withdraw func(context.Context) error
+	done     <-chan struct{}
+	slot     [32]byte
+	facts    introduction.RegistrationFacts
+}
 
 func startRoutePrefix(context.Context, routePrefixPlan, admissionAuthority, *stock.Owner) (routeHandle, error) {
 	return routeHandle{}, errors.New("route requires Linux")

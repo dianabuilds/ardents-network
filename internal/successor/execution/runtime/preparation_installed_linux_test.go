@@ -19,6 +19,7 @@ func TestInstalledExecutionLifecycle(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Fatal("invalid environment: installed non-root Endpoint service required")
 	}
+	t.Run("Publisher-snapshot-operation", testInstalledPublisherSnapshotOperation)
 	for _, surface := range []execution.Surface{execution.Connection, execution.Administration} {
 		t.Run(string(surface), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)

@@ -30,14 +30,17 @@ type holderCommand struct {
 	Choice        uint8                `json:"choice,omitzero"`
 	Join          routeJoinIntent      `json:"join,omitzero"`
 	Target        [32]byte             `json:"target,omitzero"`
+	Introduction  routeRecipient       `json:"introduction,omitzero"`
+	Capsule       *routeCapsuleIntent  `json:"capsule,omitempty"`
 }
 
 type holderPlan struct {
-	Root    string                   `json:"root"`
-	Profile string                   `json:"profile"`
-	Network *networkAuthorityPlan    `json:"network,omitempty"`
-	Role    admission.AllocationRole `json:"role"`
-	Route   *routePrefixPlan         `json:"route,omitempty"`
+	Root        string                   `json:"root"`
+	Profile     string                   `json:"profile"`
+	Network     *networkAuthorityPlan    `json:"network,omitempty"`
+	Role        admission.AllocationRole `json:"role"`
+	Route       *routePrefixPlan         `json:"route,omitempty"`
+	Publication *publicationPlan         `json:"publication,omitempty"`
 }
 
 func runAdmissionHolder(ctx context.Context, args []string, input io.ReadCloser, out, diagnostic io.Writer) int {
@@ -66,6 +69,12 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 	}
 	if ctx.Err() != nil {
 		return 130
+	}
+	if config.Publication != nil {
+		operation, ok := preparation.(*executionruntime.Operation)
+		if !ok || operation.CheckPublisher() != nil || config.Role != admission.AllocationPublisher || config.Route == nil || config.Route.Domain != 4 || !independentRouteRoots(config.Network.Root, config.Root, config.Route.EntryRoot, config.Route.InteriorRoot, config.Route.SourceInteriorRoot, config.Route.ResponderInteriorRoot, config.Route.HostingRoot, config.Publication.InstanceRoot, config.Publication.Root) {
+			return 2
+		}
 	}
 	authority, err := openAdmissionAuthority(config.Profile, config.Network)
 	if err != nil {
@@ -105,12 +114,16 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 	var prefix routeHandle
 	var routeContext routeJoinContext
 	var registration routeRegistration
+	var publisher publicationHandle
 	var joined net.Conn
 	// This console session is the exact local context. Prefix/worker retirement
 	// does not clear its private lookup facts; final context closure does.
 	lookupHistory := &reachability.History{}
 	closeRoute := func() error {
 		var result error
+		if publisher.close != nil {
+			result = retainCleanup(publisher.close())
+		}
 		if joined != nil {
 			result = retainCleanup(joined.Close())
 		}
@@ -153,12 +166,63 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 		var err error
 		result := map[string]any{"outcome": "completed"}
 		switch c.Operation {
+		case "publication-open":
+			if publisher.close != nil || prefix.close != nil || routeContext.close != nil || config.Publication == nil {
+				err = errors.New("live Publisher original context unavailable")
+				break
+			}
+			operation, ok := preparation.(*executionruntime.Operation)
+			if !ok || operation.CheckPublisher() != nil {
+				err = errors.New("qualified snapshot Publisher operation absent")
+				break
+			}
+			publisher, err = startPublicationHolder(ctx, *config.Publication, *config.Route, authority, o, operation)
+		case "publication-publish":
+			if publisher.owner == nil {
+				err = errors.New("live Publisher absent")
+				break
+			}
+			result["link"], err = publisher.publish(ctx)
+		case "publication-refresh":
+			if publisher.owner == nil {
+				err = errors.New("live Publisher absent")
+				break
+			}
+			result["link"], err = publisher.refresh(ctx)
+		case "publication-link":
+			if publisher.owner == nil {
+				err = errors.New("live Publisher absent")
+				break
+			}
+			result["link"], err = publisher.link(ctx)
+		case "publication-withdraw":
+			if publisher.owner == nil {
+				err = errors.New("live Publisher absent")
+				break
+			}
+			err = retainCleanup(publisher.withdraw(ctx))
 		case "descriptor-publish":
 			if prefix.publishDescriptor == nil {
 				err = errors.New("route Descriptor publication unavailable")
 				break
 			}
 			err = prefix.publishDescriptor(ctx, c.Payload)
+		case "capsule-submit":
+			if prefix.submitCapsule == nil {
+				err = errors.New("route capsule submission unavailable")
+				break
+			}
+			if c.Capsule != nil {
+				if len(c.Payload) != 0 || prefix.sealSubmitCapsule == nil {
+					clear(c.Capsule.Request)
+					err = errors.New("route capsule input invalid")
+					break
+				}
+				err = prefix.sealSubmitCapsule(ctx, c.Introduction, *c.Capsule)
+				clear(c.Capsule.Request)
+			} else {
+				err = prefix.submitCapsule(ctx, c.Introduction, c.Payload)
+			}
 		case "descriptor-lookup":
 			if prefix.lookupDescriptor == nil {
 				err = errors.New("route Descriptor lookup unavailable")
@@ -232,6 +296,10 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 				registration = routeRegistration{}
 			}
 		case "prefix-open", "join-prefix-open", "bootstrap-open":
+			if publisher.close != nil {
+				err = errors.New("live Publisher retains its original Route context")
+				break
+			}
 			if prefix.close != nil {
 				select {
 				case <-prefix.done:
@@ -385,7 +453,9 @@ func executionRouteOperation(operation string) bool {
 	switch operation {
 	case "request", "import", "bootstrap-open", "bootstrap-close", "issuer-issue",
 		"prefix-open", "prefix-replenish", "prefix-close", "descriptor-lookup",
-		"begin", "complete", "discard", "take", "refill-plan", "status", "close":
+		"capsule-submit",
+		"begin", "complete", "discard", "take", "refill-plan", "status", "close",
+		"publication-open", "publication-publish", "publication-refresh", "publication-link", "publication-withdraw":
 		return true
 	default:
 		return false

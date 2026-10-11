@@ -1000,9 +1000,26 @@ func TestRouteIssuerLostResultHolderReopenRefusesReconstructionBothCarriers(t *t
 			if err := original.close(); err != nil {
 				t.Fatal(err)
 			}
+			receivingJoin, cancelJoin := context.WithDeadline(t.Context(), plan.Deadline)
+			defer cancelJoin()
+			waitRouteIssuerReceivingBorrowers(t, receivingJoin, x)
 			for _, server := range x.servers {
-				if err := server.Close(); err != nil {
-					t.Fatal(err)
+				joinedErr := server.Close()
+				select {
+				case <-server.Done():
+				default:
+					t.Fatal("receiver Close returned before original listener join")
+				}
+				if repeated := server.Close(); repeated != joinedErr {
+					t.Fatal("receiver lost its first joined terminal result")
+				}
+				if joinedErr != nil {
+					// Cancellation after genuine signing can interrupt selected
+					// physical output. Retain that failed result, never clean it.
+					if !transport.IsPeerRetirementCause(joinedErr) {
+						t.Fatal("unrelated receiving retirement failure", joinedErr)
+					}
+					t.Log("retained failed receiver after deliberate lost RESULT", joinedErr)
 				}
 			}
 			journal := func(root, name string) []byte {

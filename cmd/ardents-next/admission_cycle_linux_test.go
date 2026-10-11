@@ -28,6 +28,7 @@ import (
 
 type localAdmissionReply struct {
 	Outcome, Stage                           string
+	Link                                     string
 	Request, Token, Response, Journal, Proof []byte
 	Digest                                   [32]byte
 	Slot                                     [32]byte
