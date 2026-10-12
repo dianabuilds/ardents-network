@@ -16,6 +16,9 @@ func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int 
 	if args[0] == "forwarding" {
 		return runNodeForwarding(ctx, args[1:], out, diagnostic)
 	}
+	if args[0] == "issuer" {
+		return runNodeIssuer(ctx, args[1:], out, diagnostic)
+	}
 	return 2
 }
 

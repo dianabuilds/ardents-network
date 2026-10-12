@@ -30,7 +30,7 @@ NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
 # Only the Node process suite may select an elevated system-scope runner.
 NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
-ifeq ($(MAKECMDGOALS),node-process-check)
+ifneq ($(filter node-process-check node-issuer-check,$(MAKECMDGOALS)),)
 # This native driver consumes independently built, pinned artifacts. Its host
 # needs the actual manager/kernel, not a second Go installation.
 HEADLESS_GOOS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -210,6 +210,11 @@ installed-tag-compile-check:
 node-process-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "node-process-check requires Linux"; exit 2)
 	sh ./scripts/node/run-native.sh -timeout=3m
+
+.PHONY: node-issuer-check
+node-issuer-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "node-issuer-check requires Linux"; exit 2)
+	sh ./scripts/node/run-issuer-native.sh -timeout=3m
 
 quick-check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)

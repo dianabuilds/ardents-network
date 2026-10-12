@@ -748,6 +748,18 @@ Hosting allowance. Independent native observations and both-Carrier causal
 tests must verify the actual new command; a component model, a container sharing
 its measured cgroup or a Windows gate does not establish that result.
 
+### Issuer development process profile
+
+The selected Issuer composition requires `ardents-issuer-process-v1`. It uses
+the exact native settings and original measurement/freshness/pressure boundary
+in the Forwarding table above: a sole original Linux cgroup-v2 leaf,
+cpu.max `100000 100000`, memory.high `805306368`, memory.max `1073741824`,
+pids.max `256`, NOFILE soft/hard `1024`, GOMAXPROCS `1` and GOMEMLIMIT
+`536870912`. It is a distinct workload/profile identity; Forwarding's profile
+and protocol allowances remain unchanged. Selection grants no capacity,
+installed or platform qualification. Issuer's checked native workload must
+independently exercise its actual command and both Carriers.
+
 ### Original Forwarding composition
 
 `internal/successor/node` and `ardents-next node forwarding` compose one exact
@@ -845,6 +857,71 @@ issue owns full bounded acceptance and source-matched verification receipts.
 | Initial/refill reservation and irreversible spend | Actual command in `TestNativeNodeParentRefillAndReopenBothCarriers`; exact 988-byte additional coverage, real pre-spend capacity loss, retained journals, replay refusal and measured-use floor |
 | Original result and foreign cleanup provenance | Native cancellation/startup cases plus Node retirement/copy regressions; only the exact private notice is removed, and physical wrappers/foreign causes remain errors |
 | Unsupported platform and bounded public output | `TestCompiledNodeUnsupportedPlatformRefusesBeforePrivateInput`; Node dispatch and inspection tests preserve finite output and distinguish unmeasured queues/timers |
+
+### Original Issuer composition
+
+`internal/successor/node` and `ardents-next node issuer` retain one original
+authenticated Role2/subrole6/PurposeIssuer invocation. State stays command-owned;
+process admission, private participation producer, exact-member Ed25519 TLS,
+Receiving and Hosting are independent owners. Admission's retained issuing
+application opens prepared quota, keys and results once, before accepting Route.
+Private RSA and quota/result decisions remain exclusively with Admission.
+No profile signing, root creation, rotation, recovery or automatic replacement
+is performed by this runtime.
+
+The original caller is checked directly before and after foreign observations,
+in addition to the derived cancellation context. Base process/producer/State
+observations never call back into Admission. Route's additional issuing check
+uses that base observer, then reobserves native/State after key/journal I/O;
+no recursion or foreign I/O under the Node lifecycle mutex is permitted.
+The exact original binding and one-second process freshness cap apply at effects.
+Request refusal and original owner failure remain distinct; only definite original
+authority/caller/resource/custody loss retires the invocation.
+
+Ordinary Receiving reserves and verifies the full Control64KiB allowance before
+durable spend; no Forward refill is composed. Bootstrap independently reserves
+its actual128KiB finite lane and termination before incoming work, without
+receiving-token spend. Route retains its one Issuer work slot and bounded copies
+through output, half-close and physical join. Issuing call completion cannot
+return that slot. Quotas remain common across all original channels.
+
+Stop synchronously denies/cancels issuing and Route admission. Route users join
+before Admission joins its calls/observers and closes results, keys and quota;
+then Receiving, Hosting, the original producer, native pins, TLS and State close.
+First failure and cleanup causes remain separate in the original result. A
+bounded command wait reports unavailable completion while the original process
+and owners remain retained through physical join. The producer's node-duty/live
+conflict persists past work expiry until actual producer removal.
+
+The distinct native Issuer workload exercises actual bootstrap, genuine Stock
+finalization, fresh ordinary issuance and spending newly issued Forward tokens
+on both Carriers. Native component controls retain original key/quota/result
+leases and producer conflict while an actual State observation return is held;
+they exercise caller/Stop, signed successor/conflict, expiry, process freshness
+and canceled late startup. Scheduling controls grant no successful authority.
+Full bounded acceptance and source-matched receipts remain in the selected issue;
+these mechanisms supply no installed, capacity or privacy qualification.
+
+The native operation control uses genuine independent Stock/Prefix principals
+and one native original Issuer. It delays only a real issuing caller's State
+return at causal quota/result-journal boundaries; it supplies no successful
+authority, signature or receiving Grant. Original caller denial before debit
+leaves issuing journals unchanged; post-debit/result denial retains committed
+bytes and withholds delivery. A signed successor after result commit denies the
+original duty. Quota/key leases and the actual result-file lock, plus physical
+Hosting, remain held through delayed original join. A competing operation cannot
+add quota or burn another Receiving token. Explicit healthy exact retry and
+independent issuing-owner reopen preserve complete response and journal bytes;
+the reopened owners still perform full integrity/durability/crypto validation.
+
+Storage uncertainty controls change only the native test child's file-size
+limit, leaving one byte beyond its original quota or result journal. The kernel
+performs a real partial append and returns EFBIG; no successful sync or commit
+is substituted. Quota uncertainty exports no confirmation/result; result
+uncertainty retains the complete prior quota debit and partial result bytes.
+Both withhold delivery. Restoring the write limit cannot change the original
+failed result across copies/repeated Close; fresh independent issuing Open
+refuses the partial checksum chain without truncation, repair or floor reset.
 
 ## Current limits and limitations
 

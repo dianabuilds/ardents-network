@@ -1,6 +1,8 @@
 package state
 
 import (
+	"bytes"
+	"crypto/ed25519"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -10,6 +12,15 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state/durable"
 )
+
+// profileVerification retains only authentication of exact public bytes. It
+// never substitutes for durable history, trusted time or current membership.
+type profileVerification struct {
+	generation, network, epochDigest, authority [32]byte
+	epoch                                       uint64
+	raw                                         []byte
+	profile                                     closedprofile.Profile
+}
 
 // ProfileReceipt confirms a committed profile identity, never current authority.
 // Consumers obtain runtime facts from the opened owner's CurrentRuntime.
@@ -89,11 +100,44 @@ func (s *networkState) acceptClosedProfileWithCommit(raw []byte, commit func(dur
 // verifyClosedProfileLocked supplies the exact current authenticated Epoch
 // context; the grammar verifier itself has no State acceptance authority.
 func (s *networkState) verifyClosedProfileLocked(raw []byte, generation [32]byte, now time.Time) (closedprofile.Profile, error) {
-	return closedprofile.Verify(raw, closedprofile.Context{
+	context := closedprofile.Context{
 		StateGeneration: generation, NetworkID: s.current.Snapshot.NetworkID,
 		EpochDigest: s.current.Snapshot.Digest, Epoch: s.current.Snapshot.Epoch,
 		Authority: s.config.closedProfileAuthority, Now: now,
-	})
+	}
+	if len(context.Authority) != ed25519.PublicKeySize {
+		return closedprofile.Verify(raw, context)
+	}
+	var authority [32]byte
+	copy(authority[:], context.Authority)
+	// CurrentRuntime holds a read lock; authentication retention has its own
+	// lock, always below State's lock. There is no I/O or foreign callback here.
+	s.profileMu.Lock()
+	defer s.profileMu.Unlock()
+	p := s.verifiedProfile
+	if p != nil && p.generation == generation && p.network == context.NetworkID &&
+		p.epochDigest == context.EpochDigest && p.epoch == context.Epoch && p.authority == authority && bytes.Equal(p.raw, raw) {
+		if now.Before(p.profile.NotBefore) || !now.Before(p.profile.NotAfter) {
+			return closedprofile.Profile{}, errors.New("closed profile validity is unavailable")
+		}
+		return copyVerifiedProfile(p.profile), nil
+	}
+	profile, err := closedprofile.Verify(raw, context)
+	if err == nil {
+		s.verifiedProfile = &profileVerification{generation: generation, network: context.NetworkID,
+			epochDigest: context.EpochDigest, authority: authority, epoch: context.Epoch,
+			raw: append([]byte(nil), raw...), profile: copyVerifiedProfile(profile)}
+	}
+	return profile, err
+}
+
+func copyVerifiedProfile(profile closedprofile.Profile) closedprofile.Profile {
+	profile.Nodes = append([]closedprofile.Node(nil), profile.Nodes...)
+	profile.Keys = append([]closedprofile.TokenKey(nil), profile.Keys...)
+	for i := range profile.Keys {
+		profile.Keys[i].SPKI = append([]byte(nil), profile.Keys[i].SPKI...)
+	}
+	return profile
 }
 
 func closedProfileGeneration(encoded string) ([32]byte, error) {

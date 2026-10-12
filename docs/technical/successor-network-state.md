@@ -71,6 +71,14 @@ Source exclusion identity; it has no member inventory or Node lifecycle view.
 not permission to work. `RetainedDuty` contains exact identity and intervals;
 caller-declared freshness/conflict/presence flags do not grant authority.
 
+State retains at most one authentication result for exact signed profile bytes
+and the exact generation, Network, Epoch digest/number and pinned authority.
+Parsed public fields are defensive copies. Every observation still reads the
+original durable profile/history, refuses conflict or digest disagreement,
+samples trusted time after that I/O and binds membership to current authenticated
+Epoch records. Expiry, owner failure and changed bytes/context cannot use the
+retained result as permission; it only avoids repeating identical cryptography.
+
 State borrows `PermitWork` before effects and observation, outside its lock.
 The callback may be concurrent and cannot call back into State. Process resource
 sampling, protect/drain policy and process monitoring stay with the application

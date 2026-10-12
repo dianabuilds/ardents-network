@@ -763,6 +763,25 @@ authorization to begin its later security, concurrency, or wire tracks.
 
 ## Current profiles
 
+`issuer-process-linux`, invoked by `make node-issuer-check`, independently runs
+the actual original Node Issuer under `ardents-issuer-process-v1`. The root driver,
+three separately hash-pinned artifacts, actual sole-process native envelope,
+missing-prerequisite refusal and race build requirements below also apply.
+Its workload requires actual bootstrap, verified Stock, fresh ordinary issuance
+and spending newly issued tokens on both Carriers. Separate original State
+return scheduling controls check held key/quota/result roots and participation
+through physical join, late canceled startup and authority/freshness refusal.
+The Issuer resource controls exercise actual descriptor loss, Go placement and
+resident-memory pressure under the distinct profile. Zero-test discovery fails.
+This profile grants no installed, throughput or whole-domain qualification.
+The command test artifact runs two mandatory sequential workloads, lifecycle
+and issuing operations, each with the same three-minute process timeout; the
+resource artifact retains its independent ninety-second timeout. Exact discovery
+rejects missing, extra or duplicate command-test names before execution. All
+declared cases run once under the identical native envelope. This routing keeps
+new operation/partial-write coverage within a separately bounded process; it
+does not change any case deadline, retry, native setting or protection threshold.
+
 `forwarding-process-linux`, invoked by `make node-process-check`, is the bounded
 new Forwarding development lane. A root driver stays outside every measured
 Node cgroup. Each canonical Node process uses its original sole-process leaf,
@@ -772,6 +791,11 @@ The driver independently pins the ordinary command and the `node_process_native`
 command/resource test binaries by SHA-256, rejects missing inputs and zero-test
 discovery, and retains physical manager/process completion. Test binaries may be
 built with race instrumentation; that evidence must name the actual build.
+Forwarding's resource process runs its original seven cases; the three new
+Issuer-specific controls belong to the separate Issuer resource process.
+Exact resource discovery requires all seven original Forwarding controls.
+Each profile's resident-memory control runs in its own original process:
+the first can leave actual native or Go memory pressure for a following control.
 `ARDENTS_NODE_NATIVE_COMMAND`, `ARDENTS_NODE_NATIVE_TEST` and
 `ARDENTS_NODE_RESOURCE_TEST` name the three absolute external artifact paths;
 their corresponding `_SHA256` variables are independent expected digests.

@@ -14,7 +14,16 @@ import (
 // Missing placement is an invalid environment, never a successful skip. The
 // real kernel, proc, Go runtime and original descriptors supply every success.
 func TestOriginalNativeProcessProfile(t *testing.T) {
-	guard, err := Open(context.Background(), Profile)
+	testOriginalNativeProcessProfile(t, Profile)
+}
+
+func TestOriginalNativeIssuerProcessProfile(t *testing.T) {
+	testOriginalNativeProcessProfile(t, IssuerProfile)
+}
+
+func testOriginalNativeProcessProfile(t *testing.T, profile string) {
+	t.Helper()
+	guard, err := Open(context.Background(), profile)
 	if err != nil {
 		t.Fatal("selected native process environment unavailable:", err)
 	}
@@ -45,7 +54,16 @@ func TestOriginalNativeProcessProfile(t *testing.T) {
 }
 
 func TestOriginalNativeEvidenceLossRetainsActualCloseFailure(t *testing.T) {
-	guard, err := Open(context.Background(), Profile)
+	testOriginalNativeEvidenceLoss(t, Profile)
+}
+
+func TestOriginalNativeIssuerEvidenceLossRetainsActualCloseFailure(t *testing.T) {
+	testOriginalNativeEvidenceLoss(t, IssuerProfile)
+}
+
+func testOriginalNativeEvidenceLoss(t *testing.T, profile string) {
+	t.Helper()
+	guard, err := Open(context.Background(), profile)
 	if err != nil {
 		t.Fatal("selected native process environment unavailable:", err)
 	}
@@ -65,7 +83,16 @@ func TestOriginalNativeEvidenceLossRetainsActualCloseFailure(t *testing.T) {
 }
 
 func TestOriginalNativeManagedMemoryPressureRetires(t *testing.T) {
-	guard, err := Open(context.Background(), Profile)
+	testOriginalNativeManagedMemoryPressure(t, Profile)
+}
+
+func TestOriginalNativeIssuerManagedMemoryPressureRetires(t *testing.T) {
+	testOriginalNativeManagedMemoryPressure(t, IssuerProfile)
+}
+
+func testOriginalNativeManagedMemoryPressure(t *testing.T, profile string) {
+	t.Helper()
+	guard, err := Open(context.Background(), profile)
 	if err != nil {
 		t.Fatal("selected native process environment unavailable:", err)
 	}

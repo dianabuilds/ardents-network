@@ -193,7 +193,23 @@ and `retirement_wait_ms` (1..5000). It requires the sole
 [Node/resource owner](../technical/network-route-node.md#forwarding-development-process-profile).
 Roots are canonical, independent and new-domain owned; certificates must match
 the exact signed member. Work must cover the receiving class allowance through
-Hosting before spend. No other Node role, restart or installed cutover is selected.
+Hosting before spend. Restart and installed cutover remain unselected.
+
+`ardents-next node issuer --config <file>` composes one original closed Issuer
+duty under mandatory `ardents-issuer-process-v1` on Linux. It accepts the same
+Network, credential, root and bounded retirement-wait inputs, plus
+`bootstrap_work` and `issuance`. The nested `issuance` object uses the exact
+`issuance initialize-results` prepared-root/binding declaration; startup opens
+these quota/key/result roots without initialization or key generation.
+All six local roots and State are canonical, distinct and non-nested. The
+credential and provisioned signer must match the authenticated Role2/subrole6
+member. Ordinary `work` must cover full Control64KiB, `bootstrap_work` must
+cover its actual128KiB lane, with separate termination capacity. No refill or
+bootstrap-to-ordinary relabel exists. Original key/journal custody remains
+until Route and issuing borrowers join. Bounded `node.issuer` output uses the
+same fixed phase/outcome/owner fields. A retirement wait timeout reports
+completion-unavailable and retains the process and its original owners until
+physical join; the bounded failed result cannot later become successful EXIT.
 
 The command emits bounded `node.forwarding` listening/refusal and joined/retiring
 outcomes. Joined cancellation exits 130, failure or unavailable completion exits

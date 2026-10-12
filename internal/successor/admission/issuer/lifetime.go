@@ -156,6 +156,9 @@ func (o Owner) Err() error {
 	s := o.state
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.cleanup == nil {
+		return s.failure
+	}
 	return errors.Join(s.failure, s.cleanup)
 }
 
@@ -186,8 +189,12 @@ func (o Owner) current() (time.Time, error) {
 		return time.Time{}, err
 	}
 	current, at, err := s.observe()
-	if err != nil || current != s.initial || current.ValidateAt(at) != nil || at.Before(s.openedAt) {
-		err = errors.Join(errors.New("original issuance authority unavailable"), err)
+	if err != nil {
+		o.Deny(err)
+		return time.Time{}, err
+	}
+	if current != s.initial || current.ValidateAt(at) != nil || at.Before(s.openedAt) {
+		err = errors.New("original issuance authority unavailable")
 		o.Deny(err)
 		return time.Time{}, err
 	}
@@ -218,8 +225,12 @@ func (o Owner) current() (time.Time, error) {
 	// Native key/journal I/O may have stalled. Reobserve actual external owners
 	// afterward; the pre-I/O process/State observation cannot authorize an effect.
 	current, fresh, err := s.observe()
-	if err != nil || current != s.initial || current.ValidateAt(fresh) != nil || fresh.Before(at) {
-		err = errors.Join(errors.New("original issuance authority unavailable after storage"), err)
+	if err != nil {
+		o.Deny(err)
+		return time.Time{}, err
+	}
+	if current != s.initial || current.ValidateAt(fresh) != nil || fresh.Before(at) {
+		err = errors.New("original issuance authority unavailable after storage")
 		o.Deny(err)
 		return time.Time{}, err
 	}

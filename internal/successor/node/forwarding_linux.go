@@ -362,10 +362,7 @@ func (f *forwarding) observeAdmission(binding receiving.Receiver) (receiving.Obs
 	if err != nil || m.DutyGeneration != binding.DutyGeneration {
 		return receiving.Observation{}, errors.Join(errors.New("original receiving duty changed"), err)
 	}
-	facts := admission.AuthorityFacts{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, Digest: p.Digest, IssuanceAuthorityKey: p.IssuanceAuthorityKey, IssuerNodeID: p.IssuerNodeID, IssuerDutyGeneration: p.IssuerDutyGeneration, Epoch: p.Epoch, NotBefore: p.NotBefore, NotAfter: p.NotAfter, TokenKeyCount: uint8(len(p.TokenKeys))}
-	for i, key := range p.TokenKeys {
-		facts.TokenKeys[i] = admission.TokenKey{WindowStart: key.WindowStart, Class: key.Class, SPKI: key.SPKI}
-	}
+	facts := admissionFacts(p)
 	end := m.NotAfter()
 	if p.NotAfter.Before(end) {
 		end = p.NotAfter

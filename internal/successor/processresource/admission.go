@@ -7,8 +7,12 @@ import (
 	"time"
 )
 
-// Profile names the sole local development envelope; it is not a wire profile.
+// Profile names the Forwarding local development envelope, not a wire profile.
 const Profile = "ardents-forwarding-process-v1"
+
+// IssuerProfile selects the independently qualified Issuer workload under the
+// same mandatory native envelope. It grants no extra workers or protocol bytes.
+const IssuerProfile = "ardents-issuer-process-v1"
 
 // Observation projects actual native readings only. Route timer/queue counts
 // are not supplied by this owner and cannot be inferred from these fields.
@@ -35,10 +39,10 @@ type originalProcess struct {
 	closeErr error
 }
 
-// Open checks the sole profile and establishes a genuine elapsed CPU baseline
+// Open checks the selected profile and establishes a genuine elapsed CPU baseline
 // before returning admission. It never accepts a caller-supplied measurement.
 func Open(ctx context.Context, profile string) (*Guard, error) {
-	if ctx == nil || profile != Profile {
+	if ctx == nil || (profile != Profile && profile != IssuerProfile) {
 		return nil, errors.New("process protection profile unavailable")
 	}
 	if err := ctx.Err(); err != nil {

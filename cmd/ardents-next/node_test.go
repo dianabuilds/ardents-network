@@ -7,7 +7,7 @@ import (
 )
 
 func TestNodeDispatchRequiresExactSelectedOperation(t *testing.T) {
-	for _, args := range [][]string{{"node"}, {"node", "source"}, {"node", "issuer"}, {"node", "inspect-process", "extra"}, {"node", "restart"}} {
+	for _, args := range [][]string{{"node"}, {"node", "source"}, {"node", "issuer-extra"}, {"node", "inspect-process", "extra"}, {"node", "restart"}} {
 		var out, diagnostic bytes.Buffer
 		if code := run(context.Background(), args, &out, &diagnostic); code != 2 {
 			t.Fatalf("unselected Node operation %v returned %d", args, code)

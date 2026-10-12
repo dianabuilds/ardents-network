@@ -1,12 +1,44 @@
 package state
 
 import (
+	"errors"
 	networkdomain "github.com/dianabuilds/ardents-network/internal/successor/network"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state/durable"
 )
+
+func TestRepeatedProfileAuthenticationStillChecksLoadedBytesAndAuthority(t *testing.T) {
+	owner, raw := closedProfileStoreFixture(t)
+	if _, err := owner.AcceptClosedProfile(raw); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := owner.CurrentRuntime(); err != nil {
+		t.Fatal(err)
+	}
+	owner.mu.RLock()
+	_, _, failedRead := owner.currentMembershipLocked(func([32]byte) (durable.ClosedProfileState, []byte, error) {
+		return durable.ClosedProfileState{}, nil, errors.New("original durable read lost")
+	})
+	_, _, changedSignature := owner.currentMembershipLocked(func(generation [32]byte) (durable.ClosedProfileState, []byte, error) {
+		stored, body, err := owner.storage.LoadClosedProfile(generation)
+		body[len(body)-1] ^= 1
+		return stored, body, err
+	})
+	owner.mu.RUnlock()
+	if failedRead == nil || changedSignature == nil {
+		t.Fatal("retained authentication replaced original durable bytes")
+	}
+	if _, err := owner.CurrentRuntime(); err != nil {
+		t.Fatal("refused loaded input replaced genuine profile", err)
+	}
+	owner.config.closedProfileAuthority = append([]byte(nil), owner.config.closedProfileAuthority...)
+	owner.config.closedProfileAuthority[0] ^= 1
+	if _, err := owner.CurrentRuntime(); err == nil {
+		t.Fatal("retained verification admitted a different authority")
+	}
+}
 
 func TestClosedProfileRejectsAmbiguousRecordBindingBeforeCommit(t *testing.T) {
 	owner, raw := closedProfileStoreFixture(t)

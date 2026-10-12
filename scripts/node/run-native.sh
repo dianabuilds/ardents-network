@@ -35,12 +35,21 @@ verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeOriginalAuthorityAndJoinBothCarriers$' >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeUnavailableCompletionRetainsOriginalProducerBothCarriers$' >/dev/null
 "$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNative' | grep '^TestOriginalNativeProcessProfile$' >/dev/null
+expected_resources='TestNativePressureAndUnavailableIntervalDenyAdmission
+TestOriginalNativeEvidenceLossRetainsActualCloseFailure
+TestOriginalNativeManagedMemoryPressureRetires
+TestOriginalNativeProcessProfile
+TestProfileAndOriginalCallerRefuseBeforeNativeEffects
+TestRequiredNativeCounterIsNotAnUnknownZero
+TestRequiredPressureRejectsMissingNonfiniteAndAmbiguous'
+discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^Test' | grep '^Test' | grep -v '^TestOriginalNativeIssuer' | sort)
+test "$discovered_resources" = "$expected_resources" || { echo 'Forwarding resource discovery differs' >&2; exit 2; }
 unit=ardents-forwarding-resource-native-$$.service
 systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     --property=CPUQuota=100% --property=CPUQuotaPeriodSec=100ms \
     --property=MemoryMax=1G --property=MemoryHigh=768M --property=TasksMax=256 \
     --property=LimitNOFILE=1024 --property=RuntimeMaxSec=120s \
     --setenv=GOMAXPROCS=1 --setenv=GOMEMLIMIT=512MiB \
-    -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.timeout=90s
+    -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^Test(ProfileAndOriginalCallerRefuseBeforeNativeEffects|NativePressureAndUnavailableIntervalDenyAdmission|RequiredNativeCounterIsNotAnUnknownZero|RequiredPressureRejectsMissingNonfiniteAndAmbiguous|OriginalNative(ProcessProfile|EvidenceLossRetainsActualCloseFailure|ManagedMemoryPressureRetires))$' -test.timeout=90s
 
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeNode' -test.timeout=3m

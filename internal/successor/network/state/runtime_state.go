@@ -16,6 +16,8 @@ import (
 // The durable package holds its exclusive physical root and persisted bytes.
 type networkState struct {
 	mu                  sync.RWMutex
+	profileMu           sync.Mutex
+	verifiedProfile     *profileVerification
 	config              config
 	current             *epoch.Decision
 	pendingDecision     *epoch.Decision
