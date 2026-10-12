@@ -38,7 +38,8 @@ func OpenNodeProducer(ctx context.Context, config Config, participation NodePart
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	if _, err := nodeParticipationRestriction(participation, NodePrepared); err != nil {
+	_, err := originalNodeRestriction(participation, NodePrepared)
+	if err != nil {
 		return nil, err
 	}
 	original := &nodeProducer{caller: ctx, config: config, participation: participation, phase: NodePrepared}
@@ -49,7 +50,7 @@ func OpenNodeProducer(ctx context.Context, config Config, participation NodePart
 	if err != nil {
 		return nil, err
 	}
-	err = store.RetainNode(original.producer, participation, NodePrepared)
+	err = store.retainOriginalNode(original.producer, participation, NodePrepared)
 	if err == nil {
 		err = original.match(store)
 	}
@@ -108,7 +109,7 @@ func (handle *NodeProducer) Live() error {
 	}
 	err = original.match(store)
 	if err == nil {
-		err = store.RetainNode(original.producer, original.participation, NodeLive)
+		err = store.retainOriginalNode(original.producer, original.participation, NodeLive)
 		if err == nil {
 			original.phase = NodeLive
 			err = original.match(store)
@@ -163,7 +164,7 @@ func (handle *NodeProducer) Close(ctx context.Context) error {
 }
 
 func (original *nodeProducer) match(store *store) error {
-	expected, err := nodeParticipationRestriction(original.participation, original.phase)
+	expected, err := originalNodeRestriction(original.participation, original.phase)
 	if err != nil {
 		return err
 	}

@@ -2,7 +2,6 @@ package issuer
 
 import (
 	"context"
-	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
 	"time"
@@ -19,33 +18,49 @@ func IssueCurrent(ctx context.Context, p Plan, raw []byte, kind quota.Kind, obse
 	if err != nil {
 		return Result{Phase: "input", Outcome: "invalid-input"}
 	}
-	initial, now, err := observe()
-	if err != nil || initial.ValidateAt(now) != nil {
-		return Result{Phase: "authority", Outcome: "authority-unavailable"}
+	o, opened := OpenCurrent(ctx, p, observe)
+	if opened.Outcome != "opened" {
+		return opened
 	}
-	b := p.AdmissionBinding
-	if initial.NetworkID != b.Network || initial.IssuerNodeID != b.Issuer || initial.IssuanceAuthorityKey != b.Authority || initial.Digest != b.Profile ||
-		initial.IssuerDutyGeneration != b.Duty || !initial.NotBefore.Equal(b.Start) || !initial.NotAfter.Equal(b.End) || int(initial.TokenKeyCount) != len(b.Keys) {
-		return Result{Phase: "authority", Outcome: "binding-mismatch"}
+	r := o.IssueCurrent(ctx, raw, kind)
+	closed := o.Close(context.Background())
+	r.Cleanup = closed.Cleanup
+	if o.Err() != nil {
+		if closed.Outcome != "closed" && r.Response != nil {
+			r.Phase = "authority"
+			r.Outcome = "authority-unavailable"
+		}
+		clear(r.Response)
+		r.Response = nil
+	}
+	for _, completion := range r.Cleanup {
+		if completion.Phase != "" && completion.Outcome != "closed" {
+			clear(r.Response)
+			r.Response = nil
+		}
+	}
+	if r.Response != nil {
+		current, at, err := observe()
+		if err != nil || current != o.state.initial || current.ValidateAt(at) != nil || at.Before(o.state.lastIssueAt) || at.Before(request.Permission.NotBefore) || !at.Before(request.Permission.NotAfter) || ctx.Err() != nil {
+			clear(r.Response)
+			r.Response = nil
+			r.Phase = "authority"
+			r.Outcome = "authority-unavailable"
+		}
+	}
+	return r
+}
+
+func matchesAuthority(b quota.LedgerBinding, current admission.AuthorityFacts) bool {
+	if current.NetworkID != b.Network || current.IssuerNodeID != b.Issuer || current.IssuanceAuthorityKey != b.Authority || current.Digest != b.Profile ||
+		current.IssuerDutyGeneration != b.Duty || !current.NotBefore.Equal(b.Start) || !current.NotAfter.Equal(b.End) || int(current.TokenKeyCount) != len(b.Keys) {
+		return false
 	}
 	for i, k := range b.Keys {
-		v := initial.TokenKeys[i]
+		v := current.TokenKeys[i]
 		if v.Class != k.Class || uint64(v.WindowStart.Unix()) != k.Window || string(v.SPKI[:]) != string(k.SPKI) {
-			return Result{Phase: "authority", Outcome: "binding-mismatch"}
+			return false
 		}
 	}
-	f := admission.Facts{Network: b.Network, Issuer: b.Issuer, Authority: b.Authority, Holder: request.Permission.HolderKey, Duty: b.Duty, DutyNotBefore: b.Start, DutyNotAfter: b.End, Now: now.UTC().Truncate(time.Second), Class: request.Class, Count: uint32(len(request.BlindedRequests))}
-	floor := now
-	recheck := func() (time.Time, error) {
-		if ctx.Err() != nil {
-			return time.Time{}, ctx.Err()
-		}
-		current, at, err := observe()
-		if err != nil || current != initial || at.Before(floor) || current.ValidateAt(at) != nil || at.Before(request.Permission.NotBefore) || !at.Before(request.Permission.NotAfter) {
-			return time.Time{}, errors.Join(errors.New("issuance authority changed"), err)
-		}
-		floor = at
-		return at.UTC().Truncate(time.Second), nil
-	}
-	return execute(ctx, p, raw, f, kind, false, recheck)
+	return true
 }

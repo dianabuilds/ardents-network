@@ -11,6 +11,62 @@ import (
 	"time"
 )
 
+func TestOriginalRendezvousNodeProducerRetainsConflictThroughExpiredWorkJoin(t *testing.T) {
+	now := time.Unix(1800000000, 0).UTC()
+	config := Config{Root: filepath.Join(t.TempDir(), "roles"), Clock: func() time.Time { return now }, Create: true}
+	facts := NodeParticipation{Identity: [32]byte{1}, FamilyID: [32]byte{2}, Assignment: "rendezvous", EpochUntil: now.Add(time.Minute), RecordUntil: now.Add(2 * time.Minute)}
+	legacy, err := nodeParticipationRestriction(facts, NodeLive)
+	if err != nil || legacy.Class != "route-rendezvous" {
+		t.Fatal("legacy assignment classification changed", legacy, err)
+	}
+	producer, err := OpenNodeProducer(t.Context(), config, facts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := producer.Live(); err != nil {
+		t.Fatal(err)
+	}
+	config.Create = false
+	now = now.Add(3 * time.Minute)
+	if err := producer.Check(); err == nil {
+		t.Fatal("expired work admitted")
+	}
+	store, err := Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(store.state.Duties) != 1 || store.state.Duties[0].Class != "node-duty" || store.state.Duties[0].NotAfter != facts.EpochUntil.Unix() {
+		t.Fatal("duplicate fence or renewed assignment", store.state.Duties)
+	}
+	if conflict, err := store.Conflict(facts.Identity, facts.FamilyID); err != nil || !conflict {
+		t.Fatal("physical join conflict expired", err)
+	}
+	foreign := [32]byte{9}
+	if err := store.Replace(foreign, []Duty{{Identity: [32]byte{3}, Family: facts.FamilyID, Class: "direct-source", State: "live", NotAfter: now.Add(time.Minute)}}); !errors.Is(err, ErrLocalRoleConflict) {
+		t.Fatal("Source crossed held Node join", err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if fresh, err := OpenNodeProducer(t.Context(), config, facts); err == nil || fresh != nil {
+		t.Fatal("expired original minted", err)
+	}
+	if err := producer.Close(context.Background()); err != nil {
+		t.Fatal("original joined removal", err)
+	}
+	store, err = Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if conflict, err := store.Conflict(facts.Identity, facts.FamilyID); err != nil || conflict {
+		t.Fatal("joined producer did not release", err)
+	}
+	if err := store.Replace(foreign, []Duty{{Identity: [32]byte{3}, Family: facts.FamilyID, Class: "direct-source", State: "live", NotAfter: now.Add(time.Minute)}}); err != nil {
+		t.Fatal("fresh Source refused after physical join", err)
+	}
+}
+
 // These actual journal tests exercise local producer lifetime only. Supplied
 // restriction facts do not establish authenticated State or Route admission.
 func TestNodeProducerOriginalCallerAndForeignSourceRetention(t *testing.T) {

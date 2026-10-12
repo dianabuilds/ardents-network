@@ -277,6 +277,7 @@ func openStorage(ctx context.Context, path string, b Binding, fault func(string)
 		return Store{}, ErrUnavailable
 	}
 	s.files["issuer.pin"] = info
+	s.material = sha256.Sum256(raw)
 	if ctx.Err() != nil {
 		return Store{}, ctx.Err()
 	}

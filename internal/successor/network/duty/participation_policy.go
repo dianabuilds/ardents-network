@@ -70,3 +70,13 @@ func nodeParticipationRestriction(participation NodeParticipation, phase NodePha
 	}
 	return Duty{Identity: restriction.Identity, Family: restriction.Family, Class: restriction.Class, State: restriction.Phase, NotAfter: restriction.NotAfter}, nil
 }
+
+func originalNodeRestriction(participation NodeParticipation, phase NodePhase) (Duty, error) {
+	facts := networkdomain.NodeParticipationFacts{Identity: participation.Identity, FamilyID: participation.FamilyID, Family: participation.Family, Assignment: participation.Assignment,
+		EpochUntil: participation.EpochUntil, RecordUntil: participation.RecordUntil}
+	restriction, err := facts.OriginalNodeRestriction(string(phase))
+	if err != nil {
+		return Duty{}, err
+	}
+	return Duty{Identity: restriction.Identity, Family: restriction.Family, Class: restriction.Class, State: restriction.Phase, NotAfter: restriction.NotAfter}, nil
+}

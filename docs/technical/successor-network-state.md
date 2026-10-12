@@ -151,6 +151,21 @@ Node restriction classification cannot choose the ordinary Initiator
 exemption or turn an assignment into a Direct Source; it retains the earlier
 Epoch/Record bound. Copied facts cannot mutate either aggregate.
 
+`NodeParticipationFacts.OriginalNodeRestriction` is the separate Network-owned
+projection consumed only by the private `duty.OpenNodeProducer` invocation.
+It validates the same assignment/family/bounds and produces one `node-duty`
+restriction, including for an Issuer's authenticated Rendezvous assignment.
+The caller supplies no class. This live restriction conflicts through actual
+joined producer release even after work expiry; it never extends NotAfter or
+allows expired work/fresh mint. Existing assignment-specific `Restriction`,
+`RetainNode`, persisted facts and their pruning remain unchanged. No additional
+fence record bypasses producer/identity/family duplicate policy, and Node never
+removes a foreign Source record. Its native journal control requires expired
+Rendezvous work refusal, retained conflict before join, failed same-family Source
+replacement, expired fresh-producer refusal and fresh Source success only after
+original joined removal. Supplied facts qualify this local mechanism, not signed
+State or live Issuer/Carrier/native-process acceptance.
+
 The exact `duty/participation_policy.go` adapter applies these decisions to the
 existing role journal. Root leases, watermark/generation continuity, canonical
 schema and strict version-1 conversion remain with that physical owner. Retired

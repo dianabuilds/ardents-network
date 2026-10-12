@@ -35,3 +35,22 @@ func (store *store) RetainNode(producer [32]byte, participation NodeParticipatio
 	}
 	return store.Replace(producer, []Duty{restriction})
 }
+
+// Original producers preserve the existing RetainNode consumer when the two
+// Network-owned projections agree (including Forwarding). A different original
+// lifetime projection replaces exactly one record, never a second fence or an
+// intermediate time-held live record while physical users remain.
+func (store *store) retainOriginalNode(producer [32]byte, participation NodeParticipation, phase NodePhase) error {
+	original, err := originalNodeRestriction(participation, phase)
+	if err != nil {
+		return err
+	}
+	legacy, err := nodeParticipationRestriction(participation, phase)
+	if err != nil {
+		return err
+	}
+	if original == legacy {
+		return store.RetainNode(producer, participation, phase)
+	}
+	return store.Replace(producer, []Duty{original})
+}

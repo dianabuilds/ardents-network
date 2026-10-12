@@ -86,8 +86,11 @@
       {
         "symbols": [
           "internal/successor/network.NodeParticipationFacts.Restriction",
+          "internal/successor/network.NodeParticipationFacts.OriginalNodeRestriction",
           "internal/successor/network/duty.nodeParticipationRestriction",
+          "internal/successor/network/duty.originalNodeRestriction",
           "internal/successor/network/duty.store.RetainNode",
+          "internal/successor/network/duty.store.retainOriginalNode",
           "internal/successor/network/duty.NodeProducer.Check",
           "internal/successor/network/duty.NodeProducer.Close",
           "internal/successor/network/duty.NodeProducer.Live",

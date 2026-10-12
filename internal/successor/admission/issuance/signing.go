@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/binary"
+	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 
 	"github.com/cloudflare/circl/blindsign/blindrsa"
@@ -45,16 +46,18 @@ func (store Store) sign(ctx context.Context, batch []byte) ([]byte, error) {
 	if s.closed {
 		return nil, ErrClosed
 	}
-	if err := s.checkIdentity(); err != nil {
+	if err := s.checkRetained(); err != nil {
 		return nil, err
 	}
 	raw, _, err := readOwned(s.root, "issuer.keys", maximumMaterial)
 	if err != nil {
+		s.failure = err
 		return nil, err
 	}
 	defer clear(raw)
 	v, err := decodeMaterial(raw, s.inventory.Binding)
 	if err != nil || v.Digest != s.inventory.Digest {
+		s.failure = ErrUnavailable
 		return nil, ErrUnavailable
 	}
 	target := -1
@@ -75,6 +78,7 @@ func (store Store) sign(ctx context.Context, batch []byte) ([]byte, error) {
 	n := int(binary.BigEndian.Uint16(raw[offset+9:]))
 	key, err := x509.ParsePKCS1PrivateKey(raw[offset+11 : offset+11+n])
 	if err != nil {
+		s.failure = ErrUnavailable
 		return nil, ErrUnavailable
 	}
 	result := admission.ClosedTokenBatchResult{Status: admission.ClosedTokenIssued}
@@ -84,12 +88,16 @@ func (store Store) sign(ctx context.Context, batch []byte) ([]byte, error) {
 			return nil, ctx.Err()
 		}
 		sig, err := signer.BlindSign(blinded[3:])
+		if errors.Is(err, blindrsa.ErrUnexpectedSize) || errors.Is(err, blindrsa.ErrInvalidMessageLength) {
+			return nil, ErrInvalid
+		}
 		if err != nil || len(sig) != 256 {
-			return nil, ErrUnavailable
+			s.failure = errors.Join(ErrUnavailable, err)
+			return nil, s.failure
 		}
 		result.Signatures = append(result.Signatures, sig)
 	}
-	if err := s.checkIdentity(); err != nil {
+	if err := s.checkRetained(); err != nil {
 		return nil, err
 	}
 	return admission.EncodeClosedTokenBatchResult(result)

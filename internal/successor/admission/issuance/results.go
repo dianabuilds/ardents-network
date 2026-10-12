@@ -177,6 +177,27 @@ func (r ResultStore) Issue(ctx context.Context, c quota.DebitConfirmation, now t
 	return append([]byte(nil), response...), exists, nil
 }
 func (s *resultState) bindingDigest() [32]byte { d, _ := quota.BindingDigest(s.binding); return d }
+
+// Check observes original result-root custody before a new debit; no result
+// or quota authority is minted, and observed storage loss remains terminal.
+func (r ResultStore) Check() error {
+	if r.state == nil {
+		return ErrClosed
+	}
+	s := r.state
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return ErrClosed
+	}
+	if s.failure == nil {
+		s.failure = s.check()
+	}
+	if s.failure != nil {
+		return errors.Join(ErrUncertain, s.failure)
+	}
+	return nil
+}
 func (r ResultStore) Close() error {
 	if r.state == nil {
 		return ErrClosed

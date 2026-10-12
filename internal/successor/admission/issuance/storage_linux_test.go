@@ -16,6 +16,116 @@ import (
 	"time"
 )
 
+func TestStoreObservedLossCannotReviveAfterPathRestoration(t *testing.T) {
+	for _, name := range []string{"issuer.lock", "issuer.keys", "issuer.pin", "root"} {
+		t.Run(name, func(t *testing.T) {
+			base := t.TempDir()
+			root := filepath.Join(base, "keys")
+			binding := testBinding(1)
+			if err := Initialize(t.Context(), root, binding); err != nil {
+				t.Fatal(err)
+			}
+			s, err := Open(t.Context(), root, binding)
+			if err != nil {
+				t.Fatal(err)
+			}
+			copyOwner := s
+			original := root
+			if name != "root" {
+				original = filepath.Join(root, name)
+			}
+			moved := filepath.Join(base, "held")
+			if err := os.Rename(original, moved); err != nil {
+				t.Fatal(err)
+			}
+			first := s.Check()
+			if first == nil {
+				t.Fatal("actual custody loss accepted")
+			}
+			if err := os.Rename(moved, original); err != nil {
+				t.Fatal(err)
+			}
+			if err := copyOwner.Check(); err != first {
+				t.Fatal("copy forgot original loss", err)
+			}
+			if _, err := s.Inventory(); err == nil {
+				t.Fatal("restored path revived inventory")
+			}
+			if err := s.Close(); !errors.Is(err, first) {
+				t.Fatal("close lost original cause", err)
+			}
+			fresh, err := Open(t.Context(), root, binding)
+			if err != nil {
+				t.Fatal("independent verified reopen", err)
+			}
+			if err := fresh.Close(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+// Metadata equality cannot replace exact immutable-byte equality. This control
+// changes real material while restoring the inode's original size/time, so only
+// the retained material digest rejects before any dependent debit/sign effect.
+func TestStoreMaterialDigestRefusesChangedBytesWithOriginalMetadata(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "keys")
+	binding := testBinding(1)
+	if err := Initialize(t.Context(), root, binding); err != nil {
+		t.Fatal(err)
+	}
+	s, err := Open(t.Context(), root, binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "issuer.keys")
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(original)
+	changed := append([]byte(nil), original...)
+	defer clear(changed)
+	changed[len(changed)-1] ^= 1
+	if err := os.WriteFile(path, changed, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, before.ModTime(), before.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.Stat(path)
+	if err != nil || !sameIdentity(before, after) {
+		t.Fatal("control did not preserve observed metadata", err)
+	}
+	first := s.Check()
+	if first == nil {
+		t.Fatal("changed private bytes accepted under original metadata")
+	}
+	if err := os.WriteFile(path, original, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(path, before.ModTime(), before.ModTime()); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.Check(); err != first {
+		t.Fatal("restored material revived original owner", err)
+	}
+	if err := s.Close(); !errors.Is(err, first) {
+		t.Fatal("original material loss forgotten", err)
+	}
+	fresh, err := Open(t.Context(), root, binding)
+	if err != nil {
+		t.Fatal("independent verified reopen", err)
+	}
+	if err := fresh.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestStoreDurableIdentityAndCopies(t *testing.T) {
 	b := testBinding(1)
 	root := filepath.Join(t.TempDir(), "keys")

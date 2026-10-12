@@ -210,6 +210,27 @@ func (l *Ledger) Close() error {
 	s.closeErr = errors.Join(s.inject("close"), releaseAdmissionLock(s.lock), s.root.Close())
 	return s.closeErr
 }
+
+// Check retains original storage failure before a dependent effect. It grants
+// no confirmation, changes no quota and cannot repair or revive this ledger.
+func (l *Ledger) Check() error {
+	if l == nil || l.state == nil {
+		return ErrUnavailable
+	}
+	s := l.state
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return ErrUnavailable
+	}
+	if s.failure == nil {
+		s.failure = s.checkFiles()
+	}
+	if s.failure != nil {
+		return errors.Join(ErrUncertain, s.failure)
+	}
+	return nil
+}
 func (s *ledgerState) inject(phase string) error {
 	if s.fault != nil {
 		return s.fault(phase)
