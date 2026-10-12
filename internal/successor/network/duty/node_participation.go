@@ -19,6 +19,7 @@ const (
 // the other. The producer remains responsible for releasing joined work.
 type NodeParticipation struct {
 	Identity                [32]byte
+	FamilyID                [32]byte
 	Family                  string
 	Assignment              string
 	EpochUntil, RecordUntil time.Time

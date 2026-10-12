@@ -153,6 +153,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
+		"forwarding-process-linux":          false,
 		"custody-native-linux":              false,
 		"execution-lifecycle":               false,
 		"execution-route":                   false,

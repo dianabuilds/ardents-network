@@ -328,6 +328,8 @@ func successorImportAllowed(source, dependency string) bool {
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
 	owner := path.Dir(source)
 	permitted := map[string][]string{
+		"internal/successor/processresource":         {},
+		"internal/successor/node":                    {"admission", "admission/receiving", "hosting", "network", "network/duty", "processresource", "route/ardp", "route/receiver", "route/role"},
 		"internal/successor/network":                 {},
 		"internal/successor/network/closedprofile":   {},
 		"internal/successor/network/duty":            {},
@@ -390,6 +392,15 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                           {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if source == "cmd/ardents-next/node_forwarding_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_process.go" && dependency == modulePath+"/internal/successor/processresource" {
+			return true
+		}
+		if source == "cmd/ardents-next/node_native_linux_test.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
 		if source == "cmd/ardents-next/publication_network_linux_test.go" && (dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}

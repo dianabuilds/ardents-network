@@ -819,6 +819,30 @@ artifact qualification runner. Any version or runtime use repeats this review.
 `make tools-install` is the only documented installation command. Normal build
 and quick-check targets never install or upgrade tools implicitly.
 
+The bounded Ubuntu 24.04 amd64 native Node driver may bootstrap its missing
+GNU Make through `make tools-install NODE_NATIVE_HOST_TOOLS_ONLY=1`. A Windows
+invocation uses the existing `Ubuntu-24.04` WSL distribution; a Linux invocation
+requires that exact release/account environment. It installs only authenticated
+Noble `make=4.3-4.1build2`, with no new repository, unauthenticated package,
+removal or host upgrade. An existing different version refuses rather than
+downgrading. This is an explicit development tool, never a product dependency.
+Actual package/version and native candidate digests remain in the local receipt.
+The reviewed installation simulation adds one package and no dependency upgrade.
+If the native host cannot reach its repository, `NODE_NATIVE_MAKE_PACKAGE` may
+name an absolute native path to that exact external `.deb`; the installer checks
+the independent authenticated APT SHA-256
+`1fe6a815b56c7b6e9ce4086a363f09444bbd0a0d30e230c453d0b78e44b57a99`
+before local APT installation. A missing or different package refuses.
+
+Primary sources accessed 2026-10-12: [Ubuntu Noble package](https://packages.ubuntu.com/noble/make)
+and [Ubuntu security update mechanism](https://documentation.ubuntu.com/security/security-updates/).
+Noble's distribution maintenance supplies the update path; its package version
+is not evidence of perpetual safety. Reassess advisories and the exact package
+before renewing this environment. The installer runs only the trusted repository
+Makefile; it accepts no downloaded Makefile, plugin or dynamic extension. Normal
+gates never call this bootstrap. Failed primary CVE-page retrieval is not a
+passing vulnerability scan or independent security validation.
+
 ## Local diagnostic tools
 
 The engineering diagnostics owner is [local-diagnostics.md](local-diagnostics.md).

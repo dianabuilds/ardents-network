@@ -14,12 +14,9 @@
     },
     {
       "symbols": [
-        "internal/successor/network.NodeParticipationFacts.Restriction",
         "internal/successor/network/closedprofile.Prepare",
-        "internal/successor/network/duty.nodeParticipationRestriction",
         "internal/successor/network/duty.Open",
         "internal/successor/network/duty.ReadConflict",
-        "internal/successor/network/duty.store.RetainNode",
         "internal/successor/network/epoch.appendInitialPreparationText",
         "internal/successor/network/epoch.candidateCarrierEligible",
         "internal/successor/network/epoch.encodeInitialClosedEpoch",
@@ -86,6 +83,26 @@
       }
     ],
     "windows-amd64": [
+      {
+        "symbols": [
+          "internal/successor/network.NodeParticipationFacts.Restriction",
+          "internal/successor/network/duty.nodeParticipationRestriction",
+          "internal/successor/network/duty.store.RetainNode",
+          "internal/successor/network/duty.NodeProducer.Check",
+          "internal/successor/network/duty.NodeProducer.Close",
+          "internal/successor/network/duty.NodeProducer.Live",
+          "internal/successor/network/duty.OpenNodeProducer",
+          "internal/successor/network/duty.nodeProducer.match",
+          "internal/successor/network/duty.nodeProducer.permit",
+          "internal/successor/node.separateRoots",
+          "internal/successor/processresource.nativeCounter",
+          "internal/successor/processresource.nativePressure"
+        ],
+        "classification": "Linux Forwarding native composition with portable rule tests",
+        "rationale": "The genuine ardents-next Node command reaches these exact symbols on Linux. Windows refuses Forwarding before effects; portable producer, path and counter rules retain behavior tests on both platforms. No Linux production exception is granted.",
+        "owner": "Product Owner and Codex; original Node lifetime and Network participation",
+        "retirement": "Remove each exact Windows entry when a selected Windows native Node consumer reaches it, or its owning contract/source is retired."
+      },
       {
         "symbols": [
           "internal/successor/connection.BindRecipient",

@@ -184,6 +184,28 @@ the independently delivered manifest pin argument.
 
 ## `ardents-node`
 
+The isolated development consumer `ardents-next node forwarding --config <file>`
+starts one original authenticated Forwarding duty on Linux. Its closed input
+contains `network`, `node_id`, `process_profile`, `participation_root`,
+`spend_root`, `hosting_root`, `certificate`, `private_key`, `work`, `termination`
+and `retirement_wait_ms` (1..5000). It requires the sole
+`ardents-forwarding-process-v1` native envelope described by the
+[Node/resource owner](../technical/network-route-node.md#forwarding-development-process-profile).
+Roots are canonical, independent and new-domain owned; certificates must match
+the exact signed member. Work must cover the receiving class allowance through
+Hosting before spend. No other Node role, restart or installed cutover is selected.
+
+The command emits bounded `node.forwarding` listening/refusal and joined/retiring
+outcomes. Joined cancellation exits 130, failure or unavailable completion exits
+1, and malformed input/output failure exits 2. A retirement timeout is not
+physical completion. Unsupported platforms refuse before reading configuration.
+Joined failures may include fixed `first_owner` and `cleanup_owner` categories;
+they expose neither raw errors nor paths. Refused exchanges can retain an actual
+Route cleanup failure, which remains failed despite known physical join.
+`ardents-next node inspect-process` projects actual process observations or
+unavailable, with queue/timer counts explicitly unmeasured. It grants no duty,
+capacity, readiness, supported-host or privacy qualification.
+
 `ardents-node hosting initialize --config PATH` accepts a canonical
 `ardents-hosting-initialization-v1` plan and initializes the host-owned Resource
 policy root for one provider period. Later Node plans reopen that root; they

@@ -62,7 +62,7 @@ func participationError(err error) error {
 }
 
 func nodeParticipationRestriction(participation NodeParticipation, phase NodePhase) (Duty, error) {
-	facts := networkdomain.NodeParticipationFacts{Identity: participation.Identity, Family: participation.Family, Assignment: participation.Assignment,
+	facts := networkdomain.NodeParticipationFacts{Identity: participation.Identity, FamilyID: participation.FamilyID, Family: participation.Family, Assignment: participation.Assignment,
 		EpochUntil: participation.EpochUntil, RecordUntil: participation.RecordUntil}
 	restriction, err := facts.Restriction(string(phase))
 	if err != nil {

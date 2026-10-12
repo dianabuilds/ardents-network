@@ -680,6 +680,12 @@ projection and remain in its platform allowance because Linux production
 still has retained Route consumers. That allowance does not permit removing
 or reconnecting shared mechanics in the one-engine retirement slice.
 
+Node's original Linux Forwarding consumer similarly reaches its portable
+producer, path and counter rules. Their exact Windows entries are listed as
+native-composition reachability, with behavior tests retained. They grant no
+Linux production exception or Windows runtime qualification. Local retirement
+notice tests preserve foreign, wrapped physical and cancellation cleanup causes.
+
 The same exact platform classification covers new Installation's portable
 assembly, inspection, journal and typed manager rules reached by genuine Linux
 `ardents-next installation provision/check` consumers. Windows refuses their
@@ -756,6 +762,27 @@ for the repaired candidate, not completion of the formal deep audit or
 authorization to begin its later security, concurrency, or wire tracks.
 
 ## Current profiles
+
+`forwarding-process-linux`, invoked by `make node-process-check`, is the bounded
+new Forwarding development lane. A root driver stays outside every measured
+Node cgroup. Each canonical Node process uses its original sole-process leaf,
+the fixed process limits in the Node/resource owner and genuine signed-State,
+token, participation and Hosting owners. TCP/TLS and QUIC are both required.
+The driver independently pins the ordinary command and the `node_process_native`
+command/resource test binaries by SHA-256, rejects missing inputs and zero-test
+discovery, and retains physical manager/process completion. Test binaries may be
+built with race instrumentation; that evidence must name the actual build.
+`ARDENTS_NODE_NATIVE_COMMAND`, `ARDENTS_NODE_NATIVE_TEST` and
+`ARDENTS_NODE_RESOURCE_TEST` name the three absolute external artifact paths;
+their corresponding `_SHA256` variables are independent expected digests.
+Missing Linux, systemd, cgroup/PSI, privilege, artifact, durable filesystem or
+loopback is an invalid environment. This lane establishes no supported Node host,
+installed operation, independent controller, capacity or privacy qualification.
+If the existing Ubuntu24.04 native host lacks Make, its explicit bootstrap is
+`make tools-install NODE_NATIVE_HOST_TOOLS_ONLY=1` from the existing Windows
+checkout or the exact root Ubuntu host. The dependency owner pins the one
+authenticated package; ordinary gates do not install it. Prebuilt artifact
+execution requires no second Go installation on that driver host.
 
 `hosting-budget-linux` runs `make hosting-check`: isolated durable Hosting and
 test-only Admission/Hosting I/O composition and compiled command lifecycle with race checks on Linux amd64.

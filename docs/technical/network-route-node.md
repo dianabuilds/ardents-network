@@ -701,6 +701,91 @@ measured by the live cgroup adapter, including its invalid-sample rule when a
 process disappears during measurement. A component fixture with a declared
 owner-use model cannot qualify real OS placement or resource use.
 
+### Forwarding development process profile
+
+The new-domain Forwarding runtime selects one mandatory local development
+profile, `ardents-forwarding-process-v1`. The Product Owner approved this
+bounded envelope on 2026-10-12. It is separate from the predecessor command's
+unselected resource-profile input and does not revive a historical profile.
+Selection is not evidence of an implemented accepting Node, supported host,
+installed invocation, throughput, capacity or privacy qualification.
+
+| Checked native setting | Required value |
+|---|---|
+| Platform and placement | Linux, cgroup v2, one original process in a separate leaf cgroup |
+| `cpu.max` | `100000 100000` |
+| `memory.high` | `805306368` bytes (768 MiB) |
+| `memory.max` | `1073741824` bytes (1 GiB) |
+| `pids.max` | `256` |
+| `RLIMIT_NOFILE` soft and hard | `1024` |
+| `GOMAXPROCS` | `1` |
+| `GOMEMLIMIT` | `536870912` bytes (512 MiB) |
+
+The process-resource mechanism checks the original process/cgroup and actual
+kernel limits; supplied declarations alone cannot admit work. Its observations
+include actual process and cgroup memory, cumulative CPU, an elapsed CPU
+baseline, native pressure and memory events, descriptors, threads and Go-managed
+memory. Each observation declares its scope, observation interval, freshness
+and availability. An initial CPU counter without an elapsed baseline is not a
+measured CPU rate. Missing, stale, ambiguous or changed original placement
+refuses admission. Unsupported platforms refuse before runtime effects.
+
+Protection admission is synchronous at the original work owner's checks.
+Notifications and periodic sampling do not give an old accepting observation
+a polling grace period. Pressure or evidence loss denies dependent effects and
+interrupts original users; the Node lifetime still joins Route before returning
+reservations, closing purpose roots, removing its participation producer or
+releasing remaining State/resource/key owners. A bounded wait failure cannot
+publish joined completion or create a replacement invocation.
+
+Route continues to own its finite queues and physical users. Queue/timer
+diagnostics must distinguish measured, unavailable and unmeasured observations;
+unobserved counts are never emitted as zero or used as capacity evidence.
+Whole-process/cgroup limits include resources that cannot be attributed to one
+Route queue. Hosting continues to own provider-period bytes and reservations;
+this local process profile grants no token, assignment, Carrier choice or extra
+Hosting allowance. Independent native observations and both-Carrier causal
+tests must verify the actual new command; a component model, a container sharing
+its measured cgroup or a Windows gate does not establish that result.
+
+### Original Forwarding composition
+
+`internal/successor/node` and `ardents-next node forwarding` compose one exact
+new-domain Forwarding duty. The original State owner remains command-owned;
+the invocation retains native process admission, its private producer,
+purpose-specific TLS material, receiving Admission, Hosting and Route users.
+Copied handles share that original lifetime and late terminal failure; a zero
+handle supplies no admission or completion evidence.
+Every receiving grant reserves first and checks Hosting coverage of the complete
+Forward class allowance before spend. Refill keeps the original reservation,
+deadline and termination dependency. A smaller operator envelope refuses;
+neither a small test workload nor successful HELLO can certify full coverage.
+
+Checks cross owners outside the Node state mutex, reobserve process/producer/
+State and compare the original profile and duty after I/O. Stop denies locally
+and cancels the original users; Receiver.Close interrupts before its actual
+join. Only after that join may purpose roots, Hosting, the original producer,
+native pins, TLS material and then State close. The one-second observation cap
+is rechecked after State I/O. No cached positive or notification grants work.
+
+Route may return this exact invocation's unwrapped local retirement notice from
+its authority watcher while cancellation joins. That notice is distinct from
+a physical cleanup failure. All foreign causes and physical wrappers remain
+failures, including a wrapper around cancellation or the local notice. First
+failure and actual cleanup failures remain in the retained result; a bounded
+command wait can report completion-unavailable but cannot publish joined success.
+
+The native scenario in `cmd/ardents-next/node_native_linux_test.go` starts
+hash-pinned actual commands with genuine signed State, Stock, Hosting and
+independent roots. It exercises both Carriers, explicit cancellation, changed
+native CPU protection and lost State clock evidence, then reopens Hosting and
+participation after manager/process completion. Native process tests separately
+exercise real descriptor loss and resident Go memory over the selected limit.
+An undersized-envelope negative control leaves the exact real spend journal
+unchanged and returns its unborrowed capacity before receiving spend.
+These cases do not establish complete blocked-I/O, startup, expiry, successor,
+refill, crash or installed acceptance. The selected issue owns that acceptance.
+
 ## Current limits and limitations
 
 The implemented system is a project-controlled Closed Test Network. A local
