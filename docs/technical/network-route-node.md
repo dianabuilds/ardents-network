@@ -766,7 +766,13 @@ State and compare the original profile and duty after I/O. Stop denies locally
 and cancels the original users; Receiver.Close interrupts before its actual
 join. Only after that join may purpose roots, Hosting, the original producer,
 native pins, TLS material and then State close. The one-second observation cap
-is rechecked after State I/O. No cached positive or notification grants work.
+is rechecked after State I/O; expiry of that process observation retains the
+process owner category. No cached positive or notification grants work.
+An expired Epoch/Record denies original work but cannot release the live Node's
+local identity/family conflict while its physical users are still joining.
+Network retains the `node-duty/live` restriction until original producer Close;
+its persisted bound is not renewed. Prepared/quarantined facts remain time-held,
+and a new live Node cannot be minted with an already expired stored bound.
 
 Route may return this exact invocation's unwrapped local retirement notice from
 its authority watcher while cancellation joins. That notice is distinct from
@@ -790,12 +796,55 @@ An undersized-envelope negative control leaves the exact real spend journal
 unchanged and returns its unborrowed capacity before receiving spend.
 The partial-startup matrix independently refuses wrong keys and roles, shared
 roots, an unselected process profile, unavailable Hosting/spend/listener roots
-and local identity/family conflicts on both Carriers. It checks original Source
+and local identity/family conflicts on both Carriers. Initial signed State
+conflict and expired membership also refuse before producer/spend effects;
+their unavailability survives State reopen. The matrix checks original Source
 history preservation, absent pre-admission spend, actual empty late-startup spend
 headers and producer removal only after failed startup joins. A restored-input
 control starts and joins the same signed member under the selected native profile.
-These cases do not establish complete blocked-I/O, expiry, successor,
-refill, crash or installed acceptance. The selected issue owns that acceptance.
+The native parent-refill scenario in
+`cmd/ardents-next/node_refill_native_linux_test.go` drives initial ADMIT and
+parent refill through the actual command on both Carriers. Real Stock supplies
+both tokens. Successful refill adds the independently fixed 988-byte debit
+under the original termination reservation; actual competing Hosting work
+and bounded real interface traffic refuse the addition before the second spend.
+After original manager/process
+join, reopening Receiving preserves the successful initial/refill burns and
+permits the token refused before spend. Hosting retains measured use and has
+no original reservations after joined retirement.
+The native original-authority scenario in
+`cmd/ardents-next/node_authority_native_linux_test.go` opens genuine State and
+Node owners in one selected process, with signed inputs prepared outside its
+measured cgroup. A scheduling barrier delays only the return of a completed
+actual State observation. Stop does not wait under a Node mutex for that foreign
+return; the original completion, producer and purpose root remain retained until
+the watcher joins. Signed successor, signed profile conflict, member expiry and
+stale process evidence refuse the original duty and survive applicable reopen.
+Late startup cancellation occurs after observing the actual bound listener and
+before successful handoff; it returns the original caller cause and joins its
+partial listener, producer and roots. Copied handles retain the same result.
+
+The actual command's unavailable-completion case in
+`cmd/ardents-next/node_completion_native_linux_test.go` occupies the original
+producer journal's exclusive lease as a test fault. A one-millisecond command
+wait reports `retiring/completion-unavailable`; manager/process termination is
+not Node completion. The unresolved producer remains conflicting across reopen,
+and a new producer cannot adopt it. This grants no recovery or root-reset right.
+
+These cases do not qualify stalled kernel/filesystem syscalls, arbitrary crash
+recovery, installed operation, independent operators or privacy. The selected
+issue owns full bounded acceptance and source-matched verification receipts.
+
+| Original Forwarding invariant | Owner and concrete behavior evidence |
+|---|---|
+| Genuine startup and both-Carrier forwarding | Actual canonical command in `TestNativeNodeForwardingBothCarriers`; signed State, Stock, receiving Admission, Hosting and original native process/producer |
+| Key/role/profile/root/conflict refusal and partial cleanup | Actual command in `TestNativeNodePartialStartupRefusalsBothCarriers`; preserved foreign Source/file bytes, absent early spend, empty late journal, root/producer cleanup and restored-input control |
+| Native protection, availability and pressure | Actual command's CPU-protection loss; actual process-resource descriptor loss and resident-memory tests; `TestNativeNodeOriginalAuthorityAndJoinBothCarriers` post-State-I/O freshness refusal |
+| Original authority, caller and final acquisition handoff | Genuine original State/Node native composition with signed successor/conflict, member expiry, held observation return, Stop/caller cancellation and late startup cancellation |
+| Physical join before root/producer return | Held original watcher in native composition; occupied-lease actual-command unavailable completion; live producer expiry/durable foreign-replacement controls in new Network/duty |
+| Initial/refill reservation and irreversible spend | Actual command in `TestNativeNodeParentRefillAndReopenBothCarriers`; exact 988-byte additional coverage, real pre-spend capacity loss, retained journals, replay refusal and measured-use floor |
+| Original result and foreign cleanup provenance | Native cancellation/startup cases plus Node retirement/copy regressions; only the exact private notice is removed, and physical wrappers/foreign causes remain errors |
+| Unsupported platform and bounded public output | `TestCompiledNodeUnsupportedPlatformRefusesBeforePrivateInput`; Node dispatch and inspection tests preserve finite output and distinguish unmeasured queues/timers |
 
 ## Current limits and limitations
 

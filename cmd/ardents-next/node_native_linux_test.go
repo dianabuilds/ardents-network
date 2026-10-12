@@ -269,8 +269,11 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 				}
 			}
 			if len(signals) > 3 {
-				if err := exec.Command("systemctl", signals...).Run(); err != nil {
-					t.Fatal("original caller batch cancellation unavailable", err)
+				if raw, err := exec.Command("systemctl", signals...).CombinedOutput(); err != nil {
+					for _, process := range processes {
+						t.Log("original unit terminal evidence", process.unit, process.diagnostic.String())
+					}
+					t.Fatal("original caller batch cancellation unavailable", err, string(raw))
 				}
 				for _, process := range processes {
 					process.signaled = true
@@ -362,7 +365,7 @@ func TestNativeNodePartialStartupRefusalsBothCarriers(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for index, fault := range []string{"wrong-key", "wrong-role", "shared-root", "wrong-profile", "hosting-open", "spend-open", "listener-open", "identity-conflict", "family-conflict"} {
+			for index, fault := range []string{"wrong-key", "wrong-role", "shared-root", "wrong-profile", "hosting-open", "spend-open", "listener-open", "identity-conflict", "family-conflict", "state-conflict", "expired-member"} {
 				t.Run(fault, func(t *testing.T) {
 					certificate := certificates[[32]byte{12}]
 					if fault == "wrong-key" {
@@ -382,7 +385,52 @@ func TestNativeNodePartialStartupRefusalsBothCarriers(t *testing.T) {
 					}
 					clear(key)
 					clear(encoded)
-					networkPlan := seedNativeNodeState(t, f, bundle, clock)
+					initial := bundle
+					var expires time.Time
+					if fault == "expired-member" {
+						short := f.spec
+						short.Nodes = append([]networkfixture.ClosedNode(nil), f.spec.Nodes...)
+						expires = time.Now().Add(2 * time.Second).UTC().Truncate(time.Second)
+						for index := range short.Nodes {
+							if short.Nodes[index].NodeID == [32]byte{12} {
+								short.Nodes[index].ValidUntil = expires
+							}
+						}
+						initial, err = networkfixture.BuildClosed(short)
+						if err != nil {
+							t.Fatal(err)
+						}
+					}
+					networkPlan := seedNativeNodeState(t, f, initial, clock)
+					if fault == "state-conflict" {
+						changed := f.spec
+						changed.IssuanceAuthority[0] ^= 1
+						conflict, err := networkfixture.BuildClosed(changed)
+						if err != nil || conflict.Epoch.Digest != initial.Epoch.Digest {
+							t.Fatal("conflicting profile changed its original Epoch", err)
+						}
+						config, err := networkStateConfig(&networkPlan)
+						if err != nil {
+							t.Fatal(err)
+						}
+						stateOwner, err := state.Open(config)
+						if err != nil {
+							t.Fatal(err)
+						}
+						_, conflictErr := stateOwner.AcceptClosedProfile(conflict.Profile)
+						if closeErr := stateOwner.Close(); conflictErr == nil || closeErr != nil {
+							t.Fatal("genuine signed State conflict was not retained", conflictErr, closeErr)
+						}
+					}
+					if fault == "expired-member" {
+						timer := time.NewTimer(time.Until(expires) + 50*time.Millisecond)
+						select {
+						case <-timer.C:
+						case <-t.Context().Done():
+							t.Fatal(t.Context().Err())
+						}
+						timer.Stop()
+					}
 					participation := filepath.Join(t.TempDir(), "participation")
 					spend := t.TempDir()
 					budget := routeProcessBudget(t)
@@ -496,8 +544,17 @@ func TestNativeNodePartialStartupRefusalsBothCarriers(t *testing.T) {
 					if err != nil {
 						t.Fatal("original State did not close after partial join", err)
 					}
-					if _, err := reopened.CurrentRuntime(); err != nil {
-						t.Fatal(err)
+					current, currentErr := reopened.CurrentRuntime()
+					if fault == "state-conflict" {
+						if currentErr == nil {
+							t.Fatal("startup State conflict vanished on reopen")
+						}
+					} else if currentErr != nil {
+						t.Fatal(currentErr)
+					} else if fault == "expired-member" {
+						if _, err := current.Member(id, current.ObservedAt()); err == nil {
+							t.Fatal("expired original member revived on reopen")
+						}
 					}
 					if err := reopened.Close(); err != nil {
 						t.Fatal(err)

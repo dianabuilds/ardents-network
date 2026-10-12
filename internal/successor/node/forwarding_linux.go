@@ -108,7 +108,12 @@ func ListenForwarding(ctx context.Context, config ForwardingConfig) (_ *Forwardi
 	defer func() {
 		if result != nil {
 			f.deny(result)
-			result = errors.Join(result, f.cleanup())
+			f.mu.Lock()
+			first := f.first
+			f.mu.Unlock()
+			// The caller receives the original cause, not the private notice
+			// lent to Route while a rejected partial acquisition joins.
+			result = errors.Join(first, originalRetirementResult(result, f.retired), f.cleanup())
 		}
 	}()
 	var err error
@@ -182,6 +187,7 @@ func (f *forwarding) current() (network.RuntimeView, error) {
 		return network.RuntimeView{}, f.failedObservation(err, "participation")
 	}
 	view, err := f.config.Authority.Current()
+	failureOwner := "network"
 	if err == nil && view.Profile().ProfileBinding != f.config.Authority.Profile {
 		err = errors.New("original Node profile changed")
 	}
@@ -190,6 +196,7 @@ func (f *forwarding) current() (network.RuntimeView, error) {
 	}
 	if err == nil && time.Since(observation.Completed) > time.Second {
 		err = errors.New("original process measurement expired during authority observation")
+		failureOwner = "process"
 	}
 	f.mu.Lock()
 	denied = f.denied
@@ -198,7 +205,7 @@ func (f *forwarding) current() (network.RuntimeView, error) {
 		err = f.retired
 	}
 	if err != nil {
-		f.deny(err, "network")
+		f.deny(err, failureOwner)
 	}
 	return view, err
 }

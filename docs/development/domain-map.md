@@ -178,6 +178,14 @@ role or silently rebind that lifetime to a successor.
 | Protect or retire | Local denial is synchronous. A pressure observation, diagnostic event or polling tick cannot substitute for denial; interrupt original dependents before waiting |
 | Join and finish | Route joins physical users first; then composition closes purpose roots/Hosting borrows, updates only its own participation producer and releases remaining owners. Preserve first failure and all cleanup causes |
 
+For the selected Forwarding composition, Network retains `node-duty/live`
+identity/family conflicts until the original producer releases them after join.
+The earlier Epoch/Record bound still denies work; it does not prove physical
+completion. Prepared/quarantined Node facts remain time-held. An unresolved
+live producer, including after lost cleanup, cannot be pruned or adopted as a
+restart shortcut. This refines local restriction retention, not membership,
+Source exposure, another Node role or a persisted-format migration.
+
 An early failed outcome and known physical completion are different results.
 If a bounded attempt cannot prove join, it must preserve the failed result and
 retain still-needed resources/conflicts; it cannot publish successful withdrawal

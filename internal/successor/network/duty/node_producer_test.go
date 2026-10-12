@@ -213,6 +213,51 @@ func TestNodeProducerExpiryAndFailedCleanupRetainHistory(t *testing.T) {
 	}
 }
 
+func TestLiveNodeProducerExpiryDeniesWorkWithoutReleasingConflict(t *testing.T) {
+	now := time.Unix(1800000000, 0).UTC()
+	config := Config{Root: filepath.Join(t.TempDir(), "roles"), Clock: func() time.Time { return now }, Create: true}
+	facts := NodeParticipation{Identity: [32]byte{1}, FamilyID: [32]byte{2}, Assignment: "responder", EpochUntil: now.Add(time.Minute), RecordUntil: now.Add(2 * time.Minute)}
+	producer, err := OpenNodeProducer(context.Background(), config, facts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := producer.Live(); err != nil {
+		t.Fatal(err)
+	}
+	now = facts.EpochUntil
+	if err := producer.Check(); err == nil {
+		t.Fatal("live conflict extended expired work authority")
+	}
+	replacement := facts
+	replacement.EpochUntil, replacement.RecordUntil = now.Add(time.Hour), now.Add(2*time.Hour)
+	if newer, err := OpenNodeProducer(context.Background(), config, replacement); newer != nil || !errors.Is(err, ErrLocalRoleConflict) {
+		if newer != nil {
+			_ = newer.Close(context.Background())
+		}
+		t.Fatal("fresh producer pruned unjoined original", err)
+	}
+	store, err := OpenOperation(context.Background(), config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conflict, err := store.Conflict(facts.Identity, facts.FamilyID)
+	if closeErr := store.Close(); err != nil || closeErr != nil || !conflict {
+		t.Fatal("expiry or refused replacement lost original conflict", err, closeErr)
+	}
+	// Node composition separately proves that this owning release occurs only
+	// after actual Route join. This component checks durable producer semantics.
+	if err := producer.Close(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	newer, err := OpenNodeProducer(context.Background(), config, replacement)
+	if err != nil {
+		t.Fatal("joined original prevented genuinely fresh producer", err)
+	}
+	if err := newer.Close(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNodeProducerConcurrentCopiesCloseOnce(t *testing.T) {
 	now := time.Unix(1800000000, 0).UTC()
 	config := Config{Root: filepath.Join(t.TempDir(), "roles"), Clock: func() time.Time { return now }, Create: true}

@@ -141,8 +141,13 @@ does not grant an Admission import to the pure Network model.
 owns producer-scoped replacement, identity/family collision decisions, ordinary
 Initiator and same-producer Source-pair exclusions, finite limits and expiry.
 Other producers may prune expired time-held facts but cannot expire or remove
-a live Direct Source. Its producer releases that live fact only after dependent
-work joins. Node restriction classification cannot choose the ordinary Initiator
+a live Direct Source or `node-duty`. Its producer releases that live fact only
+after dependent work joins. Prepared and quarantined Node facts remain time-held.
+The original Node producer still refuses work at the earlier Epoch/Record bound;
+retaining a live conflict after that bound grants no assignment or permission.
+Lost or unresolved live-Node cleanup retains the conflict rather than inferring
+join, automatically adopting its producer or resetting the root on restart.
+Node restriction classification cannot choose the ordinary Initiator
 exemption or turn an assignment into a Direct Source; it retains the earlier
 Epoch/Record bound. Copied facts cannot mutate either aggregate.
 

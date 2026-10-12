@@ -34,7 +34,7 @@ func TestLocalParticipationRetainsLiveSourceAcrossOtherProducers(t *testing.T) {
 
 func TestLocalParticipationExpiresTimeHeldFactsAndPreservesExemptions(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0).UTC()
-	node := LocalRestriction{Identity: [32]byte{1}, Family: [32]byte{2}, Class: "node-duty", Phase: "live", NotAfter: now}
+	node := LocalRestriction{Identity: [32]byte{1}, Family: [32]byte{2}, Class: "node-duty", Phase: "prepared", NotAfter: now}
 	history, err := RestoreLocalParticipation([]ParticipationFact{{Producer: [32]byte{3}, Restriction: node}})
 	if err != nil {
 		t.Fatal(err)
@@ -55,6 +55,43 @@ func TestLocalParticipationExpiresTimeHeldFactsAndPreservesExemptions(t *testing
 	}
 	if _, err := exempt.Replace([32]byte{6}, []LocalRestriction{node}, now); !errors.Is(err, ErrParticipationConflict) {
 		t.Fatal("ordinary exemption spread to another Node")
+	}
+}
+
+func TestLiveNodeConflictOutlivesAuthorityUntilProducerRelease(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0).UTC()
+	node := LocalRestriction{Identity: [32]byte{1}, Family: [32]byte{2}, Class: "node-duty", Phase: "live", NotAfter: now}
+	original := [32]byte{3}
+	history, err := RestoreLocalParticipation([]ParticipationFact{{Producer: original, Restriction: node}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	after := now.Add(time.Hour)
+	retained, err := history.Replace([32]byte{4}, nil, after)
+	if err != nil || !retained.Conflicts(node.Identity, [32]byte{}, after) || !retained.Conflicts([32]byte{}, node.Family, after) {
+		t.Fatal("foreign producer expired unjoined live Node", err)
+	}
+	if got := retained.Records(); len(got) != 1 || got[0].Restriction.NotAfter != node.NotAfter {
+		t.Fatal("retained conflict renewed or replaced signed authority bound")
+	}
+	fresh := node
+	fresh.Phase, fresh.NotAfter = "prepared", after.Add(time.Hour)
+	if _, err := retained.Replace([32]byte{4}, []LocalRestriction{fresh}, after); !errors.Is(err, ErrParticipationConflict) {
+		t.Fatal("replacement original adopted still-live identity/family", err)
+	}
+	released, err := retained.Replace(original, nil, after)
+	if err != nil || released.Conflicts(node.Identity, node.Family, after) || len(released.Records()) != 0 {
+		t.Fatal("joined original producer could not release its own conflict", err)
+	}
+	if _, err := released.Replace([32]byte{4}, []LocalRestriction{node}, after); err == nil {
+		t.Fatal("retained conflict semantics minted a new expired live Node")
+	}
+	for _, phase := range []string{"prepared", "quarantined"} {
+		node.Phase = phase
+		timeHeld, err := RestoreLocalParticipation([]ParticipationFact{{Producer: original, Restriction: node}})
+		if err != nil || timeHeld.Conflicts(node.Identity, node.Family, after) {
+			t.Fatal("unstarted Node became a producer-held live duty", phase, err)
+		}
 	}
 }
 
