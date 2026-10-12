@@ -176,12 +176,10 @@ func (f *forwarding) current() (network.RuntimeView, error) {
 	}
 	observation, err := f.process.Check()
 	if err != nil {
-		f.deny(err, "process")
-		return network.RuntimeView{}, err
+		return network.RuntimeView{}, f.failedObservation(err, "process")
 	}
 	if err := f.producer.Check(); err != nil {
-		f.deny(err, "participation")
-		return network.RuntimeView{}, err
+		return network.RuntimeView{}, f.failedObservation(err, "participation")
 	}
 	view, err := f.config.Authority.Current()
 	if err == nil && view.Profile().ProfileBinding != f.config.Authority.Profile {
@@ -203,6 +201,20 @@ func (f *forwarding) current() (network.RuntimeView, error) {
 		f.deny(err, "network")
 	}
 	return view, err
+}
+
+// A mechanism using this exact invocation's caller may return its bare context
+// error while cancellation races the final observation. Preserve that first
+// error locally, but lend the unique retirement notice to the Route watcher.
+// A foreign error, joined cleanup cause or physical wrapper is never replaced.
+func (f *forwarding) failedObservation(cause error, owner string) error {
+	callerError := f.ctx.Err()
+	ownedNotice := callerError != nil && cause == callerError
+	f.deny(cause, owner)
+	if ownedNotice {
+		return f.retired
+	}
+	return cause
 }
 
 func (f *forwarding) deny(cause error, owners ...string) {

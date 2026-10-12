@@ -774,6 +774,11 @@ a physical cleanup failure. All foreign causes and physical wrappers remain
 failures, including a wrapper around cancellation or the local notice. First
 failure and actual cleanup failures remain in the retained result; a bounded
 command wait can report completion-unavailable but cannot publish joined success.
+An exact bare context error returned by the original process/producer mechanism
+while its own caller is already canceled is retained as the first failure and
+translated to that private notice for the Route watcher. Joined or wrapped
+mechanism errors are never translated. This preserves the distinction between
+original admission retirement and an actual physical cleanup error.
 
 The native scenario in `cmd/ardents-next/node_native_linux_test.go` starts
 hash-pinned actual commands with genuine signed State, Stock, Hosting and
@@ -783,7 +788,13 @@ participation after manager/process completion. Native process tests separately
 exercise real descriptor loss and resident Go memory over the selected limit.
 An undersized-envelope negative control leaves the exact real spend journal
 unchanged and returns its unborrowed capacity before receiving spend.
-These cases do not establish complete blocked-I/O, startup, expiry, successor,
+The partial-startup matrix independently refuses wrong keys and roles, shared
+roots, an unselected process profile, unavailable Hosting/spend/listener roots
+and local identity/family conflicts on both Carriers. It checks original Source
+history preservation, absent pre-admission spend, actual empty late-startup spend
+headers and producer removal only after failed startup joins. A restored-input
+control starts and joins the same signed member under the selected native profile.
+These cases do not establish complete blocked-I/O, expiry, successor,
 refill, crash or installed acceptance. The selected issue owns that acceptance.
 
 ## Current limits and limitations

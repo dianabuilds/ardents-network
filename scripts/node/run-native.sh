@@ -30,6 +30,7 @@ verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 
 # Verify discovery before executing; a selected profile can never pass zero tests.
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeForwardingBothCarriers$' >/dev/null
+"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodePartialStartupRefusalsBothCarriers$' >/dev/null
 "$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNative' | grep '^TestOriginalNativeProcessProfile$' >/dev/null
 unit=ardents-forwarding-resource-native-$$.service
 systemd-run --quiet --wait --pipe --collect --unit="$unit" \

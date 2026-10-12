@@ -77,7 +77,7 @@ func (diagnostic *nativeNodeDiagnostic) String() string {
 	return diagnostic.buffer.String()
 }
 
-func startNativeForwarding(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+func launchNativeForwarding(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
 	t.Helper()
 	unit := fmt.Sprintf("ardents-forwarding-%d-%d.service", os.Getpid(), index)
 	process := &nativeForwardingProcess{unit: unit}
@@ -101,11 +101,17 @@ func startNativeForwarding(t *testing.T, binary, plan string, index byte) *nativ
 			process.joined = true
 		}
 	})
+	return process
+}
+
+func startNativeForwarding(t *testing.T, binary, plan string, index byte) *nativeForwardingProcess {
+	t.Helper()
+	process := launchNativeForwarding(t, binary, plan, index)
 	var event map[string]string
 	if err := json.NewDecoder(process.stdout).Decode(&event); err != nil || event["operation"] != "node.forwarding" || event["phase"] != "listening" {
 		t.Fatal("genuine original Node startup refused", event, err, process.diagnostic.String())
 	}
-	raw, err := exec.Command("systemctl", "show", unit, "-p", "MainPID", "--value").Output()
+	raw, err := exec.Command("systemctl", "show", process.unit, "-p", "MainPID", "--value").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,29 +189,7 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 			var clockOnce sync.Once
 			stopClock := func() { clockOnce.Do(closeClock) }
 			defer stopClock()
-			seed := func() networkAuthorityPlan {
-				var key [32]byte
-				copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))
-				plan := networkAuthorityPlan{Root: filepath.Join(t.TempDir(), "network"), NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
-				config, err := networkStateConfig(&plan)
-				if err != nil {
-					t.Fatal(err)
-				}
-				owner, err := state.Open(config)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if _, err := owner.Accept(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
-					t.Fatal(err)
-				}
-				if _, err := owner.AcceptClosedProfile(bundle.Profile); err != nil {
-					t.Fatal(err)
-				}
-				if err := owner.Close(); err != nil {
-					t.Fatal(err)
-				}
-				return plan
-			}
+			seed := func() networkAuthorityPlan { return seedNativeNodeState(t, f, bundle, clock) }
 			var processes []*nativeForwardingProcess
 			var budgets []string
 			var participation []string
@@ -330,6 +314,219 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 					t.Fatal("joined original Node retained or invented capacity", err, closeErr, observation.ReservedBytes)
 				}
 			}
+		})
+	}
+}
+
+func seedNativeNodeState(t *testing.T, f *networkAdmissionFixture, bundle networkfixture.Closed, clock string) networkAuthorityPlan {
+	t.Helper()
+	var key [32]byte
+	copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))
+	plan := networkAuthorityPlan{Root: filepath.Join(t.TempDir(), "network"), NetworkID: f.spec.NetworkID, Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
+	config, err := networkStateConfig(&plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	owner, err := state.Open(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := owner.Accept(t.Context(), bundle.Epoch.Raw, bundle.Epoch.Inputs, bundle.Epoch.Materials); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := owner.AcceptClosedProfile(bundle.Profile); err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return plan
+}
+
+func TestNativeNodePartialStartupRefusalsBothCarriers(t *testing.T) {
+	binary := nodeNativeCommand(t)
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			f, sockets, certificates := newRouteFixture(t, carrier)
+			bundle, err := networkfixture.BuildClosed(f.spec)
+			if err != nil {
+				t.Fatal(err)
+			}
+			clock, closeClock := joinProcessClock(t)
+			defer closeClock()
+			view, err := f.current()
+			if err != nil {
+				t.Fatal(err)
+			}
+			member, err := view.Member([32]byte{12}, view.ObservedAt())
+			if err != nil {
+				t.Fatal(err)
+			}
+			for index, fault := range []string{"wrong-key", "wrong-role", "shared-root", "wrong-profile", "hosting-open", "spend-open", "listener-open", "identity-conflict", "family-conflict"} {
+				t.Run(fault, func(t *testing.T) {
+					certificate := certificates[[32]byte{12}]
+					if fault == "wrong-key" {
+						certificate = certificates[[32]byte{13}]
+					}
+					certPath, keyPath := filepath.Join(t.TempDir(), "certificate"), filepath.Join(t.TempDir(), "key")
+					if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600); err != nil {
+						t.Fatal(err)
+					}
+					key, err := x509.MarshalPKCS8PrivateKey(certificate.PrivateKey)
+					if err != nil {
+						t.Fatal(err)
+					}
+					encoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: key})
+					if err := os.WriteFile(keyPath, encoded, 0600); err != nil {
+						t.Fatal(err)
+					}
+					clear(key)
+					clear(encoded)
+					networkPlan := seedNativeNodeState(t, f, bundle, clock)
+					participation := filepath.Join(t.TempDir(), "participation")
+					spend := t.TempDir()
+					budget := routeProcessBudget(t)
+					configuredBudget := budget
+					id := [32]byte{12}
+					if fault == "wrong-role" {
+						id = [32]byte{11}
+					}
+					if fault == "hosting-open" {
+						configuredBudget = filepath.Join(t.TempDir(), "absent")
+					}
+					if fault == "spend-open" {
+						spend = filepath.Join(t.TempDir(), "regular-file")
+						if err := os.WriteFile(spend, []byte("preserve this unrelated file"), 0600); err != nil {
+							t.Fatal(err)
+						}
+					}
+					conflicted := fault == "identity-conflict" || fault == "family-conflict"
+					var conflictPointer []byte
+					if conflicted {
+						journal, err := duty.OpenOperation(t.Context(), duty.Config{Root: participation, Clock: time.Now, Create: true})
+						if err != nil {
+							t.Fatal(err)
+						}
+						identity, family := member.NodeID, member.FamilyID
+						if fault == "identity-conflict" {
+							family = [32]byte{90}
+						} else {
+							identity = [32]byte{90}
+						}
+						if err := journal.Replace([32]byte{99}, []duty.Duty{{Identity: identity, Family: family, Class: "direct-source", State: "live", NotAfter: time.Now().Add(time.Hour)}}); err != nil {
+							t.Fatal(err)
+						}
+						if err := journal.Close(); err != nil {
+							t.Fatal(err)
+						}
+						conflictPointer, err = os.ReadFile(filepath.Join(participation, "current"))
+						if err != nil {
+							t.Fatal(err)
+						}
+					}
+					plan := map[string]any{"network": networkPlan, "node_id": id, "process_profile": processresource.Profile, "participation_root": participation, "spend_root": spend, "hosting_root": configuredBudget, "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+					invalidInput := fault == "shared-root" || fault == "wrong-profile"
+					if fault == "shared-root" {
+						plan["spend_root"] = participation
+					}
+					if fault == "wrong-profile" {
+						plan["process_profile"] = "unselected-profile"
+					}
+					// The original reserved socket deliberately remains occupied. Only
+					// listener-open reaches that late acquisition; earlier faults must
+					// refuse without creating this invocation's accepting role.
+					process := launchNativeForwarding(t, binary, hostingConfig(t, plan), byte(50+index))
+					var event map[string]string
+					decodeErr := json.NewDecoder(process.stdout).Decode(&event)
+					waitErr := process.command.Wait()
+					process.joined = true
+					_ = process.stdout.Close()
+					if conflicted {
+						after, err := os.ReadFile(filepath.Join(participation, "current"))
+						if err != nil || !bytes.Equal(conflictPointer, after) {
+							t.Fatal("conflict refusal replaced original Source history", err)
+						}
+					}
+					var exit *exec.ExitError
+					if invalidInput {
+						if decodeErr != io.EOF || len(event) != 0 || !errors.As(waitErr, &exit) || exit.ExitCode() != 2 {
+							t.Fatal("invalid input reached runtime or reported acceptance", event, decodeErr, waitErr)
+						}
+					} else if decodeErr != nil || event["phase"] != "refused" || event["outcome"] != "startup-unavailable" || !errors.As(waitErr, &exit) || exit.ExitCode() != 1 {
+						t.Fatal("partial startup published accepting work or lost refusal", event, decodeErr, waitErr, process.diagnostic.String())
+					}
+					if _, err := os.Stat(filepath.Join(spend, "closed-token-spends")); fault == "listener-open" {
+						raw, readErr := os.ReadFile(filepath.Join(spend, "closed-token-spends"))
+						if readErr != nil || len(raw) != 112 {
+							t.Fatal("late startup did not retain the empty genuine spend ledger", readErr)
+						}
+					} else if fault == "spend-open" {
+						raw, readErr := os.ReadFile(spend)
+						if readErr != nil || string(raw) != "preserve this unrelated file" {
+							t.Fatal("partial startup changed the foreign regular file", readErr)
+						}
+					} else if !os.IsNotExist(err) {
+						t.Fatal("early refusal created spend effects", err)
+					}
+					if _, err := os.Stat(participation); err == nil {
+						journal, err := duty.OpenOperation(t.Context(), duty.Config{Root: participation, Clock: time.Now})
+						if err != nil {
+							t.Fatal(err)
+						}
+						collision, err := journal.Conflict(member.NodeID, member.FamilyID)
+						if closeErr := journal.Close(); err != nil || closeErr != nil || collision != conflicted {
+							t.Fatal("partial cleanup erased foreign Source or retained own producer", err, closeErr, collision)
+						}
+					} else if !os.IsNotExist(err) || conflicted || fault == "hosting-open" || fault == "spend-open" || fault == "listener-open" {
+						t.Fatal("participation history unavailable", err)
+					}
+					owner, err := hosting.Open(budget)
+					if err != nil {
+						t.Fatal(err)
+					}
+					observed, err := owner.Observe(t.Context())
+					if closeErr := owner.Close(); err != nil || closeErr != nil || observed.ReservedBytes != 0 {
+						t.Fatal("partial startup retained physical capacity", err, closeErr)
+					}
+					config, err := networkStateConfig(&networkPlan)
+					if err != nil {
+						t.Fatal(err)
+					}
+					reopened, err := state.Open(config)
+					if err != nil {
+						t.Fatal("original State did not close after partial join", err)
+					}
+					if _, err := reopened.CurrentRuntime(); err != nil {
+						t.Fatal(err)
+					}
+					if err := reopened.Close(); err != nil {
+						t.Fatal(err)
+					}
+				})
+			}
+			// Release the actual reserved endpoint only after the entire refusal
+			// matrix; no successful listener is fabricated for a negative case.
+			sockets[[32]byte{12}]()
+			certificate := certificates[[32]byte{12}]
+			certPath, keyPath := filepath.Join(t.TempDir(), "certificate"), filepath.Join(t.TempDir(), "key")
+			if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600); err != nil {
+				t.Fatal(err)
+			}
+			key, err := x509.MarshalPKCS8PrivateKey(certificate.PrivateKey)
+			if err != nil {
+				t.Fatal(err)
+			}
+			encoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: key})
+			if err := os.WriteFile(keyPath, encoded, 0600); err != nil {
+				t.Fatal(err)
+			}
+			clear(key)
+			clear(encoded)
+			plan := map[string]any{"network": seedNativeNodeState(t, f, bundle, clock), "node_id": [32]byte{12}, "process_profile": processresource.Profile, "participation_root": filepath.Join(t.TempDir(), "participation"), "spend_root": t.TempDir(), "hosting_root": routeProcessBudget(t), "certificate": certPath, "private_key": keyPath, "work": hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, "termination": hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, "retirement_wait_ms": 5000}
+			// Genuine restored-input control: this same signed member, Carrier and
+			// native envelope must start after removing the declared fault.
+			control := startNativeForwarding(t, binary, hostingConfig(t, plan), 80)
+			control.stop(t)
 		})
 	}
 }
