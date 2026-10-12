@@ -121,6 +121,130 @@ record, recovery and fixed-resource rules.
 | Disclosure and diagnostics | Bounded public catalog verification, process/timeline measurements, inspection and command projections; current `alphacontrol`, `diagnostics` | Catalog verification never authorizes State, Release or runtime work; observations never decide admission or create a global cross-role trace. These are supporting mechanisms, not a generic Control authority |
 | Qualification | Selected Run/workload composition, observers, measurements, completion barriers and retained reports; current `qualification` and `application/streamqualification` | Qualification is a proof producer with its own selected environment, not an ordinary Job, a permission issuer or a runtime domain substitute. A passing module test cannot qualify an installed product |
 
+## Node composition: proposed lifetime boundary
+
+This is a design refinement of the supporting composition owner above, not an
+eleventh network authority, an implemented package or an execution assignment.
+Node is a product infrastructure actor; a process, a signed Node identity and
+one accepted duty generation are distinct things. The current
+[Node contract](../technical/network-route-node.md#node-and-resource-lifecycle)
+and [glossary](../../CONTEXT.md) remain authoritative. Work selection, source
+receipts and candidate slice acceptance belong in GitHub.
+
+### Assessment and responsibility inventory
+
+The maintained predecessor is a brownfield Go composition with explicit
+lifecycle behavior, broad configuration and adapters that mix several owners.
+Light DDD is appropriate for its supporting lifetime: model original identity,
+admission, retirement and completion precisely. Do not create a universal Node
+aggregate, repository, event bus or microservice around the old directory.
+Network and Route retain their own substantive domain models.
+
+| Inspected predecessor responsibility | Target semantic owner | Current new seam / remaining boundary |
+|---|---|---|
+| `node/admission.go`, `state_authority.go`, `authority/receiver.go`: membership, duty/profile projections and purpose checks | Network authenticates and binds membership; Route admits its exact purpose; composition matches local credentials | `state.CurrentRuntime`, `RuntimeView.RetainDuty/MatchDuty`, `route/role.Authority`; copied diagnostics cannot replace them |
+| `node/local_roles.go`: producer-owned local conflict retention | Network's separate local-participation policy and native `network/duty` owner; Node lifetime owns its producer's physical completion | New Source already uses `duty.OpenOperation/Replace/Remove`; the genuine new Node producer and original-caller fencing remain to be implemented |
+| `node/lifecycle.go`, `machine.go`, `duty_cleanup.go`: startup, retirement and process result | Proposed Node runtime lifetime, orchestrated by command composition | No new general Node supervisor is inferred from `route receive`; transport already has its own currentness watcher and joined Close |
+| `node/forwarding`, `outer`, `introduction`, `join`: queues, channels, slots, pairing and physical work | Route | New `receiver`, `channel`, `introduction`, `join` and concrete Carriers own these mechanisms; Node must not copy them |
+| `node/issuer` and `node/hosting`: issuance and reserve-before-spend adapters | Admission owns issuance/spend; Hosting owns the period; Route owns the physical exchange | New `admission/issuer`, `receiving`, `hosting`, `route/issuer` and the real `route receive` composition already collaborate |
+| `node/resolution`: receiving Descriptor rules and physical listener | Reachability owns proof/conflict/history; Route owns receiving transport | New `reachability.Store` and `receiver` have a real command consumer; Node grants no Store ACK or publication readiness |
+| `node/resource_pressure.go`, `resource`: OS observations, pressure classification and reaction | Separate process-resource owner measures/classifies; Node lifetime reacts; Hosting retains provider-period accounting | New process-protection integration is absent. Current native resource source is evidence, not permission to import it or copy an entire historical profile |
+| `cmd/ardents-node/source_runtime.go`: Source serving/background termination | Network State and Source, with their own command composition | New State owns Source exposure, Wait and Close. A Source is not another Route role selected by Node dispatch |
+| `node/identity.go`, command key loading and signing preparation | Purpose-specific credential mechanisms and provisioning; accepted Node identity stays with Network facts | New `nodeidentity` grants only imported issuer-profile signing, not generic TLS/Node authority or State signing |
+| Lifecycle/resource event output and qualification fixtures | Bounded diagnostic projection and independent test composition | Neither output success nor a measured/unknown field grants readiness; old tests are inspected evidence, not the new oracle |
+
+### Original lifetime and state
+
+The candidate consistency boundary is one original runtime invocation and one
+retained role generation. It owns its admission/terminal latch, original caller,
+startup work, cancellation callbacks, physical borrow inventory and immutable
+first failure. It references external owners through their narrow contracts;
+it does not own their journals, budgets, private roots or policies.
+
+Its retained binding comes from one coherent authenticated observation: Network,
+Epoch/profile, Node/key/family, record generation, assignment, endpoint, Carrier
+and finite bounds. A retained binding is copied evidence, not an independent
+live permit. Network rechecks it; the runtime additionally checks its original
+invocation and process admission. Node may not pick the first locally available
+role or silently rebind that lifetime to a successor.
+
+| Local transition / observation | Owner and required ordering |
+|---|---|
+| Prepare original invocation | Validate declared roots/credentials/resource profile; obtain genuine current Network binding and producer-scoped participation admission before accepting role work |
+| Acquire role | Retain the original startup caller; open genuine collaborating owners; recheck after native I/O and before publishing the accepting lifetime; creator joins rejected partial acquisitions |
+| Serve | Route rechecks authority at its effects. Process protection controls new work through the original runtime; measurements require declared scope, freshness and availability |
+| Protect or retire | Local denial is synchronous. A pressure observation, diagnostic event or polling tick cannot substitute for denial; interrupt original dependents before waiting |
+| Join and finish | Route joins physical users first; then composition closes purpose roots/Hosting borrows, updates only its own participation producer and releases remaining owners. Preserve first failure and all cleanup causes |
+
+An early failed outcome and known physical completion are different results.
+If a bounded attempt cannot prove join, it must preserve the failed result and
+retain still-needed resources/conflicts; it cannot publish successful withdrawal
+or invent free capacity. A new lifetime cannot inherit the old one's failure,
+authority or borrowers, nor begin as an automatic recovery/restart policy.
+Exact compatibility of outward states remains with their current owning formats.
+
+### Narrow collaborations and effect checks
+
+```mermaid
+flowchart LR
+    State[Network accepted State] -->|current observation and exact duty| Runtime[Original Node runtime lifetime]
+    Participation[Network local participation] -->|producer-scoped conflict and commit| Runtime
+    Pressure[Process resource owner] -->|measured admission and pressure| Runtime
+    Runtime -->|original admitted caller and retirement| Physical[Route physical role]
+    Admission[Admission rights and history] -->|grant or issuing operation| Physical
+    Hosting[Hosting period] -->|retained physical reservations| Physical
+    Reachability[Reachability Store] -->|Descriptor operation when selected| Physical
+    Physical -->|joined original result| Runtime
+    Runtime -->|bounded observations only| Diagnostics[Diagnostics]
+```
+
+These arrows describe owner calls, facts and physical borrows, not cyclic Go
+imports. A runtime supervisor must not import its command composer; Route,
+Admission, Hosting, Network and process-resource mechanisms do not import the
+supervisor. Exact future package admission must establish an acyclic graph.
+No foreign I/O/join or policy callback occurs under a runtime state lock.
+
+Network retains accepted-state and local-participation consistency separately.
+Shared local participation history has one policy/storage owner and short
+producer-scoped operations; it is not a shared live State/Node root, lease or
+mutex. Node release follows actual role join. Source exposure cannot be removed
+by Node or expired merely because a caller is stopping.
+
+Process placement/CPU/RAM/availability are separate from Hosting bytes. The new
+Receiver exposes `Listen`, `Done` and retained `Close`, not the predecessor's
+`Protect/Usage` surface. Before accepting a complete new Node runtime, specify
+genuine protection/measurement seams and the applicable current native profile.
+Unknown timers/queue/admission values are not zero. Missing required protection
+does not authorize an unprotected accepting path or an optional stronger mode.
+Profile changes need their current owner's admission; historical stage labels
+do not become new domain or runtime identities.
+
+Runtime TLS credentials must match the accepted member at the owned effect;
+offline issuer-profile signing is a different purpose. Credential loading is a
+physical mechanism, not a universal Identity/Custody domain. Enrollment, Release
+and installed-process validation retain their own authority; a development role
+consumer cannot establish a supported Node installation or qualified host.
+
+### Realized prerequisites and design limits
+
+`cmd/ardents-next/route_linux.go` already composes genuine State, retained duty,
+receiving Admission, Hosting and `receiver.Listen`, with additional issuer or
+Descriptor owners only when that exact duty requires them. Receiver supports
+the selected TCP/TLS and QUIC Carriers, reobserves authority and joins its work.
+That is an existing component consumer, not the complete Node runtime model.
+
+The remaining boundaries are original runtime supervision/admission, the real
+Node participation producer, native process protection and observed usage,
+credential custody, bounded event output and scenario composition. They need
+real consumers in the same owning changes. No empty `node` destination, generic
+supervisor interface or copied predecessor configuration is admitted by this map.
+
+Source, provisioning/signing, all-role coverage and installed/operator acceptance
+remain distinct responsibilities. An initial single-role consumer does not close
+them. Old Node/Endpoint qualification failures stay evidence at their recorded
+source; they neither select repair of old runtime nor prove the new owners fail.
+Required checks of an actually selected change remain mandatory.
+
 ## Consistency, resources and completion inventory
 
 The semantic owner below decides transitions. Storage, crypto and operating
