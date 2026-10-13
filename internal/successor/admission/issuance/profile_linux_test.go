@@ -19,10 +19,10 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
-	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
 )
 
-func profileOwners(t *testing.T) (Store, nodeidentity.Store, string, Inventory, string, string) {
+func profileOwners(t *testing.T) (Store, signing.Store, string, Inventory, string, string) {
 	t.Helper()
 	base := t.TempDir()
 	if e := os.Chmod(base, 0700); e != nil {
@@ -53,11 +53,11 @@ func profileOwners(t *testing.T) (Store, nodeidentity.Store, string, Inventory, 
 		t.Fatal(e)
 	}
 	identityRoot := filepath.Join(base, "identity")
-	binding := nodeidentity.Binding{Network: b.Network, Node: b.Issuer, Signer: b.Signer}
-	if e = nodeidentity.Import(t.Context(), identityRoot, source, binding); e != nil {
+	binding := signing.Binding{Network: b.Network, Node: b.Issuer, Signer: b.Signer}
+	if e = signing.Import(t.Context(), identityRoot, source, binding); e != nil {
 		t.Fatal(e)
 	}
-	identity, e := nodeidentity.Open(t.Context(), identityRoot, binding)
+	identity, e := signing.Open(t.Context(), identityRoot, binding)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -66,7 +66,7 @@ func profileOwners(t *testing.T) (Store, nodeidentity.Store, string, Inventory, 
 }
 func TestProfileRealSigningCopyAndReopen(t *testing.T) {
 	keys, identity, root, v, _, _ := profileOwners(t)
-	if _, e := identity.SignIssuerProfile(t.Context(), issuerprofile.Request{}); !errors.Is(e, nodeidentity.ErrInvalid) {
+	if _, e := identity.SignIssuerProfile(t.Context(), issuerprofile.Request{}); !errors.Is(e, signing.ErrInvalid) {
 		t.Fatal(e)
 	}
 	if e := InitializeProfile(t.Context(), root, keys, identity); e != nil {
@@ -127,7 +127,7 @@ func TestProfileRealSigningCopyAndReopen(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if _, e = identity.SignIssuerProfile(t.Context(), request); !errors.Is(e, nodeidentity.ErrInvalid) {
+	if _, e = identity.SignIssuerProfile(t.Context(), request); !errors.Is(e, signing.ErrInvalid) {
 		t.Fatal("wrong purpose binding")
 	}
 }
@@ -251,7 +251,7 @@ func TestProfileProcessCrashPreservesExactBytes(t *testing.T) {
 			os.Exit(3)
 		}
 		ctx := context.Background()
-		identity, e := nodeidentity.Open(ctx, plan.Identity, nodeidentity.Binding{Network: plan.Binding.Network, Node: plan.Binding.Issuer, Signer: plan.Binding.Signer})
+		identity, e := signing.Open(ctx, plan.Identity, signing.Binding{Network: plan.Binding.Network, Node: plan.Binding.Issuer, Signer: plan.Binding.Signer})
 		if e != nil {
 			os.Exit(4)
 		}

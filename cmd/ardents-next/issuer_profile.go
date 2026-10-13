@@ -7,7 +7,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
 )
 
 func runIssuerProfile(ctx context.Context, operation string, args []string, out, diagnostic io.Writer) int {
@@ -59,7 +59,7 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 		fields, e := profileConfigObject(raw, "root", "binding", "key_file")
 		err = e
 		var root, source string
-		var binding nodeidentity.Binding
+		var binding signing.Binding
 		if err == nil {
 			root, err = profilePath(fields["root"])
 		}
@@ -71,7 +71,7 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 		}
 		if err == nil {
 			r.Phase = "import"
-			err = nodeidentity.Import(ctx, root, source, binding)
+			err = signing.Import(ctx, root, source, binding)
 			r.Outcome = "identity-imported"
 		}
 	case "issuance.initialize-profile", "issuance.inspect-profile":

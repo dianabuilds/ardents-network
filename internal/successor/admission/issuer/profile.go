@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
 )
 
 // ProfilePlan fixes separately pinned Node identity and immutable key inventory.
 type ProfilePlan struct {
 	IdentityRoot    string
-	IdentityBinding nodeidentity.Binding
+	IdentityBinding signing.Binding
 	KeyRoot         string
 	KeyBinding      issuance.Binding
 	ProfileRoot     string
@@ -34,7 +34,7 @@ func executeProfile(ctx context.Context, p ProfilePlan, initialize bool) (r Resu
 		return r
 	}
 	r.Phase = "open-identity"
-	identity, err := nodeidentity.Open(ctx, p.IdentityRoot, p.IdentityBinding)
+	identity, err := signing.Open(ctx, p.IdentityRoot, p.IdentityBinding)
 	if err != nil {
 		r.Outcome = category(err)
 		return r

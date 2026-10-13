@@ -11,7 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
 )
 
 // Plan fixes three independently owned non-nested roots and offline bindings.
@@ -59,15 +59,15 @@ func (r *Result) closeOwner(slot int, phase string, close func() error) {
 
 func category(err error) string {
 	switch {
-	case errors.Is(err, issuance.ErrUncertain), errors.Is(err, quota.ErrUncertain), errors.Is(err, nodeidentity.ErrUncertain):
+	case errors.Is(err, issuance.ErrUncertain), errors.Is(err, quota.ErrUncertain), errors.Is(err, signing.ErrUncertain):
 		return "storage-uncertain"
-	case errors.Is(err, issuance.ErrUnsupported), errors.Is(err, quota.ErrUnsupported), errors.Is(err, nodeidentity.ErrUnsupported):
+	case errors.Is(err, issuance.ErrUnsupported), errors.Is(err, quota.ErrUnsupported), errors.Is(err, signing.ErrUnsupported):
 		return "unsupported-platform"
-	case errors.Is(err, issuance.ErrBusy), errors.Is(err, quota.ErrBusy), errors.Is(err, nodeidentity.ErrBusy):
+	case errors.Is(err, issuance.ErrBusy), errors.Is(err, quota.ErrBusy), errors.Is(err, signing.ErrBusy):
 		return "busy"
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return "canceled"
-	case errors.Is(err, issuance.ErrInvalid), errors.Is(err, quota.ErrInvalid), errors.Is(err, nodeidentity.ErrInvalid):
+	case errors.Is(err, issuance.ErrInvalid), errors.Is(err, quota.ErrInvalid), errors.Is(err, signing.ErrInvalid):
 		return "invalid-input"
 	case errors.Is(err, issuance.ErrValidity):
 		return "outside-validity"

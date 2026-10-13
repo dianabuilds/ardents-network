@@ -41,8 +41,8 @@ import the zone. Exact cross-package imports are registered in the package map;
 directory nesting grants no implicit permission. The reviewed third-party
 exceptions are the enumerated OpenTelemetry command/test imports and CIRCL
 blindrsa in `admission/issuance`. The public `admission/issuerprofile` grammar
-and Hosting use only the standard library. Node Identity depends only on that
-public profile contract; it cannot import Admission's ledger or issuance owner.
+and Hosting use only the standard library. Admission issuer-profile Signing depends only on that
+public profile contract; its pure parent cannot import Signing, and Signing cannot import Admission's ledger or issuance owner.
 Each real child package still requires the normal registration, behavior tests,
 non-test caller and permitted imports. Existing contracts and qualification
 obligations remain in force. See `internal/successor/README.md`.

@@ -32,7 +32,7 @@ its contract, tests and non-test consumer are implemented together.
 | [release/](release/README.md) | Разрешение на точные программные артефакты | Реализованы offline-проверка точных байтов, отдельные floors/history и реальные команды; разрешение не устанавливает и не запускает |
 | [installation/](installation/README.md) | Установка, замена и восстановление поколения | Реализованы generation authentication и ограниченные native transaction/recovery/startup потребители; полный установленный Service не принят |
 | [custody/](custody/README.md) | Encrypted Authority records and purpose-specific signing | Vault/Bundle, original lifetime, Admission through new Allocation and real terminal commands; Service issuance and platform qualification remain separate |
-| `nodeidentity/` | Узкое назначение импортированного материала Node | Существующий вспомогательный владелец |
+| `admission/issuerprofile/signing/` | Purpose-bound offline issuer-profile signing | Вспомогательный механизм Admission; pure parent не импортирует private owner |
 
 Enrollment, Release и Installation составляют семейство Software acceptance,
 но сохраняют разные полномочия и транзакции. Для общего `software`-агрегата
@@ -75,9 +75,9 @@ require explicit review and the existing dependency acceptance process.
 
 [Admission](admission/README.md) owns its public `issuerprofile` contract, quota
 ledger, `issuance` storage/signing owner and `issuer` operation composition.
-`issuerprofile` and Hosting use only the standard library. Node Identity depends
+`issuerprofile` and Hosting use only the standard library. Issuerprofile Signing depends
 only on `issuerprofile` to accept a purpose-bound signing request. Admission's
-ledger imports that public grammar; it cannot import identity, issuance or its
+ledger imports that public grammar; it cannot import Signing, issuance or its
 operation coordinator.
 
 The reserved command path is cmd/ardents-next. It may compose successor packages,
@@ -109,8 +109,8 @@ their own contract checks.
 ## Operation composition
 
 `admission/issuer` owns the ordered offline Admission/key/result lifecycle. It
-also composes pinned Nodeidentity/key/profile provisioning; its exact domain
-imports are Admission, its quota, issuance and issuerprofile children, and Node Identity. Command
+also composes pinned issuer-profile Signing/key/profile provisioning; its exact domain
+imports are Admission, its quota, issuance and issuerprofile/Signing children. Command
 adapters own configuration, export and telemetry.
 
 Signed profile and existing Node key import contracts belong to

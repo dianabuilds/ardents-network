@@ -1,4 +1,4 @@
-# Offline Node identity and issuer profile
+# Offline issuer-profile signing
 
 This completed design implements explicit existing-key import and immutable
 Node-signed ARDCIP01 provisioning. It establishes neither Node duty nor State,
@@ -16,19 +16,33 @@ ledger or Authority/Profile/Duty is constructed to validate a public inventory.
 Admission's `PrepareLedgerBinding` fills only keys in an explicitly supplied
 ledger binding; its State profile digest, authority and duty remain independently
 chosen facts. Snapshots are defensive; zero opaque values refuse. The public
-contract uses only the standard library and knows neither ledger nor identity.
+contract uses only the standard library and imports neither ledger nor private signing, including in its tests.
 Request and Verified have distinct private representations: explicit Go type
 conversion cannot promote an unsigned request into verified evidence. Only a
 successful signature check creates Verified.
 
-Nodeidentity owns Import/Open/Public/SignIssuerProfile/Close. It imports one
+`admission/issuerprofile/signing` owns Import/Open/Public/SignIssuerProfile/Close. It imports one
 bounded PKCS#8 Ed25519 PEM matching a separately supplied public pin; stores
 canonical DER; never returns a private key or signs arbitrary bytes. Its only
 project import is `admission/issuerprofile`. `admission/issuance` constructs
 requests from its open inventory and owns InitializeProfile/OpenProfile/Bytes/
 Close. `admission/issuer` composes identity -> issuer keys -> profile; reverse
 cleanup retains the primary result and each acquired owner's outcome. Command
-adapters own strict JSON, export and bounded OTel.
+adapters own strict JSON, export and bounded OTel. The production graph is
+Issuer/Issuance/selected command adapters -> Signing -> pure Issuerprofile ->
+standard library. There is no generic signer, Identity domain, parent-to-child
+import or retired `internal/successor/nodeidentity` facade. RSA token material,
+quotas and results keep their separate owners; runtime Node TLS and Network duty
+are outside this offline owner. Relocation preserves existing roots and all CLI,
+JSON, diagnostics and signature identities below; it performs no data migration.
+
+Signing serializes original native custody checks and key use with Close under
+its own mutex. Public Request snapshots are detached pure data. It calls no
+foreign live owner or I/O callback while holding that mutex; Close joins these
+original users before clearing the retained key and shares its original outcome
+across copies. A detected custody loss is permanent for that owner even if the
+same path/inode is restored. Only a fresh explicit Open independently verifies
+restored storage; restoration does not revive the earlier owner.
 
 ## Formats and durability
 
@@ -78,13 +92,28 @@ operation retains its primary result and every owner cleanup outcome.
 
 | Rule | Current dev source | Independent verification |
 |---|---|---|
-| Ed25519 PKCS#8 import | internal/node/identity.go | independently generated PEM, bad types/pin/framing, source links/permissions |
-| Profile grammar and signature domain | internal/admission/issuer_profile.go | separate fixture encoder, stdlib Verify, every cohort, malformed signed fixtures |
+| Ed25519 PKCS#8 import | admission/issuerprofile/signing store/files/platform | independently generated PEM, bad types/pin/framing, source links/permissions |
+| Profile grammar and signature domain | admission/issuerprofile profile/public key grammar | separate fixture encoder, stdlib Verify, every cohort, malformed signed fixtures |
 | Cohort/SPKI uniqueness | admission/issuerprofile public grammar and Issuance inventory | missing/reordered/duplicate keys, wrapped seconds, exact 1/6-hour bytes |
 | Opaque signing request | successor Admission confirmation pattern | zero refusal, defensive copies, mismatched identity refuses |
 | Identity/profile durable roots | successor Issuance storage | real fault files, pending, links/substitution, lifetime lease, crash/reopen |
 | Offline binding preparation | successor Admission ledger binding | State digest/duty/authority preserved, exact independently pinned keys |
 | Real composition | successor admission/issuer and ardents-next | compiled import/profile/binding/debit/issue/replay and OTLP |
+
+The following invariant map names executable effects and causal controls rather
+than issue status. Source identity and observed gate results belong to the
+selected issue receipt and external source-matched evidence.
+
+| Invariant / owner | Real caller and effect | Positive / causal refusal control |
+|---|---|---|
+| Exact canonical bytes / pure Issuerprofile | Signing.SignIssuerProfile consumes only validated Request | TestIssuerProfileIndependentBytesAndCopies; independent stdlib ARDCIP01 encoder and retained-root before/after command comparison for 1h/6h |
+| Imported pinned Ed25519 / Signing | Existing node-identity import creates fresh immutable root | TestIdentityEncodingPinnedAndBounded; TestIdentityImportSourceAndRootFailures; malformed/foreign PEM has no new-root effect |
+| Original lease and durability / Signing | Issuer opens signer before RSA/profile owners | TestIdentityLeaseCopyAndPinnedReopen, TestIdentityKilledProcessRetainsKey; TestIdentityFaultsAndCancellation refuses uncertain acknowledgement |
+| Permanent custody failure / Signing | Public and SignIssuerProfile check original custody before use | TestSigningObservedLossCannotReviveAcrossCopies restores each original path after observed loss; old owner still refuses, independent Open succeeds |
+| Join before erasure / Signing | Issuer reverse cleanup calls shared Close | TestSigningAndCopiedCloseJoinOriginalKeyUsers verifies concurrent use/Close, erased retained key, late refusal and released lease |
+| Request refusal preserves healthy owner / Signing | Issuance constructs bound public request | TestSigningRefusalsLeaveOriginalOwnerUsable checks zero/foreign/canceled requests then actual valid signature |
+| Unsupported pre-effect refusal / platform and command | Original command refuses before private config/source/root reads | TestUnsupportedRefusesBeforePrivateInputsAndEffects; TestIssuerProfileUnsupportedCommandRefusesBeforeConfigRead |
+| Real offline pipeline / Issuer and command | Import -> initialize/inspect profile -> binding -> debit/issue/retry/export | TestIssuerProfileCLICompleteTokenCycle verifies PSS response, exact retry, root-export/busy/cancellation refusal and bounded OTLP |
 
 Acceptance requires host quick/full gates, pinned Go1.27.2 Linux behavior/race/
 process, bounded PEM/profile fuzzing, prior token-issuance regressions, all-attempt

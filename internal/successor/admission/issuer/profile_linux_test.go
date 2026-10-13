@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
 )
 
 func TestProfileCompositionOpensConsistentOwnersAndClosesThem(t *testing.T) {
@@ -30,11 +30,11 @@ func TestProfileCompositionOpensConsistentOwnersAndClosesThem(t *testing.T) {
 	if e = os.WriteFile(source, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), 0600); e != nil {
 		t.Fatal(e)
 	}
-	identityBinding := nodeidentity.Binding{Network: [32]byte{1}, Node: [32]byte{2}, Signer: [32]byte(private.Public().(ed25519.PublicKey))}
+	identityBinding := signing.Binding{Network: [32]byte{1}, Node: [32]byte{2}, Signer: [32]byte(private.Public().(ed25519.PublicKey))}
 	start := time.Unix(3600, 0).UTC()
 	keyBinding := issuance.Binding{Network: identityBinding.Network, Issuer: identityBinding.Node, Signer: identityBinding.Signer, Start: start, End: start.Add(time.Hour)}
 	p := ProfilePlan{IdentityRoot: filepath.Join(base, "identity"), IdentityBinding: identityBinding, KeyRoot: filepath.Join(base, "keys"), KeyBinding: keyBinding, ProfileRoot: filepath.Join(base, "profile")}
-	if e = nodeidentity.Import(t.Context(), p.IdentityRoot, source, identityBinding); e != nil {
+	if e = signing.Import(t.Context(), p.IdentityRoot, source, identityBinding); e != nil {
 		t.Fatal(e)
 	}
 	if e = issuance.Initialize(t.Context(), p.KeyRoot, keyBinding); e != nil {
@@ -61,7 +61,7 @@ func TestProfileCompositionOpensConsistentOwnersAndClosesThem(t *testing.T) {
 	if reopened.Outcome != "profile-verified" || !bytes.Equal(created.Response, reopened.Response) {
 		t.Fatal(reopened)
 	}
-	identity, e := nodeidentity.Open(t.Context(), p.IdentityRoot, identityBinding)
+	identity, e := signing.Open(t.Context(), p.IdentityRoot, identityBinding)
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -72,7 +72,7 @@ func TestProfileCompositionOpensConsistentOwnersAndClosesThem(t *testing.T) {
 	otherBinding := identityBinding
 	otherBinding.Node[0] ^= 1
 	otherRoot := filepath.Join(base, "other")
-	if e = nodeidentity.Import(t.Context(), otherRoot, source, otherBinding); e != nil {
+	if e = signing.Import(t.Context(), otherRoot, source, otherBinding); e != nil {
 		t.Fatal(e)
 	}
 	bad := p

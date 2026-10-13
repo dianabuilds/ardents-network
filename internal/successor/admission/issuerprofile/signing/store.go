@@ -1,4 +1,4 @@
-package nodeidentity
+package signing
 
 import (
 	"bytes"

@@ -14,7 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
-	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
 )
 
 func profileConfigObject(raw []byte, names ...string) (map[string]json.RawMessage, error) {
@@ -37,8 +37,8 @@ func profilePath(raw json.RawMessage) (string, error) {
 	}
 	return path, nil
 }
-func decodeIdentityBinding(raw []byte) (nodeidentity.Binding, error) {
-	var b nodeidentity.Binding
+func decodeIdentityBinding(raw []byte) (signing.Binding, error) {
+	var b signing.Binding
 	fields, e := profileConfigObject(raw, "network", "node", "signer")
 	if e != nil {
 		return b, e

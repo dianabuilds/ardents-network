@@ -1334,13 +1334,16 @@ Network qualification.
 
 The token-issuance-linux profile executes make token-issuance-check with the
 issuance owners and the compiled CLI under race in the same pinned image.
+Its complete command suite has the same five-minute package timeout as the
+issuer-profile and Route profiles. This is a test execution bound; no runtime
+permission, authority, transport or recovery deadline is extended.
 It includes real client blind/finalize and stdlib PSS verification, opaque debit
 confirmation, quota retention, journal pairs/floors, faults, crash/replay and OTLP.
 CIRCL uses the populated reviewed module cache. No power-loss/rollback claim.
 
 The active `issuer-profile-linux` profile uses `make issuer-profile-check` on the
 pinned Go 1.27.2 Linux image. It exercises Admission, its Issuerprofile/Issuance/Issuer children,
-Nodeidentity and compiled ardents-next with real files, lease/crash processes,
+Issuerprofile/Signing and compiled ardents-next with real files, lease/crash processes,
 race detection, actual OTLP and the prior durable token cycle. It also mutation-
 fuzzes FuzzIssuerProfile and FuzzNodeIdentityPEM for 30 seconds each, two workers
 and a 90-second per-target limit; caches and receipts remain outside Git. A

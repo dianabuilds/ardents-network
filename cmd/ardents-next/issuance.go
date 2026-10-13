@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
 	"io"
 )
 
@@ -19,11 +19,11 @@ func issuanceOutcome(err error) string {
 	switch {
 	case err == nil:
 		return "completed"
-	case errors.Is(err, issuance.ErrUncertain), errors.Is(err, nodeidentity.ErrUncertain):
+	case errors.Is(err, issuance.ErrUncertain), errors.Is(err, signing.ErrUncertain):
 		return "storage-uncertain"
-	case errors.Is(err, issuance.ErrUnsupported), errors.Is(err, nodeidentity.ErrUnsupported):
+	case errors.Is(err, issuance.ErrUnsupported), errors.Is(err, signing.ErrUnsupported):
 		return "unsupported-platform"
-	case errors.Is(err, issuance.ErrBusy), errors.Is(err, nodeidentity.ErrBusy):
+	case errors.Is(err, issuance.ErrBusy), errors.Is(err, signing.ErrBusy):
 		return "busy"
 	case errors.Is(err, issuance.ErrConflict):
 		return "request-conflict"
@@ -33,7 +33,7 @@ func issuanceOutcome(err error) string {
 		return "result-capacity"
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return "canceled"
-	case errors.Is(err, issuance.ErrInvalid), errors.Is(err, nodeidentity.ErrInvalid):
+	case errors.Is(err, issuance.ErrInvalid), errors.Is(err, signing.ErrInvalid):
 		return "invalid-input"
 	default:
 		return "storage-unavailable"

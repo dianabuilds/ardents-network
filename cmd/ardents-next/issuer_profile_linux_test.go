@@ -20,7 +20,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
 )
 
 func profileCommand(t *testing.T, operation string, plan map[string]any, collector string) (issuanceResult, error) {
@@ -203,7 +203,7 @@ func TestIssuerProfileCLICompleteTokenCycle(t *testing.T) {
 	if e != nil || !bytes.Equal(response, repeated) {
 		t.Fatal("response changed")
 	}
-	identity, e := nodeidentity.Open(t.Context(), identityRoot, nodeidentity.Binding{Network: p.Binding.Network, Node: p.Binding.Issuer, Signer: signer})
+	identity, e := signing.Open(t.Context(), identityRoot, signing.Binding{Network: p.Binding.Network, Node: p.Binding.Issuer, Signer: signer})
 	if e != nil {
 		t.Fatal(e)
 	}

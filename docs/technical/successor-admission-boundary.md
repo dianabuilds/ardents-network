@@ -15,6 +15,7 @@ it does not imply completion of adjacent domains.
 | --- | --- | --- |
 | Allocation | Holder request, role, hour, aggregate allocation maxima, exact request repeat, allocation journal transition | Decision must be durably recorded by Custody before its purpose-specific signature is returned |
 | Issuance quota | Permission, holder proof, request ID and digest, bootstrap count, class balance, issuer hourly total | Admission ledger commits debit; only then returns opaque DebitConfirmation |
+| Issuer-profile signing | Independently pinned imported Ed25519 material, original exclusive lease, permanent failure latch and only validated profile requests | Exact ARDCIP01 bytes after retained custody checks; joined Close before erasure |
 | Issuance material/results | Class/hour RSA keys, canonical public inventory, committed response for an exact debit | ResultStore accepts only DebitConfirmation and retains the exact response; failure never refunds the debit |
 | Holder stock | Private holder key, one permission per context/hour, pending blind state, reserved balance, available tokens and presentation marks | Taking a token removes stock and durably records presentation before returning bytes |
 | Receiving | Token binding to receiver/class/hour, irreversible spend, finite allowance and refusal cleanup | Spend journal precedes acceptance; post-I/O expiry cannot refund a spend |
@@ -22,7 +23,7 @@ it does not imply completion of adjacent domains.
 These are separate consistency boundaries inside one Admission context, not
 five new domains and not a single shared transaction. Issuer is an application
 coordinator over quota, key and result owners. Token and issuerprofile are
-supporting cryptographic/format code, not additional business owners.
+supporting cryptographic/format code, not additional business owners. The private `issuerprofile/signing` child is a supporting Admission mechanism; pure `issuerprofile` remains a standard-library public leaf.
 Attempts and spending hold different histories: presentation by a holder and
 acceptance by a receiver must not be collapsed into one journal.
 
@@ -32,7 +33,7 @@ acceptance by a receiver must not be collapsed into one journal.
 | --- | --- |
 | Current Epoch/profile, conflicts, membership, duty generations and trusted time | Network; Admission consumes selected facts and cannot promote signed bytes into current authority |
 | Authority private key, unlock, encrypted record, allocation journal persistence | Custody; Admission supplies allocation rules and exact signing grammar |
-| Node identity private key | Node Identity; issuer profile preparation uses its purpose-specific signing operation |
+| Runtime Node TLS private key | Node runtime; offline issuer-profile signing grants no runtime credential or duty |
 | Physical memory, bandwidth reservations and host capacity | Hosting; a token never guarantees capacity |
 | TLS/QUIC, HELLO binding, OPEN/ADMIT framing, lane state, route selection and child lifetime | Route/Node/Endpoint composition; contextual checks stay at those boundaries |
 | Introduction registration IDs, slot replay and withdrawal | Route's receiving Introduction owner; a fresh token must not erase an earlier registration floor |
