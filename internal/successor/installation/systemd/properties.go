@@ -87,6 +87,18 @@ func Matches(properties Properties, name, signature string, wanted any) bool {
 	if err != nil {
 		return false
 	}
+	if len(encoded) > 64<<10 {
+		return false
+	}
+	if bytes.Equal(value.Data, encoded) {
+		// These built-in values cannot supply MarshalJSON, duplicate object
+		// keys or excessive nesting. Marshal has already validated the finite
+		// number/string encoding; equality carries that proof to fresh bytes.
+		switch wanted.(type) {
+		case bool, string, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, []string:
+			return true
+		}
+	}
 	var actual, expected any
 	if Decode(encoded, &expected) != nil {
 		return false

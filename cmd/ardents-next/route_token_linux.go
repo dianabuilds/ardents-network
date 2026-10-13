@@ -56,7 +56,10 @@ func (flow *routeTokenFlow) challenges(class uint8, receivers [][32]byte) ([]tok
 	return result, nil
 }
 
-func (flow *routeTokenFlow) bootstrap(ctx context.Context, budget *hosting.Budget, preparation *stock.Preparation) (result error) {
+func (flow *routeTokenFlow) bootstrap(ctx context.Context, budget *hosting.Budget, preparation *stock.Preparation, controls int) (result error) {
+	if controls < 1 || controls > admission.MaximumBatchTokens {
+		return errors.New("initial issuer Control stock count invalid")
+	}
 	requested, err := flow.challenges(uint8(admission.ForwardClass), [][32]byte{flow.leg.Entry.NodeID, flow.leg.Interior.NodeID})
 	if err != nil {
 		return err
@@ -100,8 +103,12 @@ func (flow *routeTokenFlow) bootstrap(ctx context.Context, budget *hosting.Budge
 	}
 	// The second finite batch funds the selected issuer's admitted Control,
 	// never Registration or an upgraded bootstrap child.
+	controlReceivers := make([][32]byte, controls)
+	for index := range controlReceivers {
+		controlReceivers[index] = flow.issuer
+	}
 	return physical.Issue(ctx, end, routeIssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
-		uint8(admission.ControlClass), [][32]byte{flow.issuer}, preparation))
+		uint8(admission.ControlClass), controlReceivers, preparation))
 }
 
 func (flow *routeTokenFlow) present(ctx context.Context, hello ardp.Hello) (_ []byte, result error) {
@@ -222,7 +229,7 @@ func (flow *routeTokenFlow) presentRequested(ctx context.Context, hello ardp.Hel
 }
 
 func openFundedSource(ctx context.Context, plan routePrefixPlan, selected *selection.Owner, budget *hosting.Budget,
-	authority admissionAuthority, holder *stock.Owner, retain func(error)) (_ *prefix.Prefix, _ selection.Leg, _ *routeTokenFlow, result error) {
+	authority admissionAuthority, holder *stock.Owner, controls int, retain func(error)) (_ *prefix.Prefix, _ selection.Leg, _ *routeTokenFlow, result error) {
 	if retain == nil {
 		return nil, selection.Leg{}, nil, errors.New("original Source cleanup owner absent")
 	}
@@ -245,7 +252,7 @@ func openFundedSource(ctx context.Context, plan routePrefixPlan, selected *selec
 		return nil, selection.Leg{}, nil, errors.Join(err, config.Release())
 	}
 	flow.issuer = issuer.NodeID
-	if err := flow.bootstrap(ctx, budget, preparation); err != nil {
+	if err := flow.bootstrap(ctx, budget, preparation, controls); err != nil {
 		return nil, selection.Leg{}, nil, errors.Join(err, config.Release())
 	}
 	config.Present = flow.present

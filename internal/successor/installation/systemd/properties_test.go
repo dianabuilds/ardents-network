@@ -55,6 +55,15 @@ func TestManagerPropertyMatchPreservesRepresentationAndBounds(t *testing.T) {
 		})
 	}
 	// Equal bytes cannot bypass the original parser's input or nesting bounds.
+	for _, wanted := range []any{strings.Repeat("x", 64<<10), []string{strings.Repeat("x", 64<<10)}} {
+		raw, err := json.Marshal(wanted)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if Matches(Properties{"value": {Type: "test", Data: raw}}, "value", "test", wanted) {
+			t.Fatal("identical oversized built-in value accepted")
+		}
+	}
 	for _, raw := range []string{`"` + strings.Repeat("x", 64<<10) + `"`, strings.Repeat("[", 18) + `0` + strings.Repeat("]", 18)} {
 		properties := Properties{"value": {Type: "test", Data: json.RawMessage(raw)}}
 		if Matches(properties, "value", "test", json.RawMessage(raw)) {

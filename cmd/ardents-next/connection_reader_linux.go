@@ -201,7 +201,7 @@ func openTextReaderSource(operation *executionruntime.Operation, plan routePrefi
 			return nil, nil, err
 		}
 	}
-	physical, leg, _, err := openFundedSource(operation.Context(), plan, selected, budget, authority, holder, operation.RetainCleanup)
+	physical, leg, _, err := openFundedSource(operation.Context(), plan, selected, budget, authority, holder, 1, operation.RetainCleanup)
 	if err != nil {
 		return nil, nil, err
 	}

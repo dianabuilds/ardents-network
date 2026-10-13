@@ -458,10 +458,17 @@ Publication's first forwarding presentation for a newly retained prefix requests
 the missing Entry and Interior Forward stock in one same-class batch. It checks
 the exact retained Interior duty before issuing and preserves recipient order
 and multiplicity. This uses the admitted Source and one Stock preparation for
-the joined Control replacement and Forward exchange. Each recipient still gets
+any needed joined Control replacement and Forward exchange. Each recipient still gets
 its own durably marked presentation only at its actual HELLO; later refills and
 terminal roles use ordinary on-demand stock. Failure refunds neither allocation
 nor presentation and does not redraw the retained leg.
+
+The Publisher requests three issuer Control tokens in its existing second
+bootstrap batch for its initial Introduction Forward, Registration and
+Descriptor Control issuance. Reader requests one. This is finite stock charged
+to the original allocation, not a new bootstrap exchange or quota; unsuccessful
+setup keeps the debit. Registration and Descriptor rights are still obtained
+only through their ordinary admitted issuer exchanges.
 
 `bootstrap-open`, `issuer-issue` and `bootstrap-close` drive genuine Stock and
 issuer owners through the maintained holder console. The holder joins bootstrap

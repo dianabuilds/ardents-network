@@ -48,7 +48,7 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceBothCarriers(t *testing.T) {
 			}
 			defer budget.Close()
 			var bootstrapCleanup error
-			source, leg, funding, err := openFundedSource(ctx, plan, selected, budget, f.authority, holder,
+			source, leg, funding, err := openFundedSource(ctx, plan, selected, budget, f.authority, holder, 3,
 				func(err error) { bootstrapCleanup = errors.Join(bootstrapCleanup, err) })
 			if err != nil {
 				t.Fatal("cold genuine Source", err)
@@ -58,8 +58,8 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceBothCarriers(t *testing.T) {
 				t.Fatal("cold Source did not join exactly two bootstrap batches before real admission", bootstrapCleanup, x.bootstrapIssues.Load(), holder.Status())
 			}
 			// A second actual opening needs fresh Forward presentations for the
-			// same selected nodes. Obtain them through the original admitted
-			// Source, including its class-specific issuer Control replacement.
+			// same selected nodes. Obtain both through the original admitted
+			// Source using its already funded issuer Control, without a refill.
 			config, err := preparePublicationPrefix(ctx, plan, selected, budget, f.authority, holder)
 			if err != nil {
 				t.Fatal(err)
@@ -75,13 +75,13 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceBothCarriers(t *testing.T) {
 			if cleanup, joined := next.CleanupResult(); !joined || cleanup != nil {
 				t.Fatal("on-demand opening lacks physical receipt", joined, cleanup)
 			}
-			if x.ordinaryIssues.Load() != 2 || x.bootstrapIssues.Load() != 2 || holder.Status().Remaining[0] != 5 || holder.Status().Remaining[1] != 4 {
+			if x.ordinaryIssues.Load() != 1 || x.bootstrapIssues.Load() != 2 || holder.Status().Remaining[0] != 5 || holder.Status().Remaining[1] != 4 {
 				t.Fatal("on-demand funding changed original finite allowance", x.ordinaryIssues.Load(), holder.Status())
 			}
 			if err := source.Issue(ctx, plan.Deadline, routeIssuerPreparation(ctx, f.authority, holder, leg, uint8(admission.ForwardClass), nil)); err != nil {
 				t.Fatal("actual admitted issuer exchange", err)
 			}
-			if x.ordinaryIssues.Load() != 3 || x.bootstrapIssues.Load() != 2 || holder.Status().Remaining[1] != 2 {
+			if x.ordinaryIssues.Load() != 2 || x.bootstrapIssues.Load() != 2 || holder.Status().Remaining[1] != 2 {
 				t.Fatal("admitted work renewed bootstrap or lost irreversible quota", x.ordinaryIssues.Load(), x.bootstrapIssues.Load(), holder.Status())
 			}
 			if err := source.Close(); err != nil {

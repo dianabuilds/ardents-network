@@ -114,7 +114,11 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 	}
 	var funding *routeTokenFlow
 	var sourceLeg selection.Leg
-	source, sourceLeg, funding, err = openFundedSource(ctx, routePlan, sourceSelection, budget, authority, holder, operation.RetainCleanup)
+	// Initial Publication needs three admitted issuer exchanges: forwarding
+	// stock for Introduction, Registration stock, then Descriptor Control.
+	// Fund their issuer presentations in the existing second bootstrap batch.
+	// The same finite allocation is debited now; failed setup never refunds it.
+	source, sourceLeg, funding, err = openFundedSource(ctx, routePlan, sourceSelection, budget, authority, holder, 3, operation.RetainCleanup)
 	if err != nil {
 		return publicationHandle{}, err
 	}
