@@ -425,9 +425,27 @@ func (stream *Stream) watchLifetime() {
 			}
 			timer.Stop()
 		}
-		stream.cancel()
+		stream.sealRetirement()
 	}
 	stream.retire()
+}
+
+// sealRetirement denies late record effects before deliberate interruption.
+// Cancellation alone leaves a window in which an interrupted record actor can
+// replace an already settled outcome with context.Canceled. Physical failures
+// remain with the exact joined Attachment/Route cleanup owners.
+func (stream *Stream) sealRetirement() {
+	stream.mu.Lock()
+	defer stream.mu.Unlock()
+	stream.closing = true
+	if stream.failure == nil && !stream.settled {
+		stream.failure = context.Cause(stream.ctx)
+		if stream.failure == nil {
+			stream.failure = context.Canceled
+		}
+	}
+	stream.cancel()
+	stream.signalLocked()
 }
 
 func (stream *Stream) retire() {
@@ -484,7 +502,7 @@ func (stream *Stream) Close() error {
 	if stream.self != stream {
 		return errIntegrity
 	}
-	stream.cancel()
+	stream.sealRetirement()
 	stream.retire()
 	<-stream.joined
 	<-stream.watcherDone

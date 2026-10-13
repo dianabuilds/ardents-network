@@ -291,18 +291,19 @@ func (source *InitiatorSource) AuthenticateInitial() (_ *AuthenticatedAttachment
 	if err := errors.Join(source.check(), descriptor.Current(time.Now()), setup.Err()); err != nil {
 		return nil, err
 	}
-	if err := introduction.SubmitScoped(setup, handle, intro, envelope, source.config.Exclusions); err != nil {
-		return nil, err
-	}
-	if err := errors.Join(source.check(), descriptor.Current(time.Now()), setup.Err()); err != nil {
-		return nil, err
-	}
-	physical, err := acquisition.Join(source.physical, join.JoinConfig{Duty: rendezvous, Secret: request.JoinSecret, Context: request.HandshakeContext, Deadline: source.config.WorkSafetyNotAfter, SetupDeadline: setupEnd})
+	var physical *join.Joined
+	err = runInitiatorSetupFlights(setup, acquisition.Close, func(ctx context.Context) error {
+		return introduction.SubmitScoped(ctx, handle, intro, envelope, source.config.Exclusions)
+	}, func() error {
+		var err error
+		physical, err = acquisition.Join(source.physical, join.JoinConfig{Duty: rendezvous, Secret: request.JoinSecret, Context: request.HandshakeContext, Deadline: source.config.WorkSafetyNotAfter, SetupDeadline: setupEnd})
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
 	joinSetupCancellation()
-	if err := errors.Join(source.check(), setup.Err()); err != nil {
+	if err := errors.Join(source.check(), descriptor.Current(time.Now()), setup.Err()); err != nil {
 		return nil, err
 	}
 	owner, err := AuthenticateInitiator(setup, binding, physical)
@@ -486,21 +487,63 @@ func (source *InitiatorSource) openReplacement(proposal *initiatorReplacement) (
 	}
 	setup, cancel := context.WithDeadline(proposal.ctx, setupEnd)
 	defer cancel()
-	if err := introduction.SubmitScoped(setup, handle, intro, envelope, source.config.Exclusions); err != nil {
-		return nil, nil, fmt.Errorf("connection replacement Introduction submission: %w", err)
-	}
-	if err := errors.Join(proposal.check(), binding.check(true), descriptor.Current(time.Now())); err != nil {
+	var physical *join.Joined
+	err = runInitiatorSetupFlights(setup, acquisition.Close, func(ctx context.Context) error {
+		if err := introduction.SubmitScoped(ctx, handle, intro, envelope, source.config.Exclusions); err != nil {
+			return fmt.Errorf("connection replacement Introduction submission: %w", err)
+		}
+		return nil
+	}, func() error {
+		var err error
+		physical, err = acquisition.Join(stream.owner.context(), join.JoinConfig{Duty: rendezvous,
+			Secret: request.JoinSecret, Context: request.HandshakeContext, Deadline: source.config.WorkSafetyNotAfter, SetupDeadline: setupEnd})
+		if err != nil {
+			return fmt.Errorf("connection replacement JOIN: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
 		return nil, nil, err
 	}
-	physical, err := acquisition.Join(stream.owner.context(), join.JoinConfig{Duty: rendezvous,
-		Secret: request.JoinSecret, Context: request.HandshakeContext, Deadline: source.config.WorkSafetyNotAfter, SetupDeadline: setupEnd})
-	if err != nil {
-		return nil, nil, fmt.Errorf("connection replacement JOIN: %w", err)
-	}
-	if err := errors.Join(proposal.check(), binding.check(true)); err != nil {
+	if err := errors.Join(proposal.check(), binding.check(true), descriptor.Current(time.Now()), setup.Err()); err != nil {
 		return nil, nil, err
 	}
 	return binding, physical, nil
+}
+
+// runInitiatorSetupFlights joins the two independent setup exchanges. The
+// callers above alone construct genuine Submission/JOIN operations and retain
+// their authority checks and durable presentations before operation bytes.
+// JOIN keeps its original physical caller: canceling this setup must interrupt
+// the exact acquisition, not shorten a successfully transferred stream.
+func runInitiatorSetupFlights(setup context.Context, interrupt func() error, submit func(context.Context) error, openJoin func() error) error {
+	ctx, cancel := context.WithCancel(setup)
+	defer cancel()
+	interrupted := make(chan struct{})
+	var interruption error
+	stop := context.AfterFunc(ctx, func() {
+		defer close(interrupted)
+		interruption = interrupt()
+	})
+	submitted := make(chan error, 1)
+	go func() {
+		err := submit(ctx)
+		if err != nil {
+			cancel()
+		}
+		submitted <- err
+	}()
+	joined := openJoin()
+	if joined != nil {
+		cancel()
+	}
+	submission := <-submitted
+	// Disarm and join before canceling our private setup context on return.
+	// Any already-started physical retirement and its error remain retained.
+	if !stop() {
+		<-interrupted
+	}
+	return errors.Join(submission, joined, interruption, ctx.Err())
 }
 
 // The exact physical handle stays within this permitted Route import owner.
@@ -539,6 +582,9 @@ func (source *InitiatorSource) Close() error {
 		var work, physical error
 		if stream != nil {
 			work = stream.Close()
+			if work != nil {
+				work = fmt.Errorf("connection original Reader stream retirement: %w", work)
+			}
 			physical = stream.JoinedCleanup()
 		}
 		if owner != nil {
@@ -549,7 +595,9 @@ func (source *InitiatorSource) Close() error {
 			physical = errors.Join(physical, owner.cleanupErr)
 		}
 		source.flights.Wait()
-		work = errors.Join(work, source.scope.Close())
+		if err := source.scope.Close(); err != nil {
+			work = errors.Join(work, fmt.Errorf("connection original Source scope retirement: %w", err))
+		}
 		cleanup, complete := source.scope.CleanupResult()
 		if !complete {
 			cleanup = errors.Join(cleanup, errIntegrity)

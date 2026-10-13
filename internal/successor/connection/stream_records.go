@@ -91,10 +91,7 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 			}
 			if retireTail {
 				result = nil // Exact decoded clean CLOSE after authenticated Terminal.
-				stream.cancel()
-				stream.mu.Lock()
-				stream.signalLocked()
-				stream.mu.Unlock()
+				stream.sealRetirement()
 			}
 			if finished {
 				return
