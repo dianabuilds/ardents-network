@@ -148,6 +148,7 @@ if [ "$test_root" = TestInstalledConnectionStreamBothCarriers ]; then
     set -- "$test_root"
     for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
         set -- "$@" "$test_root/$carrier" "$test_root/$carrier/before-request-loss" "$test_root/$carrier/before-request-terminal-commit-loss" "$test_root/$carrier/responder-parent-loss" "$test_root/$carrier/source-parent-loss" "$test_root/$carrier/source-stock-exhaustion" "$test_root/$carrier/publisher-source-parent-loss" "$test_root/$carrier/response-loss" "$test_root/$carrier/after-request-terminal-loss" "$test_root/$carrier/caller-observation-loss" "$test_root/$carrier/close-observation-loss" "$test_root/$carrier/publisher-observation-loss" "$test_root/$carrier/publisher-close-observation-loss"
+        set -- "$@" "$test_root/$carrier/publisher-receipt-before-write-loss" "$test_root/$carrier/publisher-receipt-before-write-commit-loss"
     done
 fi
 if [ "$test_root" = TestInstalledPublicationElapsedBothCarriers ]; then

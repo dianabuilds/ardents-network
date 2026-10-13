@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"reflect"
 	"runtime"
 	"sync"
 	"testing"
@@ -113,6 +114,12 @@ func TestInstalledConnectionStreamBothCarriers(t *testing.T) {
 		t.Run(string(carrier), func(t *testing.T) {
 			t.Run("before-request-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "before-request") })
 			t.Run("before-request-terminal-commit-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "terminal-body") })
+			t.Run("publisher-receipt-before-write-loss", func(t *testing.T) {
+				runInstalledConnectionTextLoss(t, carrier, "control-publisher-receipt-before-write")
+			})
+			t.Run("publisher-receipt-before-write-commit-loss", func(t *testing.T) {
+				runInstalledConnectionTextLoss(t, carrier, "control-publisher-receipt-after-write")
+			})
 			t.Run("responder-parent-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "responder-parent") })
 			t.Run("source-parent-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "source-parent") })
 			t.Run("source-stock-exhaustion", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "source-stock-exhaustion") })
@@ -131,6 +138,111 @@ func TestInstalledConnectionStreamBothCarriers(t *testing.T) {
 // cannot silently retarget a qualification fault to a prefix or pre-read check.
 const connectionControlBodyReadLine = 74
 const connectionControlReadRecheckLine = 373
+
+const connectionPublisherControlWriteBeforeLine = 377
+const connectionPublisherControlWriteAfterLine = 389
+const connectionInitiatorControlWriteBeforeLine = 114
+const connectionInitiatorControlWriteAfterLine = 119
+
+// This observer runs on the actual serialized record writer, inside its
+// existing authority callback. The writer owns its immutable active ticket
+// until finishWrite; replacement cannot change terminal until that writer has
+// joined. Peer readers update receipt flags, not this ticket or its record.
+// Reflection reads only that writer's own immutable metadata, never authority,
+// secrets or concurrently updated ledger flags. No supplied record/stream or
+// accepting callback enters production. A generation-1 ticket selects this
+// exact initial control even if Data ACKs interleave with it.
+type installedControlWriteGate struct {
+	mu      sync.Mutex
+	target  *connection.Stream
+	role    string
+	kind    string
+	after   bool
+	entered chan struct{}
+	resume  chan struct{}
+	once    sync.Once
+	release sync.Once
+}
+
+func (gate *installedControlWriteGate) arm(target *connection.Stream) {
+	gate.mu.Lock()
+	gate.target = target
+	gate.mu.Unlock()
+}
+
+func (gate *installedControlWriteGate) unblock() {
+	gate.release.Do(func() { close(gate.resume) })
+}
+
+func (gate *installedControlWriteGate) observe() {
+	var pcs [96]uintptr
+	frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs[:])])
+	actor, boundary, direct, source := false, false, false, false
+	for {
+		frame, more := frames.Next()
+		switch frame.Function {
+		case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*Stream).writeRecords":
+			actor = true
+		case "github.com/dianabuilds/ardents-network/internal/successor/publication/instance.(*ServiceAttachment).Write":
+			if gate.role == "publisher" {
+				line := connectionPublisherControlWriteBeforeLine
+				if gate.after {
+					line = connectionPublisherControlWriteAfterLine
+				}
+				boundary = frame.Line == line
+			}
+		case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*initiatorAttachment).Write":
+			if gate.role == "initiator" {
+				line := connectionInitiatorControlWriteBeforeLine
+				if gate.after {
+					line = connectionInitiatorControlWriteAfterLine
+				}
+				boundary = frame.Line == line
+			}
+		case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*ResponderScope).Check":
+			direct = true
+		case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*SourceScope).Check":
+			source = true
+		}
+		if !more {
+			break
+		}
+	}
+	if !actor || !boundary || gate.role == "publisher" && (!direct || source) || gate.role == "initiator" && !source {
+		return
+	}
+	gate.mu.Lock()
+	selected := false
+	if gate.target != nil {
+		terminal := reflect.ValueOf(gate.target).Elem().FieldByName("terminal")
+		if !terminal.IsNil() {
+			active := terminal.Elem().FieldByName("active")
+			if !active.IsNil() && active.Elem().FieldByName("generation").Uint() == 1 {
+				record := active.Elem().FieldByName("record")
+				kind := "terminal"
+				if record.FieldByName("Terminal").IsNil() {
+					ack := record.FieldByName("Acknowledgement")
+					if !ack.IsNil() && ack.Elem().FieldByName("Terminal").Bool() {
+						kind = "receipt"
+						if ack.Elem().FieldByName("TerminalConfirmation").Bool() {
+							kind = "confirmation"
+						}
+					} else {
+						kind = ""
+					}
+				}
+				selected = kind == gate.kind
+			}
+		}
+	}
+	if selected {
+		gate.once.Do(func() { close(gate.entered) })
+	}
+	gate.mu.Unlock()
+	if selected {
+		<-gate.resume
+	}
+}
 
 // One fixed Text request writes one Data record followed by its Terminal.
 // Select the Publisher's second complete body read, after real TLS I/O and

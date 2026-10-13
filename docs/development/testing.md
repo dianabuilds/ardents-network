@@ -235,6 +235,7 @@ reopened with the same duty, durable roots and owners. The response must match
 the original snapshot exactly; Source, operation and workers join before the
 private result is consumed. The driver requires the exact root, Carrier and
 before-request-loss, before-request-terminal-commit-loss,
+publisher-receipt-before-write-loss, publisher-receipt-before-write-commit-loss,
 responder-parent-loss, source-parent-loss,
 publisher-source-parent-loss, response-loss, after-request-terminal-loss, caller-observation-loss,
 close-observation-loss and both Publisher observation-loss variants' PASS
@@ -250,6 +251,13 @@ Original worker/result checks still require one exact snapshot and full
 Terminal completion. Any original receiving peer-retirement failure remains
 the same repeated Close result; unknown or mixed failure leaves still fail.
 This supplies no record, synthetic EOF, authority or accepting result.
+The Publisher receipt write cases select the serialized writer's own immutable
+generation-1 control ticket during its existing direct Responder observation.
+The scheduler pauses before TLS Write or after actual Write before the writer's
+ledger commit, and never reads concurrently updated receipt flags. Data ACK
+interleaving cannot select a different record. Replacement joins that writer
+before changing its ticket owner; source-site guards bind both write boundaries.
+These cases do not establish every receipt/confirmation delivery boundary.
 The former loses the original Attachment before the Text request; the latter
 loses it after genuine response bytes have reached the original Reader.
 The Responder-parent case stops both real role-3 Interior candidate receivers

@@ -390,12 +390,21 @@ func runInstalledConnectionText(t *testing.T, carrier transport.CarrierProfile, 
 }
 
 func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfile, timing string) {
-	if timing != "terminal-body" && timing != "" && timing != "before-request" && timing != "responder-parent" && timing != "source-parent" && timing != "source-stock-exhaustion" && timing != "publisher-source-parent" && timing != "response" && timing != "refresh-response" && timing != "refresh-pending" && timing != "publication-withdrawal" && timing != "request-terminal" && timing != "caller-observation" && timing != "close-observation" && timing != "publisher-observation" && timing != "publisher-close-observation" {
+	var controlGate *installedControlWriteGate
+	if strings.HasPrefix(timing, "control-") {
+		parts := strings.SplitN(strings.TrimPrefix(timing, "control-"), "-", 3)
+		if len(parts) != 3 || parts[0] != "publisher" && parts[0] != "initiator" || parts[1] != "terminal" && parts[1] != "receipt" && parts[1] != "confirmation" || parts[2] != "before-write" && parts[2] != "after-write" {
+			t.Fatal("unknown control write boundary")
+		}
+		controlGate = &installedControlWriteGate{role: parts[0], kind: parts[1], after: parts[2] == "after-write", entered: make(chan struct{}), resume: make(chan struct{})}
+		t.Cleanup(controlGate.unblock)
+	}
+	if controlGate == nil && timing != "terminal-body" && timing != "" && timing != "before-request" && timing != "responder-parent" && timing != "source-parent" && timing != "source-stock-exhaustion" && timing != "publisher-source-parent" && timing != "response" && timing != "refresh-response" && timing != "refresh-pending" && timing != "publication-withdrawal" && timing != "request-terminal" && timing != "caller-observation" && timing != "close-observation" && timing != "publisher-observation" && timing != "publisher-close-observation" {
 		t.Fatal("unknown Connection loss boundary")
 	}
 	pendingACK := timing == "refresh-pending"
 	refresh := timing == "refresh-response" || pendingACK
-	loss := timing == "terminal-body" || timing == "before-request" || timing == "response" || refresh || timing == "request-terminal"
+	loss := controlGate != nil || timing == "terminal-body" || timing == "before-request" || timing == "response" || refresh || timing == "request-terminal"
 	parentLoss := timing == "responder-parent"
 	stockLoss := timing == "source-stock-exhaustion"
 	sourceLoss := timing == "source-parent" || stockLoss
@@ -526,6 +535,10 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		SourceInteriorRoot: filepath.Join(root, "source"), ResponderInteriorRoot: filepath.Join(root, "responder"), HostingRoot: routeProcessBudget(t),
 		Domain: 4, Deadline: end, Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	publisherAuthority := f.authority
+	if controlGate != nil && controlGate.role == "publisher" {
+		original := publisherAuthority.current
+		publisherAuthority.current = func() (network.RuntimeView, error) { controlGate.observe(); return original() }
+	}
 	if timing == "terminal-body" {
 		original := publisherAuthority.current
 		publisherAuthority.current = func() (network.RuntimeView, error) { observeBody(); return original() }
@@ -595,6 +608,9 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		}
 	})
 	readerObservation := observationDelay
+	if controlGate != nil && controlGate.role == "initiator" {
+		readerObservation = controlGate.observe
+	}
 	if publisherObservation {
 		readerObservation = nil
 	}
@@ -638,6 +654,13 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	waited = true
 	if peer.err != nil || peer.stream == nil {
 		t.Fatal("Publisher genuine composed stream", peer.err)
+	}
+	if controlGate != nil {
+		selected := peer.stream
+		if controlGate.role == "initiator" {
+			selected = stream
+		}
+		controlGate.arm(selected)
 	}
 	t.Cleanup(func() {
 		if err := peer.stream.Close(); err != nil {
@@ -871,7 +894,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	var result *executionruntime.ReaderResult
 	if timing == "response" || refresh {
 		transferred, result, err = deliverReaderAfterResponseLoss(t, ctx, cancel, readerOperation, readerContract, stream, len(snapshot)+13, loseOriginal)
-	} else if timing == "terminal-body" {
+	} else if timing == "terminal-body" || controlGate != nil {
 		type readerReturn struct {
 			transferred bool
 			result      *executionruntime.ReaderResult
@@ -883,20 +906,25 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			done <- readerReturn{transferred, result, err}
 		}()
 		joined := false
+		releaseHeld := releaseBody
+		entered := bodyEntered
+		if controlGate != nil {
+			releaseHeld, entered = controlGate.unblock, controlGate.entered
+		}
 		defer func() {
-			releaseBody()
+			releaseHeld()
 			if !joined {
 				cancel()
 				<-done
 			}
 		}()
 		select {
-		case <-bodyEntered:
+		case <-entered:
 		case <-ctx.Done():
 			t.Fatal("original complete Terminal body observation absent", ctx.Err())
 		}
 		loseOriginal()
-		releaseBody()
+		releaseHeld()
 		select {
 		case got := <-done:
 			joined = true
@@ -904,7 +932,11 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		case <-ctx.Done():
 			t.Fatal("original Terminal-body recovery incomplete", ctx.Err())
 		}
-		t.Log("actual Publisher received second request-side record body before final observation; same Rendezvous joined and restarted")
+		if controlGate != nil {
+			t.Log("actual original control ticket delayed at write boundary; same Rendezvous joined and restarted", controlGate.role, controlGate.kind, controlGate.after)
+		} else {
+			t.Log("actual Publisher received second request-side record body before final observation; same Rendezvous joined and restarted")
+		}
 	} else if timing == "request-terminal" {
 		transferred, result, err = deliverReaderAfterRequestTerminalLoss(t, ctx, cancel, readerOperation, readerContract, stream, terminalObserved, loseOriginal)
 	} else {
