@@ -527,6 +527,17 @@ for the actual consumer. Prefix queues total at most 4 MiB; complete Node
 queues remain within the admission owner's 64 MiB ceiling.
 A slow lane cannot block reading another lane's bounded control/termination.
 
+The inner TLS consumer uses one bounded 16 KiB ciphertext input buffer without
+background reads or timed accumulation. Retained TLS 1.3 writes split plaintext
+so that each encrypted record, including its header and authentication overhead,
+fits one 16 KiB BYTES body. The original Lane projects its fixed framing overhead
+through the enclosing TLS/Carrier chain, so this bound includes lower nested
+headers rather than restarting at each layer. This projection grants no live
+credit or authority and performs no observation or I/O. Complete concurrent
+writes remain serialized. These
+mechanisms preserve stream bytes, original deadlines and physical retirement;
+they add no lane credit, authority cache or alternative authentication profile.
+
 Schedule one at-most-16-KiB frame per ready lane in round-robin order. Reserve
 a separate 16 KiB/channel control queue. Give a newly available control frame
 first service, then one already queued data frame before another control frame,

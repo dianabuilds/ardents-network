@@ -49,7 +49,9 @@ Publication obtains actual blind tokens through network issuers, then runs the
 qualified snapshot worker, real registrations and receiving Descriptor Store.
 The scenario checks no Link before publication, a canonical accepting Link,
 withdrawal and original process survival without an accepting Link afterwards.
-Each local request has its own fixed fifteen-second bound. The driver requires
+Snapshot uses the declared 45-second total publication bound, with input still
+limited to fifteen seconds; Link and withdrawal retain fifteen seconds each.
+The driver requires
 the exact selected Carrier subcase and rejects every skip. This one-Publisher
 component does not establish a Reader Service stream or two installed Endpoints.
 

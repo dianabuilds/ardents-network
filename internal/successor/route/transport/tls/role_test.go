@@ -210,12 +210,93 @@ func TestRoleTLSRefusesWrongKeyAndCertificateTimes(t *testing.T) {
 
 type observedRoleConnection struct {
 	net.Conn
-	writes atomic.Int32
+	writes  atomic.Int32
+	maximum atomic.Int32
+}
+
+type observedRoleInput struct {
+	net.Conn
+	reads atomic.Int32
+}
+
+func (conn *observedRoleInput) Read(body []byte) (int, error) {
+	conn.reads.Add(1)
+	return conn.Conn.Read(body)
+}
+
+func TestRoleTLSReadsAvailableRecordWithoutHeaderCreditFragmentation(t *testing.T) {
+	now := time.Now()
+	certificate, key := roleCertificate(t, now.Add(-time.Minute), now.Add(time.Minute))
+	raw, accepted, end := roleServer(t, certificate)
+	observed := &observedRoleInput{Conn: raw}
+	client, err := roletls.OpenRole(t.Context(), observed, key, end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := <-accepted
+	if server.err != nil {
+		t.Fatal(server.err)
+	}
+	_ = client.SetDeadline(end)
+	_ = server.connection.SetDeadline(end)
+	// net.Pipe supplies exactly one already-available encrypted record. This
+	// isolates TLS header fragmentation from packet timing and Route authority.
+	payload := bytes.Repeat([]byte{0xa7}, 4096)
+	observed.reads.Store(0)
+	finished := make(chan error, 1)
+	go func() { _, err := server.connection.Write(payload); finished <- err }()
+	received := make([]byte, len(payload))
+	_, readErr := io.ReadFull(client, received)
+	if writeErr := <-finished; readErr != nil || writeErr != nil || !bytes.Equal(received, payload) {
+		t.Fatal("original record changed", readErr, writeErr)
+	}
+	if count := observed.reads.Load(); count != 1 {
+		t.Fatalf("one available TLS record consumed through %d raw reads, want 1", count)
+	}
+	original, ok := client.NetConn().(interface{ NetConn() net.Conn })
+	if !ok || original.NetConn() != observed {
+		t.Fatal("buffer lost original physical owner traversal")
+	}
 }
 
 func (c *observedRoleConnection) Write(p []byte) (int, error) {
 	c.writes.Add(1)
+	for previous := c.maximum.Load(); int32(len(p)) > previous; previous = c.maximum.Load() {
+		if c.maximum.CompareAndSwap(previous, int32(len(p))) {
+			break
+		}
+	}
 	return c.Conn.Write(p)
+}
+
+func TestRoleTLSWritesRecordsWithinRouteFrame(t *testing.T) {
+	now := time.Now()
+	certificate, key := roleCertificate(t, now.Add(-time.Minute), now.Add(time.Minute))
+	raw, accepted, end := roleServer(t, certificate)
+	observed := &observedRoleConnection{Conn: raw}
+	client, err := roletls.OpenRole(t.Context(), observed, key, end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := <-accepted
+	if server.err != nil {
+		t.Fatal(server.err)
+	}
+	_ = client.SetDeadline(end)
+	_ = server.connection.SetDeadline(end)
+	payload := bytes.Repeat([]byte{0x36}, (16<<10)+16)
+	received := make([]byte, len(payload))
+	finished := make(chan error, 1)
+	go func() { _, err := io.ReadFull(server.connection, received); finished <- err }()
+	observed.writes.Store(0)
+	observed.maximum.Store(0)
+	n, writeErr := transport.Retain(client).Write(payload)
+	if readErr := <-finished; writeErr != nil || readErr != nil || n != len(payload) || !bytes.Equal(received, payload) {
+		t.Fatal("record splitting changed bytes", n, writeErr, readErr)
+	}
+	if maximum, writes := observed.maximum.Load(), observed.writes.Load(); maximum > 16<<10 || writes != 2 {
+		t.Fatalf("TLS records: maximum %d bytes, writes %d; want <=16384 bytes in two writes", maximum, writes)
+	}
 }
 
 func TestRoleTLSInvalidBoundsRefuseBeforeOutput(t *testing.T) {

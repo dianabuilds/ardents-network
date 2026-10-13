@@ -16,6 +16,7 @@ type retainedConn struct {
 	err      error
 	closed   atomic.Bool
 	peerRead atomic.Bool
+	writeMu  sync.Mutex
 }
 
 // Read preserves the exact TLS result. Only an original, completed TLS channel

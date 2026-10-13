@@ -849,6 +849,14 @@ retired by
 The `ardents endpoint publish` command refuses at dispatch before dialing its
 Administration socket and directs the operator to `ardents-text publish` with
 an explicit document file. The local bodyless protocol refusal remains intact.
+Snapshot Administration has one absolute 45-second publication deadline from
+request acceptance, including input and response. Header, body and EOF input
+remain bounded to the original 15 seconds. The Publisher receives the remaining
+absolute deadline; no phase renews it. `RequestSnapshot` bounds its caller from
+before dialing to 45 seconds, preserving any earlier caller deadline or
+cancellation. Server shutdown cancels and joins its operation; the half-close
+protocol does not transmit the caller's context. Other Administration operations,
+bootstrap and role bounds remain unchanged.
 `Withdraw` cancels and joins the retained publication. The Connection Interface cannot invoke either operation.
 
 Before attachment handoff, the AAI3 server closes any Stream returned after

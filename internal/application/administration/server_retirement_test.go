@@ -46,7 +46,7 @@ func TestAdministrationCloseAfterCompletedHandlerBeforeRetirement(t *testing.T) 
 	if err := peer.CloseWrite(); err != nil {
 		t.Fatal(err)
 	}
-	owner.handle(accepted)
+	owner.handle(accepted, time.Now())
 	if err := owner.Close(); err != nil {
 		t.Fatalf("shutdown after completed handler: %v", err)
 	}

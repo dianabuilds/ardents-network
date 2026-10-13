@@ -6,13 +6,16 @@ import (
 	"errors"
 	"io"
 	"net"
+	"time"
 	"unicode/utf8"
 )
 
 const (
 	// MaximumSnapshotBytes is the selected immutable text publication limit.
 	MaximumSnapshotBytes = 4 << 20
-	snapshotRequest      = "snapshot\n"
+	// SnapshotTimeout bounds the entire Snapshot request, without renewal after input.
+	SnapshotTimeout = 45 * time.Second
+	snapshotRequest = "snapshot\n"
 )
 
 // SnapshotPublisher extends the existing owner-authorized Administration
@@ -28,9 +31,11 @@ type SnapshotPublisher interface {
 // caller must keep its bytes unchanged until return. There is no retry or
 // fallback to the bodyless Publish operation.
 func RequestSnapshot(ctx context.Context, path string, snapshot []byte) (Outcome, error) {
-	if len(snapshot) > MaximumSnapshotBytes || !utf8.Valid(snapshot) {
+	if ctx == nil || len(snapshot) > MaximumSnapshotBytes || !utf8.Valid(snapshot) {
 		return "", errors.New("local Service snapshot is invalid")
 	}
+	ctx, cancel := context.WithTimeout(ctx, SnapshotTimeout)
+	defer cancel()
 	return request(ctx, path, func(output io.Writer) error {
 		var header [len(snapshotRequest) + 4]byte
 		copy(header[:], snapshotRequest)
@@ -43,7 +48,7 @@ func RequestSnapshot(ctx context.Context, path string, snapshot []byte) (Outcome
 	}, Published)
 }
 
-func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader) {
+func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader, deadline time.Time) {
 	owner, ok := server.owner.(SnapshotPublisher)
 	if !ok {
 		writeResponse(connection, "unavailable\n")
@@ -79,7 +84,18 @@ func (server *server) handleSnapshot(connection *net.UnixConn, input io.Reader) 
 		refuseMalformedRequest(connection, input, n, err)
 		return
 	}
-	if err := owner.PublishSnapshot(server.ctx, body); err != nil {
+	// Input keeps its original fifteen-second bound. Publication receives only
+	// the remainder of the deadline established before reading the request.
+	ctx, cancel := context.WithDeadline(server.ctx, deadline)
+	defer cancel()
+	if err := requestError(ctx, nil); err != nil {
+		writeResponse(connection, "unavailable\n")
+		return
+	}
+	if err := connection.SetWriteDeadline(deadline); err != nil {
+		return
+	}
+	if err := owner.PublishSnapshot(ctx, body); err != nil || requestError(ctx, nil) != nil {
 		writeResponse(connection, "unavailable\n")
 		return
 	}

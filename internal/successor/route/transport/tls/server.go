@@ -16,7 +16,7 @@ func AcceptRole(ctx context.Context, raw net.Conn, certificate tls.Certificate, 
 	if ctx == nil || raw == nil || certificate.PrivateKey == nil || deadline.IsZero() || !time.Now().Before(deadline) {
 		return nil, errors.New("closed role TLS acceptance is invalid")
 	}
-	secured := tls.Server(raw, transport.RoleServerTLS(certificate))
+	secured := tls.Server(newRoleInput(raw), transport.RoleServerTLS(certificate))
 	if err := secured.SetDeadline(deadline); err != nil {
 		return nil, err
 	}

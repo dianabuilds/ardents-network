@@ -16,7 +16,7 @@ func OpenRole(ctx context.Context, raw net.Conn, expectedServer [32]byte, deadli
 	if ctx == nil || raw == nil || expectedServer == [32]byte{} || deadline.IsZero() || !time.Now().Before(deadline) {
 		return nil, errors.New("closed role TLS request is invalid")
 	}
-	secured := tls.Client(raw, transport.RoleClientTLS(expectedServer))
+	secured := tls.Client(newRoleInput(raw), transport.RoleClientTLS(expectedServer))
 	if err := secured.SetDeadline(deadline); err != nil {
 		return nil, err
 	}

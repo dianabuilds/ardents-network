@@ -199,7 +199,7 @@ func installedServicePublication(t *testing.T, base string, original [3]string) 
 	if _, err := requestLink(); err == nil {
 		t.Fatal("unpublished owner supplied a Link")
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), administration.SnapshotTimeout)
 	if _, err := administration.RequestSnapshot(ctx, socket, []byte("genuine installed snapshot\n")); err != nil {
 		cancel()
 		t.Fatal("installed snapshot publication", err)

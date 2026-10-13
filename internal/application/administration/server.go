@@ -98,6 +98,7 @@ func (server *server) serve() {
 		if err != nil {
 			return
 		}
+		accepted := time.Now()
 		server.mu.Lock()
 		if server.ctx.Err() != nil {
 			server.err = errors.Join(server.err, connection.Close())
@@ -117,18 +118,18 @@ func (server *server) serve() {
 				}
 				server.mu.Unlock()
 			}()
-			server.handle(connection)
+			server.handle(connection, accepted)
 		}()
 	}
 }
 
-func (server *server) handle(connection *net.UnixConn) {
-	deadline := time.Now().Add(15 * time.Second)
+func (server *server) handle(connection *net.UnixConn, started time.Time) {
+	deadline := started.Add(15 * time.Second)
 	_ = connection.SetDeadline(deadline)
 	input := requestInput{connection: connection, deadline: deadline}
 	raw, err := io.ReadAll(io.LimitReader(input, int64(maximumRequest)))
 	if err == nil && string(raw) == snapshotRequest {
-		server.handleSnapshot(connection, input)
+		server.handleSnapshot(connection, input, started.Add(SnapshotTimeout))
 		return
 	}
 	var trailing [1]byte
