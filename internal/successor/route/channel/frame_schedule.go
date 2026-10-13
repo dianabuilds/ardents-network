@@ -82,7 +82,7 @@ func (s *Session) scheduleLocked() {
 func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func(), error) {
 	t := &frameTurn{lane: l, control: f.Kind != ardp.KindBytes, bytes: bytes, ready: make(chan struct{})}
 	s.mu.Lock()
-	if s.stopped || s.finishingRole || (!terminal && l.closed) {
+	if s.stopped || s.finishingRole || l.peerClosed || (!terminal && l.closed) {
 		s.mu.Unlock()
 		return nil, &frameRetirement{lane: l, kind: f.Kind}
 	}
@@ -157,7 +157,7 @@ func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func
 			return finish, nil
 		}
 		end, changed := l.frameDeadline(f, terminal), l.changed
-		stopped := s.stopped || (!terminal && l.closed)
+		stopped := s.stopped || l.peerClosed || (!terminal && l.closed)
 		s.mu.Unlock()
 		if stopped {
 			finish()

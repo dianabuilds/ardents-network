@@ -163,6 +163,10 @@ separate full-Route obligation.
 
 EOF closes one direction. Verified CLOSE stops new effects and joins both
 directions. A receiving CLOSE interrupts payload and input immediately; a
+first peer CLOSE received during local lane retirement also cancels any local
+CLOSE that has not entered physical output. Its original status is retained;
+later terminals cannot overwrite it or make local retirement a clean EOF.
+A started physical terminal still retains its actual output failure. A
 selected CREDIT may finish within the earlier original deadline and one second.
 No new read starts after that write joins a sealed pair. A timed-out or failed
 physical CREDIT remains failure and cannot produce later successful terminals.

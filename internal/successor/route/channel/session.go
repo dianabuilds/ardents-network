@@ -387,7 +387,11 @@ func (s *Session) read() {
 		}
 		// A retired lane retains its identifier. Late input cannot acquire a
 		// queue reservation or poison live siblings.
-		if (l.closed || !time.Now().Before(l.end)) && !(s.dedicated && f.Kind == ardp.KindClose) {
+		// Retain an exact peer terminal even during local Close: it can still
+		// discharge our queued terminal before physical output starts. Other
+		// late traffic cannot revive the lane or acquire input capacity.
+		firstPeerClose := f.Kind == ardp.KindClose && l.localClosed && !l.peerClosed
+		if ((l.closed && !firstPeerClose) || !time.Now().Before(l.end)) && !(s.dedicated && f.Kind == ardp.KindClose) {
 			l.stopLocked(os.ErrDeadlineExceeded)
 			s.mu.Unlock()
 			continue
@@ -443,6 +447,7 @@ func (s *Session) read() {
 		case ardp.KindClose:
 			l.peerClosed = true
 			l.peerRefused = f.Body[0] != 0
+			l.signalLocked() // Local retirement may already have sealed the lane.
 			cause := error(nil)
 			if f.Body[0] != 0 {
 				cause = errors.New("route peer refused lane")
@@ -494,7 +499,7 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 	}
 	s.mu.Lock()
 	end := l.frameDeadline(f, terminal)
-	if s.stopped || s.finishingRole || s.ctx.Err() != nil || (!terminal && l.closed) {
+	if s.stopped || s.finishingRole || s.ctx.Err() != nil || l.peerClosed || (!terminal && l.closed) {
 		s.mu.Unlock()
 		return &frameRetirement{lane: l, kind: f.Kind}
 	}
@@ -590,7 +595,7 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 		// TLS failure can make that shared writer permanently unusable.
 		// Already selected control retains only its original cleanup bound.
 		s.mu.Lock()
-		if s.activeDeadline != deadline || s.stopped || s.finishingRole || s.ctx.Err() != nil || (!terminal && l.closed && !control) {
+		if s.activeDeadline != deadline || s.stopped || s.finishingRole || s.ctx.Err() != nil || (terminal && l.peerClosed) || (!terminal && l.closed && !control) {
 			output.err = &frameRetirement{lane: l, kind: f.Kind}
 			refused = true
 		} else if !time.Now().Before(deadline.end) {
