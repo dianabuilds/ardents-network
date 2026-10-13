@@ -342,11 +342,11 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 			t.Error(err)
 		}
 	})
-	invocation, err := local.LaunchPublisher(ctx, principal, []byte("genuine delayed Descriptor ACK snapshot\n"))
+	invocation, err := local.LaunchPublisher(publisherCaller, principal, []byte("genuine delayed Descriptor ACK snapshot\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	operation, err = invocation.BeginOperation(ctx)
+	operation, err = invocation.BeginOperation(publisherCaller)
 	if err != nil {
 		t.Fatal(errors.Join(err, invocation.Close()))
 	}
@@ -365,7 +365,14 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 	})
 	root := t.TempDir()
 	routePlan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "introduction"), SourceInteriorRoot: filepath.Join(root, "source"), ResponderInteriorRoot: filepath.Join(root, "responder"), HostingRoot: routeProcessBudget(t), Domain: 4, Deadline: time.Now().Add(routeLimit).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-	owner, err := startPublicationHolder(publisherCaller, plan, routePlan, networkAdmissionAuthority(f.current, func() error { return nil }), holder, operation)
+	// An equal-lived outer caller is not the original operation identity. It
+	// must refuse before acquiring roots or spending this genuine Stock.
+	before := holder.Status()
+	wrong, wrongErr := startPublicationHolder(publisherCaller, plan, routePlan, networkAdmissionAuthority(f.current, func() error { return nil }), holder, operation)
+	if wrongErr == nil || wrong.owner != nil || holder.Status() != before {
+		t.Fatal("foreign Publication caller acquired resources or changed Stock", wrongErr)
+	}
+	owner, err := startPublicationHolder(operation.Context(), plan, routePlan, networkAdmissionAuthority(f.current, func() error { return nil }), holder, operation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -599,13 +606,27 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 		t.Fatal("repeated close changed original terminal result", repeated)
 	}
 	operation.Close()
-	if err := invocation.Close(); !checkInvocation(err) || retirement == "caller" && err == nil {
+	if err := invocation.Close(); !checkInvocation(err) {
 		t.Fatal("original snapshot worker did not join", err)
 	} else if workerLost {
 		t.Log("retained original worker-loss result separately from joined cleanup", err)
 	}
-	if (retirement == "caller" || workerLost || networkLost) && invocation.CompletedCurrent() {
+	if (retirement == "caller" || workerLost) && invocation.CompletedCurrent() {
 		t.Fatal("failed Publisher cleanup supplied completed-current provenance")
+	}
+	if retirement == "caller" {
+		physical, joined := invocation.CleanupResult()
+		if publisherCaller.Err() == nil || operation.CheckPublisher() == nil || !joined || !checkCleanup(physical) {
+			t.Fatal("original canceled caller retained authority or lost physical join", physical, joined)
+		}
+	}
+	if networkLost {
+		physical, joined := invocation.CleanupResult()
+		if !joined || invocation.CompletedCurrent() != (physical == nil) {
+			t.Fatal("Network refusal changed original snapshot Job or erased physical failure", physical, joined)
+		}
+		// The retained Publication refusal checked above is not worker cleanup.
+		// Only real physical failure can poison this otherwise-current snapshot.
 	}
 	if workerLost {
 		t.Run("retained-history", func(t *testing.T) {

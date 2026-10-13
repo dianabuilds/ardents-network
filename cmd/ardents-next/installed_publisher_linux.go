@@ -139,7 +139,7 @@ func (owner *installedPublisher) PublishSnapshot(caller context.Context, snapsho
 		view, err := originalCurrent()
 		return view, errors.Join(err, ctx.Err(), candidate.operation.CheckPublisher())
 	}
-	candidate.handle, err = startPublicationHolder(ctx, owner.plan, plan, authority, owner.holder, candidate.operation, owner.routes)
+	candidate.handle, err = startPublicationHolder(candidate.operation.Context(), owner.plan, plan, authority, owner.holder, candidate.operation, owner.routes)
 	if err != nil {
 		return err
 	}

@@ -164,6 +164,12 @@ setup-only EOF reader concurrently with it. One stream transfer is one local
 Application request. Connection replacement changes an Attachment, never the
 operation, Job, byte Grant or selected snapshot.
 
+Publisher composition opens its retained Route Source with the exact context
+of that original Execution operation. An outer caller with the same lifetime
+is not that identity: composition refuses it before root acquisition or Stock
+use. Console and installed snapshot publication consume the operation's own
+context; cancellation remains bound to the original qualified invocation.
+
 The Reader's local authenticated completion may retain Connection's bounded
 control tail. Its bounded private result remains pending while the original
 stream and operation retain that tail and composition joins the original Source.

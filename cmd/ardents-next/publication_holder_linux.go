@@ -22,7 +22,7 @@ import (
 )
 
 func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan routePrefixPlan, authority admissionAuthority, holder *stock.Owner, operation *executionruntime.Operation, shared ...*installedRouteOwners) (_ publicationHandle, result error) {
-	if ctx == nil || operation == nil || operation.CheckPublisher() != nil || authority.current == nil || holder == nil || routePlan.Domain != 4 || !independentRouteRoots(plan.InstanceRoot, plan.Root, routePlan.EntryRoot, routePlan.InteriorRoot, routePlan.SourceInteriorRoot, routePlan.ResponderInteriorRoot, routePlan.HostingRoot) {
+	if ctx == nil || operation == nil || ctx != operation.Context() || operation.CheckPublisher() != nil || authority.current == nil || holder == nil || routePlan.Domain != 4 || !independentRouteRoots(plan.InstanceRoot, plan.Root, routePlan.EntryRoot, routePlan.InteriorRoot, routePlan.SourceInteriorRoot, routePlan.ResponderInteriorRoot, routePlan.HostingRoot) {
 		return publicationHandle{}, errors.New("publisher composition unavailable")
 	}
 	if len(shared) > 1 || len(shared) == 1 && !shared[0].matches(routePlan) {

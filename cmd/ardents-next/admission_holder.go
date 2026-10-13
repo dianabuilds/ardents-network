@@ -176,7 +176,7 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 				err = errors.New("qualified snapshot Publisher operation absent")
 				break
 			}
-			publisher, err = startPublicationHolder(ctx, *config.Publication, *config.Route, authority, o, operation)
+			publisher, err = startPublicationHolder(operation.Context(), *config.Publication, *config.Route, authority, o, operation)
 		case "publication-publish":
 			if publisher.owner == nil {
 				err = errors.New("live Publisher absent")
