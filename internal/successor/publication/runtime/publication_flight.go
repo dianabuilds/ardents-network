@@ -97,6 +97,10 @@ func (p *Publisher) publish(ctx context.Context, replace bool) (string, error) {
 	if err := source.PublishDescriptor(exchange, end, pair.descriptor, p.config.Exclusions); err != nil {
 		return "", err
 	}
+	// A successful setup returns a retained Publication, not a child of the
+	// Administration request. Join setup cancellation before the final fresh
+	// checks and commit; caller loss that already won still refuses below.
+	pair.joinCaller()
 	// Prefix success is the actual synced Store ACK after physical exchange
 	// join. Reobserve all original local/registration/Descriptor facts before
 	// the accepting transition; no network call holds the lifecycle mutex.
@@ -110,7 +114,7 @@ func (p *Publisher) publish(ctx context.Context, replace bool) (string, error) {
 		if p.closed || p.pending != pair {
 			return errors.New("Publisher late acknowledgement")
 		}
-		if err := errors.Join(checkSource(), p.checkLocal(ctx)); err != nil {
+		if err := errors.Join(checkSource(), p.checkLocal(ctx), pair.ctx.Err()); err != nil {
 			return err
 		}
 		now := time.Now()

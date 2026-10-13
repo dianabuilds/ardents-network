@@ -74,7 +74,16 @@ type retainedHalfClose struct {
 	writer interface{ CloseWrite() error }
 }
 
-func (c *retainedHalfClose) CloseWrite() error { return c.writer.CloseWrite() }
+func (c *retainedHalfClose) CloseWrite() error {
+	if _, ok := c.Conn.(*tls.Conn); ok {
+		// A retained Write may span several TLS records. Order close_notify
+		// after the whole original call, not between its individual records.
+		// Physical Close remains independent so cancellation can interrupt it.
+		c.writeMu.Lock()
+		defer c.writeMu.Unlock()
+	}
+	return c.writer.CloseWrite()
+}
 
 // Retain owns one physical interruption result across independent cancellation
 // and joined borrower cleanup. It neither authenticates nor changes a principal.

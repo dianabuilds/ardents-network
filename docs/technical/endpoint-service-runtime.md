@@ -1124,6 +1124,11 @@ the separate AAI3 and Administration Interfaces after original startup, signed
 State and finite Stock handover. Reader-only continuation opens no Publisher
 owner or Administration listener. Dual-role continuation constructs the real
 snapshot Publisher only on an authorized local request; bodyless Publish refuses.
+After the joined Store ACK, Publication joins the registration pair's setup-only
+caller cancellation before its final fresh checks and accepting commit. A caller
+cancellation that already won still refuses; completion of a successful local
+request cannot cancel the retained pair. Its original Publisher/Execution parent,
+registration expiry and withdrawal remain independent lifetime bounds.
 Link and Withdraw consume fresh local Administration admission from the original
 Execution generation, in addition to actual Publication checks. Withdraw
 interrupts and joins pending setup before retiring a committed owner; it does

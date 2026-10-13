@@ -43,3 +43,36 @@ func TestCopiedPublisherCannotRetireOrAcquireOriginal(t *testing.T) {
 		t.Fatal("copy changed original lifetime or admitted work", ctx.Err())
 	}
 }
+
+// This isolates cancellation ownership; it supplies no registration, ACK or
+// accepting Publication. The installed scenario checks the real handoff.
+func TestRegistrationSetupCallerTransfer(t *testing.T) {
+	for _, canceledBefore := range []bool{false, true} {
+		t.Run(map[bool]string{false: "after-transfer", true: "before-transfer"}[canceledBefore], func(t *testing.T) {
+			parent, stopParent := context.WithCancel(t.Context())
+			defer stopParent()
+			caller, stopCaller := context.WithCancel(t.Context())
+			defer stopCaller()
+			child, stopChild := context.WithCancel(parent)
+			defer stopChild()
+			pair := &registrationPair{ctx: child, cancel: stopChild, callerCallback: make(chan struct{})}
+			pair.stopCaller = context.AfterFunc(caller, func() { defer close(pair.callerCallback); stopChild() })
+			if canceledBefore {
+				stopCaller()
+			}
+			pair.joinCaller()
+			stopCaller()
+			pair.joinCaller() // Later joined cleanup must not wait on a stopped callback.
+			if canceledBefore && child.Err() == nil {
+				t.Fatal("winning setup cancellation was lost")
+			}
+			if !canceledBefore && child.Err() != nil {
+				t.Fatal("completed setup caller canceled retained pair")
+			}
+			stopParent()
+			if child.Err() == nil {
+				t.Fatal("transfer detached original Publisher lifetime")
+			}
+		})
+	}
+}

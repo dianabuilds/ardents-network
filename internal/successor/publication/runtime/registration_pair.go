@@ -17,6 +17,7 @@ type registrationPair struct {
 	cancel         context.CancelFunc
 	stopCaller     func() bool
 	callerCallback chan struct{}
+	callerOnce     sync.Once
 	registration   *introduction.HolderRegistration
 	receipt        introduction.Receipt
 	recipient      *instance.Recipient
@@ -50,6 +51,17 @@ func (pair *registrationPair) check(p *Publisher, ctx context.Context) error {
 	return proof.Current(time.Now())
 }
 
+// joinCaller relinquishes setup-only cancellation before an accepting handoff.
+// A callback already in flight must finish; it cannot cancel the pair afterward.
+// The pair's original Publisher parent remains its independent lifetime owner.
+func (pair *registrationPair) joinCaller() {
+	pair.callerOnce.Do(func() {
+		if !pair.stopCaller() {
+			<-pair.callerCallback
+		}
+	})
+}
+
 func (pair *registrationPair) close() error {
 	pair.closeOnce.Do(func() {
 		if pair.registration != nil {
@@ -69,9 +81,7 @@ func (pair *registrationPair) close() error {
 			pair.closeErr = errors.Join(pair.closeErr, cleanup)
 			pair.cleanupErr = errors.Join(pair.cleanupErr, cleanup)
 		}
-		if !pair.stopCaller() {
-			<-pair.callerCallback
-		}
+		pair.joinCaller()
 	})
 	return pair.closeErr
 }

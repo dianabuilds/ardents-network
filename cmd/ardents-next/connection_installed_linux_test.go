@@ -151,7 +151,9 @@ func runInstalledConnectionAuthenticationFailure(t *testing.T, carrier transport
 			t.Error(err)
 		}
 	})
-	link, err := published.publish(ctx)
+	request, finishRequest := context.WithCancel(ctx)
+	link, err := published.publish(request)
+	finishRequest() // The accepted Publication outlives this individual request.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +611,9 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			t.Error(err)
 		}
 	})
-	link, err := published.publish(ctx)
+	request, finishRequest := context.WithCancel(ctx)
+	link, err := published.publish(request)
+	finishRequest() // The accepted Publication outlives this individual request.
 	if err != nil {
 		t.Fatal(err)
 	}

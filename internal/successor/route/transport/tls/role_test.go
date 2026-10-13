@@ -299,6 +299,68 @@ func TestRoleTLSWritesRecordsWithinRouteFrame(t *testing.T) {
 	}
 }
 
+type heldRoleRecord struct {
+	net.Conn
+	hold             atomic.Bool
+	entered, release chan struct{}
+}
+
+func (c *heldRoleRecord) Write(body []byte) (int, error) {
+	if c.hold.CompareAndSwap(true, false) {
+		close(c.entered)
+		<-c.release
+	}
+	return c.Conn.Write(body)
+}
+
+func TestRoleTLSHalfCloseFollowsWholeSplitWrite(t *testing.T) {
+	now := time.Now()
+	certificate, key := roleCertificate(t, now.Add(-time.Minute), now.Add(time.Minute))
+	raw, accepted, end := roleServer(t, certificate)
+	held := &heldRoleRecord{Conn: raw, entered: make(chan struct{}), release: make(chan struct{})}
+	client, err := roletls.OpenRole(t.Context(), held, key, end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := <-accepted
+	if server.err != nil {
+		t.Fatal(server.err)
+	}
+	_ = client.SetDeadline(end)
+	_ = server.connection.SetDeadline(end)
+	retained := transport.Retain(client)
+	payload := bytes.Repeat([]byte{0x5b}, 1<<20)
+	readDone := make(chan error, 1)
+	go func() {
+		received, err := io.ReadAll(server.connection)
+		if err == nil && !bytes.Equal(received, payload) {
+			err = errors.New("half-close truncated original split write")
+		}
+		readDone <- err
+	}()
+	held.hold.Store(true)
+	writeDone := make(chan error, 1)
+	go func() {
+		n, err := retained.Write(payload)
+		if err == nil && n != len(payload) {
+			err = io.ErrShortWrite
+		}
+		writeDone <- err
+	}()
+	<-held.entered // The original large Write already owns its first TLS record.
+	closeStarted, closeDone := make(chan struct{}), make(chan error, 1)
+	go func() {
+		close(closeStarted)
+		closeDone <- retained.(interface{ CloseWrite() error }).CloseWrite()
+	}()
+	<-closeStarted
+	close(held.release)
+	writeErr, closeErr, readErr := <-writeDone, <-closeDone, <-readDone
+	if writeErr != nil || closeErr != nil || readErr != nil {
+		t.Fatal("whole-write/half-close ordering", writeErr, closeErr, readErr)
+	}
+}
+
 func TestRoleTLSInvalidBoundsRefuseBeforeOutput(t *testing.T) {
 	for _, refusal := range []string{"nil-context", "zero-peer", "expired"} {
 		t.Run(refusal, func(t *testing.T) {

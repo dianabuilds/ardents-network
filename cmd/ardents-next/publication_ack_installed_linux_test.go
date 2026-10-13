@@ -422,7 +422,11 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 				if phase == "replacement" {
 					call = owner.refresh
 				}
-				link, err := call(ctx)
+				// Publication retains its original worker lifetime after this
+				// individual setup request completes, for both initial and refresh.
+				request, finishRequest := context.WithCancel(ctx)
+				link, err := call(request)
+				finishRequest()
 				if err == nil && link != expected {
 					err = errors.New("actual ACK returned foreign Link")
 				}
