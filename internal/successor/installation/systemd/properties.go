@@ -88,7 +88,16 @@ func Matches(properties Properties, name, signature string, wanted any) bool {
 		return false
 	}
 	var actual, expected any
-	if Decode(value.Data, &actual) != nil || Decode(encoded, &expected) != nil {
+	if Decode(encoded, &expected) != nil {
+		return false
+	}
+	// The expected encoding has passed the same size, depth and JSON checks.
+	// Byte equality proves those checks for this fresh observed value too;
+	// parsing identical bytes again adds no observation or type evidence.
+	if bytes.Equal(value.Data, encoded) {
+		return true
+	}
+	if Decode(value.Data, &actual) != nil {
 		return false
 	}
 	return reflect.DeepEqual(actual, expected)

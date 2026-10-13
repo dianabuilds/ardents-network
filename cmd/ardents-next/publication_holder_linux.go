@@ -123,7 +123,7 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 	if err != nil {
 		return publicationHandle{}, err
 	}
-	introConfig.Present = funding.present
+	introConfig.Present = funding.openingPresentation(introConfig.Leg)
 	leg = introConfig.Leg
 	intro, err = prefix.Open(ctx, introConfig)
 	if err != nil {
@@ -133,7 +133,7 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 	if err != nil {
 		return publicationHandle{}, err
 	}
-	responderConfig.Present = funding.present
+	responderConfig.Present = funding.openingPresentation(responderConfig.Leg)
 	view, err := authority.current()
 	if err != nil {
 		return publicationHandle{}, err
@@ -164,7 +164,7 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 		// observation timestamps and must not replace original role bindings.
 		config, err := prepareSelectedPublicationPrefix(caller, routePlan, responderConfig.Leg, budget, authority, holder)
 		if err == nil {
-			config.Present = funding.present
+			config.Present = funding.openingPresentation(config.Leg)
 		}
 		return config, err
 	}

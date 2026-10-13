@@ -1,13 +1,42 @@
 package prefix
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 )
+
+func TestBootstrapFlightPreservesCanonicalRecords(t *testing.T) {
+	// Literal independent wire layout: HELLO, then issuer-only BOOTSTRAP.
+	// This checks encoding only; the old timestamp grants no live authority.
+	body := strings.Repeat("01", 160) + "000000000000000107" + strings.Repeat("02", 32) + "0000000000000001"
+	raw, err := hex.DecodeString(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hello, err := ardp.DecodeHello(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wanted, err := hex.DecodeString("415244500003010000000000000000d1" + body + "4152445000030300000000000000000102")
+	if err != nil {
+		t.Fatal(err)
+	}
+	flight, err := bootstrapFlight(hello)
+	if err != nil || !bytes.Equal(flight, wanted) {
+		t.Fatalf("bootstrap flight changed canonical records: %x, %v", flight, err)
+	}
+	hello.Purpose = 8
+	if flight, err := bootstrapFlight(hello); err == nil || len(flight) != 0 {
+		t.Fatal("invalid HELLO produced a partial flight", err)
+	}
+}
 
 // This portable composition refusal test consumes the actual parent exchange. It supplies
 // no successful token, State or grant: genuine holder presentation and durable

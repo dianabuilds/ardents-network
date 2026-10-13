@@ -105,6 +105,33 @@ func (flow *routeTokenFlow) bootstrap(ctx context.Context, budget *hosting.Budge
 }
 
 func (flow *routeTokenFlow) present(ctx context.Context, hello ardp.Hello) (_ []byte, result error) {
+	return flow.presentRequested(ctx, hello, [][32]byte{hello.RecipientNodeID})
+}
+
+// openingPresentation funds the two already selected forwarding recipients in
+// one class-specific batch at the first actual presentation. Later refills and
+// terminal roles retain their ordinary on-demand presentation. Only the missing
+// stock is issued; each token is still durably presented at its own HELLO.
+func (flow *routeTokenFlow) openingPresentation(leg selection.Leg) role.Presentation {
+	var first sync.Once
+	return func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
+		opening := false
+		first.Do(func() { opening = true })
+		if !opening || hello.Purpose != ardp.PurposeForwarding || hello.RecipientNodeID != leg.Entry.NodeID {
+			return flow.present(ctx, hello)
+		}
+		// The second recipient has not sent its HELLO yet. Reobserve its exact
+		// retained duty before requesting stock; a changed member cannot renew
+		// this opening's selection or its token challenge.
+		interior := role.Authority{Current: flow.authority.current, Duty: leg.Interior, Profile: leg.Profile}
+		if _, err := interior.Member(); err != nil {
+			return nil, err
+		}
+		return flow.presentRequested(ctx, hello, [][32]byte{leg.Entry.NodeID, leg.Interior.NodeID})
+	}
+}
+
+func (flow *routeTokenFlow) presentRequested(ctx context.Context, hello ardp.Hello, requestedReceivers [][32]byte) (_ []byte, result error) {
 	presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration,
 		StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID,
 		RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
@@ -130,7 +157,7 @@ func (flow *routeTokenFlow) present(ctx context.Context, hello ardp.Hello) (_ []
 		}
 		defer func() { result = errors.Join(result, preparation.Close()) }()
 	}
-	requested, err := flow.challenges(uint8(class), [][32]byte{hello.RecipientNodeID})
+	requested, err := flow.challenges(uint8(class), requestedReceivers)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +180,10 @@ func (flow *routeTokenFlow) present(ctx context.Context, hello ardp.Hello) (_ []
 			defer handle.Close()
 			issuingSource = handle
 		}
-		receivers := [][32]byte{hello.RecipientNodeID}
+		receivers := make([][32]byte, 0, len(missing)+1)
+		for _, challenge := range missing {
+			receivers = append(receivers, challenge.ReceiverNodeID)
+		}
 		if class == admission.ControlClass {
 			// The same current operation retains its issuer channel capability
 			// while obtaining this requested Control token.

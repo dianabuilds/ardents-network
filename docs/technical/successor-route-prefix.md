@@ -447,6 +447,22 @@ Carrier mechanisms with admitted Prefix, without a successful presentation
 substitute or an upgrade to ordinary work. Selection chooses only the exact
 current profile issuer and rejects every known Node/key/family conflict.
 
+Bootstrap submits its already encoded canonical HELLO and BOOTSTRAP records
+in one physical write, with both fresh authority checks before output and the
+original check after ACCEPT. The records retain their separate wire grammar
+and order; there is no coalescing wait. Role TLS and the shared listener disable
+adaptive small records so an available write does not create unnecessary nested
+lane credit exchanges. Authentication, credit limits and deadlines are unchanged.
+
+Publication's first forwarding presentation for a newly retained prefix requests
+the missing Entry and Interior Forward stock in one same-class batch. It checks
+the exact retained Interior duty before issuing and preserves recipient order
+and multiplicity. This uses the admitted Source and one Stock preparation for
+the joined Control replacement and Forward exchange. Each recipient still gets
+its own durably marked presentation only at its actual HELLO; later refills and
+terminal roles use ordinary on-demand stock. Failure refunds neither allocation
+nor presentation and does not redraw the retained leg.
+
 `bootstrap-open`, `issuer-issue` and `bootstrap-close` drive genuine Stock and
 issuer owners through the maintained holder console. The holder joins bootstrap
 before `prefix-open` creates fresh admitted channels; ordinary `issuer-issue`

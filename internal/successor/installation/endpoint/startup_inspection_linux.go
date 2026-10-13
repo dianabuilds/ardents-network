@@ -207,6 +207,14 @@ func openStartupInspection(ctx context.Context, directory string) (result *start
 	if err != nil {
 		return nil, err
 	}
+	// The retained Snapshot now owns every sealed file after matching its
+	// original identity and retaining the invocation's executable identity.
+	// It fully reobserves them before and after the manager, independently of
+	// root inspection. Keep selection, fixed resources and all ancestors in
+	// this startup's other reader, without rereading the same sealed files.
+	for _, name := range generation.Names() {
+		delete(s.files.files, filepath.Join(sealed, name))
+	}
 	if err := s.observe(); err != nil {
 		return nil, err
 	}

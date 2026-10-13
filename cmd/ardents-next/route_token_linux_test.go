@@ -64,7 +64,7 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceBothCarriers(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			config.Present = funding.present
+			config.Present = funding.openingPresentation(config.Leg)
 			next, err := prefix.Open(ctx, config)
 			if err != nil {
 				t.Fatal("genuine on-demand funded opening", errors.Join(err, config.Release()))
@@ -75,13 +75,13 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceBothCarriers(t *testing.T) {
 			if cleanup, joined := next.CleanupResult(); !joined || cleanup != nil {
 				t.Fatal("on-demand opening lacks physical receipt", joined, cleanup)
 			}
-			if x.ordinaryIssues.Load() != 4 || x.bootstrapIssues.Load() != 2 || holder.Status().Remaining[0] != 3 || holder.Status().Remaining[1] != 4 {
+			if x.ordinaryIssues.Load() != 2 || x.bootstrapIssues.Load() != 2 || holder.Status().Remaining[0] != 5 || holder.Status().Remaining[1] != 4 {
 				t.Fatal("on-demand funding changed original finite allowance", x.ordinaryIssues.Load(), holder.Status())
 			}
 			if err := source.Issue(ctx, plan.Deadline, routeIssuerPreparation(ctx, f.authority, holder, leg, uint8(admission.ForwardClass), nil)); err != nil {
 				t.Fatal("actual admitted issuer exchange", err)
 			}
-			if x.ordinaryIssues.Load() != 5 || x.bootstrapIssues.Load() != 2 || holder.Status().Remaining[1] != 2 {
+			if x.ordinaryIssues.Load() != 3 || x.bootstrapIssues.Load() != 2 || holder.Status().Remaining[1] != 2 {
 				t.Fatal("admitted work renewed bootstrap or lost irreversible quota", x.ordinaryIssues.Load(), x.bootstrapIssues.Load(), holder.Status())
 			}
 			if err := source.Close(); err != nil {

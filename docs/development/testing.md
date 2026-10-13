@@ -60,7 +60,10 @@ cold Source funding composition against actual signed Network, approved holder,
 blind issuer, receiving Admission and Hosting/Route owners. Exactly two finite
 bootstrap batches precede fresh admitted Source channels and an ordinary issuer
 exchange on TCP/TLS and QUIC; quota and original physical retirement remain
-checked. Its signing/permission infrastructure and cleanup observer are fixtures,
+checked. The next retained prefix checks one Control replacement and one two-recipient
+Forward batch, with separate real receiving admissions and exact remaining
+quota, instead of issuing each missing Forward token in a separate exchange.
+Its signing/permission infrastructure and cleanup observer are fixtures,
 not a qualified worker or installed Startup. Stock preparation tests separately
 check original coordination, copied/canceled handles, ordered multiplicity,
 foreign profile refusal and no allocation/presentation refunds.

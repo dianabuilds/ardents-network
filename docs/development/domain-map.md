@@ -105,6 +105,11 @@ lifetime. Both complete property rounds, original file/process reobservations
 and physical cancellation remain distinct checks. Typed facts preserve original
 wire signatures and grant neither a cache nor startup authority; only the
 Installation consumer compares its original generation and invocation.
+After original inode and executable matching, private Startup retains sealed
+generation files only in its own Snapshot, which fully reobserves them before
+and after manager observations. Its separate installed-file reader retains
+selection, fixed resources and original ancestors. Root inspection and recovery
+keep their independent custody; no accepting cache crosses these lifetimes.
 
 | Owner | Scope | Boundary to preserve |
 |---|---|---|

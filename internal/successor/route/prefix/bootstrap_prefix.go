@@ -1,8 +1,10 @@
 package prefix
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net"
 	"time"
 
@@ -72,14 +74,37 @@ func presentPrefixRole(ctx, caller context.Context, conn net.Conn, authority rol
 	if err := check(); err != nil {
 		return err
 	}
-	if err := framing.SendHello(conn, hello); err != nil {
+	flight, err := bootstrapFlight(hello)
+	if err != nil {
 		return err
 	}
+	// Both canonical records are already available. Submit them together so
+	// nested TLS does not create a separate credit exchange for each record.
+	// Both fresh authority checks precede output; ACCEPT still has its own
+	// post-I/O check below.
 	if err := check(); err != nil {
 		return err
 	}
-	if err := ardp.WriteFrame(conn, ardp.Frame{Kind: ardp.KindBootstrap, Body: []byte{2}}); err != nil {
+	if _, err := io.Copy(conn, bytes.NewReader(flight)); err != nil {
 		return err
 	}
 	return errors.Join(framing.Accepted(conn), check())
+}
+
+// bootstrapFlight encodes only already available records. It grants no role
+// authority and adds no buffering delay or new wire envelope.
+func bootstrapFlight(hello ardp.Hello) ([]byte, error) {
+	body, err := ardp.EncodeHello(hello)
+	if err != nil {
+		return nil, err
+	}
+	helloFrame, err := ardp.EncodeFrame(ardp.Frame{Kind: ardp.KindHello, Body: body})
+	if err != nil {
+		return nil, err
+	}
+	bootstrapFrame, err := ardp.EncodeFrame(ardp.Frame{Kind: ardp.KindBootstrap, Body: []byte{2}})
+	if err != nil {
+		return nil, err
+	}
+	return append(helloFrame, bootstrapFrame...), nil
 }

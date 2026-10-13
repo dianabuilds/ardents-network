@@ -433,9 +433,14 @@ inventory, исходные inode/access/ctime и bytes и возвращает 
 service-account startup получить собственное read custody вместо root lease.
 
 `startupInspection` отдельно удерживает исходный caller, read-only Installation
-root, sealed Snapshot и собственный non-root процесс. `installedFiles` содержит
-только физические чтения; root Check оборачивает их своей writer lease, а startup
-создаёт новые независимые observations. Process `RetainSelf` допускает только
+root, sealed Snapshot и собственный non-root процесс. После совпадения всех
+исходных inode с Snapshot и удержания executable через `RetainSelf` Startup
+оставляет sealed-файлы только у Snapshot. Snapshot полностью читает их до и
+после manager observation, сохраняя EOF, inode/access/ctime и closed inventory.
+`installedFiles` продолжает наблюдать selection, fixed resources и исходные
+каталоги; второй копии sealed-файлов в его retained map больше нет. Root Check
+и recovery сохраняют собственные независимые observations и writer lease;
+этот перенос относится только к private Startup. Process `RetainSelf` допускает только
 фактический PID/UID/GID caller; root-only `Retain` предшественника сохраняется.
 Оба пути сверяют kernel supplementary groups наряду с UID/GID и capabilities.
 Startup сверяет точные live Endpoint/activation properties между повторными
