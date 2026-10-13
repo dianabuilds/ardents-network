@@ -71,6 +71,14 @@ Source exclusion identity; it has no member inventory or Node lifecycle view.
 not permission to work. `RetainedDuty` contains exact identity and intervals;
 caller-declared freshness/conflict/presence flags do not grant authority.
 
+State retains at most one authentication result for exact signed profile bytes
+and the exact generation, Network, Epoch digest/number and pinned authority.
+Parsed public fields are defensive copies. Every observation still reads the
+original durable profile/history, refuses conflict or digest disagreement,
+samples trusted time after that I/O and binds membership to current authenticated
+Epoch records. Expiry, owner failure and changed bytes/context cannot use the
+retained result as permission; it only avoids repeating identical cryptography.
+
 State borrows `PermitWork` before effects and observation, outside its lock.
 The callback may be concurrent and cannot call back into State. Process resource
 sampling, protect/drain policy and process monitoring stay with the application
@@ -141,10 +149,30 @@ does not grant an Admission import to the pure Network model.
 owns producer-scoped replacement, identity/family collision decisions, ordinary
 Initiator and same-producer Source-pair exclusions, finite limits and expiry.
 Other producers may prune expired time-held facts but cannot expire or remove
-a live Direct Source. Its producer releases that live fact only after dependent
-work joins. Node restriction classification cannot choose the ordinary Initiator
+a live Direct Source or `node-duty`. Its producer releases that live fact only
+after dependent work joins. Prepared and quarantined Node facts remain time-held.
+The original Node producer still refuses work at the earlier Epoch/Record bound;
+retaining a live conflict after that bound grants no assignment or permission.
+Lost or unresolved live-Node cleanup retains the conflict rather than inferring
+join, automatically adopting its producer or resetting the root on restart.
+Node restriction classification cannot choose the ordinary Initiator
 exemption or turn an assignment into a Direct Source; it retains the earlier
 Epoch/Record bound. Copied facts cannot mutate either aggregate.
+
+`NodeParticipationFacts.OriginalNodeRestriction` is the separate Network-owned
+projection consumed only by the private `duty.OpenNodeProducer` invocation.
+It validates the same assignment/family/bounds and produces one `node-duty`
+restriction, including for an Issuer's authenticated Rendezvous assignment.
+The caller supplies no class. This live restriction conflicts through actual
+joined producer release even after work expiry; it never extends NotAfter or
+allows expired work/fresh mint. Existing assignment-specific `Restriction`,
+`RetainNode`, persisted facts and their pruning remain unchanged. No additional
+fence record bypasses producer/identity/family duplicate policy, and Node never
+removes a foreign Source record. Its native journal control requires expired
+Rendezvous work refusal, retained conflict before join, failed same-family Source
+replacement, expired fresh-producer refusal and fresh Source success only after
+original joined removal. Supplied facts qualify this local mechanism, not signed
+State or live Issuer/Carrier/native-process acceptance.
 
 The exact `duty/participation_policy.go` adapter applies these decisions to the
 existing role journal. Root leases, watermark/generation continuity, canonical

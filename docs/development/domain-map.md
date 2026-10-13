@@ -113,13 +113,156 @@ record, recovery and fixed-resource rules.
 | Installation local completion exchange | `installation/completion` owns the shared closed 160-byte frame encoding/validation consumed by root start-barrier production and independent startup inspection; it independently owns one original Unix connection, read-only directory/guard/socket-record metadata, actual root peer PID/UID/GID and exact finite frame/reply under its original deadline; cancellation physically joins its callback and Close | Private startup inspection consumes Connect/Wait between independent generation/process/manager observations. The exchange neither reads private intent nor borrows a writer lease or grants runtime/readiness authority. Root retains start observation, durable archival and ACK decision. A private producer now orders actual retained process/peer checks, a synced start record, archival and ACK; a private candidate-start lifetime now retains original process/scope custody and failed-attempt quiescence until join, with a positive actual-manager start/ACK/original-join scenario and bounded Source/permission consumer; complete installed Service acceptance remains separate |
 | Installation fixed-file mutation | `installation/fixedfile` owns independent original parent/file descriptors, exclusive empty birth, bounded prefix repair on an original inode, access/ctime rechecks after journal I/O, physical writes/sync and retained original cancellation through Close | Installation keeps allowed paths/bytes/access, exact birth/replacement records and phase admission, original lease, Release proofs, predecessor join, selection and recovery. Neither a detached inode nor this physical mechanism grants mutation authorization or installed startup; no shared live root or parent import |
 | Installation immutable generation files | `installation/generation` owns closed artifact names, exclusively created original directory/files, exact finite inventory, same-inode read-access promotion, detached bytes and retained partial/failure custody through physical close; independent read-only Snapshot owns sealed fifteen-file custody with its own descriptors, original file ctime/bytes and caller failure, without a writer lease or creation ownership | Installation records a mandatory closed file-inventory marker and each original per-file birth before artifact bytes; compatible complete recovery independently matches recorded native inodes and fresh-bound target facts. Installation retains fresh exact-byte proofs, original lease and caller, birth journal before writes, phase-appropriate container access, fixed-resource effects, selection, original predecessor join and startup. An independent physical Prefix retains recorded original incomplete leaves and directory, checks complete preimages, repairs only original inodes and seals complete inventory; Installation separately owns ordered writing-generation admission and fresh-proof continuation. Original successor recovery admission, continuation, terminal cleanup and close are collected with one retained owner in successor_recovery_linux.go; independent Prefix/Snapshot/process custody remains distinct. Filesystem/race admission and causal ordering controls do not prove actual-manager recovery or process-crash acceptance. Sealed files and copied physical facts grant no Release, adoption, selection or startup authority |
-| Process resource/lifecycle owner | Process-wide observation, pressure availability, supervision and terminal process outcome | It is distinct from Network accepted-state policy and Hosting provider-period budget; final new implementation is not assumed present |
+| Process resource/lifecycle owner | Process-wide observation, pressure availability, supervision and terminal process outcome | New `processresource` measures original native placement/pressure; new `node` owns reaction and completion. Network accepted-state policy and Hosting provider-period budget remain separate; complete role/installed qualification is not inferred |
 | Provisioning composition and signing owner | Subsequent purpose-specific approval and signing of prepared public Node/Epoch/profile material | New Network's unsigned grammar preparation grants neither a signature nor current authority; private profile signing and a new Control implementation are absent, not silently absorbed into Network |
 | Integration/regression harness | Registered test composition across genuine new public/application contracts | It is not a product domain, production coordinator or new test-only command; domain-local tests remain with domain rules |
 | Text Application | Fixed bounded text exchange, selected snapshot import, UTF-8/document rules, multiplexing/credit and safe presentation; current `internal/application/textdocument` | Application semantics remain outside Execution and Service Connection. The confined worker receives the selected snapshot and bounded bytes, never destination, publication or Endpoint authority. This product-specific owner is not another network authority |
 | Local Application IPC | AAI3 Connection requests/ordered local streams and separately authorized Administration Publish/Withdraw grammar; current `internal/application/connection` and `administration` | Interface admission and local transport cleanup remain explicit; an IPC request, peer socket or READY message cannot attest a qualified Job. Administration grants no byte-stream or Service authority |
 | Disclosure and diagnostics | Bounded public catalog verification, process/timeline measurements, inspection and command projections; current `alphacontrol`, `diagnostics` | Catalog verification never authorizes State, Release or runtime work; observations never decide admission or create a global cross-role trace. These are supporting mechanisms, not a generic Control authority |
 | Qualification | Selected Run/workload composition, observers, measurements, completion barriers and retained reports; current `qualification` and `application/streamqualification` | Qualification is a proof producer with its own selected environment, not an ordinary Job, a permission issuer or a runtime domain substitute. A passing module test cannot qualify an installed product |
+
+## Node composition: original lifetime boundary
+
+This is a design refinement of the supporting composition owner above, not an
+eleventh network authority or an execution assignment. The new `node` owner
+composes one original Forwarding or Issuer invocation; complete role and installed
+acceptance remain separately required.
+Node is a product infrastructure actor; a process, a signed Node identity and
+one accepted duty generation are distinct things. The current
+[Node contract](../technical/network-route-node.md#node-and-resource-lifecycle)
+and [glossary](../../CONTEXT.md) remain authoritative. Work selection, source
+receipts and candidate slice acceptance belong in GitHub.
+
+### Assessment and responsibility inventory
+
+The maintained predecessor is a brownfield Go composition with explicit
+lifecycle behavior, broad configuration and adapters that mix several owners.
+Light DDD is appropriate for its supporting lifetime: model original identity,
+admission, retirement and completion precisely. Do not create a universal Node
+aggregate, repository, event bus or microservice around the old directory.
+Network and Route retain their own substantive domain models.
+
+| Inspected predecessor responsibility | Target semantic owner | Current new seam / remaining boundary |
+|---|---|---|
+| `node/admission.go`, `state_authority.go`, `authority/receiver.go`: membership, duty/profile projections and purpose checks | Network authenticates and binds membership; Route admits its exact purpose; composition matches local credentials | `state.CurrentRuntime`, `RuntimeView.RetainDuty/MatchDuty`, `route/role.Authority`; copied diagnostics cannot replace them |
+| `node/local_roles.go`: producer-owned local conflict retention | Network's separate local-participation policy and native `network/duty` owner; Node lifetime owns its producer's physical completion | Source uses `duty.OpenOperation/Replace/Remove`; the Node lifetime consumes `duty.OpenNodeProducer/Check/Live/Close` with private producer and original-caller fencing |
+| `node/lifecycle.go`, `machine.go`, `duty_cleanup.go`: startup, retirement and process result | Proposed Node runtime lifetime, orchestrated by command composition | No new general Node supervisor is inferred from `route receive`; transport already has its own currentness watcher and joined Close |
+| `node/forwarding`, `outer`, `introduction`, `join`: queues, channels, slots, pairing and physical work | Route | New `receiver`, `channel`, `introduction`, `join` and concrete Carriers own these mechanisms; Node must not copy them |
+| `node/issuer` and `node/hosting`: issuance and reserve-before-spend adapters | Admission owns issuance/spend; Hosting owns the period; Route owns the physical exchange | New `admission/issuer`, `receiving`, `hosting`, `route/issuer` and the real `route receive` composition already collaborate |
+| `node/resolution`: receiving Descriptor rules and physical listener | Reachability owns proof/conflict/history; Route owns receiving transport | New `reachability.Store` and `receiver` have a real command consumer; Node grants no Store ACK or publication readiness |
+| `node/resource_pressure.go`, `resource`: OS observations, pressure classification and reaction | Separate process-resource owner measures/classifies; Node lifetime reacts; Hosting retains provider-period accounting | New `processresource` owns actual original Linux placement, counters and pressure; `node` composes its synchronous work checks. Predecessor native source remains evidence, with no runtime import or historical profile revival |
+| `cmd/ardents-node/source_runtime.go`: Source serving/background termination | Network State and Source, with their own command composition | New State owns Source exposure, Wait and Close. A Source is not another Route role selected by Node dispatch |
+| `node/identity.go`, command key loading and signing preparation | Purpose-specific credential mechanisms and provisioning; accepted Node identity stays with Network facts | New `nodeidentity` grants only imported issuer-profile signing, not generic TLS/Node authority or State signing |
+| Lifecycle/resource event output and qualification fixtures | Bounded diagnostic projection and independent test composition | Neither output success nor a measured/unknown field grants readiness; old tests are inspected evidence, not the new oracle |
+
+### Original lifetime and state
+
+The candidate consistency boundary is one original runtime invocation and one
+retained role generation. It owns its admission/terminal latch, original caller,
+startup work, cancellation callbacks, physical borrow inventory and immutable
+first failure. It references external owners through their narrow contracts;
+it does not own their journals, budgets, private roots or policies.
+
+Its retained binding comes from one coherent authenticated observation: Network,
+Epoch/profile, Node/key/family, record generation, assignment, endpoint, Carrier
+and finite bounds. A retained binding is copied evidence, not an independent
+live permit. Network rechecks it; the runtime additionally checks its original
+invocation and process admission. Node may not pick the first locally available
+role or silently rebind that lifetime to a successor.
+
+| Local transition / observation | Owner and required ordering |
+|---|---|
+| Prepare original invocation | Validate declared roots/credentials/resource profile; obtain genuine current Network binding and producer-scoped participation admission before accepting role work |
+| Acquire role | Retain the original startup caller; open genuine collaborating owners; recheck after native I/O and before publishing the accepting lifetime; creator joins rejected partial acquisitions |
+| Serve | Route rechecks authority at its effects. Process protection controls new work through the original runtime; measurements require declared scope, freshness and availability |
+| Protect or retire | Local denial is synchronous. A pressure observation, diagnostic event or polling tick cannot substitute for denial; interrupt original dependents before waiting |
+| Join and finish | Route joins physical users first; then composition closes purpose roots/Hosting borrows, updates only its own participation producer and releases remaining owners. Preserve first failure and all cleanup causes |
+
+For the selected Forwarding and Issuer compositions, Network retains `node-duty/live`
+identity/family conflicts until the original producer releases them after join.
+The earlier Epoch/Record bound still denies work; it does not prove physical
+completion. Prepared/quarantined Node facts remain time-held. An unresolved
+live producer, including after lost cleanup, cannot be pruned or adopted as a
+restart shortcut. This refines local restriction retention, not membership,
+Source exposure, another Node role or a persisted-format migration.
+
+An early failed outcome and known physical completion are different results.
+If a bounded attempt cannot prove join, it must preserve the failed result and
+retain still-needed resources/conflicts; it cannot publish successful withdrawal
+or invent free capacity. A new lifetime cannot inherit the old one's failure,
+authority or borrowers, nor begin as an automatic recovery/restart policy.
+Exact compatibility of outward states remains with their current owning formats.
+
+### Narrow collaborations and effect checks
+
+```mermaid
+flowchart LR
+    State[Network accepted State] -->|current observation and exact duty| Runtime[Original Node runtime lifetime]
+    Participation[Network local participation] -->|producer-scoped conflict and commit| Runtime
+    Pressure[Process resource owner] -->|measured admission and pressure| Runtime
+    Runtime -->|original admitted caller and retirement| Physical[Route physical role]
+    Admission[Admission rights and history] -->|grant or issuing operation| Physical
+    Hosting[Hosting period] -->|retained physical reservations| Physical
+    Reachability[Reachability Store] -->|Descriptor operation when selected| Physical
+    Physical -->|joined original result| Runtime
+    Runtime -->|bounded observations only| Diagnostics[Diagnostics]
+```
+
+These arrows describe owner calls, facts and physical borrows, not cyclic Go
+imports. A runtime supervisor must not import its command composer; Route,
+Admission, Hosting, Network and process-resource mechanisms do not import the
+supervisor. Exact future package admission must establish an acyclic graph.
+No foreign I/O/join or policy callback occurs under a runtime state lock.
+
+Network retains accepted-state and local-participation consistency separately.
+Shared local participation history has one policy/storage owner and short
+producer-scoped operations; it is not a shared live State/Node root, lease or
+mutex. Node release follows actual role join. Source exposure cannot be removed
+by Node or expired merely because a caller is stopping.
+
+Process placement/CPU/RAM/availability are separate from Hosting bytes. The new
+Receiver exposes `Listen`, `Done` and retained `Close`, not the predecessor's
+`Protect/Usage` surface. Before accepting a complete new Node runtime, specify
+genuine protection/measurement seams and the applicable current native profile.
+Unknown timers/queue/admission values are not zero. Missing required protection
+does not authorize an unprotected accepting path or an optional stronger mode.
+Profile changes need their current owner's admission; historical stage labels
+do not become new domain or runtime identities.
+
+Runtime TLS credentials must match the accepted member at the owned effect;
+offline issuer-profile signing is a different purpose. Credential loading is a
+physical mechanism, not a universal Identity/Custody domain. Enrollment, Release
+and installed-process validation retain their own authority; a development role
+consumer cannot establish a supported Node installation or qualified host.
+
+### Realized prerequisites and design limits
+
+`cmd/ardents-next/route_linux.go` already composes genuine State, retained duty,
+receiving Admission, Hosting and `receiver.Listen`, with additional issuer or
+Descriptor owners only when that exact duty requires them. Receiver supports
+the selected TCP/TLS and QUIC Carriers, reobserves authority and joins its work.
+That is an existing component consumer, not the complete Node runtime model.
+
+`internal/successor/node` composes original Forwarding and Issuer lifetimes through
+the real `cmd/ardents-next/node_forwarding_linux.go` and `node_issuer_linux.go`
+consumers. Issuer retains Admission's prepared quota/key/result application
+until Route and issuing users join; it grants no private RSA or signing right
+to Node. Ordinary Control and separate Bootstrap physical reservations remain
+with Hosting, without Forward refill. Network's
+`duty.OpenNodeProducer` retains a private producer and original caller through
+short journal transactions, checking retained generation/digest floors without
+holding a live shared lease. `processresource` independently observes the
+original Linux proc/cgroup and selected limits. Node retains purpose-specific
+TLS custody, original admission/retirement and cleanup result; diagnostics
+projects observations without authority. These implementations grant no Source,
+provisioning, unselected-role or installed qualification. Their exact behavior and
+remaining scenario limits belong to the [Node owner](../technical/network-route-node.md#original-forwarding-composition).
+
+Source, provisioning/signing, all-role coverage and installed/operator acceptance
+remain distinct responsibilities. An initial single-role consumer does not close
+them. Old Node/Endpoint qualification failures stay evidence at their recorded
+source; they neither select repair of old runtime nor prove the new owners fail.
+Required checks of an actually selected change remain mandatory.
 
 ## Consistency, resources and completion inventory
 

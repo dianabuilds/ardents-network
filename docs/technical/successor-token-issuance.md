@@ -77,6 +77,53 @@ the last failing close phase taking precedence. Any close failure clears
 The composition regression cancels after all three real leases are held and
 removes two pins; it checks retained outcomes and released leases under race.
 
+## Original retained issuing lifetime
+
+`issuer.OpenCurrent(ctx, Plan, observe)` opens prepared quota, immutable keys
+and results in that order and publishes an `Owner` only after original authority
+and actual custody rechecks. It initializes no root and generates no keys.
+Bindings and public key slices are defensive copies. Its observer belongs to
+the original external State/process/participation composition; it runs outside
+lifecycle and transaction state mutexes. Native storage checks are followed by
+another external observation before effects, so stalled I/O cannot retain an
+earlier process/State approval.
+
+`Owner.IssueCurrent` admits one finite issuing call; a concurrent call returns
+busy before observation, debit or private crypto. It uses the same
+`issueWithOwners` debit/sign/result path as offline issuance. Current authority
+and permission time are rechecked before debit, after debit, after durable result
+and before return. Route separately checks before physical output and retains
+its work slot through output/half-close/join; Admission's call completion cannot
+release that Route slot. Quotas and exact retry semantics stay with quota and
+ResultStore, without a second ledger or signer. The finite `issuer.IssueCurrent`
+consumer opens this same owner for its single call and joins cleanup before export.
+
+Malformed/conflicting/exhausted/canceled requests do not retire a healthy
+owner. Original caller/authority loss, key/root loss and definite journal
+uncertainty deny its lifetime; restoration cannot revive it. `Owner.Err` retains
+the original cause and all acquired-owner cleanup causes for supervision;
+command diagnostics still project only finite categories. Quota's `Check`
+observes its retained transaction failure without changing the existing separate
+physical Close result or minting a debit confirmation.
+
+`Deny` synchronously blocks new calls and cancels original issuing contexts.
+The runtime joins Route users before calling `Close(ctx)`. Close additionally
+joins issuing calls, observer/storage checks and request cancellation callbacks,
+then closes results, keys and quota. A bounded Close wait returns
+completion-unavailable while these roots remain held; repeated Close observes
+the same original completion and first failure. A native crypto/storage call
+may stall, so cancellation is not claimed as physical completion. Startup
+rejection joins every acquired partial owner before returning.
+
+The component causal controls use genuine signed Permissions, blind preparation,
+RSA finalization and real journals with supplied external authority. They cover
+healthy request refusals, exact retry/kind conflict, post-debit held observation
+and root retention through Close, post-result authority loss, independent reopen,
+partial startup and original observer join. Key-owner controls restore actual
+root/lease/material paths after observed loss and require permanent refusal
+of the original owner. These controls do not authenticate Network, accept a
+Node duty or qualify either Carrier or native process protection.
+
 ## Command and evidence
 
 issuance initialize-results config fields: admission_root, admission_binding,

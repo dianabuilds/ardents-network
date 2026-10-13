@@ -11,6 +11,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -278,5 +279,191 @@ func TestIssuerWithholdsCommittedResponseAfterPermissionHour(t *testing.T) {
 	retry := issuer.IssueCurrent(context.Background(), h.plan, raw, quota.Bootstrap, h.ProfileLocked)
 	if retry.Outcome != "already-issued" {
 		t.Fatalf("retained result lost: %+v", retry)
+	}
+}
+
+// These component controls use genuine Permission, blind preparation, RSA,
+// quota and result journals. Supplied authority isolates the Admission boundary;
+// actual signed Network and native Node acceptance remain command scenarios.
+func retainedIssuerRequest(t *testing.T) (*Owner, *spendHostFixture, *Attempt, []byte) {
+	t.Helper()
+	holder, host, _ := issuedStockFixture(t)
+	a, err := holder.Begin(nextIntent(host))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { a.Discard() })
+	raw, _, err := a.Request()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { clear(raw) })
+	return holder, host, &a, raw
+}
+
+func TestRetainedIssuerHealthyRequestRefusalsAndExactRetry(t *testing.T) {
+	_, h, a, raw := retainedIssuerRequest(t)
+	o, opened := issuer.OpenCurrent(t.Context(), h.plan, h.ProfileLocked)
+	if opened.Outcome != "opened" {
+		t.Fatal(opened)
+	}
+	t.Cleanup(func() {
+		if r := o.Close(context.Background()); r.Outcome != "closed" {
+			t.Error(r)
+		}
+	})
+	if r := o.IssueCurrent(t.Context(), nil, quota.Bootstrap); r.Outcome != "invalid-input" {
+		t.Fatal(r)
+	}
+	canceled, cancel := context.WithCancel(t.Context())
+	cancel()
+	if r := o.IssueCurrent(canceled, raw, quota.Bootstrap); r.Outcome != "canceled" {
+		t.Fatal(r)
+	}
+	if err := o.Check(); err != nil {
+		t.Fatal("request refusal retired owner", err)
+	}
+	r := o.IssueCurrent(t.Context(), raw, quota.Bootstrap)
+	if r.Outcome != "issued-offline" {
+		t.Fatal(r)
+	}
+	defer clear(r.Response)
+	journal := filepath.Join(h.plan.AdmissionRoot, "admission.journal")
+	before, err := os.ReadFile(journal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	again := o.IssueCurrent(t.Context(), raw, quota.Bootstrap)
+	defer clear(again.Response)
+	if again.Outcome != "already-issued" || string(again.Response) != string(r.Response) {
+		t.Fatal("exact response changed", again.Outcome)
+	}
+	wrong := o.IssueCurrent(t.Context(), raw, quota.Admitted)
+	if wrong.Outcome != "request-conflict" || wrong.Response != nil {
+		t.Fatal(wrong)
+	}
+	after, err := os.ReadFile(journal)
+	if err != nil || string(before) != string(after) {
+		t.Fatal("retry changed quota", err)
+	}
+	if err := a.Complete(r.Response, nil); err != nil {
+		t.Fatal("genuine finalization", err)
+	}
+	if err := o.Check(); err != nil {
+		t.Fatal("conflict retired healthy owner", err)
+	}
+	if closed := o.Close(context.Background()); closed.Outcome != "closed" || o.Err() != nil {
+		t.Fatal("healthy joined close", closed, o.Err())
+	}
+}
+
+func TestRetainedIssuerBusyAndCloseRetainRootsUntilOriginalObserverJoins(t *testing.T) {
+	_, h, _, raw := retainedIssuerRequest(t)
+	journal := filepath.Join(h.plan.AdmissionRoot, "admission.journal")
+	before, err := os.Stat(journal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entered, release := make(chan struct{}), make(chan struct{})
+	var held atomic.Bool
+	observe := func() (admission.AuthorityFacts, time.Time, error) {
+		info, err := os.Stat(journal)
+		if err != nil {
+			return admission.AuthorityFacts{}, time.Time{}, err
+		}
+		if info.Size() > before.Size() && held.CompareAndSwap(false, true) {
+			close(entered)
+			<-release
+		}
+		return h.ProfileLocked()
+	}
+	o, opened := issuer.OpenCurrent(t.Context(), h.plan, observe)
+	if opened.Outcome != "opened" {
+		t.Fatal(opened)
+	}
+	finished := make(chan issuer.Result, 1)
+	go func() { finished <- o.IssueCurrent(t.Context(), raw, quota.Bootstrap) }()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("post-debit observer not reached")
+	}
+	if r := o.IssueCurrent(t.Context(), raw, quota.Bootstrap); r.Outcome != "busy" {
+		t.Fatal(r)
+	}
+	wait, cancel := context.WithCancel(t.Context())
+	cancel()
+	if r := o.Close(wait); r.Outcome != "completion-unavailable" {
+		t.Fatal(r)
+	}
+	if l, err := quota.Open(h.plan.AdmissionRoot, h.plan.AdmissionBinding); !errors.Is(err, quota.ErrBusy) {
+		if l != nil {
+			l.Close()
+		}
+		t.Fatal("root released before join", err)
+	}
+	close(release)
+	r := <-finished
+	if r.Response != nil {
+		t.Fatal("late response crossed original close")
+	}
+	closed := o.Close(t.Context())
+	if closed.Outcome != "closed" {
+		t.Fatal(closed)
+	}
+	if again := o.Close(t.Context()); again.Phase != closed.Phase || again.Outcome != closed.Outcome || again.Cleanup != closed.Cleanup {
+		t.Fatal("unstable retirement")
+	}
+	fresh := issuer.IssueCurrent(t.Context(), h.plan, raw, quota.Bootstrap, h.ProfileLocked)
+	defer clear(fresh.Response)
+	if fresh.Outcome != "issued-offline" {
+		t.Fatal("committed debit was not retryable", fresh)
+	}
+	after, err := os.Stat(journal)
+	if err != nil || after.Size() == before.Size() {
+		t.Fatal("debit refunded", err)
+	}
+}
+
+func TestRetainedIssuerCommittedResultAuthorityLossCannotRevive(t *testing.T) {
+	_, h, _, raw := retainedIssuerRequest(t)
+	journal := filepath.Join(h.plan.ResultRoot, "results.journal")
+	before, err := os.Stat(journal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cause := errors.New("original State lost after durable result")
+	var loss atomic.Bool
+	observe := func() (admission.AuthorityFacts, time.Time, error) {
+		info, err := os.Stat(journal)
+		if err != nil {
+			return admission.AuthorityFacts{}, time.Time{}, err
+		}
+		if info.Size() > before.Size() && loss.Load() {
+			return admission.AuthorityFacts{}, time.Time{}, cause
+		}
+		return h.ProfileLocked()
+	}
+	o, opened := issuer.OpenCurrent(t.Context(), h.plan, observe)
+	if opened.Outcome != "opened" {
+		t.Fatal(opened)
+	}
+	loss.Store(true)
+	r := o.IssueCurrent(t.Context(), raw, quota.Bootstrap)
+	if r.Response != nil || r.Outcome != "authority-unavailable" || !errors.Is(o.Err(), cause) {
+		t.Fatal("lost original cause/withholding", r, o.Err())
+	}
+	loss.Store(false)
+	if err := o.Check(); err == nil {
+		t.Fatal("restored observation revived owner")
+	}
+	closed := o.Close(t.Context())
+	if closed.Outcome != "authority-unavailable" || !errors.Is(o.Err(), cause) {
+		t.Fatal("retirement lost first failure", closed)
+	}
+	fresh := issuer.IssueCurrent(t.Context(), h.plan, raw, quota.Bootstrap, h.ProfileLocked)
+	defer clear(fresh.Response)
+	if fresh.Outcome != "already-issued" {
+		t.Fatal("committed result lost on independent reopen", fresh)
 	}
 }

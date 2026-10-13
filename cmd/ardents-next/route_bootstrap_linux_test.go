@@ -350,10 +350,32 @@ func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, after
 				authority := f.authority
 				if !bootstrap && issuerObservation != nil {
 					var observation int
+					journal := filepath.Join(f.plan.AdmissionRoot, "admission.journal")
+					before, err := os.Stat(journal)
+					if err != nil {
+						return nil, err
+					}
+					var beforeDebit, afterDebit bool
 					original := authority.issuer
 					authority.issuer = func(signer [32]byte) (admission.AuthorityFacts, time.Time, error) {
 						observation++
-						issuerObservation(observation)
+						// Additional retained startup/custody checks are not debit
+						// effects. Keep the existing boundary controls tied to the
+						// real journal transition, rather than a raw call ordinal.
+						if observation == 1 {
+							issuerObservation(1)
+						}
+						current, err := os.Stat(journal)
+						if err != nil {
+							return admission.AuthorityFacts{}, time.Time{}, err
+						}
+						if observation > 1 && current.Size() == before.Size() && !beforeDebit {
+							beforeDebit = true
+							issuerObservation(2)
+						} else if current.Size() > before.Size() && !afterDebit {
+							afterDebit = true
+							issuerObservation(3)
+						}
 						return original(signer)
 					}
 				}
@@ -694,9 +716,9 @@ func routeIssuerRetirementCases(t *testing.T, cancelReceiver bool) {
 					}
 					return nil
 				}, nil, pause, func(observation int) {
-					// IssueCurrent's initial binding check precedes its effect
-					// checks. Journal assertions below independently verify which
-					// real durable transaction has completed at these callbacks.
+					// The fixture maps these phase controls to the actual quota
+					// journal transition. The assertions below independently verify
+					// the retained debit and result bytes before authority changes.
 					switch observation {
 					case 2:
 						pause("before-debit")

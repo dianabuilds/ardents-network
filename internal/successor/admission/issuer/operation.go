@@ -158,6 +158,12 @@ func execute(ctx context.Context, p Plan, raw []byte, f admission.Facts, kind qu
 		return r
 	}
 	defer r.closeOwner(0, "close-results", results.Close)
+	return issueWithOwners(ctx, ledger, results, raw, f, kind, checks...)
+}
+
+// One debit/sign/result path is shared by finite offline and retained live use.
+// All external observations occur outside the owners' transaction locks.
+func issueWithOwners(ctx context.Context, ledger *quota.Ledger, results issuance.ResultStore, raw []byte, f admission.Facts, kind quota.Kind, checks ...func() (time.Time, error)) (r Result) {
 	recheck := func() bool {
 		if len(checks) == 0 {
 			return true
@@ -196,5 +202,8 @@ func execute(ctx context.Context, p Plan, raw []byte, f admission.Facts, kind qu
 		r.Outcome = "already-issued"
 	}
 	r.Response = response
+	if !recheck() {
+		return r
+	}
 	return r
 }

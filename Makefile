@@ -30,8 +30,15 @@ NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
 # Only the Node process suite may select an elevated system-scope runner.
 NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
+ifneq ($(filter node-process-check node-issuer-check,$(MAKECMDGOALS)),)
+# This native driver consumes independently built, pinned artifacts. Its host
+# needs the actual manager/kernel, not a second Go installation.
+HEADLESS_GOOS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+HEADLESS_GOARCH := $(shell uname -m)
+else
 HEADLESS_GOOS := $(shell go env GOOS)
 HEADLESS_GOARCH := $(shell go env GOARCH)
+endif
 HEADLESS_PLATFORM := $(HEADLESS_GOOS)-$(HEADLESS_GOARCH)
 ifeq ($(HEADLESS_GOOS),linux)
 UNIT_PACKAGES += $(subst $(newline), ,$(file <tests/profiles/deterministic-linux-packages.txt))
@@ -199,6 +206,16 @@ installed-tag-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
 	$(foreach package,$(INSTALLED_TAG_COMPILE_PACKAGES),go test -c -tags text_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/$(subst /,_,$(package)).test" $(package)$(newline))
 
+.PHONY: node-process-check
+node-process-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "node-process-check requires Linux"; exit 2)
+	sh ./scripts/node/run-native.sh -timeout=3m
+
+.PHONY: node-issuer-check
+node-issuer-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "node-issuer-check requires Linux"; exit 2)
+	sh ./scripts/node/run-issuer-native.sh -timeout=3m
+
 quick-check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)
 
@@ -241,6 +258,13 @@ endif
 DIAGNOSTIC_PARSER_ROOT ?= $(if $(GOBIN),$(GOBIN),$(shell go env GOPATH)/bin)
 
 tools-install:
+ifeq ($(NODE_NATIVE_HOST_TOOLS_ONLY),1)
+ifeq ($(OS),Windows_NT)
+	wsl --distribution Ubuntu-24.04 --user root --cd "$(CURDIR)" -- env "ARDENTS_NODE_NATIVE_MAKE_PACKAGE=$(NODE_NATIVE_MAKE_PACKAGE)" sh ./scripts/node/install-host-tools.sh
+else
+	ARDENTS_NODE_NATIVE_MAKE_PACKAGE="$(NODE_NATIVE_MAKE_PACKAGE)" sh ./scripts/node/install-host-tools.sh
+endif
+else
 	go build -trimpath -buildvcs=false -o "$(DIAGNOSTIC_PARSER_ROOT)/pprof$(HEADLESS_SUFFIX)" cmd/pprof
 	go build -trimpath -buildvcs=false -o "$(DIAGNOSTIC_PARSER_ROOT)/trace$(HEADLESS_SUFFIX)" cmd/trace
 ifneq ($(DIAGNOSTIC_PARSERS_ONLY),1)
@@ -252,6 +276,7 @@ ifeq ($(DIAGNOSTIC_TOOLS),1)
 	go run ./scripts/install-quality-analyzer.go -tool errcheck -cache "$(QUALITY_CACHE_ROOT)" -output "$(DIAGNOSTIC_PARSER_ROOT)"
 	sh ./scripts/diagnostics/install-powershell.sh
 	go run ./scripts/check-tools.go -diagnostic
+endif
 endif
 endif
 

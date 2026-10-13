@@ -14,7 +14,8 @@ var (
 
 // LocalRestriction is an installation-local exclusion, not global membership.
 // Class and Phase retain the persisted vocabulary, including retired classes
-// needed to recover old roots. A live Source requires producer-owned release.
+// needed to recover old roots. A live Source or node-duty requires producer-owned
+// release after physical join; its restriction grants no work after NotAfter.
 type LocalRestriction struct {
 	Identity, Family [32]byte
 	Class, Phase     string
@@ -43,7 +44,8 @@ func (participation LocalParticipation) Records() []ParticipationFact {
 }
 
 // Replace changes exactly one producer, pruning only expired time-held facts
-// of other producers. Another producer can never expire or remove a live Source.
+// of other producers. Another producer can never expire or remove a live Source
+// or node-duty while its original physical work remains unjoined.
 // The application calls release/replacement only after dependent work joins.
 func (participation LocalParticipation) Replace(producer [32]byte, restrictions []LocalRestriction, now time.Time) (LocalParticipation, error) {
 	if producer == [32]byte{} {
@@ -61,6 +63,12 @@ func (participation LocalParticipation) Replace(producer [32]byte, restrictions 
 	for _, restriction := range restrictions {
 		if !validRestriction(restriction) || !restriction.effective(now) {
 			return LocalParticipation{}, errors.New("local role duty is invalid")
+		}
+		// Recovery retains an already live original past its work bound, but
+		// replacement cannot mint a new expired Node duty. Stored whole-second
+		// precision must still leave a valid initial work interval.
+		if restriction.Class == "node-duty" && restriction.Phase == "live" && restriction.NotAfter.Unix() <= now.Unix() {
+			return LocalParticipation{}, errors.New("local Node duty is already expired")
 		}
 		next = append(next, ParticipationFact{Producer: producer, Restriction: restriction})
 	}
@@ -88,7 +96,8 @@ func (participation LocalParticipation) Conflicts(identity, family [32]byte, now
 }
 
 func (restriction LocalRestriction) effective(now time.Time) bool {
-	return restriction.Class == "direct-source" && restriction.Phase == "live" || now.Unix() < restriction.NotAfter.Unix()
+	producerHeld := restriction.Phase == "live" && (restriction.Class == "direct-source" || restriction.Class == "node-duty")
+	return producerHeld || now.Unix() < restriction.NotAfter.Unix()
 }
 
 func validRestriction(restriction LocalRestriction) bool {

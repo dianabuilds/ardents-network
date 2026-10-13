@@ -701,6 +701,228 @@ measured by the live cgroup adapter, including its invalid-sample rule when a
 process disappears during measurement. A component fixture with a declared
 owner-use model cannot qualify real OS placement or resource use.
 
+### Forwarding development process profile
+
+The new-domain Forwarding runtime selects one mandatory local development
+profile, `ardents-forwarding-process-v1`. The Product Owner approved this
+bounded envelope on 2026-10-12. It is separate from the predecessor command's
+unselected resource-profile input and does not revive a historical profile.
+Selection is not evidence of an implemented accepting Node, supported host,
+installed invocation, throughput, capacity or privacy qualification.
+
+| Checked native setting | Required value |
+|---|---|
+| Platform and placement | Linux, cgroup v2, one original process in a separate leaf cgroup |
+| `cpu.max` | `100000 100000` |
+| `memory.high` | `805306368` bytes (768 MiB) |
+| `memory.max` | `1073741824` bytes (1 GiB) |
+| `pids.max` | `256` |
+| `RLIMIT_NOFILE` soft and hard | `1024` |
+| `GOMAXPROCS` | `1` |
+| `GOMEMLIMIT` | `536870912` bytes (512 MiB) |
+
+The process-resource mechanism checks the original process/cgroup and actual
+kernel limits; supplied declarations alone cannot admit work. Its observations
+include actual process and cgroup memory, cumulative CPU, an elapsed CPU
+baseline, native pressure and memory events, descriptors, threads and Go-managed
+memory. Each observation declares its scope, observation interval, freshness
+and availability. An initial CPU counter without an elapsed baseline is not a
+measured CPU rate. Missing, stale, ambiguous or changed original placement
+refuses admission. Unsupported platforms refuse before runtime effects.
+
+Protection admission is synchronous at the original work owner's checks.
+Notifications and periodic sampling do not give an old accepting observation
+a polling grace period. Pressure or evidence loss denies dependent effects and
+interrupts original users; the Node lifetime still joins Route before returning
+reservations, closing purpose roots, removing its participation producer or
+releasing remaining State/resource/key owners. A bounded wait failure cannot
+publish joined completion or create a replacement invocation.
+
+Route continues to own its finite queues and physical users. Queue/timer
+diagnostics must distinguish measured, unavailable and unmeasured observations;
+unobserved counts are never emitted as zero or used as capacity evidence.
+Whole-process/cgroup limits include resources that cannot be attributed to one
+Route queue. Hosting continues to own provider-period bytes and reservations;
+this local process profile grants no token, assignment, Carrier choice or extra
+Hosting allowance. Independent native observations and both-Carrier causal
+tests must verify the actual new command; a component model, a container sharing
+its measured cgroup or a Windows gate does not establish that result.
+
+### Issuer development process profile
+
+The selected Issuer composition requires `ardents-issuer-process-v1`. It uses
+the exact native settings and original measurement/freshness/pressure boundary
+in the Forwarding table above: a sole original Linux cgroup-v2 leaf,
+cpu.max `100000 100000`, memory.high `805306368`, memory.max `1073741824`,
+pids.max `256`, NOFILE soft/hard `1024`, GOMAXPROCS `1` and GOMEMLIMIT
+`536870912`. It is a distinct workload/profile identity; Forwarding's profile
+and protocol allowances remain unchanged. Selection grants no capacity,
+installed or platform qualification. Issuer's checked native workload must
+independently exercise its actual command and both Carriers.
+
+### Original Forwarding composition
+
+`internal/successor/node` and `ardents-next node forwarding` compose one exact
+new-domain Forwarding duty. The original State owner remains command-owned;
+the invocation retains native process admission, its private producer,
+purpose-specific TLS material, receiving Admission, Hosting and Route users.
+Copied handles share that original lifetime and late terminal failure; a zero
+handle supplies no admission or completion evidence.
+Every receiving grant reserves first and checks Hosting coverage of the complete
+Forward class allowance before spend. Refill keeps the original reservation,
+deadline and termination dependency. A smaller operator envelope refuses;
+neither a small test workload nor successful HELLO can certify full coverage.
+
+Checks cross owners outside the Node state mutex, reobserve process/producer/
+State and compare the original profile and duty after I/O. Stop denies locally
+and cancels the original users; Receiver.Close interrupts before its actual
+join. Only after that join may purpose roots, Hosting, the original producer,
+native pins, TLS material and then State close. The one-second observation cap
+is rechecked after State I/O; expiry of that process observation retains the
+process owner category. No cached positive or notification grants work.
+An expired Epoch/Record denies original work but cannot release the live Node's
+local identity/family conflict while its physical users are still joining.
+Network retains the `node-duty/live` restriction until original producer Close;
+its persisted bound is not renewed. Prepared/quarantined facts remain time-held,
+and a new live Node cannot be minted with an already expired stored bound.
+
+Route may return this exact invocation's unwrapped local retirement notice from
+its authority watcher while cancellation joins. That notice is distinct from
+a physical cleanup failure. All foreign causes and physical wrappers remain
+failures, including a wrapper around cancellation or the local notice. First
+failure and actual cleanup failures remain in the retained result; a bounded
+command wait can report completion-unavailable but cannot publish joined success.
+An exact bare context error returned by the original process/producer mechanism
+while its own caller is already canceled is retained as the first failure and
+translated to that private notice for the Route watcher. Joined or wrapped
+mechanism errors are never translated. This preserves the distinction between
+original admission retirement and an actual physical cleanup error.
+
+The native scenario in `cmd/ardents-next/node_native_linux_test.go` starts
+hash-pinned actual commands with genuine signed State, Stock, Hosting and
+independent roots. It exercises both Carriers, explicit cancellation, changed
+native CPU protection and lost State clock evidence, then reopens Hosting and
+participation after manager/process completion. Native process tests separately
+exercise real descriptor loss and resident Go memory over the selected limit.
+An undersized-envelope negative control leaves the exact real spend journal
+unchanged and returns its unborrowed capacity before receiving spend.
+The partial-startup matrix independently refuses wrong keys and roles, shared
+roots, an unselected process profile, unavailable Hosting/spend/listener roots
+and local identity/family conflicts on both Carriers. Initial signed State
+conflict and expired membership also refuse before producer/spend effects;
+their unavailability survives State reopen. The matrix checks original Source
+history preservation, absent pre-admission spend, actual empty late-startup spend
+headers and producer removal only after failed startup joins. A restored-input
+control starts and joins the same signed member under the selected native profile.
+The native parent-refill scenario in
+`cmd/ardents-next/node_refill_native_linux_test.go` drives initial ADMIT and
+parent refill through the actual command on both Carriers. Real Stock supplies
+both tokens. Successful refill adds the independently fixed 988-byte debit
+under the original termination reservation; actual competing Hosting work
+and bounded real interface traffic refuse the addition before the second spend.
+After original manager/process
+join, reopening Receiving preserves the successful initial/refill burns and
+permits the token refused before spend. Hosting retains measured use and has
+no original reservations after joined retirement.
+The native original-authority scenario in
+`cmd/ardents-next/node_authority_native_linux_test.go` opens genuine State and
+Node owners in one selected process, with signed inputs prepared outside its
+measured cgroup. A scheduling barrier delays only the return of a completed
+actual State observation. Stop does not wait under a Node mutex for that foreign
+return; the original completion, producer and purpose root remain retained until
+the watcher joins. Signed successor, signed profile conflict, member expiry and
+stale process evidence refuse the original duty and survive applicable reopen.
+Late startup cancellation occurs after observing the actual bound listener and
+before successful handoff; it returns the original caller cause and joins its
+partial listener, producer and roots. Copied handles retain the same result.
+
+The actual command's unavailable-completion case in
+`cmd/ardents-next/node_completion_native_linux_test.go` occupies the original
+producer journal's exclusive lease as a test fault. A one-millisecond command
+wait reports `retiring/completion-unavailable`; manager/process termination is
+not Node completion. The unresolved producer remains conflicting across reopen,
+and a new producer cannot adopt it. This grants no recovery or root-reset right.
+
+These cases do not qualify stalled kernel/filesystem syscalls, arbitrary crash
+recovery, installed operation, independent operators or privacy. The selected
+issue owns full bounded acceptance and source-matched verification receipts.
+
+| Original Forwarding invariant | Owner and concrete behavior evidence |
+|---|---|
+| Genuine startup and both-Carrier forwarding | Actual canonical command in `TestNativeNodeForwardingBothCarriers`; signed State, Stock, receiving Admission, Hosting and original native process/producer |
+| Key/role/profile/root/conflict refusal and partial cleanup | Actual command in `TestNativeNodePartialStartupRefusalsBothCarriers`; preserved foreign Source/file bytes, absent early spend, empty late journal, root/producer cleanup and restored-input control |
+| Native protection, availability and pressure | Actual command's CPU-protection loss; actual process-resource descriptor loss and resident-memory tests; `TestNativeNodeOriginalAuthorityAndJoinBothCarriers` post-State-I/O freshness refusal |
+| Original authority, caller and final acquisition handoff | Genuine original State/Node native composition with signed successor/conflict, member expiry, held observation return, Stop/caller cancellation and late startup cancellation |
+| Physical join before root/producer return | Held original watcher in native composition; occupied-lease actual-command unavailable completion; live producer expiry/durable foreign-replacement controls in new Network/duty |
+| Initial/refill reservation and irreversible spend | Actual command in `TestNativeNodeParentRefillAndReopenBothCarriers`; exact 988-byte additional coverage, real pre-spend capacity loss, retained journals, replay refusal and measured-use floor |
+| Original result and foreign cleanup provenance | Native cancellation/startup cases plus Node retirement/copy regressions; only the exact private notice is removed, and physical wrappers/foreign causes remain errors |
+| Unsupported platform and bounded public output | `TestCompiledNodeUnsupportedPlatformRefusesBeforePrivateInput`; Node dispatch and inspection tests preserve finite output and distinguish unmeasured queues/timers |
+
+### Original Issuer composition
+
+`internal/successor/node` and `ardents-next node issuer` retain one original
+authenticated Role2/subrole6/PurposeIssuer invocation. State stays command-owned;
+process admission, private participation producer, exact-member Ed25519 TLS,
+Receiving and Hosting are independent owners. Admission's retained issuing
+application opens prepared quota, keys and results once, before accepting Route.
+Private RSA and quota/result decisions remain exclusively with Admission.
+No profile signing, root creation, rotation, recovery or automatic replacement
+is performed by this runtime.
+
+The original caller is checked directly before and after foreign observations,
+in addition to the derived cancellation context. Base process/producer/State
+observations never call back into Admission. Route's additional issuing check
+uses that base observer, then reobserves native/State after key/journal I/O;
+no recursion or foreign I/O under the Node lifecycle mutex is permitted.
+The exact original binding and one-second process freshness cap apply at effects.
+Request refusal and original owner failure remain distinct; only definite original
+authority/caller/resource/custody loss retires the invocation.
+
+Ordinary Receiving reserves and verifies the full Control64KiB allowance before
+durable spend; no Forward refill is composed. Bootstrap independently reserves
+its actual128KiB finite lane and termination before incoming work, without
+receiving-token spend. Route retains its one Issuer work slot and bounded copies
+through output, half-close and physical join. Issuing call completion cannot
+return that slot. Quotas remain common across all original channels.
+
+Stop synchronously denies/cancels issuing and Route admission. Route users join
+before Admission joins its calls/observers and closes results, keys and quota;
+then Receiving, Hosting, the original producer, native pins, TLS and State close.
+First failure and cleanup causes remain separate in the original result. A
+bounded command wait reports unavailable completion while the original process
+and owners remain retained through physical join. The producer's node-duty/live
+conflict persists past work expiry until actual producer removal.
+
+The distinct native Issuer workload exercises actual bootstrap, genuine Stock
+finalization, fresh ordinary issuance and spending newly issued Forward tokens
+on both Carriers. Native component controls retain original key/quota/result
+leases and producer conflict while an actual State observation return is held;
+they exercise caller/Stop, signed successor/conflict, expiry, process freshness
+and canceled late startup. Scheduling controls grant no successful authority.
+Full bounded acceptance and source-matched receipts remain in the selected issue;
+these mechanisms supply no installed, capacity or privacy qualification.
+
+The native operation control uses genuine independent Stock/Prefix principals
+and one native original Issuer. It delays only a real issuing caller's State
+return at causal quota/result-journal boundaries; it supplies no successful
+authority, signature or receiving Grant. Original caller denial before debit
+leaves issuing journals unchanged; post-debit/result denial retains committed
+bytes and withholds delivery. A signed successor after result commit denies the
+original duty. Quota/key leases and the actual result-file lock, plus physical
+Hosting, remain held through delayed original join. A competing operation cannot
+add quota or burn another Receiving token. Explicit healthy exact retry and
+independent issuing-owner reopen preserve complete response and journal bytes;
+the reopened owners still perform full integrity/durability/crypto validation.
+
+Storage uncertainty controls change only the native test child's file-size
+limit, leaving one byte beyond its original quota or result journal. The kernel
+performs a real partial append and returns EFBIG; no successful sync or commit
+is substituted. Quota uncertainty exports no confirmation/result; result
+uncertainty retains the complete prior quota debit and partial result bytes.
+Both withhold delivery. Restoring the write limit cannot change the original
+failed result across copies/repeated Close; fresh independent issuing Open
+refuses the partial checksum chain without truncation, repair or floor reset.
+
 ## Current limits and limitations
 
 The implemented system is a project-controlled Closed Test Network. A local

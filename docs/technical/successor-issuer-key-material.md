@@ -36,6 +36,15 @@ Close is shared and idempotent. Context cancellation is checked before changes
 and between standard RSA generations; a single generation is not interruptible.
 Unsupported platforms refuse before effects. No rollback/power-loss claim.
 
+`Store.Check` rechecks the original root/files/lease and exact material digest
+and validated public inventory before dependent effects. `Inventory` and private
+signing share that retained check. Detected identity/material loss latches its
+original cause across Store copies; restoring the path cannot revive it, and
+Close retains that cause alongside physical cleanup. A fresh explicit Open
+must independently verify the complete root and durability again. Request-specific
+invalid blinded input does not terminalize healthy material. No private RSA
+material or generic signing method is exposed to the runtime composer.
+
 CLI configs have exact root/binding/inventory_file fields, bounded strict JSON,
 lowercase hex and whole-second UTC times. Export uses a separate existing owned
 directory: exclusive new regular file, or byte-identical retry with sync. A

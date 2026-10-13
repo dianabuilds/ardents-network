@@ -148,7 +148,7 @@ func TestOrdinaryInitiatorDutyDoesNotConflict(t *testing.T) {
 	}
 }
 
-func TestExpiredDutyIsIgnoredAndPurgedByNextWrite(t *testing.T) {
+func TestExpiredPreparedDutyIsIgnoredAndPurgedByNextWrite(t *testing.T) {
 	t.Parallel()
 	now := time.Unix(1_800_000_000, 0).UTC()
 	root := filepath.Join(t.TempDir(), "local-roles")
@@ -158,8 +158,10 @@ func TestExpiredDutyIsIgnoredAndPurgedByNextWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	identity, family := [32]byte{7}, [32]byte{8}
+	// Prepared duties are time-held. A live Node is producer-held until its
+	// physical join, tested independently through the original producer.
 	if err := store.Replace([32]byte{9}, []duty.Duty{{Identity: identity, Family: family,
-		Class: "node-duty", State: "live", NotAfter: now.Add(time.Second)}}); err != nil {
+		Class: "node-duty", State: "prepared", NotAfter: now.Add(time.Second)}}); err != nil {
 		t.Fatal(err)
 	}
 	now = now.Add(2 * time.Second)

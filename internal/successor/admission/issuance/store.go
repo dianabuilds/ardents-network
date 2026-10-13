@@ -2,6 +2,7 @@ package issuance
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"os"
 	"path/filepath"
@@ -18,7 +19,9 @@ type storeState struct {
 	files     map[string]os.FileInfo
 	lock      *os.File
 	inventory Inventory
+	material  [32]byte
 	closed    bool
+	failure   error
 	closeErr  error
 }
 
@@ -80,7 +83,7 @@ func (s Store) Inventory() (Inventory, error) {
 	if v.closed {
 		return Inventory{}, ErrClosed
 	}
-	if err := v.checkIdentity(); err != nil {
+	if err := v.checkRetained(); err != nil {
 		return Inventory{}, err
 	}
 	return v.inventory.clone(), nil
@@ -96,7 +99,46 @@ func (s Store) Close() error {
 	defer v.mu.Unlock()
 	if !v.closed {
 		v.closed = true
-		v.closeErr = errors.Join(v.checkIdentity(), releaseLock(v.lock), v.root.Close())
+		v.closeErr = errors.Join(v.failure, v.checkIdentity(), releaseLock(v.lock), v.root.Close())
 	}
 	return v.closeErr
+}
+
+// Check validates original material and lease before dependent effects. A
+// detected loss is terminal for every copy, even if the path is restored.
+func (s Store) Check() error {
+	if s.state == nil {
+		return ErrClosed
+	}
+	v := s.state
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	if v.closed {
+		return ErrClosed
+	}
+	return v.checkRetained()
+}
+
+func (s *storeState) checkRetained() error {
+	if s.failure != nil {
+		return s.failure
+	}
+	err := s.checkIdentity()
+	if err == nil {
+		var raw []byte
+		raw, _, err = readOwned(s.root, "issuer.keys", maximumMaterial)
+		if err == nil {
+			if sha256.Sum256(raw) != s.material {
+				err = ErrUnavailable
+			}
+		}
+		// Open fully validated these exact material bytes and their inventory.
+		// Equality to that retained digest preserves the proof without reparsing
+		// every immutable private key during each native custody observation.
+		clear(raw)
+	}
+	if err != nil {
+		s.failure = errors.Join(ErrUnavailable, err)
+	}
+	return s.failure
 }

@@ -680,6 +680,12 @@ projection and remain in its platform allowance because Linux production
 still has retained Route consumers. That allowance does not permit removing
 or reconnecting shared mechanics in the one-engine retirement slice.
 
+Node's original Linux Forwarding consumer similarly reaches its portable
+producer, path and counter rules. Their exact Windows entries are listed as
+native-composition reachability, with behavior tests retained. They grant no
+Linux production exception or Windows runtime qualification. Local retirement
+notice tests preserve foreign, wrapped physical and cancellation cleanup causes.
+
 The same exact platform classification covers new Installation's portable
 assembly, inspection, journal and typed manager rules reached by genuine Linux
 `ardents-next installation provision/check` consumers. Windows refuses their
@@ -756,6 +762,51 @@ for the repaired candidate, not completion of the formal deep audit or
 authorization to begin its later security, concurrency, or wire tracks.
 
 ## Current profiles
+
+`issuer-process-linux`, invoked by `make node-issuer-check`, independently runs
+the actual original Node Issuer under `ardents-issuer-process-v1`. The root driver,
+three separately hash-pinned artifacts, actual sole-process native envelope,
+missing-prerequisite refusal and race build requirements below also apply.
+Its workload requires actual bootstrap, verified Stock, fresh ordinary issuance
+and spending newly issued tokens on both Carriers. Separate original State
+return scheduling controls check held key/quota/result roots and participation
+through physical join, late canceled startup and authority/freshness refusal.
+The Issuer resource controls exercise actual descriptor loss, Go placement and
+resident-memory pressure under the distinct profile. Zero-test discovery fails.
+This profile grants no installed, throughput or whole-domain qualification.
+The command test artifact runs two mandatory sequential workloads, lifecycle
+and issuing operations, each with the same three-minute process timeout; the
+resource artifact retains its independent ninety-second timeout. Exact discovery
+rejects missing, extra or duplicate command-test names before execution. All
+declared cases run once under the identical native envelope. This routing keeps
+new operation/partial-write coverage within a separately bounded process; it
+does not change any case deadline, retry, native setting or protection threshold.
+
+`forwarding-process-linux`, invoked by `make node-process-check`, is the bounded
+new Forwarding development lane. A root driver stays outside every measured
+Node cgroup. Each canonical Node process uses its original sole-process leaf,
+the fixed process limits in the Node/resource owner and genuine signed-State,
+token, participation and Hosting owners. TCP/TLS and QUIC are both required.
+The driver independently pins the ordinary command and the `node_process_native`
+command/resource test binaries by SHA-256, rejects missing inputs and zero-test
+discovery, and retains physical manager/process completion. Test binaries may be
+built with race instrumentation; that evidence must name the actual build.
+Forwarding's resource process runs its original seven cases; the three new
+Issuer-specific controls belong to the separate Issuer resource process.
+Exact resource discovery requires all seven original Forwarding controls.
+Each profile's resident-memory control runs in its own original process:
+the first can leave actual native or Go memory pressure for a following control.
+`ARDENTS_NODE_NATIVE_COMMAND`, `ARDENTS_NODE_NATIVE_TEST` and
+`ARDENTS_NODE_RESOURCE_TEST` name the three absolute external artifact paths;
+their corresponding `_SHA256` variables are independent expected digests.
+Missing Linux, systemd, cgroup/PSI, privilege, artifact, durable filesystem or
+loopback is an invalid environment. This lane establishes no supported Node host,
+installed operation, independent controller, capacity or privacy qualification.
+If the existing Ubuntu24.04 native host lacks Make, its explicit bootstrap is
+`make tools-install NODE_NATIVE_HOST_TOOLS_ONLY=1` from the existing Windows
+checkout or the exact root Ubuntu host. The dependency owner pins the one
+authenticated package; ordinary gates do not install it. Prebuilt artifact
+execution requires no second Go installation on that driver host.
 
 `hosting-budget-linux` runs `make hosting-check`: isolated durable Hosting and
 test-only Admission/Hosting I/O composition and compiled command lifecycle with race checks on Linux amd64.
