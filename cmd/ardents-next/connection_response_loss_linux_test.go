@@ -174,6 +174,29 @@ func TestInstalledConnectionControlReceivedBothCarriers(t *testing.T) {
 	}
 }
 
+func TestInstalledConnectionControlDeliveryBothCarriers(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Fatal("invalid environment: original non-root installed Endpoint required")
+	}
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			for _, role := range []string{"initiator", "publisher"} {
+				t.Run(role, func(t *testing.T) {
+					for _, kind := range []string{"terminal", "receipt", "confirmation"} {
+						t.Run(kind, func(t *testing.T) {
+							for _, cut := range []string{"before-receive", "after-finish"} {
+								t.Run(cut, func(t *testing.T) {
+									runInstalledConnectionTextLoss(t, carrier, "control-"+role+"-"+kind+"-"+cut)
+								})
+							}
+						})
+					}
+				})
+			}
+		})
+	}
+}
+
 // These source sites are checked by the architecture profile: a moved call
 // cannot silently retarget a qualification fault to a prefix or pre-read check.
 const connectionControlBodyReadLine = 74
@@ -193,18 +216,22 @@ const connectionInitiatorControlWriteAfterLine = 119
 // accepting callback enters production. A generation-1 ticket selects this
 // exact initial control even if Data ACKs interleave with it.
 type installedControlWriteGate struct {
-	mu          sync.Mutex
-	target      *connection.Stream
-	role        string
-	kind        string
-	after       bool
-	entered     chan struct{}
-	resume      chan struct{}
-	once        sync.Once
-	release     sync.Once
-	receiver    *connection.Stream
-	received    chan struct{}
-	receiveOnce sync.Once
+	mu            sync.Mutex
+	target        *connection.Stream
+	role          string
+	kind          string
+	after         bool
+	entered       chan struct{}
+	resume        chan struct{}
+	once          sync.Once
+	release       sync.Once
+	receiver      *connection.Stream
+	received      chan struct{}
+	receiveOnce   sync.Once
+	beforeReceive bool
+	afterFinish   bool
+	writing       chan struct{}
+	writingOnce   sync.Once
 }
 
 // Only the opposite original record reader examines these fields, which it
@@ -227,6 +254,13 @@ func (gate *installedControlWriteGate) observeReceived() {
 	if !reader {
 		return
 	}
+	if gate.beforeReceive {
+		select {
+		case <-gate.writing:
+		default:
+			return
+		}
+	}
 	gate.mu.Lock()
 	selected := false
 	if gate.receiver != nil {
@@ -240,6 +274,9 @@ func (gate *installedControlWriteGate) observeReceived() {
 				field = "receiptConfirmed"
 			}
 			selected = terminal.Elem().FieldByName(field).Bool()
+			if gate.beforeReceive {
+				selected = !selected
+			}
 		}
 	}
 	if selected {
@@ -264,7 +301,7 @@ func (gate *installedControlWriteGate) unblock() {
 func (gate *installedControlWriteGate) observe() {
 	var pcs [96]uintptr
 	frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs[:])])
-	actor, boundary, direct, source := false, false, false, false
+	actor, boundary, before, direct, source := false, false, false, false, false
 	for {
 		frame, more := frames.Next()
 		switch frame.Function {
@@ -277,6 +314,7 @@ func (gate *installedControlWriteGate) observe() {
 					line = connectionPublisherControlWriteAfterLine
 				}
 				boundary = frame.Line == line
+				before = frame.Line == connectionPublisherControlWriteBeforeLine
 			}
 		case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*initiatorAttachment).Write":
 			if gate.role == "initiator" {
@@ -285,6 +323,7 @@ func (gate *installedControlWriteGate) observe() {
 					line = connectionInitiatorControlWriteAfterLine
 				}
 				boundary = frame.Line == line
+				before = frame.Line == connectionInitiatorControlWriteBeforeLine
 			}
 		case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*ResponderScope).Check":
 			direct = true
@@ -295,14 +334,25 @@ func (gate *installedControlWriteGate) observe() {
 			break
 		}
 	}
-	if !actor || !boundary || gate.role == "publisher" && (!direct || source) || gate.role == "initiator" && !source {
+	if !actor || !(boundary || gate.beforeReceive && before || gate.afterFinish) || gate.role == "publisher" && (!direct || source) || gate.role == "initiator" && !source {
 		return
 	}
 	gate.mu.Lock()
 	selected := false
 	if gate.target != nil {
 		terminal := reflect.ValueOf(gate.target).Elem().FieldByName("terminal")
-		if !terminal.IsNil() {
+		if !terminal.IsNil() && gate.afterFinish {
+			// Only this original writer changes completed-write flags. A
+			// replacement cannot modify its ledger before this actor joins.
+			field := "terminalWritten"
+			if gate.kind == "receipt" {
+				field = "receiptWritten"
+			}
+			if gate.kind == "confirmation" {
+				field = "confirmationWritten"
+			}
+			selected = terminal.Elem().FieldByName("generation").Uint() == 1 && terminal.Elem().FieldByName(field).Bool()
+		} else if !terminal.IsNil() {
 			active := terminal.Elem().FieldByName("active")
 			if !active.IsNil() && active.Elem().FieldByName("generation").Uint() == 1 {
 				record := active.Elem().FieldByName("record")
@@ -321,6 +371,13 @@ func (gate *installedControlWriteGate) observe() {
 				selected = kind == gate.kind
 			}
 		}
+	}
+	if selected && gate.beforeReceive && before {
+		// Announce the actual selected ticket before its physical Write.
+		// The opposite reader can then stop before accepting it; the
+		// coordinator separately waits for successful physical output.
+		gate.writingOnce.Do(func() { close(gate.writing) })
+		selected = false
 	}
 	if selected {
 		gate.once.Do(func() { close(gate.entered) })

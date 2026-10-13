@@ -325,7 +325,10 @@ startup-manager-check:
 connection-stream-check:
 	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-stream
 
-.PHONY: connection-control-check connection-control-received-check
+.PHONY: connection-control-check connection-control-received-check connection-control-delivery-check
+
+connection-control-delivery-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-control-delivery
 
 connection-control-received-check:
 	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-control-received

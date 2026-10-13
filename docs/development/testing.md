@@ -250,6 +250,16 @@ Original worker/result checks still require one exact snapshot and full
 Terminal completion. Any original receiving peer-retirement failure remains
 the same repeated Close result; unknown or mixed failure leaves still fail.
 This supplies no record, synthetic EOF, authority or accepting result.
+`make connection-control-delivery-check` selects twenty-four scenarios across
+both senders, all three Terminal controls and both Carriers. In `before-receive`,
+the actual immutable ticket announces its pending Write, the opposite original
+reader holds with its matching accepted flag still false, and the coordinator
+waits for physical Write completion before retiring the real Rendezvous. Bytes
+may already be buffered by TLS; no claim of kernel-level nondelivery follows.
+In `after-finish`, the original writer observes its own completed-write flag and
+the opposite reader observes its accepted flag before the same physical fault.
+Both schedules retain one qualified Application request and joined result.
+
 `make connection-control-received-check` selects twelve separate scenarios:
 both senders, all three Terminal controls and both Carriers. The original
 writer is held after physical Write and before `finishWrite`; the opposite
