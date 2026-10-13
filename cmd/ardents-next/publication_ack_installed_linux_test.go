@@ -69,6 +69,33 @@ func (g *publicationDeliveryCloseGate) release() {
 	}
 }
 
+// The first TLS client record read follows its emitted ClientHello. Hold only
+// that borrower's genuine State observation, outside all owner state locks.
+func (g *publicationDeliveryCloseGate) observeTLSClientRead(current func() (network.RuntimeView, error)) (network.RuntimeView, error) {
+	var callers [48]uintptr
+	frames := goruntime.CallersFrames(callers[:goruntime.Callers(2, callers[:])])
+	for {
+		frame, more := frames.Next()
+		if frame.Function == "github.com/dianabuilds/ardents-network/internal/successor/connection.initiatorTLSBorrow.Read" {
+			g.mu.Lock()
+			var resume <-chan struct{}
+			if g.armed {
+				g.once.Do(func() { close(g.entered) })
+				resume = g.resume
+			}
+			g.mu.Unlock()
+			if resume != nil {
+				<-resume
+			}
+			break
+		}
+		if !more {
+			break
+		}
+	}
+	return current()
+}
+
 func (g *publicationDeliveryCloseGate) observe(current func() (network.RuntimeView, error)) (network.RuntimeView, error) {
 	var callers [32]uintptr
 	frames := goruntime.CallersFrames(callers[:goruntime.Callers(2, callers[:])])

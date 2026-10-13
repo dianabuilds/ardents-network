@@ -31,8 +31,21 @@ to the exact launch Job before continuing descendant observation. The generation
 therefore denies sibling effects while join remains pending; this report returns
 no cleanup capacity. A missing manager remains a provisional observation until
 original pinned removal or a retained failure is established.
-A future Text consumer must own its protocol reader instead of sharing this
-setup reader.
+Ordinary Reader and selected-snapshot Publisher invocations instead retain the
+Text owner's sole initialized protocol reader. One original operation transfers
+one authenticated Connection stream under its checked directional byte contract;
+recovery cannot acquire another Job or submit another Application request.
+After complete authenticated Terminal, the Reader joins the Connection control
+tail before publishing its pending bounded result. It retains its protocol
+reader until composition joins the original Source and closes that operation,
+then joins the worker before exposing bytes through completed-current checking.
+Revocation or failed exchange retains failure; no pending result grants worker
+authority or successful cleanup.
+
+The Publisher Text consumer retains its original completed Stream borrow until
+the original control tail joins or the original operation is cancelled. Worker
+cleanup capacity remains held during this wait; refusal and cancellation still
+interrupt and join the same resources without a renewed Job or request.
 
 Command and lifetime composition use the same portable implementation. The
 native worker adapter remains separate: unsupported platforms return no
@@ -101,7 +114,7 @@ fresh start requires fresh Endpoint/worker invocations, volatile local generatio
 and Job commitments before repeating that observation. It is local physical
 lifetime evidence, not private Service continuity or installed-product acceptance.
 
-Current contracts: [boundary/model](../../../docs/technical/application-execution.md),
+Current contracts: [Execution lifecycle](../../../docs/technical/application-execution.md),
 [confinement](../../../docs/technical/application-confinement.md),
 [domain map](../../../docs/development/domain-map.md), and exact imports in
 [package map](../../../docs/development/package-map.md).

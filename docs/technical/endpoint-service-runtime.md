@@ -212,6 +212,17 @@ exchange has a separate two-minute bound, capped by the original caller's deadli
 that socket is physically joined before final original-process/manager/file
 reobservation. The post-ACK observation lifetime retains the original caller.
 Copied bound Headless/Source declarations confer no runtime authority.
+Private Startup manager observation reads Version and both complete rounds of
+fixed Endpoint/activation properties on one fresh bounded system-bus connection.
+Each round submits its six fixed read-only queries together under the original
+three-second query bound and joins every reply before the next round. A failed
+round cancels and joins its outstanding calls and retains their errors.
+It retains original unique manager identity across Startup checks and compares
+that owner before/after each fresh read. Nested message lengths and duplicate
+dictionary keys are checked before library decoding, and original wire variant
+signatures survive typed projection. Cancellation and return join the physical
+connection. File/inode/access/inventory, process and manager-property checks
+remain at their original boundaries; detached facts grant no accepting cache.
 The partial consumer obtains qualified joined permission preparation,
 uses actual Source refresh and Stock verification, and publishes an owner-private
 public request with exact retry and file/directory durability. It refuses foreign
@@ -220,8 +231,29 @@ boundary; malformed responses are terminal. After genuine Stock import and its
 final currentness check, a public permission-accepted diagnostic carries only
 the role and original public request digest. It is bootstrap progress, never
 Service readiness or a reusable permission. Background Source work belongs to
-State, separately from permission preparation. This composition does not expose
-private Publication/Connection readiness. The checked fresh installed startup
+State, separately from permission preparation. Reader-only startup additionally
+opens its declared AAI3 listener after bootstrap, retaining the same local
+Execution owner and imported Stock. Each request constructs a genuine qualified
+Reader and Source. Separate `entry` and `reader-interior` children retain Route
+state under the declared Entry root. The `hosting` child must already be
+explicitly initialized; runtime never initializes or resets provider history.
+Reservations use existing Forward/Control class bounds and a finite Forward
+lifetime capped by the original caller/profile. Missing provider history
+refuses work; a listening socket is not a qualified Connection.
+The local projection validates the fixed Text request before the sole worker
+transfer, joins Source/operation/worker before consuming the sealed result and
+uses existing Text response grammar without a second remote request. Original
+Startup/caller checks surround Route/State effects and local response writes.
+The installed State's `PermitWork` calls the original `Startup.Check` before
+`CurrentRuntime` reads its state. Service composition retains caller checks
+before that owner call and the same Startup observation afterwards; it does not
+repeat that full pre-observation outside State. Publisher adds its exact live
+operation checks on both sides, while retaining explicit startup checks at its
+operation and local handoff boundaries. This removes duplicate observations,
+never caches accepting startup facts or substitutes an operation for Startup.
+Close interrupts local pipes and joins original borrowers. Dual-role Publication
+composition and two independently installed managers remain separate acceptance
+requirements. The checked fresh installed startup
 scenario now exercises this bounded permission bootstrap in the actual non-root
 participant after genuine Root completion; it is not a full installed Service
 or qualification receipt.
@@ -1079,6 +1111,48 @@ qualification. No caller-supplied Target, permission file or local context
 identifier may bypass these owners.
 
 Reader-only component checks do not establish the two-Endpoint installed journey.
+The new canonical `ardents-next endpoint start-installed` continuation exposes
+the separate AAI3 and Administration Interfaces after original startup, signed
+State and finite Stock handover. Reader-only continuation opens no Publisher
+owner or Administration listener. Dual-role continuation constructs the real
+snapshot Publisher only on an authorized local request; bodyless Publish refuses.
+Link and Withdraw consume fresh local Administration admission from the original
+Execution generation, in addition to actual Publication checks. Withdraw
+interrupts and joins pending setup before retiring a committed owner; it does
+not extend or replace that setup. Unexpected accepted-stream consumer termination
+stops participant supervision and retains the original failure.
+
+One participant retains actual Entry history at `entry_state_root/entry` and
+the already initialized Hosting budget at `entry_state_root/hosting`. Its Reader,
+Introduction, Publisher Source and Responder selections use separate
+`reader-interior`, `introduction-interior`, `publisher-source-interior` and
+`responder-interior` siblings. Runtime never initializes or resets the budget.
+Per-operation composition returns its own physical borrows and role selections;
+listeners and pending/active consumers join before the participant closes shared
+roots. These production consumers still require source-matched native acceptance
+with two independently admitted managers; compilation and local admission tests
+supply neither startup qualification nor Service success.
+An installed continuation refusal emits only its fixed owning stage and
+`unavailable` to local diagnostics after joined cleanup. It includes no original
+paths, authority bytes, Target, error strings or accepting readiness. The
+unchanged nonzero process result remains the refusal.
+
+The genuine Reader and Publisher Source composition obtains missing cold
+Entry/Interior Forward stock through the original finite issuer-only Bootstrap.
+The second batch funds that profile's issuer Control token. It joins Bootstrap
+before opening fresh admitted Source channels with the same selected leg and
+shared provider history; it does not upgrade a bootstrap child. One original
+Stock preparation excludes unrelated issuance during those batches/opening.
+Already funded Source stock consumes no additional bootstrap batch. Exhausted
+cold bootstrap refuses rather than renewing permission or rebinding another Job.
+Subsequent requested Control, Forward and Registration presentations obtain a
+missing token through that same admitted Source's real issuer exchange. Issuer
+Control must already be funded and cannot recursively issue itself. Original
+Operation/Startup/Network checks, exact challenge/window, whole-result deposit,
+irreversible allocation/presentation and physical reservation joins still apply.
+These mechanisms require source-matched installed Publisher/Reader exchange and
+concurrency/recovery evidence; Route/Stock component checks do not qualify it.
+
 The fixed worker boundary verifies the MainPID of `ardents-endpoint.service`;
 two Endpoints therefore require separate system-manager installations, each with
 its own roots and principals and the unchanged fixed unit/account/worker checks.
@@ -1116,6 +1190,15 @@ direction. Reader and Publisher derive their opposite directions from that one
 contract. The native Service stream therefore neither imports text-document
 policy nor inspects qualification job input, and recovery continues the same
 logical byte counters instead of resetting either bound.
+
+The new Connection stages received bytes in a bounded private buffer until its
+final original-owner fences succeed. Caller-buffer delivery then occurs under
+the same local handoff locks, before publishing a clean outcome. A failed final
+fence returns zero bytes, leaves caller memory unchanged and retains its cause;
+authenticated EOF remains the exact `io.EOF` sentinel on a successful handoff.
+Read planning does not consume the Application cursor. Write planning does not
+append bytes to the replay ledger or increase the returned acceptance count;
+both transitions occur only after those final fences under the same locks.
 
 This is maintained component integration, not installed-host P7 or NET-14
 qualification. A path that supplies no Attachment opener retains its existing
@@ -1201,6 +1284,294 @@ families, then rechecks that same retained duty before handing out the binding.
 This establishes neither accepted replay nor real Responder readiness, incoming
 RESULT/CLOSE, Instance TLS or authenticated recovery.
 
+The new Instance owner additionally retains one immutable logical Service lease
+under its original Publication lifetime. First Attachment setup returns that
+lease together with its purpose-specific TLS borrow. Physical retirement retains
+the logical lease, original Work Safety context and prior physical cleanup
+failure, including an interval without any Attachment. It keeps the actual JOIN while
+TLS cancellation interrupts its borrowing transport, joins TLS users before
+physical JOIN release, and erases exporter material before returning the borrow.
+Publication retirement joins these borrowers before Instance key erasure and
+retains their cleanup failures. Key use and transport effects require
+the original qualified Publisher Operation whose context created that
+Publication lifetime. Instance checks that operation synchronously before and
+after certificate signing, CertificateVerify and physical TLS I/O, and again at
+Attachment handoff; cancellation propagation alone is not its authority check.
+Copied Operation handles cannot cancel or complete the original cleanup borrow.
+The ordinary Reader launch gives Text sole ownership of its initialized
+protocol reader while awaiting one stream. Setup-only launches retain their
+separate EOF observer. Worker output before handoff refuses without opening a
+Service. The original Reader operation checks each protocol effect and final
+attachment retirement. Its bounded output stays private in a one-use result
+until the same Operation, Service I/O and original worker descendants have
+joined and the original Job's completed-current observation still holds.
+Cancellation or a replacement Job cannot authorize presentation of those bytes.
+Text prepares its private pending result after local authenticated completion,
+retaining the original Connection's bounded control tail and protocol reader. The
+composition joins the original Source before closing that operation. Successful
+operation retirement releases and joins the Text reader before retiring the
+Job; worker descendant join and completed-current checking precede one-use byte
+presentation. The same ordering applies after Attachment replacement; it does
+not create a new Text request or operation.
+
+Publisher Text completion likewise retains the original Connection borrow until
+its joined notification or original cancellation. Sending Application Done
+does not fully close a Stream with pending authenticated Terminal controls.
+The same qualified worker cleanup remains retained; refusal and cancellation
+interrupt the wait and close/join the original Stream without new authority.
+Its full Close result remains with that original Stream; the worker's cleanup
+accounting consumes the same joined Stream's separate physical receipt. A
+logical tail refusal is not a physical cleanup failure, while all actual late
+write/close failures remain retained across every Service borrower.
+
+Route Acquisition and Joined, and the purpose-scoped Instance Attachment, expose
+separate read-only cleanup results only after their original physical return
+and completion notification. Their full Close results still retain failed
+exchange/EOF and actual physical errors. Connection passes actual joined
+write/close failures to the original operation's cleanup accounting; a transport
+loss alone does not retire that Job or grant replacement success. No nil receipt
+supplies accepting authority, and a real physical failure remains terminal for
+local admission.
+Publication's original Registration and Introduction terminal likewise expose
+joined physical results separately from their full work/withdrawal outcome.
+Publisher joins its Connection/private users, returns the Source/Responder
+borrows with those physical results, then joins the original Prefixes and
+Instance binding. Command composition consumes the original Publisher receipt
+and retains actual custody/selection/Hosting close failures separately; it must
+not project the full canceled Publication result into Execution cleanup.
+This execution seam requires a genuine Connection/Route consumer and installed
+worker evidence; portable compilation and Text fixtures do not provide either.
+Before TLS setup, Reader requires the exact Source JOIN and Publisher requires
+the exact Source-bound Responder JOIN. Each compares the capsule's pair-secret
+digest, handshake context, Work Safety end and setup deadline with immutable
+facts retained by the actual admitted child. This is a Route provenance check;
+it does not replace Instance authentication or accepting Publication checks.
+Its private certificate signer accepts only
+the TLS1.3 server CertificateVerify purpose; InstanceProof consumes a one-use
+exact-TLS request receipt after checked initial Continuity. The coalesced
+response is one actual TLS write of that proof and zero-offset Continuity;
+only a complete write with final owner observations releases the setup bound
+into the original Work Safety lifetime. This Attachment mechanism does not
+establish the complete Reader/Publisher consumer or authenticated replacement
+and terminal-control operations using the logical lease. Those operation
+lifetimes remain Connection obligations; a completed capsule handoff cannot
+replace them.
+Both authenticated role owners keep a logical cancellation context separate
+from their physical TLS Attachment. Reader's original Work Safety deadline and
+Publisher's original Instance lease remain the logical bounds. Final owner
+retirement synchronously cancels logical authority before physical joins;
+retiring Reader's physical context alone cannot renew or cancel that original
+logical deadline. Local byte effects check logical authority, while actual TLS
+I/O additionally checks the exact Attachment. Transport failure still fails the
+current stream until genuine authenticated replacement is implemented; context
+separation grants neither replacement authority nor an accepting fallback.
+The Publisher replacement preparation uses that same original logical lease,
+immutable tuple and continuity secret with a fresh genuine Responder JOIN and
+TLS exporter. Instance retains only the original-key commitment and separates
+the actual response write from setup transfer. Connection validates peer byte
+ranges without mutating ledgers, retains its finite proposal ticket through
+rejected physical join, and treats Continuity integrity violations as terminal.
+It reserves that ticket before acquiring the fresh Responder JOIN, matching
+all immutable private-request fields and its exact JOIN configuration before
+admission. The acquisition and established JOIN retain the original logical
+caller; the proposal context only interrupts setup. Failed JOIN also consumes
+the proposal, whose retirement waits actual acquisition and setup callback join.
+An observed invalid wire prefix, body length or complete record is likewise
+terminal; its typed grammar error is distinct from physical EOF, an incomplete
+frame or another original I/O failure. This distinction permits no inference
+about the cause of transport loss and supplies no recovery authorization.
+Publisher's concrete recovery Route retains an original Source scope and an opaque
+Responder scope before record actors start. The scope keeps the original caller,
+selected role-3 leg, authentic observer and absolute bound; a retired physical
+Prefix does not itself revoke that logical scope. Each JOIN acquires one exact
+physical generation, which cannot follow a later replacement. Connection reserves
+its finite proposal before that acquisition obtains fresh genuine Hosting and
+Stock resources. The old generation joins before another opens; actual cleanup
+failure remains retained and denies a new opening. A generation's quiet claim
+seals that generation without stopping every logical Connection in Publication.
+No failed TLS transport is reused. Physical loss seals those actors and
+does not itself revoke the original accepting Publication. Responder opening
+acquires one exact Source generation, and physical JOIN transfer checks that
+generation plus both original logical scopes. Qualified command funding obtains
+only an existing current-source handle for issuer exchanges; it cannot open a
+replacement recursively while dependent presentation is in flight. Descriptor
+publication likewise retains one exact acquisition through its final Store-ACK
+commit. Fresh Instance/Source observations run before Publisher state locks;
+local handoffs recheck the original Instance lifetime without native I/O.
+Physical loss
+starts the original finite episode without waiting for a proposal. Replacement
+preparation freezes and joins both original actors before advertising retained
+offsets. Its final commit independently reobserves native, Route and logical
+authority before a local Source/Responder transition; Instance rechecks the
+original private recipient and cutoff at that transition without native I/O.
+All three ledgers advance together, retaining counters and queued bytes; the
+new writer immediately drains the retained suffix. Joined setup callbacks no
+longer interrupt accepted transfer, but the original setup caller still must
+be live at commit. This mechanism requires genuine replacement capsule dispatch
+and Reader recovery before ordinary Application admission; it establishes no
+complete recovered stream on its own.
+The new ordered receive ledger retains accepted unread bytes and recent replay
+comparison bytes in one 256KiB buffer. A matching replay has no second local
+read effect; contradictory overlap, a forward gap or an unverifiable discarded
+prefix refuses before fresh-byte admission. Full unread capacity applies
+backpressure without evicting bytes. Authenticated replacement retains both
+the received and consumed cursors and the original directional byte limit.
+This mechanism still requires the real stream consumer and its authority,
+Terminal-control and physical-join ordering.
+New Reader construction additionally retains a fresh local ConnectionContext
+of the original qualified ordinary Reader operation; a setup-only invocation
+cannot acquire that authority. Only its salted v3
+commitment enters the capsule; local context and salt do not enter network
+fields. One initial construction consumes that operation's context claim
+before lookup or physical Source ownership transfer. The Source must have been
+opened by that same original operation context, not a descendant setup context
+or another operation with matching limits. A refused second construction does
+not close the Source retained by the first construction.
+The Reader requires exact Instance TLS, signed challenge response and the
+sealed zero-offset Publisher Continuity before transferring setup into Work
+Safety. Both role authentications provide one-use initial state to the logical
+send/receive/Terminal owner with an immutable checked directional byte contract.
+The initial stream handoff observes original Instance/Route authority before
+locking consumer state. It then uses the exact JOIN's Source-before-Responder
+and Acquisition barriers, followed by the Connection state mutex and the
+Instance-local lease gate for Publisher. `ServiceAttachment.CheckStreamCommit`
+requires the same authenticated generation-one Attachment, retained logical
+lease, original live Execution operation and Publication reservation; its local
+reservation check performs no filesystem observation. Reader compares its
+original sealed binding and Source owner. Both roles recheck the immutable
+byte contract before consuming initial state and starting record actors. These
+local gates follow fresh full observations; they cannot replace those
+observations, authenticate another Attachment or grant a new generation.
+The logical Stream applies the same ordering to byte admission, record
+acceptance/completion, Terminal settlement and recovery preparation: full
+original-owner observations outside consumer state locks, then bounded local
+effects under the retained Source/Responder and Stream barriers. Instance's
+`ServiceLease.CheckCommitIdentity` compares the same live logical lease and
+Publication reservation without native I/O, including a physical Attachment
+gap. Original Credential/Work Safety bounds and Execution operation remain
+requirements at the final gate. Record completion also compares its exact
+actors/generation after I/O; a stale completion cannot update the replacement.
+The durable reservation gate compares an immutable local original-pointer and
+retained-failure projection without acquiring its storage mutex. Reservation
+retirement seals only that original pointer; root retirement seals all local
+commits before waiting for native effects and retained reservations to join.
+This projection supplies no floor, filesystem proof or accepting authority;
+the preceding full original-root observation remains required.
+The logical lease's full identity observation retains an original Binding
+observer before leaving Instance state. It reobserves native Instance custody
+and the independently owned durable reservation without that state mutex,
+then compares the same live logical lease locally. Binding retirement denies
+new observers before waiting, and joins them before erasing private material
+or returning the original reservation. Publication lifetime creation and public
+Credential access use the same observation/commit split; neither a detached
+Credential nor a local gate replaces current native custody.
+Physical Service entry and post-I/O recheck use that full logical observation
+outside Instance state, followed by the local exact Attachment/recipient gate.
+TLS CertificateVerify signing additionally retains its actual Service user;
+private signing and its final local admission comparison share Instance state,
+while native custody and reservation checks precede them outside that state.
+First Instance consumption retains one original native observer across the
+separately owned floor burn and its own redacted state write. Concurrent retries
+join that same operation/result; they cannot select a second writer. Instance
+state is released during the durable owner's write. Revocation before the private
+write refuses that effect without refunding a completed floor burn; retirement
+joins the original operation before reservation return. A copied/foreign Binding
+cannot cancel its lifetime, erase its key or return its original reservation.
+Original Binding acquisition likewise reserves one local opening before leaving
+Instance state for durable reconciliation. Root retirement denies late transfer
+and waits for that opening's rejected reservation cleanup before returning native
+custody. The returned reservation must still match the unchanged accepted public
+Credential; a completed foreign read cannot bind a changed or retired Instance.
+Public record persistence retains an original Binding observer across its
+already separate durable write and fresh final observations. Recipient creation,
+Descriptor signing and capsule opening likewise observe original Binding custody
+outside Instance state before their local effect gates. Opening.Request performs
+that full observation before locking Opening state, then rechecks its own caller,
+expiry and private recipient locally; canceled/closed openings cannot expose a
+late candidate while native observation is pending. No local gate supplies a
+registration receipt, Descriptor ACK or accepting Publication.
+Backpressure waits retain a notification captured under the Stream mutex but
+hold no Route or consumer state lock while waiting. Cancellation releases them
+without another byte/control effect. Final replacement checks retain the same
+local Instance reservation gate in addition to the exact private recipient.
+The Publisher factory consumes the actual completed delivery through its same
+Source-bound Responder acquisition. Qualified local stream delivery uses the
+original snapshot invocation's sole Text reader; no new worker/Grant replaces
+it. Command composition, authenticated replacement and genuine native two-role
+acceptance remain necessary; these owner APIs establish neither that full
+journey nor permission for a weaker ordinary accepting path.
+Reader's initial factory owns one actual Source acquisition from lookup through
+Introduction submission, JOIN and Instance authentication. It re-verifies
+signed Descriptor bytes against the independently parsed canonical Target Link
+and exact original Network/profile. The same original physical Source checks
+scope and exact Introduction duty; its retained Rendezvous choice cannot be
+redrawn or outlived by supplied Work Safety bounds. Failure seals setup and
+joins rejected TLS/JOIN before physical Source retirement. Context-private
+lookup history and shared selection remain caller-owned; Source Close never
+clears them. Reader TLS requires this original Source owner. This initial
+factory does not supply authenticated Attachment replacement or complete
+ordinary Application admission.
+Logical lease Close seals acquisition and cancels before joining its current
+TLS borrowers, then returns the retained Instance borrow. Publication joins
+those logical leases even when their last physical Attachment already retired;
+Instance erasure follows that join. Copied logical or physical handles cannot
+cancel or retire the original. No lease grants a new Grant, Instance, recovery
+attempt or Application stream.
+After complete authenticated Terminal receipt and confirmation, a settled
+control tail may retire on TLS EOF/truncation only with the exact JOIN's opaque
+evidence of an already decoded clean Route CLOSE(0). The canonical dedicated
+child decoder produces that evidence; zero, copied and foreign child/stream
+handles cannot manufacture it. Local Close, directional EOF, peer refusal and
+raw physical EOF supply no evidence. No additional Service plaintext may have
+entered the failing record read, and the retained logical authority must remain
+current. Partial records and joined authority/integrity errors still fail.
+After Attachment replacement, the original Application settlement alone cannot
+permit this retirement: all Terminal receipts and confirmations must be complete
+on the current generation before its decoded clean CLOSE can end the tail.
+Retirement emits no additional Application EOF or bytes and still joins the
+Attachment/writer, retaining every actual cleanup failure. This bounded
+retirement rule supplies neither an authenticated replacement nor a complete
+ordinary recovered Service path.
+
+The logical stream retains one physical record owner with separate completion
+signals for its exact reader and serialized writer. Both use the same immutable
+TLS/Instance Attachment snapshot; record parsing and Terminal-tail witnesses
+cannot follow a later owner pointer. Retirement joins both original actors,
+and a foreign or stale actor cannot update current byte/control ledgers.
+Each actor publishes its own retained result before its completion signal;
+joining reads those results only after both original signals. Recovery keeps
+the retired attempt's work result separate from the replacement's logical
+outcome and from the lower owners' physical cleanup receipts. Final retirement
+retains the current actors' raw work results separately from the first logical
+failure and all actual physical cleanup failures. Socket errors caused by
+intentional interruption do not invent another cleanup or Application failure.
+Nested framing deadline updates likewise retain a lower refusal as work, while
+the exact lower owner retains any actual physical deadline failure. An upper
+writer waiting for a lower refusal cannot invent another physical effect merely
+because it also tries to shorten that retired lower lane's deadline.
+JOIN relay likewise separates its original deadline refusal from the lower
+framing owner's physical failure; a local nested refusal cannot supply another
+failed cleanup effect to Execution.
+An unpublished JOIN setup also retains its complete refusal separately from
+the original joined physical setup receipt. That refusal cannot itself poison
+Prefix cleanup; real callback/socket/lower-lane failures still retain their
+original owners and deny subsequent dependent effects.
+Framing deadline effects retain one exact selected frame and run outside its
+state mutex. A separate physical deadline turn serializes lower calls; if local
+interruption shortens the bound during I/O, that winning bound is applied before
+the turn returns. Old-frame effects cannot update a replacement writer. Lane
+and parent retirement join original deadline users as well as record writers
+before publishing physical cleanup or returning their retained resources.
+The independent deadline borrow remains mandatory after its original writer
+has returned; a late deadline failure belongs to that same joined result.
+Each Data and Terminal write ticket also retains its original ledger owner and its own
+single-use identity. Copied or foreign tickets refuse before old-generation
+completion is classified. An actual original writer may complete after
+replacement only to return its retained physical result; it cannot settle the
+replacement's control obligations.
+These physical lifetimes still require the coordinated recovery controller,
+authenticated generation commit and immediate replay before ordinary handoff.
+
 The first acknowledged replacement also synchronously shortens the original
 recipient's local accepting window. New openings and retained candidate reads
 check that exact bound independently of the physical retirement scheduler.
@@ -1277,6 +1648,12 @@ absolute deadline through bounded physical Close. Local Publication stop
 interrupts private users without canceling that physical caller before join;
 original caller, Execution or Instance loss still interrupts both lifetimes.
 Physical cancellation follows prefix join on an ordinary local withdrawal.
+After admission and registration users join, Publication detaches and joins
+its Instance-loss callback before intentionally retiring its own Instance
+lifetime. That retirement joins Service TLS borrowers before returning Prefix
+claims; it must not manufacture an external authority loss while gracefully
+closing those Prefixes. An already-started external-loss callback still joins
+its original interruption, and original caller/Execution loss remains active.
 The qualified operation exposes an opaque identity for its original admitted
 Administration Session. Publication matches that identity to the exact live
 operation at effects and handoffs. Session revocation and joined retirement

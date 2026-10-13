@@ -5,11 +5,67 @@ import (
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
+	"net"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
 )
+
+// A failed setup's work refusal is distinct from its actual pipe close. This
+// control supplies no admitted channel, authentication or successful JOIN.
+type setupWorkRetirement struct {
+	conn    net.Conn
+	work    error
+	once    sync.Once
+	cleanup error
+	joined  atomic.Bool
+}
+
+func (retirement *setupWorkRetirement) CloseSetup() error {
+	retirement.once.Do(func() {
+		retirement.cleanup = retirement.conn.Close()
+		retirement.joined.Store(true)
+	})
+	return errors.Join(retirement.work, retirement.cleanup)
+}
+
+func (retirement *setupWorkRetirement) SetupCleanupResult() (error, bool) {
+	if !retirement.joined.Load() {
+		return nil, false
+	}
+	return retirement.cleanup, true
+}
+
+func TestAcquisitionUnpublishedSetupWorkRefusalDoesNotFailPrefixCleanup(t *testing.T) {
+	local, peer := net.Pipe()
+	t.Cleanup(func() { _ = local.Close(); _ = peer.Close() })
+	claim := new(acquisitionLifetimeClaim)
+	var joinedOriginal func() error
+	owner, err := startAcquisition(t.Context(), func(_ func(), join func() error) (joinClaim, error) {
+		joinedOriginal = join
+		return claim, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = owner.Close() })
+	work := errors.New("original unpublished setup work refused")
+	retirement := &setupWorkRetirement{conn: local, work: work}
+	if err := owner.cleanupJoin(nil, retirement); !errors.Is(err, work) {
+		t.Fatal("original refused setup outcome lost", err)
+	}
+	if err := joinedOriginal(); err != nil {
+		t.Fatal("setup work refusal became Prefix physical cleanup failure", err)
+	}
+	if err := owner.Close(); !errors.Is(err, work) || claim.returns.Load() != 1 {
+		t.Fatal("original work refusal or once-only return lost", err, claim.returns.Load())
+	}
+	if cleanup, joined := owner.CleanupResult(); !joined || cleanup != nil {
+		t.Fatal("original joined cleanup included an unsuccessful setup", cleanup, joined)
+	}
+}
 
 // A local lifetime control cannot supply successful authority or physical JOIN.
 // Exact pair identity/claims/lock ordering are tested by their Prefix owner.
@@ -46,6 +102,28 @@ func lifetimeAcquisition(t *testing.T, ctx context.Context) (*JoinAcquisition, *
 		t.Fatal(err)
 	}
 	return a, claim
+}
+
+func TestAcquisitionCleanupReceiptRequiresOriginalReturnAndRetainsPhysicalFailure(t *testing.T) {
+	a, claim := lifetimeAcquisition(t, t.Context())
+	work := errors.New("failed attempt")
+	physical := errors.New("owned physical close failure")
+	a.setupRetirement, a.setupCleanup = errors.Join(work, physical), physical
+	entered, release := make(chan struct{}), make(chan struct{})
+	a.completion = func(error) { close(entered); <-release }
+	result := make(chan error, 1)
+	go func() { result <- a.Close() }()
+	<-entered
+	if err, joined := a.CleanupResult(); joined || err != nil || claim.returns.Load() != 1 {
+		t.Fatal("unfinished original completion supplied a joined cleanup receipt", err, joined)
+	}
+	close(release)
+	if err := <-result; !errors.Is(err, work) || !errors.Is(err, physical) {
+		t.Fatal("retirement erased work or physical failure", err)
+	}
+	if err, joined := a.CleanupResult(); !joined || !errors.Is(err, physical) || errors.Is(err, work) {
+		t.Fatal("cleanup receipt conflated work failure with physical cleanup", err, joined)
+	}
 }
 
 func TestJoinPublicAcquisitionRefusesMissingOriginalAndConsumesFailedAttempt(t *testing.T) {
@@ -125,6 +203,23 @@ func TestJoinPublicationChecksExactOriginalCaller(t *testing.T) {
 			t.Fatal("canceled original caller published stream")
 		}
 	})
+}
+
+// The claim is a refusal/retirement control, never successful Prefix authority.
+// Sharing its private fields must not let a copied public handle return it.
+func TestCopiedJoinAcquisitionCannotReturnOriginalClaim(t *testing.T) {
+	a, claim := lifetimeAcquisition(t, t.Context())
+	defer a.Close()
+	copy := &JoinAcquisition{self: a.self, borrows: a.borrows, caller: a.caller, ctx: a.ctx, cancel: a.cancel, watchDone: a.watchDone}
+	if err := copy.Close(); err == nil {
+		t.Error("copied acquisition supplied joined retirement")
+	}
+	if a.ctx.Err() != nil || claim.returns.Load() != 0 {
+		t.Error("copied acquisition canceled or returned the original Prefix claim")
+	}
+	if err := a.Close(); err != nil || claim.returns.Load() != 1 {
+		t.Error("original acquisition did not return its own claim exactly once", err)
+	}
 }
 
 type handoffDeferredCaller struct {

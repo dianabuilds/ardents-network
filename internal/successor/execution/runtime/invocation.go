@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"sync"
 
@@ -32,6 +33,10 @@ type Invocation struct {
 	result           error
 	cleanupResult    error
 	publisher        bool
+	publisherInput   *publisherConnectionInput
+	readerCaller     context.Context
+	readerInput      *readerConnectionInput
+	surface          execution.Surface
 }
 
 var errUnexpectedWorkerEnd = errors.New("qualified worker attachment ended unexpectedly")
@@ -44,6 +49,10 @@ func (invocation *Invocation) observeAttachment() {
 	invocation.observationDone = make(chan struct{})
 	if invocation.publisher {
 		invocation.observePublisherAttachment()
+		return
+	}
+	if invocation.readerCaller != nil {
+		invocation.observeReaderAttachment()
 		return
 	}
 	go func() {
@@ -93,12 +102,18 @@ func (invocation *Invocation) BeginOperation(ctx context.Context) (*Operation, e
 	if invocation.closing || invocation.operationDone != nil || invocation.lease.Context().Err() != nil {
 		return nil, errors.New("qualified execution operation is unavailable or consumed")
 	}
+	var localContext [32]byte
+	if _, err := rand.Read(localContext[:]); err != nil || localContext == [32]byte{} {
+		return nil, errors.New("original execution Connection context is unavailable")
+	}
 	if err := invocation.job.ClaimOperation(); err != nil {
 		return nil, err
 	}
 	bounded, cancel := context.WithCancel(invocation.lease.Context())
-	operation := &Operation{job: invocation.job, lease: invocation.lease, ctx: bounded, caller: ctx, cancel: cancel,
+	operation := &Operation{invocation: invocation, job: invocation.job, lease: invocation.lease, ctx: bounded, caller: ctx, cancel: cancel,
 		callbackDone: make(chan struct{}), done: make(chan struct{}), publisher: invocation.publisher, administration: invocation.administration}
+	operation.self = operation
+	operation.surface, operation.connectionContext = invocation.surface, localContext
 	operation.stop = context.AfterFunc(ctx, func() { defer close(operation.callbackDone); cancel() })
 	invocation.operationDone = operation.done
 	invocation.operation = operation
@@ -144,12 +159,15 @@ func (invocation *Invocation) CleanupResult() (error, bool) {
 // Launch admits one exact local session before effects and returns only the
 // privately bound original invocation, after installed READY reobservation.
 func (owner *Owner) Launch(ctx context.Context, principal [32]byte, surface execution.Surface) (_ *Invocation, result error) {
-	return owner.launchInvocation(ctx, principal, surface, nil, false)
+	return owner.launchInvocation(ctx, principal, surface, nil, false, false)
 }
 
-func (owner *Owner) launchInvocation(ctx context.Context, principal [32]byte, surface execution.Surface, snapshot []byte, publisher bool) (_ *Invocation, result error) {
+func (owner *Owner) launchInvocation(ctx context.Context, principal [32]byte, surface execution.Surface, snapshot []byte, publisher, reader bool) (_ *Invocation, result error) {
 	if owner == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("execution launch is unavailable")
+	}
+	if reader && (publisher || surface != execution.Connection || len(snapshot) != 0) {
+		return nil, errors.New("reader invocation purpose is invalid")
 	}
 	capability, err := owner.authority.Admit(principal, surface)
 	if err != nil {
@@ -168,7 +186,11 @@ func (owner *Owner) launchInvocation(ctx context.Context, principal [32]byte, su
 	if err != nil {
 		return nil, err
 	}
-	invocation, err := owner.launchInitializedJob(job, surface, snapshot, publisher)
+	var readerCaller context.Context
+	if reader {
+		readerCaller = ctx
+	}
+	invocation, err := owner.launchInitializedJob(job, surface, snapshot, publisher, readerCaller)
 	if err != nil {
 		return nil, err
 	}

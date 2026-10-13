@@ -3,6 +3,7 @@ package join
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
 	"time"
 
@@ -23,7 +24,7 @@ type JoinConfig struct {
 // failed exchange consumes this acquisition's attempt; retry cannot reuse its
 // channel or silently switch the original Source or Responder.
 func (a *JoinAcquisition) Join(ctx context.Context, config JoinConfig) (_ *Joined, result error) {
-	if a == nil || ctx == nil || config.Secret == [32]byte{} || config.Context == [32]byte{} || !time.Now().Before(config.Deadline) || config.Deadline != config.Deadline.UTC().Truncate(time.Second) || config.Deadline.After(time.Now().Add(admission.ForwardClass.Lifetime())) || !time.Now().Before(config.SetupDeadline) || config.SetupDeadline != config.SetupDeadline.UTC().Truncate(time.Second) || config.SetupDeadline.After(config.Deadline) {
+	if a == nil || a.self != a || ctx == nil || config.Secret == [32]byte{} || config.Context == [32]byte{} || !time.Now().Before(config.Deadline) || config.Deadline != config.Deadline.UTC().Truncate(time.Second) || config.Deadline.After(time.Now().Add(admission.ForwardClass.Lifetime())) || !time.Now().Before(config.SetupDeadline) || config.SetupDeadline != config.SetupDeadline.UTC().Truncate(time.Second) || config.SetupDeadline.After(config.Deadline) {
 		return nil, errors.New("route JOIN intent bounds invalid")
 	}
 	if end, exists := ctx.Deadline(); exists && config.Deadline.After(end) {
@@ -110,7 +111,8 @@ func (a *JoinAcquisition) Join(ctx context.Context, config JoinConfig) (_ *Joine
 	if err != nil {
 		return nil, err
 	}
-	joined = &Joined{acquisition: a, session: session, lane: lane, parent: terminal, retiring: make(chan struct{}), watcherDone: make(chan struct{})}
+	joined = &Joined{acquisition: a, session: session, lane: lane, parent: terminal, retiring: make(chan struct{}), watcherDone: make(chan struct{}), end: config.Deadline,
+		setupEnd: config.SetupDeadline, side: side, secretDigest: sha256.Sum256(config.Secret[:]), intent: config.Context}
 	go joined.watch(ctx)
 	session.Start()
 	if err := check(); err != nil {
@@ -124,18 +126,30 @@ func (a *JoinAcquisition) Join(ctx context.Context, config JoinConfig) (_ *Joine
 
 // cleanupJoin joins setup resources that were never published to a.stream.
 // Its result is physical retirement provenance, separate from setup refusal.
-func (a *JoinAcquisition) cleanupJoin(joined *Joined, terminal interface{ CloseSetup() error }) error {
+func (a *JoinAcquisition) cleanupJoin(joined *Joined, terminal interface {
+	CloseSetup() error
+	SetupCleanupResult() (error, bool)
+}) error {
 	var retirement error
+	var cleanup error
 	if joined != nil {
 		retirement = joined.closePhysical()
+		cleanup = joined.cleanup
 	} else {
 		retirement = terminal.CloseSetup()
+		var complete bool
+		cleanup, complete = terminal.SetupCleanupResult()
+		if !complete {
+			cleanup = errors.Join(cleanup, errors.New("original JOIN setup cleanup did not join"))
+			retirement = errors.Join(retirement, cleanup)
+		}
 	}
 	// Close racing setup waits for opening, which closes only after this
 	// original physical result has been retained. Ordinary setup refusal
 	// contributes nothing here when its cleanup succeeds.
 	a.mu.Lock()
 	a.setupRetirement = errors.Join(a.setupRetirement, retirement)
+	a.setupCleanup = errors.Join(a.setupCleanup, cleanup)
 	a.mu.Unlock()
 	return retirement
 }

@@ -44,6 +44,63 @@ type networkAdmissionFixture struct {
 	reopen           func()
 }
 
+// Return one actual checked view, then withdraw the fixture's trusted clock.
+// A subsequent owner must observe that loss instead of accepting this draft.
+func (f *networkAdmissionFixture) authorityLosingClockAfterDraft(t *testing.T) admissionAuthority {
+	t.Helper()
+	authority := f.authority
+	authority.current = func() (network.RuntimeView, error) {
+		view, err := f.current()
+		if err == nil {
+			f.clockUnavailable.Store(true)
+		}
+		return view, err
+	}
+	t.Cleanup(func() { f.clockUnavailable.Store(false) })
+	return authority
+}
+
+func TestNetworkIssuanceDraftRetainsExactBindingsAndHorizons(t *testing.T) {
+	f := newNetworkAdmissionFixture(t)
+	view, err := f.current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := view.ObservedAt().Add(time.Second).UTC().Truncate(time.Second)
+	intent := stock.IssuanceIntent{Challenges: []token.ClosedTokenContext{{NetworkID: f.profile.NetworkID,
+		ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: f.receiver.NodeID,
+		ReceiverDutyGeneration: f.receiver.DutyGeneration, Class: 2, WindowStart: view.ObservedAt().UTC().Truncate(time.Hour)}},
+		Selection: stock.ExchangeBinding{ID: [32]byte{1}, ProfileDigest: f.profile.Digest}, Bootstrap: true, Deadline: deadline}
+	if err := validateNetworkIssuanceIntent(view, intent); err != nil {
+		t.Fatal("valid same-observation draft refused", err)
+	}
+	for _, boundary := range []string{"profile", "network", "issuer", "receiver", "duty", "expired", "horizon"} {
+		t.Run(boundary, func(t *testing.T) {
+			changed := intent
+			changed.Challenges = append([]token.ClosedTokenContext(nil), intent.Challenges...)
+			switch boundary {
+			case "profile":
+				changed.Selection.ProfileDigest[0] ^= 1
+			case "network":
+				changed.Challenges[0].NetworkID[0] ^= 1
+			case "issuer":
+				changed.Challenges[0].IssuerNodeID[0] ^= 1
+			case "receiver":
+				changed.Challenges[0].ReceiverNodeID = [32]byte{255}
+			case "duty":
+				changed.Challenges[0].ReceiverDutyGeneration++
+			case "expired":
+				changed.Deadline = view.ObservedAt()
+			case "horizon":
+				changed.Deadline = f.profile.NotAfter.Add(time.Second)
+			}
+			if err := validateNetworkIssuanceIntent(view, changed); err == nil {
+				t.Fatal("changed observed issuance binding accepted")
+			}
+		})
+	}
+}
+
 func newNetworkAdmissionFixture(t *testing.T, prepare ...func(*networkAdmissionFixture)) *networkAdmissionFixture {
 	t.Helper()
 	dir := t.TempDir()

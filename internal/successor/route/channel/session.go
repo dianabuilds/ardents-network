@@ -40,6 +40,8 @@ type Session struct {
 	cancel                  context.CancelFunc
 	end                     time.Time
 	mu                      sync.Mutex
+	deadlineMu              sync.Mutex // Physical deadline effects, never state admission.
+	deadlines               sync.WaitGroup
 	lanes                   map[uint32]*Lane
 	next, last              uint32
 	live                    uint32
@@ -51,7 +53,9 @@ type Session struct {
 	opening                 chan struct{}
 	active                  *Lane
 	activeKind              uint8
+	activeControl           bool
 	activeEnd               time.Time
+	activeDeadline          *outputDeadline
 	pending                 bool
 	dedicated               bool
 	queues                  *Budget
@@ -62,6 +66,7 @@ type Session struct {
 	finishes                sync.WaitGroup
 	physicalOnce, closeOnce sync.Once
 	physicalErr, closeErr   error
+	closeOutcome            error
 	writeErr                error
 	output                  []*frameTurn
 	outbound, controlQueued uint64
@@ -132,17 +137,21 @@ func Prepare(ctx context.Context, conn net.Conn, end time.Time, limit uint64, ch
 
 func (s *Session) physicalClose() error {
 	s.physicalOnce.Do(func() {
-		if err := s.conn.Close(); err != nil {
-			if lowerFramingLane(s.conn) != nil {
-				// Closing this borrower can emit its lower lane's CLOSE. The
-				// lower framing owner retains the actual physical provenance.
-				s.physicalErr = err
-			} else {
-				s.physicalErr = &physicalCloseFailure{owner: s, cause: err}
+		s.closeOutcome = s.conn.Close()
+		if lower := lowerFramingLane(s.conn); lower != nil && s.closeOutcome != nil {
+			// The exact lower lane retains whether CLOSE actually failed in
+			// physical output. Its authority/pre-output refusal is still this
+			// borrower's close outcome, but not an invented socket failure.
+			cleanup, joined := lower.CleanupResult()
+			if !joined {
+				cleanup = errors.Join(cleanup, errors.New("original lower lane cleanup did not join"))
 			}
+			s.physicalErr = cleanup
+		} else if lower == nil && s.closeOutcome != nil {
+			s.physicalErr = &physicalCloseFailure{owner: s, cause: s.closeOutcome}
 		}
 	})
-	return s.physicalErr
+	return s.closeOutcome
 }
 
 func (s *Session) Retire(cause error) {
@@ -168,8 +177,9 @@ func (s *Session) Close() error {
 		// Every selected physical write has relinquished serialization before
 		// this result can authorize reservation release.
 		s.writes.Wait()
+		s.deadlines.Wait()
 		s.mu.Lock()
-		s.closeErr = errors.Join(s.failure, s.physicalErr, s.writeErr)
+		s.closeErr = errors.Join(s.failure, s.closeOutcome, s.physicalErr, s.writeErr)
 		s.queues.release(s.queued)
 		s.queued = 0
 		var returns []func()
@@ -390,6 +400,7 @@ func (s *Session) read() {
 			}
 			l.trafficUsed += cost
 		}
+		var deadline *outputDeadline
 		switch f.Kind {
 		case ardp.KindBytes:
 			if l.handshake && l.handshakeBytes+l.handshakeOutput+uint32(len(f.Body)) > 4096 {
@@ -442,13 +453,14 @@ func (s *Session) read() {
 				}
 			}
 			l.stopLocked(cause)
-			if interrupt := l.interruptOutputLocked(); interrupt != nil {
-				err = interrupt
-			}
+			deadline = l.interruptOutputLocked()
 		default:
 			err = errors.New("unexpected Route child frame")
 		}
 		s.mu.Unlock()
+		if _, interrupt := s.applyOutputDeadline(deadline); interrupt != nil {
+			err = errors.Join(err, interrupt)
+		}
 		if err != nil {
 			s.Retire(err)
 			return
@@ -563,13 +575,40 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 	}
 	s.active = l
 	s.activeKind = f.Kind
+	control := f.Kind == ardp.KindCredit || l.controlOutput != 0
+	s.activeControl = control
 	s.activeEnd = end
-	if f.Kind == ardp.KindOpen {
-		l.openEmitted = true
-	}
-	err = s.conn.SetWriteDeadline(end)
+	s.activeDeadline = &outputDeadline{lane: l, end: end, cutoff: end}
+	deadline := l.retainOutputDeadlineLocked()
 	s.mu.Unlock()
-	output := writePhysicalOutput(s.conn, f.Kind, raw, err)
+	performed, err := s.applyOutputDeadline(deadline)
+	output := physicalOutput{err: err}
+	refused := false
+	if performed && err == nil {
+		// The deadline effect can block outside state while this exact lane
+		// seals. Refuse before entering TLS/Carrier Write: even an unemitted
+		// TLS failure can make that shared writer permanently unusable.
+		// Already selected control retains only its original cleanup bound.
+		s.mu.Lock()
+		if s.activeDeadline != deadline || s.stopped || s.finishingRole || s.ctx.Err() != nil || (!terminal && l.closed && !control) {
+			output.err = &frameRetirement{lane: l, kind: f.Kind}
+			refused = true
+		} else if !time.Now().Before(deadline.end) {
+			output.err = &frameExpiry{end: deadline.end}
+			refused = true
+		} else if f.Kind == ardp.KindOpen {
+			// Cleanup may emit CLOSE only once this original OPEN is
+			// admitted to Write, never merely because its deadline started.
+			l.openEmitted = true
+		}
+		s.mu.Unlock()
+	}
+	if performed && !refused {
+		output = writePhysicalOutput(s.conn, f.Kind, raw, err, control)
+	} else if !performed && err == nil {
+		output.err = &frameRetirement{lane: l, kind: f.Kind}
+		refused = true
+	}
 	err = output.err
 	s.mu.Lock()
 	// The selected writer stays active until native provenance and failure are
@@ -585,18 +624,15 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 		if output.physical {
 			l.physicalWriteFailed = true
 			err = &physicalWriteFailure{owner: s, kind: f.Kind, cause: err}
-			s.writeErr = errors.Join(s.writeErr, err)
-		} else if !output.attempted && !output.nested {
-			// A physical deadline operation failed before Write; preserve
-			// that owned I/O failure without claiming a started frame. A nested
-			// lower deadline refusal belongs to its lower framing owner.
-			l.physicalWriteFailed = true
+			l.physicalErr = errors.Join(l.physicalErr, err)
 			s.writeErr = errors.Join(s.writeErr, err)
 		}
 	}
 	s.active = nil
+	s.activeDeadline = nil
+	s.activeControl = false
 	s.mu.Unlock()
-	if err != nil {
+	if err != nil && !refused {
 		// A lower refusal/local closure with no new lower output remains this
 		// channel's failed terminal result, not a fabricated physical failure
 		// of its receiving owner. Actual lower failures stay with that owner.

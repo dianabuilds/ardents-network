@@ -1,5 +1,6 @@
 // Package prefix owns exact protected Entry/Interior physical generations,
 // pending setup and sealed borrowing, original Source/Responder pair commits,
+// retained original Source lifetimes and Responder scopes with exact joined physical-generation acquisitions,
 // admitted terminal openings, finite issuer-only bootstrap, issuer and Descriptor exchanges,
 // parent refill and joined resource return. Bootstrap never exposes admitted
 // operations; Stock finalization follows physical join under the original opening.

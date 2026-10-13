@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 )
@@ -40,6 +41,25 @@ type Root struct {
 	closing     chan struct{}
 	closed      bool
 	closeErr    error
+	commitSeal  atomic.Bool
+	commitState atomic.Pointer[reservationCommitState]
+}
+
+// This immutable local projection only restricts a reservation whose caller
+// already performed Check. It carries no floor, native proof or new right.
+type reservationCommitState struct {
+	generation *Generation
+	failure    error
+}
+
+// The storage owner publishes its local failure before returning the failed
+// native effect. Readers never acquire the mutex that serializes that I/O.
+func (root *Root) retainFailure(err error) {
+	if err == nil {
+		return
+	}
+	root.failure = errors.Join(root.failure, err)
+	root.commitState.Store(&reservationCommitState{generation: root.reserved, failure: root.failure})
 }
 
 // Open creates the owned layout or reconciles an existing v3 root. It never
@@ -141,7 +161,7 @@ func openWith(ctx context.Context, config Config, flush func(string) error) (*Ro
 }
 
 func (root *Root) check(ctx context.Context) error {
-	if root.closed || root.failure != nil {
+	if root.closed || root.commitSeal.Load() || root.failure != nil {
 		return errors.Join(errors.New("publication root unavailable"), root.failure)
 	}
 	if err := ctx.Err(); err != nil {
@@ -176,6 +196,7 @@ func (root *Root) Close() error {
 	if root == nil {
 		return nil
 	}
+	root.commitSeal.Store(true)
 	root.mu.Lock()
 	if root.closing != nil {
 		done := root.closing

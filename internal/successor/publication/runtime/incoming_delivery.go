@@ -52,5 +52,9 @@ func (p *Publisher) inspectIntroduction(delivery *introduction.Delivery) {
 	}
 	delivery.Close()
 	retained = true
-	go func() { <-state.ctx.Done(); state.close() }()
+	if state.opening.stream != nil {
+		go p.dispatchReplacement(state)
+	} else {
+		go func() { <-state.ctx.Done(); state.close() }()
+	}
 }

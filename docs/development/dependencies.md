@@ -140,6 +140,15 @@ cannot retain that reference across fixed-file replacement: an inactive unit
 can be collected and its new file loaded before the explicit daemon reload.
 This library implements the already selected system-bus mechanism; it selects
 no new manager profile, authority, runtime, or public protocol.
+The same pinned client serves fresh read-only Startup observations of the fixed
+Endpoint and activation objects. Each call owns a new bounded connection and
+pins the unique manager before/after both property rounds; it neither retains
+accepting facts nor reconnects. A separate closed property-reply admission
+checks every nested length and duplicate key before decoding. The unit-reference
+client keeps its preceding scalar-only vocabulary. Property projection consumes
+decoded original variants directly: the client's map Store conversion recreates
+variants from reflected values and can change an ExecStartEx struct signature.
+Native comparison with independent busctl facts is the compatibility oracle.
 
 Primary evidence, accessed 2026-10-08: [upstream release](https://github.com/godbus/dbus/releases/tag/v5.2.2),
 [security policy](https://github.com/godbus/dbus/blob/master/SECURITY.md),

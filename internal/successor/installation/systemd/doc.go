@@ -11,6 +11,11 @@
 // The connection admits only bounded scalar replies and broker notifications,
 // pins the original manager identity, and never reconnects. It preserves
 // variant signatures, exact numbers, absence and duplicate-field refusal.
+// Fresh Startup observation uses a separate read-only reply vocabulary on one
+// bounded original connection. Nested lengths and duplicate dictionary keys
+// are checked before decoding; reference-only clients still admit no arrays.
+// Version and both complete fixed-object rounds are read anew on every call,
+// with unique manager comparison before/after and joined physical cancellation.
 // Callers decide the expected generation, protection and invocation. These
 // observations and command results grant no Release, process, join or startup
 // authority. Installation admits each effect and retains original pins/lease

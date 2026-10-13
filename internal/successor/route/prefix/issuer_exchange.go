@@ -34,6 +34,14 @@ type IssuerBatch struct {
 // Issue retains preparation, transport, physical join and Stock completion
 // under one original opening. Prefix retirement cancels and waits for it; a
 // replacement generation cannot acquire its response or completion callback.
+func (h *SourceHandle) Issue(ctx context.Context, end time.Time, begin func(IssuerBinding) (IssuerBatch, error)) error {
+	if err := h.Check(); err != nil {
+		return err
+	}
+	err := h.generation.physical.Issue(ctx, end, begin)
+	return errors.Join(err, h.Check())
+}
+
 func (p *Prefix) Issue(caller context.Context, end time.Time, begin func(IssuerBinding) (IssuerBatch, error)) (result error) {
 	if caller != nil {
 		if bound, ok := caller.Deadline(); ok && bound.Before(end) {

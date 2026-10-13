@@ -15,6 +15,7 @@ type publicationHandle struct {
 		Withdraw(context.Context) error
 	}
 	close func() error
+	serve func(context.Context) error
 }
 
 func (holder publicationHandle) publish(ctx context.Context) (string, error) {

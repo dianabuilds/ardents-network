@@ -43,12 +43,12 @@ func (generation *Generation) Publish(ctx context.Context, raw []byte) (result e
 			return errors.New("publication immutable record changed")
 		}
 		err := root.checkRecord(raw)
-		root.failure = errors.Join(root.failure, err)
+		root.retainFailure(err)
 		return err
 	}
 	defer func() {
 		if result != nil {
-			root.failure = errors.Join(root.failure, result)
+			root.retainFailure(result)
 		}
 	}()
 	name := fmt.Sprintf("%016x", root.floor)

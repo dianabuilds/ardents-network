@@ -34,6 +34,8 @@ type Root struct {
 	flush             func(string) error
 	state             generationState
 	binding           *Binding
+	bindingOpening    bool
+	bindingUsers      sync.WaitGroup // Original acquisition admission shares mu.
 	closing           chan struct{}
 	closed            bool
 	failure, closeErr error
@@ -140,6 +142,16 @@ func (root *Root) check(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	return root.checkOriginal(ctx, root.lease)
+}
+
+// checkOriginal observes physical custody only. The caller either holds root.mu
+// or retains an original binding observation borrow with a lease snapshot made
+// under that mutex. It supplies no accepting state by itself.
+func (root *Root) checkOriginal(ctx context.Context, lease rootLease) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	info, err := os.Lstat(root.path)
 	if err != nil || !info.IsDir() || !os.SameFile(root.identity, info) || info.Mode()&os.ModeSymlink != 0 {
 		return ErrUnavailable
@@ -147,7 +159,7 @@ func (root *Root) check(ctx context.Context) error {
 	if err = privateAccess(info); err != nil {
 		return err
 	}
-	return root.lease.check(root.path)
+	return errors.Join(lease.check(root.path), ctx.Err())
 }
 
 func (root *Root) Request(ctx context.Context) ([]byte, error) {
@@ -209,6 +221,7 @@ func (root *Root) Close() error {
 	root.state.redact()
 	root.mu.Unlock()
 	bindingErr := binding.Close()
+	root.bindingUsers.Wait()
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	root.state.erase()

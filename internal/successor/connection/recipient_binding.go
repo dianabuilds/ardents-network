@@ -2,11 +2,10 @@ package connection
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/binary"
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/connection/wire"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/capsule"
@@ -19,7 +18,9 @@ type RecipientBinding struct {
 	ctx                 context.Context
 	operation           *executionruntime.Operation
 	logical, attachment [32]byte
+	identity            wire.LogicalIdentity
 	expires             time.Time
+	revision            uint64
 }
 
 // BindRecipient checks independently verified Publication facts against one
@@ -46,6 +47,10 @@ func BindRecipient(ctx context.Context, operation *executionruntime.Operation, p
 }
 
 func deriveRecipientBinding(proof publication.Proof, profile [32]byte, request capsule.Request, plaintextDigest [32]byte, localEnd, now time.Time) (*RecipientBinding, error) {
+	return deriveRecipientGeneration(proof, profile, request, plaintextDigest, localEnd, now, 1)
+}
+
+func deriveRecipientGeneration(proof publication.Proof, profile [32]byte, request capsule.Request, plaintextDigest [32]byte, localEnd, now time.Time, generation uint64) (*RecipientBinding, error) {
 	actualDigest, err := request.Digest()
 	if err != nil || actualDigest != plaintextDigest {
 		return nil, errors.Join(errors.New("recipient plaintext commitment differs"), err)
@@ -55,29 +60,22 @@ func deriveRecipientBinding(proof publication.Proof, profile [32]byte, request c
 		profile == [32]byte{} || plaintextDigest == [32]byte{} || now.Before(value.NotBefore) || !now.Before(value.NotAfter) ||
 		request.Network != value.Network || request.Target != value.Target || request.PublicationDigest != proof.Digest() || request.ProfileDigest != profile ||
 		request.ConnectionNonce == [32]byte{} || request.InitiatorBinding == [32]byte{} || request.JoinSecret == [32]byte{} || request.HandshakeContext == [32]byte{} ||
-		request.RendezvousNode == [32]byte{} || request.RendezvousDutyGeneration == 0 || request.Revision == 0 || request.AttachmentGeneration != 1 ||
+		request.RendezvousNode == [32]byte{} || request.RendezvousDutyGeneration == 0 || request.Revision == 0 || generation == 0 || request.AttachmentGeneration != generation ||
 		request.Deadline != request.Deadline.UTC().Truncate(time.Second) || !now.Before(request.Deadline) || request.Deadline.After(now.Add(10*time.Second)) ||
 		request.WorkSafetyNotAfter <= now.Unix() || request.WorkSafetyMaximum < request.WorkSafetyNotAfter ||
 		request.NoNewRecoveryAfter <= 0 || request.NoNewRecoveryAfter > request.WorkSafetyNotAfter || request.Deadline.Unix() > request.WorkSafetyNotAfter ||
 		localEnd.IsZero() || time.Unix(request.WorkSafetyMaximum, 0).After(localEnd) || time.Unix(request.WorkSafetyMaximum, 0).After(value.NotAfter) {
 		return nil, errors.New("recipient immutable binding or safety bounds differ")
 	}
-	transcript := []byte("ardents-service-context-v3\x00")
-	for _, field := range [][32]byte{value.Network, value.Target, value.Instance} {
-		transcript = append(transcript, field[:]...)
+	identity := wire.LogicalIdentity{Network: value.Network, Target: value.Target, Instance: value.Instance,
+		InstanceGeneration: value.Generation, Publication: proof.Digest(), Profile: profile,
+		ConnectionNonce: request.ConnectionNonce, InitiatorBinding: request.InitiatorBinding,
+		WorkSafetyNotAfter: request.WorkSafetyNotAfter, WorkSafetyMaximum: request.WorkSafetyMaximum, NoNewRecoveryAfter: request.NoNewRecoveryAfter}
+	logical, attachment, err := wire.Contexts(identity, plaintextDigest, request.AttachmentGeneration)
+	if err != nil {
+		return nil, err
 	}
-	transcript = binary.BigEndian.AppendUint64(transcript, value.Generation)
-	for _, field := range [][32]byte{proof.Digest(), profile, request.ConnectionNonce, request.InitiatorBinding} {
-		transcript = append(transcript, field[:]...)
-	}
-	for _, bound := range []int64{request.WorkSafetyNotAfter, request.WorkSafetyMaximum, request.NoNewRecoveryAfter} {
-		transcript = binary.BigEndian.AppendUint64(transcript, uint64(bound))
-	}
-	logical := sha256.Sum256(transcript)
-	attachmentTranscript := append([]byte("ardents-attachment-context-v3\x00"), logical[:]...)
-	attachmentTranscript = append(attachmentTranscript, plaintextDigest[:]...)
-	attachmentTranscript = binary.BigEndian.AppendUint64(attachmentTranscript, request.AttachmentGeneration)
-	return &RecipientBinding{logical: logical, attachment: sha256.Sum256(attachmentTranscript), expires: request.Deadline}, nil
+	return &RecipientBinding{identity: identity, logical: logical, attachment: attachment, expires: request.Deadline, revision: request.Revision}, nil
 }
 
 // Check is an initial recipient handoff check under the original capsule expiry

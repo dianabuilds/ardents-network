@@ -20,6 +20,7 @@ func TestInstalledExecutionLifecycle(t *testing.T) {
 		t.Fatal("invalid environment: installed non-root Endpoint service required")
 	}
 	t.Run("Publisher-snapshot-operation", testInstalledPublisherSnapshotOperation)
+	t.Run("ordinary-Reader-operation", testInstalledReaderOperation)
 	for _, surface := range []execution.Surface{execution.Connection, execution.Administration} {
 		t.Run(string(surface), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
@@ -70,6 +71,12 @@ func TestInstalledExecutionLifecycle(t *testing.T) {
 				})
 				if operation.Check() != nil || invocation.CompletedCurrent() || len(launchGate) != 0 {
 					t.Fatal("qualified original invocation is unavailable or prematurely completed")
+				}
+				if operation.CheckReader() == nil {
+					t.Fatal("setup-only invocation acquired ordinary Reader authority")
+				}
+				if _, err := operation.ConnectionContext(); err == nil {
+					t.Fatal("setup-only invocation acquired Reader logical context")
 				}
 				if next, err := invocation.BeginOperation(ctx); err == nil || next != nil {
 					t.Fatal("one qualified Job yielded another operation")

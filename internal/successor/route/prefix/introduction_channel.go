@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
@@ -26,6 +27,7 @@ var ErrIntroductionExpired = errors.New("route registration expired")
 // ACK interpretation and registration/submission reader/writer lifetimes. No slot or
 // Publication authority follows merely from opening this channel.
 type IntroductionChannel struct {
+	self          *IntroductionChannel
 	ctx           context.Context
 	cancel        context.CancelFunc
 	caller        context.Context
@@ -38,6 +40,8 @@ type IntroductionChannel struct {
 	joinCaller    func()
 	interruption  prefixSetupInterruption
 	profile       [32]byte
+	parentOnce    sync.Once
+	parentJoined  atomic.Bool
 }
 
 func (p *Prefix) OpenIntroductionChannel(ctx context.Context, duty network.RetainedDuty, end time.Time) (_ *IntroductionChannel, result error) {
@@ -62,6 +66,7 @@ func (p *Prefix) openIntroductionChannel(ctx context.Context, duty network.Retai
 		return nil, err
 	}
 	t := &IntroductionChannel{ctx: child, caller: ctx, cancel: cancel, opening: opening, profile: p.config.Leg.Profile.Digest}
+	t.self = t
 	defer func() {
 		if result != nil {
 			result = errors.Join(result, t.CloseSetup())
@@ -196,12 +201,28 @@ func (t *IntroductionChannel) JoinCaller() {
 // Registration owner joins its physical I/O and complete withdrawal attempt.
 // Failed setup follows the same return after joining its interruption callback.
 func (t *IntroductionChannel) FinishParent() {
-	if t.lane != nil {
-		t.lane.Finish()
+	t.parentOnce.Do(func() {
+		if t.lane != nil {
+			t.lane.Finish()
+		}
+		if t.release != nil {
+			t.release()
+		}
+		t.parentJoined.Store(true)
+	})
+}
+
+// CleanupResult reports this exact lower lane only after its physical Close
+// joined and its original parent/control hold returned. It supplies no
+// registration, withdrawal, Publication or successful exchange authority.
+func (t *IntroductionChannel) CleanupResult() (error, bool) {
+	if t == nil || t.self != t || !t.parentJoined.Load() {
+		return nil, false
 	}
-	if t.release != nil {
-		t.release()
+	if t.lane == nil {
+		return nil, true
 	}
+	return t.lane.CleanupResult()
 }
 
 func (t *IntroductionChannel) StopOpening() error {

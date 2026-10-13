@@ -30,10 +30,28 @@ imports neither adapter, including in tests.
 `channel` owns portable parent/child framing, finite credit/queues, serialized
 physical output and joined retirement. `prefix` owns its exact generations and
 terminal openings; `join` and `introduction` own their holder operations.
+An opaque `SourceScope` retains the genuine original Source caller, selected
+leg, authority observer and absolute bound separately from physical readiness.
+Connection's Reader checks that scope for logical effects and owns its returned
+physical completion. After the finite Connection proposal, an exact opaque
+`SourceHandle` acquires the current physical generation, joining an ended one
+before fresh genuine reservation and Stock preparation. Lookup, capsule
+submission and JOIN use that same handle; the transferred JOIN claim cannot
+follow a later generation. The original leg and absolute bound remain fixed,
+and every operation still checks genuine current authority and finite rights.
+The scope grants no accepting authority. Scope retirement seals logical effects
+before joining original physical users, returning the quiet claim and retaining
+actual late cleanup failures. Its repeated Close returns the same joined result.
+Joined generation work remains separately observable after physical retirement;
+Connection retains that original outcome if the next acquisition refuses before
+returning a handle. It supplies neither a live Source nor accepting authority.
 `receiver` owns listener/dispatch, directed Node Carrier reuse and receiving
 Grant retirement. The intermediate `operation` package is removed.
 `role` owns the shared portable original-duty/profile reobservation and exact
 HELLO purpose/recipient/deadline checks, including fresh nonce construction.
+Nonce construction uses the retained original recipient and generation, which
+grant no authority. One fresh observation after nonce creation validates the
+complete HELLO before handoff; transport still checks around each owned I/O.
 It also owns the shared holder handshake and negotiated exporter binding;
 the supplying Stock owner durably presents bytes, and original-caller checks
 surround HELLO, presentation I/O, ADMIT and ACCEPT. The receiving Grant and
@@ -64,6 +82,21 @@ Exact package/import directions are in the [package map](../development/package-
 and independently checks the exact Rendezvous from both retained physical legs.
 Publication consumes this narrow check after genuine Source-bound Responder
 opening. It supplies neither nonce acceptance nor JOIN/Connection authority.
+
+`CheckSourceScope` compares independently supplied Network/profile and finite
+work end with the original physical Source's role, profile, leg and deadline,
+then reobserves its current authority. Copied bounds cannot extend that Source
+or turn a Responder into one. `CheckSourceCaller` additionally requires the
+exact original opening context; equal deadlines or cancellation signals do not
+let another operation or a descendant attempt acquire that Source.
+`ResolveSubmission` resolves only the exact
+Introduction Node against the same Source's current authenticated membership,
+retained leg and existing identity/key/family exclusions. Resolution
+checks the original leg and recipient against one fresh observation before any
+I/O; a separate final observation still guards the resolved result. No accepted
+observation is retained between operations. Holder submission
+and Reader setup consume these checks; neither grants Service authentication
+or selects an alternative Node.
 
 One independently leased Introduction History transfers to one receiving
 Registry. Its pending positions and durable non-reclaim claims share that
@@ -101,6 +134,9 @@ Prefix seals every setup/borrow, joins them without holding its lifetime lock,
 and only then retires parent framing and returns generation resources.
 After a local seal, the watcher leaves ordered parent retirement to Close:
 joining the Interior reader cannot cancel Entry before its clean retirement.
+Periodic supervision waits 100 milliseconds after each completed fresh
+observation, so an overdue timer cannot immediately queue another full check.
+Effect/post-I/O checks and original caller/deadline interruption stay independent.
 Unexpected parent failure before a local seal still cancels dependent work;
 the joined result retains the original physical failure. Portable pipe tests
 force both orders and verify capacity returns only after both readers join.
@@ -144,6 +180,26 @@ the join callback waits for its original users before Prefix Close retires the
 physical parents. The callback cannot recursively close that Prefix. A portable
 idle-event test checks retention and original user join; it does not qualify
 elapsed publication refresh or overlap timing.
+
+`ResponderScope` retains one original Source, selected role-3 leg, observer,
+Stock presenter, caller and absolute bound separately from its physical
+generations. Logical scope checks reobserve genuine Network and original
+Source authority; ended physical readiness alone is not lost authority.
+`Acquire` retires and joins the old generation before preparing a fresh genuine
+reservation for the same leg. The preparer cannot change the observer,
+presenter, profile, selected members, exclusions or deadline. Actual physical
+cleanup failure seals the scope; complete failed-attempt work remains retained
+separately. No generation resets a token spend or supplies Service authority.
+`ResponderHandle` names one exact generation and transfers a one-use JOIN
+borrow. Setup-handle closure cannot close that transferred borrow. Scoped JOIN
+checks and final handoffs compare that same generation under Source-before-
+Responder-before-scope barriers; an old handle never resolves a newer prefix.
+Scope retirement denies new work before interrupting pending opening and joining
+all original generations. Its quiet Prefix claim owns no terminal actor:
+each real JOIN has its own Prefix claim and original physical cleanup callback.
+Physical I/O and joins run outside scope state. `responder_join.go` keeps the
+exact JOIN claim separate from preparation/retirement in `responder_scope.go`;
+both belong to the existing Prefix generation owner.
 
 Each channel reserves separate 16 KiB control capacity within its principal's
 aggregate ceiling. Data queues fit 4 MiB per prefix/session and 64 MiB per
@@ -206,6 +262,13 @@ An already expired child starts no new terminal frame. Its original operation
 remains refused, while a completed local child join alone does not retire its
 still-live framing parent or siblings. Output already in progress still joins
 and retains every physical failure; expiry grants no additional write time.
+An already selected CREDIT keeps that same bounded completion through nested
+TLS framing. The physical owner carries a private, whole-write control borrow
+to its lower lane, whose encrypted BYTES otherwise hide the control's purpose.
+The borrow grants no new frame, credit or authority and ends with that selected
+output. Its earlier original deadline and existing one-second retirement bound
+remain unchanged; payload interruption and every actual failed write remain
+terminal physical failures. The owner never inspects ciphertext for this rule.
 After that join, CLOSE rechecks peer and parent retirement under the session
 lock. An earlier live snapshot cannot authorize another frame on a parent that
 retired while its writer was completing; that parent's retained failure remains
@@ -219,6 +282,15 @@ does not retire a healthy sibling. A shorter cleanup deadline still fails.
 An error after entering TLS.Write remains that TLS generation's failure even
 when the lower lane emitted no payload; zero lower progress cannot establish
 that the TLS writer is reusable.
+After the original physical deadline effect returns, the selected writer
+rechecks its exact lane, parent seal and winning bound before entering Write.
+A payload sealed during that effect is refused without starting TLS output or
+retiring a healthy parent; its existing allowance debit remains retained.
+Already selected control retains its original bounded completion. A deadline
+effect failure or an error after Write starts still retains its original failure.
+An OPEN refused at this boundary retains its allocated local identifier but
+does not acquire the emitted-OPEN fact. Its joined cleanup emits neither OPEN
+nor CLOSE; a later child cannot reuse the retained identifier.
 Physical session write/close failures survive Receiver and outgoing pool
 retirement; ordinary peer refusal and EOF remain local session outcomes.
 Command reporting identifies peer retirement only from the complete retained
@@ -242,7 +314,19 @@ horizon. Original cancellation, authority loss or expiry keeps immediate
 physical interruption; no terminal write creates a renewed payload allowance.
 
 `Prefix.Done` signals retired readiness; its caller must still Close to join
-and release. `Receiver.Done`
+and release. After that original join, `Prefix.CleanupResult` separately retains
+actual owned write/close, borrower and resource-return failures. It cannot
+publish completion from Done alone or from a copied Prefix. Full Close still
+retains the original authority/work outcome, including cancellation. JOIN's
+retained Prefix callback returns its exact joined physical result, while JOIN
+callers retain the complete original exchange result. Unknown borrower failures
+remain conservatively retained, never classified as clean from their text.
+An original Introduction terminal exposes the same separate physical receipt
+only after its lower lane has joined and its parent/control hold has returned.
+Registration returns that receipt through its Prefix borrower callback while
+keeping full cancellation, withdrawal and delivery results with its caller.
+Neither a returned control hold nor a copied terminal supplies joined cleanup.
+`Receiver.Done`
 signals joined listener retirement, and Close retrieves its terminal result.
 A prefix without active terminal work expires after 120 seconds of idle
 readiness or its earlier immutable deadline. Introduction registration work

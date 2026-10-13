@@ -18,10 +18,13 @@ type Owner struct {
 	journal    *attempts.Journal
 	permission *permission
 	active     *attemptState
+	preparing  *Preparation
 	closed     bool
 	failure    error
 	floor      time.Time
 	ownJournal bool
+	users      sync.WaitGroup // Admission and Close seal share mu.
+	closing    chan struct{}
 }
 
 // Open owns the presentation journal lease as well as the volatile holder.
@@ -60,11 +63,26 @@ func New(role admission.AllocationRole, observe func() (admission.AuthorityFacts
 	return &Owner{observe: observe, role: role, journal: journal}, nil
 }
 
-func (o *Owner) current() (admission.AuthorityFacts, time.Time, error) {
+// beginUse retains only original operation/journal lifetime, never authority.
+// External observations run outside mu; every effect rechecks local admission.
+func (o *Owner) beginUse() error {
+	if o == nil {
+		return errors.New("holder unavailable")
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.closed || o.failure != nil || o.observe == nil {
+		return errors.Join(errors.New("holder unavailable"), o.failure)
+	}
+	o.users.Add(1)
+	return nil
+}
+
+// current compares freshly observed authority under mu. It performs no I/O.
+func (o *Owner) current(p admission.AuthorityFacts, now time.Time, err error) (admission.AuthorityFacts, time.Time, error) {
 	if o.closed || o.failure != nil {
 		return admission.AuthorityFacts{}, time.Time{}, errors.Join(errors.New("holder unavailable"), o.failure)
 	}
-	p, now, err := o.observe()
 	if err != nil || now.IsZero() || now.Before(o.floor) || p.ValidateAt(now) != nil {
 		return admission.AuthorityFacts{}, time.Time{}, errors.Join(errors.New("holder authority unavailable"), err)
 	}
@@ -73,12 +91,17 @@ func (o *Owner) current() (admission.AuthorityFacts, time.Time, error) {
 }
 
 func (o *Owner) Request(maxima [3]uint32) ([]byte, [32]byte, error) {
-	if o == nil {
-		return nil, [32]byte{}, errors.New("holder unavailable")
+	if err := o.beginUse(); err != nil {
+		return nil, [32]byte{}, err
 	}
+	defer o.users.Done()
+	profile, at, observedErr := o.observe()
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	p, now, err := o.current()
+	if o.preparing != nil {
+		return nil, [32]byte{}, errors.New("original stock opening is in progress")
+	}
+	p, now, err := o.current(profile, at, observedErr)
 	if err != nil {
 		return nil, [32]byte{}, err
 	}
@@ -102,16 +125,21 @@ func (o *Owner) Request(maxima [3]uint32) ([]byte, [32]byte, error) {
 }
 
 func (o *Owner) Import(digest [32]byte, raw []byte) error {
-	if o == nil {
-		return errors.New("holder unavailable")
+	if err := o.beginUse(); err != nil {
+		return err
 	}
+	defer o.users.Done()
 	grant, err := admission.DecodePermission(raw)
 	if err != nil {
 		return err
 	}
+	profile, at, observedErr := o.observe()
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	p, now, err := o.current()
+	if o.preparing != nil {
+		return errors.New("original stock opening is in progress")
+	}
+	p, now, err := o.current(profile, at, observedErr)
 	if err != nil {
 		return err
 	}
@@ -133,48 +161,76 @@ func (o *Owner) Close() error {
 		return nil
 	}
 	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.closed {
+	if o.closing != nil {
+		done := o.closing
+		o.mu.Unlock()
+		<-done
+		o.mu.Lock()
+		defer o.mu.Unlock()
 		return o.failure
 	}
 	o.closed = true
+	o.closing = make(chan struct{})
 	o.clear()
+	o.mu.Unlock()
+	o.users.Wait()
+	var closeErr error
 	if o.ownJournal {
-		o.failure = errors.Join(o.failure, o.journal.Close())
+		closeErr = o.journal.Close()
 	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.failure = errors.Join(o.failure, closeErr)
+	close(o.closing)
 	return o.failure
 }
 
 // Take irreversibly marks presentation before returning a token. Binding and
 // currentness are checked again after journal I/O; refusal never restores stock.
 func (o *Owner) Take(ctx context.Context, presentation Presentation, class uint8) ([]byte, error) {
-	if o == nil || ctx == nil {
+	if ctx == nil {
 		return nil, errors.New("holder unavailable")
 	}
+	if err := o.beginUse(); err != nil {
+		return nil, err
+	}
+	defer o.users.Done()
+	profile, observedAt, observedErr := o.observe()
 	o.mu.Lock()
-	defer o.mu.Unlock()
-	p, now, err := o.current()
+	p, now, err := o.current(profile, observedAt, observedErr)
 	if err != nil {
+		o.mu.Unlock()
 		return nil, err
 	}
 	if ctx.Err() != nil || presentation.NetworkID != p.NetworkID || presentation.StateGeneration != p.StateGeneration || presentation.StateDigest != p.StateDigest ||
 		presentation.ProfileDigest != p.Digest || presentation.RecipientNodeID == [32]byte{} || presentation.RecipientDutyGeneration == 0 || presentation.ChannelNonce == [32]byte{} ||
 		!now.Before(presentation.Deadline) || presentation.Deadline.After(p.NotAfter) {
+		o.mu.Unlock()
 		return nil, errors.New("presentation binding unavailable")
 	}
 	raw, err := o.permission.consumeToken(p, now, presentation, class)
 	if err != nil {
+		o.mu.Unlock()
 		return nil, err
 	}
-	err = o.journal.Mark(raw, attempts.Attempt{Profile: p.Digest, Receiver: presentation.RecipientNodeID, Duty: presentation.RecipientDutyGeneration, Window: o.permission.accepted.NotBefore, Class: class, Nonce: presentation.ChannelNonce})
+	original := o.permission
+	record := attempts.Attempt{Profile: p.Digest, Receiver: presentation.RecipientNodeID, Duty: presentation.RecipientDutyGeneration, Window: original.accepted.NotBefore, Class: class, Nonce: presentation.ChannelNonce}
+	permissionEnd := original.accepted.NotAfter
+	o.mu.Unlock()
+	err = o.journal.Mark(raw, record)
 	if err != nil {
 		clear(raw)
-		o.failure = err
+		o.mu.Lock()
+		o.failure = errors.Join(o.failure, err)
 		o.clear()
+		o.mu.Unlock()
 		return nil, err
 	}
-	after, at, err := o.current()
-	if err != nil || after != p || !at.Before(presentation.Deadline) || !at.Before(o.permission.accepted.NotAfter) || ctx.Err() != nil {
+	profile, observedAt, observedErr = o.observe()
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	after, at, err := o.current(profile, observedAt, observedErr)
+	if err != nil || o.permission != original || after != p || !at.Before(presentation.Deadline) || !at.Before(permissionEnd) || ctx.Err() != nil {
 		clear(raw)
 		return nil, errors.Join(errors.New("presentation authority changed"), err, ctx.Err())
 	}

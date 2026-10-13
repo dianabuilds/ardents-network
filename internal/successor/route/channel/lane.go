@@ -45,6 +45,10 @@ type Lane struct {
 	localClosed, peerRefused           bool
 	physicalAttempts, payloadAttempts  uint64
 	physicalWriteFailed                bool
+	physicalErr                        error
+	cleanupJoined                      bool
+	controlOutput                      uint32 // original selected nested control writers; guarded by s.mu
+	deadlines                          sync.WaitGroup
 	refill                             *parentExchange
 	ctx                                context.Context
 	caller                             context.Context
@@ -205,12 +209,19 @@ func (l *Lane) Write(p []byte) (int, error) {
 
 func (l *Lane) closeStatus(status byte) error {
 	l.closeOnce.Do(func() {
+		defer func() {
+			l.deadlines.Wait()
+			l.s.mu.Lock()
+			l.cleanupJoined = true
+			l.s.mu.Unlock()
+		}()
 		l.s.mu.Lock()
 		l.localClosed = true
 		emitted := l.openEmitted || l.s.open != nil || l.s.dedicated
 		l.stopLocked(nil)
-		interrupt := l.interruptOutputLocked()
+		deadline := l.interruptOutputLocked()
 		l.s.mu.Unlock()
+		_, interrupt := l.s.applyOutputDeadline(deadline)
 		if interrupt != nil {
 			// A failed deadline operation cannot leave an original writer alive
 			// until its old bound or disappear from the joined physical result.
@@ -224,6 +235,7 @@ func (l *Lane) closeStatus(status byte) error {
 		// Consumption CREDIT does not hold writeMu. All accepted lane output,
 		// including queued credit, must relinquish its turn before close returns.
 		l.writes.Wait()
+		l.deadlines.Wait()
 		callerExpired := l.caller != nil && (l.caller.Err() == context.DeadlineExceeded || context.Cause(l.caller) == os.ErrDeadlineExceeded)
 		sessionExpired := l.s.ctx.Err() == context.DeadlineExceeded
 		l.s.mu.Lock()
@@ -265,7 +277,7 @@ func (l *Lane) closeStatus(status byte) error {
 // The first retirement fixes one cleanup bound. Already emitted CREDIT can
 // finish within that bound and its original deadline; CLOSE already carries
 // the same finite bound. Payload is interrupted immediately. Called under mu.
-func (l *Lane) interruptOutputLocked() error {
+func (l *Lane) interruptOutputLocked() *outputDeadline {
 	if l.cleanupEnd.IsZero() {
 		l.cleanupEnd = minDeadline(l.end, time.Now().Add(time.Second))
 	}
@@ -278,17 +290,69 @@ func (l *Lane) interruptOutputLocked() error {
 		return nil
 	}
 	end := time.Now()
-	if l.s.activeKind == ardp.KindCredit {
+	if l.s.activeKind == ardp.KindCredit || l.s.activeControl {
 		l.s.activeEnd = minDeadline(l.s.activeEnd, l.cleanupEnd)
 		end = l.s.activeEnd
 	}
-	err := l.s.conn.SetWriteDeadline(end)
-	if err != nil {
-		l.s.writeErr = errors.Join(l.s.writeErr, err)
+	l.s.activeDeadline.cutoff = minDeadline(l.s.activeDeadline.cutoff, end)
+	l.s.activeDeadline.end = minDeadline(l.s.activeDeadline.end, end)
+	l.s.activeDeadline.control = l.s.activeControl || l.s.activeKind == ardp.KindCredit
+	return l.retainOutputDeadlineLocked()
+}
+
+// Carry only the earlier bound of an already selected control to its exact
+// lower writer. A payload deadline update still cannot interrupt that control,
+// but its owning retirement must reach the real physical output at every layer.
+func (l *Lane) boundControlOutput(end time.Time) error {
+	l.s.mu.Lock()
+	l.writeEnd = minDeadline(l.end, end)
+	l.signalLocked()
+	if l.s.stopped || l.s.ctx.Err() != nil || l.s.active != l {
+		l.s.mu.Unlock()
+		return nil
 	}
+	l.s.activeEnd = minDeadline(l.s.activeEnd, end)
+	l.s.activeDeadline.cutoff = minDeadline(l.s.activeDeadline.cutoff, end)
+	l.s.activeDeadline.end = minDeadline(l.s.activeDeadline.end, end)
+	l.s.activeDeadline.control = l.s.activeControl || l.s.activeKind == ardp.KindCredit
+	deadline := l.retainOutputDeadlineLocked()
+	l.s.mu.Unlock()
+	_, err := l.s.applyOutputDeadline(deadline)
 	return err
 }
-func (l *Lane) Close() error         { return l.closeStatus(0) }
+
+// A nested lane decides whether its own deadline effect reached physical I/O.
+// Its refusal remains the caller's work error; its actual physical failures
+// stay with that exact lower cleanup owner instead of being invented here.
+func (l *Lane) retainDeadlineFailureLocked(err error) {
+	if err == nil || lowerFramingLane(l.s.conn) != nil {
+		return
+	}
+	l.physicalWriteFailed = true
+	l.physicalErr = errors.Join(l.physicalErr, err)
+	l.s.writeErr = errors.Join(l.s.writeErr, err)
+}
+func (l *Lane) Close() error { return l.closeStatus(0) }
+
+// CloseRefused joins the same original lane with the existing refusal terminal.
+// It cannot provide the peer's clean-CLOSE witness or release another lane.
+func (l *Lane) CloseRefused() error { return l.closeStatus(1) }
+
+// CleanupResult retains only this lane's actual owned output/deadline failures
+// after Close has joined its original writers. A peer or authority refusal
+// remains in Close's full result, not physical failure of a borrowing session.
+func (l *Lane) CleanupResult() (error, bool) {
+	if l == nil || l.s == nil {
+		return nil, false
+	}
+	l.s.mu.Lock()
+	defer l.s.mu.Unlock()
+	if !l.cleanupJoined {
+		return nil, false
+	}
+	return l.physicalErr, true
+}
+
 func (l *Lane) LocalAddr() net.Addr  { return l.s.conn.LocalAddr() }
 func (l *Lane) RemoteAddr() net.Addr { return l.s.conn.RemoteAddr() }
 func (l *Lane) SetDeadline(t time.Time) error {
@@ -301,10 +365,12 @@ func (l *Lane) SetDeadline(t time.Time) error {
 // owns writer/reader join and retains every actual physical failure.
 func (l *Lane) InterruptIO() error {
 	l.s.mu.Lock()
-	defer l.s.mu.Unlock()
 	l.readEnd, l.writeEnd = time.Now(), time.Now()
 	l.signalLocked()
-	return l.interruptOutputLocked()
+	deadline := l.interruptOutputLocked()
+	l.s.mu.Unlock()
+	_, err := l.s.applyOutputDeadline(deadline)
+	return err
 }
 func (l *Lane) SetReadDeadline(t time.Time) error {
 	l.s.mu.Lock()
@@ -318,8 +384,8 @@ func (l *Lane) SetReadDeadline(t time.Time) error {
 }
 func (l *Lane) SetWriteDeadline(t time.Time) error {
 	l.s.mu.Lock()
-	defer l.s.mu.Unlock()
 	if l.s.stopped || l.s.ctx.Err() != nil {
+		l.s.mu.Unlock()
 		return net.ErrClosed
 	}
 	if t.IsZero() || t.After(l.end) {
@@ -330,17 +396,17 @@ func (l *Lane) SetWriteDeadline(t time.Time) error {
 	// Receive-credit output follows the original lane/control lifetime, rather
 	// than this data-write deadline. TLS half-close must not interrupt its
 	// already started frame. Actual lane/parent retirement still bounds it.
-	if l.s.active == l && l.s.activeKind != ardp.KindCredit {
-		err := l.s.conn.SetWriteDeadline(minDeadline(t, l.s.activeEnd))
-		if err != nil {
-			// This exact lower owner performed the physical deadline operation.
-			// Its joined result retains the failure even if an upper borrower
-			// refuses before producing any lower payload.
-			l.physicalWriteFailed = true
-			l.s.writeErr = errors.Join(l.s.writeErr, err)
+	if l.s.active == l && l.s.activeKind != ardp.KindCredit && !l.s.activeControl {
+		l.s.activeDeadline.end = minDeadline(t, l.s.activeEnd)
+		if !l.s.activeDeadline.cutoff.IsZero() {
+			l.s.activeDeadline.end = minDeadline(l.s.activeDeadline.end, l.s.activeDeadline.cutoff)
 		}
+		deadline := l.retainOutputDeadlineLocked()
+		l.s.mu.Unlock()
+		_, err := l.s.applyOutputDeadline(deadline)
 		return err
 	}
+	l.s.mu.Unlock()
 	return nil
 }
 
@@ -416,8 +482,8 @@ func (l *Lane) Deadline() time.Time {
 
 func (l *Lane) Bound(end time.Time) error {
 	l.s.mu.Lock()
-	defer l.s.mu.Unlock()
 	if l.closed || end.After(l.hardEnd) || !time.Now().Before(end) {
+		l.s.mu.Unlock()
 		return errors.New("route child horizon invalid")
 	}
 	l.hardEnd = end
@@ -430,12 +496,15 @@ func (l *Lane) Bound(end time.Time) error {
 		// write deadline. An already started CREDIT must obey the new original
 		// bound too, while retaining its physical result until joined Close.
 		l.s.activeEnd = l.end
-		if err := l.s.conn.SetWriteDeadline(l.end); err != nil {
-			l.physicalWriteFailed = true
-			l.s.writeErr = errors.Join(l.s.writeErr, err)
-			return err
-		}
+		l.s.activeDeadline.cutoff = minDeadline(l.s.activeDeadline.cutoff, l.end)
+		l.s.activeDeadline.end = minDeadline(l.s.activeDeadline.end, l.end)
+		l.s.activeDeadline.control = l.s.activeControl || l.s.activeKind == ardp.KindCredit
+		deadline := l.retainOutputDeadlineLocked()
+		l.s.mu.Unlock()
+		_, err := l.s.applyOutputDeadline(deadline)
+		return err
 	}
+	l.s.mu.Unlock()
 	return nil
 }
 

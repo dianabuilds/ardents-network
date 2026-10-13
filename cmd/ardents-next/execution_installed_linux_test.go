@@ -36,6 +36,9 @@ func TestInstalledExecutionRouteBothCarriers(t *testing.T) {
 	}
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
+			t.Run("service-authentication", func(t *testing.T) { runInstalledConnectionAuthentication(t, carrier) })
+			t.Run("service-text", func(t *testing.T) { runInstalledConnectionText(t, carrier, false) })
+			t.Run("service-recovery", func(t *testing.T) { runInstalledConnectionText(t, carrier, true) })
 			t.Run("publication", func(t *testing.T) { runInstalledPublisher(t, carrier) })
 			t.Run("publication-ack", func(t *testing.T) { runInstalledPublisherACK(t, carrier, "") })
 			t.Run("publication-withdraw-ack", func(t *testing.T) { runInstalledPublisherACK(t, carrier, "withdraw") })

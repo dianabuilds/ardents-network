@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
@@ -17,10 +18,26 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
+	routejoin "github.com/dianabuilds/ardents-network/internal/successor/route/join"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 )
+
+// Physical Source fixtures use the genuine selected leg and reservation. The
+// maintained Publisher instead retains its logical SourceScope across gaps.
+func openPublicationPrefix(ctx context.Context, plan routePrefixPlan, selected *selection.Owner, budget *hosting.Budget, authority admissionAuthority, holder *stock.Owner) (*prefix.Prefix, selection.Leg, error) {
+	config, err := preparePublicationPrefix(ctx, plan, selected, budget, authority, holder)
+	if err != nil {
+		return nil, selection.Leg{}, err
+	}
+	physical, err := prefix.Open(ctx, config)
+	if err != nil {
+		return nil, selection.Leg{}, errors.Join(err, config.Release())
+	}
+	return physical, config.Leg, nil
+}
 
 // This proves prepared role-3 selection/reservation -> actual Source-bound
 // forwarding on both Carriers. It supplies no qualified Publisher, capsule,
@@ -69,7 +86,7 @@ func TestPublicationPreparedResponderOpensWithOriginalSourceBothCarriers(t *test
 					t.Error(err)
 				}
 			}()
-			source, _, err := openPublicationPrefix(t.Context(), plan, sourceSelection, budget, f.authority, holder)
+			source, sourceLeg, err := openPublicationPrefix(t.Context(), plan, sourceSelection, budget, f.authority, holder)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -78,6 +95,40 @@ func TestPublicationPreparedResponderOpensWithOriginalSourceBothCarriers(t *test
 					t.Error(err)
 				}
 			}()
+			if err := source.CheckSourceScope(sourceLeg.Profile.Network, sourceLeg.Profile.Digest, plan.Deadline); err != nil {
+				t.Fatal("genuine original Source scope unavailable", err)
+			}
+			if err := source.CheckSourceCaller(t.Context(), sourceLeg.Profile.Network, sourceLeg.Profile.Digest, plan.Deadline); err != nil {
+				t.Fatal("original Source opening caller unavailable", err)
+			}
+			// Same cancellation channel and bounds do not make an attempt-local
+			// wrapper the original physical Source opening caller.
+			wrapped := context.WithValue(t.Context(), struct{ originalSourceCaller bool }{true}, true)
+			if wrapped.Done() != t.Context().Done() {
+				t.Fatal("caller wrapper control changed original cancellation")
+			}
+			for _, foreign := range []context.Context{nil, context.Background(), wrapped} {
+				if err := source.CheckSourceCaller(foreign, sourceLeg.Profile.Network, sourceLeg.Profile.Digest, plan.Deadline); err == nil {
+					t.Fatal("foreign Source opening caller accepted")
+				}
+			}
+			changedNetwork, changedProfile := sourceLeg.Profile.Network, sourceLeg.Profile.Digest
+			changedNetwork[0] ^= 1
+			changedProfile[0] ^= 1
+			for _, candidate := range []struct {
+				network, profile [32]byte
+				end              time.Time
+			}{
+				{changedNetwork, sourceLeg.Profile.Digest, plan.Deadline},
+				{sourceLeg.Profile.Network, changedProfile, plan.Deadline},
+				{sourceLeg.Profile.Network, sourceLeg.Profile.Digest, plan.Deadline.Add(time.Second)},
+				{sourceLeg.Profile.Network, sourceLeg.Profile.Digest, plan.Deadline.Add(time.Nanosecond)},
+				{sourceLeg.Profile.Network, sourceLeg.Profile.Digest, time.Now().Add(-time.Second).UTC().Truncate(time.Second)},
+			} {
+				if err := source.CheckSourceScope(candidate.network, candidate.profile, candidate.end); err == nil {
+					t.Fatal("foreign or extended Source scope accepted")
+				}
+			}
 			prepared, err := preparePublicationPrefix(t.Context(), plan, responderSelection, budget, f.authority, holder)
 			if err != nil {
 				t.Fatal(err)
@@ -90,6 +141,9 @@ func TestPublicationPreparedResponderOpensWithOriginalSourceBothCarriers(t *test
 			responder, err := prefix.OpenResponder(t.Context(), source, prepared)
 			if err != nil {
 				t.Fatal(err)
+			}
+			if err := responder.CheckSourceScope(sourceLeg.Profile.Network, sourceLeg.Profile.Digest, plan.Deadline); err == nil {
+				t.Fatal("actual Responder accepted as original Source")
 			}
 			if err := responder.Close(); err != nil {
 				t.Fatal(err)
@@ -168,6 +222,39 @@ func TestRouteGenuinePairedJoinBothCarriers(t *testing.T) {
 			}()
 			if failure != nil {
 				t.Fatal("paired real admitted JOIN", failure)
+			}
+			for side, stream := range streams {
+				joined, ok := stream.(*routejoin.Joined)
+				if !ok {
+					t.Fatal("paired JOIN did not retain its exact admitted owner")
+				}
+				check, opposite := joined.CheckSourceBinding, joined.CheckResponderBinding
+				if side == 1 {
+					check, opposite = opposite, check
+				}
+				secretDigest := sha256.Sum256(intent.Secret[:])
+				if err := check(secretDigest, intent.Context, intent.Deadline, intent.SetupDeadline); err != nil {
+					t.Fatal("original JOIN intent unavailable", side, err)
+				}
+				if err := opposite(secretDigest, intent.Context, intent.Deadline, intent.SetupDeadline); err == nil {
+					t.Fatal("opposite role accepted the original JOIN")
+				}
+				alteredSecret, alteredContext := secretDigest, intent.Context
+				alteredSecret[0] ^= 1
+				alteredContext[0] ^= 1
+				for _, candidate := range []struct {
+					secret, context [32]byte
+					end, setup      time.Time
+				}{
+					{alteredSecret, intent.Context, intent.Deadline, intent.SetupDeadline},
+					{secretDigest, alteredContext, intent.Deadline, intent.SetupDeadline},
+					{secretDigest, intent.Context, intent.Deadline.Add(-time.Second), intent.SetupDeadline},
+					{secretDigest, intent.Context, intent.Deadline, intent.SetupDeadline.Add(-time.Second)},
+				} {
+					if err := check(candidate.secret, candidate.context, candidate.end, candidate.setup); err == nil {
+						t.Fatal("foreign capsule intent accepted an original JOIN")
+					}
+				}
 			}
 			joinedFixtureTLS(t, streams)
 			for side, stream := range streams {

@@ -45,7 +45,18 @@ original currentness, retirement signals and terminal-channel opener. JOIN
 acquisition retains its caller, one attempt, stream and physical result; it
 does not read Prefix fields or resolve a new parent. Its joined notification
 captures the exact original Context generation and runs only after both borrows
-return, outside the parent locks. Acquisition, client exchange and joined stream
+return, outside the parent locks. The opaque acquisition binds its original
+handle identity: copying its fields cannot admit another JOIN, publish a stream,
+cancel its caller or return its original Prefix claims. A joined stream checks
+that same original acquisition and its immutable admitted lifetime before a
+Service can borrow it; these checks grant no Service authority.
+The joined owner also retains its actual admitted side, a local digest of the
+pair secret, handshake context and both original deadlines. Source and Responder
+binding checks compare those immutable facts with the exact capsule before
+Service TLS. A live opposite-side stream or a different intent cannot substitute
+for the original acquisition. These local comparisons add no wire field and
+do not expose the pair secret.
+Acquisition, client exchange and joined stream
 use portable mechanisms and execute the same local lifetime controls on Windows
 and Linux. Context composition still uses the concrete native selection owner;
 its durable-root dependency and Context tests remain Linux-specific. Holder
@@ -64,8 +75,26 @@ the same joined retirement path completes before autonomous notification.
 Repeated Close retains the original terminal result. Setup interruption joins
 its callback before publication and preserves deadline-operation and Close
 failures. Actual cleanup failure seals context admission and prevents reopen.
+Failed Service Attachment retirement marks its exact original Joined child
+before cancellation and Close. That child emits the existing refusal CLOSE(1)
+under the same bounds; it cannot provide a decoded clean-CLOSE witness to the
+peer's settled control tail. Copied children and late disposition changes
+refuse. Ordinary successful retirement still uses CLOSE(0), and both paths
+join original framing and resource borrows before returning their result.
+The watcher atomically selects that disposition before physical output. A
+failed-retirement marker arriving after selection refuses even when the original
+acquisition has not yet closed; it cannot claim to change an emitted terminal.
 
 ## Receiving pair and framed stream
+
+`AcquireScopedResponderJoin` consumes an exact opaque `ResponderHandle` from
+the original retained role scope. Prefix's scoped pair claim carries that
+generation through observations, recipient checks, opening and final handoff.
+It never follows a later generation. `Joined.CheckResponderScope` compares the
+opaque scope provenance; equal public leg facts cannot substitute another owner.
+Closing the setup handle after transfer cannot retire the actual joined stream.
+The ordinary direct Prefix acquisition remains for the separate Route consumer;
+it cannot satisfy this scoped Service provenance check.
 
 `join.Pairing` owns the receiving pair directly. The actual Receiver calls
 `Serve` with its original admitted channel, allowance and currentness check.
@@ -74,6 +103,32 @@ principal budget before spend. Receiving composition returns this opaque capacit
 only after physical join, alongside the original Hosting return; JOIN owns no
 Grant, listener or durable root. Physical failures are retained through the
 Receiver's bound recording callback before pair completion.
+Receiving composition supplies that exact admitted lower lane's interruption
+to Pairing. Retirement stops its readers and selected writer through the lower
+owner, including when framing already stopped; it does not attempt another
+deadline mutation on the retired lane. Actual interruption and Close failures
+still reach the original pair and Receiver result. Raw transports retain their
+physical deadline interruption.
+
+Relay deadline changes use Channel's `SetFrameDeadline` result: the complete
+operation refusal remains with JOIN, while only a call to its own physical
+connection supplies its physical failure. A closed nested framing lane can
+refuse without another native deadline call. That refusal does not invent a
+receiving cleanup failure or reassign the lower owner's retained failure.
+Actual native deadline and partial-write failures remain with their original
+owners through join; this distinction grants no successful exchange or recovery.
+For already selected CREDIT, the relay uses Channel's `BoundControlOutput` so
+the original one-second cleanup bound reaches its actual nested physical writer.
+An ordinary payload deadline cannot interrupt that control and cannot substitute
+for its owning cleanup bound. No extra frame, credit or lifetime is granted.
+
+Failed unpublished setup retains the same separation. The original
+`prefix.JoinChannel.CloseSetup` joins its setup callback, partial connection,
+lower lane and control return once, retaining the complete result.
+`SetupCleanupResult` publishes only that original physical retirement after all
+those joins. Acquisition keeps the full refusal for its caller and supplies only
+the joined physical result to Prefix cleanup. Missing completion remains a
+failure; this receipt creates no JOIN, new attempt or recovery authority.
 
 `pair.go` keeps capacity, matching, setup and the two-RESULT barrier together;
 `relay.go` owns activated frame accounting, credit and terminal joining. Their
@@ -170,6 +225,42 @@ success. Unsupported platforms refuse before opening Route roots. Private pair
 intent stays local; diagnostics contain fixed operation/phase/outcome only.
 
 ## Reproducing evidence
+
+`Joined.CommitOriginal` observes the genuine retained parents before entering
+their Source-before-Responder barriers, then takes the original Acquisition
+mutex for a bounded local handoff. It compares the same published stream,
+callers, admitted child deadline and original parent seals. The consumer may
+compare its own local authentication/authority state there; it must perform no
+foreign observation, I/O or join. Connection uses this barrier for initial
+record-actor ownership transfer, without obtaining another JOIN or extending
+its admitted lifetime.
+
+The original Acquisition and Joined child expose a read-only `CleanupResult`
+only after actor completion, borrower return and original completion notification.
+`Close` still retains EOF/refusal and every physical error. The separate receipt
+contains actual owned physical write/close failures, not an unsuccessful exchange
+or missing peer Terminal. Connection and Instance use it for original Execution
+cleanup accounting; a failed Attachment cannot manufacture another Job, while
+actual cleanup failure still denies effects. `InterruptIO` interrupts this exact
+child and performs no new physical deadline operation once framing is already
+stopped. Neither interface supplies successful JOIN, Service or recovery authority.
+
+The exact lower framing lane separately retains `CleanupResult` after its Close
+has joined the original writer. `JoinChannel.ParentCleanupResult` additionally
+requires the original control hold to return. JOIN retains the full parent Close
+outcome separately from this physical receipt. A refusal before physical output
+does not fabricate an upper write failure; a started write or actual close or
+resource-return failure remains with its original owner. A lower owner's earlier
+failure is not reassigned to an upper Close that emitted no new failing output.
+
+`Joined.DecodedPeerClose` projects opaque evidence from the exact dedicated
+child's canonical decoder after clean CLOSE(0). It identifies one original JOIN
+and grants no Service authentication, active channel, recovery or successful
+cleanup. Local closure, directional/raw EOF and refusal cannot mint that fact;
+copied or foreign streams cannot consume it as their own. Connection separately
+checks complete authenticated Terminal state, absence of additional plaintext
+and original logical authority before using it for bounded control-tail
+retirement. Physical cleanup still joins and retains its actual result.
 
 `make route-check` runs the complete new Network/Admission/Hosting/Route and
 command race profile plus architecture isolation/profile checks. Both selected

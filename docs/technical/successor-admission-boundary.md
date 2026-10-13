@@ -9,6 +9,13 @@ This document fixes the successor's scope and evidence boundary. Completion
 requires the implemented owners, real command consumers and verification below;
 it does not imply completion of adjacent domains.
 
+Route issuance composition derives and validates its pure intent against one
+fresh Network observation, with no I/O between those two steps. Issuer duty,
+each receiver's exact generation and all signed horizons remain checked.
+Stock independently reobserves original authority before batch reservation,
+request access and completion; Route retains its own I/O and final handoff
+checks. The copied drafting view grants no effect authority or accepting cache.
+
 ## State owners
 
 | Owner | Owned facts and decisions | Commit boundary |
@@ -25,6 +32,17 @@ coordinator over quota, key and result owners. Token and issuerprofile are
 supporting cryptographic/format code, not additional business owners.
 Attempts and spending hold different histories: presentation by a holder and
 acceptance by a receiver must not be collapsed into one journal.
+
+Holder `Preparation` reserves one original stock/opening sequence across its
+ordered bootstrap batches and physical Source opening. Unrelated issuance and
+permission replacement refuse while it is retained. Its ordered deficit query
+counts duplicate requested receiver challenges against actual retained stock;
+it grants no token or transport authority and consumes/refunds no rights.
+Each batch still uses normal current-authority verification and irreversible
+reservation. Copied/canceled preparation cannot issue or retire the original;
+its Close refuses while an original exchange remains active. Composition joins
+that exchange before returning coordination. Failed pending batches and the
+two-batch allowance retain their existing retry and no-refund rules.
 
 ## Explicit exclusions
 
@@ -88,6 +106,15 @@ profile, permission and deadline at that boundary, then calls a bounded local
 guard under its own lock. The guard performs no I/O or callbacks into Stock and
 cannot grant authority. A refused verified result is erased; its consumed batch
 cannot be revived or refunded. Stock imports no Route owner.
+Stock retains an original operation/journal borrow before external authority
+observation. These observations and presentation journal writes run outside its
+state mutex; local effects compare current admission, exact original preparation,
+attempt and permission after returning. Completion keeps its active original
+attempt through verification and final observation; verified tokens remain local
+until the final deposit gate. Close seals admission and erases secrets before
+waiting for those original users and then returning its owned journal. A late
+presentation mark retains its irreversible spend/error but returns no token under
+retired or changed permission. These borrows grant no new right or deadline.
 The maintained holder console uses this same boundary with its original caller
 context when completing a supplied result. An explicitly failed exchange uses
 normal terminal completion without verification or deposit and retains pending

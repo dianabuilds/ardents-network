@@ -2,6 +2,7 @@ package join
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/binary"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
@@ -10,10 +11,185 @@ import (
 	"net"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
 )
+
+// Observe the actual pipe's deadline calls. A stopped nested framing lane
+// refuses locally, without another call to this underlying physical owner.
+type joinRelayDeadlineObservation struct {
+	net.Conn
+	calls    atomic.Int32
+	mu       sync.Mutex
+	writeEnd time.Time
+}
+
+func (conn *joinRelayDeadlineObservation) SetDeadline(end time.Time) error {
+	conn.calls.Add(1)
+	err := conn.Conn.SetDeadline(end)
+	if err == nil {
+		conn.mu.Lock()
+		conn.writeEnd = end
+		conn.mu.Unlock()
+	}
+	return err
+}
+
+func (conn *joinRelayDeadlineObservation) SetWriteDeadline(end time.Time) error {
+	conn.calls.Add(1)
+	err := conn.Conn.SetWriteDeadline(end)
+	if err == nil {
+		conn.mu.Lock()
+		conn.writeEnd = end
+		conn.mu.Unlock()
+	}
+	return err
+}
+
+func TestJoinRelayNestedSelectedCreditRetainsCleanupBound(t *testing.T) {
+	local, peer := net.Pipe()
+	physical := &joinRelayDeadlineObservation{Conn: local}
+	end := time.Now().Add(5 * time.Second)
+	parent, lane, err := framing.PrepareJoined(t.Context(), physical, end, 1<<20, nil, framing.NewBudget(1<<20))
+	if err != nil {
+		t.Fatal(err)
+	}
+	side := &joinSide{ctx: t.Context(), conn: lane, hello: ardp.Hello{Deadline: end}, limit: 1 << 20, pair: &joinPair{owner: &Pairing{}}}
+	written := make(chan error, 1)
+	t.Cleanup(func() {
+		_ = local.Close()
+		_ = peer.Close()
+		<-written
+		_ = parent.Close()
+	})
+	go func() {
+		written <- side.writeFrame(ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: []byte{0, 0, 0, 1}})
+	}()
+	if err := peer.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var first [1]byte
+	if n, err := peer.Read(first[:]); n != 1 || err != nil {
+		t.Fatal("original nested CREDIT physical frame did not start", n, err)
+	}
+	bound := time.Now().Add(time.Second)
+	if err := side.deadline(bound, true); err != nil {
+		t.Fatal("original selected CREDIT bound failed", err)
+	}
+	physical.mu.Lock()
+	applied := physical.writeEnd
+	physical.mu.Unlock()
+	if applied.IsZero() || applied.After(bound) {
+		t.Fatal("nested CREDIT ignored its original cleanup bound", applied, bound)
+	}
+}
+
+func TestJoinRelayDeadlineRetainsOnlyOwnedPhysicalEffects(t *testing.T) {
+	for _, nested := range []bool{false, true} {
+		for _, paired := range []bool{false, true} {
+			for _, writeOnly := range []bool{false, true} {
+				name := "raw"
+				if nested {
+					name = "nested"
+				}
+				if paired {
+					name += "/paired"
+				}
+				if writeOnly {
+					name += "/write"
+				}
+				t.Run(name, func(t *testing.T) {
+					local, peer := net.Pipe()
+					t.Cleanup(func() { _ = local.Close(); _ = peer.Close() })
+					physical := &joinRelayDeadlineObservation{Conn: local}
+					side := &joinSide{conn: physical}
+					if paired {
+						side.pair = &joinPair{owner: &Pairing{}}
+					}
+					var parent *framing.Session
+					if nested {
+						var lane *framing.Lane
+						var err error
+						parent, lane, err = framing.PrepareJoined(t.Context(), physical, time.Now().Add(time.Second), 1<<20, nil, framing.NewBudget(1<<20))
+						if err != nil {
+							t.Fatal(err)
+						}
+						original := errors.New("original lower work refused")
+						parent.Retire(original)
+						if err := parent.Close(); !errors.Is(err, original) || parent.PhysicalFailure() != nil {
+							t.Fatal("original lower work/physical provenance changed", err, parent.PhysicalFailure())
+						}
+						side.conn = lane
+					} else {
+						_ = physical.Close()
+					}
+					err := side.deadline(time.Now(), writeOnly)
+					if err == nil {
+						t.Fatal("original deadline refusal became success")
+					}
+					retained := side.physicalErr
+					if paired {
+						retained = side.pair.interruptErr
+					}
+					if nested {
+						if physical.calls.Load() != 0 || retained != nil || parent.PhysicalFailure() != nil {
+							t.Fatal("local nested refusal invented a physical deadline failure", physical.calls.Load(), retained, parent.PhysicalFailure())
+						}
+					} else if physical.calls.Load() != 1 || !errors.Is(retained, err) {
+						t.Fatal("actual original physical deadline failure lost", physical.calls.Load(), retained, err)
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestJoinRelayDeadlineRefusalPreservesOriginalLowerPhysicalFailure(t *testing.T) {
+	for _, writeOnly := range []bool{false, true} {
+		name := "both"
+		if writeOnly {
+			name = "write"
+		}
+		t.Run(name, func(t *testing.T) {
+			local, peer := net.Pipe()
+			t.Cleanup(func() { _ = local.Close(); _ = peer.Close() })
+			physical := &joinRelayDeadlineObservation{Conn: local}
+			parent, lane, err := framing.PrepareJoined(t.Context(), physical, time.Now().Add(5*time.Second), 1<<20, nil, framing.NewBudget(1<<20))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = parent.Close() })
+			written := make(chan error, 1)
+			go func() { _, err := lane.Write([]byte("original partial physical frame")); written <- err }()
+			if err := peer.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+				t.Fatal(err)
+			}
+			var first [1]byte
+			if n, err := peer.Read(first[:]); n != 1 || err != nil {
+				t.Fatal("original native frame did not start", n, err)
+			}
+			_ = local.Close()
+			if err := <-written; !errors.Is(err, io.ErrClosedPipe) {
+				t.Fatal("original partial writer failure lost", err)
+			}
+			if err := parent.Close(); !errors.Is(err, io.ErrClosedPipe) || !errors.Is(parent.PhysicalFailure(), io.ErrClosedPipe) {
+				t.Fatal("original lower physical failure missing", err, parent.PhysicalFailure())
+			}
+			calls := physical.calls.Load()
+			// The real TLS deadline adapter delegates to that exact lower lane.
+			// No handshake or successful authentication is supplied by this test.
+			side := &joinSide{conn: tls.Client(lane, &tls.Config{}), pair: &joinPair{owner: &Pairing{}}}
+			if err := side.deadline(time.Now(), writeOnly); err == nil {
+				t.Fatal("retired nested deadline became success")
+			}
+			if physical.calls.Load() != calls || side.pair.interruptErr != nil || !errors.Is(parent.PhysicalFailure(), io.ErrClosedPipe) {
+				t.Fatal("nested refusal repeated physical I/O, reassigned or erased original failure", physical.calls.Load(), calls, side.pair.interruptErr, parent.PhysicalFailure())
+			}
+		})
+	}
+}
 
 // Pause an actual pipe read after the original pump has consumed its header,
 // before it can account or interpret the body. No authority is supplied here.

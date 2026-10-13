@@ -170,6 +170,11 @@
       "path": "tests/qualification/execution-installed"
     },
     {
+      "id": "installation-startup-manager",
+      "owner": "network",
+      "path": "tests/qualification/installation-startup-manager"
+    },
+    {
       "id": "protected-installation",
       "owner": "network",
       "path": "tests/qualification/protected-installation"

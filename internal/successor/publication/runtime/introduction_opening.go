@@ -12,6 +12,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
 )
 
 // IntroductionOpening retains one accepting pair, its private recipient and
@@ -24,7 +25,9 @@ type IntroductionOpening struct {
 	private     *instance.Opening
 	reservation *openingReservation
 	binding     *connection.RecipientBinding
+	stream      *connection.Stream
 	rendezvous  network.RetainedDuty
+	responder   *prefix.ResponderHandle
 	once        sync.Once
 }
 
@@ -84,7 +87,7 @@ func (p *Publisher) OpenIntroduction(ctx context.Context, envelope capsule.Envel
 	known := append([]route.Member(nil), p.config.Exclusions...)
 	intro := p.config.Duty
 	known = append(known, route.Member{NodeID: intro.NodeID, PublicKey: intro.PublicKey, FamilyID: intro.FamilyID})
-	duty, end, err := p.config.Source.ResolveRendezvous(request.RendezvousNode, request.RendezvousDutyGeneration, known)
+	duty, end, err := p.sourceScope.ResolveRendezvous(request.RendezvousNode, request.RendezvousDutyGeneration, known)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +102,14 @@ func (p *Publisher) OpenIntroduction(ctx context.Context, envelope capsule.Envel
 	if err != nil {
 		return nil, err
 	}
-	opening.binding, err = connection.BindRecipient(opening.private.Context(), p.config.Operation, proof.Publication, pair.receipt.Facts().Profile, request, digest, end)
+	if request.AttachmentGeneration == 1 {
+		opening.binding, err = connection.BindRecipient(opening.private.Context(), p.config.Operation, proof.Publication, pair.receipt.Facts().Profile, request, digest, end)
+	} else {
+		opening.stream, err = p.findConnection(request, digest)
+		if err == nil {
+			opening.binding, err = opening.stream.BindPublisherRecipient(opening.private.Context(), p.config.Operation, proof.Publication, pair.receipt.Facts().Profile, request, digest, end)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +117,7 @@ func (p *Publisher) OpenIntroduction(ctx context.Context, envelope capsule.Envel
 	if _, _, err := opening.Candidate(ctx); err != nil {
 		return nil, err
 	}
-	if err := p.config.Source.CheckRendezvous(duty, known); err != nil {
+	if err := p.sourceScope.CheckRendezvous(duty, known); err != nil {
 		return nil, err
 	}
 	return opening, nil
@@ -130,7 +140,7 @@ func (opening *IntroductionOpening) Binding(ctx context.Context) (*connection.Re
 	known := append([]route.Member(nil), p.config.Exclusions...)
 	intro := p.config.Duty
 	known = append(known, route.Member{NodeID: intro.NodeID, PublicKey: intro.PublicKey, FamilyID: intro.FamilyID})
-	duty, _, err := p.config.Source.ResolveRendezvous(opening.rendezvous.NodeID, opening.rendezvous.RecordGeneration, known)
+	duty, _, err := p.sourceScope.ResolveRendezvous(opening.rendezvous.NodeID, opening.rendezvous.RecordGeneration, known)
 	if err != nil || duty != opening.rendezvous {
 		return nil, errors.Join(errors.New("Publisher original Rendezvous changed"), err)
 	}
@@ -162,6 +172,7 @@ func (opening *IntroductionOpening) Close() {
 		return
 	}
 	opening.once.Do(func() {
+		opening.responder.Close()
 		if opening.private != nil {
 			opening.private.Close()
 		}

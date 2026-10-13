@@ -12,18 +12,19 @@ import (
 // The client decoder is never given an unchecked frame or auth line. In
 // particular a finite outer frame alone does not bound nested length fields.
 type referenceTransport struct {
-	socket    *net.UnixConn
-	mu        sync.Mutex
-	closed    bool
-	active    sync.WaitGroup
-	closeOnce sync.Once
-	closeErr  error
-	readMu    sync.Mutex
-	writeMu   sync.Mutex
-	binary    atomic.Bool
-	owner     atomic.Value // original manager unique bus name, never rebound
-	line      int
-	pending   []byte
+	socket     *net.UnixConn
+	mu         sync.Mutex
+	closed     bool
+	active     sync.WaitGroup
+	closeOnce  sync.Once
+	closeErr   error
+	readMu     sync.Mutex
+	writeMu    sync.Mutex
+	binary     atomic.Bool
+	owner      atomic.Value // original manager unique bus name, never rebound
+	line       int
+	pending    []byte
+	properties bool // closed read-only Startup replies; references keep scalar admission
 }
 
 func (t *referenceTransport) begin() bool {
@@ -79,7 +80,7 @@ func (t *referenceTransport) Read(p []byte) (int, error) {
 			return 0, err
 		}
 		owner, _ := t.owner.Load().(string)
-		if err := verifyReferenceFrame(frame, owner); err != nil {
+		if err := verifyManagerFrame(frame, owner, t.properties); err != nil {
 			return 0, err
 		}
 		t.pending = frame
@@ -126,10 +127,10 @@ func referenceByteOrder(marker byte) (binary.ByteOrder, bool) {
 	return nil, false
 }
 
-// Closed D-Bus reply vocabulary for Hello/GetNameOwner/RefUnit/UnrefUnit/Ping
-// and the broker's own name notifications. No arrays or nested body values are
-// admitted to the upstream decoder. Header variants have exact scalar types.
-func verifyReferenceFrame(frame []byte, owner string) error {
+// Closed scalar reply vocabulary covers Hello/GetNameOwner/RefUnit/UnrefUnit/
+// Ping and broker notifications. Property observations additionally admit the
+// bounded GetAll dictionary grammar. Header variants retain exact scalar types.
+func verifyManagerFrame(frame []byte, owner string, properties bool) error {
 	if len(frame) < 16 || len(frame) > 65536 {
 		return ErrObservation
 	}
@@ -200,6 +201,9 @@ func verifyReferenceFrame(frame []byte, owner string) error {
 		return ErrObservation
 	}
 	sig := fields[8]
+	if properties && frame[1] == 2 && owner != "" && sender == owner && (sig == "v" || sig == "a{sv}") {
+		return verifyManagerValues(frame, int(bodyStart), sig, order)
+	}
 	if sig == "" {
 		if blen != 0 || frame[1] != 2 {
 			return ErrObservation

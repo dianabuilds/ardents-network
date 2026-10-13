@@ -204,6 +204,7 @@ installed-tag-compile-check: export GOOS := linux
 installed-tag-compile-check: export GOARCH := amd64
 installed-tag-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
+	go test -c -tags startup_manager_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-startup-native.test" ./internal/successor/installation/systemd
 	$(foreach package,$(INSTALLED_TAG_COMPILE_PACKAGES),go test -c -tags text_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/$(subst /,_,$(package)).test" $(package)$(newline))
 
 .PHONY: node-process-check
@@ -316,6 +317,26 @@ execution-lifecycle-check:
 execution-route-check:
 	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh execution-route
 
+.PHONY: connection-stream-check
+.PHONY: startup-manager-check
+startup-manager-check:
+	sh ./tests/qualification/installation-startup-manager/run-ubuntu.sh -timeout=20s
+
+connection-stream-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-stream
+
+.PHONY: connection-refresh-check
+connection-refresh-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-refresh
+
+.PHONY: connection-withdrawal-check
+connection-withdrawal-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-withdrawal
+
+.PHONY: connection-nonce-check
+connection-nonce-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-nonce
+
 .PHONY: publication-timing-check
 publication-timing-check:
 	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh publication-timing -timeout=15m
@@ -333,6 +354,10 @@ execution-recovery-check:
 	sh ./tests/qualification/execution-recovery/run-ubuntu.sh -timeout=2m
 
 .PHONY: execution-installed-check
+.PHONY: execution-installed-publication-check
+execution-installed-publication-check:
+	sh tests/qualification/execution-installed/run-ubuntu.sh service-publication -timeout=4m
+
 execution-installed-check:
 	sh ./tests/qualification/execution-installed/run-ubuntu.sh -timeout=4m
 
@@ -377,7 +402,7 @@ installation-native-compile-check:
 
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/network/... ./internal/successor/admission/... ./internal/successor/hosting ./internal/successor/publication/... ./internal/successor/reachability/... ./internal/successor/enrollment/... ./internal/successor/release/... ./internal/successor/installation/... ./internal/successor/execution/... ./internal/successor/route/... ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/network/... ./internal/successor/admission/... ./internal/successor/hosting ./internal/successor/publication/... ./internal/successor/connection/... ./internal/successor/reachability/... ./internal/successor/enrollment/... ./internal/successor/release/... ./internal/successor/installation/... ./internal/successor/execution/... ./internal/successor/route/... ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired)$$' -count=1
 
 hosting-check:

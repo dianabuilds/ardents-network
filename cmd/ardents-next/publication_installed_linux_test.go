@@ -556,8 +556,8 @@ func installedPublisherFailedDelivery(t *testing.T, f *networkAdmissionFixture, 
 	}
 }
 
-func installedPublisherNetwork(t *testing.T, carrier transport.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
-	return publicationRouteNetwork(t, carrier)
+func installedPublisherNetwork(t *testing.T, carrier transport.CarrierProfile, independentSource ...bool) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+	return publicationRouteNetwork(t, carrier, false, len(independentSource) == 1 && independentSource[0])
 }
 
 func installedPublisherReceivers(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate, store *reachability.Store, descriptorCurrent ...func() (network.RuntimeView, error)) []*receiver.Receiver {
@@ -565,8 +565,19 @@ func installedPublisherReceivers(t *testing.T, f *networkAdmissionFixture, reser
 }
 
 func installedPublisherReceiversChecked(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate, store *reachability.Store, checkRetirement func(error) bool, descriptorCurrent ...func() (network.RuntimeView, error)) []*receiver.Receiver {
+	return installedPublisherReceiversObserved(t, f, reservations, certificates, store, checkRetirement, nil, descriptorCurrent...)
+}
+
+func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate, store *reachability.Store, checkRetirement func(error) bool, observe func([32]byte, receiver.ReceiverConfig, *receiver.Receiver), descriptorCurrent ...func() (network.RuntimeView, error)) []*receiver.Receiver {
 	var servers []*receiver.Receiver
-	for _, id := range [][32]byte{{12}, {13}, {14}, {15}, {17}, {21}, {22}, {23}, {24}, {25}, {31}, {32}, {33}, {34}, {41}} {
+	ids := [][32]byte{{12}, {13}, {14}, {15}, {17}, {21}, {22}, {23}, {24}, {25}, {31}, {32}, {33}, {34}, {41}}
+	if certificates[[32]byte{18}].Certificate != nil {
+		ids = append(ids, [32]byte{18}, [32]byte{19})
+	}
+	if reservations[f.profile.IssuerNodeID] != nil {
+		ids = append(ids, f.profile.IssuerNodeID)
+	}
+	for _, id := range ids {
 		view, err := f.current()
 		if err != nil {
 			t.Fatal(err)
@@ -579,7 +590,7 @@ func installedPublisherReceiversChecked(t *testing.T, f *networkAdmissionFixture
 		if err != nil {
 			t.Fatal(err)
 		}
-		binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: 9}
+		binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: member.DutyGeneration}
 		owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) })
 		if err != nil {
 			t.Fatal(err)
@@ -591,6 +602,16 @@ func installedPublisherReceiversChecked(t *testing.T, f *networkAdmissionFixture
 		})
 		budget := networkTestBudget(t)
 		config := receiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id]}
+		if reservations[f.profile.IssuerNodeID] != nil {
+			config.ReserveBootstrap = func(ctx context.Context, end time.Time) (func() error, error) {
+				return networkTestReservation(t, budget, end)
+			}
+		}
+		if id == f.profile.IssuerNodeID {
+			config.Issue = func(ctx context.Context, batch []byte, bootstrap bool) ([]byte, error) {
+				return issueRouteBatch(ctx, f.authority, f.plan, batch, bootstrap)
+			}
+		}
 		if id == [32]byte{17} {
 			config.DescriptorStore = store
 			if len(descriptorCurrent) != 0 {
@@ -623,6 +644,9 @@ func installedPublisherReceiversChecked(t *testing.T, f *networkAdmissionFixture
 			t.Fatal(err)
 		}
 		servers = append(servers, server)
+		if observe != nil {
+			observe(id, config, server)
+		}
 		t.Cleanup(func() {
 			if err := server.Close(); err != nil {
 				if checkRetirement == nil || !checkRetirement(err) {

@@ -363,9 +363,13 @@ func routeTestOpenEndpoint(ctx context.Context, input transport.ClosedRoleCarrie
 	}
 }
 
-func publicationRouteNetwork(t *testing.T, carrier transport.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
-	return newRoleRouteFixtureConfigured(t, carrier, 1, false, false, func(f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate) {
-		for _, id := range [][32]byte{{17}, {21}, {22}, {23}, {24}, {25}, {31}, {32}, {33}, {34}, {41}} {
+func publicationRouteNetwork(t *testing.T, carrier transport.CarrierProfile, issuing ...bool) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+	return newRoleRouteFixtureConfigured(t, carrier, 1, false, len(issuing) != 0 && issuing[0], func(f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate) {
+		ids := [][32]byte{{17}, {21}, {22}, {23}, {24}, {25}, {31}, {32}, {33}, {34}, {41}}
+		if len(issuing) > 1 && issuing[1] {
+			ids = append(ids, [32]byte{18}, [32]byte{19})
+		}
+		for _, id := range ids {
 			_, key, err := ed25519.GenerateKey(rand.Reader)
 			if err != nil {
 				t.Fatal(err)
@@ -397,6 +401,9 @@ func publicationRouteNetwork(t *testing.T, carrier transport.CarrierProfile) (*n
 			}
 			if id == [32]byte{17} {
 				domain, subrole = 2, 5
+			}
+			if id == [32]byte{18} || id == [32]byte{19} {
+				domain, subrole = 1, 2
 			}
 			if id[0] >= 31 {
 				domain, subrole = 3, 1

@@ -388,17 +388,29 @@ func TestJoinAcquisitionCleanSetupRetirementDoesNotSealContext(t *testing.T) {
 type unpublishedSetupRetirement struct {
 	conn    net.Conn
 	release func()
+	once    sync.Once
+	cleanup error
+	joined  atomic.Bool
 }
 
 func (p *unpublishedSetupRetirement) CloseSetup() error {
-	var err error
-	if p.conn != nil {
-		err = p.conn.Close()
+	p.once.Do(func() {
+		if p.conn != nil {
+			p.cleanup = p.conn.Close()
+		}
+		if p.release != nil {
+			p.release()
+		}
+		p.joined.Store(true)
+	})
+	return p.cleanup
+}
+
+func (p *unpublishedSetupRetirement) SetupCleanupResult() (error, bool) {
+	if !p.joined.Load() {
+		return nil, false
 	}
-	if p.release != nil {
-		p.release()
-	}
-	return err
+	return p.cleanup, true
 }
 
 // lifecycleConn gates actual physical output and completion independently.

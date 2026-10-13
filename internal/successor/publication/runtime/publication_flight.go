@@ -89,7 +89,12 @@ func (p *Publisher) publish(ctx context.Context, replace bool) (string, error) {
 	if bound, ok := ctx.Deadline(); ok && bound.Before(end) {
 		end = bound.UTC().Truncate(time.Second)
 	}
-	if err := p.config.Source.PublishDescriptor(exchange, end, pair.descriptor, p.config.Exclusions); err != nil {
+	source, err := p.sourceScope.Acquire(exchange)
+	if err != nil {
+		return "", err
+	}
+	defer source.Close()
+	if err := source.PublishDescriptor(exchange, end, pair.descriptor, p.config.Exclusions); err != nil {
 		return "", err
 	}
 	// Prefix success is the actual synced Store ACK after physical exchange
@@ -98,36 +103,43 @@ func (p *Publisher) publish(ctx context.Context, replace bool) (string, error) {
 	if err := pair.check(p, ctx); err != nil {
 		return "", err
 	}
-	p.mu.Lock()
-	if p.closed || p.pending != pair {
-		p.mu.Unlock()
-		return "", errors.New("Publisher late acknowledgement")
-	}
-	if err := p.check(ctx); err != nil {
-		p.mu.Unlock()
+	stopOnError := false
+	err = source.Commit(func(checkSource func() error) error {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		if p.closed || p.pending != pair {
+			return errors.New("Publisher late acknowledgement")
+		}
+		if err := errors.Join(checkSource(), p.checkLocal(ctx)); err != nil {
+			return err
+		}
+		now := time.Now()
+		pair.firstACK = now
+		pair.cutoff = pair.receipt.Facts().Expiry
+		if p.current != nil {
+			prior := p.current
+			prior.cutoff = prior.receipt.Facts().Expiry
+			if bound := now.Add(60 * time.Second); bound.Before(prior.cutoff) {
+				prior.cutoff = bound
+			}
+			// Seal the private accepting boundary synchronously with the first
+			// switch. Timer scheduling/physical join may be late; neither can
+			// extend this recipient's authority or change its signed expiry.
+			if err := prior.recipient.LimitAcceptance(prior.cutoff); err != nil {
+				stopOnError = true
+				return err
+			}
+			p.predecessor = prior
+		}
+		p.current, p.pending = pair, nil
+		return nil
+	})
+	if err != nil {
+		if stopOnError {
+			p.stop()
+		}
 		return "", err
 	}
-	now := time.Now()
-	pair.firstACK = now
-	pair.cutoff = pair.receipt.Facts().Expiry
-	if p.current != nil {
-		prior := p.current
-		prior.cutoff = prior.receipt.Facts().Expiry
-		if bound := now.Add(60 * time.Second); bound.Before(prior.cutoff) {
-			prior.cutoff = bound
-		}
-		// Seal the private accepting boundary synchronously with the first
-		// switch. Timer scheduling/physical join may be late; neither can
-		// extend this recipient's authority or change its signed expiry.
-		if err := prior.recipient.LimitAcceptance(prior.cutoff); err != nil {
-			p.mu.Unlock()
-			p.stop()
-			return "", err
-		}
-		p.predecessor = prior
-	}
-	p.current, p.pending = pair, nil
-	p.mu.Unlock()
 	select {
 	case p.wake <- struct{}{}:
 	default:

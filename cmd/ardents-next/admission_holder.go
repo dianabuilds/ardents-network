@@ -201,6 +201,12 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 				break
 			}
 			err = retainCleanup(publisher.withdraw(ctx))
+		case "publication-serve":
+			if publisher.owner == nil || publisher.serve == nil {
+				err = errors.New("qualified Text Publisher is unavailable")
+				break
+			}
+			err = publisher.serve(ctx)
 		case "descriptor-publish":
 			if prefix.publishDescriptor == nil {
 				err = errors.New("route Descriptor publication unavailable")
@@ -455,7 +461,7 @@ func executionRouteOperation(operation string) bool {
 		"prefix-open", "prefix-replenish", "prefix-close", "descriptor-lookup",
 		"capsule-submit",
 		"begin", "complete", "discard", "take", "refill-plan", "status", "close",
-		"publication-open", "publication-publish", "publication-refresh", "publication-link", "publication-withdraw":
+		"publication-open", "publication-publish", "publication-refresh", "publication-link", "publication-withdraw", "publication-serve":
 		return true
 	default:
 		return false

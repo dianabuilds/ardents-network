@@ -12,7 +12,7 @@ func (p *Publisher) Withdraw(ctx context.Context) error {
 	if p == nil {
 		return nil
 	}
-	if ctx == nil {
+	if p.self != p || ctx == nil {
 		return errors.New("Publisher withdrawal caller absent")
 	}
 	p.mu.Lock()

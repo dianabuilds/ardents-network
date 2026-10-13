@@ -134,6 +134,9 @@ func TestJoinedPhysicalCloseWaitsForInnerPeerBeforeLowerRetirement(t *testing.T)
 					if !errors.Is(result, io.ErrUnexpectedEOF) {
 						t.Fatal("raw EOF erased missing inner terminal", result)
 					}
+					if joined.cleanup != nil {
+						t.Fatal("raw input EOF became an owned physical cleanup failure", joined.cleanup)
+					}
 				default:
 					if !errors.Is(result, os.ErrDeadlineExceeded) && !errors.Is(result, context.DeadlineExceeded) {
 						t.Fatal("missing peer terminal timeout became success", result)
@@ -173,4 +176,8 @@ func (p *joinedParentRetirement) CloseParent() error {
 	p.lane.Finish()
 	p.returned.Add(1)
 	return err
+}
+
+func (p *joinedParentRetirement) ParentCleanupResult() (error, bool) {
+	return p.lane.CleanupResult()
 }

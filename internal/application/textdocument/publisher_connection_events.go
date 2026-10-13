@@ -40,7 +40,7 @@ func (owner *publisherConnections) fromService(event publisherEvent) error {
 	case 4:
 		stream.ioClosed = true
 		if event.err != nil {
-			owner.cleanupErr = event.err
+			owner.cleanupErr = errors.Join(owner.cleanupErr, event.err)
 			return errors.New("text Publisher Service cleanup failed")
 		}
 		if stream.writePending {

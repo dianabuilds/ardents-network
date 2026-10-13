@@ -79,8 +79,9 @@ func (s *Session) ExchangeParent(ctx, caller context.Context, end time.Time, rem
 		defer close(interrupted)
 		s.mu.Lock()
 		control.stopLocked(ctx.Err())
-		err := control.interruptOutputLocked()
+		deadline := control.interruptOutputLocked()
 		s.mu.Unlock()
+		_, err := s.applyOutputDeadline(deadline)
 		if err != nil {
 			s.Retire(err)
 		}

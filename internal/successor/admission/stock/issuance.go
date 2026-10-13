@@ -30,12 +30,21 @@ type attemptState struct {
 // Begin reserves quota once and returns only public request access.
 // The application executes transport outside this aggregate.
 func (o *Owner) Begin(intent IssuanceIntent) (Attempt, error) {
-	if o == nil {
-		return Attempt{}, errors.New("holder unavailable")
+	return o.begin(intent, nil)
+}
+
+func (o *Owner) begin(intent IssuanceIntent, preparation *Preparation) (Attempt, error) {
+	if err := o.beginUse(); err != nil {
+		return Attempt{}, err
 	}
+	defer o.users.Done()
+	profile, at, observedErr := o.observe()
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	p, now, err := o.current()
+	if o.preparing != preparation || preparation != nil && (preparation.self != preparation || preparation.ctx.Err() != nil) {
+		return Attempt{}, errors.New("original stock preparation is unavailable")
+	}
+	p, now, err := o.current(profile, at, observedErr)
 	if err != nil || o.active != nil || !o.permission.CurrentFor(p, now) || intent.Selection.ID == [32]byte{} || intent.Selection.ProfileDigest != p.Digest || !now.Before(intent.Deadline) {
 		return Attempt{}, errors.Join(errors.New("issuance unavailable"), err)
 	}
@@ -68,9 +77,14 @@ func (a Attempt) Request() ([]byte, time.Time, error) {
 	}
 	s := a.state
 	o := s.owner
+	if err := o.beginUse(); err != nil {
+		return nil, time.Time{}, err
+	}
+	defer o.users.Done()
+	profile, at, observedErr := o.observe()
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	p, now, err := o.current()
+	p, now, err := o.current(profile, at, observedErr)
 	if err != nil || s.done || o.active != s || o.permission != s.permission || p != s.profile || !now.Before(s.deadline) {
 		return nil, time.Time{}, errors.Join(errors.New("attempt unavailable"), err)
 	}
@@ -100,6 +114,10 @@ func (a Attempt) complete(payload []byte, exchangeErr error, check func() error)
 	}
 	s := a.state
 	o := s.owner
+	if err := o.beginUse(); err != nil {
+		return err
+	}
+	defer o.users.Done()
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if s.done {
@@ -109,24 +127,37 @@ func (a Attempt) complete(payload []byte, exchangeErr error, check func() error)
 	if o.active != s || o.permission != s.permission {
 		return errors.New("attempt revoked")
 	}
-	o.active = nil
-	p, now, err := o.current()
-	if err != nil || p != s.profile || !now.Before(s.deadline) || !s.permission.CurrentFor(p, now) {
+	defer func() {
+		if o.active == s {
+			o.active = nil
+		}
+	}()
+	o.mu.Unlock()
+	profile, at, observedErr := o.observe()
+	o.mu.Lock()
+	p, now, err := o.current(profile, at, observedErr)
+	if err != nil || o.active != s || o.permission != s.permission || p != s.profile || !now.Before(s.deadline) || !s.permission.CurrentFor(p, now) {
 		s.permission.discardPendingBatch(s.batch)
 		return errors.Join(errors.New("issuance authority expired or changed"), err)
 	}
 	if exchangeErr != nil {
 		return exchangeErr
 	}
-	var finalCheck func() error
-	if check != nil {
-		finalCheck = func() error {
-			p, now, err := o.current()
-			if err != nil || p != s.profile || !now.Before(s.deadline) || !s.permission.CurrentFor(p, now) {
-				return errors.Join(errors.New("issuance authority changed during verification"), err)
-			}
+	finalCheck := func() error {
+		// FinalizeEncoded has already consumed the blind state. Verified tokens
+		// remain local to acceptIssuedBatch until this original final gate; Close
+		// can erase permission while observation waits, but cannot acquire them.
+		o.mu.Unlock()
+		profile, at, observedErr := o.observe()
+		o.mu.Lock()
+		p, now, err := o.current(profile, at, observedErr)
+		if err != nil || o.active != s || o.permission != s.permission || p != s.profile || !now.Before(s.deadline) || !s.permission.CurrentFor(p, now) {
+			return errors.Join(errors.New("issuance authority changed during verification"), err)
+		}
+		if check != nil {
 			return check()
 		}
+		return nil
 	}
 	return s.permission.acceptIssuedBatch(s.batch, payload, finalCheck)
 }

@@ -85,7 +85,7 @@ remain proposed until their current contracts and real consumers are verified.
 | **Local Application execution:** may this process invocation perform this operation? | Volatile Local Grant generation; local session with exact current/last Job and one-use handoff; separate supervisor cleanup capacity and terminal admission latch; qualified launch and joined original worker descendants. Job is a lifetime entity within the session consistency boundary, not an independent network Context | Token allowance, Service authority, Target/path choice, private routing history, remote publication, Connection recovery, software acceptance, global resource pressure, text semantics and qualification Run | [Execution contract](../technical/application-execution.md), current evidence `application/broker`, Endpoint Job/worker and scattered Service effect/handoff checks; [confinement owner](../technical/application-confinement.md). New `internal/successor/execution` implements local authority/session/Job and independent cleanup supervision; `execution/worker` implements fixed native mechanisms; `execution/runtime` has genuine permission-preparation and bounded live Route-holder consumers. One exact operation retains qualified original cleanup through Route borrower join; complete Service Connection and full installed qualification remain absent; bounded installed Source/permission bootstrap has a genuine independently admitted consumer |
 | **Service Publication:** which authorized Instance is accepting work? | Publication generation/revision, current/pending/predecessor registration pair, private recipient lifetime, ACK/readiness, refresh and withdrawal; Instance authority/material remain purpose-scoped | Credential root signing, raw Route transport, Descriptor Store conflict floors, logical Connection recovery, Local Grant/Job mutation and worker cleanup; retain an exact live Execution operation instead | `internal/successor/publication` public proof rules, `publication/durable` exclusive floors, `publication/instance` purpose-scoped private lifetime and `publication/runtime` live qualified Publisher have real `ardents-next` consumers; [Service owner](../technical/endpoint-service-runtime.md), [private reachability](../technical/private-reachability.md), [Execution seam](../technical/application-execution.md#required-lifecycle-and-linearization) |
 | **Reachability:** what current proof is valid for this Target? | Receiving Descriptor Store and durable conflicts; local lookup verification/history is a separate owner at another principal | Publication readiness, admission spend, path choice, Service Instance authentication and logical Connection | `internal/successor/reachability` implements portable proof/conflict/history rules and native receiving Store mechanisms; real Route Prefix/Receiver and `ardents-next` consume them. [Reachability contract](../technical/private-reachability.md) records signed-input acceptance and its limits. Predecessor `service/reachability`, Endpoint history and Node resolution remain independent; their complete Service consumers are not transferred by this boundary |
-| **Service Connection:** how does one authenticated logical stream retain its identity? | Immutable destination/provenance, exact Instance TLS authentication, ordered byte state, Attachment generation, continuity/recovery deadline and retained Service terminal outcome; checks the exact retained Execution operation at effects and final handoffs | New Target/Application operation, new Grant, Job mutation/worker cleanup, publication authority, path policy and independent physical reservations | New `internal/successor/connection` retains initial binding; remaining logical owners are defined by the Service contract. Predecessor evidence: `service/connection`, Endpoint Service/binding/recovery; [Service owner](../technical/endpoint-service-runtime.md), [Execution seam](../technical/application-execution.md#required-lifecycle-and-linearization) |
+| **Service Connection:** how does one authenticated logical stream retain its identity? | Immutable destination/provenance, exact Instance TLS authentication, ordered byte state, Attachment generation, continuity/recovery deadline and retained Service terminal outcome; checks the exact retained Execution operation at effects and final handoffs | New Target/Application operation, new Grant, Job mutation/worker cleanup, publication authority, path policy and independent physical reservations | `internal/successor/connection` owns immutable logical binding, exact-role authentication, ordered byte/Terminal ledgers and finite Attachment proposals; `connection/wire` owns only canonical records and transcripts. Genuine Reader Source and Publication accepted-stream composition consume these owners; complete acceptance remains separate. Predecessor evidence: `service/connection`, Endpoint Service/binding/recovery; [Service owner](../technical/endpoint-service-runtime.md), [Execution seam](../technical/application-execution.md#required-lifecycle-and-linearization) |
 | **Software acceptance:** which exact generation may be installed or run? | Enrollment pin, Release authorization/monotonic floors, installation/replacement/recovery transaction are separate authority and state owners | Network membership, admission permissions, Service authority, generic signing and automatic rollback | New `enrollment`, `release` and `installation` have genuine new command consumers. Portable byte authentication, native transactions/recovery and bounded Source/permission startup have separate boundaries; complete installed Service acceptance is absent. [Enrollment](../technical/enrollment-verification.md), [Release/Custody](../technical/release-update-custody.md), [Installation](../../internal/successor/installation/README.md) |
 | **Authority Custody** (supporting boundary) | Purpose-specific encrypted authority storage, approved signing commitments and recovery floors; authority kinds never become one signing right | Generic `Sign`, exported private authority, Network/Service/Admission decisions assigned to their own domains; runtime Instance/Node keys | New `internal/successor/custody` owns encrypted records and purpose-specific Admission through new Allocation and real `ardents-custody`; Service Authority issuance consumes the one pure Publication request/response contract; predecessor records remain evidence, never signing adoption; [Custody contract](../technical/release-update-custody.md) |
 
@@ -99,6 +99,12 @@ detached observations nor durable phase presence grant Release, mutation,
 Start, ACK replay or runtime rights. [Installation's current owner](../../internal/successor/installation/README.md)
 and [Release/Custody](../technical/release-update-custody.md) hold exact admission,
 record, recovery and fixed-resource rules.
+Private installed Startup reads fresh fixed manager facts on one bounded native
+connection per observation, retaining the unique manager across its original
+lifetime. Both complete property rounds, original file/process reobservations
+and physical cancellation remain distinct checks. Typed facts preserve original
+wire signatures and grant neither a cache nor startup authority; only the
+Installation consumer compares its original generation and invocation.
 
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
@@ -310,9 +316,100 @@ real consumer before package or implementation admission.
 | Route | Prefix/channel and real Carriers, registration/withdrawal, paired JOIN, parent refill, issuer and Descriptor Control, opaque delivery transport | Complete Service/Connection integration, final full-domain regression and qualification |
 | Execution | Volatile local authority/session/Job, fixed native worker, original operation and joined cleanup; permission, holder and installed bootstrap consumers | Logical Service recovery and complete installed journey remain separate |
 | Publication and Reachability | Public proof, consumed private Instance, live qualified Publisher, accepting registration/Store-ACK pairs, refresh/withdrawal, private recipient/replay; independent Store and local lookup history | Full Service TLS, logical Connection and installed product qualification are not implied by accepting Link or capsule transport |
-| Connection | Immutable initial recipient/provenance and Attachment transcript binding under exact Execution/Publication | Complete authenticated logical stream, continuity/recovery and Application bytes require their own source-matched acceptance |
+| Connection | Immutable original binding, exact-Instance TLS/Continuity, bounded ordered stream and Terminal controls; genuine Reader/Publisher Text transfer and Route-backed Attachment proposals retain original Execution/Publication | Full recovery/replay/authority-loss matrix, final gates and two independently installed Endpoint acceptance require their own source-matched evidence |
 | Enrollment, Release, Installation | Pinned immutable inventory; offline exact-byte authorization/floors; separate generation authentication and native initial/replacement/recovery/startup consumers | Full interruption matrix, private Service journey and installed acceptance remain separate |
 | Custody | Encrypted Vault/Bundle, purpose-specific Admission through new Allocation and Service through the pure public request/response contract, original exclusive lifetime, authenticated successor/floors and separate quarantine; genuine terminal command consumer | Full operator/installed integration and platform/crash qualification remain separate |
+
+Connection borrows one original Execution operation and one immutable Instance
+Service lease through transport gaps. Publication retains accepting generation,
+recipient cutoff and delivery replay history; Instance owns non-exporting TLS
+and proof signing. Connection owns continuity, directional workload counters,
+Attachment proposals/replay and the logical Terminal outcome. Route owns the
+exact physical JOIN and its reservation return. Joined cleanup receipts report
+physical retirement only; neither clean cleanup nor a completed Application
+result supplies accepting authority. Execution retains the original worker's
+protocol reader and cleanup capacity until those borrowers finish. These seams
+do not merge state locks, private roots or domain policy.
+Connection stages received bytes privately while its original owners validate
+the final handoff. Bounded caller-memory delivery and clean-outcome publication
+then run under the same local locks, with no foreign I/O or owner observation.
+Failure exposes neither a positive read count nor the staged plaintext.
+An early original-owner refusal retains the Stream's first logical failure;
+later cancellation cannot replace it. Failed Source/Responder acquisition also
+retains the joined original generation outcome before any replacement handoff.
+An unsuccessful Attachment retires its exact Route child with the existing
+refusal terminal; its cleanup cannot mint a clean child witness and retire the
+peer's still-needed Terminal-control tail. The original logical owner and
+authority remain separate from that failed physical child.
+Instance's original Binding observation borrow retains native custody and its
+separately owned Publication reservation while full logical/physical Service
+checks run outside Instance state. Local effect gates compare the same original
+lease/Attachment; retirement joins those observers before key erasure and
+reservation return. This borrow supplies no accepting observation or new right.
+Acquisition and first consumption retain the same original custody across
+separate durable reconciliation/burn without holding Instance state. Root and
+Binding retirement deny late transfer/private effects and join those operations;
+neither a pending opening nor a completed floor burn grants readiness.
+Recipient and capsule users observe original native custody before taking their
+state locks, then compare the exact local recipient/opening and cutoff. Their
+copied candidate/Descriptor facts remain distinct from accepting Publication,
+Connection authentication and replay commitment.
+Holder Stock retains one original operation/journal use through external current
+authority observation, native presentation marking and final verification/deposit.
+These foreign observations and marks do not hold Stock state; local transitions
+still compare the original attempt/preparation/permission and monotonic floor.
+Revocation erases secrets and denies new uses before joining existing uses and
+returning the owned journal. Spent token/quota and actual late failures remain
+with their original owners; a use borrow supplies no Admission authority.
+
+Canonical installed command continuation composes its private Reader and
+snapshot Administration consumers after the original retained Startup checks.
+The participant owns one shared Entry history and initialized Hosting budget;
+each operation owns its role selection, physical borrows and qualified worker.
+Fresh Link/Withdraw admission belongs to the original Execution generation and
+creates no worker or Service authority. Local listeners join before pending and
+active Publication retirement, which precedes shared-root closure. This realized
+composition is distinct from two-manager installed acceptance and final gates.
+
+Reader Source retains the full logical Stream and original Prefix outcome while
+passing only joined physical cleanup into Execution's failure accounting. A
+Route-owned opaque Source scope retains the original caller, selected leg and
+absolute bound; its logical checks reobserve genuine authority independently
+of an ended physical Prefix. Every lookup, submission and JOIN still needs its
+exact physical acquisition. Connection consumes its finite proposal before
+Route joins an ended generation and opens another with original selected bindings
+and genuine new reservations/Stock. One opaque handle binds lookup, submission,
+JOIN and final replacement handoff; an old handle never follows a successor.
+Scope retirement seals logical effects before joining all physical generations
+and retaining actual cleanup failures.
+The scope itself grants no fresh opening, token, Job or successful Connection.
+A replaced Attachment retains its own attempt outcome; that recoverable attempt
+does not overwrite successful logical recovery. Its actual physical cleanup
+failures remain retained through the original cleanup owners.
+Prefix's separate cleanup receipt requires actual original users, callbacks,
+framing and resource returns to finish; retired readiness alone cannot supply
+it. JOIN returns its own exact physical result to the Prefix borrower callback,
+keeping the complete exchange outcome with its original caller. Cancellation
+does not become a physical failure by projection, and an actual late write,
+close, borrower or resource-return error remains retained.
+
+Publisher likewise keeps its full Publication/Registration outcome while
+passing only original joined physical results to Execution. Registration owns
+its complete withdrawal/delivery result; its exact Introduction terminal owns
+lower output/deadline failures and the parent/control return. Publisher retains
+one original Source scope through private and Connection users. Route's Source
+scope and Responder scope own their original selected legs and exact physical
+generations; each transferred JOIN retains its own generation borrow. Physical
+loss seals only that generation, which joins before fresh reservation/opening.
+Responder generations retain one exact Source handle, and JOIN handoffs check
+both original scopes. Physical Source loss retires its dependent Responder
+generation without withdrawing the original accepting Publication or changing
+the Job. Current-source issuing borrows an existing opaque handle only; it
+cannot recursively replace a Source during dependent presentation. Descriptor
+publication acquires one exact handle and commits its Store ACK under that
+handle. Scope retirement joins all generations before Instance binding retirement. Ordinary
+cancellation does not seal the Execution generation as failed physical cleanup;
+actual output, close, missing join or resource-return failure still does.
 
 Actual source and imports are in the [package map](package-map.md) and
 [implementation entry point](../../internal/successor/README.md). Component

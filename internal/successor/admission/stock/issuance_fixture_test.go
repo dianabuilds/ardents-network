@@ -29,6 +29,22 @@ type spendHostFixture struct {
 	journal *attempts.Journal
 }
 
+// Cross-owner fixture composition stays in this registered issuance fixture.
+// The response is genuine issuer output, not a supplied successful callback.
+func issueFixtureResponse(t *testing.T, host *spendHostFixture, attempt Attempt) []byte {
+	t.Helper()
+	raw, _, err := attempt.Request()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clear(raw)
+	issued := admissionissuer.IssueCurrent(t.Context(), host.plan, raw, quota.Bootstrap, host.ProfileLocked)
+	if issued.Outcome != "issued-offline" {
+		t.Fatal(issued.Outcome)
+	}
+	return issued.Response
+}
+
 func (host *spendHostFixture) Journal() (*attempts.Journal, error) {
 	if host.journal == nil {
 		journal, err := attempts.Open(host.root, host.profile.NetworkID, func() time.Time { return host.now })

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/route"
@@ -25,6 +26,25 @@ func (err SubmissionRefusal) Error() string {
 // Introduction duty. It consumes genuine Control Stock on fresh role TLS;
 // successful transport does not authenticate a Service Connection.
 func Submit(ctx context.Context, source *prefix.Prefix, duty network.RetainedDuty, envelope capsule.Envelope, excluded []route.Member) (result error) {
+	if source == nil {
+		return errors.New("introduction submission Source absent")
+	}
+	return submit(ctx, source, duty, envelope, excluded)
+}
+
+// SubmitScoped uses an opaque exact physical acquisition from a Source scope.
+func SubmitScoped(ctx context.Context, source *prefix.SourceHandle, duty network.RetainedDuty, envelope capsule.Envelope, excluded []route.Member) error {
+	if source == nil {
+		return errors.New("introduction submission Source handle absent")
+	}
+	return submit(ctx, source, duty, envelope, excluded)
+}
+
+type submissionSource interface {
+	OpenSubmissionChannel(context.Context, network.RetainedDuty, time.Time, []route.Member) (*prefix.IntroductionChannel, error)
+}
+
+func submit(ctx context.Context, source submissionSource, duty network.RetainedDuty, envelope capsule.Envelope, excluded []route.Member) (result error) {
 	if source == nil || ctx == nil {
 		return errors.New("introduction submission Source absent")
 	}

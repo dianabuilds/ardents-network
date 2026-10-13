@@ -1,6 +1,15 @@
 #!/bin/sh
 set -eu
 fail() { printf '%s\n' "$*" >&2; exit 1; }
+test_root=TestInstalledExecutionStartup
+if [ "${1-}" = service-publication ]; then
+    test_root=TestInstalledServicePublication
+    shift
+    case "${ARDENTS_EXECUTION_START_CARRIER-}" in
+        ardents-carrier-tcp-tls-v2|ardents-carrier-quic-v2) ;;
+        *) fail 'invalid environment: independently selected installed Carrier required' ;;
+    esac
+fi
 timeout_argument=${1--timeout=4m}
 [ "$timeout_argument" = -timeout=4m ] || fail 'invalid environment: selected four-minute bound required'
 timeout=${timeout_argument#-timeout=}
@@ -11,7 +20,7 @@ inventory_pin=${ARDENTS_EXECUTION_START_INVENTORY_SHA256-}
 base=${ARDENTS_EXECUTION_START_ROOT-}
 log=${ARDENTS_EXECUTION_START_LOG-}
 [ "$(id -u)" = 0 ] || fail 'invalid environment: root driver required'
-for program in systemctl journalctl sha256sum stat uname grep getent mkdir; do
+for program in systemctl journalctl sha256sum stat uname grep getent mkdir cat; do
     command -v "$program" >/dev/null || fail "invalid environment: $program unavailable"
 done
 . /etc/os-release
@@ -20,6 +29,8 @@ done
 [ "$(systemctl show -p Version --value)" = 255.4-1ubuntu8.14 ] ||
     fail 'invalid environment: independently selected systemd255 build required'
 [ "$(stat -fc %T /sys/fs/cgroup)" = cgroup2fs ] || fail 'invalid environment: cgroup-v2 required'
+[ "$(cat /proc/1/comm)" = systemd ] && [ "$(cat /proc/1/cgroup)" = '0::/init.scope' ] ||
+    fail 'invalid environment: canonical manager cgroup namespace required'
 for value in "$binary" "$resources" "$base" "$log"; do
     case "$value" in /*) ;; *) fail 'invalid environment: absolute paths required' ;; esac
 done
@@ -55,12 +66,18 @@ mkdir "$base/private"
 export TMPDIR="$base/private"
 export ARDENTS_EXECUTION_START_ROOT="$base" ARDENTS_EXECUTION_START_RESOURCES="$resources"
 set +e
-"$binary" -test.run='^TestInstalledExecutionStartup$' -test.v "-test.timeout=$timeout" > "$log" 2>&1
+"$binary" "-test.run=^$test_root$" -test.v "-test.timeout=$timeout" > "$log" 2>&1
 result=$?
 set -e
 cat "$log"
 [ "$result" = 0 ] || fail 'actual installed startup failed; retain this log and native residue'
-[ "$(grep -c '^--- PASS: TestInstalledExecutionStartup (' "$log" || true)" = 1 ] ||
+[ "$(grep -c "^--- PASS: $test_root (" "$log" || true)" = 1 ] ||
     fail 'actual installed startup lacks exact executed evidence'
 if grep -q -- '--- SKIP:' "$log"; then fail 'passing skip is forbidden'; fi
+if [ "$test_root" = TestInstalledServicePublication ]; then
+    [ "$(grep -Fc -- "--- PASS: $test_root/$ARDENTS_EXECUTION_START_CARRIER (" "$log" || true)" = 1 ] ||
+        fail 'installed publication lacks exact selected Carrier evidence'
+    printf '%s\n' 'execution-installed-publication=passed; two-endpoint-service-and-whole-host-qualification=not-established'
+    exit 0
+fi
 printf '%s\n' 'execution-installed=passed; service-and-whole-host-qualification=not-established'

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
@@ -36,6 +37,7 @@ type Config struct {
 // fake terminal workload. Its accepted result means both exact roles admitted
 // fresh authenticated channels; Close retains one joined terminal result.
 type Prefix struct {
+	self                      *Prefix
 	bootstrap                 bool
 	queues                    *framing.Budget
 	entry, interior           *framing.Session
@@ -51,6 +53,8 @@ type Prefix struct {
 	once                      sync.Once
 	sealOnce                  sync.Once
 	err                       error
+	cleanupErr                error
+	cleanupJoined             atomic.Bool
 	release                   func() error
 	config                    Config
 	lifetimeMu                sync.Mutex
@@ -137,6 +141,7 @@ func openPrefix(ctx context.Context, config Config, source *Prefix, bootstrapMod
 		return nil, err
 	}
 	p := &Prefix{bootstrap: bootstrapMode, ctx: childContext, caller: ctx, cancel: cancel, done: make(chan struct{}), closing: make(chan struct{}), release: config.Release, config: config, activity: make(chan struct{}, 1), source: source}
+	p.self = p
 	if source != nil {
 		p.sourceStopped = make(chan struct{})
 		p.stopSource = context.AfterFunc(source.ctx, func() { defer close(p.sourceStopped); cancel() })
@@ -276,8 +281,12 @@ func (p *Prefix) watch(check func() error, idleEvents <-chan time.Time) {
 	if idleEvents == nil {
 		idleEvents = idle.C
 	}
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
+	// A fresh observation may itself outlast the polling interval. Do not
+	// queue an overdue observation immediately behind it and monopolize the
+	// original observer needed by effect/post-I/O checks. Those checks remain
+	// independent; this timer provides periodic physical-lifetime supervision.
+	observation := time.NewTimer(100 * time.Millisecond)
+	defer observation.Stop()
 	for {
 		select {
 		case <-p.activity:
@@ -329,12 +338,13 @@ func (p *Prefix) watch(check func() error, idleEvents <-chan time.Time) {
 			}
 			p.cancel()
 			return
-		case <-ticker.C:
+		case <-observation.C:
 			if err := check(); err != nil {
 				p.entry.Retire(err)
 				p.cancel()
 				return
 			}
+			observation.Reset(100 * time.Millisecond)
 		}
 	}
 }
@@ -363,16 +373,26 @@ func (p *Prefix) closeOpening() error {
 	// only retire the parents after those original borrowers have joined.
 	p.openings.Wait()
 	joined := p.openingErr
+	physical := p.openingErr
 	// A Source retains its published dependents as well as setup reservations.
 	// Their original authority remains live until their terminal I/O joins.
 	for _, responder := range responders {
 		joined = errors.Join(joined, responder.Close())
+		cleanup, complete := responder.CleanupResult()
+		if !complete {
+			cleanup = errors.Join(cleanup, errors.New("original Responder physical cleanup did not join"))
+		}
+		physical = errors.Join(physical, cleanup)
 	}
 	if p.openingConn != nil {
-		joined = errors.Join(joined, p.openingConn.Close())
+		cleanup := p.openingConn.Close()
+		joined = errors.Join(joined, cleanup)
+		physical = errors.Join(physical, cleanup)
 	}
 	for _, borrow := range borrows {
-		joined = errors.Join(joined, borrow.join())
+		cleanup := borrow.join()
+		joined = errors.Join(joined, cleanup)
+		physical = errors.Join(physical, cleanup)
 	}
 	// Retire the inner reader before interrupting its lower framing owner, so
 	// our own lower closure cannot become an unexplained inner transport EOF.
@@ -396,24 +416,49 @@ func (p *Prefix) closeOpening() error {
 		if err := p.interior.Close(); err != nil {
 			joined = errors.Join(joined, fmt.Errorf("prefix Interior: %w", err))
 		}
+		physical = errors.Join(physical, p.interior.PhysicalFailure())
 	}
 	if p.entry != nil {
 		if err := p.entry.Close(); err != nil {
 			joined = errors.Join(joined, fmt.Errorf("prefix Entry: %w", err))
 		}
+		physical = errors.Join(physical, p.entry.PhysicalFailure())
 	}
 	if p.release != nil {
 		for i := len(p.refillReturns) - 1; i >= 0; i-- {
-			joined = errors.Join(joined, p.refillReturns[i]())
+			cleanup := p.refillReturns[i]()
+			joined = errors.Join(joined, cleanup)
+			physical = errors.Join(physical, cleanup)
 		}
-		joined = errors.Join(joined, p.release())
+		cleanup := p.release()
+		joined = errors.Join(joined, cleanup)
+		physical = errors.Join(physical, cleanup)
 	}
 	if p.source != nil {
 		p.source.lifetimeMu.Lock()
 		delete(p.source.responders, p)
 		p.source.lifetimeMu.Unlock()
 	}
+	p.cleanupErr = physical
+	p.cleanupJoined.Store(true)
 	return joined
+}
+
+// CleanupResult observes this exact Prefix only after original physical users,
+// callbacks, framing and resource returns have joined. Done alone is retired
+// readiness, not this receipt. Close retains its full work/authority outcome;
+// this separate result cannot turn cancellation into a physical cleanup failure
+// or supply accepting authority for another Prefix or operation.
+func (p *Prefix) CleanupResult() (error, bool) {
+	if p == nil || p.self != p || !p.cleanupJoined.Load() {
+		return nil, false
+	}
+	select {
+	case <-p.done:
+		return p.cleanupErr, true
+	default:
+		return nil, false
+	}
 }
 
 // Done closes when retained readiness retires. It is not a completed physical

@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/connection"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/publication"
@@ -22,13 +24,16 @@ type Config struct {
 	Source, Introduction *prefix.Prefix
 	// Responder transfers one prepared role-3 selection and reservation on
 	// successful New. Physical opening remains bound to the original Source.
-	Responder  prefix.Config
-	Duty       network.RetainedDuty
-	Deadline   time.Time
-	Exclusions []route.Member
+	Responder        prefix.Config
+	PrepareResponder func(context.Context) (prefix.Config, error)
+	PrepareSource    func(context.Context) (prefix.Config, error)
+	Duty             network.RetainedDuty
+	Deadline         time.Time
+	Exclusions       []route.Member
 }
 
 type Publisher struct {
+	self                          *Publisher
 	mu                            sync.Mutex
 	config                        Config
 	lifetime                      *instance.PublicationLifetime
@@ -50,23 +55,22 @@ type Publisher struct {
 	closed                        bool
 	closeOnce                     sync.Once
 	closeErr                      error
+	cleanupErr                    error
+	cleanupJoined                 atomic.Bool
 	failure                       error
 	watcherDone, schedulerDone    chan struct{}
 	wake                          chan struct{}
-	responderGate                 chan struct{}
-	responder                     *prefix.Prefix
-	responderAttempted            bool
-	responderFailure              error
-	responderCancel               context.CancelFunc
-	sourceBorrow, responderBorrow *prefix.Borrow
-	sourceUsersDone               chan struct{}
-	sourceUsersErr                error
+	responderScope                *prefix.ResponderScope
+	sourceScope                   *prefix.SourceScope
 	initialDeliveries             map[[32]byte]*initialDelivery
 	initialUsers                  sync.WaitGroup
+	initialWake                   chan struct{}
+	connections                   map[[32]byte]*connection.Stream
+	connectionUsers               sync.WaitGroup
 }
 
 func New(ctx context.Context, config Config) (*Publisher, error) {
-	if ctx == nil || config.Operation == nil || config.Binding == nil || config.Source == nil || config.Introduction == nil || config.Source == config.Introduction || config.Responder.Release == nil || config.Responder.Current == nil || config.Responder.Present == nil || config.Responder.Leg.EntryMember.RoleDomain != 3 || config.Deadline != config.Deadline.UTC().Truncate(time.Second) || !time.Now().Before(config.Deadline) {
+	if ctx == nil || config.Operation == nil || config.Binding == nil || config.Source == nil || config.Introduction == nil || config.Source == config.Introduction || config.Responder.Release == nil || config.Responder.Current == nil || config.Responder.Present == nil || config.PrepareResponder == nil || config.PrepareSource == nil || config.Responder.Leg.EntryMember.RoleDomain != 3 || config.Deadline != config.Deadline.UTC().Truncate(time.Second) || !time.Now().Before(config.Deadline) {
 		return nil, errors.New("live Publisher inputs absent")
 	}
 	if err := errors.Join(ctx.Err(), config.Operation.CheckPublisher()); err != nil {
@@ -86,8 +90,7 @@ func New(ctx context.Context, config Config) (*Publisher, error) {
 	}
 	credential, err := lifetime.Credential()
 	if err != nil {
-		lifetime.Close()
-		return nil, err
+		return nil, errors.Join(err, lifetime.Close())
 	}
 	if bound := credential.Delegation().NotAfter; bound.Before(config.Deadline) {
 		config.Deadline = bound
@@ -97,39 +100,43 @@ func New(ctx context.Context, config Config) (*Publisher, error) {
 	// original caller/Operation/Instance loss still interrupts both lifetimes.
 	physicalContext, cancelPhysical := context.WithDeadline(ctx, config.Deadline)
 	child, cancel := context.WithCancel(physicalContext)
-	p := &Publisher{config: config, lifetime: lifetime, credential: credential, administration: administration, history: history, ctx: child, cancel: cancel, physicalContext: physicalContext, cancelPhysical: cancelPhysical, lifetimeCallback: make(chan struct{}), operationCallback: make(chan struct{}), watcherDone: make(chan struct{}), schedulerDone: make(chan struct{}), wake: make(chan struct{}, 1), sourceUsersDone: make(chan struct{})}
+	p := &Publisher{config: config, lifetime: lifetime, credential: credential, administration: administration, history: history, ctx: child, cancel: cancel, physicalContext: physicalContext, cancelPhysical: cancelPhysical, lifetimeCallback: make(chan struct{}), operationCallback: make(chan struct{}), watcherDone: make(chan struct{}), schedulerDone: make(chan struct{}), wake: make(chan struct{}, 1)}
+	p.self = p
 	p.config.Exclusions = append([]route.Member(nil), config.Exclusions...)
-	p.responderGate = make(chan struct{}, 1)
-	p.responderGate <- struct{}{}
-	p.sourceBorrow, err = config.Source.BorrowLifetime(child, p.stop, p.joinSourceUsers)
+	p.sourceScope, err = prefix.NewSourceScope(config.Operation.Context(), config.Source, config.PrepareSource)
 	if err != nil {
 		cancel()
 		cancelPhysical()
-		lifetime.Close()
-		return nil, err
+		return nil, errors.Join(err, lifetime.Close())
 	}
-	err = config.Source.CommitPair(nil, func(checkOriginal func() error) error {
-		return errors.Join(ctx.Err(), child.Err(), lifetime.Context().Err(), checkOriginal(), config.Operation.CheckPublisher())
-	})
+	p.responderScope, err = prefix.NewResponderScope(physicalContext, p.sourceScope, config.Responder, config.PrepareResponder)
+	if err == nil {
+		err = p.sourceScope.Commit(func(checkOriginal func() error) error {
+			return errors.Join(ctx.Err(), child.Err(), lifetime.Context().Err(), checkOriginal(), config.Operation.CheckPublisher())
+		})
+	}
 	if err != nil {
+		responderErr := p.responderScope.Close()
+		sourceErr := p.sourceScope.Close()
+		responderCleanup, _ := p.responderScope.CleanupResult()
+		sourceCleanup, sourceJoined := p.sourceScope.CleanupResult()
+		if !sourceJoined {
+			sourceCleanup = errors.Join(sourceCleanup, errors.New("rejected Publisher Source scope did not join"))
+		}
 		cancel()
 		cancelPhysical()
-		lifetime.Close()
-		// No producer was started. Release the retained physical claim only
-		// after its empty original-user barrier is terminal, outside Prefix locks.
-		close(p.sourceUsersDone)
-		p.sourceBorrow.ReturnJoined()
-		return nil, err
+		lifetimeErr := lifetime.Close()
+		config.Operation.RetainCleanup(errors.Join(responderCleanup, sourceCleanup, lifetimeErr))
+		return nil, errors.Join(err, responderErr, sourceErr, lifetimeErr)
 	}
 	p.initialDeliveries = make(map[[32]byte]*initialDelivery)
+	p.initialWake = make(chan struct{}, 1)
+	p.connections = make(map[[32]byte]*connection.Stream)
 	p.stopLifetime = context.AfterFunc(lifetime.Context(), func() { defer close(p.lifetimeCallback); cancelPhysical() })
 	p.stopOperation = context.AfterFunc(config.Operation.Context(), func() { defer close(p.operationCallback); cancelPhysical() })
 	go func() {
 		defer close(p.watcherDone)
-		select {
-		case <-child.Done():
-		case <-config.Source.Done():
-		}
+		<-child.Done()
 		p.stop()
 		p.drain()
 	}()
@@ -138,16 +145,35 @@ func New(ctx context.Context, config Config) (*Publisher, error) {
 }
 
 func (p *Publisher) check(ctx context.Context) error {
-	if ctx == nil {
+	if p == nil || p.self != p || ctx == nil {
 		return errors.New("Publisher caller absent")
 	}
 	_, err := p.lifetime.Credential()
-	return errors.Join(ctx.Err(), p.ctx.Err(), p.administration.Check(p.config.Operation), err)
+	return errors.Join(ctx.Err(), p.ctx.Err(), p.administration.Check(p.config.Operation), err, p.sourceScope.Check())
+}
+
+func (p *Publisher) checkLocal(ctx context.Context) error {
+	if p == nil || p.self != p || ctx == nil {
+		return errors.New("original Publisher unavailable")
+	}
+	return errors.Join(ctx.Err(), p.ctx.Err(), p.administration.Check(p.config.Operation), p.lifetime.CheckLocal(ctx))
+}
+
+// CurrentSource lends only the exact existing physical generation for issuing
+// through this original Publisher. It cannot open, replace or close the scope.
+func (p *Publisher) CurrentSource(ctx context.Context) (*prefix.SourceHandle, error) {
+	if p == nil || p.self != p {
+		return nil, errors.New("Publisher Source absent")
+	}
+	if err := p.check(ctx); err != nil {
+		return nil, err
+	}
+	return p.sourceScope.CurrentHandle(ctx)
 }
 
 // Link is visible only under the current exact acknowledged accepting pair.
 func (p *Publisher) Link(ctx context.Context) (string, error) {
-	if p == nil {
+	if p == nil || p.self != p {
 		return "", errors.New("Publisher absent")
 	}
 	p.mu.Lock()
@@ -159,16 +185,22 @@ func (p *Publisher) Link(ctx context.Context) (string, error) {
 	if err := pair.check(p, ctx); err != nil {
 		return "", err
 	}
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.closed || p.current != pair || pair.firstACK.IsZero() {
-		return "", errors.New("Publisher accepting pair changed")
-	}
-	if err := p.check(ctx); err != nil {
-		return "", err
-	}
-	value := p.credential.Delegation()
-	return publication.TargetLink(value.Network, value.Target)
+	var link string
+	err := p.sourceScope.Commit(func(checkSource func() error) error {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+		if p.closed || p.current != pair || pair.firstACK.IsZero() {
+			return errors.New("Publisher accepting pair changed")
+		}
+		if err := errors.Join(checkSource(), p.checkLocal(ctx)); err != nil {
+			return err
+		}
+		value := p.credential.Delegation()
+		var err error
+		link, err = publication.TargetLink(value.Network, value.Target)
+		return err
+	})
+	return link, err
 }
 
 // Publish retries one exact pending flight or returns the original current
@@ -189,6 +221,9 @@ func (p *Publisher) stop() {
 			pair.registration.Stop()
 		}
 	}
+	for _, stream := range p.connections {
+		stream.Stop()
+	}
 	p.cancel()
 	p.mu.Unlock()
 }
@@ -196,6 +231,9 @@ func (p *Publisher) stop() {
 func (p *Publisher) Close() error {
 	if p == nil {
 		return nil
+	}
+	if p.self != p {
+		return errors.New("copied or detached Publisher")
 	}
 	p.stop()
 	p.drain()
@@ -208,45 +246,77 @@ func (p *Publisher) drain() {
 		<-p.schedulerDone
 		p.flights.Wait()
 		p.initialUsers.Wait()
+		p.joinConnections()
 		p.mu.Lock()
 		p.closeErr = p.failure
+		physical := p.cleanupErr
 		p.mu.Unlock()
 		// No producer remains. Physical registrations/prefixes join before any
 		// private recipient is erased or the Instance reservation is returned.
 		for _, pair := range []*registrationPair{p.pending, p.current, p.predecessor} {
 			if pair != nil {
 				p.closeErr = errors.Join(p.closeErr, pair.close())
+				physical = errors.Join(physical, pair.cleanupErr)
 			}
 		}
-		// The Prefix callback waits only for original children/private users,
-		// never for its own recursive Close. Both physical claims are returned
-		// after this barrier, before closing the prefixes themselves.
-		p.sourceUsersErr = p.closeErr
-		close(p.sourceUsersDone)
-		p.sourceBorrow.ReturnJoined()
-		p.responderBorrow.ReturnJoined()
-		p.closeErr = errors.Join(p.closeErr, p.responder.Close())
-		if p.responderCancel != nil {
-			p.responderCancel()
-		}
-		if p.config.Responder.Release != nil {
-			p.closeErr = errors.Join(p.closeErr, p.config.Responder.Release())
-		}
-		p.closeErr = errors.Join(p.closeErr, p.config.Introduction.Close(), p.config.Source.Close())
-		p.cancelPhysical()
-		p.lifetime.Close()
-		p.closeErr = errors.Join(p.closeErr, p.config.Binding.Close())
+		// TLS borrowers join before returning either original Prefix claim.
+		// Their Instance key remains retained through actual physical cleanup.
+		// Admission and registration users are already joined. Detach the
+		// external lifetime-loss callback before our own lifetime retirement:
+		// that intentional cancellation must not abort graceful Prefix cleanup.
+		// If external loss already started, join its original interruption.
 		if !p.stopLifetime() {
 			<-p.lifetimeCallback
 		}
+		lifetimeCleanup := p.lifetime.Close()
+		p.closeErr = errors.Join(p.closeErr, lifetimeCleanup)
+		physical = errors.Join(physical, lifetimeCleanup)
+		// Private/Connection users are joined. Retire exact Responder
+		// generations before their retained Source scope and Instance binding.
+		responderWork := p.responderScope.Close()
+		responderCleanup, responderJoined := p.responderScope.CleanupResult()
+		if !responderJoined {
+			responderCleanup = errors.Join(responderCleanup, errors.New("Publisher Responder scope did not join"))
+		}
+		p.closeErr = errors.Join(p.closeErr, responderWork)
+		physical = errors.Join(physical, responderCleanup)
+		p.closeErr = errors.Join(p.closeErr, p.config.Introduction.Close(), p.sourceScope.Close())
+		for _, original := range []*prefix.Prefix{p.config.Introduction} {
+			cleanup, complete := original.CleanupResult()
+			if !complete {
+				cleanup = errors.Join(cleanup, errors.New("original Publisher Prefix cleanup did not join"))
+			}
+			physical = errors.Join(physical, cleanup)
+		}
+		sourceCleanup, sourceJoined := p.sourceScope.CleanupResult()
+		if !sourceJoined {
+			sourceCleanup = errors.Join(sourceCleanup, errors.New("Publisher Source scope did not join"))
+		}
+		physical = errors.Join(physical, sourceCleanup)
+		p.cancelPhysical()
+		bindingCleanup := p.config.Binding.Close()
+		p.closeErr = errors.Join(p.closeErr, bindingCleanup)
+		physical = errors.Join(physical, bindingCleanup)
 		if !p.stopOperation() {
 			<-p.operationCallback
 		}
-		p.config.Operation.RetainCleanup(p.closeErr)
+		p.cleanupErr = physical
+		p.config.Operation.RetainCleanup(physical)
+		p.cleanupJoined.Store(true)
 	})
 }
 
-func (p *Publisher) joinSourceUsers() error {
-	<-p.sourceUsersDone
-	return p.sourceUsersErr
+// CleanupResult reports this original Publisher's physically joined borrowers,
+// Prefixes and private binding. Full Publication/refusal results remain with
+// Close; this receipt grants neither accepting readiness nor another Job.
+func (p *Publisher) CleanupResult() (error, bool) {
+	if p == nil || p.self != p || !p.cleanupJoined.Load() {
+		return nil, false
+	}
+	select {
+	case <-p.watcherDone:
+		return p.cleanupErr, true
+	default:
+		return nil, false
+	}
 }

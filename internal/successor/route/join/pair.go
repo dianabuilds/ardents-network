@@ -72,6 +72,7 @@ type joinSide struct {
 	hello       ardp.Hello
 	request     ardp.JoinRequest
 	check       func() error
+	interruptIO func() error
 	pair        *joinPair
 	limit, used uint64
 	credit      uint32
@@ -94,11 +95,13 @@ func NewPairing(record func(error)) *Pairing {
 // Pairing neither verifies nor releases an Admission Grant. Capacity remains
 // held by the caller until this method returns. The zero Pairing is usable
 // without physical-failure recording; it must not be copied after use.
-func (o *Pairing) Serve(ctx context.Context, conn net.Conn, hello ardp.Hello, limit uint64, check func() error, capacity *Capacity) (result error) {
+// interruptIO, when supplied, belongs to the exact admitted lower lane; it
+// interrupts that owner without resetting an already stopped frame deadline.
+func (o *Pairing) Serve(ctx context.Context, conn net.Conn, hello ardp.Hello, limit uint64, check func() error, capacity *Capacity, interruptIO func() error) (result error) {
 	if o == nil || ctx == nil || conn == nil || capacity == nil || capacity.returnMemory == nil || hello.Purpose != ardp.PurposeDataJoin || limit < role.AdmissionWireBytes+3*ardp.HeaderSize+4096+16384+1 {
 		return errors.New("route JOIN preparation absent")
 	}
-	s := &joinSide{ctx: ctx, conn: conn, hello: hello, check: check, limit: limit, used: role.AdmissionWireBytes, credit: framing.Window}
+	s := &joinSide{ctx: ctx, conn: conn, hello: hello, check: check, interruptIO: interruptIO, limit: limit, used: role.AdmissionWireBytes, credit: framing.Window}
 	interrupted := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() {
 		defer close(interrupted)
@@ -205,7 +208,17 @@ func (s *joinSide) current() error {
 }
 
 func (s *joinSide) interrupt() {
-	s.closeOnce.Do(func() { s.closeErr = errors.Join(s.conn.SetDeadline(time.Now()), s.conn.Close()) })
+	s.closeOnce.Do(func() { s.closeErr = errors.Join(s.interruptPhysical(), s.conn.Close()) })
+}
+
+// Receiving composition supplies the exact admitted lower lane's interruption.
+// Its owner distinguishes stopped framing from an actual deadline effect. Raw
+// transports retain their own deadline operation and every resulting failure.
+func (s *joinSide) interruptPhysical() error {
+	if s.interruptIO != nil {
+		return s.interruptIO()
+	}
+	return s.conn.SetDeadline(time.Now())
 }
 
 func (p *joinPair) stop(cause error) {
@@ -223,7 +236,7 @@ func (p *joinPair) stop(cause error) {
 		// the terminal result after the pair publishes physical completion.
 		for _, s := range sides {
 			if s != nil {
-				if err := s.conn.SetDeadline(time.Now()); err != nil {
+				if err := s.interruptPhysical(); err != nil {
 					p.owner.mu.Lock()
 					p.err = errors.Join(p.err, err)
 					p.interruptErr = errors.Join(p.interruptErr, err)

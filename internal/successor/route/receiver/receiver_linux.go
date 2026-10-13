@@ -589,7 +589,10 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 		})
 	}
 	if h.Purpose == ardp.PurposeDataJoin {
-		return r.joins.Serve(ctx, conn, h, grant.Allowance().Bytes(), check, capacity.join)
+		if outer == nil {
+			return errors.New("route JOIN original lane unavailable")
+		}
+		return r.joins.Serve(ctx, conn, h, grant.Allowance().Bytes(), check, capacity.join, outer.InterruptIO)
 	}
 	handlers := framing.Handlers{Open: func(ctx context.Context, l *framing.Lane, body []byte) error {
 		return r.forward(ctx, l, h, body, ardp.OrdinaryChild)

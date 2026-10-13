@@ -56,6 +56,7 @@ func (root *Root) Reserve(ctx context.Context, credential publication.Credential
 	}
 	generation := &Generation{root: root, credential: credential}
 	root.reserved, root.drained = generation, make(chan struct{})
+	root.commitState.Store(&reservationCommitState{generation: generation, failure: root.failure})
 	return generation, nil
 }
 
@@ -68,6 +69,30 @@ func (generation *Generation) Check(ctx context.Context) error {
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	return generation.check(ctx)
+}
+
+// CheckCommit is the local reservation gate following a fresh Check outside
+// consumer state locks. It performs no filesystem observation and cannot replace
+// Check, reserve another generation or authorize a stored Credential.
+func (generation *Generation) CheckCommit(ctx context.Context) error {
+	if generation == nil || generation.root == nil || ctx == nil {
+		return errors.New("publication generation unavailable")
+	}
+	root := generation.root
+	state := root.commitState.Load()
+	if root.commitSeal.Load() || state == nil || state.generation != generation || state.failure != nil {
+		var failure error
+		if state != nil {
+			failure = state.failure
+		}
+		return errors.Join(errors.New("publication generation unavailable"), failure, ctx.Err())
+	}
+	value := generation.credential.Delegation()
+	now := time.Now()
+	if value.Network != root.config.Network || value.Target != root.config.Target || now.Before(value.NotBefore) || !now.Before(value.NotAfter) {
+		return errors.New("publication generation expired or differs")
+	}
+	return ctx.Err()
 }
 
 func (generation *Generation) check(ctx context.Context) error {
@@ -108,7 +133,7 @@ func (generation *Generation) Advance(ctx context.Context) (result error) {
 	}
 	defer func() {
 		if result != nil {
-			root.failure = errors.Join(root.failure, result)
+			root.retainFailure(result)
 		}
 	}()
 	if err := root.retireRecord(); err != nil {
@@ -165,6 +190,13 @@ func (generation *Generation) Close() error {
 		return nil
 	}
 	root := generation.root
+	// Seal only this original reservation before waiting for storage I/O.
+	// A copied Generation cannot revoke the original pointer's local gate.
+	for state := root.commitState.Load(); state != nil && state.generation == generation; state = root.commitState.Load() {
+		if root.commitState.CompareAndSwap(state, &reservationCommitState{failure: state.failure}) {
+			break
+		}
+	}
 	root.mu.Lock()
 	defer root.mu.Unlock()
 	if !generation.closed {
@@ -175,7 +207,7 @@ func (generation *Generation) Close() error {
 				if err == nil {
 					err = root.retireRecord()
 				}
-				root.failure = errors.Join(root.failure, err)
+				root.retainFailure(err)
 			}
 			root.reserved = nil
 			close(root.drained)

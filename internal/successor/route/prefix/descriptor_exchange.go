@@ -53,6 +53,17 @@ func (p *Prefix) PublishDescriptor(caller context.Context, end time.Time, raw []
 	return err
 }
 
+func (h *SourceHandle) PublishDescriptor(ctx context.Context, end time.Time, raw []byte, excluded []route.Member) error {
+	if err := h.Check(); err != nil {
+		return err
+	}
+	err := h.generation.physical.PublishDescriptor(ctx, end, raw, excluded)
+	if err == nil {
+		err = h.Check()
+	}
+	return err
+}
+
 // LookupDescriptor verifies the independently selected Target through the
 // original Source and separate private History after the physical exchange joins.
 func (p *Prefix) LookupDescriptor(caller context.Context, end time.Time, target [32]byte, history *reachability.History, excluded []route.Member) (reachability.Descriptor, error) {
@@ -262,4 +273,16 @@ func finishDescriptorResponse(conn net.Conn, lower io.Reader, borrowed []byte, s
 		return nil, DescriptorRefusal{Status: status}
 	}
 	return payload, nil
+}
+
+// Every operation uses the SAME acquired physical owner, never a later one.
+func (h *SourceHandle) LookupDescriptor(ctx context.Context, end time.Time, target [32]byte, history *reachability.History, excluded []route.Member) (reachability.Descriptor, error) {
+	if err := h.Check(); err != nil {
+		return reachability.Descriptor{}, err
+	}
+	result, err := h.generation.physical.LookupDescriptor(ctx, end, target, history, excluded)
+	if err == nil {
+		err = h.Check()
+	}
+	return result, err
 }

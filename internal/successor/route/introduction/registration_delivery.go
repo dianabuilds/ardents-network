@@ -74,9 +74,21 @@ func (r *HolderRegistration) NextDelivery(ctx context.Context) (*Delivery, error
 		r.mu.Unlock()
 		if !available {
 			delivery.Close()
-			return nil, errors.New("registration delivery retired")
+			return nil, errors.Join(errors.New("registration delivery retired"), ctx.Err())
 		}
-		if err := r.CheckReceipt(r.receipt); err != nil {
+		err := r.CheckReceipt(r.receipt)
+		if err == nil {
+			// The observation can overlap caller cancellation, withdrawal or
+			// child expiry. Transfer only this same original child under the
+			// registration seal; no foreign observation or join runs here.
+			r.mu.Lock()
+			if r.stopped || r.withdrawing || r.deliveries[delivery.lane] != delivery {
+				err = errors.New("registration delivery retired")
+			}
+			err = errors.Join(err, deliveryContextCurrent(ctx), deliveryContextCurrent(delivery.ctx))
+			r.mu.Unlock()
+		}
+		if err != nil {
 			delivery.Close()
 			return nil, err
 		}

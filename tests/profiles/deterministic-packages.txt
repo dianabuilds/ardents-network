@@ -125,3 +125,4 @@ github.com/dianabuilds/ardents-network/internal/successor/connection
 github.com/dianabuilds/ardents-network/internal/successor/custody
 github.com/dianabuilds/ardents-network/internal/successor/processresource
 github.com/dianabuilds/ardents-network/internal/successor/node
+github.com/dianabuilds/ardents-network/internal/successor/connection/wire

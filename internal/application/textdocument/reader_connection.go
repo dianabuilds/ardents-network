@@ -21,7 +21,49 @@ func ReadWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, se
 	if ctx == nil || attachment == nil || service == nil {
 		return nil, errors.New("text reader Connection is unavailable")
 	}
-	owner := startReaderConnectionIO(ctx, attachment, service)
+	owner := startReaderConnectionIO(ctx, attachment)
+	if err := owner.attachService(service); err != nil {
+		return nil, errors.Join(err, service.Close(), owner.close())
+	}
+	return readWorkerConnection(owner, nil, nil)
+}
+
+// AwaitRetainedWorkerConnection keeps the original Reader awaiting its final
+// local RESULT acknowledgement while the caller joins its remaining owners.
+// Ready transfers bounded checked bytes, not permission or a joined result.
+// The caller releases only after that cleanup; cancellation still interrupts
+// the original reader and stream. The returned result includes final IPC join.
+func AwaitRetainedWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan connection.Stream, ready chan<- []byte, release <-chan struct{}) ([]byte, error) {
+	if ready == nil || release == nil {
+		return nil, errors.New("text reader completion retention is absent")
+	}
+	return awaitWorkerConnection(ctx, attachment, incoming, ready, release)
+}
+
+func awaitWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, incoming <-chan connection.Stream, ready chan<- []byte, release <-chan struct{}) ([]byte, error) {
+	if ctx == nil || attachment == nil || incoming == nil {
+		return nil, errors.New("text reader Connection is unavailable")
+	}
+	owner := startReaderConnectionIO(ctx, attachment)
+	defer owner.close()
+	select {
+	case <-ctx.Done():
+		return nil, errors.Join(ctx.Err(), owner.close())
+	case <-owner.frames:
+		return nil, errors.Join(errors.New("text reader worker ended or emitted output before Connection transfer"), owner.close())
+	case service, ok := <-incoming:
+		if !ok || service == nil {
+			return nil, errors.Join(errors.New("text reader stream transfer is absent"), owner.close())
+		}
+		if err := owner.attachService(service); err != nil {
+			return nil, errors.Join(err, service.Close(), owner.close())
+		}
+	}
+	return readWorkerConnection(owner, ready, release)
+}
+
+func readWorkerConnection(owner *readerConnectionIO, ready chan<- []byte, release <-chan struct{}) (body []byte, resultErr error) {
+	ctx, attachment := owner.parent, owner.attachment
 	state := readerConnectionState{io: owner, sendCredit: workerCredit, receiveCredit: workerCredit, resultCredit: workerCredit}
 	callbackDone := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() { defer close(callbackDone); _ = owner.close() })
@@ -82,6 +124,24 @@ func ReadWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, se
 				return nil, err
 			}
 			if complete {
+				if ready != nil && state.status == 0 {
+					// Local completion can retain a terminal-control tail. Keep
+					// that original stream and the worker's RESULT barrier while
+					// the caller holds these still-private pending bytes.
+					select {
+					case ready <- state.result:
+					case <-ctx.Done():
+						return nil, ctx.Err()
+					}
+					select {
+					case <-release:
+					case <-ctx.Done():
+						return nil, ctx.Err()
+					}
+					if err := owner.service.Close(); err != nil {
+						return nil, err
+					}
+				}
 				if err := writeWorkerFrame(attachment, workerFrame{kind: 5, id: 2, body: []byte{0}}); err != nil {
 					return nil, errors.New("text reader result terminal was interrupted")
 				}

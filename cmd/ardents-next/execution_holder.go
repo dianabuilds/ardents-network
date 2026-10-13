@@ -26,6 +26,7 @@ func runExecutionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		Generation [32]byte   `json:"generation"`
 		Principal  [32]byte   `json:"principal"`
 		Snapshot   string     `json:"snapshot,omitempty"`
+		TargetLink string     `json:"target_link,omitempty"`
 	}
 	if ctx == nil || admissionConfig(args, &config) != nil || config.Holder.Network == nil || !validAdmissionAuthority("", config.Holder.Network, config.Holder.Root) || config.Holder.Profile != "" {
 		return 2
@@ -44,6 +45,12 @@ func runExecutionHolder(ctx context.Context, args []string, input io.ReadCloser,
 		surface = execution.Administration
 	} else if config.Holder.Role != admission.AllocationUser {
 		return 2
+	}
+	if config.TargetLink != "" {
+		if !live || config.Snapshot != "" || config.Holder.Role != admission.AllocationUser || config.Holder.Route.Domain != 1 {
+			return 2
+		}
+		return runExecutionTextRead(ctx, config.Holder, config.Generation, config.Principal, config.TargetLink, out)
 	}
 	owner, err := executionruntime.New(execution.Config{ID: config.Generation, Grants: []execution.Grant{{Principal: config.Principal, Surface: surface}}})
 	if err != nil {

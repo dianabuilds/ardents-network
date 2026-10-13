@@ -6,12 +6,14 @@ import "errors"
 // or the bounded Control stock needed before other issuance. The application
 // supplies whether that issuance consumes a Control token and authorizes delivery.
 func (owner *Owner) RefillPlan(requested [][32]byte, class uint8, requiresAdmissionToken bool) ([][32]byte, error) {
-	if owner == nil {
-		return nil, errors.New("holder unavailable")
+	if err := owner.beginUse(); err != nil {
+		return nil, err
 	}
+	defer owner.users.Done()
+	observed, at, observedErr := owner.observe()
 	owner.mu.Lock()
 	defer owner.mu.Unlock()
-	profile, now, err := owner.current()
+	profile, now, err := owner.current(observed, at, observedErr)
 	permission := owner.permission
 	if err != nil || !permission.CurrentFor(profile, now) {
 		return nil, errors.New("text issuer stock owner unavailable")

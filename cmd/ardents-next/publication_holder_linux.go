@@ -21,17 +21,27 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 )
 
-func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan routePrefixPlan, authority admissionAuthority, holder *stock.Owner, operation *executionruntime.Operation) (_ publicationHandle, result error) {
+func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan routePrefixPlan, authority admissionAuthority, holder *stock.Owner, operation *executionruntime.Operation, shared ...*installedRouteOwners) (_ publicationHandle, result error) {
 	if ctx == nil || operation == nil || operation.CheckPublisher() != nil || authority.current == nil || holder == nil || routePlan.Domain != 4 || !independentRouteRoots(plan.InstanceRoot, plan.Root, routePlan.EntryRoot, routePlan.InteriorRoot, routePlan.SourceInteriorRoot, routePlan.ResponderInteriorRoot, routePlan.HostingRoot) {
 		return publicationHandle{}, errors.New("publisher composition unavailable")
 	}
-	installation, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: routePlan.EntryRoot, Current: authority.current, Exclusions: routePlan.Exclusions})
-	if err != nil {
-		return publicationHandle{}, err
+	if len(shared) > 1 || len(shared) == 1 && !shared[0].matches(routePlan) {
+		return publicationHandle{}, errors.New("Publisher shared Route owners do not match")
+	}
+	ownedParents := len(shared) == 0
+	var installation *selection.Installation
+	var budget *hosting.Budget
+	var err error
+	if ownedParents {
+		installation, err = selection.OpenInstallation(selection.InstallationConfig{EntryRoot: routePlan.EntryRoot, Current: authority.current, Exclusions: routePlan.Exclusions})
+		if err != nil {
+			return publicationHandle{}, err
+		}
+	} else {
+		installation, budget = shared[0].entry, shared[0].budget
 	}
 	var sourceSelection, introSelection, responderSelection *selection.Owner
 	var responderConfig prefix.Config
-	var budget *hosting.Budget
 	var source, intro *prefix.Prefix
 	var private *instance.Root
 	var history *durable.Root
@@ -40,20 +50,42 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 	var terminal error
 	closeAll := func() error {
 		once.Do(func() {
+			var physical error
 			if owner != nil {
 				terminal = owner.Close()
+				cleanup, complete := owner.CleanupResult()
+				if !complete {
+					cleanup = errors.Join(cleanup, errors.New("original composed Publisher cleanup did not join"))
+				}
+				physical = cleanup
 			} else {
 				terminal = errors.Join(intro.Close(), source.Close())
+				for _, original := range []*prefix.Prefix{intro, source} {
+					if original == nil {
+						continue
+					}
+					cleanup, complete := original.CleanupResult()
+					if !complete {
+						cleanup = errors.Join(cleanup, errors.New("original partial Publisher Prefix cleanup did not join"))
+					}
+					physical = errors.Join(physical, cleanup)
+				}
 				if responderConfig.Release != nil {
-					terminal = errors.Join(terminal, responderConfig.Release())
+					returned := responderConfig.Release()
+					terminal = errors.Join(terminal, returned)
+					physical = errors.Join(physical, returned)
 				}
 			}
-			terminal = errors.Join(terminal, private.Close(), history.Close(), responderSelection.Close(), introSelection.Close(), sourceSelection.Close())
-			if budget != nil {
-				terminal = errors.Join(terminal, budget.Close())
+			owned := errors.Join(private.Close(), history.Close(), responderSelection.Close(), introSelection.Close(), sourceSelection.Close())
+			if ownedParents {
+				if budget != nil {
+					owned = errors.Join(owned, budget.Close())
+				}
+				owned = errors.Join(owned, installation.Close())
 			}
-			terminal = errors.Join(terminal, installation.Close())
-			operation.RetainCleanup(terminal)
+			physical = errors.Join(physical, owned)
+			terminal = errors.Join(terminal, physical)
+			operation.RetainCleanup(physical)
 		})
 		return terminal
 	}
@@ -62,9 +94,11 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 			result = errors.Join(result, closeAll())
 		}
 	}()
-	budget, err = hosting.Open(routePlan.HostingRoot)
-	if err != nil {
-		return publicationHandle{}, err
+	if ownedParents {
+		budget, err = hosting.Open(routePlan.HostingRoot)
+		if err != nil {
+			return publicationHandle{}, err
+		}
 	}
 	sourceSelection, err = installation.Borrow(selection.RoleConfig{InteriorRoot: routePlan.SourceInteriorRoot, Domain: 1})
 	if err != nil {
@@ -78,19 +112,28 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 	if err != nil {
 		return publicationHandle{}, err
 	}
-	source, _, err = openPublicationPrefix(ctx, routePlan, sourceSelection, budget, authority, holder)
+	var funding *routeTokenFlow
+	var sourceLeg selection.Leg
+	source, sourceLeg, funding, err = openFundedSource(ctx, routePlan, sourceSelection, budget, authority, holder, operation.RetainCleanup)
 	if err != nil {
 		return publicationHandle{}, err
 	}
 	var leg selection.Leg
-	intro, leg, err = openPublicationPrefix(ctx, routePlan, introSelection, budget, authority, holder)
+	introConfig, err := preparePublicationPrefix(ctx, routePlan, introSelection, budget, authority, holder)
 	if err != nil {
 		return publicationHandle{}, err
+	}
+	introConfig.Present = funding.present
+	leg = introConfig.Leg
+	intro, err = prefix.Open(ctx, introConfig)
+	if err != nil {
+		return publicationHandle{}, errors.Join(err, introConfig.Release())
 	}
 	responderConfig, err = preparePublicationPrefix(ctx, routePlan, responderSelection, budget, authority, holder)
 	if err != nil {
 		return publicationHandle{}, err
 	}
+	responderConfig.Present = funding.present
 	view, err := authority.current()
 	if err != nil {
 		return publicationHandle{}, err
@@ -116,25 +159,46 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 	if err != nil {
 		return publicationHandle{}, err
 	}
-	owner, err = publicationruntime.New(ctx, publicationruntime.Config{Operation: operation, Binding: binding, Source: source, Introduction: intro, Responder: responderConfig, Duty: duty, Deadline: routePlan.Deadline, Exclusions: routePlan.Exclusions})
+	prepareResponder := func(caller context.Context) (prefix.Config, error) {
+		// Retained leg is immutable. Selecting again would return fresh
+		// observation timestamps and must not replace original role bindings.
+		config, err := prepareSelectedPublicationPrefix(caller, routePlan, responderConfig.Leg, budget, authority, holder)
+		if err == nil {
+			config.Present = funding.present
+		}
+		return config, err
+	}
+	owner, err = publicationruntime.New(ctx, publicationruntime.Config{Operation: operation, Binding: binding, Source: source, Introduction: intro, Responder: responderConfig, PrepareResponder: prepareResponder,
+		PrepareSource: func(caller context.Context) (prefix.Config, error) {
+			return prepareSelectedPublicationPrefix(caller, routePlan, sourceLeg, budget, authority, holder)
+		},
+		Duty: duty, Deadline: routePlan.Deadline, Exclusions: routePlan.Exclusions})
 	if err != nil {
 		return publicationHandle{}, err
 	}
-	return publicationHandle{owner: owner, close: closeAll}, nil
-}
-
-// Selection and shared Hosting histories remain composition-owned. Each real
-// prefix retains only its own finite reservation until its physical join.
-func openPublicationPrefix(ctx context.Context, plan routePrefixPlan, selected *selection.Owner, budget *hosting.Budget, authority admissionAuthority, holder *stock.Owner) (*prefix.Prefix, selection.Leg, error) {
-	config, err := preparePublicationPrefix(ctx, plan, selected, budget, authority, holder)
-	if err != nil {
-		return nil, selection.Leg{}, err
-	}
-	physical, err := prefix.Open(ctx, config)
-	if err != nil {
-		return nil, selection.Leg{}, errors.Join(err, config.Release())
-	}
-	return physical, config.Leg, nil
+	funding.mu.Lock()
+	funding.currentSource = owner.CurrentSource
+	funding.mu.Unlock()
+	return publicationHandle{owner: owner, close: closeAll, serve: func(caller context.Context) error {
+		contract, err := publisherTextContract(operation)
+		if err != nil {
+			return err
+		}
+		for {
+			stream, err := owner.NextStream(caller, contract)
+			if err != nil {
+				return err
+			}
+			transferred, err := operation.DeliverPublisherStream(caller, contract, stream)
+			if !transferred {
+				_ = stream.Close()
+				operation.RetainCleanup(stream.JoinedCleanup())
+			}
+			if err != nil {
+				return err
+			}
+		}
+	}}, nil
 }
 
 // Preparation retains a genuine independent role selection and finite shared
@@ -148,6 +212,19 @@ func preparePublicationPrefix(ctx context.Context, plan routePrefixPlan, selecte
 	}
 	leg, err := selected.Select()
 	if err != nil {
+		return prefix.Config{}, err
+	}
+	return prepareSelectedPublicationPrefix(ctx, plan, leg, budget, authority, holder)
+}
+
+// A new physical reservation for an already retained leg grants no selection
+// or accepting observation. Prefix reobserves the original genuine authority
+// before every opening/effect and at its final handoff.
+func prepareSelectedPublicationPrefix(ctx context.Context, plan routePrefixPlan, leg selection.Leg, budget *hosting.Budget, authority admissionAuthority, holder *stock.Owner) (prefix.Config, error) {
+	if ctx == nil || budget == nil || authority.current == nil || authority.presentation == nil || holder == nil {
+		return prefix.Config{}, errors.New("retained Publisher leg preparation unavailable")
+	}
+	if err := ctx.Err(); err != nil {
 		return prefix.Config{}, err
 	}
 	reservation, err := budget.Reserve(ctx, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: plan.Deadline, HoldUntil: plan.Deadline.Add(5 * time.Second)})

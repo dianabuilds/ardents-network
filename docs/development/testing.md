@@ -1,5 +1,82 @@
 # Testing
 
+Connection's `attachment_records_test.go` checks that joining one original
+record owner waits for both its actors and retains both errors; a sibling's
+completion cannot substitute. Incomplete stale/retiring actor fixtures refuse
+before transport I/O and retain their own refusal without changing replacement
+state. These controls supply no authenticated stream or successful recovery.
+`terminal_tail_test.go` renews actual control-ledger transitions after a settled
+Application result and refuses tail completion at every missing current proof.
+This pure rule test supplies neither authority nor a decoded Route witness.
+The native `after-request-terminal-loss` case holds only the delivery of actual
+authenticated request EOF to the original Publisher worker, interrupts the
+original Rendezvous and resumes the same Text request/response over replacement.
+Its reader/writer and control actors continue during the observation gate; it
+does not assert that a particular receipt or confirmation was lost.
+Route channel's active nested-deadline test delays the return of an actual lower
+Write refusal, then applies deadline, interruption and original-bound updates
+while its upper writer remains selected. No physical output or upper cleanup
+failure may be invented. Separate raw-connection tests preserve real owned
+deadline failures through ordinary, interruption, bound and control-bound uses.
+These mechanism fixtures provide no successful domain authority or Service.
+`deadline_effect_test.go` holds original initial/deadline/interruption/bound and
+control-bound physical calls. Local sealing must remain available; late return
+must not restore a longer bound. Close waits for the held effect and original
+writer and retains its actual late failure. These are framing mechanism controls,
+not Network/Service authentication or native platform qualification.
+The issuance draft tests consume an actual signed Network view, refuse changed
+profile/network/issuer/receiver/duty and expired or extended horizons, then
+withdraw actual fixture clock availability after drafting. Fresh Stock must
+refuse before reserving a batch or changing its finite allowance. The detached
+Prefix binding in that refusal case supplies no successful transport or Job.
+
+`publication/durable/generation_flush_linux_test.go` controls an original native
+directory flush on a genuinely reserved Credential. The local commit comparison
+must succeed while that write is held; original reservation/root retirement
+must deny it before the write is released, while Close still waits for the
+original writer. These Linux cases run with the durable package in
+`route-prefix-linux`; they establish neither an accepting Instance nor installed
+Connection readiness.
+
+Instance's `binding_observation_linux_test.go` reobserves a genuinely accepted
+native root and reserved Publication floor, refusing canceled callers, changed
+floor bytes and a replaced Instance inode. Its held original observer controls
+only retirement ordering: local denial precedes its join, and original private
+material remains until that join. These cases provide no qualified Publisher,
+accepting registration or successful Service Connection.
+`binding_linux_test.go` additionally checks concurrent consumption of one actual
+floor/private state and refusal of foreign Binding retirement even when private
+backing bytes and the lifetime are shared. These original-pointer and persistence
+controls grant no accepting stream or new qualified Job.
+Stock's `observation_retirement_linux_test.go` holds actual fixture observations
+before token consumption and before/after blind-signature verification, while
+real issuance and presentation journals remain in use. Close must deny immediately
+and join the original observation; a late result cannot return a token or deposit
+verified stock. Fixture authority facts here do not establish signed Network or
+successful Route admission.
+
+`TestFundedSourceBootstrapAndAdmittedIssuanceBothCarriers` exercises the production
+cold Source funding composition against actual signed Network, approved holder,
+blind issuer, receiving Admission and Hosting/Route owners. Exactly two finite
+bootstrap batches precede fresh admitted Source channels and an ordinary issuer
+exchange on TCP/TLS and QUIC; quota and original physical retirement remain
+checked. Its signing/permission infrastructure and cleanup observer are fixtures,
+not a qualified worker or installed Startup. Stock preparation tests separately
+check original coordination, copied/canceled handles, ordered multiplicity,
+foreign profile refusal and no allocation/presentation refunds.
+
+The separate `execution-installed-publication-check` selects
+`TestInstalledServicePublication` in the same tagged command binary with an
+independently selected Carrier and a separate fresh installation for each Carrier.
+Canonical installed commands initialize the non-exporting Instance and accept
+the fixture-approved public Credential. The actual dual-role participant obtains
+network-issued stock rather than test-preloaded batches, publishes a qualified
+snapshot through real REGISTER/Descriptor Store ACK and withdraws without
+replacing its original process. The exact profile, finite fixture allocations,
+independent pins and limits are owned by
+`tests/qualification/execution-installed/README.md`. This component supplies
+neither a two-Endpoint exchange nor final Connection acceptance.
+
 The execution-installed-check target selects the root-native
 TestInstalledExecutionStartup with text_worker_installed. Its driver requires
 a fresh dedicated Ubuntu24/systemd255 manager without Ardents accounts or fixed
@@ -9,10 +86,16 @@ root test binary never becomes Endpoint MainPID. Genuine signed Epoch/profile
 intake, two actual State-owned TLS servers, the original Root completion exchange,
 qualified permission preparation and Stock import precede an original-invocation
 permission-accepted diagnostic. The independently observed original process and
+its AAI3 listener must match the same PID/UID/GID after explicit provider-budget
+initialization through the installed command. The socket probe submits no
+Service request and supplies no Job or authenticated stream. The original process and
 kernel scope must physically join before fixture infrastructure closes. The
 driver pins its test binary and nine-resource inventory independently and refuses
 missing prerequisites. Signing, Source and clock infrastructure has one fixture
-controller. This selected scenario grants no private Service readiness, complete
+controller. An isolated manager and its outside driver share a cgroup namespace
+whose original PID1 is at `/init.scope`; a foreign outer-unit prefix is rejected
+by preflight before starting the four-minute test. This selected scenario grants
+no private Service readiness, complete
 recovery matrix, independent custody/time/family or whole-host qualification.
 
 `TestExecutionSignedInstalledResources` in the Linux command profile builds the
@@ -41,8 +124,12 @@ installed startup, Execution effects, Service readiness or privacy qualification
 
 `make execution-lifecycle-check` selects `TestInstalledExecutionLifecycle`
 under the shared fixed-worker profile driver, including its original
-selected-snapshot Publisher operation and sole Text protocol reader. That
-operation grants no Service Connection or readiness. Build its test binary
+selected-snapshot Publisher operation and sole Text protocol reader. Its
+ordinary Reader case checks the original invocation, immutable local context,
+one-use Connection claim and original-caller cancellation through physical
+descendant join. Setup-only invocations must refuse Reader authority. The
+driver requires the exact ordinary Reader subcase to have executed and passed;
+these local operations grant no Service Connection or readiness. Build its test binary
 with `text_worker_installed` from `internal/successor/execution/runtime` and
 install it at `/usr/lib/ardents/qualification/execution-runtime.test` in the
 dedicated manager. The driver requires independent binary/unit digests through
@@ -73,9 +160,160 @@ wait for removal proof and cannot authorize Stop by name. Its typed query and
 kernel-observation fixtures establish no installed authority or native join;
 genuine native lifecycle and Route profiles remain separate obligations.
 
+The `startup_manager_native` manager mechanism case
+`TestInstallationNativeFreshStartupProperties` requires actual fixed Endpoint
+and both activation objects on its selected manager. Under the actual service
+UID it reads both complete property rounds, then compares original signatures
+and stable required values with independent busctl observations. It attests
+read-only mechanism behavior, not a running installed Startup. Independent
+binary vectors exercise nested lengths, duplicate dictionaries, truncation,
+foreign sender, exact integer/byte projection and scalar-only reference refusal.
+Its separate registered `make startup-manager-check` requires the independently
+pinned root-owned systemd test binary and fresh qualification unit, a non-root
+original Endpoint MainPID, both fixed activation objects and the dedicated
+Ubuntu24/systemd255/cgroup-v2 manager. It does not add manager prerequisites to
+the separate filesystem-only `installation_native` profile.
+
+`make connection-nonce-check` selects `TestInstalledConnectionNonceBothCarriers`
+from the pinned tagged command binary. The genuine accepted capsule's CLOSE is
+held while the original Rendezvous is physically stopped, then released.
+Both roles must refuse authentication, retaining the original Jobs and Source
+failure. After Publisher physical retirement, read-only inspection requires the
+accepted nonce still retained. Original unused workers cancel/join without a
+successful Reader result. An exterior control deleting accepted reservations on
+release must fail the nonce oracle. Both Carrier PASS records are mandatory;
+its result, join and tls subcases on each Carrier are all mandatory. The TLS case holds
+the original client's first TLS record read after ClientHello output, then stops
+the same actual Rendezvous. Thus JOIN completed but neither authenticated
+Attachment is returned; certificates, keys and signers remain genuine.
+The RESULT case revokes the original Reader while the accepted capsule's CLOSE
+writer is held after the Publisher's decoded successful RESULT. No authenticated
+Attachment is returned. Publisher's independent Job remains live; its unused
+authentication wait is canceled separately. Original Publisher and worker
+cleanup receipts must prove join and retain any physical interruption in Close.
+Receiving Close likewise retains its original error on repeated calls. Only
+the deliberately induced cancellation, closed connection, EOF or exact write
+reset causes are expected; unrelated joined error leaves still fail the test.
+This is a component scenario, not acceptance of two installed Endpoints.
+
+`make connection-withdrawal-check` selects `TestInstalledConnectionWithdrawalBothCarriers`
+from the pinned tagged command binary. Genuine initial Publisher bytes provide
+a positive oracle before actual Publication Withdraw. Original Publication
+physical borrowers must join while both original Jobs remain live; subsequent
+Publisher bytes and stream acquisition refuse. Reader must refuse without
+authenticated EOF, new bytes or caller-buffer mutation, retaining its logical
+failure and independently clean physical join. Root and both Carrier PASS
+records are required under the unchanged driver bound. This component does not
+qualify remote instantaneous revocation of already delivered bytes or two hosts.
+
+`make connection-refresh-check` selects `TestInstalledConnectionRefreshBothCarriers`
+from the independently pinned tagged command binary. After genuine initial Service
+authentication, the original Publisher refreshes its accepting Publication.
+Independent Store lookup and verification require an accepted Descriptor with the
+same Publication digest, profile and Target, revision advanced by one and a new
+slot and recipient key. The original Connection then loses its actual Rendezvous
+after response bytes arrive and recovers the same request with its original
+workers and previously issued finite rights. Exact snapshot bytes, clean terminal
+outcomes and original physical joins remain required. The separate profile keeps
+the driver's 1500-poll bound and requires the root and both Carrier PASS records;
+its accepted and pending-ack subcases on each Carrier are all required. The
+pending-ack case holds the actual Store response after its signed record is
+written. A genuine Route capsule addressed to the new recipient must return
+SubmissionRefusal status1 while both original Streams remain live; only releasing
+the actual ACK permits refresh and subsequent recovery. A causal exterior
+control admitting the pending pair before ACK must fail this refusal oracle.
+This does not establish two installed Endpoint acceptance.
+
+`make connection-stream-check` selects `TestInstalledConnectionStreamBothCarriers`
+from the independently pinned tagged command test binary at
+`/usr/lib/ardents/qualification/execution-command.test`. Both Carrier cases
+retain the original qualified Reader and snapshot Publisher, one authenticated
+logical Stream and one Application request. A test observation pauses only
+after an actual Stream Read returns the first response bytes, outside owner
+barriers. The original receiving Rendezvous is then physically stopped and
+reopened with the same duty, durable roots and owners. The response must match
+the original snapshot exactly; Source, operation and workers join before the
+private result is consumed. The driver requires the exact root, Carrier and
+before-request-loss, before-request-terminal-commit-loss,
+responder-parent-loss, source-parent-loss,
+publisher-source-parent-loss, response-loss, after-request-terminal-loss, caller-observation-loss,
+close-observation-loss and both Publisher observation-loss variants' PASS
+records under its unchanged bound.
+The request-Terminal commit case holds the original Publisher's direct
+Responder authority observation after actual TLS body I/O, before that read
+returns to the canonical decoder or commits the Terminal. The fixed Text
+request sends one Data record then Terminal; only the second complete body is
+selected. Architecture checks bind the scheduler's body-read and post-read
+source sites so a source move cannot silently change the fault boundary.
+The same real Rendezvous is joined and reopened before the observation resumes.
+Original worker/result checks still require one exact snapshot and full
+Terminal completion. Any original receiving peer-retirement failure remains
+the same repeated Close result; unknown or mixed failure leaves still fail.
+This supplies no record, synthetic EOF, authority or accepting result.
+The former loses the original Attachment before the Text request; the latter
+loses it after genuine response bytes have reached the original Reader.
+The Responder-parent case stops both real role-3 Interior candidate receivers
+after initial Service authentication and reopens the same duties with their
+original receiving roots and owners. The selected original physical parent
+must join before a fresh generation serves the same logical Text request.
+This scenario independently signs and issues a finite second set of four
+role-3 Forward tokens before startup, within the unchanged Publisher allocation
+cap; no grant or token is replenished after failure.
+The Source-parent case adds two genuinely signed role-1 Interior members and
+real receivers before startup. Original exclusion sets leave two eligible
+Interior candidates for each role: Publisher and Reader keep disjoint pairs
+while both still select two Entry candidates normally. Stopping both Reader
+Interior receivers therefore loses its actual selected Source without retiring
+Publisher. A finite second Source-token set is signed and issued beforehand;
+the same logical request must finish after old physical join and new opening.
+The Publisher Source-parent variant stops its separate pair instead. Its original
+Publication and logical Connection remain retained while the old Source and its
+dependent Responder join. Fresh generations use the same selected legs and
+finite Stock issued before startup, including the additional Source and Responder
+tokens; no loss permits issuance allowance enlargement or a replacement Job.
+The separate caller-observation case first reads genuine authenticated bytes,
+then delays return of an actual successful Network observation for that
+Reader's Application Read. Test-only stack observation selects the synchronous
+Read rather than an unrelated background actor; it supplies no authority or
+result. While that observation is withheld, an ordinary empty Write must still
+enter the same Stream's original local gate without emitting bytes. Canceling
+the original Reader must cancel the logical Stream
+without waiting for that observation. Its later return must expose no new
+bytes or successful outcome; concurrent and repeated Close retain the same
+joined cancellation result. This direct Stream refusal case does not claim a
+completed Text Job or a complete authority-loss matrix.
+The Close variant retires only the Connection while the same original Reader
+Job remains live. A late Read must still expose no bytes; cleanup cannot revoke
+or complete that Job. The fixture subsequently cancels the unused worker's own
+original caller and requires its genuine physical join.
+Publisher variants delay its own original Source's genuine observation instead,
+using the same local-gate and late-byte oracle. Caller loss and Connection Close
+remain separate; its original qualified Publisher worker and private Publication
+resources must physically join without a manufactured Application completion.
+An interrupted record actor may return after logical cancellation but before
+the lifetime watcher obtains Stream state. That later return cannot replace the
+original cancellation cause. The exact actor results and actual lower physical
+cleanup failures remain retained independently, including late write failures.
+This component does not
+establish the complete replay/Terminal/authority matrix or two independently
+installed Endpoint managers.
+
 `make execution-route-check` selects `TestInstalledExecutionRouteBothCarriers`
 from the tagged `cmd/ardents-next` test binary installed at
-`/usr/lib/ardents/qualification/execution-command.test`. The same independently
+`/usr/lib/ardents/qualification/execution-command.test`
+and requires `service-authentication` on each selected Carrier. That component
+uses the genuinely qualified original snapshot Publisher and ordinary Reader,
+command Publication composition, synced Descriptor Store, independently
+verified signed destination, finite Stock, original Source/Responder JOIN and
+coalesced exact-Instance Service TLS authentication. It opens no Application
+stream before genuine recovery composition. After authentication it explicitly
+cancels the unused Reader, requires retained cancellation and refuses successful
+Text completion; independent physical cleanup must still join without error.
+Its single installed manager does
+not establish two separately installed Endpoints, authenticated replacement,
+text-byte exchange, Terminal completion or complete Service acceptance.
+
+The same independently
 pinned unit/binary inputs and original non-root Endpoint MainPID prerequisites
 apply, with private temporary roots and loopback TCP/UDP. Publication ACK
 subcases on both Carriers also invoke the production holder
@@ -411,11 +649,14 @@ offline to isolate receiving restrictions; network stock acquisition remains
 the separate permission-only holder/compiled issuer scenario above.
 
 - `make route-check` runs only the new Network, Admission, Hosting,
-  Publication public-proof, Reachability, Enrollment, Release, Installation and Route
+  Publication, Connection, Reachability, Enrollment, Release, Installation and Route
   plus Execution local rules, installed preparation and physical mechanisms
   owners plus `ardents-next`, with Linux race execution, both selected real
   Carriers, compiled prefix/receiver processes and causal lifecycle cases.
   Focused architecture checks enforce isolation and registered profiles.
+  Connection includes its genuine initial recipient binding and isolated v3
+  transcript/send/recovery/Terminal mechanisms. Their inclusion does not supply
+  missing Service TLS, authenticated stream or installed acceptance.
   Missing Linux, counters, loopback, race compiler or durable filesystem
   prerequisites invalidate the profile. Repository quick/full gates are
   separate and remain required before integration. The bounded behavior and
@@ -635,6 +876,16 @@ are a selected product path. A newly reported symbol fails the gate until its
 owner either removes it or reviews it with a concrete retirement condition.
 An absent listed symbol also fails the gate, so the registry cannot silently
 accumulate stale exemptions. `make check` includes this audit.
+
+Service Connection's portable implementation has exact Windows allowances only
+for functions reached by genuine Linux Reader, Publisher and installed command
+composition. Linux production remains fully checked against its own inventory;
+both platforms' test analysis must report no unreachable functions. Independent
+Instance proof vectors exercise the same wire verifier used by both initial
+response owners, and active streams consume the stream-only record parser.
+Physical Source fixture constructors and scalar manager-vector wrappers remain
+in test scope. Reader transfer fixtures invoke the maintained retained-completion
+contract with immediate release; they provide no Execution or Service authority.
 
 The new Route prefix has a real Linux command caller. Its TCP/TLS and QUIC
 mechanisms and common Carrier behavior tests are portable; actual adapter

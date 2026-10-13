@@ -59,11 +59,37 @@ func (p *Prefix) ResolveRendezvous(node [32]byte, generation uint64, excluded []
 	if err != nil {
 		return network.RetainedDuty{}, time.Time{}, err
 	}
-	issuer, err := p.config.Leg.IssuerDuty(view)
+	return resolveRendezvous(p.config.Leg, p.config.Deadline, view, node, generation, excluded)
+}
+
+// ResolveRendezvous verifies a candidate against the original logical Source
+// authority without granting physical readiness during a transport gap.
+func (scope *SourceScope) ResolveRendezvous(node [32]byte, generation uint64, excluded []route.Member) (network.RetainedDuty, time.Time, error) {
+	view, err := scope.observeOriginal()
 	if err != nil {
 		return network.RetainedDuty{}, time.Time{}, err
 	}
-	resolution, err := p.config.Leg.ResolutionDuty(view, excluded)
+	return resolveRendezvous(scope.config.Leg, scope.config.Deadline, view, node, generation, excluded)
+}
+
+func (scope *SourceScope) CheckRendezvous(incoming network.RetainedDuty, excluded []route.Member) error {
+	view, err := scope.observeOriginal()
+	if err != nil {
+		return err
+	}
+	duty, err := scope.config.Leg.RendezvousDuty(view, incoming.NodeID, incoming.RecordGeneration, excluded)
+	if err != nil || duty != incoming {
+		return errors.Join(errors.New("original Source exact recipient unavailable"), err)
+	}
+	return nil
+}
+
+func resolveRendezvous(leg selection.Leg, deadline time.Time, view network.RuntimeView, node [32]byte, generation uint64, excluded []route.Member) (network.RetainedDuty, time.Time, error) {
+	issuer, err := leg.IssuerDuty(view)
+	if err != nil {
+		return network.RetainedDuty{}, time.Time{}, err
+	}
+	resolution, err := leg.ResolutionDuty(view, excluded)
 	if err != nil {
 		return network.RetainedDuty{}, time.Time{}, err
 	}
@@ -71,11 +97,11 @@ func (p *Prefix) ResolveRendezvous(node [32]byte, generation uint64, excluded []
 	for _, duty := range []network.RetainedDuty{issuer, resolution} {
 		known = append(known, route.Member{NodeID: duty.NodeID, PublicKey: duty.PublicKey, FamilyID: duty.FamilyID})
 	}
-	duty, err := p.config.Leg.RendezvousDuty(view, node, generation, known)
+	duty, err := leg.RendezvousDuty(view, node, generation, known)
 	if err != nil {
 		return network.RetainedDuty{}, time.Time{}, err
 	}
-	end := minDeadline(p.config.Deadline, p.config.Leg.Profile.NotAfter)
+	end := minDeadline(deadline, leg.Profile.NotAfter)
 	end = minDeadline(end, duty.Epoch.ValidUntil)
 	end = minDeadline(end, duty.RecordValidUntil)
 	return duty, end, nil

@@ -7,7 +7,35 @@ import (
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
+	"time"
+
+	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
+
+func TestPrefixJoinSetupCleanupSeparatesActualLowerWorkRefusal(t *testing.T) {
+	physical := newLifecycleConn(false)
+	work := errors.New("original lower closing work refused")
+	parent, lane, err := framing.PrepareJoined(t.Context(), physical, time.Now().Add(5*time.Second), 1<<20, func() error { return work }, framing.NewBudget(1<<20))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = parent.Close() })
+	terminal := &JoinChannel{ctx: t.Context(), conn: transport.Retain(lane), parent: lane}
+	if cleanup, joined := terminal.SetupCleanupResult(); cleanup != nil || joined {
+		t.Fatal("unclosed setup supplied a physical cleanup receipt", cleanup, joined)
+	}
+	err = terminal.CloseSetup()
+	if !errors.Is(err, work) {
+		t.Fatal("original lower work failure lost", err)
+	}
+	if cleanup, joined := terminal.SetupCleanupResult(); !joined || cleanup != nil || len(physical.output) != 0 || parent.PhysicalFailure() != nil {
+		t.Fatal("unemitted work refusal became physical failure", cleanup, joined, len(physical.output), parent.PhysicalFailure())
+	}
+	if repeated := terminal.CloseSetup(); repeated != err {
+		t.Fatal("repeated setup retirement changed original result", err, repeated)
+	}
+}
 
 // This failure-only physical setup supplies no authority, admission or JOIN
 // RESULT. The real AfterFunc is stopped before cancellation; its callback must
@@ -65,6 +93,9 @@ func TestPrefixJoinRunningSetupCallbackJoinsBeforePhysicalReturn(t *testing.T) {
 		if returns.Load() != 0 {
 			t.Fatal("setup returned capacity before its original callback joined")
 		}
+		if cleanup, joined := terminal.SetupCleanupResult(); cleanup != nil || joined {
+			t.Fatal("held original callback supplied physical cleanup", cleanup, joined)
+		}
 		select {
 		case err := <-retired:
 			t.Fatal("physical cleanup completed before callback", err)
@@ -75,6 +106,9 @@ func TestPrefixJoinRunningSetupCallbackJoinsBeforePhysicalReturn(t *testing.T) {
 		unblock()
 		if err := <-retired; !errors.Is(err, cause) || returns.Load() != 1 {
 			t.Fatal("joined callback lost physical failure or return", err, returns.Load())
+		}
+		if cleanup, joined := terminal.SetupCleanupResult(); !joined || !errors.Is(cleanup, cause) {
+			t.Fatal("joined setup lost original physical failure", cleanup, joined)
 		}
 		if !terminal.JoinSetupInterruption() {
 			t.Fatal("repeated join forgot that the original callback ran")

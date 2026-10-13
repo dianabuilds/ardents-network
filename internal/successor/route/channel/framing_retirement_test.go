@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,8 +22,16 @@ import (
 // This is actual nested TLS over ARDP lanes, solely a framing oracle. No
 // HELLO/token/Grant or successful domain authority is supplied by the fixture.
 func nestedRetirementTLS(t *testing.T) (*Lane, *Lane, *tls.Conn) {
+	al, bl, secured, _ := nestedRetirementTLSPhysical(t, nil)
+	return al, bl, secured
+}
+
+func nestedRetirementTLSPhysical(t *testing.T, decorate func(net.Conn) net.Conn) (*Lane, *Lane, *tls.Conn, *tls.Conn) {
 	t.Helper()
 	local, peer := net.Pipe()
+	if decorate != nil {
+		local = decorate(local)
+	}
 	end := time.Now().Add(10 * time.Second)
 	a := New(t.Context(), local, end, 32<<20, nil, false, &Budget{maximum: 64 << 20}, nil)
 	b := New(t.Context(), peer, end, 32<<20, nil, false, &Budget{maximum: 64 << 20}, nil)
@@ -39,8 +48,8 @@ func nestedRetirementTLS(t *testing.T) (*Lane, *Lane, *tls.Conn) {
 		t.Fatal(err)
 	}
 	accepted := make(chan error, 1)
+	server := tls.Server(bl, transport.RoleServerTLS(tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key}))
 	go func() {
-		server := tls.Server(bl, transport.RoleServerTLS(tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key}))
 		err := server.SetDeadline(end)
 		if err == nil {
 			err = server.HandshakeContext(t.Context())
@@ -66,7 +75,7 @@ func nestedRetirementTLS(t *testing.T) (*Lane, *Lane, *tls.Conn) {
 	if err := lifecycleResult(t, accepted); err != nil {
 		t.Fatal(err)
 	}
-	return al, bl, secured
+	return al, bl, secured, server
 }
 
 func waitFramingState(t *testing.T, l *Lane, want func() bool) {
@@ -210,6 +219,91 @@ type physicalDeadlineFailureConn struct {
 	failure error
 }
 
+// Delay the call and return of an actual lower Write. This supplies no result:
+// the retired lower framing owner must refuse before any physical frame.
+type heldLowerWriteReturn struct {
+	net.Conn
+	entered, invoke, returned, release chan struct{}
+}
+
+func (conn *heldLowerWriteReturn) NetConn() net.Conn { return conn.Conn }
+
+func (conn *heldLowerWriteReturn) Write(body []byte) (int, error) {
+	close(conn.entered)
+	<-conn.invoke
+	n, err := conn.Conn.Write(body)
+	close(conn.returned)
+	<-conn.release
+	return n, err
+}
+
+func TestActiveNestedDeadlineRefusalIsNotUpperPhysicalFailure(t *testing.T) {
+	for _, operation := range []string{"deadline", "interrupt", "bound"} {
+		t.Run(operation, func(t *testing.T) {
+			physical := newLifecycleConn(false)
+			end := time.Now().Add(5 * time.Second)
+			lowerOwner := Prepare(t.Context(), physical, end, 32<<20, nil, false, &Budget{maximum: 64 << 20}, Handlers{})
+			lower := lifecycleLane(t, lowerOwner, 1)
+			conn := &heldLowerWriteReturn{Conn: transport.Retain(lower), entered: make(chan struct{}), invoke: make(chan struct{}), returned: make(chan struct{}), release: make(chan struct{})}
+			upper := Prepare(t.Context(), conn, end, 32<<20, nil, false, &Budget{maximum: 64 << 20}, Handlers{})
+			child := lifecycleLane(t, upper, 1)
+			var invokeOnce, releaseOnce sync.Once
+			invoke := func() { invokeOnce.Do(func() { close(conn.invoke) }) }
+			release := func() { releaseOnce.Do(func() { close(conn.release) }) }
+			written := make(chan error, 1)
+			go func() { _, err := child.Write([]byte("original nested payload")); written <- err }()
+			joined := false
+			t.Cleanup(func() {
+				invoke()
+				release()
+				if !joined {
+					<-written
+				}
+				_ = upper.Close()
+				_ = lowerOwner.Close()
+			})
+			select {
+			case <-conn.entered:
+			case <-time.After(time.Second):
+				t.Fatal("upper writer did not retain its original lower call")
+			}
+			lowerOwner.Retire(context.Canceled)
+			invoke()
+			select {
+			case <-conn.returned:
+			case <-time.After(time.Second):
+				t.Fatal("retired lower writer did not refuse")
+			}
+			deadline := func() error { return child.SetWriteDeadline(end) }
+			if operation == "interrupt" {
+				deadline = child.InterruptIO
+			} else if operation == "bound" {
+				deadline = func() error { return child.Bound(end.Add(-time.Millisecond)) }
+			}
+			if err := deadline(); !errors.Is(err, net.ErrClosed) {
+				t.Fatal("nested deadline lost the original lower refusal", err)
+			}
+			upper.mu.Lock()
+			invented := errors.Join(child.physicalErr, upper.writeErr)
+			upper.mu.Unlock()
+			if invented != nil {
+				t.Error("unemitted lower deadline refusal became upper physical failure", invented)
+			}
+			release()
+			if err := lifecycleResult(t, written); err == nil {
+				t.Fatal("actual lower refusal became successful output")
+			}
+			joined = true
+			if err := upper.Close(); err == nil {
+				t.Fatal("failed original nested work became success")
+			}
+			if upper.PhysicalFailure() != nil || lowerOwner.PhysicalFailure() != nil || len(physical.output) != 0 {
+				t.Fatal("no-frame refusal fabricated a physical failure or output", upper.PhysicalFailure(), lowerOwner.PhysicalFailure())
+			}
+		})
+	}
+}
+
 func (c *physicalDeadlineFailureConn) SetWriteDeadline(end time.Time) error {
 	c.mu.Lock()
 	err := c.failure
@@ -221,7 +315,7 @@ func (c *physicalDeadlineFailureConn) SetWriteDeadline(end time.Time) error {
 }
 
 func TestLowerPhysicalDeadlineFailureRemainsWithItsOwner(t *testing.T) {
-	for _, operation := range []string{"deadline", "interrupt"} {
+	for _, operation := range []string{"deadline", "interrupt", "bound", "control-bound"} {
 		t.Run(operation, func(t *testing.T) {
 			physical := &physicalDeadlineFailureConn{lifecycleConn: newLifecycleConn(true)}
 			physical.writeIgnoresClose = true
@@ -243,6 +337,10 @@ func TestLowerPhysicalDeadlineFailureRemainsWithItsOwner(t *testing.T) {
 			interrupt := func() error { return l.SetWriteDeadline(end) }
 			if operation == "interrupt" {
 				interrupt = l.InterruptIO
+			} else if operation == "bound" {
+				interrupt = func() error { return l.Bound(end.Add(-time.Millisecond)) }
+			} else if operation == "control-bound" {
+				interrupt = func() error { return l.boundControlOutput(end.Add(-time.Millisecond)) }
 			}
 			if err := interrupt(); err != failure {
 				t.Fatal("physical deadline refusal changed", err)
@@ -324,5 +422,74 @@ func TestFramingRetirementWitnessVetoesActualProgressAndFailures(t *testing.T) {
 	before.local = true
 	if cleanUnemittedRetirement(ardp.KindCredit, before, clean) || cleanUnemittedRetirement(ardp.KindClose, before, clean) {
 		t.Fatal("preexisting local close manufactured peer retirement")
+	}
+}
+
+// Real pipe/encoded CLOSE output isolates nested physical provenance. It
+// supplies no successful domain authority or TLS/Service acceptance.
+func TestNestedLaneCloseSeparatesPreOutputRefusalFromActualWriteFailure(t *testing.T) {
+	for _, failOutput := range []bool{false, true} {
+		t.Run(map[bool]string{false: "authority-refusal", true: "late-physical"}[failOutput], func(t *testing.T) {
+			local, peer := net.Pipe()
+			defer peer.Close()
+			var conn net.Conn = local
+			refusal := context.Canceled
+			late := errors.New("original lower CLOSE writer failed late")
+			var physical *nestedControlCloseConn
+			check := func() error { return refusal }
+			if failOutput {
+				physical = &nestedControlCloseConn{Conn: local, emitted: make(chan struct{}), release: make(chan struct{}), interrupted: make(chan struct{}), late: late}
+				physical.armed.Store(true)
+				conn, check = physical, nil
+			}
+			end := time.Now().Add(5 * time.Second)
+			lowerOwner := New(t.Context(), conn, end, 1<<20, check, false, &Budget{maximum: 4 << 20}, nil)
+			defer lowerOwner.Close()
+			lower := lifecycleLane(t, lowerOwner, 1)
+			lowerOwner.mu.Lock()
+			lowerOwner.dedicated = true
+			lowerOwner.mu.Unlock()
+			upper := Prepare(t.Context(), transport.Retain(lower), end, 1<<20, nil, false, &Budget{maximum: 4 << 20}, Handlers{})
+			defer upper.Close()
+			var releaseOnce sync.Once
+			releasePhysical := func() {
+				if physical != nil {
+					releaseOnce.Do(func() { close(physical.release) })
+				}
+			}
+			// Even a failed prefix-arrival assertion joins the actual writer.
+			defer releasePhysical()
+			if _, complete := lower.CleanupResult(); complete {
+				t.Fatal("unjoined lower lane supplied a physical receipt")
+			}
+			if failOutput {
+				decoded := make(chan error, 1)
+				go func() { _, err := ardp.ReadFrame(peer); decoded <- err }()
+				closed := make(chan error, 1)
+				go func() { closed <- lower.Close() }()
+				select {
+				case <-physical.emitted:
+				case <-time.After(time.Second):
+					t.Fatal("original lower CLOSE did not emit its physical prefix")
+				}
+				releasePhysical()
+				if err := <-closed; !errors.Is(err, late) {
+					t.Fatal("lower lane lost its actual write failure", err)
+				}
+				<-decoded
+			}
+			result := upper.Close()
+			cleanup, complete := lower.CleanupResult()
+			if !complete || result == nil {
+				t.Fatal("nested close did not join and retain the full original result", result, complete)
+			}
+			if failOutput {
+				if !errors.Is(cleanup, late) || !errors.Is(upper.PhysicalFailure(), late) {
+					t.Fatal("nested physical write failure was concealed", cleanup, upper.PhysicalFailure())
+				}
+			} else if !errors.Is(result, refusal) || cleanup != nil || upper.PhysicalFailure() != nil {
+				t.Fatal("pre-output authority refusal became physical failure", result, cleanup, upper.PhysicalFailure())
+			}
+		})
 	}
 }

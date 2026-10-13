@@ -51,6 +51,14 @@ func (p *BootstrapPrefix) Close() error {
 
 func (p *BootstrapPrefix) Done() <-chan struct{} { return p.lifetime.Done() }
 
+// CleanupResult reports only the original joined physical retirement.
+func (p *BootstrapPrefix) CleanupResult() (error, bool) {
+	if p == nil {
+		return nil, true
+	}
+	return p.lifetime.CleanupResult()
+}
+
 // The two typed lifetimes share transport setup, without manufacturing a token
 // presentation or inferring a mode from peer bytes.
 func presentPrefixRole(ctx, caller context.Context, conn net.Conn, authority role.Authority, hello ardp.Hello, present role.Presentation, bootstrap bool) error {

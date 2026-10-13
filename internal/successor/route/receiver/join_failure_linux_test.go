@@ -64,7 +64,7 @@ func (f *joinBoundsFixture) startWithBounds(t *testing.T, request ardp.JoinReque
 		local = wrap(local)
 	}
 	hello := ardp.Hello{ProfileDigest: profile, Purpose: ardp.PurposeDataJoin, Deadline: time.Now().Add(time.Minute).UTC().Truncate(time.Second)}
-	go func() { peer.done <- f.pairs.Serve(f.ctx, local, hello, limit, nil, capacity) }()
+	go func() { peer.done <- f.pairs.Serve(f.ctx, local, hello, limit, nil, capacity, nil) }()
 	body, err := ardp.EncodeJoinRequest(request)
 	if err != nil {
 		t.Fatal(err)
@@ -180,7 +180,7 @@ func TestJoinInitialDeadlineFailureReachesReceiverTerminal(t *testing.T) {
 		fault := &joinDeadlineFault{Conn: local, cause: errors.New("initial JOIN deadline failed")}
 		fault.armed.Store(true)
 		hello := ardp.Hello{ProfileDigest: [32]byte{3}, Purpose: ardp.PurposeDataJoin, Deadline: time.Now().Add(time.Minute).UTC().Truncate(time.Second)}
-		go func() { peer.done <- fixture.pairs.Serve(fixture.ctx, fault, hello, 32<<20, nil, capacity) }()
+		go func() { peer.done <- fixture.pairs.Serve(fixture.ctx, fault, hello, 32<<20, nil, capacity, nil) }()
 		assertJoinDeadlineRetained(t, receiver, fault, peer)
 	})
 }

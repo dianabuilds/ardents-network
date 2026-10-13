@@ -24,17 +24,17 @@ func (owner *Owner) LaunchPublisher(ctx context.Context, principal [32]byte, sna
 	if _, err := textdocument.NewSnapshot(body); err != nil {
 		return nil, err
 	}
-	return owner.launchInvocation(ctx, principal, execution.Administration, body, true)
+	return owner.launchInvocation(ctx, principal, execution.Administration, body, true, false)
 }
 
-// This sole reader belongs to the fixed Text protocol. No successful Service
-// Connection is invented: its incoming channel has no producer until a real
-// Connection owner is implemented. Unsolicited frames still retire the Job.
+// This sole reader belongs to the fixed Text protocol. Only handoffs through
+// the same original qualified operation reach it; the incoming byte boundary
+// neither authenticates Service nor supplies a replacement Job.
 func (invocation *Invocation) observePublisherAttachment() {
+	invocation.publisherInput = &publisherConnectionInput{incoming: make(chan connection.Stream)}
 	go func() {
 		defer close(invocation.observationDone)
-		incoming := make(chan connection.Stream)
-		err := textdocument.ServeWorkerConnections(invocation.job.Context(), invocation.activation.Attachment, incoming)
+		err := textdocument.ServeWorkerConnections(invocation.job.Context(), invocation.activation.Attachment, invocation.publisherInput.incoming)
 		if invocation.job.Retire() {
 			invocation.observationError = errors.Join(errUnexpectedWorkerEnd, err)
 		}

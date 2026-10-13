@@ -77,9 +77,7 @@ func (owner *publisherConnections) close() error {
 	attachmentErr := owner.closeAttachment()
 	for _, stream := range owner.streams {
 		<-stream.io.closed
-		if owner.cleanupErr == nil {
-			owner.cleanupErr = stream.io.closeErr
-		}
+		owner.cleanupErr = errors.Join(owner.cleanupErr, stream.io.cleanupErr)
 		clear(stream.queue)
 	}
 	owner.closers.Wait()
@@ -88,16 +86,17 @@ func (owner *publisherConnections) close() error {
 }
 
 type publisherStreamIO struct {
-	ctx       context.Context
-	cancel    context.CancelFunc
-	owner     *publisherConnections
-	state     *publisherStream
-	service   connection.Stream
-	writes    chan publisherWrite
-	workers   sync.WaitGroup
-	closeOnce sync.Once
-	closed    chan struct{}
-	closeErr  error
+	ctx        context.Context
+	cancel     context.CancelFunc
+	owner      *publisherConnections
+	state      *publisherStream
+	service    connection.Stream
+	writes     chan publisherWrite
+	workers    sync.WaitGroup
+	closeOnce  sync.Once
+	closed     chan struct{}
+	closeErr   error // Retained complete Service result, including logical refusal.
+	cleanupErr error // Joined physical result reported to worker cleanup.
 }
 
 func (owner *publisherConnections) startStream(service connection.Stream) *publisherStream {
@@ -166,18 +165,51 @@ func (stream *publisherStreamIO) write() {
 }
 
 func (stream *publisherStreamIO) close() {
+	// Refusal and owner cancellation interrupt even a completed stream already
+	// waiting for its original control tail. Waiting never delays revoke.
+	stream.cancel()
+	stream.startClose(false)
+}
+
+func (stream *publisherStreamIO) finish() {
+	stream.startClose(true)
+}
+
+func (stream *publisherStreamIO) startClose(completed bool) {
 	stream.closeOnce.Do(func() {
-		stream.cancel()
 		stream.owner.closers.Add(1)
 		go func() {
 			defer stream.owner.closers.Done()
+			if completed {
+				// Application Done is distinct from original physical completion.
+				// A recovery-enabled Service retains its final control proofs until
+				// the same peer closes or its original bound ends. Keep this borrow
+				// and worker cleanup capacity; a notification grants no authority.
+				if tail, ok := stream.service.(interface{ Joined() <-chan struct{} }); ok {
+					select {
+					case <-tail.Joined():
+					case <-stream.ctx.Done():
+					}
+				}
+			}
+			stream.cancel()
 			stream.closeErr = stream.service.Close()
 			stream.workers.Wait()
+			stream.cleanupErr = stream.closeErr
+			if joined, ok := stream.service.(interface {
+				Joined() <-chan struct{}
+				JoinedCleanup() error
+			}); ok {
+				// Close has joined the same original Service. Its logical result
+				// remains retained above; worker cleanup receives only actual
+				// physical failure, not ordinary control-tail cancellation.
+				stream.cleanupErr = joined.JoinedCleanup()
+			}
 			// Publish cleanup before notification; the owner joins this channel
 			// during global cancellation, when no actor receives events anymore.
 			close(stream.closed)
 			select {
-			case stream.owner.events <- publisherEvent{stream: stream.state, kind: 4, err: stream.closeErr}:
+			case stream.owner.events <- publisherEvent{stream: stream.state, kind: 4, err: stream.cleanupErr}:
 			case <-stream.owner.ctx.Done():
 			}
 		}()

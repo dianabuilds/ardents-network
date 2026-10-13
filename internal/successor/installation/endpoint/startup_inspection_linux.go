@@ -112,6 +112,7 @@ type startupInspection struct {
 	snapshot            *generation.Snapshot
 	invocation          *process.Invocation
 	id                  [16]byte
+	manager             string // original unique bus owner, never rebound
 	terminal            error
 	completion          *completion.Exchange
 	completionAttempted bool
@@ -262,28 +263,28 @@ func (s *startupInspection) observe() (returnedErr error) {
 }
 
 func (s *startupInspection) observeManager() error {
-	version, err := systemd.Version(s.ctx)
+	observation, err := systemd.ObserveStartup(s.ctx)
 	if err != nil {
 		return err
 	}
-	for round := 0; round < 2; round++ {
-		unit, service, err := systemd.Endpoint(s.ctx)
-		if err != nil {
+	if s.manager != "" && s.manager != observation.Manager {
+		return ErrBinding
+	}
+	for _, round := range observation.Rounds {
+		if err := verifyRunningEndpointProperties(observation.Version, round.EndpointUnit, round.EndpointService, s.checked.request, s.checked.selected.GenerationDigest, uint32(os.Getpid()), s.id); err != nil {
 			return err
 		}
-		if err := verifyRunningEndpointProperties(version, unit, service, s.checked.request, s.checked.selected.GenerationDigest, uint32(os.Getpid()), s.id); err != nil {
+		if err := verifyBoundActivationSocket(round.ReaderUnit, round.ReaderSocket, "reader"); err != nil {
 			return err
 		}
-		for _, role := range []string{"reader", "publisher"} {
-			unit, socket, err := systemd.Activation(s.ctx, role)
-			if err != nil {
-				return err
-			}
-			if err := verifyBoundActivationSocket(unit, socket, role); err != nil {
-				return err
-			}
+		if err := verifyBoundActivationSocket(round.PublisherUnit, round.PublisherSocket, "publisher"); err != nil {
+			return err
 		}
 	}
+	if err := s.ctx.Err(); err != nil {
+		return err
+	}
+	s.manager = observation.Manager
 	return s.ctx.Err()
 }
 

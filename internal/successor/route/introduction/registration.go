@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
@@ -29,6 +30,7 @@ type RegistrationConfig struct {
 // withdrawal and physical termination share the immutable original lifetime.
 // Close joins every borrower and retains the same result on repeated calls.
 type HolderRegistration struct {
+	self     *HolderRegistration
 	borrow   *prefix.Borrow
 	conn     net.Conn
 	terminal *prefix.IntroductionChannel
@@ -56,6 +58,8 @@ type HolderRegistration struct {
 	deliveryUsers                                   sync.WaitGroup
 	deliveryErr                                     error
 	once                                            sync.Once
+	cleanupErr                                      error
+	cleanupJoined                                   atomic.Bool
 }
 
 // Register reaches a selected Introduction duty through this retained Domain4
@@ -115,12 +119,20 @@ func Register(ctx context.Context, p *prefix.Prefix, config RegistrationConfig) 
 		return nil, err
 	}
 	r := &HolderRegistration{conn: secured, terminal: t, request: request, ctx: child, caller: ctx, cancel: cancel, check: check, reply: make(chan error, 1), readerDone: make(chan struct{}), watcherDone: make(chan struct{}), physicalDone: make(chan struct{}), retiring: make(chan struct{})}
+	r.self = r
 	r.deliveryQueue = make(chan *Delivery, 16)
 	r.deliveries = make(map[uint32]*Delivery)
 	r.deliveryNonces = make(map[[32]byte]bool)
 	r.deliveryUsed = role.AdmissionWireBytes + registrationExchangeBytes
 	r.receipt = Receipt{owner: r, facts: RegistrationFacts{Network: config.Duty.Epoch.Network, Profile: t.ProfileDigest(), Node: config.Duty.NodeID, Slot: request.Slot, Revision: request.Revision, Created: created, Expiry: request.Expiry, Acknowledgement: sha256.Sum256(frame.Body)}}
-	r.borrow = t.Borrow(func() { r.stop(nil) }, r.Close, func() bool {
+	r.borrow = t.Borrow(func() { r.stop(nil) }, func() error {
+		_ = r.Close()
+		cleanup, complete := r.CleanupResult()
+		if !complete {
+			return errors.Join(cleanup, errors.New("original registration cleanup did not join"))
+		}
+		return cleanup
+	}, func() bool {
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		return !r.stopped
@@ -357,7 +369,23 @@ func (r *HolderRegistration) Close() error {
 		r.mu.Lock()
 		r.result = errors.Join(r.failure, r.physicalErr, r.withdrawErr, r.deliveryErr)
 		r.mu.Unlock()
+		cleanup, complete := r.terminal.CleanupResult()
+		if !complete {
+			cleanup = errors.Join(cleanup, errors.New("original Introduction parent cleanup did not join"))
+		}
+		r.cleanupErr = cleanup
 		r.borrow.ReturnJoined()
+		r.cleanupJoined.Store(true)
 	})
 	return r.result
+}
+
+// CleanupResult observes the original registration after its readers, writers,
+// delivery users and parent return have joined. Work/refusal/withdrawal results
+// remain with Close; actual lower output/deadline failures remain physical.
+func (r *HolderRegistration) CleanupResult() (error, bool) {
+	if r == nil || r.self != r || !r.cleanupJoined.Load() {
+		return nil, false
+	}
+	return r.cleanupErr, true
 }

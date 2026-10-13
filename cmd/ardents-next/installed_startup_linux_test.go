@@ -22,8 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/allocation"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
@@ -34,6 +32,10 @@ import (
 // All signing, Source and clock fixtures have one controller. This proves no
 // independent custody, trusted time, private Service or whole-host qualification.
 func TestInstalledExecutionStartup(t *testing.T) {
+	runInstalledServiceStartup(t, false, "")
+}
+
+func runInstalledServiceStartup(t *testing.T, publicationEnabled bool, carrier string) {
 	base, artifacts := os.Getenv("ARDENTS_EXECUTION_START_ROOT"), os.Getenv("ARDENTS_EXECUTION_START_RESOURCES")
 	if os.Getuid() != 0 || !filepath.IsAbs(base) || !filepath.IsAbs(artifacts) {
 		t.Fatal("invalid environment: root driver, fresh trusted root and pinned resources required")
@@ -44,7 +46,12 @@ func TestInstalledExecutionStartup(t *testing.T) {
 	if compiledCommand(t) != program {
 		t.Fatal("invalid environment: native fixture did not retain the pinned program")
 	}
-	f := newNetworkAdmissionFixture(t)
+	var f *networkAdmissionFixture
+	if publicationEnabled {
+		f = installedServiceNetwork(t, carrier)
+	} else {
+		f = newNetworkAdmissionFixture(t)
+	}
 	epoch, err := networkfixture.BuildClosed(f.spec)
 	if err != nil {
 		t.Fatal(err)
@@ -143,6 +150,9 @@ func TestInstalledExecutionStartup(t *testing.T) {
 	rootAuthority := newConsumerReleaseAuthority(t, time.Date(2031, 1, 2, 3, 4, 5, 0, time.UTC))
 	bundle, pin, initialProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 1, 1)
 	request := string(installationRequestBytes(t, bundle, pin, filepath.Join(base, "floors")))
+	if publicationEnabled {
+		request = installedServiceDeclaration(t, request, base)
+	}
 	quoted := func(s string) string {
 		raw, err := json.Marshal(s)
 		if err != nil {
@@ -300,67 +310,62 @@ func TestInstalledExecutionStartup(t *testing.T) {
 		})
 	}
 	t.Cleanup(stopParticipant)
-	// File birth precedes checked write/sync. Only the actual participant's
-	// post-durability diagnostic establishes that its public request is complete.
-	installedStartupWait(t, func() ([]byte, bool) {
-		raw, err := exec.CommandContext(t.Context(), "journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID="+original[1]).CombinedOutput()
-		if err != nil {
-			t.Fatalf("original pending journal: %v: %s", err, raw)
-		}
-		return raw, bytes.Contains(raw, []byte("\"phase\":\"permission-pending\""))
+	// Hosting is an explicit provider input, never created/reset by runtime.
+	// The real installed command initializes it under the installed account
+	// after original Root completion and before Permission handoff; no token is granted.
+	period := time.Now().UTC().Truncate(time.Second)
+	budgetInput, err := json.Marshal(map[string]any{
+		"root": filepath.Join(base, "entry", "hosting"),
+		"policy": map[string]any{"provider": "installed-startup-fixture", "start": period.Add(-time.Minute),
+			"end": period.Add(time.Hour), "unit": "GiB", "quantity": 16,
+			"directions": "tx+rx", "interfaces": []string{"lo"},
+			"initial_used_bytes": 0, "low_watermark_bytes": 1 << 20},
 	})
-	requestBytes := installedStartupWait(t, func() ([]byte, bool) {
-		raw, err := os.ReadFile(filepath.Join(base, "permission", "request"))
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			t.Fatal(err)
-		}
-		return raw, err == nil
-	})
-	prepared, err := allocation.Prepare(requestBytes, f.profile.NetworkID, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
-	decision, err := prepared.Decide(nil, f.profile.IssuanceAuthorityKey, time.Now())
-	if err != nil {
-		t.Fatal(err)
+	budgetPath := filepath.Join(bootstrap, "hosting.json")
+	installedStartupWrite(t, budgetPath, budgetInput, 0644)
+	installedStartupCommand(t, installedProgram, credential, "completed", "hosting", "initialize", "--config", budgetPath)
+	if publicationEnabled {
+		installedServiceInstance(t, installedProgram, credential, base, f.profile.NetworkID)
 	}
-	journal := filepath.Join(base, "allocation")
-	installedStartupWrite(t, journal, decision.Journal(), 0600)
-	readback, err := os.ReadFile(journal)
-	if err != nil || !bytes.Equal(readback, decision.Journal()) {
-		t.Fatal("allocation durability readback", err)
-	}
-	permission := decision.Permission()
-	copy(permission.Signature[:], ed25519.Sign(f.spec.Authority, admission.PermissionTranscript(permission)))
-	response, err := admission.EncodePermission(permission)
-	if err != nil {
-		t.Fatal(err)
-	}
-	temporary := filepath.Join(base, "permission", "response.pending")
-	installedStartupWrite(t, temporary, response, 0600)
-	if err := os.Chown(temporary, int(uid), int(gid)); err != nil {
-		t.Fatal(err)
-	}
-	installedStartupSync(t, temporary)
-	if _, err := os.Lstat(filepath.Join(base, "permission", "response")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("response already exists", err)
-	}
-	if err := os.Rename(temporary, filepath.Join(base, "permission", "response")); err != nil {
-		t.Fatal(err)
-	}
-	installedStartupSync(t, filepath.Join(base, "permission"))
-	installedStartupWait(t, func() ([]byte, bool) {
-		cmd := exec.CommandContext(t.Context(), "journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID="+original[1])
-		raw, err := cmd.CombinedOutput()
-		if err != nil {
-			t.Fatalf("original journal: %v: %s", err, raw)
-		}
-		return raw, bytes.Contains(raw, []byte("\"phase\":\"permission-accepted\""))
-	})
+	installedServicePermissions(t, base, original, uid, gid, f, publicationEnabled)
 	if current := installedStartupIdentity(t); current != original {
 		t.Fatal("accepted permission lost original invocation", current)
 	}
-	t.Log("actual non-root installed program completed Root exchange and qualified permission bootstrap")
+	installedStartupWait(t, func() ([]byte, bool) {
+		conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: filepath.Join(base, "application", "reader"), Net: "unix"})
+		if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ECONNREFUSED) {
+			return nil, false
+		}
+		if err != nil {
+			t.Fatal("installed Reader listener", err)
+		}
+		defer conn.Close()
+		raw, err := conn.SyscallConn()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var peer *syscall.Ucred
+		var peerErr error
+		if err := raw.Control(func(fd uintptr) {
+			peer, peerErr = syscall.GetsockoptUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
+		}); err != nil || peerErr != nil {
+			t.Fatal("installed listener peer", err, peerErr)
+		}
+		if peer == nil || strconv.FormatInt(int64(peer.Pid), 10) != original[0] || peer.Uid != uint32(uid) || peer.Gid != uint32(gid) {
+			t.Fatal("Reader listener is not owned by the original installed process")
+		}
+		return nil, true
+	})
+	if current := installedStartupIdentity(t); current != original {
+		t.Fatal("Reader continuation lost original invocation", current)
+	}
+	t.Log("actual non-root installed program completed Root exchange, qualified permission bootstrap and original-process Reader listener; no Service request accepted")
+	if publicationEnabled {
+		installedServicePublication(t, base, original)
+	}
 }
 
 func installedStartupResources(t *testing.T, root string) map[string][]byte {
@@ -424,17 +429,20 @@ func installedStartupSync(t *testing.T, path string) {
 	}
 }
 
-func installedStartupCommand(t *testing.T, program string, credential *syscall.Credential, outcome string, args ...string) {
+func installedStartupCommand(t *testing.T, program string, credential *syscall.Credential, outcome string, args ...string) []byte {
 	t.Helper()
 	cmd := exec.CommandContext(t.Context(), program, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: credential, Pdeathsig: syscall.SIGKILL}
+	var diagnostic bytes.Buffer
+	cmd.Stderr = &diagnostic
 	runtime.LockOSThread()
-	out, err := cmd.CombinedOutput()
+	out, err := cmd.Output()
 	runtime.UnlockOSThread()
 	var response struct{ Outcome string }
 	if err != nil || json.Unmarshal(out, &response) != nil || response.Outcome != outcome {
-		t.Fatalf("actual %v: %v: %s", args, err, out)
+		t.Fatalf("actual %v: %v: %s; diagnostics: %s", args, err, out, diagnostic.String())
 	}
+	return out
 }
 
 func installedStartupIdentity(t *testing.T) [3]string {

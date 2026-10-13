@@ -25,6 +25,7 @@ type registrationPair struct {
 	cutoff         time.Time
 	closeOnce      sync.Once
 	closeErr       error
+	cleanupErr     error
 }
 
 func (pair *registrationPair) check(p *Publisher, ctx context.Context) error {
@@ -57,9 +58,16 @@ func (pair *registrationPair) close() error {
 		pair.cancel()
 		if pair.registration != nil {
 			pair.closeErr = pair.registration.Close()
+			cleanup, complete := pair.registration.CleanupResult()
+			if !complete {
+				cleanup = errors.Join(cleanup, errors.New("original Publisher registration cleanup did not join"))
+			}
+			pair.cleanupErr = cleanup
 		}
 		if pair.recipient != nil {
-			pair.closeErr = errors.Join(pair.closeErr, pair.recipient.Close())
+			cleanup := pair.recipient.Close()
+			pair.closeErr = errors.Join(pair.closeErr, cleanup)
+			pair.cleanupErr = errors.Join(pair.cleanupErr, cleanup)
 		}
 		if !pair.stopCaller() {
 			<-pair.callerCallback

@@ -29,6 +29,7 @@ type readerWriteCompletion struct {
 // initialized local attachment. It cannot select a destination or open a Route.
 type readerConnectionIO struct {
 	ctx           context.Context
+	parent        context.Context
 	cancel        context.CancelFunc
 	attachment    io.ReadWriteCloser
 	service       connection.Stream
@@ -40,30 +41,52 @@ type readerConnectionIO struct {
 	workers       sync.WaitGroup
 	closeOnce     sync.Once
 	closeErr      error
+	mu            sync.Mutex
+	closing       bool
 }
 
-func startReaderConnectionIO(parent context.Context, attachment io.ReadWriteCloser, service connection.Stream) *readerConnectionIO {
+func startReaderConnectionIO(parent context.Context, attachment io.ReadWriteCloser) *readerConnectionIO {
 	ctx, cancel := context.WithCancel(parent)
-	owner := &readerConnectionIO{ctx: ctx, cancel: cancel, attachment: attachment, service: service,
+	owner := &readerConnectionIO{ctx: ctx, parent: parent, cancel: cancel, attachment: attachment,
 		frames: make(chan workerReadResult, 1), serviceEvents: make(chan readerServiceEvent, 1), permits: make(chan int, 1),
 		writes: make(chan workerFrame, 8), written: make(chan readerWriteCompletion, 8)}
-	owner.workers.Add(3)
+	owner.workers.Add(1)
 	go owner.readWorker()
+	return owner
+}
+
+func (owner *readerConnectionIO) attachService(service connection.Stream) error {
+	owner.mu.Lock()
+	defer owner.mu.Unlock()
+	if owner.closing || owner.ctx.Err() != nil || owner.service != nil || service == nil {
+		return errors.New("text reader stream transfer is unavailable")
+	}
+	owner.service = service
+	owner.workers.Add(2)
 	go owner.readService()
 	go owner.writeService()
-	return owner
+	return nil
 }
 
 func (owner *readerConnectionIO) close() error {
 	owner.closeOnce.Do(func() {
+		owner.mu.Lock()
+		owner.closing = true
+		service := owner.service
 		owner.cancel()
+		owner.mu.Unlock()
 		// Either Close may join I/O that needs the other attachment interrupted.
 		// Start both, then join both closers and all three transfer goroutines.
 		var closers sync.WaitGroup
 		var attachmentErr, serviceErr error
 		closers.Add(2)
 		go func() { defer closers.Done(); attachmentErr = owner.attachment.Close() }()
-		go func() { defer closers.Done(); serviceErr = owner.service.Close() }()
+		go func() {
+			defer closers.Done()
+			if service != nil {
+				serviceErr = service.Close()
+			}
+		}()
 		closers.Wait()
 		owner.workers.Wait()
 		owner.closeErr = errors.Join(attachmentErr, serviceErr)
@@ -106,7 +129,7 @@ func (owner *readerConnectionIO) readService() {
 		}
 		if err != nil {
 			if err != io.EOF {
-				owner.sendService(readerServiceEvent{err: errors.New("service read was interrupted")})
+				owner.sendService(readerServiceEvent{err: errors.Join(errors.New("service read was interrupted"), err)})
 				return
 			}
 			if !owner.sendService(readerServiceEvent{eof: true}) {

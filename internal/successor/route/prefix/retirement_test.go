@@ -32,7 +32,7 @@ func (c *prefixIdleConn) Read(body []byte) (int, error) {
 }
 func (c *prefixIdleConn) Close() error { return errors.Join(c.Conn.Close(), c.closeFailure) }
 
-func idlePhysicalPrefix(t *testing.T, gate chan struct{}, failure error) (*Prefix, *prefixIdleConn, chan time.Time, *atomic.Int32, func()) {
+func idlePhysicalPrefix(t *testing.T, gate chan struct{}, failure error, retiredReadiness ...bool) (*Prefix, *prefixIdleConn, chan time.Time, *atomic.Int32, func()) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(t.Context())
 	end := time.Now().Add(5 * time.Second)
@@ -42,6 +42,7 @@ func idlePhysicalPrefix(t *testing.T, gate chan struct{}, failure error) (*Prefi
 	interior := &prefixIdleConn{Conn: interiorConn, readStarted: make(chan struct{}), readReturned: make(chan struct{})}
 	queues := framing.NewBudget(4 << 20)
 	p := &Prefix{ctx: ctx, caller: ctx, cancel: cancel, done: make(chan struct{}), closing: make(chan struct{}), entry: framing.New(ctx, entry, end, 32<<20, nil, false, queues, nil), interior: framing.New(ctx, interior, end, 32<<20, nil, false, queues, nil)}
+	p.self = p
 	p.config.Deadline = end
 	released := new(atomic.Int32)
 	p.release = func() error {
@@ -54,7 +55,9 @@ func idlePhysicalPrefix(t *testing.T, gate chan struct{}, failure error) (*Prefi
 		}
 		select {
 		case <-p.done:
-			t.Error("idle Done preceded resource release")
+			if len(retiredReadiness) == 0 || !retiredReadiness[0] {
+				t.Error("idle Done preceded resource release")
+			}
 		default:
 		}
 		released.Add(1)
@@ -75,6 +78,61 @@ func idlePhysicalPrefix(t *testing.T, gate chan struct{}, failure error) (*Prefi
 	}
 	cleanup := func() { unblock(); _ = p.Close(); _ = entryPeer.Close(); _ = interiorPeer.Close(); cancel() }
 	return p, entry, idle, released, cleanup
+}
+
+// Actual pipe retirement isolates the receipt's provenance. These fixtures
+// supply no successful Network, Admission or Service authority.
+func TestPrefixCleanupReceiptSeparatesOriginalCancellationFromPhysicalFailure(t *testing.T) {
+	for _, late := range []bool{false, true} {
+		t.Run(map[bool]string{false: "clean", true: "late-close"}[late], func(t *testing.T) {
+			gate := make(chan struct{})
+			var failure error
+			if late {
+				failure = errors.New("original Entry close failed after cancellation")
+			}
+			p, entry, _, released, cleanup := idlePhysicalPrefix(t, gate, failure, true)
+			defer cleanup()
+			bootstrap := &BootstrapPrefix{lifetime: p}
+			if err, complete := bootstrap.CleanupResult(); complete || err != nil {
+				t.Fatal("Bootstrap projected an unjoined physical lifetime", err)
+			}
+			if err, complete := p.CleanupResult(); complete || err != nil {
+				t.Fatal("unjoined original Prefix supplied a cleanup receipt", err)
+			}
+			p.cancel()
+			select {
+			case <-entry.readReturned:
+			case <-time.After(time.Second):
+				t.Fatal("original physical reader was not interrupted")
+			}
+			// Readiness can retire before this gated physical reader joins.
+			<-p.Done()
+			joined := make(chan error, 1)
+			go func() { joined <- p.Close() }()
+			if err, complete := p.CleanupResult(); complete || err != nil || released.Load() != 0 {
+				t.Fatal("retired readiness became an unjoined cleanup receipt", err, complete)
+			}
+			close(gate)
+			result := <-joined
+			if !errors.Is(result, context.Canceled) || p.Close() != result || released.Load() != 1 {
+				t.Fatal("full original result or once-only return was lost", result)
+			}
+			physical, complete := p.CleanupResult()
+			if !complete || (failure == nil && physical != nil) || (failure != nil && !errors.Is(physical, failure)) || errors.Is(physical, context.Canceled) {
+				t.Fatal("receipt collapsed work cancellation and physical failure", physical, complete)
+			}
+			if retained, joined := bootstrap.CleanupResult(); !joined || retained != physical {
+				t.Fatal("Bootstrap changed its exact physical cleanup result", retained, joined)
+			}
+			if retained, again := p.CleanupResult(); !again || retained != physical {
+				t.Fatal("repeated cleanup receipt changed its original result", retained)
+			}
+			copy := &Prefix{self: p}
+			if _, complete := copy.CleanupResult(); complete {
+				t.Fatal("copied Prefix supplied original cleanup provenance")
+			}
+		})
+	}
 }
 
 // The virtual clock and manually delivered idle event isolate physical loan

@@ -17,3 +17,7 @@ func launchSelectedPublisher(ctx context.Context, owner *executionruntime.Owner,
 	defer clear(body)
 	return owner.LaunchPublisher(ctx, principal, body)
 }
+
+func publisherTextContract(operation *executionruntime.Operation) (executionruntime.StreamContract, error) {
+	return operation.BindStreamContract(uint64(textdocument.MaximumBytes+13), 512)
+}

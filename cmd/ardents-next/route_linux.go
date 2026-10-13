@@ -112,13 +112,12 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 		return routeHandle{}, errors.Join(err, release())
 	}
 	submit := func(ctx context.Context, recipient routeRecipient, envelope capsule.Envelope) error {
-		view, err := authority.current()
-		if err != nil {
+		if err := prefix.CheckSourceScope(leg.Profile.Network, leg.Profile.Digest, plan.Deadline); err != nil {
 			return err
 		}
-		duty, err := leg.SubmissionDuty(view, recipient.Node, recipient.Generation, plan.Exclusions)
-		if err != nil {
-			return err
+		duty, err := prefix.ResolveSubmission(recipient.Node, plan.Exclusions)
+		if err != nil || duty.RecordGeneration != recipient.Generation {
+			return errors.Join(errors.New("exact submission recipient generation unavailable"), err)
 		}
 		return introduction.Submit(ctx, prefix, duty, envelope, plan.Exclusions)
 	}

@@ -161,7 +161,11 @@ func (owner *publisherConnections) advance() error {
 				return err
 			}
 			stream.workerClosed = true
-			stream.io.close()
+			if stream.failed {
+				stream.io.close()
+			} else {
+				stream.io.finish()
+			}
 		}
 		index++
 	}

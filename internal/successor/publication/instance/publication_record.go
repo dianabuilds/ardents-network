@@ -28,10 +28,12 @@ func (binding *Binding) Publication(ctx context.Context, registration *introduct
 	}
 	root := binding.root
 	root.mu.Lock()
-	if err = binding.check(ctx); err != nil {
+	if err = binding.checkLocal(ctx); err != nil {
 		root.mu.Unlock()
 		return nil, err
 	}
+	binding.observations.Add(1)
+	defer binding.observations.Done()
 	if len(binding.record) == 0 {
 		if len(binding.private) != ed25519.PrivateKeySize {
 			root.mu.Unlock()
@@ -63,9 +65,7 @@ func (binding *Binding) Publication(ctx context.Context, registration *introduct
 	if err = registration.CheckReceipt(receipt); err != nil {
 		return nil, err
 	}
-	root.mu.Lock()
-	err = binding.check(ctx)
-	root.mu.Unlock()
+	err = binding.observe(ctx)
 	if err != nil {
 		return nil, errors.Join(ErrUnavailable, err)
 	}

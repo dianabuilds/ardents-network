@@ -29,6 +29,11 @@ type installedHeadless struct {
 	LocalRoleStateRoot      string              `json:"local_role_state_root"`
 	TimeConfidenceFile      string              `json:"time_confidence_file"`
 	TextTokenRoot           string              `json:"text_token_root"`
+	EntryStateRoot          string              `json:"entry_state_root"`
+	ApplicationSocket       string              `json:"application_socket"`
+	AdministrationSocket    string              `json:"administration_socket"`
+	PublicationRoot         string              `json:"publication_root"`
+	ServiceInstanceRoot     string              `json:"service_instance_root"`
 	NetworkID               string              `json:"network_id"`
 	NetworkAuthorities      []string            `json:"network_authorities"`
 	NetworkThreshold        int                 `json:"network_threshold"`

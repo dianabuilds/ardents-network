@@ -67,7 +67,7 @@ func startRouteBootstrap(ctx context.Context, plan routePrefixPlan, authority ad
 
 // Stock owns permission, request/retry identity and verified token deposit.
 // Route supplies the actual mode, exact opening binding and final local guard.
-func routeIssuerPreparation(ctx context.Context, authority admissionAuthority, holder *stock.Owner, leg selection.Leg, class uint8, receivers [][32]byte) func(prefix.IssuerBinding) (prefix.IssuerBatch, error) {
+func routeIssuerPreparation(ctx context.Context, authority admissionAuthority, holder *stock.Owner, leg selection.Leg, class uint8, receivers [][32]byte, preparation ...*stock.Preparation) func(prefix.IssuerBinding) (prefix.IssuerBatch, error) {
 	return func(binding prefix.IssuerBinding) (prefix.IssuerBatch, error) {
 		if class < 1 || class > 3 || ctx.Err() != nil {
 			return prefix.IssuerBatch{}, errors.New("route issuance intent invalid")
@@ -95,10 +95,21 @@ func routeIssuerPreparation(ctx context.Context, authority admissionAuthority, h
 			challenges = append(challenges, token.ClosedTokenContext{NetworkID: view.Profile().Network, ProfileDigest: binding.ProfileDigest, IssuerNodeID: view.Profile().IssuerNodeID, ReceiverNodeID: id, ReceiverDutyGeneration: member.DutyGeneration, Class: class, WindowStart: view.ObservedAt().UTC().Truncate(time.Hour)})
 		}
 		intent := stock.IssuanceIntent{Challenges: challenges, Selection: stock.ExchangeBinding{ID: binding.ID, ProfileDigest: binding.ProfileDigest}, Bootstrap: binding.Bootstrap, Deadline: binding.Deadline}
-		if err := authority.intent(intent); err != nil {
+		// Only pure draft construction separates this view from validation.
+		// Stock.Begin and Request independently reobserve before their effects;
+		// the original Route also retains its own I/O and final live gates.
+		if err := validateNetworkIssuanceIntent(view, intent); err != nil {
 			return prefix.IssuerBatch{}, err
 		}
-		attempt, err := holder.Begin(intent)
+		if len(preparation) > 1 {
+			return prefix.IssuerBatch{}, errors.New("stock preparation ambiguous")
+		}
+		var attempt stock.Attempt
+		if len(preparation) == 1 {
+			attempt, err = preparation[0].Begin(intent)
+		} else {
+			attempt, err = holder.Begin(intent)
+		}
 		if err != nil {
 			return prefix.IssuerBatch{}, err
 		}

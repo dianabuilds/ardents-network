@@ -72,13 +72,19 @@ func (s *joinSide) account(n uint64, terminal bool) error {
 // result even if subsequent interruption and Close succeed. Paired failures
 // use the pair lock because an interrupted writer may finish concurrently.
 func (s *joinSide) deadline(end time.Time, writeOnly bool) error {
-	var err error
-	if writeOnly {
-		err = s.conn.SetWriteDeadline(end)
-	} else {
-		err = s.conn.SetDeadline(end)
+	control := false
+	if writeOnly && s.pair != nil {
+		s.pair.owner.mu.Lock()
+		control = s.activeKind == ardp.KindCredit
+		s.pair.owner.mu.Unlock()
 	}
-	if err != nil {
+	var output framing.FrameOutput
+	if control {
+		output = framing.BoundControlOutput(s.conn, end)
+	} else {
+		output = framing.SetFrameDeadline(s.conn, end, writeOnly)
+	}
+	if err := output.PhysicalFailure(); err != nil {
 		if s.pair == nil {
 			s.physicalErr = errors.Join(s.physicalErr, err)
 		} else {
@@ -87,7 +93,7 @@ func (s *joinSide) deadline(end time.Time, writeOnly bool) error {
 			s.pair.owner.mu.Unlock()
 		}
 	}
-	return err
+	return output.Err()
 }
 
 // A canonical unmatched request receives the same fixed-size local outcome;
@@ -251,7 +257,13 @@ func (s *joinSide) interruptRelay() error {
 	credit := s.activeKind == ardp.KindCredit
 	s.pair.owner.mu.Unlock()
 	if !credit {
-		return s.deadline(time.Now(), false)
+		err := s.interruptPhysical()
+		if err != nil {
+			s.pair.owner.mu.Lock()
+			s.pair.interruptErr = errors.Join(s.pair.interruptErr, err)
+			s.pair.owner.mu.Unlock()
+		}
+		return err
 	}
 	now := time.Now()
 	readErr := s.conn.SetReadDeadline(now)

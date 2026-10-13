@@ -195,14 +195,19 @@ Entry/Interior framing reapplies its original parent deadline to its own CREDIT;
 a completed child's payload deadline cannot poison later parent consumption.
 Source child CREDIT likewise uses the child's admitted lifetime rather than
 the deadline left by a completed inner payload write. This does not extend
-payload write authority; a changed write deadline still interrupts CREDIT
-already using the physical writer and retains any resulting write failure.
+payload write authority; a changed payload deadline still interrupts its
+already started payload frame and retains any resulting write failure.
 Waiting for the physical writer or payload credit remains bounded by the exact
 payload deadline, including concurrent deadline updates. Updating a deadline
 still interrupts an already active physical frame. Cancellation removes
 unemitted work without sending a CLOSE for an unknown lane. An already emitted
 CREDIT may finish within the earlier of its original write deadline and the
 same one-second cleanup bound; later deadline updates cannot extend that bound.
+That already selected control keeps the same bound through nested TLS/BYTES
+framing using private whole-write ownership, without inspecting ciphertext or
+granting another frame or credit effect. It still retains every actual failed
+write; lower framing must not reclassify it as interruptible new payload solely
+because TLS carries its original bytes inside a BYTES frame.
 A received complete next-peer CLOSE retires queued forwarding work independently
 of downstream delivery, while physical write failures remain terminal errors.
 The reverse copier may join that CLOSE after the dispatcher selects a child

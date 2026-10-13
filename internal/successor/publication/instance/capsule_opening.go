@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/route/capsule"
@@ -27,6 +28,7 @@ type Opening struct {
 	expiry            time.Time
 	closed            bool
 	once              sync.Once
+	serviceClaim      atomic.Bool
 }
 
 // Context is this original opening's interruption signal. It grants no
@@ -49,9 +51,12 @@ func (recipient *Recipient) OpenCapsule(ctx context.Context, envelope capsule.En
 	if err := recipient.registration.CheckReceipt(recipient.receipt); err != nil {
 		return nil, err
 	}
+	if err := recipient.observe(ctx); err != nil {
+		return nil, err
+	}
 	root := recipient.binding.root
 	root.mu.Lock()
-	if err := recipient.check(ctx); err != nil {
+	if err := recipient.checkLocal(ctx); err != nil {
 		root.mu.Unlock()
 		return nil, err
 	}
@@ -123,13 +128,16 @@ func (opening *Opening) Request(ctx context.Context) (capsule.Request, [32]byte,
 	if err := r.registration.CheckReceipt(r.receipt); err != nil {
 		return capsule.Request{}, [32]byte{}, err
 	}
+	if err := r.observe(ctx); err != nil {
+		return capsule.Request{}, [32]byte{}, err
+	}
 	opening.mu.Lock()
 	defer opening.mu.Unlock()
 	if opening.closed || opening.ctx.Err() != nil || ctx.Err() != nil || !time.Now().Before(opening.expiry) {
 		return capsule.Request{}, [32]byte{}, ErrUnavailable
 	}
 	r.binding.root.mu.Lock()
-	err := r.check(ctx)
+	err := r.checkLocal(ctx)
 	r.binding.root.mu.Unlock()
 	if err != nil {
 		return capsule.Request{}, [32]byte{}, err

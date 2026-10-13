@@ -16,6 +16,46 @@ import (
 )
 
 // Invalid public preparation must not touch an unowned physical connection.
+func TestJoinRetirementUsesOriginalLowerInterruptionAndRetainsFailure(t *testing.T) {
+	for _, failed := range []bool{false, true} {
+		t.Run(map[bool]string{false: "stopped-lower", true: "physical-interruption-failed"}[failed], func(t *testing.T) {
+			local, remote := net.Pipe()
+			defer remote.Close()
+			cause := errors.New("original lower interruption failed")
+			conn := &joinRetirementDeadlineProbe{Conn: local}
+			calls := 0
+			side := &joinSide{conn: conn, interruptIO: func() error {
+				calls++
+				if failed {
+					return cause
+				}
+				return nil
+			}}
+			side.interrupt()
+			side.interrupt()
+			if calls != 1 || conn.deadlines != 0 || errors.Is(side.closeErr, cause) != failed {
+				t.Fatal("retirement reset lower deadline or lost original physical failure", calls, conn.deadlines, side.closeErr)
+			}
+			var body [1]byte
+			if _, err := remote.Read(body[:]); err != io.EOF {
+				t.Fatal("original physical connection did not close", err)
+			}
+		})
+	}
+}
+
+// This mechanical probe supplies no successful authority. A deadline attempt
+// represents the local refusal of a lower framing owner that already stopped.
+type joinRetirementDeadlineProbe struct {
+	net.Conn
+	deadlines int
+}
+
+func (c *joinRetirementDeadlineProbe) SetDeadline(time.Time) error {
+	c.deadlines++
+	return net.ErrClosed
+}
+
 func TestJoinPreparationRefusesUnreservedCapacityBeforeIO(t *testing.T) {
 	if capacity, err := ReserveCapacity(nil); err == nil || capacity != nil {
 		t.Fatal("absent principal budget acquired capacity")
@@ -26,7 +66,7 @@ func TestJoinPreparationRefusesUnreservedCapacityBeforeIO(t *testing.T) {
 	defer local.Close()
 	defer remote.Close()
 	owner := NewPairing(nil)
-	err := owner.Serve(t.Context(), local, ardp.Hello{Purpose: ardp.PurposeDataJoin}, 32<<20, nil, capacity)
+	err := owner.Serve(t.Context(), local, ardp.Hello{Purpose: ardp.PurposeDataJoin}, 32<<20, nil, capacity, nil)
 	if err == nil || len(owner.entries) != 0 {
 		t.Fatal("unreserved capacity entered pairing", err)
 	}
@@ -90,7 +130,7 @@ func (f *joinBoundsFixture) startWithBounds(t *testing.T, request ardp.JoinReque
 		local = wrap(local)
 	}
 	hello := ardp.Hello{ProfileDigest: profile, Purpose: ardp.PurposeDataJoin, Deadline: time.Now().Add(time.Minute).UTC().Truncate(time.Second)}
-	go func() { peer.done <- f.pairs.Serve(f.ctx, local, hello, limit, nil, capacity) }()
+	go func() { peer.done <- f.pairs.Serve(f.ctx, local, hello, limit, nil, capacity, nil) }()
 	body, err := ardp.EncodeJoinRequest(request)
 	if err != nil {
 		t.Fatal(err)
@@ -512,7 +552,7 @@ func TestJoinPairWaitsForBothActualResultsBeforeReadingData(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			go func() { results <- pairs.Serve(ctx, observed[i], h, 32<<20, nil, capacities[i]) }()
+			go func() { results <- pairs.Serve(ctx, observed[i], h, 32<<20, nil, capacities[i], nil) }()
 			if err := ardp.WriteFrame(remote, ardp.Frame{Kind: ardp.KindOperation, Lane: 1, Body: body}); err != nil {
 				t.Fatal(err)
 			}
@@ -675,7 +715,7 @@ func TestJoinCanceledAttachmentCannotLeaveUnownedPair(t *testing.T) {
 		}
 		done := make(chan error, 1)
 		go func() {
-			done <- owner.Serve(ctx, local, ardp.Hello{Purpose: ardp.PurposeDataJoin, Deadline: end}, 1<<20, nil, capacity)
+			done <- owner.Serve(ctx, local, ardp.Hello{Purpose: ardp.PurposeDataJoin, Deadline: end}, 1<<20, nil, capacity, nil)
 		}()
 		if err := ardp.WriteFrame(remote, ardp.Frame{Kind: ardp.KindOperation, Lane: 1, Body: raw}); err != nil && !errors.Is(err, io.ErrClosedPipe) {
 			t.Fatal(err)

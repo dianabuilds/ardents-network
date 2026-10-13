@@ -26,6 +26,11 @@ physical error before checking the observed member's role, exclusions and bounds
 failed observation does not manufacture a second duty-mismatch cause. Detached
 `RegistrationFacts` and a retained receipt alone grant no current authority.
 Creation precedes REGISTER output; ACK delay cannot move the refresh origin.
+Delivery acquisition rechecks its own original caller and exact child after
+the external receipt observation, under the registration's local seal barrier.
+Caller cancellation, withdrawal, retirement or child expiry cannot acquire a
+late handoff. A rejected child closes and joins outside that state lock; its
+original debit and failure remain with their owners.
 This transport receipt supplies no Descriptor Store ACK or Service readiness.
 Receiving composition retains its native Admission/root dependency separately.
 The receiving REGISTER/RESULT/owning WITHDRAW exchange now belongs directly to

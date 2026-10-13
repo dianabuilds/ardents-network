@@ -57,6 +57,21 @@ func TestReservedGenerationMonotonicAndExactRetry(t *testing.T) {
 	if err = generation.Advance(context.Background()); err != nil {
 		t.Fatal(err)
 	}
+	if err = generation.Check(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if err = generation.CheckCommit(context.Background()); err != nil {
+		t.Fatal("original live reservation refused its local handoff", err)
+	}
+	copied := *generation
+	if err = copied.CheckCommit(context.Background()); err == nil {
+		t.Fatal("copied generation authorized an original reservation handoff")
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err = generation.CheckCommit(canceled); !errors.Is(err, context.Canceled) {
+		t.Fatal("local handoff ignored its canceled caller", err)
+	}
 	first, err := os.Stat(filepath.Join(config.Root, "floor"))
 	if err != nil {
 		t.Fatal(err)
@@ -73,6 +88,9 @@ func TestReservedGenerationMonotonicAndExactRetry(t *testing.T) {
 		t.Fatal("full uint64 floor lost", err)
 	}
 	generation.Close()
+	if err = generation.CheckCommit(context.Background()); err == nil {
+		t.Fatal("closed original reservation authorized a late handoff")
+	}
 	if _, err = root.Reserve(context.Background(), credential); !errors.Is(err, ErrConsumed) {
 		t.Fatal("spent generation reacquired", err)
 	}
@@ -109,6 +127,9 @@ func TestFloorPostRenameFailureDeniesReceiptsUntilReopen(t *testing.T) {
 			}
 			if err = generation.Advance(ctx); err == nil {
 				t.Fatal("post-rename failure returned durable success")
+			}
+			if err = generation.CheckCommit(context.Background()); err == nil {
+				t.Fatal("ambiguous original root authorized a local handoff")
 			}
 			if _, err = root.Floor(context.Background()); err == nil {
 				t.Fatal("ambiguous owner supplied a floor receipt")

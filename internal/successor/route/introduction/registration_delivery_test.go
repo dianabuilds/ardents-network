@@ -47,6 +47,65 @@ func deliveryTransportFixture(t *testing.T) (*HolderRegistration, net.Conn) {
 	return r, peer
 }
 
+func TestNextDeliveryCanceledCallerCannotReceiveLateObservation(t *testing.T) {
+	r, peer := deliveryTransportFixture(t)
+	body, err := EncodeDelivery([32]byte{9}, deliveryEnvelope(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	written := make(chan error, 1)
+	go func() { written <- ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindOperation, Lane: 2, Body: body}) }()
+	// Await the actual decoder's original child before arming the observation;
+	// requeueing it controls scheduling, not authority or a successful RESULT.
+	child := <-r.deliveryQueue
+	r.deliveryQueue <- child
+	if err := <-written; err != nil {
+		t.Fatal(err)
+	}
+	entered, resume := make(chan struct{}), make(chan struct{})
+	var releaseOnce sync.Once
+	release := func() { releaseOnce.Do(func() { close(resume) }) }
+	r.check = func() error { close(entered); <-resume; return r.ctx.Err() }
+	caller, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	type result struct {
+		delivery *Delivery
+		err      error
+	}
+	completed := make(chan result, 1)
+	go func() { delivery, err := r.NextDelivery(caller); completed <- result{delivery, err} }()
+	joined := false
+	t.Cleanup(func() {
+		release()
+		cancel()
+		if !joined {
+			outcome := <-completed
+			if outcome.delivery != nil {
+				outcome.delivery.Close()
+			}
+		}
+	})
+	<-entered
+	cancel()
+	release()
+	outcome := <-completed
+	joined = true
+	if outcome.delivery != nil {
+		outcome.delivery.Close()
+		t.Fatal("canceled original caller received delivery after observation", outcome.err)
+	}
+	if !errors.Is(outcome.err, context.Canceled) {
+		t.Fatal("original caller cancellation lost", outcome.err)
+	}
+	r.deliveryUsers.Wait()
+	r.mu.Lock()
+	retained := len(r.deliveries)
+	r.mu.Unlock()
+	if retained != 0 {
+		t.Fatal("rejected original delivery borrow was not joined", retained)
+	}
+}
+
 func TestDeliveryTransportJoinsMatchingTerminalBeforeBorrowReturn(t *testing.T) {
 	r, peer := deliveryTransportFixture(t)
 	body, err := EncodeDelivery([32]byte{9}, deliveryEnvelope(t))

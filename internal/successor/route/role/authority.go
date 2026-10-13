@@ -18,17 +18,14 @@ type Authority struct {
 	Profile network.ProfileBinding
 }
 
-// FreshHello creates a fresh channel nonce while preserving the requested
-// original recipient and bounds. Reobservation after nonce creation prevents
-// publishing a HELLO after authority loss; callers still check around I/O.
+// FreshHello creates a fresh channel nonce from the retained original recipient
+// and bounds. Those facts grant no authority: the fresh observation after nonce
+// creation validates the complete HELLO before handoff. Callers still check
+// around I/O.
 func (a Authority) FreshHello(end time.Time, purpose ardp.Purpose, outer bool) (ardp.Hello, error) {
-	m, err := a.Member()
-	if err != nil {
-		return ardp.Hello{}, err
-	}
 	p := a.Profile
 	h := ardp.Hello{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, ProfileDigest: p.Digest,
-		RecipientNodeID: m.NodeID, RecipientDutyGeneration: m.DutyGeneration, Purpose: purpose, Deadline: end}
+		RecipientNodeID: a.Duty.NodeID, RecipientDutyGeneration: a.Duty.RecordGeneration, Purpose: purpose, Deadline: end}
 	if _, err := rand.Read(h.ChannelNonce[:]); err != nil {
 		return ardp.Hello{}, err
 	}

@@ -83,10 +83,10 @@ func (owner *Owner) prepareJob(job *execution.Job, surface execution.Surface) er
 }
 
 func (owner *Owner) launchJob(job *execution.Job, surface execution.Surface) (_ *Invocation, result error) {
-	return owner.launchInitializedJob(job, surface, nil, false)
+	return owner.launchInitializedJob(job, surface, nil, false, nil)
 }
 
-func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.Surface, snapshot []byte, publisher bool) (_ *Invocation, result error) {
+func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.Surface, snapshot []byte, publisher bool, readerCaller context.Context) (_ *Invocation, result error) {
 	bounded, cancel := context.WithTimeout(job.Context(), 15*time.Second)
 	defer cancel()
 	var activation *worker.Activation
@@ -199,7 +199,7 @@ func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.S
 		return nil, err
 	}
 	invocation := &Invocation{job: job, activation: activation, cleanup: cleanup, grant: grant, lease: lease,
-		stop: stop, callbackDone: callbackDone, done: make(chan struct{}), publisher: publisher}
+		stop: stop, callbackDone: callbackDone, done: make(chan struct{}), publisher: publisher, readerCaller: readerCaller, surface: surface}
 	invocation.observeAttachment()
 	invocation.beginJoin()
 	transferred = true

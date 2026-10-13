@@ -12,21 +12,23 @@ import (
 
 // initialDelivery retains the exact initial binding/private opening through
 // real wire completion, then until its original capsule deadline. It grants no
-// Service TLS or Application stream and cannot accept a recovery Attachment.
+// Service TLS or Application stream. Replacement delivery retains the same
+// setup lifetime but dispatches only to its independently matched original stream.
 // The original delivery caller can cancel setup; its callback is relinquished
 // only after matching RESULT/CLOSE and final original authority checks.
 type initialDelivery struct {
-	publisher  *Publisher
-	delivery   *introduction.Delivery
-	opening    *IntroductionOpening
-	ctx        context.Context
-	cancel     context.CancelFunc
-	stopCaller func() bool
-	callerDone chan struct{}
-	callerOnce sync.Once
-	closeOnce  sync.Once
-	nonce      [32]byte
-	wireJoined bool // Publisher.mu owns publication of this retained state.
+	publisher      *Publisher
+	delivery       *introduction.Delivery
+	opening        *IntroductionOpening
+	ctx            context.Context
+	cancel         context.CancelFunc
+	stopCaller     func() bool
+	callerDone     chan struct{}
+	callerOnce     sync.Once
+	closeOnce      sync.Once
+	nonce          [32]byte
+	wireJoined     bool // Publisher.mu owns publication of this retained state.
+	serviceClaimed bool // The same mutex admits exactly one initial Service setup.
 }
 
 func (p *Publisher) newInitialDelivery(delivery *introduction.Delivery) *initialDelivery {
@@ -55,10 +57,19 @@ func (state *initialDelivery) observe() error {
 		return err
 	}
 	p := state.publisher
+	p.mu.Lock()
+	var deliveryErr error
+	if !state.wireJoined {
+		deliveryErr = state.delivery.Context().Err()
+	}
+	p.mu.Unlock()
 	known := append([]route.Member(nil), p.config.Exclusions...)
 	intro := p.config.Duty
 	known = append(known, route.Member{NodeID: intro.NodeID, PublicKey: intro.PublicKey, FamilyID: intro.FamilyID})
-	return errors.Join(state.delivery.Context().Err(), p.config.Source.CheckResponderRendezvous(p.responder, state.opening.rendezvous, known))
+	if state.opening.stream != nil {
+		return errors.Join(deliveryErr, p.responderScope.Check())
+	}
+	return errors.Join(deliveryErr, state.opening.responder.CheckRendezvous(state.opening.rendezvous, known))
 }
 
 func (state *initialDelivery) retain() error {
@@ -67,7 +78,7 @@ func (state *initialDelivery) retain() error {
 	}
 	p := state.publisher
 	nonce := state.delivery.Capsule().Header().DeliveryNonce
-	return p.config.Source.CommitPair(p.responder, func(checkOriginal func() error) error {
+	return state.commitResponder(func(checkOriginal func() error) error {
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		if err := state.checkLocal(checkOriginal); err != nil {
@@ -91,7 +102,7 @@ func (state *initialDelivery) publishJoined() error {
 		return err
 	}
 	p := state.publisher
-	return p.config.Source.CommitPair(p.responder, func(checkOriginal func() error) error {
+	return state.commitResponder(func(checkOriginal func() error) error {
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		if p.initialDeliveries[state.nonce] != state {
@@ -101,8 +112,19 @@ func (state *initialDelivery) publishJoined() error {
 			return err
 		}
 		state.wireJoined = true
+		select {
+		case p.initialWake <- struct{}{}:
+		default:
+		}
 		return nil
 	})
+}
+
+func (state *initialDelivery) commitResponder(action func(func() error) error) error {
+	if state.opening.stream != nil {
+		return state.publisher.responderScope.Commit(action)
+	}
+	return state.opening.responder.Commit(action)
 }
 
 // Caller owns the Publisher lock and both physical generation locks. No
@@ -117,7 +139,15 @@ func (state *initialDelivery) checkLocal(checkOriginal func() error) error {
 		return errors.New("Publisher original initial Registration retired")
 	default:
 	}
-	return errors.Join(state.ctx.Err(), state.delivery.Context().Err(), p.ctx.Err(), p.lifetime.Context().Err(),
+	// Before actual RESULT/CLOSE completion the delivery caller can revoke
+	// setup. Afterwards its owned Close must not revoke the independently
+	// retained scope. Original pair, Instance, Execution and capsule bounds
+	// remain checked above and below; wireJoined is set only by publishJoined.
+	var deliveryErr error
+	if !state.wireJoined {
+		deliveryErr = state.delivery.Context().Err()
+	}
+	return errors.Join(state.ctx.Err(), deliveryErr, p.ctx.Err(), p.lifetime.Context().Err(),
 		checkOriginal(), state.opening.binding.Check(state.ctx, p.config.Operation))
 }
 

@@ -3,6 +3,8 @@ package prefix
 import (
 	"context"
 	"errors"
+	"net"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -10,8 +12,94 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 )
+
+type introductionCleanupWrite struct {
+	net.Conn
+	emitted, release chan struct{}
+	once             sync.Once
+	failure          error
+}
+
+func (c *introductionCleanupWrite) Write(body []byte) (int, error) {
+	n, err := c.Conn.Write(body[:min(8, len(body))])
+	if err != nil {
+		return n, err
+	}
+	c.once.Do(func() { close(c.emitted) })
+	<-c.release
+	return n, c.failure
+}
+
+// Actual encoded pipe output isolates physical retirement. These inputs
+// provide no Network/Registration/Publication or successful TLS authority.
+func TestIntroductionCleanupRequiresJoinedLowerLaneAndRetainsPhysicalFailure(t *testing.T) {
+	for _, failOutput := range []bool{false, true} {
+		t.Run(map[bool]string{false: "pre-output-refusal", true: "late-output"}[failOutput], func(t *testing.T) {
+			local, peer := net.Pipe()
+			defer peer.Close()
+			var conn net.Conn = local
+			failure := errors.New("original Introduction lower write failed late")
+			check := func() error { return context.Canceled }
+			var physical *introductionCleanupWrite
+			if failOutput {
+				physical = &introductionCleanupWrite{Conn: local, emitted: make(chan struct{}), release: make(chan struct{}), failure: failure}
+				conn, check = physical, nil
+			}
+			owner, lane, err := framing.PrepareJoined(t.Context(), conn, time.Now().Add(5*time.Second), 1<<20, check, framing.NewBudget(4<<20))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer owner.Close()
+			var releaseOnce sync.Once
+			unblock := func() {
+				if physical != nil {
+					releaseOnce.Do(func() { close(physical.release) })
+				}
+			}
+			defer unblock()
+			var returns atomic.Int32
+			terminal := &IntroductionChannel{conn: lane, lane: lane, cancel: func() {}, release: func() { returns.Add(1) }}
+			terminal.self = terminal
+			if _, joined := terminal.CleanupResult(); joined {
+				t.Fatal("unclosed Introduction supplied joined cleanup")
+			}
+			if failOutput {
+				go func() { var header [8]byte; _, _ = peer.Read(header[:]) }()
+				closed := make(chan error, 1)
+				go func() { closed <- terminal.CloseSetup() }()
+				select {
+				case <-physical.emitted:
+				case <-time.After(time.Second):
+					t.Fatal("original CLOSE did not emit its physical prefix")
+				}
+				if _, joined := terminal.CleanupResult(); joined || returns.Load() != 0 {
+					t.Fatal("Introduction cleanup preceded original writer join")
+				}
+				unblock()
+				if err := <-closed; !errors.Is(err, failure) {
+					t.Fatal("full Introduction outcome lost actual physical failure", err)
+				}
+			} else if err := terminal.CloseSetup(); !errors.Is(err, context.Canceled) {
+				t.Fatal("original Introduction refusal was erased", err)
+			}
+			cleanup, joined := terminal.CleanupResult()
+			if !joined || returns.Load() != 1 || failOutput && !errors.Is(cleanup, failure) || !failOutput && cleanup != nil {
+				t.Fatal("original physical cleanup result changed", cleanup, joined, returns.Load())
+			}
+			_ = terminal.CloseSetup()
+			if repeated, complete := terminal.CleanupResult(); !complete || repeated != cleanup || returns.Load() != 1 {
+				t.Fatal("repeated retirement changed result or returned twice", repeated, returns.Load())
+			}
+			copied := &IntroductionChannel{self: terminal}
+			if _, joined := copied.CleanupResult(); joined {
+				t.Fatal("foreign terminal supplied original cleanup")
+			}
+		})
+	}
+}
 
 // The exact recipient reobservation can fail after the preceding leg check.
 // Failure-only inputs cannot supply a member, ACK or accepting registration.

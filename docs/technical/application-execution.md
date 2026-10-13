@@ -147,6 +147,55 @@ Local cleanup capacity and Broker active count are distinct. Releasing a revoked
 lease does not prove joined descendants or create new cleanup capacity. Network
 token spend remains irreversible; local release cannot refund it.
 
+### Original Text operation and retained Reader result
+
+The runtime also admits fresh local Administration requests for Link and
+Withdraw through the same original authority and cleanup supervisor. Each
+request consumes its exact Principal/surface capability and joins its original
+session. It creates no Job or qualified worker and supplies no Publication or
+Connection authority. The installed Administration consumer additionally checks
+the original startup and actual retained Publication. Snapshot publication
+continues to require its separately qualified Publisher invocation and operation.
+
+The ordinary Reader and selected-snapshot Publisher each consume their original
+qualified invocation's one operation and a trusted directional byte contract.
+Text retains the sole initialized protocol reader; Execution does not run the
+setup-only EOF reader concurrently with it. One stream transfer is one local
+Application request. Connection replacement changes an Attachment, never the
+operation, Job, byte Grant or selected snapshot.
+
+The Reader's local authenticated completion may retain Connection's bounded
+control tail. Its bounded private result remains pending while the original
+stream and operation retain that tail and composition joins the original Source.
+Closing the successful operation releases and joins
+the Text reader before Job retirement, then the invocation joins its original
+descendants. Only that exact successful completed-current Job may expose the
+result once. Revocation, failed protocol use or a later Job invalidates it;
+pending bytes supply neither live worker authority nor physical completion.
+
+Successful Publisher Text completion retains the original Service stream and
+worker cleanup borrow until that stream's original joined notification or
+original operation cancellation. Application Done does not trigger full Close
+while authenticated Terminal controls remain in flight. Cancellation and refusal
+interrupt the wait and join the same resources immediately; neither completion
+nor the notification renews authority, bounds or the Application request.
+
+Borrowed owners report only actual joined physical cleanup failures to the
+operation's cleanup accounting. Their full exchange results retain transport
+loss, refusal and authenticated logical failure separately. A failed old
+Attachment with clean physical retirement does not terminate the Job, while
+an actual write/close/join failure still closes generation admission. No error
+classification, retry or new operation may erase that physical failure.
+The Text Publisher retains each Service's full Close result separately and,
+after Close joins that same Service, consumes its `JoinedCleanup` receipt for
+worker cleanup. A logical control-tail cancellation cannot poison the snapshot
+Job. Actual physical failures from every joined Service remain retained.
+The Reader Connection Source closes its original Prefix and retains that full
+terminal result separately. Cleanup accounting consumes Prefix's exact joined
+physical receipt, not its retired-readiness notification or complete authority
+refusal. A missing original join still fails; a nil physical receipt cannot
+authorize another Job or restore the canceled Reader.
+
 ## Implementation and evidence limits
 
 [Execution's source entry point](../../internal/successor/execution/README.md)

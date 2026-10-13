@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
@@ -20,13 +22,19 @@ import (
 // Prefix owns opening the authenticated terminal and preparing its framing.
 // A retained acquisition keeps this parent's generation alive until cleanup.
 type JoinChannel struct {
-	ctx, lifetime context.Context
-	owner         *framing.Session
-	end           time.Time
-	conn          net.Conn
-	parent        *framing.Lane
-	release       func()
-	interruption  prefixSetupInterruption
+	ctx, lifetime               context.Context
+	owner                       *framing.Session
+	end                         time.Time
+	conn                        net.Conn
+	parent                      *framing.Lane
+	release                     func()
+	interruption                prefixSetupInterruption
+	parentOnce                  sync.Once
+	parentResult, parentCleanup error
+	parentJoined                atomic.Bool
+	setupOnce                   sync.Once
+	setupResult, setupCleanup   error
+	setupJoined                 atomic.Bool
 }
 
 // Even a failed opening returns its exact partial setup for joined retirement.
@@ -71,12 +79,34 @@ func (t *JoinChannel) JoinSetupInterruption() bool {
 }
 
 func (t *JoinChannel) CloseSetup() error {
-	t.JoinSetupInterruption()
-	var result error
-	if t.conn != nil {
-		result = errors.Join(result, t.conn.Close())
+	t.setupOnce.Do(func() {
+		t.JoinSetupInterruption()
+		var output error
+		if t.conn != nil {
+			output = t.conn.Close()
+		}
+		t.setupResult = errors.Join(output, t.CloseParent())
+		t.setupCleanup = t.parentCleanup
+		if t.parent == nil {
+			// Before acquiring a lower lane, only this directly owned partial
+			// connection can have a physical close result. With a lower lane,
+			// its joined receipt retains actual output/close failures separately
+			// from the complete failed setup outcome above.
+			t.setupCleanup = errors.Join(t.setupCleanup, output)
+		}
+		t.setupJoined.Store(true)
+	})
+	return t.setupResult
+}
+
+// SetupCleanupResult retains only original physical retirement after the setup
+// callback, partial connection, lower lane and control return have joined.
+// A failed setup or work refusal remains in CloseSetup, not this receipt.
+func (t *JoinChannel) SetupCleanupResult() (error, bool) {
+	if t == nil || !t.setupJoined.Load() {
+		return nil, false
 	}
-	return errors.Join(result, t.CloseParent())
+	return t.setupCleanup, true
 }
 
 // CloseParent returns only this terminal's original lower lane and control
@@ -84,15 +114,31 @@ func (t *JoinChannel) CloseSetup() error {
 // authenticated terminal have joined, or after failed setup has joined.
 // JOIN never receives a raw parent or a separate capacity return callback.
 func (t *JoinChannel) CloseParent() error {
-	var result error
-	if t.parent != nil {
-		result = t.parent.Close()
-		t.parent.Finish()
+	t.parentOnce.Do(func() {
+		if t.parent != nil {
+			t.parentResult = t.parent.Close()
+			cleanup, complete := t.parent.CleanupResult()
+			if !complete {
+				cleanup = errors.Join(cleanup, errors.New("original JOIN parent lane cleanup did not join"))
+			}
+			t.parentCleanup = cleanup
+			t.parent.Finish()
+		}
+		if t.release != nil {
+			t.release()
+		}
+		t.parentJoined.Store(true)
+	})
+	return t.parentResult
+}
+
+// ParentCleanupResult is the exact joined lower lane/control return, not the
+// parent Close authority/work outcome or permission for another JOIN.
+func (t *JoinChannel) ParentCleanupResult() (error, bool) {
+	if t == nil || !t.parentJoined.Load() {
+		return nil, false
 	}
-	if t.release != nil {
-		t.release()
-	}
-	return result
+	return t.parentCleanup, true
 }
 
 // Prepare only after JOIN has verified RESULT. Stop and join setup interruption

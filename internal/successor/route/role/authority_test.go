@@ -110,13 +110,10 @@ func TestFreshHelloCannotPublishAfterObservationLoss(t *testing.T) {
 	calls := 0
 	a := Authority{Duty: duty, Profile: view.Profile().ProfileBinding, Current: func() (network.RuntimeView, error) {
 		calls++
-		if calls == 2 {
-			return network.RuntimeView{}, lost
-		}
-		return view, nil
+		return network.RuntimeView{}, lost
 	}}
 	h, err := a.FreshHello(now.Add(time.Minute), ardp.PurposeForwarding, false)
-	if !errors.Is(err, lost) || h != (ardp.Hello{}) || calls != 2 {
+	if !errors.Is(err, lost) || h != (ardp.Hello{}) || calls != 1 {
 		t.Fatal("HELLO published after authority loss", h, err, calls)
 	}
 	a.Current = func() (network.RuntimeView, error) { return view, nil }
@@ -131,6 +128,30 @@ func TestFreshHelloCannotPublishAfterObservationLoss(t *testing.T) {
 	}
 	if first.ChannelNonce == [32]byte{} || first.ChannelNonce == second.ChannelNonce || first.Deadline != end || second.Deadline != end || first.RecipientNodeID != duty.NodeID || second.RecipientNodeID != duty.NodeID {
 		t.Fatal("fresh nonce changed original recipient/bounds or was reused")
+	}
+}
+
+func TestFreshHelloRefusesSubstitutedRetainedFacts(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	view := authorityObservation(t, now, 1, [32]byte{104})
+	duty, err := view.RetainDuty([32]byte{1}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := Authority{Duty: duty, Profile: view.Profile().ProfileBinding, Current: func() (network.RuntimeView, error) { return view, nil }}
+	for name, change := range map[string]func(*Authority){
+		"recipient":  func(a *Authority) { a.Duty.NodeID[0]++ },
+		"generation": func(a *Authority) { a.Duty.RecordGeneration++ },
+		"key":        func(a *Authority) { a.Duty.PublicKey[0]++ },
+		"profile":    func(a *Authority) { a.Profile.Digest[0]++ },
+	} {
+		t.Run(name, func(t *testing.T) {
+			a := original
+			change(&a)
+			if h, err := a.FreshHello(now.Add(time.Minute), ardp.PurposeForwarding, false); err == nil || h != (ardp.Hello{}) {
+				t.Fatal("retained facts supplied an accepting HELLO", h, err)
+			}
+		})
 	}
 }
 

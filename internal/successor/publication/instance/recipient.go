@@ -42,6 +42,9 @@ func (binding *Binding) NewRecipient(ctx context.Context, registration *introduc
 		return nil, err
 	}
 	facts := receipt.Facts()
+	if err := binding.observe(ctx); err != nil {
+		return nil, err
+	}
 	root := binding.root
 	root.mu.Lock()
 	recipient, err := binding.newRecipientLocked(ctx, registration, receipt, facts)
@@ -52,9 +55,7 @@ func (binding *Binding) NewRecipient(ctx context.Context, registration *introduc
 	if err = registration.CheckReceipt(receipt); err != nil {
 		return nil, errors.Join(err, recipient.Close())
 	}
-	root.mu.Lock()
-	err = recipient.check(ctx)
-	root.mu.Unlock()
+	err = recipient.observe(ctx)
 	if err != nil {
 		return nil, errors.Join(err, recipient.Close())
 	}
@@ -62,7 +63,7 @@ func (binding *Binding) NewRecipient(ctx context.Context, registration *introduc
 }
 
 func (binding *Binding) newRecipientLocked(ctx context.Context, registration *introduction.HolderRegistration, receipt introduction.Receipt, facts introduction.RegistrationFacts) (*Recipient, error) {
-	if err := binding.check(ctx); err != nil {
+	if err := binding.checkLocal(ctx); err != nil {
 		return nil, err
 	}
 	value := binding.credential.Delegation()
@@ -94,12 +95,27 @@ func (binding *Binding) newRecipientLocked(ctx context.Context, registration *in
 	return recipient, nil
 }
 
-func (recipient *Recipient) check(ctx context.Context) error {
+func (recipient *Recipient) observe(ctx context.Context) error {
+	if recipient == nil || recipient.binding == nil || recipient.binding.root == nil || ctx == nil {
+		return ErrUnavailable
+	}
+	if err := recipient.binding.observe(ctx); err != nil {
+		return err
+	}
+	root := recipient.binding.root
+	root.mu.Lock()
+	defer root.mu.Unlock()
+	return recipient.checkLocal(ctx)
+}
+
+// checkLocal follows an original Binding observation and retains the exact
+// private recipient/cutoff. It performs no foreign native observation.
+func (recipient *Recipient) checkLocal(ctx context.Context) error {
 	binding := recipient.binding
 	if recipient.closed || recipient.ctx == nil || recipient.ctx.Err() != nil || len(recipient.private) != 32 || binding.recipients[0] != recipient && binding.recipients[1] != recipient || !time.Now().Before(recipient.acceptUntil) {
 		return ErrUnavailable
 	}
-	return binding.check(ctx)
+	return binding.checkLocal(ctx)
 }
 
 // Descriptor signs only this owner's canonical key/registration/Publication
@@ -111,10 +127,13 @@ func (recipient *Recipient) Descriptor(ctx context.Context) ([]byte, error) {
 	if err := recipient.registration.CheckReceipt(recipient.receipt); err != nil {
 		return nil, err
 	}
+	if err := recipient.observe(ctx); err != nil {
+		return nil, err
+	}
 	binding := recipient.binding
 	root := binding.root
 	root.mu.Lock()
-	if err := recipient.check(ctx); err != nil {
+	if err := recipient.checkLocal(ctx); err != nil {
 		root.mu.Unlock()
 		return nil, err
 	}
@@ -143,9 +162,7 @@ func (recipient *Recipient) Descriptor(ctx context.Context) ([]byte, error) {
 	if err := recipient.registration.CheckReceipt(recipient.receipt); err != nil {
 		return nil, err
 	}
-	root.mu.Lock()
-	err := recipient.check(ctx)
-	root.mu.Unlock()
+	err := recipient.observe(ctx)
 	if err != nil {
 		return nil, errors.Join(ErrUnavailable, err)
 	}
