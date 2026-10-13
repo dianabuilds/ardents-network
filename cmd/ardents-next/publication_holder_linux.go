@@ -191,6 +191,11 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 		for {
 			stream, err := owner.NextStream(caller, contract)
 			if err != nil {
+				if owner.StreamAcquisitionStopped(err) {
+					// This loop acquired no work. The owning Withdraw/Close
+					// still returns all retained work and physical failures.
+					return nil
+				}
 				return err
 			}
 			transferred, err := operation.DeliverPublisherStream(caller, contract, stream)

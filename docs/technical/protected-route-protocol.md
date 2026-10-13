@@ -533,9 +533,11 @@ so that each encrypted record, including its header and authentication overhead,
 fits one 16 KiB BYTES body. The original Lane projects its fixed framing overhead
 through the enclosing TLS/Carrier chain, so this bound includes lower nested
 headers rather than restarting at each layer. This projection grants no live
-credit or authority and performs no observation or I/O. Complete concurrent
-writes remain serialized. These
-mechanisms preserve stream bytes, original deadlines and physical retirement;
+credit or authority and performs no observation or I/O. Lane writes also apply
+this capacity before framing opaque relay bytes; they do not depend on an inner
+TLS writer at the forwarding peer to account for the enclosing headers.
+Complete concurrent writes remain serialized. These mechanisms preserve stream
+bytes, original deadlines and physical retirement;
 they add no lane credit, authority cache or alternative authentication profile.
 
 Schedule one at-most-16-KiB frame per ready lane in round-robin order. Reserve

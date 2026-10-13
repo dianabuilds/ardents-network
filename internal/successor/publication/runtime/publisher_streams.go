@@ -22,7 +22,7 @@ func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.St
 	p.mu.Lock()
 	if p.closed {
 		p.mu.Unlock()
-		return nil, errors.New("Publisher retired before stream acquisition")
+		return nil, p.stoppedAcquisition(ctx)
 	}
 	p.flights.Add(1)
 	p.mu.Unlock()
@@ -67,6 +67,32 @@ func (p *Publisher) NextStream(ctx context.Context, contract executionruntime.St
 	}
 	go p.watchConnection(logical, stream)
 	return stream, nil
+}
+
+// stoppedAcquisition identifies only this owner's idle acquisition retirement.
+// It is not a stream EOF or a successful withdrawal/physical cleanup result.
+type stoppedAcquisition struct{ owner *Publisher }
+
+func (*stoppedAcquisition) Error() string { return "Publisher stopped idle stream acquisition" }
+
+func (p *Publisher) stoppedAcquisition(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.closed {
+		return &stoppedAcquisition{owner: p}
+	}
+	return p.ctx.Err()
+}
+
+// StreamAcquisitionStopped recognizes only the original owner's direct idle
+// stop result. Callers must still join Close/Withdraw and preserve their errors;
+// an aggregate containing another failure is never classified as an idle stop.
+func (p *Publisher) StreamAcquisitionStopped(err error) bool {
+	stopped, ok := err.(*stoppedAcquisition)
+	return p != nil && p.self == p && ok && stopped.owner == p
 }
 
 // The full canonical tuple locates retained work; it cannot authenticate it.

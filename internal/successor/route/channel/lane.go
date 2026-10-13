@@ -172,6 +172,13 @@ func (l *Lane) Read(p []byte) (int, error) {
 func (l *Lane) Write(p []byte) (int, error) {
 	l.writeMu.Lock()
 	defer l.writeMu.Unlock()
+	// Relays write opaque bytes directly, without an inner TLS writer to
+	// project the enclosing record capacity. Apply that same physical bound
+	// here so a full BYTES frame does not split again in the parent TLS.
+	limit := l.RecordWriteLimit()
+	if len(p) != 0 && limit <= 0 {
+		return 0, errors.New("nested lane record capacity unavailable")
+	}
 	n := 0
 	for len(p) > 0 {
 		l.s.mu.Lock()
@@ -195,7 +202,7 @@ func (l *Lane) Write(p []byte) (int, error) {
 			}
 			continue
 		}
-		count := min(len(p), ardp.MaximumBodySize, int(credit))
+		count := min(len(p), limit, int(credit))
 		// Copy before queueing: canceled output cannot retain caller memory.
 		body := append([]byte(nil), p[:count]...)
 		if err := l.s.write(l, ardp.Frame{Kind: ardp.KindBytes, Lane: l.id, Body: body}, false); err != nil {

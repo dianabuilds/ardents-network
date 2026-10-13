@@ -1352,6 +1352,12 @@ borrows with those physical results, then joins the original Prefixes and
 Instance binding. Command composition consumes the original Publisher receipt
 and retains actual custody/selection/Hosting close failures separately; it must
 not project the full canceled Publication result into Execution cleanup.
+An idle stream-acquisition stop is identified only by its original Publisher,
+before any delivery is acquired. The command's serving loop may finish on that
+exact result; ordinary cancellation, a foreign owner or an aggregate containing
+another failure does not supply it. Owning Withdraw/Close still joins all work
+and retains its complete withdrawal and physical errors. Caller loss and a
+failure after delivery acquisition remain failures of that operation.
 This execution seam requires a genuine Connection/Route consumer and installed
 worker evidence; portable compilation and Text fixtures do not provide either.
 Before TLS setup, Reader requires the exact Source JOIN and Publisher requires

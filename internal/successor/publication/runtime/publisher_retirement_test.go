@@ -2,10 +2,41 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 )
+
+// No successful authority or stream is supplied: only the already retired
+// original owner may report that an idle acquisition obtained no work.
+func TestIdleAcquisitionStopRetainsOriginalOwnerAndFailures(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	original := &Publisher{ctx: ctx, closed: true}
+	original.self = original
+	other := &Publisher{ctx: ctx, closed: true}
+	other.self = other
+	for _, acquire := range []func(context.Context) error{
+		func(ctx context.Context) error {
+			_, err := original.NextStream(ctx, executionruntime.StreamContract{})
+			return err
+		},
+		func(ctx context.Context) error { _, err := original.NextAuthentication(ctx); return err },
+	} {
+		err := acquire(t.Context())
+		if !original.StreamAcquisitionStopped(err) || other.StreamAcquisitionStopped(err) {
+			t.Fatal("idle retirement lost its exact owner", err)
+		}
+		failure := errors.New("physical retirement failed")
+		if original.StreamAcquisitionStopped(errors.Join(err, failure)) || original.StreamAcquisitionStopped(context.Canceled) {
+			t.Fatal("generic cancellation or joined failure became an idle stop")
+		}
+		if err := acquire(ctx); !errors.Is(err, context.Canceled) || original.StreamAcquisitionStopped(err) {
+			t.Fatal("idle retirement erased original caller loss", err)
+		}
+	}
+}
 
 // This fixture supplies no accepting authority. It tests refusal before a
 // copied handle can cancel original users or start a physical cleanup wait.

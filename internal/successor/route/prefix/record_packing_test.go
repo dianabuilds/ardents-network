@@ -36,6 +36,15 @@ func (c *recordPackingCounter) Write(raw []byte) (int, error) {
 // This isolates real TLS and framing mechanics. It supplies no Network duty,
 // token or JOIN authority and is not a successful admitted Prefix scenario.
 func TestNestedRoleRecordsDoNotMultiplyForwardingFrames(t *testing.T) {
+	testNestedRecordPacking(t, false)
+}
+
+func TestLaneRecordsRespectEnclosingTLSCapacity(t *testing.T) {
+	testNestedRecordPacking(t, true)
+}
+
+func testNestedRecordPacking(t *testing.T, laneWrite bool) {
+	t.Helper()
 	ctx, cancel := context.WithCancel(t.Context())
 	left, right := net.Pipe()
 	var sessions []*channel.Session
@@ -64,6 +73,11 @@ func TestNestedRoleRecordsDoNotMultiplyForwardingFrames(t *testing.T) {
 	var counters []*recordPackingCounter
 	var client, server net.Conn = left, right
 	for layer := range 3 {
+		if layer == 2 && laneWrite {
+			// A relay writes opaque bytes directly to the Lane. There is no
+			// local inner TLS writer to size them for the enclosing stack.
+			break
+		}
 		type accepted struct {
 			conn *tls.Conn
 			err  error

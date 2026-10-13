@@ -15,18 +15,24 @@ import (
 // coalesced Service authentication; workload handoff still requires the logical
 // stream and its original Route-backed recovery composition.
 func (p *Publisher) NextAuthentication(ctx context.Context) (_ *connection.AuthenticatedAttachment, result error) {
-	if p == nil || ctx == nil {
+	if p == nil || p.self != p || ctx == nil {
 		return nil, errors.New("Publisher Service authentication caller is absent")
 	}
 	var state *initialDelivery
 	for state == nil {
+		p.mu.Lock()
+		closed := p.closed
+		p.mu.Unlock()
+		if closed {
+			return nil, p.stoppedAcquisition(ctx)
+		}
 		if err := p.check(ctx); err != nil {
 			return nil, err
 		}
 		p.mu.Lock()
 		if p.closed {
 			p.mu.Unlock()
-			return nil, errors.New("Publisher retired before Service acquisition")
+			return nil, p.stoppedAcquisition(ctx)
 		}
 		for _, candidate := range p.initialDeliveries {
 			if candidate.wireJoined && !candidate.serviceClaimed && candidate.opening.stream == nil && candidate.ctx.Err() == nil {
@@ -42,7 +48,7 @@ func (p *Publisher) NextAuthentication(ctx context.Context) (_ *connection.Authe
 			case <-ctx.Done():
 				return nil, ctx.Err()
 			case <-p.ctx.Done():
-				return nil, p.ctx.Err()
+				return nil, p.stoppedAcquisition(ctx)
 			case <-p.initialWake:
 			}
 		}
