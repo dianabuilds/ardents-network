@@ -38,6 +38,14 @@
         "invalid_environment": "selected original qualified reopen environment unavailable; no passing skips"
       },
       {
+        "id": "connection-control-received",
+        "state": "active",
+        "make_target": "connection-control-received-check",
+        "surface": "actual original Terminal/receipt/confirmation accepted by the opposite record reader while sender remains before finishWrite; both roles and Carriers, actual Rendezvous retirement/reopen, original qualified workers and one Application request; no supplied authority or records; component only",
+        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID with independently pinned execution-command.test", "pinned root-owned qualification unit selecting TestInstalledConnectionControlReceivedBothCarriers with timeout20m and RuntimeMaxSec1260s", "root driver and real loopback TCP/UDP"],
+        "invalid_environment": "selected original qualified control environment unavailable; no passing skips"
+      },
+      {
         "id": "connection-control",
         "state": "active",
         "make_target": "connection-control-check",

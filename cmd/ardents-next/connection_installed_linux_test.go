@@ -397,10 +397,13 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	var controlGate *installedControlWriteGate
 	if strings.HasPrefix(timing, "control-") {
 		parts := strings.SplitN(strings.TrimPrefix(timing, "control-"), "-", 3)
-		if len(parts) != 3 || parts[0] != "publisher" && parts[0] != "initiator" || parts[1] != "terminal" && parts[1] != "receipt" && parts[1] != "confirmation" || parts[2] != "before-write" && parts[2] != "after-write" {
+		if len(parts) != 3 || parts[0] != "publisher" && parts[0] != "initiator" || parts[1] != "terminal" && parts[1] != "receipt" && parts[1] != "confirmation" || parts[2] != "before-write" && parts[2] != "after-write" && parts[2] != "after-receive" {
 			t.Fatal("unknown control write boundary")
 		}
-		controlGate = &installedControlWriteGate{role: parts[0], kind: parts[1], after: parts[2] == "after-write", entered: make(chan struct{}), resume: make(chan struct{})}
+		controlGate = &installedControlWriteGate{role: parts[0], kind: parts[1], after: parts[2] != "before-write", entered: make(chan struct{}), resume: make(chan struct{})}
+		if parts[2] == "after-receive" {
+			controlGate.received = make(chan struct{})
+		}
 		t.Cleanup(controlGate.unblock)
 	}
 	if controlGate == nil && timing != "terminal-body" && timing != "" && timing != "before-request" && timing != "responder-parent" && timing != "source-parent" && timing != "source-stock-exhaustion" && timing != "publisher-source-parent" && timing != "response" && timing != "refresh-response" && timing != "refresh-pending" && timing != "publication-withdrawal" && timing != "request-terminal" && timing != "caller-observation" && timing != "close-observation" && timing != "publisher-observation" && timing != "publisher-close-observation" {
@@ -544,6 +547,10 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		original := publisherAuthority.current
 		publisherAuthority.current = func() (network.RuntimeView, error) { controlGate.observe(); return original() }
 	}
+	if controlGate != nil && controlGate.role == "initiator" && controlGate.received != nil {
+		original := publisherAuthority.current
+		publisherAuthority.current = func() (network.RuntimeView, error) { controlGate.observeReceived(); return original() }
+	}
 	if timing == "terminal-body" {
 		original := publisherAuthority.current
 		publisherAuthority.current = func() (network.RuntimeView, error) { observeBody(); return original() }
@@ -616,6 +623,9 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	if controlGate != nil && controlGate.role == "initiator" {
 		readerObservation = controlGate.observe
 	}
+	if controlGate != nil && controlGate.role == "publisher" && controlGate.received != nil {
+		readerObservation = controlGate.observeReceived
+	}
 	if publisherObservation {
 		readerObservation = nil
 	}
@@ -666,6 +676,14 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			selected = stream
 		}
 		controlGate.arm(selected)
+		if controlGate.received != nil {
+			controlGate.mu.Lock()
+			controlGate.receiver = stream
+			if controlGate.role == "initiator" {
+				controlGate.receiver = peer.stream
+			}
+			controlGate.mu.Unlock()
+		}
 	}
 	t.Cleanup(func() {
 		if err := peer.stream.Close(); err != nil {
@@ -928,6 +946,13 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		case <-ctx.Done():
 			t.Fatal("original complete Terminal body observation absent", ctx.Err())
 		}
+		if controlGate != nil && controlGate.received != nil {
+			select {
+			case <-controlGate.received:
+			case <-ctx.Done():
+				t.Fatal("opposite original reader did not accept control before writer completion", ctx.Err())
+			}
+		}
 		loseOriginal()
 		releaseHeld()
 		select {
@@ -938,7 +963,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			t.Fatal("original Terminal-body recovery incomplete", ctx.Err())
 		}
 		if controlGate != nil {
-			t.Log("actual original control ticket delayed at write boundary; same Rendezvous joined and restarted", controlGate.role, controlGate.kind, controlGate.after)
+			t.Log("actual original control ticket delayed at write boundary; same Rendezvous joined and restarted", controlGate.role, controlGate.kind, controlGate.after, "peer accepted before finish", controlGate.received != nil)
 		} else {
 			t.Log("actual Publisher received second request-side record body before final observation; same Rendezvous joined and restarted")
 		}

@@ -250,6 +250,16 @@ Original worker/result checks still require one exact snapshot and full
 Terminal completion. Any original receiving peer-retirement failure remains
 the same repeated Close result; unknown or mixed failure leaves still fail.
 This supplies no record, synthetic EOF, authority or accepting result.
+`make connection-control-received-check` selects twelve separate scenarios:
+both senders, all three Terminal controls and both Carriers. The original
+writer is held after physical Write and before `finishWrite`; the opposite
+record reader must independently observe its own accepted generation-one
+control fact before the real Rendezvous is retired. That reader alone mutates
+the inspected receive flags, and replacement joins it before ledger replacement.
+The original qualified workers then complete the same Application request.
+This checks peer acceptance before local write completion; it does not prove
+a written-but-undelivered cut or full installed qualification.
+
 `make connection-control-check` selects the separate
 control-write matrix below. `make connection-reopen-check` separately selects
 `TestInstalledConnectionDurableReopenBothCarriers`: after genuine qualified

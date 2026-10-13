@@ -152,6 +152,28 @@ func TestInstalledConnectionControlWritesBothCarriers(t *testing.T) {
 	}
 }
 
+// The writer remains inside its successful physical Write while the opposite
+// reader proves it has accepted that exact generation's control. Retirement
+// therefore occurs after peer acceptance but before the sender's finishWrite.
+func TestInstalledConnectionControlReceivedBothCarriers(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Fatal("invalid environment: original non-root installed Endpoint required")
+	}
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			for _, role := range []string{"initiator", "publisher"} {
+				t.Run(role, func(t *testing.T) {
+					for _, kind := range []string{"terminal", "receipt", "confirmation"} {
+						t.Run(kind, func(t *testing.T) {
+							runInstalledConnectionTextLoss(t, carrier, "control-"+role+"-"+kind+"-after-receive")
+						})
+					}
+				})
+			}
+		})
+	}
+}
+
 // These source sites are checked by the architecture profile: a moved call
 // cannot silently retarget a qualification fault to a prefix or pre-read check.
 const connectionControlBodyReadLine = 74
@@ -171,15 +193,62 @@ const connectionInitiatorControlWriteAfterLine = 119
 // accepting callback enters production. A generation-1 ticket selects this
 // exact initial control even if Data ACKs interleave with it.
 type installedControlWriteGate struct {
-	mu      sync.Mutex
-	target  *connection.Stream
-	role    string
-	kind    string
-	after   bool
-	entered chan struct{}
-	resume  chan struct{}
-	once    sync.Once
-	release sync.Once
+	mu          sync.Mutex
+	target      *connection.Stream
+	role        string
+	kind        string
+	after       bool
+	entered     chan struct{}
+	resume      chan struct{}
+	once        sync.Once
+	release     sync.Once
+	receiver    *connection.Stream
+	received    chan struct{}
+	receiveOnce sync.Once
+}
+
+// Only the opposite original record reader examines these fields, which it
+// alone writes. The writer does not mutate them; replacement must join this
+// reader before replacing the terminal ledger. No mutable writer flags or
+// private authority are read, and no record or accepting result is supplied.
+func (gate *installedControlWriteGate) observeReceived() {
+	var pcs [96]uintptr
+	frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs[:])])
+	reader := false
+	for {
+		frame, more := frames.Next()
+		if frame.Function == "github.com/dianabuilds/ardents-network/internal/successor/connection.(*Stream).readRecords" {
+			reader = true
+		}
+		if !more {
+			break
+		}
+	}
+	if !reader {
+		return
+	}
+	gate.mu.Lock()
+	selected := false
+	if gate.receiver != nil {
+		terminal := reflect.ValueOf(gate.receiver).Elem().FieldByName("terminal")
+		if !terminal.IsNil() && terminal.Elem().FieldByName("generation").Uint() == 1 {
+			field := "remoteClosed"
+			if gate.kind == "receipt" {
+				field = "receiptReceived"
+			}
+			if gate.kind == "confirmation" {
+				field = "receiptConfirmed"
+			}
+			selected = terminal.Elem().FieldByName(field).Bool()
+		}
+	}
+	if selected {
+		gate.receiveOnce.Do(func() { close(gate.received) })
+	}
+	gate.mu.Unlock()
+	if selected {
+		<-gate.resume
+	}
 }
 
 func (gate *installedControlWriteGate) arm(target *connection.Stream) {
