@@ -35,6 +35,12 @@ integrity policy resides in installed_inspection_linux.go, while installed_files
 retains native read/retention and sealed-generation observations. Root inspection,
 recovery and non-root startup each retain independent observations; shared policy
 code neither lends the root writer lease to startup nor grants recovery authority.
+Each serialized file observation uses at most two readers with separate bounded
+scratch blocks and original leaf descriptors. Every file is freshly read in full
+and compared with its retained bytes, followed by the same EOF, inode, ctime and
+access checks. Both readers join before parent descriptors close and final
+directory/inventory observations return a result. This retains independent
+inspection and Snapshot custody and supplies no accepting cache.
 
 
 The following bounded command contract selects ADR-0119's installation
