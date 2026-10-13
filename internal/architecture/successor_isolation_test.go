@@ -450,6 +450,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/connection_installed_linux_test.go" && (dependency == modulePath+"/internal/successor/connection" || dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/execution/runtime" || dependency == modulePath+"/internal/successor/publication/runtime" || dependency == modulePath+"/internal/successor/reachability" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
+		if source == "cmd/ardents-next/connection_reopen_linux_test.go" && (dependency == modulePath+"/internal/successor/publication/durable" || dependency == modulePath+"/internal/successor/publication/instance" || dependency == modulePath+"/internal/successor/reachability" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
 		if source == "cmd/ardents-next/publication_network_linux_test.go" && (dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}

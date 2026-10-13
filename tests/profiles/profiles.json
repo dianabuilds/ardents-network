@@ -30,6 +30,14 @@
         "invalid_environment": "selected installed Connection refresh environment unavailable; no passing skips"
       },
       {
+        "id": "connection-reopen",
+        "state": "active",
+        "make_target": "connection-reopen-check",
+        "surface": "one genuine qualified Reader/Publisher Connection on each Carrier, joined original receivers, actual Network/receiving/Hosting/Descriptor/Publication owner reopen on the same roots, spent token replay refusal with real reservation rollback and consumed Instance refusal; no process-crash or two-host qualification",
+        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test", "pinned root-owned qualification unit selecting TestInstalledConnectionDurableReopenBothCarriers", "root driver, private local roots and loopback TCP/UDP"],
+        "invalid_environment": "selected original qualified reopen environment unavailable; no passing skips"
+      },
+      {
         "id": "connection-control",
         "state": "active",
         "make_target": "connection-control-check",

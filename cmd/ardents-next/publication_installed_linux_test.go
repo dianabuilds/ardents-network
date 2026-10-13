@@ -591,7 +591,9 @@ func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixtur
 			t.Fatal(err)
 		}
 		binding := receiving.Receiver{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration, StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, NodeID: id, DutyGeneration: member.DutyGeneration}
-		owner, err := receiving.Open(t.TempDir(), binding, func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) })
+		spendRoot := t.TempDir()
+		receiverObservation := func() (receiving.Observation, error) { return f.authority.receiver(binding, member.NotAfter()) }
+		owner, err := receiving.Open(spendRoot, binding, receiverObservation)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -600,7 +602,8 @@ func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixtur
 				t.Error(err)
 			}
 		})
-		budget := networkTestBudget(t)
+		budgetRoot := filepath.Join(t.TempDir(), "budget")
+		budget := networkTestBudgetAt(t, budgetRoot)
 		config := receiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id]}
 		if reservations[f.profile.IssuerNodeID] != nil {
 			config.ReserveBootstrap = func(ctx context.Context, end time.Time) (func() error, error) {
@@ -637,6 +640,11 @@ func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixtur
 				}
 				return channel.HoldReservation(release)
 			})
+		}
+		if f.receiverReopen {
+			admit, verify := installedReceiverReopen(t, spendRoot, binding, receiverObservation, owner, budgetRoot, budget, config.Admit)
+			config.Admit = admit
+			f.afterRouteJoin = append(f.afterRouteJoin, verify)
 		}
 		reservations[id]()
 		server, err := receiver.Listen(t.Context(), config)

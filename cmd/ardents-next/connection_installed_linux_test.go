@@ -390,6 +390,10 @@ func runInstalledConnectionText(t *testing.T, carrier transport.CarrierProfile, 
 }
 
 func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfile, timing string) {
+	reopen := timing == "durable-reopen"
+	if reopen {
+		timing = ""
+	}
 	var controlGate *installedControlWriteGate
 	if strings.HasPrefix(timing, "control-") {
 		parts := strings.SplitN(strings.TrimPrefix(timing, "control-"), "-", 3)
@@ -417,6 +421,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	var expectedReaderClose error
 	var expectedPublisherClose error
 	f, reservations, certificates := installedPublisherNetwork(t, carrier, sourceLoss || publisherSourceLoss)
+	f.receiverReopen = reopen
 	var bodyEntered <-chan struct{}
 	var releaseBody func()
 	var observeBody func()
@@ -1001,6 +1006,9 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 				t.Fatal("original receiving join", err)
 			}
 		}
+	}
+	if reopen {
+		verifyInstalledConnectionReopen(t, f, store, storeRoot, plan, target)
 	}
 }
 

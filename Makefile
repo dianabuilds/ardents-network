@@ -326,6 +326,10 @@ connection-stream-check:
 	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-stream
 
 .PHONY: connection-control-check
+.PHONY: connection-reopen-check
+connection-reopen-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-reopen
+
 connection-control-check:
 	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-control
 

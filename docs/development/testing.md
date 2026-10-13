@@ -251,6 +251,15 @@ Terminal completion. Any original receiving peer-retirement failure remains
 the same repeated Close result; unknown or mixed failure leaves still fail.
 This supplies no record, synthetic EOF, authority or accepting result.
 `make connection-control-check` selects the separate
+control-write matrix below. `make connection-reopen-check` separately selects
+`TestInstalledConnectionDurableReopenBothCarriers`: after genuine qualified
+Text transfer and physical joins, it reopens the same Network, receiving,
+Hosting, Descriptor Store and Publication roots. Actually accepted tokens
+remain spent, refusal returns a real temporary Hosting reservation, accounting
+cannot decrease, the exact Descriptor and Publication generation survive,
+and the consumed Instance cannot supply a new Credential. This is orderly
+owner reopen, not process-crash or two-manager installed qualification.
+The control-write matrix is the
 `TestInstalledConnectionControlWritesBothCarriers` profile. It requires every
 role, Terminal/receipt/confirmation kind and before-write/after-write case on
 both Carriers. The receipt cases move here with the same assertions, alongside

@@ -42,6 +42,8 @@ type networkAdmissionFixture struct {
 	clockUnavailable atomic.Bool
 	close            func() error
 	reopen           func()
+	receiverReopen   bool
+	afterRouteJoin   []func() int
 }
 
 // Return one actual checked view, then withdraw the fixture's trusted clock.

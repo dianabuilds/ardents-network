@@ -86,6 +86,14 @@ qualified console; it imports neither `publication/runtime` nor
 test imports extend the command row without granting another test or production
 file the same dependencies.
 
+The exact `connection_reopen_linux_test.go` scenario additionally imports
+`publication/durable`, `publication/instance`, `reachability` and
+`route/transport`. After the original Connection and all physical owners join,
+it reopens their actual roots to check retained Publication generation,
+consumed Instance authority and exact signed Descriptor bytes. Carrier imports
+select the two registered profiles; they grant no concrete adapter construction.
+These imports apply only to this test file, without extending production imports.
+
 The separately registered `publication_ack_installed_linux_test.go` imports
 exactly `execution`, `execution/runtime`, `publication`, `reachability` and
 `route/transport` in addition to the command's existing common dependencies.

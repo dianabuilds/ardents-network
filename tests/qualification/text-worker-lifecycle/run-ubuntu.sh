@@ -15,6 +15,7 @@ case "${1-lifecycle}" in
         test_root=TestInstalledConnectionControlWritesBothCarriers; maximum_polls=12600
         ;;
     connection-refresh) test_root=TestInstalledConnectionRefreshBothCarriers ;;
+    connection-reopen) test_root=TestInstalledConnectionDurableReopenBothCarriers ;;
     connection-withdrawal) test_root=TestInstalledConnectionWithdrawalBothCarriers ;;
     connection-nonce) test_root=TestInstalledConnectionNonceBothCarriers ;;
     publication-timing)
@@ -60,6 +61,9 @@ done
     fail 'invalid environment: Ubuntu 24.04 x86-64 required'
 [ "$(stat -fc %T /sys/fs/cgroup)" = cgroup2fs ] || fail 'invalid environment: cgroup v2 required'
 binary=/usr/lib/ardents/qualification/endpoint.test
+if [ "$test_root" = TestInstalledConnectionDurableReopenBothCarriers ]; then
+    binary=/usr/lib/ardents/qualification/execution-command.test
+fi
 if [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ]; then
     binary=/usr/lib/ardents/qualification/execution-runtime.test
 fi
@@ -134,6 +138,9 @@ printf '%s\n' "$journal"
     [ "$(systemctl show ardents-endpoint.service -p ExecMainStatus --value)" = 0 ] ||
     fail 'installed text-worker lifecycle failed or did not terminate'
 set -- "$test_root" "$test_root/reader" "$test_root/publisher"
+if [ "$test_root" = TestInstalledConnectionDurableReopenBothCarriers ]; then
+    set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2" "$test_root/ardents-carrier-quic-v2"
+fi
 if [ "$test_root" = TestInstalledConnectionWithdrawalBothCarriers ]; then
     set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2" "$test_root/ardents-carrier-quic-v2"
 fi
