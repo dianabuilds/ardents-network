@@ -12,19 +12,20 @@ import (
 // Owner retains one context's holder and stock. It owns no transport, worker,
 // goroutine or external mutex. Open owns the journal lease; New borrows it.
 type Owner struct {
-	mu         sync.Mutex
-	observe    func() (admission.AuthorityFacts, time.Time, error)
-	role       admission.AllocationRole
-	journal    *attempts.Journal
-	permission *permission
-	active     *attemptState
-	preparing  *Preparation
-	closed     bool
-	failure    error
-	floor      time.Time
-	ownJournal bool
-	users      sync.WaitGroup // Admission and Close seal share mu.
-	closing    chan struct{}
+	mu            sync.Mutex
+	observationMu sync.Mutex
+	observe       func() (admission.AuthorityFacts, time.Time, error)
+	role          admission.AllocationRole
+	journal       *attempts.Journal
+	permission    *permission
+	active        *attemptState
+	preparing     *Preparation
+	closed        bool
+	failure       error
+	floor         time.Time
+	ownJournal    bool
+	users         sync.WaitGroup // Admission and Close seal share mu.
+	closing       chan struct{}
 }
 
 // Open owns the presentation journal lease as well as the volatile holder.
@@ -78,6 +79,19 @@ func (o *Owner) beginUse() error {
 	return nil
 }
 
+// observeAndLock orders observations through their local commit. Foreign I/O
+// never holds mu, so retirement can still deny effects immediately. Without
+// this ordering a newer concurrent observation could advance floor before an
+// earlier observation acquires mu, manufacturing a clock-rollback refusal.
+// The caller must unlock mu after checking and applying its local transition.
+func (o *Owner) observeAndLock() (admission.AuthorityFacts, time.Time, error) {
+	o.observationMu.Lock()
+	profile, at, err := o.observe()
+	o.mu.Lock()
+	o.observationMu.Unlock()
+	return profile, at, err
+}
+
 // current compares freshly observed authority under mu. It performs no I/O.
 func (o *Owner) current(p admission.AuthorityFacts, now time.Time, err error) (admission.AuthorityFacts, time.Time, error) {
 	if o.closed || o.failure != nil {
@@ -95,8 +109,7 @@ func (o *Owner) Request(maxima [3]uint32) ([]byte, [32]byte, error) {
 		return nil, [32]byte{}, err
 	}
 	defer o.users.Done()
-	profile, at, observedErr := o.observe()
-	o.mu.Lock()
+	profile, at, observedErr := o.observeAndLock()
 	defer o.mu.Unlock()
 	if o.preparing != nil {
 		return nil, [32]byte{}, errors.New("original stock opening is in progress")
@@ -133,8 +146,7 @@ func (o *Owner) Import(digest [32]byte, raw []byte) error {
 	if err != nil {
 		return err
 	}
-	profile, at, observedErr := o.observe()
-	o.mu.Lock()
+	profile, at, observedErr := o.observeAndLock()
 	defer o.mu.Unlock()
 	if o.preparing != nil {
 		return errors.New("original stock opening is in progress")
@@ -195,8 +207,7 @@ func (o *Owner) Take(ctx context.Context, presentation Presentation, class uint8
 		return nil, err
 	}
 	defer o.users.Done()
-	profile, observedAt, observedErr := o.observe()
-	o.mu.Lock()
+	profile, observedAt, observedErr := o.observeAndLock()
 	p, now, err := o.current(profile, observedAt, observedErr)
 	if err != nil {
 		o.mu.Unlock()
@@ -226,8 +237,7 @@ func (o *Owner) Take(ctx context.Context, presentation Presentation, class uint8
 		o.mu.Unlock()
 		return nil, err
 	}
-	profile, observedAt, observedErr = o.observe()
-	o.mu.Lock()
+	profile, observedAt, observedErr = o.observeAndLock()
 	defer o.mu.Unlock()
 	after, at, err := o.current(profile, observedAt, observedErr)
 	if err != nil || o.permission != original || after != p || !at.Before(presentation.Deadline) || !at.Before(permissionEnd) || ctx.Err() != nil {

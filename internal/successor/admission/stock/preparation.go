@@ -49,12 +49,11 @@ func (p *Preparation) Missing(challenges []token.ClosedTokenContext) ([]token.Cl
 		return nil, err
 	}
 	defer o.users.Done()
-	profile, now, err := o.observe()
+	profile, now, err := o.observeAndLock()
+	defer o.mu.Unlock()
 	if err != nil || profile.ValidateAt(now) != nil {
 		return nil, errors.Join(errors.New("stock authority unavailable"), err)
 	}
-	o.mu.Lock()
-	defer o.mu.Unlock()
 	if o.closed || o.failure != nil || o.preparing != p || p.ctx.Err() != nil || now.Before(o.floor) || !o.permission.CurrentFor(profile, now) {
 		return nil, errors.New("original stock preparation retired")
 	}

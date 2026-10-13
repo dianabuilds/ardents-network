@@ -109,7 +109,12 @@ cannot be revived or refunded. Stock imports no Route owner.
 Stock retains an original operation/journal borrow before external authority
 observation. These observations and presentation journal writes run outside its
 state mutex; local effects compare current admission, exact original preparation,
-attempt and permission after returning. Completion keeps its active original
+attempt and permission after returning.
+Fresh Stock observations are serialized through acquisition of the local state
+lock, so concurrent callbacks cannot commit their time observations in reverse
+order and manufacture a rollback refusal. The separate observation lock grants
+no cached authority and does not delay synchronous retirement of Stock state.
+Completion keeps its active original
 attempt through verification and final observation; verified tokens remain local
 until the final deposit gate. Close seals admission and erases secrets before
 waiting for those original users and then returning its owned journal. A late

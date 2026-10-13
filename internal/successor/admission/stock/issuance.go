@@ -38,8 +38,7 @@ func (o *Owner) begin(intent IssuanceIntent, preparation *Preparation) (Attempt,
 		return Attempt{}, err
 	}
 	defer o.users.Done()
-	profile, at, observedErr := o.observe()
-	o.mu.Lock()
+	profile, at, observedErr := o.observeAndLock()
 	defer o.mu.Unlock()
 	if o.preparing != preparation || preparation != nil && (preparation.self != preparation || preparation.ctx.Err() != nil) {
 		return Attempt{}, errors.New("original stock preparation is unavailable")
@@ -81,8 +80,7 @@ func (a Attempt) Request() ([]byte, time.Time, error) {
 		return nil, time.Time{}, err
 	}
 	defer o.users.Done()
-	profile, at, observedErr := o.observe()
-	o.mu.Lock()
+	profile, at, observedErr := o.observeAndLock()
 	defer o.mu.Unlock()
 	p, now, err := o.current(profile, at, observedErr)
 	if err != nil || s.done || o.active != s || o.permission != s.permission || p != s.profile || !now.Before(s.deadline) {
@@ -133,8 +131,7 @@ func (a Attempt) complete(payload []byte, exchangeErr error, check func() error)
 		}
 	}()
 	o.mu.Unlock()
-	profile, at, observedErr := o.observe()
-	o.mu.Lock()
+	profile, at, observedErr := o.observeAndLock()
 	p, now, err := o.current(profile, at, observedErr)
 	if err != nil || o.active != s || o.permission != s.permission || p != s.profile || !now.Before(s.deadline) || !s.permission.CurrentFor(p, now) {
 		s.permission.discardPendingBatch(s.batch)
@@ -148,8 +145,7 @@ func (a Attempt) complete(payload []byte, exchangeErr error, check func() error)
 		// remain local to acceptIssuedBatch until this original final gate; Close
 		// can erase permission while observation waits, but cannot acquire them.
 		o.mu.Unlock()
-		profile, at, observedErr := o.observe()
-		o.mu.Lock()
+		profile, at, observedErr := o.observeAndLock()
 		p, now, err := o.current(profile, at, observedErr)
 		if err != nil || o.active != s || o.permission != s.permission || p != s.profile || !now.Before(s.deadline) || !s.permission.CurrentFor(p, now) {
 			return errors.Join(errors.New("issuance authority changed during verification"), err)
