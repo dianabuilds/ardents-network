@@ -293,11 +293,17 @@ func (source *InitiatorSource) AuthenticateInitial() (_ *AuthenticatedAttachment
 	}
 	var physical *join.Joined
 	err = runInitiatorSetupFlights(setup, acquisition.Close, func(ctx context.Context) error {
-		return introduction.SubmitScoped(ctx, handle, intro, envelope, source.config.Exclusions)
+		if err := introduction.SubmitScoped(ctx, handle, intro, envelope, source.config.Exclusions); err != nil {
+			return fmt.Errorf("connection initial Introduction submission: %w", err)
+		}
+		return nil
 	}, func() error {
 		var err error
 		physical, err = acquisition.Join(source.physical, join.JoinConfig{Duty: rendezvous, Secret: request.JoinSecret, Context: request.HandshakeContext, Deadline: source.config.WorkSafetyNotAfter, SetupDeadline: setupEnd})
-		return err
+		if err != nil {
+			return fmt.Errorf("connection initial JOIN: %w", err)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err

@@ -114,12 +114,6 @@ func TestInstalledConnectionStreamBothCarriers(t *testing.T) {
 		t.Run(string(carrier), func(t *testing.T) {
 			t.Run("before-request-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "before-request") })
 			t.Run("before-request-terminal-commit-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "terminal-body") })
-			t.Run("publisher-receipt-before-write-loss", func(t *testing.T) {
-				runInstalledConnectionTextLoss(t, carrier, "control-publisher-receipt-before-write")
-			})
-			t.Run("publisher-receipt-before-write-commit-loss", func(t *testing.T) {
-				runInstalledConnectionTextLoss(t, carrier, "control-publisher-receipt-after-write")
-			})
 			t.Run("responder-parent-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "responder-parent") })
 			t.Run("source-parent-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "source-parent") })
 			t.Run("source-stock-exhaustion", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "source-stock-exhaustion") })
@@ -130,6 +124,30 @@ func TestInstalledConnectionStreamBothCarriers(t *testing.T) {
 			t.Run("close-observation-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "close-observation") })
 			t.Run("publisher-observation-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "publisher-observation") })
 			t.Run("publisher-close-observation-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "publisher-close-observation") })
+		})
+	}
+}
+
+// These controls retain genuine workers and one original Application request.
+func TestInstalledConnectionControlWritesBothCarriers(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Fatal("invalid environment: original non-root installed Endpoint required")
+	}
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			for _, role := range []string{"initiator", "publisher"} {
+				t.Run(role, func(t *testing.T) {
+					for _, kind := range []string{"terminal", "receipt", "confirmation"} {
+						t.Run(kind, func(t *testing.T) {
+							for _, cut := range []string{"before-write", "after-write"} {
+								t.Run(cut, func(t *testing.T) {
+									runInstalledConnectionTextLoss(t, carrier, "control-"+role+"-"+kind+"-"+cut)
+								})
+							}
+						})
+					}
+				})
+			}
 		})
 	}
 }

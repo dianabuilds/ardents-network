@@ -30,10 +30,18 @@
         "invalid_environment": "selected installed Connection refresh environment unavailable; no passing skips"
       },
       {
+        "id": "connection-control",
+        "state": "active",
+        "make_target": "connection-control-check",
+        "surface": "genuine original qualified Reader and Publisher; exact immutable writer control ticket selects Terminal, receipt or confirmation before TLS Write or after Write before ledger commit, for both roles and Carriers; actual Rendezvous join/restart and same logical stream recovery, one Application request and exact result after all original joins; no supplied authority/records, production hook or whole installed qualification",
+        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test", "pinned root-owned qualification unit selecting TestInstalledConnectionControlWritesBothCarriers with test timeout20m and RuntimeMaxSec1260s; driver bound12600 polls", "root driver, private local roots and loopback TCP/UDP"],
+        "invalid_environment": "selected original qualified control environment unavailable; no passing skips"
+      },
+      {
         "id": "connection-stream",
         "state": "active",
         "make_target": "connection-stream-check",
-          "surface": "genuine qualified original Reader/Publisher workers and authenticated Stream across actual Rendezvous, Reader Source, Publisher Source and Responder parent loss, before request, before Publisher request-Terminal post-read observation returns, mid-response and after request Terminal on both Carriers; source-checked scheduler selects second complete request-side body after real TLS I/O and the Publisher writer's own immutable receipt ticket before Write or after Write before ledger commit, physical Rendezvous loss and same-owner recovery without supplied records/errors; one Application request, exact original result and joined cleanup, retained receiving peer-retirement failures; delayed genuine Application Read observations for both roles check independent local-gate progress, original caller cancellation, Connection Close without Job revocation and refusal of late bytes; component only, no two independently installed Endpoints or full Connection acceptance",
+          "surface": "genuine qualified original Reader/Publisher workers and authenticated Stream across actual Rendezvous, Reader Source, Publisher Source and Responder parent loss, before request, before Publisher request-Terminal post-read observation returns, mid-response and after request Terminal on both Carriers; source-checked scheduler selects second complete request-side body after real TLS I/O, physical Rendezvous loss and same-owner recovery without supplied records/errors; one Application request, exact original result and joined cleanup, retained receiving peer-retirement failures; delayed genuine Application Read observations for both roles check independent local-gate progress, original caller cancellation, Connection Close without Job revocation and refusal of late bytes; component only, no two independently installed Endpoints or full Connection acceptance",
         "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test", "independently pinned root-owned qualification unit and root driver", "private writable temporary roots and loopback TCP/UDP"],
         "invalid_environment": "selected installed Connection Stream environment unavailable; no passing skips"
       },

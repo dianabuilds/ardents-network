@@ -9,6 +9,11 @@ case "${1-lifecycle}" in
     execution) test_root=TestInstalledExecutionLifecycle ;;
     execution-route) test_root=TestInstalledExecutionRouteBothCarriers ;;
     connection-stream) test_root=TestInstalledConnectionStreamBothCarriers ;;
+    connection-control)
+        # The complete 24-case matrix, including race instrumentation, uses the
+        # pinned unit's twenty-minute test timeout and twenty-one-minute runtime.
+        test_root=TestInstalledConnectionControlWritesBothCarriers; maximum_polls=12600
+        ;;
     connection-refresh) test_root=TestInstalledConnectionRefreshBothCarriers ;;
     connection-withdrawal) test_root=TestInstalledConnectionWithdrawalBothCarriers ;;
     connection-nonce) test_root=TestInstalledConnectionNonceBothCarriers ;;
@@ -67,7 +72,7 @@ if [ "$test_root" = TestInstalledExecutionEndpointDeath ]; then
     printf '%s  %s\n' "$ARDENTS_TEXT_HOSTILE_WORKER_SHA256" "$worker" | sha256sum --check --status ||
         fail 'invalid environment: hostile artifact differs from declared candidate'
 fi
-if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ] || [ "$test_root" = TestInstalledPublicationElapsedBothCarriers ] || [ "$test_root" = TestInstalledConnectionStreamBothCarriers ] || [ "$test_root" = TestInstalledConnectionRefreshBothCarriers ] || [ "$test_root" = TestInstalledConnectionWithdrawalBothCarriers ] || [ "$test_root" = TestInstalledConnectionNonceBothCarriers ]; then
+if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ] || [ "$test_root" = TestInstalledPublicationElapsedBothCarriers ] || [ "$test_root" = TestInstalledConnectionStreamBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlWritesBothCarriers ] || [ "$test_root" = TestInstalledConnectionRefreshBothCarriers ] || [ "$test_root" = TestInstalledConnectionWithdrawalBothCarriers ] || [ "$test_root" = TestInstalledConnectionNonceBothCarriers ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
 fi
 unit=/run/systemd/system/ardents-endpoint.service
@@ -148,7 +153,21 @@ if [ "$test_root" = TestInstalledConnectionStreamBothCarriers ]; then
     set -- "$test_root"
     for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
         set -- "$@" "$test_root/$carrier" "$test_root/$carrier/before-request-loss" "$test_root/$carrier/before-request-terminal-commit-loss" "$test_root/$carrier/responder-parent-loss" "$test_root/$carrier/source-parent-loss" "$test_root/$carrier/source-stock-exhaustion" "$test_root/$carrier/publisher-source-parent-loss" "$test_root/$carrier/response-loss" "$test_root/$carrier/after-request-terminal-loss" "$test_root/$carrier/caller-observation-loss" "$test_root/$carrier/close-observation-loss" "$test_root/$carrier/publisher-observation-loss" "$test_root/$carrier/publisher-close-observation-loss"
-        set -- "$@" "$test_root/$carrier/publisher-receipt-before-write-loss" "$test_root/$carrier/publisher-receipt-before-write-commit-loss"
+    done
+fi
+if [ "$test_root" = TestInstalledConnectionControlWritesBothCarriers ]; then
+    set -- "$test_root"
+    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+        set -- "$@" "$test_root/$carrier"
+        for role in initiator publisher; do
+            set -- "$@" "$test_root/$carrier/$role"
+            for kind in terminal receipt confirmation; do
+                set -- "$@" "$test_root/$carrier/$role/$kind"
+                for cut in before-write after-write; do
+                    set -- "$@" "$test_root/$carrier/$role/$kind/$cut"
+                done
+            done
+        done
     done
 fi
 if [ "$test_root" = TestInstalledPublicationElapsedBothCarriers ]; then

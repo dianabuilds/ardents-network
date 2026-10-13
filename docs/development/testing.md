@@ -235,7 +235,6 @@ reopened with the same duty, durable roots and owners. The response must match
 the original snapshot exactly; Source, operation and workers join before the
 private result is consumed. The driver requires the exact root, Carrier and
 before-request-loss, before-request-terminal-commit-loss,
-publisher-receipt-before-write-loss, publisher-receipt-before-write-commit-loss,
 responder-parent-loss, source-parent-loss,
 publisher-source-parent-loss, response-loss, after-request-terminal-loss, caller-observation-loss,
 close-observation-loss and both Publisher observation-loss variants' PASS
@@ -251,14 +250,24 @@ Original worker/result checks still require one exact snapshot and full
 Terminal completion. Any original receiving peer-retirement failure remains
 the same repeated Close result; unknown or mixed failure leaves still fail.
 This supplies no record, synthetic EOF, authority or accepting result.
-The Publisher receipt write cases select the serialized writer's own immutable
-generation-1 control ticket during its existing direct Responder observation.
+`make connection-control-check` selects the separate
+`TestInstalledConnectionControlWritesBothCarriers` profile. It requires every
+role, Terminal/receipt/confirmation kind and before-write/after-write case on
+both Carriers. The receipt cases move here with the same assertions, alongside
+the other control kinds; the Stream profile keeps its other cases.
+The complete 24-case control matrix uses a twenty-minute test timeout and
+`RuntimeMaxSec=1260s` in its pinned qualification unit. Its driver allows 12600
+polls at 100ms intervals, matching that runtime rather than the short lifecycle
+profile's 1500 polls. This includes race-instrumented execution; individual
+scenario and protocol deadlines remain unchanged.
+The control write cases select the serialized writer's own immutable
+generation-1 control ticket during its existing direct Source or Responder observation.
 The scheduler pauses before TLS Write or after actual Write before the writer's
 ledger commit, and never reads concurrently updated receipt flags. Data ACK
 interleaving cannot select a different record. Replacement joins that writer
 before changing its ticket owner; source-site guards bind both write boundaries.
 These cases do not establish every receipt/confirmation delivery boundary.
-The former loses the original Attachment before the Text request; the latter
+The Stream before-request-loss case loses the original Attachment before the Text request; response-loss
 loses it after genuine response bytes have reached the original Reader.
 The Responder-parent case stops both real role-3 Interior candidate receivers
 after initial Service authentication and reopens the same duties with their
