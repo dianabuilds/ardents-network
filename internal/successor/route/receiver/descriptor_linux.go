@@ -32,7 +32,12 @@ func (r *Receiver) serveDescriptor(ctx context.Context, conn net.Conn, hello ard
 			<-interrupted
 		}
 	}()
-	recheck := func() error { return errors.Join(ctx.Err(), check(), r.config.DescriptorStore.Check()) }
+	recheck := func() error {
+		// Native custody I/O precedes the foreign currentness check, so that
+		// this I/O cannot age a returned Node process/State observation at ACK.
+		storeErr := r.config.DescriptorStore.Check()
+		return errors.Join(ctx.Err(), storeErr, check())
+	}
 	effectGuard := recheck
 	defer func() { result = errors.Join(result, recheck()) }()
 	if err := recheck(); err != nil {

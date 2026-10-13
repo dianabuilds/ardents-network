@@ -397,6 +397,18 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                                   {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if source == "cmd/ardents-next/node_descriptor_completion_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_descriptor_operation_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/reachability" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_descriptor_authority_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/reachability" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_descriptor_native_linux_test.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport" || dependency == modulePath+"/internal/successor/reachability") {
+			return true
+		}
 		if source == "cmd/ardents-next/node_issuer_operation_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
@@ -416,6 +428,12 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/node_issuer_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_descriptor_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {
+			return true
+		}
+		if source == "internal/successor/node/descriptor_linux.go" && dependency == modulePath+"/internal/successor/reachability" {
 			return true
 		}
 		if source == "cmd/ardents-next/node_forwarding_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {

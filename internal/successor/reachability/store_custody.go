@@ -108,13 +108,10 @@ func sameStoreObject(path string, expected os.FileInfo) error {
 func (store *Store) checkCustody() error {
 	store.custody.mu.Lock()
 	err := store.inspectCustody()
-	store.custody.mu.Unlock()
 	if err != nil {
-		store.Deny(err)
-		store.mu.Lock()
-		err = store.failure
-		store.mu.Unlock()
+		err = store.fail(err)
 	}
+	store.custody.mu.Unlock()
 	return err
 }
 

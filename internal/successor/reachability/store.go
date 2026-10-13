@@ -31,6 +31,7 @@ type Store struct {
 	floors            map[[32]byte]retainedFloor
 	closed            bool
 	failure, closeErr error
+	denial            error
 }
 
 func OpenStore(config StoreConfig) (*Store, error) {
@@ -109,9 +110,15 @@ func (store *Store) Publish(raw []byte, profile [32]byte, at time.Time, check fu
 		return Invalid, err
 	}
 	store.mu.Lock()
-	if store.closed || store.failure != nil {
+	if store.closed || store.failure != nil || store.denial != nil {
 		failure := store.failure
+		if failure == nil {
+			failure = store.denial
+		}
 		store.mu.Unlock()
+		if failure != nil {
+			return Invalid, failure
+		}
 		return Invalid, errors.Join(errors.New("reachability Store unavailable"), failure)
 	}
 	outcome, next, decisionErr := Accepted, &candidate, error(nil)
@@ -126,7 +133,6 @@ func (store *Store) Publish(raw []byte, profile [32]byte, at time.Time, check fu
 		return outcome, errors.Join(decisionErr, check(), store.checkCustody(), store.localCheck())
 	}
 	if err := store.write(*next); err != nil {
-		store.Deny(err)
 		return Invalid, errors.Join(decisionErr, err, check())
 	}
 	if err := errors.Join(check(), store.checkCustody(), store.localCheck()); err != nil {
@@ -150,7 +156,13 @@ func (store *Store) Lookup(target, profile [32]byte, at time.Time) ([]byte, Outc
 	}
 	store.mu.Lock()
 	defer store.mu.Unlock()
-	if store.closed || store.failure != nil {
+	if store.closed || store.failure != nil || store.denial != nil {
+		if store.failure != nil {
+			return nil, Invalid, store.failure
+		}
+		if store.denial != nil {
+			return nil, Invalid, store.denial
+		}
 		return nil, Invalid, errors.Join(errors.New("reachability Store unavailable"), store.failure)
 	}
 	floor, exists := store.floors[target]
@@ -179,15 +191,29 @@ func (store *Store) Check() error {
 	return store.localCheck()
 }
 
+// OperationalFailure returns this original Store's first definite native
+// failure, including one completed after caller denial or during joined Close.
+// It performs no I/O, grants no borrow or proof, and excludes request refusal,
+// caller denial and the separately retained physical Close result.
+func (store *Store) OperationalFailure() error {
+	if store == nil {
+		return nil
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	return store.failure
+}
+
 // Deny synchronously stops new borrows without waiting for native I/O or users.
-// An operational cause is separate from the retained lease-release result.
+// Original caller denial is separate from native owner failure and lease release.
+// A later actual in-flight storage failure cannot be hidden by this notice.
 func (store *Store) Deny(cause error) {
 	if store == nil || cause == nil {
 		return
 	}
 	store.mu.Lock()
-	if store.failure == nil {
-		store.failure = cause
+	if store.denial == nil {
+		store.denial = cause
 	}
 	store.mu.Unlock()
 }
@@ -198,7 +224,13 @@ func (store *Store) borrow() error {
 	}
 	store.mu.Lock()
 	defer store.mu.Unlock()
-	if store.closed || store.failure != nil {
+	if store.closed || store.failure != nil || store.denial != nil {
+		if store.failure != nil {
+			return store.failure
+		}
+		if store.denial != nil {
+			return store.denial
+		}
 		return errors.Join(errors.New("reachability Store unavailable"), store.failure)
 	}
 	store.users.Add(1)
@@ -208,10 +240,29 @@ func (store *Store) borrow() error {
 func (store *Store) localCheck() error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
-	if store.closed || store.failure != nil {
+	if store.closed || store.failure != nil || store.denial != nil {
+		if store.failure != nil {
+			return store.failure
+		}
+		if store.denial != nil {
+			return store.denial
+		}
 		return errors.Join(errors.New("reachability Store unavailable"), store.failure)
 	}
 	return nil
+}
+
+func (store *Store) fail(cause error) error {
+	store.mu.Lock()
+	if store.failure == nil {
+		store.failure = cause
+	}
+	first := store.failure
+	store.mu.Unlock()
+	if first == cause {
+		return cause
+	}
+	return errors.Join(first, cause)
 }
 
 // Close denies synchronously, joins original users, then releases native custody

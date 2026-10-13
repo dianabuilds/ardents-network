@@ -21,6 +21,10 @@ func TestOriginalNativeIssuerProcessProfile(t *testing.T) {
 	testOriginalNativeProcessProfile(t, IssuerProfile)
 }
 
+func TestOriginalNativeDescriptorProcessProfile(t *testing.T) {
+	testOriginalNativeProcessProfile(t, DescriptorProfile)
+}
+
 func testOriginalNativeProcessProfile(t *testing.T, profile string) {
 	t.Helper()
 	guard, err := Open(context.Background(), profile)
@@ -61,6 +65,10 @@ func TestOriginalNativeIssuerEvidenceLossRetainsActualCloseFailure(t *testing.T)
 	testOriginalNativeEvidenceLoss(t, IssuerProfile)
 }
 
+func TestOriginalNativeDescriptorEvidenceLossRetainsActualCloseFailure(t *testing.T) {
+	testOriginalNativeEvidenceLoss(t, DescriptorProfile)
+}
+
 func testOriginalNativeEvidenceLoss(t *testing.T, profile string) {
 	t.Helper()
 	guard, err := Open(context.Background(), profile)
@@ -88,6 +96,10 @@ func TestOriginalNativeManagedMemoryPressureRetires(t *testing.T) {
 
 func TestOriginalNativeIssuerManagedMemoryPressureRetires(t *testing.T) {
 	testOriginalNativeManagedMemoryPressure(t, IssuerProfile)
+}
+
+func TestOriginalNativeDescriptorManagedMemoryPressureRetires(t *testing.T) {
+	testOriginalNativeManagedMemoryPressure(t, DescriptorProfile)
 }
 
 func testOriginalNativeManagedMemoryPressure(t *testing.T, profile string) {

@@ -782,6 +782,86 @@ authorization to begin its later security, concurrency, or wire tracks.
 
 ## Current profiles
 
+`descriptor-process-linux`, invoked by `make node-descriptor-check`, independently
+runs the original Descriptor command under `ardents-descriptor-process-v1`, with
+the exact selected sole-process Linux cgroup-v2 envelope in the Node owner.
+`scripts/node/run-descriptor-native.sh` stays outside the measured leaves and
+requires independently SHA-256-pinned canonical command and command/resource
+race binaries built with `node_process_native` from the checked source. Actual
+systemd, proc/cgroup/PSI, private durable roots and loopback TCP/UDP are mandatory;
+missing prerequisites fail. Its exact discovery rejects zero/missing/extra/
+duplicate undispatched tests. Resource workload remains 90s and original process
+workload 3m; complete independent workload groups may execute sequentially under
+those same bounds. Forwarding retains its exact seven-resource dispatch and
+Issuer its separate three; Descriptor-specific tests are never relabeled as
+another role's receipts. Selected development evidence is not installed,
+capacity, platform, privacy or independent-security qualification.
+
+Descriptor's CPU-pressure control also requires installed `taskset` and manager
+support for bounded transient helpers. Two separate helpers run with an eight-
+second manager lifetime, 50% CPU each (one CPU in total), 32MiB memory, two tasks and NOFILE64,
+DynamicUser, NoNewPrivileges and PrivateTmp; exact own-unit stop and driver join
+provide ordinary cleanup. Manager expiry bounds them even if the driver exits.
+They remain outside the measured Node leaf; selected Node limits are unchanged.
+
+`TestNativeDescriptorPartialStartupRefusalsBothCarriers` runs the canonical
+command against wrong profile, unknown field, nested roots, wrong role or TLS
+key, missing Hosting and foreign Store/Receiving inputs. Every refused process
+joins before separate fresh startup with corrected declarations. Unaccepted
+foreign input bytes remain unchanged, no Receiving spend history is created,
+and any acquired participation producer has been released. Only the fixture's
+unaccepted foreign files are removed; accepted durable records are never reset.
+
+`TestNativeDescriptorUndercoverageBeforeSpendBothCarriers` supplies genuine
+Stock/Prefix/Forwarding transport to the canonical Descriptor command with work
+one byte below the required Control coverage. Refusal must leave Receiving
+history and Store records unchanged. After original command join a separate
+invocation with full coverage uses the same durable roots and performs real
+publication and exact lookup. No token refund or accepting weaker path is added.
+
+`TestNativeDescriptorOperationBoundariesBothCarriers` schedules only returns of
+genuine State observations on the actual request stack. It observes full native
+Hosting reservation before spend, irreversible Receiving journal growth before
+Store mutation, and the post-write Store observer after real record/directory
+commit. Original caller denial refuses ACK, retains the full Control reservation
+and original roots through delayed physical join, then independently reopens the
+Store to verify absent pre-mutation proof or the exact committed proof. Signal
+files coordinate the test driver; they provide no accepting authority or storage
+result. These causal cases do not simulate power loss or qualify crash recovery.
+The same original-work controls cover Stop, a genuine signed successor and loss
+of original process protection before Receiving spend. A post-commit native Store
+loss introduced only after original caller denial must retain caller provenance
+plus Reachability failure, keep the reservation until join and preserve the
+committed proof after separate validated reopen. Scheduling markers never claim
+an accepting observation or synchronous revoke on behalf of Node.
+
+The Linux Reachability owner control
+`TestStoreNativePartialWriteRetainsOriginalFailureAndPriorFloor` runs in a
+separate child and applies a real kernel file-size limit after a genuine prior
+commit. It requires an actual one-byte interrupted stage, permanent original
+failure after restoring the limit, retained lease until Close and a separate
+validated reopen retaining the exact prior floor. A fresh explicit publication
+is separate from revival of the failed owner. This tests partial-write failure,
+not a successful Sync or power-loss durability.
+
+`TestStoreProcessCrashAtActualPersistenceBoundaries` is a Linux amd64 owner
+control requiring native tracing of its own child, including every original Go
+thread. It stops after actual stage Write, stage Sync, Rename or directory Sync
+syscall returns, kills that process and joins all traced threads before opening
+a new Store. Full recovery must retain the prior proof before Rename or the
+exact higher revision after Rename, discard only its validated interrupted stage
+and refuse revision rollback. The measured filesystem remains mounted; this
+establishes process-crash recovery, not power-loss or hardware durability. A
+missing selected tracing prerequisite is a failed environment, never a skip.
+
+`TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerBothCarriers`
+occupies the real participation journal during canonical command cancellation.
+The bounded unavailable report cannot release the command-owned State or exit
+ahead of original cleanup. Failed producer cleanup remains failed after actual
+manager/process join; process absence and a separate reopen cannot erase or
+adopt the unresolved identity/family conflict. These cases exercise the command
+projection separately from retained work/reservation join in the operation cases.
+
 `issuer-process-linux`, invoked by `make node-issuer-check`, independently runs
 the actual original Node Issuer under `ardents-issuer-process-v1`. The root driver,
 three separately hash-pinned artifacts, actual sole-process native envelope,

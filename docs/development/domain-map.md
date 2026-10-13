@@ -125,7 +125,7 @@ record, recovery and fixed-resource rules.
 
 This is a design refinement of the supporting composition owner above, not an
 eleventh network authority or an execution assignment. The new `node` owner
-composes one original Forwarding or Issuer invocation; complete role and installed
+composes one original Forwarding, Issuer or Descriptor invocation; complete role and installed
 acceptance remain separately required.
 Node is a product infrastructure actor; a process, a signed Node identity and
 one accepted duty generation are distinct things. The current
@@ -178,7 +178,7 @@ role or silently rebind that lifetime to a successor.
 | Protect or retire | Local denial is synchronous. A pressure observation, diagnostic event or polling tick cannot substitute for denial; interrupt original dependents before waiting |
 | Join and finish | Route joins physical users first; then composition closes purpose roots/Hosting borrows, updates only its own participation producer and releases remaining owners. Preserve first failure and all cleanup causes |
 
-For the selected Forwarding and Issuer compositions, Network retains `node-duty/live`
+For the selected Forwarding, Issuer and Descriptor compositions, Network retains `node-duty/live`
 identity/family conflicts until the original producer releases them after join.
 The earlier Epoch/Record bound still denies work; it does not prove physical
 completion. Prepared/quarantined Node facts remain time-held. An unresolved
@@ -243,9 +243,15 @@ Descriptor owners only when that exact duty requires them. Receiver supports
 the selected TCP/TLS and QUIC Carriers, reobserves authority and joins its work.
 That is an existing component consumer, not the complete Node runtime model.
 
-`internal/successor/node` composes original Forwarding and Issuer lifetimes through
-the real `cmd/ardents-next/node_forwarding_linux.go` and `node_issuer_linux.go`
-consumers. Issuer retains Admission's prepared quota/key/result application
+`internal/successor/node` composes original Forwarding, Issuer and Descriptor
+lifetimes through the real `cmd/ardents-next/node_forwarding_linux.go`,
+`node_issuer_linux.go` and `node_descriptor_linux.go` consumers.
+Descriptor retains a separately owned Reachability Store and reads its original
+operational cause after joined Store closure. Its private denial fences dependent
+work without attributing a foreign operational failure to Route physical cleanup.
+Store proof/conflict/durability policy remains with Reachability; full Control
+coverage and irreversible spend remain with Hosting and Admission respectively.
+Issuer retains Admission's prepared quota/key/result application
 until Route and issuing users join; it grants no private RSA or signing right
 to Node. Ordinary Control and separate Bootstrap physical reservations remain
 with Hosting, without Forward refill. Network's

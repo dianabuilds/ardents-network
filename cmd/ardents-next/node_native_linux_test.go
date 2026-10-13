@@ -100,6 +100,9 @@ func launchNativeForwarding(t *testing.T, binary, plan string, index byte) *nati
 			_ = process.stdout.Close()
 			process.joined = true
 		}
+		if t.Failed() {
+			t.Log("original Forwarding retained diagnostic after physical join", process.diagnostic.String())
+		}
 	})
 	return process
 }

@@ -155,6 +155,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	required := map[string]bool{
 		"forwarding-process-linux":          false,
 		"issuer-process-linux":              false,
+		"descriptor-process-linux":          false,
 		"custody-native-linux":              false,
 		"execution-lifecycle":               false,
 		"execution-route":                   false,

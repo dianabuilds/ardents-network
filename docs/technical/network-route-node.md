@@ -760,6 +760,18 @@ and protocol allowances remain unchanged. Selection grants no capacity,
 installed or platform qualification. Issuer's checked native workload must
 independently exercise its actual command and both Carriers.
 
+### Descriptor development process profile
+
+The selected Descriptor composition requires `ardents-descriptor-process-v1`,
+a distinct bounded development workload under the same exact native envelope
+and original placement/freshness/pressure rules in the Forwarding table above:
+sole original Linux cgroup-v2 leaf, cpu.max `100000 100000`, memory.high
+`805306368`, memory.max `1073741824`, pids.max `256`, NOFILE soft/hard `1024`,
+GOMAXPROCS `1` and GOMEMLIMIT `536870912`. Its native command and resource
+workloads require separate source-matched checks; another role's receipts cannot
+qualify Descriptor. Selection grants no installed, capacity, platform or privacy
+qualification.
+
 ### Original Forwarding composition
 
 `internal/successor/node` and `ardents-next node forwarding` compose one exact
@@ -922,6 +934,55 @@ uncertainty retains the complete prior quota debit and partial result bytes.
 Both withhold delivery. Restoring the write limit cannot change the original
 failed result across copies/repeated Close; fresh independent issuing Open
 refuses the partial checksum chain without truncation, repair or floor reset.
+
+### Original Descriptor composition
+
+`internal/successor/node` and `ardents-next node descriptor` compose one original
+authenticated Role2/subrole5/PurposeReachability3 invocation. State remains
+command-owned. Node retains the original caller, native process guard, exact
+member TLS material and private participation producer; Reachability owns its
+independent original Store, proof/conflict policy, native custody and durability.
+Admission owns Control verification and irreversible spend, Hosting owns full
+64KiB work and termination reservations, and Receiver owns physical exchange.
+No Descriptor or Identity domain, general aggregate or event-driven revoke is
+introduced by this supporting composition.
+
+Base process/producer/State observations run outside Node state locks and check
+the original caller directly. Store custody inspection calls no foreign observer;
+Node reobserves native process/State after Store I/O. The exact retained duty,
+profile and one-second process freshness cap apply at effects and handoff.
+An invalid/stale/conflicting/capacity-refused request cannot retire an otherwise
+healthy invocation. Definite original authority, caller, protection or Store
+failure denies work permanently; restored paths never revive the original.
+Caller retirement and real in-flight native Store failure remain separate, so
+retirement cannot conceal a storage failure or turn cleanup into success.
+
+Stop synchronously denies original admission and Store borrows, then interrupts
+dependents. Actual Receiver join precedes Store/Receiving/Hosting close, producer
+removal and process/TLS release; the command closes State last. First operational
+failure and actual cleanup results survive copied handles and repeated Close.
+Descriptor retains its original operational cause locally and passes its private
+denial to dependents; a foreign failure is not a Receiver physical release result.
+After Store join it reads the separately retained native failure, so a late
+storage failure after caller cancellation still prevents successful withdrawal.
+A bounded retirement report retains all original owners until actual completion.
+These implemented mechanisms require their own native both-Carrier/causal/race/
+crash checks; selection or compilation supplies no installed, operator, platform,
+capacity, privacy or independent-security qualification.
+
+The following controls are behavioral oracles for this receiving boundary.
+Results apply only to their checked source and selected environment; the testing
+owner defines complete profile dispatch and artifact pinning.
+
+| Original Descriptor invariant | Owner, genuine caller and effect boundary | Positive / causal refusal controls |
+|---|---|---|
+| Strict original startup and partial custody | `node_descriptor_linux.go` opens State and calls `node.ListenDescriptor`; each rejected acquisition joins before a fresh invocation | `TestNativeDescriptorPartialStartupRefusalsBothCarriers`, canceled original startup and unsupported-platform controls; corrected inputs start a separate original command |
+| Full Control coverage precedes spend | Node `admit` calls Hosting Reserve/CoversJoint inside genuine Receiving Accept; Receiver retains the transferred reservation | `TestNativeDescriptorPublishLookupAndReopenBothCarriers`, `TestNativeDescriptorUndercoverageBeforeSpendBothCarriers`; unchanged Receiving/Store before coverage, no refund after spend |
+| Fresh original authority at effects and ACK | Node `currentBase/current`, Network MatchDuty, original process Check and genuine Receiver/Store operations | `TestNativeDescriptorOriginalAuthorityAndJoinBothCarriers` and `TestNativeDescriptorOperationBoundariesBothCarriers`; signed successor/conflict/expiry, stale post-I/O process evidence, caller/Stop/process loss before spend and before/after commit |
+| Signed bytes and retained floors remain owner-verified | Reachability Verify/Store and real Prefix publish/lookup; Store commit is distinct from Route ACK | Independent Descriptor draft/signature and ARDP byte vectors; Store revision/publication conflict, expiry/overlap/capacity controls and native partial-write/process-crash reopen; actual TLS/truncated RESULT/half-close refusal controls |
+| Delayed work cannot release custody or revive admission | Node denial interrupts dependents; Receiver and Store join before Receiving/Hosting/producer/TLS release | Native held actual State returns, concurrent same-Source lookup and copied Close; root/record/marker/lock loss and restoration; late Store failure after caller denial remains a failed original result |
+| Native protection loss and pressure retire the original | processresource measures original placement/limits/PSI; Node retains first cause and command closes State last | `TestNativeDescriptorOriginalCommandFailureBothCarriers` plus the three mandatory original Descriptor resource controls; bounded helper pressure never changes the role envelope |
+| Bounded reporting cannot manufacture completion | Canonical command waits for original Done/Close before State Close and process exit; Network owns producer conflicts | `TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerBothCarriers`; shared NodeProducer identity/family, foreign Source and expired-work controls retain conflicts until actual original removal |
 
 ## Current limits and limitations
 

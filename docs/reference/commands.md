@@ -211,6 +211,21 @@ same fixed phase/outcome/owner fields. A retirement wait timeout reports
 completion-unavailable and retains the process and its original owners until
 physical join; the bounded failed result cannot later become successful EXIT.
 
+`ardents-next node descriptor --config <file>` composes one original
+Role2/subrole5/PurposeReachability3 duty on Linux under mandatory
+`ardents-descriptor-process-v1`. Its closed fields are `network`, `node_id`,
+`process_profile`, `participation_root`, `spend_root`, `hosting_root`,
+`descriptor_root`, `certificate`, `private_key`, `work`, `termination` and
+`retirement_wait_ms` (1..5000). All five roots are canonical, distinct and
+non-nested; TLS material must match the exact authenticated member. Ordinary
+work must cover full Control64KiB before durable Receiving spend. No bootstrap,
+Forward refill, role choice, root adoption or automatic replacement is supplied.
+The genuine independent Store owns verification, conflict floors and durable
+ACK; this command grants no Publisher readiness or Service Connection. Its
+fixed `node.descriptor` projections retain original failures and physically
+joined completion. State closes after Node; a bounded retirement report cannot
+release original roots, producer, native pins or TLS material ahead of join.
+
 The command emits bounded `node.forwarding` listening/refusal and joined/retiring
 outcomes. Joined cancellation exits 130, failure or unavailable completion exits
 1, and malformed input/output failure exits 2. A retirement timeout is not

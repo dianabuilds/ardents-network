@@ -193,8 +193,16 @@ An authority refusal after commit keeps that floor and forbids an accepting ACK.
 by the original role's guard without observer recursion. A supplied observation
 must not invoke another publication or wait for Store Close.
 
-`Store.Deny` stops new borrows synchronously and retains the first operational
-cause. Invalid proof, conflict, capacity, missing Target and a refused request
+`Store.Deny` stops new borrows synchronously and retains original caller denial
+separately from the first actual native owner failure. A real in-flight write,
+sync or custody failure cannot be hidden by an earlier caller retirement notice.
+The native failure is latched before releasing its physical gate and remains
+available independently of request errors and the first release result.
+`Store.OperationalFailure` reads that original retained native cause without I/O,
+borrow or proof authority, including after joined Close. Node consumes it after
+physical Store join so a late native failure cannot disappear behind caller
+denial or a successful lease release.
+Invalid proof, conflict, capacity, missing Target and a refused request
 do not retire a healthy Store. `Close` denies new work, joins original publish,
 lookup and custody observers (including publication waiters), then closes native
 custody and releases the lease exactly once. It retains the first physical

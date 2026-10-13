@@ -84,15 +84,22 @@ func (store *Store) restore() error {
 	return nil
 }
 
-func (store *Store) write(floor retainedFloor) error {
+func (store *Store) write(floor retainedFloor) (result error) {
 	store.custody.mu.Lock()
 	defer store.custody.mu.Unlock()
 	if err := store.inspectCustody(); err != nil {
-		return err
+		return store.fail(err)
 	}
 	if err := store.localCheck(); err != nil {
 		return err
 	}
+	// Latch actual native failures before releasing the physical mutation gate.
+	// An earlier caller-denial notice never masks a failed write/sync/readback.
+	defer func() {
+		if result != nil {
+			result = store.fail(result)
+		}
+	}()
 	flags := byte(0)
 	if floor.publicationConflict {
 		flags |= 1

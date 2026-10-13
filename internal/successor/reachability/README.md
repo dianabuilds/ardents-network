@@ -40,6 +40,9 @@ Store удерживает исходные дескрипторы корня, r
 без этого mutex. Deny не ждёт borrowers; Close физически joins исходные
 операции до освобождения lease и сохраняет первый release result отдельно от
 operational cause. Отказ запроса не означает потерю здорового Store.
+`OperationalFailure` возвращает исходную native cause без I/O или права на
+borrow/proof, в том числе после joined Close. Node читает её после физического
+join и сохраняет поздний native failure независимо от caller denial и release.
 
 **Соседи:** Publication передаёт подписанный Descriptor; Connection получает
 проверенное доказательство с происхождением и границами действия. Доказательство
