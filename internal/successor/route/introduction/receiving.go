@@ -39,6 +39,10 @@ func (registry *Registry) ServeRegistration(ctx context.Context, conn net.Conn, 
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	if err := registry.borrow(); err != nil {
+		return err
+	}
+	defer registry.users.Done()
 	binding, err := role.Binding(conn, hello)
 	if err != nil {
 		return err
@@ -48,6 +52,12 @@ func (registry *Registry) ServeRegistration(ctx context.Context, conn net.Conn, 
 			return err
 		}
 		_, err := channel.Authority.Hello(hello, false)
+		if err == nil {
+			err = registry.Check(Binding{NetworkID: hello.NetworkID, ProfileDigest: hello.ProfileDigest, ReceiverNodeID: hello.RecipientNodeID, ReceiverDutyGeneration: hello.RecipientDutyGeneration})
+		}
+		if err == nil {
+			_, err = channel.Authority.Hello(hello, false)
+		}
 		return errors.Join(err, ctx.Err())
 	}
 	var dispatch *registrationDispatch
@@ -109,6 +119,10 @@ func (registry *Registry) ServeRegistration(ctx context.Context, conn net.Conn, 
 		registry.mu.Unlock()
 	}()
 	registry.mu.Lock()
+	if registry.closed || registration.retired {
+		registry.mu.Unlock()
+		return errors.New("introduction registration retired before dispatch")
+	}
 	registration.dispatch = dispatch
 	registry.mu.Unlock()
 	// The claim is durable even if duty loss or a partial RESULT now refuses.

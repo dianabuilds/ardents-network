@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"sync"
 	"time"
 
@@ -42,9 +41,10 @@ type ReceiverConfig struct {
 	ReserveBootstrap func(context.Context, time.Time) (func() error, error)
 	// Issue calls the genuine issuing owner with the exact canonical batch.
 	// The transport derives bootstrap from its immutable incoming claim.
-	Issue            func(context.Context, []byte, bool) ([]byte, error)
-	IntroductionRoot string
-	Receiving        *receiving.Owner
+	Issue func(context.Context, []byte, bool) ([]byte, error)
+	// Introduction is borrowed from a ready original Route owner. Composition
+	// alone closes its native History after this Receiver's physical join.
+	Introduction *introduction.Registry
 	// DescriptorStore is the genuine separately owned receiving Store. Command
 	// composition closes its root only after this Receiver has physically joined.
 	DescriptorStore *reachability.Store
@@ -97,36 +97,18 @@ func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
 	if issuerDuty {
 		r.issuerWork = make(chan struct{}, 1)
 	}
-	if m.Subrole == 3 {
-		if config.IntroductionRoot == "" || config.Receiving == nil {
+	if introductionDuty {
+		if config.Introduction == nil {
 			cancel()
 			return nil, errors.New("introduction independent roots absent")
 		}
 		binding := introduction.Binding{NetworkID: config.Authority.Profile.Network, ProfileDigest: config.Authority.Profile.Digest, ReceiverNodeID: m.NodeID, ReceiverDutyGeneration: m.DutyGeneration}
-		history, openErr := introduction.OpenHistory(config.IntroductionRoot, binding)
-		if openErr != nil {
-			names, readErr := os.ReadDir(config.IntroductionRoot)
-			if readErr != nil || len(names) != 0 {
-				cancel()
-				return nil, errors.Join(openErr, readErr)
-			}
-			fact, factErr := config.Receiving.TakeFreshRoot()
-			if factErr != nil {
-				cancel()
-				return nil, errors.Join(openErr, factErr)
-			}
-			history, openErr = introduction.InitializeHistory(config.IntroductionRoot, binding, fact)
-		}
-		if openErr != nil {
+		if err := config.Introduction.BindReceiver(binding); err != nil {
 			cancel()
-			return nil, openErr
+			return nil, err
 		}
-		r.registrations, err = introduction.NewRegistry(history)
-		if err != nil {
-			cancel()
-			return nil, errors.Join(err, history.Close())
-		}
-	} else if config.IntroductionRoot != "" || config.Receiving != nil {
+		r.registrations = config.Introduction
+	} else if config.Introduction != nil {
 		cancel()
 		return nil, errors.New("introduction history supplied to another duty")
 	}
@@ -147,14 +129,18 @@ func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
 	}
 	if err != nil {
 		cancel()
-		return nil, errors.Join(err, r.registrations.Close())
+		return nil, err
+	}
+	if _, err := r.currentMember(); err != nil {
+		cancel()
+		return nil, errors.Join(err, r.closeListener())
 	}
 	go r.run()
 	return r, nil
 }
 
 func (r *Receiver) peer(key [32]byte) (network.Member, error) {
-	m, err := r.config.Authority.Member()
+	m, err := r.currentMember()
 	if err != nil {
 		return network.Member{}, err
 	}
@@ -185,6 +171,24 @@ func (r *Receiver) peer(key [32]byte) (network.Member, error) {
 	return peer, nil
 }
 
+// currentMember keeps native Introduction checks outside foreign observations
+// and lifecycle locks. A native read is followed by a fresh original authority
+// observation; History never calls back into this Receiver or its borrower.
+func (r *Receiver) currentMember() (network.Member, error) {
+	m, err := r.config.Authority.Member()
+	if err != nil || r.registrations == nil {
+		return m, err
+	}
+	p := r.config.Authority.Profile
+	if err := r.registrations.Check(introduction.Binding{NetworkID: p.Network, ProfileDigest: p.Digest, ReceiverNodeID: m.NodeID, ReceiverDutyGeneration: m.DutyGeneration}); err != nil {
+		if original := r.registrations.Failure(); original != nil {
+			err = original
+		}
+		return network.Member{}, err
+	}
+	return r.config.Authority.Member()
+}
+
 func (r *Receiver) run() {
 	defer close(r.done)
 	watchDone := make(chan struct{})
@@ -198,7 +202,7 @@ func (r *Receiver) run() {
 				r.interrupt()
 				return
 			case <-ticker.C:
-				if _, err := r.config.Authority.Member(); err != nil {
+				if _, err := r.currentMember(); err != nil {
 					r.record(err)
 					r.cancel()
 				}
@@ -211,7 +215,6 @@ func (r *Receiver) run() {
 		r.workers.Wait()
 		r.record(r.pool.Close())
 		<-watchDone
-		r.record(r.registrations.Close())
 	}()
 	for {
 		accepted, err := r.listener.Accept(r.ctx, 10*time.Second)

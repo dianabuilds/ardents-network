@@ -10,11 +10,14 @@ import (
 // Its caller authenticates the role channel and supplies the original accepted
 // allowance; this owner cannot verify tokens or declare Publication readiness.
 type Registry struct {
-	mu      sync.Mutex
-	history *History
-	slots   map[[32]byte]*Registration
-	closed  bool
-	pending uint64
+	mu              sync.Mutex
+	claims          sync.Mutex     // complete capacity/claim transitions, outside short state
+	users           sync.WaitGroup // original receiving exchanges, including writer/delivery join
+	history         *History
+	slots           map[[32]byte]*Registration
+	closed          bool
+	receiverClaimed bool
+	pending         uint64
 }
 
 // Capacity is one reserved registration position. Only Registry can create it;
@@ -27,16 +30,25 @@ type Capacity struct {
 // Reserve checks retained non-reclaim occupancy before Admission spending.
 // It does not prune or write history and cannot erase an earlier time floor.
 func (registry *Registry) Reserve(now time.Time) (*Capacity, error) {
-	if registry == nil || now.IsZero() {
+	if registry == nil || registry.history == nil || now.IsZero() {
 		return nil, errors.New("introduction capacity unavailable")
+	}
+	registry.claims.Lock()
+	defer registry.claims.Unlock()
+	registry.mu.Lock()
+	if registry.closed {
+		registry.mu.Unlock()
+		return nil, errors.New("introduction registry closed")
+	}
+	pending := registry.pending
+	registry.mu.Unlock()
+	if err := registry.history.checkCapacity(now, pending); err != nil {
+		return nil, err
 	}
 	registry.mu.Lock()
 	defer registry.mu.Unlock()
 	if registry.closed {
 		return nil, errors.New("introduction registry closed")
-	}
-	if err := registry.history.checkCapacity(now, registry.pending); err != nil {
-		return nil, err
 	}
 	registry.pending++
 	return &Capacity{registry: registry}, nil
@@ -89,7 +101,7 @@ func NewRegistry(history *History) (*Registry, error) {
 // used counts already exchanged ingress and egress including frame headers.
 // deadline and maximum belong to the genuine original Admission Grant.
 func (registry *Registry) Register(capacity *Capacity, request Request, channel [32]byte, maximum uint64, deadline time.Time, used uint64, now time.Time) (*Registration, error) {
-	if registry == nil || request.Withdraw || request.Nonce == [32]byte{} || request.Slot == [32]byte{} || request.Revision == 0 || channel == [32]byte{} || now.IsZero() || !now.Before(request.Expiry) || request.Expiry.After(deadline) || request.Expiry.After(now.Add(600*time.Second)) {
+	if registry == nil || registry.history == nil || request.Withdraw || request.Nonce == [32]byte{} || request.Slot == [32]byte{} || request.Revision == 0 || channel == [32]byte{} || now.IsZero() || !now.Before(request.Expiry) || request.Expiry.After(deadline) || request.Expiry.After(now.Add(600*time.Second)) {
 		return nil, errors.New("introduction registration invalid")
 	}
 	// Register operation/result plus owning withdraw operation/result. No
@@ -98,12 +110,15 @@ func (registry *Registry) Register(capacity *Capacity, request Request, channel 
 	if used > maximum || exchanges > maximum-used {
 		return nil, errors.New("introduction registration withdrawal reserve exhausted")
 	}
+	registry.claims.Lock()
+	defer registry.claims.Unlock()
 	registry.mu.Lock()
-	defer registry.mu.Unlock()
 	if registry.closed {
+		registry.mu.Unlock()
 		return nil, errors.New("introduction registry closed")
 	}
 	if capacity == nil || capacity.registry != registry || capacity.released || capacity.committed {
+		registry.mu.Unlock()
 		return nil, errors.New("introduction registration capacity absent")
 	}
 	for slot, prior := range registry.slots {
@@ -112,10 +127,19 @@ func (registry *Registry) Register(capacity *Capacity, request Request, channel 
 		}
 	}
 	if _, found := registry.slots[request.Slot]; found || len(registry.slots) >= slotMaximum {
+		registry.mu.Unlock()
 		return nil, errors.New("introduction slot unavailable")
 	}
+	registry.mu.Unlock()
 	if err := registry.history.Claim(request.Slot, request.Expiry, now); err != nil {
 		return nil, err
+	}
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+	// A durable claim remains even if denial or physical capacity return raced
+	// the write. Such a late result cannot publish a live registration.
+	if registry.closed || capacity.released {
+		return nil, errors.New("introduction registration retired during claim")
 	}
 	capacity.committed = true
 	registry.pending--
@@ -174,11 +198,90 @@ func (registry *Registry) Close() error {
 	if registry == nil {
 		return nil
 	}
+	registry.Stop(nil)
+	registry.users.Wait()
+	registry.claims.Lock()
+	defer registry.claims.Unlock()
+	return registry.history.Close()
+}
+
+func (registry *Registry) borrow() error {
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+	if registry.closed || registry.history == nil {
+		return errors.New("introduction registry closed")
+	}
+	registry.users.Add(1)
+	return nil
+}
+
+// Stop seals original registration/delivery admission without native I/O or a
+// foreign observer/physical callback. Receiver interrupts and joins its streams
+// before composition calls Close; cancellation wakes original writer waiters.
+func (registry *Registry) Stop(cause error) {
+	if registry == nil {
+		return
+	}
 	registry.mu.Lock()
 	registry.closed = true
+	var dispatches []*registrationDispatch
 	for _, registration := range registry.slots {
 		registration.retired = true
+		if d := registration.dispatch; d != nil {
+			d.sealed = true
+			dispatches = append(dispatches, d)
+		}
 	}
 	registry.mu.Unlock()
-	return registry.history.Close()
+	registry.history.Stop(cause)
+	for _, d := range dispatches {
+		d.cancel()
+	}
+}
+
+// Check binds only this original Registry/native History. It grants no Network
+// authority and never calls its borrower or a supplied observation callback.
+func (registry *Registry) Check(binding Binding) error {
+	if registry == nil || registry.history == nil || registry.history.binding != binding {
+		return errors.New("introduction original registry binding differs")
+	}
+	registry.mu.Lock()
+	closed := registry.closed
+	registry.mu.Unlock()
+	if closed {
+		return errors.New("introduction registry closed")
+	}
+	if err := registry.history.Check(); err != nil {
+		return err
+	}
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+	if registry.closed {
+		return errors.New("introduction registry closed")
+	}
+	return nil
+}
+
+// BindReceiver lends this original Registry to exactly one receiving lifetime.
+// A failed listener setup consumes that original borrow; it supplies no retry,
+// new root or physical close owner. Composition retains the sole Close.
+func (registry *Registry) BindReceiver(binding Binding) error {
+	if err := registry.Check(binding); err != nil {
+		return err
+	}
+	registry.mu.Lock()
+	defer registry.mu.Unlock()
+	if registry.closed || registry.receiverClaimed {
+		return errors.New("introduction original receiver already bound or retired")
+	}
+	registry.receiverClaimed = true
+	return nil
+}
+
+// Failure retains only original History failure, not an isolated peer refusal.
+func (registry *Registry) Failure() error {
+	if registry == nil || registry.history == nil {
+		return nil
+	}
+	return registry.history.Failure()
 }

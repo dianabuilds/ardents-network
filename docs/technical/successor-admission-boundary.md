@@ -139,7 +139,11 @@ empty history) do not issue it. Any receiving/refill attempt, even one refused
 before verification, invalidates it; Close, foreign binding, repeated consumption
 and late completion refuse. The fact grants no token, Network or Service authority
 and exposes no private journal, spend inventory, mutex or root lease. Route uses
-it solely to initialize its own independent slot history before listener admission.
+it solely through `introduction.OpenReceivingRegistry` to initialize its own
+independent slot history before listener admission. Retained Registry preparation
+strictly reopens Route history and consumes no renewed creation fact. Receiving
+never owns that Registry or its physical Close; composition joins Receiver and
+closes Registry before closing Receiving.
 Route retains slot policy and its own lease; Admission never stores new slots.
 
 ## Evidence scope

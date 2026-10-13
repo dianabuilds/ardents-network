@@ -265,7 +265,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 	if err != nil {
 		return 1
 	}
-	if m.RoleDomain == 4 && m.Subrole == 3 && plan.IntroductionRoot == "" {
+	if (m.RoleDomain == 4 && m.Subrole == 3) != (plan.IntroductionRoot != "") {
 		return 2
 	}
 	resolutionDuty := m.RoleDomain == 2 && m.Subrole == 5
@@ -309,11 +309,19 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 			code = 1
 		}
 	}()
-	var initializationOwner *receiving.Owner
+	var introductionRegistry *introduction.Registry
 	var reservationMu sync.Mutex
 	reservations := make(map[routereceiver.Channel]*hosting.Reservation)
 	if m.RoleDomain == 4 && m.Subrole == 3 {
-		initializationOwner = admissionOwner
+		introductionRegistry, err = introduction.OpenReceivingRegistry(plan.IntroductionRoot, introduction.Binding{NetworkID: p.Network, ProfileDigest: p.Digest, ReceiverNodeID: m.NodeID, ReceiverDutyGeneration: m.DutyGeneration}, admissionOwner)
+		if err != nil {
+			return 1
+		}
+		defer func() {
+			if introductionRegistry.Close() != nil {
+				code = 1
+			}
+		}()
 	}
 	var descriptorStore *reachability.Store
 	if resolutionDuty {
@@ -327,7 +335,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 			}
 		}()
 	}
-	server, err := routereceiver.Listen(ctx, routereceiver.ReceiverConfig{Authority: role.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p.ProfileBinding}, Certificate: certificate, IntroductionRoot: plan.IntroductionRoot, Receiving: initializationOwner, Issue: issue, DescriptorStore: descriptorStore,
+	server, err := routereceiver.Listen(ctx, routereceiver.ReceiverConfig{Authority: role.Authority{Current: networkOwner.CurrentRuntime, Duty: duty, Profile: p.ProfileBinding}, Certificate: certificate, Introduction: introductionRegistry, Issue: issue, DescriptorStore: descriptorStore,
 		ReserveBootstrap: func(ctx context.Context, end time.Time) (func() error, error) {
 			reservation, err := budget.Reserve(ctx, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: end, HoldUntil: end.Add(5 * time.Second)})
 			if err != nil {

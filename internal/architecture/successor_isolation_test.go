@@ -330,6 +330,9 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		return !zoneDependency
 	}
+	if source == "internal/successor/route/introduction/receiving_history_linux.go" && dependency == modulePath+"/internal/successor/admission/receiving" {
+		return true
+	}
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
 	owner := path.Dir(source)
 	permitted := map[string][]string{
@@ -740,6 +743,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"submission fixture parses sealed capsule", "cmd/ardents-next/route_submission_linux_test.go", modulePath + "/internal/successor/route/capsule", true},
 		{"other commands cannot acquire capsule consumer", "cmd/ardents-next/admission_holder.go", modulePath + "/internal/successor/route/capsule", false},
 		{"submission consumes retained exclusions", "internal/successor/route/introduction/submission.go", modulePath + "/internal/successor/route", true},
+		{"Introduction history birth consumes only its genuine receiving owner", "internal/successor/route/introduction/receiving_history_linux.go", modulePath + "/internal/successor/admission/receiving", true},
 		{"Introduction cannot own receiving Grant", "internal/successor/route/introduction/receiving.go", modulePath + "/internal/successor/admission/receiving", false},
 		{"Introduction cannot call listener composition", "internal/successor/route/introduction/receiving.go", modulePath + "/internal/successor/route/receiver", false},
 		{"channel cannot import Admission", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/admission", false},

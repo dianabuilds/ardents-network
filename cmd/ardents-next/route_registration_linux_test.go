@@ -49,7 +49,7 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 				var burntPresentation stock.Presentation
 				var authorityFailure error
 				burntRegistration := make(chan []byte, 1)
-				var registrationSpendRoot string
+				var registrationSpendRoot, registrationHistoryRoot string
 				var registrationReceiving *receiving.Owner
 				var registrationBinding receiving.Receiver
 				var registrationReceiverConfig routereceiver.ReceiverConfig
@@ -85,11 +85,11 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 					config := routereceiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id]}
 					if i == 16 {
 						registrationSpendRoot, registrationReceiving, registrationBinding = spendRoot, owner, binding
-						config.IntroductionRoot = t.TempDir()
-						if err := os.Chmod(config.IntroductionRoot, 0700); err != nil {
+						registrationHistoryRoot = t.TempDir()
+						if err := os.Chmod(registrationHistoryRoot, 0700); err != nil {
 							t.Fatal(err)
 						}
-						config.Receiving = owner
+						config.Introduction = prepareIntroductionRegistry(t, registrationHistoryRoot, owner, binding)
 					}
 					config.Admit = func(ctx context.Context, channel routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 						class := admission.ForwardClass
@@ -385,7 +385,10 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 					if err := registrationReceiving.Close(); err != nil {
 						t.Fatal(err)
 					}
-					root := registrationReceiverConfig.IntroductionRoot
+					root := registrationHistoryRoot
+					if err := registrationReceiverConfig.Introduction.Close(); err != nil {
+						t.Fatal(err)
+					}
 					// Remove only the two known members of this test's own private
 					// root, then its empty directory; recreate no retained evidence.
 					for _, name := range []string{"closed-introduction-slots", ".ardents-introduction-lock"} {
@@ -406,7 +409,7 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 						t.Fatal(err)
 					}
 					defer reopened.Close()
-					registrationReceiverConfig.Receiving = reopened
+
 					registrationReceiverConfig.Admit = func(ctx context.Context, channel routereceiver.Channel, raw []byte) (receiving.Grant, error) {
 						return reopened.Accept(ctx, admission.RegistrationClass, raw, channel.Hello.Deadline, func() (func() error, error) {
 							release, err := networkTestReservation(t, budgets[len(budgets)-1], channel.Hello.Deadline)
@@ -416,8 +419,8 @@ func TestRouteGenuineRegistrationBothCarriers(t *testing.T) {
 							return channel.HoldReservation(release)
 						})
 					}
-					if server, err := routereceiver.Listen(t.Context(), registrationReceiverConfig); err == nil {
-						_ = server.Close()
+					if registry, err := introduction.OpenReceivingRegistry(root, introduction.Binding{NetworkID: registrationBinding.NetworkID, ProfileDigest: registrationBinding.ProfileDigest, ReceiverNodeID: registrationBinding.NodeID, ReceiverDutyGeneration: registrationBinding.DutyGeneration}, reopened); err == nil {
+						_ = registry.Close()
 						t.Fatal("lost entire slot floor after genuine spend restarted receiving")
 					}
 					members, err := os.ReadDir(root)
@@ -583,4 +586,20 @@ func TestRegistrationAuthorityRetirementRejectsUnrelatedFailure(t *testing.T) {
 			t.Fatal("unrelated failure concealed", err)
 		}
 	}
+}
+
+// prepareIntroductionRegistry uses the genuine receiving birth fact and actual
+// independent History; cleanup is registered before the borrowing Receiver.
+func prepareIntroductionRegistry(t *testing.T, root string, owner *receiving.Owner, binding receiving.Receiver) *introduction.Registry {
+	t.Helper()
+	registry, err := introduction.OpenReceivingRegistry(root, introduction.Binding{NetworkID: binding.NetworkID, ProfileDigest: binding.ProfileDigest, ReceiverNodeID: binding.NodeID, ReceiverDutyGeneration: binding.DutyGeneration}, owner)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := registry.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return registry
 }

@@ -34,6 +34,12 @@ func (registry *Registry) ServeSubmission(ctx context.Context, conn net.Conn, ch
 			return context.DeadlineExceeded
 		}
 		_, err := channel.Authority.Hello(hello, false)
+		if err == nil {
+			err = registry.Check(Binding{NetworkID: hello.NetworkID, ProfileDigest: hello.ProfileDigest, ReceiverNodeID: hello.RecipientNodeID, ReceiverDutyGeneration: hello.RecipientDutyGeneration})
+		}
+		if err == nil {
+			_, err = channel.Authority.Hello(hello, false)
+		}
 		if !time.Now().Before(end) {
 			err = errors.Join(err, context.DeadlineExceeded)
 		}
@@ -42,6 +48,10 @@ func (registry *Registry) ServeSubmission(ctx context.Context, conn net.Conn, ch
 	if err := check(); err != nil {
 		return err
 	}
+	if err := registry.borrow(); err != nil {
+		return err
+	}
+	defer registry.users.Done()
 	defer func() { result = errors.Join(result, check()) }()
 	if _, err := role.Binding(conn, hello); err != nil {
 		return err

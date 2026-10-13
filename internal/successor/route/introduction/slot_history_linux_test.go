@@ -186,11 +186,12 @@ func TestHistoryUncertainReplaceTerminalizesWithoutErasingClaim(t *testing.T) {
 	history, _, root, binding := newHistoryFixture(t)
 	now := time.Unix(1_800_000_000, 0).UTC()
 	failure := errors.New("directory sync unavailable after rename")
-	history.store.(*historyFiles).replace = func(path string, raw []byte) error {
-		if err := replaceHistory(path, raw); err != nil {
-			return err
+	history.store.(*historyFiles).replace = func(path string, raw []byte) (*os.File, error) {
+		snapshot, err := replaceHistory(path, raw)
+		if err != nil {
+			return nil, err
 		}
-		return failure
+		return nil, errors.Join(failure, snapshot.Close())
 	}
 	if err := history.Claim([32]byte{7}, now.Add(time.Minute), now); !errors.Is(err, failure) {
 		t.Fatal(err)

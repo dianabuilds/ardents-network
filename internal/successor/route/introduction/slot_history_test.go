@@ -71,3 +71,14 @@ func TestRegistryUninitializedHistoryCannotPublishCapacity(t *testing.T) {
 		t.Fatal("missing physical storage became successful cleanup")
 	}
 }
+
+func TestRegistryAbsentOriginalCannotBindReceiverOrObserve(t *testing.T) {
+	var registry Registry
+	if registry.BindReceiver(Binding{}) == nil || registry.Check(Binding{}) == nil || registry.Failure() != nil {
+		t.Fatal("zero Registry supplied original native custody or receiver authority")
+	}
+	registry.Stop(nil)
+	if registry.BindReceiver(Binding{}) == nil {
+		t.Fatal("retired zero Registry became a receiver")
+	}
+}
