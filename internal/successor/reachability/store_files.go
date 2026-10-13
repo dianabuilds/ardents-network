@@ -21,15 +21,27 @@ const (
 )
 
 func (store *Store) restore() error {
-	root := filepath.Join(store.root, storeRecords)
-	entries, err := boundedStoreEntries(root, MaximumTargets+1)
+	root := store.custody.records
+	directory, err := root.Open(".")
 	if err != nil {
 		return err
+	}
+	entries, readErr := directory.ReadDir(MaximumTargets + 2)
+	if errors.Is(readErr, io.EOF) {
+		readErr = nil
+	}
+	err = errors.Join(readErr, directory.Close())
+	if err != nil {
+		return err
+	}
+	if len(entries) > MaximumTargets+1 {
+		return errors.New("reachability directory population exceeds bound")
 	}
 	stage := false
 	for _, entry := range entries {
 		if entry.Name() == storeStage {
-			if stage || validateStoreStage(filepath.Join(root, storeStage)) != nil {
+			info, err := root.Lstat(storeStage)
+			if stage || err != nil || !info.Mode().IsRegular() || info.Size() < 0 || info.Size() > MaximumDescriptorSize+2 {
 				return errors.New("reachability staging invalid")
 			}
 			stage = true
@@ -38,7 +50,7 @@ func (store *Store) restore() error {
 		if len(store.floors) >= MaximumTargets || len(entry.Name()) != 64 {
 			return errors.New("reachability record population or name invalid")
 		}
-		raw, err := readStoreFile(filepath.Join(root, entry.Name()), MaximumDescriptorSize+2)
+		raw, err := readOriginalStoreFile(root, entry.Name(), MaximumDescriptorSize+2)
 		if err != nil {
 			return err
 		}
@@ -54,15 +66,18 @@ func (store *Store) restore() error {
 			return errors.New("reachability duplicate Target")
 		}
 		store.floors[target] = floor
+		if err := store.custody.remember(entry.Name(), raw); err != nil {
+			return err
+		}
 	}
 	// Validate every committed floor before touching the interrupted transaction.
 	// Never rename/promote unacknowledged staging, reset the root or delete foreign
 	// entries. Sync its removal under the same exclusive lease before reopening.
 	if stage {
-		if err := os.Remove(filepath.Join(root, storeStage)); err != nil {
+		if err := root.Remove(storeStage); err != nil {
 			return err
 		}
-		if err := syncStoreDirectory(root); err != nil {
+		if err := store.custody.syncDirectory.Sync(); err != nil {
 			return err
 		}
 	}
@@ -70,6 +85,14 @@ func (store *Store) restore() error {
 }
 
 func (store *Store) write(floor retainedFloor) error {
+	store.custody.mu.Lock()
+	defer store.custody.mu.Unlock()
+	if err := store.inspectCustody(); err != nil {
+		return err
+	}
+	if err := store.localCheck(); err != nil {
+		return err
+	}
 	flags := byte(0)
 	if floor.publicationConflict {
 		flags |= 1
@@ -78,9 +101,7 @@ func (store *Store) write(floor retainedFloor) error {
 		flags |= 2
 	}
 	raw := append([]byte{3, flags}, floor.descriptor.raw...)
-	root := filepath.Join(store.root, storeRecords)
-	stage := filepath.Join(root, storeStage)
-	file, err := os.OpenFile(stage, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
+	file, err := store.custody.records.OpenFile(storeStage, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -98,10 +119,23 @@ func (store *Store) write(floor retainedFloor) error {
 	if err != nil {
 		return err
 	}
-	if err = os.Rename(stage, filepath.Join(root, storeTargetName(floor.descriptor.Target))); err != nil {
+	name := storeTargetName(floor.descriptor.Target)
+	if err = store.custody.records.Rename(storeStage, name); err != nil {
 		return err
 	}
-	return syncStoreDirectory(root)
+	if err := store.custody.syncDirectory.Sync(); err != nil {
+		return err
+	}
+	if err := store.custody.remember(name, raw); err != nil {
+		return err
+	}
+	// A fresh Lookup cannot pass the native custody gate after this physical
+	// commit but before observing its retained floor. Close/denial may already
+	// have happened; the durable floor is still retained and no ACK is granted.
+	store.mu.Lock()
+	store.floors[floor.descriptor.Target] = floor
+	store.mu.Unlock()
+	return nil
 }
 
 func decodeStoredFloor(raw []byte, network [32]byte) (retainedFloor, error) {
@@ -127,17 +161,6 @@ func decodeStoredFloor(raw []byte, network [32]byte) (retainedFloor, error) {
 }
 
 func storeTargetName(target [32]byte) string { return fmt.Sprintf("%x", target) }
-
-func validateStoreStage(path string) error {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return err
-	}
-	if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() < 0 || info.Size() > MaximumDescriptorSize+2 {
-		return errors.New("reachability staging type or size invalid")
-	}
-	return nil
-}
 
 func readStoreFile(path string, maximum int) ([]byte, error) {
 	info, err := os.Lstat(path)
@@ -244,13 +267,13 @@ func createStoreDirectory(path string) error {
 	return syncStoreDirectory(filepath.Dir(path))
 }
 
-func initializeStoreRoot(root string) error {
-	marker, records := filepath.Join(root, storeMarkerName), filepath.Join(root, storeRecords)
-	if _, err := os.Lstat(marker); err == nil {
-		if err := ensureStoreFile(marker, []byte(storeMarker)); err != nil {
-			return err
+func initializeStoreRoot(root *os.Root) error {
+	if _, err := root.Lstat(storeMarkerName); err == nil {
+		raw, err := readOriginalStoreFile(root, storeMarkerName, len(storeMarker))
+		if err != nil || !bytes.Equal(raw, []byte(storeMarker)) {
+			return errors.Join(errors.New("reachability root format unsupported"), err)
 		}
-		info, err := os.Lstat(records)
+		info, err := root.Lstat(storeRecords)
 		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			return errors.New("reachability initialized records missing or invalid")
 		}
@@ -258,30 +281,91 @@ func initializeStoreRoot(root string) error {
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-	if info, err := os.Lstat(records); err == nil {
+	if info, err := root.Lstat(storeRecords); err == nil {
 		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 			return errors.New("reachability records directory invalid")
 		}
-		if entries, err := boundedStoreEntries(records, 0); err != nil || len(entries) != 0 {
-			return errors.New("reachability unmarked root retains records")
+		directory, err := root.Open(storeRecords)
+		if err != nil {
+			return err
+		}
+		entries, readErr := directory.ReadDir(1)
+		if errors.Is(readErr, io.EOF) {
+			readErr = nil
+		}
+		if err := errors.Join(readErr, directory.Close()); err != nil || len(entries) != 0 {
+			return errors.Join(errors.New("reachability unmarked root retains records"), err)
 		}
 	} else if errors.Is(err, os.ErrNotExist) {
-		if err := os.Mkdir(records, 0700); err != nil {
+		if err := root.Mkdir(storeRecords, 0700); err != nil {
 			return err
 		}
 	} else {
 		return err
 	}
-	if err := syncStoreDirectory(records); err != nil {
+	records, err := root.OpenRoot(storeRecords)
+	if err != nil {
 		return err
 	}
-	if err := syncStoreDirectory(root); err != nil {
+	err = errors.Join(syncRetainedStoreDirectory(records), records.Close())
+	if err != nil {
 		return err
 	}
-	if err := ensureStoreFile(marker, []byte(storeMarker)); err != nil {
+	if err := syncRetainedStoreDirectory(root); err != nil {
 		return err
 	}
-	return syncStoreDirectory(root)
+	file, err := root.OpenFile(storeMarkerName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
+	n, writeErr := file.Write([]byte(storeMarker))
+	if writeErr == nil && n != len(storeMarker) {
+		writeErr = io.ErrShortWrite
+	}
+	if writeErr == nil {
+		writeErr = file.Sync()
+	}
+	if err := errors.Join(writeErr, file.Close()); err != nil {
+		return err
+	}
+	return syncRetainedStoreDirectory(root)
+}
+
+func syncRetainedStoreDirectory(root *os.Root) error {
+	file, err := retainStoreSyncDirectory(root)
+	if err != nil {
+		return err
+	}
+	expected, expectedErr := root.Stat(".")
+	actual, actualErr := file.Stat()
+	if expectedErr != nil || actualErr != nil || !os.SameFile(expected, actual) {
+		return errors.Join(errors.New("reachability original directory sync differs"), expectedErr, actualErr, file.Close())
+	}
+	return errors.Join(file.Sync(), file.Close())
+}
+
+func readOriginalStoreFile(root *os.Root, name string, maximum int) ([]byte, error) {
+	info, err := root.Lstat(name)
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > int64(maximum) {
+		return nil, errors.New("reachability original file type or length invalid")
+	}
+	file, err := root.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	opened, statErr := file.Stat()
+	if statErr != nil || !os.SameFile(info, opened) {
+		return nil, errors.Join(errors.New("reachability original file changed during open"), statErr, file.Close())
+	}
+	raw, readErr := io.ReadAll(io.LimitReader(file, int64(maximum)+1))
+	err = errors.Join(readErr, file.Close())
+	if err != nil || len(raw) > maximum {
+		return nil, errors.Join(errors.New("reachability original file read unavailable"), err)
+	}
+	return raw, nil
 }
 
 func ensureStoreFile(path string, expected []byte) error {

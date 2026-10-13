@@ -2,6 +2,7 @@ package reachability
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -19,6 +20,11 @@ type StoreConfig struct {
 // holder history is a distinct owner; no Store root or lease is shared with it.
 type Store struct {
 	mu                sync.Mutex
+	writer            sync.Mutex
+	users             sync.WaitGroup
+	closeOnce         sync.Once
+	done              chan struct{}
+	custody           *storeCustody
 	root              string
 	network           [32]byte
 	lease             storeLease
@@ -38,28 +44,51 @@ func OpenStore(config StoreConfig) (*Store, error) {
 	if err = prepareStoreRoot(root); err != nil {
 		return nil, err
 	}
-	lease, err := acquireStoreLease(root)
+	originalRoot, err := os.OpenRoot(root)
 	if err != nil {
 		return nil, err
 	}
-	if err = initializeStoreRoot(root); err != nil {
-		return nil, errors.Join(err, lease.release())
+	lease, err := acquireStoreLease(originalRoot)
+	if err != nil {
+		return nil, errors.Join(err, originalRoot.Close())
 	}
-	store := &Store{root: root, network: config.Network, lease: lease, floors: make(map[[32]byte]retainedFloor)}
-	if err = store.restore(); err != nil {
+	lockInfo, err := originalRoot.Lstat(storeLockName)
+	if err == nil {
+		err = lease.check(lockInfo)
+	}
+	if err == nil {
+		err = initializeStoreRoot(originalRoot)
+	}
+	if err != nil {
+		return nil, errors.Join(err, originalRoot.Close(), lease.release())
+	}
+	store := &Store{root: root, network: config.Network, lease: lease, floors: make(map[[32]byte]retainedFloor), done: make(chan struct{})}
+	store.custody, err = retainStoreCustody(originalRoot)
+	if err != nil {
 		return nil, errors.Join(err, store.lease.release())
+	}
+	if err = store.restore(); err != nil {
+		return nil, errors.Join(err, store.custody.close(), store.lease.release())
+	}
+	if err = store.checkCustody(); err != nil {
+		return nil, errors.Join(err, store.custody.close(), store.lease.release())
 	}
 	return store, nil
 }
 
 // Publish verifies delegation before mutation and persists conflict transitions
 // before exposing them. check retains the receiving caller's original current
-// duty/profile/time; it grants no proof authority and must not call into Store.
+// duty/profile/time; it grants no proof authority. Check may inspect original
+// custody without observer recursion; callbacks must not Publish or Close Store.
 // A post-write refusal keeps the committed floor and permits no accepting ACK.
 func (store *Store) Publish(raw []byte, profile [32]byte, at time.Time, check func() error) (Outcome, error) {
 	if store == nil || check == nil {
 		return Invalid, errors.New("reachability publication composition unavailable")
 	}
+	if err := store.borrow(); err != nil {
+		return Invalid, err
+	}
+	defer store.users.Done()
 	if err := check(); err != nil {
 		return Invalid, err
 	}
@@ -68,29 +97,39 @@ func (store *Store) Publish(raw []byte, profile [32]byte, at time.Time, check fu
 		return Invalid, err
 	}
 	candidate := retainedFloor{descriptor: proof}
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	if store.closed || store.failure != nil {
-		return Invalid, errors.Join(errors.New("reachability Store unavailable"), store.failure)
+	// Serialize complete publication transitions independently of state. Foreign
+	// observers and native I/O never run with mu held; Close denies immediately
+	// and waits for this original borrow, including any writer waiter.
+	store.writer.Lock()
+	defer store.writer.Unlock()
+	if err := store.checkCustody(); err != nil {
+		return Invalid, err
 	}
 	if err := check(); err != nil {
 		return Invalid, err
+	}
+	store.mu.Lock()
+	if store.closed || store.failure != nil {
+		failure := store.failure
+		store.mu.Unlock()
+		return Invalid, errors.Join(errors.New("reachability Store unavailable"), failure)
 	}
 	outcome, next, decisionErr := Accepted, &candidate, error(nil)
 	if prior, exists := store.floors[proof.Target]; exists {
 		outcome, next, decisionErr = compareFloor(prior, candidate)
 	} else if len(store.floors) >= MaximumTargets {
+		store.mu.Unlock()
 		return Invalid, errors.New("reachability Store Target capacity exhausted")
 	}
+	store.mu.Unlock()
 	if next == nil {
-		return outcome, errors.Join(decisionErr, check())
+		return outcome, errors.Join(decisionErr, check(), store.checkCustody(), store.localCheck())
 	}
 	if err := store.write(*next); err != nil {
-		store.failure = err
+		store.Deny(err)
 		return Invalid, errors.Join(decisionErr, err, check())
 	}
-	store.floors[proof.Target] = *next
-	if err := check(); err != nil {
+	if err := errors.Join(check(), store.checkCustody(), store.localCheck()); err != nil {
 		return Invalid, errors.Join(decisionErr, err)
 	}
 	return outcome, decisionErr
@@ -101,6 +140,13 @@ func (store *Store) Publish(raw []byte, profile [32]byte, at time.Time, check fu
 func (store *Store) Lookup(target, profile [32]byte, at time.Time) ([]byte, Outcome, error) {
 	if store == nil || target == [32]byte{} || profile == [32]byte{} || at.IsZero() {
 		return nil, Invalid, errors.New("reachability lookup input invalid")
+	}
+	if err := store.borrow(); err != nil {
+		return nil, Invalid, err
+	}
+	defer store.users.Done()
+	if err := store.checkCustody(); err != nil {
+		return nil, Invalid, err
 	}
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -120,18 +166,69 @@ func (store *Store) Lookup(target, profile [32]byte, at time.Time) ([]byte, Outc
 	return floor.descriptor.Bytes(), Accepted, nil
 }
 
-// Close serializes through actual lease release and retains its first result.
+// Check reobserves this original Store's native custody. Request proof/refusal
+// errors do not poison it; definite custody loss is permanently retained.
+func (store *Store) Check() error {
+	if err := store.borrow(); err != nil {
+		return err
+	}
+	defer store.users.Done()
+	if err := store.checkCustody(); err != nil {
+		return err
+	}
+	return store.localCheck()
+}
+
+// Deny synchronously stops new borrows without waiting for native I/O or users.
+// An operational cause is separate from the retained lease-release result.
+func (store *Store) Deny(cause error) {
+	if store == nil || cause == nil {
+		return
+	}
+	store.mu.Lock()
+	if store.failure == nil {
+		store.failure = cause
+	}
+	store.mu.Unlock()
+}
+
+func (store *Store) borrow() error {
+	if store == nil {
+		return errors.New("reachability Store unavailable")
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.closed || store.failure != nil {
+		return errors.Join(errors.New("reachability Store unavailable"), store.failure)
+	}
+	store.users.Add(1)
+	return nil
+}
+
+func (store *Store) localCheck() error {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.closed || store.failure != nil {
+		return errors.Join(errors.New("reachability Store unavailable"), store.failure)
+	}
+	return nil
+}
+
+// Close denies synchronously, joins original users, then releases native custody
+// and lease once. Concurrent callers retain the same physical release result.
 func (store *Store) Close() error {
 	if store == nil {
 		return nil
 	}
 	store.mu.Lock()
-	defer store.mu.Unlock()
-	if store.closed {
-		return store.closeErr
-	}
 	store.closed = true
-	store.closeErr = store.lease.release()
-	clear(store.floors)
+	store.mu.Unlock()
+	store.closeOnce.Do(func() {
+		store.users.Wait()
+		store.closeErr = errors.Join(store.custody.close(), store.lease.release())
+		clear(store.floors)
+		close(store.done)
+	})
+	<-store.done
 	return store.closeErr
 }

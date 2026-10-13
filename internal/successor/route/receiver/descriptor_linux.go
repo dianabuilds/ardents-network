@@ -32,7 +32,7 @@ func (r *Receiver) serveDescriptor(ctx context.Context, conn net.Conn, hello ard
 			<-interrupted
 		}
 	}()
-	recheck := func() error { return errors.Join(ctx.Err(), check()) }
+	recheck := func() error { return errors.Join(ctx.Err(), check(), r.config.DescriptorStore.Check()) }
 	effectGuard := recheck
 	defer func() { result = errors.Join(result, recheck()) }()
 	if err := recheck(); err != nil {

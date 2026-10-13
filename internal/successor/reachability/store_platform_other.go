@@ -2,13 +2,24 @@
 
 package reachability
 
-import "errors"
+import (
+	"errors"
+	"os"
+)
 
 const storePlatformSupported = false
 
+func retainStoreSyncDirectory(*os.Root) (*os.File, error) {
+	return nil, errors.New("reachability Store platform unavailable")
+}
+
 type storeLease struct{}
 
-func acquireStoreLease(string) (storeLease, error) {
+func (*storeLease) check(os.FileInfo) error {
+	return errors.New("reachability Store platform unavailable")
+}
+
+func acquireStoreLease(*os.Root) (storeLease, error) {
 	return storeLease{}, errors.New("reachability Store platform unavailable")
 }
 func (*storeLease) release() error    { return nil }

@@ -3,16 +3,30 @@ package reachability
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"syscall"
 )
 
 const storePlatformSupported = true
 
+func retainStoreSyncDirectory(root *os.Root) (*os.File, error) { return root.Open(".") }
+
 type storeLease struct{ file *os.File }
 
-func acquireStoreLease(root string) (storeLease, error) {
-	file, err := os.OpenFile(filepath.Join(root, storeLockName), os.O_RDWR|syscall.O_NOFOLLOW, 0)
+func (lease *storeLease) check(expected os.FileInfo) error {
+	if lease.file == nil {
+		return errors.New("reachability original lease unavailable")
+	}
+	info, err := lease.file.Stat()
+	if err != nil || !os.SameFile(info, expected) {
+		return errors.Join(errors.New("reachability original lease lost"), err)
+	}
+	// The private descriptor is unlocked only by release. Never reacquire a
+	// possibly lost original lease as a Check/recovery shortcut.
+	return nil
+}
+
+func acquireStoreLease(root *os.Root) (storeLease, error) {
+	file, err := root.OpenFile(storeLockName, os.O_RDWR|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return storeLease{}, err
 	}
