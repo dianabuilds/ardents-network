@@ -109,6 +109,9 @@ func (s *networkState) commitDistributionWithControl(state distributionState, co
 		return errors.New("network state is closed")
 	}
 	raw := encodeDistributionState(state)
+	if state.conflicting && !s.distribution.conflicting {
+		s.invalidateRuntime()
+	}
 	name := distributionDigest(raw)
 	if err := commit(name, raw); err != nil {
 		if errors.Is(err, durable.ErrPointerSyncUncertain) {
@@ -130,6 +133,7 @@ func (s *networkState) commitDistributionWithControl(state distributionState, co
 // Runtime callers hold s.mu; Open may call this before publishing the owner.
 func (s *networkState) retireStateLocked() {
 	s.closed = true
+	s.invalidateRuntime()
 	if s.workCancel != nil {
 		s.workCancel()
 	}

@@ -75,6 +75,7 @@ func (s *networkState) acceptClosedProfileWithCommit(raw []byte, commit func(dur
 		return ProfileReceipt{}, err
 	}
 	if decision.NeedsCommit() {
+		s.invalidateRuntime()
 		body := raw
 		if decision.Conflicted() {
 			body = storedRaw

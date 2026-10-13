@@ -77,7 +77,7 @@ func runExecutionTextRead(ctx context.Context, plan holderPlan, generation, prin
 		}
 		view, err := original()
 		return view, errors.Join(err, operation.CheckReader())
-	}, authority.close)
+	}, authority.close, authority.witness)
 	holder, err := stock.Open(plan.Root, plan.Role, authority.observe)
 	if err != nil {
 		return 1

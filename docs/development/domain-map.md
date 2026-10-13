@@ -507,6 +507,14 @@ become a foreign policy callback. Each owner still serializes its own durable
 effects as its technical contract requires. Asynchronous notifications may
 follow a synchronous transition, never implement its revoke.
 
+The retained Connection Source/Responder consumes Network State's opaque
+`RuntimeWitness` as a synchronous local refusal projection. Its exact original
+owner/profile and invalidation generation remain fixed across physical Route
+replacement. Full signed/durable/time observations remain mandatory outside
+consumer locks; the local witness supplies no accepting authority or root
+borrow. Network invalidates it on its own retirement or authority transition;
+Route and Connection retain their own stop, join and outcome responsibilities.
+
 ### Dependency and information boundaries
 
 Keep production and test imports acyclic and exactly registered. A shared

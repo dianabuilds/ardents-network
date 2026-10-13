@@ -175,7 +175,7 @@ func nativeIssuerOperationChild(t *testing.T, path string) {
 		if first != "issuance" {
 			t.Fatal("original uncertainty owner changed", first, closed)
 		}
-		authority := networkAdmissionAuthority(stateOwner.CurrentRuntime, stateOwner.Close)
+		authority := networkAdmissionAuthority(stateOwner.CurrentRuntime, stateOwner.Close, stateOwner.CurrentRuntimeWitness)
 		reopened, opened := issuer.OpenCurrent(t.Context(), p.Issuance, func() (admission.AuthorityFacts, time.Time, error) {
 			return authority.issuer(p.Issuance.KeyBinding.Signer)
 		})

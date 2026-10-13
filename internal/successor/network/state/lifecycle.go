@@ -50,6 +50,7 @@ func (s *networkState) Close() error {
 func (s *networkState) closeOwned() error {
 	s.mu.Lock()
 	s.closed = true
+	s.invalidateRuntime()
 	done, workCancel, storage := s.serverDone, s.workCancel, s.storage
 	s.mu.Unlock()
 	if workCancel != nil {

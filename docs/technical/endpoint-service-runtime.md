@@ -1451,6 +1451,12 @@ Publication reservation without native I/O, including a physical Attachment
 gap. Original Credential/Work Safety bounds and Execution operation remain
 requirements at the final gate. Record completion also compares its exact
 actors/generation after I/O; a stale completion cannot update the replacement.
+Source and Responder also retain the State-produced original Network witness.
+Their local commit checks compare its exact profile and synchronous retirement
+projection, so a delayed successful observation cannot deliver bytes after
+that State has retired. This refusal-only check supplements full fresh Network
+observations and performs no foreign I/O under Route or Connection state locks.
+Physical replacement retains that same witness; it cannot adopt a new State.
 The durable reservation gate compares an immutable local original-pointer and
 retained-failure projection without acquiring its storage mutex. Reservation
 retirement seals only that original pointer; root retirement seals all local

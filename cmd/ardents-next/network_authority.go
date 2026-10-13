@@ -29,6 +29,7 @@ type networkAuthorityPlan struct {
 
 type admissionAuthority struct {
 	current      func() (network.RuntimeView, error)
+	witness      func() (state.RuntimeWitness, error)
 	observe      func() (admission.AuthorityFacts, time.Time, error)
 	issuer       func([32]byte) (admission.AuthorityFacts, time.Time, error)
 	receiver     func(receiving.Receiver, time.Time) (receiving.Observation, error)
@@ -74,7 +75,7 @@ func openAdmissionAuthority(profile string, plan *networkAuthorityPlan) (admissi
 	if err != nil {
 		return admissionAuthority{}, err
 	}
-	return networkAdmissionAuthority(owner.CurrentRuntime, owner.Close), nil
+	return networkAdmissionAuthority(owner.CurrentRuntime, owner.Close, owner.CurrentRuntimeWitness), nil
 }
 
 func networkStateConfig(plan *networkAuthorityPlan) (state.Config, error) {
@@ -97,7 +98,7 @@ func networkStateConfig(plan *networkAuthorityPlan) (state.Config, error) {
 // networkAdmissionAuthority is command composition, not Network or Admission
 // policy. Each callback gets one new observation; no diagnostic flags, external
 // profile file or cached approval can substitute for the opened State owner.
-func networkAdmissionAuthority(current func() (network.RuntimeView, error), closeOwner func() error) admissionAuthority {
+func networkAdmissionAuthority(current func() (network.RuntimeView, error), closeOwner func() error, witness func() (state.RuntimeWitness, error)) admissionAuthority {
 	observe := func() (network.RuntimeView, admission.AuthorityFacts, time.Time, error) {
 		view, err := current()
 		if err != nil {
@@ -109,7 +110,7 @@ func networkAdmissionAuthority(current func() (network.RuntimeView, error), clos
 		}
 		return view, facts, now, nil
 	}
-	authority := admissionAuthority{close: closeOwner, current: current,
+	authority := admissionAuthority{close: closeOwner, current: current, witness: witness,
 		observe: func() (admission.AuthorityFacts, time.Time, error) {
 			_, facts, now, err := observe()
 			return facts, now, err

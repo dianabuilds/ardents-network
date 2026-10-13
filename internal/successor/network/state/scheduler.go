@@ -39,6 +39,7 @@ func (s *networkState) runAutomaticRefresh(ctx context.Context, ticks <-chan tim
 				!errors.Is(err, errClockUncertain) && !errors.Is(err, errRefreshActive) && !errors.Is(err, context.Canceled) {
 				s.mu.Lock()
 				s.automaticErr = err
+				s.invalidateRuntime()
 				s.mu.Unlock()
 				return
 			}

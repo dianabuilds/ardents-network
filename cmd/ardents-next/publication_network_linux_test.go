@@ -55,7 +55,7 @@ func publicationReceivingNetwork(t *testing.T, publisher *networkAdmissionFixtur
 	if err != nil || current.Profile().ProfileBinding != original.Profile().ProfileBinding {
 		t.Fatal("receiving authority differs from original Publisher", err)
 	}
-	return &networkAdmissionFixture{current: owner.CurrentRuntime, authority: networkAdmissionAuthority(owner.CurrentRuntime, owner.Close), profile: publisher.profile}
+	return &networkAdmissionFixture{current: owner.CurrentRuntime, close: owner.Close, authority: networkAdmissionAuthority(owner.CurrentRuntime, owner.Close, owner.CurrentRuntimeWitness), profile: publisher.profile}
 }
 
 func TestPublicationReceivingNetworkSurvivesPublisherConflict(t *testing.T) {

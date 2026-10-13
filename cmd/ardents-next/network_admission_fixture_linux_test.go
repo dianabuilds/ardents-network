@@ -217,7 +217,7 @@ func newNetworkAdmissionFixture(t *testing.T, prepare ...func(*networkAdmissionF
 		t.Fatal(err)
 	}
 	f.digest = bundle.Epoch.Digest
-	f.authority = networkAdmissionAuthority(owner.CurrentRuntime, f.close)
+	f.authority = networkAdmissionAuthority(owner.CurrentRuntime, f.close, owner.CurrentRuntimeWitness)
 	f.reopen = func() {
 		t.Helper()
 		if err := f.close(); err != nil {
@@ -227,7 +227,7 @@ func newNetworkAdmissionFixture(t *testing.T, prepare ...func(*networkAdmissionF
 		if err != nil {
 			t.Fatal(err)
 		}
-		f.authority = networkAdmissionAuthority(owner.CurrentRuntime, f.close)
+		f.authority = networkAdmissionAuthority(owner.CurrentRuntime, f.close, owner.CurrentRuntimeWitness)
 	}
 	f.profile, _, err = f.authority.observe()
 	if err != nil {

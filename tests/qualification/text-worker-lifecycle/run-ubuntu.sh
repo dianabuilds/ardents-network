@@ -11,6 +11,7 @@ case "${1-lifecycle}" in
     connection-stream) test_root=TestInstalledConnectionStreamBothCarriers ;;
     connection-control-received) test_root=TestInstalledConnectionControlReceivedBothCarriers; maximum_polls=12600 ;;
     connection-control-delivery) test_root=TestInstalledConnectionControlDeliveryBothCarriers; maximum_polls=12600 ;;
+    connection-authority) test_root=TestInstalledConnectionAuthorityBothCarriers; maximum_polls=12600 ;;
     connection-control)
         # The complete 24-case matrix, including race instrumentation, uses the
         # pinned unit's twenty-minute test timeout and twenty-one-minute runtime.
@@ -78,7 +79,7 @@ if [ "$test_root" = TestInstalledExecutionEndpointDeath ]; then
     printf '%s  %s\n' "$ARDENTS_TEXT_HOSTILE_WORKER_SHA256" "$worker" | sha256sum --check --status ||
         fail 'invalid environment: hostile artifact differs from declared candidate'
 fi
-if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ] || [ "$test_root" = TestInstalledPublicationElapsedBothCarriers ] || [ "$test_root" = TestInstalledConnectionStreamBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlDeliveryBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlReceivedBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlWritesBothCarriers ] || [ "$test_root" = TestInstalledConnectionRefreshBothCarriers ] || [ "$test_root" = TestInstalledConnectionWithdrawalBothCarriers ] || [ "$test_root" = TestInstalledConnectionNonceBothCarriers ]; then
+if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ] || [ "$test_root" = TestInstalledPublicationElapsedBothCarriers ] || [ "$test_root" = TestInstalledConnectionStreamBothCarriers ] || [ "$test_root" = TestInstalledConnectionAuthorityBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlDeliveryBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlReceivedBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlWritesBothCarriers ] || [ "$test_root" = TestInstalledConnectionRefreshBothCarriers ] || [ "$test_root" = TestInstalledConnectionWithdrawalBothCarriers ] || [ "$test_root" = TestInstalledConnectionNonceBothCarriers ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
 fi
 unit=/run/systemd/system/ardents-endpoint.service
@@ -182,6 +183,18 @@ if [ "$test_root" = TestInstalledConnectionControlWritesBothCarriers ] || [ "$te
                         set -- "$@" "$test_root/$carrier/$role/$kind/$cut"
                     done
                 fi
+            done
+        done
+    done
+fi
+if [ "$test_root" = TestInstalledConnectionAuthorityBothCarriers ]; then
+    set -- "$test_root"
+    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+        set -- "$@" "$test_root/$carrier"
+        for role in initiator publisher; do
+            set -- "$@" "$test_root/$carrier/$role"
+            for fault in worker network deadline; do
+                set -- "$@" "$test_root/$carrier/$role/$fault"
             done
         done
     done

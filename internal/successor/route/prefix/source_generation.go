@@ -137,6 +137,7 @@ func (scope *SourceScope) Acquire(ctx context.Context) (*SourceHandle, error) {
 			return nil, errors.Join(err, cleanup)
 		}
 		config.Current = scope.config.Current
+		config.NetworkWitness = scope.config.NetworkWitness
 		physical, err := Open(caller, config)
 		if !stop() {
 			<-interrupted

@@ -83,7 +83,7 @@ func (scope *SourceScope) localLocked() error {
 	if !time.Now().Before(scope.config.Deadline) {
 		return context.DeadlineExceeded
 	}
-	return errors.Join(scope.failure, scope.ctx.Err())
+	return errors.Join(scope.failure, scope.ctx.Err(), scope.config.NetworkWitness.CheckCommit(scope.config.Leg.Profile))
 }
 
 // Check reobserves authentic original authority without consulting readiness

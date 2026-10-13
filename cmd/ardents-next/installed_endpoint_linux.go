@@ -133,7 +133,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 	if _, err := network.Refresh(ctx); err != nil {
 		return 1
 	}
-	authority := networkAdmissionAuthority(network.CurrentRuntime, network.Close)
+	authority := networkAdmissionAuthority(network.CurrentRuntime, network.Close, network.CurrentRuntimeWitness)
 	preparationCheck := check
 	check = func() error {
 		if err := preparationCheck(); err != nil {
@@ -244,7 +244,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 			}
 			view, err := originalCurrent()
 			return view, errors.Join(err, current())
-		}, authority.close)
+		}, authority.close, authority.witness)
 		readerPlan := routePrefixPlan{EntryRoot: filepath.Join(plan.EntryStateRoot, "entry"), InteriorRoot: filepath.Join(plan.EntryStateRoot, "reader-interior"),
 			HostingRoot: filepath.Join(plan.EntryStateRoot, "hosting"), Domain: 1,
 			Work:        hosting.Traffic{Tx: admission.ForwardClass.ByteLimit(), Rx: admission.ForwardClass.ByteLimit()},

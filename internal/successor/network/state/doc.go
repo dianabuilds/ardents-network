@@ -21,4 +21,7 @@
 // separate from profile validity. Consumers retain Purpose, path selection and
 // transport ownership, and must query the live State again at admission
 // rechecks; retaining a view does not acquire a lease on future acceptance.
+// CurrentRuntimeWitness additionally retains an opaque, locally checked
+// original-owner refusal projection. It cannot replace the full observation,
+// and synchronous retirement never changes or revives the immutable view.
 package state

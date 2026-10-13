@@ -248,7 +248,7 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 			code = 1
 		}
 	}()
-	authority := networkAdmissionAuthority(networkOwner.CurrentRuntime, networkOwner.Close)
+	authority := networkAdmissionAuthority(networkOwner.CurrentRuntime, networkOwner.Close, networkOwner.CurrentRuntimeWitness)
 	view, err := networkOwner.CurrentRuntime()
 	if err != nil {
 		return 1

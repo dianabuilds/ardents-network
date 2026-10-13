@@ -48,8 +48,15 @@ func TestAcceptClosedProfilePersistsAndConflictsByArrival(t *testing.T) {
 		t.Fatalf("current closed route = %+v, %v", route, err)
 	}
 	second := testClosedProfile(t, authority, network, generation, epochDigest, now, []closedProfileNode{node})
+	witness, err := store.CurrentRuntimeWitness()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := store.AcceptClosedProfile(second); err == nil {
 		t.Fatal("accepted a second closed profile digest")
+	}
+	if err := witness.CheckCommit(route.Profile().ProfileBinding); err == nil {
+		t.Fatal("authenticated conflict did not synchronously retire original handoff")
 	}
 	if _, err := store.CurrentRuntime(); err == nil {
 		t.Fatal("returned a closed profile after durable conflict")

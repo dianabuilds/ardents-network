@@ -92,7 +92,7 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 			}
 			view, err := original()
 			return view, errors.Join(err, preparation.Check())
-		}, authority.close)
+		}, authority.close, authority.witness)
 	}
 	defer func() {
 		if retainCleanup(authority.close()) != nil {

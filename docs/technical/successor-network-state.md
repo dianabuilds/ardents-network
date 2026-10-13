@@ -250,6 +250,19 @@ the execution owner cancels and joins dependent work. Observer callbacks cannot
 reserve Hosting, execute transport or call back into the Admission owner whose
 lock is held. Network never calls consumers under its authority lock.
 
+`CurrentRuntimeWitness` performs that same full observation and additionally
+returns an opaque original-State refusal witness. The immutable `RuntimeView`
+is unchanged. The witness cannot replace fresh reads, authenticate copied
+facts, renew a deadline or grant an operation. Its local `CheckCommit` compares
+the exact profile and an atomic retirement projection without storage I/O,
+callbacks or acquisition of the State mutex. Close, unsafe retirement,
+authenticated profile/conflict or active-generation change, and a failed full
+observation invalidate existing witnesses synchronously. A later successful
+observation cannot revive an invalidated original witness. An exact repeated
+profile does not revoke it. Source/Responder retain the original witness across
+physical replacement and refuse a different owner or invalidation generation.
+Network still owns its own roots and joins; the witness transfers neither.
+
 ## Verification boundary
 
 Domain behavior tests exercise reconciliation, ambiguity, observation expiry,

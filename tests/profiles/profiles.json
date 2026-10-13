@@ -38,6 +38,14 @@
         "invalid_environment": "selected original qualified reopen environment unavailable; no passing skips"
       },
       {
+        "id": "connection-authority",
+        "state": "active",
+        "make_target": "connection-authority-check",
+        "surface": "actual worker StopUnit, independent local Network owner loss or elapsed original safety deadline during delayed Application Read, both roles and Carriers; no late caller-memory bytes or EOF, retained refusal and original joined cleanup; component only",
+        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID with independently pinned execution-command.test and its existing fixed-worker StopUnit permission", "pinned root-owned qualification unit selecting TestInstalledConnectionAuthorityBothCarriers with timeout20m and RuntimeMaxSec1260s", "root driver and real loopback TCP/UDP"],
+        "invalid_environment": "selected original qualified authority environment unavailable; no passing skips"
+      },
+      {
         "id": "connection-control-delivery",
         "state": "active",
         "make_target": "connection-control-delivery-check",

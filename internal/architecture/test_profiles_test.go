@@ -162,6 +162,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"connection-control":                false,
 		"connection-control-received":       false,
 		"connection-control-delivery":       false,
+		"connection-authority":              false,
 		"connection-reopen":                 false,
 		"connection-refresh":                false,
 		"connection-withdrawal":             false,

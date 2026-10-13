@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
+	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/bootstrap"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
@@ -25,12 +26,13 @@ import (
 // genuine Stock presentation. Release returns the local Hosting reservation
 // only after this owner has joined the complete physical tree.
 type Config struct {
-	Leg        selection.Leg
-	Current    func() (network.RuntimeView, error)
-	Present    role.Presentation
-	Deadline   time.Time
-	Release    func() error
-	HoldRefill func(context.Context, uint64) (func() error, error)
+	Leg            selection.Leg
+	Current        func() (network.RuntimeView, error)
+	NetworkWitness state.RuntimeWitness
+	Present        role.Presentation
+	Deadline       time.Time
+	Release        func() error
+	HoldRefill     func(context.Context, uint64) (func() error, error)
 }
 
 // Prefix is a bounded Entry/Interior transport. It carries no Service data or

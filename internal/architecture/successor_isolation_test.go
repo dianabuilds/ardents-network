@@ -279,6 +279,9 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 func successorImportAllowed(source, dependency string) bool {
 	inZone := strings.HasPrefix(source, "internal/successor/") || strings.HasPrefix(source, "cmd/ardents-next/")
 	zoneDependency := dependency == modulePath+"/internal/successor" || strings.HasPrefix(dependency, modulePath+"/internal/successor/")
+	if source == "internal/successor/route/prefix/prefix.go" && dependency == modulePath+"/internal/successor/network/state" {
+		return true
+	}
 	// Network's physical/application adapters consume domain policy through
 	// exact files. Directory nesting does not grant policy or Admission access.
 	if strings.HasPrefix(source, "internal/successor/network/") {
@@ -299,7 +302,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			case "internal/successor/network/epoch/candidate_evaluation.go", "internal/successor/network/epoch/assignment.go":
 				return true
-			case "internal/successor/network/state/epoch_history.go", "internal/successor/network/state/membership.go", "internal/successor/network/state/closed_member.go", "internal/successor/network/state/closed_runtime_view.go", "internal/successor/network/state/runtime_observation.go", "internal/successor/network/state/clock_observation.go", "internal/successor/network/state/closed_profile_view.go", "internal/successor/network/state/closed_duty_binding.go", "internal/successor/network/state/closed_profile_accept.go":
+			case "internal/successor/network/state/epoch_history.go", "internal/successor/network/state/membership.go", "internal/successor/network/state/closed_member.go", "internal/successor/network/state/closed_runtime_view.go", "internal/successor/network/state/runtime_observation.go", "internal/successor/network/state/runtime_witness.go", "internal/successor/network/state/clock_observation.go", "internal/successor/network/state/closed_profile_view.go", "internal/successor/network/state/closed_duty_binding.go", "internal/successor/network/state/closed_profile_accept.go":
 				return true
 			}
 		}
@@ -453,6 +456,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/connection_reopen_linux_test.go" && (dependency == modulePath+"/internal/successor/publication/durable" || dependency == modulePath+"/internal/successor/publication/instance" || dependency == modulePath+"/internal/successor/reachability" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
+		if source == "cmd/ardents-next/connection_authority_linux_test.go" && (dependency == modulePath+"/internal/successor/connection" || dependency == modulePath+"/internal/successor/execution/runtime" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
 		if source == "cmd/ardents-next/publication_network_linux_test.go" && (dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
@@ -604,7 +610,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/connection/stream.go" || source == "internal/successor/connection/stream_test.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
-	if source == "cmd/ardents-next/connection_response_loss_linux_test.go" && dependency == modulePath+"/internal/application/connection" {
+	if (source == "cmd/ardents-next/connection_response_loss_linux_test.go" || source == "cmd/ardents-next/connection_authority_linux_test.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
 	if source == "cmd/ardents-next/execution_publisher_linux.go" && dependency == modulePath+"/internal/application/textdocument" {
@@ -881,6 +887,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"network input adapter", "internal/successor/network/state/membership.go", modulePath + "/internal/successor/network", true},
 		{"network adapter is exact", "internal/successor/network/state/other.go", modulePath + "/internal/successor/network", false},
 		{"application observation", "internal/successor/network/state/runtime_observation.go", modulePath + "/internal/successor/network", true},
+		{"original observation witness", "internal/successor/network/state/runtime_witness.go", modulePath + "/internal/successor/network", true},
+		{"retained Route witness", "internal/successor/route/prefix/prefix.go", modulePath + "/internal/successor/network/state", true},
+		{"Route witness import is exact", "internal/successor/route/prefix/other.go", modulePath + "/internal/successor/network/state", false},
 		{"legacy consumer has no new State", "internal/endpoint/source_state.go", modulePath + "/internal/successor/network/state", false},
 		{"State consumer has no domain access", "internal/endpoint/source_state.go", modulePath + "/internal/successor/network", false},
 		{"State consumer has no physical root access", "internal/endpoint/source_state.go", modulePath + "/internal/successor/network/state/durable", false},

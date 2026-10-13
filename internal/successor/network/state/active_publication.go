@@ -57,6 +57,9 @@ func (s *networkState) commitActiveDecisionWithControl(decision epoch.Decision, 
 			}
 		}()
 	}
+	if s.current == nil || s.current.Header.Digest != decision.Header.Digest {
+		s.invalidateRuntime()
+	}
 	if err := persistDecision(s.storage, decision, false); err != nil {
 		return err
 	}

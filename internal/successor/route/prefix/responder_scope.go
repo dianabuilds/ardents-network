@@ -63,6 +63,9 @@ func NewResponderScope(ctx context.Context, source *SourceScope, config Config, 
 		config.Leg.EntryMember.RoleDomain != 3 || config.Leg.InteriorMember.RoleDomain != 3 || config.Deadline.IsZero() || !time.Now().Before(config.Deadline) {
 		return nil, errors.New("retained Responder scope unavailable")
 	}
+	if !config.NetworkWitness.SameOriginal(source.config.NetworkWitness) {
+		return nil, errors.New("Responder Network owner differs from original Source")
+	}
 	if end, ok := ctx.Deadline(); !ok || end.After(config.Deadline) {
 		return nil, errors.New("responder scope exceeds original bound")
 	}
@@ -83,7 +86,7 @@ func (r *ResponderScope) localLocked() error {
 	if !time.Now().Before(r.config.Deadline) {
 		return context.DeadlineExceeded
 	}
-	return errors.Join(r.failure, r.ctx.Err())
+	return errors.Join(r.failure, r.ctx.Err(), r.config.NetworkWitness.CheckCommit(r.config.Leg.Profile))
 }
 
 // Check observes original authority, not the readiness of an ended generation.
@@ -201,6 +204,7 @@ func (r *ResponderScope) Acquire(ctx context.Context) (_ *ResponderHandle, resul
 			// New physical reservation/refill, original authentic observer and
 			// finite Stock presenter. A factory never grants accepting authority.
 			config.Current, config.Present = r.config.Current, r.config.Present
+			config.NetworkWitness = r.config.NetworkWitness
 		} else {
 			r.initialUsed = true
 		}

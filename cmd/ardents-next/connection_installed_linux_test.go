@@ -89,7 +89,7 @@ func runInstalledConnectionAuthenticationFailure(t *testing.T, carrier transport
 			}
 			return deliveryGate.observe(originalCurrent)
 		}
-		f.authority = networkAdmissionAuthority(f.current, func() error { return nil })
+		f.authority = networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.witness)
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 65*time.Second)
 	defer cancel()
@@ -395,6 +395,14 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		timing = ""
 	}
 	var controlGate *installedControlWriteGate
+	var authorityRole, authorityFault string
+	if strings.HasPrefix(timing, "authority-") {
+		parts := strings.Split(strings.TrimPrefix(timing, "authority-"), "-")
+		if len(parts) != 2 || parts[0] != "initiator" && parts[0] != "publisher" || parts[1] != "worker" && parts[1] != "network" && parts[1] != "deadline" {
+			t.Fatal("unknown authority fault")
+		}
+		authorityRole, authorityFault = parts[0], parts[1]
+	}
 	if strings.HasPrefix(timing, "control-") {
 		parts := strings.SplitN(strings.TrimPrefix(timing, "control-"), "-", 3)
 		if len(parts) != 3 || parts[0] != "publisher" && parts[0] != "initiator" || parts[1] != "terminal" && parts[1] != "receipt" && parts[1] != "confirmation" || parts[2] != "before-write" && parts[2] != "after-write" && parts[2] != "after-receive" && parts[2] != "before-receive" && parts[2] != "after-finish" {
@@ -411,7 +419,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		}
 		t.Cleanup(controlGate.unblock)
 	}
-	if controlGate == nil && timing != "terminal-body" && timing != "" && timing != "before-request" && timing != "responder-parent" && timing != "source-parent" && timing != "source-stock-exhaustion" && timing != "publisher-source-parent" && timing != "response" && timing != "refresh-response" && timing != "refresh-pending" && timing != "publication-withdrawal" && timing != "request-terminal" && timing != "caller-observation" && timing != "close-observation" && timing != "publisher-observation" && timing != "publisher-close-observation" {
+	if authorityFault == "" && controlGate == nil && timing != "terminal-body" && timing != "" && timing != "before-request" && timing != "responder-parent" && timing != "source-parent" && timing != "source-stock-exhaustion" && timing != "publisher-source-parent" && timing != "response" && timing != "refresh-response" && timing != "refresh-pending" && timing != "publication-withdrawal" && timing != "request-terminal" && timing != "caller-observation" && timing != "close-observation" && timing != "publisher-observation" && timing != "publisher-close-observation" {
 		t.Fatal("unknown Connection loss boundary")
 	}
 	pendingACK := timing == "refresh-pending"
@@ -421,15 +429,26 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	stockLoss := timing == "source-stock-exhaustion"
 	sourceLoss := timing == "source-parent" || stockLoss
 	publisherSourceLoss := timing == "publisher-source-parent"
-	publisherObservation := timing == "publisher-observation" || timing == "publisher-close-observation"
-	authorityLoss := timing == "caller-observation" || timing == "close-observation" || publisherObservation
+	publisherObservation := timing == "publisher-observation" || timing == "publisher-close-observation" || authorityRole == "publisher"
+	authorityLoss := timing == "caller-observation" || timing == "close-observation" || publisherObservation || authorityFault != ""
 	withdrawal := timing == "publication-withdrawal"
 	expectedCancellation := authorityLoss || stockLoss || withdrawal
 	recoveryStock := !stockLoss && (loss || parentLoss || sourceLoss || publisherSourceLoss)
 	var expectedReaderClose error
 	var expectedPublisherClose error
+	var expectedSourceClose, expectedPublicationClose error
 	f, reservations, certificates := installedPublisherNetwork(t, carrier, sourceLoss || publisherSourceLoss)
 	f.receiverReopen = reopen
+	readerNetwork, publisherNetwork := f, f
+	var faultNetwork *networkAdmissionFixture
+	if authorityFault == "network" {
+		faultNetwork = installedConnectionLocalNetwork(t, f)
+		if authorityRole == "initiator" {
+			readerNetwork = faultNetwork
+		} else {
+			publisherNetwork = faultNetwork
+		}
+	}
 	var bodyEntered <-chan struct{}
 	var releaseBody func()
 	var observeBody func()
@@ -528,7 +547,13 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	t.Cleanup(func() {
 		publisherOperation.Close()
 		if err := publisherWorker.Close(); err != nil {
-			if publisherObservation && errors.Is(err, context.Canceled) {
+			if authorityRole == "publisher" && authorityFault == "worker" {
+				if onlyInstalledConnectionStoppedWorker(err, "publisher") {
+					t.Log("retained original stopped Publisher outcome", err)
+				} else {
+					t.Error(err)
+				}
+			} else if publisherObservation && errors.Is(err, context.Canceled) {
 				// Its unused protocol use retains the original Job's local
 				// refusal. Actual physical cleanup is required separately below.
 				t.Log("retained original unused Publisher cancellation", err)
@@ -547,7 +572,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	routePlan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "introduction"),
 		SourceInteriorRoot: filepath.Join(root, "source"), ResponderInteriorRoot: filepath.Join(root, "responder"), HostingRoot: routeProcessBudget(t),
 		Domain: 4, Deadline: end, Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-	publisherAuthority := f.authority
+	publisherAuthority := publisherNetwork.authority
 	if controlGate != nil && controlGate.role == "publisher" {
 		original := publisherAuthority.current
 		publisherAuthority.current = func() (network.RuntimeView, error) { controlGate.observe(); return original() }
@@ -575,12 +600,12 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			return view, err
 		}
 	}
-	published, err := startPublicationHolder(publisherOperation.Context(), plan, routePlan, publisherAuthority, installedConnectionPublisherStock(t, f, parentLoss, publisherSourceLoss, recoveryStock), publisherOperation)
+	published, err := startPublicationHolder(publisherOperation.Context(), plan, routePlan, publisherAuthority, installedConnectionPublisherStock(t, publisherNetwork, parentLoss, publisherSourceLoss, recoveryStock), publisherOperation)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := published.close(); err != nil && !onlyInstalledConnectionExpectedFailure(err, expectedPublisherClose) && !retainInstalledConnectionCancellation(t, err, expectedCancellation) {
+		if err := published.close(); err != nil && !onlyInstalledConnectionExpectedFailure(err, expectedPublicationClose) && !onlyInstalledConnectionExpectedFailure(err, expectedPublisherClose) && !retainInstalledConnectionCancellation(t, err, expectedCancellation) {
 			t.Error(err)
 		}
 	})
@@ -609,7 +634,13 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	t.Cleanup(func() {
 		readerOperation.Close()
 		if err := readerWorker.Close(); err != nil {
-			if expectedCancellation && errors.Is(err, context.Canceled) {
+			if authorityRole == "initiator" && authorityFault == "worker" {
+				if onlyInstalledConnectionStoppedWorker(err, "initiator") {
+					t.Log("retained original stopped Reader outcome", err)
+				} else {
+					t.Error(err)
+				}
+			} else if expectedCancellation && errors.Is(err, context.Canceled) {
 				// An unused qualified Reader retains its canceled protocol use,
 				// including the retired Job's local refusal. Actual physical
 				// failure is checked separately below, never ignored here.
@@ -634,9 +665,17 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	if publisherObservation {
 		readerObservation = nil
 	}
-	source := installedConnectionInitiatorObserved(t, f, readerOperation, link, end.Add(-5*time.Second), readerObservation, installedReaderRecoveryStock{
+	readerEnd := end.Add(-5 * time.Second)
+	if authorityFault == "deadline" {
+		readerEnd = time.Now().Add(15 * time.Second).UTC().Truncate(time.Second)
+	}
+	sourceExpectedClose := &expectedReaderClose
+	if authorityFault != "" {
+		sourceExpectedClose = &expectedSourceClose
+	}
+	source := installedConnectionInitiatorObserved(t, readerNetwork, readerOperation, link, readerEnd, readerObservation, installedReaderRecoveryStock{
 		expectCancellation: expectedCancellation, loseSource: sourceLoss, separateSource: sourceLoss || publisherSourceLoss,
-		reserveSource: recoveryStock, exhausted: stockLoss, expectedClose: &expectedReaderClose})
+		reserveSource: recoveryStock, exhausted: stockLoss, expectedClose: sourceExpectedClose})
 	publisherContract, err := publisherTextContract(publisherOperation)
 	if err != nil {
 		t.Fatal(err)
@@ -704,6 +743,51 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			}
 		}
 	})
+	if authorityFault != "" {
+		selected, opposite, invocation, check := stream, peer.stream, readerWorker, readerOperation.CheckReader
+		if authorityRole == "publisher" {
+			selected, opposite, invocation, check = peer.stream, stream, publisherWorker, publisherOperation.CheckPublisher
+		}
+		fault := func() {
+			switch authorityFault {
+			case "worker":
+				stopInstalledConnectionWorker(t, ctx, invocation, check)
+			case "network":
+				if err := faultNetwork.close(); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := faultNetwork.current(); err == nil {
+					t.Fatal("closed Network retained authority")
+				}
+			case "deadline":
+				// readerEnd is a wire-compatible wall-clock boundary. A timer
+				// wake is not proof that this original boundary has elapsed.
+				for time.Now().Before(readerEnd) {
+					timer := time.NewTimer(time.Until(readerEnd))
+					select {
+					case <-timer.C:
+					case <-ctx.Done():
+						timer.Stop()
+						t.Fatal("deadline scenario lost original caller", ctx.Err())
+					}
+				}
+			}
+		}
+		assertInstalledConnectionAuthorityLoss(t, ctx, selected, opposite, armObservation, releaseObservation, observationEntered, fault, check, authorityFault == "worker")
+		expectedReaderClose, expectedPublisherClose = stream.Close(), peer.stream.Close()
+		if err := errors.Join(stream.JoinedCleanup(), peer.stream.JoinedCleanup()); err != nil {
+			t.Fatal("authority loss retained physical cleanup failure", err)
+		}
+		expectedSourceClose = source.Close()
+		expectedPublicationClose = published.close()
+		if physical, joined := publisher.CleanupResult(); !joined || physical != nil {
+			t.Fatal("original Publication physical join", physical, joined)
+		}
+		cancelPublisher()
+		cancelReader()
+		t.Log("original delayed Read refused after actual authority loss", authorityRole, authorityFault)
+		return
+	}
 	if authorityLoss {
 		if publisherObservation {
 			assertInstalledConnectionDelayedObservationRetirement(t, ctx, cancelPublisher, publisherOperation.CheckPublisher, peer.stream, stream, armObservation, releaseObservation, observationEntered, timing == "publisher-close-observation")

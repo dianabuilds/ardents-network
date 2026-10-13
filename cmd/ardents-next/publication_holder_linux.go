@@ -221,10 +221,17 @@ func preparePublicationPrefix(ctx context.Context, plan routePrefixPlan, selecte
 // or accepting observation. Prefix reobserves the original genuine authority
 // before every opening/effect and at its final handoff.
 func prepareSelectedPublicationPrefix(ctx context.Context, plan routePrefixPlan, leg selection.Leg, budget *hosting.Budget, authority admissionAuthority, holder *stock.Owner) (prefix.Config, error) {
-	if ctx == nil || budget == nil || authority.current == nil || authority.presentation == nil || holder == nil {
+	if ctx == nil || budget == nil || authority.current == nil || authority.witness == nil || authority.presentation == nil || holder == nil {
 		return prefix.Config{}, errors.New("retained Publisher leg preparation unavailable")
 	}
 	if err := ctx.Err(); err != nil {
+		return prefix.Config{}, err
+	}
+	witness, err := authority.witness()
+	if err != nil {
+		return prefix.Config{}, err
+	}
+	if err := witness.CheckCommit(leg.Profile); err != nil {
 		return prefix.Config{}, err
 	}
 	reservation, err := budget.Reserve(ctx, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: plan.Deadline, HoldUntil: plan.Deadline.Add(5 * time.Second)})
@@ -237,7 +244,7 @@ func prepareSelectedPublicationPrefix(ctx context.Context, plan routePrefixPlan,
 	if err := ctx.Err(); err != nil {
 		return prefix.Config{}, errors.Join(err, release())
 	}
-	return prefix.Config{Leg: leg, Current: authority.current, Deadline: plan.Deadline, Release: release,
+	return prefix.Config{Leg: leg, Current: authority.current, NetworkWitness: witness, Deadline: plan.Deadline, Release: release,
 		HoldRefill: func(caller context.Context, additional uint64) (func() error, error) {
 			limit := admission.ForwardClass.ByteLimit()
 			if err := budget.CoversJoint(caller, reservation, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {

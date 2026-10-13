@@ -17,6 +17,8 @@ import (
 type networkState struct {
 	mu                  sync.RWMutex
 	profileMu           sync.Mutex
+	runtimeMu           sync.Mutex
+	runtimeAdmission    *runtimeAdmission
 	verifiedProfile     *profileVerification
 	config              config
 	current             *epoch.Decision

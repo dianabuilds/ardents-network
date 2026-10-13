@@ -250,6 +250,15 @@ Original worker/result checks still require one exact snapshot and full
 Terminal completion. Any original receiving peer-retirement failure remains
 the same repeated Close result; unknown or mixed failure leaves still fail.
 This supplies no record, synthetic EOF, authority or accepting result.
+`make connection-authority-check` exercises both roles and Carriers after
+genuine authenticated bytes, with Application Read held at a real completed
+Network observation. The fault stops the exact original worker through its
+existing non-root unit permission, closes a separate actual local Network State,
+or waits for the originally selected safety deadline. Late bytes and EOF refuse,
+caller memory stays unchanged, and original physical cleanup remains checked.
+Network and time faults must not replace or revoke the Job themselves. These
+are qualified component scenarios, not two independently installed Endpoints.
+
 `make connection-control-delivery-check` selects twenty-four scenarios across
 both senders, all three Terminal controls and both Carriers. In `before-receive`,
 the actual immutable ticket announces its pending Write, the opposite original
