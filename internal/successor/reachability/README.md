@@ -32,6 +32,18 @@ Source prefix. Эти потребители не создают готовно�
 доказательство или заменить назначение. Завершается исходная попытка без
 неявного продления её ограничений.
 
+Store удерживает исходные дескрипторы корня, records и directory-sync,
+идентичности marker/lock/записей и точные committed bytes. Check проверяет
+исходную custody без внешнего observer; потеря навсегда закрывает admission,
+восстановление пути не оживляет владельца. Publication сериализована отдельно
+от короткого state mutex, внешние currentness checks и native I/O выполняются
+без этого mutex. Deny не ждёт borrowers; Close физически joins исходные
+операции до освобождения lease и сохраняет первый release result отдельно от
+operational cause. Отказ запроса не означает потерю здорового Store.
+`OperationalFailure` возвращает исходную native cause без I/O или права на
+borrow/proof, в том числе после joined Close. Node читает её после физического
+join и сохраняет поздний native failure независимо от caller denial и release.
+
 **Соседи:** Publication передаёт подписанный Descriptor; Connection получает
 проверенное доказательство с происхождением и границами действия. Доказательство
 не означает готовность Service или успешную аутентификацию Instance.

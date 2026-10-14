@@ -1,6 +1,6 @@
 //go:build !linux
 
-package nodeidentity
+package signing
 
 import "os"
 

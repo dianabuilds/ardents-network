@@ -364,6 +364,10 @@ func routeTestOpenEndpoint(ctx context.Context, input transport.ClosedRoleCarrie
 }
 
 func publicationRouteNetwork(t *testing.T, carrier transport.CarrierProfile, issuing ...bool) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+	return publicationRouteNetworkConfigured(t, carrier, nil, issuing...)
+}
+
+func publicationRouteNetworkConfigured(t *testing.T, carrier transport.CarrierProfile, configure func(*networkAdmissionFixture), issuing ...bool) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
 	return newRoleRouteFixtureConfigured(t, carrier, 1, false, len(issuing) != 0 && issuing[0], func(f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate) {
 		ids := [][32]byte{{17}, {21}, {22}, {23}, {24}, {25}, {31}, {32}, {33}, {34}, {41}}
 		if len(issuing) > 1 && issuing[1] {
@@ -416,6 +420,9 @@ func publicationRouteNetwork(t *testing.T, carrier transport.CarrierProfile, iss
 			}
 			f.spec.Nodes = append(f.spec.Nodes, networkfixture.ClosedNode{RecordSpec: networkfixture.RecordSpec{NodeID: id, Generation: 9, ValidFrom: f.spec.NotBefore, ValidUntil: f.spec.NotAfter, Endpoint: address, Carrier: string(carrier), Capability: 2, Capacity: 1, PrivateKey: key}, RoleDomain: domain, Subrole: subrole})
 			certificates[id] = routeTestCertificate(t, key)
+		}
+		if configure != nil {
+			configure(f)
 		}
 	})
 }

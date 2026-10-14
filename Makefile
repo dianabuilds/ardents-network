@@ -30,7 +30,7 @@ NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
 # Only the Node process suite may select an elevated system-scope runner.
 NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
-ifneq ($(filter node-process-check node-issuer-check,$(MAKECMDGOALS)),)
+ifneq ($(filter node-process-check node-issuer-check node-descriptor-check node-introduction-check,$(MAKECMDGOALS)),)
 # This native driver consumes independently built, pinned artifacts. Its host
 # needs the actual manager/kernel, not a second Go installation.
 HEADLESS_GOOS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -216,6 +216,16 @@ node-process-check:
 node-issuer-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "node-issuer-check requires Linux"; exit 2)
 	sh ./scripts/node/run-issuer-native.sh -timeout=3m
+
+.PHONY: node-descriptor-check
+node-descriptor-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "node-descriptor-check requires Linux"; exit 2)
+	sh ./scripts/node/run-descriptor-native.sh -timeout=3m
+
+.PHONY: node-introduction-check
+node-introduction-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "node-introduction-check requires Linux"; exit 2)
+	sh ./scripts/node/run-introduction-native.sh -timeout=3m
 
 quick-check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS)
@@ -421,9 +431,10 @@ installation-native-compile-check:
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-completion-native.test" ./internal/successor/installation/completion
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-fixedfile-native.test" ./internal/successor/installation/fixedfile
 
+# Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/network/... ./internal/successor/admission/... ./internal/successor/hosting ./internal/successor/publication/... ./internal/successor/connection/... ./internal/successor/reachability/... ./internal/successor/enrollment/... ./internal/successor/release/... ./internal/successor/installation/... ./internal/successor/execution/... ./internal/successor/route/... ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/successor/network/... ./internal/successor/admission/... ./internal/successor/hosting ./internal/successor/publication/... ./internal/successor/connection/... ./internal/successor/reachability/... ./internal/successor/enrollment/... ./internal/successor/release/... ./internal/successor/installation/... ./internal/successor/execution/... ./internal/successor/route/... ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired)$$' -count=1
 
 hosting-check:
@@ -439,13 +450,13 @@ issuance-check:
 
 .PHONY: token-issuance-check
 token-issuance-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/admission/issuerprofile ./internal/successor/admission/issuance ./internal/successor/admission/issuer ./cmd/ardents-next -count=1 -timeout=3m,$(error token-issuance-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/admission/issuerprofile ./internal/successor/admission/issuance ./internal/successor/admission/issuer ./cmd/ardents-next -count=1 -timeout=5m,$(error token-issuance-check requires Linux))
 
 .PHONY: issuer-profile-check
 issuer-profile-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/admission/issuerprofile ./internal/successor/nodeidentity ./internal/successor/admission/issuance ./internal/successor/admission/issuer ./cmd/ardents-next -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/admission/issuerprofile ./internal/successor/admission/issuerprofile/signing ./internal/successor/admission/issuance ./internal/successor/admission/issuer ./cmd/ardents-next -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
 	go test ./internal/successor/admission/issuerprofile -run '^$$' -fuzz '^FuzzIssuerProfile$$' -fuzztime=30s -parallel=2 -timeout=90s
-	go test ./internal/successor/nodeidentity -run '^$$' -fuzz '^FuzzNodeIdentityPEM$$' -fuzztime=30s -parallel=2 -timeout=90s
+	go test ./internal/successor/admission/issuerprofile/signing -run '^$$' -fuzz '^FuzzNodeIdentityPEM$$' -fuzztime=30s -parallel=2 -timeout=90s
 
 .PHONY: custody-check
 custody-check:

@@ -277,6 +277,11 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	// Retired offline signer has no facade, consumers or importing source.
+	retiredSigner := "internal/successor/nodeidentity"
+	if strings.HasPrefix(source, retiredSigner+"/") || dependency == modulePath+"/"+retiredSigner || strings.HasPrefix(dependency, modulePath+"/"+retiredSigner+"/") {
+		return false
+	}
 	inZone := strings.HasPrefix(source, "internal/successor/") || strings.HasPrefix(source, "cmd/ardents-next/")
 	zoneDependency := dependency == modulePath+"/internal/successor" || strings.HasPrefix(dependency, modulePath+"/internal/successor/")
 	if source == "internal/successor/route/prefix/prefix.go" && dependency == modulePath+"/internal/successor/network/state" {
@@ -328,74 +333,101 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		return !zoneDependency
 	}
+	if source == "internal/successor/route/introduction/receiving_history_linux.go" && dependency == modulePath+"/internal/successor/admission/receiving" {
+		return true
+	}
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
 	owner := path.Dir(source)
 	permitted := map[string][]string{
-		"internal/successor/processresource":         {},
-		"internal/successor/node":                    {"admission", "admission/receiving", "hosting", "network", "network/duty", "processresource", "route/ardp", "route/receiver", "route/role"},
-		"internal/successor/network":                 {},
-		"internal/successor/network/closedprofile":   {},
-		"internal/successor/network/duty":            {},
-		"internal/successor/network/epoch":           {},
-		"internal/successor/network/source":          {"network/epoch"},
-		"internal/successor/network/state":           {"network/closedprofile", "network/duty", "network/epoch", "network/source", "network/state/durable"},
-		"internal/successor/network/state/durable":   {},
-		"internal/successor/admission":               {"admission/issuerprofile"},
-		"internal/successor/admission/issuerprofile": {},
-		"internal/successor/admission/allocation":    {"admission"},
-		"internal/successor/custody":                 {"admission", "admission/allocation", "publication"},
-		"internal/successor/admission/attempts":      {},
-		"internal/successor/admission/spending":      {},
-		"internal/successor/admission/token":         {"admission", "admission/issuerprofile"},
-		"internal/successor/admission/receiving":     {"admission", "admission/token", "admission/spending"},
-		"internal/successor/admission/stock":         {"admission", "admission/allocation", "admission/attempts", "admission/token"},
-		"internal/successor/admission/quota":         {"admission", "admission/issuerprofile"},
-		"internal/successor/admission/issuance":      {"admission", "admission/quota", "admission/issuerprofile", "nodeidentity"},
-		"internal/successor/admission/issuer":        {"admission", "admission/quota", "admission/issuance", "nodeidentity"},
-		"internal/successor/nodeidentity":            {"admission/issuerprofile"},
-		"internal/successor/hosting":                 {},
-		"internal/successor/publication":             {},
-		"internal/successor/publication/durable":     {"publication"},
-		"internal/successor/publication/instance":    {"publication", "publication/durable", "reachability", "route/introduction", "route/capsule", "route/join", "connection/wire", "execution/runtime"},
-		"internal/successor/publication/runtime":     {"connection", "execution/runtime", "network", "publication", "publication/instance", "reachability", "route", "route/introduction", "route/prefix", "route/capsule", "route/join"},
-		"internal/successor/connection":              {"execution/runtime", "publication", "publication/instance", "route/capsule", "route/join", "connection/wire"},
-		"internal/successor/connection/wire":         {},
-		"internal/successor/reachability":            {"publication"},
-		"internal/successor/enrollment":              {},
-		"internal/successor/release":                 {},
-		"internal/successor/execution":               {},
-		"internal/successor/execution/runtime":       {"execution", "execution/worker"},
-		"internal/successor/execution/worker":        {"installation/systemd", "installation/unit"},
-		"internal/successor/installation":            {"enrollment", "release", "installation/request"},
-		"internal/successor/installation/endpoint":   {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "installation/request", "installation/directory"},
-		"internal/successor/installation/cgroup":     {},
-		"internal/successor/installation/request":    {},
-		"internal/successor/installation/directory":  {},
-		"internal/successor/installation/systemd":    {},
-		"internal/successor/installation/journal":    {},
-		"internal/successor/installation/process":    {},
-		"internal/successor/installation/generation": {},
-		"internal/successor/installation/completion": {},
-		"internal/successor/installation/fixedfile":  {},
-		"internal/successor/installation/unit":       {"installation/systemd"},
-		"internal/successor/route":                   {},
-		"internal/successor/route/ardp":              {},
-		"internal/successor/route/issuer":            {"route/ardp", "admission"},
-		"internal/successor/route/transport":         {},
-		"internal/successor/route/channel":           {"route/ardp", "route/transport"},
-		"internal/successor/route/bootstrap":         {"route/ardp", "route/channel"},
-		"internal/successor/route/transport/tls":     {"route/transport"},
-		"internal/successor/route/transport/quic":    {"route/transport"},
-		"internal/successor/route/introduction":      {"admission/spending", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "network", "admission"},
-		"internal/successor/route/capsule":           {},
-		"internal/successor/route/selection":         {"route", "network"},
-		"internal/successor/route/role":              {"route", "route/ardp", "route/channel", "route/transport", "network", "admission"},
-		"internal/successor/route/join":              {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "network", "admission"},
-		"internal/successor/route/prefix":            {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "network", "admission"},
-		"internal/successor/route/receiver":          {"route/issuer", "route/join", "route", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
-		"cmd/ardents-next":                           {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "nodeidentity", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
+		"internal/successor/processresource":                 {},
+		"internal/successor/node":                            {"admission", "admission/receiving", "hosting", "network", "network/duty", "processresource", "route/ardp", "route/receiver", "route/role"},
+		"internal/successor/network":                         {},
+		"internal/successor/network/closedprofile":           {},
+		"internal/successor/network/duty":                    {},
+		"internal/successor/network/epoch":                   {},
+		"internal/successor/network/source":                  {"network/epoch"},
+		"internal/successor/network/state":                   {"network/closedprofile", "network/duty", "network/epoch", "network/source", "network/state/durable"},
+		"internal/successor/network/state/durable":           {},
+		"internal/successor/admission":                       {"admission/issuerprofile"},
+		"internal/successor/admission/issuerprofile":         {},
+		"internal/successor/admission/allocation":            {"admission"},
+		"internal/successor/custody":                         {"admission", "admission/allocation", "publication"},
+		"internal/successor/admission/attempts":              {},
+		"internal/successor/admission/spending":              {},
+		"internal/successor/admission/token":                 {"admission", "admission/issuerprofile"},
+		"internal/successor/admission/receiving":             {"admission", "admission/token", "admission/spending"},
+		"internal/successor/admission/stock":                 {"admission", "admission/allocation", "admission/attempts", "admission/token"},
+		"internal/successor/admission/quota":                 {"admission", "admission/issuerprofile"},
+		"internal/successor/admission/issuance":              {"admission", "admission/quota", "admission/issuerprofile", "admission/issuerprofile/signing"},
+		"internal/successor/admission/issuer":                {"admission", "admission/quota", "admission/issuance", "admission/issuerprofile/signing"},
+		"internal/successor/admission/issuerprofile/signing": {"admission/issuerprofile"},
+		"internal/successor/hosting":                         {},
+		"internal/successor/publication":                     {},
+		"internal/successor/publication/durable":             {"publication"},
+		"internal/successor/publication/instance":            {"publication", "publication/durable", "reachability", "route/introduction", "route/capsule", "route/join", "connection/wire", "execution/runtime"},
+		"internal/successor/publication/runtime":             {"connection", "execution/runtime", "network", "publication", "publication/instance", "reachability", "route", "route/introduction", "route/prefix", "route/capsule", "route/join"},
+		"internal/successor/connection":                      {"execution/runtime", "publication", "publication/instance", "route/capsule", "route/join", "connection/wire"},
+		"internal/successor/connection/wire":                 {},
+		"internal/successor/reachability":                    {"publication"},
+		"internal/successor/enrollment":                      {},
+		"internal/successor/release":                         {},
+		"internal/successor/execution":                       {},
+		"internal/successor/execution/runtime":               {"execution", "execution/worker"},
+		"internal/successor/execution/worker":                {"installation/systemd", "installation/unit"},
+		"internal/successor/installation":                    {"enrollment", "release", "installation/request"},
+		"internal/successor/installation/endpoint":           {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "installation/request", "installation/directory"},
+		"internal/successor/installation/cgroup":             {},
+		"internal/successor/installation/request":            {},
+		"internal/successor/installation/directory":          {},
+		"internal/successor/installation/systemd":            {},
+		"internal/successor/installation/journal":            {},
+		"internal/successor/installation/process":            {},
+		"internal/successor/installation/generation":         {},
+		"internal/successor/installation/completion":         {},
+		"internal/successor/installation/fixedfile":          {},
+		"internal/successor/installation/unit":               {"installation/systemd"},
+		"internal/successor/route":                           {},
+		"internal/successor/route/ardp":                      {},
+		"internal/successor/route/issuer":                    {"route/ardp", "admission"},
+		"internal/successor/route/transport":                 {},
+		"internal/successor/route/channel":                   {"route/ardp", "route/transport"},
+		"internal/successor/route/bootstrap":                 {"route/ardp", "route/channel"},
+		"internal/successor/route/transport/tls":             {"route/transport"},
+		"internal/successor/route/transport/quic":            {"route/transport"},
+		"internal/successor/route/introduction":              {"admission/spending", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "network", "admission"},
+		"internal/successor/route/capsule":                   {},
+		"internal/successor/route/selection":                 {"route", "network"},
+		"internal/successor/route/role":                      {"route", "route/ardp", "route/channel", "route/transport", "network", "admission"},
+		"internal/successor/route/join":                      {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "network", "admission"},
+		"internal/successor/route/prefix":                    {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "network", "admission"},
+		"internal/successor/route/receiver":                  {"route/issuer", "route/join", "route", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
+		"cmd/ardents-next":                                   {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if source == "cmd/ardents-next/node_introduction_operation_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_introduction_authority_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_introduction_completion_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_introduction_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/route/introduction" || dependency == modulePath+"/internal/successor/route/capsule" || dependency == modulePath+"/internal/successor/route/transport" || dependency == modulePath+"/internal/successor/route/receiver" || dependency == modulePath+"/internal/successor/route/role" || dependency == modulePath+"/internal/successor/route/selection") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_descriptor_completion_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_descriptor_operation_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/reachability" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_descriptor_authority_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/reachability" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_descriptor_native_linux_test.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport" || dependency == modulePath+"/internal/successor/reachability") {
+			return true
+		}
 		if source == "cmd/ardents-next/node_issuer_operation_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
@@ -415,6 +447,18 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/node_issuer_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_introduction_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {
+			return true
+		}
+		if source == "internal/successor/node/introduction_linux.go" && dependency == modulePath+"/internal/successor/route/introduction" {
+			return true
+		}
+		if source == "cmd/ardents-next/node_descriptor_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {
+			return true
+		}
+		if source == "internal/successor/node/descriptor_linux.go" && dependency == modulePath+"/internal/successor/reachability" {
 			return true
 		}
 		if source == "cmd/ardents-next/node_forwarding_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {
@@ -826,6 +870,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"submission fixture parses sealed capsule", "cmd/ardents-next/route_submission_linux_test.go", modulePath + "/internal/successor/route/capsule", true},
 		{"other commands cannot acquire capsule consumer", "cmd/ardents-next/admission_holder.go", modulePath + "/internal/successor/route/capsule", false},
 		{"submission consumes retained exclusions", "internal/successor/route/introduction/submission.go", modulePath + "/internal/successor/route", true},
+		{"Introduction history birth consumes only its genuine receiving owner", "internal/successor/route/introduction/receiving_history_linux.go", modulePath + "/internal/successor/admission/receiving", true},
 		{"Introduction cannot own receiving Grant", "internal/successor/route/introduction/receiving.go", modulePath + "/internal/successor/admission/receiving", false},
 		{"Introduction cannot call listener composition", "internal/successor/route/introduction/receiving.go", modulePath + "/internal/successor/route/receiver", false},
 		{"channel cannot import Admission", "internal/successor/route/channel/session.go", modulePath + "/internal/successor/admission", false},
@@ -881,8 +926,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"no production self import", "internal/successor/admission/issuerprofile/profile.go", modulePath + "/internal/successor/admission/issuerprofile", false},
 		{"no unregistered test self import", "internal/successor/future/file_test.go", modulePath + "/internal/successor/future", false},
 		{"public profile is leaf", "internal/successor/admission/issuerprofile/profile.go", modulePath + "/internal/successor/admission", false},
-		{"profile cannot borrow identity", "internal/successor/admission/issuerprofile/profile.go", modulePath + "/internal/successor/nodeidentity", false},
-		{"identity cannot borrow ledger", "internal/successor/nodeidentity/store.go", modulePath + "/internal/successor/admission", false},
+		{"profile cannot borrow signing", "internal/successor/admission/issuerprofile/profile.go", modulePath + "/internal/successor/admission/issuerprofile/signing", false},
+		{"profile tests cannot borrow signing", "internal/successor/admission/issuerprofile/profile_test.go", modulePath + "/internal/successor/admission/issuerprofile/signing", false},
+		{"command cannot restore retired signer", "cmd/ardents-next/issuer_profile.go", modulePath + "/internal/successor/nodeidentity", false},
+		{"retired signer cannot restore facade", "internal/successor/nodeidentity/store.go", modulePath + "/internal/successor/admission/issuerprofile/signing", false},
+		{"identity cannot borrow ledger", "internal/successor/admission/issuerprofile/signing/store.go", modulePath + "/internal/successor/admission", false},
 		{"ledger public grammar", "internal/successor/admission/binding.go", modulePath + "/internal/successor/admission/issuerprofile", true},
 		{"issuance public grammar", "internal/successor/admission/issuance/profile.go", modulePath + "/internal/successor/admission/issuerprofile", true},
 		{"no inherited nested imports", "internal/successor/admission/issuance/nested/file.go", modulePath + "/internal/successor/admission", false},
@@ -932,9 +980,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"operation owners", "internal/successor/admission/issuer/operation.go", modulePath + "/internal/successor/admission/issuance", true},
 		{"operation excludes hosting", "internal/successor/admission/issuer/operation.go", modulePath + "/internal/successor/hosting", false},
 		{"issuance excludes hosting", "internal/successor/admission/issuance/store.go", modulePath + "/internal/successor/hosting", false},
-		{"identity purpose", "internal/successor/nodeidentity/store.go", modulePath + "/internal/successor/admission/issuerprofile", true},
-		{"identity cannot borrow issuance", "internal/successor/nodeidentity/store.go", modulePath + "/internal/successor/admission/issuance", false},
-		{"admission cannot borrow identity", "internal/successor/admission/issuer_profile.go", modulePath + "/internal/successor/nodeidentity", false},
+		{"identity purpose", "internal/successor/admission/issuerprofile/signing/store.go", modulePath + "/internal/successor/admission/issuerprofile", true},
+		{"identity cannot borrow issuance", "internal/successor/admission/issuerprofile/signing/store.go", modulePath + "/internal/successor/admission/issuance", false},
+		{"admission cannot borrow identity", "internal/successor/admission/issuer_profile.go", modulePath + "/internal/successor/admission/issuerprofile/signing", false},
 		{"admission excludes composition", "internal/successor/admission/ledger.go", modulePath + "/internal/successor/admission/issuer", false},
 		{"admission cannot borrow keys", "internal/successor/admission/batch.go", modulePath + "/internal/successor/admission/issuance", false},
 		{"admission cannot borrow budget", "internal/successor/admission/check.go", modulePath + "/internal/successor/hosting", false},

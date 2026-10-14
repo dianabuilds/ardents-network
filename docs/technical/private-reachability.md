@@ -173,6 +173,44 @@ Normal Store Close serializes through physical lease release and retains its
 first release result for every repeated or concurrent caller. Accepted durable
 floors and conflicts remain unchanged by closure.
 
+The receiving Store retains its original root and records directory handles,
+marker and lock identities, committed record identities and exact bytes, plus
+the original native directory-sync descriptor. Initialization, restoration and
+publication use the retained directory handles. `Store.Check` independently
+reobserves native custody; definite loss, replacement, changed record bytes or
+uncertain persistence permanently denies that original owner. Restoring paths
+cannot revive it. Only a fresh explicit `OpenStore` after physical closure may
+validate the retained records as an independent owner; this grants no rollback,
+floor reset, automatic adoption or stalled-filesystem qualification.
+
+Publication retains one original operation and serializes complete transitions
+through a publication gate, separately from its short state mutex. Foreign
+current-duty/profile/caller/Introduction checks occur outside Store state and
+native custody mutexes, before effects and after actual persistence. Each
+transition uses the latest retained floor after acquiring the publication gate.
+An authority refusal after commit keeps that floor and forbids an accepting ACK.
+`Check` observes custody without calling foreign policy, so it may be consumed
+by the original role's guard without observer recursion. A supplied observation
+must not invoke another publication or wait for Store Close.
+
+`Store.Deny` stops new borrows synchronously and retains original caller denial
+separately from the first actual native owner failure. A real in-flight write,
+sync or custody failure cannot be hidden by an earlier caller retirement notice.
+The native failure is latched before releasing its physical gate and remains
+available independently of request errors and the first release result.
+`Store.OperationalFailure` reads that original retained native cause without I/O,
+borrow or proof authority, including after joined Close. Node consumes it after
+physical Store join so a late native failure cannot disappear behind caller
+denial or a successful lease release.
+Invalid proof, conflict, capacity, missing Target and a refused request
+do not retire a healthy Store. `Close` denies new work, joins original publish,
+lookup and custody observers (including publication waiters), then closes native
+custody and releases the lease exactly once. It retains the first physical
+release result separately from the operational cause; Node owns its original
+operational outcome. No state mutex is held across foreign I/O, callbacks or
+join. Receiver checks the real Store before operation/result/ACK handoff; this
+is Store availability, not Publisher readiness or Instance authentication.
+
 
 ## Recipient-only capsule composition
 

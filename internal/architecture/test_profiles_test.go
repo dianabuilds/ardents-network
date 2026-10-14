@@ -155,6 +155,8 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	required := map[string]bool{
 		"forwarding-process-linux":          false,
 		"issuer-process-linux":              false,
+		"descriptor-process-linux":          false,
+		"introduction-process-linux":        false,
 		"custody-native-linux":              false,
 		"execution-lifecycle":               false,
 		"execution-route":                   false,
@@ -393,4 +395,23 @@ func suiteHasGoFiles(t *testing.T, path string) bool {
 		}
 	}
 	return false
+}
+
+// Native budgets count whole named interfaces, including other test packages.
+// Keep package scheduling separate from the tested owner/Carrier concurrency.
+func TestRouteProfileSerializesWholeInterfaceMeasurements(t *testing.T) {
+	root := repositoryRoot(t)
+	makefile := string(readProjectFile(t, root, "Makefile"))
+	start := strings.Index(makefile, "route-check:\n")
+	if start < 0 {
+		t.Fatal("Route profile absent")
+	}
+	end := strings.Index(makefile[start:], "\nhosting-check:")
+	if end < 0 {
+		t.Fatal("Route profile boundary absent")
+	}
+	body := makefile[start : start+end]
+	if !strings.Contains(body, "go test -p 1 -race ./internal/successor/network/...") || !strings.Contains(body, "./cmd/ardents-next -count=1 -timeout=5m") {
+		t.Fatal("Route profile must serialize whole-interface borrowers without changing its full inventory or package bound")
+	}
 }

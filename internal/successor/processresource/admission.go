@@ -14,6 +14,14 @@ const Profile = "ardents-forwarding-process-v1"
 // same mandatory native envelope. It grants no extra workers or protocol bytes.
 const IssuerProfile = "ardents-issuer-process-v1"
 
+// DescriptorProfile selects its distinct original Descriptor workload under
+// the same mandatory native envelope, without additional protocol authority.
+const DescriptorProfile = "ardents-descriptor-process-v1"
+
+// IntroductionProfile selects the original Introduction workload under the
+// same mandatory native envelope, without new protocol or Hosting allowance.
+const IntroductionProfile = "ardents-introduction-process-v1"
+
 // Observation projects actual native readings only. Route timer/queue counts
 // are not supplied by this owner and cannot be inferred from these fields.
 // CPUFraction is measured over the original declared elapsed interval.
@@ -42,7 +50,7 @@ type originalProcess struct {
 // Open checks the selected profile and establishes a genuine elapsed CPU baseline
 // before returning admission. It never accepts a caller-supplied measurement.
 func Open(ctx context.Context, profile string) (*Guard, error) {
-	if ctx == nil || (profile != Profile && profile != IssuerProfile) {
+	if ctx == nil || (profile != Profile && profile != IssuerProfile && profile != DescriptorProfile && profile != IntroductionProfile) {
 		return nil, errors.New("process protection profile unavailable")
 	}
 	if err := ctx.Err(); err != nil {

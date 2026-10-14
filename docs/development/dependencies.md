@@ -961,6 +961,6 @@ gate private use; journal reopen rechecks stored responses with that signer.
 No scheme, version, opaque blinding-state serialization or private fork changes.
 Acceptance repeats client finalize/stdlib PSS verification and current gates.
 
-Successor Nodeidentity and signed issuer-profile provisioning add no third-party
+Successor `admission/issuerprofile/signing` and signed issuer-profile provisioning add no third-party
 runtime dependencies. Ed25519 and PKCS#8 parsing use the selected Go standard
 library; existing CIRCL token signing version and scheme remain unchanged.

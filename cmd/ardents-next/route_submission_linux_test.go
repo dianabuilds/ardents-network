@@ -96,10 +96,11 @@ func TestRouteSourceSubmissionRefusalBothCarriers(t *testing.T) {
 				budget := networkTestBudget(t)
 				config := receiver.ReceiverConfig{Authority: role.Authority{Current: f.current, Duty: duty, Profile: view.Profile().ProfileBinding}, Certificate: certificates[id]}
 				if id == [32]byte{25} {
-					config.IntroductionRoot, config.Receiving = t.TempDir(), owner
-					if err := os.Chmod(config.IntroductionRoot, 0700); err != nil {
+					introductionRoot := t.TempDir()
+					if err := os.Chmod(introductionRoot, 0700); err != nil {
 						t.Fatal(err)
 					}
+					config.Introduction = prepareIntroductionRegistry(t, introductionRoot, owner, binding)
 				}
 				config.Admit = func(ctx context.Context, channel receiver.Channel, raw []byte) (receiving.Grant, error) {
 					class, err := role.AdmissionClass(channel.Hello.Purpose)

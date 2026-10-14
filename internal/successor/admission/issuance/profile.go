@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
-	"github.com/dianabuilds/ardents-network/internal/successor/nodeidentity"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
 )
 
 var profileFiles = []string{"profile.pin", "profile.bytes", "profile.lock"}
@@ -46,7 +46,7 @@ func profilePinBytes(b Binding, raw []byte, digest [32]byte) []byte {
 }
 
 // InitializeProfile signs the Store's exact inventory and commits a fresh root.
-func InitializeProfile(ctx context.Context, path string, keys Store, identity nodeidentity.Store) error {
+func InitializeProfile(ctx context.Context, path string, keys Store, identity signing.Store) error {
 	if err := platform(); err != nil {
 		return err
 	}

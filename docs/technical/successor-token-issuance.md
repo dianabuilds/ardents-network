@@ -16,7 +16,7 @@ and validates explicit now within permission/duty, not before checked-at/floor.
 Admission's public cohort/SPKI contract lives in `admission/issuerprofile` and
 uses only the standard library. The ledger imports that contract. The
 `admission/issuance` owner imports the ledger, public profile contract, purpose-
-bound Node Identity and reviewed CIRCL blindsign/blindrsa v1.6.5. Hosting stays
+bound issuer-profile signing and reviewed CIRCL blindsign/blindrsa v1.6.5. Hosting stays
 independent; directory nesting creates no new import permission.
 
 InitializeResults(ctx,path,Store,LedgerBinding) creates an exclusive fresh root.
@@ -27,7 +27,7 @@ Admission -> key Store -> ResultStore is the fixed command lease order, reverse
 cleanup with retained errors. The real operation owner is
 `internal/successor/admission/issuer`: `Initialize(ctx, Plan)` and
 `Issue(ctx, Plan, raw, Facts, Kind)` open those owners before debit and close in
-reverse order. Its project imports are Admission contracts, quota, issuance and Node Identity. The current-authority operation IssueCurrent reuses the same debit/sign/result path with fresh authority and permission-time checks before and after durable work. The command handles strict configuration, response export and OTel;
+reverse order. Its project imports are Admission contracts, quota, issuance and issuer-profile signing. The current-authority operation IssueCurrent reuses the same debit/sign/result path with fresh authority and permission-time checks before and after durable work. The command handles strict configuration, response export and OTel;
 quota and signing rules remain within their respective domains. No arbitrary
 signing or private-key API is added.
 

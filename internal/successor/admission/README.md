@@ -21,7 +21,8 @@ debit and exact response; failure never refunds allocation.
 | admission | Permission and batch grammar, token classes, external authority facts |
 | quota | Durable issuance quota, exact retry and opaque debit confirmation |
 | allocation | Permission allocation decisions and aggregate role maxima |
-| issuerprofile | Canonical public key inventory and signed profile |
+| issuerprofile | Pure canonical public grammar, validated requests and signature verification |
+| issuerprofile/signing | Imported pinned Ed25519 material, original lease/failure/Close and only validated offline profile signing |
 | issuance | Private issuer material and retained issuance results |
 | issuer | Application coordination of quota, key and result owners |
 | token | Holder blind state, token challenge, finalization and verification |
@@ -30,7 +31,7 @@ debit and exact response; failure never refunds allocation.
 | receiving | Receiver binding, bounded verification, redemption, finite allowance and reservation transfer |
 | spending | Durable receiver token spend history |
 
-Network currentness, Custody keys, Node identity, physical Hosting budgets,
+Network currentness, Custody authority keys, runtime Node TLS credentials, physical Hosting budgets,
 transport sessions, Introduction registrations and permission file delivery
 are outside Admission. External facts do not become authoritative merely by
 being put into an Admission struct.

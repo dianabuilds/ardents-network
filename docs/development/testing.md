@@ -719,6 +719,10 @@ the separate permission-only holder/compiled issuer scenario above.
   plus Execution local rules, installed preparation and physical mechanisms
   owners plus `ardents-next`, with Linux race execution, both selected real
   Carriers, compiled prefix/receiver processes and causal lifecycle cases.
+  Packages execute sequentially because genuine Hosting measurements count
+  whole interfaces: concurrent packages would spend one another's loopback
+  headroom between Observe and Reserve. All package tests, internal concurrency
+  and the unchanged five-minute package bound remain mandatory.
   Focused architecture checks enforce isolation and registered profiles.
   Connection includes its genuine initial recipient binding and isolated v3
   transcript/send/recovery/Terminal mechanisms. Their inclusion does not supply
@@ -928,6 +932,25 @@ Portable session checks retain blocked-HELLO/ready-unrelated progress and
 independent waiter/creator cancellation ownership.
 ## Reachability audit
 
+Receiving Store native tests in `internal/successor/reachability` exercise actual
+Linux/Windows roots and lease/directory sync, independent signed Descriptor
+inputs, full retained conflict/capacity/reopen cases and original operation join.
+`store_lifetime_native_test.go` delays only a real publication's foreign
+observation: Lookup must progress, Close must deny and retain the original lease
+until that observation returns, and pre-effect denied work must leave no floor.
+Original root/records/marker/record loss permanently refuses after restoration;
+fresh explicit reopen revalidates exact signed bytes. Windows can physically
+block retained-object rename with sharing violation, or retained-directory rename
+with access denied; the positive control requires original custody and exact
+proof to remain healthy. Linux performs and detects every actual object loss.
+`store_lease_linux_test.go` separately replaces/restores the actual lock path and
+closes the actual original lease descriptor, checking permanent denial and the
+same retained physical Close error across concurrent callers. These cases are
+component native/race evidence, not command protection, power-loss, full rollback
+or installed qualification. Receiver consumes the real custody check at its
+existing Descriptor effect/result boundaries; both-Carrier composition remains
+separately required.
+
 `make deadcode` runs `golang.org/x/tools/cmd/deadcode` for the maintained
 Windows and Linux production builds, then for their test executables. The test
 result must be empty. Production results must match
@@ -1079,6 +1102,103 @@ for the repaired candidate, not completion of the formal deep audit or
 authorization to begin its later security, concurrency, or wire tracks.
 
 ## Current profiles
+
+`introduction-process-linux`, invoked by `make node-introduction-check`, runs
+independently pinned canonical Node command and command/resource race binaries
+under the original Introduction envelope in the Node owner. The driver remains
+outside measured leaves and rejects missing/extra/duplicate or zero discovery.
+Actual manager, cgroup-v2/proc/PSI, private durable filesystem and both Carriers
+are mandatory; absence fails. Process workloads retain three minutes and native
+resource controls ninety seconds; declared independent workload groups execute
+sequentially under those same bounds. The native matrix includes direct original
+caller/Stop and held genuine State observations, signed successor/conflict/expiry,
+original process evidence/memory loss, History/lease loss, real pre/post-spend and durable claim-before-ACK holds,
+concurrent copied Close, late native failure, partial startup and
+bounded unavailable completion with retained producer conflict. The isolated HPKE holder supplies only its
+declared bounded transport recipient role, never a qualified Job/Instance or
+Service/readiness result. Native and full issue acceptance require their exact
+source-matched receipts and all causal/lifecycle controls in the selected issue.
+
+
+`descriptor-process-linux`, invoked by `make node-descriptor-check`, independently
+runs the original Descriptor command under `ardents-descriptor-process-v1`, with
+the exact selected sole-process Linux cgroup-v2 envelope in the Node owner.
+`scripts/node/run-descriptor-native.sh` stays outside the measured leaves and
+requires independently SHA-256-pinned canonical command and command/resource
+race binaries built with `node_process_native` from the checked source. Actual
+systemd, proc/cgroup/PSI, private durable roots and loopback TCP/UDP are mandatory;
+missing prerequisites fail. Its exact discovery rejects zero/missing/extra/
+duplicate undispatched tests. Resource workload remains 90s and original process
+workload 3m; complete independent workload groups may execute sequentially under
+those same bounds. Forwarding retains its exact seven-resource dispatch and
+Issuer its separate three; Descriptor-specific tests are never relabeled as
+another role's receipts. Selected development evidence is not installed,
+capacity, platform, privacy or independent-security qualification.
+
+Descriptor's CPU-pressure control also requires installed `taskset` and manager
+support for bounded transient helpers. Three separate helpers run with an eight-
+second manager lifetime, 50% CPU each (150% demand on one pinned CPU), 32MiB memory, two tasks and NOFILE64,
+DynamicUser, NoNewPrivileges and PrivateTmp; exact own-unit stop and driver join
+provide ordinary cleanup. Manager expiry bounds them even if the driver exits.
+They remain outside the measured Node leaf; selected Node limits are unchanged.
+
+`TestNativeDescriptorPartialStartupRefusalsBothCarriers` runs the canonical
+command against wrong profile, unknown field, nested roots, wrong role or TLS
+key, missing Hosting and foreign Store/Receiving inputs. Every refused process
+joins before separate fresh startup with corrected declarations. Unaccepted
+foreign input bytes remain unchanged, no Receiving spend history is created,
+and any acquired participation producer has been released. Only the fixture's
+unaccepted foreign files are removed; accepted durable records are never reset.
+
+`TestNativeDescriptorUndercoverageBeforeSpendBothCarriers` supplies genuine
+Stock/Prefix/Forwarding transport to the canonical Descriptor command with work
+one byte below the required Control coverage. Refusal must leave Receiving
+history and Store records unchanged. After original command join a separate
+invocation with full coverage uses the same durable roots and performs real
+publication and exact lookup. No token refund or accepting weaker path is added.
+
+`TestNativeDescriptorOperationBoundariesBothCarriers` schedules only returns of
+genuine State observations on the actual request stack. It observes full native
+Hosting reservation before spend, irreversible Receiving journal growth before
+Store mutation, and the post-write Store observer after real record/directory
+commit. Original caller denial refuses ACK, retains the full Control reservation
+and original roots through delayed physical join, then independently reopens the
+Store to verify absent pre-mutation proof or the exact committed proof. Signal
+files coordinate the test driver; they provide no accepting authority or storage
+result. These causal cases do not simulate power loss or qualify crash recovery.
+The same original-work controls cover Stop, a genuine signed successor and loss
+of original process protection before Receiving spend. A post-commit native Store
+loss introduced only after original caller denial must retain caller provenance
+plus Reachability failure, keep the reservation until join and preserve the
+committed proof after separate validated reopen. Scheduling markers never claim
+an accepting observation or synchronous revoke on behalf of Node.
+
+The Linux Reachability owner control
+`TestStoreNativePartialWriteRetainsOriginalFailureAndPriorFloor` runs in a
+separate child and applies a real kernel file-size limit after a genuine prior
+commit. It requires an actual one-byte interrupted stage, permanent original
+failure after restoring the limit, retained lease until Close and a separate
+validated reopen retaining the exact prior floor. A fresh explicit publication
+is separate from revival of the failed owner. This tests partial-write failure,
+not a successful Sync or power-loss durability.
+
+`TestStoreProcessCrashAtActualPersistenceBoundaries` is a Linux amd64 owner
+control requiring native tracing of its own child, including every original Go
+thread. It stops after actual stage Write, stage Sync, Rename or directory Sync
+syscall returns, kills that process and joins all traced threads before opening
+a new Store. Full recovery must retain the prior proof before Rename or the
+exact higher revision after Rename, discard only its validated interrupted stage
+and refuse revision rollback. The measured filesystem remains mounted; this
+establishes process-crash recovery, not power-loss or hardware durability. A
+missing selected tracing prerequisite is a failed environment, never a skip.
+
+`TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerBothCarriers`
+occupies the real participation journal during canonical command cancellation.
+The bounded unavailable report cannot release the command-owned State or exit
+ahead of original cleanup. Failed producer cleanup remains failed after actual
+manager/process join; process absence and a separate reopen cannot erase or
+adopt the unresolved identity/family conflict. These cases exercise the command
+projection separately from retained work/reservation join in the operation cases.
 
 `issuer-process-linux`, invoked by `make node-issuer-check`, independently runs
 the actual original Node Issuer under `ardents-issuer-process-v1`. The root driver,
@@ -1378,6 +1498,8 @@ Neither category substitutes for the other.
 | Retained selection rules: exact original profile/duties, observation expiry floor, context-local choice retention and conflict exclusions | `internal/successor/route/selection/entry_set_test.go`, `leg_test.go` and `rendezvous_test.go`; actual execution on Windows and Linux. Supplied-fact Network models test local rules, not authenticated intake or durable-root qualification. Native durable owners have separate Linux tests |
 | Network observations consumed by Route: profile/member expiry during durable reads, older caller time cannot revive a duty, and concurrently published Epoch/profile/member facts cannot mix generations | `internal/successor/network/state/closed_runtime_view_test.go` and `membership_transition_test.go`; actual new State storage and signed-generation controls. These scenarios verify particular input guarantees; migrated source and earlier acceptance do not establish general absence of Network defects. Route's genuine command tests separately reobserve authority around transport and irreversible effects |
 | Introduction snapshot format: independently specified canonical bytes, exact binding/generation, sorted distinct hashes, original expiry/time floor and damaged/rebound refusal | `internal/successor/route/introduction/slot_snapshot_test.go`; portable format tests. Actual durable History consumes this same codec; its Linux lease/sync/reopen controls remain in `slot_history_linux_test.go`. Codec success supplies no durable ACK or registration authority |
+| Original Introduction native custody and short denial: root/lease/snapshot loss and restoration, identical native substitution and same-inode byte restoration permanently refuse; Stop returns during held actual durable replacement while Close retains lease until writer join and separate reopen retains the late claim | `internal/successor/route/introduction/history_custody_linux_test.go`; actual independently leased Linux roots, original staging/snapshot descriptors, root inotify witness and write/sync/rename/readback. Replacement-boundary controls substitute identical bytes after actual Rename or move/restore the root before pin publication; the failed original retains its cause and visible durable claim through separate strict reopen. Scheduling changes only a real transaction's return; no accepting storage or authority fixture. Full receiving/holder both-Carrier regressions prepare Registry before Receiver and close it after physical join. Process-crash and power-loss evidence remain distinct obligations |
+| Native Introduction partial write and actual process-crash boundaries | `introduction/history_write_linux_test.go` changes only its child kernel file-size limit, requires an actual one-byte retained stage, original permanent failure/lease retention and unchanged prior floor. `history_crash_linux_amd64_test.go` traces every original child thread and kills only after actual Write, Sync, Rename or directory Sync return. Before Rename strict reopen refuses and preserves the stage; after Rename independent reopen retains exact canonical claim/time floors. Linux amd64 tracing is mandatory for this control; missing prerequisite fails. These controls neither simulate successful storage nor qualify power loss/full rollback |
 | Role channel binding: reobserve original duty/profile without cached approval or replacement; refuse changed HELLO identities, purpose and absolute bounds, preserve observation errors and known Node/key/family exclusions | `internal/successor/route/role/authority_test.go`, same source on Windows and Linux. Supplied-fact observations qualify the binding rule only; actual signed intake, admitted REGISTER and paired JOIN remain genuine command scenarios |
 | Shared holder handshake: negotiated exporter required before presentation; original caller cancellation after presentation refuses ADMIT even while derived physical context remains live; refused bytes are cleared and original initial-frame accounting is retained | `internal/successor/route/role/presentation_test.go`, same actual TLS refusal oracle on Windows and Linux, without an accepting Stock/Grant substitute. Genuine Stock, receiving spend and reservation transfer remain separate command tests |
 | Portable directed-pair pool: canceled waiters do not cancel the original dial; Close joins late dial and preserves late physical failures/returns | `internal/successor/route/receiver/carrier_pool_test.go`; same actual physical lifecycle tests execute Windows/Linux. Receiver listen/admission composition still depends on native roots |
@@ -1651,13 +1773,16 @@ Network qualification.
 
 The token-issuance-linux profile executes make token-issuance-check with the
 issuance owners and the compiled CLI under race in the same pinned image.
+Its complete command suite has the same five-minute package timeout as the
+issuer-profile and Route profiles. This is a test execution bound; no runtime
+permission, authority, transport or recovery deadline is extended.
 It includes real client blind/finalize and stdlib PSS verification, opaque debit
 confirmation, quota retention, journal pairs/floors, faults, crash/replay and OTLP.
 CIRCL uses the populated reviewed module cache. No power-loss/rollback claim.
 
 The active `issuer-profile-linux` profile uses `make issuer-profile-check` on the
 pinned Go 1.27.2 Linux image. It exercises Admission, its Issuerprofile/Issuance/Issuer children,
-Nodeidentity and compiled ardents-next with real files, lease/crash processes,
+Issuerprofile/Signing and compiled ardents-next with real files, lease/crash processes,
 race detection, actual OTLP and the prior durable token cycle. It also mutation-
 fuzzes FuzzIssuerProfile and FuzzNodeIdentityPEM for 30 seconds each, two workers
 and a 90-second per-target limit; caches and receipts remain outside Git. A

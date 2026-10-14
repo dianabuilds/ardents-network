@@ -5,6 +5,7 @@ package introduction
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,9 +23,14 @@ const (
 // historyFiles owns the actual independently leased Linux root. Only the
 // successful native creation/reopen path can publish a History using it.
 type historyFiles struct {
-	path    string
-	lease   *os.File
-	replace func(string, []byte) error
+	path                              string
+	rootPath                          string
+	root                              *os.File
+	rootInfo, leaseInfo, snapshotInfo os.FileInfo
+	snapshot                          *os.File
+	lease                             *os.File
+	watch                             int
+	replace                           func(string, []byte) (*os.File, error)
 }
 
 func (files *historyFiles) commit(raw []byte) error {
@@ -32,11 +38,31 @@ func (files *historyFiles) commit(raw []byte) error {
 	if replace == nil {
 		replace = replaceHistory
 	}
-	return replace(files.path, raw)
+	// Resolve mutations through the held original directory, never a pathname
+	// that could now designate a replacement root. Readback pins our own lawful
+	// atomic replacement only after all persistence steps have succeeded.
+	path := filepath.Join(fmt.Sprintf("/proc/self/fd/%d", files.root.Fd()), slotHistoryName)
+	snapshot, err := replace(path, raw)
+	if err != nil {
+		return err
+	}
+	if err := files.retainReplacement(snapshot, raw); err != nil {
+		return err
+	}
+	info, err := files.root.Stat()
+	if err != nil {
+		return err
+	}
+	files.rootInfo = info
+	return files.verify(raw)
 }
 
 func (files *historyFiles) close() error {
-	return errors.Join(syscall.Flock(int(files.lease.Fd()), syscall.LOCK_UN), files.lease.Close())
+	var snapshotErr error
+	if files.snapshot != nil {
+		snapshotErr = files.snapshot.Close()
+	}
+	return errors.Join(snapshotErr, syscall.Flock(int(files.lease.Fd()), syscall.LOCK_UN), files.lease.Close(), syscall.Close(files.watch), files.root.Close())
 }
 
 // OpenHistory strictly reopens a complete retained root. Missing roots or
@@ -100,11 +126,27 @@ func openHistory(root string, binding Binding, fact *spending.FreshRoot, syncRoo
 		}
 		flags |= os.O_CREATE | os.O_EXCL
 	}
-	lease, err := os.OpenFile(filepath.Join(root, slotLeaseName), flags, 0o600)
+	directory, err := os.OpenFile(root, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_DIRECTORY, 0)
 	if err != nil {
 		return nil, err
 	}
-	files := &historyFiles{path: filepath.Join(root, slotHistoryName), lease: lease}
+	heldRoot, err := directory.Stat()
+	if err != nil || !os.SameFile(info, heldRoot) || heldRoot.Mode().Perm()&0o077 != 0 {
+		return nil, errors.Join(errors.New("introduction original root changed during open"), err, directory.Close())
+	}
+	anchoredRoot := fmt.Sprintf("/proc/self/fd/%d", directory.Fd())
+	watch, err := syscall.InotifyInit1(syscall.IN_NONBLOCK | syscall.IN_CLOEXEC)
+	if err != nil {
+		return nil, errors.Join(err, directory.Close())
+	}
+	if _, err := syscall.InotifyAddWatch(watch, anchoredRoot, syscall.IN_MOVE_SELF|syscall.IN_DELETE_SELF|syscall.IN_UNMOUNT|syscall.IN_ONLYDIR); err != nil {
+		return nil, errors.Join(err, syscall.Close(watch), directory.Close())
+	}
+	lease, err := os.OpenFile(filepath.Join(anchoredRoot, slotLeaseName), flags, 0o600)
+	if err != nil {
+		return nil, errors.Join(err, syscall.Close(watch), directory.Close())
+	}
+	files := &historyFiles{path: filepath.Join(root, slotHistoryName), rootPath: root, root: directory, lease: lease, watch: watch}
 	h := &History{slotSnapshot: slotSnapshot{binding: binding, entries: make(map[[32]byte]time.Time)}, store: files}
 	defer func() {
 		if result != nil {
@@ -118,6 +160,7 @@ func openHistory(root string, binding Binding, fact *spending.FreshRoot, syncRoo
 	if err := syscall.Flock(int(lease.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		return nil, errors.New("introduction history already owned")
 	}
+	files.leaseInfo = info
 	if initialization != nil {
 		if err := initialization.Check(); err != nil {
 			return nil, err
@@ -125,7 +168,7 @@ func openHistory(root string, binding Binding, fact *spending.FreshRoot, syncRoo
 		if err := lease.Sync(); err != nil {
 			return nil, err
 		}
-		file, err := os.OpenFile(files.path, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0o600)
+		file, err := os.OpenFile(filepath.Join(anchoredRoot, slotHistoryName), os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0o600)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +181,7 @@ func openHistory(root string, binding Binding, fact *spending.FreshRoot, syncRoo
 			return nil, err
 		}
 	}
-	raw, err := readHistory(files.path)
+	raw, err := readHistory(filepath.Join(anchoredRoot, slotHistoryName))
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +193,7 @@ func openHistory(root string, binding Binding, fact *spending.FreshRoot, syncRoo
 			return nil, err
 		}
 	}
-	if err := syncRoot(files.path); err != nil {
+	if err := syncRoot(filepath.Join(anchoredRoot, slotHistoryName)); err != nil {
 		return nil, err
 	}
 	if initialization != nil {
@@ -159,10 +202,77 @@ func openHistory(root string, binding Binding, fact *spending.FreshRoot, syncRoo
 		}
 	}
 	h.raw = bytes.Clone(raw)
+	files.rootInfo, err = directory.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if err := files.retainSnapshot(raw); err != nil {
+		return nil, err
+	}
+	if err := files.verify(raw); err != nil {
+		return nil, err
+	}
 	return h, nil
 }
 
+func sameHistoryFile(original, actual os.FileInfo) bool {
+	if original == nil || actual == nil || !os.SameFile(original, actual) || original.Mode() != actual.Mode() || original.Size() != actual.Size() {
+		return false
+	}
+	a, aok := original.Sys().(*syscall.Stat_t)
+	b, bok := actual.Sys().(*syscall.Stat_t)
+	return aok && bok && a.Ctim == b.Ctim && a.Uid == b.Uid && a.Gid == b.Gid && a.Nlink == b.Nlink
+}
+
+func (files *historyFiles) retainSnapshot(expected []byte) error {
+	path := filepath.Join(fmt.Sprintf("/proc/self/fd/%d", files.root.Fd()), slotHistoryName)
+	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return err
+	}
+	return files.retainReplacement(file, expected)
+}
+
+func (files *historyFiles) retainReplacement(file *os.File, expected []byte) error {
+	if file == nil {
+		return errors.New("introduction original replacement snapshot absent")
+	}
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 || info.Size() != int64(len(expected)) {
+		return errors.Join(errors.New("introduction original snapshot invalid"), err, file.Close())
+	}
+	raw, err := io.ReadAll(io.LimitReader(file, slotHeaderSize+slotMaximum*40+1))
+	after, statErr := file.Stat()
+	if err != nil || statErr != nil || !sameHistoryFile(info, after) || !bytes.Equal(raw, expected) {
+		return errors.Join(errors.New("introduction snapshot readback differs"), err, statErr, file.Close())
+	}
+	named, err := os.Lstat(files.path)
+	if err != nil || !sameHistoryFile(info, named) {
+		return errors.Join(errors.New("introduction original replacement snapshot substituted"), err, file.Close())
+	}
+	if files.snapshot != nil {
+		if err := files.snapshot.Close(); err != nil {
+			return errors.Join(err, file.Close())
+		}
+	}
+	files.snapshot, files.snapshotInfo = file, info
+	return nil
+}
+
 func (files *historyFiles) verify(expected []byte) error {
+	// Root-directory ctime also changes during our lawful snapshot replacement.
+	// Its original kernel watch independently retains move/loss/restoration
+	// evidence across that transaction; overflow or descriptor loss refuses.
+	var events [4096]byte
+	n, err := syscall.Read(files.watch, events[:])
+	if n > 0 || err != nil && !errors.Is(err, syscall.EAGAIN) {
+		return errors.Join(errors.New("introduction original root movement or watch loss"), err)
+	}
+	root, err := os.Lstat(files.rootPath)
+	heldRoot, heldErr := files.root.Stat()
+	if err != nil || heldErr != nil || !sameHistoryFile(files.rootInfo, root) || !sameHistoryFile(files.rootInfo, heldRoot) {
+		return errors.Join(errors.New("introduction original root changed or lost"), err, heldErr)
+	}
 	names, err := os.ReadDir(filepath.Dir(files.path))
 	if err != nil || len(names) != 2 {
 		return errors.Join(errors.New("introduction history members changed or lost"), err)
@@ -177,12 +287,21 @@ func (files *historyFiles) verify(expected []byte) error {
 		return err
 	}
 	held, err := files.lease.Stat()
-	if err != nil || !os.SameFile(held, retained) {
+	if err != nil || !sameHistoryFile(files.leaseInfo, held) || !sameHistoryFile(files.leaseInfo, retained) {
 		return errors.Join(errors.New("introduction history lease lost"), err)
 	}
-	raw, err := readHistory(files.path)
-	if err != nil || !bytes.Equal(raw, expected) {
-		return errors.Join(errors.New("introduction history changed or lost"), err)
+	snapshot, err := os.Lstat(files.path)
+	if err != nil || !sameHistoryFile(files.snapshotInfo, snapshot) {
+		return errors.Join(errors.New("introduction original snapshot changed or lost"), err)
+	}
+	heldSnapshot, err := files.snapshot.Stat()
+	if err != nil || !sameHistoryFile(files.snapshotInfo, heldSnapshot) {
+		return errors.Join(errors.New("introduction original snapshot custody changed"), err)
+	}
+	raw, err := io.ReadAll(io.NewSectionReader(files.snapshot, 0, int64(slotHeaderSize+slotMaximum*40+1)))
+	after, statErr := files.snapshot.Stat()
+	if err != nil || statErr != nil || !sameHistoryFile(files.snapshotInfo, after) || !bytes.Equal(raw, expected) {
+		return errors.Join(errors.New("introduction history changed or lost"), err, statErr)
 	}
 	return nil
 }
@@ -225,22 +344,41 @@ func syncHistoryDirectory(root string) error {
 	return errors.Join(directory.Sync(), directory.Close())
 }
 
-func replaceHistory(path string, raw []byte) error {
+func replaceHistory(path string, raw []byte) (*os.File, error) {
 	file, err := os.CreateTemp(filepath.Dir(path), ".introduction-snapshot-")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	temporary := file.Name()
-	defer func() { _ = os.Remove(temporary) }()
+	// Interrupted/uncertain stages are conservative evidence. Strict reopen
+	// refuses foreign/incomplete members; this owner never erases or repairs
+	// such a footprint to manufacture a usable predecessor.
 	_, writeErr := file.Write(raw)
 	if writeErr == nil {
 		writeErr = file.Sync()
 	}
-	if err := errors.Join(writeErr, file.Close()); err != nil {
-		return err
+	// Pin the actual staged inode before Rename. A later same-byte pathname
+	// replacement cannot become our original committed snapshot.
+	if writeErr != nil {
+		return nil, errors.Join(writeErr, file.Close())
+	}
+	snapshot, err := os.OpenFile(temporary, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, errors.Join(err, file.Close())
+	}
+	written, writeStatErr := file.Stat()
+	pinned, pinStatErr := snapshot.Stat()
+	if writeStatErr != nil || pinStatErr != nil || !sameHistoryFile(written, pinned) {
+		return nil, errors.Join(errors.New("introduction original stage substituted"), writeStatErr, pinStatErr, snapshot.Close(), file.Close())
+	}
+	if err := file.Close(); err != nil {
+		return nil, errors.Join(err, snapshot.Close())
 	}
 	if err := os.Rename(temporary, path); err != nil {
-		return err
+		return nil, errors.Join(err, snapshot.Close())
 	}
-	return syncHistoryDirectory(filepath.Dir(path))
+	if err := syncHistoryDirectory(filepath.Dir(path)); err != nil {
+		return nil, errors.Join(err, snapshot.Close())
+	}
+	return snapshot, nil
 }

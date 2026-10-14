@@ -195,6 +195,10 @@ func testRouteGenuineDescriptor(t *testing.T, foreignProfileControl bool) {
 }
 
 func descriptorRouteFixture(t *testing.T, carrier transport.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+	return descriptorRouteFixtureConfigured(t, carrier, nil)
+}
+
+func descriptorRouteFixtureConfigured(t *testing.T, carrier transport.CarrierProfile, configure func(*networkAdmissionFixture)) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
 	return newRoleRouteFixtureConfigured(t, carrier, 1, false, false, func(f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate) {
 		for _, id := range [][32]byte{{17}, {18}} {
 			_, key, err := ed25519.GenerateKey(rand.Reader)
@@ -227,6 +231,9 @@ func descriptorRouteFixture(t *testing.T, carrier transport.CarrierProfile) (*ne
 			}
 			f.spec.Nodes = append(f.spec.Nodes, networkfixture.ClosedNode{RecordSpec: networkfixture.RecordSpec{NodeID: id, Generation: 9, ValidFrom: f.spec.NotBefore, ValidUntil: f.spec.NotAfter, Endpoint: address, Carrier: string(carrier), Capability: 2, Capacity: 1, PrivateKey: key}, RoleDomain: domain, Subrole: subrole})
 			certificates[id] = routeTestCertificate(t, key)
+		}
+		if configure != nil {
+			configure(f)
 		}
 	})
 }

@@ -622,11 +622,11 @@ func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixtur
 			}
 		}
 		if id == [32]byte{25} {
-			config.IntroductionRoot = t.TempDir()
-			if err := os.Chmod(config.IntroductionRoot, 0700); err != nil {
+			introductionRoot := t.TempDir()
+			if err := os.Chmod(introductionRoot, 0700); err != nil {
 				t.Fatal(err)
 			}
-			config.Receiving = owner
+			config.Introduction = prepareIntroductionRegistry(t, introductionRoot, owner, binding)
 		}
 		config.Admit = func(ctx context.Context, channel receiver.Channel, raw []byte) (receiving.Grant, error) {
 			class, err := role.AdmissionClass(channel.Hello.Purpose)

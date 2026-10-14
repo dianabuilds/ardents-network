@@ -74,7 +74,7 @@ github.com/dianabuilds/ardents-network/internal/successor/reachability
 github.com/dianabuilds/ardents-network/internal/successor/enrollment
 github.com/dianabuilds/ardents-network/internal/successor/admission/issuance
 github.com/dianabuilds/ardents-network/internal/successor/admission/issuer
-github.com/dianabuilds/ardents-network/internal/successor/nodeidentity
+github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing
 github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile
 github.com/dianabuilds/ardents-network/internal/successor/admission/allocation
 github.com/dianabuilds/ardents-network/internal/successor/admission/spending

@@ -16,6 +16,10 @@ Each hour/class 1–3 has a distinct validated two-prime RSA2048/E65537 key.
 The private encoding is versioned binary: magic, fixed binding, cohort count,
 then sorted window/class/DER-length/PKCS#1 DER. Reject noncanonical DER, invalid
 keys, duplicate public keys, missing cohorts and unsigned-time overflow.
+Profile preparation uses the separate `admission/issuerprofile/signing` Ed25519
+owner through a validated public request. RSA material and confirmed token
+results remain here; the private signer imports only its pure public parent,
+never Issuance. Runtime Node TLS custody and Network duty remain separate.
 Public inventory canonical bytes are a separate domain magic, fixed binding,
 count, then sorted window/class/346-byte canonical RSA-PSS SPKI. SHA-256 of
 these bytes identifies the inventory. The exported JSON has a local schema,

@@ -113,12 +113,44 @@ RESULT and owning withdrawal bytes before claiming a slot. A durable claim
 precedes registration acknowledgement; failed or lost acknowledgement retains
 the claim. Withdrawal retires live slot authority and keeps its original floor.
 
+`OpenReceivingRegistry` prepares the actual original Registry and independent
+History before listener effects. It strictly reopens retained members, or consumes
+the genuine Receiving owner's one-use creation fact only for a vacant private
+root. `ReceiverConfig.Introduction` borrows that prepared owner; `BindReceiver` admits exactly one original receiving borrow; failed listener
+setup consumes it and grants no retry. Receiver neither opens a second History
+nor closes its borrow. Command composition closes Registry
+after Receiver's original physical users join, before Receiving and Hosting.
+
+`Registry.Check` checks exact original binding, native History and short local
+state without invoking a Network/Node observer. Receiver observes original
+authority, checks native custody, then observes authority freshly. Node composition
+may use the same nonrecursive boundary with its own original base observations.
+`Stop` synchronously seals admission and cancels original delivery waiters without
+waiting behind History I/O or a foreign callback. Complete capacity/claim
+transitions remain serialized separately from Registry's short state lock;
+History likewise serializes native transactions separately from its denial lock.
+Late durable writes retain their floors and cannot publish an accepting slot.
+`Close` joins receiving exchanges and transactions before its one physical release.
+Isolated request refusal never becomes History failure. `Failure` retains the
+first operational/native cause; local denial and actual release errors remain
+separate, including native loss discovered after denial during joined closure.
+
 ## Independent durable history
 
 Slot history persists hashes and original expiries plus its monotonic time floor
 and exact Network/profile/Node/duty binding. The `ARDISL01` identity and canonical
 bytes remain unchanged. Strict retained open checks both private members, its
-exclusive lease and exact snapshot. Missing, corrupt, foreign or uncertain
+exclusive lease and exact snapshot. Original directory, lease and snapshot
+descriptors retain inode/access/ctime and exact bytes. Foreign identical-byte
+replacement or same-inode edit/restoration refuses permanently; path restoration
+cannot revive that original. Native writes address the retained original directory.
+Its actual staged inode is pinned before Rename and held through directory
+synchronization and exact readback; re-opening a same-byte final pathname cannot
+substitute for that original. An original root inotify descriptor retains move,
+loss and restoration events across lawful directory updates; queue overflow or
+witness loss refuses. Only its own successful write/sync/rename/directory-sync
+and exact original-inode readback update the snapshot and directory pins. A separate reopen performs full verification
+without resetting floors. Missing, corrupt, foreign or uncertain
 history refuses rather than resetting its floor.
 
 Initialization requires a vacant private directory and a genuine opaque one-use
@@ -126,7 +158,7 @@ Initialization requires a vacant private directory and a genuine opaque one-use
 creation of the independently owned Admission spend journal. Retained or pruned
 empty journals do not recreate it. Admission attempts, Close, binding mismatch,
 double use and late completion invalidate initialization. Both roots must be
-ready before listener publication. Interrupted initialization retains damage;
+ready before listener publication. Interrupted initialization or replacement retains damage and incomplete stages;
 automated adoption/recovery and loss of both independent roots are outside this
 mechanism's detection and authorization.
 
