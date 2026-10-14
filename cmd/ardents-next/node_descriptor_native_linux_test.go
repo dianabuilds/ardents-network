@@ -238,6 +238,9 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			var clockOnce sync.Once
 			stopDescriptorClock := func() { clockOnce.Do(closeDescriptorClock) }
 			defer stopDescriptorClock()
+			// Fixture signing/issuance is input preparation, outside measured role lifetimes.
+			holder := descriptorRouteStock(t, f)
+			raw, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
 			var processes []*nativeForwardingProcess
 			var budgets, participations, spends []string
 			var descriptorConfig map[string]any
@@ -284,7 +287,6 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			if err != nil || len(before) != 8+32+32+32+8 {
 				t.Fatal("Descriptor receiving root not genuine empty header", err, len(before))
 			}
-			holder := descriptorRouteStock(t, f)
 			plan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 			prefix, err := startRoutePrefix(t.Context(), plan, f.authority, holder)
 			if err != nil {
@@ -304,7 +306,6 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			}()
 			history := &reachability.History{}
 			defer history.Close()
-			raw, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
 			if fault == "undercoverage" {
 				if err := prefix.publishDescriptor(t.Context(), raw); err == nil {
 					t.Fatal("undersized Descriptor work admitted full Control")
@@ -523,7 +524,9 @@ func nativeDescriptorCPUContention(t *testing.T, original *nativeForwardingProce
 	if output, err := exec.Command("taskset", "-apc", cpu, strconv.Itoa(original.pid)).CombinedOutput(); err != nil {
 		t.Fatal("original allowed CPU affinity unavailable", err, string(output))
 	}
-	for index := range 2 {
+	// Three finite 50%-quota helpers request more than one pinned CPU. Two
+	// request only 100%, which can leave a briefly waking Node uncontended.
+	for index := range 3 {
 		unit := fmt.Sprintf("ardents-descriptor-cpu-helper-%d-%d.service", os.Getpid(), index)
 		// Independent manager limits survive a forced exit of the test driver.
 		// These are test-helper limits, never the measured Node's envelope.

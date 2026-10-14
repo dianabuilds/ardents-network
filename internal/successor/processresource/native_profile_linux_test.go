@@ -126,3 +126,13 @@ func testOriginalNativeManagedMemoryPressure(t *testing.T, profile string) {
 		t.Fatal("released pressure revived the original owner")
 	}
 }
+
+func TestOriginalNativeIntroductionProcessProfile(t *testing.T) {
+	testOriginalNativeProcessProfile(t, IntroductionProfile)
+}
+func TestOriginalNativeIntroductionEvidenceLossRetainsActualCloseFailure(t *testing.T) {
+	testOriginalNativeEvidenceLoss(t, IntroductionProfile)
+}
+func TestOriginalNativeIntroductionManagedMemoryPressureRetires(t *testing.T) {
+	testOriginalNativeManagedMemoryPressure(t, IntroductionProfile)
+}

@@ -14,7 +14,7 @@ import (
 
 func TestCompiledNodeUnsupportedPlatformRefusesBeforePrivateInput(t *testing.T) {
 	t.Setenv("ARDENTS_DEBUG_SOCKET", "")
-	for _, role := range []string{"forwarding", "issuer", "descriptor"} {
+	for _, role := range []string{"forwarding", "issuer", "descriptor", "introduction"} {
 		t.Run(role, func(t *testing.T) {
 			input := filepath.Join(t.TempDir(), "unavailable-private-input")
 			command := exec.CommandContext(t.Context(), compiledCommand(t), "node", role, "--config", input)

@@ -400,6 +400,18 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                                   {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if source == "cmd/ardents-next/node_introduction_operation_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_introduction_authority_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_introduction_completion_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_introduction_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/route/introduction" || dependency == modulePath+"/internal/successor/route/capsule" || dependency == modulePath+"/internal/successor/route/transport" || dependency == modulePath+"/internal/successor/route/receiver" || dependency == modulePath+"/internal/successor/route/role" || dependency == modulePath+"/internal/successor/route/selection") {
+			return true
+		}
 		if source == "cmd/ardents-next/node_descriptor_completion_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
@@ -431,6 +443,12 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/node_issuer_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {
+			return true
+		}
+		if source == "cmd/ardents-next/node_introduction_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {
+			return true
+		}
+		if source == "internal/successor/node/introduction_linux.go" && dependency == modulePath+"/internal/successor/route/introduction" {
 			return true
 		}
 		if source == "cmd/ardents-next/node_descriptor_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {

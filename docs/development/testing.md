@@ -415,6 +415,10 @@ the separate permission-only holder/compiled issuer scenario above.
   plus Execution local rules, installed preparation and physical mechanisms
   owners plus `ardents-next`, with Linux race execution, both selected real
   Carriers, compiled prefix/receiver processes and causal lifecycle cases.
+  Packages execute sequentially because genuine Hosting measurements count
+  whole interfaces: concurrent packages would spend one another's loopback
+  headroom between Observe and Reserve. All package tests, internal concurrency
+  and the unchanged five-minute package bound remain mandatory.
   Focused architecture checks enforce isolation and registered profiles.
   Missing Linux, counters, loopback, race compiler or durable filesystem
   prerequisites invalidate the profile. Repository quick/full gates are
@@ -782,6 +786,23 @@ authorization to begin its later security, concurrency, or wire tracks.
 
 ## Current profiles
 
+`introduction-process-linux`, invoked by `make node-introduction-check`, runs
+independently pinned canonical Node command and command/resource race binaries
+under the original Introduction envelope in the Node owner. The driver remains
+outside measured leaves and rejects missing/extra/duplicate or zero discovery.
+Actual manager, cgroup-v2/proc/PSI, private durable filesystem and both Carriers
+are mandatory; absence fails. Process workloads retain three minutes and native
+resource controls ninety seconds; declared independent workload groups execute
+sequentially under those same bounds. The native matrix includes direct original
+caller/Stop and held genuine State observations, signed successor/conflict/expiry,
+original process evidence/memory loss, History/lease loss, real pre/post-spend and durable claim-before-ACK holds,
+concurrent copied Close, late native failure, partial startup and
+bounded unavailable completion with retained producer conflict. The isolated HPKE holder supplies only its
+declared bounded transport recipient role, never a qualified Job/Instance or
+Service/readiness result. Native and full issue acceptance require their exact
+source-matched receipts and all causal/lifecycle controls in the selected issue.
+
+
 `descriptor-process-linux`, invoked by `make node-descriptor-check`, independently
 runs the original Descriptor command under `ardents-descriptor-process-v1`, with
 the exact selected sole-process Linux cgroup-v2 envelope in the Node owner.
@@ -798,8 +819,8 @@ another role's receipts. Selected development evidence is not installed,
 capacity, platform, privacy or independent-security qualification.
 
 Descriptor's CPU-pressure control also requires installed `taskset` and manager
-support for bounded transient helpers. Two separate helpers run with an eight-
-second manager lifetime, 50% CPU each (one CPU in total), 32MiB memory, two tasks and NOFILE64,
+support for bounded transient helpers. Three separate helpers run with an eight-
+second manager lifetime, 50% CPU each (150% demand on one pinned CPU), 32MiB memory, two tasks and NOFILE64,
 DynamicUser, NoNewPrivileges and PrivateTmp; exact own-unit stop and driver join
 provide ordinary cleanup. Manager expiry bounds them even if the driver exits.
 They remain outside the measured Node leaf; selected Node limits are unchanged.

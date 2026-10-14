@@ -772,6 +772,18 @@ workloads require separate source-matched checks; another role's receipts cannot
 qualify Descriptor. Selection grants no installed, capacity, platform or privacy
 qualification.
 
+### Introduction development process profile
+
+The selected Introduction composition requires `ardents-introduction-process-v1`,
+with the same mandatory native envelope and original placement, measurement,
+pressure and one-second freshness rules above: sole original Linux cgroup-v2 leaf,
+cpu.max `100000 100000`, memory.high `805306368`, memory.max `1073741824`,
+pids.max `256`, NOFILE soft/hard `1024`, GOMAXPROCS `1`, GOMEMLIMIT `536870912`.
+Its independently pinned native command/resource workload is distinct from the
+other roles. Selection grants no installed, capacity, platform or privacy
+qualification. Registration remains 1 MiB/600s and submission Control64KiB/30s,
+with the unchanged ten-second capsule and original slot bounds.
+
 ### Original Forwarding composition
 
 `internal/successor/node` and `ardents-next node forwarding` compose one exact
@@ -983,6 +995,44 @@ owner defines complete profile dispatch and artifact pinning.
 | Delayed work cannot release custody or revive admission | Node denial interrupts dependents; Receiver and Store join before Receiving/Hosting/producer/TLS release | Native held actual State returns, concurrent same-Source lookup and copied Close; root/record/marker/lock loss and restoration; late Store failure after caller denial remains a failed original result |
 | Native protection loss and pressure retire the original | processresource measures original placement/limits/PSI; Node retains first cause and command closes State last | `TestNativeDescriptorOriginalCommandFailureBothCarriers` plus the three mandatory original Descriptor resource controls; bounded helper pressure never changes the role envelope |
 | Bounded reporting cannot manufacture completion | Canonical command waits for original Done/Close before State Close and process exit; Network owns producer conflicts | `TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerBothCarriers`; shared NodeProducer identity/family, foreign Source and expired-work controls retain conflicts until actual original removal |
+
+### Original Introduction composition
+
+`node.ListenIntroduction` and `ardents-next node introduction` compose one
+original Role4/subrole3 invocation. The same original caller/process/TLS/private
+participation lifetime as the other selected Node roles surrounds genuine
+Receiving, Hosting and the prepared Route Registry/History. Receiving opens
+before Route consumes its opaque one-use fresh-root fact; Registry is ready
+before listener publication and is borrowed by exactly one Receiver. Node owns
+no filesystem slot policy, arithmetic, decrypt/recipient selection or readiness.
+
+Base observations check original caller, process, producer and genuine State
+outside lifecycle locks. Native Registry checks invoke no foreign observer;
+fresh base observations follow that I/O. Stop short-denies Registry admission
+without waiting behind durable transactions or physical callbacks. Receiver,
+registration readers/writers, delivery and withdrawal users join before Registry,
+Receiving and Hosting close; producer removal, native/TLS release and command
+State closure follow. First operational and true physical release causes remain
+separate through copied handles and repeated Close. Peer refusal cannot retire
+a healthy invocation; restored native paths cannot revive a failed original.
+
+Each accepted purpose reserves the complete respective class plus termination
+before spend; Registration also reserves Route capacity before spend. No refill,
+refund, enlarged allowance, automatic restart or new slot for Source submission
+is provided. Native command/HPKE holder controls are bounded development evidence,
+not qualified private binding or installed Service/Connection acceptance.
+
+| Introduction invariant | Owner and actual consumer/effect | Positive and causal refusal controls |
+|---|---|---|
+| Original authority and freshness | Node base observes genuine State/process/producer outside locks, then original Registry and fresh base; `node introduction` owns State last | `TestNativeIntroductionOriginalAuthorityAndJoinBothCarriers`: held real State, Stop/direct caller, signed successor/conflict/expiry, native memory/descriptor/custody loss; copied terminal result |
+| Admission and durable ACK ordering | Route capacity precedes Receiving spend; Hosting covers the whole respective class; History claim precedes REGISTER RESULT | `TestNativeIntroductionUndercoverageBeforeSpendBothCarriers`; `TestNativeIntroductionOperationBoundariesBothCarriers`: unchanged pre-spend journals, irreversible post-spend/claim, cancellation before ACK, concurrent copied Close, late native failure and physical retention |
+| Original slot and opaque delivery | Route Registry/History/Receiver plus real Domain4/Domain1 Prefix; Node sees no recipient plaintext | `TestNativeIntroductionRegisterSubmitWithdrawBothCarriers`, independent stdlib HPKE recipient/ARDISL01 bytes; `TestNativeIntroductionOriginalHistoryLossBothCarriers`; Route's queue/rate/reserve/RESULT/CLOSE and crash/partial-write controls remain with Introduction |
+| Startup and terminal custody | Command validates independent roots/member/TLS/profile; Node joins partial acquisitions and retains producer conflicts | `TestNativeIntroductionPartialStartupRefusalsBothCarriers`, retained-empty Receiving refuses renewed birth; `TestNativeIntroductionOriginalCommandFailureBothCarriers`; `TestNativeIntroductionUnavailableCompletionRetainsOriginalProducerBothCarriers` |
+
+These tests identify required mechanisms and oracles; their execution/source
+receipts and full issue acceptance belong in GitHub. They do not themselves
+attest a qualified recipient. The affected genuine qualified Publisher delivery
+remains selected by `execution-route-check` under its own installed worker owner.
 
 ## Current limits and limitations
 

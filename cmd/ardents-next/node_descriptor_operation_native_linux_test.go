@@ -244,6 +244,8 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	}
 	clock, closeClock := joinProcessClock(t)
 	defer closeClock()
+	holder := descriptorRouteStock(t, f)
+	proof, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
 	binary := nodeNativeCommand(t)
 	var peers []*nativeForwardingProcess
 	for _, id := range [][32]byte{{12}, {13}, {14}, {15}} {
@@ -289,7 +291,6 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 		}
 	})
 	nativeIssuerWaitMarker(t, plan.Signals, "listening", 5*time.Second)
-	holder := descriptorRouteStock(t, f)
 	prefixPlan := routePrefixPlan{EntryRoot: filepath.Join(t.TempDir(), "entry"), InteriorRoot: filepath.Join(t.TempDir(), "interior"), HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(30 * time.Second).UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
 	prefix, err := startRoutePrefix(t.Context(), prefixPlan, f.authority, holder)
 	if err != nil {
@@ -301,7 +302,6 @@ func nativeDescriptorOperationParent(t *testing.T, carrier transport.CarrierProf
 	if err != nil {
 		t.Fatal(err)
 	}
-	proof, target := routeSignedDescriptor(t, f, 3, [32]byte{18})
 	nativeIssuerMarker(t, plan.Signals, "arm")
 	caller, cancel := context.WithCancel(t.Context())
 	defer cancel()

@@ -226,6 +226,20 @@ fixed `node.descriptor` projections retain original failures and physically
 joined completion. State closes after Node; a bounded retirement report cannot
 release original roots, producer, native pins or TLS material ahead of join.
 
+`ardents-next node introduction --config <file>` composes one original
+Role4/subrole3 duty under mandatory `ardents-introduction-process-v1`. The
+closed fields match Descriptor with `introduction_root` replacing
+`descriptor_root`. The independent private Route History is prepared before
+listener; only the genuine fresh Receiving birth fact can initialize vacancy.
+Retained history strictly reopens without reset/adoption. Purpose4 requires
+full Registration1MiB coverage and original600s bounds; Purpose5 requires
+full Control64KiB coverage and original30s bounds, further limited by the
+existing ten-second capsule and original slot. Spend is irreversible. Node
+owns original caller/process/producer/TLS and joined retirement; Route owns
+slot, opaque delivery and floors. The fixed `node.introduction` projections
+supply no Publication readiness, qualified recipient or Service acceptance.
+State closes last; completion-unavailable keeps original resources until join.
+
 The command emits bounded `node.forwarding` listening/refusal and joined/retiring
 outcomes. Joined cancellation exits 130, failure or unavailable completion exits
 1, and malformed input/output failure exits 2. A retirement timeout is not
