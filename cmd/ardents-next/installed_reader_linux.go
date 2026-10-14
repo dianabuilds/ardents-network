@@ -62,11 +62,14 @@ func (owner *installedReader) Open(ctx context.Context, request application.Requ
 	authority := owner.authority
 	originalCurrent := authority.current
 	authority.current = func() (network.RuntimeView, error) {
-		if err := errors.Join(ctx.Err(), owner.check(), operation.CheckReader()); err != nil {
+		// The installed authority reobserves the original Startup before and
+		// after CurrentRuntime. Retain this operation's rights around that
+		// observation without repeating the same full native file/manager I/O.
+		if err := errors.Join(ctx.Err(), operation.CheckReader()); err != nil {
 			return network.RuntimeView{}, err
 		}
 		view, err := originalCurrent()
-		return view, errors.Join(err, ctx.Err(), owner.check(), operation.CheckReader())
+		return view, errors.Join(err, ctx.Err(), operation.CheckReader())
 	}
 	var service *connection.Stream
 	var closeSource func() error

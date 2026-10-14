@@ -13,7 +13,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 )
 
 type introductionCleanupWrite struct {
@@ -101,15 +100,18 @@ func TestIntroductionCleanupRequiresJoinedLowerLaneAndRetainsPhysicalFailure(t *
 	}
 }
 
-// The exact recipient reobservation can fail after the preceding leg check.
+// The shared fresh leg/recipient observation retains its original failure.
 // Failure-only inputs cannot supply a member, ACK or accepting registration.
 func TestRegistrationRecipientObservationRetainsOriginalFailure(t *testing.T) {
 	physical := errors.New("original Network observation physical failure")
 	for _, cause := range []error{context.Canceled, physical, errors.Join(context.Canceled, physical)} {
-		p := &Prefix{}
-		a := role.Authority{Current: func() (network.RuntimeView, error) { return network.RuntimeView{}, cause }}
-		err := p.checkIntroductionDuty(a, time.Now().Add(time.Minute))
-		if err != cause {
+		calls := 0
+		p := &Prefix{ctx: t.Context(), caller: t.Context(), config: Config{Current: func() (network.RuntimeView, error) {
+			calls++
+			return network.RuntimeView{}, cause
+		}}}
+		_, err := p.checkIntroductionDuty(network.RetainedDuty{}, time.Now().Add(time.Minute))
+		if !errors.Is(err, cause) || calls != 1 {
 			t.Errorf("failed recipient observation acquired a different terminal cause: got %v, want %v", err, cause)
 		}
 	}
@@ -155,9 +157,13 @@ func TestSubmissionRetiredCallerRefusesBeforeObservationOrPresentation(t *testin
 		presentations.Add(1)
 		return nil, errors.New("unexpected presentation")
 	}
+	tooLate, boundErr := p.OpenSubmissionChannel(t.Context(), network.RetainedDuty{}, time.Now().Add(31*time.Second).UTC().Truncate(time.Second), nil)
+	if tooLate != nil || boundErr == nil || observations.Load() != 0 || presentations.Load() != 0 {
+		t.Fatal("submission beyond setup ceiling crossed an effect", tooLate, boundErr)
+	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	terminal, err := p.OpenSubmissionChannel(ctx, network.RetainedDuty{}, time.Now().Add(8*time.Second).UTC().Truncate(time.Second), nil)
+	terminal, err := p.OpenSubmissionChannel(ctx, network.RetainedDuty{}, time.Now().Add(30*time.Second).UTC().Truncate(time.Second), nil)
 	if terminal != nil || !errors.Is(err, context.Canceled) || observations.Load() != 0 || presentations.Load() != 0 || returns.Load() != 0 {
 		t.Fatal("retired submission caller crossed an effect or lost refusal", terminal, err)
 	}

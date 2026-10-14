@@ -53,9 +53,9 @@ func AuthenticatePublisher(ctx context.Context, operation *executionruntime.Oper
 		if _, _, err := opening.Request(ctx); err != nil {
 			return err
 		}
-		if err := lease.CheckIdentity(binding.identity, binding.logical); err != nil {
-			return err
-		}
+		// BeginService constructs both handles together. Service identity
+		// checking fully observes its same original lease, then matches this
+		// immutable logical and Attachment tuple before returning.
 		return service.CheckIdentity(binding.identity, binding.logical, binding.attachment)
 	}
 	if err := check(); err != nil {
@@ -71,7 +71,8 @@ func AuthenticatePublisher(ctx context.Context, operation *executionruntime.Oper
 	if err != nil {
 		return nil, err
 	}
-	first, err := wire.Read(service)
+	flight := initialFlightReader(service, wire.InitialRequestBytes)
+	first, err := flight.readRecord()
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func AuthenticatePublisher(ctx context.Context, operation *executionruntime.Oper
 	if first.Challenge == nil {
 		return nil, errIntegrity
 	}
-	second, err := wire.Read(service)
+	second, err := flight.readRecord()
 	if err != nil {
 		return nil, err
 	}

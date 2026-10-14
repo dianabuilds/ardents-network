@@ -6,6 +6,13 @@ The new Route JOIN uses only new Network, Admission and Hosting, under the
 transport. Instance authentication, Publication readiness, capsule acceptance
 and logical Service Connection remain separate responsibilities.
 
+An original Responder's observer fully reobserves its exact Source before
+returning. A physical pair uses that complete chain once, with original Source
+caller checks before and after and an exact parent-pointer comparison. Source-only
+JOIN still observes its own Source directly. Intent matching compares immutable
+JOIN commitments before one full acquisition observation; comparisons themselves
+perform no I/O or authority-granting effect.
+
 ## Selection and exact lifetimes
 
 Route selection owns one installation Entry root and independent role Interior
@@ -66,6 +73,18 @@ Prefix is the actual physical-generation owner. Its pair-lock tests
 remain there; acquisition tests retain caller and opening-join ordering without
 accessing Prefix private fields.
 
+At each client exchange boundary, acquisition-local checks fence the complete
+physical observation. Prefix checks each original leg and exact recipient on
+the same fresh view; scoped claims also check their original logical owners.
+JOIN then reobserves the original owners after that recipient validation.
+No effect occurs between the leg and recipient checks, and the outer acquisition fence does not duplicate those
+full observations. Each later exchange still obtains fresh observations; local
+identity, cancellation and seal checks supply no accepting authority.
+Publication's initial authentication checks its accepting candidate and exact
+Responder before obtaining the local acquisition, then observes the complete
+retained delivery immediately before the first JOIN exchange. Acquiring that
+local claim opens no channel and supplies no Service authentication.
+
 A successful JOIN transfers stream and exact acquisition together. Retirement
 seals all borrowers before waiting, joins them with original framing parents
 still live for bounded terminal output, then retires the parents and returns
@@ -93,6 +112,13 @@ generation through observations, recipient checks, opening and final handoff.
 It never follows a later generation. `Joined.CheckResponderScope` compares the
 opaque scope provenance; equal public leg facts cannot substitute another owner.
 Closing the setup handle after transfer cannot retire the actual joined stream.
+Scoped JOIN observations retain local logical-owner/generation checks before
+and after the physical pair's complete fresh observation. Initial and replacement
+physical generations keep the same immutable leg and original observer as their
+scope, so these public facts are not read again through the logical wrapper.
+Responder's local fence checks its exact Source handle under Source-before-Responder
+scope locks: a logically closed Source refuses immediately while physical users
+are still joining. No accepting observation is retained or shared across effects.
 The ordinary direct Prefix acquisition remains for the separate Route consumer;
 it cannot satisfy this scoped Service provenance check.
 
@@ -153,8 +179,8 @@ duplicate or third arrivals cannot replace a side. Each side has its own local
 nonce and fixed 16384-byte empty RESULT. Both actual successful RESULT writes
 must finish before either data reader starts.
 
-Unpaired setup ends at the earlier original request bound or ten seconds from
-reservation. Paired data uses the original admitted parent/State/duty bounds,
+Unpaired setup ends at the earlier original request bound or thirty seconds from
+reservation ([ADR-0121](../adr/0121-bound-installed-connection-setup.md)). Paired data uses the original admitted parent/State/duty bounds,
 64 KiB receive credit, BYTES at most 16 KiB and bounded queues. Setup, control,
 headers, data and terminal traffic count toward the original allowance. CREDIT
 returns only after consumption. Later ADMIT on dedicated JOIN is refused; it
@@ -265,6 +291,14 @@ copied or foreign streams cannot consume it as their own. Connection separately
 checks complete authenticated Terminal state, absence of additional plaintext
 and original logical authority before using it for bounded control-tail
 retirement. Physical cleanup still joins and retains its actual result.
+
+Reader's `Joined.CheckSourceCaller` requires the original scoped Source borrow,
+matching caller, Network/profile and absolute bound. It checks that provenance
+and local seals before and after the full original acquisition observation.
+Physical generations retain that Source scope's exact leg and authentic
+observer; this operation observes those facts once and grants no detached or
+cached accepting result. A foreign scope, replacement borrower or copied stream
+cannot reuse the match.
 
 `make route-check` runs the complete new Network/Admission/Hosting/Route and
 command race profile plus architecture isolation/profile checks. Both selected

@@ -44,7 +44,7 @@ func bindingInputs(t *testing.T) (publication.Proof, capsule.Request, time.Time)
 	request := capsule.Request{Network: network, Target: target, PublicationDigest: proof.Digest(), Revision: 1,
 		RendezvousNode: [32]byte{1}, RendezvousDutyGeneration: 2, JoinSecret: [32]byte{3}, HandshakeContext: [32]byte{4},
 		ProfileDigest: [32]byte{5}, ConnectionNonce: [32]byte{6}, InitiatorBinding: [32]byte{7}, AttachmentGeneration: 1,
-		Deadline: at.Add(10 * time.Second), WorkSafetyNotAfter: at.Add(300 * time.Second).Unix(),
+		Deadline: at.Add(30 * time.Second), WorkSafetyNotAfter: at.Add(300 * time.Second).Unix(),
 		WorkSafetyMaximum: at.Add(600 * time.Second).Unix(), NoNewRecoveryAfter: at.Add(200 * time.Second).Unix()}
 	return proof, request, at
 }
@@ -115,7 +115,7 @@ func TestRecipientBindingRefusesSubstitutionAndAuthorityExtension(t *testing.T) 
 		"profile":                     func(v *capsule.Request) { v.ProfileDigest[0]++ },
 		"recovery without continuity": func(v *capsule.Request) { v.AttachmentGeneration = 2 },
 		"missing Connection nonce":    func(v *capsule.Request) { v.ConnectionNonce = [32]byte{} },
-		"capsule deadline":            func(v *capsule.Request) { v.Deadline = now.Add(11 * time.Second) },
+		"capsule deadline":            func(v *capsule.Request) { v.Deadline = now.Add(31 * time.Second) },
 		"local maximum":               func(v *capsule.Request) { v.WorkSafetyMaximum++ },
 		"recovery after work":         func(v *capsule.Request) { v.NoNewRecoveryAfter = v.WorkSafetyNotAfter + 1 },
 		"expired work":                func(v *capsule.Request) { v.WorkSafetyNotAfter = now.Unix() },

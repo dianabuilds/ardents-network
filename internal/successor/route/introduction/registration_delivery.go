@@ -113,7 +113,7 @@ func (r *HolderRegistration) receiveDelivery(frame ardp.Frame) error {
 	defer r.mu.Unlock()
 	if r.stopped || r.withdrawing || frame.Lane <= r.deliveryLane || len(r.deliveries) >= 16 ||
 		r.deliveryNonces[nonce] || nonce == r.request.Nonce || header.Slot != r.request.Slot || header.Revision != r.request.Revision ||
-		!now.Before(header.Expiry) || header.Expiry.After(r.request.Expiry) || header.Expiry.After(now.Add(10*time.Second)) ||
+		!now.Before(header.Expiry) || header.Expiry.After(r.request.Expiry) || header.Expiry.After(now.Add(30*time.Second)) ||
 		r.deliveryUsed > admission.RegistrationClass.ByteLimit() || deliveryExchangeBytes > admission.RegistrationClass.ByteLimit()-r.deliveryUsed {
 		return errors.New("registration delivery binding or capacity unavailable")
 	}

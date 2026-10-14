@@ -98,8 +98,9 @@ func TestServerJoinsCanceledSetupCleanup(t *testing.T) {
 }
 
 type deadlineResetPeer struct {
-	wake    chan struct{}
-	failure error
+	wake     chan struct{}
+	failure  error
+	restored time.Time
 }
 
 func (peer *deadlineResetPeer) Read([]byte) (int, error) {
@@ -107,7 +108,8 @@ func (peer *deadlineResetPeer) Read([]byte) (int, error) {
 	return 0, &net.DNSError{IsTimeout: true}
 }
 func (peer *deadlineResetPeer) SetReadDeadline(deadline time.Time) error {
-	if deadline.IsZero() {
+	if deadline.After(time.Now()) {
+		peer.restored = deadline
 		return peer.failure
 	}
 	close(peer.wake)
@@ -115,13 +117,60 @@ func (peer *deadlineResetPeer) SetReadDeadline(deadline time.Time) error {
 }
 func (*deadlineResetPeer) Close() error { return nil }
 
+type deadlineSetupOwner struct {
+	ctx context.Context
+}
+
+func (owner *deadlineSetupOwner) Open(ctx context.Context, _ Request) (Stream, error) {
+	owner.ctx = ctx
+	return &cleanupSequenceStream{}, nil
+}
+
+func TestSetupRetainsOriginalDeadlineAndEarlierCancellation(t *testing.T) {
+	for _, earlier := range []bool{false, true} {
+		t.Run(map[bool]string{false: "original", true: "earlier-parent"}[earlier], func(t *testing.T) {
+			// Simulate time already spent receiving the header without sleeping.
+			deadline := time.Now().Add(ReaderTimeout - 12*time.Second)
+			parentEnd := deadline.Add(time.Minute)
+			if earlier {
+				parentEnd = deadline.Add(-time.Second)
+			}
+			parent, cancelParent := context.WithDeadline(t.Context(), parentEnd)
+			defer cancelParent()
+			owner := &deadlineSetupOwner{}
+			server := &server{ctx: parent, owner: owner}
+			peer := &deadlineResetPeer{wake: make(chan struct{})}
+			stream, cancel, err := server.openAuthorizedAttachment(peer, Request{}, deadline)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer cancel()
+			defer stream.Close()
+			want := deadline
+			if earlier {
+				want = parentEnd
+			}
+			if got, ok := owner.ctx.Deadline(); !ok || !got.Equal(want) {
+				t.Fatalf("setup renewed/lost original deadline: %v, want %v", got, want)
+			}
+			if !peer.restored.Equal(deadline) {
+				t.Fatalf("socket deadline was cleared or renewed: %v", peer.restored)
+			}
+			cancelParent()
+			if !errors.Is(owner.ctx.Err(), context.Canceled) {
+				t.Fatalf("returned stream lost original cancellation: %v", owner.ctx.Err())
+			}
+		})
+	}
+}
+
 func TestSetupDeadlineResetRetainsAndJoinsCleanup(t *testing.T) {
 	setupErr := errors.New("reset sentinel")
 	cleanupErr := errors.New("cleanup sentinel")
 	owner := &cleanupSequenceOwner{failure: cleanupErr}
 	server := &server{ctx: t.Context(), owner: owner}
 	// This seam injects a deadline reset failure; it is not a real socket failure.
-	attachment, cancel, err := server.openAuthorizedAttachment(&deadlineResetPeer{wake: make(chan struct{}), failure: setupErr}, Request{})
+	attachment, cancel, err := server.openAuthorizedAttachment(&deadlineResetPeer{wake: make(chan struct{}), failure: setupErr}, Request{}, time.Now().Add(ReaderTimeout))
 	if attachment != nil || cancel != nil || !errors.Is(err, setupErr) || !errors.Is(err, cleanupErr) {
 		t.Fatalf("reset failure lost ownership/error: %v", err)
 	}

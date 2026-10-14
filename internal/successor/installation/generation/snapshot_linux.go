@@ -172,17 +172,8 @@ func (s *Snapshot) readInto(name string, body []byte, expected *fileObservation)
 		if info.Size() != int64(len(expected.body)) || len(body) == 0 {
 			return fileObservation{}, ErrBinding
 		}
-		// Compare every fresh byte while its bounded block is still hot. No
-		// accepting bytes or metadata survive from an earlier observation.
-		for offset := 0; offset < len(expected.body); {
-			n := min(len(body), len(expected.body)-offset)
-			if _, err := io.ReadFull(file, body[:n]); err != nil {
-				return fileObservation{}, errors.Join(ErrBinding, err)
-			}
-			if !bytes.Equal(body[:n], expected.body[offset:offset+n]) {
-				return fileObservation{}, ErrBinding
-			}
-			offset += n
+		if err := s.compareBytes(file, expected.body, body); err != nil {
+			return fileObservation{}, err
 		}
 		// Metadata matching also binds the observed size to these original
 		// bytes. Their equality was established by the full fresh read above;
@@ -195,7 +186,7 @@ func (s *Snapshot) readInto(name string, body []byte, expected *fileObservation)
 		}
 	}
 	var trailing [1]byte
-	if n, err := file.Read(trailing[:]); n != 0 || err != io.EOF {
+	if n, err := file.ReadAt(trailing[:], int64(len(body))); n != 0 || err != io.EOF {
 		return fileObservation{}, errors.Join(ErrBinding, err)
 	}
 	record = fileObservation{identity: info, body: body, gid: s.gid, mode: mode}
@@ -205,6 +196,49 @@ func (s *Snapshot) readInto(name string, body []byte, expected *fileObservation)
 		return fileObservation{}, errors.Join(ErrBinding, pathErr, fdErr)
 	}
 	return record, s.ctx.Err()
+}
+
+// compareBytes divides a large file between at most sixteen bounded readers.
+// Each compares disjoint fresh ranges through the one retained descriptor;
+// all join before EOF and final path/descriptor observations. Small files
+// remain sequential so no nested file/range fan-out or extra scratch is needed.
+func (s *Snapshot) compareBytes(file *os.File, expected, scratch []byte) error {
+	readers := 1
+	if len(expected) >= 1<<20 {
+		readers = 16
+	}
+	var failures [16]error
+	read := func(index int) {
+		buffer := scratch[len(scratch)*index/readers : len(scratch)*(index+1)/readers]
+		end := len(expected) * (index + 1) / readers
+		for offset := len(expected) * index / readers; offset < end; {
+			if err := s.ctx.Err(); err != nil {
+				failures[index] = err
+				return
+			}
+			n := min(len(buffer), end-offset)
+			if _, err := file.ReadAt(buffer[:n], int64(offset)); err != nil {
+				failures[index] = errors.Join(ErrBinding, err)
+				return
+			}
+			if !bytes.Equal(buffer[:n], expected[offset:offset+n]) {
+				failures[index] = ErrBinding
+				return
+			}
+			offset += n
+		}
+	}
+	if readers == 1 {
+		read(0)
+	} else {
+		var joined sync.WaitGroup
+		for index := 0; index < readers-1; index++ {
+			joined.Go(func() { read(index) })
+		}
+		read(readers - 1)
+		joined.Wait()
+	}
+	return errors.Join(failures[:]...)
 }
 
 func snapshotFileMatches(record fileObservation, info os.FileInfo) bool {
@@ -245,29 +279,17 @@ func (s *Snapshot) Observe() (returnedErr error) {
 		names = append(names, name)
 	}
 	sort.Slice(names, func(i, j int) bool { return len(s.files[names[i]].body) > len(s.files[names[j]].body) })
-	// Two independent readers keep complete fresh byte/EOF/metadata checks.
-	// Original custody and final inventory remain with this serialized Observe;
-	// it joins every reader before recording failure or returning any result.
+	// Large files share bounded scratch across readers instead of leaving one idle after the
+	// smaller files finish. Custody and final inventory remain serialized.
 	if s.observationBytes == nil {
 		s.observationBytes = make([]byte, 2*(256<<10))
 	}
-	failures := make([]error, len(names))
-	var joined sync.WaitGroup
-	for worker := range 2 {
-		joined.Go(func() {
-			buffer := s.observationBytes[worker*(256<<10) : (worker+1)*(256<<10)]
-			for index := worker; index < len(names); index += 2 {
-				original := s.files[names[index]]
-				current, err := s.readInto(names[index], buffer, &original)
-				if err != nil || !snapshotFileMatches(original, current.identity) {
-					failures[index] = errors.Join(ErrBinding, err)
-				}
-			}
-		})
-	}
-	joined.Wait()
-	if err := errors.Join(failures...); err != nil {
-		return err
+	for _, name := range names {
+		original := s.files[name]
+		current, err := s.readInto(name, s.observationBytes, &original)
+		if err != nil || !snapshotFileMatches(original, current.identity) {
+			return errors.Join(ErrBinding, err)
+		}
 	}
 	return errors.Join(s.observeDirectories(), s.inventory(), s.ctx.Err())
 }

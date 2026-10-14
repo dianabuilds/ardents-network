@@ -11,6 +11,7 @@ import (
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/join"
 )
 
 // InitiatorBinding retains the independently verified destination and original
@@ -85,10 +86,14 @@ func prepareInitiator(ctx context.Context, source *InitiatorSource, proof public
 }
 
 func (binding *InitiatorBinding) check(setup bool) error {
+	return binding.checkWithJoin(setup, nil)
+}
+
+func (binding *InitiatorBinding) checkWithJoin(setup bool, physical *join.Joined) error {
 	if binding == nil || binding.self != binding || binding.operation == nil || binding.setup == nil || binding.source == nil {
 		return errIntegrity
 	}
-	if err := binding.source.check(); err != nil {
+	if err := binding.source.checkWithJoin(physical); err != nil {
 		return err
 	}
 	localContext, err := binding.operation.ConnectionContext()

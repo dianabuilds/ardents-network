@@ -141,11 +141,36 @@ func TestPrefixPairCommitHoldsBothOriginalSealsThroughLocalHandoff(t *testing.T)
 
 // An actual canceled original caller remains canceled after a failed read.
 // Preserve both causes; derived cancellation propagation is deliberately held.
+func TestResponderJoinObservationRetainsOriginalSourceCancellation(t *testing.T) {
+	caller, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	source := handoffLifetimePrefix(t, 1)
+	source.caller = caller
+	responder := handoffLifetimePrefix(t, 3)
+	responder.source = source
+	cause := errors.New("original Responder observation refused")
+	responder.config.Current = func() (network.RuntimeView, error) {
+		cancel()
+		return network.RuntimeView{}, cause
+	}
+	borrow := &JoinBorrow{source: source, responder: responder}
+	err := borrow.CheckOriginal()
+	if !errors.Is(err, cause) || !errors.Is(err, context.Canceled) {
+		t.Fatal("failed pair observation lost original Source cancellation", err)
+	}
+	borrow.source = handoffLifetimePrefix(t, 1)
+	if err := borrow.CheckOriginal(); err == nil {
+		t.Fatal("foreign Source accepted an original Responder")
+	}
+}
+
 func TestPrefixOriginalObservationRechecksCallerAfterRead(t *testing.T) {
 	original, revoke := context.WithCancel(t.Context())
 	defer revoke()
 	p, _, returns, cleanup := terminalSetupPhysicalPrefix(t, &prefixDeferredPropagation{Context: original})
 	defer cleanup()
+	lastComplete := time.Now().Add(-time.Second)
+	p.observation = &prefixObservation{at: lastComplete}
 	failure := errors.New("original Network read failed after revocation")
 	observations := 0
 	p.config.Current = func() (network.RuntimeView, error) {
@@ -156,6 +181,9 @@ func TestPrefixOriginalObservationRechecksCallerAfterRead(t *testing.T) {
 	err := p.originalCurrent()
 	if !errors.Is(err, failure) || !errors.Is(err, context.Canceled) || observations != 1 || p.ctx.Err() != nil || returns.Load() != 0 {
 		t.Fatalf("original observation lost revocation: error=%v observations=%d derived=%v returns=%d", err, observations, p.ctx.Err(), returns.Load())
+	}
+	if !p.observation.at.Equal(lastComplete) {
+		t.Fatal("failed terminal observation postponed background supervision")
 	}
 	if err := p.Close(); err != nil || returns.Load() != 1 {
 		t.Fatal("physical failure-only fixture failed joined return", err, returns.Load())
@@ -169,6 +197,32 @@ func handoffLifetimePrefix(t *testing.T, domain uint8) *Prefix {
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 	return &Prefix{ctx: ctx, caller: ctx, cancel: cancel, closing: make(chan struct{}), activity: make(chan struct{}, 1), config: Config{Leg: selection.Leg{EntryMember: network.Member{RoleDomain: domain}}}}
+}
+
+// Refusal-only local lifetimes isolate logical revoke before physical seal.
+// They provide no authenticated Network view or successful JOIN authority.
+func TestResponderJoinRefusesClosedSourceScopeBeforePhysicalSeal(t *testing.T) {
+	sourcePhysical := handoffLifetimePrefix(t, 1)
+	responderPhysical := handoffLifetimePrefix(t, 3)
+	source := &SourceScope{ctx: t.Context(), closed: true}
+	source.self = source
+	sg := &sourceGeneration{owner: source, physical: sourcePhysical}
+	source.current = sg
+	handle := &SourceHandle{owner: source, generation: sg}
+	handle.self = handle
+	responder := &ResponderScope{ctx: t.Context(), source: source, config: Config{Deadline: time.Now().Add(time.Minute)}}
+	responder.self = responder
+	rg := &responderGeneration{owner: responder, source: handle, physical: responderPhysical}
+	responder.current = rg
+	borrow := &ResponderJoinBorrow{owner: responder, generation: rg,
+		pair: &JoinBorrow{source: sourcePhysical, responder: responderPhysical}}
+	borrow.self = borrow
+	if sourcePhysical.localCurrent() != nil || responderPhysical.localCurrent() != nil {
+		t.Fatal("refusal fixture already sealed physical generations")
+	}
+	if err := borrow.CheckLocal(); !errors.Is(err, net.ErrClosed) {
+		t.Fatal("logically closed Source remained usable before physical join", err)
+	}
 }
 
 func TestResponderJoinRequiresImmutableOriginalSource(t *testing.T) {

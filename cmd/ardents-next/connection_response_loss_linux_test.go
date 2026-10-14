@@ -16,9 +16,41 @@ import (
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/successor/connection"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
+	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/successor/publication/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
+
+// Publisher JOIN starts only after its original delivery completed RESULT/CLOSE.
+// Hold that genuine observation before its channel opens. Holding the earlier
+// Introduction CLOSE would instead cancel an unfinished delivery when the
+// concurrent Reader JOIN fails, conflating the RESULT and JOIN cuts.
+func (g *publicationDeliveryCloseGate) observePublisherJoin(current func() (network.RuntimeView, error)) (network.RuntimeView, error) {
+	var callers [64]uintptr
+	frames := runtime.CallersFrames(callers[:runtime.Callers(2, callers[:])])
+	joinOpening, publisher := false, false
+	for {
+		frame, more := frames.Next()
+		joinOpening = joinOpening || frame.Function == "github.com/dianabuilds/ardents-network/internal/successor/route/join.(*JoinAcquisition).Join"
+		publisher = publisher || frame.Function == "github.com/dianabuilds/ardents-network/internal/successor/publication/runtime.(*Publisher).NextAuthentication"
+		if !more {
+			break
+		}
+	}
+	if joinOpening && publisher {
+		g.mu.Lock()
+		var resume <-chan struct{}
+		if g.armed {
+			g.once.Do(func() { close(g.entered) })
+			resume = g.resume
+		}
+		g.mu.Unlock()
+		if resume != nil {
+			<-resume
+		}
+	}
+	return current()
+}
 
 // This component uses qualified original workers and actual Route receivers.
 // It is not acceptance of two independently installed Endpoint managers.
@@ -199,13 +231,13 @@ func TestInstalledConnectionControlDeliveryBothCarriers(t *testing.T) {
 
 // These source sites are checked by the architecture profile: a moved call
 // cannot silently retarget a qualification fault to a prefix or pre-read check.
-const connectionControlBodyReadLine = 74
-const connectionControlReadRecheckLine = 373
+const connectionControlFramingReadLine = 36
+const connectionControlReadRecheckLine = 381
 
-const connectionPublisherControlWriteBeforeLine = 377
-const connectionPublisherControlWriteAfterLine = 389
-const connectionInitiatorControlWriteBeforeLine = 114
-const connectionInitiatorControlWriteAfterLine = 119
+const connectionPublisherControlWriteBeforeLine = 385
+const connectionPublisherControlWriteAfterLine = 397
+const connectionInitiatorControlWriteBeforeLine = 127
+const connectionInitiatorControlWriteAfterLine = 132
 
 // This observer runs on the actual serialized record writer, inside its
 // existing authority callback. The writer owns its immutable active ticket
@@ -302,6 +334,7 @@ func (gate *installedControlWriteGate) observe() {
 	var pcs [96]uintptr
 	frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs[:])])
 	actor, boundary, before, direct, source := false, false, false, false, false
+	responderBorrow, physicalDepth := false, 0
 	for {
 		frame, more := frames.Next()
 		switch frame.Function {
@@ -327,13 +360,23 @@ func (gate *installedControlWriteGate) observe() {
 			}
 		case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*ResponderScope).Check":
 			direct = true
+		case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*ResponderJoinBorrow).CheckOriginal":
+			responderBorrow = true
+		case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*Prefix).originalCurrent":
+			physicalDepth++
 		case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*SourceScope).Check":
+			source = true
+		case "github.com/dianabuilds/ardents-network/internal/successor/route/join.(*Joined).CheckSourceCaller":
 			source = true
 		}
 		if !more {
 			break
 		}
 	}
+	// The scoped borrow now observes the physical Responder directly. Its
+	// nested Source observation has two originalCurrent frames and must not
+	// select this same write a second time.
+	direct = direct || responderBorrow && physicalDepth == 1
 	if !actor || !(boundary || gate.beforeReceive && before || gate.afterFinish) || gate.role == "publisher" && (!direct || source) || gate.role == "initiator" && !source {
 		return
 	}
@@ -389,7 +432,8 @@ func (gate *installedControlWriteGate) observe() {
 }
 
 // One fixed Text request writes one Data record followed by its Terminal.
-// Select the Publisher's second complete body read, after real TLS I/O and
+// Each is a separate small TLS record, read through the Attachment's framing
+// scratch. Select the Publisher's second framing fill, after real TLS I/O and
 // before the original post-read authority check returns. The scheduler returns
 // no authority, record or error; the coordinator stops the actual Rendezvous.
 func installedPublisherTerminalBodyDelay() (observe func(), release func(), entered <-chan struct{}) {
@@ -401,15 +445,20 @@ func installedPublisherTerminalBodyDelay() (observe func(), release func(), ente
 		var pcs [96]uintptr
 		frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs[:])])
 		body, post, scope, source, actor := false, false, false, false, false
+		responderBorrow, physicalDepth := false, 0
 		for {
 			frame, more := frames.Next()
 			switch frame.Function {
-			case "github.com/dianabuilds/ardents-network/internal/successor/connection/wire.Read":
-				body = frame.Line == connectionControlBodyReadLine
+			case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*attachmentRecordReader).Read":
+				body = frame.Line == connectionControlFramingReadLine
 			case "github.com/dianabuilds/ardents-network/internal/successor/publication/instance.(*ServiceAttachment).Read":
 				post = frame.Line == connectionControlReadRecheckLine
 			case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*ResponderScope).Check":
 				scope = true
+			case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*ResponderJoinBorrow).CheckOriginal":
+				responderBorrow = true
+			case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*Prefix).originalCurrent":
+				physicalDepth++
 			case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*SourceScope).Check":
 				source = true
 			case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*Stream).readRecords":
@@ -419,6 +468,7 @@ func installedPublisherTerminalBodyDelay() (observe func(), release func(), ente
 				break
 			}
 		}
+		scope = scope || responderBorrow && physicalDepth == 1
 		// Only the direct Responder observation counts once per read; its
 		// separate nested Source observation must not count the same body twice.
 		if !body || !post || !scope || source || !actor {

@@ -137,6 +137,13 @@ stops active registration handles. It joins those borrowers before retiring
 their framing parents and returning reservations. Registration Close joins its
 reader, watcher, physical interrupt and entire owning withdrawal attempt and returns the
 same retained outcome. Done signals retirement; it does not replace Close.
+Registration supervision waits 100 milliseconds after each successful completed
+full observation, including a foreground receipt or effect check. A failed
+observation cannot postpone supervision, and a foreground call always observes
+again. A slow observation cannot accumulate an overdue tick and
+immediately start another scan. Delivery, receipt and wire-effect checks still
+perform their own fresh observations; no authority result is cached or deadline
+extended. Original cancellation interrupts the same retained lifetime.
 Its original child-cancellation callback seals the Registration stop barrier
 before physically interrupting the idle reader, matching explicit Close.
 That barrier retains cancellation of the original REGISTER caller even when

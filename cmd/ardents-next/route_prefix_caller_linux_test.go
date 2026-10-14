@@ -32,6 +32,7 @@ import (
 // caller cancellation propagation is delayed, using the registration harness.
 // No successful TLS, receiver admission, ACK, or Hosting result is substituted.
 func TestRoutePrefixOriginalCallerHandoffBothCarriers(t *testing.T) {
+	t.Parallel()
 	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		for checkpoint := int32(0); checkpoint <= 6; checkpoint++ {
 			t.Run(fmt.Sprintf("%s/observation-%d", profile, checkpoint), func(t *testing.T) {
@@ -222,6 +223,7 @@ func TestRoutePrefixOriginalCallerHandoffBothCarriers(t *testing.T) {
 // genuine additional capacity; 8 after receiving durable spend; 9 during
 // Interior presentation after genuine Entry refill has completed.
 func TestRouteRefillPublicOriginalCallerBothCarriers(t *testing.T) {
+	t.Parallel()
 	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		for checkpoint := int32(1); checkpoint <= 9; checkpoint++ {
 			t.Run(fmt.Sprintf("%s/observation-%d", profile, checkpoint), func(t *testing.T) {

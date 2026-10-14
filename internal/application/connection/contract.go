@@ -4,8 +4,13 @@ import (
 	"context"
 	"errors"
 	"io"
+	"time"
 	"unicode/utf8"
 )
+
+// ReaderTimeout bounds one local Reader setup and exchange. It is measured
+// once before dialing or at server acceptance, never renewed between phases.
+const ReaderTimeout = 60 * time.Second
 
 const (
 	maximumOutcomeClassBytes  = 128

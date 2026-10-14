@@ -35,12 +35,16 @@ integrity policy resides in installed_inspection_linux.go, while installed_files
 retains native read/retention and sealed-generation observations. Root inspection,
 recovery and non-root startup each retain independent observations; shared policy
 code neither lends the root writer lease to startup nor grants recovery authority.
-Each serialized file observation uses at most two readers with separate bounded
+Installed-file observations use at most two readers with separate bounded
 scratch blocks and original leaf descriptors. Every file is freshly read in full
 and compared with its retained bytes, followed by the same EOF, inode, ctime and
-access checks. Both readers join before parent descriptors close and final
+access checks. All readers join before parent descriptors close and final
 directory/inventory observations return a result. This retains independent
 inspection and Snapshot custody and supplies no accepting cache.
+Snapshot assigns at most sixteen readers to disjoint ranges of each large file through
+its one original descriptor; smaller files are read sequentially. It retains
+the same total 512 KiB scratch bound and joins all ranges before EOF and metadata
+checks, avoiding an idle reader while the larger executable is scanned.
 
 
 The following bounded command contract selects ADR-0119's installation
@@ -771,6 +775,14 @@ close joins Route cleanup and then releases it. A replacement Source therefore
 cannot be used by a late old JOIN, and a replacement Responder cannot be exposed
 through an older opening or JOIN acquisition.
 
+The Reader's Connection composition requests missing Stock for its already
+selected recipients through that same acquired Source before constructing the
+capsule and starting its short setup deadline. Command composition retains
+issuance policy and the original whole-operation deadline. Existing Forward
+Stock requires no additional issuer Control reserve; missing Forward is funded
+through the existing class-specific exchanges. Preparation neither presents a
+recipient token nor replaces the later HELLO and live-authority checks.
+
 Endpoint context composition serializes issuance admission with its retained
 Source-operation reservation, but one private issuance operation owns each
 admitted attempt's network context, cancellation, issuer presentation and
@@ -779,6 +791,12 @@ operation before permission material is released. A delayed completion cannot
 publish usable stock after revocation; ordinary retry retention and the
 recovery-only canceled-batch discard remain distinct and consume the same
 existing reservation and bootstrap allowance.
+
+The command's shared on-demand token flow serializes terminal-role Stock
+preparations through joined issuance and each final token presentation. Waiting
+callers retain their original cancellation and deadlines. An issuer exchange
+uses its already funded Control directly within that preparation; it cannot
+recursively acquire the same preparation or obtain missing issuer Control.
 
 One private Source lifecycle owns the stock-to-opening reservation, the exact
 published Route prefix and its cancellation through joined retirement. It alone
@@ -866,6 +884,41 @@ Stream cleanup failure across client turnover for its joined `Server.Close`
 result. Raw errors stay local; bounded refusal and cancellation precedence
 remain unchanged. Endpoint `readResult.Close` cancels and joins its Service/
 worker work before returning its retained result.
+
+AAI3 Reader setup and its single exchange share one absolute 60-second bound
+from socket acceptance. Request input remains limited to 15 seconds from that
+same acceptance; completing input does not renew the operation deadline. Setup
+and stream reads/writes retain the original bound. The trusted text Reader
+bounds its caller from before dialing through the exchange to 60 seconds;
+earlier cancellation still applies. Bootstrap remains bounded to 10 seconds,
+and new recovery remains forbidden in the final five seconds of the original
+Work Safety interval. No additional batch, retry or authority cache is granted.
+
+Under [ADR-0121](../adr/0121-bound-installed-connection-setup.md), each
+Attachment selects one capsule setup deadline at most thirty seconds ahead,
+clamped to the original caller, registration, Work Safety and recovery bounds.
+Introduction and the private recipient enforce that same absolute deadline.
+Unpaired JOIN also ends no later than thirty seconds from its original
+reservation. Pairing cannot renew setup or extend the Reader operation.
+Publication construction obtains missing Forward Stock for its already selected
+Introduction and Responder legs in one admitted batch through the original
+Source. Repeated recipients require distinct tokens. This spends the same
+finite allowance earlier and never opens a Responder before capsule validation
+and nonce commitment; each later HELLO still durably presents its own token.
+Reader and Publisher Source construction also includes the signed inventory
+Descriptor Store recipient in its existing second bootstrap Control batch.
+The restricted bootstrap channel still reaches only the issuer. Actual Store
+lookup/publication uses fresh admitted role transport and rechecks the selected
+recipient; early Stock grants neither a Descriptor nor a successful operation.
+For an already funded recipient, presentation invokes Stock's full `Take`
+directly, including while a different missing-token preparation owns issuance.
+Only its explicit pre-consumption stock-absence refusal may
+enter missing-token preparation; authority, cancellation, signature and journal
+failures cannot trigger issuance. Missing-token paths remain serialized through
+joined issuance and final presentation. If an opening's first token is missing,
+its batch retains the ordered deficit for both selected forwarding recipients.
+Every returned token is still freshly checked and
+durably marked, with no cached permission or refunded right.
 
 The fixed text reader has these setup outcomes:
 
@@ -1299,7 +1352,16 @@ RESULT/CLOSE, Instance TLS or authenticated recovery.
 
 The new Instance owner additionally retains one immutable logical Service lease
 under its original Publication lifetime. First Attachment setup returns that
-lease together with its purpose-specific TLS borrow. Physical retirement retains
+lease together with its purpose-specific TLS borrow. Initial admission matches the exact original JOIN intent,
+Work Safety end and setup deadline before a fresh JOIN observation and Instance
+admission; these immutable comparisons need no second pre-admission observation.
+The TLS borrow's identity check freshly observes its original logical lease and
+matches the supplied logical/Attachment tuple, so initial authentication uses that
+one complete check for the two handles constructed together. Initial authentication
+buffers only the exact fixed two-record
+flight, with the wire owner's byte bound: it cannot read into following
+Application data. Canonical parsing and the separate original-owner checks still
+surround each record and precede proof signing and accepted handoff. Physical retirement retains
 the logical lease, original Work Safety context and prior physical cleanup
 failure, including an interval without any Attachment. It keeps the actual JOIN while
 TLS cancellation interrupts its borrowing transport, joins TLS users before
@@ -1435,6 +1497,12 @@ read effect; contradictory overlap, a forward gap or an unverifiable discarded
 prefix refuses before fresh-byte admission. Full unread capacity applies
 backpressure without evicting bytes. Authenticated replacement retains both
 the received and consumed cursors and the original directional byte limit.
+Each Attachment reader additionally owns 512 bytes of private framing scratch,
+with no background reads. Buffered records remain unaccepted until each one's
+original-owner commit check; the receive/replay ledger bound is unchanged.
+Partial successor bytes still forbid the empty-TLS-tail exception, and an
+original read failure cannot be hidden by enough buffered bytes. The reader
+clears its scratch before reporting completion; it never follows a replacement.
 This mechanism still requires the real stream consumer and its authority,
 Terminal-control and physical-join ordering.
 New Reader construction additionally retains a fresh local ConnectionContext
@@ -1464,7 +1532,12 @@ observations, authenticate another Attachment or grant a new generation.
 The logical Stream applies the same ordering to byte admission, record
 acceptance/completion, Terminal settlement and recovery preparation: full
 original-owner observations outside consumer state locks, then bounded local
-effects under the retained Source/Responder and Stream barriers. Instance's
+effects under the retained Source/Responder and Stream barriers.
+Reader Attachment checks match its exact JOIN's Source scope, original caller,
+Network/profile and absolute bounds before and after one full physical
+observation. That generation retains the scope's same leg and authentic
+observer; no detached match or local seal supplies accepting authority.
+Instance's
 `ServiceLease.CheckCommitIdentity` compares the same live logical lease and
 Publication reservation without native I/O, including a physical Attachment
 gap. Original Credential/Work Safety bounds and Execution operation remain
@@ -1616,10 +1689,24 @@ operation. It prepares a distinct role-3 selection and finite reservation
 without dialing. The actual Responder opens only through that original Source
 after private capsule binding and nonce commitment; original caller cancellation
 interrupts opening and is joined before transfer to the Publisher lifetime.
+At that same accepted nonce boundary, command composition prepares only the
+incoming Rendezvous Forward Stock through an exact existing Source handle,
+concurrently with the already funded Responder opening. `PrepareJoin` cannot
+resolve another Source, open a JOIN or extend the caller. A sibling failure
+cancels the common preparation, and both original operations join before the
+delivery can return or retain success. Actual JOIN still obtains fresh recipient
+authority and durably presents its own token after Introduction completes.
 Unused preparation and failed opening retain their once-owned reservation until
 cleanup. Private initial handoff retains the exact delivery nonce, capsule-bound
 deadline, Connection binding and original opening. Successful RESULT is attempted
-only after those checks and actual Responder preparation; matching child CLOSE
+only after those checks and actual Responder preparation. The private preparation
+returns no accepting state: delivery retention owns the single complete fresh
+Binding/Rendezvous observation after acquisition and before its local commit
+and successful RESULT. Binding resolves its retained public Rendezvous first,
+then fully observes the accepting pair/private Candidate and checks the original
+operation before returning. This read-only observation has no intermediate
+private effect or accepting handoff, and retains no cached authority.
+Matching child CLOSE
 and final original observations precede retained handoff. This implementation
 has an isolated qualified snapshot-console incoming scenario on both Carriers:
 an independent actual Source submits a sealed capsule using the receiving

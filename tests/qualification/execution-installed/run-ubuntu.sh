@@ -2,6 +2,18 @@
 set -eu
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 test_root=TestInstalledExecutionStartup
+if [ "${1-}" = service-pair-participant ]; then
+    test_root=TestInstalledServicePairParticipant
+    shift
+    case "${ARDENTS_EXECUTION_PAIR_ROLE-}" in
+        publisher|reader) ;;
+        *) fail 'invalid environment: selected pair participant role required' ;;
+    esac
+    case "${ARDENTS_EXECUTION_START_CARRIER-}" in
+        ardents-carrier-tcp-tls-v2|ardents-carrier-quic-v2) ;;
+        *) fail 'invalid environment: independently selected installed Carrier required' ;;
+    esac
+fi
 if [ "${1-}" = service-publication ]; then
     test_root=TestInstalledServicePublication
     shift
@@ -74,6 +86,10 @@ cat "$log"
 [ "$(grep -c "^--- PASS: $test_root (" "$log" || true)" = 1 ] ||
     fail 'actual installed startup lacks exact executed evidence'
 if grep -q -- '--- SKIP:' "$log"; then fail 'passing skip is forbidden'; fi
+if [ "$test_root" = TestInstalledServicePairParticipant ]; then
+    printf '%s\n' 'execution-installed-pair-participant=passed; controller-and-peer-result-required'
+    exit 0
+fi
 if [ "$test_root" = TestInstalledServicePublication ]; then
     [ "$(grep -Fc -- "--- PASS: $test_root/$ARDENTS_EXECUTION_START_CARRIER (" "$log" || true)" = 1 ] ||
         fail 'installed publication lacks exact selected Carrier evidence'

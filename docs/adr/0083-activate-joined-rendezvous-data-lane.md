@@ -34,6 +34,9 @@ identity, next-hop choice, dependency, protection mode or raw-stream fallback.
 A candidate lacking this transition cannot participate in this data path;
 existing floor-preserving artifact/profile adoption remains required.
 
+The setup ceiling is amended to thirty seconds by
+[ADR-0121](0121-bound-installed-connection-setup.md); other decisions remain.
+
 ## Consequences
 
 Implement the actual pairing and framed data owners before claiming the full

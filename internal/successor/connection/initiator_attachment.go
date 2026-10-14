@@ -41,6 +41,14 @@ func initiatorLifetimes(original context.Context, end time.Time) (context.Contex
 }
 
 func (attachment *initiatorAttachment) check() error {
+	return attachment.observe(true)
+}
+
+// TLS's concrete JOIN Read/Write already observes its original acquisition
+// before and after physical I/O. Those calls use observe(false) for the
+// separate logical binding and local seal; all other callers also need the
+// explicit physical observation, including reads satisfied by TLS buffering.
+func (attachment *initiatorAttachment) observe(physical bool) error {
 	if attachment == nil || attachment.self != attachment || attachment.binding == nil || attachment.physical == nil {
 		return errIntegrity
 	}
@@ -54,7 +62,12 @@ func (attachment *initiatorAttachment) check() error {
 	// Instance proof and original Route/Network observations can perform
 	// native I/O. The attachment seal must remain independently accessible
 	// to interruption and Close while those owners are being observed.
-	err := errors.Join(attachment.binding.check(!initialComplete), attachment.physical.CheckOriginal())
+	var err error
+	if physical {
+		err = attachment.binding.checkWithJoin(!initialComplete, attachment.physical)
+	} else {
+		err = attachment.binding.check(!initialComplete)
+	}
 	attachment.mu.Lock()
 	defer attachment.mu.Unlock()
 	if attachment.initialComplete != initialComplete {
@@ -167,19 +180,19 @@ func (attachment *initiatorAttachment) close(failed bool) error {
 type initiatorTLSBorrow struct{ attachment *initiatorAttachment }
 
 func (borrow initiatorTLSBorrow) Read(body []byte) (int, error) {
-	if err := borrow.attachment.check(); err != nil {
+	if err := borrow.attachment.observe(false); err != nil {
 		return 0, err
 	}
 	n, err := borrow.attachment.physical.Read(body)
-	return n, errors.Join(err, borrow.attachment.check())
+	return n, errors.Join(err, borrow.attachment.observe(false))
 }
 
 func (borrow initiatorTLSBorrow) Write(body []byte) (int, error) {
-	if err := borrow.attachment.check(); err != nil {
+	if err := borrow.attachment.observe(false); err != nil {
 		return 0, err
 	}
 	n, err := borrow.attachment.physical.Write(body)
-	return n, errors.Join(err, borrow.attachment.check())
+	return n, errors.Join(err, borrow.attachment.observe(false))
 }
 
 func (borrow initiatorTLSBorrow) Close() error {

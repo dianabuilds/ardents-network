@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -36,26 +37,69 @@ func TestInstalledExecutionStartup(t *testing.T) {
 }
 
 func runInstalledServiceStartup(t *testing.T, publicationEnabled bool, carrier string) {
-	base, artifacts := os.Getenv("ARDENTS_EXECUTION_START_ROOT"), os.Getenv("ARDENTS_EXECUTION_START_RESOURCES")
-	if os.Getuid() != 0 || !filepath.IsAbs(base) || !filepath.IsAbs(artifacts) {
-		t.Fatal("invalid environment: root driver, fresh trusted root and pinned resources required")
-	}
+	_, artifacts := installedStartupPaths(t)
 	resources := installedStartupResources(t, artifacts)
-	program := filepath.Join(artifacts, "ardents-linux-amd64")
-	commandBuild.once.Do(func() { commandBuild.path = program })
-	if compiledCommand(t) != program {
-		t.Fatal("invalid environment: native fixture did not retain the pinned program")
-	}
 	var f *networkAdmissionFixture
 	if publicationEnabled {
 		f = installedServiceNetwork(t, carrier)
 	} else {
 		f = newNetworkAdmissionFixture(t)
 	}
+	network := installedSignedNetwork(t, f)
+	runInstalledParticipant(t, publicationEnabled, network, resources, func(base, role string, request []byte) []byte {
+		return installedServiceApproval(t, base, role, request, f)
+	}, nil)
+}
+
+func installedSignedNetwork(t *testing.T, f *networkAdmissionFixture) installedStartupNetwork {
+	t.Helper()
 	epoch, err := networkfixture.BuildClosed(f.spec)
 	if err != nil {
 		t.Fatal(err)
 	}
+	var authority [32]byte
+	copy(authority[:], f.spec.Authority.Public().(ed25519.PublicKey))
+	return installedStartupNetwork{NetworkID: f.spec.NetworkID, Seed: f.spec.Seed, Authority: authority,
+		Epoch: epoch.Epoch.Raw, Inputs: epoch.Epoch.Inputs, Materials: epoch.Epoch.Materials, Profile: epoch.Profile}
+}
+
+// This fixture input contains only public signed material and trust pins.
+// Every participant still authenticates it through its own actual State;
+// no live State, signing key, qualified operation or Instance crosses managers.
+type installedStartupNetwork struct {
+	NetworkID, Seed, Authority [32]byte
+	Epoch, Profile             []byte
+	Inputs, Materials          [][]byte
+}
+
+type installedStartupParticipant struct {
+	base     string
+	original [3]string
+	stop     func()
+}
+
+func installedStartupPaths(t *testing.T) (string, string) {
+	t.Helper()
+	base, artifacts := os.Getenv("ARDENTS_EXECUTION_START_ROOT"), os.Getenv("ARDENTS_EXECUTION_START_RESOURCES")
+	if os.Getuid() != 0 || !filepath.IsAbs(base) || !filepath.IsAbs(artifacts) {
+		t.Fatal("invalid environment: root driver, fresh trusted root and pinned resources required")
+	}
+	program := filepath.Join(artifacts, "ardents-linux-amd64")
+	commandBuild.once.Do(func() { commandBuild.path = program })
+	if compiledCommand(t) != program {
+		t.Fatal("invalid environment: native fixture did not retain the pinned program")
+	}
+	return base, artifacts
+}
+
+func runInstalledParticipant(t *testing.T, publicationEnabled bool, network installedStartupNetwork, resources map[string][]byte,
+	approve func(base, role string, request []byte) []byte, exercise func(installedStartupParticipant)) {
+	base, _ := installedStartupPaths(t)
+	if approve == nil {
+		t.Fatal("invalid environment: independent permission approval is required")
+	}
+	// Both callers verify the pinned inventory before starting any fixture
+	// network activity, then retain those exact bytes for signed installation.
 	clock := filepath.Join(base, "clock")
 	installedStartupWrite(t, clock, nil, 0644)
 	stopClock, clockJoined := make(chan struct{}), make(chan error, 1)
@@ -81,9 +125,8 @@ func runInstalledServiceStartup(t *testing.T, publicationEnabled bool, carrier s
 			t.Error(err)
 		}
 	})
-	var key [32]byte
-	copy(key[:], f.spec.Authority.Public().(ed25519.PublicKey))
-	plan := &networkAuthorityPlan{Root: filepath.Join(base, "state"), NetworkID: f.spec.NetworkID,
+	key := network.Authority
+	plan := &networkAuthorityPlan{Root: filepath.Join(base, "state"), NetworkID: network.NetworkID,
 		Authorities: [][32]byte{key}, Threshold: 1, ProfileAuthority: key, ClockObservationFile: clock}
 	config, err := networkStateConfig(plan)
 	if err != nil {
@@ -130,7 +173,7 @@ func runInstalledServiceStartup(t *testing.T, publicationEnabled bool, carrier s
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, acceptErr := seed.Accept(t.Context(), epoch.Epoch.Raw, epoch.Epoch.Inputs, epoch.Epoch.Materials)
+		_, acceptErr := seed.Accept(t.Context(), network.Epoch, network.Inputs, network.Materials)
 		closeErr := seed.Close()
 		if acceptErr != nil || closeErr != nil {
 			t.Fatal(acceptErr, closeErr)
@@ -174,7 +217,7 @@ func runInstalledServiceStartup(t *testing.T, publicationEnabled bool, carrier s
 	}
 	request = strings.ReplaceAll(request, strings.Repeat("02", 32), hex.EncodeToString(plan.NetworkID[:]))
 	request = strings.ReplaceAll(request, strings.Repeat("ab", 32), hex.EncodeToString(key[:]))
-	request = strings.ReplaceAll(request, strings.Repeat("05", 32), hex.EncodeToString(f.spec.Seed[:]))
+	request = strings.ReplaceAll(request, strings.Repeat("05", 32), hex.EncodeToString(network.Seed[:]))
 	for i, address := range addresses {
 		request = strings.ReplaceAll(request, quoted([]string{"source-a.example:443", "source-b.example:443"}[i]), quoted(address))
 		identity := sha256.Sum256([]byte([]string{"source-a.example", "source-b.example"}[i]))
@@ -235,11 +278,11 @@ func runInstalledServiceStartup(t *testing.T, publicationEnabled bool, carrier s
 		Epoch     []byte                "json:\"epoch\""
 		Inputs    [][]byte              "json:\"inputs\""
 		Materials [][]byte              "json:\"materials\""
-	}{plan, epoch.Epoch.Raw, epoch.Epoch.Inputs, epoch.Epoch.Materials}, "accepted-epoch")
+	}{plan, network.Epoch, network.Inputs, network.Materials}, "accepted-epoch")
 	accept("accept-profile", struct {
 		Network *networkAuthorityPlan "json:\"network\""
 		Profile []byte                "json:\"profile\""
-	}{plan, epoch.Profile}, "accepted-profile")
+	}{plan, network.Profile}, "accepted-profile")
 	candidateResources := make(map[string][]byte, len(resources))
 	for name, body := range resources {
 		candidateResources[name] = append([]byte(nil), body...)
@@ -280,7 +323,7 @@ func runInstalledServiceStartup(t *testing.T, publicationEnabled bool, carrier s
 			t.Error(err)
 		}
 	})
-	stopParticipant := func() {
+	stopParticipant := sync.OnceFunc(func() {
 		if current := installedStartupIdentity(t); current != original {
 			t.Errorf("original installed invocation changed: %v", current)
 			return
@@ -308,7 +351,7 @@ func runInstalledServiceStartup(t *testing.T, publicationEnabled bool, carrier s
 			}
 			return body[:n], false
 		})
-	}
+	})
 	t.Cleanup(stopParticipant)
 	// Hosting is an explicit provider input, never created/reset by runtime.
 	// The real installed command initializes it under the installed account
@@ -328,9 +371,9 @@ func runInstalledServiceStartup(t *testing.T, publicationEnabled bool, carrier s
 	installedStartupWrite(t, budgetPath, budgetInput, 0644)
 	installedStartupCommand(t, installedProgram, credential, "completed", "hosting", "initialize", "--config", budgetPath)
 	if publicationEnabled {
-		installedServiceInstance(t, installedProgram, credential, base, f.profile.NetworkID)
+		installedServiceInstance(t, installedProgram, credential, base, network.NetworkID)
 	}
-	installedServicePermissions(t, base, original, uid, gid, f, publicationEnabled)
+	installedServicePermissions(t, base, original, uid, gid, approve, publicationEnabled)
 	if current := installedStartupIdentity(t); current != original {
 		t.Fatal("accepted permission lost original invocation", current)
 	}
@@ -363,7 +406,9 @@ func runInstalledServiceStartup(t *testing.T, publicationEnabled bool, carrier s
 		t.Fatal("Reader continuation lost original invocation", current)
 	}
 	t.Log("actual non-root installed program completed Root exchange, qualified permission bootstrap and original-process Reader listener; no Service request accepted")
-	if publicationEnabled {
+	if exercise != nil {
+		exercise(installedStartupParticipant{base: base, original: original, stop: stopParticipant})
+	} else if publicationEnabled {
 		installedServicePublication(t, base, original)
 	}
 }

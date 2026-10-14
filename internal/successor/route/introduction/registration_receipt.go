@@ -50,7 +50,7 @@ func (r *HolderRegistration) CheckReceipt(receipt Receipt) error {
 	if unavailable {
 		return errors.New("route registration unavailable")
 	}
-	if err := r.check(); err != nil {
+	if err := r.checkOriginal(); err != nil {
 		return err
 	}
 	r.mu.Lock()

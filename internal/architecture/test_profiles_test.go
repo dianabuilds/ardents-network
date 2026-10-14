@@ -170,6 +170,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"publication-timing":                false,
 		"execution-installed":               false,
 		"execution-installed-publication":   false,
+		"execution-installed-pair":          false,
 		"execution-tree":                    false,
 		"execution-escape":                  false,
 		"execution-recovery":                false,

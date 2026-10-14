@@ -67,9 +67,6 @@ func (lifetime *PublicationLifetime) BeginService(operation *executionruntime.Op
 	if lifetime.caller != ctx {
 		return nil, nil, ErrUnavailable
 	}
-	if err := physical.CheckOriginal(); err != nil {
-		return nil, nil, err
-	}
 	request, digest, err := opening.Request(ctx)
 	if err != nil {
 		return nil, nil, err
@@ -80,9 +77,9 @@ func (lifetime *PublicationLifetime) BeginService(operation *executionruntime.Op
 	if end, exists := ctx.Deadline(); exists && time.Unix(request.WorkSafetyMaximum, 0).After(end) {
 		return nil, nil, ErrUnavailable
 	}
-	if err := physical.CheckLifetime(time.Unix(request.WorkSafetyNotAfter, 0)); err != nil {
-		return nil, nil, err
-	}
+	// CheckResponderBinding has just matched this exact Work Safety end and
+	// setup deadline and freshly observed the original JOIN. No effect occurs
+	// between that check and Instance admission below.
 	if err := lifetime.binding.observe(ctx); err != nil {
 		return nil, nil, err
 	}
@@ -309,6 +306,17 @@ func (service *ServiceAttachment) Evidence() (*wire.TLSBinding, error) {
 func (service *ServiceAttachment) CheckIdentity(identity wire.LogicalIdentity, logical, attachment [32]byte) error {
 	if err := service.recheck(); err != nil {
 		return err
+	}
+	return service.MatchIdentity(identity, logical, attachment)
+}
+
+// MatchIdentity compares the original sealed tuple and local lifetime only.
+// It supplies no accepting observation. Read/Write independently perform full
+// original-owner observations before and after I/O; other consumers must use
+// CheckIdentity before an accepting effect.
+func (service *ServiceAttachment) MatchIdentity(identity wire.LogicalIdentity, logical, attachment [32]byte) error {
+	if service == nil || service.self != service || service.lifetime == nil || service.lifetime.binding == nil || service.lifetime.binding.root == nil {
+		return ErrUnavailable
 	}
 	root := service.lifetime.binding.root
 	root.mu.Lock()

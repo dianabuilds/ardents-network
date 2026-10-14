@@ -549,6 +549,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if owner == "cmd/ardents-next" && strings.HasSuffix(source, "_test.go") && (dependency == modulePath+"/internal/successor/admission/token" || dependency == modulePath+"/internal/successor/admission/spending") {
 			return true
 		}
+		if source == "cmd/ardents-next/route_token_preparation_linux.go" && dependency == modulePath+"/internal/successor/admission/token" {
+			return true
+		}
 		if (source == "cmd/ardents-next/route_issuer_linux.go" || source == "cmd/ardents-next/route_token_linux.go") && (dependency == modulePath+"/internal/successor/admission/token" || dependency == modulePath+"/internal/successor/route/bootstrap") {
 			return true
 		}
@@ -565,7 +568,7 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "internal/successor/connection/initiator_source.go" {
-			for _, owned := range []string{"reachability", "route", "route/prefix", "route/selection", "route/introduction"} {
+			for _, owned := range []string{"network", "reachability", "route", "route/prefix", "route/selection", "route/introduction"} {
 				if dependency == modulePath+"/internal/successor/"+owned {
 					return true
 				}
@@ -591,6 +594,12 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if (source == "cmd/ardents-next/installed_endpoint_linux.go" || source == "cmd/ardents-next/installed_service_linux_test.go") && dependency == modulePath+"/internal/application/administration" {
 		return true
+	}
+	if source == "cmd/ardents-next/installed_pair_linux_test.go" {
+		switch dependency {
+		case modulePath + "/internal/application/administration", modulePath + "/internal/application/connection", modulePath + "/internal/application/textdocument":
+			return true
+		}
 	}
 	if source == "internal/successor/execution/runtime/initialization_linux.go" && dependency == modulePath+"/internal/application/textdocument" {
 		return true
@@ -711,6 +720,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"delayed ACK fixture cannot reserve durable authority", "cmd/ardents-next/publication_ack_installed_linux_test.go", modulePath + "/internal/successor/publication/durable", false},
 		{"installed Service scenario checks public credential codec", "cmd/ardents-next/installed_service_linux_test.go", modulePath + "/internal/successor/publication", true},
 		{"installed Service scenario uses public Administration client", "cmd/ardents-next/installed_service_linux_test.go", modulePath + "/internal/application/administration", true},
+		{"installed pair uses public Administration client", "cmd/ardents-next/installed_pair_linux_test.go", modulePath + "/internal/application/administration", true},
+		{"installed pair uses public Connection client", "cmd/ardents-next/installed_pair_linux_test.go", modulePath + "/internal/application/connection", true},
+		{"installed pair uses actual text exchange", "cmd/ardents-next/installed_pair_linux_test.go", modulePath + "/internal/application/textdocument", true},
+		{"installed pair cannot bypass Publication runtime", "cmd/ardents-next/installed_pair_linux_test.go", modulePath + "/internal/successor/publication/runtime", false},
+		{"installed pair cannot import old Endpoint", "cmd/ardents-next/installed_pair_linux_test.go", modulePath + "/internal/endpoint", false},
 		{"installed Service scenario cannot use old Endpoint", "cmd/ardents-next/installed_service_linux_test.go", modulePath + "/internal/endpoint", false},
 		{"installed Service scenario owns receiving Store fixture", "cmd/ardents-next/installed_service_linux_test.go", modulePath + "/internal/successor/reachability", true},
 		{"installed Service scenario selects exact Carrier", "cmd/ardents-next/installed_service_linux_test.go", modulePath + "/internal/successor/route/transport", true},

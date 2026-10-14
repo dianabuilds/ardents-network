@@ -104,11 +104,12 @@ func AuthenticateInitiator(ctx context.Context, binding *InitiatorBinding, physi
 	if err != nil || n != flight.Len() {
 		return nil, errors.Join(err, io.ErrShortWrite)
 	}
-	first, err := wire.Read(attachment)
+	response := initialFlightReader(attachment, wire.InitialResponseBytes)
+	first, err := response.readRecord()
 	if err != nil || first.Proof == nil {
 		return nil, errors.Join(errIntegrity, err)
 	}
-	second, err := wire.Read(attachment)
+	second, err := response.readRecord()
 	if err != nil || second.Continuity == nil {
 		return nil, errors.Join(errIntegrity, err)
 	}

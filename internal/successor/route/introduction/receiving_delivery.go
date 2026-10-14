@@ -115,7 +115,7 @@ func (d *registrationDispatch) reserve(ctx context.Context, envelope capsule.Env
 	registration, header := d.registration, envelope.Header()
 	if ctx.Err() != nil || d.ctx.Err() != nil || d.sealed || r.closed || registration.retired || registration.withdrawn ||
 		!registration.acknowledged || r.slots[header.Slot] != registration || header.Revision != registration.request.Revision ||
-		!now.Before(header.Expiry) || header.Expiry.After(registration.request.Expiry) || header.Expiry.After(now.Add(10*time.Second)) ||
+		!now.Before(header.Expiry) || header.Expiry.After(registration.request.Expiry) || header.Expiry.After(now.Add(30*time.Second)) ||
 		now.Before(d.lastTime) || nonce == [32]byte{} || nonce == registration.request.Nonce || nonce == header.DeliveryNonce || d.nonces[nonce] ||
 		d.inFlight >= 16 || registration.used > registration.maximum || deliveryExchangeBytes > registration.maximum-registration.used {
 		return errors.New("introduction delivery unavailable")

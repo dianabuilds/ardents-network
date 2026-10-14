@@ -55,9 +55,10 @@ func (p *Publisher) NextAuthentication(ctx context.Context) (_ *connection.Authe
 	}
 	defer p.flights.Done()
 	defer state.close()
-	if err := state.observe(); err != nil {
-		return nil, err
-	}
+	// Candidate checks the accepting pair/private request; BorrowJoin checks
+	// the original Responder and Source before retaining the local claim. No
+	// channel opens here. The complete delivery observation below owns the
+	// boundary immediately before JOIN, after this acquisition is retained.
 	request, _, err := state.opening.Candidate(state.ctx)
 	if err != nil {
 		return nil, err

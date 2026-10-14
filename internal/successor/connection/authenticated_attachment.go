@@ -146,6 +146,20 @@ type attachmentIO struct {
 }
 
 func (attachment attachmentIO) check() error {
+	if err := attachment.checkIOOwner(); err != nil {
+		return err
+	}
+	if attachment.owner.role == wire.RoleInitiator {
+		return attachment.initiator.check()
+	}
+	return attachment.service.CheckIdentity(attachment.owner.identity, attachment.owner.logical, attachment.context)
+}
+
+// Concrete transport entry performs its own full physical observation before
+// borrowing TLS and repeats it after I/O. Keep the separate original logical
+// owner observation here without observing that same physical attachment twice
+// consecutively. Replacement attachments still retain the original logical owner.
+func (attachment attachmentIO) checkIOOwner() error {
 	if err := attachment.owner.checkLogical(); err != nil {
 		return err
 	}
@@ -153,16 +167,16 @@ func (attachment attachmentIO) check() error {
 		if attachment.initiator == nil || attachment.service != nil {
 			return errIntegrity
 		}
-		return attachment.initiator.check()
+		return nil
 	}
 	if attachment.service == nil || attachment.initiator != nil {
 		return errIntegrity
 	}
-	return attachment.service.CheckIdentity(attachment.owner.identity, attachment.owner.logical, attachment.context)
+	return attachment.service.MatchIdentity(attachment.owner.identity, attachment.owner.logical, attachment.context)
 }
 
 func (attachment attachmentIO) Read(body []byte) (int, error) {
-	if err := attachment.check(); err != nil {
+	if err := attachment.checkIOOwner(); err != nil {
 		return 0, err
 	}
 	if attachment.owner.role == wire.RoleInitiator {
@@ -172,7 +186,7 @@ func (attachment attachmentIO) Read(body []byte) (int, error) {
 }
 
 func (attachment attachmentIO) Write(body []byte) (int, error) {
-	if err := attachment.check(); err != nil {
+	if err := attachment.checkIOOwner(); err != nil {
 		return 0, err
 	}
 	if attachment.owner.role == wire.RoleInitiator {

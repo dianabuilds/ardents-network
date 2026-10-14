@@ -201,7 +201,7 @@ func openTextReaderSource(operation *executionruntime.Operation, plan routePrefi
 			return nil, nil, err
 		}
 	}
-	physical, leg, _, err := openFundedSource(operation.Context(), plan, selected, budget, authority, holder, 1, operation.RetainCleanup)
+	physical, leg, funding, err := openFundedSource(operation.Context(), plan, selected, budget, authority, holder, 1, true, operation.RetainCleanup)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -210,6 +210,7 @@ func openTextReaderSource(operation *executionruntime.Operation, plan routePrefi
 		return nil, nil, err
 	}
 	source, err = connection.NewInitiatorSource(connection.InitiatorSourceConfig{Operation: operation, Source: physical,
+		PrepareRoute: funding.prepareRoute,
 		PrepareSource: func(caller context.Context) (prefix.Config, error) {
 			return prepareSelectedPublicationPrefix(caller, plan, leg, budget, authority, holder)
 		},

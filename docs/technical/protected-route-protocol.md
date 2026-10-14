@@ -525,6 +525,12 @@ Each live lane starts with 64 KiB receive credit and at most 64 KiB queued
 ciphertext per direction. CREDIT is granted only after bytes leave that queue
 for the actual consumer. Prefix queues total at most 4 MiB; complete Node
 queues remain within the admission owner's 64 MiB ceiling.
+Consumption accumulates a CREDIT batch until at least half the fixed window
+has been consumed. This needs no timer or background reader: the peer retains
+the unspent part of its original window while the batch accumulates. Consumed
+and queued-but-unemitted credit cannot authorize additional incoming bytes;
+the grant becomes usable only when its frame enters physical output. Pending
+handshake bytes grant no extra credit, and retirement discards unused batches.
 A slow lane cannot block reading another lane's bounded control/termination.
 
 The inner TLS consumer uses one bounded 16 KiB ciphertext input buffer without
@@ -716,7 +722,11 @@ ASCII domain `ardents-introduction-capsule-v3\0` followed by profile-digest[32].
 Associated data is that complete info followed by the exact 80-byte outer
 header (slot, revision, expiry, delivery nonce), excluding encapsulation. The
 recipient-only deadline equals the outer expiry and cannot exceed the signed
-registration or Work Safety deadline. The channel request nonce is independent
+registration or Work Safety deadline. The sender selects one absolute setup
+deadline no later than thirty seconds from sealing preparation and clamps it
+to the original caller, registration, Work Safety and recovery bounds.
+Receiving owners enforce the same thirty-second ceiling; no hop renews it.
+The channel request nonce is independent
 of the capsule delivery nonce; changing either does not alter the other's
 identifier namespace. These fixed bytes have no legacy format fallback.
 Handshake-context is independent fresh 32-byte CSPRNG material per Attachment;
@@ -727,7 +737,8 @@ Rendezvous JOIN carries join-secret[32], side u8 (User=1, Publisher=2),
 handshake-context[32] and deadline u64. Both independently authenticated
 terminal lanes must match the secret/context/profile and opposite side.
 At most two joins exist; third or duplicate-side joins are refused and do not
-replace an accepted side. Expire unpaired state after 10 seconds.
+replace an accepted side. Expire unpaired state no later than 30 seconds from
+its original reservation.
 The secret is 256 random bits. Each recipient independently generates its
 admission nonce; the join secret is never an issuer input or a hop label.
 
@@ -746,8 +757,9 @@ canonical JOIN body/padding above. It sends no OPEN. Other child IDs and a
 second JOIN on the channel refuse. Rendezvous retains at most two live sides
 with matching secret, handshake context and profile and opposite side values.
 Duplicate/third sides or context mismatch refuse without replacing a retained
-side. Unpaired state expires at the earlier original JOIN deadline or ten
-seconds from reservation.
+side. Unpaired state expires at the earlier original JOIN deadline or thirty
+seconds from reservation, as amended by
+[ADR-0121](../adr/0121-bound-installed-connection-setup.md).
 
 Only after pairing may Rendezvous emit the fixed 16,384-byte RESULT on local
 lane 1 with that channel's matching request nonce, accepted status and empty
@@ -762,7 +774,7 @@ return credit only after bounded queue consumption. No raw Service bytes are
 written directly on role TLS. JOIN bounds setup; paired data keeps its original
 HELLO/class-2 lifetime and byte reserve, already bounded by parent, State, duty
 and Work Safety. Pairing never extends a lease or truncates a permitted data
-workload to the capsule's ten-second setup deadline.
+workload to the capsule's thirty-second setup ceiling.
 
 Accepted JOIN receive bytes remain readable before a subsequent transport EOF,
 within their original bounded reservation and lifetime. Without a verified inner

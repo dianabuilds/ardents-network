@@ -160,7 +160,7 @@ func TestNestedTLSUnemittedControlRequiresActualPeerCLOSE(t *testing.T) {
 				before := lower.retirementWitness()
 				written := make(chan error, 1)
 				go func() {
-					written <- upper.write(child, ardp.Frame{Kind: kind, Lane: child.id, Body: body}, kind == ardp.KindClose)
+					written <- writeConsumedCredit(upper, child, ardp.Frame{Kind: kind, Lane: child.id, Body: body}, kind == ardp.KindClose)
 				}()
 				waitFramingState(t, child, func() bool { return upper.active == child })
 				if mode == "raw-eof" {
@@ -383,7 +383,7 @@ func TestNestedDeadlineRefusalAfterLowerRetirementIsNotUpperPhysicalFailure(t *t
 	child := lifecycleLane(t, upper, 1)
 	upperWritten := make(chan error, 1)
 	go func() {
-		upperWritten <- upper.write(child, ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}, false)
+		upperWritten <- writeConsumedCredit(upper, child, ardp.Frame{Kind: ardp.KindCredit, Lane: 1, Body: []byte{0, 0, 0, 1}}, false)
 	}()
 	waitFramingState(t, child, func() bool { return upper.stopped })
 	close(physical.writeGate)

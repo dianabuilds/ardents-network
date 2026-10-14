@@ -53,6 +53,24 @@ func (j *Joined) CheckResponderScope(scope *prefix.ResponderScope) error {
 	return borrow.CheckScope(scope)
 }
 
+// CheckSourceCaller reobserves this exact physical acquisition under its
+// original Source scope. One full observation covers their retained identical
+// leg and authentic observer; provenance and local seals are checked on both
+// sides, including the original caller and absolute bounds.
+func (j *Joined) CheckSourceCaller(scope *prefix.SourceScope, caller context.Context, network, profile [32]byte, end time.Time) error {
+	if j == nil || j.acquisition == nil {
+		return errors.New("route JOIN original stream unavailable")
+	}
+	borrow, ok := j.acquisition.borrows.(*prefix.SourceJoinBorrow)
+	if !ok {
+		return errors.New("JOIN has no original scoped Source")
+	}
+	if err := borrow.MatchSourceCaller(scope, caller, network, profile, end); err != nil {
+		return err
+	}
+	return errors.Join(j.CheckOriginal(), borrow.MatchSourceCaller(scope, caller, network, profile, end))
+}
+
 // CheckOriginal reobserves this exact acquisition; it does not authorize a
 // Service or grant a new physical attempt. A copied/zero stream is unavailable.
 func (j *Joined) CheckOriginal() error {
@@ -108,12 +126,14 @@ func (j *Joined) CheckResponderBinding(secretDigest, intent [32]byte, end, setup
 }
 
 func (j *Joined) checkBinding(side uint8, secretDigest, intent [32]byte, end, setupEnd time.Time) error {
-	if err := j.CheckOriginal(); err != nil {
-		return err
+	if j == nil {
+		return errors.New("route JOIN original stream unavailable")
 	}
 	if j.side != side || secretDigest == [32]byte{} || intent == [32]byte{} || j.secretDigest != secretDigest || j.intent != intent || !j.end.Equal(end) || !j.setupEnd.Equal(setupEnd) {
 		return errors.New("route JOIN original intent mismatch")
 	}
+	// These immutable commitments have no effects. Observe the original
+	// acquisition once, after all comparisons and immediately before return.
 	return j.CheckOriginal()
 }
 

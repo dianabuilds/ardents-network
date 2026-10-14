@@ -515,6 +515,7 @@ func TestSessionLifecycleCreditIgnoresCompletedPayloadDeadline(t *testing.T) {
 	s := New(context.Background(), local, time.Now().Add(5*time.Second), 32<<20, nil, false, &Budget{maximum: 64 << 20}, nil)
 	defer s.Close()
 	l := lifecycleLane(t, s, 1)
+	consumeBeforeCredit(t, peer, l, int(Window/2)-4)
 	if err := l.SetWriteDeadline(time.Now().Add(-time.Second)); err != nil {
 		t.Fatal(err)
 	}
@@ -525,7 +526,7 @@ func TestSessionLifecycleCreditIgnoresCompletedPayloadDeadline(t *testing.T) {
 			return
 		}
 		f, err := ardp.ReadFrame(peer)
-		if err == nil && (f.Kind != ardp.KindCredit || f.Lane != 1 || !bytes.Equal(f.Body, []byte{0, 0, 0, 4})) {
+		if err == nil && (f.Kind != ardp.KindCredit || f.Lane != 1 || !bytes.Equal(f.Body, []byte{0, 0, 128, 0})) {
 			err = errors.New("wrong credit frame")
 		}
 		result <- err

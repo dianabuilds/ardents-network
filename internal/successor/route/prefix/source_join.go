@@ -70,7 +70,10 @@ func (b *SourceJoinBorrow) CheckOriginal() error {
 	if err := b.CheckLocal(); err != nil {
 		return err
 	}
-	return errors.Join(b.owner.Check(), b.pair.CheckOriginal(), b.CheckLocal())
+	// Every physical generation retains this scope's exact leg and authentic
+	// observer, including after replacement. Its full observation checks those
+	// same public facts; the scope fences retain original local authority.
+	return errors.Join(b.pair.CheckOriginal(), b.CheckLocal())
 }
 
 // CheckScope compares opaque original provenance, not equal public role facts.
@@ -79,6 +82,18 @@ func (b *SourceJoinBorrow) CheckScope(scope *SourceScope) error {
 		return errors.New("source JOIN belongs to another scope")
 	}
 	return b.CheckOriginal()
+}
+
+// MatchSourceCaller compares original provenance and local seals only. JOIN
+// must separately observe its actual acquisition before accepting the match.
+func (b *SourceJoinBorrow) MatchSourceCaller(scope *SourceScope, caller context.Context, network, profile [32]byte, end time.Time) error {
+	if b == nil || b.self != b || b.owner != scope {
+		return errors.New("source JOIN belongs to another scope")
+	}
+	if err := scope.matchSourceCaller(caller, network, profile, end); err != nil {
+		return err
+	}
+	return b.CheckLocal()
 }
 
 func (b *SourceJoinBorrow) WaitRetirement(ctx context.Context) { b.pair.WaitRetirement(ctx) }

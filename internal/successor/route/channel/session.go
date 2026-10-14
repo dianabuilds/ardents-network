@@ -409,7 +409,7 @@ func (s *Session) read() {
 		case ardp.KindBytes:
 			if l.handshake && l.handshakeBytes+l.handshakeOutput+uint32(len(f.Body)) > 4096 {
 				err = errors.New("route pending TLS allowance exhausted")
-			} else if l.eof || uint32(len(f.Body)) > l.receive || len(l.buffer)+len(f.Body) > int(Window) || s.queued+s.outbound+uint64(len(f.Body)) > 4<<20 {
+			} else if l.eof || l.pendingCredit+l.queuedCredit > l.receive || uint32(len(f.Body)) > l.receive-l.pendingCredit-l.queuedCredit || len(l.buffer)+len(f.Body) > int(Window) || s.queued+s.outbound+uint64(len(f.Body)) > 4<<20 {
 				err = errors.New("route receive credit exhausted")
 			} else if l.queueBound != nil && !l.queueBound.reserve(uint64(len(f.Body))) {
 				// Exhausting this child group's smaller queue denies only this
@@ -605,6 +605,16 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 			// Cleanup may emit CLOSE only once this original OPEN is
 			// admitted to Write, never merely because its deadline started.
 			l.openEmitted = true
+		} else if f.Kind == ardp.KindCredit {
+			credit := binary.BigEndian.Uint32(f.Body)
+			if credit > l.queuedCredit {
+				output.err = errors.New("route unearned receive credit")
+				refused = true
+			} else {
+				// The peer may use the grant before Write returns. Admit it at
+				// physical output, never while consumption or queued output waits.
+				l.queuedCredit -= credit
+			}
 		}
 		s.mu.Unlock()
 	}

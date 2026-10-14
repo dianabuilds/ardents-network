@@ -5,6 +5,11 @@ const (
 	Profile = "ardents-service-connection-profile-v3"
 	// MaximumDataBytes bounds one record allocation, not the logical stream.
 	MaximumDataBytes = 16 << 10
+	// InitialRequestBytes is exactly Challenge followed by initial Continuity.
+	// It bounds read-ahead of that flight, never subsequent Application records.
+	InitialRequestBytes = 2*(len(connectionPrefix)+2+commonHeaderSize) + 136 + 161
+	// InitialResponseBytes is exactly Instance Proof followed by Continuity.
+	InitialResponseBytes = 2*(len(connectionPrefix)+2+commonHeaderSize) + 96 + 161
 )
 
 // Challenge asks the exact independently verified Instance to authenticate

@@ -136,6 +136,56 @@ func TestInstallationNativeSnapshotRetainsOriginalCancellation(t *testing.T) {
 	}
 }
 
+func TestInstallationNativeSnapshotParallelReadsEveryRange(t *testing.T) {
+	expected := bytes.Repeat([]byte{0x53}, (2<<20)+3)
+	scratch := make([]byte, 2*(256<<10))
+	path := filepath.Join(t.TempDir(), "fresh-bytes")
+	offsets := []int{-1, 0, len(expected) - 1}
+	for part := 1; part < 16; part++ {
+		boundary := len(expected) * part / 16
+		offsets = append(offsets, boundary-1, boundary, boundary+1)
+	}
+	for _, offset := range offsets {
+		body := bytes.Clone(expected)
+		if offset >= 0 {
+			body[offset] ^= 1
+		}
+		if err := os.WriteFile(path, body, 0600); err != nil {
+			t.Fatal(err)
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := &Snapshot{ctx: t.Context()}
+		observed := s.compareBytes(file, expected, scratch)
+		if err := file.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if offset < 0 && observed != nil || offset >= 0 && !errors.Is(observed, ErrBinding) {
+			t.Fatalf("fresh comparison at offset %d: %v", offset, observed)
+		}
+	}
+	if err := os.Truncate(path, int64(len(expected)-1)); err != nil {
+		t.Fatal(err)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	s := &Snapshot{ctx: t.Context()}
+	if !errors.Is(s.compareBytes(file, expected, scratch), ErrBinding) {
+		t.Fatal("short final range accepted")
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	s.ctx = ctx
+	if !errors.Is(s.compareBytes(file, expected, scratch), context.Canceled) {
+		t.Fatal("original canceled reader accepted")
+	}
+}
+
 // Actual kernel credential drop in an owned chroot proves read access without
 // root or writer.lock. This is not a systemd invocation or startup qualification.
 func TestInstallationNativeSnapshotServiceAccount(t *testing.T) {

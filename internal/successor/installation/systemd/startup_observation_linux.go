@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -216,19 +217,28 @@ func (client *startupBus) round(ctx context.Context) (result StartupRound, retur
 			"org.freedesktop.DBus.Properties.GetAll", 0, make(chan *dbus.Call, 1), "org.freedesktop.systemd1."+request.iface)
 	}
 	values := [...]*Properties{&result.EndpointUnit, &result.EndpointService, &result.ReaderUnit, &result.ReaderSocket, &result.PublisherUnit, &result.PublisherSocket}
+	var conversions sync.WaitGroup
+	defer conversions.Wait()
+	var failures [6]error
+	var converted [6]Properties
 	for index, call := range calls {
 		answer := <-call.Done
 		received[index] = true
 		if err := errors.Join(answer.Err, bounded.Err(), ctx.Err()); err != nil {
 			return result, fmt.Errorf("fresh fixed %s properties: %w", requests[index].iface, err)
 		}
-		properties, err := startupProperties(answer)
-		if err != nil {
-			return result, err
-		}
-		*values[index] = properties
+		// Replies retain independent immutable decoded maps. Convert the same
+		// six complete dictionaries concurrently, while receiving the remaining
+		// replies; no next round or result may escape before all six join.
+		conversions.Go(func() {
+			converted[index], failures[index] = startupProperties(answer)
+		})
 	}
-	return result, errors.Join(bounded.Err(), ctx.Err())
+	conversions.Wait()
+	for index := range values {
+		*values[index] = converted[index]
+	}
+	return result, errors.Join(errors.Join(failures[:]...), bounded.Err(), ctx.Err())
 }
 
 func startupProperties(answer *dbus.Call) (Properties, error) {

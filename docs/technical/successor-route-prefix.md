@@ -78,6 +78,13 @@ acquisition and nested-stream tests exercise consumer retirement separately.
 
 Exact package/import directions are in the [package map](../development/package-map.md).
 
+Responder observations fence the original Source caller before observing their
+own authority, then fully reobserve that same Source before returning. No
+transport effect occurs between these observations. Failed foreign observation
+also retains original Source cancellation; it cannot publish a Responder or
+transfer the caller's reservation. Each later effect still performs its fresh
+checks, without retaining an accepting observation between calls.
+
 `CheckResponderRendezvous` refuses a foreign original Source before observation
 and independently checks the exact Rendezvous from both retained physical legs.
 Publication consumes this narrow check after genuine Source-bound Responder
@@ -136,6 +143,17 @@ After a local seal, the watcher leaves ordered parent retirement to Close:
 joining the Interior reader cannot cancel Entry before its clean retirement.
 Periodic supervision waits 100 milliseconds after each completed fresh
 observation, so an overdue timer cannot immediately queue another full check.
+Successful effect and terminal-borrower checks of the same physical leg also
+start that supervision interval when the leg remains current at completion.
+Introduction and Submission terminal checks report that completion only after
+their complete leg/recipient and original caller checks have succeeded.
+The Introduction check validates the original leg and exact retained recipient
+against one fresh coherent Network view, including profile, duty generation,
+role, exclusions and bounds. There is no effect between these validations;
+later effects and post-I/O boundaries obtain their own fresh observations.
+Every effect still invokes the full observer; only the background
+poll consults the completion timestamp. No authority value is retained, a
+failed check cannot defer supervision, and no operation deadline is extended.
 Effect/post-I/O checks and original caller/deadline interruption stay independent.
 Unexpected parent failure before a local seal still cancels dependent work;
 the joined result retains the original physical failure. Portable pipe tests
@@ -454,8 +472,11 @@ and order; there is no coalescing wait. Role TLS and the shared listener disable
 adaptive small records so an available write does not create unnecessary nested
 lane credit exchanges. Authentication, credit limits and deadlines are unchanged.
 
-Publication's first forwarding presentation for a newly retained prefix requests
-the missing Entry and Interior Forward stock in one same-class batch. It checks
+Initial Publication prepares its selected Introduction's missing Entry and
+Interior Forward stock through the original Source before opening the role
+channels, so issuance does not consume their short admission deadline. A newly
+retained prefix's first forwarding presentation retains on-demand preparation
+for any remaining deficit in one same-class batch. Preparation checks
 the exact retained Interior duty before issuing and preserves recipient order
 and multiplicity. This uses the admitted Source and one Stock preparation for
 any needed joined Control replacement and Forward exchange. Each recipient still gets

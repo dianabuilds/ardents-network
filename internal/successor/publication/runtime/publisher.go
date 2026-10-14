@@ -27,9 +27,13 @@ type Config struct {
 	Responder        prefix.Config
 	PrepareResponder func(context.Context) (prefix.Config, error)
 	PrepareSource    func(context.Context) (prefix.Config, error)
-	Duty             network.RetainedDuty
-	Deadline         time.Time
-	Exclusions       []route.Member
+	// PrepareJoin may fund only the accepted Rendezvous through this exact
+	// existing Source. It joins its own work before returning, grants no
+	// physical opening and cannot replace the Source or extend the caller.
+	PrepareJoin func(context.Context, *prefix.SourceHandle, network.RetainedDuty) error
+	Duty        network.RetainedDuty
+	Deadline    time.Time
+	Exclusions  []route.Member
 }
 
 type Publisher struct {

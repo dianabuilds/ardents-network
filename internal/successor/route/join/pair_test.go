@@ -282,7 +282,7 @@ func TestJoinPairUnmatchedSetupExpiresAtOriginalBound(t *testing.T) {
 		wait    time.Duration
 	}{
 		{name: "request-deadline", request: 3 * time.Second, wait: 3 * time.Second},
-		{name: "reservation-ceiling", request: 30 * time.Second, wait: 10 * time.Second},
+		{name: "reservation-ceiling", request: 45 * time.Second, wait: 30 * time.Second},
 	} {
 		t.Run(limit.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
+	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route"
@@ -21,13 +22,33 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 )
 
+// attachmentSetupDeadline selects the original absolute setup bound once.
+// Rounding cannot extend a caller's earlier deadline (ADR-0121).
+func attachmentSetupDeadline(ctx context.Context, now time.Time, bounds ...time.Time) time.Time {
+	end := now.Add(30 * time.Second)
+	if callerEnd, ok := ctx.Deadline(); ok && callerEnd.Before(end) {
+		end = callerEnd
+	}
+	for _, bound := range bounds {
+		if bound.Before(end) {
+			end = bound
+		}
+	}
+	return end.UTC().Truncate(time.Second)
+}
+
 // InitiatorSourceConfig names original owners, not a replacement policy. On
 // successful construction Source transfers to Connection; History and the
 // retained Rendezvous selection remain caller-owned through Source.Close.
 type InitiatorSourceConfig struct {
-	Operation                                                 *executionruntime.Operation
-	Source                                                    *prefix.Prefix
-	PrepareSource                                             func(context.Context) (prefix.Config, error)
+	Operation     *executionruntime.Operation
+	Source        *prefix.Prefix
+	PrepareSource func(context.Context) (prefix.Config, error)
+	// PrepareRoute funds the already selected Introduction and Rendezvous
+	// through this exact retained Source before the short capsule setup starts.
+	// Nil means Stock is provisioned independently; actual HELLO presentation
+	// and all subsequent authority checks remain required in either case.
+	PrepareRoute                                              func(context.Context, *prefix.SourceHandle, network.RetainedDuty, network.RetainedDuty) error
 	History                                                   *reachability.History
 	Rendezvous                                                *selection.Rendezvous
 	TargetLink                                                string
@@ -147,6 +168,10 @@ func (source *InitiatorSource) localLocked() error {
 }
 
 func (source *InitiatorSource) check() error {
+	return source.checkWithJoin(nil)
+}
+
+func (source *InitiatorSource) checkWithJoin(physical *join.Joined) error {
 	if source == nil || source.self != source || source.ctx == nil || source.config.Operation == nil || source.config.Source == nil {
 		return errIntegrity
 	}
@@ -157,7 +182,12 @@ func (source *InitiatorSource) check() error {
 		return err
 	}
 	var current error
-	if source.scope == nil {
+	if physical != nil {
+		if source.scope == nil {
+			return errIntegrity
+		}
+		current = physical.CheckSourceCaller(source.scope, source.config.Operation.Context(), source.config.Network, source.config.Profile, source.config.WorkSafetyMaximum)
+	} else if source.scope == nil {
 		// Constructor checks the actual original Prefix before its scope
 		// transfer. No constructed consumer uses this preparation path.
 		current = source.config.Source.CheckSourceCaller(source.config.Operation.Context(), source.config.Network, source.config.Profile, source.config.WorkSafetyMaximum)
@@ -254,11 +284,13 @@ func (source *InitiatorSource) AuthenticateInitial() (_ *AuthenticatedAttachment
 	if err := handle.CheckRendezvous(rendezvous, excluded); err != nil {
 		return nil, err
 	}
-	setupEnd := time.Now().Add(8 * time.Second).UTC().Truncate(time.Second)
-	if setupEnd.After(source.config.WorkSafetyNotAfter) {
-		setupEnd = source.config.WorkSafetyNotAfter
+	if source.config.PrepareRoute != nil {
+		if err := source.config.PrepareRoute(source.ctx, handle, intro, rendezvous); err != nil {
+			return nil, fmt.Errorf("connection initial Route preparation: %w", err)
+		}
 	}
-	if setupEnd.After(descriptor.Introduction.NotAfter) {
+	setupEnd := attachmentSetupDeadline(source.ctx, time.Now(), source.config.WorkSafetyNotAfter, descriptor.Introduction.NotAfter)
+	if !time.Now().Before(setupEnd) {
 		return nil, errIntegrity
 	}
 	setup, cancel := context.WithDeadline(source.ctx, setupEnd)
@@ -448,11 +480,13 @@ func (source *InitiatorSource) openReplacement(proposal *initiatorReplacement) (
 	if err := handle.CheckRendezvous(rendezvous, excluded); err != nil {
 		return nil, nil, err
 	}
-	setupEnd := time.Now().Add(8 * time.Second).UTC().Truncate(time.Second)
-	if lookupEnd.Before(setupEnd) {
-		setupEnd = lookupEnd
+	if source.config.PrepareRoute != nil {
+		if err := source.config.PrepareRoute(proposal.ctx, handle, intro, rendezvous); err != nil {
+			return nil, nil, fmt.Errorf("connection replacement Route preparation: %w", err)
+		}
 	}
-	if descriptor.Introduction.NotAfter.Before(setupEnd) || !time.Now().Before(setupEnd) {
+	setupEnd := attachmentSetupDeadline(proposal.ctx, time.Now(), lookupEnd, source.config.WorkSafetyNotAfter, descriptor.Introduction.NotAfter)
+	if !time.Now().Before(setupEnd) {
 		return nil, nil, errRecoveryExhausted
 	}
 	request := capsule.Request{Network: identity.Network, Target: identity.Target, PublicationDigest: identity.Publication,

@@ -65,6 +65,7 @@ func (server *server) serve() {
 		if err != nil {
 			return
 		}
+		acceptedAt := time.Now()
 		server.mu.Lock()
 		if server.ctx.Err() != nil || len(server.clients) >= 64 {
 			server.mu.Unlock()
@@ -83,20 +84,26 @@ func (server *server) serve() {
 				delete(server.clients, connection)
 				server.mu.Unlock()
 			}()
-			server.handle(connection)
+			server.handle(connection, acceptedAt)
 		}()
 	}
 }
 
-func (server *server) handle(local *net.UnixConn) {
+func (server *server) handle(local *net.UnixConn, acceptedAt time.Time) {
 	defer local.Close()
-	_ = local.SetDeadline(time.Now().Add(15 * time.Second))
+	deadline := acceptedAt.Add(ReaderTimeout)
+	if err := local.SetDeadline(acceptedAt.Add(15 * time.Second)); err != nil {
+		return
+	}
 	targetLink, err := readRequest(local)
 	if err != nil {
 		_ = writeRefusal(local, err)
 		return
 	}
-	application, cancel, err := server.openAuthorizedAttachment(local, targetLink)
+	if err := local.SetDeadline(deadline); err != nil {
+		return
+	}
+	application, cancel, err := server.openAuthorizedAttachment(local, targetLink, deadline)
 	if err != nil || application == nil {
 		_ = writeRefusal(local, err)
 		return
@@ -108,7 +115,6 @@ func (server *server) handle(local *net.UnixConn) {
 	if _, err := local.Write([]byte{1}); err != nil {
 		return
 	}
-	_ = local.SetDeadline(time.Time{})
 	inputDone := make(chan struct{})
 	go func() {
 		defer close(inputDone)

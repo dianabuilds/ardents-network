@@ -55,20 +55,9 @@ func Read(reader io.Reader) (Record, error) {
 	if reader == nil {
 		return Record{}, errors.New("native connection record reader is absent")
 	}
-	prefix := make([]byte, len(connectionPrefix))
-	if _, err := io.ReadFull(reader, prefix); err != nil {
+	size, err := readRecordHeader(reader)
+	if err != nil {
 		return Record{}, err
-	}
-	if string(prefix) != connectionPrefix {
-		return Record{}, errors.Join(ErrInvalidRecord, errors.New("native connection record prefix is invalid"))
-	}
-	var length [2]byte
-	if _, err := io.ReadFull(reader, length[:]); err != nil {
-		return Record{}, err
-	}
-	size := int(binary.BigEndian.Uint16(length[:]))
-	if size < commonHeaderSize || size > maximumBodySize {
-		return Record{}, errors.Join(ErrInvalidRecord, errors.New("native connection record body is outside its bound"))
 	}
 	body := make([]byte, size)
 	if _, err := io.ReadFull(reader, body); err != nil {

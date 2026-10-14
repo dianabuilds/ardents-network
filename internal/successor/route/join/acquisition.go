@@ -128,7 +128,19 @@ func startAcquisition(ctx context.Context, borrow func(func(), func() error) (jo
 }
 
 func (a *JoinAcquisition) current() error {
-	if a == nil || a.self != a {
+	if err := a.checkLocal(); err != nil {
+		return err
+	}
+	if err := a.originalCurrent(); err != nil {
+		return err
+	}
+	return a.checkLocal()
+}
+
+// checkLocal grants no authority. It fences full observations with the exact
+// acquisition, original callers and borrowed physical generations.
+func (a *JoinAcquisition) checkLocal() error {
+	if a == nil || a.self != a || a.caller == nil || a.ctx == nil || a.borrows == nil {
 		return errors.New("route JOIN acquisition absent")
 	}
 	if err := errors.Join(a.caller.Err(), a.ctx.Err()); err != nil {
@@ -136,18 +148,6 @@ func (a *JoinAcquisition) current() error {
 	}
 	a.mu.Lock()
 	closed := a.closed
-	a.mu.Unlock()
-	if closed {
-		return net.ErrClosed
-	}
-	if err := a.borrows.CheckLocal(); err != nil {
-		return err
-	}
-	if err := a.originalCurrent(); err != nil {
-		return err
-	}
-	a.mu.Lock()
-	closed = a.closed
 	a.mu.Unlock()
 	if closed {
 		return net.ErrClosed

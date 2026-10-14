@@ -77,7 +77,7 @@ func installedServiceDeclaration(t *testing.T, raw, base string) string {
 	return raw
 }
 
-func installedServicePermissions(t *testing.T, base string, original [3]string, uid, gid uint64, f *networkAdmissionFixture, dual bool) {
+func installedServicePermissions(t *testing.T, base string, original [3]string, uid, gid uint64, approve func(string, string, []byte) []byte, dual bool) {
 	roles := []string{"reader"}
 	if dual {
 		roles = append(roles, "publisher")
@@ -98,26 +98,7 @@ func installedServicePermissions(t *testing.T, base string, original [3]string, 
 		if err != nil {
 			t.Fatal(err)
 		}
-		prepared, err := allocation.Prepare(request, f.profile.NetworkID, time.Now())
-		if err != nil {
-			t.Fatal(err)
-		}
-		decision, err := prepared.Decide(nil, f.profile.IssuanceAuthorityKey, time.Now())
-		if err != nil {
-			t.Fatal(err)
-		}
-		journal := filepath.Join(base, "allocation-"+role)
-		installedStartupWrite(t, journal, decision.Journal(), 0600)
-		readback, err := os.ReadFile(journal)
-		if err != nil || !bytes.Equal(readback, decision.Journal()) {
-			t.Fatal("allocation durable readback", err)
-		}
-		permission := decision.Permission()
-		copy(permission.Signature[:], ed25519.Sign(f.spec.Authority, admission.PermissionTranscript(permission)))
-		response, err := admission.EncodePermission(permission)
-		if err != nil {
-			t.Fatal(err)
-		}
+		response := approve(base, role, request)
 		pending := filepath.Join(directory, "response.pending")
 		installedStartupWrite(t, pending, response, 0600)
 		if err := os.Chown(pending, int(uid), int(gid)); err != nil {
@@ -139,6 +120,33 @@ func installedServicePermissions(t *testing.T, base string, original [3]string, 
 			return raw, installedServiceEvent(raw, "permission-accepted", role)
 		})
 	}
+}
+
+// Approval stays with the fixture authority. A participant receives only the
+// signed response to its actual qualified request, never this signing key.
+func installedServiceApproval(t *testing.T, base, role string, request []byte, f *networkAdmissionFixture) []byte {
+	t.Helper()
+	prepared, err := allocation.Prepare(request, f.profile.NetworkID, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision, err := prepared.Decide(nil, f.profile.IssuanceAuthorityKey, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	journal := filepath.Join(base, "allocation-"+role)
+	installedStartupWrite(t, journal, decision.Journal(), 0600)
+	readback, err := os.ReadFile(journal)
+	if err != nil || !bytes.Equal(readback, decision.Journal()) {
+		t.Fatal("allocation durable readback", err)
+	}
+	permission := decision.Permission()
+	copy(permission.Signature[:], ed25519.Sign(f.spec.Authority, admission.PermissionTranscript(permission)))
+	response, err := admission.EncodePermission(permission)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return response
 }
 
 func installedServiceEvent(raw []byte, phase, role string) bool {

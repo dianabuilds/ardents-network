@@ -29,7 +29,7 @@ func TestFrameScheduleControlAlternatesWithRoundRobinData(t *testing.T) {
 			if l.id < 7 {
 				_, err = l.Write([]byte("data"))
 			} else {
-				err = s.write(l, ardp.Frame{Kind: ardp.KindCredit, Lane: l.id, Body: []byte{0, 0, 0, 1}}, false)
+				err = writeConsumedCredit(s, l, ardp.Frame{Kind: ardp.KindCredit, Lane: l.id, Body: []byte{0, 0, 0, 1}}, false)
 			}
 			results <- err
 		}()

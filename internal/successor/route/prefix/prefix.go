@@ -70,6 +70,41 @@ type Prefix struct {
 	sourceStopped             chan struct{}
 	openingConn               net.Conn
 	openingErr                error
+	observation               *prefixObservation
+}
+
+// prefixObservation schedules background supervision after the last complete
+// check of this same physical leg. It retains no authority or observation value:
+// every effect still invokes its full observer independently.
+type prefixObservation struct {
+	mu sync.Mutex
+	at time.Time
+}
+
+func (o *prefixObservation) check(observe func() error) error {
+	if err := observe(); err != nil {
+		return err
+	}
+	o.completed()
+	return nil
+}
+
+func (o *prefixObservation) completed() {
+	if o == nil {
+		return
+	}
+	o.mu.Lock()
+	o.at = time.Now()
+	o.mu.Unlock()
+}
+
+func (o *prefixObservation) delay() time.Duration {
+	if o == nil {
+		return 0
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return time.Until(o.at.Add(100 * time.Millisecond))
 }
 
 // A failed opening can be retried only if its original physical retirement was
@@ -113,12 +148,15 @@ func openPrefix(ctx context.Context, config Config, source *Prefix, bootstrapMod
 		defer opening.finish()
 		observe := config.Current
 		config.Current = func() (network.RuntimeView, error) {
-			if err := source.originalCurrent(); err != nil {
+			// No transport effect occurs during the Responder observation.
+			// Fence the original Source caller here, then fully reobserve that
+			// same Source after the foreign observation and before returning.
+			if err := errors.Join(source.caller.Err(), source.ctx.Err()); err != nil {
 				return network.RuntimeView{}, err
 			}
 			view, err := observe()
 			if err != nil {
-				return network.RuntimeView{}, err
+				return network.RuntimeView{}, errors.Join(err, source.caller.Err(), source.ctx.Err())
 			}
 			if err := source.originalCurrent(); err != nil {
 				return network.RuntimeView{}, err
@@ -126,7 +164,8 @@ func openPrefix(ctx context.Context, config Config, source *Prefix, bootstrapMod
 			return view, nil
 		}
 	}
-	check := func() error {
+	observation := &prefixObservation{}
+	observe := func() error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -138,11 +177,12 @@ func openPrefix(ctx context.Context, config Config, source *Prefix, bootstrapMod
 		// Derived cancellation callbacks need not have run at this boundary.
 		return errors.Join(config.Leg.Check(v, time.Now()), ctx.Err())
 	}
+	check := func() error { return observation.check(observe) }
 	if err := check(); err != nil {
 		cancel()
 		return nil, err
 	}
-	p := &Prefix{bootstrap: bootstrapMode, ctx: childContext, caller: ctx, cancel: cancel, done: make(chan struct{}), closing: make(chan struct{}), release: config.Release, config: config, activity: make(chan struct{}, 1), source: source}
+	p := &Prefix{bootstrap: bootstrapMode, ctx: childContext, caller: ctx, cancel: cancel, done: make(chan struct{}), closing: make(chan struct{}), release: config.Release, config: config, activity: make(chan struct{}, 1), source: source, observation: observation}
 	p.self = p
 	if source != nil {
 		p.sourceStopped = make(chan struct{})
@@ -341,6 +381,13 @@ func (p *Prefix) watch(check func() error, idleEvents <-chan time.Time) {
 			p.cancel()
 			return
 		case <-observation.C:
+			// Entry/Interior effect checks use this same complete leg observer.
+			// A recent completion satisfies only periodic supervision; it never
+			// bypasses another effect's checks or extends an operation deadline.
+			if delay := p.observation.delay(); delay > 0 {
+				observation.Reset(delay)
+				continue
+			}
 			if err := check(); err != nil {
 				p.entry.Retire(err)
 				p.cancel()

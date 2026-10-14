@@ -49,6 +49,38 @@ func TestPublicPrefixOpeningRefusesCanceledCallerAndSealedOriginalBeforeEffects(
 	}
 }
 
+func TestResponderOpeningRetainsSourceCancellationDuringFailedObservation(t *testing.T) {
+	caller, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	source, _, _, cleanup := terminalSetupPhysicalPrefix(t, caller)
+	defer cleanup()
+	source.config.Leg.EntryMember.RoleDomain = 1
+	end := time.Now().UTC().Truncate(time.Second).Add(time.Minute)
+	cause := errors.New("Responder observation failed")
+	var observations, presentations, returns int
+	config := Config{Deadline: end,
+		Current: func() (network.RuntimeView, error) {
+			observations++
+			cancel()
+			return network.RuntimeView{}, cause
+		},
+		Present: func(context.Context, ardp.Hello) ([]byte, error) {
+			presentations++
+			return nil, errors.New("no successful presentation fixture")
+		},
+		Release: func() error { returns++; return nil },
+	}
+	config.Leg.NotAfter = end
+	config.Leg.EntryMember.RoleDomain = 3
+	got, err := OpenResponder(t.Context(), source, config)
+	if got != nil || !errors.Is(err, cause) || !errors.Is(err, context.Canceled) {
+		t.Fatal("failed Responder observation lost original Source cancellation", err)
+	}
+	if observations != 1 || presentations != 0 || returns != 0 {
+		t.Fatal("failed observation reached effects or returned caller-owned reservation", observations, presentations, returns)
+	}
+}
+
 func TestResponderRecipientRefusesForeignSourceBeforeObservation(t *testing.T) {
 	source, _, _, closeSource := terminalSetupPhysicalPrefix(t)
 	defer closeSource()

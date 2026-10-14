@@ -87,6 +87,9 @@ func runInstalledConnectionAuthenticationFailure(t *testing.T, carrier transport
 			if boundary == "tls" {
 				return deliveryGate.observeTLSClientRead(originalCurrent)
 			}
+			if boundary == "join" {
+				return deliveryGate.observePublisherJoin(originalCurrent)
+			}
 			return deliveryGate.observe(originalCurrent)
 		}
 		f.authority = networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.witness)

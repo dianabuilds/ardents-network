@@ -83,7 +83,7 @@ func nestedTLSControlClose(t *testing.T, failure string) {
 		t.Cleanup(func() { _ = upper.Close() })
 		t.Cleanup(unblock)
 		go func() {
-			written <- FrameOutput{failure: upper.write(closeLane, ardp.Frame{Kind: kind, Lane: 1, Body: body}, false)}
+			written <- FrameOutput{failure: writeConsumedCredit(upper, closeLane, ardp.Frame{Kind: kind, Lane: 1, Body: body}, false)}
 		}()
 	} else {
 		go func() { written <- WriteFrame(secured, ardp.Frame{Kind: kind, Lane: 1, Body: body}) }()

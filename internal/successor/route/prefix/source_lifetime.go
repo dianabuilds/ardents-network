@@ -116,13 +116,21 @@ func (scope *SourceScope) observeOriginal() (network.RuntimeView, error) {
 }
 
 func (scope *SourceScope) CheckSourceCaller(caller context.Context, network, profile [32]byte, end time.Time) error {
+	if err := scope.matchSourceCaller(caller, network, profile, end); err != nil {
+		return err
+	}
+	return scope.Check()
+}
+
+// Matching immutable provenance supplies no observation or accepting right.
+func (scope *SourceScope) matchSourceCaller(caller context.Context, network, profile [32]byte, end time.Time) error {
 	if scope == nil || scope.self != scope || caller == nil || !reflect.TypeOf(caller).Comparable() || scope.caller != caller ||
 		network == [32]byte{} || profile == [32]byte{} || scope.config.Leg.Profile.Network != network || scope.config.Leg.Profile.Digest != profile ||
 		end.IsZero() || end != end.UTC().Truncate(time.Second) || !time.Now().Before(end) ||
 		end.After(scope.config.Deadline) || end.After(scope.config.Leg.NotAfter) || end.After(scope.config.Leg.Profile.NotAfter) {
 		return errors.New("original Source scope caller or bounds differ")
 	}
-	return scope.Check()
+	return nil
 }
 
 // Commit admits only a bounded local transition after the caller's fresh

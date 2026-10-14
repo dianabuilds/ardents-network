@@ -43,7 +43,7 @@ func TestSuccessorConnectionControlProfileSelectsOriginalReadSites(t *testing.T)
 		path, constant string
 		postRead       bool
 	}{
-		{"internal/successor/connection/wire/record.go", "connectionControlBodyReadLine", false},
+		{"internal/successor/connection/attachment_record_reader.go", "connectionControlFramingReadLine", false},
 		{"internal/successor/publication/instance/service_attachment.go", "connectionControlReadRecheckLine", true},
 	} {
 		file := parse(site.path)
@@ -57,13 +57,17 @@ func TestSuccessorConnectionControlProfileSelectsOriginalReadSites(t *testing.T)
 				position := token.NoPos
 				if !site.postRead {
 					call, ok := node.(*ast.CallExpr)
-					if !ok || len(call.Args) != 2 {
+					if !ok || len(call.Args) != 1 {
 						return true
 					}
 					name, ok := call.Fun.(*ast.SelectorExpr)
-					body, isBody := call.Args[1].(*ast.Ident)
-					if ok && name.Sel.Name == "ReadFull" && isBody && body.Name == "body" {
-						position = call.Pos()
+					body, isBody := call.Args[0].(*ast.SliceExpr)
+					if ok && name.Sel.Name == "Read" && isBody && body.Low == nil && body.High == nil && body.Max == nil {
+						buffer, isBuffer := body.X.(*ast.SelectorExpr)
+						reader, isReader := name.X.(*ast.SelectorExpr)
+						if isBuffer && isReader && buffer.Sel.Name == "buffer" && reader.Sel.Name == "reader" {
+							position = call.Pos()
+						}
 					}
 				} else if returned, ok := node.(*ast.ReturnStmt); ok {
 					ast.Inspect(returned, func(child ast.Node) bool {

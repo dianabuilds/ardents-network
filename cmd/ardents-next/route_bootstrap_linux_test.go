@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/tls"
 	"errors"
@@ -236,9 +237,22 @@ type routeFixtureSpends struct {
 	}
 }
 
-func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, afterIssue func(context.Context, bool, []byte, []byte) error, afterIssuerReturn func() error, admissionPoint func(string), issuerObservation func(int)) *routeIssuerFixture {
+func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, afterIssue func(context.Context, bool, []byte, []byte) error, afterIssuerReturn func() error, admissionPoint func(string), issuerObservation func(int), resolution ...bool) *routeIssuerFixture {
 	t.Helper()
-	f, sockets, certificates := newRoleRouteFixture(t, profile, 1, false, true)
+	f, sockets, certificates := newRoleRouteFixtureConfigured(t, profile, 1, false, true,
+		func(f *networkAdmissionFixture, _ map[[32]byte]func(), _ map[[32]byte]tls.Certificate) {
+			if len(resolution) == 0 || !resolution[0] {
+				return
+			}
+			// Signed recipient for a Stock-only oracle; no live Store is claimed.
+			node := f.spec.Nodes[0]
+			node.NodeID = [32]byte{77}
+			node.PrivateKey = ed25519.NewKeyFromSeed(bytes.Repeat([]byte{77}, ed25519.SeedSize))
+			t.Cleanup(func() { clear(node.PrivateKey) })
+			node.Endpoint, node.Carrier = "127.0.0.1:65000", string(profile)
+			node.RoleDomain, node.Subrole = 2, 5
+			f.spec.Nodes = append(f.spec.Nodes, node)
+		})
 	x := &routeIssuerFixture{network: f}
 	view, err := f.current()
 	if err != nil {

@@ -114,11 +114,13 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 	}
 	var funding *routeTokenFlow
 	var sourceLeg selection.Leg
-	// Initial Publication needs three admitted issuer exchanges: forwarding
-	// stock for Introduction, Registration stock, then Descriptor Control.
-	// Fund their issuer presentations in the existing second bootstrap batch.
+	// Initial Publication funds Forward for Introduction and Responder, then
+	// Registration. The existing second bootstrap batch supplies their issuer
+	// Controls and the already selected Descriptor Store Control. Two issuer
+	// Controls remain after preparation, so the first Rendezvous Forward batch
+	// needs no separate Control refill on the incoming capsule path.
 	// The same finite allocation is debited now; failed setup never refunds it.
-	source, sourceLeg, funding, err = openFundedSource(ctx, routePlan, sourceSelection, budget, authority, holder, 3, operation.RetainCleanup)
+	source, sourceLeg, funding, err = openFundedSource(ctx, routePlan, sourceSelection, budget, authority, holder, 4, true, operation.RetainCleanup)
 	if err != nil {
 		return publicationHandle{}, err
 	}
@@ -129,15 +131,20 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 	}
 	introConfig.Present = funding.openingPresentation(introConfig.Leg)
 	leg = introConfig.Leg
+	responderConfig, err = preparePublicationPrefix(ctx, routePlan, responderSelection, budget, authority, holder)
+	if err != nil {
+		return publicationHandle{}, errors.Join(err, introConfig.Release())
+	}
+	responderConfig.Present = funding.openingPresentation(responderConfig.Leg)
+	// Stock preparation grants no physical Responder: its first opening stays
+	// after capsule validation and nonce commitment under the live Publisher.
+	if err := funding.prepareInitialOpening(ctx, leg, responderConfig.Leg); err != nil {
+		return publicationHandle{}, errors.Join(err, introConfig.Release())
+	}
 	intro, err = prefix.Open(ctx, introConfig)
 	if err != nil {
 		return publicationHandle{}, errors.Join(err, introConfig.Release())
 	}
-	responderConfig, err = preparePublicationPrefix(ctx, routePlan, responderSelection, budget, authority, holder)
-	if err != nil {
-		return publicationHandle{}, err
-	}
-	responderConfig.Present = funding.openingPresentation(responderConfig.Leg)
 	view, err := authority.current()
 	if err != nil {
 		return publicationHandle{}, err
@@ -173,6 +180,7 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 		return config, err
 	}
 	owner, err = publicationruntime.New(ctx, publicationruntime.Config{Operation: operation, Binding: binding, Source: source, Introduction: intro, Responder: responderConfig, PrepareResponder: prepareResponder,
+		PrepareJoin: funding.prepareJoin,
 		PrepareSource: func(caller context.Context) (prefix.Config, error) {
 			return prepareSelectedPublicationPrefix(caller, routePlan, sourceLeg, budget, authority, holder)
 		},

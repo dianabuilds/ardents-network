@@ -8,7 +8,6 @@ import (
 	"io"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
@@ -47,7 +46,7 @@ func readText(ctx context.Context, socket string, input io.ReadCloser, output io
 	}
 	// Human input is cancellable. The subsequent single setup/exchange has a
 	// finite UI deadline even if the local Endpoint ceases to respond.
-	bounded, cancel := context.WithTimeout(ctx, 30*time.Second)
+	bounded, cancel := context.WithTimeout(ctx, connection.ReaderTimeout)
 	defer cancel()
 	stream, err := connection.Dial(bounded, socket, connection.Request{Destination: connection.TargetLink, Value: link})
 	if err != nil {

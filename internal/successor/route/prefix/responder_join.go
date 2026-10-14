@@ -61,16 +61,27 @@ func (b *ResponderJoinBorrow) CheckLocal() error {
 	if err := b.pair.CheckLocal(); err != nil {
 		return err
 	}
-	b.owner.mu.Lock()
-	defer b.owner.mu.Unlock()
-	return b.localLocked()
+	// A Source scope can already be sealed while its physical users are still
+	// joining. Preserve that immediate logical refusal independently of both
+	// physical Prefixes, with the same Source-before-Responder lock order.
+	return b.owner.source.Commit(func(checkSource func() error) error {
+		if err := b.owner.source.handleLocalLocked(b.generation.source); err != nil {
+			return err
+		}
+		b.owner.mu.Lock()
+		defer b.owner.mu.Unlock()
+		return errors.Join(checkSource(), b.localLocked())
+	})
 }
 
 func (b *ResponderJoinBorrow) CheckOriginal() error {
 	if err := b.CheckLocal(); err != nil {
 		return err
 	}
-	return errors.Join(b.owner.Check(), b.pair.CheckOriginal(), b.CheckLocal())
+	// The exact physical pair retains both scopes' original leg/observer
+	// contracts. Reobserve it fully once, fenced by the original logical
+	// scopes; repeated logical observation grants no additional provenance.
+	return errors.Join(b.pair.CheckOriginal(), b.CheckLocal())
 }
 
 // CheckScope compares opaque original provenance, not equal public role facts.

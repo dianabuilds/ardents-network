@@ -63,7 +63,7 @@ func (recipient *Recipient) OpenCapsule(ctx context.Context, envelope capsule.En
 	header, facts := envelope.Header(), recipient.receipt.Facts()
 	at := time.Now()
 	if header.Slot != facts.Slot || header.Revision != facts.Revision || header.DeliveryNonce == [32]byte{} ||
-		header.Expiry.After(recipient.end) || !at.Before(header.Expiry) || header.Expiry.After(at.Add(10*time.Second)) {
+		header.Expiry.After(recipient.end) || !at.Before(header.Expiry) || header.Expiry.After(at.Add(30*time.Second)) {
 		root.mu.Unlock()
 		return nil, ErrUnavailable
 	}

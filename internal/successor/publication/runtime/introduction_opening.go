@@ -127,16 +127,14 @@ func (p *Publisher) OpenIntroduction(ctx context.Context, envelope capsule.Envel
 // the same live pair and qualified operation. It supplies no replay commit,
 // Responder readiness, successful delivery or Service TLS authentication.
 func (opening *IntroductionOpening) Binding(ctx context.Context) (*connection.RecipientBinding, error) {
-	if opening == nil || opening.binding == nil {
+	if opening == nil || opening.binding == nil || opening.publisher == nil {
 		return nil, errors.New("Publisher recipient binding unavailable")
 	}
-	if _, _, err := opening.Candidate(ctx); err != nil {
-		return nil, err
-	}
-	if err := opening.binding.Check(ctx, opening.publisher.config.Operation); err != nil {
-		return nil, err
-	}
 	p := opening.publisher
+	// Resolving the retained public duty performs no private effect or
+	// accepting handoff. Observe the complete pair/private candidate afterward,
+	// then fence its original operation, rather than duplicate Candidate on
+	// both sides of this read-only Network observation.
 	known := append([]route.Member(nil), p.config.Exclusions...)
 	intro := p.config.Duty
 	known = append(known, route.Member{NodeID: intro.NodeID, PublicKey: intro.PublicKey, FamilyID: intro.FamilyID})
@@ -145,6 +143,9 @@ func (opening *IntroductionOpening) Binding(ctx context.Context) (*connection.Re
 		return nil, errors.Join(errors.New("Publisher original Rendezvous changed"), err)
 	}
 	if _, _, err := opening.Candidate(ctx); err != nil {
+		return nil, err
+	}
+	if err := opening.binding.Check(ctx, p.config.Operation); err != nil {
 		return nil, err
 	}
 	return opening.binding, nil

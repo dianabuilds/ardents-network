@@ -98,7 +98,8 @@ func newCreditCloseFixture(t *testing.T, original time.Duration, wrap func(*cred
 	s.mu.Unlock()
 	f := &creditCloseFixture{s: s, l: l, physical: physical, peer: peer, queues: queues, consumed: make(chan error, 1), release: release}
 	// The ordinary reader reserves and queues a genuine input BYTES frame;
-	// actual consumption generates the single-byte CREDIT being tested.
+	// actual consumption completes the CREDIT batch being tested.
+	consumeBeforeCredit(t, peer, l, int(Window/2)-1)
 	if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte{42}}); err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +121,7 @@ func newCreditCloseFixture(t *testing.T, original time.Duration, wrap func(*cred
 func (f *creditCloseFixture) readCredit(t *testing.T) {
 	t.Helper()
 	frame, err := ardp.ReadFrame(io.MultiReader(bytes.NewReader(f.prefix[:]), f.peer))
-	if err != nil || frame.Kind != ardp.KindCredit || frame.Lane != 1 || !bytes.Equal(frame.Body, []byte{0, 0, 0, 1}) {
+	if err != nil || frame.Kind != ardp.KindCredit || frame.Lane != 1 || !bytes.Equal(frame.Body, []byte{0, 0, 128, 0}) {
 		t.Fatalf("already-emitted CREDIT did not finish: %+v / %v", frame, err)
 	}
 }

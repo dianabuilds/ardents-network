@@ -19,8 +19,8 @@ type setupPeer interface {
 
 // openAuthorizedAttachment ties setup cancellation to the local peer. An early
 // byte or disconnect refuses setup before accepting Application input.
-func (server *server) openAuthorizedAttachment(local setupPeer, request Request) (Stream, context.CancelFunc, error) {
-	ctx, cancel := context.WithTimeout(server.ctx, 15*time.Second)
+func (server *server) openAuthorizedAttachment(local setupPeer, request Request, deadline time.Time) (Stream, context.CancelFunc, error) {
+	ctx, cancel := context.WithDeadline(server.ctx, deadline)
 	var mu sync.Mutex
 	finished := false
 	monitorDone := make(chan struct{})
@@ -51,7 +51,7 @@ func (server *server) openAuthorizedAttachment(local setupPeer, request Request)
 		setupErr := errors.Join(openErr, contextErr, errors.New("local Application setup did not complete"))
 		return nil, nil, server.closeRefusedAttachment(stream, setupErr)
 	}
-	if err := local.SetReadDeadline(time.Time{}); err != nil {
+	if err := local.SetReadDeadline(deadline); err != nil {
 		cancel()
 		return nil, nil, server.closeRefusedAttachment(stream, err)
 	}

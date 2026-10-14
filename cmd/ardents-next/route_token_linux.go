@@ -28,6 +28,7 @@ type routeTokenFlow struct {
 	leg           selection.Leg
 	issuer        [32]byte
 	mu            sync.Mutex
+	presenting    chan struct{}
 	source        *prefix.Prefix
 	currentSource func(context.Context) (*prefix.SourceHandle, error)
 	initial       *stock.Preparation
@@ -56,8 +57,8 @@ func (flow *routeTokenFlow) challenges(class uint8, receivers [][32]byte) ([]tok
 	return result, nil
 }
 
-func (flow *routeTokenFlow) bootstrap(ctx context.Context, budget *hosting.Budget, preparation *stock.Preparation, controls int) (result error) {
-	if controls < 1 || controls > admission.MaximumBatchTokens {
+func (flow *routeTokenFlow) bootstrap(ctx context.Context, budget *hosting.Budget, preparation *stock.Preparation, controlReceivers [][32]byte) (result error) {
+	if len(controlReceivers) < 1 || len(controlReceivers) > admission.MaximumBatchTokens {
 		return errors.New("initial issuer Control stock count invalid")
 	}
 	requested, err := flow.challenges(uint8(admission.ForwardClass), [][32]byte{flow.leg.Entry.NodeID, flow.leg.Interior.NodeID})
@@ -101,12 +102,8 @@ func (flow *routeTokenFlow) bootstrap(ctx context.Context, budget *hosting.Budge
 		uint8(admission.ForwardClass), receivers, preparation)); err != nil {
 		return err
 	}
-	// The second finite batch funds the selected issuer's admitted Control,
-	// never Registration or an upgraded bootstrap child.
-	controlReceivers := make([][32]byte, controls)
-	for index := range controlReceivers {
-		controlReceivers[index] = flow.issuer
-	}
+	// The second finite batch funds only the requested Control stock. It
+	// reaches the issuer, never the private recipients or an upgraded child.
 	return physical.Issue(ctx, end, routeIssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
 		uint8(admission.ControlClass), controlReceivers, preparation))
 }
@@ -154,6 +151,20 @@ func (flow *routeTokenFlow) presentRequested(ctx context.Context, hello ardp.Hel
 	if class == admission.ControlClass && hello.RecipientNodeID == flow.issuer {
 		return flow.holder.Take(ctx, presentation, uint8(class))
 	}
+	// Stock owns atomic consumption and allows already funded presentation
+	// while another original preparation issues different missing rights.
+	// Every Take independently observes authority and durably marks the token.
+	// Only absence before consumption may enter preparation; other failures
+	// cannot trigger another attempt or reconstruct a consumed token.
+	raw, takeErr := flow.holder.Take(ctx, presentation, uint8(class))
+	if takeErr == nil || stock.TransferFailureStage(takeErr) != "stock" {
+		return raw, takeErr
+	}
+	release, err := flow.beginPresentation(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 	flow.mu.Lock()
 	preparation, source, currentSource := flow.initial, flow.source, flow.currentSource
 	flow.mu.Unlock()
@@ -176,9 +187,7 @@ func (flow *routeTokenFlow) presentRequested(ctx context.Context, hello ardp.Hel
 		if source == nil {
 			return nil, errors.New("original Source stock unavailable before admission")
 		}
-		var issuingSource interface {
-			Issue(context.Context, time.Time, func(prefix.IssuerBinding) (prefix.IssuerBatch, error)) error
-		} = source
+		var issuingSource routeStockIssuer = source
 		if currentSource != nil {
 			handle, err := currentSource(ctx)
 			if err != nil {
@@ -187,49 +196,42 @@ func (flow *routeTokenFlow) presentRequested(ctx context.Context, hello ardp.Hel
 			defer handle.Close()
 			issuingSource = handle
 		}
-		receivers := make([][32]byte, 0, len(missing)+1)
-		for _, challenge := range missing {
-			receivers = append(receivers, challenge.ReceiverNodeID)
-		}
-		if class == admission.ControlClass {
-			// The same current operation retains its issuer channel capability
-			// while obtaining this requested Control token.
-			receivers = append(receivers, flow.issuer)
-		}
 		end := minRouteDeadline(flow.plan.Deadline, hello.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
-		if class != admission.ControlClass {
-			// This requested non-Control exchange spends issuer Control but
-			// cannot return Control in its class-specific response. Retain its
-			// replacement before spending the original, through admitted Issue.
-			issuerChallenges, err := flow.challenges(uint8(admission.ControlClass), [][32]byte{flow.issuer, flow.issuer})
-			if err != nil {
-				return nil, err
-			}
-			issuerMissing, err := preparation.Missing(issuerChallenges)
-			if err != nil {
-				return nil, err
-			}
-			if len(issuerMissing) != 0 {
-				controls := make([][32]byte, len(issuerMissing)+1)
-				for index := range controls {
-					controls[index] = flow.issuer
-				}
-				if err := issuingSource.Issue(ctx, end, routeIssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
-					uint8(admission.ControlClass), controls, preparation)); err != nil {
-					return nil, err
-				}
-			}
-		}
-		if err := issuingSource.Issue(ctx, end, routeIssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
-			uint8(class), receivers, preparation)); err != nil {
+		if err := flow.fundMissing(ctx, preparation, issuingSource, class, missing, end); err != nil {
 			return nil, err
 		}
 	}
 	return flow.holder.Take(ctx, presentation, uint8(class))
 }
 
+// Concurrent missing-token paths share one Stock preparation owner. Serialize
+// preparation through the joined issuance and final Take, retaining each
+// original caller's cancellation. The issuer's already funded Control path
+// above must bypass this coordination: it is borrowed by the active issuance.
+func (flow *routeTokenFlow) beginPresentation(ctx context.Context) (func(), error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	flow.mu.Lock()
+	if flow.presenting == nil {
+		flow.presenting = make(chan struct{}, 1)
+	}
+	presenting := flow.presenting
+	flow.mu.Unlock()
+	select {
+	case presenting <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	if err := ctx.Err(); err != nil {
+		<-presenting
+		return nil, err
+	}
+	return func() { <-presenting }, nil
+}
+
 func openFundedSource(ctx context.Context, plan routePrefixPlan, selected *selection.Owner, budget *hosting.Budget,
-	authority admissionAuthority, holder *stock.Owner, controls int, retain func(error)) (_ *prefix.Prefix, _ selection.Leg, _ *routeTokenFlow, result error) {
+	authority admissionAuthority, holder *stock.Owner, controls int, resolution bool, retain func(error)) (_ *prefix.Prefix, _ selection.Leg, _ *routeTokenFlow, result error) {
 	if retain == nil {
 		return nil, selection.Leg{}, nil, errors.New("original Source cleanup owner absent")
 	}
@@ -252,7 +254,23 @@ func openFundedSource(ctx context.Context, plan routePrefixPlan, selected *selec
 		return nil, selection.Leg{}, nil, errors.Join(err, config.Release())
 	}
 	flow.issuer = issuer.NodeID
-	if err := flow.bootstrap(ctx, budget, preparation, controls); err != nil {
+	if controls < 1 || controls > admission.MaximumBatchTokens {
+		return nil, selection.Leg{}, nil, errors.Join(errors.New("initial issuer Control stock count invalid"), config.Release())
+	}
+	controlReceivers := make([][32]byte, controls)
+	for index := range controlReceivers {
+		controlReceivers[index] = flow.issuer
+	}
+	if resolution {
+		// The signed inventory determines this recipient before bootstrap.
+		// Its actual role operation still reselects and verifies it afresh.
+		duty, err := config.Leg.ResolutionDuty(view, plan.Exclusions)
+		if err != nil {
+			return nil, selection.Leg{}, nil, errors.Join(err, config.Release())
+		}
+		controlReceivers = append(controlReceivers, duty.NodeID)
+	}
+	if err := flow.bootstrap(ctx, budget, preparation, controlReceivers); err != nil {
 		return nil, selection.Leg{}, nil, errors.Join(err, config.Release())
 	}
 	config.Present = flow.present

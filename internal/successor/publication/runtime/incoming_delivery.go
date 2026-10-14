@@ -38,6 +38,8 @@ func (p *Publisher) inspectIntroduction(delivery *introduction.Delivery) {
 		err = state.opening.prepareResponder(state.ctx)
 	}
 	if err == nil {
+		// This is the post-preparation authority boundary, before RESULT.
+		// retain observes the full Binding and original Responder afresh.
 		err = state.retain()
 	}
 	if err != nil {

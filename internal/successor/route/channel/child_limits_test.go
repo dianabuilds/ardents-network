@@ -122,7 +122,7 @@ func TestSessionOutputAdmissionCountsCompleteFramesBeforeWire(t *testing.T) {
 			if n, err := lane.Write([]byte{1, 2, 3}); n != 3 || err != nil {
 				t.Fatal(n, err)
 			}
-			err = s.write(lane, ardp.Frame{Kind: ardp.KindCredit, Lane: lane.id, Body: []byte{0, 0, 0, 1}}, false)
+			err = writeConsumedCredit(s, lane, ardp.Frame{Kind: ardp.KindCredit, Lane: lane.id, Body: []byte{0, 0, 0, 1}}, false)
 			if maximum == 84 {
 				if !errors.Is(err, capacity) || !errors.Is(lane.Close(), capacity) || !s.Live() || s.PhysicalFailure() != nil {
 					t.Fatal("unstarted capacity refusal lost its provenance", err)
@@ -202,13 +202,13 @@ func TestChildTrafficDebitsControlHeadersBeforeOutput(t *testing.T) {
 		charges = append(charges, cost)
 		return nil
 	})
-	if err := s.write(limited, ardp.Frame{Kind: ardp.KindCredit, Lane: limited.id, Body: []byte{0, 0, 0, 1}}, false); err != nil {
+	if err := writeConsumedCredit(s, limited, ardp.Frame{Kind: ardp.KindCredit, Lane: limited.id, Body: []byte{0, 0, 0, 1}}, false); err != nil {
 		t.Fatal(err)
 	}
 	if err := limited.CloseWrite(); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.write(limited, ardp.Frame{Kind: ardp.KindCredit, Lane: limited.id, Body: []byte{0, 0, 0, 1}}, false); err == nil {
+	if err := writeConsumedCredit(s, limited, ardp.Frame{Kind: ardp.KindCredit, Lane: limited.id, Body: []byte{0, 0, 0, 1}}, false); err == nil {
 		t.Fatal("control output bypassed child allowance")
 	}
 	if err := limited.Close(); err != nil {

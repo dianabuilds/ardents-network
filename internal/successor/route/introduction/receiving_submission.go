@@ -58,7 +58,7 @@ func (registry *Registry) ServeSubmission(ctx context.Context, conn net.Conn, ch
 		return err
 	}
 	header := envelope.Header()
-	if !time.Now().Before(header.Expiry) || header.Expiry.After(time.Now().Add(10*time.Second)) ||
+	if !time.Now().Before(header.Expiry) || header.Expiry.After(time.Now().Add(30*time.Second)) ||
 		header.Expiry.After(channel.Deadline) || header.Expiry.After(hello.Deadline) {
 		return errors.New("introduction submission expiry unavailable")
 	}

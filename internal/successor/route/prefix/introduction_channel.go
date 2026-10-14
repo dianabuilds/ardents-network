@@ -51,7 +51,7 @@ func (p *Prefix) OpenIntroductionChannel(ctx context.Context, duty network.Retai
 // OpenSubmissionChannel admits one fresh purpose-5 Control channel through
 // the original Source. It supplies no Descriptor or recipient authority.
 func (p *Prefix) OpenSubmissionChannel(ctx context.Context, duty network.RetainedDuty, end time.Time, excluded []route.Member) (*IntroductionChannel, error) {
-	if p == nil || p.bootstrap || ctx == nil || end != end.UTC().Truncate(time.Second) || !time.Now().Before(end) || end.After(time.Now().Add(10*time.Second)) {
+	if p == nil || p.bootstrap || ctx == nil || end != end.UTC().Truncate(time.Second) || !time.Now().Before(end) || end.After(time.Now().Add(30*time.Second)) {
 		return nil, errors.New("route submission bounds invalid")
 	}
 	if bound, ok := ctx.Deadline(); ok && end.After(bound) {
@@ -86,27 +86,37 @@ func (p *Prefix) openIntroductionChannel(ctx context.Context, duty network.Retai
 		if !time.Now().Before(end) {
 			return ErrIntroductionExpired
 		}
-		view, err := p.observeOriginal()
-		if err != nil {
-			return err
-		}
-		if err := p.config.Leg.Check(view, time.Now()); err != nil {
-			return err
-		}
+		var view network.RuntimeView
+		var err error
 		if purpose == ardp.PurposeSubmission {
+			view, err = p.observeOriginal()
+			if err != nil {
+				return err
+			}
+			if err := p.config.Leg.Check(view, time.Now()); err != nil {
+				return err
+			}
 			exact, err := p.config.Leg.SubmissionDuty(view, duty.NodeID, duty.RecordGeneration, excluded)
 			if err != nil || exact != duty || end.After(p.config.Deadline) || end.After(exact.RecordValidUntil) || end.After(exact.Epoch.ValidUntil) || end.After(p.config.Leg.Profile.NotAfter) {
 				return errors.Join(errors.New("route submission original recipient unavailable"), err)
 			}
 		} else {
-			if err := p.checkIntroductionDuty(a, end); err != nil {
+			view, err = p.checkIntroductionDuty(duty, end)
+			if err != nil {
 				return err
 			}
 		}
 		if !time.Now().Before(end) {
 			return ErrIntroductionExpired
 		}
-		return errors.Join(ctx.Err(), p.localCurrent())
+		err = errors.Join(ctx.Err(), p.localCurrent())
+		// This terminal has just fully observed the same physical leg. Count
+		// its successful completion for background supervision only, as with
+		// other terminal borrowers; every effect still runs this whole check.
+		if err == nil && p.config.Leg.Check(view, time.Now()) == nil {
+			p.observation.completed()
+		}
+		return err
 	}
 	t.check = func() error { return errors.Join(t.checkOriginal(), child.Err()) }
 	if err := t.check(); err != nil {
@@ -158,17 +168,28 @@ func (p *Prefix) openIntroductionChannel(ctx context.Context, duty network.Retai
 	return t, nil
 }
 
-// checkIntroductionDuty reobserves the original recipient before checking its
-// role, exclusions and bounds. An unavailable observation grants no recipient.
-func (p *Prefix) checkIntroductionDuty(a role.Authority, end time.Time) error {
-	member, err := a.Member()
+// checkIntroductionDuty checks the original leg and exact recipient against
+// one fresh coherent observation. No effect occurs between those pure checks;
+// the caller still observes again at each effect and post-I/O boundary.
+func (p *Prefix) checkIntroductionDuty(duty network.RetainedDuty, end time.Time) (network.RuntimeView, error) {
+	view, err := p.observeOriginal()
 	if err != nil {
-		return err
+		return network.RuntimeView{}, err
 	}
-	if member.RoleDomain != 4 || member.Subrole != 3 || p.config.Leg.EntryMember.RoleDomain != 4 || end.After(p.config.Deadline) || end.After(member.NotAfter()) || end.After(a.Profile.NotAfter) || role.Conflicting(member, p.config.Leg.EntryMember) || role.Conflicting(member, p.config.Leg.InteriorMember) {
-		return errors.New("route registration duty differs")
+	if err := p.config.Leg.Check(view, time.Now()); err != nil {
+		return network.RuntimeView{}, err
 	}
-	return nil
+	if err := view.MatchDuty(duty, time.Now()); err != nil {
+		return network.RuntimeView{}, err
+	}
+	member, err := view.Member(duty.NodeID, time.Now())
+	if err != nil {
+		return network.RuntimeView{}, err
+	}
+	if member.RoleDomain != 4 || member.Subrole != 3 || p.config.Leg.EntryMember.RoleDomain != 4 || end.After(p.config.Deadline) || end.After(member.NotAfter()) || end.After(p.config.Leg.Profile.NotAfter) || role.Conflicting(member, p.config.Leg.EntryMember) || role.Conflicting(member, p.config.Leg.InteriorMember) {
+		return network.RuntimeView{}, errors.New("route registration duty differs")
+	}
+	return view, nil
 }
 
 // A failed operation still joins this original physical setup before its

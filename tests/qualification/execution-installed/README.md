@@ -55,7 +55,35 @@ The driver requires
 the exact selected Carrier subcase and rejects every skip. This one-Publisher
 component does not establish a Reader Service stream or two installed Endpoints.
 
-All signing, Source servers and clock observations have one fixture controller.
+The `execution-installed-pair-check` profile runs a separate outer root controller
+with `ARDENTS_EXECUTION_PAIR_MANAGERS` naming exactly two original manager PIDs.
+Each fresh manager has its own PID, mount and cgroup namespaces and pivoted root,
+with the canonical participant profile at `/root/run-profile.sh`, pinned test at
+`/root/startup.test`, pinned inventory/resources at `/root/artifacts` and the
+trusted root-owned mode-0755 parent `/var/lib/profile-root`. Fixture loopback is
+shared. The outer controller uses the same artifact variables as above, a fresh
+root/log and an eight-minute harness bound; each participant retains its original
+four-minute harness bound. Product deadlines are unchanged.
+
+The controller retains original manager proc directories and passes opened
+namespace/root descriptors to `nsenter`. Each guest independently provisions and
+admits its real program, verifies public signed Network input in its own State,
+uses its own Source credentials and obtains separately approved permissions.
+The controller keeps Route/issuer/receiving Store fixtures alive across both
+guests. Only public signed material and actual permission requests/responses cross
+the local fixture channel; no private Instance or accepting owner is transferred.
+The scenario performs Snapshot and Link on Publisher, one exact text exchange
+through Reader's actual AAI3 listener, then Withdraw and Link refusal. Both original
+participants must join through their registered cleanup. The scenario then
+attempts a real unit start without a new Root completion exchange: Startup must
+refuse, and retained regular-file paths and bytes must remain unchanged. This
+does not demonstrate successful recovery, crash consistency or the complete
+interruption matrix. The outside stand owner
+must retain and stop both original managers after the run. Use a fresh pair for
+each Carrier. A passing run alone does not establish full restart/interruption
+acceptance.
+
+All signing, Source servers and clock observations are fixture-controlled.
 No independent release custody/builders, Source families, trusted-time service,
 private Publication/Connection readiness, complete interruption matrix or
 whole-host/privacy qualification follows from this bounded scenario.

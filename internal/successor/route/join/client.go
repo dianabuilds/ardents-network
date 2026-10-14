@@ -50,19 +50,26 @@ func (a *JoinAcquisition) Join(ctx context.Context, config JoinConfig) (_ *Joine
 		cancel()
 	}()
 	physicalCheck := func() error {
-		if err := errors.Join(ctx.Err(), a.originalCurrent()); err != nil {
+		if err := errors.Join(ctx.Err(), a.caller.Err()); err != nil {
 			return err
 		}
+		// Prefix validates each original leg and its exact recipient together
+		// against a fresh view. Scoped claims additionally check their original
+		// logical owners before that observation. Do not repeat the same full
+		// owner checks immediately ahead of this read-only validation.
 		if err := a.borrows.CheckRecipient(config.Duty, config.Deadline); err != nil {
 			return err
 		}
 		return errors.Join(ctx.Err(), a.originalCurrent())
 	}
 	check := func() error {
-		if err := a.current(); err != nil {
+		if err := a.checkLocal(); err != nil {
 			return err
 		}
-		return errors.Join(physicalCheck(), a.current())
+		// physicalCheck already fully observes the original owners with and
+		// after the recipient check. Fence it locally instead of observing those same
+		// owners twice more without an intervening exchange or handoff.
+		return errors.Join(physicalCheck(), a.checkLocal())
 	}
 	if err := check(); err != nil {
 		return nil, err

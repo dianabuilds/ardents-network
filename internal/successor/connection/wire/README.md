@@ -1,6 +1,13 @@
 # Service Connection wire
 
 Interface: `Read`, `Write`, `ReadStream` implement the closed v3 record grammar.
+`InitialRequestBytes` and `InitialResponseBytes` bound exactly the two fixed
+records in each initial coalesced flight. They permit bounded read-ahead without
+consuming any following Application record and change no accepted encoding.
+`Read` coalesces only the fixed prefix/length header in a bounded buffer; it
+checks a complete bad prefix without awaiting more bytes, bounds the body before
+allocation and leaves the body and next record with the original reader. A
+failed header read cannot become successful through buffering returned bytes.
 `ErrInvalidRecord` identifies an observed contradiction of that grammar,
 including an invalid complete prefix or length before body acquisition.
 Physical read failures and incomplete frames preserve their original I/O cause

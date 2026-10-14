@@ -63,6 +63,8 @@ and [protocol](../technical/protected-route-protocol.md) state the current rules
 - [ADR-0119 — Authenticate the protected Endpoint generation in the same Release set](0119-bind-protected-endpoint-generation-to-release.md)
 - [ADR-0120: Authorize an operator-prepared qualification release](0120-authorize-operator-prepared-qualification-release.md)
 
+- [ADR-0121: Bound installed Connection setup to thirty seconds](0121-bound-installed-connection-setup.md)
+
 ## Former editions and rationale
 
 [Archived decisions](../archive/README.md#architecture-decisions) retain

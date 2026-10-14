@@ -61,7 +61,7 @@ func deriveRecipientGeneration(proof publication.Proof, profile [32]byte, reques
 		request.Network != value.Network || request.Target != value.Target || request.PublicationDigest != proof.Digest() || request.ProfileDigest != profile ||
 		request.ConnectionNonce == [32]byte{} || request.InitiatorBinding == [32]byte{} || request.JoinSecret == [32]byte{} || request.HandshakeContext == [32]byte{} ||
 		request.RendezvousNode == [32]byte{} || request.RendezvousDutyGeneration == 0 || request.Revision == 0 || generation == 0 || request.AttachmentGeneration != generation ||
-		request.Deadline != request.Deadline.UTC().Truncate(time.Second) || !now.Before(request.Deadline) || request.Deadline.After(now.Add(10*time.Second)) ||
+		request.Deadline != request.Deadline.UTC().Truncate(time.Second) || !now.Before(request.Deadline) || request.Deadline.After(now.Add(30*time.Second)) ||
 		request.WorkSafetyNotAfter <= now.Unix() || request.WorkSafetyMaximum < request.WorkSafetyNotAfter ||
 		request.NoNewRecoveryAfter <= 0 || request.NoNewRecoveryAfter > request.WorkSafetyNotAfter || request.Deadline.Unix() > request.WorkSafetyNotAfter ||
 		localEnd.IsZero() || time.Unix(request.WorkSafetyMaximum, 0).After(localEnd) || time.Unix(request.WorkSafetyMaximum, 0).After(value.NotAfter) {

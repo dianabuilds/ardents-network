@@ -60,10 +60,17 @@ cold Source funding composition against actual signed Network, approved holder,
 blind issuer, receiving Admission and Hosting/Route owners. Exactly two finite
 bootstrap batches precede fresh admitted Source channels and an ordinary issuer
 exchange on TCP/TLS and QUIC; quota and original physical retirement remain
-checked. The Publisher's second bootstrap batch funds three issuer Control
-presentations. The next retained prefix checks one two-recipient Forward batch
+checked. The fixture's second bootstrap batch funds three issuer Control
+presentations and a signed-inventory Descriptor Store Control. Actual Publisher
+composition seeds four issuer Controls within its original finite permission.
+The next retained prefix checks one two-recipient Forward batch
 without an intervening Control refill, with separate real admissions and exact remaining
 quota, instead of issuing each missing Forward token in a separate exchange.
+Both funded physical openings complete while a separate Stock preparation and
+the command issuance gate remain held; their original tokens need no new batch.
+JOIN preparation then requests only a genuinely missing signed recipient and
+retains exact quota, original Source and cancellation checks. These are Stock
+and transport controls, not successful Instance authentication.
 Its signing/permission infrastructure and cleanup observer are fixtures,
 not a qualified worker or installed Startup. Stock preparation tests separately
 check original coordination, copied/canceled handles, ordered multiplicity,

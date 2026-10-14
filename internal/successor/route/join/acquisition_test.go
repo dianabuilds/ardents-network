@@ -70,8 +70,9 @@ func TestAcquisitionUnpublishedSetupWorkRefusalDoesNotFailPrefixCleanup(t *testi
 // A local lifetime control cannot supply successful authority or physical JOIN.
 // Exact pair identity/claims/lock ordering are tested by their Prefix owner.
 type acquisitionLifetimeClaim struct {
-	returns atomic.Int32
-	local   func() error
+	returns   atomic.Int32
+	local     func() error
+	recipient func() error
 }
 
 func (b *acquisitionLifetimeClaim) CheckLocal() error {
@@ -85,6 +86,9 @@ func (b *acquisitionLifetimeClaim) CheckOriginal() error {
 }
 func (b *acquisitionLifetimeClaim) WaitRetirement(ctx context.Context) { <-ctx.Done() }
 func (b *acquisitionLifetimeClaim) CheckRecipient(network.RetainedDuty, time.Time) error {
+	if b.recipient != nil {
+		return b.recipient()
+	}
 	return errors.New("no authenticated recipient fixture")
 }
 func (b *acquisitionLifetimeClaim) OpenChannel(context.Context, context.Context, network.RetainedDuty, time.Time, time.Time) (*prefix.JoinChannel, uint8, error) {
@@ -102,6 +106,53 @@ func lifetimeAcquisition(t *testing.T, ctx context.Context) (*JoinAcquisition, *
 		t.Fatal(err)
 	}
 	return a, claim
+}
+
+// A failed recipient observation supplies no authority or physical channel.
+// Even when caller cancellation has no Done notification, both causes survive
+// the observation and the exact borrow remains held until its owner closes.
+func TestAcquisitionRecipientRefusalRetainsOriginalCaller(t *testing.T) {
+	caller := &handoffDeferredCaller{Context: context.Background()}
+	a, claim := lifetimeAcquisition(t, caller)
+	defer a.Close()
+	failure := errors.New("original recipient observation failed")
+	var called bool
+	claim.recipient = func() error {
+		called = true
+		caller.canceled.Store(true)
+		return failure
+	}
+	end := time.Now().Add(time.Minute).UTC().Truncate(time.Second)
+	_, err := a.Join(t.Context(), JoinConfig{Secret: [32]byte{1}, Context: [32]byte{2}, Deadline: end, SetupDeadline: end.Add(-30 * time.Second)})
+	if !called || !errors.Is(err, failure) || !errors.Is(err, context.Canceled) || claim.returns.Load() != 0 {
+		t.Fatal("recipient refusal lost original caller or returned its live borrow", called, err, claim.returns.Load())
+	}
+}
+
+func TestAcquisitionLocalFenceRetainsOriginalCancellation(t *testing.T) {
+	for _, original := range []bool{false, true} {
+		t.Run(map[bool]string{false: "operation", true: "original-caller"}[original], func(t *testing.T) {
+			caller := &handoffDeferredCaller{Context: context.Background()}
+			a, claim := lifetimeAcquisition(t, caller)
+			defer a.Close()
+			claim.local = func() error {
+				if original {
+					// No Done notification: the caller must be checked directly
+					// after the original borrow's local observation.
+					caller.canceled.Store(true)
+				} else {
+					a.cancel()
+				}
+				return nil
+			}
+			if err := a.checkLocal(); !errors.Is(err, context.Canceled) {
+				t.Fatal("local fence lost cancellation during borrow observation", err)
+			}
+			if claim.returns.Load() != 0 {
+				t.Fatal("local refusal returned an unjoined original borrow")
+			}
+		})
+	}
 }
 
 func TestAcquisitionCleanupReceiptRequiresOriginalReturnAndRetainsPhysicalFailure(t *testing.T) {

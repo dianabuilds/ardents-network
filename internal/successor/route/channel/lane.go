@@ -22,37 +22,40 @@ type Lane struct {
 	openEnd                            time.Time
 	buffer                             []byte
 	credit, receive                    uint32
-	eof, closed, peerClosed            bool
-	cause                              error
-	changed                            chan struct{}
-	writeMu                            sync.Mutex
-	writes                             sync.WaitGroup
-	closeOnce                          sync.Once
-	closeErr                           error
-	hardEnd                            time.Time
-	handshake                          bool
-	handshakeBytes, uncredited         uint32
-	handshakeOutput                    uint32
-	openEmitted                        bool
-	outputEOF                          bool
-	finished                           bool
-	afterFinish                        func()
-	queueBound                         *Budget
-	queuedOutput                       uint64
-	queueTermination                   bool
-	trafficLimit, trafficUsed          uint64
-	chargeOutput                       func(uint64, bool) error
-	localClosed, peerRefused           bool
-	physicalAttempts, payloadAttempts  uint64
-	physicalWriteFailed                bool
-	physicalErr                        error
-	cleanupJoined                      bool
-	controlOutput                      uint32 // original selected nested control writers; guarded by s.mu
-	deadlines                          sync.WaitGroup
-	refill                             *parentExchange
-	ctx                                context.Context
-	caller                             context.Context
-	cancel                             context.CancelCauseFunc
+	// Consumed bytes remain unavailable to the peer until their CREDIT starts
+	// physical output. Pending and queued credit are distinct for concurrent reads.
+	pendingCredit, queuedCredit       uint32
+	eof, closed, peerClosed           bool
+	cause                             error
+	changed                           chan struct{}
+	writeMu                           sync.Mutex
+	writes                            sync.WaitGroup
+	closeOnce                         sync.Once
+	closeErr                          error
+	hardEnd                           time.Time
+	handshake                         bool
+	handshakeBytes, uncredited        uint32
+	handshakeOutput                   uint32
+	openEmitted                       bool
+	outputEOF                         bool
+	finished                          bool
+	afterFinish                       func()
+	queueBound                        *Budget
+	queuedOutput                      uint64
+	queueTermination                  bool
+	trafficLimit, trafficUsed         uint64
+	chargeOutput                      func(uint64, bool) error
+	localClosed, peerRefused          bool
+	physicalAttempts, payloadAttempts uint64
+	physicalWriteFailed               bool
+	physicalErr                       error
+	cleanupJoined                     bool
+	controlOutput                     uint32 // original selected nested control writers; guarded by s.mu
+	deadlines                         sync.WaitGroup
+	refill                            *parentExchange
+	ctx                               context.Context
+	caller                            context.Context
+	cancel                            context.CancelCauseFunc
 }
 
 func (l *Lane) signalLocked() { close(l.changed); l.changed = make(chan struct{}) }
@@ -123,6 +126,15 @@ func (l *Lane) Read(p []byte) (int, error) {
 			} else {
 				credited -= l.uncredited
 				l.uncredited = 0
+			}
+			if !closed {
+				l.pendingCredit += credited
+				credited = 0
+				if l.pendingCredit >= Window/2 {
+					credited = l.pendingCredit
+					l.pendingCredit = 0
+					l.queuedCredit += credited
+				}
 			}
 			l.s.mu.Unlock()
 			if !closed && credited != 0 {

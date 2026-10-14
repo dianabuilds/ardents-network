@@ -30,16 +30,18 @@ type RegistrationConfig struct {
 // withdrawal and physical termination share the immutable original lifetime.
 // Close joins every borrower and retains the same result on repeated calls.
 type HolderRegistration struct {
-	self     *HolderRegistration
-	borrow   *prefix.Borrow
-	conn     net.Conn
-	terminal *prefix.IntroductionChannel
-	request  Request
-	receipt  Receipt
-	ctx      context.Context
-	caller   context.Context
-	cancel   context.CancelFunc
-	check    func() error
+	self          *HolderRegistration
+	borrow        *prefix.Borrow
+	conn          net.Conn
+	terminal      *prefix.IntroductionChannel
+	request       Request
+	receipt       Receipt
+	ctx           context.Context
+	caller        context.Context
+	cancel        context.CancelFunc
+	check         func() error
+	observationMu sync.Mutex
+	observedAt    time.Time // Scheduling only; never an accepting authority result.
 
 	mu                                              sync.Mutex
 	pending                                         [32]byte
@@ -181,19 +183,41 @@ func (r *HolderRegistration) stop(cause error) {
 
 func (r *HolderRegistration) watch() {
 	defer close(r.watcherDone)
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
+	// A slow original-owner observation must not leave an overdue tick that
+	// immediately starts another scan ahead of delivery/effect checks.
+	observation := time.NewTimer(100 * time.Millisecond)
+	defer observation.Stop()
 	for {
 		select {
 		case <-r.ctx.Done():
 			return
-		case <-ticker.C:
-			if err := r.check(); err != nil {
+		case <-observation.C:
+			r.observationMu.Lock()
+			remaining := time.Until(r.observedAt.Add(100 * time.Millisecond))
+			r.observationMu.Unlock()
+			if remaining > 0 {
+				observation.Reset(remaining)
+				continue
+			}
+			if err := r.checkOriginal(); err != nil {
 				r.stop(err)
 				return
 			}
+			observation.Reset(100 * time.Millisecond)
 		}
 	}
+}
+
+// checkOriginal always observes authority. Only successful completion starts
+// the existing idle-supervision interval; no caller reuses its result.
+func (r *HolderRegistration) checkOriginal() error {
+	if err := r.check(); err != nil {
+		return err
+	}
+	r.observationMu.Lock()
+	r.observedAt = time.Now()
+	r.observationMu.Unlock()
+	return nil
 }
 
 func (r *HolderRegistration) read() {
@@ -227,7 +251,7 @@ func (r *HolderRegistration) read() {
 			err = errors.Join(errors.New("route withdrawal result differs"), err)
 		}
 		if err == nil {
-			err = r.check()
+			err = r.checkOriginal()
 		}
 		if err == nil {
 			// A matching ACK does not join the peer. The sole reader retains
@@ -290,7 +314,7 @@ func (r *HolderRegistration) Withdraw(ctx context.Context) error {
 		err = ctx.Err()
 	}
 	if err == nil {
-		err = errors.Join(r.check(), ctx.Err())
+		err = errors.Join(r.checkOriginal(), ctx.Err())
 	}
 	if err == nil {
 		var body []byte
@@ -300,7 +324,7 @@ func (r *HolderRegistration) Withdraw(ctx context.Context) error {
 		}
 		if err == nil {
 			r.writer.Lock()
-			err = errors.Join(ctx.Err(), r.check())
+			err = errors.Join(ctx.Err(), r.checkOriginal())
 			if err == nil {
 				err = ardp.WriteFrame(r.conn, ardp.Frame{Kind: ardp.KindOperation, Body: body})
 			}

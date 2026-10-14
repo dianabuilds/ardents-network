@@ -48,6 +48,7 @@ func TestReadCreditRetirementPreservesConsumedBytesOnlyForCleanPeer(t *testing.T
 					return result.lane
 				}
 				lane, sibling := open(), open()
+				consumeBeforeCredit(t, peer, lane, int(Window/2)-1)
 				if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: lane.id, Body: []byte{7}}); err != nil {
 					t.Fatal(err)
 				}
@@ -109,6 +110,8 @@ func consumedCreditLane(t *testing.T, s *Session, id uint32) *Lane {
 		t.Fatal("input capacity absent")
 	}
 	l.buffer, l.receive = []byte{42}, Window-1
+	// Model the previous consumption retained below the batch threshold.
+	l.pendingCredit = Window/2 - 1
 	s.queued++
 	return l
 }
@@ -190,7 +193,7 @@ func TestCREDITStartedFailureHeldUntilJoined(t *testing.T) {
 	go func() { var value [1]byte; _, err := l.Read(value[:]); read <- err }()
 	raw := <-physical.writes
 	frame, err := ardp.ReadFrame(bytes.NewReader(raw))
-	if err != nil || frame.Kind != ardp.KindCredit || frame.Lane != 1 || !bytes.Equal(frame.Body, []byte{0, 0, 0, 1}) {
+	if err != nil || frame.Kind != ardp.KindCredit || frame.Lane != 1 || !bytes.Equal(frame.Body, []byte{0, 0, 128, 0}) {
 		t.Fatal("wrong started physical frame", frame, err)
 	}
 	joined := make(chan error, 1)

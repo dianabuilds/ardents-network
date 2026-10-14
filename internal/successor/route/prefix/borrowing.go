@@ -102,14 +102,22 @@ func (b *JoinBorrow) CheckLocal() error {
 }
 
 func (b *JoinBorrow) CheckOriginal() error {
-	for _, original := range []*Prefix{b.source, b.responder} {
-		if original != nil {
-			if err := original.originalCurrent(); err != nil {
-				return err
-			}
-		}
+	if b == nil || b.source == nil || b.source.caller == nil || b.source.ctx == nil {
+		return errors.New("route JOIN original Source unavailable")
 	}
-	return nil
+	if b.responder == nil {
+		return b.source.originalCurrent()
+	}
+	if b.responder.source != b.source {
+		return errors.New("route JOIN Responder belongs to another Source")
+	}
+	if err := errors.Join(b.source.caller.Err(), b.source.ctx.Err()); err != nil {
+		return err
+	}
+	// The original Responder observer fully checks this exact Source after
+	// its own observation. Repeating that Source read first adds no effect
+	// boundary. Keep original-caller fences even when the observation fails.
+	return errors.Join(b.responder.originalCurrent(), b.source.caller.Err(), b.source.ctx.Err())
 }
 
 func (b *JoinBorrow) WaitRetirement(ctx context.Context) {
@@ -225,7 +233,14 @@ func (p *Prefix) originalCurrent() error {
 	if err != nil {
 		return err
 	}
-	return errors.Join(p.config.Leg.Check(view, view.ObservedAt()), p.caller.Err(), p.ctx.Err())
+	err = errors.Join(p.config.Leg.Check(view, view.ObservedAt()), p.caller.Err(), p.ctx.Err())
+	// Terminal borrowers also complete a full observation of this exact leg.
+	// Record only a still-current successful check for background scheduling;
+	// every borrower continues to perform its own complete observation.
+	if err == nil && p.config.Leg.Check(view, time.Now()) == nil {
+		p.observation.completed()
+	}
+	return err
 }
 
 // observeOriginal is the physical generation's observation seam. Every terminal

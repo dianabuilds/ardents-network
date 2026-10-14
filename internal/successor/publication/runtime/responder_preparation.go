@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/successor/route"
 )
 
 // Private nonce acceptance precedes any actual physical opening. Replacement
@@ -41,20 +39,44 @@ func (opening *IntroductionOpening) prepareResponder(ctx context.Context) error 
 		return err
 	}
 	if opening.stream != nil {
-		_, err := opening.Binding(ctx)
-		return err
+		return ctx.Err()
+	}
+	if p.config.PrepareJoin != nil {
+		// The accepted nonce and both selected recipients are now fixed. Fund
+		// JOIN on the exact existing Source while opening the independently
+		// funded Responder. Neither result is published before both join.
+		source, err := p.sourceScope.CurrentHandle(ctx)
+		if err != nil {
+			return err
+		}
+		defer source.Close()
+		preparing, cancel := context.WithCancel(ctx)
+		defer cancel()
+		funded := make(chan error, 1)
+		go func() {
+			err := p.config.PrepareJoin(preparing, source, opening.rendezvous)
+			if err != nil {
+				cancel()
+			}
+			funded <- err
+		}()
+		opening.responder, err = p.responderScope.Acquire(preparing)
+		if err != nil {
+			cancel()
+		}
+		// A failed or canceled sibling cannot leave an issuer operation using
+		// the Source after this preparation/initial delivery has returned.
+		return errors.Join(err, <-funded, ctx.Err())
 	}
 	var err error
 	opening.responder, err = p.responderScope.Acquire(ctx)
 	if err != nil {
 		return err
 	}
-	known := append([]route.Member(nil), p.config.Exclusions...)
-	intro := p.config.Duty
-	known = append(known, route.Member{NodeID: intro.NodeID, PublicKey: intro.PublicKey, FamilyID: intro.FamilyID})
-	if err := opening.responder.CheckRendezvous(opening.rendezvous, known); err != nil {
-		return err
-	}
-	_, err = opening.Binding(ctx)
-	return err
+	// The sole caller immediately runs initialDelivery.retain. That owner
+	// performs the complete post-acquisition Binding and Rendezvous observations
+	// before its local commit and before any successful delivery output. No
+	// accepting state escapes this private preparation, so do not duplicate
+	// those same observations here with no intervening owned effect.
+	return ctx.Err()
 }

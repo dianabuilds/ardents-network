@@ -35,16 +35,17 @@ func (records *attachmentRecords) join() error {
 func (stream *Stream) readRecords(records *attachmentRecords) {
 	var result error
 	defer func() { records.readerResult = result; close(records.readerDone) }()
+	input := &attachmentRecordReader{reader: records.physical}
+	defer input.discard()
 	for {
-		physicalRead := observedRecordRead{reader: records.physical}
-		decoded, readErr := wire.ReadStream(&physicalRead)
+		decoded, readErr, received := input.readRecord()
 		record := wire.Record{Data: decoded.Data, Acknowledgement: decoded.Acknowledgement, Terminal: decoded.Terminal}
 		result = readErr
 		// The decoded clean CLOSE is an immutable fact of this exact child,
 		// not logical authority. Observe it outside the consumer state lock;
 		// commit still matches the same records and complete Terminal state.
 		peerCloseErr := errIntegrity
-		if terminalTruncation(readErr, physicalRead.received) {
+		if terminalTruncation(readErr, received) {
 			peerCloseErr = records.physical.decodedPeerClose()
 		}
 		for {
@@ -59,7 +60,7 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 					return errIntegrity
 				}
 				if readErr != nil {
-					if stream.terminalTailCompleteLocked() && terminalTruncation(readErr, physicalRead.received) && peerCloseErr == nil {
+					if stream.terminalTailCompleteLocked() && terminalTruncation(readErr, received) && peerCloseErr == nil {
 						finished, retireTail = true, true
 						return nil
 					}

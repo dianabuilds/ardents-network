@@ -130,7 +130,7 @@ func (o *Pairing) Serve(ctx context.Context, conn net.Conn, hello ardp.Hello, li
 		clear(s.request.Secret[:])
 		clear(s.request.Context[:])
 	}()
-	setup := minDeadline(hello.Deadline, capacity.reserved.Add(10*time.Second))
+	setup := minDeadline(hello.Deadline, capacity.reserved.Add(30*time.Second))
 	if err := s.deadline(setup, false); err != nil {
 		return err
 	}
