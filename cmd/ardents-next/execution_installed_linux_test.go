@@ -283,9 +283,12 @@ func runInstalledExecutionRoute(t *testing.T, carrier transport.CarrierProfile, 
 		}
 		if joinedErr != nil {
 			// Deliberate retirement can interrupt an already started frame.
-			// The actual adapter's exact peer-retirement classification is
-			// diagnostic, never a clean result. Every other leaf still fails.
-			if !retirement || !transport.IsPeerRetirementCause(joinedErr) {
+			// Receiver.Close also interrupts its own socket while a delayed
+			// RESULT is unwinding. Retain that local closed-only failure in the
+			// I/O-loss cases; it is not a peer witness or a clean result. Both
+			// classifiers inspect every leaf, so unrelated failures still fail.
+			localInterrupted := lossDuringIO && routeExpiryCloseOnly(joinedErr)
+			if !retirement || !(transport.IsPeerRetirementCause(joinedErr) || localInterrupted) {
 				t.Fatal("joined receiver", joinedErr)
 			}
 			t.Log("retained failed receiver after deliberate retirement", joinedErr)

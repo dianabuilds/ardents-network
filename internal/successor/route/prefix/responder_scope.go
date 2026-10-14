@@ -64,7 +64,7 @@ func NewResponderScope(ctx context.Context, source *SourceScope, config Config, 
 		return nil, errors.New("retained Responder scope unavailable")
 	}
 	if !config.NetworkWitness.SameOriginal(source.config.NetworkWitness) {
-		return nil, errors.New("Responder Network owner differs from original Source")
+		return nil, errors.New("responder Network owner differs from original Source")
 	}
 	if end, ok := ctx.Deadline(); !ok || end.After(config.Deadline) {
 		return nil, errors.New("responder scope exceeds original bound")

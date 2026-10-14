@@ -313,7 +313,7 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 		return gate.observe(receivingNetwork.current)
 	})
 	defer gate.release()
-	holder := routePermissionStock(t, f, admission.AllocationPublisher, [3]uint32{2, 12, 2})
+	holder := routePermissionStock(t, f, admission.AllocationPublisher, [3]uint32{2, 13, 2})
 	var attempt stock.Attempt
 	installedPublisherBatches(t, f, func(command any) localAdmissionReply {
 		request := command.(holderCommand)
@@ -331,7 +331,7 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 			result.Outcome = "completed"
 		}
 		return result
-	})
+	}, true)
 	principal := [32]byte{32}
 	local, err := executionruntime.New(execution.Config{ID: [32]byte{31}, Grants: []execution.Grant{{Principal: principal, Surface: execution.Administration}}})
 	if err != nil {

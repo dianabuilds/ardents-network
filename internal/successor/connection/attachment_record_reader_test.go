@@ -46,11 +46,11 @@ func TestAttachmentRecordReaderRetainsSeparateRecordsAndPartialTail(t *testing.T
 		}
 		transport := &recordInputTransport{Reader: bytes.NewReader(append(append([]byte(nil), data...), tail...))}
 		input := &attachmentRecordReader{reader: transport}
-		got, err, received := input.readRecord()
+		got, received, err := input.readRecord()
 		if err != nil || got.Data == nil || received != len(data) || transport.reads != 1 {
 			t.Fatal("buffered first record differs", err, received, transport.reads)
 		}
-		got, err, received = input.readRecord()
+		got, received, err = input.readRecord()
 		if partial {
 			if !errors.Is(err, io.ErrUnexpectedEOF) || received != 15 || terminalTruncation(err, received) {
 				t.Fatal("partial buffered successor became an empty terminal tail", err, received)
@@ -75,12 +75,12 @@ func TestAttachmentRecordReaderRejectsBytesAccompaniedByOriginalFailure(t *testi
 		}
 		transport := &recordInputTransport{Reader: bytes.NewReader(data), failAt: failAt, failure: cause}
 		input := &attachmentRecordReader{reader: transport}
-		got, err, received := input.readRecord()
+		got, received, err := input.readRecord()
 		if !errors.Is(err, cause) || got.Data != nil || received == 0 {
 			t.Fatal("buffered or direct read hid original failure", size, err, received)
 		}
 		calls := transport.reads
-		if _, err, _ := input.readRecord(); !errors.Is(err, cause) || transport.reads != calls {
+		if _, _, err := input.readRecord(); !errors.Is(err, cause) || transport.reads != calls {
 			t.Fatal("failed reader resumed physical input", size, err)
 		}
 		input.discard()

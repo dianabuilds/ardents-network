@@ -38,7 +38,7 @@ func (stream *Stream) readRecords(records *attachmentRecords) {
 	input := &attachmentRecordReader{reader: records.physical}
 	defer input.discard()
 	for {
-		decoded, readErr, received := input.readRecord()
+		decoded, received, readErr := input.readRecord()
 		record := wire.Record{Data: decoded.Data, Acknowledgement: decoded.Acknowledgement, Terminal: decoded.Terminal}
 		result = readErr
 		// The decoded clean CLOSE is an immutable fact of this exact child,

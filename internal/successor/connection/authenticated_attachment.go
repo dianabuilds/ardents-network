@@ -145,16 +145,6 @@ type attachmentIO struct {
 	context   [32]byte
 }
 
-func (attachment attachmentIO) check() error {
-	if err := attachment.checkIOOwner(); err != nil {
-		return err
-	}
-	if attachment.owner.role == wire.RoleInitiator {
-		return attachment.initiator.check()
-	}
-	return attachment.service.CheckIdentity(attachment.owner.identity, attachment.owner.logical, attachment.context)
-}
-
 // Concrete transport entry performs its own full physical observation before
 // borrowing TLS and repeats it after I/O. Keep the separate original logical
 // owner observation here without observing that same physical attachment twice

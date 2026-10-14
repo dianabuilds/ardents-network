@@ -49,7 +49,8 @@ func TestPrefixSupervisionFollowsFreshEffectsWithoutCachingThem(t *testing.T) {
 		synctest.Wait()
 		time.Sleep(80 * time.Millisecond)
 		// Both effect callers must perform their observations, even back to back.
-		if check() != nil || check() != nil || calls.Load() != 2 {
+		first, second := check(), check()
+		if first != nil || second != nil || calls.Load() != 2 {
 			t.Fatal("effect checks reused a prior result")
 		}
 		time.Sleep(21 * time.Millisecond)

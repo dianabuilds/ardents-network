@@ -45,15 +45,15 @@ func (input *attachmentRecordReader) consume(body []byte) int {
 	return n
 }
 
-func (input *attachmentRecordReader) readRecord() (wire.StreamRecord, error, int) {
+func (input *attachmentRecordReader) readRecord() (wire.StreamRecord, int, error) {
 	observed := observedRecordRead{reader: input}
 	record, err := wire.ReadStream(&observed)
 	if input.failure != nil {
 		// ReadFull can hide an error accompanying enough bytes. A complete
 		// buffered record must not hide that original transport/owner failure.
-		return wire.StreamRecord{}, errors.Join(err, input.failure), observed.received
+		return wire.StreamRecord{}, observed.received, errors.Join(err, input.failure)
 	}
-	return record, err, observed.received
+	return record, observed.received, err
 }
 
 func (input *attachmentRecordReader) discard() {

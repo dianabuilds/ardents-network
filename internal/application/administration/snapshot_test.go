@@ -133,13 +133,20 @@ func TestSnapshotAdministrationSerializesAllocationAndJoinsShutdown(t *testing.T
 	}
 }
 func TestSnapshotClientRejectsInvalidInputAndWrongSuccess(t *testing.T) {
-	if _, err := RequestSnapshot(nil, "", nil); err == nil {
-		t.Fatal("nil context accepted")
-	}
-	for _, body := range [][]byte{{0xff}, make([]byte, MaximumSnapshotBytes+1)} {
-		if _, err := RequestSnapshot(t.Context(), "", body); err == nil {
-			t.Fatal("invalid snapshot accepted")
-		}
+	for _, invalid := range []struct {
+		name string
+		ctx  context.Context
+		body []byte
+	}{
+		{"nil-context", nil, nil},
+		{"invalid-utf8", t.Context(), []byte{0xff}},
+		{"oversized", t.Context(), make([]byte, MaximumSnapshotBytes+1)},
+	} {
+		t.Run(invalid.name, func(t *testing.T) {
+			if _, err := RequestSnapshot(invalid.ctx, "", invalid.body); err == nil {
+				t.Fatal("invalid snapshot accepted")
+			}
+		})
 	}
 	path, _ := snapshotTestServer(t, snapshotTestOwner{snapshot: func(context.Context, []byte) error { return errors.New("not committed") }})
 	if _, err := RequestSnapshot(t.Context(), path, nil); err == nil {

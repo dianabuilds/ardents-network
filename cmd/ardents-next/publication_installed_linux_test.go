@@ -669,11 +669,11 @@ func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixtur
 }
 
 func installedPublisherStock(t *testing.T, f *networkAdmissionFixture, send func(any) localAdmissionReply) {
-	routeConsolePermissionStock(t, f, send, [3]uint32{2, 12, 2})
-	installedPublisherBatches(t, f, send)
+	routeConsolePermissionStock(t, f, send, [3]uint32{2, 13, 2})
+	installedPublisherBatches(t, f, send, true)
 }
 
-func installedPublisherBatches(t *testing.T, f *networkAdmissionFixture, send func(any) localAdmissionReply) {
+func installedPublisherBatches(t *testing.T, f *networkAdmissionFixture, send func(any) localAdmissionReply, prepareRendezvous ...bool) {
 	var forwards, registrations, controls, responders []token.ClosedTokenContext
 	challenge := func(id byte, class uint8) token.ClosedTokenContext {
 		return token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: [32]byte{id}, ReceiverDutyGeneration: 9, Class: class, WindowStart: time.Now().UTC().Truncate(time.Hour)}
@@ -687,6 +687,12 @@ func installedPublisherBatches(t *testing.T, f *networkAdmissionFixture, send fu
 	}
 	for _, id := range []byte{31, 32, 33, 34} {
 		responders = append(responders, challenge(id, 2))
+	}
+	if len(prepareRendezvous) == 1 && prepareRendezvous[0] {
+		// The real incoming-delivery path prepares its selected Rendezvous
+		// before RESULT. Provision that finite right before independent signing;
+		// this fixture has no online issuer and grants nothing after a failure.
+		responders = append(responders, challenge(41, 2))
 	}
 	for i, challenges := range [][]token.ClosedTokenContext{forwards, registrations, controls, responders} {
 		// The two finite bootstrap batches remain class-specific. Independent
