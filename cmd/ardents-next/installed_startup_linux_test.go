@@ -294,13 +294,79 @@ func runInstalledParticipant(t *testing.T, publicationEnabled bool, network inst
 	candidate, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 2, candidateResources, rootAuthority, 2, 2)
 	candidateRequest := strings.Replace(request, quoted(bundle), quoted(candidate), 1)
 	candidateRequest = strings.Replace(candidateRequest, ",\"manifest_sha256\":"+quoted(pin), "", 1)
+	// Permission holder secrets are volatile. This predecessor's pending public
+	// request remains retained; the explicitly bound next invocation uses its own
+	// request/response leaves in the same original writable directory.
+	predecessorRequestPath := filepath.Join(base, "permission", "predecessor-request")
+	predecessorResponsePath := filepath.Join(base, "permission", "predecessor-response")
+	candidateRequest = strings.Replace(candidateRequest, quoted(filepath.Join(base, "permission", "request")), quoted(predecessorRequestPath), 1)
+	candidateRequest = strings.Replace(candidateRequest, quoted(filepath.Join(base, "permission", "response")), quoted(predecessorResponsePath), 1)
 	candidatePath := filepath.Join(base, "candidate-request.json")
 	installedStartupWrite(t, candidatePath, []byte(candidateRequest), 0600)
 	installedStartupCommand(t, initialProgram, nil, "installed-started", "installation", "upgrade-installed", "--request", candidatePath)
+	// Replace a genuinely running installed invocation, not only the stopped
+	// generation from initial provision. Keep independent original kernel pins
+	// across the public successor command; a new MainPID cannot prove old join.
+	predecessor := installedStartupIdentity(t)
+	if predecessor[0] == "0" || len(predecessor[1]) != 32 || predecessor[2] != "active" {
+		t.Fatal("live replacement lacks an original installed predecessor", predecessor)
+	}
+	predecessorProc, err := os.Open(filepath.Join("/proc", predecessor[0]))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = predecessorProc.Close() })
+	predecessorScope, err := os.Open("/sys/fs/cgroup/system.slice/ardents-endpoint.service/cgroup.events")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = predecessorScope.Close() })
+	var predecessorFS syscall.Statfs_t
+	if err := syscall.Fstatfs(int(predecessorScope.Fd()), &predecessorFS); err != nil || predecessorFS.Type != 0x63677270 {
+		t.Fatal("replacement predecessor scope is not an original kernel object", err)
+	}
+	predecessorRequest := installedStartupWait(t, func() ([]byte, bool) {
+		raw, err := os.ReadFile(predecessorRequestPath)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, false
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw, len(raw) != 0
+	})
+	predecessorRequestInfo, err := os.Lstat(predecessorRequestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Static resource changes alone require a separately authenticated generation,
+	// even though this fixture deliberately retains the same executable bytes.
+	candidateResources["ardents-endpoint.service"] = append([]byte("# live successor fixture\n"), candidateResources["ardents-endpoint.service"]...)
+	candidateResources["50-ardents-text.rules"] = append([]byte("// live successor fixture\n"), candidateResources["50-ardents-text.rules"]...)
+	liveCandidate, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 3, candidateResources, rootAuthority, 3, 3)
+	liveRequest := strings.Replace(candidateRequest, quoted(candidate), quoted(liveCandidate), 1)
+	liveRequest = strings.Replace(liveRequest, quoted(predecessorRequestPath), quoted(filepath.Join(base, "permission", "request")), 1)
+	liveRequest = strings.Replace(liveRequest, quoted(predecessorResponsePath), quoted(filepath.Join(base, "permission", "response")), 1)
+	livePath := filepath.Join(base, "live-candidate-request.json")
+	installedStartupWrite(t, livePath, []byte(liveRequest), 0600)
+	installedStartupCommand(t, initialProgram, nil, "installed-started", "installation", "upgrade-installed", "--request", livePath)
+	if _, err := os.ReadFile(filepath.Join("/proc/self/fd", strconv.FormatUint(uint64(predecessorProc.Fd()), 10), "stat")); !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ESRCH) {
+		t.Fatal("replaced original process has not joined", err)
+	}
+	installedStartupScopeJoined(t, predecessorScope)
+	retainedRequest, readErr := os.ReadFile(predecessorRequestPath)
+	retainedRequestInfo, statErr := os.Lstat(predecessorRequestPath)
+	if readErr != nil || statErr != nil || !bytes.Equal(predecessorRequest, retainedRequest) || !os.SameFile(predecessorRequestInfo, retainedRequestInfo) {
+		t.Fatal("replacement changed original pending permission request", readErr, statErr)
+	}
 	original := installedStartupIdentity(t)
 	if original[0] == "0" || len(original[1]) != 32 || original[2] != "active" {
 		t.Fatal("actual installed participant is not active", original)
 	}
+	if original[0] == predecessor[0] || original[1] == predecessor[1] {
+		t.Fatal("live replacement reused the original invocation", predecessor, original)
+	}
+	t.Log("authenticated static-resource live successor completed; independently pinned original process and kernel scope joined")
 	proc, err := os.Open(filepath.Join("/proc", original[0]))
 	if err != nil {
 		t.Fatal(err)
@@ -335,22 +401,7 @@ func runInstalledParticipant(t *testing.T, publicationEnabled bool, network inst
 		if _, err := os.ReadFile(filepath.Join("/proc/self/fd", strconv.FormatUint(uint64(proc.Fd()), 10), "stat")); !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ESRCH) {
 			t.Errorf("original process did not join: %v", err)
 		}
-		installedStartupWait(t, func() ([]byte, bool) {
-			if _, err := scope.Seek(0, 0); errors.Is(err, syscall.ENODEV) {
-				return nil, true
-			} else if err != nil {
-				t.Fatal(err)
-			}
-			var body [1025]byte
-			n, err := scope.Read(body[:])
-			if errors.Is(err, syscall.ENODEV) && n == 0 {
-				return nil, true
-			}
-			if err != nil {
-				t.Fatal("original kernel scope read", err)
-			}
-			return body[:n], false
-		})
+		installedStartupScopeJoined(t, scope)
 	})
 	t.Cleanup(stopParticipant)
 	// Hosting is an explicit provider input, never created/reset by runtime.
@@ -411,6 +462,28 @@ func runInstalledParticipant(t *testing.T, publicationEnabled bool, network inst
 	} else if publicationEnabled {
 		installedServicePublication(t, base, original)
 	}
+}
+
+// An opened events descriptor remains tied to its original kernel scope even
+// after the manager creates the same pathname for a successor invocation.
+func installedStartupScopeJoined(t *testing.T, scope *os.File) {
+	t.Helper()
+	installedStartupWait(t, func() ([]byte, bool) {
+		if _, err := scope.Seek(0, 0); errors.Is(err, syscall.ENODEV) {
+			return nil, true
+		} else if err != nil {
+			t.Fatal(err)
+		}
+		var body [1025]byte
+		n, err := scope.Read(body[:])
+		if errors.Is(err, syscall.ENODEV) && n == 0 {
+			return nil, true
+		}
+		if err != nil {
+			t.Fatal("original kernel scope read", err)
+		}
+		return body[:n], false
+	})
 }
 
 func installedStartupResources(t *testing.T, root string) map[string][]byte {

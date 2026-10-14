@@ -62,7 +62,9 @@ else
 INSTALLED_TAG_COMPILE_MKDIR = mkdir -p "$(INSTALLED_TAG_COMPILE_ROOT)"
 endif
 
-override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false
+# Installed integrity checks freshly compare the whole signed executable. Omit
+# DWARF from distributed commands while retaining symbols for stacks/profiles.
+override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false -ldflags=-w
 QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check release-operation-compile-check installation-native-compile-check
 
 ifeq ($(OS),Windows_NT)

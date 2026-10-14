@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 )
@@ -133,6 +134,36 @@ func TestInstallationNativeSnapshotRetainsOriginalCancellation(t *testing.T) {
 	cancel()
 	if !errors.Is(s.Observe(), context.Canceled) || s.Bytes("binding.json") != nil || !errors.Is(s.Close(), context.Canceled) {
 		t.Fatal("snapshot renewed original caller")
+	}
+}
+
+type snapshotReadCancellation struct {
+	context.Context
+	cancel context.CancelFunc
+	checks atomic.Int32
+}
+
+func (c *snapshotReadCancellation) Err() error {
+	// Observe passes its initial check, then its first fresh byte comparison
+	// observes original cancellation. No file or accepting fact is substituted.
+	if c.checks.Add(1) == 2 {
+		c.cancel()
+	}
+	return c.Context.Err()
+}
+
+func TestInstallationNativeSnapshotReadCancellationIsNotByteMismatch(t *testing.T) {
+	directory, _ := snapshotFixture(t)
+	s := openSnapshotFixture(t, directory, t.Context())
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	s.ctx = &snapshotReadCancellation{Context: ctx, cancel: cancel}
+	err := s.Observe()
+	if !errors.Is(err, context.Canceled) || errors.Is(err, ErrBinding) {
+		t.Fatal("interrupted original read invented a byte mismatch", err)
+	}
+	if s.Bytes("binding.json") != nil || !errors.Is(s.Close(), context.Canceled) {
+		t.Fatal("canceled observation renewed read custody")
 	}
 }
 

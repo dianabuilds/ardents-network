@@ -44,7 +44,7 @@ func compiledCommand(t *testing.T) string {
 			name += ".exe"
 		}
 		commandBuild.path = filepath.Join(commandBuild.directory, name)
-		cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-o", commandBuild.path, ".")
+		cmd := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", commandBuild.path, ".")
 		commandBuild.output, commandBuild.err = cmd.CombinedOutput()
 	})
 	if commandBuild.err != nil {

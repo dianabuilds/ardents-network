@@ -46,6 +46,14 @@ its one original descriptor; smaller files are read sequentially. It retains
 the same total 512 KiB scratch bound and joins all ranges before EOF and metadata
 checks, avoiding an idle reader while the larger executable is scanned.
 
+An interrupted original byte or process read retains its cancellation cause;
+it does not invent a byte, argument or authority mismatch from an unavailable
+observation. The installed command projects exclusively requested cancellation
+to a normal exit only after its original owners have joined. Any additional
+observation or physical cleanup failure retains the failed exit, including a
+failure joined with cancellation. This projection grants no startup or Service
+authority and does not turn cancellation into evidence of physical completion.
+
 
 The following bounded command contract selects ADR-0119's installation
 boundary. The initial stopped provisioning, read-only integrity and installed

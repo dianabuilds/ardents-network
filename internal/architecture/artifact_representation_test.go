@@ -113,7 +113,7 @@ func TestCanonicalCommandBuildPolicyCannotDrift(t *testing.T) {
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	canonicalGoBuildFlags(t, root)
 	for _, required := range []string{
-		"override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false",
+		"override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false -ldflags=-w",
 		"$(foreach command,$(HEADLESS_COMMANDS),go build $(CANONICAL_GO_BUILD_FLAGS)",
 		"HEADLESS_ARTIFACT_MKDIR = powershell -NoProfile -Command \"[System.IO.Directory]::CreateDirectory('$(HEADLESS_ARTIFACT_ROOT)') | Out-Null\"",
 	} {

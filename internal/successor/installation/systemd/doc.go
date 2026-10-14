@@ -16,6 +16,10 @@
 // are checked before decoding; reference-only clients still admit no arrays.
 // Version and both complete fixed-object rounds are read anew on every call,
 // with unique manager comparison before/after and joined physical cancellation.
+// An original interrupted call retains its context cause instead of adding the
+// closed-socket error induced by this observation's own transport interruption.
+// EOF, protocol/identity errors and actual Close failures remain retained; a
+// canceled read supplies no manager fact or successful partial observation.
 // Callers decide the expected generation, protection and invocation. These
 // observations and command results grant no Release, process, join or startup
 // authority. Installation admits each effect and retains original pins/lease

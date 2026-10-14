@@ -50,7 +50,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 		return 1
 	}
 	defer func() {
-		if startup.Close() != nil {
+		if installedEndpointFailure(ctx, startup.Close()) != 0 {
 			code = 1
 		}
 	}()
@@ -72,7 +72,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 		return 1
 	}
 	defer func() {
-		if owner.Close() != nil {
+		if installedEndpointFailure(ctx, owner.Close()) != 0 {
 			code = 1
 		}
 	}()
@@ -85,7 +85,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 		return 1
 	}
 	defer func() {
-		if reader.Close() != nil {
+		if installedEndpointFailure(ctx, reader.Close()) != 0 {
 			code = 1
 		}
 	}()
@@ -101,7 +101,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 			return 1
 		}
 		defer func() {
-			if publisher.Close() != nil {
+			if installedEndpointFailure(ctx, publisher.Close()) != 0 {
 				code = 1
 			}
 		}()
@@ -125,7 +125,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 		return 1
 	}
 	defer func() {
-		if network.Close() != nil {
+		if installedEndpointFailure(ctx, network.Close()) != 0 {
 			code = 1
 		}
 	}()
@@ -179,7 +179,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 		}
 		holders[name] = holder
 		defer func() {
-			if holder.Close() != nil {
+			if installedEndpointFailure(ctx, holder.Close()) != 0 {
 				code = 1
 			}
 		}()
@@ -200,8 +200,11 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 				return err
 			}
 			current, _, err := authority.observe()
-			if err != nil || current != originalFacts {
-				return errors.Join(errors.New("permission request authority changed"), err)
+			if err != nil {
+				return err
+			}
+			if current != originalFacts {
+				return errors.New("permission request authority changed")
 			}
 			return nil
 		}
@@ -212,7 +215,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 			return 1
 		}
 		if err := installedPermissionResponse(ctx, permission.ResponsePath, digest, decoded.Permission.NotAfter, holder, permissionCheck); err != nil {
-			return 1
+			return installedEndpointFailure(ctx, err)
 		}
 		if json.NewEncoder(diagnostic).Encode(map[string]string{"phase": "permission-accepted", "role": name, "request_digest": hex.EncodeToString(digest[:])}) != nil {
 			return 1
@@ -255,7 +258,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 		}
 		defer func() {
 			cancel()
-			if routes.Close() != nil {
+			if installedEndpointFailure(ctx, routes.Close()) != 0 {
 				code = 1
 			}
 		}()
@@ -276,7 +279,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 				holder: holders["publisher"], check: current, failed: cancel}
 			defer func() {
 				cancel()
-				if publisherOwner.Close() != nil {
+				if installedEndpointFailure(ctx, publisherOwner.Close()) != 0 {
 					code = 1
 				}
 			}()
@@ -289,7 +292,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 			}
 			defer func() {
 				cancel()
-				if administrationServer.Close() != nil {
+				if installedEndpointFailure(ctx, administrationServer.Close()) != 0 {
 					code = 1
 				}
 			}()
@@ -304,7 +307,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 		}
 		defer func() {
 			cancel()
-			if server.Close() != nil {
+			if installedEndpointFailure(ctx, server.Close()) != 0 {
 				code = 1
 			}
 		}()
@@ -317,6 +320,42 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 		return 1
 	}
 	return 0
+}
+
+// A requested shutdown is not a failed system-manager invocation once original
+// cleanup joins. Owners still retain their cancellation results; only the exit
+// projection treats an exclusively canceled result as expected. Any additional
+// failure, including one joined with cancellation, keeps the failed exit.
+func installedEndpointFailure(ctx context.Context, err error) int {
+	if err == nil {
+		return 0
+	}
+	if ctx.Err() == context.Canceled && installedEndpointCanceledOnly(err) {
+		return 0
+	}
+	return 1
+}
+
+func installedEndpointCanceledOnly(err error) bool {
+	if err == context.Canceled {
+		return true
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		causes := joined.Unwrap()
+		if len(causes) == 0 {
+			return false
+		}
+		for _, cause := range causes {
+			if !installedEndpointCanceledOnly(cause) {
+				return false
+			}
+		}
+		return true
+	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok {
+		return installedEndpointCanceledOnly(wrapped.Unwrap())
+	}
+	return false
 }
 
 func installedPermissionResponse(ctx context.Context, path string, digest [32]byte, deadline time.Time, holder *stock.Owner, check func() error) error {

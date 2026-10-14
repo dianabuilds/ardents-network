@@ -287,8 +287,11 @@ func (s *Snapshot) Observe() (returnedErr error) {
 	for _, name := range names {
 		original := s.files[name]
 		current, err := s.readInto(name, s.observationBytes, &original)
-		if err != nil || !snapshotFileMatches(original, current.identity) {
-			return errors.Join(ErrBinding, err)
+		if err != nil {
+			return err
+		}
+		if !snapshotFileMatches(original, current.identity) {
+			return ErrBinding
 		}
 	}
 	return errors.Join(s.observeDirectories(), s.inventory(), s.ctx.Err())

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -45,6 +46,9 @@ func ObserveStartup(ctx context.Context) (result StartupObservation, returnedErr
 	defer cancel()
 	socket, err := (&net.Dialer{}).DialContext(acquire, "unix", "/run/dbus/system_bus_socket")
 	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return result, err
+		}
 		return result, errors.Join(ErrUnavailable, err)
 	}
 	unix, ok := socket.(*net.UnixConn)
@@ -53,8 +57,13 @@ func ObserveStartup(ctx context.Context) (result StartupObservation, returnedErr
 	}
 	transport := &referenceTransport{socket: unix, properties: true}
 	var bus *dbus.Conn
+	var interruptedIO atomic.Bool
 	interrupted := make(chan struct{})
-	stop := context.AfterFunc(ctx, func() { _ = transport.Close(); close(interrupted) })
+	stop := context.AfterFunc(ctx, func() {
+		interruptedIO.Store(true)
+		_ = transport.Close()
+		close(interrupted)
+	})
 	defer func() {
 		if !stop() {
 			<-interrupted
@@ -69,30 +78,33 @@ func ObserveStartup(ctx context.Context) (result StartupObservation, returnedErr
 	}()
 	raw, err := unix.SyscallConn()
 	if err != nil {
-		return result, err
+		return result, startupCallFailure(acquire, err, interruptedIO.Load())
 	}
 	var peer *syscall.Ucred
 	var nativeErr error
 	if err = raw.Control(func(fd uintptr) {
 		peer, nativeErr = syscall.GetsockoptUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
-	}); err != nil || nativeErr != nil || peer == nil || peer.Uid != 0 || peer.Pid <= 0 {
-		return result, errors.Join(ErrObservation, err, nativeErr)
+	}); err != nil || nativeErr != nil {
+		return result, errors.Join(startupCallFailure(acquire, err, interruptedIO.Load()), nativeErr)
+	}
+	if peer == nil || peer.Uid != 0 || peer.Pid <= 0 {
+		return result, ErrObservation
 	}
 	end, _ := acquire.Deadline()
 	if err := unix.SetDeadline(end); err != nil {
-		return result, err
+		return result, startupCallFailure(acquire, err, interruptedIO.Load())
 	}
 	bus, err = dbus.NewConn(transport, dbus.WithContext(context.WithoutCancel(ctx)))
 	if err != nil {
-		return result, err
+		return result, startupCallFailure(acquire, err, interruptedIO.Load())
 	}
 	if err := bus.Auth([]dbus.Auth{dbus.AuthExternal(strconv.Itoa(os.Geteuid()))}); err != nil {
-		return result, err
+		return result, startupCallFailure(acquire, err, interruptedIO.Load())
 	}
 	if err := bus.Hello(); err != nil {
-		return result, err
+		return result, startupCallFailure(acquire, err, interruptedIO.Load())
 	}
-	client := startupBus{bus: bus, transport: transport}
+	client := startupBus{bus: bus, transport: transport, interruptedIO: &interruptedIO}
 	if err := client.owner(ctx, &result.Manager); err != nil {
 		return result, err
 	}
@@ -119,17 +131,51 @@ func ObserveStartup(ctx context.Context) (result StartupObservation, returnedErr
 			return result, err
 		}
 	}
-	var final string
-	if err := client.owner(ctx, &final); err != nil || final != result.Manager {
-		return result, errors.Join(ErrObservation, err)
+	if err := client.sameOwner(ctx, result.Manager); err != nil {
+		return result, err
 	}
 	return result, ctx.Err()
 }
 
 type startupBus struct {
-	bus       *dbus.Conn
-	transport *referenceTransport
-	manager   string
+	bus           *dbus.Conn
+	transport     *referenceTransport
+	manager       string
+	interruptedIO *atomic.Bool
+}
+
+func (client *startupBus) interrupt() error {
+	client.interruptedIO.Store(true)
+	return client.transport.Close()
+}
+
+func (client *startupBus) callFailure(ctx context.Context, err error) error {
+	return startupCallFailure(ctx, err, client.interruptedIO.Load())
+}
+
+// Only the closed-socket error induced by this original observation's own
+// interruption becomes its context cause. EOF, protocol errors, joined failures
+// and actual Close errors remain separate. This supplies no successful reply.
+func startupCallFailure(ctx context.Context, err error, interrupted bool) error {
+	if interrupted && ctx.Err() != nil {
+		for cause := err; cause != nil; cause = errors.Unwrap(cause) {
+			if cause == net.ErrClosed {
+				return ctx.Err()
+			}
+		}
+	}
+	return err
+}
+
+func (client *startupBus) sameOwner(ctx context.Context, original string) error {
+	var current string
+	if err := client.owner(ctx, &current); err != nil {
+		return err
+	}
+	if current != original {
+		return ErrObservation
+	}
+	return nil
 }
 
 func (client *startupBus) owner(ctx context.Context, owner *string) error {
@@ -152,17 +198,17 @@ func (client *startupBus) request(ctx context.Context, destination, object, meth
 	defer cancel()
 	end, _ := bounded.Deadline()
 	if err := client.transport.socket.SetDeadline(end); err != nil {
-		return nil, err
+		return nil, client.callFailure(bounded, err)
 	}
 	interrupted := make(chan struct{})
-	stop := context.AfterFunc(bounded, func() { _ = client.transport.Close(); close(interrupted) })
+	stop := context.AfterFunc(bounded, func() { _ = client.interrupt(); close(interrupted) })
 	defer func() {
 		if !stop() {
 			<-interrupted
 		}
 	}()
 	answer := client.bus.Object(destination, dbus.ObjectPath(object)).CallWithContext(bounded, method, 0, arguments...)
-	if err := errors.Join(answer.Err, bounded.Err(), ctx.Err()); err != nil {
+	if err := errors.Join(client.callFailure(bounded, answer.Err), bounded.Err(), ctx.Err()); err != nil {
 		return nil, err
 	}
 	return answer, nil
@@ -179,21 +225,21 @@ func (client *startupBus) round(ctx context.Context) (result StartupRound, retur
 	defer cancel()
 	end, _ := bounded.Deadline()
 	if err := client.transport.socket.SetDeadline(end); err != nil {
-		return result, err
+		return result, client.callFailure(bounded, err)
 	}
 	interrupted := make(chan struct{})
-	stop := context.AfterFunc(bounded, func() { _ = client.transport.Close(); close(interrupted) })
+	stop := context.AfterFunc(bounded, func() { _ = client.interrupt(); close(interrupted) })
 	var calls [6]*dbus.Call
 	var received [6]bool
 	defer func() {
 		if returnedErr != nil {
 			cancel()
-			returnedErr = errors.Join(returnedErr, client.transport.Close())
+			returnedErr = errors.Join(returnedErr, client.interrupt())
 		}
 		for index, call := range calls {
 			if call != nil && !received[index] {
 				late := <-call.Done
-				returnedErr = errors.Join(returnedErr, late.Err)
+				returnedErr = errors.Join(returnedErr, client.callFailure(bounded, late.Err))
 			}
 		}
 		if !stop() {
@@ -224,7 +270,7 @@ func (client *startupBus) round(ctx context.Context) (result StartupRound, retur
 	for index, call := range calls {
 		answer := <-call.Done
 		received[index] = true
-		if err := errors.Join(answer.Err, bounded.Err(), ctx.Err()); err != nil {
+		if err := errors.Join(client.callFailure(bounded, answer.Err), bounded.Err(), ctx.Err()); err != nil {
 			return result, fmt.Errorf("fresh fixed %s properties: %w", requests[index].iface, err)
 		}
 		// Replies retain independent immutable decoded maps. Convert the same

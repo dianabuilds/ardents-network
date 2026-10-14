@@ -13,7 +13,7 @@ peer PID/UID/GID are observed. The listener probe submits no Service request;
 the original process and kernel scope must join before fixture cleanup.
 
 Build cmd/ardents-next and cmd/ardents-text with CGO_ENABLED=0,
--trimpath -buildvcs=false, and compile the command test binary with
+-trimpath -buildvcs=false -ldflags=-w, and compile the command test binary with
 -tags=text_worker_installed and the same flags. Outside the repository, supply
 the participant, Text program and seven maintained packaging resources in one
 root-owned immutable directory. Its independently delivered inventory.json

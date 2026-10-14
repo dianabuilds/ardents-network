@@ -1062,7 +1062,13 @@ not an all-platform, all-command, supply-chain, privacy, or release
 qualification.
 
 Canonical command builds use the non-overridable
-`-trimpath -buildvcs=false` policy. The public Make proof builds all four current
+`-trimpath -buildvcs=false -ldflags=-w` policy. Distributed command artifacts
+omit DWARF while retaining symbol tables and Go stack/profile metadata.
+Installation still freshly compares every byte of the exact signed artifact;
+omitting debug sections reduces that repeated work without changing its
+integrity, authority or deadline checks. Source-level debugger use requires a
+separately built development artifact; it cannot substitute for the pinned
+installed command. The public Make proof builds all four current
 headless artifacts from two independent normal clones, a linked worktree, and
 two independent VCS-free ownership extractions,
 including the Endpoint source dependencies owned by the selected protected text

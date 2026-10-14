@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -82,6 +83,32 @@ func TestInstallationNativeReferenceCloseJoinsOriginalRead(t *testing.T) {
 	if n, err := peer.Read(make([]byte, 1)); n != 0 || err == nil {
 		t.Fatal("original peer did not observe physical close", n, err)
 	}
+}
+
+func TestInstallationNativeStartupInterruptionRetainsOriginalReadCause(t *testing.T) {
+	transport, _ := referenceSocketPair(t)
+	var interruptedIO atomic.Bool
+	client := &startupBus{transport: transport, interruptedIO: &interruptedIO}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	joined := make(chan error, 1)
+	go func() { _, err := transport.Read(make([]byte, 1)); joined <- err }()
+	awaitReferenceIO(t, &transport.readMu)
+	cancel()
+	if err := client.interrupt(); err != nil {
+		t.Fatal("actual original transport close failed", err)
+	}
+	readErr := <-joined
+	if !errors.Is(readErr, net.ErrClosed) {
+		t.Fatal("original Unix read did not observe its actual interruption", readErr)
+	}
+	if err := client.callFailure(ctx, readErr); !errors.Is(err, context.Canceled) || errors.Is(err, net.ErrClosed) {
+		t.Fatal("joined original cancellation became failed Startup", err)
+	}
+	if !transport.readMu.TryLock() {
+		t.Fatal("interruption returned before original reader joined")
+	}
+	transport.readMu.Unlock()
 }
 
 // No bytes are supplied by the peer. Once the original Read owns readMu it

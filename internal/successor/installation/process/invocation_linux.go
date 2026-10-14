@@ -149,20 +149,32 @@ func (pin *Invocation) Observe(ctx context.Context) error {
 		return errors.Join(errBinding, linkErr, exeErr)
 	}
 	arguments, err := pin.read(ctx, "cmdline", 64<<10)
-	if err != nil || !bytes.Equal(arguments, []byte(strings.Join([]string{program, "endpoint", "start-installed", pin.installationRoot, ""}, "\x00"))) {
-		return errors.Join(errBinding, err)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(arguments, []byte(strings.Join([]string{program, "endpoint", "start-installed", pin.installationRoot, ""}, "\x00"))) {
+		return errBinding
 	}
 	status, err := pin.read(ctx, "status", 64<<10)
-	if err != nil || credentials(status, pin.uid, pin.gid) != nil {
-		return errors.Join(errBinding, err)
+	if err != nil {
+		return err
+	}
+	if credentials(status, pin.uid, pin.gid) != nil {
+		return errBinding
 	}
 	cgroup, err := pin.read(ctx, "cgroup", 4<<10)
-	if err != nil || !bytes.Equal(cgroup, []byte("0::/system.slice/ardents-endpoint.service\n")) {
-		return errors.Join(errBinding, err)
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(cgroup, []byte("0::/system.slice/ardents-endpoint.service\n")) {
+		return errBinding
 	}
 	environment, err := pin.read(ctx, "environ", 64<<10)
-	if err != nil || !invocationMatches(environment, pin.invocation) {
-		return errors.Join(errBinding, err)
+	if err != nil {
+		return err
+	}
+	if !invocationMatches(environment, pin.invocation) {
+		return errBinding
 	}
 	stat, err = pin.read(ctx, "stat", 4<<10)
 	if err != nil {

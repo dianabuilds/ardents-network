@@ -128,8 +128,8 @@ func canonicalGoBuildFlags(t *testing.T, candidate string) []string {
 			continue
 		}
 		flags := strings.Fields(strings.TrimPrefix(line, prefix))
-		if strings.Join(flags, " ") != "-trimpath -buildvcs=false" {
-			t.Fatalf("canonical Go build flags = %q, want explicit no-VCS stamping policy", flags)
+		if strings.Join(flags, " ") != "-trimpath -buildvcs=false -ldflags=-w" {
+			t.Fatalf("canonical Go build flags = %q, want explicit no-VCS stamping and no-DWARF policy", flags)
 		}
 		return flags
 	}

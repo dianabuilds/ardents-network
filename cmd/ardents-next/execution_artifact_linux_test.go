@@ -17,7 +17,7 @@ import (
 // root completion peer or accepting worker is substituted by this fixture.
 func TestExecutionSignedInstalledResources(t *testing.T) {
 	worker := filepath.Join(t.TempDir(), "ardents-text")
-	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-o", worker, "github.com/dianabuilds/ardents-network/cmd/ardents-text")
+	build := exec.CommandContext(t.Context(), "go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-w", "-o", worker, "github.com/dianabuilds/ardents-network/cmd/ardents-text")
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build genuine worker: %v: %s", err, out)

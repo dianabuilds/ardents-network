@@ -10,9 +10,69 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 )
+
+type processReadCancellation struct {
+	context.Context
+	cancel context.CancelFunc
+	checks atomic.Int32
+}
+
+func (c *processReadCancellation) Err() error {
+	if c.checks.Add(1) == 3 {
+		c.cancel()
+	}
+	return c.Context.Err()
+}
+
+func TestInstallationNativeProcessCanceledReadIsNotForeignArguments(t *testing.T) {
+	directory := nativeDirectory(t)
+	stat, err := os.ReadFile("/proc/self/stat")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "stat"), stat, 0600); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	identity, err := root.Stat(".")
+	if err != nil {
+		_ = root.Close()
+		t.Fatal(err)
+	}
+	program, err := os.Readlink("/proc/self/exe")
+	if err != nil {
+		_ = root.Close()
+		t.Fatal(err)
+	}
+	info, err := os.Stat("/proc/self/exe")
+	if err != nil {
+		_ = root.Close()
+		t.Fatal(err)
+	}
+	native := info.Sys().(*syscall.Stat_t)
+	// This deliberately incomplete filesystem fixture supplies no installed
+	// invocation or accepting Retain. The actual executable matches only so
+	// original cancellation can be observed before the absent argument read.
+	pin := &Invocation{root: root, identity: identity, pid: uint32(os.Getpid()),
+		program: program, programDevice: uint64(native.Dev), programInode: native.Ino}
+	t.Cleanup(func() { _ = pin.Close() })
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	err = pin.Observe(&processReadCancellation{Context: ctx, cancel: cancel})
+	if !errors.Is(err, context.Canceled) || errors.Is(err, errBinding) {
+		t.Fatal("unobserved arguments became a binding contradiction", err)
+	}
+	if pin.Observe(t.Context()) == nil {
+		t.Fatal("incomplete fixture became accepting process evidence")
+	}
+}
 
 func TestInstallationNativeProcessSelfCredentialBoundary(t *testing.T) {
 	if os.Getenv("ARDENTS_PROCESS_SELF_CHILD") == "1" {
