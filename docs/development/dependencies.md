@@ -627,13 +627,24 @@ the component is free of vulnerabilities.
 
 The disposition must be revisited if the module, checksum, source, Go version,
 QUIC configuration, server caller, path-migration behavior, platform/backend,
-or an upstream/advisory record changes. Closure requires a preserved,
-exact-artifact profile measurement that covers each admitted QUIC server
-listener on its supported platform and TLS/ALPN/configuration, demonstrates
-the selected mitigation or enforceable non-applicability boundary, and records
-the relevant bounded-rate/lifetime and cleanup result. A subsequent dependency
-or architecture decision must then satisfy this document's normal review and
-qualification requirements.
+or an upstream/advisory record changes. Closure requires preserved evidence
+covering every admitted QUIC server listener on its supported platform and
+TLS/ALPN/configuration, demonstrating a supported fix or enforceable reviewed
+non-applicability and the relevant bounded-rate/lifetime and cleanup result.
+The Product Owner's 2026-10-15 methodology decision permits the
+[composite proof](testing.md#quic-return-path-reply-budget-evidence) described
+in the testing owner instead of requiring active native/OOB reproduction as
+the only admissible method. It combines actual maintained-component causal
+regression, exact source/module/build/artifact correspondence, complete
+caller/config/backend and output-accounting closure, and ordinary native
+both-Carrier/owner-lifetime/Service controls. Equivalent callers may share a
+mechanism proof only under that owner's exact grouping rules; uncovered cases
+remain unresolved. Missing direct wire/OOB measurements remain explicitly
+missing, not inferred from another layer's success. This decision preserves
+the historical finding, the RFC 9000 bound and both selected Carriers; it does
+not admit the current candidate or weaken the general acceptance rule. A
+subsequent dependency or architecture decision must still satisfy this
+document's normal review and qualification requirements.
 
 **Offline supply:** an explicit preparation step runs `go mod download` and
 `go mod verify` outside the repository, then supplies a temporary vendor context

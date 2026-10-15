@@ -966,6 +966,59 @@ queue bound and Node Stop/invalidation tests remain separate owner evidence,
 not one end-to-end lifecycle qualification.
 Portable session checks retain blocked-HELLO/ready-unrelated progress and
 independent waiter/creator cancellation ownership.
+### QUIC return-path reply-budget evidence
+
+The Product Owner's 2026-10-15 methodology decision for
+`ARDENTS-QUIC-2026-09-21-RETURN-PATH-REPLY-BUDGET` permits composite evidence;
+active native/OOB attack reproduction is not the sole admissible method.
+This changes the proof method, not the RFC 9000 per-unvalidated-address bound,
+the selected TCP/TLS plus QUIC Carrier set or the dependency acceptance rule.
+The [finding disposition](dependencies.md#existing-quic-finding-return-path-reply-budget)
+still requires a supported fix or enforceable reviewed non-applicability for
+all affected admitted uses. The method itself supplies neither.
+
+For a fixing candidate, retain and review all of the following:
+
+- The actual supported upstream correction and exact maintained source,
+  module, toolchain, configuration, build and canonical artifact identities.
+  Establish that the built Ardents actually includes the reviewed correction;
+  release notes or a similar patch title alone are insufficient.
+- Deterministic causal regressions of the real dependency component at its
+  actual send-admission boundary, using the independent RFC 9000 oracle and
+  a control distinguishing original and corrected behavior. Cover cumulative
+  per-address allowance before output and validation transitions. A separate
+  behavioral model, copied implementation or first-party counter is no substitute.
+- A complete caller table with source/build identity, server/client role,
+  TLS/ALPN, configuration, socket/backend and supported platform. Group only
+  callers whose relevant behavior is demonstrably equivalent. Prove the common
+  mechanism once per equivalent group, retain controls detecting a divergent
+  listener, and cover each distinct path separately. Retained predecessor and
+  new isolated Route consumers have separate closure; no migration bridge or
+  automatic predecessor repair follows from their inventory.
+- Closure over actual output accounting, including padding, retransmission,
+  segmentation, backend fallback and other send paths. Explain why these paths
+  preserve the reviewed component's admitted byte count and destination. An
+  unexplained backend or bypass remains unresolved; a source-only assumption
+  or successful ordinary handshake cannot supply its missing proof.
+- Ordinary source-matched native checks of genuine authority, Receiving/Hosting,
+  original process/producer/TLS custody, real both-Carrier and Service consumers,
+  finite bounds, cancellation, late work and joined physical resource return.
+  Preserve role-specific authority/spend/lifetime checks and affected race
+  coverage even when a shared transport mechanism is proved once.
+
+For non-applicability, retain the dependency owner's complete enforceable-boundary
+argument and real causal regression instead of assuming an upstream repair.
+Every admitted caller/platform/backend still requires explicit coverage.
+Preserve failures, historical observations and exact supersession of any earlier
+method. Label inspection, component execution, ordinary native integration and
+direct wire/OOB measurement separately. The composite proof does not claim a
+direct native packet measurement; absent measurements stay absent. Changed
+dependencies, artifacts, configuration, callers or backend assumptions invalidate
+affected receipts. Full required gates, the normal commit hook and scoped verified
+delivery remain mandatory; passing this method's prerequisites does not close the
+finding. It authorizes no active attack reproduction, host change or privileged
+experiment.
+
 ## Reachability audit
 
 Receiving Store native tests in `internal/successor/reachability` exercise actual
