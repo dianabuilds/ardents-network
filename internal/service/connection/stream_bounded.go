@@ -247,8 +247,9 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 				return nil
 			}
 			writingTerminal := stream.terminalReplaying || stream.terminalWriting
+			writingReceipt := stream.terminalAckWriting && stream.terminalAckWritingGeneration == attachment.generation
 			stream.mu.Unlock()
-			if writingTerminal && stream.opener != nil {
+			if (writingTerminal || writingReceipt) && stream.opener != nil {
 				// Recovery owns the failed carrier. Closing it here releases a
 				// serialized write so its worker can perform the one coordinated
 				// replacement instead of leaving both workers blocked. The
@@ -256,7 +257,12 @@ func (stream *Stream) receiveApplicationBounded(limit uint64) error {
 				stream.retireAttachment(attachment)
 			}
 			stream.mu.Lock()
-			for writingTerminal && (stream.terminalReplaying || stream.terminalWriting) && stream.terminal == nil {
+			// The peer can confirm a fully received receipt and close before
+			// its original Write returns. Join that write's actual result before
+			// deciding whether EOF requires recovery; confirmation alone cannot
+			// turn a failed local write into successful completion.
+			for stream.terminal == nil && ((writingTerminal && (stream.terminalReplaying || stream.terminalWriting)) ||
+				(writingReceipt && stream.terminalAckWriting && stream.terminalAckWritingGeneration == attachment.generation)) {
 				stream.cond.Wait()
 			}
 			terminal = stream.terminal
@@ -418,6 +424,7 @@ func (stream *Stream) sendBoundedAcknowledgements() error {
 					stream.mu.Lock()
 					if stream.terminalAckWritingGeneration == attachment.generation && stream.terminalAckWritingOffset == offset {
 						stream.terminalAckWriting = false
+						stream.cond.Broadcast()
 					}
 					stream.mu.Unlock()
 				}
@@ -433,6 +440,7 @@ func (stream *Stream) sendBoundedAcknowledgements() error {
 			if terminal && stream.terminalAckWritingGeneration == attachment.generation &&
 				stream.terminalAckWritingOffset == offset {
 				stream.terminalAckWriting = false
+				stream.cond.Broadcast()
 			}
 			if terminal && stream.current == attachment {
 				stream.terminalAckSent = true

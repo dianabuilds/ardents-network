@@ -26,7 +26,7 @@ func (carrier *quicNodeCarrier) Write(buffer []byte) (int, error) {
 }
 
 func (carrier *quicNodeCarrier) SetDeadline(deadline time.Time) error {
-	return carrier.stream.SetDeadline(deadline)
+	return carrier.stream.SetDeadline(quicDeadline(deadline))
 }
 
 func (carrier *quicNodeCarrier) Close() error {
@@ -39,5 +39,5 @@ func (carrier *quicNodeCarrier) Close() error {
 var _ Carrier = (*quicNodeCarrier)(nil)
 
 func (carrier *quicNodeCarrier) SetWriteDeadline(deadline time.Time) error {
-	return carrier.stream.SetWriteDeadline(deadline)
+	return carrier.stream.SetWriteDeadline(quicDeadline(deadline))
 }

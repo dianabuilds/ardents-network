@@ -26,6 +26,7 @@ type writer struct {
 	dataDue         bool
 	terminalServed  bool
 	running         bool
+	retired         bool
 	failure         error
 }
 
@@ -42,6 +43,10 @@ type writeRequest struct {
 func (owner *writer) write(frame ardp.Frame, deadline func() time.Time, control, terminal bool) error {
 	request := &writeRequest{frame: frame, deadline: deadline, control: control, terminal: terminal, done: make(chan struct{}), changed: make(chan struct{}, 1)}
 	owner.state.Lock()
+	if owner.retired {
+		owner.state.Unlock()
+		return net.ErrClosed
+	}
 	switch {
 	case terminal:
 		owner.terminals = append(owner.terminals, request)
@@ -191,6 +196,22 @@ func (owner *writer) drain() {
 		close(request.done)
 		owner.state.Unlock()
 		owner.writer.Unlock()
+	}
+}
+
+// Seal admission before the transport is interrupted. Queued frames have no
+// physical effect to join; an already selected writer retains its completion
+// and every actual failure through the ordinary drain path.
+func (owner *writer) retire() {
+	owner.state.Lock()
+	defer owner.state.Unlock()
+	owner.retired = true
+	for _, queue := range []*[]*writeRequest{&owner.terminals, &owner.controls, &owner.data} {
+		for _, request := range *queue {
+			request.err = net.ErrClosed
+			close(request.done)
+		}
+		*queue = nil
 	}
 }
 

@@ -1244,8 +1244,12 @@ investigation. A failed event output is not retried through the same output.
 
 The coalesced authenticated stream requires its directional Terminal receipt
 and peer confirmation even when only the initial Attachment is available.
-Missing confirmation cannot yield a successful bounded outcome. The protected
-text-Service owner now installs a Route-backed replacement source before
+Missing confirmation cannot yield a successful bounded outcome. The stream
+also joins an original Terminal receipt write before classifying a
+concurrent carrier EOF. A peer confirmation can arrive before that write returns;
+only its successful local result completes the receipt, and an actual write
+failure remains a failure even after the peer confirmation.
+The protected text-Service owner now installs a Route-backed replacement source before
 Application bytes are exposed. It retains the verified Introduction recipient,
 selected Source or Responder prefix, original job, Candidate View, logical
 tuple and Work Safety bounds. Every proposed generation uses a fresh capsule,

@@ -108,6 +108,29 @@ func TestClosedNodeRestrictionRefusesValidPrivateTokenWithoutSpendingIt(t *testi
 				} else if err != nil || accepted.Kind != 5 || accepted.Body[0] != 0 {
 					t.Fatalf("ordinary child could not spend same valid token: %+v %v", accepted, err)
 				}
+				if restriction == route.ClosedChildOrdinary {
+					if err := inner.Close(); err != nil {
+						t.Fatal("ordinary inner TLS close", err)
+					}
+				}
+				// Join the peer's actual lane terminal before closing its shared
+				// Carrier. The token refusal/acceptance above remains the oracle;
+				// abrupt outer closure could instead fail an unfinished peer write.
+				for {
+					frame, err := ardp.ReadFrame(outer)
+					if err != nil {
+						t.Fatal("original inner lane retirement", err)
+					}
+					if frame.Lane != lane {
+						t.Fatal("foreign lane during original retirement", frame.Kind, frame.Lane)
+					}
+					if frame.Kind == ardp.KindClose {
+						break
+					}
+					if frame.Kind != ardp.KindBytes && frame.Kind != ardp.KindCredit {
+						t.Fatal("unexpected original retirement frame", frame.Kind)
+					}
+				}
 			}
 		})
 	}

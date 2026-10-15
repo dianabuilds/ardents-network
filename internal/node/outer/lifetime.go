@@ -29,6 +29,7 @@ func Serve(ctx context.Context, connection net.Conn, handshake *route.ClosedOute
 	}
 	childContext, cancel := context.WithCancel(ctx)
 	interrupt := func() {
+		writer.retire()
 		_ = connection.SetDeadline(time.Now())
 		_ = closePhysical()
 	}
@@ -36,6 +37,7 @@ func Serve(ctx context.Context, connection net.Conn, handshake *route.ClosedOute
 	stop := context.AfterFunc(childContext, func() { defer close(interrupted); interrupt() })
 	var children sync.WaitGroup
 	defer func() {
+		writer.retire()
 		cancel()
 		interrupt()
 		bridge.Close()

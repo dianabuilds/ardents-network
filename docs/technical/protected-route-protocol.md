@@ -315,7 +315,10 @@ without changing the sibling's physical deadline. The writer rechecks the live
 deadline after obtaining serialization; canceled work cannot emit later or
 retain caller-owned frame memory. Queued deadline resets remain bounded by
 the child's current admission and parent authority; a terminal CLOSE retains
-its own fixed cleanup deadline. Once
+its own fixed cleanup deadline. Original outer-Carrier retirement seals writer
+admission and removes unemitted queued frames before physical interruption.
+Their caller receives refusal; they cannot invent a physical cleanup failure.
+An already selected writer still joins with its original result. Once
 physical output starts, a failed frame still retires the Carrier, including a
 partially emitted CREDIT. Incoming child CLOSE can retire its state while a payload
 writer is blocked. A terminal CLOSE has its own one-second cleanup write
@@ -545,6 +548,9 @@ TLS writer at the forwarding peer to account for the enclosing headers.
 Complete concurrent writes remain serialized. These mechanisms preserve stream
 bytes, original deadlines and physical retirement;
 they add no lane credit, authority cache or alternative authentication profile.
+QUIC adapters attach the current local monotonic clock to the same absolute
+deadline before native conversion, so clock corrections since dependency
+startup cannot shift that physical timeout. Zero still clears the deadline.
 
 Schedule one at-most-16-KiB frame per ready lane in round-robin order. Reserve
 a separate 16 KiB/channel control queue. Give a newly available control frame

@@ -7,6 +7,7 @@ import (
 	"net"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -24,6 +25,7 @@ type receiptBoundaryConn struct {
 	writeHeld         bool
 	firstReadComplete bool
 	nextReadSignaled  bool
+	firstWriteErr     error
 }
 
 func (conn *receiptBoundaryConn) Write(buffer []byte) (int, error) {
@@ -39,6 +41,7 @@ func (conn *receiptBoundaryConn) Write(buffer []byte) (int, error) {
 		if complete {
 			close(conn.firstWritten)
 			<-conn.releaseFirst
+			return count, errors.Join(err, conn.firstWriteErr)
 		}
 	}
 	return count, err
@@ -66,6 +69,76 @@ func (conn *receiptBoundaryConn) Read(buffer []byte) (int, error) {
 func completeFirstReceiptFrame(raw []byte) bool {
 	header := len(connectionPrefix) + 2
 	return len(raw) >= header && len(raw) >= header+int(binary.BigEndian.Uint16(raw[len(connectionPrefix):header]))
+}
+
+func TestTerminalReceiptEOFJoinsOriginalWrite(t *testing.T) {
+	for _, failed := range []bool{false, true} {
+		name := "successful write"
+		if failed {
+			name = "failed write"
+		}
+		t.Run(name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				local, peer := net.Pipe()
+				defer peer.Close()
+				carrier := &receiptBoundaryConn{Conn: local, firstWritten: make(chan struct{}),
+					releaseFirst: make(chan struct{}), nextRead: make(chan struct{})}
+				writeFailure := errors.New("original Terminal receipt write failed")
+				if failed {
+					carrier.firstWriteErr = writeFailure
+				}
+				attachment := terminalRecoveryAttachment(t, carrier, 1, [32]byte{4}, [32]byte{5})
+				defer attachment.retireCarrier()
+				stream := &Stream{ctx: t.Context(), current: attachment, ackSignal: make(chan struct{}, 1),
+					localTerminal: true, terminalSettled: true, remoteTerminal: true, terminalReceipts: true,
+					terminalAcknowledgedGeneration: 1, terminalAckPending: true, terminalAckPendingGeneration: 1}
+				stream.cond = sync.NewCond(&stream.mu)
+				var releaseOnce sync.Once
+				release := func() { releaseOnce.Do(func() { close(carrier.releaseFirst) }) }
+				defer release()
+				received, acknowledged := make(chan error, 1), make(chan error, 1)
+				go func() { received <- stream.receiveApplicationBounded(0) }()
+				go func() { acknowledged <- stream.sendBoundedAcknowledgements() }()
+				stream.signalAcknowledgement()
+				receipt, err := ReadStream(peer)
+				if err != nil || receipt.Acknowledgement == nil || !receipt.Acknowledgement.Terminal ||
+					receipt.Acknowledgement.TerminalConfirmation {
+					t.Fatalf("original Terminal receipt = %+v, %v", receipt, err)
+				}
+				<-carrier.firstWritten
+				if err := Write(peer, Record{Acknowledgement: &Acknowledgement{
+					AttachmentGeneration: 1, Terminal: true, TerminalConfirmation: true,
+				}}); err != nil {
+					t.Fatal(err)
+				}
+				<-carrier.nextRead
+				peer.Close()
+				synctest.Wait()
+				var premature bool
+				var receiveErr error
+				select {
+				case receiveErr = <-received:
+					premature = true
+				default:
+				}
+				release()
+				ackErr := <-acknowledged
+				if !premature {
+					receiveErr = <-received
+				}
+				if premature {
+					t.Fatalf("EOF completed before original receipt write returned: %v", receiveErr)
+				}
+				if failed {
+					if !errors.Is(ackErr, writeFailure) || receiveErr == nil || stream.terminalAckSent {
+						t.Fatalf("failed receipt became successful: ack=%v receive=%v sent=%t", ackErr, receiveErr, stream.terminalAckSent)
+					}
+				} else if ackErr != nil || receiveErr != nil || !stream.terminalAckSent {
+					t.Fatalf("confirmed successful receipt failed: ack=%v receive=%v sent=%t", ackErr, receiveErr, stream.terminalAckSent)
+				}
+			})
+		})
+	}
 }
 
 func TestTerminalTailOwnsDuplicateReceiptAfterAcknowledgementWorkerExit(t *testing.T) {
