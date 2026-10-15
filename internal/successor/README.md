@@ -23,7 +23,7 @@ its contract, tests and non-test consumer are implemented together.
 | `network/` | Аутентифицированные факты сети и их актуальность | Существующая реализация |
 | `admission/` | Выдача, хранение, предъявление и необратимое расходование прав | Существующая реализация |
 | `hosting/` | Физический бюджет провайдера и резервирование | Существующая реализация |
-| `route/` | Защищённые маршруты, ролевые каналы и завершение транспорта | Существующая частичная реализация |
+| `route/` | Защищённые маршруты, ролевые каналы и завершение транспорта | Retained prefix, REGISTER/WITHDRAW и durable floors, opaque delivery, paired JOIN, parent refill и Control; реальные Reader/Publisher и пять original Node consumers. Operator cutover и privacy qualification сохраняют отдельные границы |
 | [execution/](execution/README.md) | Локальные полномочия Application, сессия, Job и завершение worker | Реализованы локальные правила, native worker и реальные runtime-потребители; полная установленная Service-квалификация остаётся отдельной границей |
 | [publication/](publication/README.md) | Жизненный цикл публикации Service Instance | Реализованы public proof, consumed Instance и живой qualified Publisher; REGISTER и Descriptor Store ACK предшествуют accepting Link |
 | [reachability/](reachability/README.md) | Descriptor Store и проверка достижимости точного Target | Проверка private Descriptor, отдельные долговечный Store и локальная история поиска; реальные receiving и holder потребители через Route |

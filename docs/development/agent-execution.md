@@ -10,8 +10,9 @@ The latest direct Product Owner instruction and selected GitHub ledger control
 work admission. The delegated transition cycle below operates within that
 selection; it cannot restore an older automatic next-domain assignment. GitHub
 [#497](https://github.com/dianabuilds/ardents-network/issues/497) records the current
-instruction: Connection continues; new implementations are held until explicitly
-selected. Documentation cleanup, archival and a completed predecessor do not
+selection and visible owner. A historical assignment does not keep a completed
+domain active; a new implementation requires explicit selection. Documentation
+cleanup, archival and a completed predecessor do not
 select another implementation, research question, branch, worktree or thread.
 
 ## Delegated project-wide domain transition

@@ -434,11 +434,11 @@ Publication retirement stops new acquisitions before joining and erasing its
 private recipient; predecessor overlap can shorten, never renew its cutoff.
 
 Paired JOIN and Instance-authenticated Service TLS occur after this delivery
-RESULT. They need not be forged to test this narrower genuine recipient result,
-but are required before claiming a Service Connection or exposing Application
-bytes. Until the real new neighbors exist, mechanical transport completion is
-explicitly component evidence. A successful substitute, boolean, arbitrary ACK
-callback, raw public key or old consumer cannot qualify the missing integration.
+RESULT and are required before exposing Application bytes. The real Reader and
+Publisher compositions now retain these separately owned lifetimes through the
+complete exchange. Mechanical transport tests remain component evidence; a
+successful substitute, boolean, arbitrary ACK callback, raw public key or old
+consumer cannot qualify that integration.
 
 ## Rendezvous choice and JOIN
 
@@ -459,8 +459,12 @@ side byte (User=1/Publisher=2), context[32] and deadline u64, with exact padding
 Unknown side, second JOIN/other child lane, malformed bytes, wrong profile or
 context, duplicate/third side refuse without replacing a retained side.
 
-Unpaired expiry is the minimum of original setup deadline and ten seconds from
-reservation. Only a real opposite-side match permits the fixed 16384-byte empty
+Unpaired expiry is the minimum of the original setup deadline and thirty seconds
+from the original reservation, under
+[ADR-0121](../adr/0121-bound-installed-connection-setup.md). Capsule setup uses
+the same ceiling, shortened by its original caller, Work Safety, registration
+and recovery bounds; neither operation renews or retries. Only a real
+opposite-side match permits the fixed 16384-byte empty
 accepted RESULT on each local lane with its own request nonce. Both successful
 RESULT emissions must establish the pairing barrier before forwarding data.
 There is no mapping of one channel's request nonce into the other channel.
@@ -469,7 +473,7 @@ The accepted framed stream starts with the original 64 KiB receive credit and
 uses BYTES <=16384, CREDIT, EOF and CLOSE within its original admitted reserve.
 Credit returns only after bounded consumption. Count setup/control/data/headers
 and terminal traffic. Setup expiry does not shorten permitted paired data to
-ten seconds; original HELLO/class-2/parent/State/duty/Work Safety bounds remain.
+the setup interval; original HELLO/class-2/parent/State/duty/Work Safety bounds remain.
 EOF closes one direction; CLOSE stops effects and joins both directions.
 Received bytes survive a following raw transport EOF within original bounds,
 then end with unexpected closure unless an inner verified CLOSE was received.
@@ -530,17 +534,34 @@ Component injected failures are separate from genuine success; test-only
 reachability is never package/product acceptance. Required quick/full gates
 must match final source. Installed confinement/privacy remains separate proof.
 
-## Verification limits and dependency graph
+## Real consumers, verification limits and dependency graph
 
-The registration baseline is `ca0767ebaa02513166d6bcb14cd55836a45ae661`; paired JOIN and its installation/context lifetimes are implemented at `df94a181810548f977cd5aa03a24cd96447c3042`. The domain map records both results and their evidence limits. The remaining design does not accept unimplemented behavior.
+The new receiving Introduction Registry implements opaque relay delivery;
+`introduction.HolderRegistration` retains the receiving Publisher's exact
+transport lifetime. `publication/runtime` opens the actual Instance recipient,
+commits replay admission before Responder opening, retains the original
+Source/Responder acquisitions and completes matching RESULT/CLOSE before
+publishing the retained initial delivery. Publication owns accepting state and
+replay; the Route relay receives no private plaintext or Connection identity.
 
-Root independently read the selected protocol sections, accepted ADR-0083 and
-ADR-0085, Node/Endpoint technical owners, exact old delivery, recipient acceptance
-and Responder sources, JOIN stream/refill and terminal selection. Bounded agents
-inventoried the remaining named paths read-only; their reports are not root
-reproduction. No runtime tests or acceptance follow from this design. A separate
-source-hash receipt identifies the read inputs; HEAD alone is not dirty-source
-identity.
+`connection.InitiatorSource` independently verifies Descriptor bytes, uses the
+Route-owned retained Rendezvous choice and starts capsule submission and JOIN
+under one original setup bound. The Publisher consumes the matching initial
+delivery and its exact Instance. Connection authenticates Service TLS before
+handing Application bytes to the original qualified Execution operation.
+`cmd/ardents-next` composes the genuine Reader/Publisher owners, including their
+separate installed Startup consumers. Original Node Forwarding, Issuer,
+Descriptor, Introduction and JOIN commands compose the receiving owners with
+their actual process, producer and credential lifetimes.
+
+The existing owner tests retain independent canonical-byte, two-RESULT,
+duplicate/third-side, rate/queue, durable-floor, original-acquisition and joined
+failure oracles. Command and native profiles exercise genuine signed State,
+Admission, Hosting and qualified Service consumers on both selected Carriers.
+Exact test/profile ownership is in [Testing](testing.md); source-matched runs,
+failed attempts and inspected versus independently reproduced evidence belong
+to [Route's execution record](https://github.com/dianabuilds/ardents-network/issues/496).
+This document specifies the integration and its limits, not a second task ledger.
 
 Protocol dependencies are acyclic when authorities are kept distinct: genuine
 Network/Admission/Hosting enable Route transport; receiving registration enables
@@ -549,10 +570,18 @@ Instance/Execution allow Publication readiness; those plus Connection binding
 and real Responder permit genuine successful recipient delivery; paired Route
 JOIN plus Instance authentication permit Service Connection and Application I/O.
 
-Route JOIN is implemented and exercised at its protected transport boundary;
-Publication and Service Connection retain separate authority and lifetimes. This does
-not discharge complete capsule-recipient proof. Preserve every broader Route
-obligation and missing genuine neighbor explicitly; prepare the needed real
-owner designs before assigning dependencies. This design starts no additional
-implementation and requests no repeated Product Owner selection or permission.
+The complete capsule-to-Service consumer does not transfer Publication,
+Connection or Execution authority into Route. It also establishes no supported
+installed Node, operator cutover, whole-host or privacy qualification. Original
+Network Source process composition, purpose-specific provisioning and retirement
+of old command consumers remain with their own transition responsibilities.
+They grant no old/new Route bridge and select no additional implementation here.
+
+Dependency admission is a separate required check of these actual consumers.
+The [unresolved QUIC return-path finding](dependencies.md#existing-quic-finding-return-path-reply-budget)
+still blocks admission of the affected server use. Successful Carrier exchanges,
+native profiles and a clean advisory scan do not supply its missing exact-profile
+measurement or an enforceable non-applicability boundary. The implemented
+consumer graph must not be reported as complete Route acceptance while that
+dependency obligation remains unresolved.
 
