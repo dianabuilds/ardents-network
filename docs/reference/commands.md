@@ -234,7 +234,9 @@ listener; only the genuine fresh Receiving birth fact can initialize vacancy.
 Retained history strictly reopens without reset/adoption. Purpose4 requires
 full Registration1MiB coverage and original600s bounds; Purpose5 requires
 full Control64KiB coverage and original30s bounds, further limited by the
-existing ten-second capsule and original slot. Spend is irreversible. Node
+original capsule deadline and original slot. The capsule ceiling is thirty
+seconds under [ADR-0121](../adr/0121-bound-installed-connection-setup.md);
+earlier original bounds still apply. Spend is irreversible. Node
 owns original caller/process/producer/TLS and joined retirement; Route owns
 slot, opaque delivery and floors. The fixed `node.introduction` projections
 supply no Publication readiness, qualified recipient or Service acceptance.

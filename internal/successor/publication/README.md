@@ -6,9 +6,10 @@ Instance, точный Target/Network, validity и отдельные права
 восстановлением подписанного public record. Настоящая команда
 `ardents-next publication prepare-root` возвращает проверенную public history;
 она не восстанавливает private Instance или accepting readiness. Отдельный
-`runtime` теперь содержит live Publisher и настоящий command consumer;
-native acceptance, открытие приватной capsule и replay ещё требуют реализации
-или source-matched проверки.
+`runtime` содержит live qualified Publisher и настоящие command consumers.
+Он связывает accepting registration с private recipient, удерживает историю
+принятых delivery nonce и передаёт проверенный запрос отдельному Connection.
+Публичный proof сам по себе не предоставляет эти живые полномочия.
 
 Pure `publication` владеет единым canonical v3 request/response codec,
 commitment, unsigned fixed-purpose Credential transcript и exact verification
@@ -36,7 +37,8 @@ pointer перед record с обоими directory barriers, сохраняя f
 создаёт отдельный volatile X25519 recipient для строго возрастающей настоящей
 ревизии; максимум два удерживаемых владельца. Подпись canonical Descriptor
 использует codec Reachability и исходный Instance key, сохраняя байты и ключ
-при exact retry. Это ещё не принимающая пара или настоящий Store ACK.
+при exact retry. Подпись Descriptor сама по себе не является принимающей парой
+или настоящим Store ACK.
 
 `runtime` удерживает исходную qualified snapshot operation и единственный
 Instance lifetime borrow. `execution route-holder` с `holder.publication` и
@@ -44,9 +46,16 @@ Domain4 Route plan потребляет `publication-open/publish/refresh/link/w
 Два prefixes заимствуют одну Entry selection и общий Hosting budget. Реальный
 REGISTER и Source Descriptor exchange предшествуют current transition; Link
 проверяет точные live факты. Scheduler использует creation+300s, overlap не более
-60s, capacity два и неизменный exact retry. Join prefixes/registrations
-предшествует освобождению private binding. Полный native положительный сценарий,
-ACK/race/timing evidence и private delivery пока не установлены.
+60s, capacity два и неизменный exact retry. Приватное открытие capsule сверяет
+исходную registration и acknowledged Descriptor; accepted nonce остаётся
+удержанным после последующего отказа RESULT, JOIN или Service TLS.
+`NextStream` передаёт аутентифицированный поток через исходные
+Source/Responder и квалифицированную Execution operation. Connection владеет
+Service TLS, Continuity, ordered bytes и логическим восстановлением;
+Publication завершает его пользователей до освобождения private binding.
+Native, race, timing и installed профили и пределы их доказательств принадлежат
+[testing](../../../docs/development/testing.md) и
+[Service contract](../../../docs/technical/endpoint-service-runtime.md).
 
 **Вопрос домена:** какой авторизованный Service Instance сейчас принимает работу?
 

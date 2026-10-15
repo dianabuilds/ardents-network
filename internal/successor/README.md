@@ -27,18 +27,19 @@ its contract, tests and non-test consumer are implemented together.
 | [execution/](execution/README.md) | Локальные полномочия Application, сессия, Job и завершение worker | Реализованы локальные правила, native worker и реальные runtime-потребители; полная установленная Service-квалификация остаётся отдельной границей |
 | [publication/](publication/README.md) | Жизненный цикл публикации Service Instance | Реализованы public proof, consumed Instance и живой qualified Publisher; REGISTER и Descriptor Store ACK предшествуют accepting Link |
 | [reachability/](reachability/README.md) | Descriptor Store и проверка достижимости точного Target | Проверка private Descriptor, отдельные долговечный Store и локальная история поиска; реальные receiving и holder потребители через Route |
-| [connection/](connection/README.md) | Аутентифицированный logical stream, Attachment continuity и joined lifetime | Ограниченная привязка к Publication и исходной Execution operation; Service TLS, continuity, ordered stream и recovery остаются будущими обязанностями |
+| [connection/](connection/README.md) | Аутентифицированный logical stream, Attachment continuity и joined lifetime | Реальные Reader/Publisher consumers: exact-Instance Service TLS, Continuity, ordered bytes, bounded recovery, Terminal receipts и joined cleanup под исходной Execution operation |
 | [enrollment/](enrollment/README.md) | Первичное закрепление доверенного комплекта | Отдельная проверка portable v3 комплекта по независимому pin, закрытый snapshot и реальный read-only consumer; не разрешение Release или запуска |
 | [release/](release/README.md) | Разрешение на точные программные артефакты | Реализованы offline-проверка точных байтов, отдельные floors/history и реальные команды; разрешение не устанавливает и не запускает |
-| [installation/](installation/README.md) | Установка, замена и восстановление поколения | Реализованы generation authentication и ограниченные native transaction/recovery/startup потребители; полный установленный Service не принят |
-| [custody/](custody/README.md) | Encrypted Authority records and purpose-specific signing | Vault/Bundle, original lifetime, Admission through new Allocation and real terminal commands; Service issuance and platform qualification remain separate |
+| [installation/](installation/README.md) | Установка, замена и восстановление поколения | Generation authentication, native transaction/recovery/startup и реальные installed Reader/Publisher consumers; точные границы приёмки принадлежат owning contract и выбранной issue |
+| [custody/](custody/README.md) | Encrypted Authority records and purpose-specific signing | Vault/Bundle, original lifetime и отдельные Admission Permission / Service Credential terminal operations; platform qualification сохраняет собственные границы |
 | `admission/issuerprofile/signing/` | Purpose-bound offline issuer-profile signing | Вспомогательный механизм Admission; pure parent не импортирует private owner |
 
 Enrollment, Release и Installation составляют семейство Software acceptance,
 но сохраняют разные полномочия и транзакции. Для общего `software`-агрегата
 или универсального `identity`-домена каталог не создаётся.
 
-Custody implements bounded encrypted-record and Admission operations through the real command.
+Custody implements bounded encrypted-record, Admission Permission and Service
+Credential operations through real terminal commands.
 Состав реальных пакетов определяется конкретными инвариантами и потребителями.
 Существующие Text Application, IPC, наблюдение ресурсов, диагностика,
 Qualification и композиция Endpoint/Node сохраняют места и обязанности,
