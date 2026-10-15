@@ -136,3 +136,13 @@ func TestOriginalNativeIntroductionEvidenceLossRetainsActualCloseFailure(t *test
 func TestOriginalNativeIntroductionManagedMemoryPressureRetires(t *testing.T) {
 	testOriginalNativeManagedMemoryPressure(t, IntroductionProfile)
 }
+
+func TestOriginalNativeJoinProcessProfile(t *testing.T) {
+	testOriginalNativeProcessProfile(t, JoinProfile)
+}
+func TestOriginalNativeJoinEvidenceLossRetainsActualCloseFailure(t *testing.T) {
+	testOriginalNativeEvidenceLoss(t, JoinProfile)
+}
+func TestOriginalNativeJoinManagedMemoryPressureRetires(t *testing.T) {
+	testOriginalNativeManagedMemoryPressure(t, JoinProfile)
+}

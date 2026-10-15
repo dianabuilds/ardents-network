@@ -784,6 +784,53 @@ other roles. Selection grants no installed, capacity, platform or privacy
 qualification. Registration remains 1 MiB/600s and submission Control64KiB/30s,
 with the unchanged ten-second capsule and original slot bounds.
 
+### JOIN development process profile
+
+The original Rendezvous DataJoin composition requires
+`ardents-join-process-v1`, a separate fixed native workload under the same
+Forwarding table envelope: sole original Linux cgroup-v2 leaf, cpu.max
+`100000 100000`, memory.high `805306368`, memory.max `1073741824`, pids.max
+`256`, NOFILE soft/hard `1024`, GOMAXPROCS `1`, GOMEMLIMIT `536870912`.
+Actual original process/cgroup/PSI evidence and its one-second freshness bound
+are mandatory. A profile string is no admission or qualification evidence.
+
+### Original JOIN composition
+
+`node.ListenJoin` and `ardents-next node join` compose one original
+Role2/subrole4 invocation. Command owns genuine State and closes it last.
+Node retains its caller, process guard, Network participation producer, exact
+credential files and in-memory TLS key, Receiving and Hosting owners. Original
+credential checks refuse lost/replaced files or altered bytes; no key hot reload
+or successor adoption exists. Native/producer/credential checks fence foreign
+State I/O outside local lifetime locks; late returns also check original caller
+and synchronous denial. Peer refusal cannot grant a replacement invocation.
+
+Each side reserves the complete shared class-2 allowance plus declared finite
+termination coverage, then Receiver reserves actual JOIN frame/child capacity
+before Receiving's irreversible spend. Route alone matches secret/context/profile
+and opposite sides, completes both RESULT writes before activation and owns
+credit, directional EOF, CLOSE, timers and physical joins. Unpaired setup is
+bounded by the earlier original request or thirty seconds from reservation
+under ADR-0121. No JOIN refill, refund, renewal or retry is added.
+
+Stop seals original admission and interrupts dependents before waiting.
+Receiver joins both sides, selected writers, listener and Carrier before
+Receiving/Hosting close; producer, native pins, TLS and command-owned State
+follow. First operational and independent physical failures remain retained
+through concurrent/copied/repeated Close. A bounded unavailable report keeps
+resources until actual completion; absent PID or path never proves join.
+
+| JOIN invariant | Owner and real consumer | Reproducing controls |
+|---|---|---|
+| Genuine original authority and final handoff | Node observes signed State, exact duty/process/producer/credential; canonical command exposes original listener | `TestNativeJoinOriginalAuthorityAndJoinBothCarriers`, signed successor/conflict/expiry, direct caller/Stop, held State return, process/key/participation loss and canceled partial startup |
+| Full reserve before spend and no refund | Hosting and Receiving; Receiver owns capacity and delayed physical return | `TestNativeJoinUndercoverageBeforeSpendBothCarriers`, `TestNativeJoinOperationBoundariesBothCarriers`, pre/post-spend Stop/caller/successor/process loss and concurrent copied Close |
+| Actual pair bytes, terminal and reopen | Existing Pairing/Receiver through two canonical native JOIN commands | `TestNativeJoinDuplexAndReopenBothCarriers`, independent duplex byte/credit/EOF oracle, typed CLOSE, retained spends and same endpoint/root reopen |
+| Refusal and original physical loss | Route owns pair refusal/RESULT barrier/physical failures; Node retains original lifetime | `TestNativeJoinMismatchedPairRefusesBothCarriers`, `TestNativeJoinOriginalCommandLossAfterIOBothCarriers`; existing Pairing/Receiver causal queued/partial RESULT, third arrival and late writer controls |
+| Partial acquisitions and unavailable completion | Creator joins rejected work; command retains State through original join | `TestNativeJoinPartialStartupRefusalsBothCarriers`, `TestNativeJoinUnavailableCompletionRetainsOriginalProducerBothCarriers`; fixed process resource controls under separate JOIN profile |
+
+These are required source-matched development controls, not receipts or installed,
+capacity, privacy, independent-security or whole-Route qualification.
+
 ### Original Forwarding composition
 
 `internal/successor/node` and `ardents-next node forwarding` compose one exact

@@ -33,6 +33,11 @@ import (
 // State acceptance. The fixture owns no successful authority substitute.
 func newJoinRouteFixture(t *testing.T, profile transport.CarrierProfile) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
 	t.Helper()
+	return newJoinRouteFixtureConfigured(t, profile, nil)
+}
+
+func newJoinRouteFixtureConfigured(t *testing.T, profile transport.CarrierProfile, configure func(*networkAdmissionFixture)) (*networkAdmissionFixture, map[[32]byte]func(), map[[32]byte]tls.Certificate) {
+	t.Helper()
 	if profile != transport.ClosedCarrierTCP && profile != transport.ClosedCarrierQUIC {
 		t.Fatal("unselected JOIN Carrier")
 	}
@@ -83,6 +88,9 @@ func newJoinRouteFixture(t *testing.T, profile transport.CarrierProfile) (*netwo
 			}
 			f.spec.Nodes = append(f.spec.Nodes, networkfixture.ClosedNode{RecordSpec: networkfixture.RecordSpec{NodeID: id, Generation: 9, ValidFrom: f.spec.NotBefore, ValidUntil: f.spec.NotAfter, Endpoint: address, Carrier: string(profile), Capability: 2, Capacity: 1, PrivateKey: key}, RoleDomain: domain, Subrole: subrole})
 			certificates[id] = routeTestCertificate(t, key)
+		}
+		if configure != nil {
+			configure(f)
 		}
 	})
 	return f, reservations, certificates
@@ -187,9 +195,14 @@ func joinRouteStock(t *testing.T, f *networkAdmissionFixture, role admission.All
 // Each accepted Channel retains its real reservation until physical join.
 func startJoinRouteReceivers(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate) ([]*routereceiver.Receiver, []*hosting.Budget) {
 	t.Helper()
+	return startJoinRouteReceiverRange(t, f, reservations, certificates, 21)
+}
+
+func startJoinRouteReceiverRange(t *testing.T, f *networkAdmissionFixture, reservations map[[32]byte]func(), certificates map[[32]byte]tls.Certificate, last byte) ([]*routereceiver.Receiver, []*hosting.Budget) {
+	t.Helper()
 	var receivers []*routereceiver.Receiver
 	var budgets []*hosting.Budget
-	for idByte := byte(12); idByte <= 21; idByte++ {
+	for idByte := byte(12); idByte <= last; idByte++ {
 		id := [32]byte{idByte}
 		view, err := f.current()
 		if err != nil {

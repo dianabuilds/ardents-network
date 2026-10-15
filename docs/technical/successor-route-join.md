@@ -187,6 +187,11 @@ returns only after consumption. Later ADMIT on dedicated JOIN is refused; it
 has no refill reservation/spend path. Forwarding-parent refill remains a
 separate full-Route obligation.
 
+Forwarding parents preserve an already selected directional EOF through
+bounded physical join when the dedicated child closes. Its exact original
+control classification propagates through nested TLS/lower framing, without
+starting a new EOF after seal. Partial/stalled/late physical failures remain
+failed; this supplies no additional JOIN or payload authority.
 EOF closes one direction. Verified CLOSE stops new effects and joins both
 directions. A receiving CLOSE interrupts payload and input immediately; a
 first peer CLOSE received during local lane retirement also cancels any local
@@ -227,6 +232,14 @@ reader/writer and terminal wait join. The real nested-pipe close tests execute
 unchanged on Windows and Linux, including verified CLOSE, raw EOF, cleanup
 timeout and the earlier original deadline. Previously accepted bytes survive raw EOF within their original bounds,
 then end with unexpected closure when no inner CLOSE was verified.
+
+The original native receiving consumer is `ardents-next node join`, through
+`node.ListenJoin`. Node retains original caller/process/producer/TLS and genuine
+Receiving/Hosting; Receiver still owns Pairing, capacity, listener and all
+physical users. Original Node retirement joins Receiver before returning roots,
+reservations or key custody. This adds no Route matching policy, JOIN refill,
+Service authority or supported installed Node claim. The exact native envelope
+and lifetime contract belong to the [Node owner](network-route-node.md#original-join-composition).
 
 ## Command consumer
 

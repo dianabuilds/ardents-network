@@ -384,6 +384,15 @@ post-initial ADMIT has been debited, it becomes exactly 32 MiB rather than an
 additional allowance. It never changes the peer, purpose, context, child
 allocation or original terminal deadline.
 
+An already selected forwarding EOF uses the same control classification at
+physical output as at frame scheduling. Peer/local retirement joins that exact
+directional terminal under the earlier original bound and one-second cleanup
+ceiling; it cannot expire a nested TLS writer as if the EOF were payload and
+poison a live sibling's parent. A decoded peer CLOSE before physical start
+still refuses a new EOF. Raw EOF, refusal, stalled output and late physical
+write failures keep their original outcomes; no new lane, bytes or retry is
+admitted by cleanup.
+
 ## Bounded lane framing
 
 Every TLS channel terminating at an Ardents role carries the same lane grammar.

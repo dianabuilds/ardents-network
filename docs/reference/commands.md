@@ -242,6 +242,21 @@ slot, opaque delivery and floors. The fixed `node.introduction` projections
 supply no Publication readiness, qualified recipient or Service acceptance.
 State closes last; completion-unavailable keeps original resources until join.
 
+`ardents-next node join --config <file>` composes one original Role2/subrole4
+Rendezvous DataJoin under mandatory `ardents-join-process-v1`. Its exact closed
+fields are `network`, `node_id`, `process_profile`, `participation_root`,
+`spend_root`, `hosting_root`, `certificate`, `private_key`, `work`, `termination`
+and `retirement_wait_ms` (1..5000). Network/participation/spend/Hosting roots
+are independent, canonical and unnested. The credential is fixed to the accepted
+Node key. Each side requires full class-2 shared work coverage and finite cleanup
+coverage before irreversible spend; mismatches never refund. Existing Route
+owns both RESULTs, duplex credit/EOF/CLOSE and original thirty-second-or-earlier
+unpaired bound. There is no JOIN refill/renewal or automatic restart.
+`node.join` reports only fixed listening/refusal/retiring/joined outcomes and
+owner categories. Unsupported platforms refuse before reading config. State,
+producer, credential and roots stay retained until real physical join; a timeout
+report grants no completion, Service authentication or installed qualification.
+
 The command emits bounded `node.forwarding` listening/refusal and joined/retiring
 outcomes. Joined cancellation exits 130, failure or unavailable completion exits
 1, and malformed input/output failure exits 2. A retirement timeout is not

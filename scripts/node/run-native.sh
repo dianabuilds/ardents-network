@@ -42,7 +42,7 @@ TestOriginalNativeProcessProfile
 TestProfileAndOriginalCallerRefuseBeforeNativeEffects
 TestRequiredNativeCounterIsNotAnUnknownZero
 TestRequiredPressureRejectsMissingNonfiniteAndAmbiguous'
-discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^Test' | grep '^Test' | grep -Ev '^TestOriginalNative(Issuer|Descriptor|Introduction)' | sort)
+discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^Test' | grep '^Test' | grep -Ev '^TestOriginalNative(Issuer|Descriptor|Introduction|Join)' | sort)
 test "$discovered_resources" = "$expected_resources" || { echo 'Forwarding resource discovery differs' >&2; exit 2; }
 unit=ardents-forwarding-resource-native-$$.service
 systemd-run --quiet --wait --pipe --collect --unit="$unit" \

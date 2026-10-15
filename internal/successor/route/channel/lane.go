@@ -293,8 +293,8 @@ func (l *Lane) closeStatus(status byte) error {
 	return l.closeErr
 }
 
-// The first retirement fixes one cleanup bound. Already emitted CREDIT can
-// finish within that bound and its original deadline; CLOSE already carries
+// The first retirement fixes one cleanup bound. Selected CREDIT and directional
+// EOF join within that bound and their original deadlines; CLOSE already carries
 // the same finite bound. Payload is interrupted immediately. Called under mu.
 func (l *Lane) interruptOutputLocked() *outputDeadline {
 	if l.cleanupEnd.IsZero() {

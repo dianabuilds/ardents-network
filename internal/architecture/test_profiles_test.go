@@ -157,6 +157,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"issuer-process-linux":              false,
 		"descriptor-process-linux":          false,
 		"introduction-process-linux":        false,
+		"join-process-linux":                false,
 		"custody-native-linux":              false,
 		"execution-lifecycle":               false,
 		"execution-route":                   false,

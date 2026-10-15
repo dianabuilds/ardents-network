@@ -25,6 +25,9 @@ func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int 
 	if args[0] == "introduction" {
 		return runNodeIntroduction(ctx, args[1:], out, diagnostic)
 	}
+	if args[0] == "join" {
+		return runNodeJoin(ctx, args[1:], out, diagnostic)
+	}
 	return 2
 }
 

@@ -1145,6 +1145,24 @@ authorization to begin its later security, concurrency, or wire tracks.
 
 ## Current profiles
 
+`join-process-linux`, invoked by `make node-join-check`, uses three independently
+SHA-256-pinned canonical command and `node_process_native` command/resource race
+artifacts built from the checked source. The root driver stays outside measured
+leaves. Actual Linux systemd/cgroup-v2/proc/PSI, exact JOIN CPU/memory/PID/FD/Go
+limits, private durable roots and both TCP/TLS plus QUIC are mandatory; missing
+prerequisites fail. Exact discovery rejects zero/missing/extra/duplicate tests.
+Each declared independent command workload group keeps three minutes and the
+separate resource group ninety seconds. No profile raises native limits or
+protocol allowances. It covers original duplex/EOF/CLOSE/reopen, mismatched
+secret/context/unpaired refusal, undercoverage before spend, original caller/
+process/clock loss after real I/O, partial startup, held actual State and
+pre/post-spend effects, concurrent copied Close, signed successor/conflict/expiry,
+key/producer/process loss and unavailable completion retaining original owners.
+Existing Route pair/Receiver tests retain independent canonical bytes, withheld
+second RESULT, third/duplicate arrivals, queued/partial I/O and late physical
+failure coverage. Native development controls do not establish installed,
+capacity, privacy or independent-security qualification.
+
 `introduction-process-linux`, invoked by `make node-introduction-check`, runs
 independently pinned canonical Node command and command/resource race binaries
 under the original Introduction envelope in the Node owner. The driver remains
@@ -1503,6 +1521,15 @@ timeout must leave enough observed state to distinguish product, harness, and
 environment.
 
 ## Route mechanism and composition tests
+
+`channel/eof_retirement_test.go` pins a real half-written canonical directional
+EOF meeting peer/local CLOSE, continued sibling work, refusal retention,
+earlier original timeout and late physical failure. A separate held real
+deadline operation proves zero new EOF output after decoded peer CLOSE.
+These portable pipe controls supply no successful Network/TLS/Admission facts;
+the actual original Node JOIN native workload separately carries duplex bytes,
+both EOFs and typed CLOSE through genuine both-Carrier parents.
+
 
 Prefix's bounded lifetime-borrow test drives an actual pipe generation through
 quiet idle events, original caller cancellation and a held user join. It checks

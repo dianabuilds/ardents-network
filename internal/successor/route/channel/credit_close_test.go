@@ -20,7 +20,10 @@ import (
 // remainder or a late physical result; no successful authority is supplied.
 type creditCloseConn struct {
 	net.Conn
+	kind                                    uint8 // Zero keeps the original CREDIT fixture; EOF shares its physical gate.
 	emitted, restGate, returned, completion chan struct{}
+	updated                                 chan struct{}
+	deadlineOnce                            sync.Once
 	once                                    sync.Once
 	started                                 atomic.Bool
 	mu                                      sync.Mutex
@@ -29,7 +32,11 @@ type creditCloseConn struct {
 }
 
 func (c *creditCloseConn) Write(raw []byte) (int, error) {
-	if len(raw) < ardp.HeaderSize || raw[6] != ardp.KindCredit || !c.started.CompareAndSwap(false, true) {
+	kind := c.kind
+	if kind == 0 {
+		kind = ardp.KindCredit
+	}
+	if len(raw) < ardp.HeaderSize || raw[6] != kind || !c.started.CompareAndSwap(false, true) {
 		return c.Conn.Write(raw)
 	}
 	n, err := c.Conn.Write(raw[:8])
@@ -58,6 +65,9 @@ func (c *creditCloseConn) SetWriteDeadline(end time.Time) error {
 		c.deadlines = append(c.deadlines, end)
 		c.mu.Unlock()
 		err := c.Conn.SetWriteDeadline(end)
+		if c.updated != nil {
+			c.deadlineOnce.Do(func() { close(c.updated) })
+		}
 		return errors.Join(err, c.deadlineFailure)
 	default:
 		return c.Conn.SetWriteDeadline(end)

@@ -580,7 +580,10 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 	}
 	s.active = l
 	s.activeKind = f.Kind
-	control := f.Kind == ardp.KindCredit || l.controlOutput != 0
+	// An already selected directional EOF is a terminal, not payload. Like
+	// selected CREDIT it must join its actual writer under bounded cleanup;
+	// expiring it inside TLS can poison a healthy multiplexed parent.
+	control := f.Kind == ardp.KindCredit || f.Kind == ardp.KindEOF || l.controlOutput != 0
 	s.activeControl = control
 	s.activeEnd = end
 	s.activeDeadline = &outputDeadline{lane: l, end: end, cutoff: end}
@@ -595,7 +598,7 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 		// TLS failure can make that shared writer permanently unusable.
 		// Already selected control retains only its original cleanup bound.
 		s.mu.Lock()
-		if s.activeDeadline != deadline || s.stopped || s.finishingRole || s.ctx.Err() != nil || (terminal && l.peerClosed) || (!terminal && l.closed && !control) {
+		if s.activeDeadline != deadline || s.stopped || s.finishingRole || s.ctx.Err() != nil || (terminal && l.peerClosed) || (!terminal && l.closed && (!control || f.Kind == ardp.KindEOF)) {
 			output.err = &frameRetirement{lane: l, kind: f.Kind}
 			refused = true
 		} else if !time.Now().Before(deadline.end) {
