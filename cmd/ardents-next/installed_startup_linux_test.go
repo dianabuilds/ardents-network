@@ -41,7 +41,7 @@ func runInstalledServiceStartup(t *testing.T, publicationEnabled bool, carrier s
 	resources := installedStartupResources(t, artifacts)
 	var f *networkAdmissionFixture
 	if publicationEnabled {
-		f = installedServiceNetwork(t, carrier)
+		f, _ = installedServiceNetwork(t, carrier)
 	} else {
 		f = newNetworkAdmissionFixture(t)
 	}
@@ -225,6 +225,16 @@ func runInstalledParticipant(t *testing.T, publicationEnabled bool, network inst
 		request = strings.Replace(request, strings.Repeat("08", 32), hex.EncodeToString(sourcePins[i][:]), 1)
 	}
 	request = strings.Replace(request, "\"clock_observed_at\":\"2030-01-02T03:04:05Z\"", "\"clock_observed_at\":"+quoted(time.Now().UTC().Format(time.RFC3339)), 1)
+	if publicationEnabled {
+		// This Service fixture declares a one-minute automatic Source cadence.
+		// The separate startup case retains its one-second cadence. Replacing
+		// during that active wave legitimately retains interrupted attempts and
+		// backoff; this successful Service scenario must not bypass those floors.
+		if strings.Count(request, `"refresh_interval_ms":1000`) != 1 {
+			t.Fatal("original Source fixture cadence changed")
+		}
+		request = strings.Replace(request, `"refresh_interval_ms":1000`, `"refresh_interval_ms":60000`, 1)
+	}
 	requestPath := filepath.Join(base, "initial-request.json")
 	installedStartupWrite(t, requestPath, []byte(request), 0600)
 	installedStartupCommand(t, initialProgram, nil, "installed-stopped", "installation", "provision", "--request", requestPath)
@@ -349,7 +359,11 @@ func runInstalledParticipant(t *testing.T, publicationEnabled bool, network inst
 	liveRequest = strings.Replace(liveRequest, quoted(predecessorResponsePath), quoted(filepath.Join(base, "permission", "response")), 1)
 	livePath := filepath.Join(base, "live-candidate-request.json")
 	installedStartupWrite(t, livePath, []byte(liveRequest), 0600)
-	installedStartupCommand(t, initialProgram, nil, "installed-started", "installation", "upgrade-installed", "--request", livePath)
+	if publicationEnabled {
+		installedInterruptedReplacement(t, initialProgram, livePath, base)
+	} else {
+		installedStartupCommand(t, initialProgram, nil, "installed-started", "installation", "upgrade-installed", "--request", livePath)
+	}
 	if _, err := os.ReadFile(filepath.Join("/proc/self/fd", strconv.FormatUint(uint64(predecessorProc.Fd()), 10), "stat")); !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ESRCH) {
 		t.Fatal("replaced original process has not joined", err)
 	}

@@ -30,6 +30,15 @@ imports neither adapter, including in tests.
 `channel` owns portable parent/child framing, finite credit/queues, serialized
 physical output and joined retirement. `prefix` owns its exact generations and
 terminal openings; `join` and `introduction` own their holder operations.
+Reader composition also requests one unpresented Source Entry/Interior pair
+while preparing the current Rendezvous Forward batch through its live admitted
+Source. Admission retains these genuine tokens in the original holder's finite
+Stock; it grants no later Job or transport authority. After original Source
+retirement a new qualified caller opens its own admitted channels with fresh
+duty/time checks. Bootstrap remains consumed, quotas are not refunded, and
+insufficient stock or allowance still refuses. No live Source or original Job
+is borrowed by the next request.
+
 An opaque `SourceScope` retains the genuine original Source caller, selected
 leg, authority observer and absolute bound separately from physical readiness.
 Connection's Reader checks that scope for logical effects and owns its returned
@@ -145,7 +154,7 @@ Periodic supervision waits 100 milliseconds after each completed fresh
 observation, so an overdue timer cannot immediately queue another full check.
 Successful effect and terminal-borrower checks of the same physical leg also
 start that supervision interval when the leg remains current at completion.
-Introduction and Submission terminal checks report that completion only after
+Introduction, Submission and JOIN recipient checks report that completion only after
 their complete leg/recipient and original caller checks have succeeded.
 The Introduction check validates the original leg and exact retained recipient
 against one fresh coherent Network view, including profile, duty generation,
@@ -484,12 +493,21 @@ its own durably marked presentation only at its actual HELLO; later refills and
 terminal roles use ordinary on-demand stock. Failure refunds neither allocation
 nor presentation and does not redraw the retained leg.
 
-The Publisher requests three issuer Control tokens in its existing second
-bootstrap batch for its initial Introduction Forward, Registration and
-Descriptor Control issuance. Reader requests one. This is finite stock charged
+The Publisher requests four issuer Control tokens in its existing second
+bootstrap batch for initial Introduction Forward, Registration, incoming
+Rendezvous Forward and the retained issuing path. The same batch separately
+funds the already selected Descriptor Store Control. Reader requests one issuer
+Control. This is finite stock charged
 to the original allocation, not a new bootstrap exchange or quota; unsuccessful
 setup keeps the debit. Registration and Descriptor rights are still obtained
 only through their ordinary admitted issuer exchanges.
+
+Later Registration preparation replenishes enough issuer Control stock to
+retain two tokens after its ordinary Registration exchange, matching initial
+Publication preparation. The next incoming Rendezvous Forward issuance can
+consume one while retaining the issuing path. Each missing token is charged
+to the same finite permission; insufficient allowance refuses, and neither
+bootstrap nor an incoming capsule deadline is renewed.
 
 `bootstrap-open`, `issuer-issue` and `bootstrap-close` drive genuine Stock and
 issuer owners through the maintained holder console. The holder joins bootstrap
@@ -526,6 +544,11 @@ after actual issuer signing with Hosting still held, and retained late return
 failure. A lost signed result is explicitly retried on the same original Prefix:
 actual `IssueCurrent` reopens its durable owners and returns identical committed
 bytes, while Stock retains its pending request and reserves allocation only once.
+That lost-result oracle retains the genuinely signed result until the original
+receiving operation observes cancellation. Local holder completion alone cannot
+prove remote cancellation: releasing the result earlier can race real response
+output with CLOSE and retire the TLS generation. Such a retired Prefix grants
+no same-prefix retry; its actual output failure remains retained.
 Signed successor State intake and cancellation of the actual receiving listener
 are separately exercised before receiving Admission, after reservation but
 before spend, after actual spend, before and after durable issuer debit, and

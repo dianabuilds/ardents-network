@@ -119,5 +119,11 @@ func (p *Prefix) joinRecipient(incoming network.RetainedDuty, end time.Time) err
 	if err != nil || duty != incoming || end.After(p.config.Deadline) || end.After(incoming.RecordValidUntil) || end.After(incoming.Epoch.ValidUntil) || end.After(p.config.Leg.Profile.NotAfter) || !time.Now().Before(end) {
 		return errors.Join(errors.New("route JOIN recipient or horizon differs"), err)
 	}
+	// The recipient check fully observed this same physical leg. Report only
+	// its still-current completion to periodic supervision; the next effect
+	// independently performs this entire observation again.
+	if p.config.Leg.Check(view, time.Now()) == nil && p.caller.Err() == nil && p.ctx.Err() == nil {
+		p.observation.completed()
+	}
 	return nil
 }

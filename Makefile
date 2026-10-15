@@ -387,6 +387,10 @@ execution-recovery-check:
 execution-installed-pair-check:
 	sh tests/qualification/execution-installed/run-pair.sh -timeout=8m
 
+.PHONY: execution-installed-timing-check
+execution-installed-timing-check:
+	sh tests/qualification/execution-installed/run-pair.sh timing -timeout=15m
+
 .PHONY: execution-installed-publication-check
 execution-installed-publication-check:
 	sh tests/qualification/execution-installed/run-ubuntu.sh service-publication -timeout=4m

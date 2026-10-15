@@ -24,7 +24,19 @@ type Preparation struct {
 func (*Preparation) localPermission() {}
 
 func (preparation *Preparation) Check() error {
-	if preparation == nil || preparation.job == nil || !preparation.job.CompletedCurrent() {
+	if preparation == nil || preparation.session == nil || preparation.job == nil {
+		return errors.New("installed preparation is no longer current")
+	}
+	current := preparation.job.CompletedCurrent()
+	if err := preparation.session.Context().Err(); err != nil {
+		// Retirement still denies provenance. Preserve the original cancellation
+		// instead of inventing another failure from its invalidated currentness.
+		// A known joined cleanup failure remains an independent cause; Close
+		// continues to join any cleanup which has not completed yet.
+		result, _ := preparation.session.Completion()
+		return errors.Join(err, result)
+	}
+	if !current {
 		return errors.New("installed preparation is no longer current")
 	}
 	return nil

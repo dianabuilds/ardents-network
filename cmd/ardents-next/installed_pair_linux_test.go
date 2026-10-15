@@ -79,6 +79,14 @@ func installedPairReceive(t *testing.T, conn net.Conn) installedPairMessage {
 }
 
 func TestInstalledServicePairParticipant(t *testing.T) {
+	runInstalledPairParticipant(t, 4*time.Minute)
+}
+
+func TestInstalledServiceTimingParticipant(t *testing.T) {
+	runInstalledPairParticipant(t, 15*time.Minute)
+}
+
+func runInstalledPairParticipant(t *testing.T, fixtureBound time.Duration) {
 	_, artifacts := installedStartupPaths(t)
 	resources := installedStartupResources(t, artifacts)
 	role := os.Getenv("ARDENTS_EXECUTION_PAIR_ROLE")
@@ -95,7 +103,7 @@ func TestInstalledServicePairParticipant(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.Close()
-	_ = conn.SetDeadline(time.Now().Add(4 * time.Minute))
+	_ = conn.SetDeadline(time.Now().Add(fixtureBound))
 	installedPairSend(t, conn, installedPairMessage{Operation: "hello", Role: role, Nonce: nonce})
 	input := installedPairReceive(t, conn)
 	if input.Operation != "network" || input.Network == nil {
@@ -180,6 +188,18 @@ func TestInstalledServicePairParticipant(t *testing.T) {
 // The outer controller is fixture infrastructure, never an admitted Endpoint.
 // Each child runs the checked profile under its own original system manager.
 func TestInstalledServicePair(t *testing.T) {
+	runInstalledServicePair(t, false)
+}
+
+func TestInstalledServiceTiming(t *testing.T) {
+	// The separate elapsed profile needs the complete original token hour.
+	if time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)) < 16*time.Minute {
+		t.Fatal("invalid environment: installed timing requires sixteen minutes remaining in the current token hour")
+	}
+	runInstalledServicePair(t, true)
+}
+
+func runInstalledServicePair(t *testing.T, timing bool) {
 	base, artifacts := installedStartupPaths(t)
 	installedStartupResources(t, artifacts)
 	carrier := os.Getenv("ARDENTS_EXECUTION_START_CARRIER")
@@ -238,7 +258,13 @@ func TestInstalledServicePair(t *testing.T) {
 		}
 	}
 	checkManagers()
-	f := installedServiceNetwork(t, carrier)
+	f, store := installedServiceNetwork(t, carrier)
+	participantProfile, participantTimeout := "service-pair-participant", "-timeout=4m"
+	fixtureBound := 4 * time.Minute
+	if timing {
+		participantProfile, participantTimeout = "service-pair-timing-participant", "-timeout=15m"
+		fixtureBound = 15 * time.Minute
+	}
 	network := installedSignedNetwork(t, f)
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -281,7 +307,7 @@ func TestInstalledServicePair(t *testing.T) {
 			"ARDENTS_EXECUTION_START_INVENTORY_SHA256=" + os.Getenv("ARDENTS_EXECUTION_START_INVENTORY_SHA256"),
 			"ARDENTS_EXECUTION_START_CARRIER=" + carrier, "ARDENTS_EXECUTION_PAIR_ROLE=" + role,
 			"ARDENTS_EXECUTION_PAIR_ADDRESS=" + listener.Addr().String(), "ARDENTS_EXECUTION_PAIR_NONCE=" + hex.EncodeToString(nonce[:]),
-			"sh", "/root/run-profile.sh", "service-pair-participant", "-timeout=4m"}
+			"sh", "/root/run-profile.sh", participantProfile, participantTimeout}
 		// The checked guest profile owns its finite test timeout and cleanup.
 		// Cancelling the outer test must close the fixture connection, not kill
 		// this driver before its original Installation resources have joined.
@@ -300,12 +326,20 @@ func TestInstalledServicePair(t *testing.T) {
 			t.Fatal("pair participant did not connect", err)
 		}
 		peers[i] = conn
-		_ = conn.SetDeadline(time.Now().Add(4 * time.Minute))
+		_ = conn.SetDeadline(time.Now().Add(fixtureBound))
 		hello := installedPairReceive(t, conn)
 		if hello.Operation != "hello" || hello.Role != role || hello.Nonce != hex.EncodeToString(nonce[:]) {
 			t.Fatal("foreign pair fixture client")
 		}
 		installedPairSend(t, conn, installedPairMessage{Operation: "network", Network: &network})
+	}
+	// Start both original participants before awaiting either admission. Otherwise
+	// the second installation consumes the first participant's finite Service
+	// lifetime while that participant is already waiting for the controller.
+	// Approval remains independent and serial: no fixture owner or private root
+	// is shared, and each participant keeps its original four-minute deadline.
+	for i, role := range []string{"publisher", "reader"} {
+		conn := peers[i]
 		approvalRoot := filepath.Join(base, role)
 		if err := os.Mkdir(approvalRoot, 0700); err != nil {
 			t.Fatal(err)
@@ -347,13 +381,26 @@ func TestInstalledServicePair(t *testing.T) {
 		return response
 	}
 	body := []byte("one request across independently installed participants\n")
+	publishStarted := time.Now()
 	publication := exchange(0, installedPairMessage{Operation: "publish", Body: body})
 	if publication.Link == "" {
 		t.Fatal("installed Publisher supplied no Link")
 	}
+	var awaitRefresh func()
+	if timing {
+		awaitRefresh = installedPairRefreshObserver(t, store, f, publication.Link, publishStarted)
+	}
 	read := exchange(1, installedPairMessage{Operation: "read", Link: publication.Link})
 	if !bytes.Equal(read.Body, body) {
 		t.Fatal("installed Reader returned different Application bytes")
+	}
+	if timing {
+		awaitRefresh()
+		read = exchange(1, installedPairMessage{Operation: "read", Link: publication.Link})
+		if !bytes.Equal(read.Body, body) {
+			t.Fatal("refreshed installed Reader returned different Application bytes")
+		}
+		t.Log("installed automatic refresh and second authenticated Text exchange completed under original participant invocations")
 	}
 	exchange(0, installedPairMessage{Operation: "withdraw"})
 	for i := range peers {

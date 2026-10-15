@@ -99,6 +99,12 @@ from wire identifiers. A joined successful preparation Job may leave a distinct
 private **launch provenance** for permission preparation under a still-live
 session; that provenance never authorizes bytes from a dead worker. This preparation provenance remains distinct from a live operation permit; it never creates persisted permission or authority for a dead worker.
 
+Preparation checks deny retired provenance with its original session cancellation,
+retaining any known joined cleanup failure as an additional cause. Invalidated
+currentness alone must not invent another operational failure after cancellation.
+`Close` still joins the original session and retains cleanup which was pending
+at the check; cancellation is neither successful cleanup nor renewed authority.
+
 Factories create nonzero fresh identities and acquire reservations before
 effects. A separate launch application service orders the physical checks and
 publishes a binding only to the exact live claimed Job. Domain services are

@@ -1367,6 +1367,9 @@
           "internal/successor/publication/runtime.registrationPair.joinCaller",
           "internal/successor/publication/runtime.stoppedAcquisition.Error",
           "internal/successor/route/introduction.HolderRegistration.checkOriginal",
+          "internal/successor/route/introduction.HolderRegistration.checkSupervision",
+          "internal/successor/route/introduction.HolderRegistration.observationQueue",
+          "internal/successor/route/introduction.HolderRegistration.observeOriginal",
           "internal/successor/route/join.JoinAcquisition.checkLocal",
           "internal/successor/route/join.Joined.CheckSourceCaller",
           "internal/successor/route/prefix.SourceJoinBorrow.MatchSourceCaller",
@@ -1381,7 +1384,7 @@
           "internal/successor/route/transport/tls.roleInput.Read"
         ],
         "classification": "selected Linux Service Connection and original lifetime closure",
-        "rationale": "These exact functions are reached in Linux production through ardents-next Reader, Publisher and installed participant composition, including original Execution operations, Instance leases and Route Source/Responder lifetimes. Windows adapters refuse before native acquisition. Linux production must remain reachable and both-platform test analysis must remain empty; portability of pure rules and framing does not qualify Windows or the complete installed journey.",
+        "rationale": "These exact functions are reached in Linux production through ardents-next Reader, Publisher and installed participant composition, including original Execution operations, Instance leases and Route Source/Responder lifetimes. Registration's original observation queue and supervision are reached through Publisher.preparePair, Register, watch and CheckReceipt. Windows adapters refuse before native acquisition. Linux production must remain reachable and both-platform test analysis must remain empty; portability of pure rules and framing does not qualify Windows or the complete installed journey.",
         "owner": "Product Owner and Codex; Service Connection and its original owner contracts",
         "retirement": "Remove each exact entry when the function is retired or a separately selected genuine Windows consumer reaches it. Lost Linux production reachability requires repair, not another allowance."
       }

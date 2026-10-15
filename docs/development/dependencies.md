@@ -149,6 +149,15 @@ client keeps its preceding scalar-only vocabulary. Property projection consumes
 decoded original variants directly: the client's map Store conversion recreates
 variants from reflected values and can change an ExecStartEx struct signature.
 Native comparison with independent busctl facts is the compatibility oracle.
+The v5.2.2 message decoder reads final header padding outside its internal
+panic-to-error boundary. Closing between header decoding and padding therefore
+panics if the transport refuses every remaining read. The private transport
+allows only the remainder of its already fully validated bounded frame to drain
+from memory after physical Close; it never reads another frame or borrows the
+closed descriptor. Original cancellation and final owner checks still refuse
+the observation. A causal native Unix transport test covers the exact header
+padding boundary alongside joined read/write and malformed-frame controls;
+a separate source-matched upstream decoder reproduction confirms the panic.
 
 Primary evidence, accessed 2026-10-08: [upstream release](https://github.com/godbus/dbus/releases/tag/v5.2.2),
 [security policy](https://github.com/godbus/dbus/blob/master/SECURITY.md),

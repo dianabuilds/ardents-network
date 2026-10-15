@@ -21,6 +21,167 @@ import (
 // These are genuine Route/Stock exchanges, not qualified Service operations.
 // Signed permission and receiving owners are fixtures; no worker/Startup is
 // supplied by the cleanup observer.
+func TestRegistrationStockRetainsIssuerControlForNextForwardBothCarriers(t *testing.T) {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			x := newRouteIssuerFixture(t, carrier, nil, nil, nil, nil, true)
+			f := x.network
+			holder := routePermissionStock(t, f, admission.AllocationPublisher, [3]uint32{12, 12, 2})
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+			defer cancel()
+			root := t.TempDir()
+			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"),
+				HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second),
+				Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: admission.ControlClass.ByteLimit(), Rx: admission.ControlClass.ByteLimit()}}
+			selected, err := selection.Open(selection.Config{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot, Domain: 1, Current: f.current})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer selected.Close()
+			budget, err := hosting.Open(plan.HostingRoot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer budget.Close()
+			source, leg, funding, err := openFundedSource(ctx, plan, selected, budget, f.authority, holder, 3, true, func(err error) {
+				if err != nil {
+					t.Error(err)
+				}
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := source.Close(); err != nil {
+					t.Error("original Source join", err)
+				}
+				if cleanup, joined := source.CleanupResult(); !joined || cleanup != nil {
+					t.Error("original Source lacks joined cleanup", joined, cleanup)
+				}
+			}()
+			// Two actual admitted exchanges leave one original issuer Control,
+			// matching the stock entering a later Publication refresh.
+			for range 2 {
+				if err := source.Issue(ctx, plan.Deadline, routeIssuerPreparation(ctx, f.authority, holder, leg, uint8(admission.ForwardClass), nil)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			preparation, err := holder.Prepare(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer preparation.Close()
+			controls, err := funding.challenges(uint8(admission.ControlClass), [][32]byte{funding.issuer, funding.issuer})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if missing, err := preparation.Missing(controls); err != nil || len(missing) != 1 {
+				t.Fatal("control did not establish one retained issuer token", len(missing), err)
+			}
+			before := x.ordinaryIssues.Load()
+			beforeRights := holder.Status().Remaining
+			// Signed recipient stock isolates issuance, not an accepted physical
+			// Registration or JOIN. Those remain genuine Service scenarios.
+			registration, err := funding.challenges(uint8(admission.RegistrationClass), [][32]byte{leg.Entry.NodeID})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := funding.fundMissing(ctx, preparation, source, admission.RegistrationClass, registration, plan.Deadline); err != nil {
+				t.Fatal(err)
+			}
+			if missing, err := preparation.Missing(controls); err != nil || len(missing) != 0 {
+				t.Fatal("Registration failed to retain issuer Control for next Forward", len(missing), err)
+			}
+			forward, err := funding.challenges(uint8(admission.ForwardClass), [][32]byte{{77}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := funding.fundMissing(ctx, preparation, source, admission.ForwardClass, forward, plan.Deadline); err != nil {
+				t.Fatal(err)
+			}
+			if x.ordinaryIssues.Load() != before+3 || x.bootstrapIssues.Load() != 2 || holder.Status().BootstrapRemaining != 0 {
+				t.Fatal("Registration and next Forward required another Control refill or reset bootstrap", x.ordinaryIssues.Load(), before, holder.Status())
+			}
+			if holder.Status().Remaining != [3]uint32{beforeRights[0] - 3, beforeRights[1] - 1, beforeRights[2] - 1} {
+				t.Fatal("combined preparation lost its exact irreversible permission debit", beforeRights, holder.Status())
+			}
+		})
+	}
+}
+
+func TestReaderRoutePreparationFundsNextSourceWithoutBootstrapReset(t *testing.T) {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+		t.Run(string(carrier), func(t *testing.T) {
+			x := newRouteIssuerFixture(t, carrier, nil, nil, nil, nil, true)
+			f := x.network
+			holder := routePermissionStock(t, f, admission.AllocationUser, [3]uint32{12, 12, 0})
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+			defer cancel()
+			root := t.TempDir()
+			plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"),
+				HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second),
+				Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: admission.ControlClass.ByteLimit(), Rx: admission.ControlClass.ByteLimit()}}
+			installation, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: f.current})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer installation.Close()
+			selected, err := installation.Borrow(selection.RoleConfig{InteriorRoot: plan.InteriorRoot, Domain: 1})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer selected.Close()
+			budget, err := hosting.Open(plan.HostingRoot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer budget.Close()
+			var physicalFailure error
+			retain := func(err error) { physicalFailure = errors.Join(physicalFailure, err) }
+			source, leg, funding, err := openFundedSource(ctx, plan, selected, budget, f.authority, holder, 3, true, retain)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scope, err := prefix.NewSourceScope(ctx, source, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer scope.Close()
+			handle, err := scope.Acquire(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := funding.prepareRoute(ctx, handle, leg.Interior, leg.Entry); err != nil {
+				t.Fatal(err)
+			}
+			handle.Close()
+			if err := scope.Close(); err != nil {
+				t.Fatal(err)
+			}
+			before := holder.Status()
+			if before.BootstrapRemaining != 0 {
+				t.Fatal("original bootstrap was not consumed")
+			}
+			// A distinct caller opens from retained genuine unpresented Stock.
+			nextCaller, stop := context.WithCancel(ctx)
+			defer stop()
+			next, _, _, err := openFundedSource(nextCaller, plan, selected, budget, f.authority, holder, 1, true, retain)
+			if err != nil {
+				t.Fatal("next Source attempted exhausted cold bootstrap", err)
+			}
+			if err := next.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if physicalFailure != nil {
+				t.Fatal("original physical cleanup failed", physicalFailure)
+			}
+			if x.bootstrapIssues.Load() != 2 || holder.Status().BootstrapRemaining != 0 || holder.Status().Remaining != before.Remaining {
+				t.Fatal("next admitted Source reset bootstrap or allocated more quota", holder.Status())
+			}
+		})
+	}
+}
+
 func TestFundedSourceBootstrapAndAdmittedIssuanceBothCarriers(t *testing.T) {
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
 		t.Run(string(carrier), func(t *testing.T) {
@@ -139,19 +300,20 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceBothCarriers(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer handle.Close()
-			// Forward for Entry is already stocked. Only Introduction Control
-			// plus replacement of the spent issuer Control may consume quota.
+			// Entry has one token, but it appears both as this fixture's requested
+			// recipient and as the next Source recipient. Fund the genuine deficit
+			// without presenting that next opening or renewing bootstrap.
 			if err := funding.prepareRoute(ctx, handle, leg.Interior, leg.Entry); err != nil {
 				t.Fatal("prepare existing Forward", err)
 			}
-			if x.ordinaryIssues.Load() != 3 || holder.Status().Remaining != [3]uint32{3, 2, 0} {
-				t.Fatal("prepared Forward caused unnecessary issuer refill", x.ordinaryIssues.Load(), holder.Status())
+			if x.ordinaryIssues.Load() != 4 || holder.Status().Remaining != [3]uint32{2, 1, 0} {
+				t.Fatal("prepared current recipient and next Source changed exact finite debit", x.ordinaryIssues.Load(), holder.Status())
 			}
 			before := holder.Status()
 			if err := funding.prepareRoute(ctx, handle, leg.Interior, leg.Entry); err != nil {
 				t.Fatal("reuse unpresented prepared Stock", err)
 			}
-			if x.ordinaryIssues.Load() != 3 || holder.Status().Remaining != before.Remaining {
+			if x.ordinaryIssues.Load() != 4 || holder.Status().Remaining != before.Remaining {
 				t.Fatal("preparation spent recipient Stock or repeated issuance", holder.Status())
 			}
 			canceled, stop := context.WithCancel(ctx)
@@ -159,7 +321,7 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceBothCarriers(t *testing.T) {
 			if err := funding.prepareRoute(canceled, handle, leg.Interior, leg.Entry); !errors.Is(err, context.Canceled) {
 				t.Fatal("canceled preparation accepted", err)
 			}
-			if x.ordinaryIssues.Load() != 3 || holder.Status().Remaining != before.Remaining || holder.Status().BootstrapRemaining != 0 {
+			if x.ordinaryIssues.Load() != 4 || holder.Status().Remaining != before.Remaining || holder.Status().BootstrapRemaining != 0 {
 				t.Fatal("canceled preparation changed finite allowance", holder.Status())
 			}
 			if err := funding.prepareJoin(canceled, handle, leg.Entry); !errors.Is(err, context.Canceled) {
@@ -182,7 +344,7 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceBothCarriers(t *testing.T) {
 				if err := funding.prepareJoin(ctx, handle, duty); err != nil {
 					t.Fatal("prepare missing Forward", err)
 				}
-				if x.ordinaryIssues.Load() != 5 || holder.Status().Remaining != [3]uint32{1, 1, 0} || x.bootstrapIssues.Load() != 2 {
+				if x.ordinaryIssues.Load() != 6 || holder.Status().Remaining != [3]uint32{0, 0, 0} || x.bootstrapIssues.Load() != 2 {
 					t.Fatal("missing Forward changed finite issuance", x.ordinaryIssues.Load(), holder.Status())
 				}
 				break

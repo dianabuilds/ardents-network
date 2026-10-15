@@ -1185,10 +1185,6 @@ func installedConnectionPublisherStock(t *testing.T, f *networkAdmissionFixture,
 	return holder
 }
 
-func installedConnectionInitiator(t *testing.T, f *networkAdmissionFixture, operation *executionruntime.Operation, link string, end time.Time) *connection.InitiatorSource {
-	return installedConnectionInitiatorObserved(t, f, operation, link, end, nil, installedReaderRecoveryStock{})
-}
-
 type installedReaderRecoveryStock struct {
 	expectCancellation bool
 	loseSource         bool

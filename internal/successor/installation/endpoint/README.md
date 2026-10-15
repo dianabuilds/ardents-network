@@ -175,6 +175,13 @@ replacement/reload и закрывает после original physical join. По
 `systemd` ограничивает auth и scalar message bytes до библиотечного decoder,
 прерывает и joins original transport I/O. Release proofs, phase admission и
 expected configuration остаются решениями корня Installation.
+Fresh Startup observation сохраняет исходную отмену неуспешного Unix dial,
+который не получил socket: только единственная context-причина того же caller
+проецируется в его исходный cancellation/deadline result. EOF, independent
+I/O failures и смешанные причины сохраняются. После physical Close transport
+может выдать из памяти только остаток уже полностью проверенного finite frame;
+новый frame и исходный descriptor недоступны. Это завершает decoder без новых
+manager facts или accepting authority; final Startup checks сохраняются.
 
 ## Внутренняя структура
 
@@ -849,9 +856,12 @@ process и manager. EOF или timeout не заменяют ACK.
 
 Новая runtime composition потребляет только bound неизменяемые Headless/Source
 declarations после final Installation handoff. Она отдельно создаёт настоящие
-Network/Admission/Route и отдельный Execution. Реализованные компоненты
-Publication и начальная Connection binding ещё не составляют полный private
-Service consumer этой installed composition.
+Network/Admission/Route и отдельный Execution. Installed composition содержит
+bounded private Service consumer через настоящие Execution, Publication/Instance
+и Connection owners: typed Reader и отдельно допущенный snapshot Administration
+используют те же retained Startup checks перед эффектами и final handoff.
+Shared Entry history и Hosting budget остаются у participant, а worker и
+физические Route users — у исходной операции.
 Installation не выдаёт Job/Grant, Service readiness или Connection authority.
 Runtime закрывает собственные ресурсы и retains terminal result на исходном
 caller. Положительный root archival/ACK receipt требует именно этого настоящего
@@ -944,9 +954,9 @@ I/O исходный объект проверяется повторно до u
 scoped commit/push и проверенной `dev`. Полная installed acceptance отдельно
 требует двух отдельных admitted system managers/Endpoint principals, public
 commands, actual containment/empty scopes и publish/link/read/refresh/withdraw/
-restart на TCP/TLS и QUIC. Bounded Execution consumer уже реализован; без
-полного интегрированного private Publication/Instance/Connection consumer
-эти полные сценарии остаются недоказанными. Нельзя закрыть Installation
+restart на TCP/TLS и QUIC. Наличие bounded Execution и private Service consumers
+не доказывает эти полные сценарии: требуется source-matched приёмка всех названных
+операций и recovery границ. Нельзя закрыть Installation
 или всю цель Route по одной только паре разрешений или остановленной установке.
 
 ### Recovery остановленного reload prefix

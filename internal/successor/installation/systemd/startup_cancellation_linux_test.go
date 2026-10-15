@@ -34,6 +34,33 @@ func TestStartupCallCancellationDoesNotHideForeignFailures(t *testing.T) {
 	}
 }
 
+func TestStartupDialRetainsOnlyItsOriginalCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	// A real standard-library dial produces its private cancellation wrapper.
+	// No manager, successful socket or Startup authority is supplied.
+	socket, err := (&net.Dialer{}).DialContext(ctx, "unix", "/run/dbus/system_bus_socket")
+	if socket != nil {
+		_ = socket.Close()
+		t.Fatal("canceled dial acquired a socket")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatal("original dial did not report its actual cancellation", err)
+	}
+	if observed := startupDialFailure(ctx, err); observed != context.Canceled {
+		t.Fatal("owned dial cancellation retained an additional transport failure", observed)
+	}
+	for _, failure := range []error{io.EOF, ErrObservation,
+		&net.OpError{Op: "dial", Net: "unix", Err: errors.Join(context.Canceled, io.EOF)}} {
+		if observed := startupDialFailure(ctx, failure); !errors.Is(observed, failure) {
+			t.Fatal("canceled dial hid an independent failure", observed)
+		}
+	}
+	if observed := startupDialFailure(t.Context(), err); observed == context.Canceled {
+		t.Fatal("foreign dial became this live caller's cancellation")
+	}
+}
+
 func TestStartupCanceledManagerReadIsNotChangedIdentity(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()

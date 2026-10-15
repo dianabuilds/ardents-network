@@ -51,7 +51,7 @@ func (s *networkState) completeSourceWaveWithConflictCommit(started time.Time, b
 		s.refreshing = false
 	}()
 	if s.closed {
-		return Snapshot{}, errors.New("network state is closed")
+		return Snapshot{}, errStateClosed
 	}
 	if !sameGeneration(s.current, base) {
 		return Snapshot{}, errors.New("network state changed during the finite source wave")

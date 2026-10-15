@@ -30,18 +30,19 @@ type RegistrationConfig struct {
 // withdrawal and physical termination share the immutable original lifetime.
 // Close joins every borrower and retains the same result on repeated calls.
 type HolderRegistration struct {
-	self          *HolderRegistration
-	borrow        *prefix.Borrow
-	conn          net.Conn
-	terminal      *prefix.IntroductionChannel
-	request       Request
-	receipt       Receipt
-	ctx           context.Context
-	caller        context.Context
-	cancel        context.CancelFunc
-	check         func() error
-	observationMu sync.Mutex
-	observedAt    time.Time // Scheduling only; never an accepting authority result.
+	self            *HolderRegistration
+	borrow          *prefix.Borrow
+	conn            net.Conn
+	terminal        *prefix.IntroductionChannel
+	request         Request
+	receipt         Receipt
+	ctx             context.Context
+	caller          context.Context
+	cancel          context.CancelFunc
+	check           func() error
+	observationTurn chan struct{}
+	observationMu   sync.Mutex
+	observedAt      time.Time // Scheduling only; never an accepting authority result.
 
 	mu                                              sync.Mutex
 	pending                                         [32]byte
@@ -192,18 +193,12 @@ func (r *HolderRegistration) watch() {
 		case <-r.ctx.Done():
 			return
 		case <-observation.C:
-			r.observationMu.Lock()
-			remaining := time.Until(r.observedAt.Add(100 * time.Millisecond))
-			r.observationMu.Unlock()
-			if remaining > 0 {
-				observation.Reset(remaining)
-				continue
-			}
-			if err := r.checkOriginal(); err != nil {
+			remaining, err := r.checkSupervision()
+			if err != nil {
 				r.stop(err)
 				return
 			}
-			observation.Reset(100 * time.Millisecond)
+			observation.Reset(remaining)
 		}
 	}
 }
@@ -211,6 +206,42 @@ func (r *HolderRegistration) watch() {
 // checkOriginal always observes authority. Only successful completion starts
 // the existing idle-supervision interval; no caller reuses its result.
 func (r *HolderRegistration) checkOriginal() error {
+	turn := r.observationQueue()
+	<-turn
+	defer func() { turn <- struct{}{} }()
+	return r.observeOriginal()
+}
+
+func (r *HolderRegistration) observationQueue() chan struct{} {
+	r.observationMu.Lock()
+	defer r.observationMu.Unlock()
+	if r.observationTurn == nil {
+		r.observationTurn = make(chan struct{}, 1)
+		r.observationTurn <- struct{}{}
+	}
+	return r.observationTurn
+}
+
+// Only periodic supervision may use a completed-check timestamp. Recheck it
+// after joining any earlier observation; foreground callers always observe.
+// This observation gate owns no registration state or accepting result.
+func (r *HolderRegistration) checkSupervision() (time.Duration, error) {
+	turn := r.observationQueue()
+	<-turn
+	defer func() { turn <- struct{}{} }()
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	r.observationMu.Lock()
+	remaining := time.Until(r.observedAt.Add(100 * time.Millisecond))
+	r.observationMu.Unlock()
+	if remaining > 0 {
+		return remaining, nil
+	}
+	return 100 * time.Millisecond, r.observeOriginal()
+}
+
+func (r *HolderRegistration) observeOriginal() error {
 	if err := r.check(); err != nil {
 		return err
 	}

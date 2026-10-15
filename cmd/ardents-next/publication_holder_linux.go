@@ -26,7 +26,7 @@ func startPublicationHolder(ctx context.Context, plan publicationPlan, routePlan
 		return publicationHandle{}, errors.New("publisher composition unavailable")
 	}
 	if len(shared) > 1 || len(shared) == 1 && !shared[0].matches(routePlan) {
-		return publicationHandle{}, errors.New("Publisher shared Route owners do not match")
+		return publicationHandle{}, errors.New("shared Publisher Route owners do not match")
 	}
 	ownedParents := len(shared) == 0
 	var installation *selection.Installation

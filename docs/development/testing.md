@@ -1,5 +1,29 @@
 # Testing
 
+`route/carrier/quic_deadline_test.go` checks that native deadline conversion
+preserves the original instant, including an expired bound and zero, and
+attaches the current local monotonic clock. The isolated QUIC role-observation
+scenario exercises the actual adapter; physical write failures remain failures.
+
+The signed-Network command fixture keeps its shared state in both checked
+profiles. Only `text_worker_installed` adds receiving-root reopen controls and
+their joined verification callbacks; ordinary tests have no dormant copies of
+those fields. Both profiles retain genuine Network owners and their own checks.
+
+`node/outer/retirement_queue_test.go` holds the return of a fully delivered
+original frame while a sibling CLOSE remains queued, then closes the actual
+pipe peer. Parent retirement must refuse that unemitted terminal without a
+physical cleanup failure and still join the original writer. A late original
+Write failure remains in the joined result. These scheduling controls establish
+neither authenticated authority nor installed qualification.
+
+The Descriptor original-caller post-commit fixture retains its actual committed
+result until the original receiving context observes cancellation. Local caller
+cancellation alone cannot establish that remote boundary: releasing the result
+earlier can race real response output with CLOSE. The fixture still checks
+durable Store bytes, irreversible spend, reservations through join and reopen;
+actual physical deadline, write and unrelated cleanup failures remain failures.
+
 Connection's `attachment_records_test.go` checks that joining one original
 record owner waits for both its actors and retains both errors; a sibling's
 completion cannot substitute. Incomplete stale/retiring actor fixtures refuse
@@ -87,6 +111,14 @@ replacing its original process. The exact profile, finite fixture allocations,
 independent pins and limits are owned by
 `tests/qualification/execution-installed/README.md`. This component supplies
 neither a two-Endpoint exchange nor final Connection acceptance.
+
+The separately selected `execution-installed-timing-check` retains canonical
+Installation-admitted participants through actual automatic Publication refresh
+and a second authenticated Text exchange. Its fifteen-minute checked profile,
+token-hour prerequisite, independent Store revision proof and original invocation
+checks belong to `tests/qualification/execution-installed/README.md`. Ordinary
+pair limits remain unchanged; this profile does not replace the separate precise
+ACK-delay/overlap Publication timing checks or complete interruption audit.
 
 The execution-installed-check target selects the root-native
 TestInstalledExecutionStartup with text_worker_installed. Its driver requires
@@ -752,6 +784,10 @@ selected Carriers.
   formatting checks, plus vet, the four named command builds, module tidiness,
   and the canonical artifact representation proof. `make format-check` remains
   available as a focused architecture and formatting check.
+  On Linux, run ordinary `unit`, `quick-check` and `check` as an unprivileged
+  user: caller-owned enrollment and chmod-denial controls require that identity.
+  Root is an invalid environment for those rows. Root-only Installation profiles
+  run separately under their explicit selectors; they do not replace this gate.
 - On Linux x86-64, `make headless-check` builds the exact Network command
   inventory, checks the enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
   process evidence, then rebuilds and tests the headless command candidate in

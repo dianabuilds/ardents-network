@@ -46,10 +46,7 @@ func ObserveStartup(ctx context.Context) (result StartupObservation, returnedErr
 	defer cancel()
 	socket, err := (&net.Dialer{}).DialContext(acquire, "unix", "/run/dbus/system_bus_socket")
 	if err != nil {
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return result, err
-		}
-		return result, errors.Join(ErrUnavailable, err)
+		return result, startupDialFailure(acquire, err)
 	}
 	unix, ok := socket.(*net.UnixConn)
 	if !ok {
@@ -135,6 +132,27 @@ func ObserveStartup(ctx context.Context) (result StartupObservation, returnedErr
 		return result, err
 	}
 	return result, ctx.Err()
+}
+
+// A failed original Unix dial acquired no socket. Normalize only its exclusive
+// context cause; joined or unrelated I/O failures keep their original result.
+func startupDialFailure(ctx context.Context, err error) error {
+	if original := ctx.Err(); original != nil {
+		if operation, ok := err.(*net.OpError); ok && operation.Op == "dial" && operation.Net == "unix" {
+			for cause := operation.Err; cause != nil; cause = errors.Unwrap(cause) {
+				if _, joined := cause.(interface{ Unwrap() []error }); joined {
+					break
+				}
+				if errors.Unwrap(cause) == nil && errors.Is(cause, original) {
+					return original
+				}
+			}
+		}
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return errors.Join(ErrUnavailable, err)
 }
 
 type startupBus struct {

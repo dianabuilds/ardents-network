@@ -38,12 +38,24 @@ func (t *referenceTransport) begin() bool {
 }
 
 func (t *referenceTransport) Read(p []byte) (int, error) {
+	t.readMu.Lock()
 	if !t.begin() {
+		defer t.readMu.Unlock()
+		// The decoder must finish the already verified finite frame, including
+		// header padding, without touching the closed socket. Its upstream
+		// padding read otherwise panics outside the decoder's error boundary.
+		// Owner cancellation and post-observation checks still deny authority.
+		if t.binary.Load() && len(t.pending) != 0 {
+			n := copy(p, t.pending)
+			t.pending = t.pending[n:]
+			return n, nil
+		}
 		return 0, net.ErrClosed
 	}
-	defer t.active.Done()
-	t.readMu.Lock()
-	defer t.readMu.Unlock()
+	defer func() {
+		t.readMu.Unlock()
+		t.active.Done()
+	}()
 	if len(p) == 0 {
 		return 0, nil
 	}
@@ -109,6 +121,7 @@ func (t *referenceTransport) Write(p []byte) (int, error) {
 
 // Closing first interrupts blocked I/O; Add is prohibited before Wait begins.
 // Queued and later library reads cannot borrow the original descriptor again.
+// Only the remainder of an already verified frame may drain from memory.
 func (t *referenceTransport) Close() error {
 	if t == nil {
 		return nil

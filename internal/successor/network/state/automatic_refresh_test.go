@@ -13,6 +13,43 @@ import (
 
 const automaticRefreshTestWait = 5 * time.Second
 
+func TestCloseJoinsActiveAutomaticWaveWithoutInventingFailure(t *testing.T) {
+	genesis := newFixture(t)
+	successor := nextFixture(t, genesis)
+	config, closeSources := sourceEnvironment(t, genesis, successor, successor)
+	t.Cleanup(closeSources)
+	firstRelay := openGatedRelay(t, config.Source.Sources[0].Address)
+	secondRelay := openGatedRelay(t, config.Source.Sources[1].Address)
+	config.Source.Sources[0].Address = firstRelay.listener.Addr().String()
+	config.Source.Sources[1].Address = secondRelay.listener.Addr().String()
+	config.AutomaticRefreshInterval = 100 * time.Millisecond
+	config.ObserveClock = config.Clock
+	ticks := make(chan time.Time)
+	endpoint, err := state2.OpenWithAutomaticTicksForTest(config, ticks, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = endpoint.Close() })
+	triggerAutomaticTick(t, ticks)
+	firstRelay.awaitAccepted(t)
+	secondRelay.awaitAccepted(t)
+	// Both original contacts are active, not a tick arriving after retirement.
+	// Close must interrupt and join that wave before releasing its own root.
+	closed := make(chan error, 1)
+	go func() { closed <- endpoint.Close() }()
+	select {
+	case err := <-closed:
+		if err != nil {
+			t.Fatal("ordinary active-wave retirement invented a failure", err)
+		}
+	case <-time.After(automaticRefreshTestWait):
+		t.Fatal("Close did not join its original active wave")
+	}
+	if _, err := endpoint.Current(); err == nil {
+		t.Fatal("retired State regained authority")
+	}
+}
+
 func TestAutomaticRefreshSkipsAnActiveInitialWave(t *testing.T) {
 	genesis := newFixture(t)
 	successor := nextFixture(t, genesis)

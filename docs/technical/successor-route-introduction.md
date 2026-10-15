@@ -176,6 +176,12 @@ again. A slow observation cannot accumulate an overdue tick and
 immediately start another scan. Delivery, receipt and wire-effect checks still
 perform their own fresh observations; no authority result is cached or deadline
 extended. Original cancellation interrupts the same retained lifetime.
+Original observations are serialized separately from Registration state. Queued
+supervision rechecks the completed-observation interval after its predecessor
+finishes; a successful foreground observation can defer only that periodic scan.
+Foreground callers still perform fresh observations, and a failed predecessor
+does not restart the interval. Stop seals admission without waiting on this
+observation queue; physical Close still joins the original users.
 Its original child-cancellation callback seals the Registration stop barrier
 before physically interrupting the idle reader, matching explicit Close.
 That barrier retains cancellation of the original REGISTER caller even when

@@ -21,7 +21,7 @@ type credential struct {
 
 func loadCredential(certPath, keyPath string) (_ *credential, result error) {
 	if !filepath.IsAbs(certPath) || !filepath.IsAbs(keyPath) || filepath.Clean(certPath) != certPath || filepath.Clean(keyPath) != keyPath {
-		return nil, errors.New("Node credential paths invalid")
+		return nil, errors.New("invalid Node credential paths")
 	}
 	cert, err := readCredentialFile(certPath, false)
 	if err != nil {
@@ -38,7 +38,7 @@ func loadCredential(certPath, keyPath string) (_ *credential, result error) {
 	}
 	private, ok := pair.PrivateKey.(ed25519.PrivateKey)
 	if !ok || len(private) != ed25519.PrivateKeySize {
-		return nil, errors.New("Node runtime TLS key invalid")
+		return nil, errors.New("invalid Node runtime TLS key")
 	}
 	return &credential{certificate: pair, key: private}, nil
 }
@@ -57,16 +57,16 @@ func readCredentialFile(path string, private bool) (raw []byte, result error) {
 	}()
 	info, err := f.Stat()
 	if err != nil || !info.Mode().IsRegular() {
-		return nil, errors.Join(errors.New("Node credential file invalid"), err)
+		return nil, errors.Join(errors.New("invalid Node credential file"), err)
 	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if private && (!ok || stat.Uid != uint32(os.Geteuid()) || info.Mode().Perm()&0077 != 0) {
-		return nil, errors.New("Node TLS key ownership invalid")
+		return nil, errors.New("invalid Node TLS key ownership")
 	}
 	raw, err = io.ReadAll(io.LimitReader(f, 8193))
 	if err != nil || len(raw) > 8192 {
 		clear(raw)
-		return nil, errors.Join(errors.New("Node credential unavailable"), err)
+		return nil, errors.Join(errors.New("runtime Node credential unavailable"), err)
 	}
 	return raw, nil
 }

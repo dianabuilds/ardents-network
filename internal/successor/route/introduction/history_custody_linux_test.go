@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -70,6 +71,13 @@ func TestHistoryNativeIdenticalSubstitutionAndRestoredBytesRefuse(t *testing.T) 
 				t.Fatal(err)
 			}
 			if fault == "same inode restored bytes" {
+				before, err := os.Lstat(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				// Immediate writes can share the filesystem's clock tick. This
+				// refusal control needs an observable same-inode metadata change.
+				time.Sleep(20 * time.Millisecond)
 				changed := bytes.Clone(raw)
 				changed[0] ^= 1
 				if err := os.WriteFile(path, changed, 0600); err != nil {
@@ -77,6 +85,10 @@ func TestHistoryNativeIdenticalSubstitutionAndRestoredBytesRefuse(t *testing.T) 
 				}
 				if err := os.WriteFile(path, raw, 0600); err != nil {
 					t.Fatal(err)
+				}
+				after, err := os.Lstat(path)
+				if err != nil || !os.SameFile(before, after) || before.Sys().(*syscall.Stat_t).Ctim == after.Sys().(*syscall.Stat_t).Ctim {
+					t.Fatal("restored-byte control did not change original inode ctime", err)
 				}
 			} else {
 				temporary := filepath.Join(root, ".foreign")

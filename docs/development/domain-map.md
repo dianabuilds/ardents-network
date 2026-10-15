@@ -105,6 +105,9 @@ lifetime. Both complete property rounds, original file/process reobservations
 and physical cancellation remain distinct checks. Typed facts preserve original
 wire signatures and grant neither a cache nor startup authority; only the
 Installation consumer compares its original generation and invocation.
+Original interruption preserves its caller's exclusive cancellation cause;
+independent physical failures remain failures. Finishing an already verified
+decoder frame after socket Close grants no manager or startup authority.
 After original inode and executable matching, private Startup retains sealed
 generation files only in its own Snapshot, which fully reobserves them before
 and after manager observations. Its separate installed-file reader retains

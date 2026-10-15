@@ -566,6 +566,7 @@ func testRouteDescriptorRetirement(t *testing.T, stateLoss bool, phase string, c
 				}
 			})
 			var controlSpends atomic.Int32
+			var originalReceiving atomic.Value
 			entered, resume := make(chan struct{}), make(chan struct{})
 			var paused atomic.Bool
 			pause := func(point string) {
@@ -574,6 +575,21 @@ func testRouteDescriptorRetirement(t *testing.T, stateLoss bool, phase string, c
 						close(entered)
 					}
 					<-resume
+					if loseCaller && phase == "after-commit" {
+						// Local cancellation alone does not prove the peer has
+						// retired. Keep this committed result behind the original
+						// receiving cancellation, rather than racing its output
+						// with CLOSE and creating a real TLS write failure.
+						original, ok := originalReceiving.Load().(context.Context)
+						if !ok {
+							t.Error("original receiving context unavailable")
+							return
+						}
+						<-original.Done()
+						if original.Err() != context.Canceled {
+							t.Errorf("original receiving cancellation missing: %v", original.Err())
+						}
+					}
 				}
 			}
 			var released sync.Once
@@ -639,6 +655,7 @@ func testRouteDescriptorRetirement(t *testing.T, stateLoss bool, phase string, c
 						return receiving.Grant{}, err
 					}
 					if id == [32]byte{17} {
+						originalReceiving.Store(ctx)
 						presented = bytes.Clone(raw)
 						presentedDeadline = channel.Hello.Deadline
 						pause("before-admission")

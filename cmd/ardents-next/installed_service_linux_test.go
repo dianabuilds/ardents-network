@@ -35,7 +35,7 @@ func TestInstalledServicePublication(t *testing.T) {
 	t.Run(carrier, func(t *testing.T) { runInstalledServiceStartup(t, true, carrier) })
 }
 
-func installedServiceNetwork(t *testing.T, carrier string) *networkAdmissionFixture {
+func installedServiceNetwork(t *testing.T, carrier string) (*networkAdmissionFixture, *reachability.Store) {
 	f, reservations, certificates := publicationRouteNetwork(t, transport.CarrierProfile(carrier), true)
 	store, err := reachability.OpenStore(reachability.StoreConfig{Root: t.TempDir(), Network: f.profile.NetworkID})
 	if err != nil {
@@ -47,7 +47,7 @@ func installedServiceNetwork(t *testing.T, carrier string) *networkAdmissionFixt
 		}
 	})
 	installedPublisherReceivers(t, f, reservations, certificates, store)
-	return f
+	return f, store
 }
 
 func installedServiceDeclaration(t *testing.T, raw, base string) string {
@@ -233,4 +233,63 @@ func installedServicePublication(t *testing.T, base string, original [3]string) 
 		t.Fatal("withdrawal replaced or retired the installed participant")
 	}
 	t.Log("original installed qualified Publisher published via real issuer/REGISTER/Store ACK and withdrew; no Reader Service stream accepted")
+}
+
+func installedPairRefreshObserver(t *testing.T, store *reachability.Store, f *networkAdmissionFixture, link string, publishStarted time.Time) func() {
+	first := installedPairStoredProof(t, store, f, link)
+	return func() { installedPairAwaitRefresh(t, store, f, link, first, publishStarted) }
+}
+
+func installedPairStoredProof(t *testing.T, store *reachability.Store, f *networkAdmissionFixture, link string) reachability.Descriptor {
+	t.Helper()
+	network, target, err := publication.ParseTargetLink(link)
+	if err != nil || network != f.profile.NetworkID {
+		t.Fatal("installed Link lacks original Network", err)
+	}
+	now := time.Now()
+	raw, outcome, err := store.Lookup(target, f.profile.Digest, now)
+	if err != nil || outcome != reachability.Accepted {
+		t.Fatal("installed publication lacks actual accepted Store proof", outcome, err)
+	}
+	proof, err := reachability.Verify(raw, target, network, f.profile.Digest, now)
+	if err != nil {
+		t.Fatal("installed Store proof failed independent verification", err)
+	}
+	return proof
+}
+
+func installedPairAwaitRefresh(t *testing.T, store *reachability.Store, f *networkAdmissionFixture, link string, first reachability.Descriptor, publishStarted time.Time) {
+	t.Helper()
+	// No forced Refresh, clock adjustment or shortened product scheduler. This
+	// observer alone polls the actual receiving Store under the timing profile.
+	deadline := time.Now().Add(6 * time.Minute)
+	tick := time.NewTicker(200 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		proof := installedPairStoredProof(t, store, f, link)
+		if proof.Introduction.Revision > first.Introduction.Revision {
+			// Registration cannot predate this actual Snapshot request. Its
+			// canonical whole-second creation may round down by less than 1s.
+			if time.Now().Before(publishStarted.Add(299 * time.Second)) {
+				t.Fatal("installed refresh preceded original creation+300s lower bound")
+			}
+			if proof.Introduction.Revision != first.Introduction.Revision+1 || proof.PublicationDigest != first.PublicationDigest ||
+				proof.Introduction.Slot == first.Introduction.Slot || proof.Introduction.RecipientKey == first.Introduction.RecipientKey {
+				t.Fatal("installed automatic refresh changed Publication or reused recipient")
+			}
+			t.Logf("actual installed Store acknowledged automatic revision %d -> %d", first.Introduction.Revision, proof.Introduction.Revision)
+			return
+		}
+		if proof.Digest() != first.Digest() {
+			t.Fatal("installed Store changed original revision bytes")
+		}
+		if !time.Now().Before(deadline) {
+			t.Fatal("installed automatic refresh lacked higher acknowledged revision")
+		}
+		select {
+		case <-t.Context().Done():
+			t.Fatal("installed refresh observation interrupted", t.Context().Err())
+		case <-tick.C:
+		}
+	}
 }

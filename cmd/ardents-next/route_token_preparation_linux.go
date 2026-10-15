@@ -92,7 +92,16 @@ func (flow *routeTokenFlow) fundMissing(ctx context.Context, preparation *stock.
 		// Replace the issuer Control consumed by this same admitted exchange.
 		receivers = append(receivers, flow.issuer)
 	} else {
-		issuerChallenges, err := flow.challenges(uint8(admission.ControlClass), [][32]byte{flow.issuer, flow.issuer})
+		controlsNeeded := [][32]byte{flow.issuer, flow.issuer}
+		if class == admission.RegistrationClass {
+			// Registration consumes one Control, then an incoming JOIN needs
+			// Forward issuance while retaining the next issuing path. Preserve
+			// the same two-Control margin as initial Publication preparation;
+			// a refresh must not move its missing Control refill into capsule
+			// setup. All three rights are charged to the original permission.
+			controlsNeeded = append(controlsNeeded, flow.issuer)
+		}
+		issuerChallenges, err := flow.challenges(uint8(admission.ControlClass), controlsNeeded)
 		if err != nil {
 			return err
 		}
@@ -165,7 +174,7 @@ func (flow *routeTokenFlow) prepareJoin(ctx context.Context, source *prefix.Sour
 // Each actual HELLO later performs its own durable Take and authority checks.
 func (flow *routeTokenFlow) prepareRoute(ctx context.Context, source *prefix.SourceHandle, introduction, rendezvous network.RetainedDuty) (result error) {
 	if source == nil {
-		return errors.New("Connection preparation original Source absent")
+		return errors.New("original Connection preparation Source absent")
 	}
 	if err := source.Check(); err != nil {
 		return err
@@ -187,11 +196,19 @@ func (flow *routeTokenFlow) prepareRoute(ctx context.Context, source *prefix.Sou
 	for _, original := range []network.RetainedDuty{introduction, rendezvous} {
 		current, err := view.RetainDuty(original.NodeID, view.ObservedAt())
 		if err != nil || current != original {
-			return errors.Join(errors.New("Connection preparation recipient changed"), err)
+			return errors.Join(errors.New("original Connection preparation recipient changed"), err)
 		}
 	}
 	end := minRouteDeadline(flow.plan.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
-	forward, err := flow.challenges(uint8(admission.ForwardClass), [][32]byte{rendezvous.NodeID})
+	if err := flow.leg.Check(view, time.Now()); err != nil {
+		return err
+	}
+	// The holder outlives this Reader Job, but its Source does not. Retain one
+	// genuine unpresented Source pair in Stock before retiring the only live
+	// issuing path. A later caller still needs fresh local authority and its own
+	// admitted channels; it cannot repeat the consumed cold bootstrap allowance.
+	forwardReceivers := [][32]byte{rendezvous.NodeID, flow.leg.Entry.NodeID, flow.leg.Interior.NodeID}
+	forward, err := flow.challenges(uint8(admission.ForwardClass), forwardReceivers)
 	if err != nil {
 		return err
 	}
@@ -211,7 +228,7 @@ func (flow *routeTokenFlow) prepareRoute(ctx context.Context, source *prefix.Sou
 		nodes [][32]byte
 	}{
 		{admission.ControlClass, controls},
-		{admission.ForwardClass, [][32]byte{rendezvous.NodeID}},
+		{admission.ForwardClass, forwardReceivers},
 	} {
 		challenges, err := flow.challenges(uint8(request.class), request.nodes)
 		if err != nil {
@@ -232,5 +249,5 @@ func (flow *routeTokenFlow) prepareRoute(ctx context.Context, source *prefix.Sou
 	if err := errors.Join(view.MatchDuty(introduction, time.Now()), view.MatchDuty(rendezvous, time.Now())); err != nil {
 		return err
 	}
-	return errors.Join(ctx.Err(), source.Check())
+	return errors.Join(flow.leg.Check(view, time.Now()), ctx.Err(), source.Check())
 }

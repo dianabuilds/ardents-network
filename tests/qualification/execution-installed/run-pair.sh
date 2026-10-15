@@ -1,7 +1,14 @@
 #!/bin/sh
 set -eu
 fail() { printf '%s\n' "$*" >&2; exit 1; }
-[ "${1-}" = -timeout=8m ] && [ "$#" = 1 ] || fail 'invalid environment: selected eight-minute controller bound required'
+test_root=TestInstalledServicePair
+selected_timeout=-timeout=8m
+if [ "${1-}" = timing ]; then
+    test_root=TestInstalledServiceTiming
+    selected_timeout=-timeout=15m
+    shift
+fi
+[ "${1-}" = "$selected_timeout" ] && [ "$#" = 1 ] || fail 'invalid environment: selected controller profile bound required'
 [ "$(id -u)" = 0 ] || fail 'invalid environment: root controller required'
 for program in nsenter sha256sum stat uname mkdir grep cat; do
     command -v "$program" >/dev/null || fail "invalid environment: $program unavailable"
@@ -36,11 +43,17 @@ umask 077
 mkdir "$base"
 export TMPDIR="$base"
 set +e
-"$binary" '-test.run=^TestInstalledServicePair$' -test.v -test.timeout=8m > "$log" 2>&1
+"$binary" "-test.run=^$test_root\$" -test.v "-test.timeout=${selected_timeout#-timeout=}" > "$log" 2>&1
 result=$?
 set -e
 cat "$log"
 [ "$result" = 0 ] || fail 'installed pair failed; retain controller and both participant logs'
-[ "$(grep -c '^--- PASS: TestInstalledServicePair (' "$log" || true)" = 1 ] || fail 'installed pair lacks exact executed evidence'
+[ "$(grep -c "^--- PASS: $test_root (" "$log" || true)" = 1 ] || fail 'installed pair lacks exact executed evidence'
 if grep -q -- '--- SKIP:' "$log"; then fail 'passing skip is forbidden'; fi
+if [ "$test_root" = TestInstalledServiceTiming ]; then
+    [ "$(grep -c 'actual installed Store acknowledged automatic revision' "$log" || true)" = 1 ] || fail 'installed timing lacks observed automatic Store revision'
+    [ "$(grep -c 'installed automatic refresh and second authenticated Text exchange completed' "$log" || true)" = 1 ] || fail 'installed timing lacks actual post-refresh Text exchange'
+    printf '%s\n' 'execution-installed-timing=passed; full-interruption-and-whole-host-qualification=not-established'
+    exit 0
+fi
 printf '%s\n' 'execution-installed-pair=passed; full-interruption-and-whole-host-qualification=not-established'

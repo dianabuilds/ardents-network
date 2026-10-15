@@ -29,7 +29,7 @@ import (
 
 // This fixture supplies signed bytes, never a trusted RuntimeView or claimed
 // AuthorityFacts. Every observation traverses the opened new Network owner.
-type networkAdmissionFixture struct {
+type networkAdmissionFixtureState struct {
 	current          func() (network.RuntimeView, error)
 	authority        admissionAuthority
 	profile          admission.AuthorityFacts
@@ -42,8 +42,6 @@ type networkAdmissionFixture struct {
 	clockUnavailable atomic.Bool
 	close            func() error
 	reopen           func()
-	receiverReopen   bool
-	afterRouteJoin   []func() int
 }
 
 // Return one actual checked view, then withdraw the fixture's trusted clock.

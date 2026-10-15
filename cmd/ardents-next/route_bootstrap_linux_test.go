@@ -553,6 +553,16 @@ func TestRouteIssuerExclusiveWorkJoinsBeforeReturnBothCarriers(t *testing.T) {
 							firstRequest, firstResponse = sha256.Sum256(request), sha256.Sum256(response)
 							close(started)
 							<-resume // original context remains checked by serveIssuer afterward
+							if mode == "lost-result-retry" {
+								// Local holder completion does not prove remote cancellation.
+								// Keep signed bytes held until this actual receiving operation
+								// is canceled; racing RESULT output with CLOSE can lawfully
+								// retire the shared TLS generation instead of preserving Prefix.
+								<-ctx.Done()
+								if !errors.Is(ctx.Err(), context.Canceled) {
+									t.Errorf("lost-result fixture did not cancel original receiving operation: %v", ctx.Err())
+								}
+							}
 						case 2:
 							retryRequest, retryResponse = sha256.Sum256(request), sha256.Sum256(response)
 						}

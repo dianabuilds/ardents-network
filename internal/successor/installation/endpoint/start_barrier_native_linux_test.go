@@ -17,6 +17,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 )
 
 func TestInstallationNativeStartIntentionRetainsOriginalBarrierBeforeEffect(t *testing.T) {
@@ -70,6 +71,10 @@ func TestInstallationNativeStartIntentionRefusesChangedBarrierAfterJournalIO(t *
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Keep the journal-time mutation distinct from the socket's retained
+	// filesystem clock tick. The assertion below proves that this control
+	// changed original metadata rather than merely restoring its access bits.
+	time.Sleep(20 * time.Millisecond)
 	mutated := false
 	ctx.observe = func() {
 		if !mutated && len(stage.journal.Bytes(journal.Transitions, "start-attempt.json")) != 0 {
@@ -80,6 +85,11 @@ func TestInstallationNativeStartIntentionRefusesChangedBarrierAfterJournalIO(t *
 			}
 			if err := os.Chmod(filename, 0660); err != nil {
 				t.Fatal(err)
+			}
+			current, err := os.Lstat(filename)
+			if err != nil || !os.SameFile(barrier.socket, current) ||
+				current.Sys().(*syscall.Stat_t).Ctim == barrier.socket.Sys().(*syscall.Stat_t).Ctim {
+				t.Fatal("fixture did not change original socket ctime", err)
 			}
 		}
 	}
@@ -360,6 +370,9 @@ func TestInstallationNativeCompletionSocketRejectsSameInodeAccessMutation(t *tes
 		t.Fatal(err)
 	}
 	path := filepath.Join(stage.lease.path, "start-completion.socket")
+	// Establish a different filesystem clock tick before the metadata reset;
+	// equal ctime would not exercise the retained-mutation refusal below.
+	time.Sleep(20 * time.Millisecond)
 	if err := os.Chmod(path, 0600); err != nil {
 		t.Fatal(err)
 	}

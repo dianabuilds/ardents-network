@@ -137,7 +137,7 @@ func openTextReaderSource(operation *executionruntime.Operation, plan routePrefi
 		return nil, nil, errors.New("original Text Reader composition is unavailable")
 	}
 	if len(shared) > 1 || len(shared) == 1 && !shared[0].matches(plan) {
-		return nil, nil, errors.New("Reader shared Route owners do not match")
+		return nil, nil, errors.New("shared Reader Route owners do not match")
 	}
 	ownedParents := len(shared) == 0
 	var installation *selection.Installation

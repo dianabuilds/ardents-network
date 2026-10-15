@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 )
 
 func retainedTransitionFixture(t *testing.T) (string, os.FileInfo, os.FileInfo, string, map[string]RetainedRecord) {
@@ -165,11 +167,19 @@ func TestInstallationNativeRetainedTransitionRefusesForeignFirstObservation(t *t
 					t.Fatal(err)
 				}
 			case "record-access-reset":
+				// Immediate chmod pairs can share a filesystem clock tick. This
+				// control requires an observable change to the original ctime.
+				time.Sleep(20 * time.Millisecond)
 				if err := os.Chmod(filepath.Join(path, "0001.json"), 0640); err != nil {
 					t.Fatal(err)
 				}
 				if err := os.Chmod(filepath.Join(path, "0001.json"), 0600); err != nil {
 					t.Fatal(err)
+				}
+				current, err := os.Lstat(filepath.Join(path, "0001.json"))
+				original := records["0001.json"].Identity
+				if err != nil || !os.SameFile(current, original) || current.Sys().(*syscall.Stat_t).Ctim == original.Sys().(*syscall.Stat_t).Ctim {
+					t.Fatal("access-reset control did not change original ctime", err)
 				}
 			case "foreign-record":
 				if err := os.WriteFile(filepath.Join(path, "foreign.json"), []byte("foreign\n"), 0600); err != nil {
@@ -312,9 +322,17 @@ func TestInstallationNativeRetainedReplacementGroupRefusesSubstitution(t *testin
 					err = os.WriteFile(filepath.Join(groupPath, leaf), group.Records[leaf].Bytes, 0600)
 				}
 			case "record-access-reset":
+				time.Sleep(20 * time.Millisecond)
 				err = os.Chmod(filepath.Join(groupPath, leaf), 0640)
 				if err == nil {
 					err = os.Chmod(filepath.Join(groupPath, leaf), 0600)
+				}
+				if err == nil {
+					current, observedErr := os.Lstat(filepath.Join(groupPath, leaf))
+					original := group.Records[leaf].Identity
+					if observedErr != nil || !os.SameFile(current, original) || current.Sys().(*syscall.Stat_t).Ctim == original.Sys().(*syscall.Stat_t).Ctim {
+						t.Fatal("access-reset control did not change original ctime", observedErr)
+					}
 				}
 			case "foreign-record":
 				err = os.WriteFile(filepath.Join(groupPath, "foreign.json"), []byte("foreign\n"), 0600)

@@ -2,8 +2,15 @@
 set -eu
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 test_root=TestInstalledExecutionStartup
-if [ "${1-}" = service-pair-participant ]; then
+selected_timeout=-timeout=4m
+if [ "${1-}" = service-pair-timing-participant ]; then
+    test_root=TestInstalledServiceTimingParticipant
+    selected_timeout=-timeout=15m
+fi
+if [ "${1-}" = service-pair-participant ] || [ "${1-}" = service-pair-timing-participant ]; then
+    if [ "$test_root" = TestInstalledExecutionStartup ]; then
     test_root=TestInstalledServicePairParticipant
+    fi
     shift
     case "${ARDENTS_EXECUTION_PAIR_ROLE-}" in
         publisher|reader) ;;
@@ -23,7 +30,7 @@ if [ "${1-}" = service-publication ]; then
     esac
 fi
 timeout_argument=${1--timeout=4m}
-[ "$timeout_argument" = -timeout=4m ] || fail 'invalid environment: selected four-minute bound required'
+[ "$timeout_argument" = "$selected_timeout" ] || fail 'invalid environment: selected participant profile bound required'
 timeout=${timeout_argument#-timeout=}
 binary=${ARDENTS_EXECUTION_START_TEST-}
 binary_pin=${ARDENTS_EXECUTION_START_TEST_SHA256-}
@@ -86,7 +93,7 @@ cat "$log"
 [ "$(grep -c "^--- PASS: $test_root (" "$log" || true)" = 1 ] ||
     fail 'actual installed startup lacks exact executed evidence'
 if grep -q -- '--- SKIP:' "$log"; then fail 'passing skip is forbidden'; fi
-if [ "$test_root" = TestInstalledServicePairParticipant ]; then
+if [ "$test_root" = TestInstalledServicePairParticipant ] || [ "$test_root" = TestInstalledServiceTimingParticipant ]; then
     printf '%s\n' 'execution-installed-pair-participant=passed; controller-and-peer-result-required'
     exit 0
 fi

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -16,6 +17,34 @@ import (
 	"testing"
 	"time"
 )
+
+// Closing after a verified frame's headers isolates decoder interruption,
+// without supplying manager identity, properties or startup authority.
+func TestInstallationNativeReferenceDecoderCloseAtHeaderPadding(t *testing.T) {
+	transport, peer := referenceSocketPair(t)
+	transport.binary.Store(true)
+	frame := referenceReplyFixture()
+	if _, err := peer.Write(frame); err != nil {
+		t.Fatal(err)
+	}
+	boundary := 16 + int(binary.LittleEndian.Uint32(frame[12:16]))
+	header := make([]byte, boundary)
+	if _, err := io.ReadFull(transport, header); err != nil || !bytes.Equal(header, frame[:boundary]) {
+		t.Fatal("decoder header bytes changed", err)
+	}
+	if err := transport.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// The upstream decoder requests this final padding outside its error
+	// boundary. It must remain available only from the original verified frame.
+	padding := make([]byte, len(frame)-boundary)
+	if _, err := io.ReadFull(transport, padding); err != nil || !bytes.Equal(padding, frame[boundary:]) {
+		t.Fatal("closed transport interrupted verified header padding", err)
+	}
+	if n, err := transport.Read(make([]byte, 1)); n != 0 || !errors.Is(err, net.ErrClosed) {
+		t.Fatal("decoder acquired another frame after original transport close", n, err)
+	}
+}
 
 // Only physical Unix I/O is supplied, never successful manager or Ref facts.
 func referenceSocketPair(t *testing.T) (*referenceTransport, *net.UnixConn) {

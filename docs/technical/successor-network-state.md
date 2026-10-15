@@ -83,6 +83,10 @@ State borrows `PermitWork` before effects and observation, outside its lock.
 The callback may be concurrent and cannot call back into State. Process resource
 sampling, protect/drain policy and process monitoring stay with the application
 owner. State joins only its own Source and refresh work.
+Closing an already active automatic Source wave retains the same orderly
+retirement classification as refusing a new wave after Close. It still denies
+authority and joins original contacts; independent terminal, durable-write and
+resource-release failures remain failed Close results.
 
 Unsigned record, Epoch and profile preparation remain explicit contracts for
 subsequent provisioning composition, sharing the canonical grammar and
