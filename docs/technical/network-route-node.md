@@ -658,6 +658,13 @@ shutdown, and owned issuer/Entry root close errors propagate to the lifecycle
 result. Node may emit `DRAINING` while cleanup is attempted, but it must move to
 `FAILED` and must not publish `WITHDRAWN` if any required cleanup fails or its
 result is unavailable.
+
+Lifecycle output remains a bounded diagnostic projection. On Unix, each write
+uses one retained nonblocking descriptor and advances its offset only for
+positive syscall byte counts. Saturated pipe or journal socket output waits
+within the required caller deadline; cancellation and peer write failures
+remain errors. Successful output neither grants readiness nor proves cleanup.
+
 The shared Hosting handle closes and the local-role producer record is removed
 before `WITHDRAWN` is published. If a role has not joined by its bounded drain
 deadline, Node reports `FAILED`, retains the local-role conflict until its

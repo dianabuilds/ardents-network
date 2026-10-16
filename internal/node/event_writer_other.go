@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"runtime"
 	"syscall"
 	"time"
 )
@@ -18,15 +19,22 @@ func writeEvent(ctx context.Context, output *os.File, raw []byte) (int, error) {
 	if err != nil || info.Mode()&(os.ModeNamedPipe|os.ModeCharDevice|os.ModeSocket) == 0 {
 		return 0, errors.New("node lifecycle output is not an interruptible stream")
 	}
-	if err := syscall.SetNonblock(int(output.Fd()), true); err != nil {
+	// Fd may restore blocking mode on a pollable File, so obtain it only once
+	// before selecting nonblocking writes for this operation.
+	fd := int(output.Fd())
+	defer runtime.KeepAlive(output)
+	if err := syscall.SetNonblock(fd, true); err != nil {
 		return 0, err
 	}
 	ticker := time.NewTicker(5 * time.Millisecond)
 	defer ticker.Stop()
 	written := 0
 	for written < len(raw) {
-		count, writeErr := syscall.Write(int(output.Fd()), raw[written:])
-		written += count
+		count, writeErr := syscall.Write(fd, raw[written:])
+		// A failed syscall can return -1; only actual bytes advance the offset.
+		if count > 0 {
+			written += count
+		}
 		if writeErr == nil {
 			continue
 		}
