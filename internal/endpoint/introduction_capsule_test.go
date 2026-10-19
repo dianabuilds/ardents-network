@@ -49,7 +49,7 @@ func liveCapsuleJob(t *testing.T, owner *dutyContext) *jobIdentity {
 // and both Service owners. Accepted State/worker qualification and the data
 // joining transport are explicit fixtures: no network JOIN claim.
 func TestTextIntroductionCapsuleBindsRealInstanceAndServiceStream(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			endpoint, publisher, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			// Rendezvous eligibility is a public-State fixture. It is never dialed

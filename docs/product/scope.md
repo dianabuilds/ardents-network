@@ -1,12 +1,21 @@
 # Product scope and audit boundary
 
+## Selected release Carrier scope
+
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
+for the nearest closed release and supersedes dual-Carrier requirements here
+and in the linked workload for that release. QUIC is deferred, with explicit
+pre-effect refusal and no transport fallback. Historical both-Carrier evidence
+qualifies only its original candidate. All other behavior, protection, installed
+journey and privacy limits remain binding; selection is not implementation proof.
+
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects one authenticated protected Endpoint distribution and one independently
 delivered initial pin. Executable and static text-worker generation are separate
 targets in the same signed Release set; installation-specific plans and mutable
 roots remain separate. Selection alone does not establish implementation
 or qualification of the complete installed journey. Product acceptance still
-requires two separate installed Endpoints, both selected Carriers and honest
+requires two separate installed Endpoints, the selected TCP/TLS Carrier and honest
 restart/refusal outcomes.
 
 Status: **current C0 candidate contract.** This document names the maintained
@@ -77,7 +86,7 @@ additional C0 implementation slice or a stronger claim for existing bytes.
 [successor privacy architecture](../technical/common-privacy-architecture.md)
 and [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) completes
 the [closed successor contract](protected-service-workload.md): Target-Link
-text publication/read, confidential control/admission, both accepted Carriers
+text publication/read, confidential control/admission, the selected TCP/TLS Carrier
 and confined Ubuntu workers. This is selected future implementation scope;
 the current C0 facts below remain until explicit adoption. It admits no public
 wire, canonical Name producer or quantitative anonymity claim.

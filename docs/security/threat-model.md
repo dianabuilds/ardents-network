@@ -1,5 +1,15 @@
 # Threat model
 
+## Current closed-release transport boundary
+
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
+for the nearest closed release. Dual-Carrier selection/qualification wording
+below is superseded for this release; the threat model and all other protection
+obligations remain. Deferred QUIC requires actual runtime exclusion and explicit
+pre-effect refusal, including retained callers. No fallback or lower security
+mode is selected. Its unresolved dependency finding is preserved, not waived;
+neither transport exclusion nor passing tests establishes anonymity or availability.
+
 Status: **accepted claim registry and C0 audit input; no implementation qualified**
 
 Last reviewed: 2026-09-07

@@ -1260,6 +1260,13 @@ before transfer and after asynchronous opening. A successful proposal transfers
 the Route lifetime from its bounded opening attempt to the Service Connection,
 so normal attempt cancellation cannot retire the accepted Attachment.
 
+Each peer anchors its recovery cutoff to its own authenticated progress; these
+independently derived deadlines need not be ordered. Publisher preparation and
+commit retain the original local cutoff while the private opening, its caller
+and Route retain the unchanged sealed request/JOIN deadline. A later peer
+deadline grants no extension of the earlier local cutoff; it is not itself an
+integrity failure while both original bounds remain live.
+
 Trusted worker composition also supplies one checked directional byte contract
 before the job can receive a Service stream. The ordinary text composition
 retains the existing 512-byte reader request and 4 MiB plus 13-byte framing

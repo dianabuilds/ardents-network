@@ -103,8 +103,11 @@ func WriteFrame(conn net.Conn, frame ardp.Frame) FrameOutput {
 	}
 	out := writePhysicalOutput(conn, frame.Kind, raw, nil, frame.Kind == ardp.KindCredit)
 	result := FrameOutput{failure: out.err}
-	if out.err != nil && out.physical {
-		result.physical = &physicalWriteFailure{kind: frame.Kind, cause: out.err}
+	if out.failure != nil {
+		result.physical = out.failure
+		if !out.nested {
+			result.physical = &physicalWriteFailure{kind: frame.Kind, cause: out.failure}
+		}
 	}
 	return result
 }
@@ -113,7 +116,7 @@ func WriteFrame(conn net.Conn, frame ardp.Frame) FrameOutput {
 // refusal before Write. Nested framing alone knows whether it emitted bytes;
 // its private witnesses never leave this physical mechanism.
 type physicalOutput struct {
-	err                         error
+	err, failure                error
 	attempted, physical, nested bool
 }
 
@@ -166,6 +169,17 @@ func writePhysicalOutput(conn net.Conn, kind uint8, raw []byte, initial error, c
 	}
 	after := lower.retirementWitness()
 	out.physical = out.attempted && ((lower == nil && (emitted || !transport.IsUnstartedWrite(out.err))) || (lower != nil && after.payload != before.payload))
+	if out.err != nil {
+		if lower == nil && out.physical {
+			out.failure = out.err
+		} else if lower != nil {
+			// Successful lower bytes followed by lane retirement leave this
+			// upper frame incomplete, but cannot invent a native cleanup
+			// failure. Retain the lower owner's actual physical failure,
+			// independently of its successful output count and work refusal.
+			out.failure = after.failure
+		}
+	}
 	if out.err == io.EOF && lower != nil && cleanUnemittedRetirement(kind, before, after) {
 		out.err = nil
 	}

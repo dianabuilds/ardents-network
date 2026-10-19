@@ -14,7 +14,7 @@ import (
 )
 
 func TestClosedBootstrapClientIssuesThroughEntryInteriorAndIssuer(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newClosedBootstrapNetwork(t, carrier)
 			pending, challenge, spki := fixture.batch(t, 32)
@@ -48,7 +48,7 @@ func TestClosedBootstrapClientIssuesThroughEntryInteriorAndIssuer(t *testing.T) 
 }
 
 func TestClosedSourcePrefixConsumesGenuineForwardingTokens(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newClosedBootstrapNetwork(t, carrier)
 			profile := fixture.view.Profile

@@ -192,6 +192,11 @@ func runAndKillEndpointCrashChild(t *testing.T, root string) endpointCrashBounda
 			joined = true
 			t.Fatalf("child ended before crash boundary: %v / %s", err, output.Bytes())
 		case <-ctx.Done():
+			// Wait owns the stdout/stderr copier. Join it before reading its
+			// buffer, including when the original crash boundary expires.
+			_ = command.Process.Kill()
+			<-done
+			joined = true
 			t.Fatalf("crash boundary deadline: %s", output.Bytes())
 		case <-tick.C:
 		}

@@ -99,7 +99,7 @@ func (endpoint *endpoint) closedRoleMembers() (state.ClosedProfileView, []roleMe
 			found = true
 			if candidate.RecordDigest != role.RecordDigest || role.DutyGeneration == 0 || candidate.PublicKey == [32]byte{} || candidate.FamilyID == [32]byte{} ||
 				candidate.Capacity == 0 || now.Before(candidate.ValidFrom) || !now.Before(candidate.ValidUntil) || !now.Before(candidate.AssignmentNotAfter) ||
-				candidate.CarrierProfile != string(carrier.ClosedCarrierTCP) && candidate.CarrierProfile != string(carrier.ClosedCarrierQUIC) {
+				candidate.CarrierProfile != string(carrier.ClosedCarrierTCP) {
 				continue
 			}
 			if candidate.NodeID == issuer.NodeID || candidate.PublicKey == issuer.PublicKey || candidate.FamilyID == issuer.FamilyID {

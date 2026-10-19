@@ -29,7 +29,7 @@ func addDataJoinState(source *sourceStateFixture) {
 // issuance and token journal plus Source and Responder prefixes, JOIN client,
 // sixteen Node runtimes and both selected Carriers. No Service TLS claim here.
 func TestTextRouteJoinConnectsSourceAndResponder(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			endpoint, publisher, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true, join: true})
 			reader := permissionContextFixture(t, endpoint, fixtureID(211), broker.Connection)

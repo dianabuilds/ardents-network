@@ -50,7 +50,7 @@ func TestClosedIntroductionClientCrashStopsDelivery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3, 1)
 			request := terminal.RegistrationRequest{Nonce: [32]byte{121}, Slot: [32]byte{122}, Revision: 1, Expiry: time.Now().UTC().Add(60 * time.Second).Truncate(time.Second)}
@@ -239,7 +239,7 @@ func submitIntroductionCrashFixture(t *testing.T, fixture *resolutionNetworkFixt
 }
 
 func TestClosedIntroductionRestartDoesNotReviveWithdrawnSlot(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3)
 			request := terminal.RegistrationRequest{Nonce: [32]byte{111}, Slot: [32]byte{112}, Revision: 1, Expiry: time.Now().UTC().Add(60 * time.Second).Truncate(time.Second)}

@@ -104,7 +104,7 @@ func TestTextDescriptorFloorBelongsToContextAcrossWorkerLoss(t *testing.T) {
 // signed revision 2 as a prior observation; the next genuine network response
 // must be refused locally even though that Node still considers revision 1 live.
 func TestTextResolutionNetworkCannotRollBackLocalDescriptorFloor(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			_, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true})
 			prefix, err := owner.openPrefix(t.Context())

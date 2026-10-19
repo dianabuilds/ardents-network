@@ -1,5 +1,19 @@
 # Dependency register
 
+## Closed-release Carrier exclusion
+
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
+for the nearest closed release. QUIC and R-172 are deferred; the finding below
+is unresolved, not fixed or waived. Remove the quic-go runtime dependency after
+its last maintained import and registered use are retired in the owning change,
+or establish complete pre-effect exclusion in the actual product/artifact closure.
+No private fork or experimental patch is selected. Preserve canonical historical
+identities and the finding's evidence/limitations. Test/build uses, if any remain,
+require separate normal applicability and support assessment. A changed graph
+must pass module integrity/tidiness, current vulnerability and repository gates.
+The earlier dual-Carrier selection/removal obligations below are superseded for
+this release only; unverified exclusion is not release admission.
+
 ## Go and HTTP security renewal
 
 Reviewed 2026-10-09 after the fresh repository vulnerability gate found the
@@ -503,7 +517,6 @@ historical dependency chain.
 | Module | Present pin | Owned use / admission boundary |
 |---|---|---|
 | `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause; exact reviewed blindrsa token mechanisms, separate holder/receiver/issuer owners |
-| `github.com/quic-go/quic-go` | `v0.63.0` | MIT; existing selected QUIC Carrier. Earlier v0.62.0 finding below remains unresolved; the newer pin is not proof of its closure |
 | `github.com/godbus/dbus/v5` | `v5.2.2` | BSD-2-Clause; private original system-manager connection, reviewed above |
 | `golang.org/x/crypto` | `v0.57.0` | BSD-3-Clause; selected support closure and purpose-scoped Custody Argon2 |
 | `golang.org/x/sys` | `v0.48.0` | BSD-3-Clause; native platform observations, ACL/locking and atomic file mechanisms |
@@ -511,10 +524,11 @@ historical dependency chain.
 | `golang.org/x/net` | `v0.60.0` | BSD-3-Clause; reviewed network/HTTP support closure, fixing renewal and exact source identities above |
 | `golang.org/x/text` | `v0.42.0` | BSD-3-Clause; transitive Go text support in the reviewed library graph; version required by the current x/net closure |
 
-The present QUIC pin differs from the earlier v0.62.0 reviewed profile. This
-consolidation records that fact and preserves the open exact-profile finding;
-it selects no fix, new probe, fork or gate waiver. Profile-specific renewed
-admission evidence remains required under the same continuing acceptance rule.
+The former quic-go v0.63.0 pin and runtime adapters are removed under ADR-0122.
+The earlier v0.62.0 finding below remains unresolved for deferred QUIC. Current
+release admission requires actual source and delivered-artifact exclusion, not
+an assumption based on module removal or a quiet scanner. This retirement
+selects no fix, new probe, fork or gate waiver.
 The separately reviewed OTel, Release, test-only PTY and development tool
 closures are enumerated at their owners below/above.
 
@@ -535,14 +549,13 @@ Earlier OHTTP and Go/compiler scan snapshots remain provenance in the archive.
 CIRCL's optimized assembly behind portable APIs does not select custom
 cryptography. First-party cgo and `unsafe` remain forbidden by project policy.
 
-**QUIC Carrier use:** ADR-0048 retains both selected Carriers. Current adapters
-pin v0.63.0 in `go.mod`; older v0.61.0/v0.62.0 trials cannot qualify that artifact.
-Reproduce the supported-platform, exact TLS/ALPN/configuration, hostile-network,
-MTU, cancellation, accounting and resource evidence required by the current
-protocol and test profiles. The open local finding below is retained with its
-original observations, source and admission blocker. TCP-only cannot satisfy
-the selected second Carrier boundary; a first-party QUIC implementation is
-unselected protocol/cryptographic work.
+**Deferred QUIC use:** ADR-0122 selects TCP/TLS alone for the nearest closed
+release. Historical QUIC records remain recognizable, with explicit refusal
+before selected-role, socket, output or token effects and no fallback. Returning
+QUIC requires a future explicit selection, supported dependency disposition and
+source/artifact-matched hostile-network, lifetime and resource qualification.
+Earlier v0.61.0/v0.62.0 trials and the removed v0.63.0 pin qualify no replacement.
+The unresolved local finding below retains its original observations and limits.
 
 ### Existing QUIC finding: return-path reply budget
 
@@ -652,10 +665,10 @@ to a Docker build with `--network=none`. No vendor tree, module cache, generated
 dependency, or Gateway key is committed.
 
 **Removal plan:** a dependency leaves after its last maintained caller and
-registered-use obligation are retired or replaced. QUIC is still required by
-the selected closed Carrier set; removed private-resolution callers do not
-remove that obligation. A changed version or
-dependency graph repeats the affected current-owner checks. An exploitable or unresolved
+registered-use obligation are retired or replaced. ADR-0122 retires the current
+QUIC runtime obligation while preserving historical identity recognition and
+refusal. The module is removed after its last maintained import; actual release
+closure remains independently checked. A changed version or dependency graph repeats the affected current-owner checks. An exploitable or unresolved
 vulnerability of any severity, loss of support, unacceptable license,
 offline-build failure or broken role split stops admission under the
 [acceptance rule](#maintenance-and-vulnerability-acceptance). The selection

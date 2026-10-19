@@ -54,11 +54,12 @@ func (g *publicationDeliveryCloseGate) observePublisherJoin(current func() (netw
 
 // This component uses qualified original workers and actual Route receivers.
 // It is not acceptance of two independently installed Endpoint managers.
-func TestInstalledConnectionNonceBothCarriers(t *testing.T) {
+func TestInstalledConnectionNonceTCP(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Fatal("invalid environment: original non-root installed Endpoint required")
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	t.Run("closed-peer-write", runNonceResultInterruptionClosedPeerWrite)
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			t.Run("result", func(t *testing.T) { runInstalledConnectionAuthenticationFailure(t, carrier, "result") })
 			t.Run("join", func(t *testing.T) { runInstalledConnectionAuthenticationFailure(t, carrier, "join") })
@@ -67,11 +68,11 @@ func TestInstalledConnectionNonceBothCarriers(t *testing.T) {
 	}
 }
 
-func TestInstalledConnectionWithdrawalBothCarriers(t *testing.T) {
+func TestInstalledConnectionWithdrawalTCP(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Fatal("invalid environment: original non-root installed Endpoint required")
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			runInstalledConnectionTextLoss(t, carrier, "publication-withdrawal")
 		})
@@ -126,11 +127,11 @@ func assertInstalledConnectionPublicationWithdrawal(t *testing.T, ctx context.Co
 	}
 }
 
-func TestInstalledConnectionRefreshBothCarriers(t *testing.T) {
+func TestInstalledConnectionRefreshTCP(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Fatal("invalid environment: original non-root installed Endpoint required")
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			t.Run("accepted", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "refresh-response") })
 			t.Run("pending-ack", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "refresh-pending") })
@@ -138,11 +139,11 @@ func TestInstalledConnectionRefreshBothCarriers(t *testing.T) {
 	}
 }
 
-func TestInstalledConnectionStreamBothCarriers(t *testing.T) {
+func TestInstalledConnectionStreamTCP(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Fatal("invalid environment: original non-root installed Endpoint required")
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			t.Run("before-request-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "before-request") })
 			t.Run("before-request-terminal-commit-loss", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "terminal-body") })
@@ -161,12 +162,15 @@ func TestInstalledConnectionStreamBothCarriers(t *testing.T) {
 }
 
 // These controls retain genuine workers and one original Application request.
-func TestInstalledConnectionControlWritesBothCarriers(t *testing.T) {
+func TestInstalledConnectionControlWritesTCP(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Fatal("invalid environment: original non-root installed Endpoint required")
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
+			t.Run("independent-progress", func(t *testing.T) {
+				runInstalledConnectionTextLoss(t, carrier, "independent-progress")
+			})
 			for _, role := range []string{"initiator", "publisher"} {
 				t.Run(role, func(t *testing.T) {
 					for _, kind := range []string{"terminal", "receipt", "confirmation"} {
@@ -187,11 +191,11 @@ func TestInstalledConnectionControlWritesBothCarriers(t *testing.T) {
 // The writer remains inside its successful physical Write while the opposite
 // reader proves it has accepted that exact generation's control. Retirement
 // therefore occurs after peer acceptance but before the sender's finishWrite.
-func TestInstalledConnectionControlReceivedBothCarriers(t *testing.T) {
+func TestInstalledConnectionControlReceivedTCP(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Fatal("invalid environment: original non-root installed Endpoint required")
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, role := range []string{"initiator", "publisher"} {
 				t.Run(role, func(t *testing.T) {
@@ -206,11 +210,11 @@ func TestInstalledConnectionControlReceivedBothCarriers(t *testing.T) {
 	}
 }
 
-func TestInstalledConnectionControlDeliveryBothCarriers(t *testing.T) {
+func TestInstalledConnectionControlDeliveryTCP(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Fatal("invalid environment: original non-root installed Endpoint required")
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, role := range []string{"initiator", "publisher"} {
 				t.Run(role, func(t *testing.T) {
@@ -232,6 +236,8 @@ func TestInstalledConnectionControlDeliveryBothCarriers(t *testing.T) {
 // These source sites are checked by the architecture profile: a moved call
 // cannot silently retarget a qualification fault to a prefix or pre-read check.
 const connectionControlFramingReadLine = 36
+const connectionProgressReadLine = 41
+const connectionProgressCommitLine = 54
 const connectionControlReadRecheckLine = 381
 
 const connectionPublisherControlWriteBeforeLine = 385
@@ -248,22 +254,26 @@ const connectionInitiatorControlWriteAfterLine = 132
 // accepting callback enters production. A generation-1 ticket selects this
 // exact initial control even if Data ACKs interleave with it.
 type installedControlWriteGate struct {
-	mu            sync.Mutex
-	target        *connection.Stream
-	role          string
-	kind          string
-	after         bool
-	entered       chan struct{}
-	resume        chan struct{}
-	once          sync.Once
-	release       sync.Once
-	receiver      *connection.Stream
-	received      chan struct{}
-	receiveOnce   sync.Once
-	beforeReceive bool
-	afterFinish   bool
-	writing       chan struct{}
-	writingOnce   sync.Once
+	mu             sync.Mutex
+	target         *connection.Stream
+	role           string
+	kind           string
+	after          bool
+	entered        chan struct{}
+	resume         chan struct{}
+	once           sync.Once
+	release        sync.Once
+	receiver       *connection.Stream
+	received       chan struct{}
+	receiveOnce    sync.Once
+	beforeReceive  bool
+	afterFinish    bool
+	writing        chan struct{}
+	writingOnce    sync.Once
+	progressReady  chan struct{}
+	progressDelay  sync.Once
+	progressOnce   sync.Once
+	progressWaited bool // protected by mu
 }
 
 // Only the opposite original record reader examines these fields, which it
@@ -335,9 +345,13 @@ func (gate *installedControlWriteGate) observe() {
 	frames := runtime.CallersFrames(pcs[:runtime.Callers(2, pcs[:])])
 	actor, boundary, before, direct, source := false, false, false, false, false
 	responderBorrow, physicalDepth := false, 0
+	progressRead, progressCommit := false, false
 	for {
 		frame, more := frames.Next()
 		switch frame.Function {
+		case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*Stream).readRecords":
+			progressRead = frame.Line == connectionProgressReadLine
+			progressCommit = frame.Line == connectionProgressCommitLine
 		case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*Stream).writeRecords":
 			actor = true
 		case "github.com/dianabuilds/ardents-network/internal/successor/publication/instance.(*ServiceAttachment).Write":
@@ -371,6 +385,28 @@ func (gate *installedControlWriteGate) observe() {
 		}
 		if !more {
 			break
+		}
+	}
+	// Before the held initial Terminal can leave the writer, the opposite
+	// Publisher can send only the genuine Data ACK. Delay its original Reader
+	// observation, then wait for that reader's next input after ACK commit.
+	// This separates the peers' real progress anchors without supplying facts,
+	// touching either ledger or renewing the original recovery bounds.
+	if gate.progressReady != nil && source {
+		if progressCommit {
+			gate.progressDelay.Do(func() {
+				time.Sleep(1200 * time.Millisecond)
+				gate.mu.Lock()
+				gate.progressWaited = true
+				gate.mu.Unlock()
+			})
+		}
+		if progressRead {
+			gate.mu.Lock()
+			if gate.progressWaited {
+				gate.progressOnce.Do(func() { close(gate.progressReady) })
+			}
+			gate.mu.Unlock()
 		}
 	}
 	// The scoped borrow now observes the physical Responder directly. Its

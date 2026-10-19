@@ -125,9 +125,13 @@ func (stream *Stream) PreparePublisherReplacement(ctx context.Context, opening *
 	stream.mu.Lock()
 	revision := stream.recipientRevision
 	stream.mu.Unlock()
-	if request.AttachmentGeneration != ticket.generation || request.Deadline.After(ticket.deadline) || request.Revision < revision {
+	if request.AttachmentGeneration != ticket.generation || request.Revision < revision {
 		return nil, errIntegrity
 	}
+	// Each peer anchors recovery to its own authenticated progress. Their
+	// deadlines need not be ordered. Keep the sealed request/JOIN deadline
+	// unchanged: child interrupts at our original local cutoff, while ctx,
+	// the private opening and Route independently retain the request bound.
 	proposal.revision = request.Revision
 	identity := stream.owner.identity
 	if request.Network != identity.Network || request.Target != identity.Target || request.PublicationDigest != identity.Publication ||

@@ -639,11 +639,17 @@ func (s *Session) write(l *Lane, f ardp.Frame, terminal bool) error {
 		}
 	}
 	if err != nil {
-		if output.physical {
+		if output.failure != nil {
 			l.physicalWriteFailed = true
-			err = &physicalWriteFailure{owner: s, kind: f.Kind, cause: err}
-			l.physicalErr = errors.Join(l.physicalErr, err)
-			s.writeErr = errors.Join(s.writeErr, err)
+			physical := output.failure
+			if !output.nested {
+				physical = &physicalWriteFailure{owner: s, kind: f.Kind, cause: physical}
+				err = physical
+			} else {
+				err = errors.Join(err, physical)
+			}
+			l.physicalErr = errors.Join(l.physicalErr, physical)
+			s.writeErr = errors.Join(s.writeErr, physical)
 		}
 	}
 	s.active = nil

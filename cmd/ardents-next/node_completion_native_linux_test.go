@@ -27,9 +27,9 @@ import (
 // journal lease. The command's one-millisecond wait must remain unavailable,
 // even after the manager proves process termination. Neither process absence
 // nor a new caller may erase or adopt the unresolved producer.
-func TestNativeNodeUnavailableCompletionRetainsOriginalProducerBothCarriers(t *testing.T) {
+func TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newRouteFixture(t, carrier)
 			bundle, err := networkfixture.BuildClosed(f.spec)

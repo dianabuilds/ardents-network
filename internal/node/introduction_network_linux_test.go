@@ -14,7 +14,7 @@ import (
 )
 
 func TestClosedIntroductionRegistrationOwnsSlotUntilExpiry(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3)
 			request := terminal.RegistrationRequest{Nonce: [32]byte{101}, Slot: [32]byte{102}, Revision: 1, Expiry: time.Now().UTC().Add(5 * time.Second).Truncate(time.Second)}

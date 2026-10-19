@@ -30,7 +30,7 @@ func addIntroductionPrefixState(source *sourceStateFixture) {
 // actual Node runtimes, Custody issuance, journal and both separate prefixes
 // are production paths; this does not claim command publication readiness.
 func TestTextPublisherIntroductionPrefixUsesSeparateDomainAndRealIssuance(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			_, owner, _ := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			source, err := owner.openPrefix(t.Context())

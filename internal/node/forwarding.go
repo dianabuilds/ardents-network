@@ -83,7 +83,7 @@ func validateClosedForwardingProfile(local ClosedForwardingProfile, source autho
 		local.ConnectionLimit == 0 || local.ConnectionLimit > 16 || local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute ||
 		local.host == nil && (local.HostingRoot == "" || !filepath.IsAbs(local.HostingRoot) || filepath.Clean(local.HostingRoot) != local.HostingRoot) ||
 		local.AdmissionTraffic.Tx == 0 && local.AdmissionTraffic.Rx == 0 || local.TerminationTraffic.Tx == 0 && local.TerminationTraffic.Rx == 0 ||
-		!literalNodeEndpoint(snapshot.ProbeEndpoint) || (routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierTCP && routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierQUIC) {
+		!literalNodeEndpoint(snapshot.ProbeEndpoint) || (routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierTCP) {
 		return errors.New("closed forwarding local profile is incomplete")
 	}
 	if _, available := source.Receiver(snapshot, ardp.PurposeForwarding, now); !available {

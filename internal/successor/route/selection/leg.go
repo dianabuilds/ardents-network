@@ -35,7 +35,7 @@ func (leg Leg) Check(view network.RuntimeView, now time.Time) error {
 	if err != nil {
 		return err
 	}
-	if first.RecordDigest != leg.EntryMember.RecordDigest || second.RecordDigest != leg.InteriorMember.RecordDigest || first.Subrole != 1 || second.Subrole != 2 || first.RoleDomain != leg.EntryMember.RoleDomain || second.RoleDomain != leg.InteriorMember.RoleDomain || first.RoleDomain != second.RoleDomain ||
+	if !route.CarrierPermitted(first.CarrierProfile) || !route.CarrierPermitted(second.CarrierProfile) || first.RecordDigest != leg.EntryMember.RecordDigest || second.RecordDigest != leg.InteriorMember.RecordDigest || first.Subrole != 1 || second.Subrole != 2 || first.RoleDomain != leg.EntryMember.RoleDomain || second.RoleDomain != leg.InteriorMember.RoleDomain || first.RoleDomain != second.RoleDomain ||
 		!route.PurposePermitsDuty(7, first.RoleDomain, first.Subrole) || !route.PurposePermitsDuty(7, second.RoleDomain, second.Subrole) ||
 		route.Conflict(route.Member{NodeID: first.NodeID, PublicKey: first.PublicKey, FamilyID: first.FamilyID}, route.Member{NodeID: second.NodeID, PublicKey: second.PublicKey, FamilyID: second.FamilyID}) {
 		return errors.New("retained Route participant changed")

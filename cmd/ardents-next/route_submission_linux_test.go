@@ -31,8 +31,8 @@ import (
 // command composition carry unchanged opaque bytes on both Carriers. The input
 // is deliberately unauthenticated and its holder replies refusal; this proves
 // transport reachability, not a qualified Publisher or successful Connection.
-func TestRouteSourceSubmissionRefusalBothCarriers(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+func TestRouteSourceSubmissionRefusalTCP(t *testing.T) {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := publicationRouteNetwork(t, carrier)
 			holder := routePermissionStock(t, f, admission.AllocationPublisher, [3]uint32{1, 8, 1})

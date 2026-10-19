@@ -44,13 +44,13 @@ import (
 // Native profile: genuine signed State, durable Admission/Hosting/Store owners
 // and physical selected Carriers. Public signed input is not a live Publisher,
 // registered slot, Execution Job or authenticated Service Connection.
-func TestRouteGenuineDescriptorBothCarriers(t *testing.T) {
+func TestRouteGenuineDescriptorTCP(t *testing.T) {
 	t.Run("Introduction-refusals", func(t *testing.T) { testRouteGenuineDescriptor(t, false) })
 	t.Run("profile-refusal", func(t *testing.T) { testRouteGenuineDescriptor(t, true) })
 }
 
 func testRouteGenuineDescriptor(t *testing.T, foreignProfileControl bool) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, reservations, certificates := descriptorRouteFixture(t, carrier)
 			holder := descriptorRouteStock(t, f)
@@ -353,9 +353,9 @@ func routeSignedDescriptorProfile(t *testing.T, f *networkAdmissionFixture, caps
 	return append(body, ed25519.Sign(instance, transcript)...), target
 }
 
-func TestRouteCompiledDescriptorBothCarriers(t *testing.T) {
+func TestRouteCompiledDescriptorTCP(t *testing.T) {
 	_ = compiledCommand(t)
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, sockets, certificates := descriptorRouteFixture(t, profile)
 			bundle, err := networkfixture.BuildClosed(f.spec)
@@ -527,12 +527,12 @@ func TestRouteCompiledDescriptorBothCarriers(t *testing.T) {
 	}
 }
 
-func TestRouteDescriptorPostCommitRetirementBothCarriers(t *testing.T) {
+func TestRouteDescriptorPostCommitRetirementTCP(t *testing.T) {
 	t.Run("receiving-cancellation", func(t *testing.T) { testRouteDescriptorRetirement(t, false, "after-commit") })
 	t.Run("signed-successor-State", func(t *testing.T) { testRouteDescriptorRetirement(t, true, "after-commit") })
 }
 
-func TestRouteDescriptorPreCommitRetirementBothCarriers(t *testing.T) {
+func TestRouteDescriptorPreCommitRetirementTCP(t *testing.T) {
 	for _, phase := range []string{"before-admission", "after-reservation", "after-spend"} {
 		t.Run(phase, func(t *testing.T) {
 			t.Run("receiving-cancellation", func(t *testing.T) { testRouteDescriptorRetirement(t, false, phase) })
@@ -541,14 +541,14 @@ func TestRouteDescriptorPreCommitRetirementBothCarriers(t *testing.T) {
 	}
 }
 
-func TestRouteDescriptorOriginalCallerRetirementBothCarriers(t *testing.T) {
+func TestRouteDescriptorOriginalCallerRetirementTCP(t *testing.T) {
 	for _, phase := range []string{"after-spend", "after-commit"} {
 		t.Run(phase, func(t *testing.T) { testRouteDescriptorRetirement(t, false, phase, true) })
 	}
 }
 
 func testRouteDescriptorRetirement(t *testing.T, stateLoss bool, phase string, callerLoss ...bool) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, reservations, certificates := descriptorRouteFixture(t, carrier)
 			operationContext, stopOperation := context.WithCancel(t.Context())

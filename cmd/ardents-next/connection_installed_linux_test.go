@@ -29,6 +29,7 @@ import (
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/successor/publication/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
@@ -38,8 +39,20 @@ import (
 // nonceResultInterruptionOnly checks every retained error leaf. A deliberate
 // Reader interruption cannot excuse unrelated physical cleanup failures.
 func nonceResultInterruptionOnly(err error) bool {
+	return nonceResultInterruptionCauseOnly(err, false)
+}
+
+func nonceResultInterruptionCauseOnly(err error, afterResult bool) bool {
 	if err == nil {
 		return false
+	}
+	if result, ok := err.(*introduction.DeliveryResultFailure); ok {
+		// Only the genuine Reply can construct this private cause after its
+		// successful RESULT. It still proves neither CLOSE nor clean cleanup.
+		return errors.Is(result, context.Canceled) && nonceResultInterruptionCauseOnly(result.Unwrap(), true)
+	}
+	if err == introduction.ErrDeliveryInterrupted {
+		return afterResult
 	}
 	if many, ok := err.(interface{ Unwrap() []error }); ok {
 		children := many.Unwrap()
@@ -47,7 +60,7 @@ func nonceResultInterruptionOnly(err error) bool {
 			return false
 		}
 		for _, child := range children {
-			if !nonceResultInterruptionOnly(child) {
+			if !nonceResultInterruptionCauseOnly(child, afterResult) {
 				return false
 			}
 		}
@@ -57,12 +70,85 @@ func nonceResultInterruptionOnly(err error) bool {
 		return true
 	}
 	if failure, ok := err.(*net.OpError); ok {
-		return failure.Op == "write" && errors.Is(failure, syscall.ECONNRESET)
+		return failure.Op == "write" && nonceInterruptedWriteOnly(failure.Err)
 	}
 	if one, ok := err.(interface{ Unwrap() error }); ok {
-		return nonceResultInterruptionOnly(one.Unwrap())
+		return nonceResultInterruptionCauseOnly(one.Unwrap(), afterResult)
 	}
 	return false
+}
+
+func nonceInterruptedWriteOnly(err error) bool {
+	if many, ok := err.(interface{ Unwrap() []error }); ok {
+		children := many.Unwrap()
+		if len(children) == 0 {
+			return false
+		}
+		for _, child := range children {
+			if !nonceInterruptedWriteOnly(child) {
+				return false
+			}
+		}
+		return true
+	}
+	if _, nestedOperation := err.(*net.OpError); nestedOperation {
+		return false
+	}
+	if one, ok := err.(interface{ Unwrap() error }); ok {
+		return nonceInterruptedWriteOnly(one.Unwrap())
+	}
+	return err == syscall.ECONNRESET || err == syscall.EPIPE
+}
+
+// Linux can report a reset on the first write and EPIPE on a subsequent write
+// after the same deliberate peer interruption. Neither is a clean retirement.
+func runNonceResultInterruptionClosedPeerWrite(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	client, err := net.Dial("tcp", listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	peer, err := listener.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := peer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := client.SetDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Read(make([]byte, 1)); err != io.EOF {
+		t.Fatal("original peer closure not observed", err)
+	}
+	var broken error
+	for range 8 {
+		_, err := client.Write([]byte{1})
+		if errors.Is(err, syscall.EPIPE) {
+			broken = err
+			break
+		}
+		if err != nil && !errors.Is(err, syscall.ECONNRESET) {
+			t.Fatal("unrelated physical write failure", err)
+		}
+	}
+	if broken == nil || !nonceResultInterruptionOnly(broken) {
+		t.Fatal("deliberate closed-peer write not classified as retained interruption", broken)
+	}
+	unrelated := errors.New("independent physical cleanup failure")
+	if nonceResultInterruptionOnly(errors.Join(broken, unrelated)) ||
+		nonceResultInterruptionOnly(&net.OpError{Op: "write", Err: errors.Join(syscall.EPIPE, unrelated)}) ||
+		nonceResultInterruptionOnly(&net.OpError{Op: "read", Err: syscall.EPIPE}) ||
+		nonceResultInterruptionOnly(errors.Join(introduction.ErrDeliveryInterrupted, context.Canceled)) ||
+		nonceResultInterruptionOnly(&introduction.DeliveryResultFailure{}) ||
+		nonceResultInterruptionOnly(context.DeadlineExceeded) {
+		t.Fatal("interruption classification excused unrelated physical failure")
+	}
 }
 
 // Both original workers are genuinely qualified by the selected installed
@@ -395,6 +481,10 @@ func runInstalledConnectionText(t *testing.T, carrier transport.CarrierProfile, 
 }
 
 func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfile, timing string) {
+	independentProgress := timing == "independent-progress"
+	if independentProgress {
+		timing = "control-initiator-terminal-before-write"
+	}
 	reopen := timing == "durable-reopen"
 	if reopen {
 		timing = ""
@@ -421,6 +511,9 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		controlGate.afterFinish = parts[2] == "after-finish"
 		if controlGate.beforeReceive {
 			controlGate.writing = make(chan struct{})
+		}
+		if independentProgress {
+			controlGate.progressReady = make(chan struct{})
 		}
 		t.Cleanup(controlGate.unblock)
 	}
@@ -493,6 +586,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	var originalJoinConfig receiver.ReceiverConfig
 	var injectedJoinFailure error
 	var injectedJoinMu sync.Mutex
+	originalInterrupted := false
 	responderParents := make(map[*receiver.Receiver]receiver.ReceiverConfig)
 	parentFailures := make(map[*receiver.Receiver]error)
 	sourceParents := make(map[*receiver.Receiver]receiver.ReceiverConfig)
@@ -505,7 +599,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			return true
 		}
 		for _, failure := range parentFailures {
-			if (parentLoss || sourceLoss || publisherSourceLoss || timing == "terminal-body") && failure != nil && err == failure {
+			if (parentLoss || sourceLoss || publisherSourceLoss || timing == "terminal-body" || originalInterrupted) && failure != nil && err == failure {
 				return true
 			}
 		}
@@ -905,6 +999,14 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			injectedJoinMu.Unlock()
 			t.Log("retained original Rendezvous loss", err)
 		}
+		select {
+		case <-originalJoin.Done():
+		default:
+			t.Fatal("original Rendezvous did not join before replacement")
+		}
+		injectedJoinMu.Lock()
+		originalInterrupted = true
+		injectedJoinMu.Unlock()
 		replacement, err := receiver.Listen(t.Context(), originalJoinConfig)
 		if err != nil {
 			t.Fatal("same-duty genuine Rendezvous restart", err)
@@ -1049,6 +1151,14 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 				t.Fatal("opposite original reader did not reach selected control boundary", timing, ctx.Err())
 			}
 		}
+		if independentProgress {
+			select {
+			case <-controlGate.progressReady:
+				t.Log("original ACK accepted after independently delayed Reader observation; Publisher progress was not renewed")
+			case <-ctx.Done():
+				t.Fatal("original delayed ACK did not commit before actual loss", ctx.Err())
+			}
+		}
 		loseOriginal()
 		releaseHeld()
 		select {
@@ -1115,14 +1225,17 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			continue // Exact original Close result was already retained above.
 		}
 		if err := server.Close(); err != nil {
-			if timing == "terminal-body" && transport.IsPeerRetirementCause(err) {
+			injectedJoinMu.Lock()
+			interrupted := originalInterrupted
+			injectedJoinMu.Unlock()
+			if (timing == "terminal-body" || interrupted) && transport.IsPeerRetirementCause(err) {
 				if server.Close() != err {
 					t.Fatal("original receiving physical interruption lost on repeat", err)
 				}
 				injectedJoinMu.Lock()
 				parentFailures[server] = err
 				injectedJoinMu.Unlock()
-				t.Log("retained actual original receiving peer retirement after Terminal-body interruption", err)
+				t.Log("retained actual original receiving peer retirement after attachment interruption", err)
 			} else {
 				t.Fatal("original receiving join", err)
 			}

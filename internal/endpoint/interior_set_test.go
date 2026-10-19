@@ -239,6 +239,46 @@ func TestTextSourceRejectsCrossProjectionStateBeforeSelection(t *testing.T) {
 	}
 }
 
+func TestTextSelectionExcludesDeferredCarrierWithoutRotatingHistory(t *testing.T) {
+	endpoint, owner, source := sourceContextFixture(t)
+	// Add otherwise eligible QUIC Entry/Interior records beside two real TCP
+	// alternatives per role. These supplied projections isolate selection policy.
+	for i, original := range []int{0, 2} {
+		index := 5 + i
+		source.snapshot.Candidates[index] = source.snapshot.Candidates[original]
+		candidate := &source.snapshot.Candidates[index]
+		candidate.NodeID, candidate.PublicKey, candidate.FamilyID, candidate.RecordDigest = fixtureID(byte(90+i)), fixtureID(byte(100+i)), fixtureID(byte(110+i)), fixtureID(byte(120+i))
+		candidate.CarrierProfile = string(carrier.ClosedCarrierQUIC)
+		source.view.Nodes[index] = source.view.Nodes[original]
+		source.view.Nodes[index].NodeID, source.view.Nodes[index].RecordDigest = candidate.NodeID, candidate.RecordDigest
+	}
+	source.view.NodeCount, source.snapshot.CandidateCount = 7, 7
+	_, members, _, err := endpoint.closedRoleMembers()
+	if err != nil || len(members) != 4 {
+		t.Fatal("deferred records entered eligible selection", len(members), err)
+	}
+	for _, member := range members {
+		if member.NodeID == fixtureID(90) || member.NodeID == fixtureID(91) {
+			t.Fatal("deferred candidate eligible before durable selection")
+		}
+	}
+	selected := selectSource(t, owner)
+	retained := *owner.sourceSet
+	// Reobservation must also refuse an incompatible retained binding. Neither
+	// another eligible Entry nor an Interior redraw may repair it implicitly.
+	for index := range source.snapshot.Candidates[:source.snapshot.CandidateCount] {
+		if source.snapshot.Candidates[index].NodeID == selected.EntryNodeID {
+			source.snapshot.Candidates[index].CarrierProfile = string(carrier.ClosedCarrierQUIC)
+		}
+	}
+	owner.mu.Lock()
+	_, err = owner.selectBootstrapLocked()
+	owner.mu.Unlock()
+	if err == nil || owner.sourceSet == nil || *owner.sourceSet != retained {
+		t.Fatal("incompatible retained choice accepted or history rotated", err)
+	}
+}
+
 func TestTextInteriorSelectionIgnoresStateMemberOrder(t *testing.T) {
 	now := time.Date(2026, 9, 16, 13, 0, 0, 0, time.UTC)
 	entryMember := func(id byte) entry.ClosedSetMember {

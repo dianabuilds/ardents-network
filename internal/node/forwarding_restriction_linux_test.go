@@ -23,7 +23,7 @@ import (
 )
 
 func TestClosedNodeRestrictionRefusesValidPrivateTokenWithoutSpendingIt(t *testing.T) {
-	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP} {
 		t.Run(string(transport), func(t *testing.T) {
 			fixture := newClosedBootstrapFixture(t)
 			token := closedRestrictionToken(t, fixture)

@@ -8,7 +8,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
-	rolequic "github.com/dianabuilds/ardents-network/internal/successor/route/transport/quic"
 	roletls "github.com/dianabuilds/ardents-network/internal/successor/route/transport/tls"
 	"io"
 	"math/big"
@@ -36,17 +35,7 @@ func transportCertificate(t *testing.T, start, end time.Time) (tls.Certificate, 
 
 func transportEndpoint(t *testing.T, profile transport.CarrierProfile) string {
 	t.Helper()
-	if profile == transport.ClosedCarrierQUIC {
-		socket, err := net.ListenPacket("udp", "127.0.0.1:0")
-		if err != nil {
-			t.Fatal(err)
-		}
-		endpoint := socket.LocalAddr().String()
-		if err := socket.Close(); err != nil {
-			t.Fatal(err)
-		}
-		return endpoint
-	}
+
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +48,7 @@ func transportEndpoint(t *testing.T, profile transport.CarrierProfile) string {
 }
 
 func TestActualSharedTransportClassification(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		for _, node := range []bool{false, true} {
 			t.Run(string(profile)+map[bool]string{false: "/direct", true: "/node"}[node], func(t *testing.T) {
 				now := time.Now()
@@ -145,7 +134,7 @@ func TestActualSharedTransportClassification(t *testing.T) {
 }
 
 func TestActualTransportRejectsServerIdentityAndDates(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		for _, refusal := range []string{"wrong-key", "expired", "future"} {
 			t.Run(string(profile)+"/"+refusal, func(t *testing.T) {
 				now := time.Now()
@@ -197,8 +186,7 @@ func openTestRoleCarrier(ctx context.Context, input transport.ClosedRoleCarrierR
 	switch input.CarrierProfile {
 	case transport.ClosedCarrierTCP:
 		return roletls.OpenEndpoint(ctx, input)
-	case transport.ClosedCarrierQUIC:
-		return rolequic.OpenEndpoint(ctx, input)
+
 	default:
 		return nil, errors.New("closed role carrier profile is unsupported")
 	}
@@ -212,8 +200,7 @@ func openTestNodeCarrier(ctx context.Context, input transport.ClosedNodeCarrierR
 	switch input.CarrierProfile {
 	case transport.ClosedCarrierTCP:
 		return roletls.OpenNode(ctx, input)
-	case transport.ClosedCarrierQUIC:
-		return rolequic.OpenNode(ctx, input)
+
 	default:
 		return nil, errors.New("closed Node Carrier profile is unsupported")
 	}
@@ -227,8 +214,7 @@ func listenTestSharedCarrier(profile transport.CarrierProfile, endpoint string, 
 	switch profile {
 	case transport.ClosedCarrierTCP:
 		return roletls.ListenShared(endpoint, certificate, verify, handshakeLimit)
-	case transport.ClosedCarrierQUIC:
-		return rolequic.ListenShared(endpoint, certificate, verify, handshakeLimit)
+
 	default:
 		return nil, errors.New("closed shared carrier profile is unsupported")
 	}

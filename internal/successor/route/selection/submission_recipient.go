@@ -18,7 +18,7 @@ func (leg Leg) SubmissionDuty(view network.RuntimeView, node [32]byte, generatio
 		return network.RetainedDuty{}, err
 	}
 	member, err := view.Member(node, view.ObservedAt())
-	if err != nil || member.DutyGeneration != generation || !route.PurposePermitsDuty(5, member.RoleDomain, member.Subrole) {
+	if err != nil || !route.CarrierPermitted(member.CarrierProfile) || member.DutyGeneration != generation || !route.PurposePermitsDuty(5, member.RoleDomain, member.Subrole) {
 		return network.RetainedDuty{}, errors.Join(errors.New("exact Introduction submission duty unavailable"), err)
 	}
 	byKey, err := view.MemberByKey(member.PublicKey, view.ObservedAt())

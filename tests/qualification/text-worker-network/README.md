@@ -24,9 +24,9 @@ Load that exact inactive unit without drop-ins. Supply the shared runner's
 ARDENTS_TEXT_LIFECYCLE_SHA256 and ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256 from the
 independently pinned candidate. The runner verifies artifacts and environment,
 starts one invocation, collects its exact journal, and requires terminal inactive
-success with MainPID0. It separately requires the root test, both Carrier tests
-and all eight nested cases exactly once: empty, reference64KiB, maximum4MiB and elapsed refresh over
-TCP/TLS and QUIC. No-tests success, missing cases, failure or missing prerequisite
+success with MainPID0. It separately requires the root test, the TCP Carrier test
+and all four nested cases exactly once: empty, reference64KiB, maximum4MiB and elapsed refresh over
+TCP/TLS. No-tests success, missing cases, failure or missing prerequisite
 cannot pass. The fifteen-minute test bound and sixteen-minute systemd watchdog are
 qualification limits; each exchange retains its own accepted runtime bounds.
 

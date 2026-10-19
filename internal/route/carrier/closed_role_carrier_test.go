@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func TestClosedRoleCarrierAuthenticatesDirectTCPAndQUIC(t *testing.T) {
-	for _, profile := range []CarrierProfile{ClosedCarrierTCP, ClosedCarrierQUIC} {
+func TestClosedRoleCarrierAuthenticatesDirectTCP(t *testing.T) {
+	for _, profile := range []CarrierProfile{ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			certificate := entryBindingCertificate(t, 151)
 			server := identifierFromKey(certificate.Leaf.PublicKey.(ed25519.PublicKey))
@@ -23,8 +23,6 @@ func TestClosedRoleCarrierAuthenticatesDirectTCPAndQUIC(t *testing.T) {
 			endpoint := ""
 			switch value := listener.(type) {
 			case *closedRoleTCPListener:
-				endpoint = value.listener.Addr().String()
-			case *closedRoleQUICListener:
 				endpoint = value.listener.Addr().String()
 			default:
 				t.Fatal("unknown closed role listener")

@@ -19,7 +19,7 @@ import (
 // State and worker qualification are fixtures, as in the refresh counterpart.
 // These are channel/revocation failures, not whole-Endpoint crash qualification.
 func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, failure := range []string{"none", "registration channel", "context revoke", "caller cancel"} {
 				t.Run(failure, func(t *testing.T) {
@@ -137,7 +137,7 @@ func TestTextInitialPublicationLossBeforeAcknowledgement(t *testing.T) {
 // Source removed from the current slot cannot turn that late acknowledgement
 // into readiness.
 func TestTextInitialPublicationRefusesOldSourceAcknowledgement(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			gate := newDescriptorACKGate()
 			gate.revision = 1

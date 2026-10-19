@@ -1,5 +1,12 @@
 # Command reference
 
+The nearest closed release uses TCP/TLS alone under
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). Recognized QUIC
+profiles remain distinct historical signed inputs and receive an explicit
+unsupported outcome before transport or Admission effects. There is no enabling
+switch or TCP fallback. Current positive runs select TCP/TLS; retained dual-Carrier
+receipts describe their original artifacts and do not qualify this release.
+
 Status: **current maintained command routes.** These commands exercise the
 implemented closed-test-network Modules. They are not a public operator API,
 installer, supported Node hosting profile, or compatibility promise for old

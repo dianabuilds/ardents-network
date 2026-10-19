@@ -26,7 +26,7 @@ func (source Source) PeerCurrent(snapshot state.NodeDuty, key [32]byte, now time
 		}
 		for peerIndex := uint8(0); peerIndex < snapshot.CandidateCount; peerIndex++ {
 			peer := snapshot.Candidates[peerIndex]
-			if peer.NodeID != recipient.NodeID || peer.PublicKey != key || peer.PublicKey == [32]byte{} || peer.RecordDigest != recipient.RecordDigest || !now.Before(peer.ValidUntil) || !now.Before(peer.AssignmentNotAfter) {
+			if peer.NodeID != recipient.NodeID || peer.PublicKey != key || peer.PublicKey == [32]byte{} || peer.RecordDigest != recipient.RecordDigest || peer.CarrierProfile != string(carrier.ClosedCarrierTCP) || !now.Before(peer.ValidUntil) || !now.Before(peer.AssignmentNotAfter) {
 				continue
 			}
 			if matched {

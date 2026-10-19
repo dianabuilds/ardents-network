@@ -5,6 +5,11 @@ date: 2026-09-07
 
 # Select the closed protected text-Service contract
 
+[ADR-0122](0122-select-tcp-only-closed-release.md) supersedes only this decision's
+dual-Carrier selection and qualification for the nearest closed release. TCP/TLS
+retains its existing v2 Carrier identity and v3 binding; QUIC is deferred and
+refused without fallback. All other protection and acceptance obligations remain.
+
 ## Context
 
 ADR-0078 chooses the split-circuit architecture but leaves its exact admission,

@@ -4,10 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"github.com/quic-go/quic-go"
 	"net"
-	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -38,8 +35,7 @@ func ClosedRoleTLSExporter(connection net.Conn) (ClosedTLSExporter, error) {
 	switch secured := connection.(type) {
 	case *tls.Conn:
 		state = secured.ConnectionState()
-	case *closedRoleQUICCarrier:
-		state = secured.connection.ConnectionState().TLS
+
 	default:
 		return nil, errors.New("closed role TLS exporter is unavailable")
 	}
@@ -63,12 +59,7 @@ func ListenClosedRoleCarrier(profile CarrierProfile, endpoint string, certificat
 			return nil, err
 		}
 		return &closedRoleTCPListener{listener: listener, certificate: certificate}, nil
-	case ClosedCarrierQUIC:
-		listener, err := quic.ListenAddr(endpoint, closedRoleServerTLS(certificate), closedRoleQUICServerConfig())
-		if err != nil {
-			return nil, err
-		}
-		return &closedRoleQUICListener{listener: listener}, nil
+
 	default:
 		return nil, errors.New("closed role carrier profile is unsupported")
 	}
@@ -96,86 +87,4 @@ func (listener *closedRoleTCPListener) Accept(ctx context.Context, deadline time
 }
 func (listener *closedRoleTCPListener) Close() error { return listener.listener.Close() }
 
-type closedRoleQUICListener struct{ listener *quic.Listener }
-
-func (listener *closedRoleQUICListener) Accept(ctx context.Context, deadline time.Time) (net.Conn, error) {
-	if ctx == nil || deadline.IsZero() || !time.Now().Before(deadline) {
-		return nil, errors.New("closed role carrier acceptance is invalid")
-	}
-	connection, err := listener.listener.Accept(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if err := validClosedRoleTLSState(connection.ConnectionState().TLS, [32]byte{}, true); err != nil {
-		_ = connection.CloseWithError(1, "role-peer-invalid")
-		return nil, err
-	}
-	attempt, cancel := context.WithDeadline(ctx, deadline)
-	defer cancel()
-	stream, err := connection.AcceptStream(attempt)
-	if err != nil {
-		_ = connection.CloseWithError(1, "role-stream-invalid")
-		return nil, err
-	}
-	carrier := &closedRoleQUICCarrier{stream: stream, connection: connection}
-	if err := carrier.SetDeadline(deadline); err != nil {
-		_ = carrier.Close()
-		return nil, err
-	}
-	if err := carrier.SetDeadline(time.Time{}); err != nil {
-		_ = carrier.Close()
-		return nil, err
-	}
-	return carrier, nil
-}
-func (listener *closedRoleQUICListener) Close() error { return listener.listener.Close() }
-
-type closedRoleQUICCarrier struct {
-	stream     *quic.Stream
-	connection *quic.Conn
-	once       sync.Once
-	closeErr   error
-	closed     atomic.Bool
-}
-
-func (carrier *closedRoleQUICCarrier) Read(value []byte) (int, error) {
-	return carrier.stream.Read(value)
-}
-func (carrier *closedRoleQUICCarrier) Write(value []byte) (int, error) {
-	// A late child must not attempt a new frame after this owner retired the
-	// physical stream. Preserve errors from writes already in flight; only a
-	// new call after local Close receives the standard closed sentinel.
-	if carrier.closed.Load() {
-		return 0, net.ErrClosed
-	}
-	return carrier.stream.Write(value)
-}
-func (carrier *closedRoleQUICCarrier) LocalAddr() net.Addr  { return carrier.connection.LocalAddr() }
-func (carrier *closedRoleQUICCarrier) RemoteAddr() net.Addr { return carrier.connection.RemoteAddr() }
-func (carrier *closedRoleQUICCarrier) SetDeadline(deadline time.Time) error {
-	return carrier.stream.SetDeadline(quicDeadline(deadline))
-}
-func (carrier *closedRoleQUICCarrier) SetReadDeadline(deadline time.Time) error {
-	return carrier.stream.SetReadDeadline(quicDeadline(deadline))
-}
-func (carrier *closedRoleQUICCarrier) SetWriteDeadline(deadline time.Time) error {
-	return carrier.stream.SetWriteDeadline(quicDeadline(deadline))
-}
-func (carrier *closedRoleQUICCarrier) Close() error {
-	carrier.once.Do(func() {
-		carrier.closed.Store(true)
-		carrier.closeErr = errors.Join(carrier.stream.Close(), carrier.connection.CloseWithError(0, "role-close"))
-	})
-	return carrier.closeErr
-}
-
-func closedRoleQUICConfig() *quic.Config { return closedNodeQUICConfig() }
-func closedRoleQUICServerConfig() *quic.Config {
-	config := closedRoleQUICConfig()
-	config.MaxIncomingStreams = 1
-	return config
-}
-
-var _ net.Conn = (*closedRoleQUICCarrier)(nil)
 var _ ClosedRoleCarrierListener = (*closedRoleTCPListener)(nil)
-var _ ClosedRoleCarrierListener = (*closedRoleQUICListener)(nil)

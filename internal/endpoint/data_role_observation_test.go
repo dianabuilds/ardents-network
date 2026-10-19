@@ -37,7 +37,7 @@ func TestTextDataJoinIsolatedRoleObservations(t *testing.T) {
 		runDataJoinIsolatedRoleObservation(t, carrier)
 		return
 	}
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			runDataJoinIsolatedRoleObservationProcess(t, carrier)
 		})

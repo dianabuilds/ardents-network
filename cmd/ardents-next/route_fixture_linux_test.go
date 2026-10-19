@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
-	rolequic "github.com/dianabuilds/ardents-network/internal/successor/route/transport/quic"
 	roletls "github.com/dianabuilds/ardents-network/internal/successor/route/transport/tls"
 	"math/big"
 	"net"
@@ -48,8 +47,7 @@ func routeFixtureNodeCarrier(t *testing.T, request transport.ClosedNodeCarrierRe
 	switch request.CarrierProfile {
 	case transport.ClosedCarrierTCP:
 		carrier, err = roletls.OpenNode(t.Context(), request)
-	case transport.ClosedCarrierQUIC:
-		carrier, err = rolequic.OpenNode(t.Context(), request)
+
 	default:
 		t.Fatal("fixture Carrier profile unavailable")
 	}
@@ -356,8 +354,7 @@ func routeTestOpenEndpoint(ctx context.Context, input transport.ClosedRoleCarrie
 	switch input.CarrierProfile {
 	case transport.ClosedCarrierTCP:
 		return roletls.OpenEndpoint(ctx, input)
-	case transport.ClosedCarrierQUIC:
-		return rolequic.OpenEndpoint(ctx, input)
+
 	default:
 		return nil, errors.New("closed role carrier profile is unsupported")
 	}

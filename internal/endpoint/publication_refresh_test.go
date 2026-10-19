@@ -22,7 +22,7 @@ import (
 func TestTextPublicationRefreshRetriesConcurrentRoleCommit(t *testing.T) {
 	gate := newDescriptorACKGate()
 	gate.open()
-	endpoint, owner, _, first := startRegisteredPublisherNetwork(t, routecarrier.ClosedCarrierQUIC, gate)
+	endpoint, owner, _, first := startRegisteredPublisherNetwork(t, routecarrier.ClosedCarrierTCP, gate)
 	if _, err := owner.publishDescriptor(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestTextPublicationRefreshRetriesOnlyConflictReadTimeout(t *testing.T) {
 // Both key generations, issuance, registration, publication and capsule delivery
 // use their real owners over each Carrier. No elapsed-300s or JOIN claim.
 func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			gate := newDescriptorACKGate()
 			defer gate.open()
@@ -318,7 +318,7 @@ func TestTextPublicationAutomaticallyRefreshesAndRetiresPredecessor(t *testing.T
 // renewal route. A scheduled refresh that reaches that boundary must fail
 // closed: it cannot retain an accepting registration or revive it on retry.
 func TestTextPublicationRefreshExpiresPermissionWithoutResurrection(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			gate := newDescriptorACKGate()
 			defer gate.open()

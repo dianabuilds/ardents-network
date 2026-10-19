@@ -15,7 +15,7 @@ import (
 // The startup owner performs registration and publication before returning its
 // Link; the caller supplies no publication or registration success callback.
 func TestTextPublisherStartupOwnsPublicationBeyondCaller(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			readerOwner, publisherOwner := unpublishedNetworkFixture(t, carrier)
 			body := []byte("publication started by its qualified worker")

@@ -18,9 +18,9 @@ import (
 	"time"
 )
 
-func TestNativeJoinPartialStartupRefusalsBothCarriers(t *testing.T) {
+func TestNativeJoinPartialStartupRefusalsTCP(t *testing.T) {
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, fault := range []string{"profile", "unknown-field", "nested-roots", "role", "tls-key", "missing-hosting", "foreign-spend", "listener"} {
 				t.Run(fault, func(t *testing.T) {

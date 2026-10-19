@@ -6,6 +6,11 @@ supersedes: ADR-0024 (TCP-only Carrier set) and ADR-0025 (TCP-only Entry resolut
 
 # ADR-0048 — Maintain TCP/TLS and QUIC v1 behind one Carrier contract
 
+For the nearest closed release, [ADR-0122](0122-select-tcp-only-closed-release.md)
+supersedes this decision's dual-Carrier selection and qualification clauses with
+TCP/TLS alone and explicit QUIC refusal. Other semantics remain binding; the
+original decision and evidence below retain historical meaning.
+
 ## Context
 
 H4-2 requires a failed or blocked adjacent transport to be replaceable without

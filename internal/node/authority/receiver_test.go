@@ -40,3 +40,32 @@ func TestReceiverRefusesDutyOrDigestMismatch(t *testing.T) {
 		t.Fatal("accepted a successor State digest")
 	}
 }
+
+// The supplied State projections isolate peer eligibility. Genuine signed
+// intake and actual shared-listener handshakes have separate network coverage.
+func TestPeerCurrentRefusesDeferredCarrier(t *testing.T) {
+	now := time.Now()
+	generation := [32]byte{1}
+	snapshot := state.NodeDuty{Generation: hex.EncodeToString(generation[:]), NetworkID: [32]byte{2}, Epoch: 3, Digest: [32]byte{4},
+		EpochValidFrom: now.Add(-time.Minute), ValidUntil: now.Add(time.Hour), RecordValidUntil: now.Add(time.Hour), Profile: carrier.ClosedRouteProfile, Fresh: true, NodeID: [32]byte{5}, CandidateCount: 1}
+	profile := state.ClosedProfileView{NetworkID: snapshot.NetworkID, StateGeneration: generation, StateDigest: snapshot.Digest,
+		Digest: [32]byte{7}, Epoch: snapshot.Epoch, NotBefore: now.Add(-time.Second), NotAfter: now.Add(time.Minute)}
+	peer := state.NodeDutyCandidate{NodeID: [32]byte{8}, PublicKey: [32]byte{9}, RecordDigest: [32]byte{10},
+		CarrierProfile: string(carrier.ClosedCarrierTCP), ValidUntil: now.Add(time.Minute), AssignmentNotAfter: now.Add(time.Minute)}
+	snapshot.Candidates[0] = peer
+	view := state.ClosedRouteView{Profile: profile, NodeCount: 1}
+	view.Nodes[0] = state.ClosedRouteNodeView{NodeID: peer.NodeID, RecordDigest: peer.RecordDigest, RoleDomain: 1, Subrole: 1, DutyGeneration: 1}
+	source := Source{CurrentRoute: func() (state.ClosedRouteView, error) { return view, nil }}
+	if !source.PeerCurrent(snapshot, peer.PublicKey, now) {
+		t.Fatal("current TCP peer refused")
+	}
+	for _, deferred := range []string{string(carrier.ClosedCarrierQUIC), "ardents-carrier-quic-v1", "", "unknown"} {
+		snapshot.Candidates[0].CarrierProfile = deferred
+		if source.PeerCurrent(snapshot, peer.PublicKey, now) {
+			t.Fatal("unsupported peer admitted through TCP", deferred)
+		}
+	}
+	if peer.CarrierProfile != string(carrier.ClosedCarrierTCP) || snapshot.Candidates[0].RecordDigest != peer.RecordDigest {
+		t.Fatal("eligibility check rewrote original facts")
+	}
+}

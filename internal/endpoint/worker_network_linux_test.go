@@ -52,7 +52,7 @@ func exchangeWorkersThroughNetwork(t *testing.T, carrier routecarrier.CarrierPro
 // Only installed launch/cgroup observation is replaced by the explicit worker
 // fixture. Both worker protocols, Grants, network legs and Service auth are real.
 func TestTextWorkersReadTargetThroughJoinedNetwork(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			exchangeWorkersThroughNetwork(t, carrier, bytes.Repeat([]byte("x"), 64<<10), func(t *testing.T, owner *dutyContext, snapshot []byte) *qualifiedWorker {
 				job := liveCapsuleJob(t, owner)

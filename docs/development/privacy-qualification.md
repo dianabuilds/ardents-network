@@ -1,5 +1,12 @@
 # Closed privacy successor: parameters, integration and acceptance
 
+For the nearest closed release, [ADR-0122](../adr/0122-select-tcp-only-closed-release.md)
+supersedes dual-Carrier qualification below with TCP/TLS positive coverage and
+explicit pre-effect deferred-QUIC refusal, without fallback. All other finite
+workloads, observers, resource/protection/lifetime gates and limits remain.
+Historical both-Carrier receipts do not qualify changed candidates; this scope
+decision is not installed or privacy qualification.
+
 Status: **design and acceptance contract**, not a task ledger or passing
 qualification. Owners are the [workload](../product/protected-service-workload.md),
 [protocol](../technical/protected-route-protocol.md),

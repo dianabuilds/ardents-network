@@ -157,7 +157,7 @@ func (process *nativeForwardingProcess) stop(t *testing.T, refusedExchange ...bo
 	}
 }
 
-func TestNativeNodeForwardingBothCarriers(t *testing.T) {
+func TestNativeNodeForwardingTCP(t *testing.T) {
 	for _, retirement := range []string{"cancel", "protection-loss", "clock-loss", "undercoverage"} {
 		t.Run(retirement, func(t *testing.T) { testNativeNodeForwarding(t, retirement) })
 	}
@@ -181,7 +181,7 @@ func (process *nativeForwardingProcess) failedJoin(t *testing.T, expectedOwner s
 
 func testNativeNodeForwarding(t *testing.T, retirement string) {
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newRouteFixture(t, carrier)
 			bundle, err := networkfixture.BuildClosed(f.spec)
@@ -349,9 +349,9 @@ func seedNativeNodeState(t *testing.T, f *networkAdmissionFixture, bundle networ
 	return plan
 }
 
-func TestNativeNodePartialStartupRefusalsBothCarriers(t *testing.T) {
+func TestNativeNodePartialStartupRefusalsTCP(t *testing.T) {
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newRouteFixture(t, carrier)
 			bundle, err := networkfixture.BuildClosed(f.spec)

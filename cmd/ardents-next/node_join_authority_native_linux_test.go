@@ -53,7 +53,7 @@ func (caller *nativeJoinCaller) Err() error {
 
 // Native composition holds only a completed genuine State return, never a fake
 // accepting observation. The actual command has a separate positive workload.
-func TestNativeJoinOriginalAuthorityAndJoinBothCarriers(t *testing.T) {
+func TestNativeJoinOriginalAuthorityAndJoinTCP(t *testing.T) {
 	if path := os.Getenv("ARDENTS_JOIN_ORIGINAL_FIXTURE"); path != "" {
 		nativeJoinAuthorityChild(t, path)
 		return
@@ -62,7 +62,7 @@ func TestNativeJoinOriginalAuthorityAndJoinBothCarriers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for index, fault := range []string{"stop", "caller", "direct-caller", "stale-measurement", "memory-pressure", "process-fd-loss", "successor", "profile-conflict", "member-expiry", "startup-cancel", "credential-loss", "participation-loss"} {
 				t.Run(fault, func(t *testing.T) {
@@ -105,7 +105,7 @@ func TestNativeJoinOriginalAuthorityAndJoinBothCarriers(t *testing.T) {
 					command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
 						"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 						"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_JOIN_ORIGINAL_FIXTURE="+path,
-						"--", binary, "-test.v=true", "-test.run=^TestNativeJoinOriginalAuthorityAndJoinBothCarriers$", "-test.timeout=30s")
+						"--", binary, "-test.v=true", "-test.run=^TestNativeJoinOriginalAuthorityAndJoinTCP$", "-test.timeout=30s")
 					if output, err := command.CombinedOutput(); err != nil {
 						t.Fatalf("genuine original Join composition failed: %v\n%s", err, output)
 					}

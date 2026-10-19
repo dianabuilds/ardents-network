@@ -16,6 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
+	"github.com/dianabuilds/ardents-network/internal/successor/route"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/bootstrap"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
@@ -24,7 +25,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/join"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
-	rolequic "github.com/dianabuilds/ardents-network/internal/successor/route/transport/quic"
 	roletls "github.com/dianabuilds/ardents-network/internal/successor/route/transport/tls"
 )
 
@@ -121,8 +121,7 @@ func Listen(ctx context.Context, config ReceiverConfig) (*Receiver, error) {
 		switch transport.CarrierProfile(m.CarrierProfile) {
 		case transport.ClosedCarrierTCP:
 			r.listener, err = roletls.ListenShared(m.Endpoint, config.Certificate, verify, 16)
-		case transport.ClosedCarrierQUIC:
-			r.listener, err = rolequic.ListenShared(m.Endpoint, config.Certificate, verify, 16)
+
 		default:
 			err = errors.New("closed shared carrier profile is unsupported")
 		}
@@ -165,7 +164,7 @@ func (r *Receiver) peer(key [32]byte) (network.Member, error) {
 		expectedSubrole = 2
 		allowedDomain = peer.RoleDomain == 1
 	}
-	if err != nil || role.Conflicting(m, peer) || !allowedDomain || peer.Subrole != expectedSubrole {
+	if err != nil || !route.CarrierPermitted(peer.CarrierProfile) || role.Conflicting(m, peer) || !allowedDomain || peer.Subrole != expectedSubrole {
 		return network.Member{}, errors.Join(errors.New("route adjacent Node peer unavailable"), err)
 	}
 	return peer, nil
@@ -777,8 +776,7 @@ func (r *Receiver) openNode(ctx context.Context, a role.Authority) (_ *framing.S
 	switch request.CarrierProfile {
 	case transport.ClosedCarrierTCP:
 		physical, err = roletls.OpenNode(ctx, request)
-	case transport.ClosedCarrierQUIC:
-		physical, err = rolequic.OpenNode(ctx, request)
+
 	default:
 		err = errors.New("closed Node Carrier profile is unsupported")
 	}

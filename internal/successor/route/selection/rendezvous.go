@@ -175,7 +175,7 @@ func (leg Leg) RendezvousDuty(view network.RuntimeView, node [32]byte, generatio
 		return network.RetainedDuty{}, errors.New("Rendezvous prefix unavailable")
 	}
 	member, err := view.Member(node, view.ObservedAt())
-	if err != nil || member.DutyGeneration != generation || !route.PurposePermitsDuty(6, member.RoleDomain, member.Subrole) {
+	if err != nil || !route.CarrierPermitted(member.CarrierProfile) || member.DutyGeneration != generation || !route.PurposePermitsDuty(6, member.RoleDomain, member.Subrole) {
 		return network.RetainedDuty{}, errors.Join(errors.New("exact Rendezvous duty unavailable"), err)
 	}
 	byKey, err := view.MemberByKey(member.PublicKey, view.ObservedAt())

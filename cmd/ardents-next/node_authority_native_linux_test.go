@@ -44,7 +44,7 @@ type nativeOriginalAuthorityPlan struct {
 	Conflict                       []byte
 }
 
-func TestNativeNodeOriginalAuthorityAndJoinBothCarriers(t *testing.T) {
+func TestNativeNodeOriginalAuthorityAndJoinTCP(t *testing.T) {
 	if path := os.Getenv("ARDENTS_NODE_ORIGINAL_FIXTURE"); path != "" {
 		testNativeOriginalAuthorityChild(t, path)
 		return
@@ -53,7 +53,7 @@ func TestNativeNodeOriginalAuthorityAndJoinBothCarriers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for index, fault := range []string{"stop", "caller", "stale-measurement", "successor", "profile-conflict", "member-expiry", "startup-cancel"} {
 				t.Run(fault, func(t *testing.T) {
@@ -108,7 +108,7 @@ func TestNativeNodeOriginalAuthorityAndJoinBothCarriers(t *testing.T) {
 					command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
 						"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 						"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_NODE_ORIGINAL_FIXTURE="+path,
-						"--", binary, "-test.v=true", "-test.run=^TestNativeNodeOriginalAuthorityAndJoinBothCarriers$", "-test.timeout=30s")
+						"--", binary, "-test.v=true", "-test.run=^TestNativeNodeOriginalAuthorityAndJoinTCP$", "-test.timeout=30s")
 					output, err := command.CombinedOutput()
 					if err != nil {
 						t.Fatalf("genuine original native composition failed: %v\n%s", err, output)

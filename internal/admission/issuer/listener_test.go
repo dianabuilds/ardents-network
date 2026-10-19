@@ -22,7 +22,7 @@ import (
 )
 
 func TestClosedTokenListenerServesOnlyDirectRoleBootstrap(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			issuer, profile, operation, now, verifyResult := closedTokenListenerIssuer(t)
 			defer func() {

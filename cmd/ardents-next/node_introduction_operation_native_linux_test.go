@@ -36,12 +36,12 @@ type nativeIntroductionOperationPlan struct {
 
 // Fault scheduling pauses an actual State return on the real operation stack.
 // Files only coordinate the independent test driver; they authorize no effect.
-func TestNativeIntroductionOperationBoundariesBothCarriers(t *testing.T) {
+func TestNativeIntroductionOperationBoundariesTCP(t *testing.T) {
 	if path := os.Getenv("ARDENTS_INTRODUCTION_OPERATION_FIXTURE"); path != "" {
 		nativeIntroductionOperationChild(t, path)
 		return
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		for _, phase := range []string{"pre-spend", "pre-spend-stop", "pre-spend-successor", "pre-spend-process-loss", "post-spend", "post-commit", "post-commit-concurrent", "post-commit-late-history-loss"} {
 			t.Run(string(carrier)+"/"+phase, func(t *testing.T) { nativeIntroductionOperationParent(t, carrier, phase) })
 		}
@@ -270,7 +270,7 @@ func nativeIntroductionOperationParent(t *testing.T, carrier transport.CarrierPr
 		t.Fatal(err)
 	}
 	unit := fmt.Sprintf("ardents-introduction-operation-%d.service", os.Getpid())
-	command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit, "--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s", "--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_INTRODUCTION_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", testBinary, "-test.v=true", "-test.run=^TestNativeIntroductionOperationBoundariesBothCarriers$", "-test.timeout=30s")
+	command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit, "--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s", "--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_INTRODUCTION_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", testBinary, "-test.v=true", "-test.run=^TestNativeIntroductionOperationBoundariesTCP$", "-test.timeout=30s")
 	var diagnostic nativeNodeDiagnostic
 	command.Stdout, command.Stderr = &diagnostic, &diagnostic
 	if err := command.Start(); err != nil {

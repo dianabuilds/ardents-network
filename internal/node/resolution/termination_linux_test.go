@@ -15,7 +15,7 @@ import (
 )
 
 func TestAdmittedResolutionRetainsHostingThroughOuterTermination(t *testing.T) {
-	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP} {
 		t.Run(string(transport), func(t *testing.T) {
 			fixture := newTerminationFixture(t, transport, nil)
 			connection := fixture.open(t, 1, fixture.controls[0])
@@ -53,7 +53,7 @@ func TestAdmittedResolutionRetainsHostingThroughOuterTermination(t *testing.T) {
 }
 
 func TestAdmittedResolutionFailedReplyAndTerminalTimeout(t *testing.T) {
-	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP} {
 		for _, ending := range []string{"reply-failure", "close-timeout"} {
 			t.Run(string(transport)+"/"+ending, func(t *testing.T) {
 				failure := errors.New("injected RESULT write failure")
@@ -112,7 +112,7 @@ func TestAdmittedResolutionFailedReplyAndTerminalTimeout(t *testing.T) {
 }
 
 func TestAdmittedResolutionLateDrainRetainsTerminalFailure(t *testing.T) {
-	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP} {
 		t.Run(string(transport), func(t *testing.T) {
 			failure := errors.New("injected physical CLOSE failure")
 			fixture := newTerminationFixture(t, transport, failure)
@@ -143,7 +143,7 @@ func TestAdmittedResolutionLateDrainRetainsTerminalFailure(t *testing.T) {
 }
 
 func TestAdmittedResolutionCancelledOrRefusedOperationRetainsTermination(t *testing.T) {
-	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP} {
 		for _, ending := range []string{"client-cancel", "invalid-operation"} {
 			t.Run(string(transport)+"/"+ending, func(t *testing.T) {
 				fixture := newTerminationFixture(t, transport, nil)
@@ -179,7 +179,7 @@ func TestAdmittedResolutionCancelledOrRefusedOperationRetainsTermination(t *test
 }
 
 func TestAdmittedResolutionRetainsHostingUntilFailedPhysicalCloseJoins(t *testing.T) {
-	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP} {
 		t.Run(string(transport), func(t *testing.T) {
 			writeFailure := errors.New("physical frame failure")
 			closeFailure := errors.New("physical close failure")
@@ -220,7 +220,7 @@ func TestAdmittedResolutionRetainsHostingUntilFailedPhysicalCloseJoins(t *testin
 }
 
 func TestAdmittedResolutionRetainsHostingThroughTLSCloseNotify(t *testing.T) {
-	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, transport := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP} {
 		t.Run(string(transport), func(t *testing.T) {
 			fixture := newTerminationFixture(t, transport, nil)
 			connection := fixture.open(t, 1, fixture.controls[0])

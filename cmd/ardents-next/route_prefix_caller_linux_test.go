@@ -31,9 +31,9 @@ import (
 // Each observation returns genuine signed Network facts. Only scheduling of
 // caller cancellation propagation is delayed, using the registration harness.
 // No successful TLS, receiver admission, ACK, or Hosting result is substituted.
-func TestRoutePrefixOriginalCallerHandoffBothCarriers(t *testing.T) {
+func TestRoutePrefixOriginalCallerHandoffTCP(t *testing.T) {
 	t.Parallel()
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		for checkpoint := int32(0); checkpoint <= 6; checkpoint++ {
 			t.Run(fmt.Sprintf("%s/observation-%d", profile, checkpoint), func(t *testing.T) {
 				f, reservations, certificates := newRouteFixture(t, profile)
@@ -222,9 +222,9 @@ func TestRoutePrefixOriginalCallerHandoffBothCarriers(t *testing.T) {
 // selected writer currentness. 6 cancels after durable presentation; 7 after
 // genuine additional capacity; 8 after receiving durable spend; 9 during
 // Interior presentation after genuine Entry refill has completed.
-func TestRouteRefillPublicOriginalCallerBothCarriers(t *testing.T) {
+func TestRouteRefillPublicOriginalCallerTCP(t *testing.T) {
 	t.Parallel()
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		for checkpoint := int32(1); checkpoint <= 9; checkpoint++ {
 			t.Run(fmt.Sprintf("%s/observation-%d", profile, checkpoint), func(t *testing.T) {
 				f, reservations, certificates := newRouteFixture(t, profile)

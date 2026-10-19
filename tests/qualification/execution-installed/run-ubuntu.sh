@@ -17,7 +17,7 @@ if [ "${1-}" = service-pair-participant ] || [ "${1-}" = service-pair-timing-par
         *) fail 'invalid environment: selected pair participant role required' ;;
     esac
     case "${ARDENTS_EXECUTION_START_CARRIER-}" in
-        ardents-carrier-tcp-tls-v2|ardents-carrier-quic-v2) ;;
+        ardents-carrier-tcp-tls-v2) ;;
         *) fail 'invalid environment: independently selected installed Carrier required' ;;
     esac
 fi
@@ -25,7 +25,7 @@ if [ "${1-}" = service-publication ]; then
     test_root=TestInstalledServicePublication
     shift
     case "${ARDENTS_EXECUTION_START_CARRIER-}" in
-        ardents-carrier-tcp-tls-v2|ardents-carrier-quic-v2) ;;
+        ardents-carrier-tcp-tls-v2) ;;
         *) fail 'invalid environment: independently selected installed Carrier required' ;;
     esac
 fi

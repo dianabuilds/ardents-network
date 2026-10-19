@@ -34,8 +34,8 @@ func sendJoinFixture(t *testing.T, fixture *resolutionNetworkFixture, token int,
 	return connection, request.Nonce
 }
 
-func TestClosedJoinNodePairsThroughBothCarriers(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+func TestClosedJoinNodePairsThroughTCP(t *testing.T) {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeDataJoin, 2)
 			first, firstNonce := sendJoinFixture(t, fixture, 0, 1)

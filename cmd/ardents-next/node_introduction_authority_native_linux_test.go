@@ -54,7 +54,7 @@ func (caller *nativeIntroductionCaller) Err() error {
 
 // Native composition holds only a completed genuine State return, never a fake
 // accepting observation. The actual command has a separate positive workload.
-func TestNativeIntroductionOriginalAuthorityAndJoinBothCarriers(t *testing.T) {
+func TestNativeIntroductionOriginalAuthorityAndJoinTCP(t *testing.T) {
 	if path := os.Getenv("ARDENTS_INTRODUCTION_ORIGINAL_FIXTURE"); path != "" {
 		nativeIntroductionAuthorityChild(t, path)
 		return
@@ -63,7 +63,7 @@ func TestNativeIntroductionOriginalAuthorityAndJoinBothCarriers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for index, fault := range []string{"stop", "caller", "direct-caller", "stale-measurement", "memory-pressure", "process-fd-loss", "successor", "profile-conflict", "member-expiry", "startup-cancel", "history-root-loss", "history-loss", "history-lock-loss", "history-lease-fd-loss"} {
 				t.Run(fault, func(t *testing.T) {
@@ -109,7 +109,7 @@ func TestNativeIntroductionOriginalAuthorityAndJoinBothCarriers(t *testing.T) {
 					command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
 						"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=120s",
 						"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_INTRODUCTION_ORIGINAL_FIXTURE="+path,
-						"--", binary, "-test.v=true", "-test.run=^TestNativeIntroductionOriginalAuthorityAndJoinBothCarriers$", "-test.timeout=30s")
+						"--", binary, "-test.v=true", "-test.run=^TestNativeIntroductionOriginalAuthorityAndJoinTCP$", "-test.timeout=30s")
 					if output, err := command.CombinedOutput(); err != nil {
 						t.Fatalf("genuine original Introduction composition failed: %v\n%s", err, output)
 					}

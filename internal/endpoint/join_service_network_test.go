@@ -26,7 +26,7 @@ import (
 // from publication through recipient-only capsule delivery, JOIN, Service TLS,
 // native authentication and document exchange uses the maintained real owners.
 func TestTextJoinedServiceTransfersDocumentThroughNetwork(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			reader, publisher, destination := joinedNetworkFixture(t, carrier)
 			readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)

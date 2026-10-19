@@ -436,8 +436,8 @@ func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, after
 
 // The maintained holder composition obtains its own Stock, joins bootstrap,
 // then spends genuine class-2/class-1 tokens on fresh physical role channels.
-func TestRouteHolderBootstrapRetiresBeforeFreshAdmittedIssuerBothCarriers(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+func TestRouteHolderBootstrapRetiresBeforeFreshAdmittedIssuerTCP(t *testing.T) {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			testRouteHolderIssuerRetirement(t, profile, false)
 		})
@@ -447,8 +447,8 @@ func TestRouteHolderBootstrapRetiresBeforeFreshAdmittedIssuerBothCarriers(t *tes
 // One genuine issuance is sufficient to expose retirement overtaking the
 // receiving Interior's final CREDIT. No fresh admitted prefix or extra batch
 // is required to reproduce that physical failure.
-func TestRouteSingleBootstrapIssuerJoinsBothCarriers(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+func TestRouteSingleBootstrapIssuerJoinsTCP(t *testing.T) {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			testRouteHolderIssuerRetirement(t, profile, true)
 		})
@@ -532,9 +532,9 @@ func testRouteHolderIssuerRetirement(t *testing.T, profile transport.CarrierProf
 // Two holders reach the same genuine issuer through independently admitted
 // prefixes. The gate delays delivery after real durable debit/signing; it is
 // neither a simulated signing success nor an artificial receiving Grant.
-func TestRouteIssuerExclusiveWorkJoinsBeforeReturnBothCarriers(t *testing.T) {
+func TestRouteIssuerExclusiveWorkJoinsBeforeReturnTCP(t *testing.T) {
 	t.Parallel()
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		for _, mode := range []string{"joined-result", "original-cancellation", "lost-result-retry", "late-release-failure"} {
 			t.Run(string(profile)+"/"+mode, func(t *testing.T) {
 				started, resume := make(chan struct{}), make(chan struct{})
@@ -710,18 +710,18 @@ func TestRouteIssuerExclusiveWorkJoinsBeforeReturnBothCarriers(t *testing.T) {
 // The successor is signed and accepted by the actual Network owner. The gates
 // surround actual receiving Accept or actual committed issuer output, not a
 // supplied authority boolean. Every original binding remains unchanged.
-func TestRouteIssuerStateLossAtRealBoundariesBothCarriers(t *testing.T) {
+func TestRouteIssuerStateLossAtRealBoundariesTCP(t *testing.T) {
 	t.Parallel()
 	routeIssuerRetirementCases(t, false)
 }
 
-func TestRouteIssuerReceiverCancellationAtRealBoundariesBothCarriers(t *testing.T) {
+func TestRouteIssuerReceiverCancellationAtRealBoundariesTCP(t *testing.T) {
 	t.Parallel()
 	routeIssuerRetirementCases(t, true)
 }
 
 func routeIssuerRetirementCases(t *testing.T, cancelReceiver bool) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		for _, phase := range []string{"before-accept", "after-reservation", "after-accept", "before-debit", "after-debit", "after-signing"} {
 			t.Run(string(profile)+"/"+phase, func(t *testing.T) {
 				entered, resume := make(chan struct{}), make(chan struct{})
@@ -873,8 +873,8 @@ func routeIssuerRetirementCases(t *testing.T, cancelReceiver bool) {
 // This public Prefix composition uses actual selection, Hosting and Stock.
 // The local completion guard only revokes the original caller, after real
 // signature verification; it supplies no response, authority or deposit.
-func TestRouteIssuerOriginalCallerAtVerifiedDepositBothCarriers(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+func TestRouteIssuerOriginalCallerAtVerifiedDepositTCP(t *testing.T) {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			x := newRouteIssuerFixture(t, profile, nil, nil, nil, nil)
 			f := x.network
@@ -994,8 +994,8 @@ func TestRouteIssuerOriginalCallerAtVerifiedDepositBothCarriers(t *testing.T) {
 // A real lost Route result remains committed at the issuer. Reopening the
 // holder's presentation root cannot reconstruct its erased permission/blinders
 // from the retained public request/result; it cannot adopt that old response.
-func TestRouteIssuerLostResultHolderReopenRefusesReconstructionBothCarriers(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+func TestRouteIssuerLostResultHolderReopenRefusesReconstructionTCP(t *testing.T) {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			caller, cancel := context.WithCancel(t.Context())
 			defer cancel()
@@ -1162,7 +1162,7 @@ func TestRouteIssuerLostResultHolderReopenRefusesReconstructionBothCarriers(t *t
 // Linux is required by the real Network, spend and Hosting roots in this test;
 // portable queue, framing and capacity controls stay with their rule owners.
 func TestRoutePendingBootstrapLimitLeavesOrdinaryChildUsableOnSameCarrier(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, sockets, certificates := newRoleRouteFixture(t, profile, 1, false)
 			// Two distinct genuine tokens: refusal must not refund/reuse the
@@ -1412,7 +1412,7 @@ func TestRoutePendingBootstrapLimitLeavesOrdinaryChildUsableOnSameCarrier(t *tes
 // retained Entry/Interior selection. Ordinary issuance and compiled holder
 // orchestration are separate acceptance obligations; no offline issue fills stock.
 func TestRouteBootstrapObtainsStockFromActualIssuer(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, sockets, certificates := newRoleRouteFixture(t, profile, 1, false, true)
 			holder := routePermissionStock(t, f, admission.AllocationUser, [3]uint32{2, 4, 0})
@@ -1656,7 +1656,7 @@ func TestRouteBootstrapObtainsStockFromActualIssuer(t *testing.T) {
 // issuance: no holder stock, successful Admission substitute or issuer result
 // participates. The issuer terminal and stock finalization remain separate.
 func TestRouteHostedEntryPropagatesBootstrapToInterior(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, sockets, certificates := newRoleRouteFixture(t, profile, 1, false)
 			view, err := f.current()

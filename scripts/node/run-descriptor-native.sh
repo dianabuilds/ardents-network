@@ -32,13 +32,13 @@ TestOriginalNativeDescriptorManagedMemoryPressureRetires
 TestOriginalNativeDescriptorProcessProfile'
 discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeDescriptor' | grep '^TestOriginalNativeDescriptor' | sort)
 test "$discovered_resources" = "$expected_resources" || { echo 'Descriptor resource discovery differs' >&2; exit 2; }
-expected='TestNativeDescriptorOperationBoundariesBothCarriers
-TestNativeDescriptorOriginalAuthorityAndJoinBothCarriers
-TestNativeDescriptorOriginalCommandFailureBothCarriers
-TestNativeDescriptorPartialStartupRefusalsBothCarriers
-TestNativeDescriptorPublishLookupAndReopenBothCarriers
-TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerBothCarriers
-TestNativeDescriptorUndercoverageBeforeSpendBothCarriers'
+expected='TestNativeDescriptorOperationBoundariesTCP
+TestNativeDescriptorOriginalAuthorityAndJoinTCP
+TestNativeDescriptorOriginalCommandFailureTCP
+TestNativeDescriptorPartialStartupRefusalsTCP
+TestNativeDescriptorPublishLookupAndReopenTCP
+TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP
+TestNativeDescriptorUndercoverageBeforeSpendTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeDescriptor' | grep '^TestNativeDescriptor' | sort)
 test "$discovered" = "$expected" || { echo 'Descriptor workload discovery differs' >&2; exit 2; }
 
@@ -49,9 +49,9 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     --property=LimitNOFILE=1024 --property=RuntimeMaxSec=120s \
     --setenv=GOMAXPROCS=1 --setenv=GOMEMLIMIT=512MiB \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^TestOriginalNativeDescriptor' -test.timeout=90s
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptor(PublishLookupAndReopenBothCarriers|OriginalCommandFailureBothCarriers)$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorOriginalAuthorityAndJoinBothCarriers$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorOperationBoundariesBothCarriers$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerBothCarriers$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorPartialStartupRefusalsBothCarriers$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorUndercoverageBeforeSpendBothCarriers$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptor(PublishLookupAndReopenTCP|OriginalCommandFailureTCP)$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorOriginalAuthorityAndJoinTCP$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorOperationBoundariesTCP$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorPartialStartupRefusalsTCP$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeDescriptorUndercoverageBeforeSpendTCP$' -test.timeout=3m

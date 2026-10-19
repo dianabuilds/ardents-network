@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func TestClosedNodeCarrierUsesV3MutualTLSOverBothCarriers(t *testing.T) {
-	for _, profile := range []CarrierProfile{ClosedCarrierTCP, ClosedCarrierQUIC} {
+func TestClosedNodeCarrierUsesV3MutualTLSOverTCP(t *testing.T) {
+	for _, profile := range []CarrierProfile{ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			serverCertificate := entryBindingCertificate(t, 121)
 			clientCertificate := entryBindingCertificate(t, 122)
@@ -57,8 +57,8 @@ func TestClosedNodeCarrierUsesV3MutualTLSOverBothCarriers(t *testing.T) {
 	}
 }
 
-func TestClosedNodeCarrierRejectsWrongPeerOverBothCarriers(t *testing.T) {
-	for _, profile := range []CarrierProfile{ClosedCarrierTCP, ClosedCarrierQUIC} {
+func TestClosedNodeCarrierRejectsWrongPeerOverTCP(t *testing.T) {
+	for _, profile := range []CarrierProfile{ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			serverCertificate := entryBindingCertificate(t, 124)
 			clientCertificate := entryBindingCertificate(t, 125)
@@ -76,7 +76,7 @@ func TestClosedNodeCarrierRejectsWrongPeerOverBothCarriers(t *testing.T) {
 
 func TestClosedNodeCarrierHonorsCancellationBeforeHandshake(t *testing.T) {
 	certificate := entryBindingCertificate(t, 127)
-	for _, profile := range []CarrierProfile{ClosedCarrierTCP, ClosedCarrierQUIC} {
+	for _, profile := range []CarrierProfile{ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			attempt, cancel := context.WithCancel(t.Context())
 			cancel()
@@ -95,10 +95,6 @@ func TestClosedNodeCarrierRejectsOldProfileBeforeDial(t *testing.T) {
 		Certificate: certificate, ExpectedPeerKey: identifier(1), Deadline: time.Now().Add(time.Second)})
 	if err == nil || carrier != nil {
 		t.Fatal("generation-2 carrier reached successor transport")
-	}
-	config := closedNodeQUICConfig()
-	if config.Allow0RTT || config.EnableDatagrams || config.InitialPacketSize != 1200 || config.MaxIncomingStreams != -1 || config.MaxIncomingUniStreams != -1 {
-		t.Fatal("successor QUIC configuration enables an unselected feature")
 	}
 }
 

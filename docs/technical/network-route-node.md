@@ -1,5 +1,15 @@
 # Network State, Entry, Route, and Node
 
+## Selected closed-release Carrier
+
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
+for the nearest closed release, superseding dual-Carrier admission and positive
+qualification clauses below. Known QUIC identities retain canonical meaning but
+grant no eligible selection, local duty or transport execution; refuse before
+effects without fallback or signed-State rewriting. Historical both-Carrier
+receipts remain source-specific evidence. All role/authority, capacity, deadline,
+durable floor, process and joined-cleanup requirements remain binding on TCP/TLS.
+
 Status: **current maintained technical contract.** This document describes the
 implemented closed-test-network Modules and their current Interfaces. It does
 not claim public network operation, independent operators, public discovery,

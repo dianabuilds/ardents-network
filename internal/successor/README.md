@@ -1,5 +1,12 @@
 # Successor implementation zone
 
+The nearest closed release uses only TCP/TLS under
+[ADR-0122](../../docs/adr/0122-select-tcp-only-closed-release.md). The concrete
+QUIC adapter is retired; recognized historical QUIC profiles receive explicit
+refusal and never select TCP fallback. Historical dual-Carrier component results
+below retain their original identity and limits. Current implementation and
+acceptance evidence belong to the selected GitHub issue.
+
 This temporary source zone separates the new implementation from existing
 product packages. It is a grouping directory, not a Go package, domain term,
 wire identity or persisted format identifier. The Product Owner selected this

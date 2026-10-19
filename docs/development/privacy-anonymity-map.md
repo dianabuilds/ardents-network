@@ -1,5 +1,12 @@
 # Privacy and anonymity implementation path
 
+For the nearest closed release, [ADR-0122](../adr/0122-select-tcp-only-closed-release.md)
+selects TCP/TLS alone. Dual-Carrier acceptance wording below is superseded by
+TCP/TLS coverage and explicit pre-effect deferred-QUIC refusal, without fallback.
+Historical both-Carrier receipts keep their source-specific limits. Every other
+privacy, authority, separation, confinement and resource gate remains; the scope
+decision neither fixes QUIC nor qualifies an anonymity claim.
+
 Status: **selected closed design and component coverage map** under
 [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) and its
 [authenticated child restriction amendment](../adr/0082-bind-bootstrap-restriction-to-node-child.md).

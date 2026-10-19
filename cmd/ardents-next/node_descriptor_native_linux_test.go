@@ -99,20 +99,20 @@ func startNativeDescriptor(t *testing.T, binary, plan string, index byte) *nativ
 // signed public Descriptor is a named independent input fixture, not evidence
 // of Publisher readiness. All State, Stock, receiving/Hosting, Store and Carrier
 // successes come from real new owners. This is bounded development evidence.
-func TestNativeDescriptorPublishLookupAndReopenBothCarriers(t *testing.T) {
+func TestNativeDescriptorPublishLookupAndReopenTCP(t *testing.T) {
 	nativeDescriptorCommandWorkload(t, "cancel")
 }
 
-func TestNativeDescriptorUndercoverageBeforeSpendBothCarriers(t *testing.T) {
+func TestNativeDescriptorUndercoverageBeforeSpendTCP(t *testing.T) {
 	nativeDescriptorCommandWorkload(t, "undercoverage")
 }
 
 // Refusals run only in private fixtures under the same bounded managed command.
 // Restoring the declared inputs starts a separate original invocation after join;
 // it cannot revive the rejected one or rewrite an accepted durable floor.
-func TestNativeDescriptorPartialStartupRefusalsBothCarriers(t *testing.T) {
+func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, fault := range []string{"profile", "unknown-field", "nested-roots", "role", "tls-key", "missing-hosting", "foreign-store", "foreign-spend"} {
 				t.Run(fault, func(t *testing.T) {
@@ -217,7 +217,7 @@ func TestNativeDescriptorPartialStartupRefusalsBothCarriers(t *testing.T) {
 	}
 }
 
-func TestNativeDescriptorOriginalCommandFailureBothCarriers(t *testing.T) {
+func TestNativeDescriptorOriginalCommandFailureTCP(t *testing.T) {
 	for _, fault := range []string{"protection-loss", "clock-loss", "store-marker-loss", "cpu-pressure"} {
 		t.Run(fault, func(t *testing.T) { nativeDescriptorCommandWorkload(t, fault) })
 	}
@@ -225,7 +225,7 @@ func TestNativeDescriptorOriginalCommandFailureBothCarriers(t *testing.T) {
 
 func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := descriptorRouteFixture(t, carrier)
 			bundle, err := networkfixture.BuildClosed(f.spec)

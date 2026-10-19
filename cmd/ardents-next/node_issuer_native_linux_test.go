@@ -80,11 +80,11 @@ func nativeIssuerIssuanceInput(p issuer.Plan) map[string]any {
 // Actual hash-pinned Node Issuer in its sole native leaf, genuine signed State,
 // prepared RSA/quota/results and Stock. Neighboring native Forwarding Nodes use
 // their required profile and full Hosting coverage; no successful response is supplied.
-func TestNativeIssuerBootstrapOrdinaryAndFreshSpendBothCarriers(t *testing.T) {
+func TestNativeIssuerBootstrapOrdinaryAndFreshSpendTCP(t *testing.T) {
 	testNativeIssuerWorkload(t, "cancel")
 }
 
-func TestNativeIssuerOriginalFailureBothCarriers(t *testing.T) {
+func TestNativeIssuerOriginalFailureTCP(t *testing.T) {
 	for _, fault := range []string{"protection-loss", "clock-loss", "key-loss"} {
 		t.Run(fault, func(t *testing.T) { testNativeIssuerWorkload(t, fault) })
 	}
@@ -93,7 +93,7 @@ func TestNativeIssuerOriginalFailureBothCarriers(t *testing.T) {
 func testNativeIssuerWorkload(t *testing.T, fault string) {
 	t.Helper()
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newRoleRouteFixture(t, carrier, 1, false, true)
 			bundle, err := networkfixture.BuildClosed(f.spec)

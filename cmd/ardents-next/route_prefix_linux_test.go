@@ -23,11 +23,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
 
-func TestRouteGenuineRetainedPrefixBothCarriers(t *testing.T) {
+func TestRouteGenuineRetainedPrefixTCP(t *testing.T) {
 	// Each scenario owns its State, Stock, roots and dynamically reserved ports.
 	// Keep cases sequential within this group while independent groups overlap.
 	t.Parallel()
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		for _, mode := range []string{"close", "concurrent", "cancel", "clock-loss", "profile-conflict", "successor", "expiry"} {
 			t.Run(string(profile)+"/"+mode, func(t *testing.T) {
 				f, reservations, certificates := newRouteFixture(t, profile)

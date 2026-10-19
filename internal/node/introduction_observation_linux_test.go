@@ -57,7 +57,7 @@ func (connection *introductionTranscriptConn) Read(p []byte) (int, error) {
 }
 
 func TestClosedIntroductionRegistrationObservation(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3)
 			capture := new(introductionTranscript)
@@ -189,7 +189,7 @@ func captureIntroductionFiles(t *testing.T, root string) map[string][]byte {
 // of channel nonces while preserving the opaque capsule. This is a protocol
 // boundary observation, not recipient decryption or a complete P3 verdict.
 func TestClosedIntroductionDeliveryObservation(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newPrivateRecipientNetworkFixture(t, carrier, ardp.PurposeIntroduction, 3, 1)
 			registrationTrace := new(introductionTranscript)

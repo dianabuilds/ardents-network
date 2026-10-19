@@ -103,7 +103,7 @@ func prepareClosedPrefix(source ClosedBootstrapState, selection ClosedBootstrapS
 			}
 			if found || candidate.RecordDigest != role.RecordDigest || candidate.PublicKey == [32]byte{} || candidate.FamilyID == [32]byte{} ||
 				candidate.Capacity == 0 || now.Before(candidate.ValidFrom) || !now.Before(candidate.ValidUntil) || !now.Before(candidate.AssignmentNotAfter) ||
-				!carrier.LiteralEndpoint(candidate.Endpoint) || (carrier.CarrierProfile(candidate.CarrierProfile) != carrier.ClosedCarrierTCP && carrier.CarrierProfile(candidate.CarrierProfile) != carrier.ClosedCarrierQUIC) {
+				!carrier.LiteralEndpoint(candidate.Endpoint) || carrier.CarrierProfile(candidate.CarrierProfile) != carrier.ClosedCarrierTCP {
 				return closedBootstrapPlan{}, errors.New("closed bootstrap Node Record is unavailable")
 			}
 			found = true

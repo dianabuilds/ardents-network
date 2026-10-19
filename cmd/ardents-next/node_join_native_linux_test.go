@@ -28,14 +28,14 @@ import (
 // The independently pinned canonical commands provide both original Rendezvous
 // invocations. Signed State, genuine Stock, Forwarding and Hosting provide the
 // actual transport. No fixture supplies an accepting pair or native observation.
-func TestNativeJoinDuplexAndReopenBothCarriers(t *testing.T) { nativeJoinWorkload(t, "duplex") }
-func TestNativeJoinUndercoverageBeforeSpendBothCarriers(t *testing.T) {
+func TestNativeJoinDuplexAndReopenTCP(t *testing.T) { nativeJoinWorkload(t, "duplex") }
+func TestNativeJoinUndercoverageBeforeSpendTCP(t *testing.T) {
 	nativeJoinWorkload(t, "undercoverage")
 }
 
 func nativeJoinWorkload(t *testing.T, mode string) {
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newJoinRouteFixture(t, carrier)
 			userStock, publisherStock := joinRouteStock(t, f, admission.AllocationUser), joinRouteStock(t, f, admission.AllocationPublisher)
@@ -329,12 +329,12 @@ func startNativeJoin(t *testing.T, binary, plan string, index byte) *nativeForwa
 	return p
 }
 
-func TestNativeJoinOriginalCommandLossAfterIOBothCarriers(t *testing.T) {
+func TestNativeJoinOriginalCommandLossAfterIOTCP(t *testing.T) {
 	for _, mode := range []string{"caller", "process-loss", "clock-loss"} {
 		t.Run(mode, func(t *testing.T) { nativeJoinWorkload(t, mode) })
 	}
 }
-func TestNativeJoinMismatchedPairRefusesBothCarriers(t *testing.T) {
+func TestNativeJoinMismatchedPairRefusesTCP(t *testing.T) {
 	for _, mode := range []string{"context", "secret"} {
 		t.Run(mode, func(t *testing.T) { nativeJoinWorkload(t, mode) })
 	}

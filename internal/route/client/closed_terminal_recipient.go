@@ -55,7 +55,7 @@ func closedTerminalPeer(source ClosedBootstrapState, selection ClosedBootstrapSe
 			}
 			if selected.node != [32]byte{} || candidate.RecordDigest != role.RecordDigest || candidate.PublicKey == [32]byte{} || candidate.FamilyID == [32]byte{} ||
 				candidate.Capacity == 0 || now.Before(candidate.ValidFrom) || !now.Before(candidate.ValidUntil) || !now.Before(candidate.AssignmentNotAfter) ||
-				!carrier.LiteralEndpoint(candidate.Endpoint) || carrier.CarrierProfile(candidate.CarrierProfile) != carrier.ClosedCarrierTCP && carrier.CarrierProfile(candidate.CarrierProfile) != carrier.ClosedCarrierQUIC {
+				!carrier.LiteralEndpoint(candidate.Endpoint) || carrier.CarrierProfile(candidate.CarrierProfile) != carrier.ClosedCarrierTCP {
 				return closedBootstrapPeer{}, errors.New("closed resolution Node Record unavailable")
 			}
 			selected = closedBootstrapPeer{node: role.NodeID, key: candidate.PublicKey, family: candidate.FamilyID, record: candidate.RecordDigest,

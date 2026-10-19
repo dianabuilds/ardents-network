@@ -15,9 +15,11 @@ acceptance does not supply the future Service consumers of this full protocol.
 
 ## Carrier, cryptography and information flow
 
-Retain the two transport families selected by
-[ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md): TCP/TLS and QUIC v1
-using quic-go. The ADR records its selected dependency version; the
+For the nearest closed release, [ADR-0122](../adr/0122-select-tcp-only-closed-release.md)
+supersedes ADR-0048/ADR-0081's dual-Carrier selection: TCP/TLS alone executes.
+QUIC is deferred and explicitly refused before effects, with no fallback.
+Historical QUIC identities keep their bytes and are not reinterpreted as TCP.
+The original ADR records the historical dependency version; the
 [dependency register](../development/dependencies.md) owns subsequent version
 acceptance and `go.mod` records the candidate's actual version. Historical
 exact-version evidence does not qualify a changed candidate.
@@ -31,7 +33,9 @@ initial-packet configuration and bounded cleanup. ARDP multiplexes inside
 that stream; QUIC streams do not become a second lane authority. The authenticated receiving Node Record selects exactly one
 Carrier for an attempt; no race, negotiation or failure-triggered fallback
 selects another. Replacement requires a separately authorized fresh Attachment
-under the same protection generation. Qualify both Carriers.
+under the same protection generation. Qualify TCP/TLS and deferred-QUIC refusal
+for this release. The QUIC mechanisms described above are historical obligations
+for a future explicit QUIC selection, not a permission to execute them now.
 
 Adjacent Node Carriers retain exact current Node-key authentication.
 Endpoint-to-Entry and inner Endpoint-to-role TLS use authenticated server keys

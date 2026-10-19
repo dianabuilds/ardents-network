@@ -65,7 +65,7 @@ func startRegisteredPublisherNetwork(t *testing.T, carrier routecarrier.CarrierP
 // Every failure occurs after the real Store commits the replacement, before
 // its network acknowledgement. None may revive accepting readiness or keys.
 func TestTextPublicationLossBeforeAcknowledgementRetiresRecipients(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, failure := range []string{"replacement channel", "predecessor channel", "context revoke"} {
 				t.Run(failure, func(t *testing.T) {

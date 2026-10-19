@@ -18,7 +18,7 @@ import (
 )
 
 func TestClosedResolutionPublishesAndLooksUpThroughAdmittedNodeCarrier(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newResolutionNetworkFixture(t, carrier)
 			issue := func(introduction reachability.PrivateIntroduction) []byte {

@@ -13,7 +13,7 @@ import (
 // next legitimate Endpoint must still complete both bootstrap and ordinary
 // issuance through the real Entry/Interior and issuer consumers.
 func TestTextIssuanceStartsAfterIdleListeners(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			t.Parallel()
 			endpoint, owner, _ := startRoleNetwork(t, roleNetworkFixture{carrier: carrier})

@@ -45,7 +45,7 @@ The runner supplies a unique `ARDENTS_TEXT_COMMAND_SCOPE_PREFIX` derived from
 its private output file. Its exit cleanup stops only scopes in that invocation's
 namespace, including after the independent timeout terminates the Go test.
 It requires exactly one root result and each empty, 64 KiB and 4 MiB subtest on
-TCP/TLS and QUIC. Preserve the complete invocation journal and artifact/host
+TCP/TLS. Preserve the complete invocation journal and artifact/host
 inventories outside Git. This is functional journey evidence, not whole-host,
 privacy, hostile-network or p95 qualification.
 

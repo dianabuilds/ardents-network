@@ -13,7 +13,7 @@ import (
 )
 
 func TestClosedSharedCarrierClassifiesDirectAndCurrentNode(t *testing.T) {
-	for _, profile := range []CarrierProfile{ClosedCarrierTCP, ClosedCarrierQUIC} {
+	for _, profile := range []CarrierProfile{ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			serverCertificate := entryBindingCertificate(t, 181)
 			clientCertificate := entryBindingCertificate(t, 182)
@@ -79,11 +79,7 @@ func TestClosedSharedCarrierClassifiesDirectAndCurrentNode(t *testing.T) {
 				if err := acceptedCarrier.Connection.Close(); err != nil {
 					t.Fatal(err)
 				}
-				if profile == ClosedCarrierQUIC {
-					if n, err := acceptedCarrier.Connection.Write([]byte{9}); n != 0 || !errors.Is(err, net.ErrClosed) {
-						t.Errorf("write after owned QUIC retirement = %d / %v, want net.ErrClosed", n, err)
-					}
-				}
+
 			}
 			if err := direct.Close(); err != nil {
 				t.Fatal(err)
@@ -137,32 +133,8 @@ func TestClosedSharedTCPListenerAcceptsAfterSilentPeer(t *testing.T) {
 	}
 }
 
-func TestClosedSharedQUICHandshakeReservationPrecedesTLS(t *testing.T) {
-	slots := make(chan struct{}, 1)
-	reserve := closedSharedQUICHandshakeContext(slots)
-	first, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	reserved, err := reserve(first, nil)
-	if err != nil || reserved.Value(closedSharedQUICHandshakeContextKey{}) == nil {
-		t.Fatalf("first pre-TLS reservation = %v / %v", reserved, err)
-	}
-	reservation := reserved.Value(closedSharedQUICHandshakeContextKey{}).(*closedSharedQUICHandshakeReservation)
-	if _, err := reserve(t.Context(), nil); err == nil {
-		t.Fatal("second pre-TLS handshake bypassed finite reservation")
-	}
-	cancel()
-	select {
-	case <-reservation.released:
-	case <-time.After(time.Second):
-		t.Fatal("closed pre-TLS reservation was not released after connection cancellation")
-	}
-	if _, err := reserve(t.Context(), nil); err != nil {
-		t.Fatalf("released pre-TLS reservation remained unavailable: %v", err)
-	}
-}
-
 func TestClosedSharedCarrierRejectsUnknownNodeBeforeARPDPayload(t *testing.T) {
-	for _, profile := range []CarrierProfile{ClosedCarrierTCP, ClosedCarrierQUIC} {
+	for _, profile := range []CarrierProfile{ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			serverCertificate := entryBindingCertificate(t, 183)
 			clientCertificate := entryBindingCertificate(t, 184)

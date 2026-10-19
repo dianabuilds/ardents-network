@@ -23,7 +23,7 @@ import (
 // qualify installed workers or publication. Issuer readiness and abrupt restart
 // use the actual command with each accepted Carrier.
 func TestClosedIssuerProfileProvisioningAcrossProcesses(t *testing.T) {
-	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
+	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2"} {
 		t.Run(carrier, func(t *testing.T) { testClosedIssuerProvisioning(t, carrier, 3) })
 	}
 }
@@ -280,7 +280,7 @@ func identifierNode(value byte) string {
 // sixteen have started. Continuous readiness is not established by this cell.
 // This cell does not run an ordinary Endpoint exchange.
 func TestClosedTextTopologyProvisioningAcrossProcesses(t *testing.T) {
-	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
+	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2"} {
 		t.Run(carrier, func(t *testing.T) { testClosedIssuerProvisioning(t, carrier, 16) })
 	}
 }

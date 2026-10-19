@@ -3,7 +3,9 @@
 Ardents is a Go project building an application network for private,
 location-independent Services in hostile environments. The selected closed
 contract is a bounded Ubuntu text-Service using Target Links, one common
-protection baseline and TCP/TLS plus QUIC Carriers. It is not a qualified public
+protection baseline and TCP/TLS as the sole Carrier of the nearest closed release
+under [ADR-0122](docs/adr/0122-select-tcp-only-closed-release.md); QUIC is deferred.
+It is not a qualified public
 product. Component results establish no current anonymity, availability,
 censorship-resistance, independent-operation or supported Node-host claim.
 

@@ -101,7 +101,7 @@ func selectionCandidates(view network.RuntimeView, subrole uint8, exclusions []r
 	var candidates []ClosedSetMember
 	now := view.ObservedAt()
 	for _, member := range view.Members() {
-		if member.Subrole != subrole || !route.PurposePermitsDuty(7, member.RoleDomain, member.Subrole) || !member.Current(now) {
+		if !route.CarrierPermitted(member.CarrierProfile) || member.Subrole != subrole || !route.PurposePermitsDuty(7, member.RoleDomain, member.Subrole) || !member.Current(now) {
 			continue
 		}
 		candidate := ClosedSetMember{NodeID: member.NodeID, PublicKey: member.PublicKey, FamilyID: member.FamilyID, RecordDigest: member.RecordDigest, DutyGeneration: member.DutyGeneration, Domain: member.RoleDomain, NotAfter: member.NotAfter()}

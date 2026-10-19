@@ -9,6 +9,41 @@ import (
 	"time"
 )
 
+// Cancellation occurs at the actual post-acquisition check, after the native
+// lease has been obtained. No lock or successful participation is supplied.
+type cancelAfterLeaseContext struct {
+	context.Context
+	cancel context.CancelFunc
+	checks int
+}
+
+func (ctx *cancelAfterLeaseContext) Err() error {
+	ctx.checks++
+	if ctx.checks == 2 {
+		ctx.cancel()
+	}
+	return ctx.Context.Err()
+}
+
+func TestOperationLeaseJoinedCancellationRetainsOriginalCause(t *testing.T) {
+	root := localRoleFixtureRoot(t)
+	caller, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	ctx := &cancelAfterLeaseContext{Context: caller, cancel: cancel}
+	lease, err := acquireOperationLease(ctx, root)
+	if err != context.Canceled || caller.Err() != context.Canceled {
+		_ = lease.release()
+		t.Fatalf("cleanly released acquisition changed original cancellation: %T %v", err, err)
+	}
+	next, err := acquireRootLease(root)
+	if err != nil {
+		t.Fatal("canceled acquisition did not release its original native lease", err)
+	}
+	if err := next.release(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestOperationLeaseCancellationPreservesExclusiveOwner(t *testing.T) {
 	root := localRoleFixtureRoot(t)
 	config := Config{Root: root, Clock: time.Now, Create: true}

@@ -9,6 +9,14 @@ worktree, agent, checkpoint or source-file rename.
 
 ## Current selection takes precedence
 
+The Product Owner directly changed the nearest closed release to TCP/TLS alone
+on 2026-10-19, recorded by [ADR-0122](../adr/0122-select-tcp-only-closed-release.md).
+For this release only, references below to both selected Carriers mean positive
+TCP/TLS coverage plus explicit pre-effect QUIC refusal and no fallback. This is
+a product-scope amendment, not a waiver of a failing gate. Preserve R01–R08,
+all other Route behavior, authority/bytes/lifetime rules and mandatory checks.
+Historical both-Carrier receipts remain evidence of their original artifacts.
+
 The [execution owner's current-selection rule](agent-execution.md#current-selection-takes-precedence)
 and [#497](https://github.com/dianabuilds/ardents-network/issues/497) govern work
 admission. This contract cannot restore an earlier automatic next-domain

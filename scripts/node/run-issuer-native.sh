@@ -29,13 +29,13 @@ verify "$ARDENTS_NODE_NATIVE_TEST" "$ARDENTS_NODE_NATIVE_TEST_SHA256"
 verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 
 # Discovery is part of the selected Issuer profile; zero-test runs fail.
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerBootstrapOrdinaryAndFreshSpendBothCarriers$' >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOriginalAuthorityAndJoinBothCarriers$' >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOriginalFailureBothCarriers$' >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerPartialStartupRefusalsBothCarriers$' >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerUnavailableCompletionRetainsOriginalProducerBothCarriers$' >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOperationJoinAndExactRetryBothCarriers$' >/dev/null
-"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerStorageUncertaintyBothCarriers$' >/dev/null
+"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerBootstrapOrdinaryAndFreshSpendTCP$' >/dev/null
+"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOriginalAuthorityAndJoinTCP$' >/dev/null
+"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOriginalFailureTCP$' >/dev/null
+"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerPartialStartupRefusalsTCP$' >/dev/null
+"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP$' >/dev/null
+"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerOperationJoinAndExactRetryTCP$' >/dev/null
+"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuerStorageUncertaintyTCP$' >/dev/null
 "$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeIssuer' | grep '^TestOriginalNativeIssuerProcessProfile$' >/dev/null
 "$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeIssuer' | grep '^TestOriginalNativeIssuerEvidenceLossRetainsActualCloseFailure$' >/dev/null
 "$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeIssuer' | grep '^TestOriginalNativeIssuerManagedMemoryPressureRetires$' >/dev/null
@@ -51,14 +51,14 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
 # registered process timeout. Both are mandatory and execute sequentially under
 # the identical native envelope; no failed case is omitted or given more time.
 # Exact discovery rejects any added, missing or duplicate undispatched test.
-expected='TestNativeIssuerBootstrapOrdinaryAndFreshSpendBothCarriers
-TestNativeIssuerOperationJoinAndExactRetryBothCarriers
-TestNativeIssuerOriginalAuthorityAndJoinBothCarriers
-TestNativeIssuerOriginalFailureBothCarriers
-TestNativeIssuerPartialStartupRefusalsBothCarriers
-TestNativeIssuerStorageUncertaintyBothCarriers
-TestNativeIssuerUnavailableCompletionRetainsOriginalProducerBothCarriers'
+expected='TestNativeIssuerBootstrapOrdinaryAndFreshSpendTCP
+TestNativeIssuerOperationJoinAndExactRetryTCP
+TestNativeIssuerOriginalAuthorityAndJoinTCP
+TestNativeIssuerOriginalFailureTCP
+TestNativeIssuerPartialStartupRefusalsTCP
+TestNativeIssuerStorageUncertaintyTCP
+TestNativeIssuerUnavailableCompletionRetainsOriginalProducerTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeIssuer' | grep '^TestNativeIssuer' | sort)
 test "$discovered" = "$expected" || { echo 'Issuer workload discovery differs' >&2; exit 2; }
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIssuer(BootstrapOrdinaryAndFreshSpendBothCarriers|OriginalAuthorityAndJoinBothCarriers|OriginalFailureBothCarriers|PartialStartupRefusalsBothCarriers|UnavailableCompletionRetainsOriginalProducerBothCarriers)$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIssuer(OperationJoinAndExactRetryBothCarriers|StorageUncertaintyBothCarriers)$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIssuer(BootstrapOrdinaryAndFreshSpendTCP|OriginalAuthorityAndJoinTCP|OriginalFailureTCP|PartialStartupRefusalsTCP|UnavailableCompletionRetainsOriginalProducerTCP)$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeIssuer(OperationJoinAndExactRetryTCP|StorageUncertaintyTCP)$' -test.timeout=3m

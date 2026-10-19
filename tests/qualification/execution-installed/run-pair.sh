@@ -31,7 +31,7 @@ done
 printf '%s  %s\n' "$ARDENTS_EXECUTION_START_TEST_SHA256" "$binary" | sha256sum --check --status || fail 'invalid environment: test pin mismatch'
 printf '%s  %s\n' "$ARDENTS_EXECUTION_START_INVENTORY_SHA256" "$resources/inventory.json" | sha256sum --check --status || fail 'invalid environment: inventory pin mismatch'
 case "${ARDENTS_EXECUTION_START_CARRIER-}" in
-    ardents-carrier-tcp-tls-v2|ardents-carrier-quic-v2) ;;
+    ardents-carrier-tcp-tls-v2) ;;
     *) fail 'invalid environment: independently selected Carrier required' ;;
 esac
 [ -n "${ARDENTS_EXECUTION_PAIR_MANAGERS-}" ] || fail 'invalid environment: two original manager PIDs required'

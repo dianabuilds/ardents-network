@@ -35,7 +35,7 @@ func addResolutionState(source *sourceStateFixture) {
 // terminal TLS and the Node Store. Publication/Introduction facts are explicit
 // fixtures: this test does not claim registered Publisher or command readiness.
 func TestTextResolutionUsesIssuedControlThroughRetainedPrefix(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			_, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true})
 			prefix, err := owner.openPrefix(t.Context())

@@ -34,9 +34,9 @@ import (
 // This scenario proves compiled holder/receiver composition and joined paired
 // transport. It supplies no capsule ACK, Service authority or plaintext console
 // workload. Actual encrypted traffic has its independent in-process oracle.
-func TestRouteCompiledCommandJoinBothCarriers(t *testing.T) {
+func TestRouteCompiledCommandJoinTCP(t *testing.T) {
 	binary := compiledCommand(t)
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Minute)
 			defer cancel()

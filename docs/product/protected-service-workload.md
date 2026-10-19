@@ -1,5 +1,12 @@
 # Protected Service workload
 
+The nearest closed release uses only TCP/TLS under
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). This supersedes the
+dual-Carrier qualification clauses below for that release. QUIC-selected work
+must refuse before effects, never fall back. Every Application, authority,
+confinement, resource, recovery and joined-cleanup obligation remains required
+on TCP/TLS; historical dual-Carrier receipts do not qualify changed artifacts.
+
 Status: **selected design scope**, from the Product Owner's two explicit
 answers on 2026-09-07. This describes the successor to implement and test;
 it does not qualify existing C0 or authorize a public deployment.

@@ -42,8 +42,8 @@ func openPublicationPrefix(ctx context.Context, plan routePrefixPlan, selected *
 // This proves prepared role-3 selection/reservation -> actual Source-bound
 // forwarding on both Carriers. It supplies no qualified Publisher, capsule,
 // accepted nonce or successful delivery RESULT.
-func TestPublicationPreparedResponderOpensWithOriginalSourceBothCarriers(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+func TestPublicationPreparedResponderOpensWithOriginalSourceTCP(t *testing.T) {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := newJoinRouteFixture(t, carrier)
 			holder := joinRouteStock(t, f, admission.AllocationPublisher)
@@ -152,8 +152,8 @@ func TestPublicationPreparedResponderOpensWithOriginalSourceBothCarriers(t *test
 	}
 }
 
-func TestRouteGenuinePairedJoinBothCarriers(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+func TestRouteGenuinePairedJoinTCP(t *testing.T) {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, sockets, certificates := newJoinRouteFixture(t, profile)
 			userStock := joinRouteStock(t, f, admission.AllocationUser)

@@ -29,9 +29,9 @@ import (
 // The driver owns only signed inputs and a real client. Both initial admission
 // and parent refill execute inside the genuine original Node command, with its
 // native process guard, producer, receiving journal and Hosting reservations.
-func TestNativeNodeParentRefillAndReopenBothCarriers(t *testing.T) {
+func TestNativeNodeParentRefillAndReopenTCP(t *testing.T) {
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, mode := range []string{"refill", "capacity-before-spend"} {
 				t.Run(mode, func(t *testing.T) {

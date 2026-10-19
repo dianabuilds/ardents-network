@@ -303,7 +303,13 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 	})
 	gate := sourceACKGate
 	gate.root = storeRoot
+	var callerReceiverFailures []error
 	checkReceiver := func(err error) bool {
+		for _, retained := range callerReceiverFailures {
+			if err == retained {
+				return true
+			}
+		}
 		return (networkLost || resultLost) && checkCleanup(err) || (workerLost || networkLost) && transport.IsPeerRetirementCause(err)
 	}
 	servers := installedPublisherReceiversChecked(t, receivingNetwork, reservations, certificates, store, checkReceiver, func() (network.RuntimeView, error) {
@@ -680,6 +686,16 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 	}
 	for _, server := range servers {
 		err := server.Close()
+		if err != nil && retirement == "caller" && publisherCaller.Err() == context.Canceled && transport.IsPeerRetirementCause(err) {
+			if server.Close() != err {
+				t.Fatal("original receiving peer failure changed after caller retirement", err)
+			}
+			// The canceled caller's remote writer remains failed. Local
+			// Invocation cleanup above still requires cancellation only.
+			callerReceiverFailures = append(callerReceiverFailures, err)
+			t.Log("retained original failed receiver after actual caller loss", err)
+			continue
+		}
 		if err != nil && !((networkLost || resultLost) && checkCleanup(err)) && (!(workerLost || networkLost) || !transport.IsPeerRetirementCause(err)) {
 			t.Fatal("actual receiving join", err)
 		} else if err != nil {
@@ -690,14 +706,14 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 
 // This separately selected profile keeps real clocks unchanged. Its longer
 // qualification bound grants no additional Stock, Registration lifetime or retry.
-func TestInstalledPublicationElapsedBothCarriers(t *testing.T) {
+func TestInstalledPublicationElapsedTCP(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Fatal("invalid environment: original non-root installed Endpoint required")
 	}
 	if time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)) < 16*time.Minute {
 		t.Fatal("invalid environment: elapsed profile requires sixteen minutes in the original token hour")
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) { runInstalledPublisherACK(t, carrier, "elapsed") })
 	}
 }

@@ -68,7 +68,7 @@ func issue60Groups() []issue60Group {
 			{Name: "node-bounds", Package: "./internal/node", Pattern: "^(TestClosedForwarding|TestDeclaredCapacity|TestEmergencyPressure|TestRendezvousPressure|TestClosedSourcePrefix)", Race: true},
 		}},
 		{Name: "network", Jobs: []issue60Job{
-			{Name: "joined-carriers", Package: "./internal/node", Pattern: "^(TestClosedJoinNodePairsThroughBothCarriers|TestClosedResolutionPublishesAndLooksUpThroughAdmittedNodeCarrier|TestClosedIntroductionRegistrationOwnsSlotUntilExpiry)", Race: true},
+			{Name: "joined-carriers", Package: "./internal/node", Pattern: "^(TestClosedJoinNodePairsThroughTCP|TestClosedResolutionPublishesAndLooksUpThroughAdmittedNodeCarrier|TestClosedIntroductionRegistrationOwnsSlotUntilExpiry)", Race: true},
 			{Name: "endpoint-real-service", Package: "./internal/endpoint", Pattern: "^(TestTextWorkersReadTargetThroughJoinedNetwork|TestTextJoinedServiceTransfersDocumentThroughNetwork|TestTextRouteJoinConnectsSourceAndResponder|TestTextServiceRealTLSAndDocumentExchange)", Race: true},
 		}},
 	}

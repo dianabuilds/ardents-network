@@ -63,7 +63,7 @@ func publicationReceivingNetwork(t *testing.T, publisher *networkAdmissionFixtur
 }
 
 func TestPublicationReceivingNetworkSurvivesPublisherConflict(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			publisher, _, _ := publicationRouteNetwork(t, carrier)
 			receiving := publicationReceivingNetwork(t, publisher)

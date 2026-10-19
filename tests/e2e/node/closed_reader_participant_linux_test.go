@@ -21,7 +21,7 @@ import (
 // This verifies real State-to-participant composition up to the mandatory
 // installed-worker refusal. It is not positive installed worker/read evidence.
 func TestClosedReaderParticipantRetainsStateWithoutPublisher(t *testing.T) {
-	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
+	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2"} {
 		t.Run(carrier, func(t *testing.T) {
 			testClosedIssuerProvisioningParticipant(t, carrier, 16, [32]byte{8}, nil,
 				func(network state.Config, binary string, _ string, _ map[string]any) {

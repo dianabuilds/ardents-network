@@ -20,7 +20,7 @@ func (leg Leg) IntroductionDuty(view network.RuntimeView, excluded []route.Membe
 	known = append(known, route.Member{NodeID: leg.EntryMember.NodeID, PublicKey: leg.EntryMember.PublicKey, FamilyID: leg.EntryMember.FamilyID}, route.Member{NodeID: leg.InteriorMember.NodeID, PublicKey: leg.InteriorMember.PublicKey, FamilyID: leg.InteriorMember.FamilyID})
 	var selected network.Member
 	for _, candidate := range view.Members() {
-		if candidate.RoleDomain != 4 || candidate.Subrole != 3 || !candidate.Current(view.ObservedAt()) {
+		if !route.CarrierPermitted(candidate.CarrierProfile) || candidate.RoleDomain != 4 || candidate.Subrole != 3 || !candidate.Current(view.ObservedAt()) {
 			continue
 		}
 		conflicts := false

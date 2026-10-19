@@ -38,7 +38,7 @@ against an existing setup is not first-provision evidence.
 
 The separate `execution-installed-publication-check` target selects
 `TestInstalledServicePublication`. Set `ARDENTS_EXECUTION_START_CARRIER` to
-`ardents-carrier-tcp-tls-v2` or `ardents-carrier-quic-v2`; run each in a separate
+`ardents-carrier-tcp-tls-v2` for the selected release; use a separate
 fresh manager with the same independent artifact checks and four-minute bound.
 The actual installed dual-role program prepares both approved holder requests.
 Fixture Allocation approves requested maxima `[32,32,0]` for Reader and

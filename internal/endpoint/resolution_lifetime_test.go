@@ -137,7 +137,7 @@ func TestTextResolutionCompletionRetainsFailedCleanup(t *testing.T) {
 }
 
 func TestTextResolutionOldAcquisitionCannotCommitAfterSourceReplacement(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			endpoint, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: profile, resolution: true})
 			defer func() { _ = endpoint.Close() }()

@@ -28,8 +28,8 @@ import (
 // substitute recipient. The ACK-loss gate injects failure only after real
 // verification, additional Hosting reservation and durable spend. Compiled
 // prefix/child consumers are covered separately by the process scenario.
-func TestRouteReceivingRefillFailureAndReopenBothCarriers(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+func TestRouteReceivingRefillFailureAndReopenTCP(t *testing.T) {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, reservations, certificates := newRouteFixture(t, profile)
 			view, err := f.current()

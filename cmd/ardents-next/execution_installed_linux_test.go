@@ -30,11 +30,11 @@ import (
 // The actual production consumer runs inside the original installed Endpoint
 // MainPID. All remote fixtures use genuine new signed owners and Carriers;
 // neither this test nor its result supplies Installation or Service readiness.
-func TestInstalledExecutionRouteBothCarriers(t *testing.T) {
+func TestInstalledExecutionRouteTCP(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Fatal("invalid environment: original non-root installed Endpoint required")
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			t.Run("service-authentication", func(t *testing.T) { runInstalledConnectionAuthentication(t, carrier) })
 			t.Run("service-text", func(t *testing.T) { runInstalledConnectionText(t, carrier, false) })

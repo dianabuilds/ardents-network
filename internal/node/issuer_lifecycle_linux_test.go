@@ -98,7 +98,7 @@ func TestRunServesClosedIssuerThenDrainsOnClosedProfileSuccessor(t *testing.T) {
 // production listeners, forwarding admission, nested TLS and receiver spends
 // are real, including the retained Route terminal-channel consumer.
 func TestClosedIssuerAdmittedOperationAfterTwoBootstrapBatches(t *testing.T) {
-	for _, carrier := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, carrier := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			fixture := newClosedBootstrapNetwork(t, carrier)
 			profile := fixture.view.Profile

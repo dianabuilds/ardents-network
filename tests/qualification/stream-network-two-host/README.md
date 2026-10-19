@@ -23,7 +23,7 @@ the NET-14V verifier refuses evidence from different source commits.
 Generate one private bundle outside the repository for every Carrier, cell and
 profile. Use the same seed, start instant and host pair for the complete matrix.
 Each cell owns distinct one-use Service, publication, token and local-role
-roots. All cells and both Carriers share the same seed-bound hosting-period
+roots. All cells and TCP/TLS share the same seed-bound hosting-period
 root, so a new scenario or identity cannot reset the owner's provider
 allowance. The selected TCP/TLS normal input also provisions a separate
 NET-32 participant and Service generation, so the idle projection cannot reuse

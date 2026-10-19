@@ -393,15 +393,15 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/route/channel":                   {"route/ardp", "route/transport"},
 		"internal/successor/route/bootstrap":                 {"route/ardp", "route/channel"},
 		"internal/successor/route/transport/tls":             {"route/transport"},
-		"internal/successor/route/transport/quic":            {"route/transport"},
-		"internal/successor/route/introduction":              {"admission/spending", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "network", "admission"},
-		"internal/successor/route/capsule":                   {},
-		"internal/successor/route/selection":                 {"route", "network"},
-		"internal/successor/route/role":                      {"route", "route/ardp", "route/channel", "route/transport", "network", "admission"},
-		"internal/successor/route/join":                      {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "network", "admission"},
-		"internal/successor/route/prefix":                    {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "network", "admission"},
-		"internal/successor/route/receiver":                  {"route/issuer", "route/join", "route", "route/role", "route/transport", "route/transport/tls", "route/transport/quic", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
-		"cmd/ardents-next":                                   {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
+
+		"internal/successor/route/introduction": {"admission/spending", "route", "route/ardp", "route/role", "route/prefix", "route/capsule", "network", "admission"},
+		"internal/successor/route/capsule":      {},
+		"internal/successor/route/selection":    {"route", "network"},
+		"internal/successor/route/role":         {"route", "route/ardp", "route/channel", "route/transport", "network", "admission"},
+		"internal/successor/route/join":         {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "network", "admission"},
+		"internal/successor/route/prefix":       {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "network", "admission"},
+		"internal/successor/route/receiver":     {"route/issuer", "route/join", "route", "route/role", "route/transport", "route/transport/tls", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
+		"cmd/ardents-next":                      {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
 		if source == "cmd/ardents-next/node_join_operation_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/route/transport") {
@@ -581,7 +581,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/route_bootstrap_linux_test.go" && (dependency == modulePath+"/internal/successor/route/issuer" || dependency == modulePath+"/internal/successor/route/bootstrap") {
 			return true
 		}
-		if source == "cmd/ardents-next/route_fixture_linux_test.go" && (dependency == modulePath+"/internal/successor/route/transport/tls" || dependency == modulePath+"/internal/successor/route/transport/quic") {
+		if source == "cmd/ardents-next/route_fixture_linux_test.go" && (dependency == modulePath+"/internal/successor/route/transport/tls") {
 			return true
 		}
 		if dependency == modulePath+"/internal/successor/route/transport" {
@@ -688,9 +688,6 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
-		return true
-	}
-	if owner == "internal/successor/route/transport/quic" && dependency == "github.com/quic-go/quic-go" {
 		return true
 	}
 	if (source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go") && dependency == "github.com/godbus/dbus/v5" {
@@ -901,9 +898,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"TLS cannot import QUIC implementation", "internal/successor/route/transport/tls/client.go", modulePath + "/internal/successor/route/transport/quic", false},
 		{"TLS cannot import former carrier", "internal/successor/route/transport/tls/server.go", modulePath + "/internal/successor/route/carrier", false},
 		{"transport cannot import its TLS adapter", "internal/successor/route/transport/role_authentication.go", modulePath + "/internal/successor/route/transport/tls", false},
-		{"QUIC implementation consumes shared authentication", "internal/successor/route/transport/quic/role.go", modulePath + "/internal/successor/route/transport", true},
+		{"retired QUIC implementation has no import grant", "internal/successor/route/transport/quic/role.go", modulePath + "/internal/successor/route/transport", false},
 		{"former selector cannot import QUIC library", "internal/successor/route/carrier/closed_node_carrier.go", "github.com/quic-go/quic-go", false},
-		{"QUIC owns its native library", "internal/successor/route/transport/quic/node.go", "github.com/quic-go/quic-go", true},
+		{"retired QUIC has no native library grant", "internal/successor/route/transport/quic/node.go", "github.com/quic-go/quic-go", false},
 		{"QUIC cannot import TLS implementation", "internal/successor/route/transport/quic/role.go", modulePath + "/internal/successor/route/transport/tls", false},
 		{"transport exporter cannot import QUIC adapter", "internal/successor/route/transport/role_exporter.go", modulePath + "/internal/successor/route/transport/quic", false},
 		{"production command excludes lower contract", "cmd/ardents-next/route_linux.go", modulePath + "/internal/successor/route/transport", false},

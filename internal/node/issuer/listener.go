@@ -144,7 +144,7 @@ func Validate(local Profile, source authority.Source, snapshot state.NodeDuty, n
 	if local.Root == "" || !filepath.IsAbs(local.Root) || filepath.Clean(local.Root) != local.Root || local.Certificate.PrivateKey == nil ||
 		local.AdmissionRoot == "" || !filepath.IsAbs(local.AdmissionRoot) || filepath.Clean(local.AdmissionRoot) != local.AdmissionRoot || local.Root == local.AdmissionRoot ||
 		local.ConnectionLimit == 0 || local.ConnectionLimit > 16 || local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute ||
-		!endpointLiteral || carrier.CarrierProfile(snapshot.CarrierProfile) != carrier.ClosedCarrierTCP && carrier.CarrierProfile(snapshot.CarrierProfile) != carrier.ClosedCarrierQUIC {
+		!endpointLiteral || carrier.CarrierProfile(snapshot.CarrierProfile) != carrier.ClosedCarrierTCP {
 		return errors.New("closed issuer local profile is incomplete")
 	}
 	if _, available := currentProfile(source, snapshot, now); !available {

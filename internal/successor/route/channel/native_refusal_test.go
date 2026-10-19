@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"net"
@@ -10,6 +11,65 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
+
+// A whole upper write can span successful lower frames and then encounter
+// that lower lane's retirement. The incomplete upper grammar is still failed
+// work; only a real lower output failure belongs to physical cleanup.
+type retiringPartialLane struct {
+	*Lane
+	physical *lifecycleConn
+	late     error
+	started  bool
+}
+
+func (conn *retiringPartialLane) NetConn() net.Conn { return conn.Lane }
+func (conn *retiringPartialLane) Write(raw []byte) (int, error) {
+	if !conn.started {
+		conn.started = true
+		n, err := conn.Lane.Write(raw[:1])
+		if conn.late == nil {
+			conn.Lane.Seal()
+		} else {
+			conn.physical.mu.Lock()
+			conn.physical.partial = conn.late
+			conn.physical.mu.Unlock()
+		}
+		return n, err
+	}
+	return conn.Lane.Write(raw)
+}
+
+func TestNestedPartialOutputSeparatesRetirementFromNativeFailure(t *testing.T) {
+	for _, nativeFailure := range []bool{false, true} {
+		t.Run(map[bool]string{false: "retired-after-prefix", true: "native-failure-after-prefix"}[nativeFailure], func(t *testing.T) {
+			physical := newLifecycleConn(false)
+			lower := Prepare(t.Context(), physical, time.Now().Add(5*time.Second), 1<<20, nil, false, &Budget{maximum: 4 << 20}, Handlers{})
+			t.Cleanup(func() { _ = lower.Close() })
+			conn := &retiringPartialLane{Lane: lifecycleLane(t, lower, 1), physical: physical}
+			late := errors.New("actual native output failed after earlier successful frame")
+			if nativeFailure {
+				conn.late = late
+			}
+			out := WriteFrame(conn, ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte("original upper frame")})
+			if out.Err() == nil {
+				t.Fatal("partial upper frame became successful")
+			}
+			// Independently decode the original physical frame. The emitted
+			// prefix is real, while the upper frame remains incomplete.
+			first, err := ardp.ReadFrame(bytes.NewReader(<-physical.writes))
+			if err != nil || first.Kind != ardp.KindBytes || !bytes.Equal(first.Body, []byte{'A'}) {
+				t.Fatal("original lower prefix absent", first, err)
+			}
+			if nativeFailure {
+				if !errors.Is(out.Err(), late) || !errors.Is(out.PhysicalFailure(), late) || !errors.Is(lower.PhysicalFailure(), late) {
+					t.Fatal("real late native failure was lost", out.Err(), out.PhysicalFailure(), lower.PhysicalFailure())
+				}
+			} else if !errors.Is(out.Err(), net.ErrClosed) || out.PhysicalFailure() != nil || lower.PhysicalFailure() != nil {
+				t.Fatal("successful lower output followed by retirement minted physical failure", out.Err(), out.PhysicalFailure(), lower.PhysicalFailure())
+			}
+		})
+	}
+}
 
 // Failure-only input isolates whole-frame classification. Actual adapter
 // custody and native socket admission are tested separately by its owner.

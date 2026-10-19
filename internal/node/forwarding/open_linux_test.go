@@ -21,7 +21,7 @@ import (
 // listener, outer HELLO/ACCEPT exchange, and child OPEN grammar. The State
 // projection only supplies the selected peer; it does not replace transport.
 func TestClosedForwardingOpenActualCarrierOutcomes(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP} {
 		for _, outcome := range []string{"success", "refusal", "cancellation"} {
 			t.Run(string(profile)+"/"+outcome, func(t *testing.T) {
 				testClosedForwardingOpenActualCarrierOutcome(t, profile, outcome)
@@ -403,7 +403,7 @@ func TestClosedForwardingOpenExpiresWhileExactCarrierDialWaits(t *testing.T) {
 // pool lease, wait for that one creator, then receive the same session without
 // opening another Carrier or writing another outer HELLO.
 func TestClosedForwardingOpenSameKeySharesOneActualOuterHello(t *testing.T) {
-	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP, carrier.ClosedCarrierQUIC} {
+	for _, profile := range []carrier.CarrierProfile{carrier.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			testClosedForwardingOpenSameKeyActualCarrier(t, profile)
 		})

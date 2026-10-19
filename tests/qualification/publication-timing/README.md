@@ -1,7 +1,7 @@
 # Publication elapsed timing
 
 `make publication-timing-check` explicitly selects
-`TestInstalledPublicationElapsedBothCarriers` from the tagged `cmd/ardents-next`
+`TestInstalledPublicationElapsedTCP` from the tagged `cmd/ardents-next`
 test binary installed at `/usr/lib/ardents/qualification/execution-command.test`.
 Use the same dedicated Ubuntu 24.04/systemd 255, original non-root Endpoint,
 fixed maintained snapshot worker, independently pinned binary/unit digests and
@@ -11,7 +11,7 @@ product or whole-host qualification.
 
 The independent temporary Endpoint unit selects only this test root with
 `-test.v -test.timeout=15m`, `RuntimeMaxSec=920s` and `TimeoutStopSec=30s`.
-The driver admits at most 9000 polls of 100ms and requires both Carriers and
+The driver admits at most 9000 polls of 100ms and requires TCP/TLS and
 every named subcase exactly once. This is a separate finite qualification
 profile; the ordinary execution-route profile keeps its original limits.
 Before admission at least sixteen minutes must remain in the current token

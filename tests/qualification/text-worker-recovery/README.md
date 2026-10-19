@@ -32,7 +32,7 @@ The unit supplies the independently recorded command digests through
 `ARDENTS_TEXT_LIFECYCLE_SHA256` and `ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256` from
 the independently pinned candidate. The shared runner verifies the artifacts,
 environment, inactive unit and exact invocation; requires terminal inactive
-success with `MainPID=0`; and requires the root test plus the TCP/TLS and QUIC
+success with `MainPID=0`; and requires the root test plus the TCP/TLS
 subtests exactly once. A missing case, prerequisite, pin or test is a failure,
 not a skip.
 

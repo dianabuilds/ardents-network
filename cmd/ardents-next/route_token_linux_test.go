@@ -21,8 +21,8 @@ import (
 // These are genuine Route/Stock exchanges, not qualified Service operations.
 // Signed permission and receiving owners are fixtures; no worker/Startup is
 // supplied by the cleanup observer.
-func TestRegistrationStockRetainsIssuerControlForNextForwardBothCarriers(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+func TestRegistrationStockRetainsIssuerControlForNextForwardTCP(t *testing.T) {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			x := newRouteIssuerFixture(t, carrier, nil, nil, nil, nil, true)
 			f := x.network
@@ -110,7 +110,7 @@ func TestRegistrationStockRetainsIssuerControlForNextForwardBothCarriers(t *test
 }
 
 func TestReaderRoutePreparationFundsNextSourceWithoutBootstrapReset(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			x := newRouteIssuerFixture(t, carrier, nil, nil, nil, nil, true)
 			f := x.network
@@ -182,8 +182,8 @@ func TestReaderRoutePreparationFundsNextSourceWithoutBootstrapReset(t *testing.T
 	}
 }
 
-func TestFundedSourceBootstrapAndAdmittedIssuanceBothCarriers(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+func TestFundedSourceBootstrapAndAdmittedIssuanceTCP(t *testing.T) {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			x := newRouteIssuerFixture(t, carrier, nil, nil, nil, nil, true)
 			f := x.network

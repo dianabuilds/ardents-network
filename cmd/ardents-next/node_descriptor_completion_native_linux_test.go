@@ -24,9 +24,9 @@ import (
 // Occupying the actual participation journal delays original producer cleanup.
 // The real command retains State/process until join and never converts its
 // bounded unavailable report into successful withdrawal after failed cleanup.
-func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerBothCarriers(t *testing.T) {
+func TestNativeDescriptorUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T) {
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := descriptorRouteFixture(t, carrier)
 			bundle, err := networkfixture.BuildClosed(f.spec)

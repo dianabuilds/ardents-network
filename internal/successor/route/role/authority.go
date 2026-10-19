@@ -50,7 +50,14 @@ func (a Authority) Member() (network.Member, error) {
 	if err = v.MatchDuty(a.Duty, time.Now()); err != nil {
 		return network.Member{}, err
 	}
-	return v.Member(a.Duty.NodeID, time.Now())
+	member, err := v.Member(a.Duty.NodeID, time.Now())
+	if err != nil {
+		return network.Member{}, err
+	}
+	if !route.CarrierPermitted(member.CarrierProfile) {
+		return network.Member{}, errors.New("route Carrier profile is unsupported")
+	}
+	return member, nil
 }
 
 // Hello checks this channel against the original duty, purpose and bounds.

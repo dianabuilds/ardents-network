@@ -41,7 +41,7 @@ func TestInstalledClosedTextCommandsThroughNodeProcesses(t *testing.T) {
 	if os.Geteuid() != 0 || os.Getenv("ARDENTS_TEXT_COMMAND_QUALIFICATION") != "1" || os.Getenv("ARDENTS_E2E_COMMAND_ROOT") == "" {
 		t.Fatal("invalid environment: select the dedicated installed root command profile with prebuilt commands")
 	}
-	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
+	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2"} {
 		t.Run(carrier, func(t *testing.T) {
 			for _, document := range []struct {
 				name string

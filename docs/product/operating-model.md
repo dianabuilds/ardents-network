@@ -1,5 +1,11 @@
 # Product operating model
 
+The nearest closed release selects TCP/TLS alone under
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). Dual-Carrier obligations
+below are superseded for that release; QUIC is deferred and explicitly refused
+before effects with no automatic fallback. This supplies no public transport,
+availability, censorship resistance or privacy claim and changes no other gate.
+
 For the selected protected closed Ubuntu successor,
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 uses one initial authenticated artifact/pin and explicit root provisioning,

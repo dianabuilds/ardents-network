@@ -95,7 +95,7 @@ func reserveProvisioningPort(t *testing.T, carrier string) *reservedProcessPort 
 }
 
 func TestProvisioningPortsHoldSelectedCarrierUntilRelease(t *testing.T) {
-	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2", "ardents-carrier-quic-v2"} {
+	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2"} {
 		t.Run(carrier, func(t *testing.T) {
 			first, second := reserveProvisioningPort(t, carrier), reserveProvisioningPort(t, carrier)
 			if first.address == second.address {

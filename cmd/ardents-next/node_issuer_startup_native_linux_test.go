@@ -23,9 +23,9 @@ import (
 
 // Actual command refusals at distinct startup acquisitions. Prepared durable
 // bytes remain unchanged and acquired roots/producer return only after join.
-func TestNativeIssuerPartialStartupRefusalsBothCarriers(t *testing.T) {
+func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, fault := range []string{"profile", "role", "tls-key", "missing-results"} {
 				t.Run(fault, func(t *testing.T) {

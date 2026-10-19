@@ -18,7 +18,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
-	rolequic "github.com/dianabuilds/ardents-network/internal/successor/route/transport/quic"
 	roletls "github.com/dianabuilds/ardents-network/internal/successor/route/transport/tls"
 )
 
@@ -225,8 +224,7 @@ func openPrefix(ctx context.Context, config Config, source *Prefix, bootstrapMod
 	switch request.CarrierProfile {
 	case transport.ClosedCarrierTCP:
 		conn, err = roletls.OpenEndpoint(childContext, request)
-	case transport.ClosedCarrierQUIC:
-		conn, err = rolequic.OpenEndpoint(childContext, request)
+
 	default:
 		err = errors.New("closed role carrier profile is unsupported")
 	}

@@ -31,7 +31,12 @@ func acquireOperationLease(ctx context.Context, root string) (rootLease, error) 
 		lease, err := acquireRootLease(root)
 		if err == nil {
 			if stopped := ctx.Err(); stopped != nil {
-				return rootLease{}, errors.Join(stopped, lease.release())
+				if releaseErr := lease.release(); releaseErr != nil {
+					return rootLease{}, errors.Join(stopped, releaseErr)
+				}
+				// A successfully joined lease supplies no second failure.
+				// Keep this caller's original cancellation provenance intact.
+				return rootLease{}, stopped
 			}
 			return lease, nil
 		}

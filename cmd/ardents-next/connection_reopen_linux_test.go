@@ -23,11 +23,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
 
-func TestInstalledConnectionDurableReopenBothCarriers(t *testing.T) {
+func TestInstalledConnectionDurableReopenTCP(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Fatal("invalid environment: original non-root installed Endpoint required")
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "durable-reopen") })
 	}
 }

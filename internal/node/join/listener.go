@@ -63,7 +63,7 @@ func Validate(local Profile, source authority.Source, snapshot state.NodeDuty, n
 		!filepath.IsAbs(local.AdmissionRoot) || filepath.Clean(local.AdmissionRoot) != local.AdmissionRoot ||
 		local.Certificate.PrivateKey == nil || local.ConnectionLimit == 0 || local.ConnectionLimit > 16 ||
 		local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute || !endpointLiteral ||
-		routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierTCP && routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierQUIC {
+		routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierTCP {
 		return errors.New("closed JOIN local reservation is incomplete")
 	}
 	if _, ok := source.Receiver(snapshot, ardp.PurposeDataJoin, now); !ok {

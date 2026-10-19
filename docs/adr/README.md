@@ -65,6 +65,8 @@ and [protocol](../technical/protected-route-protocol.md) state the current rules
 
 - [ADR-0121: Bound installed Connection setup to thirty seconds](0121-bound-installed-connection-setup.md)
 
+- [ADR-0122: Select TCP/TLS alone for the nearest closed release](0122-select-tcp-only-closed-release.md)
+
 ## Former editions and rationale
 
 [Archived decisions](../archive/README.md#architecture-decisions) retain

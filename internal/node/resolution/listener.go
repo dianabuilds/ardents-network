@@ -57,7 +57,7 @@ func Validate(local ClosedResolutionProfile, source authority.Source, snapshot s
 		!filepath.IsAbs(local.AdmissionRoot) || filepath.Clean(local.AdmissionRoot) != local.AdmissionRoot ||
 		local.Certificate.PrivateKey == nil || local.ConnectionLimit == 0 || local.ConnectionLimit > 16 ||
 		local.DrainTimeout <= 0 || local.DrainTimeout > time.Minute || !endpointLiteral ||
-		routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierTCP && routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierQUIC {
+		routecarrier.CarrierProfile(snapshot.CarrierProfile) != routecarrier.ClosedCarrierTCP {
 		return errors.New("closed resolution local reservation is incomplete")
 	}
 	if _, ok := source.Receiver(snapshot, ardp.PurposeReachability, now); !ok {

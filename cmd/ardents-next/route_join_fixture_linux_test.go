@@ -260,7 +260,7 @@ func startJoinRouteReceiverRange(t *testing.T, f *networkAdmissionFixture, reser
 }
 
 func TestJoinRouteFixtureCurrentDutiesAndStock(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, reservations, certificates := newJoinRouteFixture(t, profile)
 			view, err := f.current()

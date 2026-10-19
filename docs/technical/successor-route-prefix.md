@@ -20,16 +20,24 @@ Known locally controlled identities and families enter selection as exclusions.
 header kind/lane/length before body allocation or reads. The lower `transport`
 owns the portable stream/exporter contract, exact accepted profile identities,
 literal endpoint validation and shared authentication/error classification.
-`transport/tls` and `transport/quic` own the actual exact-key TCP/TLS and
-one-stream QUIC implementations, direct/Node classification and finite
-handshakes. Prefix and receiving composition select the actual adapter directly
+`transport/tls` owns the actual exact-key TCP/TLS implementation, direct/Node
+classification and finite handshakes. [ADR-0122](../adr/0122-select-tcp-only-closed-release.md)
+defers QUIC for the nearest closed release. Route rejects its recognized signed
+profile before selection, activation, socket or token effects; canonical Network
+bytes remain unchanged. The QUIC runtime adapter is removed. Prefix and receiving composition select the actual adapter directly
 from the already selected profile, without fallback. The former `carrier`
 package is removed; shared actual-adapter behavior tests belong to the actual opening/composition
-owner and exercise both implementations of the lower contract. Lower transport
+owner and exercise TCP/TLS plus deferred-QUIC refusal of the lower contract. Lower transport
 imports neither adapter, including in tests.
 `channel` owns portable parent/child framing, finite credit/queues, serialized
 physical output and joined retirement. `prefix` owns its exact generations and
 terminal openings; `join` and `introduction` own their holder operations.
+Nested framing retains successful lower output counts separately from the
+lower lane's actual physical failure. Successful lower bytes followed by a
+retirement refusal leave the upper frame incomplete and its full work result
+failed; they do not manufacture a native cleanup failure. Raw partial-write
+failures and the lower owner's actual physical failures remain retained through
+joined cleanup. No incomplete frame supplies a clean terminal or accepting fact.
 Reader composition also requests one unpresented Source Entry/Interior pair
 while preparing the current Rendezvous Forward batch through its live admitted
 Source. Admission retains these genuine tokens in the original holder's finite
@@ -258,17 +266,10 @@ and selected Carrier outside the pool lock. Same-pair waiters use their own
 cancellation; dial and retirement remain counted operations. This operation
 retires the Carrier after its last joined borrower, without idle retention or
 speculative dialing. Every child retains its own original bounds and admission.
-QUIC physical deadlines attach the current local monotonic clock to the exact
-supplied absolute instant. A wall-clock adjustment since library startup must
-not shift physical expiry; this conversion changes no wire or authority bound.
-Retired QUIC I/O preserves the original connection's native ApplicationError.
-A framing reader's local adapter Close cannot replace an already observed
-remote close with a bare local closed sentinel before a selected writer enters
-Write. Local close still retains a local failure; only the existing exact
-native remote code/reason classifier grants the diagnostic peer category.
-Real role/Node adapter tests independently observe remote retirement before
-local Close and require the same native error identity afterwards. No failure
-is converted into clean completion or used instead of physical join.
+The removed QUIC adapter's deadline, partial-I/O and native retirement mechanics
+remain [historical source evidence](https://github.com/dianabuilds/ardents-network/tree/057a95e8dd7eb1ea66c65e1df520277ccf177eb2/internal/successor/route/transport/quic).
+They supply no current adapter or release qualification. TCP physical output,
+original failure retention and joined cleanup remain current obligations.
 OPEN allocation and complete emission are serialized together, with one
 immutable setup deadline no later than ten seconds or the original child/parent
 bound. Waiting for that operation is cancellable and grants no child authority.
@@ -280,11 +281,8 @@ setup, readers, writers and children; owners join them before returning
 reservations or closing roots. Repeated Close returns one retained result,
 including late physical and release failures.
 Receiver cancellation first denies new accepting work and interrupts its
-accepted connections, then closes the shared listener and transport. QUIC's
-shared UDP transport must remain available while connection-close packets are
-sent; destroying it first leaves remote retirement to idle timeout. Closing
-the listener still interrupts unaccepted handshakes, and physical workers join
-before reservations and roots return.
+accepted TCP connections and listener. Physical workers join before reservations
+and roots return. Deferred QUIC refuses before any listener is acquired.
 An already expired child starts no new terminal frame. Its original operation
 remains refused, while a completed local child join alone does not retire its
 still-live framing parent or siblings. Output already in progress still joins

@@ -10,7 +10,7 @@ import (
 )
 
 func TestPhysicalCloseInterruptsAndJoinsReader(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			now := time.Now()
 			serverCert, serverKey := transportCertificate(t, now.Add(-time.Hour), now.Add(time.Hour))

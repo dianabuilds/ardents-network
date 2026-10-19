@@ -19,7 +19,7 @@ import (
 // Publisher's production producer owns delivery, JOIN and authenticated stream
 // handover; the test does not construct or feed Publisher Service streams.
 func TestTextPublisherNetworkRetainsSnapshotAcrossReaders(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			readerOwner, publisherOwner, destination := joinedNetworkFixture(t, carrier)
 			body := bytes.Repeat([]byte("retained snapshot\n"), 4096)

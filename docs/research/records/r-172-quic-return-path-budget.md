@@ -1,13 +1,26 @@
 ---
 id: R-172
 title: Current native QUIC return-path reply-budget admission
-status: open
+status: deferred
 owner: Product Owner and Codex
 started: 2026-10-15
 reviewed: 2026-10-15
 ---
 
 # R-172 — Does the current QUIC server enforce its return-path reply budget?
+
+## Current disposition: deferred release use
+
+On 2026-10-19 the Product Owner selected TCP/TLS alone for the nearest closed
+release under [ADR-0122](../../adr/0122-select-tcp-only-closed-release.md).
+QUIC research, experiments and dependency adoption are deferred. The finding
+is unresolved: this decision supplies no fix, successful reproduction or
+QUIC admission. Historical plans, observations and the accepted composite
+method below remain provenance and do not select execution. The release must
+prove actual exclusion and no-effect QUIC refusal before Route acceptance;
+changing scope alone is not that proof. A future QUIC selection must recover
+current evidence and its availability, qualify a supported disposition and
+repeat affected checks; unavailable raw logs cannot be reconstructed as receipts.
 
 ## Decision this unlocks
 

@@ -23,7 +23,7 @@ func (leg Leg) ResolutionDuty(view network.RuntimeView, excluded []route.Member)
 	known = append(known, rendezvousPeer(leg.EntryMember), rendezvousPeer(leg.InteriorMember))
 	var selected network.Member
 	for _, member := range view.Members() {
-		if !route.PurposePermitsDuty(3, member.RoleDomain, member.Subrole) || !member.Current(now) {
+		if !route.CarrierPermitted(member.CarrierProfile) || !route.PurposePermitsDuty(3, member.RoleDomain, member.Subrole) || !member.Current(now) {
 			continue
 		}
 		conflicting := false

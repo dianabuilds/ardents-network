@@ -95,6 +95,39 @@ func TestSuccessorConnectionControlProfileSelectsOriginalReadSites(t *testing.T)
 			t.Errorf("%s has %d selected original read sites", site.path, matches)
 		}
 	}
+	// The independent-progress control waits for a genuine received record's
+	// commit, then its next physical input. Moving either site must fail the
+	// profile rather than silently selecting a different progress boundary.
+	records := parse("internal/successor/connection/stream_records.go")
+	for _, site := range []struct{ call, constant string }{
+		{"readRecord", "connectionProgressReadLine"},
+		{"commit", "connectionProgressCommitLine"},
+	} {
+		matches := 0
+		for _, declaration := range records.Decls {
+			function, ok := declaration.(*ast.FuncDecl)
+			if !ok || function.Name.Name != "readRecords" || function.Body == nil {
+				continue
+			}
+			ast.Inspect(function.Body, func(node ast.Node) bool {
+				call, ok := node.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				name, ok := call.Fun.(*ast.SelectorExpr)
+				if ok && name.Sel.Name == site.call {
+					matches++
+					if line := set.Position(call.Pos()).Line; constants[site.constant] != line {
+						t.Errorf("%s selects line %d, original %s site is %d", site.constant, constants[site.constant], site.call, line)
+					}
+				}
+				return true
+			})
+		}
+		if matches != 1 {
+			t.Errorf("readRecords has %d original %s sites", matches, site.call)
+		}
+	}
 }
 
 func TestSuccessorConnectionControlProfileSelectsOriginalWriteSites(t *testing.T) {

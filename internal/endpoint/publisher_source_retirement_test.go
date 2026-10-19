@@ -11,7 +11,7 @@ import (
 )
 
 func TestTextPublisherAcceptsIntroductionAfterSourceRetirement(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			reader, publisher, destination := joinedNetworkFixture(t, carrier)
 			readerJob, publisherJob := liveCapsuleJob(t, reader), liveCapsuleJob(t, publisher)

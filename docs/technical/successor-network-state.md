@@ -1,5 +1,13 @@
 # Network domain
 
+The nearest closed release selects only TCP/TLS under
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). Historical authenticated
+QUIC identifiers must not be changed or treated as TCP: successful byte/state
+verification grants no current QUIC participation, selection or local duty.
+The owning runtime must refuse deferred QUIC before effects. Existing State,
+history, conflicts and durable floors remain intact; no automatic migration is
+authorized. Earlier dual-Carrier evidence below retains its original scope.
+
 Network owns which authenticated network generations, profiles and assignments
 may be treated as current. Its domain model is `internal/successor/network`.
 Its application owner is `internal/successor/network/state`. The new application
@@ -162,6 +170,11 @@ join, automatically adopting its producer or resetting the root on restart.
 Node restriction classification cannot choose the ordinary Initiator
 exemption or turn an assignment into a Direct Source; it retains the earlier
 Epoch/Record bound. Copied facts cannot mutate either aggregate.
+
+Short operation acquisition preserves the original caller's cancellation
+unchanged when its newly acquired native lease releases successfully. A real
+release failure remains joined with that cancellation; consumers must not
+classify arbitrary wrapped physical failures as ordinary caller retirement.
 
 `NodeParticipationFacts.OriginalNodeRestriction` is the separate Network-owned
 projection consumed only by the private `duty.OpenNodeProducer` invocation.

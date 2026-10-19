@@ -9,6 +9,7 @@ import (
 type framingWitness struct {
 	attempts, payload               uint64
 	busy, payloadBusy, clean, local bool
+	failure                         error
 }
 
 func lowerFramingLane(conn net.Conn) *Lane {
@@ -31,7 +32,7 @@ func (l *Lane) retirementWitness() framingWitness {
 	l.s.mu.Lock()
 	defer l.s.mu.Unlock()
 	busy := l.s.active == l
-	return framingWitness{attempts: l.physicalAttempts, payload: l.payloadAttempts, busy: busy, payloadBusy: busy && l.s.activeKind != ardp.KindCredit, local: l.localClosed, clean: l.peerClosed && !l.peerRefused && l.s.failure == nil && !l.s.stopped && l.s.ctx.Err() == nil && !l.physicalWriteFailed}
+	return framingWitness{attempts: l.physicalAttempts, payload: l.payloadAttempts, busy: busy, payloadBusy: busy && l.s.activeKind != ardp.KindCredit, local: l.localClosed, clean: l.peerClosed && !l.peerRefused && l.s.failure == nil && !l.s.stopped && l.s.ctx.Err() == nil && !l.physicalWriteFailed, failure: l.physicalErr}
 }
 
 // A specific lower lane's authenticated CLOSE(0), unchanged physical attempts

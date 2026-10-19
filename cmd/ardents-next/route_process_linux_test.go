@@ -32,13 +32,13 @@ func routeProcessBudget(t *testing.T) string {
 	return root
 }
 
-func TestRouteCompiledCommandPrefixBothCarriers(t *testing.T) {
+func TestRouteCompiledCommandPrefixTCP(t *testing.T) {
 	testRouteCompiledCommand(t, false)
 }
 
-func TestRouteCompiledHolderBootstrapAndOrdinaryIssuerBothCarriers(t *testing.T) {
+func TestRouteCompiledHolderBootstrapAndOrdinaryIssuerTCP(t *testing.T) {
 	_ = compiledCommand(t)
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, sockets, certificates := newRoleRouteFixture(t, profile, 1, false, true)
 			bundle, err := networkfixture.BuildClosed(f.spec)
@@ -159,18 +159,18 @@ func TestRouteCompiledHolderBootstrapAndOrdinaryIssuerBothCarriers(t *testing.T)
 	}
 }
 
-func TestRouteCompiledCommandRegistrationBothCarriers(t *testing.T) {
+func TestRouteCompiledCommandRegistrationTCP(t *testing.T) {
 	testRouteCompiledCommand(t, true)
 }
 
-func TestRouteCompiledCommandReplenishmentBothCarriers(t *testing.T) {
+func TestRouteCompiledCommandReplenishmentTCP(t *testing.T) {
 	testRouteCompiledCommand(t, true, true)
 }
 
 func testRouteCompiledCommand(t *testing.T, introduction bool, refill ...bool) {
 	t.Helper()
 	_ = compiledCommand(t)
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			domain := byte(3)
 			role := admission.AllocationUser

@@ -23,7 +23,7 @@ import (
 // Instance acceptance, registration, publication floor/record, private signer,
 // issuer tokens, both prefixes and the receiving Node Store are real owners.
 func TestTextPublisherCommitsInstanceSignedDescriptor(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			endpoint, owner, sourceState := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			public, authority, err := ed25519.GenerateKey(rand.Reader)

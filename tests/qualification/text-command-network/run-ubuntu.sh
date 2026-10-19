@@ -138,7 +138,7 @@ cleanup_scopes || fail 'installed command journey retained a Node scope'
 root=TestInstalledClosedTextCommandsThroughNodeProcesses
 [ "$(grep -c "^[[:space:]]*--- PASS: $root (" "$run_log" || true)" = 1 ] ||
 	fail 'installed command journey lacks root test evidence'
-for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+for carrier in ardents-carrier-tcp-tls-v2; do
 	[ "$(grep -c "^[[:space:]]*--- PASS: $root/$carrier (" "$run_log" || true)" = 1 ] ||
 		fail 'installed command journey lacks exact Carrier evidence'
 	for size in empty 64KiB 4MiB; do

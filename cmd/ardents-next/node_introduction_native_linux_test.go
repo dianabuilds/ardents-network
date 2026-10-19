@@ -41,17 +41,17 @@ import (
 // isolated HPKE holder recipient, not a qualified Job/Instance/Service. Actual
 // signed State, issuing Stock, new Forwarding and the canonical native Node
 // Introduction command supply every authority, spend, reservation and ACK.
-func TestNativeIntroductionRegisterSubmitWithdrawBothCarriers(t *testing.T) {
+func TestNativeIntroductionRegisterSubmitWithdrawTCP(t *testing.T) {
 	nativeIntroductionCommandWorkload(t, "withdraw")
 }
-func TestNativeIntroductionUndercoverageBeforeSpendBothCarriers(t *testing.T) {
+func TestNativeIntroductionUndercoverageBeforeSpendTCP(t *testing.T) {
 	nativeIntroductionCommandWorkload(t, "undercoverage")
 }
-func TestNativeIntroductionOriginalHistoryLossBothCarriers(t *testing.T) {
+func TestNativeIntroductionOriginalHistoryLossTCP(t *testing.T) {
 	nativeIntroductionCommandWorkload(t, "history-loss")
 }
 
-func TestNativeIntroductionOriginalCommandFailureBothCarriers(t *testing.T) {
+func TestNativeIntroductionOriginalCommandFailureTCP(t *testing.T) {
 	for _, fault := range []string{"protection-loss", "clock-loss"} {
 		t.Run(fault, func(t *testing.T) { nativeIntroductionCommandWorkload(t, fault) })
 	}
@@ -59,7 +59,7 @@ func TestNativeIntroductionOriginalCommandFailureBothCarriers(t *testing.T) {
 
 func nativeIntroductionCommandWorkload(t *testing.T, mode string) {
 	commandBinary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			f, sockets, certificates := publicationRouteNetwork(t, carrier)
 			holder := nativeIntroductionStock(t, f)
@@ -389,9 +389,9 @@ func startNativeIntroduction(t *testing.T, binary, plan string, index byte) *nat
 	return p
 }
 
-func TestNativeIntroductionPartialStartupRefusalsBothCarriers(t *testing.T) {
+func TestNativeIntroductionPartialStartupRefusalsTCP(t *testing.T) {
 	binary := nodeNativeCommand(t)
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			for _, fault := range []string{"profile", "unknown-field", "nested-roots", "role", "tls-key", "missing-hosting", "foreign-history", "foreign-spend"} {
 				t.Run(fault, func(t *testing.T) {

@@ -31,14 +31,14 @@ TestOriginalNativeJoinManagedMemoryPressureRetires
 TestOriginalNativeJoinProcessProfile'
 discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeJoin' | grep '^TestOriginalNativeJoin' | sort)
 test "$discovered_resources" = "$expected_resources" || { echo 'Join resource discovery differs' >&2; exit 2; }
-expected='TestNativeJoinDuplexAndReopenBothCarriers
-TestNativeJoinMismatchedPairRefusesBothCarriers
-TestNativeJoinOperationBoundariesBothCarriers
-TestNativeJoinOriginalAuthorityAndJoinBothCarriers
-TestNativeJoinOriginalCommandLossAfterIOBothCarriers
-TestNativeJoinPartialStartupRefusalsBothCarriers
-TestNativeJoinUnavailableCompletionRetainsOriginalProducerBothCarriers
-TestNativeJoinUndercoverageBeforeSpendBothCarriers'
+expected='TestNativeJoinDuplexAndReopenTCP
+TestNativeJoinMismatchedPairRefusesTCP
+TestNativeJoinOperationBoundariesTCP
+TestNativeJoinOriginalAuthorityAndJoinTCP
+TestNativeJoinOriginalCommandLossAfterIOTCP
+TestNativeJoinPartialStartupRefusalsTCP
+TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP
+TestNativeJoinUndercoverageBeforeSpendTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeJoin' | grep '^TestNativeJoin' | sort)
 test "$discovered" = "$expected" || { echo 'Join workload discovery differs' >&2; exit 2; }
 
@@ -49,10 +49,10 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     --property=LimitNOFILE=1024 --property=RuntimeMaxSec=120s \
     --setenv=GOMAXPROCS=1 --setenv=GOMEMLIMIT=512MiB \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^TestOriginalNativeJoin' -test.timeout=90s
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoin(DuplexAndReopenBothCarriers|UndercoverageBeforeSpendBothCarriers)$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOriginalAuthorityAndJoinBothCarriers$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinUnavailableCompletionRetainsOriginalProducerBothCarriers$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinMismatchedPairRefusesBothCarriers$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOriginalCommandLossAfterIOBothCarriers$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinPartialStartupRefusalsBothCarriers$' -test.timeout=3m
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOperationBoundariesBothCarriers$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoin(DuplexAndReopenTCP|UndercoverageBeforeSpendTCP)$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOriginalAuthorityAndJoinTCP$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinMismatchedPairRefusesTCP$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOriginalCommandLossAfterIOTCP$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinPartialStartupRefusalsTCP$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOperationBoundariesTCP$' -test.timeout=3m

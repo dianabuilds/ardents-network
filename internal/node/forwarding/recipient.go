@@ -47,7 +47,7 @@ func recipient(source authority.Source, snapshot state.NodeDuty, open route.Clos
 			continue
 		}
 		if matchedCandidate || value.RecordDigest != recipient.RecordDigest || value.PublicKey == [32]byte{} || !literalEndpoint(value.Endpoint) ||
-			(carrier.CarrierProfile(value.CarrierProfile) != carrier.ClosedCarrierTCP && carrier.CarrierProfile(value.CarrierProfile) != carrier.ClosedCarrierQUIC) ||
+			(carrier.CarrierProfile(value.CarrierProfile) != carrier.ClosedCarrierTCP) ||
 			!now.Before(value.ValidUntil) || !now.Before(value.AssignmentNotAfter) {
 			return state.NodeDutyCandidate{}, errors.New("closed forwarding recipient is unavailable")
 		}

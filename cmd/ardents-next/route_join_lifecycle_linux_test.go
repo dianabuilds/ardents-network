@@ -164,7 +164,7 @@ func openJoinFixtureRole(t *testing.T, f *networkAdmissionFixture, installation 
 }
 
 func TestRouteStockedResponderCannotAdoptReplacementSource(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, sockets, certificates := newJoinRouteFixture(t, profile)
 			holder := joinLifecycleStock(t, f)
@@ -253,7 +253,7 @@ func TestRouteStockedResponderCannotAdoptReplacementSource(t *testing.T) {
 }
 
 func TestRouteResponderOpeningLosesOriginalSourceDuringPresentation(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		for _, checkpoint := range []int32{1, 2} {
 			t.Run(fmt.Sprintf("%s/presentation-%d", profile, checkpoint), func(t *testing.T) {
 				f, sockets, certificates := newJoinRouteFixture(t, profile)
@@ -367,7 +367,7 @@ func TestRouteResponderOpeningLosesOriginalSourceDuringPresentation(t *testing.T
 }
 
 func TestRouteContextReopenRetainsChoiceAndOriginalHandles(t *testing.T) {
-	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, profile := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(profile), func(t *testing.T) {
 			f, sockets, certificates := newJoinRouteFixture(t, profile)
 			holder := joinLifecycleStock(t, f)

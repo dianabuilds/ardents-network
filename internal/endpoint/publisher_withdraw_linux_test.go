@@ -16,7 +16,7 @@ import (
 // The reader delays its document request until withdrawal has stopped new
 // admissions. Its already authenticated Connection must still deliver the body.
 func TestTextPublisherWithdrawalDrainsAdmittedRead(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			readerOwner, publisherOwner := unpublishedNetworkFixture(t, carrier)
 			body := []byte("an admitted read survives publication withdrawal")

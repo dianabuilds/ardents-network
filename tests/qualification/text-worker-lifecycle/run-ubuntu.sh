@@ -7,23 +7,23 @@ maximum_polls=1500
 case "${1-lifecycle}" in
     lifecycle) test_root=TestInstalledTextWorkerLifecycle ;;
     execution) test_root=TestInstalledExecutionLifecycle ;;
-    execution-route) test_root=TestInstalledExecutionRouteBothCarriers ;;
-    connection-stream) test_root=TestInstalledConnectionStreamBothCarriers ;;
-    connection-control-received) test_root=TestInstalledConnectionControlReceivedBothCarriers; maximum_polls=12600 ;;
-    connection-control-delivery) test_root=TestInstalledConnectionControlDeliveryBothCarriers; maximum_polls=12600 ;;
-    connection-authority) test_root=TestInstalledConnectionAuthorityBothCarriers; maximum_polls=12600 ;;
+    execution-route) test_root=TestInstalledExecutionRouteTCP ;;
+    connection-stream) test_root=TestInstalledConnectionStreamTCP ;;
+    connection-control-received) test_root=TestInstalledConnectionControlReceivedTCP; maximum_polls=12600 ;;
+    connection-control-delivery) test_root=TestInstalledConnectionControlDeliveryTCP; maximum_polls=12600 ;;
+    connection-authority) test_root=TestInstalledConnectionAuthorityTCP; maximum_polls=12600 ;;
     connection-control)
-        # The complete 24-case matrix, including race instrumentation, uses the
+        # The complete 12-case TCP matrix, including race instrumentation, uses the
         # pinned unit's twenty-minute test timeout and twenty-one-minute runtime.
-        test_root=TestInstalledConnectionControlWritesBothCarriers; maximum_polls=12600
+        test_root=TestInstalledConnectionControlWritesTCP; maximum_polls=12600
         ;;
-    connection-refresh) test_root=TestInstalledConnectionRefreshBothCarriers ;;
-    connection-reopen) test_root=TestInstalledConnectionDurableReopenBothCarriers ;;
-    connection-withdrawal) test_root=TestInstalledConnectionWithdrawalBothCarriers ;;
-    connection-nonce) test_root=TestInstalledConnectionNonceBothCarriers ;;
+    connection-refresh) test_root=TestInstalledConnectionRefreshTCP ;;
+    connection-reopen) test_root=TestInstalledConnectionDurableReopenTCP ;;
+    connection-withdrawal) test_root=TestInstalledConnectionWithdrawalTCP ;;
+    connection-nonce) test_root=TestInstalledConnectionNonceTCP ;;
     publication-timing)
         [ "${2--timeout=15m}" = -timeout=15m ] || fail 'invalid environment: elapsed Publication requires its fixed fifteen-minute bound'
-        test_root=TestInstalledPublicationElapsedBothCarriers; maximum_polls=9000
+        test_root=TestInstalledPublicationElapsedTCP; maximum_polls=9000
         ;;
     execution-recovery) test_root=TestInstalledExecutionEndpointDeath ;;
     network) test_root=TestInstalledTextWorkersReadTargetThroughJoinedNetwork; maximum_polls=10000 ;;
@@ -64,7 +64,7 @@ done
     fail 'invalid environment: Ubuntu 24.04 x86-64 required'
 [ "$(stat -fc %T /sys/fs/cgroup)" = cgroup2fs ] || fail 'invalid environment: cgroup v2 required'
 binary=/usr/lib/ardents/qualification/endpoint.test
-if [ "$test_root" = TestInstalledConnectionDurableReopenBothCarriers ]; then
+if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
 fi
 if [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ]; then
@@ -79,7 +79,7 @@ if [ "$test_root" = TestInstalledExecutionEndpointDeath ]; then
     printf '%s  %s\n' "$ARDENTS_TEXT_HOSTILE_WORKER_SHA256" "$worker" | sha256sum --check --status ||
         fail 'invalid environment: hostile artifact differs from declared candidate'
 fi
-if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ] || [ "$test_root" = TestInstalledPublicationElapsedBothCarriers ] || [ "$test_root" = TestInstalledConnectionStreamBothCarriers ] || [ "$test_root" = TestInstalledConnectionAuthorityBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlDeliveryBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlReceivedBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlWritesBothCarriers ] || [ "$test_root" = TestInstalledConnectionRefreshBothCarriers ] || [ "$test_root" = TestInstalledConnectionWithdrawalBothCarriers ] || [ "$test_root" = TestInstalledConnectionNonceBothCarriers ]; then
+if [ "$test_root" = TestInstalledExecutionRouteTCP ] || [ "$test_root" = TestInstalledPublicationElapsedTCP ] || [ "$test_root" = TestInstalledConnectionStreamTCP ] || [ "$test_root" = TestInstalledConnectionAuthorityTCP ] || [ "$test_root" = TestInstalledConnectionControlDeliveryTCP ] || [ "$test_root" = TestInstalledConnectionControlReceivedTCP ] || [ "$test_root" = TestInstalledConnectionControlWritesTCP ] || [ "$test_root" = TestInstalledConnectionRefreshTCP ] || [ "$test_root" = TestInstalledConnectionWithdrawalTCP ] || [ "$test_root" = TestInstalledConnectionNonceTCP ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
 fi
 unit=/run/systemd/system/ardents-endpoint.service
@@ -141,44 +141,47 @@ printf '%s\n' "$journal"
     [ "$(systemctl show ardents-endpoint.service -p ExecMainStatus --value)" = 0 ] ||
     fail 'installed text-worker lifecycle failed or did not terminate'
 set -- "$test_root" "$test_root/reader" "$test_root/publisher"
-if [ "$test_root" = TestInstalledConnectionDurableReopenBothCarriers ]; then
-    set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2" "$test_root/ardents-carrier-quic-v2"
+if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ]; then
+    set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2"
 fi
-if [ "$test_root" = TestInstalledConnectionWithdrawalBothCarriers ]; then
-    set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2" "$test_root/ardents-carrier-quic-v2"
+if [ "$test_root" = TestInstalledConnectionWithdrawalTCP ]; then
+    set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2"
 fi
-if [ "$test_root" = TestInstalledConnectionNonceBothCarriers ]; then
-    set -- "$test_root"
-    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+if [ "$test_root" = TestInstalledConnectionNonceTCP ]; then
+    set -- "$test_root" "$test_root/closed-peer-write"
+    for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier" "$test_root/$carrier/result" "$test_root/$carrier/join" "$test_root/$carrier/tls"
     done
 fi
-if [ "$test_root" = TestInstalledConnectionRefreshBothCarriers ]; then
+if [ "$test_root" = TestInstalledConnectionRefreshTCP ]; then
     set -- "$test_root"
-    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+    for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier" "$test_root/$carrier/accepted" "$test_root/$carrier/pending-ack"
     done
 fi
-if [ "$test_root" = TestInstalledConnectionStreamBothCarriers ]; then
+if [ "$test_root" = TestInstalledConnectionStreamTCP ]; then
     set -- "$test_root"
-    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+    for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier" "$test_root/$carrier/before-request-loss" "$test_root/$carrier/before-request-terminal-commit-loss" "$test_root/$carrier/responder-parent-loss" "$test_root/$carrier/source-parent-loss" "$test_root/$carrier/source-stock-exhaustion" "$test_root/$carrier/publisher-source-parent-loss" "$test_root/$carrier/response-loss" "$test_root/$carrier/after-request-terminal-loss" "$test_root/$carrier/caller-observation-loss" "$test_root/$carrier/close-observation-loss" "$test_root/$carrier/publisher-observation-loss" "$test_root/$carrier/publisher-close-observation-loss"
     done
 fi
-if [ "$test_root" = TestInstalledConnectionControlWritesBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlReceivedBothCarriers ] || [ "$test_root" = TestInstalledConnectionControlDeliveryBothCarriers ]; then
+if [ "$test_root" = TestInstalledConnectionControlWritesTCP ] || [ "$test_root" = TestInstalledConnectionControlReceivedTCP ] || [ "$test_root" = TestInstalledConnectionControlDeliveryTCP ]; then
     set -- "$test_root"
-    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+    for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier"
+        if [ "$test_root" = TestInstalledConnectionControlWritesTCP ]; then
+            set -- "$@" "$test_root/$carrier/independent-progress"
+        fi
         for role in initiator publisher; do
             set -- "$@" "$test_root/$carrier/$role"
             for kind in terminal receipt confirmation; do
                 set -- "$@" "$test_root/$carrier/$role/$kind"
-                if [ "$test_root" = TestInstalledConnectionControlWritesBothCarriers ]; then
+                if [ "$test_root" = TestInstalledConnectionControlWritesTCP ]; then
                     for cut in before-write after-write; do
                         set -- "$@" "$test_root/$carrier/$role/$kind/$cut"
                     done
                 fi
-                if [ "$test_root" = TestInstalledConnectionControlDeliveryBothCarriers ]; then
+                if [ "$test_root" = TestInstalledConnectionControlDeliveryTCP ]; then
                     for cut in before-receive after-finish; do
                         set -- "$@" "$test_root/$carrier/$role/$kind/$cut"
                     done
@@ -187,9 +190,9 @@ if [ "$test_root" = TestInstalledConnectionControlWritesBothCarriers ] || [ "$te
         done
     done
 fi
-if [ "$test_root" = TestInstalledConnectionAuthorityBothCarriers ]; then
+if [ "$test_root" = TestInstalledConnectionAuthorityTCP ]; then
     set -- "$test_root"
-    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+    for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier"
         for role in initiator publisher; do
             set -- "$@" "$test_root/$carrier/$role"
@@ -199,9 +202,9 @@ if [ "$test_root" = TestInstalledConnectionAuthorityBothCarriers ]; then
         done
     done
 fi
-if [ "$test_root" = TestInstalledPublicationElapsedBothCarriers ]; then
+if [ "$test_root" = TestInstalledPublicationElapsedTCP ]; then
     set -- "$test_root"
-    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+    for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier" "$test_root/$carrier/initial-delayed-ack" "$test_root/$carrier/creation-refresh" "$test_root/$carrier/bounded-overlap"
     done
 fi
@@ -211,9 +214,9 @@ fi
 if [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ]; then
     set -- "$test_root" "$test_root/connection" "$test_root/administration"
 fi
-if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ]; then
-    set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2" "$test_root/ardents-carrier-quic-v2"
-    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+if [ "$test_root" = TestInstalledExecutionRouteTCP ]; then
+    set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2"
+    for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier/service-authentication" "$test_root/$carrier/service-text" "$test_root/$carrier/service-recovery"
         set -- "$@" "$test_root/$carrier/publication-worker-ack" "$test_root/$carrier/publication-worker-ack/initial" "$test_root/$carrier/publication-worker-ack/replacement"
         set -- "$@" "$test_root/$carrier/publication-worker-ack/initial/accepted-history" "$test_root/$carrier/publication-worker-ack/retained-history"
@@ -226,7 +229,7 @@ if [ "$test_root" = TestInstalledExecutionRouteBothCarriers ]; then
 fi
 if [ "$test_root" = TestInstalledTextWorkersReadTargetThroughJoinedNetwork ]; then
     set -- "$test_root"
-    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+    for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier"
         for size in empty reference maximum refresh; do
             set -- "$@" "$test_root/$carrier/$size"
@@ -235,7 +238,7 @@ if [ "$test_root" = TestInstalledTextWorkersReadTargetThroughJoinedNetwork ]; th
 fi
 if [ "$test_root" = TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork ]; then
     set -- "$test_root"
-    for carrier in ardents-carrier-tcp-tls-v2 ardents-carrier-quic-v2; do
+    for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier"
     done
 fi

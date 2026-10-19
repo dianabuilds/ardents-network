@@ -29,7 +29,7 @@ func TestTextPublicationIsolatedRoleObservations(t *testing.T) {
 		runRoleObservationChild(t, path)
 		return
 	}
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			output := t.TempDir()
 			if root := os.Getenv("ARDENTS_TEXT_ROLE_OBSERVATIONS"); root != "" {

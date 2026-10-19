@@ -178,6 +178,29 @@ func TestParticipantExclusionKeepsNodeKeyAndFamilyDistinct(t *testing.T) {
 }
 
 func authorityObservation(t *testing.T, now time.Time, generation uint64, digest [32]byte) network.RuntimeView {
+	return authorityCarrierObservation(t, now, generation, digest, "ardents-carrier-tcp-tls-v2")
+}
+
+func TestAuthorityRefusesAuthenticatedDeferredCarrier(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	view := authorityCarrierObservation(t, now, 1, [32]byte{104}, "ardents-carrier-quic-v2")
+	duty, err := view.RetainDuty([32]byte{1}, now)
+	if err != nil {
+		t.Fatal("historical signed profile facts must stay distinguishable", err)
+	}
+	authority := Authority{Duty: duty, Profile: view.Profile().ProfileBinding, Current: func() (network.RuntimeView, error) { return view, nil }}
+	if member, err := authority.Member(); err == nil || member != (network.Member{}) {
+		t.Fatal("authenticated historical QUIC facts granted current Route work", err)
+	}
+	if hello, err := authority.FreshHello(now.Add(time.Minute), ardp.PurposeForwarding, false); err == nil || hello != (ardp.Hello{}) {
+		t.Fatal("deferred QUIC obtained an accepting HELLO", err)
+	}
+	if authority.Duty.CarrierProfile != "ardents-carrier-quic-v2" {
+		t.Fatal("deferred profile was rebound to TCP")
+	}
+}
+
+func authorityCarrierObservation(t *testing.T, now time.Time, generation uint64, digest [32]byte, carrier string) network.RuntimeView {
 	t.Helper()
 	binding := network.ProfileBinding{Network: [32]byte{101}, Generation: [32]byte{102}, EpochDigest: [32]byte{103}, Digest: digest, Epoch: 1, NotBefore: now.Add(-time.Hour), NotAfter: now.Add(time.Hour)}
 	profile := network.ProfileFacts{ProfileBinding: binding, IssuanceAuthorityKey: [32]byte{106}, IssuerNodeID: [32]byte{2}, IssuerDutyGeneration: 1, TokenKeys: []network.TokenKey{{WindowStart: now.Truncate(time.Hour), Class: 2, SPKI: [346]byte{1}}}}
@@ -188,7 +211,7 @@ func authorityObservation(t *testing.T, now time.Time, generation uint64, digest
 		if id == 2 {
 			domain, subrole, name, recordGeneration = 2, 6, "rendezvous", 1
 		}
-		record := network.NodeRecord{NodeID: [32]byte{id}, RecordDigest: [32]byte{id + 60}, PublicKey: [32]byte{id + 20}, FamilyID: [32]byte{id + 40}, Generation: recordGeneration, Assignment: name, CarrierProfile: "ardents-carrier-tcp-tls-v2", Endpoint: "127.0.0.1:2000", Capacity: 1, ValidFrom: binding.NotBefore, ValidUntil: binding.NotAfter, AssignmentNotAfter: binding.NotAfter}
+		record := network.NodeRecord{NodeID: [32]byte{id}, RecordDigest: [32]byte{id + 60}, PublicKey: [32]byte{id + 20}, FamilyID: [32]byte{id + 40}, Generation: recordGeneration, Assignment: name, CarrierProfile: carrier, Endpoint: "127.0.0.1:2000", Capacity: 1, ValidFrom: binding.NotBefore, ValidUntil: binding.NotAfter, AssignmentNotAfter: binding.NotAfter}
 		records = append(records, record)
 		assignments = append(assignments, network.Assignment{NodeID: record.NodeID, RecordDigest: record.RecordDigest, Generation: recordGeneration, RoleDomain: domain, Subrole: subrole})
 	}

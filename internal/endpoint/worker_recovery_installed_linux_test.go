@@ -31,7 +31,7 @@ func TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork(t *testin
 	if err := worker.VerifyEndpointService(ctx); err != nil {
 		t.Fatalf("invalid installed environment: %v", err)
 	}
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			exerciseInstalledWorkerRecovery(t, ctx, carrier)
 		})

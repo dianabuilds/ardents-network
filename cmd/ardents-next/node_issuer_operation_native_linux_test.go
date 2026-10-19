@@ -49,20 +49,20 @@ type nativeIssuerOperationPlan struct {
 // Only schedules a real State return after actual result-journal growth. The
 // child opens the genuine original Node; the parent owns independent genuine
 // Stock and physical Prefixes. No fixture signs a successful runtime response.
-func TestNativeIssuerOperationJoinAndExactRetryBothCarriers(t *testing.T) {
+func TestNativeIssuerOperationJoinAndExactRetryTCP(t *testing.T) {
 	if path := os.Getenv("ARDENTS_ISSUER_OPERATION_FIXTURE"); path != "" {
 		nativeIssuerOperationChild(t, path)
 		return
 	}
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		for _, mode := range []string{"retry", "pre-debit-caller", "post-debit-caller", "post-result-caller", "post-result-successor"} {
 			t.Run(string(carrier)+"/"+mode, func(t *testing.T) { nativeIssuerOperationParent(t, carrier, mode) })
 		}
 	}
 }
 
-func TestNativeIssuerStorageUncertaintyBothCarriers(t *testing.T) {
-	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP, transport.ClosedCarrierQUIC} {
+func TestNativeIssuerStorageUncertaintyTCP(t *testing.T) {
+	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		for _, mode := range []string{"quota-uncertain", "result-uncertain"} {
 			t.Run(string(carrier)+"/"+mode, func(t *testing.T) { nativeIssuerOperationParent(t, carrier, mode) })
 		}
@@ -366,7 +366,7 @@ func nativeIssuerOperationParent(t *testing.T, carrier transport.CarrierProfile,
 	unit := fmt.Sprintf("ardents-issuer-operation-%d.service", os.Getpid())
 	command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
 		"--property=CPUQuota=100%", "--property=CPUQuotaPeriodSec=100ms", "--property=MemoryMax=1G", "--property=MemoryHigh=768M", "--property=TasksMax=256", "--property=LimitNOFILE=1024", "--property=RuntimeMaxSec=60s",
-		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_ISSUER_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", testBinary, "-test.v=true", "-test.run=^TestNativeIssuerOperationJoinAndExactRetryBothCarriers$", "-test.timeout=30s")
+		"--setenv=GOMAXPROCS=1", "--setenv=GOMEMLIMIT=512MiB", "--setenv=ARDENTS_ISSUER_OPERATION_FIXTURE="+hostingConfig(t, plan), "--", testBinary, "-test.v=true", "-test.run=^TestNativeIssuerOperationJoinAndExactRetryTCP$", "-test.timeout=30s")
 	var diagnostic nativeNodeDiagnostic
 	command.Stdout, command.Stderr = &diagnostic, &diagnostic
 	if err := command.Start(); err != nil {

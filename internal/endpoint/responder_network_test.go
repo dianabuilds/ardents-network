@@ -26,7 +26,7 @@ func addResponderPrefixState(source *sourceStateFixture) {
 }
 
 func TestTextResponderRejectsKnownIntroductionFamiliesBeforeIssuance(t *testing.T) {
-	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP, routecarrier.ClosedCarrierQUIC} {
+	for _, carrier := range []routecarrier.CarrierProfile{routecarrier.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
 			_, owner, source := startRoleNetwork(t, roleNetworkFixture{carrier: carrier, resolution: true, publisher: true})
 			if _, err := owner.openPrefix(t.Context()); err != nil {

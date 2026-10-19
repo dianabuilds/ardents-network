@@ -1,5 +1,14 @@
 # Route integration: terminal transport, opaque delivery and Rendezvous JOIN
 
+The nearest closed release uses TCP/TLS alone under
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). Dual-Carrier receipts
+below remain historical evidence; final integration requires exact-source TCP
+consumers and explicit QUIC pre-effect refusal with no fallback. All genuine
+Publication, Reachability, Connection, Execution, Admission and Hosting seams,
+authority/spend ordering, durable floors and joined completion stay required.
+The unresolved QUIC finding is deferred; runtime exclusion must be proved before
+this release can be accepted and is not a claim that the dependency was fixed.
+
 Maintained integration and acceptance contract. Prefix/channel, registration,
 JOIN, parent refill, issuer/Descriptor Control and opaque transport have actual
 new owners; the current technical contracts record those realized boundaries.
@@ -579,9 +588,10 @@ They grant no old/new Route bridge and select no additional implementation here.
 
 Dependency admission is a separate required check of these actual consumers.
 The [unresolved QUIC return-path finding](dependencies.md#existing-quic-finding-return-path-reply-budget)
-still blocks admission of the affected server use. Successful Carrier exchanges,
-native profiles and a clean advisory scan do not supply its missing exact-profile
-measurement or an enforceable non-applicability boundary. The implemented
-consumer graph must not be reported as complete Route acceptance while that
-dependency obligation remains unresolved.
+still blocks future admission of the affected QUIC server use. Successful Carrier
+exchanges, native profiles and a clean advisory scan do not resolve that finding.
+For the TCP/TLS-only release selected by ADR-0122, acceptance instead requires
+verified exclusion of QUIC from actual product and delivered-artifact execution,
+explicit pre-effect refusal and every other applicable Route obligation above.
+This exclusion neither fixes nor qualifies the deferred QUIC dependency.
 

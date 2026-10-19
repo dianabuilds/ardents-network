@@ -297,7 +297,7 @@ func (pool *ClosedCarrierPool) Close() error {
 
 func validClosedCarrierKey(key ClosedCarrierKey) bool {
 	return key.NetworkID != [32]byte{} && key.ProfileDigest != [32]byte{} && key.LocalNodeID != [32]byte{} && key.PeerNodeID != [32]byte{} &&
-		key.PeerKey != [32]byte{} && key.LocalNodeID != key.PeerNodeID && (key.CarrierProfile == ClosedCarrierTCP || key.CarrierProfile == ClosedCarrierQUIC)
+		key.PeerKey != [32]byte{} && key.LocalNodeID != key.PeerNodeID && key.CarrierProfile == ClosedCarrierTCP
 }
 
 func (key ClosedCarrierKey) pair() closedCarrierPair {
