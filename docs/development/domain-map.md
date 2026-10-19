@@ -367,6 +367,9 @@ Failure exposes neither a positive read count nor the staged plaintext.
 An early original-owner refusal retains the Stream's first logical failure;
 later cancellation cannot replace it. Failed Source/Responder acquisition also
 retains the joined original generation outcome before any replacement handoff.
+Initial Reader authentication retains its original setup deadline after joined
+proof/Continuity input, separately from the Attachment's interruption and actual
+physical error. Expired setup cannot transfer buffered complete bytes.
 An unsuccessful Attachment retires its exact Route child with the existing
 refusal terminal; its cleanup cannot mint a clean child witness and retire the
 peer's still-needed Terminal-control tail. The original logical owner and

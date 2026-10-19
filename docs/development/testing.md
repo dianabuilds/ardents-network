@@ -38,6 +38,11 @@ outcome before socket acquisition or token presentation, preserve the signed
 historical profile and independently observe no UDP output or TCP fallback.
 The removed QUIC adapter's earlier deadline and role-observation receipts remain
 historical evidence of their original source.
+The retained factory probe acquires its TCP and UDP sentinels on one jointly
+bindable loopback endpoint before invoking a carrier. Bounded local candidate
+selection handles separate protocol reservations; exhaustion and failed handle
+closure remain environment failures. An occupied-UDP control verifies candidate
+rejection and TCP release. Carrier assertions and operations are never retried.
 
 The signed-Network command fixture keeps its shared state in both checked
 profiles. Only `text_worker_installed` adds receiving-root reopen controls and
@@ -66,6 +71,15 @@ state. These controls supply no authenticated stream or successful recovery.
 `terminal_tail_test.go` renews actual control-ledger transitions after a settled
 Application result and refuses tail completion at every missing current proof.
 This pure rule test supplies neither authority nor a decoded Route witness.
+The installed delayed-observation refusal fixture retains the exact joined
+logical Close result for its later cleanup comparison. A canceled original Job
+can supply its own retirement refusal alongside cancellation; that is not a
+successful Application result. After joining the original Source and Publication,
+it also retains their complete work results for the same exact-result comparison.
+Those errors are not normalized into success. The fixture separately requires
+nil physical Stream and worker cleanup, immutable repeated Close, no late
+plaintext and no completed-current worker. Unknown sibling failures still fail
+the comparison.
 The native `after-request-terminal-loss` case holds only the delivery of actual
 authenticated request EOF to the original Publisher worker, interrupts the
 original Rendezvous and resumes the same Text request/response over replacement.

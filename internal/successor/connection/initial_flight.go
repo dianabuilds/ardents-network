@@ -2,6 +2,7 @@ package connection
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"io"
 
@@ -28,6 +29,26 @@ func (flight *initialFlight) readRecord() (wire.Record, error) {
 		return wire.Record{}, errors.Join(err, flight.input.failure)
 	}
 	return record, err
+}
+
+// The setup caller can expire before its cancellation callback interrupts the
+// physical Attachment. Retain that original cause after the read has joined;
+// neither buffered complete bytes nor physical cancellation extend setup.
+func (flight *initialFlight) readSetupRecord(ctx context.Context) (wire.Record, error) {
+	if ctx == nil {
+		return wire.Record{}, errIntegrity
+	}
+	if err := ctx.Err(); err != nil {
+		return wire.Record{}, err
+	}
+	record, err := flight.readRecord()
+	if errors.Is(err, wire.ErrInvalidRecord) {
+		err = errors.Join(errIntegrity, err)
+	}
+	if err = errors.Join(err, ctx.Err()); err != nil {
+		return wire.Record{}, err
+	}
+	return record, nil
 }
 
 // Buffered parsing must not hide a failed original read that returned bytes.

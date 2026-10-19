@@ -1323,6 +1323,7 @@
           "internal/successor/connection.attachmentRecordReader.readRecord",
           "internal/successor/connection.attachmentSetupDeadline",
           "internal/successor/connection.initialFlight.readRecord",
+          "internal/successor/connection.initialFlight.readSetupRecord",
           "internal/successor/connection.initialFlightInput.Read",
           "internal/successor/connection.initialFlightReader",
           "internal/successor/connection.initiatorAttachment.observe",

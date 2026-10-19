@@ -105,13 +105,19 @@ func AuthenticateInitiator(ctx context.Context, binding *InitiatorBinding, physi
 		return nil, errors.Join(err, io.ErrShortWrite)
 	}
 	response := initialFlightReader(attachment, wire.InitialResponseBytes)
-	first, err := response.readRecord()
-	if err != nil || first.Proof == nil {
-		return nil, errors.Join(errIntegrity, err)
+	first, err := response.readSetupRecord(ctx)
+	if err != nil {
+		return nil, err
 	}
-	second, err := response.readRecord()
-	if err != nil || second.Continuity == nil {
-		return nil, errors.Join(errIntegrity, err)
+	if first.Proof == nil {
+		return nil, errIntegrity
+	}
+	second, err := response.readSetupRecord(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if second.Continuity == nil {
+		return nil, errIntegrity
 	}
 	receipt, err := wire.VerifyPeerInitialResponse(evidence, binding.identity.Instance, challenge, request, *first.Proof, *second.Continuity)
 	if err != nil {

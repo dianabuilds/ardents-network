@@ -2,6 +2,7 @@ package carrier
 
 import (
 	"context"
+	"errors"
 	"net"
 	"strings"
 	"testing"
@@ -11,16 +12,23 @@ import (
 // Valid credentials and occupied TCP/UDP endpoints distinguish profile refusal
 // from bind failure, a QUIC exchange, or an attempted TCP fallback.
 func TestDeferredQUICRefusesWithoutSocketOrFallback(t *testing.T) {
-	tcp, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Run("occupied-udp-candidate", func(t *testing.T) {
+		first, occupiedUDP := carrierRefusalSentinels(t, nil)
+		defer first.Close()
+		defer occupiedUDP.Close()
+		tcp, udp := carrierRefusalSentinels(t, first)
+		defer tcp.Close()
+		defer udp.Close()
+		if tcp.Addr().String() == occupiedUDP.LocalAddr().String() || tcp.Addr().String() != udp.LocalAddr().String() {
+			t.Fatal("fixture did not acquire its own jointly bindable endpoint")
+		}
+		if err := first.(*net.TCPListener).SetDeadline(time.Now()); !errors.Is(err, net.ErrClosed) {
+			t.Fatal("unqualified candidate retained its TCP listener", err)
+		}
+	})
+	tcp, udp := carrierRefusalSentinels(t, nil)
 	defer tcp.Close()
 	endpoint := tcp.Addr().String()
-	udp, err := net.ListenPacket("udp", endpoint)
-	if err != nil {
-		t.Fatal(err)
-	}
 	defer udp.Close()
 	certificate := entryBindingCertificate(t, 123)
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
@@ -66,4 +74,34 @@ func TestDeferredQUICRefusesWithoutSocketOrFallback(t *testing.T) {
 	} else if failure, ok := err.(net.Error); !ok || !failure.Timeout() {
 		t.Fatalf("UDP sentinel did not retain its socket: %v", err)
 	}
+}
+
+// TCP and UDP have separate reservations: a TCP ephemeral port can be excluded
+// for UDP. Qualify the fixture only after both sentinels are owned. No carrier
+// assertion or operation runs while selecting these bounded local resources.
+func carrierRefusalSentinels(t *testing.T, first net.Listener) (net.Listener, net.PacketConn) {
+	t.Helper()
+	var last error
+	for candidate := range 8 {
+		tcp := first
+		first = nil
+		var err error
+		if tcp == nil {
+			tcp, err = net.Listen("tcp", "127.0.0.1:0")
+		}
+		if err != nil {
+			t.Fatal("invalid environment: TCP probe listener", err)
+		}
+		udp, err := net.ListenPacket("udp", tcp.Addr().String())
+		if err == nil {
+			return tcp, udp
+		}
+		last = err
+		t.Log("unqualified TCP/UDP probe candidate", candidate+1, err)
+		if err := tcp.Close(); err != nil {
+			t.Fatal("original unqualified probe did not close", err)
+		}
+	}
+	t.Fatal("invalid environment: no jointly bindable TCP/UDP probe endpoint", last)
+	return nil, nil
 }

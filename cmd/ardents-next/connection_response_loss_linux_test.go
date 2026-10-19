@@ -666,7 +666,7 @@ func onlyInstalledConnectionCancellation(err error) bool {
 	return false
 }
 
-func assertInstalledConnectionDelayedObservationRetirement(t *testing.T, ctx context.Context, cancelOriginal context.CancelFunc, checkOriginal func() error, stream, peer *connection.Stream, arm, release func(), entered <-chan struct{}, closeConnection bool) {
+func assertInstalledConnectionDelayedObservationRetirement(t *testing.T, ctx context.Context, cancelOriginal context.CancelFunc, checkOriginal func() error, stream, peer *connection.Stream, arm, release func(), entered <-chan struct{}, closeConnection bool) error {
 	t.Helper()
 	defer release()
 	// Actual authenticated Data establishes a positive byte oracle before the
@@ -760,6 +760,9 @@ func assertInstalledConnectionDelayedObservationRetirement(t *testing.T, ctx con
 	if !errors.Is(closeErr, context.Canceled) {
 		t.Fatal("original canceled Stream lost its retained failure", closeErr)
 	}
+	if err := stream.JoinedCleanup(); err != nil {
+		t.Fatal("original canceled Stream retained a physical cleanup failure", err)
+	}
 	if repeated := stream.Close(); repeated != closeErr {
 		t.Fatal("repeated Close changed its original joined result", repeated, closeErr)
 	}
@@ -782,6 +785,7 @@ func assertInstalledConnectionDelayedObservationRetirement(t *testing.T, ctx con
 	}
 	// Original worker and Source joins belong to the fixture cleanup. No sealed
 	// ReaderResult or successful Application completion is manufactured here.
+	return closeErr
 }
 
 // Pause after the original authenticated Read has returned real bytes. Every

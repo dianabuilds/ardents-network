@@ -771,7 +771,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		readerEnd = time.Now().Add(15 * time.Second).UTC().Truncate(time.Second)
 	}
 	sourceExpectedClose := &expectedReaderClose
-	if authorityFault != "" {
+	if authorityLoss {
 		sourceExpectedClose = &expectedSourceClose
 	}
 	source := installedConnectionInitiatorObserved(t, readerNetwork, readerOperation, link, readerEnd, readerObservation, installedReaderRecoveryStock{
@@ -891,10 +891,25 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	}
 	if authorityLoss {
 		if publisherObservation {
-			assertInstalledConnectionDelayedObservationRetirement(t, ctx, cancelPublisher, publisherOperation.CheckPublisher, peer.stream, stream, armObservation, releaseObservation, observationEntered, timing == "publisher-close-observation")
+			expectedPublisherClose = assertInstalledConnectionDelayedObservationRetirement(t, ctx, cancelPublisher, publisherOperation.CheckPublisher, peer.stream, stream, armObservation, releaseObservation, observationEntered, timing == "publisher-close-observation")
 		} else {
-			assertInstalledConnectionDelayedObservationRetirement(t, ctx, cancelReader, readerOperation.CheckReader, stream, peer.stream, armObservation, releaseObservation, observationEntered, timing == "close-observation")
+			expectedReaderClose = assertInstalledConnectionDelayedObservationRetirement(t, ctx, cancelReader, readerOperation.CheckReader, stream, peer.stream, armObservation, releaseObservation, observationEntered, timing == "close-observation")
 		}
+		readerClose, publisherClose := stream.Close(), peer.stream.Close()
+		if expectedReaderClose != nil && readerClose != expectedReaderClose || expectedPublisherClose != nil && publisherClose != expectedPublisherClose {
+			t.Fatal("delayed observation changed its original joined Close result", readerClose, publisherClose)
+		}
+		expectedReaderClose, expectedPublisherClose = readerClose, publisherClose
+		if err := errors.Join(stream.JoinedCleanup(), peer.stream.JoinedCleanup()); err != nil {
+			t.Fatal("delayed observation retained physical Stream cleanup failure", err)
+		}
+		expectedSourceClose = source.Close()
+		expectedPublicationClose = published.close()
+		if physical, joined := publisher.CleanupResult(); !joined || physical != nil {
+			t.Fatal("delayed observation original Publication physical join", physical, joined)
+		}
+		cancelPublisher()
+		cancelReader()
 		return
 	}
 	if withdrawal {

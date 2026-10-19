@@ -908,6 +908,12 @@ clamped to the original caller, registration, Work Safety and recovery bounds.
 Introduction and the private recipient enforce that same absolute deadline.
 Unpaired JOIN also ends no later than thirty seconds from its original
 reservation. Pairing cannot renew setup or extend the Reader operation.
+Reader's initial authentication reobserves that original setup caller after
+each joined proof/Continuity read. Setup expiry remains a deadline failure even
+when its interruption callback closes the Attachment with physical cancellation;
+the actual input error is retained alongside it. Complete malformed records
+remain integrity failures, while incomplete input alone supplies no integrity
+evidence. Buffered complete bytes cannot survive an expired setup caller.
 Publication construction obtains missing Forward Stock for its already selected
 Introduction and Responder legs in one admitted batch through the original
 Source. Repeated recipients require distinct tokens. This spends the same
