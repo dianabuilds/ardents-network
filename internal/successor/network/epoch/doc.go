@@ -7,4 +7,7 @@
 // closed Node Records and initial Epoch commitments. These producers use the
 // same grammar and Network evaluation rules; signatures and State acceptance remain
 // separate operations.
+// On Linux, VerifyInitialClosedRecord additionally verifies an exact signed
+// initial Record against its canonical preparation for the offline certificate
+// consumer. Detached self-asserted facts grant no State membership or duty.
 package epoch

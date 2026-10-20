@@ -99,6 +99,17 @@ remain proposed until their current contracts and real consumers are verified.
 
 ## Supporting mechanisms and composition
 
+Local Node certificate provisioning is one offline supporting composition,
+`ardents-next network prepare-node-certificate`. Network/epoch owns canonical
+initial Record bytes, ordinary signature verification and detached public facts.
+Composition owns the closed reviewed purpose, original protected matching Node
+key, standard-library X.509 leaf creation/verification and finite public output.
+The original signing input/time/custody and joined failure/secret lifetime remain
+with composition. No private material enters Network/Route; no Identity/Custody/
+PKI domain or generic signer is created. Self-signature supplies no membership:
+State owns signed acceptance/currentness, Node exact member/process/producer
+credential custody, and Route exact-key TLS/ALPN and physical join.
+
 Direct-Origin Source public preparation is one offline supporting composition,
 `ardents-next source prepare-trust`. It retains original externally supplied
 public chains/roots and independently reviewed commitments, and writes the

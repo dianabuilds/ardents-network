@@ -183,8 +183,16 @@ func routeRoleStock(t *testing.T, f *networkAdmissionFixture, introduction bool,
 	}
 	holder := routePermissionStock(t, f, role, maxima)
 	var challenges []token.ClosedTokenContext
+	view, err := f.current()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for i := byte(12); i < 16; i++ {
-		challenges = append(challenges, token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: [32]byte{i}, ReceiverDutyGeneration: 9, Class: 2, WindowStart: time.Now().UTC().Truncate(time.Hour)})
+		member, err := view.Member([32]byte{i}, view.ObservedAt())
+		if err != nil {
+			t.Fatal(err)
+		}
+		challenges = append(challenges, token.ClosedTokenContext{NetworkID: f.profile.NetworkID, ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: [32]byte{i}, ReceiverDutyGeneration: member.DutyGeneration, Class: 2, WindowStart: time.Now().UTC().Truncate(time.Hour)})
 		if len(refill) != 0 && refill[0] {
 			challenges = append(challenges, challenges[len(challenges)-1])
 		}

@@ -37,6 +37,7 @@ TestNativeJoinOperationBoundariesTCP
 TestNativeJoinOriginalAuthorityAndJoinTCP
 TestNativeJoinOriginalCommandLossAfterIOTCP
 TestNativeJoinPartialStartupRefusalsTCP
+TestNativeJoinProvisionedCertificateTCP
 TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP
 TestNativeJoinUndercoverageBeforeSpendTCP'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeJoin' | grep '^TestNativeJoin' | sort)
@@ -49,7 +50,7 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     --property=LimitNOFILE=1024 --property=RuntimeMaxSec=120s \
     --setenv=GOMAXPROCS=1 --setenv=GOMEMLIMIT=512MiB \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run='^TestOriginalNativeJoin' -test.timeout=90s
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoin(DuplexAndReopenTCP|UndercoverageBeforeSpendTCP)$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoin(DuplexAndReopenTCP|UndercoverageBeforeSpendTCP|ProvisionedCertificateTCP)$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinOriginalAuthorityAndJoinTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinUnavailableCompletionRetainsOriginalProducerTCP$' -test.timeout=3m
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeJoinMismatchedPairRefusesTCP$' -test.timeout=3m

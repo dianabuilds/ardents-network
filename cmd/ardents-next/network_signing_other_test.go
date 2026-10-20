@@ -10,7 +10,7 @@ import (
 )
 
 func TestNetworkSigningUnsupportedPlatformRefusesBeforeEffects(t *testing.T) {
-	for _, purpose := range []string{"sign-initial-node-record", "sign-initial-epoch", "sign-closed-profile"} {
+	for _, purpose := range []string{"sign-initial-node-record", "sign-initial-epoch", "sign-closed-profile", "prepare-node-certificate"} {
 		parent := t.TempDir()
 		output := filepath.Join(parent, "fresh")
 		var receipt bytes.Buffer

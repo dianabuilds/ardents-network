@@ -13,7 +13,7 @@ import (
 var errNetworkSigning = errors.New("offline Network signing unavailable")
 
 func isNetworkSigning(operation string) bool {
-	return operation == "sign-initial-node-record" || operation == "sign-initial-epoch" || operation == "sign-closed-profile"
+	return operation == "sign-initial-node-record" || operation == "sign-initial-epoch" || operation == "sign-closed-profile" || operation == "prepare-node-certificate"
 }
 
 type networkSigningResult struct {

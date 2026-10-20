@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
@@ -213,7 +214,12 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 	binary := nodeNativeCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
-			f, sockets, certificates := newRouteFixture(t, carrier)
+			var provisioned map[[32]byte][2]string
+			f, sockets, certificates := newRoleRouteFixtureConfigured(t, carrier, 3, false, false, func(f *networkAdmissionFixture, _ map[[32]byte]func(), certificates map[[32]byte]tls.Certificate) {
+				if retirement == "certificate" {
+					provisioned = provisionNativeNodeCertificates(t, f, certificates, [32]byte{12}, [32]byte{13}, [32]byte{14}, [32]byte{15})
+				}
+			})
 			bundle, err := networkfixture.BuildClosed(f.spec)
 			if err != nil {
 				t.Fatal(err)
@@ -232,19 +238,23 @@ func testNativeNodeForwarding(t *testing.T, retirement string) {
 				id := [32]byte{index}
 				certificate := certificates[id]
 				certPath, keyPath := filepath.Join(t.TempDir(), "certificate"), filepath.Join(t.TempDir(), "key")
-				if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600); err != nil {
-					t.Fatal(err)
+				if pair, ok := provisioned[id]; ok {
+					certPath, keyPath = pair[0], pair[1]
+				} else {
+					if err := os.WriteFile(certPath, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Certificate[0]}), 0600); err != nil {
+						t.Fatal(err)
+					}
+					key, err := x509.MarshalPKCS8PrivateKey(certificate.PrivateKey)
+					if err != nil {
+						t.Fatal(err)
+					}
+					encoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: key})
+					if err := os.WriteFile(keyPath, encoded, 0600); err != nil {
+						t.Fatal(err)
+					}
+					clear(key)
+					clear(encoded)
 				}
-				key, err := x509.MarshalPKCS8PrivateKey(certificate.PrivateKey)
-				if err != nil {
-					t.Fatal(err)
-				}
-				encoded := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: key})
-				if err := os.WriteFile(keyPath, encoded, 0600); err != nil {
-					t.Fatal(err)
-				}
-				clear(key)
-				clear(encoded)
 				budget := routeProcessBudget(t)
 				budgets = append(budgets, budget)
 				root := filepath.Join(t.TempDir(), "participation")

@@ -1,5 +1,31 @@
 # Testing
 
+Forwarding resource discovery partitions out the separately registered Source
+profile as well as the four other receiving profiles. Its exact nine-test
+inventory and execution selector remain unchanged. Source's four native
+resource tests still require their own exact discovery and actual execution in
+`run-source-native.sh`; a role's PASS cannot qualify another profile.
+
+Node certificate provisioning uses the existing `network-signing-linux` native
+profile and its `TestNetworkSigningNodeCertificate*` cases. The real initial
+key, unsigned preparation and Record signer commands produce original inputs.
+Independent standard-library DER/PEM/key/signature/interval/profile oracles and
+causal wrong proof/purpose/key/Carrier/time controls examine the actual output.
+The certificate purpose also runs the original input/refusal/partial-write and
+killed-then-Wait-joined process-cut controls. Shared native writer/custody rules
+are unchanged; their complete existing profile remains required.
+
+`node-process-linux` includes `TestNativeNodeProvisionedCertificateTCP`, and
+`node-join-linux` includes `TestNativeJoinProvisionedCertificateTCP`. Genuine
+key/preparation/Record/certificate commands supply the exact original runtime
+paths. The independent State fixture's canonical Record must match the actual
+producer bytes. Signed State/profile and Admission/cohort authorities remain
+isolated fixtures, not operational bootstrap or independent families. Actual
+Forwarding traffic and JOIN duplex workload retain original process protection,
+durable spend/resources and physical stop/join checks. Runtime credential and
+transport mechanisms are unchanged. This proves no installed infrastructure,
+operational ceremony, power-loss or anonymity qualification.
+
 The deferred-QUIC refusal fixture still qualifies at most eight actual joint
 TCP/UDP loopback candidates before any carrier assertion. After the first
 allocator choice, it spreads probes across the unprivileged port range: Windows

@@ -30,6 +30,7 @@ verify "$ARDENTS_NODE_RESOURCE_TEST" "$ARDENTS_NODE_RESOURCE_TEST_SHA256"
 
 # Verify discovery before executing; a selected profile can never pass zero tests.
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeForwardingTCP$' >/dev/null
+"$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeProvisionedCertificateTCP$' >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodePartialStartupRefusalsTCP$' >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeParentRefillAndReopenTCP$' >/dev/null
 "$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeNode' | grep '^TestNativeNodeOriginalAuthorityAndJoinTCP$' >/dev/null
@@ -44,7 +45,9 @@ TestOriginalNativeProcessProfile
 TestProfileAndOriginalCallerRefuseBeforeNativeEffects
 TestRequiredNativeCounterIsNotAnUnknownZero
 TestRequiredPressureRejectsMissingNonfiniteAndAmbiguous'
-discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^Test' | grep '^Test' | grep -Ev '^TestOriginalNative(Issuer|Descriptor|Introduction|Join)' | sort)
+# Source has its own exact discovery/execution in run-source-native.sh, just as
+# the other receiving profiles below. Its added tests are not Forwarding tests.
+discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^Test' | grep '^Test' | grep -Ev '^TestOriginalNative(Source|Issuer|Descriptor|Introduction|Join)' | sort)
 test "$discovered_resources" = "$expected_resources" || { echo 'Forwarding resource discovery differs' >&2; exit 2; }
 unit=ardents-forwarding-resource-native-$$.service
 systemd-run --quiet --wait --pipe --collect --unit="$unit" \

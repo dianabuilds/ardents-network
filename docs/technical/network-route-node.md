@@ -621,6 +621,22 @@ dials the State endpoints exactly as before.
 
 ## TLS material boundaries
 
+`ardents-next network prepare-node-certificate` is the finite offline producer
+for one local Node certificate. It takes an exact signed initial ARNR-v2 Record,
+its independently reviewed SHA-256 and matching canonical public declaration,
+then admits the original protected matching Node key. Network/epoch verifies
+the canonical Record and ordinary signature and returns detached key/interval
+facts; the command does not parse Record wire bytes or decide membership.
+The standard-library self-signed Ed25519 leaf has an empty subject, CA=false,
+DigitalSignature and server/client transport EKUs. Its interval equals the
+Record exactly. Actual generated X.509 bytes, signature, key and closed profile
+are verified before durable public PEM output. No private key is exported or
+replaced. The original finite signing reference and native custody remain
+required through final acknowledgement. The [operation owner](../operations/qualification-release.md#local-node-certificate)
+defines exact inputs, effects and failure; the certificate supplies neither
+State trust, assignment, currentness nor process admission. Runtime Node and
+Route independently retain their exact member/key, TLS/ALPN and lifetime checks.
+
 Offline `ardents-next source prepare-trust` consumes only externally supplied
 public chains/roots and independently reviewed file commitments/leaf pins for
 two Sources and one client. `network/source.ObservePublicTrust` checks X.509

@@ -50,6 +50,9 @@ func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*n
 	if operation == "sign-closed-profile" {
 		return admitClosedProfileSigning(raw, prepared, pin)
 	}
+	if operation == "prepare-node-certificate" {
+		return admitNodeCertificate(raw, prepared, pin)
+	}
 	field, prepare := "record", "prepare-initial-node-record"
 	if operation == "sign-initial-epoch" {
 		field, prepare = "epoch", "prepare-initial-epoch"
@@ -161,6 +164,9 @@ func (s *networkSigning) sign(key ed25519.PrivateKey, now time.Time) ([]networkS
 	}
 	if s.operation == "sign-closed-profile" {
 		return s.signProfile(key, now)
+	}
+	if s.operation == "prepare-node-certificate" {
+		return s.nodeCertificate(key)
 	}
 	if s.operation == "sign-initial-node-record" {
 		signature := ed25519.Sign(key, s.message)

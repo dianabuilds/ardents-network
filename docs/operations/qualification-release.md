@@ -192,6 +192,47 @@ operational bootstrap receipt acceptance remains separate under ADR-0120.
 
 ### Fixed-purpose signing
 
+#### Local Node certificate
+
+`ardents-next network prepare-node-certificate <public-plan> <signed-record>
+<reviewed-record-sha256> <original-node-key> <fresh-output-directory>` produces
+one public `node-certificate.pem` and a public stdout receipt. Paths are canonical
+absolute paths; the separately reviewed lowercase commitment covers the entire
+signed Record. The closed `ardents-node-certificate-plan-v1` object has exactly
+`schema`, `reference_time` and `record`. The latter is the complete matching
+`ardents-initial-node-record-plan-v1` public declaration, including its separately
+bound public Node key. Canonical preparation and ordinary signed ARNR-v2
+generation-one verification must agree exactly; only TCP/TLS is admitted.
+CSR, arbitrary subject/extensions, CA requests and mixed purposes refuse.
+
+The protected native input, finite reference and output rules of the initial
+signers below apply unchanged. Validity is exactly the Record interval, at most
+seven days in whole UTC seconds. Both original reference and actual time must
+remain inside it; the original reference stays within five minutes past/one
+minute future. Checks follow I/O and precede crypto/output commit and final
+acknowledgement. No renewal or interval shift is supplied. Standard-library
+crypto/rand, Ed25519 and X.509 produce one self-signed leaf with empty subject,
+CA=false, DigitalSignature and server/client transport EKUs. Its random positive
+serial is not a Node identity. The actual encoded leaf is parsed and its
+signature/key/interval/closed profile verified separately before output.
+
+Only the existing original root-protected canonical PKCS8 Node key is read;
+it is neither copied to output nor replaced. No State root, socket or process
+is opened. Original descriptors/bytes/access/ancestors remain retained through
+finite exclusive 0700/0600 output, sync/Close/readback and final inventory after
+the last original-input barrier. Uncertain output remains incomplete and cannot
+be adopted, overwritten or cleaned by another invocation. Cancellation, expiry,
+randomness, physical and receipt failures stay failed. Owned private copies
+are cleared after synchronous users/physical join; absolute Go/kernel erasure
+is not promised. Public output contains no private bytes, paths or arbitrary
+native errors. Receipt marks State acceptance and installed qualification false.
+Self-signature grants no membership or runtime readiness; State, Node and Route
+independently admit their exact authority/process/credential/lifetime. Source
+X.509 trust, installed infrastructure and ADR-0120 bootstrap receipt remain
+separate boundaries.
+
+#### Initial and profile signing
+
 `ardents-next network sign-closed-profile` takes the same ordered arguments as
 the initial signers below: public plan, exact `profile.unsigned`, independently
 reviewed lowercase SHA-256, protected private-key path and fresh output directory.

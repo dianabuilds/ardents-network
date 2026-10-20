@@ -100,6 +100,19 @@ func changeSigningTestTime(t *testing.T, args []string, from, until, reference t
 		if e != nil {
 			t.Fatal(e)
 		}
+		if args[0] == "prepare-node-certificate" {
+			raw, readErr := os.ReadFile(args[4])
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			key, keyErr := parseNetworkSigningKey(raw)
+			clear(raw)
+			if keyErr != nil {
+				t.Fatal(keyErr)
+			}
+			message = append(message, ed25519.Sign(key, message)...)
+			clear(key)
+		}
 		digest := sha256.Sum256(message)
 		args[3] = preparationHex(digest[:])
 		if e = os.WriteFile(args[2], message, 0600); e != nil {
@@ -213,7 +226,7 @@ func TestNetworkSigningCommandsGenuineStateChain(t *testing.T) {
 }
 
 func TestNetworkSigningOriginalInputCustody(t *testing.T) {
-	for name, arguments := range map[string]func(*testing.T) []string{"record": nativeSigningArguments, "profile": nativeProfileSigningArguments} {
+	for name, arguments := range map[string]func(*testing.T) []string{"record": nativeSigningArguments, "profile": nativeProfileSigningArguments, "certificate": nativeCertificateArguments} {
 		t.Run(name, func(t *testing.T) { testSigningOriginalInputCustody(t, arguments) })
 	}
 }
@@ -395,7 +408,7 @@ func TestNetworkSigningConcurrentOutput(t *testing.T) {
 }
 
 func TestNetworkSigningOriginalRefusalCannotRevive(t *testing.T) {
-	for name, arguments := range map[string]func(*testing.T) []string{"record": nativeSigningArguments, "profile": nativeProfileSigningArguments} {
+	for name, arguments := range map[string]func(*testing.T) []string{"record": nativeSigningArguments, "profile": nativeProfileSigningArguments, "certificate": nativeCertificateArguments} {
 		t.Run(name, func(t *testing.T) { testSigningOriginalRefusalCannotRevive(t, arguments) })
 	}
 }
@@ -512,6 +525,9 @@ func TestNetworkSigningInterruptedChild(t *testing.T) {
 		if args[0] == "sign-closed-profile" {
 			name = "profile.bin"
 		}
+		if args[0] == "prepare-node-certificate" {
+			name = "node-certificate.pem"
+		}
 		saved, e := os.ReadFile(filepath.Join(root, name))
 		if e != nil || len(saved) != 16 {
 			t.Fatal("actual partial prefix", len(saved), e)
@@ -541,7 +557,7 @@ func TestNetworkSigningInterruptedChild(t *testing.T) {
 }
 
 func TestNetworkSigningActualPartialAndProcessCuts(t *testing.T) {
-	for name, arguments := range map[string]func(*testing.T) []string{"record": nativeSigningArguments, "profile": nativeProfileSigningArguments} {
+	for name, arguments := range map[string]func(*testing.T) []string{"record": nativeSigningArguments, "profile": nativeProfileSigningArguments, "certificate": nativeCertificateArguments} {
 		t.Run(name, func(t *testing.T) { testSigningActualPartialAndProcessCuts(t, arguments) })
 	}
 }
@@ -594,9 +610,15 @@ func testSigningActualPartialAndProcessCuts(t *testing.T, arguments func(*testin
 }
 
 func TestNetworkSigningStaticNativeRefusals(t *testing.T) {
+	for name, arguments := range map[string]func(*testing.T) []string{"record": nativeSigningArguments, "certificate": nativeCertificateArguments} {
+		t.Run(name, func(t *testing.T) { testSigningStaticNativeRefusals(t, arguments) })
+	}
+}
+
+func testSigningStaticNativeRefusals(t *testing.T, arguments func(*testing.T) []string) {
 	for _, fault := range []string{"symlink", "hardlink", "owner", "mode", "special mode", "type", "encoding", "wrong key", "oversize", "prepared pin", "QUIC", "stale", "future", "expired", "not yet live", "oversized interval", "fractional interval", "cancel"} {
 		t.Run(fault, func(t *testing.T) {
-			args := nativeSigningArguments(t)
+			args := arguments(t)
 			var e error
 			switch fault {
 			case "symlink":
@@ -666,7 +688,7 @@ func TestNetworkSigningStaticNativeRefusals(t *testing.T) {
 			if _, e = os.Lstat(args[5]); !os.IsNotExist(e) {
 				t.Fatal("invalid input created output", e)
 			}
-			control := nativeSigningArguments(t)
+			control := arguments(t)
 			if _, e = executeNetworkSigning(t.Context(), control); e != nil {
 				t.Fatal("healthy control", e)
 			}

@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,7 +38,17 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 	binary := nodeNativeCommand(t)
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
-			f, sockets, certificates := newJoinRouteFixture(t, carrier)
+			var provisioned map[[32]byte][2]string
+			certificates := make(map[[32]byte]tls.Certificate)
+			f, sockets, originalCertificates := newJoinRouteFixtureConfigured(t, carrier, func(f *networkAdmissionFixture) {
+				if mode == "certificate" {
+					provisioned = provisionNativeNodeCertificates(t, f, certificates, [32]byte{20}, [32]byte{21})
+				}
+			})
+			for id, certificate := range certificates {
+				originalCertificates[id] = certificate
+			}
+			certificates = originalCertificates
 			userStock, publisherStock := joinRouteStock(t, f, admission.AllocationUser), joinRouteStock(t, f, admission.AllocationPublisher)
 			servers, _ := startJoinRouteReceiverRange(t, f, sockets, certificates, 19)
 			bundle, err := networkfixture.BuildClosed(f.spec)
@@ -52,7 +63,12 @@ func nativeJoinWorkload(t *testing.T, mode string) {
 			plans := map[[32]byte]map[string]any{}
 			before := map[[32]byte][]byte{}
 			for _, id := range [][32]byte{{20}, {21}} {
-				cert, key := nativeDescriptorCredential(t, certificates[id])
+				var cert, key string
+				if pair, ok := provisioned[id]; ok {
+					cert, key = pair[0], pair[1]
+				} else {
+					cert, key = nativeDescriptorCredential(t, certificates[id])
+				}
 				work := uint64(32 << 20)
 				if mode == "undercoverage" {
 					work--

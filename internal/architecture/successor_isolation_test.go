@@ -632,6 +632,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/network_signing.go" && (dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/network/closedprofile") {
 			return true
 		}
+		if source == "cmd/ardents-next/node_certificate_linux.go" && dependency == modulePath+"/internal/successor/network/epoch" {
+			return true
+		}
 		if (source == "cmd/ardents-next/network_profile_signing.go" || source == "cmd/ardents-next/network_profile_signing_test.go") && dependency == modulePath+"/internal/successor/network/closedprofile" {
 			return true
 		}

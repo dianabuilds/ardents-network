@@ -69,6 +69,23 @@ configuration format or an authority source.
 
 ### Public Network preparation in the isolated command
 
+The separate Linux-root offline certificate operation is:
+
+```text
+ardents-next network prepare-node-certificate <absolute-public-plan> <absolute-signed-record> <reviewed-record-sha256> <absolute-original-node-key> <fresh-output-directory>
+```
+
+Its closed schema `ardents-node-certificate-plan-v1` has exactly `schema`,
+`reference_time` and `record` (the complete public initial Record declaration
+below). The independently reviewed lowercase SHA-256 covers the entire signed
+Record. One matching original protected Node key produces only public
+`node-certificate.pem`; stdout returns `ardents-network-signed-v1` with operation,
+certificate PEM SHA-256, verified signature and false State/installed claims.
+The self-signed leaf has no subject identity or CA authority, and its interval
+equals the verified Record. Exact native custody, finite reference, failure and
+completion requirements are in the [operation owner](../operations/qualification-release.md#local-node-certificate).
+It starts no runtime and grants no membership, duty or ready state.
+
 On Linux with native ext4 output, use:
 
 ```text

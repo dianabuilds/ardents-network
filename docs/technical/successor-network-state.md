@@ -31,6 +31,14 @@ failure rules belong to the [operation](../operations/qualification-release.md#i
 
 ## Model and invariants
 
+Offline local Node certificate composition consumes the Linux
+`epoch.VerifyInitialClosedRecord` mechanism. It compares the complete signed
+generation-one ARNR-v2 Record with the canonical public preparation and verifies
+its ordinary Node signature before returning detached public facts. This is
+self-asserted integrity, not accepted membership, trusted time or a duty.
+Private Node material stays in composition; State still independently joins
+signed Epoch/profile/Records and owns all runtime currentness and floors.
+
 - `EpochHistory` represents the retained current/pending relation and conflict.
   Reconciliation examines every authenticated observation before selecting a
   successor. A higher numbered candidate cannot hide an earlier conflict.
