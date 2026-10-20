@@ -30,7 +30,7 @@ NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
 # Only the Node process suite may select an elevated system-scope runner.
 NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
-ifneq ($(filter node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
+ifneq ($(filter source-process-check node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
 # This native driver consumes independently built, pinned artifacts. Its host
 # needs the actual manager/kernel, not a second Go installation.
 HEADLESS_GOOS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -477,3 +477,8 @@ issuer-profile-check:
 custody-check:
 	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/custody ./cmd/ardents-custody ./tests/e2e/service -count=1 -timeout=3m,$(error custody-check requires Linux))
 	go test golang.org/x/crypto/argon2 -run '^(TestArgon2|TestVectors)$$' -count=1
+
+.PHONY: source-process-check
+source-process-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "source-process-check requires Linux"; exit 2)
+	sh scripts/node/run-source-native.sh -timeout=3m

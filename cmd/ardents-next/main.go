@@ -20,6 +20,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && args[0] == "source" {
+		return runSource(ctx, args[1:], out, diagnostic)
+	}
 	if len(args) > 0 && args[0] == "node" {
 		return runNode(ctx, args[1:], out, diagnostic)
 	}

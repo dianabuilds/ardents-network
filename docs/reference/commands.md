@@ -543,3 +543,31 @@ reservation with `admission_root`, `connection_limit` (1..16) and
 signer already pinned in State. The plan supplies no remote address, role,
 profile bytes, peer identity or verifier; current State selects the Rendezvous
 DataJoin duty and Carrier. Mixed duty reservations refuse before startup.
+
+## New Direct-Origin Source development invocation
+
+`ardents-next source serve <plan>` runs one Linux development Source. The bounded
+JSON plan contains `network` (the existing new Network authority plan),
+`process_profile` equal to `ardents-source-process-v1`, `participation_root`,
+`address` (literal IP/nonzero TCP port), `certificate`, `private_key`, `client_root`
+and one to three `client_pins` (the accepted Source transport-key transcript digests as 32-byte arrays).
+Paths are absolute and canonical; State and participation roots are independent.
+The Network root must already hold independently authenticated new State.
+Transport credentials and CA are supplied inputs; the command creates no keys.
+Only signed Epoch bundles are distributed. No Node role, acquisition, refresh,
+signing, certificate provisioning, installed startup or operator cutover is selected.
+The original native process envelope is mandatory. Output reports fixed safe
+`source.serve` phase/outcome fields. Cancellation joins State users before process
+release; readiness/output grants no authority.
+
+Source reports require an interruptible native stream with a one-second write
+bound. Safe failure output additionally names fixed `first_owner` and
+`cleanup_owner` categories and available original numeric `resource` facts;
+raw errors, paths, keys and request content are absent. A five-second
+completion-unavailable notice retains failure and all original custody while
+waiting for actual join, rather than returning completion from a timer.
+
+READY output is bounded by the earlier of its one-second write bound and the
+original caller context. Terminal reporting keeps its own finite write bound
+after caller retirement. Ordinary cancellation cannot become an invented
+background/output failure; real retained process and cleanup errors remain failed.

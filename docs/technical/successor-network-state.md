@@ -295,3 +295,26 @@ Those integrations belong to subsequent domain replacements.
 This change does not alter wire bytes, signed identities, stored generation
 names, root formats or recovery rules. Existing physical data mechanisms may
 be reused without preserving their former ownership of domain decisions.
+
+## Direct-Origin distribution composition
+
+`ardents-next source serve <plan>` consumes State's existing serving configuration,
+Current/Wait/Close and PermitWork with one original `processresource` Source guard.
+It opens independently prepared State, borrows no old runtime root, and supplies
+no new acquisition or refresh policy. State joins listener/handlers/background
+work and releases its own guards before composition releases process pins.
+Cancellation interrupts original Source sockets and joins their callbacks before
+active-handler release. Output success is diagnostic and grants no authority.
+
+A five-second retirement notice reports unavailable physical completion while
+composition keeps waiting for the original Close. It retains State/process/key
+custody and the failed outcome; later join cannot convert the notice to successful
+cancellation. The reporting interval grants no operation or cleanup completion.
+
+State retains its exclusive root lease through all original serving-producer
+cleanup and the local guard transaction's joined Close. Only then does it release
+the State root. The serving producer is root-derived: releasing the root earlier
+would let a successor start while an older Close could still remove its guard.
+A fresh invocation therefore cannot acquire that root during original guard
+removal. Physical handler join still precedes removal, and uncertain removal
+retains its failure/collision semantics; no producer identity or format changes.

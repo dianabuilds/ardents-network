@@ -625,9 +625,12 @@ the reciprocal binding.
 Direct-Origin Source has a distinct X.509 transport boundary. Its client
 accepts only the configured CA, hostname, and server leaf-key pin. Its server
 requires a CA-verified client certificate and an authorized client leaf-key
-pin. `ardents` and `ardents-node` read the declared PEM key pairs and roots
+pin. `ardents`, `ardents-node` and the isolated `ardents-next source serve` consumer
+read the declared PEM key pairs and roots
 while constructing the bounded Source configuration; `internal/network/source`
-then owns copies for its one configured TLS client or listener. Network State
+then owns copies for its one configured TLS client or listener. The isolated
+consumer instead uses `internal/successor/network/source` through its new State
+owner, without an old runtime bridge. Network State
 supplies the Source TLS verification clock from its sole configured time owner;
 a nested override is refused before opening the State root. Replacing a PEM
 file does not alter a running Source process: there is no hot reload or
@@ -772,7 +775,7 @@ operational failure and thereby relabel it as Route physical cleanup. Subsequent
 owner-specific filtering removes only that exact operational subtree; independent
 physical errors and wrappers remain retained through actual join.
 
-The five development profiles use the kernel's ten-second PSI trend (`avg10`,
+The Node and Source development profiles use the kernel's ten-second PSI trend (`avg10`,
 percentage units), not a claim that every durable operation is stall-free.
 CPU `some` or I/O `full` at **1.00% or above** retires the original owner;
 positive memory `some`, any high/emergency/PID event, and the table's existing
@@ -801,8 +804,7 @@ it is not tuned per role or raised on failure. The kernel trend is an exponentia
 weighted average, so it cannot be interpreted as exactly 100 ms in every ten
 seconds. Required real sync, floors/readback, native identity/caller custody,
 hard limits, Network authority, protocol/Work Safety deadlines and physical
-join-before-release are independent requirements. Source composition, installed
-Node, arbitrary host load, long-run capacity and platform support are unqualified.
+join-before-release are independent requirements. Installed Source/Node, arbitrary host load, long-run capacity and platform support are unqualified.
 The [kernel PSI specification](https://docs.kernel.org/accounting/psi.html)
 (accessed 2026-10-20) owns trend and cumulative-stall semantics; the selected
 issue retains raw finite measurements, failed attempts and source identities.
@@ -828,6 +830,28 @@ this local process profile grants no token, assignment, Carrier choice or extra
 Hosting allowance. Independent native observations and both-Carrier causal
 tests must verify the actual new command; a component model, a container sharing
 its measured cgroup or a Windows gate does not establish that result.
+
+### Source development process profile
+
+The Direct-Origin Source distribution command selects `ardents-source-process-v1`
+under the exact finite settings and pressure/freshness rules in the Forwarding
+table above: original sole-process Linux cgroup-v2 leaf, cpu.max `100000 100000`,
+memory.high `805306368`, memory.max `1073741824`, pids.max `256`, soft/hard
+NOFILE `1024`, GOMAXPROCS `1`, GOMEMLIMIT `536870912`. Each actual observation
+must complete within one second. CPU some/I/O full avg10 >=1%, positive memory
+pressure, event/hard limits and missing or changed evidence retire without revival;
+the additional supervisor runs every 100 ms. Source requires its own native
+command/resource evidence. Another workload's receipt supplies no Source proof.
+
+`ardents-next source serve <plan>` constructs only existing new State and process
+owners over an independently prepared State root. It serves authenticated Epoch
+bundles; it is neither a receiving Node duty nor Route Source/Responder. Network
+State owns trusted time, serving guards, current decisions, Wait and joined Close;
+Source transport owns mTLS/framing and original sockets. Command supplies original
+caller/process admission outside State locks, supervises background failure and
+orders State Close before process pin release. No acquisition, signing, refresh,
+certificate issuer, hot reload or expired-Epoch response-policy change is added.
+This development envelope selects no installed, platform or capacity claim.
 
 ### Issuer development process profile
 

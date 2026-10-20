@@ -78,3 +78,10 @@ output extends its original single JSON report through a string-valued
 phase/cause, elapsed/deadline and original numeric resource facts; independent
 physical cleanup owners remain in the original outcome. No raw error, Target,
 private path, key, capsule or cross-role correlation identity is emitted.
+
+`make source-process-check` is a separate Direct-Origin Source workload. It uses
+the same canonical command and command/resource race artifact pin variables,
+`node_process_native` compilation tag, external lock and native prerequisites.
+It is not included in the five-Node baseline series. Declare its finite schedule
+and verify complete source/config/artifact and actual stand facts before/after;
+retain every attempt, restore all owned changes and prove physical joins.

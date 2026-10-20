@@ -19,6 +19,18 @@ func TestOriginalNativeProcessProfile(t *testing.T) {
 	testOriginalNativeProcessProfile(t, Profile)
 }
 
+func TestOriginalNativeSourceProcessProfile(t *testing.T) {
+	testOriginalNativeProcessProfile(t, SourceProfile)
+}
+
+func TestOriginalNativeSourceEvidenceLossRetainsActualCloseFailure(t *testing.T) {
+	testOriginalNativeEvidenceLoss(t, SourceProfile)
+}
+
+func TestOriginalNativeSourceManagedMemoryPressureRetires(t *testing.T) {
+	testOriginalNativeManagedMemoryPressure(t, SourceProfile)
+}
+
 func TestOriginalNativeIssuerProcessProfile(t *testing.T) {
 	testOriginalNativeProcessProfile(t, IssuerProfile)
 }
@@ -95,11 +107,20 @@ func testOriginalNativeEvidenceLoss(t *testing.T, profile string) {
 }
 
 func TestOriginalNativePlacementAndCallerRetire(t *testing.T) {
+	testOriginalNativePlacementAndCallerRetire(t, Profile)
+}
+
+func TestOriginalNativeSourcePlacementAndCallerRetire(t *testing.T) {
+	testOriginalNativePlacementAndCallerRetire(t, SourceProfile)
+}
+
+func testOriginalNativePlacementAndCallerRetire(t *testing.T, profile string) {
+	t.Helper()
 	for _, mode := range []string{"foreign-process", "caller"} {
 		t.Run(mode, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			guard, err := Open(ctx, Profile)
+			guard, err := Open(ctx, profile)
 			if err != nil {
 				t.Fatal("selected native environment unavailable", err)
 			}

@@ -22,11 +22,10 @@
         "internal/successor/network/epoch.encodeInitialClosedEpoch",
         "internal/successor/network/epoch.initialPreparationInterval",
         "internal/successor/network/epoch.PrepareInitialClosedEpoch",
-        "internal/successor/network/epoch.PrepareInitialClosedRecord",
-        "internal/successor/network/state.networkState.Current"
+        "internal/successor/network/epoch.PrepareInitialClosedRecord"
       ],
       "classification": "accepted new Network contracts with behavior evidence and pending production composition",
-      "rationale": "Unsigned Epoch/profile preparation, local Node participation journal, and State diagnostic interfaces have genuine domain tests but no maintained command caller. CurrentRuntime supplies live authority; the bounded Route prefix does not substitute these APIs for authority or claim Node/provisioning composition. This records predecessor reachability separately from Route production acceptance.",
+      "rationale": "Unsigned Epoch/profile preparation and local participation diagnostic contracts have genuine domain tests but no maintained production caller. CurrentRuntime supplies live authority. The Linux Direct-Origin Source now genuinely consumes State.Current, whose old common allowance is removed.",
       "owner": "Product Owner and Codex; new Network",
       "retirement": "Remove each symbol when its accepted contract is retired, or remove its exact allowance when a selected genuine provisioning, Node, or State supervision caller reaches it."
     },
@@ -1358,6 +1357,15 @@
         "rationale": "These exact functions are reached in Linux production through ardents-next Reader, Publisher and installed participant composition, including original Execution operations, Instance leases and Route Source/Responder lifetimes. Registration's original observation queue and supervision are reached through Publisher.preparePair, Register, watch and CheckReceipt. Windows adapters refuse before native acquisition. Linux production must remain reachable and both-platform test analysis must remain empty; portability of pure rules and framing does not qualify Windows or the complete installed journey.",
         "owner": "Product Owner and Codex; Service Connection and its original owner contracts",
         "retirement": "Remove each exact entry when the function is retired or a separately selected genuine Windows consumer reaches it. Lost Linux production reachability requires repair, not another allowance."
+      },
+      {
+        "symbols": [
+          "internal/successor/network/state.networkState.Current"
+        ],
+        "classification": "State diagnostic contract without a supported Windows serving consumer",
+        "rationale": "Source serving is Linux-only and refuses Windows before plan effects; the new original Source consumer reaches Current only in the Linux production build. Windows domain tests still exercise the contract.",
+        "owner": "Product Owner and Codex; new Network",
+        "retirement": "Remove this exact Windows-only allowance when a selected genuine Windows consumer reaches Current or the contract is retired."
       }
     ]
   }

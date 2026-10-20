@@ -69,10 +69,13 @@ func (s *networkState) closeOwned() error {
 		// An interrupted active journal retains its live guard for recovery.
 		exposureErr = s.releaseSourceWave()
 	}
-	storageErr := storage.Close()
 	roleErr := s.releaseSourceServer()
+	// The serving producer is derived from this root. Keep its exclusive lease
+	// until the last old producer mutation joins, so a successor cannot acquire
+	// the root and have its live guard removed by this original Close.
+	storageErr := storage.Close()
 	if serverErr == context.Canceled {
 		serverErr = nil
 	}
-	return errors.Join(serverErr, automaticErr, terminalErr, exposureErr, storageErr, roleErr)
+	return errors.Join(serverErr, automaticErr, terminalErr, exposureErr, roleErr, storageErr)
 }

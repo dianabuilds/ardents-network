@@ -2154,3 +2154,44 @@ Native Windows command/PTY checks add development evidence, not a Windows or
 Ubuntu supported Vault permissions/crash/power-loss profile. One fixed-profile
 vector verifies 256 MiB derivation, not weakest-host performance qualification.
 No fixture root signing or old backend supplies successful new Custody behavior.
+
+## Original Direct-Origin Source development profile
+
+`make source-process-check` separately runs the registered `source-process-linux`
+profile using independently pinned canonical command and `node_process_native`
+race command/resource binaries. `scripts/node/run-source-native.sh` requires exact
+discovery and executed cases. Its driver remains outside measured leaves; use the
+same external shared lock in the native development recipe, with a predeclared
+finite schedule and before/after source/artifact/config/actual-stand identities.
+The actual Source command serves independently prepared signed Epoch evidence
+through new Source clients. LATEST/BY_DIGEST canonical bytes and materialization
+verification, causal authentication/network/digest/index refusals and original
+joined State reopen are distinct assertions. Separate original Source resource
+controls exercise placement/caller, descriptor evidence, memory pressure and
+retained failure without revival; actual established CPU pressure is required.
+Unchanged State/duty owner suites supply ADR-0118 blocked handler, A→B→C,
+expiry/cap/uncertainty/recovery and foreign-producer controls only on matching
+source. Command failure fixtures isolate error retention and join ordering,
+never successful authority. Missing prerequisites or overload evidence fail.
+
+Source's strict plan tests reject short/overlong trust arrays, unknown or mixed
+acquisition/clock inputs, duplicate fields and trailing JSON. Real-State failed
+readiness output verifies guard removal and exclusive root reopen only after
+joined Close; original output and Wait/independent Close failures retain their
+own causes. Native pipe backpressure/peer loss has a finite output refusal.
+Unavailable physical Close emits a bounded failure notice while retaining the
+original custody and waiting; it cannot report joined completion from timeout.
+
+`TestServingSourceRetainsRootThroughGuardRemoval` holds the original State-owned
+clock seam at actual guard cleanup after the real listener has joined. A second
+real serving State must refuse the still-owned root; after original cleanup,
+a new serving State opens with its own live guard. This is a causal exclusive
+custody control, including prevention of an older Close removing a successor's
+guard. No new production mutation interface or second time authority is added.
+
+The blocked READY pipe cancellation control requires the original caller cause,
+not an output timeout or a nil-Wait background failure. A separate failure fixture
+latches an original process error during failed output and requires both causes
+through physical State Close. After joined State users, composition reads only
+Guard's retained refusal under its already-denied original context, then closes
+process pins; its own exact retirement notice is not an independent failure.

@@ -404,6 +404,15 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                      {"route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if source == "cmd/ardents-next/source_state_linux_test.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/duty") {
+			return true
+		}
+		if source == "cmd/ardents-next/source_failure_linux.go" && dependency == modulePath+"/internal/successor/processresource" {
+			return true
+		}
+		if source == "cmd/ardents-next/source_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/processresource") {
+			return true
+		}
 		if source == "cmd/ardents-next/node_join_operation_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
@@ -558,6 +567,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/installed_endpoint_linux.go" && (dependency == modulePath+"/internal/successor/installation/endpoint" || dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/execution/runtime") {
+			return true
+		}
+		if source == "cmd/ardents-next/source_linux.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/state") {
 			return true
 		}
 		if source == "cmd/ardents-next/installed_source_linux.go" && (dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/network/source") {

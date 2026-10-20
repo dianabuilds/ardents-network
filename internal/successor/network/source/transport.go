@@ -118,14 +118,16 @@ func serve(ctx context.Context, server server, ready chan<- error, protected fun
 	tlsListener := tls.NewListener(listener, serverTLSConfig(server))
 	ready <- nil
 	stop := make(chan struct{})
+	stopped := make(chan struct{})
 	go func() {
+		defer close(stopped)
 		select {
 		case <-ctx.Done():
 			_ = tlsListener.Close()
 		case <-stop:
 		}
 	}()
-	defer close(stop)
+	defer func() { close(stop); <-stopped }()
 	defer tlsListener.Close()
 	credits := make(chan struct{}, 8)
 	var connections sync.WaitGroup
@@ -158,11 +160,23 @@ func serve(ctx context.Context, server server, ready chan<- error, protected fun
 
 func handleConnection(ctx context.Context, server server, active func(int), connection net.Conn,
 	resolve func(context.Context, Message) Message) error {
+	// Cancellation interrupts the original socket, including a blocked TLS
+	// handshake or write. Join the callback before releasing the active user.
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		_ = connection.Close()
+		close(interrupted)
+	})
 	if active != nil {
 		active(1)
 		defer active(-1)
 	}
 	defer connection.Close()
+	defer func() {
+		if !stop() {
+			<-interrupted
+		}
+	}()
 	started := time.Now()
 	if err := connection.SetDeadline(started.Add(server.headerTimeout)); err != nil {
 		return fmt.Errorf("set distribution request deadline: %w", err)
