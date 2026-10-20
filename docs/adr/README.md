@@ -67,6 +67,12 @@ and [protocol](../technical/protected-route-protocol.md) state the current rules
 
 - [ADR-0122: Select TCP/TLS alone for the nearest closed release](0122-select-tcp-only-closed-release.md)
 
+## Proposed decisions
+
+- [ADR-0123 — Bind each installed infrastructure invocation to its own generation](0123-bind-installed-infrastructure-generations.md)
+  is an unaccepted artifact, persisted-binding and bootstrap proposal. It grants
+  no authority and does not amend ADR-0119 or ADR-0120.
+
 ## Former editions and rationale
 
 [Archived decisions](../archive/README.md#architecture-decisions) retain

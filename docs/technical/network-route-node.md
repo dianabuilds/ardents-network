@@ -1387,7 +1387,306 @@ The diagnostic interface reports process observations; existing owner events
 remain the source of readiness and typed product failure.
 
 
-### Hosting domain boundary
+## Proposed installed infrastructure
+
+**Status: proposed extension, not accepted authority or implemented installation.**
+[ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md) isolates the
+consequential artifact, persisted binding and bootstrap decision. ADR-0119 and
+ADR-0120 retain their existing Endpoint/recorded-operation scope. This section
+owns the infrastructure design; GitHub owns selection, sequence and completion.
+It adds no package permission, executable interface or operational instruction.
+
+### Assessment and existing source boundary
+
+This is a brownfield modular Go system with behavior-rich State, Admission,
+Hosting and Route owners. Installation/composition is a supporting subdomain
+with complex original-lifetime invariants: use light DDD. The consistency unit
+is one original installation transition or runtime invocation, not a global
+Node/Identity/Control aggregate. The existing domain map remains authoritative.
+No repository, event bus or eventually delivered revoke is needed. Semantic
+commands are admit/prepare/select/start/deny/join; observations of prepared,
+selected or joined state convey only the producer's actual result.
+
+Source code references below are relative to the repository root. They describe
+implemented behavior, not receipts. Native development receipts must match their
+recorded source; source inspection alone is not execution.
+
+| Composition / exact consumer | Inputs, genuine verification and effect | Resource and terminal owners / current limit |
+|---|---|---|
+| Source: `cmd/ardents-next/source_linux.go`, `source_input_linux.go` | Closed serve plan; `network` root/ID/authority list/threshold/profile pin/clock file; Source process profile; independent participation root; address, server certificate/key, client CA and 1..3 exact client pins. `networkStateConfig`, `state.Open/Current`, Source mTLS and Guard.Check decide their separate boundaries. An independently prepared State root is required; serving does not acquire/sign/refresh State | State owns authenticated responses, exposure guards, transport/background Wait/Close and its root. Composition denies PermitWork before Close, waits for original Close and Wait, then closes process pins/clears command key. Five-second notice retains failure and continues waiting. Current bounded path reads are not retained plan/cert/key/CA inode custody |
+| Forwarding: `node_forwarding_linux.go` → `node.ListenForwarding` | Common Node inputs below; `work`, `termination`, finite retirement wait. CurrentRuntime → RetainDuty → exact role.Authority; original process and participation producer precede receiver work; full Forward allowance reserve precedes irreversible Receiving spend | Route owns listener/parents/children/refill/physical joins; Node owns original lifetime and purpose roots/Hosting/producer/Guard/key; command owns State last. Its bounded command wait can return completion-unavailable before its retained cleanup goroutine finishes; process exit is not proof of producer release |
+| Issuer: `node_issuer_linux.go` → `node.ListenIssuer` | Common inputs plus `issuance` plan with separate Admission quota, private key and result roots/bindings; Control work, bootstrap work and termination. Admission issuer application opens exact prepared material; signed current State binds its issuer reference | Admission owns quotas/key/results and durable debit before response; Route owns Credential listener and physical users; Hosting owns separate Control/Bootstrap coverage. Node retains all until join. No Forward refill, generic signer or key export |
+| Descriptor: `node_descriptor_linux.go` → `node.ListenDescriptor` | Common inputs plus independent Descriptor root, Control/termination coverage. Genuine `reachability.OpenStore` verifies proof/history, Receiver owns transport/admission | Store owns proof/conflict/floors and ACK; Node joins Receiver before Store/Receiving/Hosting/producer/process/key; State last. Store ACK is not Publication readiness |
+| Introduction: `node_introduction_linux.go` → `node.ListenIntroduction` | Common inputs plus independent Introduction root. `introduction.OpenReceivingRegistry` consumes the genuine Receiving fresh-root fact before listening; Registry checks native/history binding | Route owns slots/non-reclaim floors/capsule delivery, not Admission. Join Receiver/children before Registry/Receiving/Hosting and producer/Guard/key; State last. REGISTER ACK is not installed or Service readiness |
+| JOIN: `node_join_linux.go` → `node.ListenJoin` | Common inputs with JOIN profile and full class-2/termination coverage. Exact Rendezvous DataJoin duty; original credential file pins (`node/join_credential_linux.go`); genuine Receiver/Pairing | Route owns opposite-side match, both RESULT barrier, credit/EOF/CLOSE and physical join. Node retains Receiving/Hosting/producer/native pins/TLS until actual join; command keeps State. No refill, retry or renewed setup deadline |
+
+Common Node declarations are exact Network config, NodeID, distinct participation,
+spend and Hosting roots, certificate/private-key paths, exact role process profile,
+work/termination coverage and retirement wait in 1..5000 ms. Extra role roots are
+pairwise independent including ancestors (`node/root_paths.go` and command
+validation); changing directory names cannot create new authority or erase history.
+Network alone binds signed member/key/family/assignment/endpoint/Carrier/windows.
+Node retains its original producer and admission latch; Receiver reobserves
+current authority at effects. Process protection is not Hosting byte capacity.
+`node/credential_linux.go` loads exact matching Ed25519 material with owner-only
+private file access; Forwarding/Issuer/Descriptor/Introduction retain the loaded
+pair, whereas JOIN additionally pins and rechecks original files. Do not claim
+all five have JOIN's custody. Installation must independently bind inputs for
+all roles; neither memory retention nor a self-signed leaf proves installation.
+
+### Producer, proof and external-input inventory
+
+| Input → current producer → verifier / consumer | Actual evidence boundary and remaining mechanism |
+|---|---|
+| Canonical unsigned initial Record/Epoch/closed profile → `network_preparation.go` and Network epoch/closedprofile public owners → ordinary verification and State acceptance | Public preparation is implemented. No private signer, State acceptance or independence follows from unsigned bytes |
+| Exact signed Record and initial Epoch → `network_signing.go`, original protected purpose-specific key/pin/time → canonical verifier and `network accept-epoch` in `network.go` | Genuine finite sign/output chain exists; Record generation one and initial Epoch only, not arbitrary successor issuance or operational bootstrap |
+| Exact signed profile → `network_profile_signing.go` and fixed public transcript → closedprofile.Verify and `network accept-profile` | Genuine producer; independent State signer is distinct from in-body Admission authority. Acceptance receipt is not current runtime permission |
+| State and 1..64 Node private keys → `network_keys_linux.go` → each separate signer and public receipt verifier | Fresh original 0700/0600 root-controlled outputs; no NodeID/assignment, authority grant, runtime credential placement or renewal service. Offline Node-key file cannot simply be handed to a non-root runtime |
+| Source public transport declarations → `source_preparation_linux.go` / `source.ObservePublicTrust` → `source serve`, installed Endpoint acquisition projection in `installed_source_linux.go` | Ten exact public files; private paths may be absent at preparation. Existing external CA/leaf/private-pair issuance and independently reviewed CA/key pins are allowed inputs, not a missing product PKI. Runtime TLS alone checks actual private match, trust, EKU/name/time; prepared receipt grants none |
+| Node certificate → `node_certificate_linux.go`, original generated Node key plus reviewed canonical signed Record → epoch.VerifyInitialClosedRecord, standard-library X.509, actual Forwarding/JOIN TLS consumers | Public self-signed leaf, no new private key and no membership. Exact State/profile remain separate signed acceptance. Remaining installed custody/UID/access/renewal constraints are not solved by certificate creation |
+| Prepared State root → `network.go` accept-epoch/profile through State; authenticated signed materializations and independently pinned authorities → State.Open/current verification | Maintained producer/consumer exists. Installed account must create/accept its own independent fresh history using that owner; copying a fixture or old root is forbidden. State schema/recovery/floors remain unchanged |
+| Current clock evidence → explicit external clock-observation file plus State wall/monotonic observation → State trusted time and persisted floor | Intentional external evidence dependency. `state/clock_observation.go` uses the regular file's mtime as independent evidence; State compares wall/monotonic/independent time and retains its floor. No new clock daemon or unsigned timestamp-as-authority. Installed custody must bind path/writer/access; stale/unavailable evidence denies. Offline signing reference time is not this clock |
+| Hosting root and finite envelopes → new Hosting command/owner → Node/Route reservation checks | Real provider-period initialization and retained accounting exist. Installed root placement/protection is missing; a smaller workload never waives full-class coverage |
+| Receiving spends, Introduction history and Descriptor Store → actual receiving/Route/Reachability owners at original admitted startup → their own durable reopen rules | No separate provisioning task for every fixture root. Fresh-root creation and retained reopen are different operations; missing old floors cannot be repaired as empty. Installation supplies paths/access, never history bytes or successful ACK |
+| Issuer permission authority, RSA key/quota/results → purpose-specific new Allocation/Custody and Admission issuerprofile/issuance consumers (`issuer_profile*`, `issuance*`) → Admission + exact signed State profile | Their existing purpose-specific imported credentials and independent reviewed pins are explicit prerequisites. Installation does not generate/import private RSA, mint quota, accept Permission or turn a Node key into a permission authority |
+| Program, resources and initial provenance → Enrollment/Release/Installation | Current new Enrollment authenticates manifest-pinned Node/Custody companions outside Release metadata. `installation/generation_authentication.go` requires exact Endpoint targets and complete protected group. No infrastructure descriptor, coherent Node/Source pair, native binding/start/recovery consumer exists |
+
+These rows account for the genuine provisioning outputs of the public preparation,
+Record/Epoch signing, profile signing, key, Source trust and Node certificate
+changes. Isolated State/Admission/family fixtures used by their tests are not
+additional product authorities. External credentials/trust/time remain explicit
+operator inputs. The demonstrated missing mechanisms are runtime original-input
+custody, infrastructure artifact admission and installed transition/startup,
+command/tool cutover, and source-matched final evidence; not a speculative PKI.
+
+Reverse consumers matter. `cmd/ardents-next/main.go` directly dispatches all six
+new compositions and public preparation. `network.go` directly accepts signed
+Epoch/profile on independent roots. `installation.go` and
+`installed_endpoint_linux.go` consume Endpoint authorization/startup; their
+`installed_source_linux.go` reads an Endpoint's acquisition declaration, **not**
+an installed serving Source. Native `scripts/node/run-*-native.sh` run pinned
+development processes; systemd-run does not create an immutable installed binding.
+`tests/profiles/headless-commands.txt`, `packaging/alpha-bundle/build.sh`,
+`scripts/protected-generation-check.go`, `scripts/sign-qualification-release.go`
+and the qualification release operation retain their existing command/Endpoint
+inventories. They neither package nor sign the proposed infrastructure contract.
+The maintained `ardents-node` and qualification command still have predecessor
+consumers; they cannot delegate to a new binary or share live roots as a shortcut.
+
+### Proposed exact artifact and installation binding
+
+The following is a reviewable recommendation under ADR-0123, not an extension
+of any existing accepting parser. Final commands are `ardents-node` for Source,
+the five duties and their Installation composition, `ardents-control` for public
+preparation/inspection, `ardents` for Endpoint and `ardents-custody` for its
+existing purposes. Infrastructure initial verification and native transition
+must consume their opaque provenance/proofs in the same original command
+operation. A control-process public receipt cannot transfer those rights.
+
+The proposed `infrastructure-<invocation>.json` is UTF-8 compact JSON plus LF,
+maximum 16 KiB, fields in this exact order: `schema`, `platform`,
+`release_identity`, `release_version`, `invocation`, `files`.
+Schema is `ardents-infrastructure-artifact-v1`; platform `linux-amd64`; version
+positive int64; invocation one of the six values in ADR-0123. `files` has exactly
+two lexical keys: `ardents-node-linux-amd64` and `ardents-<invocation>.service`.
+Values are lowercase SHA-256 of actual executable and closed unit-template bytes.
+No paths, keys, plans, mutable roots, metadata/manifest digests or runtime facts
+occur in it. Reject duplicate/unknown/noncanonical/partial or extra inventory.
+This prevents a manifest/signing cycle. Both target Decisions must agree on
+Targets version/digest and all common local, release, policy and reference facts;
+the program bytes and every resource are checked before any native mutation.
+Equal version/different descriptor refuses, including resource-only substitution.
+
+Proposed independent initial inventory is a separate
+`ardents-infrastructure-enrollment-v1` document, not enrollment-v3: exact ordered
+`schema`, `platform`, `release_identity`, `release_version`, `invocation`, `files`;
+the same scalar rules and canonical 16 KiB bound. `files` is a lexical map of
+exactly seven SHA-256 entries: the program, invocation unit, infrastructure
+descriptor, `root.json`, `snapshot.json`, `targets.json`, `timestamp.json`.
+All are direct names, regular original files bounded by the existing 64 MiB
+artifact maximum; unknown/excess/noncanonical inventory refuses. An independent
+initial pin binds the entire enrollment document before parsing, and each named
+file is then verified. The running `ardents-node` must be the identical enrolled
+artifact. Independent distribution must verify its bytes before first execution;
+self-verification after launch cannot establish that provenance. A direct
+`ardents-node installation` consumer performs initial verification and transition
+in the same root caller, and a separately admitted non-root invocation runs the
+selected Source. This is a new verifier contract requiring acceptance and independent
+oracles; existing v3/headless verification is left untouched. Later candidates
+have no first-pin provenance and require complete retained Release floors.
+
+Local Installation binding is root-controlled canonical bounded data, independently
+reconstructed at startup, not a serialized Authorization. Recommended fields:
+binding schema/version; invocation; both exact target identities/facts and metadata
+commitment; descriptor/program/template digests; full rendered unit and plan digests;
+generation and predecessor identity; original request commitment; account name and
+numeric UID/GID; exact configured root/credential/clock paths; selected native profile.
+Retain original file identities/access and journal-born inode provenance separately.
+Never publish private bytes, key hashes, private paths or process captures in a
+public receipt. A stored digest, journal phase, completion ACK or permission-like
+boolean cannot recreate a fresh Release proof, live startup or domain permit.
+
+For the first Source, propose one fixed `ardents-source` account/group and
+`/etc/systemd/system/ardents-source.service`. For the bounded installed Node
+extension, propose one fixed `ardents-node` account/group, five exact
+`ardents-<invocation>.service` units and at most one active Node invocation on a
+host/provider allowance. All five unit observations must exclude a second active
+invocation before start. Retain one canonical Hosting root for that allowance
+across role/generation changes; never mint a new allowance by selecting another
+account, unit or path. Source owns no Hosting allowance. This proposed installed
+restriction does not change existing Hosting policy or prove host isolation.
+Resolve actual numeric UID/GID once and bind
+them; no dynamic user, supplementary groups, reused foreign account or password
+login. Root performs only admitted installation mutations and manager control;
+it acquires no Network/Source/Admission/Service signing right. Runtime is non-root,
+with no ambient/bounding capabilities. Source listens on the explicitly bound
+unprivileged literal-IP TCP port; no privileged-port helper or socket activation.
+
+The unit is `Type=exec`, `Restart=no`, `KillMode=control-group`, working directory
+`/`, umask 0077, no Exec pre/post/condition/reload/stop hooks, no drop-ins, no shell,
+no command override or inherited listener. Root renders exactly one absolute
+generation executable and closed argv: `source start-installed` plus its
+absolute binding reference; role dispatch comes from the binding, never a first
+available duty. The proposed entrypoint is not implemented. Bind exact manager
+unique owner/version/boot/start identity, fragment, loaded configuration, InvocationID,
+MainPID, proc inode/start clock, executable inode/bytes, complete argv, real/effective/
+saved IDs/groups, original cgroup inode/path and sole-process membership. Two
+fresh complete manager rounds surround independent file/process reobservation.
+Manager restart/disconnect, extra child, changed namespace/path/argv/account/unit
+or cgroup fails closed; reconnection cannot recreate the original custody.
+
+Use the current Source/role process envelope exactly: CPU quota 100000/100000,
+memory.high 805306368, memory.max 1073741824, pids.max 256, soft/hard NOFILE 1024,
+GOMAXPROCS=1, GOMEMLIMIT=536870912 and existing PSI/event/one-second freshness
+rules. No new capacity profile is selected. Render and check accounting, strict
+system protection, no-new-privileges, private tmp, protected kernel/control groups,
+zero core/capabilities and exact address families. Installation verifies loaded
+policy; processresource independently checks actual kernel observations. Read-only
+cgroup/proc access needed by Guard must be proven on the actual non-root stand;
+a missing readable metric denies rather than grants an unprotected exception.
+Native candidate is Ubuntu 24.04/systemd 255/cgroup-v2/native ext4; this proposed
+installed profile needs its own evidence, not the development driver's receipt.
+
+| Input class | Proposed custody / write boundary / reobservation |
+|---|---|
+| Immutable executable, template, descriptor, rendered plan/unit and binding | Root-controlled direct ancestors, no symlinks, original same-inode bytes/access and closed inventory; runtime read/execute only. No mutable root may contain or parent these files or Release history. Root writer lease stays separate from read-only startup custody |
+| State, participation, spend/Hosting/Store/Registry/issuer roots | Exact caller-admitted canonical paths and born provenance, independent within the invocation, 0700 for their dedicated owner. The same provider allowance retains its one Hosting root across Node roles/processes, as required by Hosting; role changes never initialize another period or duplicate capacity. Root may create admitted empty directories after journal birth; each semantic owner initializes/verifies its own contents. Runtime writable paths are exactly the role's inventory. No generic writable ancestor, foreign live lease or old/new shared root; retained native reopens preserve all floors |
+| Source/Node runtime private TLS key | Explicit operator-provided purpose-specific key, not the offline signing directory. Fresh protected delivery to runtime-owned 0600 file under a root-controlled, runtime-readable but non-writable directory; no symlink/hardlink, public export, argv/env secret, generic signer or root-owned-0600 handoff to non-root. Original file/ancestor/access/bytes and matching public key remain pinned through join. Credential replacement requires explicit fresh invocation after old join |
+| Public certificate, CA and pins | Exact immutable original files/plan bytes read-only to runtime, independently approved trust. Source TLS verifies CA/EKU/name/pins with State's clock at handshake; Node TLS matches current member/key/purpose. File commitment alone grants neither right |
+| Live clock file | Bind canonical path, explicit writer identity and original parent/access policy, readable to runtime, not runtime-writable. State retains its existing regular-file mtime/time/floor semantics; Installation must not freeze a timestamp or invent content authentication. The authorized writer may update evidence under the bound path; each current file must meet the admitted writer/access/type policy. Replaced ancestor/path declaration or changed trust policy denies; fresh evidence is reverified by State |
+| Release floors and installation journals | Root-only writable, exact separate native leases and schemas; runtime only reads admitted selection/binding, not private intent. Release remains sole floor owner. Unknown partial storage is retained, not reformatted or treated as a new install |
+
+For Source runtime inputs the exact first engineering predecessor is limited to
+plan/certificate/private-key/client-CA custody. It must not silently freeze the
+clock file inode or change Network's live clock-admission semantics.
+
+No maintained native credential-delivery transaction for these infrastructure
+accounts is currently implemented. It must prove fresh exclusive bytes, actual
+UID/access and same-inode transfer without silently copying offline authority;
+this is an Installation input-custody effect, not a new PKI or Custody authority.
+
+### Proposed lifecycle and effect admission
+
+| Boundary / effect | Proof, linearization, failure and completion owner |
+|---|---|
+| Prepare / pre-effect admission | Command retains original caller/request and all immutable inputs; Enrollment provides initial provenance only for initial install; Release independently provides fresh coherent proofs. Installation validates exact role/roots/access/protection/stopped state before account/root/file/manager effects. No runtime owner is opened as a side effect of read-only inspection |
+| Account, directory and generation birth | Installation acquires its exclusive original lease, durably records exact intended births before exclusive creation, then writes/syncs/readbacks same-inode resources and records seal. Partial creation retains original evidence and first failure. No adoption of existing directories/accounts or writer-prefix cleanup by a different invocation |
+| Publish selection / reload | Retain a known stopped or fully joined predecessor and original manager reference. Verify forward candidate plus every input again, record preimages, publish/sync exact selection/fixed unit, then explicit manager reload and complete loaded-property check. Filesystem and manager are not one atomic commit. Failure keeps exact partial state, no start or automatic rollback |
+| Explicit start / startup barrier | Fresh start admission revalidates selected resources and current Release policy under surviving floors. Root starts only the fixed exact unit. Non-root startup independently retains files/proc/cgroup/manager, checks exact generation and completes an original root-peer barrier after durable start archival. Only then can its opaque original startup Check admit Source/Node construction. ACK is transaction completion only, not State authority or runtime readiness |
+| First and continuing work | Source checks its original inputs/process/startup before State.Open can create exposure/listen, and again after I/O/handoff. State owns current signed responses/time/exposure. Node adds exact duty/producer, receiving/Hosting and selected Store/Registry/issuer owners before Receiver.Listen. Checks run outside foreign state locks; local commit latch only compares original identity/denial, never performs foreign I/O or callbacks |
+| Deny / interruption / original join | Startup or input/protection loss synchronously seals dependent admission and cancels original caller. Source State.Close joins handlers/transport/refresh and exposure cleanup while retaining its root; command joins Wait, then input/key/process custody. Node Stop interrupts Route, joins physical users, closes role roots/reservations/producer/process/key, and command closes State last. Installation separately joins original manager/process/cgroup/completion users before releasing transition custody |
+| Result / late failure | Preserve first domain failure plus independent physical close/sync/release errors. A bounded unavailable notice, output success, ACK, inactive unit, absent PID or empty path does not prove domain join. No copied handle or late callback can admit a new generation. A failed wait never becomes success because physical work finishes later |
+| Explicit restart | No manager automatic restart/enable-on-boot is authorized. A new explicit invocation rechecks actual artifacts/unit/account/process absence, retained histories, fresh Release safety, current State/time and exact credentials. It creates no authority by repeating an old ACK. Expired/conflicting/missing State, unknown old producer completion or unavailable floor refuses; restoring files does not revive an already denied lifetime |
+| Explicit replacement | Requires strictly forward exact generation proofs even if only resources changed. Deny and join predecessor first; retain its complete bytes and all semantic histories. Fresh invocation performs independent startup. No live key reload, shared roots with a concurrent generation, silent continuity or automatic rollback |
+| Crash / explicit recovery | Independently reopen original journal-born inodes and retained selection/preimages, authenticate selected/candidate bytes and fresh proofs, classify one exact prefix. Pre-effect prefix may remain stopped; admitted born writing prefix can continue only recorded original files; sealed selection/reload prefix must reobserve exact manager and stopped/joined predecessor. Ambiguous account birth, mixed files, missing archives, torn/unrecognized record, unproven join or uncertain sync gives repair-required with no start/adoption/reset. No replay of Start/ACK from phase presence. Infrastructure recovery needs its own implementation/oracles; Endpoint recovery grammar does not authorize it |
+
+Source exposure removal and Network Node-producer release remain their owners'
+decisions. A killed process cannot issue their missing clean join. In particular,
+unresolved live Node producers remain conflicting after Epoch expiry; installed
+recovery must refuse a new Node rather than erase that fact. Bounded recovery
+can legitimately remain unavailable. Power-loss and arbitrary host repair are
+not inferred from process-kill controls.
+
+### Component order and the command/artifact boundary
+
+Source is the smallest real infrastructure consumer: State + Source + Guard.
+Its first concrete predecessor is original Source plan/certificate/private-key/CA
+custody through actual serving and joined retirement. This uses existing
+authority, changes no persisted/wire grammar and can be verified on the genuine
+development command now. It is not an installed tracer, installer or bootstrap
+acceptance. Its single implementation brief belongs in the execution ledger.
+
+After accepted infrastructure authority, the next distinct boundary is exact
+Source artifact authentication/read-only native preflight, then initial stopped
+generation and guarded startup with its finite interruption/recovery controls.
+Existing Endpoint native mechanisms may be reused through explicitly registered
+narrow seams, never by feeding Source into `endpoint` Request/Authorization or
+generalizing its fixed unit behind a boolean. Future code/package allowances
+require the normal complete architecture change, not this document.
+
+There is no stages 2–4 cycle. Committed State/source/processresource and original
+input custody support component checks now. Exact infrastructure verifier,
+artifact producer, fixed-unit policy and source startup are named components,
+not a requirement to finish every operator action. A temporary `ardents-next`
+consumer can check development mechanisms with independent roots; its pinned
+binary and systemd-run are not final installed qualification. Before the first
+final installed positive, direct new-owner `ardents-node` Source/Installation
+entrypoints and the needed `ardents-control` preparation/inspection, canonical build,
+inventory/signing/verification and qualification consumers must be committed for
+that exact candidate. This is a partial command/tool cutover prerequisite; other
+unrelated commands need not be finished. Old selectors must have explicit
+replacement or pre-effect retirement; no old/new runtime import, wrapper,
+callback/process bridge or shared root is allowed, including in tests.
+After complete command/tool cutover, remove temporary accepting `ardents-next`
+entrypoints only after checking their last production/test/build/recovery caller.
+Final four-command qualification reruns on the resulting exact artifact; a
+component receipt never upgrades itself when a filename changes.
+
+Node work is a dependency graph: common infrastructure binding and Source
+coverage first; Forwarding and JOIN then need exact State/Node credentials,
+Receiving/Hosting and their distinct producer/join controls. Forwarding supplies
+actual protected legs for Descriptor and Introduction client scenarios. Descriptor
+adds Store/history/ACK and Introduction adds Receiving birth/Registry/slot floors;
+neither requires pretending the other's complete issue is accepted. Issuer adds
+prepared quota/key/results, signed profile relation and separate bootstrap
+coverage; its integrated issuing/refill consumers need the already accepted
+Forwarding path. Tokens for bounded component tests can use genuine existing
+Admission producers without claiming installed Issuer. No arbitrary role queue
+or Source-as-sixth-Node dispatch is introduced.
+
+### Proposed acceptance matrix and evidence limits
+
+All rows require exact source/tree, command/test binary digests, actual input
+inventory, native environment/account/unit/manager/process/cgroup identities,
+positive result and causal refusal observations with original failures retained.
+Use Ubuntu 24.04/systemd 255/cgroup-v2/ext4 for native installed cases; driver
+outside measured leaves. Missing prerequisite is invalid, not a skip. Ordinary
+quick/full/hook gates remain necessary; Windows checks cannot prove Linux admission.
+Existing native profile names below identify development oracles, not new
+registered installed profiles. Future installed tests require explicit checked
+profile ownership before execution.
+
+| Invariant / owner | Real positive and causal refusal / independent oracle | Existing source and future required evidence |
+|---|---|---|
+| Exact program/generation, initial provenance and forward Release floors | Independently encode descriptor/enrollment bytes; verify identical target set and initial running artifact; alter every resource/target/version/pin/metadata input, partial and extra inventory, same-version different resources; prove refusal before native mutation and no floor decrease | `generation_authentication.go`, new Enrollment/Release and Endpoint pair tests are comparison mechanisms only. New infrastructure verifier/producer and native inventory evidence are required |
+| Source original inputs / command | Genuine prepared trust and signed State serve LATEST/BY_DIGEST to actual clients. Replace/mutate/unlink plan/cert/key/CA/ancestor/access before listener and while I/O is held; deny before next effect, retain original cause and held Close, independent original root reopen only after join | `source-process-linux` / `make source-process-check`, `source_*linux_test.go`, Source transport and State race suites. Original input custody controls are missing; no successful fixture check can supply them |
+| Exact installed native binding / Installation | Actual non-root fixed unit reaches independent startup and genuine Source response; substitute executable/argv/UID/GID/groups/unit/drop-in/plan/generation/manager/InvocationID/proc/cgroup and prove no Source/Node effect; root impostor/completion replay refused | Existing Endpoint native process/manager/completion mechanisms are reusable evidence of their own scope only. New Source/unit/account and two complete manager rounds must be observed on final artifacts |
+| State, time, TLS / Network and Source | Genuine prepare/sign/accept chain plus explicit external credential trust; actual mTLS verifies CA/name/EKU/key pins/live State clock and signed Epoch materializations. Wrong CA/key/pin/digest/index, stale clock, signed conflict/successor/expiry deny; original guards retained during blocked handlers | `network-signing-linux`, `source-process-linux`, native State/duty race, `source_preparation_process_linux_test.go`, `source_state_linux_test.go`. Independent test authorities/families are not operational bootstrap |
+| Process protection / processresource | Actual selected Source or role profile, measured resource use/freshness; changed placement/limits, lost descriptors, real memory/CPU/I/O pressure and event controls deny without revival; missing overload evidence fails test | Source profile separately; `node-process-linux`, `node-issuer-linux`, `node-descriptor-linux`, `node-introduction-linux`, `node-join-linux` / their exact Make targets and `run-*-native.sh` discovery. Each final non-root installed workload needs its own coverage, not another role's PASS |
+| Reserve/spend/owned data / Node and neighbors | Actual Forwarding traffic/refill, Issuer issuing/bootstrap, Descriptor publication/lookup, Introduction registration/submission/withdrawal, paired JOIN duplex/terminal. Causal undercoverage/State loss pre-effect leaves spend unchanged; post-spend loss never refunds; retained histories reopen after actual joins | Role `node_*native_linux_test.go` authority/startup/operation/completion cases, Receiving/Hosting/Store/Registry suites. Development proof exists per source receipts; installed role/command/artifact continuity remains required |
+| Denial, late output and original joins / every original owner | Hold actual reader/writer/Close/producer/native observation; cancel/Stop/lose authority before and after handoff; retain needed resources/conflicts until actual join and preserve independent late failures through repeated/copied Close. Unavailable notice cannot become joined success | Existing Source lifetime/Node authority+completion controls; new startup/input/manager interlock and installed stop tests must exercise both neighbors. Process Wait alone is insufficient, especially Forwarding's bounded command exit |
+| Restart/replacement/interruption/recovery / Installation | Same exact admitted generation explicitly restarts only after known completion; expired credential/State/Release or unresolved producer refuses. Resource-only forward replacement, failures before/after seal, selection, reload, Start, durable archival and ACK; kill original process then Wait, independently reopen exact prefix with fresh proofs, no repeat effects/adoption | Endpoint process-cut receipts are inspected precedent, not infrastructure PASS. Each new phase needs causal cut and uncertainty cases. Crash with unknown domain join may correctly remain repair-required; no automatic restart/reset |
+| Final supported operation and claims / Qualification | Exact four-command artifacts, real operator preparation/first-pin/bootstrap receipt and actual independent-family eligibility; two installed Endpoint selected TCP/TLS journey, stop/restart and mandatory protection/interruption gates | Command/build/signing/qualification cutover and final candidate evidence remain required. Explicit QUIC pre-effect refusal/no fallback. Same-controller family labels, signed initial State, prepared pins and local fixture PASS never prove operational independence, bootstrap acceptance or privacy |
+
+The proposed integrity claim is limited: protected bytes/configuration and
+original process admission against substituted artifacts or unprivileged local
+configuration edits, conditional on intact Release/initial trust and root/kernel
+custody; measured by the causal native substitutions and effect/cleanup oracles
+above. Compromised root/kernel, dishonest trust delivery, common effective
+control, whole-host privacy, anonymity, capacity and power-loss guarantees remain
+outside that bounded evidence. No new claim is qualified by this design.
+
+## Hosting domain boundary
 
 `internal/hosting` owns provider-period policy, interface-counter charging, durable
 work/termination reservations and shared observation freshness. `internal/node/hosting`

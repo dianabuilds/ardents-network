@@ -2,6 +2,16 @@
 
 Домен сохраняет раздельные владельцы свежей авторизации и установленного Endpoint.
 
+Implemented targets, inventory, fixed-unit policy and startup are **Endpoint-only**.
+Manifest-pinned Node/Custody companions do not extend this authority to installed
+Source or Node. Their six genuine development compositions have separate runtime
+owners, but no implemented infrastructure generation/startup transaction.
+The [proposed infrastructure contract](../../../docs/technical/network-route-node.md#proposed-installed-infrastructure)
+and [proposed ADR-0123](../../../docs/adr/0123-bind-installed-infrastructure-generations.md)
+describe the missing extension. They grant no current install/start/recovery right;
+in particular, an Endpoint Authorization or detached resource facts cannot be
+reused as infrastructure permission.
+
 | Пакет | Ответственность | Настоящие потребители |
 |---|---|---|
 | `installation` | Две свежие coherent Release authorizations для exact program/generation; независимая initial-pin provenance; private immutable inventory | `cmd/ardents-next/installation.go`, `installation/endpoint` |

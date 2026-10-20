@@ -39,6 +39,16 @@ unsigned plan before execution; never edit signed descriptor or metadata bytes.
 Use `announced` for the isolated initial protocol, without invented overlap
 history or emergency grounds.
 
+These targets and the maintained signer/assembly inventory do not authorize
+installed serving Source or any Node role. Headless Node/Custody companions are
+initial manifest inventory, not an infrastructure generation authorization.
+The [infrastructure proposal](../technical/network-route-node.md#proposed-installed-infrastructure)
+names the missing exact targets, custody, command/tool and native lifecycle
+boundary under [proposed ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md).
+Its acceptance and any exact public bootstrap receipt for future installed
+execution remain distinct decisions. Neither the proposal nor prior development
+receipts authorize running this operation with additional targets.
+
 ## Protected operation on Linux
 
 Build the two adapters explicitly from their source files:
