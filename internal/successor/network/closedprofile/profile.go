@@ -62,7 +62,7 @@ func Verify(raw []byte, context Context) (Profile, error) {
 		return Profile{}, errors.New("closed profile is truncated")
 	}
 	body, signature := raw[:len(raw)-ed25519.SignatureSize], raw[len(raw)-ed25519.SignatureSize:]
-	if !ed25519.Verify(context.Authority, append([]byte("ardents-closed-profile-v3\x00"), body...), signature) {
+	if !ed25519.Verify(context.Authority, signingTranscript(body), signature) {
 		return Profile{}, errors.New("closed profile signature is invalid")
 	}
 	profile, err := parseBody(body, context.StateGeneration, context.NetworkID, context.EpochDigest, context.Epoch, context.Now.UTC())

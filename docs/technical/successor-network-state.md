@@ -99,7 +99,10 @@ resource-release failures remain failed Close results.
 Unsigned record, Epoch and profile preparation remain explicit contracts for
 subsequent provisioning composition, sharing the canonical grammar and
 Candidate View rules. They hold no private signing key, cannot change a floor,
-and cannot accept a generation. Profile signing is absent from new Network.
+and cannot accept a generation. Private profile signing stays outside Network;
+`closedprofile.SigningTranscript` validates the exact unsigned body and explicit
+public context and constructs its one fixed domain-separated message. Verify
+uses that same transcript owner. Neither operation accepts State or receives a key.
 
 `ardents-next network prepare-initial-node-record`, `prepare-initial-epoch` and
 `prepare-closed-profile` directly consume those public preparation contracts.
@@ -132,7 +135,16 @@ Record message or initial Epoch digest. Network receives no private key.
 Ordinary Epoch verification and all materialization verification precede output.
 Finite exclusive durable outputs retain uncertain prefixes without adoption.
 These offline operations create no State root, accept no State and start no
-runtime. Closed-profile private signing and key/trust preparation remain separate.
+runtime. `sign-closed-profile` separately admits the exact public preparation,
+reviewed commitment, original reference and independently pinned State authority,
+matches its protected private key, signs the public owner's validated transcript
+and verifies before durable `profile.bin` output. The Admission permission
+authority carried inside the body is a separate right; it supplies no State pin.
+Its maximum six-hour interval, original inputs and post-I/O custody/time checks
+survive until acknowledgement. Receipt leaves State acceptance false. Profile
+has no Carrier; genuine State membership/currentness and runtime transport
+eligibility remain their owners' decisions. Key/trust preparation, operational
+ceremony and installed qualification remain separate.
 
 `CandidateView` owns individual eligibility, ordered rejection reasons,
 collision exclusion, canonical Node ordering and family totals. The format

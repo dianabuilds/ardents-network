@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -155,7 +156,13 @@ func TestNetworkSigningCommandsGenuineStateChain(t *testing.T) {
 	runNetworkPreparedStateChain(t, func(t *testing.T, purpose string, plan any, key ed25519.PrivateKey, message []byte) ([]byte, [][]byte) {
 		parent := signingNativeParent(t)
 		planPath, prepared, keyPath, root := filepath.Join(parent, "plan"), filepath.Join(parent, "prepared"), filepath.Join(parent, "key"), filepath.Join(parent, "signed")
-		if err := os.WriteFile(planPath, signingDeclaration(t, purpose, plan, time.Now().UTC().Truncate(time.Second)), 0600); err != nil {
+		declaration := signingDeclaration(t, purpose, plan, time.Now().UTC().Truncate(time.Second))
+		operation := "sign-initial-" + purpose
+		if purpose == "closed-profile" {
+			operation = "sign-closed-profile"
+			declaration = profileSigningDeclaration(t, plan, key.Public().(ed25519.PublicKey), time.Now().UTC().Truncate(time.Second))
+		}
+		if err := os.WriteFile(planPath, declaration, 0600); err != nil {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(prepared, message, 0600); err != nil {
@@ -163,7 +170,7 @@ func TestNetworkSigningCommandsGenuineStateChain(t *testing.T) {
 		}
 		writeSigningTestKey(t, keyPath, key)
 		digest := sha256.Sum256(message)
-		cmd := exec.CommandContext(t.Context(), compiledCommand(t), "network", "sign-initial-"+purpose, planPath, prepared, preparationHex(digest[:]), keyPath, root)
+		cmd := exec.CommandContext(t.Context(), compiledCommand(t), "network", operation, planPath, prepared, preparationHex(digest[:]), keyPath, root)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatal("genuine signing command", err, string(out))
 		}
@@ -172,26 +179,32 @@ func TestNetworkSigningCommandsGenuineStateChain(t *testing.T) {
 		if purpose == "epoch" {
 			name = "epoch.bin"
 		}
+		if purpose == "closed-profile" {
+			name = "profile.bin"
+		}
 		got, err := os.ReadFile(filepath.Join(root, name))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if purpose == "epoch" {
+			records := plan.(map[string]any)["records"].([]string)
 			entries, err := os.ReadDir(root)
-			if err != nil || len(entries) != 3 {
+			if err != nil || len(entries) != 1+2*len(records) {
 				t.Fatal("finite Epoch inventory", err)
 			}
-			material, e := os.ReadFile(filepath.Join(root, "material-00.bin"))
-			if e != nil {
-				t.Fatal(e)
-			}
-			materials = [][]byte{material}
-			input, e := os.ReadFile(filepath.Join(root, "input-00.bin"))
-			if e != nil || preparationHex(input) != plan.(map[string]any)["records"].([]string)[0] {
-				t.Fatal("product Source input differs", e)
+			for i, record := range records {
+				material, e := os.ReadFile(filepath.Join(root, fmt.Sprintf("material-%02d.bin", i)))
+				if e != nil {
+					t.Fatal(e)
+				}
+				materials = append(materials, material)
+				input, e := os.ReadFile(filepath.Join(root, fmt.Sprintf("input-%02d.bin", i)))
+				if e != nil || preparationHex(input) != record {
+					t.Fatal("product Source input differs", e)
+				}
 			}
 		}
-		retry := exec.CommandContext(t.Context(), compiledCommand(t), "network", "sign-initial-"+purpose, planPath, prepared, preparationHex(digest[:]), keyPath, root)
+		retry := exec.CommandContext(t.Context(), compiledCommand(t), "network", operation, planPath, prepared, preparationHex(digest[:]), keyPath, root)
 		if retry.Run() == nil {
 			t.Fatal("existing output adopted")
 		}
@@ -200,9 +213,15 @@ func TestNetworkSigningCommandsGenuineStateChain(t *testing.T) {
 }
 
 func TestNetworkSigningOriginalInputCustody(t *testing.T) {
+	for name, arguments := range map[string]func(*testing.T) []string{"record": nativeSigningArguments, "profile": nativeProfileSigningArguments} {
+		t.Run(name, func(t *testing.T) { testSigningOriginalInputCustody(t, arguments) })
+	}
+}
+
+func testSigningOriginalInputCustody(t *testing.T, arguments func(*testing.T) []string) {
 	for _, fault := range []string{"healthy", "key mode", "key hardlink", "key replacement", "key changed", "public replacement", "public changed", "ancestor writable", "cancel", "late key replacement"} {
 		t.Run(fault, func(t *testing.T) {
-			args := nativeSigningArguments(t)
+			args := arguments(t)
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			observed := false
@@ -259,7 +278,7 @@ func TestNetworkSigningOriginalInputCustody(t *testing.T) {
 					t.Fatal(e)
 				}
 			}
-			control := nativeSigningArguments(t)
+			control := arguments(t)
 			if _, e := executeNetworkSigning(t.Context(), control); e != nil {
 				t.Fatal("independent healthy control", e)
 			}
@@ -372,7 +391,13 @@ func TestNetworkSigningConcurrentOutput(t *testing.T) {
 }
 
 func TestNetworkSigningOriginalRefusalCannotRevive(t *testing.T) {
-	args := nativeSigningArguments(t)
+	for name, arguments := range map[string]func(*testing.T) []string{"record": nativeSigningArguments, "profile": nativeProfileSigningArguments} {
+		t.Run(name, func(t *testing.T) { testSigningOriginalRefusalCannotRevive(t, arguments) })
+	}
+}
+
+func testSigningOriginalRefusalCannotRevive(t *testing.T, arguments func(*testing.T) []string) {
+	args := arguments(t)
 	input, err := openSigningInput(t.Context(), args[4], 16<<10, true)
 	if err != nil {
 		t.Fatal(err)
@@ -479,7 +504,11 @@ func TestNetworkSigningInterruptedChild(t *testing.T) {
 		if !errors.Is(err, syscall.EFBIG) {
 			t.Fatal("actual partial write cause lost", err)
 		}
-		saved, e := os.ReadFile(filepath.Join(root, "node-record.bin"))
+		name := "node-record.bin"
+		if args[0] == "sign-closed-profile" {
+			name = "profile.bin"
+		}
+		saved, e := os.ReadFile(filepath.Join(root, name))
 		if e != nil || len(saved) != 16 {
 			t.Fatal("actual partial prefix", len(saved), e)
 		}
@@ -508,9 +537,15 @@ func TestNetworkSigningInterruptedChild(t *testing.T) {
 }
 
 func TestNetworkSigningActualPartialAndProcessCuts(t *testing.T) {
+	for name, arguments := range map[string]func(*testing.T) []string{"record": nativeSigningArguments, "profile": nativeProfileSigningArguments} {
+		t.Run(name, func(t *testing.T) { testSigningActualPartialAndProcessCuts(t, arguments) })
+	}
+}
+
+func testSigningActualPartialAndProcessCuts(t *testing.T, arguments func(*testing.T) []string) {
 	for _, stage := range []string{"file-limit", "inputs-read", "signed", "directory-created", "file-created", "written", "closed", "before-directory-sync", "commit"} {
 		t.Run(stage, func(t *testing.T) {
-			args := nativeSigningArguments(t)
+			args := arguments(t)
 			root := args[5]
 			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()

@@ -40,9 +40,9 @@ func TestNetworkSigningIndependentRecordAndBinding(t *testing.T) {
 	p, key, message, reference := signingRecordFixture(t)
 	digest := sha256.Sum256(message)
 	raw := signingDeclaration(t, "node-record", p, reference)
-	admit := func(raw, prepared []byte, pin string) *initialNetworkSigning {
+	admit := func(raw, prepared []byte, pin string) *networkSigning {
 		t.Helper()
-		s, err := admitInitialNetworkSigning("sign-initial-node-record", raw, prepared, pin)
+		s, err := admitNetworkSigning("sign-initial-node-record", raw, prepared, pin)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -79,7 +79,7 @@ func TestNetworkSigningIndependentRecordAndBinding(t *testing.T) {
 			case "quic":
 				r = bytes.ReplaceAll(r, []byte("ardents-carrier-tcp-tls-v2"), []byte("ardents-carrier-quic-v2"))
 			}
-			if _, err := admitInitialNetworkSigning("sign-initial-node-record", r, prepared, pin); err == nil {
+			if _, err := admitNetworkSigning("sign-initial-node-record", r, prepared, pin); err == nil {
 				t.Fatal("invalid binding accepted")
 			}
 			if _, err := admit(raw, message, preparationHex(digest[:])).sign(key, reference); err != nil {
@@ -116,13 +116,13 @@ func TestNetworkSigningPrivateEncoding(t *testing.T) {
 	defer clear(der)
 	raw := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
 	defer clear(raw)
-	parsed, err := parseInitialNetworkKey(raw)
+	parsed, err := parseNetworkSigningKey(raw)
 	if err != nil || !bytes.Equal(parsed, key) {
 		t.Fatal("valid key", err)
 	}
 	clear(parsed)
 	for _, bad := range [][]byte{nil, append(bytes.Clone(raw), ' '), append([]byte("prefix\n"), raw...), append(bytes.Clone(raw), raw...), pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der}), pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: []byte{1, 2}}), pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: append(bytes.Clone(der), 0)})} {
-		got, err := parseInitialNetworkKey(bad)
+		got, err := parseNetworkSigningKey(bad)
 		clear(got)
 		clear(bad)
 		if err == nil {
@@ -164,7 +164,7 @@ func TestNetworkSigningIndependentEpochOrdering(t *testing.T) {
 		t.Fatal(err)
 	}
 	digest := sha256.Sum256(message)
-	s, err := admitInitialNetworkSigning("sign-initial-epoch", signingDeclaration(t, "epoch", p, reference), message, preparationHex(digest[:]))
+	s, err := admitNetworkSigning("sign-initial-epoch", signingDeclaration(t, "epoch", p, reference), message, preparationHex(digest[:]))
 	if err != nil {
 		t.Fatal(err)
 	}

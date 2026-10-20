@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/network/closedprofile"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/epoch"
 )
 
@@ -27,13 +28,14 @@ type networkSigningPlan struct {
 	Epoch     json.RawMessage `json:"epoch"`
 }
 
-type initialNetworkSigning struct {
+type networkSigning struct {
 	operation string
-	initialSigningInterval
+	networkSigningInterval
 	message []byte
 	public  ed25519.PublicKey
 	network [32]byte
 	records [][]byte
+	profile *closedprofile.Context
 }
 
 type networkSignedArtifact struct {
@@ -41,9 +43,12 @@ type networkSignedArtifact struct {
 	raw  []byte
 }
 
-func admitInitialNetworkSigning(operation string, raw, prepared []byte, pin string) (*initialNetworkSigning, error) {
+func admitNetworkSigning(operation string, raw, prepared []byte, pin string) (*networkSigning, error) {
 	if !isNetworkSigning(operation) || len(raw) > maximumNetworkPreparationPlan {
 		return nil, errNetworkSigning
+	}
+	if operation == "sign-closed-profile" {
+		return admitClosedProfileSigning(raw, prepared, pin)
 	}
 	field, prepare := "record", "prepare-initial-node-record"
 	if operation == "sign-initial-epoch" {
@@ -70,7 +75,7 @@ func admitInitialNetworkSigning(operation string, raw, prepared []byte, pin stri
 	if err != nil || pin != hex.EncodeToString(digest[:]) || !bytes.Equal(message, prepared) {
 		return nil, errNetworkSigning
 	}
-	s := &initialNetworkSigning{operation: operation, initialSigningInterval: initialSigningInterval{reference: reference}, message: message}
+	s := &networkSigning{operation: operation, networkSigningInterval: networkSigningInterval{reference: reference}, message: message}
 	if field == "record" {
 		var p recordPreparationPlan
 		if json.Unmarshal(publicPlan, &p) != nil {
@@ -96,7 +101,7 @@ func admitInitialNetworkSigning(operation string, raw, prepared []byte, pin stri
 	return s, nil
 }
 
-func parseInitialNetworkKey(raw []byte) (key ed25519.PrivateKey, err error) {
+func parseNetworkSigningKey(raw []byte) (key ed25519.PrivateKey, err error) {
 	block, rest := pem.Decode(raw)
 	if block == nil {
 		return nil, errNetworkSigning
@@ -148,11 +153,14 @@ func parseInitialNetworkKey(raw []byte) (key ed25519.PrivateKey, err error) {
 	return key, nil
 }
 
-// No private material crosses into Network. The two fixed transcripts below
+// No private material crosses into Network. The fixed transcripts below
 // are admitted only after canonical preparation, exact artifact and key checks.
-func (s *initialNetworkSigning) sign(key ed25519.PrivateKey, now time.Time) ([]networkSignedArtifact, error) {
+func (s *networkSigning) sign(key ed25519.PrivateKey, now time.Time) ([]networkSignedArtifact, error) {
 	if s.checkTime(now) != nil || len(key) != ed25519.PrivateKeySize || !bytes.Equal(key[32:], s.public) {
 		return nil, errNetworkSigning
+	}
+	if s.operation == "sign-closed-profile" {
+		return s.signProfile(key, now)
 	}
 	if s.operation == "sign-initial-node-record" {
 		signature := ed25519.Sign(key, s.message)

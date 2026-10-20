@@ -55,6 +55,7 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 	copy(permissionPublic[:], permissionKey.Public().(ed25519.PublicKey))
 	spec := networkfixture.ClosedSpec{NetworkID: [32]byte{1}, Seed: [32]byte{13}, IssuanceAuthority: permissionPublic, Number: 1, NotBefore: start, NotAfter: end, Authority: stateKey, Nodes: []networkfixture.ClosedNode{
 		{RecordSpec: networkfixture.RecordSpec{NodeID: [32]byte{2}, Generation: 1, ValidFrom: start, ValidUntil: end, Endpoint: "127.0.0.1:4401", Carrier: epoch.CarrierClosedTCP, Capability: 2, Capacity: 3, PrivateKey: nodeKey}, RoleDomain: 2, Subrole: 6},
+		{RecordSpec: networkfixture.RecordSpec{NodeID: [32]byte{3}, Generation: 1, ValidFrom: start, ValidUntil: end, Endpoint: "127.0.0.1:4402", Carrier: epoch.CarrierClosedTCP, Capability: 2, Capacity: 3, PrivateKey: key(44)}, RoleDomain: 4, Subrole: 3},
 	}}
 	fixture, err := networkfixture.BuildClosed(spec)
 	if err != nil {
@@ -117,7 +118,18 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 	if !bytes.Equal(record, fixture.Epoch.Inputs[0]) {
 		t.Fatal("record differs from independent canonical oracle")
 	}
-	epochPlan := map[string]any{"schema": "ardents-initial-epoch-plan-v1", "network_id": preparationIdentifier(1), "assignment_seed": preparationIdentifier(13), "valid_from": start.Format(time.RFC3339), "valid_until": end.Format(time.RFC3339), "domains": []string{"initiator", "introduction", "rendezvous", "responder"}, "records": []string{preparationHex(record)}, "authority_keys": []string{preparationHex(stateKey.Public().(ed25519.PublicKey))}}
+	secondPlan := preparationRecordPlan(key(44).Public().(ed25519.PublicKey))
+	secondPlan["node_id"], secondPlan["family"], secondPlan["endpoint"] = preparationIdentifier(3), fixture.Nodes[1].Family, "127.0.0.1:4402"
+	secondPlan["valid_from"], secondPlan["valid_until"] = start.Format(time.RFC3339), end.Format(time.RFC3339)
+	secondMessage := prepare("prepare-initial-node-record", secondPlan, "node-record.signing-input")
+	secondRecord := signPreparedNodeForTest(key(44), secondMessage)
+	if signer != nil {
+		secondRecord, _ = signer(t, "node-record", secondPlan, key(44), secondMessage)
+	}
+	if !bytes.Equal(secondRecord, fixture.Epoch.Inputs[1]) {
+		t.Fatal("second record differs from independent oracle")
+	}
+	epochPlan := map[string]any{"schema": "ardents-initial-epoch-plan-v1", "network_id": preparationIdentifier(1), "assignment_seed": preparationIdentifier(13), "valid_from": start.Format(time.RFC3339), "valid_until": end.Format(time.RFC3339), "domains": []string{"initiator", "introduction", "rendezvous", "responder"}, "records": []string{preparationHex(record), preparationHex(secondRecord)}, "authority_keys": []string{preparationHex(stateKey.Public().(ed25519.PublicKey))}}
 	epochMessage := prepare("prepare-initial-epoch", epochPlan, "epoch.unsigned")
 	signedEpoch := signPreparedEpochForTest(stateKey, epochMessage)
 	materials := fixture.Epoch.Materials
@@ -179,6 +191,9 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 	profilePlan := map[string]any{"schema": "ardents-closed-profile-plan-v1", "network_id": preparationIdentifier(1), "state_generation": preparationHex(fixture.Epoch.Digest[:]), "epoch_digest": preparationHex(fixture.Epoch.Digest[:]), "issuer_node_id": preparationIdentifier(2), "issuance_authority_key": preparationHex(permissionPublic[:]), "epoch": 1, "not_before": start.Format(time.RFC3339), "not_after": end.Format(time.RFC3339), "nodes": nodes, "token_keys": keys}
 	profileMessage := prepare("prepare-closed-profile", profilePlan, "profile.unsigned")
 	signedProfile := signPreparedProfileForTest(stateKey, profileMessage)
+	if signer != nil {
+		signedProfile, _ = signer(t, "closed-profile", profilePlan, stateKey, profileMessage)
+	}
 	if !bytes.Equal(signedProfile, fixture.Profile) {
 		t.Fatal("profile differs from independent canonical oracle")
 	}
@@ -222,7 +237,7 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 		switch operation {
 		case "accept-epoch":
 			config["epoch"] = value
-			config["inputs"] = [][]byte{record}
+			config["inputs"] = [][]byte{record, secondRecord}
 			config["materials"] = materials
 		case "accept-profile":
 			config["profile"] = value
@@ -233,7 +248,7 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 			t.Fatalf("actual State command %s accepted=%v: %v %s", operation, want, err, out)
 		}
 	}
-	for _, fault := range []string{"healthy", "changed Epoch", "foreign State key", "purpose confused profile", "changed profile", "foreign record digest"} {
+	for _, fault := range []string{"healthy", "changed Epoch", "foreign State key", "purpose confused profile", "Epoch purpose profile", "changed profile", "foreign record digest", "foreign role", "foreign issuer", "foreign duty"} {
 		t.Run("State "+fault, func(t *testing.T) {
 			plan := networkAuthorityPlan{Root: filepath.Join(t.TempDir(), "state"), NetworkID: spec.NetworkID, Authorities: [][32]byte{public}, Threshold: 1, ProfileAuthority: public, ClockObservationFile: clock}
 			candidateEpoch := bytes.Clone(signedEpoch)
@@ -254,12 +269,34 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 			switch fault {
 			case "purpose confused profile":
 				candidateProfile = signPreparedNodeForTest(stateKey, profileMessage)
+			case "Epoch purpose profile":
+				digest := sha256.Sum256(profileMessage)
+				candidateProfile = append(bytes.Clone(profileMessage), ed25519.Sign(stateKey, digest[:])...)
 			case "changed profile":
 				candidateProfile[len(candidateProfile)-1] ^= 1
 			case "foreign record digest":
 				body := bytes.Clone(profileMessage)
 				body[244] ^= 1
 				candidateProfile = signPreparedProfileForTest(stateKey, body)
+			case "foreign role":
+				body := bytes.Clone(profileMessage)
+				// A valid grammar role for the second real Node, different from
+				// its Epoch assignment. Only State's membership join can refuse it.
+				body[334], body[335] = 1, 1
+				candidateProfile = signPreparedProfileForTest(stateKey, body)
+			case "foreign issuer":
+				body := bytes.Clone(profileMessage)
+				body[130], body[196] = 1, 1
+				candidateProfile = signPreparedProfileForTest(stateKey, body)
+			case "foreign duty":
+				body := bytes.Clone(profileMessage)
+				body[269] = 2
+				candidateProfile = signPreparedProfileForTest(stateKey, body)
+			}
+			if fault == "foreign record digest" || fault == "foreign role" || fault == "foreign issuer" || fault == "foreign duty" {
+				if _, e := closedprofile.Verify(candidateProfile, closedprofile.Context{NetworkID: spec.NetworkID, StateGeneration: fixture.Epoch.Digest, EpochDigest: fixture.Epoch.Digest, Epoch: 1, Authority: stateKey.Public().(ed25519.PublicKey), Now: time.Now()}); e != nil {
+					t.Fatal("State join control lacks a genuine valid signature/public grammar", e)
+				}
 			}
 			accept(plan, "accept-profile", candidateProfile, fault == "healthy")
 			if fault != "healthy" {

@@ -79,6 +79,32 @@ not a power-loss durability qualification.
 
 ## Assembly and acceptance boundary
 
+`ardents-next network sign-closed-profile` takes the same ordered arguments as
+the initial signers below: public plan, exact `profile.unsigned`, independently
+reviewed lowercase SHA-256, protected private-key path and fresh output directory.
+Its closed schema is `ardents-closed-profile-signing-plan-v1`, with exactly
+`reference_time`, `state_authority_key` and `profile` after `schema`. The latter
+is the complete exact `ardents-closed-profile-plan-v1` public preparation plan.
+The explicit public `state_authority_key` is the independently pinned State
+signing authority from the admitted State trust configuration. It is not inferred
+from the private key or the profile's separate `issuance_authority_key`.
+An explicit alias of that Admission authority as the State pin also refuses.
+The command reprepares and compares every unsigned byte and reviewed commitment,
+then obtains the validated fixed signing transcript from new Network closedprofile.
+It verifies the exact signed bytes under that State pin and public context before
+writing only `profile.bin`. This proves signature and public grammar; State alone
+joins current Epoch/Record/role/issuer facts and commits acceptance and floors.
+
+The original native custody, finite reference, post-I/O checks, durable output
+and failure rules below also apply. Profile validity is at most **six hours**,
+with complete canonical token-key windows inside it; actual signing and final
+acknowledgement must remain inside the original interval. Profile contains no
+Carrier field and signing grants no transport participation. Unknown, mixed or
+retired schemas refuse. No State root, key generation, Custody extension, generic
+signing service, rotation/history policy or installed claim is introduced.
+Only isolated supplied test authorities qualify engineering verification;
+operational bootstrap receipt acceptance remains separate under ADR-0120.
+
 New isolated composition offers `ardents-next network sign-initial-node-record`
 and `sign-initial-epoch`. Each takes, in order, an absolute public signing plan,
 exact public preparation artifact, independently reviewed lowercase SHA-256 pin,
@@ -105,7 +131,7 @@ and independent native errors; repeated invocation never adopts a destination.
 Plaintext key files are not encrypted Vaults. Owned key/DER/raw copies are cleared
 after joined use; root, kernel and runtime may still observe plaintext, and
 absolute memory erasure is not claimed. No operational ceremony, new trust,
-key generation, profile signer or installed acceptance follows from these
+key generation or installed acceptance follows from these
 engineering operations. ADR-0120 bootstrap receipt acceptance remains separate.
 
 The maintained `ardents-control prepare-qualification-node-record` and

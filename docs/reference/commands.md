@@ -2,7 +2,7 @@
 
 `ardents-next network sign-initial-node-record <public-plan> <prepared-artifact>
 <reviewed-sha256> <private-key-path> <fresh-output>` and the distinct
-`network sign-initial-epoch` form perform one bounded offline initial signing
+`network sign-initial-epoch` and `network sign-closed-profile` forms perform one bounded offline signing
 operation. All paths are canonical absolute. The strict signing schemas,
 embedded preparation declarations, original protected-file/time requirements
 and acceptance boundary are defined in
@@ -10,7 +10,11 @@ and acceptance boundary are defined in
 Record emits `node-record.bin`; Epoch emits `epoch.bin`, Source-ordered
 `input-NN.bin` and accepted-View-ordered `material-NN.bin`. A successful public
 receipt reports verified signatures and leaves State acceptance and installed
-qualification false. No private bytes enter arguments or receipts. These
+qualification false. Profile emits only `profile.bin`; its strict declaration
+additionally supplies the independent `state_authority_key` pin, distinct from
+the Admission authority inside the profile. It signs the public owner's fixed
+ARDCPR03 transcript within the original maximum six-hour validity and finite
+reference bounds. No private bytes enter arguments or receipts. These
 operations require Linux root/native ext4 and refuse other platforms.
 
 The nearest closed release uses TCP/TLS alone under

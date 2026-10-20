@@ -3,9 +3,16 @@
 The `network-signing-linux` profile (`make network-signing-check`,
 `network_signing_native` tag) requires actual Linux root, direct root-controlled
 ancestors and private 0700 TMPDIR on native ext4. It exercises the genuine
-initial Record/Epoch signing commands with isolated supplied keys, exact public
+initial Record/Epoch and closed-profile signing commands with isolated supplied keys, exact public
 preparation commitments, independent signature transcripts and new State
-acceptance on independent roots. Closed-profile signatures remain test-only.
+acceptance on independent roots. The positive chain uses three distinct State,
+Node and Admission keys and the actual profile-signing command. Independent
+canonical profile bytes and the fixed-domain transcript are compared; wrong
+purpose, pin, private key, public context and State Record/role/issuer inputs
+refuse with healthy controls. Profile custody and process-cut controls exercise
+the actual private operation; imminent actual expiry checks follow input I/O
+and output I/O without changing the original reference or six-hour grammar.
+Exactly one of two original profile-signing attempts wins fresh output custody.
 Original input replacement/access/cancellation refusals and deterministic
 exclusive output inventory, readback, file/directory sync/Close failures,
 concurrency and killed/joined original writer children are separate controls.

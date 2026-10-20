@@ -149,7 +149,7 @@ func executeObservedNetworkSigning(ctx context.Context, args []string, observe f
 	if os.Geteuid() != 0 {
 		return nil, errNetworkSigning
 	}
-	var admitted *initialNetworkSigning
+	var admitted *networkSigning
 	defer func() {
 		err = errors.Join(err, ctx.Err())
 		if admitted != nil {
@@ -166,7 +166,7 @@ func executeObservedNetworkSigning(ctx context.Context, args []string, observe f
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, prepared.close()) }()
-	operation, err := admitInitialNetworkSigning(args[0], plan.raw, prepared.raw, args[3])
+	operation, err := admitNetworkSigning(args[0], plan.raw, prepared.raw, args[3])
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func executeObservedNetworkSigning(ctx context.Context, args []string, observe f
 		return nil, err
 	}
 	defer func() { err = errors.Join(err, secret.close()) }()
-	key, err := parseInitialNetworkKey(secret.raw)
+	key, err := parseNetworkSigningKey(secret.raw)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func executeObservedNetworkSigning(ctx context.Context, args []string, observe f
 		observe("signed", secret.file)
 	}
 	err = persistNetworkSigning(ctx, args[5], artifacts, check, observe)
-	return &networkSigningResult{digest: sha256.Sum256(artifacts[0].raw), interval: operation.initialSigningInterval}, err
+	return &networkSigningResult{digest: sha256.Sum256(artifacts[0].raw), interval: operation.networkSigningInterval}, err
 }
 
 // One finite inventory is written in declared order. observe is a synchronous
