@@ -101,6 +101,28 @@ subsequent provisioning composition, sharing the canonical grammar and
 Candidate View rules. They hold no private signing key, cannot change a floor,
 and cannot accept a generation. Profile signing is absent from new Network.
 
+`ardents-next network prepare-initial-node-record`, `prepare-initial-epoch` and
+`prepare-closed-profile` directly consume those public preparation contracts.
+They accept closed, bounded public JSON declarations and emit exact unsigned
+ARNR-v2 generation-one, AREP-v3 initial Epoch, or ARDCPR03 bytes. The Epoch
+preparation owner accepts an optional exact `Carrier` constraint; this command
+requires TCP/TLS for every signed Record. Empty constraint preserves historical
+preparation, and historical readers retain their signed bytes. The command
+does not decode Records, recompute assignment, redraw the seed or own SPKI rules.
+Profile preparation rejects fractional or negative wire times before encoding;
+it verifies public grammar, not live membership or State readiness.
+
+Command composition owns a fresh output directory under an explicitly selected
+caller-owned 0700 parent on native Linux ext4. It retains original directory
+descriptors, refuses symlinks/replacements and exclusively creates one 0600
+artifact. Exact write, file sync/close, readback, finite inventory, directory
+and parent sync, final readback and original cancellation precede success.
+Independent physical errors survive. An interrupted or uncertain directory is
+retained incomplete; a later invocation cannot adopt, overwrite or clean it.
+Its public receipt grants no signature, State authority or currentness. Private
+purpose-specific Node Record, Epoch and profile signing remains a separate
+provisioning responsibility; Admission issuer-profile signing is not that right.
+
 `CandidateView` owns individual eligibility, ordered rejection reasons,
 collision exclusion, canonical Node ordering and family totals. The format
 adapter supplies decoded public facts and signature examination results;

@@ -17,12 +17,18 @@ type InitialClosedEpoch struct {
 	Domains                   []string
 	Records                   [][]byte
 	AuthorityKeys             []ed25519.PublicKey
+	// Carrier optionally restricts every supplied record to one closed Carrier.
+	// Empty preserves historical preparation; it selects no runtime transport.
+	Carrier string
 }
 
 // PrepareInitialClosedEpoch returns unsigned existing AREP-v3 bytes. It checks
 // every supplied Node signature and computes the current owner's commitments
 // and assignments; it signs nothing and cannot admit State or replace a floor.
 func PrepareInitialClosedEpoch(input InitialClosedEpoch) ([]byte, error) {
+	if input.Carrier != "" && input.Carrier != CarrierClosedTCP && input.Carrier != CarrierClosedQUIC {
+		return nil, errors.New("initial Epoch Carrier constraint is invalid")
+	}
 	if input.NetworkID == [32]byte{} || input.AssignmentSeed == [32]byte{} || !initialPreparationInterval(input.ValidFrom, input.ValidUntil) || len(input.Records) == 0 || len(input.Records) > 64 || len(input.Domains) == 0 || len(input.Domains) > 16 || len(input.AuthorityKeys) == 0 || len(input.AuthorityKeys) > 16 {
 		return nil, errors.New("initial closed Epoch facts are invalid")
 	}
@@ -49,7 +55,7 @@ func PrepareInitialClosedEpoch(input InitialClosedEpoch) ([]byte, error) {
 	}
 	for _, raw := range input.Records {
 		record, err := parseRecord(raw)
-		if err != nil || raw[4] != 2 || record.generation != 1 || record.networkID == [32]byte{} || record.nodeID == [32]byte{} || input.ValidUntil.After(record.notAfter) {
+		if err != nil || raw[4] != 2 || record.generation != 1 || record.networkID == [32]byte{} || record.nodeID == [32]byte{} || input.ValidUntil.After(record.notAfter) || (input.Carrier != "" && record.carrier != input.Carrier) {
 			return nil, errors.New("initial Node Record is invalid or ends before its Epoch")
 		}
 		prepared, err := PrepareInitialClosedRecord(InitialClosedRecord{NetworkID: record.networkID, NodeID: record.nodeID, ValidFrom: record.notBefore, ValidUntil: record.notAfter, Family: record.family, Endpoint: record.endpoint, Carrier: record.carrier, Capacity: record.capacity, PublicKey: record.publicKey})

@@ -22,6 +22,56 @@ configuration format or an authority source.
 
 ## `ardents`
 
+### Public Network preparation in the isolated command
+
+On Linux with native ext4 output, use:
+
+```text
+ardents-next network prepare-initial-node-record <absolute-plan> <fresh-output-directory>
+ardents-next network prepare-initial-epoch <absolute-plan> <fresh-output-directory>
+ardents-next network prepare-closed-profile <absolute-plan> <fresh-output-directory>
+```
+
+The plan is one public JSON object, at most 8 MiB. Names are exact lowercase
+snake case, identifiers/public Ed25519 keys are 64 lowercase hex characters,
+signed Record and SPKI bytes are lowercase hex, numbers are unsigned integers,
+and times are whole-second canonical UTC RFC3339 (`...Z`). Duplicates, unknown,
+missing, null, trailing and mixed-operation declarations refuse before output.
+No private key, State root or signer field is accepted.
+
+| Operation / schema | Required fields after `schema` | Artifact |
+|---|---|---|
+| `prepare-initial-node-record` / `ardents-initial-node-record-plan-v1` | `network_id`, `node_id`, `valid_from`, `valid_until`, `family`, `endpoint`, `carrier`, `capacity`, `public_key` | `node-record.signing-input` |
+| `prepare-initial-epoch` / `ardents-initial-epoch-plan-v1` | `network_id`, `assignment_seed`, `valid_from`, `valid_until`, `domains`, `records`, `authority_keys` | `epoch.unsigned` |
+| `prepare-closed-profile` / `ardents-closed-profile-plan-v1` | `network_id`, `state_generation`, `epoch_digest`, `issuer_node_id`, `issuance_authority_key`, `epoch`, `not_before`, `not_after`, `nodes`, `token_keys` | `profile.unsigned` |
+
+Record generation is fixed to one. Carrier must be
+`ardents-carrier-tcp-tls-v2`; Epoch preparation also refuses every signed Record
+with deferred QUIC or retired Carrier. `domains` is the canonical ordered Role
+Domain list (1–16); `records` contains 1–64 genuinely signed initial Node
+Records; `authority_keys` contains 1–16 distinct public State pins. The supplied
+seed is used exactly once, without searching for an assignment. Each profile
+Node object has exactly `node_id`, `record_digest`, `role_domain`, `subrole`,
+`duty_generation`; each token-key object exactly `window_start`, `class`, `spki`.
+Existing Network owners enforce profile ordering, finite intervals and public
+SPKI grammar. Profile preparation does not join those declarations to live State.
+
+The output parent must already exist, be owned by the caller with mode 0700,
+and reside on actual native ext4. Every path component must be direct, without
+symlinks. The command exclusively creates a fresh directory and one 0600 file,
+syncs/closes and verifies exact bytes and original custody before a receipt.
+An interrupted/uncertain prefix remains incomplete and retained; choose a new
+explicit directory for any separately authorized attempt. Existing output is
+never overwritten, adopted, retried or automatically removed. Unsupported
+platform/filesystem, invalid input, cancellation, physical failure or receipt
+failure returns nonzero. A retained artifact alone is not a success receipt.
+
+The public `ardents-network-prepared-v1` receipt contains operation, artifact
+name, exact unsigned SHA-256, `signed:false`, `state_accepted:false` and
+`validation:public-grammar-only`. Preparation cannot sign, generate keys, accept
+State, grant a duty, start runtime work or complete provisioning. Later private
+Node Record, Epoch and profile signing remain purpose-specific separate rights.
+
 The isolated `ardents-next execution prepare-permission --config <file>`
 operation consumes a local Grant, executes empty INIT through a verified fixed
 installed reader or Publisher worker and joins that original worker before

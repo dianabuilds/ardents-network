@@ -15,6 +15,9 @@ import (
 // separate durable transitions; neither an intake receipt nor an inspection
 // JSON file substitutes for a live opened Network observer in Admission.
 func runNetwork(ctx context.Context, args []string, out io.Writer) int {
+	if len(args) > 0 && isNetworkPreparation(args[0]) {
+		return runNetworkPreparation(ctx, args, out)
+	}
 	if ctx == nil || len(args) != 3 || (args[0] != "accept-epoch" && args[0] != "accept-profile" && args[0] != "inspect") {
 		return 2
 	}

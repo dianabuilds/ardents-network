@@ -14,18 +14,11 @@
     },
     {
       "symbols": [
-        "internal/successor/network/closedprofile.Prepare",
         "internal/successor/network/duty.Open",
-        "internal/successor/network/duty.ReadConflict",
-        "internal/successor/network/epoch.appendInitialPreparationText",
-        "internal/successor/network/epoch.candidateCarrierEligible",
-        "internal/successor/network/epoch.encodeInitialClosedEpoch",
-        "internal/successor/network/epoch.initialPreparationInterval",
-        "internal/successor/network/epoch.PrepareInitialClosedEpoch",
-        "internal/successor/network/epoch.PrepareInitialClosedRecord"
+        "internal/successor/network/duty.ReadConflict"
       ],
-      "classification": "accepted new Network contracts with behavior evidence and pending production composition",
-      "rationale": "Unsigned Epoch/profile preparation and local participation diagnostic contracts have genuine domain tests but no maintained production caller. CurrentRuntime supplies live authority. The Linux Direct-Origin Source now genuinely consumes State.Current, whose old common allowance is removed.",
+      "classification": "accepted new Network local participation diagnostics with pending production composition",
+      "rationale": "Local participation diagnostic contracts have genuine domain tests but no maintained production caller. CurrentRuntime supplies live authority. Public provisioning preparation now has a genuine new command consumer and its exact allowances are removed; Source genuinely consumes State.Current.",
       "owner": "Product Owner and Codex; new Network",
       "retirement": "Remove each symbol when its accepted contract is retired, or remove its exact allowance when a selected genuine provisioning, Node, or State supervision caller reaches it."
     },

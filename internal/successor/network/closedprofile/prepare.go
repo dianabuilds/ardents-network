@@ -40,6 +40,7 @@ func Prepare(input Input) ([]byte, error) {
 	if input.NetworkID == [32]byte{} || input.StateGeneration == [32]byte{} || input.EpochDigest == [32]byte{} ||
 		input.IssuerNodeID == [32]byte{} || input.IssuanceAuthorityKey == [32]byte{} || input.Epoch == 0 ||
 		input.NotBefore.IsZero() || input.NotBefore != input.NotBefore.UTC() || input.NotAfter != input.NotAfter.UTC() ||
+		input.NotBefore.Unix() < 0 || input.NotAfter.Unix() < 0 || input.NotBefore.Nanosecond() != 0 || input.NotAfter.Nanosecond() != 0 ||
 		!input.NotAfter.After(input.NotBefore) || input.NotAfter.Sub(input.NotBefore) > 6*time.Hour ||
 		len(input.Nodes) == 0 || len(input.Nodes) > MaxNodes || len(input.TokenKeys) == 0 || len(input.TokenKeys) > MaxKeys {
 		return nil, errors.New("closed profile preparation is invalid")
@@ -66,7 +67,7 @@ func Prepare(input Input) ([]byte, error) {
 	}
 	body = binary.BigEndian.AppendUint16(body, uint16(len(input.TokenKeys)))
 	for _, key := range input.TokenKeys {
-		if key.WindowStart.IsZero() || key.WindowStart != key.WindowStart.UTC() || len(key.SPKI) > 0xffff {
+		if key.WindowStart.IsZero() || key.WindowStart != key.WindowStart.UTC() || key.WindowStart.Unix() < 0 || key.WindowStart.Nanosecond() != 0 || len(key.SPKI) > 0xffff {
 			return nil, errors.New("closed profile token key is invalid")
 		}
 		body = binary.BigEndian.AppendUint64(body, uint64(key.WindowStart.Unix()))

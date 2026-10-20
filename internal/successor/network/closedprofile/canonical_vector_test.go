@@ -80,4 +80,21 @@ func TestSignedProfileCanonicalVector(t *testing.T) {
 		Authority: signer.Public().(ed25519.PublicKey), Now: now}); err != nil {
 		t.Fatalf("verify fixed signed profile: %v", err)
 	}
+	for _, field := range []string{"start", "end", "window"} {
+		t.Run("refuse fractional "+field, func(t *testing.T) {
+			changed := input
+			changed.TokenKeys = append([]TokenKeyInput(nil), input.TokenKeys...)
+			switch field {
+			case "start":
+				changed.NotBefore = changed.NotBefore.Add(time.Nanosecond)
+			case "end":
+				changed.NotAfter = changed.NotAfter.Add(time.Nanosecond)
+			case "window":
+				changed.TokenKeys[0].WindowStart = changed.TokenKeys[0].WindowStart.Add(time.Nanosecond)
+			}
+			if body, err := Prepare(changed); err == nil || body != nil {
+				t.Fatal("fractional declaration silently encoded as whole seconds")
+			}
+		})
+	}
 }

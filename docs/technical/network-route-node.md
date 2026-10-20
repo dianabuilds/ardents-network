@@ -27,6 +27,15 @@ preparation. Neither command signs, grants a duty, accepts State, modifies a
 floor or starts a Node. Existing State signature, closed-profile and Source
 verification contracts remain binding.
 
+The isolated new public composition exposes the corresponding canonical owners
+through `ardents-next network prepare-initial-node-record`,
+`prepare-initial-epoch` and `prepare-closed-profile`, under the
+[new Network boundary](successor-network-state.md) and
+[command reference](../reference/commands.md#public-network-preparation-in-the-isolated-command).
+It prepares only public unsigned bytes with fresh native output custody and
+TCP/TLS-only admission. It imports no predecessor command/runtime and implements
+no private signing or installed operator provisioning journey.
+
 The [selected architecture](common-privacy-architecture.md) under
 [ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) and
 [ADR-0081](../adr/0081-select-closed-protected-service-contract.md) uses the

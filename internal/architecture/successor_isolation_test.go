@@ -620,6 +620,9 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		}
+		if (source == "cmd/ardents-next/network_preparation.go" || source == "cmd/ardents-next/network_preparation_chain_linux_test.go") && (dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/network/closedprofile") {
+			return true
+		}
 		if source == "cmd/ardents-next/network_admission_fixture_linux_test.go" && dependency == modulePath+"/internal/successor/network/epoch" {
 			return true
 		}

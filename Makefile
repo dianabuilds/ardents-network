@@ -65,7 +65,7 @@ endif
 # Installed integrity checks freshly compare the whole signed executable. Omit
 # DWARF from distributed commands while retaining symbols for stacks/profiles.
 override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false -ldflags=-w
-QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check release-operation-compile-check installation-native-compile-check
+QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check release-operation-compile-check installation-native-compile-check network-preparation-compile-check
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
@@ -482,3 +482,15 @@ custody-check:
 source-process-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "source-process-check requires Linux"; exit 2)
 	sh scripts/node/run-source-native.sh -timeout=3m
+
+.PHONY: network-preparation-check network-preparation-compile-check
+network-preparation-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "network-preparation-check requires Linux and native ext4 TMPDIR"; exit 2)
+	go test -race -trimpath -buildvcs=false -tags network_preparation_native ./cmd/ardents-next -run '^TestNetworkPreparation' -count=1 -v -timeout=3m
+
+network-preparation-compile-check: export GOOS := linux
+network-preparation-compile-check: export GOARCH := amd64
+network-preparation-compile-check: export CGO_ENABLED := 0
+network-preparation-compile-check:
+	$(INSTALLED_TAG_COMPILE_MKDIR)
+	go test -c -tags network_preparation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-preparation.test" ./cmd/ardents-next

@@ -1,5 +1,36 @@
 # Testing
 
+The `network-preparation-linux` profile (`make network-preparation-check`,
+`network_preparation_native` tag) exercises the real three `ardents-next network
+prepare-*` commands, exact canonical unsigned Record/Epoch/profile outputs and
+independent Network fixture bytes. Isolated test-only purpose-specific signers
+sign those exact outputs; actual new State accept-epoch/accept-profile and
+inspection consume them on independent roots, with altered, foreign-key,
+purpose-confused and signed foreign-record refusals followed by healthy controls.
+Fixture families are not independent operators. These tests deliver no private
+product signer, complete provisioning or installed qualification.
+
+Portable plan tests reject duplicate/unknown/trailing/mixed declarations and
+noncanonical key/identifier/time/number shapes. Native Linux ext4 tests retain
+original parent/file descriptors through cancellation, exclusive creation,
+write/sync/close/readback, replacement/symlink/hardlink/inventory refusal and
+independent physical failures. Five child-process cuts hold the actual native
+writer at directory birth, file birth, write, close and directory-sync barriers;
+the parent kills and joins each original child, preserves its prefix and proves
+that a new invocation refuses adoption. This is process-interruption evidence,
+not power-loss or hardware durability. Selected native execution of these cases
+requires a private caller-owned temporary directory on actual native ext4;
+overlay/tmpfs/Windows is not an accepting native durability environment. Windows
+retains portable grammar checks and explicit native-effect refusal.
+The native profile also requires a real tmpfs refusal control, and an isolated
+child's finite file-size limit produces a real partial write with retained EFBIG
+and a non-adoptable prefix. Only that child changes its own limit. Ordinary
+quick/full gates cross-compile the tagged tests; selection of the native profile
+is a separate required execution, never inferred from that compilation.
+The exact former unused-symbol allowances for new Network unsigned preparation
+are removed: the new public commands are genuine production consumers. Remaining
+local-participation diagnostic allowances confer no provisioning permission.
+
 The registered `node-development-linux` profile invokes
 `make node-development-check`: a finite three-iteration series of all five
 complete original Node profiles, genuine non-test preflight, continued actual

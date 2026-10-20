@@ -75,6 +75,8 @@ func TestInitialClosedPreparationMatchesIndependentEncodingAndOrdinaryVerificati
 		}
 	}
 	for name, mutate := range map[string]func(*epoch2.InitialClosedEpoch){
+		"explicit TCP constraint refuses QUIC": func(v *epoch2.InitialClosedEpoch) { v.Carrier = epoch2.CarrierClosedTCP },
+		"unknown Carrier constraint":           func(v *epoch2.InitialClosedEpoch) { v.Carrier = "unknown" },
 		"forged node signature": func(v *epoch2.InitialClosedEpoch) {
 			v.Records = append([][]byte(nil), v.Records...)
 			v.Records[0] = append([]byte(nil), v.Records[0]...)
