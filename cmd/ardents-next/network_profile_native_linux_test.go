@@ -54,7 +54,7 @@ func writeNativeProfileArguments(t *testing.T, parent string, p map[string]any, 
 }
 
 func TestNetworkSigningProfileNativeCommit(t *testing.T) {
-	for _, fault := range []string{"healthy", "file replacement", "extra", "late bytes", "writer close", "directory close", "cancel"} {
+	for _, fault := range []string{"healthy", "file replacement", "extra", "late bytes", "commit bytes", "writer close", "directory close", "cancel"} {
 		t.Run(fault, func(t *testing.T) {
 			args := nativeProfileSigningArguments(t)
 			ctx, cancel := context.WithCancel(t.Context())
@@ -90,6 +90,10 @@ func TestNetworkSigningProfileNativeCommit(t *testing.T) {
 				}
 				if stage == "directory-sync" && fault == "directory close" {
 					e = f.Close()
+					acted = true
+				}
+				if stage == "commit" && fault == "commit bytes" {
+					e = os.WriteFile(filepath.Join(args[5], "profile.bin"), []byte("changed after input reobservation"), 0600)
 					acted = true
 				}
 				if e != nil {

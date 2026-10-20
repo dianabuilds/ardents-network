@@ -79,6 +79,47 @@ not a power-loss durability qualification.
 
 ## Assembly and acceptance boundary
 
+### Initial State and Node keys
+
+`ardents-next network prepare-initial-keys <public-plan> <fresh-private-directory>`
+is the one-shot new composition producer. Both paths must be canonical absolute
+paths. The direct root-owned public plan is at most 1024 bytes and has exactly
+`schema: "ardents-initial-keys-plan-v1"`, `operation: "prepare-initial-keys"`
+and integral `node_count` from 1 through 64. Duplicate, unknown, mixed, trailing
+or supplied private/seed fields refuse. The production command uses fresh
+standard-library OS-backed randomness for every Ed25519 key and refuses the
+whole attempt on a repeated public key; it never redraws a role or identity.
+
+The actual Linux-root/direct-ancestor/native-ext4 admission below applies.
+The parent must be 0700, every direct ancestor root-owned without group/other
+write, and the destination previously absent. A fresh 0700 directory contains
+exclusive 0600 canonical complete PKCS8 files `state-key.pem`, ordered
+`node-00-key.pem` through the requested final Node, and `public-receipt.json`.
+Original descriptors, inodes, access, exact bytes, closed inventory and
+file/directory/parent durability barriers precede joined Close and success.
+Symlinks, hardlinks, replacements and existing destinations refuse.
+
+The public receipt names each purpose, Node index, basename, public key and
+SHA-256 of that public key, with signature, State acceptance, installed
+qualification and independent custody explicitly false. It contains no private
+bytes or arbitrary private path. The same receipt is returned on standard output
+only after output completion. Any failure, including final receipt delivery or
+cancellation, remains failed even if files or a receipt already exist. Retain
+incomplete output; a later invocation cannot adopt, overwrite or clean it.
+
+All owned key, seed, DER, PEM and private readback buffers are cleared after
+their synchronous users and original descriptors join, on success and refusal.
+These are root-controlled plaintext files, not encrypted Vaults; root, kernel
+and Go runtime internals may observe plaintext, and absolute memory erasure is
+not promised. No private material enters Network. Separate public preparation,
+independent signer admission and State acceptance are still required. NodeID
+is separately supplied; no Network identity, duty, floor, Source trust or other
+authority is generated. A State key may be separately pinned for Epoch and
+profile under the existing contract. Verification uses isolated development keys;
+operational bootstrap receipt acceptance remains separate under ADR-0120.
+
+### Fixed-purpose signing
+
 `ardents-next network sign-closed-profile` takes the same ordered arguments as
 the initial signers below: public plan, exact `profile.unsigned`, independently
 reviewed lowercase SHA-256, protected private-key path and fresh output directory.

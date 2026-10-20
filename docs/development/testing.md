@@ -1,5 +1,26 @@
 # Testing
 
+The existing `network-signing-linux` profile also checks initial State/Node key
+preparation through the real `prepare-initial-keys` command. It requires actual
+Linux root, root-owned direct ancestors and a private 0700 native-ext4 TMPDIR.
+Lower/upper counts have exact complete inventories and independent standard-library
+PKCS8, seed/public, purpose, index and digest verification. Generated keys feed
+the real public preparations, Record/Epoch/profile signers and State acceptance
+on independent development roots; Admission authority is a separate fixture.
+Wrong generated role/key and reviewed pin refuse before healthy commands.
+Isolated failure seams cover generation, encoding, duplicate/inconsistent keys
+and owned-buffer clearing. Native mutations, cancellation, contention, retained
+physical errors, real partial writes and killed/Wait-joined original children
+check incomplete-output refusal. Public receipt presence cannot convert failed
+work to success. Shared physical writer changes renew preparation/signing checks.
+Final readback follows original input reobservation; actual byte/inventory/link
+changes at that boundary refuse, including through the existing signed-output
+and profile consumers. Original cancellation and a separately failed physical
+Close both survive the same refusal.
+Linux declaration tests execute with their genuine production consumer; other
+platforms check explicit pre-effect refusal. These controls qualify neither power loss, operational bootstrap,
+independent custody/families nor installed execution.
+
 The `network-signing-linux` profile (`make network-signing-check`,
 `network_signing_native` tag) requires actual Linux root, direct root-controlled
 ancestors and private 0700 TMPDIR on native ext4. It exercises the genuine

@@ -15,6 +15,9 @@ import (
 // separate durable transitions; neither an intake receipt nor an inspection
 // JSON file substitutes for a live opened Network observer in Admission.
 func runNetwork(ctx context.Context, args []string, out io.Writer) int {
+	if len(args) > 0 && args[0] == "prepare-initial-keys" {
+		return runInitialKeys(ctx, args, out)
+	}
 	if len(args) > 0 && isNetworkSigning(args[0]) {
 		return runNetworkSigning(ctx, args, out)
 	}

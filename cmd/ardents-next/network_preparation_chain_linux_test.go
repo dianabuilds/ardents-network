@@ -38,7 +38,7 @@ func TestNetworkPreparationCommandsGenuineSignedStateChain(t *testing.T) {
 	runNetworkPreparedStateChain(t, nil)
 }
 
-func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, any, ed25519.PrivateKey, []byte) ([]byte, [][]byte)) {
+func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, any, ed25519.PrivateKey, []byte) ([]byte, [][]byte), generated ...ed25519.PrivateKey) {
 	command := compiledCommand(t)
 	for label, path := range map[string]string{"command": command, "test": os.Args[0]} {
 		raw, err := os.ReadFile(path)
@@ -50,12 +50,15 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 	start := time.Now().UTC().Truncate(time.Hour)
 	end := start.Add(2 * time.Hour)
 	key := func(n byte) ed25519.PrivateKey { return ed25519.NewKeyFromSeed(bytes.Repeat([]byte{n}, 32)) }
-	stateKey, nodeKey, permissionKey := key(41), key(42), key(43)
+	stateKey, nodeKey, permissionKey, secondKey := key(41), key(42), key(43), key(44)
+	if len(generated) == 3 {
+		stateKey, nodeKey, secondKey = generated[0], generated[1], generated[2]
+	}
 	var permissionPublic [32]byte
 	copy(permissionPublic[:], permissionKey.Public().(ed25519.PublicKey))
 	spec := networkfixture.ClosedSpec{NetworkID: [32]byte{1}, Seed: [32]byte{13}, IssuanceAuthority: permissionPublic, Number: 1, NotBefore: start, NotAfter: end, Authority: stateKey, Nodes: []networkfixture.ClosedNode{
 		{RecordSpec: networkfixture.RecordSpec{NodeID: [32]byte{2}, Generation: 1, ValidFrom: start, ValidUntil: end, Endpoint: "127.0.0.1:4401", Carrier: epoch.CarrierClosedTCP, Capability: 2, Capacity: 3, PrivateKey: nodeKey}, RoleDomain: 2, Subrole: 6},
-		{RecordSpec: networkfixture.RecordSpec{NodeID: [32]byte{3}, Generation: 1, ValidFrom: start, ValidUntil: end, Endpoint: "127.0.0.1:4402", Carrier: epoch.CarrierClosedTCP, Capability: 2, Capacity: 3, PrivateKey: key(44)}, RoleDomain: 4, Subrole: 3},
+		{RecordSpec: networkfixture.RecordSpec{NodeID: [32]byte{3}, Generation: 1, ValidFrom: start, ValidUntil: end, Endpoint: "127.0.0.1:4402", Carrier: epoch.CarrierClosedTCP, Capability: 2, Capacity: 3, PrivateKey: secondKey}, RoleDomain: 4, Subrole: 3},
 	}}
 	fixture, err := networkfixture.BuildClosed(spec)
 	if err != nil {
@@ -118,13 +121,13 @@ func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, 
 	if !bytes.Equal(record, fixture.Epoch.Inputs[0]) {
 		t.Fatal("record differs from independent canonical oracle")
 	}
-	secondPlan := preparationRecordPlan(key(44).Public().(ed25519.PublicKey))
+	secondPlan := preparationRecordPlan(secondKey.Public().(ed25519.PublicKey))
 	secondPlan["node_id"], secondPlan["family"], secondPlan["endpoint"] = preparationIdentifier(3), fixture.Nodes[1].Family, "127.0.0.1:4402"
 	secondPlan["valid_from"], secondPlan["valid_until"] = start.Format(time.RFC3339), end.Format(time.RFC3339)
 	secondMessage := prepare("prepare-initial-node-record", secondPlan, "node-record.signing-input")
-	secondRecord := signPreparedNodeForTest(key(44), secondMessage)
+	secondRecord := signPreparedNodeForTest(secondKey, secondMessage)
 	if signer != nil {
-		secondRecord, _ = signer(t, "node-record", secondPlan, key(44), secondMessage)
+		secondRecord, _ = signer(t, "node-record", secondPlan, secondKey, secondMessage)
 	}
 	if !bytes.Equal(secondRecord, fixture.Epoch.Inputs[1]) {
 		t.Fatal("second record differs from independent oracle")

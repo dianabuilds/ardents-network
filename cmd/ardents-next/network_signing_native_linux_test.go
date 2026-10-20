@@ -287,7 +287,7 @@ func testSigningOriginalInputCustody(t *testing.T, arguments func(*testing.T) []
 }
 
 func TestNetworkSigningDurableInventory(t *testing.T) {
-	for _, fault := range []string{"healthy", "existing", "file replacement", "hardlink", "extra", "late bytes", "directory replacement", "write close", "dir sync close", "cancel"} {
+	for _, fault := range []string{"healthy", "existing", "file replacement", "hardlink", "extra", "late bytes", "commit bytes", "directory replacement", "write close", "dir sync close", "cancel"} {
 		t.Run(fault, func(t *testing.T) {
 			parent := signingNativeParent(t)
 			root := filepath.Join(parent, "signed")
@@ -342,6 +342,10 @@ func TestNetworkSigningDurableInventory(t *testing.T) {
 				}
 				if step == "directory-sync" && fault == "dir sync close" {
 					e = f.Close()
+					acted = true
+				}
+				if step == "commit" && fault == "commit bytes" {
+					e = os.WriteFile(filepath.Join(root, "epoch.bin"), []byte("changed after input reobservation"), 0600)
 					acted = true
 				}
 				if e != nil {

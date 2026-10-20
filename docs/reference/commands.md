@@ -1,5 +1,18 @@
 # Command reference
 
+`ardents-next network prepare-initial-keys <public-plan> <fresh-private-directory>`
+creates one State and 1..64 distinct Node Ed25519 keys in a fresh protected
+Linux-root/native-ext4 directory. The closed public plan has schema
+`ardents-initial-keys-plan-v1`, operation `prepare-initial-keys` and integral
+`node_count`. Files use canonical PKCS8 and compatible `state-key.pem` /
+`node-NN-key.pem` basenames; the finite public receipt contains only purposes,
+indices, basenames and public key commitments. No NodeID, Network identity,
+signature, duty, State acceptance or independent custody is supplied. Existing
+output refuses, including after failed receipt delivery. See the
+[protected operation](../operations/qualification-release.md#initial-state-and-node-keys)
+for input, secret lifetime, native prerequisites and retained-failure rules.
+
+
 `ardents-next network sign-initial-node-record <public-plan> <prepared-artifact>
 <reviewed-sha256> <private-key-path> <fresh-output>` and the distinct
 `network sign-initial-epoch` and `network sign-closed-profile` forms perform one bounded offline signing

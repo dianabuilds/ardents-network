@@ -17,6 +17,18 @@ wire and recovery obligations. The old tree and its consumers remain until a
 separately selected final cutover; their integration is outside this work's
 regression scope. Execution status and verification receipts belong to issue #493.
 
+Initial State/Node key preparation belongs to offline command composition,
+not Network. `ardents-next network prepare-initial-keys` admits one closed public
+declaration and creates one fresh State Ed25519 key plus 1..64 distinct Node
+Ed25519 keys. It creates no NetworkID, NodeID, assignment, State root or floor.
+Only public key facts cross into public preparation; the independent Record,
+Epoch and profile signers still admit their own exact preparation, pin, purpose,
+matching private file and time. A key receipt supplies none of that authority.
+Secret generation, canonical PKCS8 encoding, original native output custody and
+joined erasure remain unexported command responsibilities. Custody, Admission,
+Source and Release acquire no new rights. The precise protected-file and retained
+failure rules belong to the [operation](../operations/qualification-release.md#initial-state-and-node-keys).
+
 ## Model and invariants
 
 - `EpochHistory` represents the retained current/pending relation and conflict.

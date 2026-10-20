@@ -1,5 +1,19 @@
 # Package map
 
+Initial key preparation uses only standard-library imports in the unexported
+`cmd/ardents-next/network_keys.go`, `network_keys_linux.go` and
+`network_keys_other.go` command responsibilities. Closed declaration parsing and
+its grammar tests compile only on Linux with the genuine producer; other
+platforms retain explicit refusal without a test-only parser. Linux generation and owned
+secret encoding remain separate from public Network artifacts. The cohesive
+`network_output_linux.go` physical finite-file mechanism is synchronously borrowed
+by public signing and private key creation; its explicit secret lifetime clears
+owned readback buffers before return. No private data crosses Network or a
+public-artifact Interface, and no package/dependency is added. Native key tests
+use standard-library command composition and the existing registered preparation
+chain harness; that harness may consume independently generated test keys while
+its Admission fixture remains separate. It imports no new domain owner.
+
 The shared signing entrypoint and public completion metadata in
 `cmd/ardents-next/network_signing_command.go` use only standard-library imports.
 Initial Network signing in exactly Linux-only `cmd/ardents-next/network_signing.go`
