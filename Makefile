@@ -65,7 +65,7 @@ endif
 # Installed integrity checks freshly compare the whole signed executable. Omit
 # DWARF from distributed commands while retaining symbols for stacks/profiles.
 override CANONICAL_GO_BUILD_FLAGS := -trimpath -buildvcs=false -ldflags=-w
-QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check release-operation-compile-check installation-native-compile-check network-preparation-compile-check
+QUICK_CHECK_TARGETS := vet unit build mod-check artifact-representation-check installed-tag-compile-check release-operation-compile-check installation-native-compile-check network-preparation-compile-check network-signing-compile-check
 
 ifeq ($(OS),Windows_NT)
 HEADLESS_ARTIFACT_SHELL ?= C:/Program Files/Git/bin/bash.exe
@@ -494,3 +494,15 @@ network-preparation-compile-check: export CGO_ENABLED := 0
 network-preparation-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags network_preparation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-preparation.test" ./cmd/ardents-next
+
+.PHONY: network-signing-check network-signing-compile-check
+network-signing-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "network-signing-check requires Linux root and root-controlled native ext4 TMPDIR"; exit 2)
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next -run '^TestNetworkSigning' -count=1 -v -timeout=3m
+
+network-signing-compile-check: export GOOS := linux
+network-signing-compile-check: export GOARCH := amd64
+network-signing-compile-check: export CGO_ENABLED := 0
+network-signing-compile-check:
+	@$(INSTALLED_TAG_COMPILE_MKDIR)
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-signing.test" ./cmd/ardents-next

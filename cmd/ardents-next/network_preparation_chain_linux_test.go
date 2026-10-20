@@ -1,4 +1,4 @@
-//go:build linux && network_preparation_native
+//go:build linux && (network_preparation_native || network_signing_native)
 
 package main
 
@@ -35,6 +35,10 @@ func signPreparedProfileForTest(key ed25519.PrivateKey, message []byte) []byte {
 }
 
 func TestNetworkPreparationCommandsGenuineSignedStateChain(t *testing.T) {
+	runNetworkPreparedStateChain(t, nil)
+}
+
+func runNetworkPreparedStateChain(t *testing.T, signer func(*testing.T, string, any, ed25519.PrivateKey, []byte) ([]byte, [][]byte)) {
 	command := compiledCommand(t)
 	for label, path := range map[string]string{"command": command, "test": os.Args[0]} {
 		raw, err := os.ReadFile(path)
@@ -107,12 +111,27 @@ func TestNetworkPreparationCommandsGenuineSignedStateChain(t *testing.T) {
 	p["family"] = fixture.Nodes[0].Family
 	nodeMessage := prepare("prepare-initial-node-record", p, "node-record.signing-input")
 	record := signPreparedNodeForTest(nodeKey, nodeMessage)
+	if signer != nil {
+		record, _ = signer(t, "node-record", p, nodeKey, nodeMessage)
+	}
 	if !bytes.Equal(record, fixture.Epoch.Inputs[0]) {
 		t.Fatal("record differs from independent canonical oracle")
 	}
 	epochPlan := map[string]any{"schema": "ardents-initial-epoch-plan-v1", "network_id": preparationIdentifier(1), "assignment_seed": preparationIdentifier(13), "valid_from": start.Format(time.RFC3339), "valid_until": end.Format(time.RFC3339), "domains": []string{"initiator", "introduction", "rendezvous", "responder"}, "records": []string{preparationHex(record)}, "authority_keys": []string{preparationHex(stateKey.Public().(ed25519.PublicKey))}}
 	epochMessage := prepare("prepare-initial-epoch", epochPlan, "epoch.unsigned")
 	signedEpoch := signPreparedEpochForTest(stateKey, epochMessage)
+	materials := fixture.Epoch.Materials
+	if signer != nil {
+		signedEpoch, materials = signer(t, "epoch", epochPlan, stateKey, epochMessage)
+		if len(materials) != len(fixture.Epoch.Materials) {
+			t.Fatal("product materialization inventory differs")
+		}
+		for i := range materials {
+			if !bytes.Equal(materials[i], fixture.Epoch.Materials[i]) {
+				t.Fatal("product materialization differs from independent oracle", i)
+			}
+		}
+	}
 	if !bytes.Equal(signedEpoch, fixture.Epoch.Raw) {
 		t.Fatal("Epoch differs from independent commitment/assignment oracle")
 	}
@@ -204,7 +223,7 @@ func TestNetworkPreparationCommandsGenuineSignedStateChain(t *testing.T) {
 		case "accept-epoch":
 			config["epoch"] = value
 			config["inputs"] = [][]byte{record}
-			config["materials"] = fixture.Epoch.Materials
+			config["materials"] = materials
 		case "accept-profile":
 			config["profile"] = value
 		}

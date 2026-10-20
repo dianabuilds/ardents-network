@@ -120,8 +120,19 @@ and parent sync, final readback and original cancellation precede success.
 Independent physical errors survive. An interrupted or uncertain directory is
 retained incomplete; a later invocation cannot adopt, overwrite or clean it.
 Its public receipt grants no signature, State authority or currentness. Private
-purpose-specific Node Record, Epoch and profile signing remains a separate
-provisioning responsibility; Admission issuer-profile signing is not that right.
+purpose-specific signing remains a separate provisioning responsibility;
+Admission issuer-profile signing is not that right.
+
+The explicit `ardents-next network sign-initial-node-record` and
+`sign-initial-epoch` operations consume exact prepared artifacts and separately
+reviewed SHA-256 pins. Command composition retains original public/private
+inputs and root-controlled ancestors, checks the fixed original reference and
+live validity before signing and output commit, and signs only the canonical
+Record message or initial Epoch digest. Network receives no private key.
+Ordinary Epoch verification and all materialization verification precede output.
+Finite exclusive durable outputs retain uncertain prefixes without adoption.
+These offline operations create no State root, accept no State and start no
+runtime. Closed-profile private signing and key/trust preparation remain separate.
 
 `CandidateView` owns individual eligibility, ordered rejection reasons,
 collision exclusion, canonical Node ordering and family totals. The format

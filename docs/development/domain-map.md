@@ -99,6 +99,17 @@ remain proposed until their current contracts and real consumers are verified.
 
 ## Supporting mechanisms and composition
 
+Initial Network provisioning has two fixed-purpose offline command consumers:
+`network sign-initial-node-record` and `network sign-initial-epoch` in
+`ardents-next`. Network's public preparation/verification owners retain grammar,
+assignment, signatures and materializations; composition retains the exact
+reviewed prepared artifact, original root-protected private key and public-file
+descriptors, original time/purpose and finite output custody. Node and initial
+State keys remain separate. No private authority crosses into Network, Node
+runtime or Custody, and no generic signer, encrypted Vault, signing-history or
+bootstrap acceptance is supplied. Profile signing, operational key ceremony,
+installed use and operator cutover remain distinct boundaries.
+
 Installation's portable owner authenticates the program/generation pair. Its
 Endpoint owner admits native effects and owns initial, replacement, recovery
 and startup lifetimes. Command composition consumes these owners directly,

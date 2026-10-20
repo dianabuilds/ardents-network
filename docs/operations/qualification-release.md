@@ -79,6 +79,35 @@ not a power-loss durability qualification.
 
 ## Assembly and acceptance boundary
 
+New isolated composition offers `ardents-next network sign-initial-node-record`
+and `sign-initial-epoch`. Each takes, in order, an absolute public signing plan,
+exact public preparation artifact, independently reviewed lowercase SHA-256 pin,
+original protected private key path and fresh output directory. Plans use
+`ardents-initial-node-record-signing-plan-v1` with `reference_time` and `record`,
+or `ardents-initial-epoch-signing-plan-v1` with `reference_time` and `epoch`.
+The nested object is the exact corresponding new public preparation plan.
+These commands reprepare canonical bytes before signature; a digest alone is
+never signing authority. Node Record uses its exact matching Node key; Epoch
+uses exactly one matching pinned initial State key, with ordinary signed Record,
+Epoch and materialization verification. They admit TCP/TLS only.
+
+Linux root, root-owned non-group/other-writable direct ancestors, one original
+root-owned single-link regular 0600 PKCS#8 Ed25519 file (at most 16 KiB), and
+root-controlled native ext4 output are required. Public inputs are retained
+bounded direct root-owned files without group/other write. The output parent
+must be 0700. Original descriptors, bytes, access and links are reobserved
+through use and commit. Key encoding is canonical unencrypted version-zero
+PKCS#8 Ed25519 with one seed and no attributes, parameters or trailing DER.
+Original reference is at most five minutes past or one
+minute future; canonical whole-second UTC validity contains both it and actual
+signing time, and spans at most seven days. Failure retains incomplete output
+and independent native errors; repeated invocation never adopts a destination.
+Plaintext key files are not encrypted Vaults. Owned key/DER/raw copies are cleared
+after joined use; root, kernel and runtime may still observe plaintext, and
+absolute memory erasure is not claimed. No operational ceremony, new trust,
+key generation, profile signer or installed acceptance follows from these
+engineering operations. ADR-0120 bootstrap receipt acceptance remains separate.
+
 The maintained `ardents-control prepare-qualification-node-record` and
 `prepare-qualification-epoch` commands prepare the real initial Network inputs
 under ADR-0120. Both use `--plan` and `--output-root` with canonical absolute

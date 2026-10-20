@@ -1,5 +1,18 @@
 # Command reference
 
+`ardents-next network sign-initial-node-record <public-plan> <prepared-artifact>
+<reviewed-sha256> <private-key-path> <fresh-output>` and the distinct
+`network sign-initial-epoch` form perform one bounded offline initial signing
+operation. All paths are canonical absolute. The strict signing schemas,
+embedded preparation declarations, original protected-file/time requirements
+and acceptance boundary are defined in
+[qualification release](../operations/qualification-release.md#assembly-and-acceptance-boundary).
+Record emits `node-record.bin`; Epoch emits `epoch.bin`, Source-ordered
+`input-NN.bin` and accepted-View-ordered `material-NN.bin`. A successful public
+receipt reports verified signatures and leaves State acceptance and installed
+qualification false. No private bytes enter arguments or receipts. These
+operations require Linux root/native ext4 and refuse other platforms.
+
 The nearest closed release uses TCP/TLS alone under
 [ADR-0122](../adr/0122-select-tcp-only-closed-release.md). Recognized QUIC
 profiles remain distinct historical signed inputs and receive an explicit

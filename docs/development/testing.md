@@ -1,5 +1,20 @@
 # Testing
 
+The `network-signing-linux` profile (`make network-signing-check`,
+`network_signing_native` tag) requires actual Linux root, direct root-controlled
+ancestors and private 0700 TMPDIR on native ext4. It exercises the genuine
+initial Record/Epoch signing commands with isolated supplied keys, exact public
+preparation commitments, independent signature transcripts and new State
+acceptance on independent roots. Closed-profile signatures remain test-only.
+Original input replacement/access/cancellation refusals and deterministic
+exclusive output inventory, readback, file/directory sync/Close failures,
+concurrency and killed/joined original writer children are separate controls.
+Process cuts establish no power-loss qualification. Missing prerequisites fail;
+ordinary gates cross-compile this profile and do not imply native execution.
+Signature and PKCS#8 semantic tests compile only on Linux with their genuine
+production consumer. Other platforms retain explicit refusal before native
+effects; no private signing helper is kept reachable only by their tests.
+
 The `network-preparation-linux` profile (`make network-preparation-check`,
 `network_preparation_native` tag) exercises the real three `ardents-next network
 prepare-*` commands, exact canonical unsigned Record/Epoch/profile outputs and
