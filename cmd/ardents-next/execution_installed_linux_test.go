@@ -38,6 +38,7 @@ func TestInstalledExecutionRouteTCP(t *testing.T) {
 		t.Run(string(carrier), func(t *testing.T) {
 			t.Run("service-authentication", func(t *testing.T) { runInstalledConnectionAuthentication(t, carrier) })
 			t.Run("service-text", func(t *testing.T) { runInstalledConnectionText(t, carrier, false) })
+			t.Run("service-setup-handoff", func(t *testing.T) { runInstalledConnectionTextLoss(t, carrier, "setup-handoff") })
 			t.Run("service-recovery", func(t *testing.T) { runInstalledConnectionText(t, carrier, true) })
 			t.Run("publication", func(t *testing.T) { runInstalledPublisher(t, carrier) })
 			t.Run("publication-ack", func(t *testing.T) { runInstalledPublisherACK(t, carrier, "") })

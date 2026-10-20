@@ -471,7 +471,15 @@ installed Endpoint managers.
 `make execution-route-check` selects `TestInstalledExecutionRouteTCP`
 from the tagged `cmd/ardents-next` test binary installed at
 `/usr/lib/ardents/qualification/execution-command.test`
-and requires `service-authentication` on each selected Carrier. That component
+and requires `service-authentication` on each selected Carrier. The separate
+`service-setup-handoff` control cancels Publisher's individual setup caller after
+both genuine authentications, crosses the original capsule setup cutoffs, then
+performs the actual Text exchange and original physical joins. Reader's setup
+caller has already been canceled by its successful authentication return. The
+control preserves the original Work Safety deadline; the authority profile's
+earlier deadline and the stream profile's parent-loss controls remain separate
+refusal evidence.
+The authentication component
 uses the genuinely qualified original snapshot Publisher and ordinary Reader,
 command Publication composition, synced Descriptor Store, independently
 verified signed destination, finite Stock, original Source/Responder JOIN and

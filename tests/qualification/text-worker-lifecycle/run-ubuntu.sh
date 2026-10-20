@@ -217,7 +217,7 @@ fi
 if [ "$test_root" = TestInstalledExecutionRouteTCP ]; then
     set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2"
     for carrier in ardents-carrier-tcp-tls-v2; do
-        set -- "$@" "$test_root/$carrier/service-authentication" "$test_root/$carrier/service-text" "$test_root/$carrier/service-recovery"
+        set -- "$@" "$test_root/$carrier/service-authentication" "$test_root/$carrier/service-text" "$test_root/$carrier/service-setup-handoff" "$test_root/$carrier/service-recovery"
         set -- "$@" "$test_root/$carrier/publication-worker-ack" "$test_root/$carrier/publication-worker-ack/initial" "$test_root/$carrier/publication-worker-ack/replacement"
         set -- "$@" "$test_root/$carrier/publication-worker-ack/initial/accepted-history" "$test_root/$carrier/publication-worker-ack/retained-history"
         set -- "$@" "$test_root/$carrier/publication-network-ack" "$test_root/$carrier/publication-network-ack/initial" "$test_root/$carrier/publication-network-ack/replacement"

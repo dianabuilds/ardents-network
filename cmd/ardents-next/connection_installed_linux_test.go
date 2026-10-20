@@ -481,6 +481,10 @@ func runInstalledConnectionText(t *testing.T, carrier transport.CarrierProfile, 
 }
 
 func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfile, timing string) {
+	setupHandoff := timing == "setup-handoff"
+	if setupHandoff {
+		timing = ""
+	}
 	independentProgress := timing == "independent-progress"
 	if independentProgress {
 		timing = "control-initiator-terminal-before-write"
@@ -790,7 +794,15 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		err    error
 	}
 	incoming := make(chan accepted, 1)
-	go func() { stream, err := publisher.NextStream(ctx, publisherContract); incoming <- accepted{stream, err} }()
+	setupCaller, cancelSetupCaller := ctx, func() {}
+	if setupHandoff {
+		setupCaller, cancelSetupCaller = context.WithCancel(ctx)
+	}
+	defer cancelSetupCaller()
+	go func() {
+		stream, err := publisher.NextStream(setupCaller, publisherContract)
+		incoming <- accepted{stream, err}
+	}()
 	waited := false
 	t.Cleanup(func() {
 		cancel()
@@ -844,6 +856,37 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			}
 		}
 	})
+	if setupHandoff {
+		// Both authentications have transferred their original JOINs. Reader's
+		// setup caller is already canceled by AuthenticateInitial's return;
+		// cancel Publisher's individual acquisition caller as well. Waiting
+		// thirty seconds from this later point crosses either original capsule
+		// setup cutoff without changing the admitted logical or physical bounds.
+		originalEnd, bounded := stream.Context().Deadline()
+		if !bounded || !originalEnd.Equal(readerEnd) {
+			t.Fatal("Reader handoff changed its original Work Safety bound")
+		}
+		cancelSetupCaller()
+		timer := time.NewTimer(30 * time.Second)
+		select {
+		case <-timer.C:
+		case <-stream.Context().Done():
+			timer.Stop()
+			t.Fatal("setup-only cancellation retired the transferred Reader", stream.Context().Err())
+		case <-peer.stream.Context().Done():
+			timer.Stop()
+			t.Fatal("setup-only cancellation retired the transferred Publisher", peer.stream.Context().Err())
+		case <-ctx.Done():
+			timer.Stop()
+			t.Fatal("original caller expired before setup handoff control", ctx.Err())
+		}
+		if actual, ok := stream.Context().Deadline(); !ok || !actual.Equal(originalEnd) {
+			t.Fatal("setup cancellation renewed the original Reader bound")
+		}
+		if err := errors.Join(stream.Context().Err(), peer.stream.Context().Err(), readerOperation.CheckReader(), publisherOperation.CheckPublisher()); err != nil {
+			t.Fatal("setup-only cancellation retired a transferred original stream", err)
+		}
+	}
 	if authorityFault != "" {
 		selected, opposite, invocation, check := stream, peer.stream, readerWorker, readerOperation.CheckReader
 		if authorityRole == "publisher" {
