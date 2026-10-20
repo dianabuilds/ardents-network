@@ -58,20 +58,20 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 		_ = nodeIntroductionReport(out, "refused", "state-unavailable", "", "")
 		return 1
 	}
-	refuse := func() int {
+	refuse := func(cause error) int {
 		_ = owner.Close()
-		if nodeIntroductionReport(out, "refused", "startup-unavailable", "", "") != nil {
+		if nodeIntroductionReport(out, "refused", "startup-unavailable", "", "", encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
 			return 2
 		}
 		return 1
 	}
 	view, err := owner.CurrentRuntime()
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	duty, err := view.RetainDuty(plan.NodeID, view.ObservedAt())
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	original, err := node.ListenIntroduction(ctx, node.IntroductionConfig{
 		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
@@ -79,7 +79,7 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,
 	})
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	outputErr := nodeIntroductionReport(out, "listening", "original-duty", "", "")
 	if outputErr == nil {
@@ -119,7 +119,7 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 		if result.stateError != nil {
 			result.cleanup = "network"
 		}
-		_ = nodeIntroductionReport(diagnostic, "joined", "failed", result.first, result.cleanup)
+		_ = nodeIntroductionReport(diagnostic, "joined", "failed", result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
 		return 1
 	}
 	if nodeIntroductionReport(diagnostic, "joined", "canceled", "", "") != nil {

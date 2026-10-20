@@ -34,6 +34,7 @@ type JoinConfig struct {
 type Join struct{ original *joinInvocation }
 
 type joinInvocation struct {
+	failure                      failureRecord
 	mu                           sync.Mutex
 	caller, ctx                  context.Context
 	cancel                       context.CancelFunc
@@ -61,7 +62,7 @@ func ListenJoin(ctx context.Context, config JoinConfig) (_ *Join, result error) 
 		return nil, err
 	}
 	child, cancel := context.WithCancel(ctx)
-	f := &joinInvocation{caller: ctx, ctx: child, cancel: cancel, config: config, retired: errors.New("original Join admission retired"), done: make(chan struct{})}
+	f := &joinInvocation{failure: failureRecord{started: time.Now()}, caller: ctx, ctx: child, cancel: cancel, config: config, retired: errors.New("original Join admission retired"), done: make(chan struct{})}
 	defer func() {
 		if result != nil {
 			f.deny(result, "startup")
@@ -69,6 +70,7 @@ func ListenJoin(ctx context.Context, config JoinConfig) (_ *Join, result error) 
 			first := f.first
 			f.mu.Unlock()
 			result = errors.Join(first, originalRetirementResult(result, f.retired), f.cleanup())
+			result = &startupFailure{cause: result, fact: f.failure.snapshot(f.first)}
 		}
 	}()
 	var err error
@@ -132,6 +134,9 @@ func ListenJoin(ctx context.Context, config JoinConfig) (_ *Join, result error) 
 	if _, err := f.current(); err != nil {
 		return nil, err
 	}
+	f.mu.Lock()
+	f.failure.serving = true
+	f.mu.Unlock()
 	go f.supervise()
 	return &Join{original: f}, nil
 }
@@ -175,7 +180,7 @@ func (f *joinInvocation) current() (network.RuntimeView, error) {
 		err = view.MatchDuty(f.config.Authority.Duty, time.Now())
 	}
 	if err == nil && time.Since(measurement.Completed) > time.Second {
-		err = errors.New("original Join process measurement expired during authority observation")
+		err = expiredMeasurement(measurement)
 		owner = "process"
 	}
 	if err != nil {
@@ -214,6 +219,7 @@ func (f *joinInvocation) deny(cause error, owner string) {
 	f.denied = true
 	if f.first == nil && cause != nil && cause != f.retired {
 		f.first, f.firstOwner = cause, owner
+		f.failure.retain(cause, f.caller, owner)
 	}
 	f.mu.Unlock()
 	f.cancel()
@@ -235,6 +241,7 @@ func (f *joinInvocation) supervise() {
 		}
 		cleanup := f.cleanup()
 		f.mu.Lock()
+		f.failure.retainCleanup(cleanup, f.caller, f.cleanupOwner)
 		f.cleanupResult, f.result = cleanup, errors.Join(f.first, cleanup)
 		f.mu.Unlock()
 		close(f.done)
@@ -273,7 +280,7 @@ func (f *joinInvocation) cleanup() error {
 
 func (handle *Join) Stop() {
 	if handle != nil && handle.original != nil {
-		handle.original.deny(nil, "runtime")
+		handle.original.deny(handle.original.caller.Err(), "caller")
 	}
 }
 func (handle *Join) Done() <-chan struct{} {
@@ -359,4 +366,15 @@ func (f *joinInvocation) admit(ctx context.Context, c receiver.Channel, raw []by
 		}
 		return c.HoldReservation(func() error { return releaseReservation(held) })
 	})
+}
+
+// FirstFailure returns detached original facts without observing or waiting for completion.
+func (handle *Join) FirstFailure() *FailureDiagnostic {
+	if handle == nil || handle.original == nil {
+		return nil
+	}
+	f := handle.original
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.failure.snapshot(f.first)
 }

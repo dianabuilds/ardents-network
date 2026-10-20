@@ -77,8 +77,9 @@ func (handle *Forwarding) JoinedFailureOwners() (first, cleanup string) {
 }
 
 type forwarding struct {
+	failure                  failureRecord
 	mu                       sync.Mutex
-	ctx                      context.Context
+	caller, ctx              context.Context
 	cancel                   context.CancelFunc
 	config                   ForwardingConfig
 	denied                   bool
@@ -104,7 +105,7 @@ func ListenForwarding(ctx context.Context, config ForwardingConfig) (_ *Forwardi
 		return nil, errors.New("original Node configuration invalid")
 	}
 	child, cancel := context.WithCancel(ctx)
-	f := &forwarding{ctx: child, cancel: cancel, config: config, retired: errors.New("original Node admission retired"), done: make(chan struct{}), reservations: make(map[receiver.Channel]*hosting.Reservation)}
+	f := &forwarding{failure: failureRecord{started: time.Now()}, caller: ctx, ctx: child, cancel: cancel, config: config, retired: errors.New("original Node admission retired"), done: make(chan struct{}), reservations: make(map[receiver.Channel]*hosting.Reservation)}
 	defer func() {
 		if result != nil {
 			f.deny(result)
@@ -114,6 +115,7 @@ func ListenForwarding(ctx context.Context, config ForwardingConfig) (_ *Forwardi
 			// The caller receives the original cause, not the private notice
 			// lent to Route while a rejected partial acquisition joins.
 			result = errors.Join(first, originalRetirementResult(result, f.retired), f.cleanup())
+			result = &startupFailure{cause: result, fact: f.failure.snapshot(f.first)}
 		}
 	}()
 	var err error
@@ -165,6 +167,9 @@ func ListenForwarding(ctx context.Context, config ForwardingConfig) (_ *Forwardi
 	if _, err := f.current(); err != nil {
 		return nil, err
 	}
+	f.mu.Lock()
+	f.failure.serving = true
+	f.mu.Unlock()
 	go f.supervise()
 	return &Forwarding{original: f}, nil
 }
@@ -195,7 +200,7 @@ func (f *forwarding) current() (network.RuntimeView, error) {
 		err = view.MatchDuty(f.config.Authority.Duty, time.Now())
 	}
 	if err == nil && time.Since(observation.Completed) > time.Second {
-		err = errors.New("original process measurement expired during authority observation")
+		err = expiredMeasurement(observation)
 		failureOwner = "process"
 	}
 	f.mu.Lock()
@@ -239,6 +244,7 @@ func (f *forwarding) deny(cause error, owners ...string) {
 		if cause == context.Canceled {
 			f.firstOwner = "caller"
 		}
+		f.failure.retain(cause, f.ctx, f.firstOwner)
 	}
 	f.mu.Unlock()
 	f.cancel()
@@ -268,6 +274,7 @@ func (f *forwarding) supervise() {
 func (f *forwarding) finish() {
 	result := f.cleanup()
 	f.mu.Lock()
+	f.failure.retainCleanup(result, f.ctx, f.cleanupOwner)
 	f.cleanupResult = result
 	f.result = errors.Join(f.first, result)
 	f.mu.Unlock()
@@ -320,24 +327,40 @@ func (f *forwarding) cleanup() error {
 // retained, even if they wrap cancellation or this notice. This does not infer
 // successful physical completion: Receiver.Close has already joined its users.
 func originalRetirementResult(result, notice error) error {
+	retained, _ := removeOriginalRetirementNotice(result, notice)
+	return retained
+}
+
+// Preserve every unchanged error node: another owner may subsequently remove
+// its exact retained operational subtree while keeping physical wrappers.
+func removeOriginalRetirementNotice(result, notice error) (error, bool) {
 	if result == notice {
-		return nil
+		return nil, result != nil
 	}
 	if joined, ok := result.(interface{ Unwrap() []error }); ok {
 		var retained []error
+		changed := false
 		for _, cause := range joined.Unwrap() {
-			retained = append(retained, originalRetirementResult(cause, notice))
+			next, removed := removeOriginalRetirementNotice(cause, notice)
+			retained = append(retained, next)
+			changed = changed || removed
 		}
-		return errors.Join(retained...)
+		if changed {
+			return errors.Join(retained...), true
+		}
 	}
-	return result
+	return result, false
 }
 
 // Stop synchronously denies new effects. The original supervisor interrupts and
 // joins actual Route users; callers obtain known completion through Done/Close.
 func (f *forwarding) Stop() {
 	if f != nil {
-		f.deny(nil)
+		caller := f.caller
+		if caller == nil {
+			caller = f.ctx
+		}
+		f.deny(caller.Err(), "caller")
 	}
 }
 func (f *forwarding) Done() <-chan struct{} { return f.done }
@@ -421,4 +444,15 @@ func (f *forwarding) refill(ctx context.Context, c receiver.Channel, original re
 		}
 		return c.HoldReservation(func() error { return releaseReservation(additional) })
 	})
+}
+
+// FirstFailure returns detached original facts without observing or waiting for completion.
+func (handle *Forwarding) FirstFailure() *FailureDiagnostic {
+	if handle == nil || handle.original == nil {
+		return nil
+	}
+	f := handle.original
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.failure.snapshot(f.first)
 }

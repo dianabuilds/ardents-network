@@ -163,6 +163,24 @@ func TestNativeNodeForwardingTCP(t *testing.T) {
 	}
 }
 
+// Startup's new field is a closed diagnostic projection, not permission to add
+// arbitrary fields or relax the original refusal/outcome/durability assertions.
+func requireNativeStartupFailure(t *testing.T, raw string) {
+	t.Helper()
+	var fact struct {
+		Kind, Phase, Cause string
+		ElapsedMS          *int64 `json:"elapsed_ms"`
+	}
+	decoder := json.NewDecoder(bytes.NewBufferString(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&fact); err != nil || fact.Kind != "logical" || fact.Phase != "startup" || fact.Cause != "owner-refusal" || fact.ElapsedMS == nil || *fact.ElapsedMS < 0 {
+		t.Fatal("partial startup lost closed original first-cause projection", raw, err)
+	}
+	if err := decoder.Decode(new(any)); err != io.EOF {
+		t.Fatal("startup diagnostic contains trailing data", err)
+	}
+}
+
 func (process *nativeForwardingProcess) failedJoin(t *testing.T, expectedOwner string) {
 	t.Helper()
 	err := process.command.Wait()
@@ -170,9 +188,21 @@ func (process *nativeForwardingProcess) failedJoin(t *testing.T, expectedOwner s
 	_ = process.stdout.Close()
 	var exit *exec.ExitError
 	var event map[string]string
-	decodeErr := json.NewDecoder(bytes.NewBufferString(process.diagnostic.String())).Decode(&event)
+	decodeErr := json.Unmarshal([]byte(process.diagnostic.String()), &event)
 	if !errors.As(err, &exit) || exit.ExitCode() != 1 || decodeErr != nil || event["phase"] != "joined" || event["outcome"] != "failed" || event["first_owner"] != expectedOwner {
 		t.Fatal("original Node did not retain failed physical completion", err, process.diagnostic.String())
+	}
+	if expectedOwner != "" {
+		var detail struct {
+			Kind, Phase, Cause string
+			Resource           json.RawMessage
+		}
+		if err := json.Unmarshal([]byte(event["first_failure"]), &detail); err != nil || detail.Kind != "logical" || detail.Phase == "" || detail.Cause == "" {
+			t.Fatal("original local first cause unavailable after actual join", err, process.diagnostic.String())
+		}
+		if expectedOwner == "process" && (len(detail.Resource) == 0 || string(detail.Resource) == "null") {
+			t.Fatal("original process refusal lost its actual measurement context", process.diagnostic.String())
+		}
 	}
 	if _, err := os.Stat(fmt.Sprintf("/proc/%d", process.pid)); !os.IsNotExist(err) {
 		t.Fatal("failed original Node remains after manager join", err)

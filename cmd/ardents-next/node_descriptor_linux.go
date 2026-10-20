@@ -58,20 +58,20 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 		_ = nodeDescriptorReport(out, "refused", "state-unavailable", "", "")
 		return 1
 	}
-	refuse := func() int {
+	refuse := func(cause error) int {
 		_ = owner.Close()
-		if nodeDescriptorReport(out, "refused", "startup-unavailable", "", "") != nil {
+		if nodeDescriptorReport(out, "refused", "startup-unavailable", "", "", encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
 			return 2
 		}
 		return 1
 	}
 	view, err := owner.CurrentRuntime()
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	duty, err := view.RetainDuty(plan.NodeID, view.ObservedAt())
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	original, err := node.ListenDescriptor(ctx, node.DescriptorConfig{
 		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
@@ -79,7 +79,7 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,
 	})
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	outputErr := nodeDescriptorReport(out, "listening", "original-duty", "", "")
 	if outputErr == nil {
@@ -119,7 +119,7 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 		if result.stateError != nil {
 			result.cleanup = "network"
 		}
-		_ = nodeDescriptorReport(diagnostic, "joined", "failed", result.first, result.cleanup)
+		_ = nodeDescriptorReport(diagnostic, "joined", "failed", result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
 		return 1
 	}
 	if nodeDescriptorReport(diagnostic, "joined", "canceled", "", "") != nil {

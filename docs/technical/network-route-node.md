@@ -755,6 +755,70 @@ reservations, closing purpose roots, removing its participation producer or
 releasing remaining State/resource/key owners. A bounded wait failure cannot
 publish joined completion or create a replacement invocation.
 
+First-cause diagnostics are a local read of the original retained phase/cause,
+elapsed/deadline and available resource facts. Reading them must not wait for a
+physical join or perform a foreign observation. In particular, the bounded
+`completion-unavailable` report may include an already known original cause
+while cleanup is still unknown. An already canceled original caller is retained
+when Stop denies effects; later cleanup errors stay separate. Missing first facts
+remain absent. Neither this projection nor the bounded report grants admission,
+releases resources, changes the terminal result or establishes physical completion.
+The original role report remains one JSON object with string-valued fields.
+Optional `first_failure` carries compact JSON as a string within that object;
+appending another JSON document or changing existing field types is not permitted.
+Retirement filtering preserves unchanged joined-error identities. Removing the
+exact private retirement notice cannot reconstruct a neighboring owner's retained
+operational failure and thereby relabel it as Route physical cleanup. Subsequent
+owner-specific filtering removes only that exact operational subtree; independent
+physical errors and wrappers remain retained through actual join.
+
+The five development profiles use the kernel's ten-second PSI trend (`avg10`,
+percentage units), not a claim that every durable operation is stall-free.
+CPU `some` or I/O `full` at **1.00% or above** retires the original owner;
+positive memory `some`, any high/emergency/PID event, and the table's existing
+memory/FD/thread bounds still retire immediately. There is no delayed accepting
+decision, second observation requirement, revival, or reset of a failed owner.
+Every effect still requires an actual original observation completed within one
+second; the existing 100 ms supervisor supplies additional checks. Kernel trend
+publication and scheduler delay are distinct from that synchronous effect gate:
+this is not an instantaneous stall-duration or availability guarantee.
+
+This development refinement separates short measured scheduling/durable stalls
+from established trend pressure. Its evidence was obtained before implementation
+on Ubuntu 24.04/systemd 255.4, WSL2 kernel 6.6.87.2 and native ext4 storage:
+32 serial 4 KiB create/write/file-fsync/rename/directory-fsync/readback/unlink
+transactions used 0.32–1.18 s, with 0.016–0.066 s maximum transaction time in the
+initial sample and 8.2 ms additional I/O full stall. Two bounded external 50%
+CPU workers with the same durable workload produced CPU avg10 0.54%, whereas
+the genuine original Issuer with those competitors reached 3.80% and refused
+ordinary issuance. Previously captured original durable work produced I/O
+avg10 0.18% and CPU avg10 0.54% (retained #523 evidence). These measurements do
+not demonstrate a classifier or Issuer defect under the earlier zero criterion.
+
+The selected 1% trend budget is a finite development allowance between those
+observed brief and disruptive cases, fixed before final candidate trials;
+it is not tuned per role or raised on failure. The kernel trend is an exponentially
+weighted average, so it cannot be interpreted as exactly 100 ms in every ten
+seconds. Required real sync, floors/readback, native identity/caller custody,
+hard limits, Network authority, protocol/Work Safety deadlines and physical
+join-before-release are independent requirements. Source composition, installed
+Node, arbitrary host load, long-run capacity and platform support are unqualified.
+The [kernel PSI specification](https://docs.kernel.org/accounting/psi.html)
+(accessed 2026-10-20) owns trend and cumulative-stall semantics; the selected
+issue retains raw finite measurements, failed attempts and source identities.
+
+The Descriptor CPU negative control must establish the selected 1% overload,
+not merely positive PSI. Its fixed twelve external 50%-quota helper groups share
+one pinned allowed CPU; their aggregate declared caps are 384 MiB and 24 helper
+tasks. The six-second detection bound and eight-second helper lifetime do not
+extend the original Node or protocol deadlines. A finite original-three versus
+twelve-helper comparison measured CPU avg10 peaks 1.62%/1.26% and joined original
+retirement in both cases; the twelve-helper case completed in 6.37 s. A retained
+earlier three-helper control failed to obtain retirement before the role bound;
+that missing first PSI history is not retrospective proof of a Guard defect.
+Failure to establish actual overload remains failed/invalid evidence, never a
+passing refusal test. Ordinary workloads use no such affinity or competing load.
+
 Route continues to own its finite queues and physical users. Queue/timer
 diagnostics must distinguish measured, unavailable and unmeasured observations;
 unobserved counts are never emitted as zero or used as capacity evidence.

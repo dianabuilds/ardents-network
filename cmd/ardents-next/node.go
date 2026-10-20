@@ -31,10 +31,15 @@ func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int 
 	return 2
 }
 
-func nodeReport(out io.Writer, phase, outcome string) error {
+func nodeReport(out io.Writer, phase, outcome string, details ...string) error {
+	firstFailure := ""
+	if len(details) == 1 {
+		firstFailure = details[0]
+	}
 	return json.NewEncoder(out).Encode(struct {
-		Operation string `json:"operation"`
-		Phase     string `json:"phase"`
-		Outcome   string `json:"outcome"`
-	}{"node.forwarding", phase, outcome})
+		FirstFailure string `json:"first_failure,omitempty"`
+		Operation    string `json:"operation"`
+		Phase        string `json:"phase"`
+		Outcome      string `json:"outcome"`
+	}{firstFailure, "node.forwarding", phase, outcome})
 }

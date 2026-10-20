@@ -35,6 +35,7 @@ type DescriptorConfig struct {
 type Descriptor struct{ original *descriptorInvocation }
 
 type descriptorInvocation struct {
+	failure                      failureRecord
 	mu                           sync.Mutex
 	caller, ctx                  context.Context
 	cancel                       context.CancelFunc
@@ -63,7 +64,7 @@ func ListenDescriptor(ctx context.Context, config DescriptorConfig) (_ *Descript
 		return nil, err
 	}
 	child, cancel := context.WithCancel(ctx)
-	f := &descriptorInvocation{caller: ctx, ctx: child, cancel: cancel, config: config, retired: errors.New("original Descriptor admission retired"), done: make(chan struct{})}
+	f := &descriptorInvocation{failure: failureRecord{started: time.Now()}, caller: ctx, ctx: child, cancel: cancel, config: config, retired: errors.New("original Descriptor admission retired"), done: make(chan struct{})}
 	defer func() {
 		if result != nil {
 			f.deny(result, "startup")
@@ -71,6 +72,7 @@ func ListenDescriptor(ctx context.Context, config DescriptorConfig) (_ *Descript
 			first := f.first
 			f.mu.Unlock()
 			result = errors.Join(first, originalRetirementResult(result, f.retired), f.cleanup())
+			result = &startupFailure{cause: result, fact: f.failure.snapshot(f.first)}
 		}
 	}()
 	var err error
@@ -141,6 +143,9 @@ func ListenDescriptor(ctx context.Context, config DescriptorConfig) (_ *Descript
 	if _, err := f.current(); err != nil {
 		return nil, err
 	}
+	f.mu.Lock()
+	f.failure.serving = true
+	f.mu.Unlock()
 	go f.supervise()
 	return &Descriptor{original: f}, nil
 }
@@ -181,7 +186,7 @@ func (f *descriptorInvocation) currentBase() (network.RuntimeView, error) {
 		err = view.MatchDuty(f.config.Authority.Duty, time.Now())
 	}
 	if err == nil && time.Since(measurement.Completed) > time.Second {
-		err = errors.New("original Descriptor process measurement expired during authority observation")
+		err = expiredMeasurement(measurement)
 		owner = "process"
 	}
 	if err != nil {
@@ -221,6 +226,7 @@ func (f *descriptorInvocation) deny(cause error, owner string) {
 	f.denied = true
 	if f.first == nil && cause != nil && cause != f.retired {
 		f.first, f.firstOwner = cause, owner
+		f.failure.retain(cause, f.caller, owner)
 	}
 	f.mu.Unlock()
 	// Store's short local denial does not wait for a foreign observer or physical
@@ -247,6 +253,7 @@ func (f *descriptorInvocation) supervise() {
 		}
 		cleanup := f.cleanup()
 		f.mu.Lock()
+		f.failure.retainCleanup(cleanup, f.caller, f.cleanupOwner)
 		f.cleanupResult, f.result = cleanup, errors.Join(f.first, cleanup)
 		f.mu.Unlock()
 		close(f.done)
@@ -282,6 +289,7 @@ func (f *descriptorInvocation) cleanup() error {
 		first := f.first
 		if first == nil {
 			f.first, f.firstOwner = storeFailure, "reachability"
+			f.failure.retain(storeFailure, f.caller, "reachability")
 		}
 		f.mu.Unlock()
 		if first != nil && first != storeFailure {
@@ -307,7 +315,7 @@ func (f *descriptorInvocation) cleanup() error {
 
 func (handle *Descriptor) Stop() {
 	if handle != nil && handle.original != nil {
-		handle.original.deny(nil, "runtime")
+		handle.original.deny(handle.original.caller.Err(), "caller")
 	}
 }
 func (handle *Descriptor) Done() <-chan struct{} {
@@ -393,4 +401,15 @@ func (f *descriptorInvocation) admit(ctx context.Context, c receiver.Channel, ra
 		}
 		return c.HoldReservation(func() error { return releaseReservation(held) })
 	})
+}
+
+// FirstFailure returns detached original facts without observing or waiting for completion.
+func (handle *Descriptor) FirstFailure() *FailureDiagnostic {
+	if handle == nil || handle.original == nil {
+		return nil
+	}
+	f := handle.original
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.failure.snapshot(f.first)
 }

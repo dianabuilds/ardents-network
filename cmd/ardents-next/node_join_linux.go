@@ -57,20 +57,20 @@ func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) 
 		_ = nodeJoinReport(out, "refused", "state-unavailable", "", "")
 		return 1
 	}
-	refuse := func() int {
+	refuse := func(cause error) int {
 		_ = owner.Close()
-		if nodeJoinReport(out, "refused", "startup-unavailable", "", "") != nil {
+		if nodeJoinReport(out, "refused", "startup-unavailable", "", "", encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
 			return 2
 		}
 		return 1
 	}
 	view, err := owner.CurrentRuntime()
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	duty, err := view.RetainDuty(plan.NodeID, view.ObservedAt())
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	original, err := node.ListenJoin(ctx, node.JoinConfig{
 		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
@@ -78,7 +78,7 @@ func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) 
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,
 	})
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	outputErr := nodeJoinReport(out, "listening", "original-duty", "", "")
 	if outputErr == nil {
@@ -118,7 +118,7 @@ func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) 
 		if result.stateError != nil {
 			result.cleanup = "network"
 		}
-		_ = nodeJoinReport(diagnostic, "joined", "failed", result.first, result.cleanup)
+		_ = nodeJoinReport(diagnostic, "joined", "failed", result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
 		return 1
 	}
 	if nodeJoinReport(diagnostic, "joined", "canceled", "", "") != nil {

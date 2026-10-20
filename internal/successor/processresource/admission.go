@@ -49,6 +49,7 @@ type originalProcess struct {
 	failed   error
 	closed   bool
 	closeErr error
+	started  time.Time
 }
 
 // Open checks the selected profile and establishes a genuine elapsed CPU baseline
@@ -64,7 +65,7 @@ func Open(ctx context.Context, profile string) (*Guard, error) {
 	if err != nil {
 		return nil, err
 	}
-	original := &originalProcess{caller: ctx, native: native}
+	original := &originalProcess{caller: ctx, native: native, started: time.Now()}
 	guard := &Guard{original: original}
 	original.baseline, err = native.observe()
 	if err == nil {
@@ -83,6 +84,10 @@ func Open(ctx context.Context, profile string) (*Guard, error) {
 		_, err = guard.Check()
 	}
 	if err != nil {
+		if original.failed == nil && err != ctx.Err() {
+			original.failed = retainFailure(err, "startup", original.baseline, original)
+			err = original.failed
+		}
 		return nil, errors.Join(err, guard.Close())
 	}
 	return guard, nil
@@ -115,7 +120,7 @@ func (guard *Guard) Check() (Observation, error) {
 	if err == nil {
 		elapsed := observation.Completed.Sub(original.baseline.Completed)
 		if elapsed < 100*time.Millisecond || observation.CPUUsec < original.baseline.CPUUsec || observation.CPUUsec < original.lastCPU {
-			err = errors.New("original process CPU interval unavailable")
+			err = &admissionFailure{reason: "cpu-interval"}
 		} else {
 			observation.CPUWindowStarted = original.baseline.Completed
 			observation.CPUFraction = float64(observation.CPUUsec-original.baseline.CPUUsec) / float64(elapsed/time.Microsecond)
@@ -132,6 +137,10 @@ func (guard *Guard) Check() (Observation, error) {
 	}
 	if err != nil {
 		original.failed = err
+		if err != original.caller.Err() {
+			original.failed = retainFailure(err, "observation", observation, original)
+		}
+		err = original.failed
 	}
 	return observation, err
 }
@@ -142,14 +151,24 @@ func pressure(observation Observation) error {
 
 func pressureAt(observation Observation, now time.Time) error {
 	if observation.Completed.IsZero() || observation.Started.IsZero() || observation.Completed.Before(observation.Started) || observation.Completed.Sub(observation.Started) > time.Second || now.Before(observation.Completed) || now.Sub(observation.Completed) > time.Second {
-		return errors.New("process resource observation unavailable or stale")
+		return &admissionFailure{reason: "observation-stale"}
 	}
-	// This bounded development owner conservatively retires on actual kernel
-	// pressure rather than promising capacity or silently resuming the caller.
-	if observation.HighEvents != 0 || observation.EmergencyEvents != 0 || observation.PIDEvents != 0 ||
-		observation.MemoryBytes >= 768<<20 || observation.RSSBytes >= 768<<20 || observation.GoMemoryBytes >= 512<<20 ||
-		observation.FDs >= 1024 || observation.Threads >= 256 || observation.CPUPressure > 0 || observation.MemoryPressure > 0 || observation.IOPressure > 0 {
-		return errors.New("original process pressure requires retirement")
+	// The owning development contract admits brief measured CPU/I/O stalls;
+	// established trend pressure and every hard/event boundary still retire.
+	if observation.HighEvents != 0 || observation.EmergencyEvents != 0 || observation.PIDEvents != 0 {
+		return &admissionFailure{reason: "kernel-limit-event"}
+	}
+	if observation.MemoryBytes >= 768<<20 || observation.RSSBytes >= 768<<20 || observation.GoMemoryBytes >= 512<<20 || observation.FDs >= 1024 || observation.Threads >= 256 {
+		return &admissionFailure{reason: "resource-bound"}
+	}
+	if observation.MemoryPressure > 0 {
+		return &admissionFailure{reason: "memory-pressure"}
+	}
+	if observation.CPUPressure >= 1 {
+		return &admissionFailure{reason: "cpu-pressure"}
+	}
+	if observation.IOPressure >= 1 {
+		return &admissionFailure{reason: "io-pressure"}
 	}
 	return nil
 }

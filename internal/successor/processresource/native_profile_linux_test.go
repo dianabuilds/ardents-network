@@ -6,8 +6,10 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"runtime"
 	"testing"
+	"time"
 )
 
 // This selected native test requires the actual sole-process leaf profile.
@@ -80,6 +82,8 @@ func testOriginalNativeEvidenceLoss(t *testing.T, profile string) {
 	}
 	if _, err := guard.Check(); err == nil {
 		t.Fatal("lost actual cgroup pin supplied admission")
+	} else if facts := Failure(err); facts == nil || facts.Cause != "native-evidence" || facts.Observation != nil {
+		t.Fatal("lost evidence became measured zeros or lost first diagnostic", facts)
 	}
 	first := guard.Close()
 	if !errors.Is(first, os.ErrClosed) {
@@ -87,6 +91,59 @@ func testOriginalNativeEvidenceLoss(t *testing.T, profile string) {
 	}
 	if guard.Close() != first {
 		t.Fatal("late Close erased actual native failure")
+	}
+}
+
+func TestOriginalNativePlacementAndCallerRetire(t *testing.T) {
+	for _, mode := range []string{"foreign-process", "caller"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			guard, err := Open(ctx, Profile)
+			if err != nil {
+				t.Fatal("selected native environment unavailable", err)
+			}
+			t.Cleanup(func() {
+				if err := guard.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			var first error
+			if mode == "caller" {
+				cancel()
+				_, first = guard.Check()
+				if first != context.Canceled {
+					t.Fatal("original caller cause changed", first)
+				}
+			} else {
+				// This real child deliberately violates sole-process placement.
+				// It owns no authority and is physically joined before pin release.
+				child := exec.Command("sleep", "2")
+				if err := child.Start(); err != nil {
+					t.Fatal(err)
+				}
+				_, first = guard.Check()
+				killErr := child.Process.Kill()
+				waitErr := child.Wait()
+				if killErr != nil && !errors.Is(killErr, os.ErrProcessDone) {
+					t.Fatal("owned foreign-placement child interruption failed", killErr)
+				}
+				var exited *exec.ExitError
+				if child.ProcessState == nil || waitErr != nil && !errors.As(waitErr, &exited) {
+					t.Fatal("owned foreign-placement child join unavailable", waitErr)
+				}
+				if first == nil || Failure(first) == nil {
+					t.Fatal("foreign native process admitted work", first)
+				}
+			}
+			if first == nil {
+				t.Fatal("original admission remained live")
+			}
+			time.Sleep(time.Millisecond)
+			if _, later := guard.Check(); later != first {
+				t.Fatal("restored placement/caller revived original owner")
+			}
+		})
 	}
 }
 
@@ -119,6 +176,18 @@ func testOriginalNativeManagedMemoryPressure(t *testing.T, profile string) {
 	runtime.KeepAlive(payload)
 	if observation.GoMemoryBytes < 512<<20 || first == nil {
 		t.Fatal("actual managed-memory pressure admitted work", observation.GoMemoryBytes, first)
+	}
+	expectedCause := "resource-bound"
+	if observation.HighEvents != 0 || observation.EmergencyEvents != 0 || observation.PIDEvents != 0 {
+		expectedCause = "kernel-limit-event"
+	}
+	if facts := Failure(first); facts == nil || facts.Cause != expectedCause || facts.Observation == nil || facts.Observation.GoMemoryBytes != observation.GoMemoryBytes {
+		t.Fatal("original managed-memory first cause lost", facts)
+	} else {
+		facts.Observation.GoMemoryBytes = 0
+		if Failure(first).Observation.GoMemoryBytes != observation.GoMemoryBytes {
+			t.Fatal("diagnostic copy changed original evidence")
+		}
 	}
 	payload = nil
 	runtime.GC()

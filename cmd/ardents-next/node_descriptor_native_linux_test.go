@@ -167,8 +167,11 @@ func TestNativeDescriptorPartialStartupRefusalsTCP(t *testing.T) {
 					if !errors.As(err, &exit) || exit.ExitCode() != expected {
 						t.Fatal("actual Descriptor startup did not refuse", err, p.diagnostic.String())
 					}
-					if expected == 1 && (decodeErr != nil || len(event) != 3 || event["operation"] != "node.descriptor" || event["phase"] != "refused" || event["outcome"] != "startup-unavailable") {
+					if expected == 1 && (decodeErr != nil || len(event) != 4 || event["operation"] != "node.descriptor" || event["phase"] != "refused" || event["outcome"] != "startup-unavailable") {
 						t.Fatal("partial startup lost bounded refusal", event, decodeErr)
+					}
+					if expected == 1 {
+						requireNativeStartupFailure(t, event["first_failure"])
 					}
 					if expected == 2 && (decodeErr == nil || len(event) != 0) {
 						t.Fatal("invalid declaration reached runtime", event)
@@ -366,6 +369,14 @@ func nativeDescriptorCommandWorkload(t *testing.T, fault string) {
 			case "cpu-pressure":
 				nativeDescriptorCPUContention(t, resolution)
 				resolution.failedJoin(t, "process")
+				var event map[string]string
+				var first struct{ Resource *processresource.FailureFacts }
+				if err := json.Unmarshal([]byte(resolution.diagnostic.String()), &event); err != nil {
+					t.Fatal("original CPU outcome framing unavailable", err)
+				}
+				if err := json.Unmarshal([]byte(event["first_failure"]), &first); err != nil || first.Resource == nil || first.Resource.Cause != "cpu-pressure" || first.Resource.Observation == nil || first.Resource.Observation.CPUPressure < 1 || first.Resource.Observation.CPUWindowStarted.IsZero() {
+					t.Fatal("CPU negative lacked actual retained original overload", err, resolution.diagnostic.String())
+				}
 			case "protection-loss":
 				if err := exec.Command("systemctl", "set-property", "--runtime", resolution.unit, "CPUQuota=50%").Run(); err != nil {
 					t.Fatal(err)
@@ -524,9 +535,11 @@ func nativeDescriptorCPUContention(t *testing.T, original *nativeForwardingProce
 	if output, err := exec.Command("taskset", "-apc", cpu, strconv.Itoa(original.pid)).CombinedOutput(); err != nil {
 		t.Fatal("original allowed CPU affinity unavailable", err, string(output))
 	}
-	// Three finite 50%-quota helpers request more than one pinned CPU. Two
-	// request only 100%, which can leave a briefly waking Node uncontended.
-	for index := range 3 {
+	// Twelve bounded helper groups contend on ONE original allowed CPU. The
+	// measured development control uses at most one busy CPU, 384 MiB declared
+	// auxiliary memory and 24 helper tasks, outside the sole original leaf.
+	// Positive PSI alone is not the selected 1% overload criterion.
+	for index := range 12 {
 		unit := fmt.Sprintf("ardents-descriptor-cpu-helper-%d-%d.service", os.Getpid(), index)
 		// Independent manager limits survive a forced exit of the test driver.
 		// These are test-helper limits, never the measured Node's envelope.
@@ -560,7 +573,7 @@ func nativeDescriptorCPUContention(t *testing.T, original *nativeForwardingProce
 		}
 	}
 	deadline := time.Now().Add(6 * time.Second)
-	for pressure() == 0 {
+	for pressure() < 1 {
 		if time.Now().After(deadline) {
 			t.Fatal("causal original CPU pressure did not become measured")
 		}

@@ -30,7 +30,7 @@ NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
 # Only the Node process suite may select an elevated system-scope runner.
 NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
-ifneq ($(filter node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
+ifneq ($(filter node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
 # This native driver consumes independently built, pinned artifacts. Its host
 # needs the actual manager/kernel, not a second Go installation.
 HEADLESS_GOOS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -210,6 +210,10 @@ installed-tag-compile-check:
 	$(foreach package,$(INSTALLED_TAG_COMPILE_PACKAGES),go test -c -tags text_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/$(subst /,_,$(package)).test" $(package)$(newline))
 
 .PHONY: node-process-check
+.PHONY: node-development-check
+node-development-check:
+	python3 -I -S ./scripts/node/run-development.py baseline "$(ARDENTS_DEVELOPMENT_LOCK_PARENT)" "$(ARDENTS_NODE_DEVELOPMENT_OUTPUT)" -timeout=90m
+
 node-process-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "node-process-check requires Linux"; exit 2)
 	sh ./scripts/node/run-native.sh -timeout=3m

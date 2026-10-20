@@ -1,5 +1,16 @@
 # Package map
 
+`cmd/ardents-next/node_failure_linux.go` imports exactly
+`internal/successor/node` and the standard library to encode its copied original
+first-failure projection inside the established single terminal report. Node's
+`failure_projection_linux.go` imports only `processresource` and the standard
+library; it records local phase/cause/elapsed facts without foreign I/O, authority
+or private identity. Process-resource failure facts retain original numeric
+measurements separately from Node's physical cleanup causes.
+`processresource/failure_linux.go` exposes the copied native failure projection
+only on Linux, where the genuine Node consumer exists. Shared policy/fact
+representation remains portable; unsupported-platform commands refuse acquisition.
+
 [ADR-0122](../adr/0122-select-tcp-only-closed-release.md) selects TCP/TLS alone
 for the nearest closed release. The QUIC adapter and its import grants retire;
 historical signed profile identifiers stay distinguishable but grant no runtime

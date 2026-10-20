@@ -86,6 +86,10 @@ func TestNativeNodeUnavailableCompletionRetainsOriginalProducerTCP(t *testing.T)
 			if !errors.As(waitErr, &exit) || exit.ExitCode() != 1 || decodeErr != nil || event["phase"] != "retiring" || event["outcome"] != "completion-unavailable" {
 				t.Fatal("bounded command wait fabricated original completion", waitErr, decodeErr, process.diagnostic.String())
 			}
+			var first struct{ Kind, Phase, Cause string }
+			if err := json.Unmarshal([]byte(event["first_failure"]), &first); err != nil || first.Kind != "logical" || first.Phase != "serving" || first.Cause != "canceled" {
+				t.Fatal("bounded unknown completion lost known original caller cause", err, process.diagnostic.String())
+			}
 			if _, err := os.Stat(filepath.Join("/proc", strconv.Itoa(process.pid))); !os.IsNotExist(err) {
 				t.Fatal("original process remains after manager join", err)
 			}

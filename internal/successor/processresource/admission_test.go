@@ -40,14 +40,29 @@ func TestNativePressureAndUnavailableIntervalDenyAdmission(t *testing.T) {
 		func(o *Observation) { o.MemoryBytes = 768 << 20 },
 		func(o *Observation) { o.RSSBytes = 768 << 20 },
 		func(o *Observation) { o.GoMemoryBytes = 512 << 20 },
-		func(o *Observation) { o.CPUPressure = 0.01 },
+		func(o *Observation) { o.CPUPressure = 1 },
 		func(o *Observation) { o.MemoryPressure = 0.01 },
-		func(o *Observation) { o.IOPressure = 0.01 },
+		func(o *Observation) { o.IOPressure = 1 },
 	} {
 		observation := control
 		change(&observation)
 		if pressureAt(observation, now) == nil {
 			t.Fatal("required pressure/evidence refusal absent")
+		}
+	}
+}
+
+func TestMeasuredBriefDevelopmentStallsPreserveAdmission(t *testing.T) {
+	now := time.Unix(1800000000, 0).UTC()
+	// Actual captured original/durable-control readings, not fake native
+	// admission. This rule replay supplies no process identity or duty.
+	for _, observation := range []Observation{
+		{CPUPressure: 0.54}, {IOPressure: 0.18},
+		{CPUPressure: 0.99, IOPressure: 0.99},
+	} {
+		observation.Started, observation.Completed = now.Add(-time.Millisecond), now
+		if err := pressureAt(observation, now); err != nil {
+			t.Fatal("measured brief stall refused", observation.CPUPressure, observation.IOPressure, err)
 		}
 	}
 }

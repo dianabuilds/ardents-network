@@ -197,6 +197,7 @@ func nativeJoinAuthorityChild(t *testing.T, path string) {
 	}
 	var restorePath, restoreFrom string
 	var pressureMemory []byte
+	var networkExpiry error
 	switch plan.Fault {
 	case "stop":
 		stopped := make(chan struct{})
@@ -261,6 +262,11 @@ func nativeJoinAuthorityChild(t *testing.T, path string) {
 		}
 	case "member-expiry":
 		time.Sleep(time.Until(member.NotAfter()) + 150*time.Millisecond)
+		actual, err := owner.CurrentRuntime()
+		if err != nil {
+			t.Fatal(err)
+		}
+		networkExpiry = awaitNativeExpiryDenial(t, actual, retained, original.FirstFailure)
 	case "credential-loss", "participation-loss":
 		object := plan.PrivateKey
 		if plan.Fault == "participation-loss" {
@@ -314,7 +320,7 @@ func nativeJoinAuthorityChild(t *testing.T, path string) {
 			expected = "process"
 		}
 		if plan.Fault == "member-expiry" {
-			expected = "participation"
+			expected = nativeExpiryFirstOwner(t, result, networkExpiry, original.FirstFailure())
 		}
 		if plan.Fault == "credential-loss" {
 			expected = "credential"

@@ -50,20 +50,20 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 		_ = nodeIssuerReport(out, "refused", "state-unavailable", "", "")
 		return 1
 	}
-	refuse := func() int {
+	refuse := func(cause error) int {
 		_ = owner.Close()
-		if nodeIssuerReport(out, "refused", "startup-unavailable", "", "") != nil {
+		if nodeIssuerReport(out, "refused", "startup-unavailable", "", "", encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
 			return 2
 		}
 		return 1
 	}
 	view, err := owner.CurrentRuntime()
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	duty, err := view.RetainDuty(plan.NodeID, view.ObservedAt())
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	original, err := node.ListenIssuer(ctx, node.IssuerConfig{
 		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
@@ -73,7 +73,7 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 		Work:     plan.Work, BootstrapWork: plan.BootstrapWork, Termination: plan.Termination,
 	})
 	if err != nil {
-		return refuse()
+		return refuse(err)
 	}
 	outputErr := nodeIssuerReport(out, "listening", "original-duty", "", "")
 	if outputErr == nil {
@@ -113,7 +113,7 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 		if result.stateError != nil {
 			result.cleanup = "network"
 		}
-		_ = nodeIssuerReport(diagnostic, "joined", "failed", result.first, result.cleanup)
+		_ = nodeIssuerReport(diagnostic, "joined", "failed", result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
 		return 1
 	}
 	if nodeIssuerReport(diagnostic, "joined", "canceled", "", "") != nil {

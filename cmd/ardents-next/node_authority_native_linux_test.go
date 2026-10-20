@@ -199,6 +199,7 @@ func testNativeOriginalAuthorityChild(t *testing.T, path string) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("real original State observation never entered the held return")
 	}
+	var networkExpiry error
 	switch plan.Fault {
 	case "stop":
 		stopped := make(chan struct{})
@@ -244,6 +245,11 @@ func testNativeOriginalAuthorityChild(t *testing.T, path string) {
 			t.Fatal(t.Context().Err())
 		}
 		timer.Stop()
+		actual, err := owner.CurrentRuntime()
+		if err != nil {
+			t.Fatal(err)
+		}
+		networkExpiry = awaitNativeExpiryDenial(t, actual, retained, original.FirstFailure)
 	default:
 		t.Fatal("unselected original authority fault", plan.Fault)
 	}
@@ -284,11 +290,11 @@ func testNativeOriginalAuthorityChild(t *testing.T, path string) {
 		if plan.Fault == "stale-measurement" {
 			expected = "process"
 		}
-		if plan.Fault == "member-expiry" {
-			expected = "participation"
-		}
 		if result == nil || original.JoinedOutcome() != "failed" {
 			t.Fatal("original authority/resource retirement reported success", result)
+		}
+		if plan.Fault == "member-expiry" {
+			expected = nativeExpiryFirstOwner(t, result, networkExpiry, original.FirstFailure())
 		}
 	}
 	if first != expected {
@@ -392,4 +398,53 @@ func checkNativeFailedStartupCleanup(t *testing.T, plan nativeOriginalAuthorityP
 	if closeErr := budget.Close(); err != nil || closeErr != nil || snapshot.ReservedBytes != 0 {
 		t.Fatal("late rejected acquisition retained capacity", snapshot, err, closeErr)
 	}
+}
+
+// These negative-control helpers compare real signed expiry and the original
+// retained error. They supply no accepting State, producer or process facts.
+func awaitNativeExpiryDenial(t *testing.T, actual network.RuntimeView, retained network.RetainedDuty, first func() *node.FailureDiagnostic) error {
+	t.Helper()
+	now := time.Now()
+	expiry := actual.MatchDuty(retained, now)
+	if expiry == nil || now.Before(retained.RecordValidUntil) {
+		t.Fatal("genuine original duty remained current after signed expiry")
+	}
+	// Keep physical return held until denial is known. A scheduler delay alone
+	// cannot determine whether producer or post-I/O MatchDuty observes expiry first.
+	until := time.Now().Add(2 * time.Second)
+	for first() == nil {
+		if time.Now().After(until) {
+			t.Fatal("original expiry denial unavailable while physical return remained held")
+		}
+		select {
+		case <-time.After(10 * time.Millisecond):
+		case <-t.Context().Done():
+			t.Fatal(t.Context().Err())
+		}
+	}
+	return expiry
+}
+
+func nativeExpiryFirstOwner(t *testing.T, result, networkExpiry error, fact *node.FailureDiagnostic) string {
+	t.Helper()
+	joined, ok := result.(interface{ Unwrap() []error })
+	if !ok || len(joined.Unwrap()) == 0 || networkExpiry == nil {
+		t.Fatal("original first expiry cause unavailable", result)
+	}
+	// Producer.Check precedes foreign Network I/O; MatchDuty after it can cross
+	// the same signed expiry first. Require the exact owner of the retained cause,
+	// never relabel a failure to impose scheduler order or accept another error.
+	cause := joined.Unwrap()[0]
+	expected, code := "participation", "owner-refusal"
+	switch cause.Error() {
+	case "original Node participation expired":
+	case networkExpiry.Error():
+		expected, code = "network", "authority-refusal"
+	default:
+		t.Fatal("expiry replaced by unrelated first cause", cause)
+	}
+	if fact == nil || fact.Kind != "logical" || fact.Phase != "serving" || fact.Cause != code || fact.Resource != nil {
+		t.Fatal("original expiry diagnostic differs from its retained cause", fact)
+	}
+	return expected
 }

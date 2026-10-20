@@ -75,8 +75,11 @@ func TestNativeJoinPartialStartupRefusalsTCP(t *testing.T) {
 					if !errors.As(err, &exit) || exit.ExitCode() != expected {
 						t.Fatal("actual Join startup did not refuse", err, p.diagnostic.String())
 					}
-					if expected == 1 && (decodeErr != nil || len(event) != 3 || event["operation"] != "node.join" || event["phase"] != "refused" || event["outcome"] != "startup-unavailable") {
+					if expected == 1 && (decodeErr != nil || len(event) != 4 || event["operation"] != "node.join" || event["phase"] != "refused" || event["outcome"] != "startup-unavailable") {
 						t.Fatal("partial startup lost bounded refusal", event, decodeErr)
+					}
+					if expected == 1 {
+						requireNativeStartupFailure(t, event["first_failure"])
 					}
 					if expected == 2 && (decodeErr == nil || len(event) != 0) {
 						t.Fatal("invalid declaration reached runtime", event)

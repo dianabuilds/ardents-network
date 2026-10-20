@@ -887,6 +887,59 @@ passing vulnerability scan or independent security validation.
 
 ## Local diagnostic tools
 
+### Native development runner interpreter
+
+Review date: 2026-10-20. `scripts/node/run-development.py` uses CPython3.12
+(PSF license), a development/test dependency only. Invoke it with **`-I -S`**;
+the entry point refuses other branches or non-isolated/site-enabled invocation.
+Ubuntu24.04's signed security packages supply the native interpreter; the
+existing MSYS2 UCRT Python supplies Windows serialization only. No installation
+occurs in a normal gate. The Product Owner and Codex own renewal through the
+explicit tools-install workflow; remove this requirement with the runner.
+
+The reviewed native installation is Python3.12.3, Ubuntu
+`python3.12`, `python3.12-minimal`, `libpython3.12-minimal` and
+`libpython3.12-stdlib` **3.12.3-1ubuntu0.12**; `dpkg -V` of those packages
+reported no changes. Interpreter SHA256:
+`8295ee25cfdb239f3e165afceda7f46de73e2b606ff0e2e3d8623e3facd30acc`.
+Windows `mingw-w64-ucrt-x86_64-python` **3.12.12-1** has 8421 package files,
+zero altered files under `pacman -Qkk`, and interpreter SHA256
+`b5c33df60c2a8421dcf8117a67e848436b5d395c71ec1c0dfd96bad10f441d7f`.
+These are exact-use reviews, not approval of every Python3.12 patch or the host.
+
+Primary sources accessed on that date: upstream security release notes
+[3.12.13](https://www.python.org/downloads/release/python-31213/),
+[3.12.14](https://www.python.org/downloads/release/python-31214/),
+[3.12.15](https://www.python.org/downloads/release/python-31215/),
+[Ubuntu USN-8509-1](https://lists.ubuntu.com/archives/ubuntu-security-announce/2026-July/010856.html)
+and the [exact Ubuntu .12 source change](https://lists.ubuntu.com/archives/noble-changes/2026-March/054032.html).
+The branch receives security fixes until October2028; upstream3.12.15 and
+Ubuntu .15 contain newer fixes. The older installed patches are **not** claimed
+fully fixed. Their admission is confined to the following reproducible
+non-applicability, rather than severity or an empty scanner result:
+
+| Reviewed affected paths | Exact runner applicability |
+|---|---|
+| TLS/SSL, HTTP/cookies/WSGI, email/HTML, FTP/IMAP, URL credentials/data URLs and browser launching | Neither imported nor called. This includes the reverted IMAP fixes in Ubuntu .12. Python performs no network protocol operation; native manager facts come from fixed local subprocesses |
+| XML/Expat/plist parsing; tar/ZIP extraction and compression/decompression; Unicode normalization/StringPrep; Windows asyncio | Neither imported nor called. The runner hashes opaque artifact bytes, parses independently pinned local JSON and fixed local manager JSON; it does not extract archives or normalize protocol text |
+| `os.path.expandvars` (gh-136065) | Never called; no variable-expansion parser accepts input |
+| Sourceless bytecode audit bypass, CVE-2026-2297 | No audit hook is used as a security boundary. `-I -S` excludes user/site/PYTHONPATH injection; interpreter and standard library are trusted package-owned inputs, not supplied plugins or untrusted bytecode |
+| Float formatting precision near INT_MAX (gh-158446) | No input-controlled precision. The only numeric presentation uses fixed rounding to three places and JSON indentation two |
+
+To reproduce the closure check, load the selected script with `runpy.run_path`
+under `python3 -I -S`, exercise `native_facts` on the native stand and `exclusive`
+with a fixed no-op child, then inventory `sys.modules` file paths and SHA256s.
+The inspected Linux/Windows closures contained 63/68 file-backed modules;
+none of the affected module groups above was loaded. Compare the actual script
+calls too: absence from one sampled import list alone cannot establish an
+unreachable call. Keep that inventory, interpreter/package integrity output and
+source digest with the execution receipt. This review includes every security
+item in the linked release/Ubuntu notices by affected path; it grants no use of
+those excluded APIs. Renew on any source/import/input/privilege/interpreter or
+advisory change. A different interpreter requires its own exact-use review
+before accepting its run. The continuing native preflight retains the original
+interpreter identity; it does not claim an ongoing host vulnerability scan.
+
 The engineering diagnostics owner is [local-diagnostics.md](local-diagnostics.md).
 The image uses Go 1.27.2 and the digest-pinned official Debian Bookworm Go image
 `sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61`.

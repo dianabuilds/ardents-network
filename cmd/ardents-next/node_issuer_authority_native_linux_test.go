@@ -206,6 +206,7 @@ func testNativeIssuerAuthorityChild(t *testing.T, path string) {
 	case <-time.After(3 * time.Second):
 		t.Fatal("real original State observation never entered the held return")
 	}
+	var networkExpiry error
 	switch plan.Fault {
 	case "stop":
 		stopped := make(chan struct{})
@@ -251,6 +252,11 @@ func testNativeIssuerAuthorityChild(t *testing.T, path string) {
 			t.Fatal(t.Context().Err())
 		}
 		timer.Stop()
+		actual, err := owner.CurrentRuntime()
+		if err != nil {
+			t.Fatal(err)
+		}
+		networkExpiry = awaitNativeExpiryDenial(t, actual, retained, original.FirstFailure)
 	default:
 		t.Fatal("unselected original authority fault", plan.Fault)
 	}
@@ -297,7 +303,7 @@ func testNativeIssuerAuthorityChild(t *testing.T, path string) {
 			expected = "process"
 		}
 		if plan.Fault == "member-expiry" {
-			expected = "participation"
+			expected = nativeExpiryFirstOwner(t, result, networkExpiry, original.FirstFailure())
 		}
 		if result == nil || original.JoinedOutcome() != "failed" {
 			t.Fatal("original authority/resource retirement reported success", result)

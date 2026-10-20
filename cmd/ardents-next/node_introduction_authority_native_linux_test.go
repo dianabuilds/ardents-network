@@ -209,6 +209,7 @@ func nativeIntroductionAuthorityChild(t *testing.T, path string) {
 	originalLock := filepath.Join(plan.Introduction, ".ardents-introduction-lock")
 	var restorePath, restoreFrom string
 	var pressureMemory []byte
+	var networkExpiry error
 	switch plan.Fault {
 	case "stop":
 		stopped := make(chan struct{})
@@ -273,6 +274,11 @@ func nativeIntroductionAuthorityChild(t *testing.T, path string) {
 		}
 	case "member-expiry":
 		time.Sleep(time.Until(member.NotAfter()) + 150*time.Millisecond)
+		actual, err := owner.CurrentRuntime()
+		if err != nil {
+			t.Fatal(err)
+		}
+		networkExpiry = awaitNativeExpiryDenial(t, actual, retained, original.FirstFailure)
 	case "history-lease-fd-loss":
 		checkNativeIntroductionRetained(t, plan, member, binding, originalLock)
 		entries, err := os.ReadDir("/proc/self/fd")
@@ -359,7 +365,7 @@ func nativeIntroductionAuthorityChild(t *testing.T, path string) {
 			expected = "process"
 		}
 		if plan.Fault == "member-expiry" {
-			expected = "participation"
+			expected = nativeExpiryFirstOwner(t, result, networkExpiry, original.FirstFailure())
 		}
 		if plan.Fault == "history-root-loss" || plan.Fault == "history-loss" || plan.Fault == "history-lock-loss" || plan.Fault == "history-lease-fd-loss" {
 			expected = "introduction"

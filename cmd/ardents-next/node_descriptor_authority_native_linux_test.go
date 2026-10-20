@@ -204,6 +204,7 @@ func nativeDescriptorAuthorityChild(t *testing.T, path string) {
 	}
 	originalLock := filepath.Join(plan.Descriptor, ".ardents-reachability-store-lock")
 	var restorePath, restoreFrom string
+	var networkExpiry error
 	switch plan.Fault {
 	case "stop":
 		stopped := make(chan struct{})
@@ -239,6 +240,11 @@ func nativeDescriptorAuthorityChild(t *testing.T, path string) {
 		}
 	case "member-expiry":
 		time.Sleep(time.Until(member.NotAfter()) + 150*time.Millisecond)
+		actual, err := owner.CurrentRuntime()
+		if err != nil {
+			t.Fatal(err)
+		}
+		networkExpiry = awaitNativeExpiryDenial(t, actual, retained, original.FirstFailure)
 	case "store-lease-fd-loss":
 		checkNativeDescriptorRetained(t, plan, member, binding, originalLock)
 		entries, err := os.ReadDir("/proc/self/fd")
@@ -325,7 +331,7 @@ func nativeDescriptorAuthorityChild(t *testing.T, path string) {
 			expected = "process"
 		}
 		if plan.Fault == "member-expiry" {
-			expected = "participation"
+			expected = nativeExpiryFirstOwner(t, result, networkExpiry, original.FirstFailure())
 		}
 		if plan.Fault == "store-root-loss" || plan.Fault == "store-records-loss" || plan.Fault == "store-marker-loss" || plan.Fault == "store-lock-loss" || plan.Fault == "store-lease-fd-loss" {
 			expected = "reachability"

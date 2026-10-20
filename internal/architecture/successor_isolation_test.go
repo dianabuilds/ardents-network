@@ -479,6 +479,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/successor/node/descriptor_linux.go" && dependency == modulePath+"/internal/successor/reachability" {
 			return true
 		}
+		if source == "cmd/ardents-next/node_failure_linux.go" && dependency == modulePath+"/internal/successor/node" {
+			return true
+		}
 		if source == "cmd/ardents-next/node_forwarding_linux.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/processresource") {
 			return true
 		}

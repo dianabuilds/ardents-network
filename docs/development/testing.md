@@ -1,5 +1,14 @@
 # Testing
 
+The registered `node-development-linux` profile invokes
+`make node-development-check`: a finite three-iteration series of all five
+complete original Node profiles, genuine non-test preflight, continued actual
+prerequisite checks and shared own-job serialization. The runnable
+[native recipe](../../scripts/node/README.md) owns source/artifact pins, external
+evidence, scheduling and failure retention. Ordinary success and intentional
+resource/evidence/caller/placement refusals remain distinct. It establishes a
+bounded development baseline only; no installed, platform or capacity claim.
+
 ## Selected release Carrier coverage
 
 `channel/native_refusal_test.go` independently decodes a real lower BYTES

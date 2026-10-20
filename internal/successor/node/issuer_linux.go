@@ -38,6 +38,7 @@ type IssuerConfig struct {
 type Issuer struct{ original *issuerInvocation }
 
 type issuerInvocation struct {
+	failure                      failureRecord
 	mu                           sync.Mutex
 	caller, ctx                  context.Context
 	cancel                       context.CancelFunc
@@ -67,7 +68,7 @@ func ListenIssuer(ctx context.Context, config IssuerConfig) (_ *Issuer, result e
 		return nil, err
 	}
 	child, cancel := context.WithCancel(ctx)
-	f := &issuerInvocation{caller: ctx, ctx: child, cancel: cancel, config: config, retired: errors.New("original Issuer admission retired"), done: make(chan struct{})}
+	f := &issuerInvocation{failure: failureRecord{started: time.Now()}, caller: ctx, ctx: child, cancel: cancel, config: config, retired: errors.New("original Issuer admission retired"), done: make(chan struct{})}
 	defer func() {
 		if result != nil {
 			f.deny(result, "startup")
@@ -75,6 +76,7 @@ func ListenIssuer(ctx context.Context, config IssuerConfig) (_ *Issuer, result e
 			first := f.first
 			f.mu.Unlock()
 			result = errors.Join(first, originalRetirementResult(result, f.retired), f.cleanup())
+			result = &startupFailure{cause: result, fact: f.failure.snapshot(f.first)}
 		}
 	}()
 	var err error
@@ -140,6 +142,9 @@ func ListenIssuer(ctx context.Context, config IssuerConfig) (_ *Issuer, result e
 	if _, err := f.current(); err != nil {
 		return nil, err
 	}
+	f.mu.Lock()
+	f.failure.serving = true
+	f.mu.Unlock()
 	go f.supervise()
 	return &Issuer{original: f}, nil
 }
@@ -166,7 +171,7 @@ func (f *issuerInvocation) currentBase() (network.RuntimeView, error) {
 		err = view.MatchDuty(f.config.Authority.Duty, time.Now())
 	}
 	if err == nil && time.Since(measurement.Completed) > time.Second {
-		err, owner = errors.New("original Issuer process measurement expired during authority observation"), "process"
+		err, owner = expiredMeasurement(measurement), "process"
 	}
 	if err != nil {
 		return network.RuntimeView{}, f.failedObservation(err, owner)
@@ -217,6 +222,7 @@ func (f *issuerInvocation) deny(cause error, owner string) {
 	f.denied = true
 	if f.first == nil && cause != nil && cause != f.retired {
 		f.first, f.firstOwner = cause, owner
+		f.failure.retain(cause, f.caller, owner)
 	}
 	f.mu.Unlock()
 	// Never call a foreign owner while holding the Node lifecycle mutex.
@@ -240,6 +246,7 @@ func (f *issuerInvocation) supervise() {
 		}
 		cleanup := f.cleanup()
 		f.mu.Lock()
+		f.failure.retainCleanup(cleanup, f.caller, f.cleanupOwner)
 		f.cleanupResult, f.result = cleanup, errors.Join(f.first, cleanup)
 		f.mu.Unlock()
 		close(f.done)
@@ -284,7 +291,7 @@ func (f *issuerInvocation) cleanup() error {
 
 func (handle *Issuer) Stop() {
 	if handle != nil && handle.original != nil {
-		handle.original.deny(nil, "runtime")
+		handle.original.deny(handle.original.caller.Err(), "caller")
 	}
 }
 func (handle *Issuer) Done() <-chan struct{} {
@@ -414,4 +421,15 @@ func (f *issuerInvocation) issue(ctx context.Context, raw []byte, bootstrap bool
 		return nil, err
 	}
 	return r.Response, nil
+}
+
+// FirstFailure returns detached original facts without observing or waiting for completion.
+func (handle *Issuer) FirstFailure() *FailureDiagnostic {
+	if handle == nil || handle.original == nil {
+		return nil
+	}
+	f := handle.original
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.failure.snapshot(f.first)
 }

@@ -85,8 +85,11 @@ func TestNativeIssuerPartialStartupRefusalsTCP(t *testing.T) {
 					if !errors.As(err, &exit) || exit.ExitCode() != expected {
 						t.Fatal("actual partial startup did not refuse", fault, err, p.diagnostic.String())
 					}
-					if expected == 1 && (decodeErr != nil || len(event) != 3 || event["operation"] != "node.issuer" || event["phase"] != "refused") {
+					if expected == 1 && (decodeErr != nil || len(event) != 4 || event["operation"] != "node.issuer" || event["phase"] != "refused") {
 						t.Fatal("startup refusal lost finite projection", event, decodeErr)
+					}
+					if expected == 1 {
+						requireNativeStartupFailure(t, event["first_failure"])
 					}
 					if expected == 2 && (decodeErr == nil || len(event) != 0) {
 						t.Fatal("wrong profile reached accepting composition", event)

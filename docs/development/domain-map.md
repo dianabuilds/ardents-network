@@ -145,6 +145,16 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 
 ## Node composition: original lifetime boundary
 
+The process-resource owner applies the finite development CPU/I/O trend budget
+in the [native profile contract](../technical/network-route-node.md#forwarding-development-process-profile),
+with unchanged hard/event/evidence limits. Its retained failure facts contain
+only local observation/deadline/resource context. Node adds original phase and
+first logical cause, preserving separate physical cleanup outcomes. These copied
+diagnostics confer neither accepting authority nor a new monitoring domain.
+The registered native development runner orders all five complete profiles with
+real preflight and a shared own-job lock; it does not own runtime admission,
+foreign host workloads, Network authority or platform/capacity qualification.
+
 This is a design refinement of the supporting composition owner above, not an
 eleventh network authority or an execution assignment. The new `node` owner
 composes one original Forwarding, Issuer, Descriptor, Introduction or JOIN invocation; complete role and installed

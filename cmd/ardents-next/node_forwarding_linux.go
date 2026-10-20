@@ -88,7 +88,7 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 			if result.stateError != nil {
 				result.cleanup = "network"
 			}
-			_ = nodeJoinedFailure(diagnostic, result.first, result.cleanup)
+			_ = nodeJoinedFailure(diagnostic, result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
 			return 1
 		}
 		if nodeReport(diagnostic, "joined", "canceled") != nil {
@@ -98,24 +98,29 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 	case <-timer.C:
 		// The original cleanup goroutine retains State and all remaining owners.
 		// It can finish later but cannot turn this failed bounded result into EXIT.
-		_ = nodeReport(diagnostic, "retiring", "completion-unavailable")
+		_ = nodeReport(diagnostic, "retiring", "completion-unavailable", encodeNodeFailureDiagnostic(original.FirstFailure()))
 		return 1
 	}
 }
 
-func nodeStartupRefusal(out io.Writer, _ error) int {
-	if nodeReport(out, "refused", "startup-unavailable") != nil {
+func nodeStartupRefusal(out io.Writer, cause error) int {
+	if nodeReport(out, "refused", "startup-unavailable", encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
 		return 2
 	}
 	return 1
 }
 
-func nodeJoinedFailure(out io.Writer, first, cleanup string) error {
+func nodeJoinedFailure(out io.Writer, first, cleanup string, details ...string) error {
+	firstFailure := ""
+	if len(details) == 1 {
+		firstFailure = details[0]
+	}
 	return json.NewEncoder(out).Encode(struct {
-		Operation string `json:"operation"`
-		Phase     string `json:"phase"`
-		Outcome   string `json:"outcome"`
-		First     string `json:"first_owner,omitempty"`
-		Cleanup   string `json:"cleanup_owner,omitempty"`
-	}{"node.forwarding", "joined", "failed", first, cleanup})
+		FirstFailure string `json:"first_failure,omitempty"`
+		Operation    string `json:"operation"`
+		Phase        string `json:"phase"`
+		Outcome      string `json:"outcome"`
+		First        string `json:"first_owner,omitempty"`
+		Cleanup      string `json:"cleanup_owner,omitempty"`
+	}{firstFailure, "node.forwarding", "joined", "failed", first, cleanup})
 }

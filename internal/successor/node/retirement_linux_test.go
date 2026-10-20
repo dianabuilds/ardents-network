@@ -9,6 +9,29 @@ import (
 	"testing"
 )
 
+func TestRetirementFiltersPreserveOriginalJoinedOperationalFailure(t *testing.T) {
+	notice := errors.New("original retirement notice")
+	operational := errors.Join(errors.New("original native operation failed"), errors.New("original native custody lost"))
+	if got := originalRetirementResult(operational, notice); got != operational {
+		t.Error("unrelated retirement filtering replaced the original operational error identity")
+	}
+	retained := originalRetirementResult(errors.Join(notice, operational), notice)
+	if got := originalRetirementResult(retained, operational); got != nil {
+		t.Error("sequential filters misclassified original operational failure as physical cleanup", got)
+	}
+	physical := errors.New("independent actual physical failure")
+	retained = originalRetirementResult(errors.Join(notice, operational, physical), notice)
+	retained = originalRetirementResult(retained, operational)
+	if !errors.Is(retained, physical) {
+		t.Fatal("sequential filters erased independent physical failure", retained)
+	}
+	wrapped := fmt.Errorf("actual physical wrapper: %w", operational)
+	retained = originalRetirementResult(errors.Join(notice, wrapped), notice)
+	if got := originalRetirementResult(retained, operational); !errors.Is(got, wrapped) {
+		t.Fatal("operational filtering erased an independent physical wrapper", got)
+	}
+}
+
 func TestOriginalRetirementNoticeCannotErasePhysicalCleanupFailure(t *testing.T) {
 	notice := errors.New("original local admission retired")
 	foreign := errors.New("physical close failed")
