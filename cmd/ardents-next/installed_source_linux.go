@@ -104,21 +104,9 @@ func installedLocalConfig(plan installedHeadless) (execution.Config, error) {
 }
 
 func installedNetworkConfig(plan installedHeadless, declared installedSource, check func() error) (state.Config, error) {
-	networkID, err := installedIdentity(plan.NetworkID)
+	authority, err := installedNetworkAuthority(plan)
 	if err != nil {
 		return state.Config{}, err
-	}
-	profileKey, err := installedIdentity(plan.ClosedProfileAuthority)
-	if err != nil {
-		return state.Config{}, err
-	}
-	authority := &networkAuthorityPlan{Root: plan.NetworkStateRoot, NetworkID: networkID, Threshold: plan.NetworkThreshold, ProfileAuthority: profileKey, ClockObservationFile: plan.TimeConfidenceFile}
-	for _, encoded := range plan.NetworkAuthorities {
-		key, err := installedIdentity(encoded)
-		if err != nil {
-			return state.Config{}, err
-		}
-		authority.Authorities = append(authority.Authorities, key)
 	}
 	config, err := networkStateConfig(authority)
 	if err != nil {
@@ -129,6 +117,32 @@ func installedNetworkConfig(plan installedHeadless, declared installedSource, ch
 	if err != nil {
 		return state.Config{}, err
 	}
+	return installedAcquisitionConfig(config, declared, check)
+}
+
+// Detached declarations only; no clock-file, State-root or private-key I/O.
+func installedNetworkAuthority(plan installedHeadless) (*networkAuthorityPlan, error) {
+	networkID, err := installedIdentity(plan.NetworkID)
+	if err != nil {
+		return nil, err
+	}
+	profileKey, err := installedIdentity(plan.ClosedProfileAuthority)
+	if err != nil {
+		return nil, err
+	}
+	authority := &networkAuthorityPlan{Root: plan.NetworkStateRoot, NetworkID: networkID, Threshold: plan.NetworkThreshold, ProfileAuthority: profileKey, ClockObservationFile: plan.TimeConfidenceFile}
+	for _, encoded := range plan.NetworkAuthorities {
+		key, err := installedIdentity(encoded)
+		if err != nil {
+			return nil, err
+		}
+		authority.Authorities = append(authority.Authorities, key)
+	}
+	return authority, nil
+}
+
+func installedAcquisitionConfig(config state.Config, declared installedSource, check func() error) (state.Config, error) {
+	var err error
 	config.Source.OrderSeed, err = installedIdentity(declared.OrderSeed)
 	if err != nil {
 		return state.Config{}, err

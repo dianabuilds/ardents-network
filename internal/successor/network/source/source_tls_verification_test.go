@@ -22,6 +22,22 @@ func TestSourceTLSVerification(t *testing.T) {
 		verify func(t *testing.T, clientErr, serverErr error)
 	}{
 		{name: "accepts valid CA hostname and pins", verify: sourceTLSAccepted},
+		{name: "rejects CA-valid server with client EKU", change: func(t *testing.T, fixture *sourceTLSFixture, now time.Time) {
+			fixture.server = fixture.authority.issueLeaf(t, now.Add(-time.Hour), now.Add(time.Hour), []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, []string{fixture.serverName}, 8)
+			fixture.serverPin = sourceTLSLeafKeyDigest(t, fixture.server)
+		}, verify: func(t *testing.T, clientErr, _ error) {
+			if clientErr == nil {
+				t.Fatal("wrong server EKU accepted")
+			}
+		}},
+		{name: "rejects CA-valid client with server EKU", change: func(t *testing.T, fixture *sourceTLSFixture, now time.Time) {
+			fixture.client = fixture.authority.issueServer(t, now.Add(-time.Hour), now.Add(time.Hour), fixture.serverName)
+			fixture.clientPin = sourceTLSLeafKeyDigest(t, fixture.client)
+		}, verify: func(t *testing.T, _, serverErr error) {
+			if serverErr == nil {
+				t.Fatal("wrong client EKU accepted")
+			}
+		}},
 		{name: "rejects expired server leaf", change: func(t *testing.T, fixture *sourceTLSFixture, now time.Time) {
 			fixture.server = fixture.authority.issueServer(t, now.Add(-2*time.Hour), now.Add(-time.Hour), "source.test")
 			fixture.serverPin = sourceTLSLeafKeyDigest(t, fixture.server)

@@ -1,5 +1,54 @@
 # Testing
 
+The deferred-QUIC refusal fixture still qualifies at most eight actual joint
+TCP/UDP loopback candidates before any carrier assertion. After the first
+allocator choice, it spreads probes across the unprivileged port range: Windows
+TCP allocations can cluster inside a distinct UDP exclusion range. Each failed
+candidate's original TCP listener closes before another is selected; success
+requires both real sentinels. The occupied-UDP control requires that cleanup and
+an independently qualified replacement. Exhaustion remains invalid environment,
+never a skip or retry of a carrier operation. No host exclusion or foreign
+workload is changed, and no QUIC traffic or fallback is authorized.
+
+Source trust preparation uses the existing `network-signing-linux` native
+custody profile, whose exact command selector also includes
+`TestSourcePreparationNative*`. The genuine public-only command succeeds with
+all three external private paths absent. Closed declarations and commitments,
+explicit roots/name/purpose/pins, collisions and original public/native custody
+have causal refusals. Finite output checks include final-byte/inventory mutation
+after original-input I/O, independent Close/receipt failure, a real RLIMIT_FSIZE
+partial write and original process cuts followed by Kill/Wait and non-adoption.
+Original-reference expiry is checked before use and after held real input I/O.
+An actual tmpfs original descriptor separately refuses public mount admission;
+this isolates Fstatfs from the command's independent direct-ancestor refusal.
+No failed attempt is erased by a restored healthy control. The independent
+Source pin vector fixes the literal domain separator, zero byte and raw key;
+real TLS controls separately check CA/name/server pin and CA/client pin, EKU and
+validity. Offline observation does not attest runtime key access.
+The public observation helper and its semantic tests compile only on Linux,
+where their genuine preparer exists; the independent pin vector remains portable
+with the runtime credential mechanism. No Windows production-deadcode allowance
+or test-only accepting consumer is added.
+`TestSourceCancellationJoinsOriginalNativeClose` holds the real original TCP
+Close and requires cancellation retirement to wait for its actual completion;
+normal retirement separately stops the callback without closing caller-owned
+work. Fetch and serving consume this same private mechanism. A finite negative
+observation is never used as evidence of physical completion.
+
+`source-process-linux` additionally dispatches exactly
+`TestNativeSourcePreparedCohort`: the actual preparer outputs start two genuine
+Source processes under the unchanged Source processresource envelope. A real
+client through the existing installed Network projection obtains both signed
+AREP-v3 bundles, with LATEST/BY_DIGEST checks and separate State/profile
+acceptance/refusal. An invalid external second key fails and physically joins
+partial startup while the first Source remains separate; changed public PEM
+does not hot-reload a running process and new configuration is readmitted.
+Original process Wait and genuine State-root reopen follow retirement. Isolated
+external CA/leaf/State/Admission fixtures share one controller and prove no
+independent families, operational ceremony, installed startup, power loss or
+privacy qualification. The complete original Source cancellation/protection/
+pressure/resource suite and Network race suite remain separately mandatory.
+
 The existing `network-signing-linux` profile also checks initial State/Node key
 preparation through the real `prepare-initial-keys` command. It requires actual
 Linux root, root-owned direct ancestors and a private 0700 native-ext4 TMPDIR.

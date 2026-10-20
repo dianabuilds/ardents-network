@@ -1,5 +1,20 @@
 # Command reference
 
+`ardents-next source prepare-trust <public-plan> <fresh-output>` performs one
+30-second offline public observation and prepares exactly two Sources and one
+client. All paths are canonical absolute. Its closed schema is
+`ardents-source-trust-preparation-v1`; see the
+[complete input/output and custody contract](../operations/qualification-release.md#source-public-trust-preparation).
+It reads supplied public chains/roots against independently reviewed SHA-256
+commitments and Source leaf pins, never the three declared private-key paths.
+Outputs are existing `source serve` plans, `ardents-source-plan-v1` acquisition
+declarations and the supplied `ardents-headless-runtime-v2` declaration, with
+directly usable public paths. A public receipt lists only artifact basenames,
+hashes and `offline-public-observation`. Local configuration files contain paths
+and remain local. Linux root/native ext4 is required; other platforms refuse
+before effects. This supplies no CA issuance, State acceptance, Installation
+startup, operational trust or independent-family evidence.
+
 `ardents-next network prepare-initial-keys <public-plan> <fresh-private-directory>`
 creates one State and 1..64 distinct Node Ed25519 keys in a fresh protected
 Linux-root/native-ext4 directory. The closed public plan has schema

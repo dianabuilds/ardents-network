@@ -99,6 +99,22 @@ remain proposed until their current contracts and real consumers are verified.
 
 ## Supporting mechanisms and composition
 
+Direct-Origin Source public preparation is one offline supporting composition,
+`ardents-next source prepare-trust`. It retains original externally supplied
+public chains/roots and independently reviewed commitments, and writes the
+existing two Source serve and one client acquisition/local headless declarations.
+The existing Source owner supplies `ObservePublicTrust`, sharing exact
+declaration/collision and leaf-key transcript rules with runtime TLS; no public
+observation grants a live Plan or clock. Private runtime paths remain opaque and
+are never opened by the preparer. The existing installed Network projection is
+pure declaration adaptation; State still owns signed acceptance/time/exposures/
+floors, Installation startup admission, processresource original protection and
+Source command physical completion remain separate. Public native custody and
+exclusive finite output/receipt stay with composition. External credential
+issuance, operational trust delivery, effective family independence and installed
+qualification are not supplied by this operation. No universal Identity/PKI
+authority, private signer, new package or runtime format is introduced.
+
 Initial Network provisioning has one finite offline key producer,
 `network prepare-initial-keys`, and three fixed-purpose offline signing consumers:
 `network sign-initial-node-record` and `network sign-initial-epoch` in

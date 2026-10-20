@@ -35,8 +35,8 @@ func fetch(ctx context.Context, client client, request Message) (Message, error)
 	defer connection.Close()
 	// DialContext and HandshakeContext stop at their own boundaries. Keep the
 	// established socket tied to the complete exchange and caller lifetime.
-	stopCancellation := context.AfterFunc(totalContext, func() { _ = connection.Close() })
-	defer stopCancellation()
+	retireCancellation := sourceConnectionCancellation(totalContext, connection)
+	defer retireCancellation()
 	if err := connection.SetDeadline(time.Now().Add(exchangeTimeout)); err != nil {
 		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: set exchange deadline: %w", ErrUnavailable, err))
 	}
@@ -162,21 +162,13 @@ func handleConnection(ctx context.Context, server server, active func(int), conn
 	resolve func(context.Context, Message) Message) error {
 	// Cancellation interrupts the original socket, including a blocked TLS
 	// handshake or write. Join the callback before releasing the active user.
-	interrupted := make(chan struct{})
-	stop := context.AfterFunc(ctx, func() {
-		_ = connection.Close()
-		close(interrupted)
-	})
+	retireCancellation := sourceConnectionCancellation(ctx, connection)
 	if active != nil {
 		active(1)
 		defer active(-1)
 	}
 	defer connection.Close()
-	defer func() {
-		if !stop() {
-			<-interrupted
-		}
-	}()
+	defer retireCancellation()
 	started := time.Now()
 	if err := connection.SetDeadline(started.Add(server.headerTimeout)); err != nil {
 		return fmt.Errorf("set distribution request deadline: %w", err)

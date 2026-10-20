@@ -498,7 +498,7 @@ network-preparation-compile-check:
 .PHONY: network-signing-check network-signing-compile-check
 network-signing-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-signing-check requires Linux root and root-controlled native ext4 TMPDIR"; exit 2)
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next -run '^TestNetworkSigning' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
 
 network-signing-compile-check: export GOOS := linux
 network-signing-compile-check: export GOARCH := amd64

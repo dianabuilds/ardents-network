@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -79,18 +80,35 @@ func TestDeferredQUICRefusesWithoutSocketOrFallback(t *testing.T) {
 // TCP and UDP have separate reservations: a TCP ephemeral port can be excluded
 // for UDP. Qualify the fixture only after both sentinels are owned. No carrier
 // assertion or operation runs while selecting these bounded local resources.
+// After the first allocator candidate, spread the remaining same eight probes
+// across the unprivileged port range. Sequential TCP allocations can all lie
+// inside one UDP exclusion range even when jointly bindable resources exist.
 func carrierRefusalSentinels(t *testing.T, first net.Listener) (net.Listener, net.PacketConn) {
 	t.Helper()
 	var last error
+	base := 0
 	for candidate := range 8 {
 		tcp := first
 		first = nil
 		var err error
 		if tcp == nil {
-			tcp, err = net.Listen("tcp", "127.0.0.1:0")
+			endpoint := "127.0.0.1:0"
+			if candidate > 0 {
+				port := 1024 + (base-1024+candidate*8191)%(65536-1024)
+				endpoint = net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+			}
+			tcp, err = net.Listen("tcp", endpoint)
 		}
 		if err != nil {
-			t.Fatal("invalid environment: TCP probe listener", err)
+			if candidate == 0 {
+				t.Fatal("invalid environment: initial TCP probe listener", err)
+			}
+			last = err
+			t.Log("unqualified TCP/UDP probe candidate", candidate+1, err)
+			continue
+		}
+		if candidate == 0 {
+			base = tcp.Addr().(*net.TCPAddr).Port
 		}
 		udp, err := net.ListenPacket("udp", tcp.Addr().String())
 		if err == nil {

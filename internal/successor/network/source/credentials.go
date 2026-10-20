@@ -12,10 +12,14 @@ import (
 )
 
 func configureClients(plan *Plan, input Config, authorities map[[32]byte]ed25519.PublicKey) error {
+	return configureClientTrust(plan, input, authorities, false)
+}
+
+func configureClientTrust(plan *Plan, input Config, authorities map[[32]byte]ed25519.PublicKey, observation bool) error {
 	if input.Sources[0].Address == "" || input.Sources[1].Address == "" {
 		return errors.New("finite source plan requires exactly two sources")
 	}
-	if err := validateCertificate(input.ClientCertificate); err != nil {
+	if err := validateCredential(input.ClientCertificate, observation); err != nil {
 		return errors.New("source client certificate is required")
 	}
 	clientCertificate := cloneCertificate(input.ClientCertificate)
@@ -64,10 +68,14 @@ func configureClients(plan *Plan, input Config, authorities map[[32]byte]ed25519
 }
 
 func configureServer(input Config, authorities map[[32]byte]ed25519.PublicKey) (server, error) {
+	return configureServerTrust(input, authorities, false)
+}
+
+func configureServerTrust(input Config, authorities map[[32]byte]ed25519.PublicKey, observation bool) (server, error) {
 	if err := validateAddress(input.ServeAddress); err != nil {
 		return server{}, err
 	}
-	if err := validateCertificate(input.ServeCertificate); err != nil {
+	if err := validateCredential(input.ServeCertificate, observation); err != nil {
 		return server{}, errors.New("source server certificate is required")
 	}
 	digest, err := certificateDigest(input.ServeCertificate)
@@ -99,10 +107,12 @@ func configureServer(input Config, authorities map[[32]byte]ed25519.PublicKey) (
 func cloneCertificate(input tls.Certificate) tls.Certificate {
 	clone := tls.Certificate{
 		Certificate:                  make([][]byte, len(input.Certificate)),
-		PrivateKey:                   append(ed25519.PrivateKey(nil), input.PrivateKey.(ed25519.PrivateKey)...),
 		SupportedSignatureAlgorithms: append([]tls.SignatureScheme(nil), input.SupportedSignatureAlgorithms...),
 		OCSPStaple:                   append([]byte(nil), input.OCSPStaple...),
 		SignedCertificateTimestamps:  make([][]byte, len(input.SignedCertificateTimestamps)),
+	}
+	if key, ok := input.PrivateKey.(ed25519.PrivateKey); ok {
+		clone.PrivateKey = append(ed25519.PrivateKey(nil), key...)
 	}
 	for index := range input.Certificate {
 		clone.Certificate[index] = append([]byte(nil), input.Certificate[index]...)
@@ -156,8 +166,8 @@ func validText(value string, maximum int) bool {
 	return true
 }
 
-func validateCertificate(certificate tls.Certificate) error {
-	if len(certificate.Certificate) == 0 || len(certificate.Certificate) > 4 || certificate.PrivateKey == nil {
+func validateCredential(certificate tls.Certificate, observation bool) error {
+	if len(certificate.Certificate) == 0 || len(certificate.Certificate) > 4 {
 		return errors.New("TLS certificate chain is incomplete")
 	}
 	for _, raw := range certificate.Certificate {
@@ -170,6 +180,12 @@ func validateCertificate(certificate tls.Certificate) error {
 		return errors.New("TLS leaf certificate is invalid")
 	}
 	public, ok := leaf.PublicKey.(ed25519.PublicKey)
+	if !ok || len(public) != ed25519.PublicKeySize {
+		return errors.New("TLS certificate key is not Ed25519")
+	}
+	if observation {
+		return nil
+	}
 	private, privateOK := certificate.PrivateKey.(ed25519.PrivateKey)
 	if !ok || !privateOK || len(private) != ed25519.PrivateKeySize ||
 		string(private.Public().(ed25519.PublicKey)) != string(public) {

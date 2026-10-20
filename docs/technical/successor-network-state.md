@@ -355,6 +355,19 @@ be reused without preserving their former ownership of domain decisions.
 
 ## Direct-Origin distribution composition
 
+The offline `source prepare-trust` command emits the existing two serve plans
+and installed Source acquisition declaration from supplied public credentials
+and independent commitments/pins. Source owns the public observation and shared
+transport-key transcript; preparation owns original input/output custody. It
+opens no State/participation root and receives no private key. Its
+`reference_time` is separate from runtime `clock_observed_at` and grants no
+clock override. Runtime uses the existing pure installed Network declaration
+projection followed by actual key loading and State.Open; only State authenticates
+the returned AREP-v3 material, accepts profiles and owns time/exposure/floors.
+Neither a public observation nor the generated headless declaration supplies
+Installation/startup permission. The native two-Source test composition uses
+that same projection explicitly without claiming qualified installed startup.
+
 `ardents-next source serve <plan>` consumes State's existing serving configuration,
 Current/Wait/Close and PermitWork with one original `processresource` Source guard.
 It opens independently prepared State, borrows no old runtime root, and supplies

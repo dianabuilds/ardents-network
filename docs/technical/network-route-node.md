@@ -621,6 +621,19 @@ dials the State endpoints exactly as before.
 
 ## TLS material boundaries
 
+Offline `ardents-next source prepare-trust` consumes only externally supplied
+public chains/roots and independently reviewed file commitments/leaf pins for
+two Sources and one client. `network/source.ObservePublicTrust` checks X.509
+purpose/name/reference and the same declaration/collision and domain-separated
+key-digest mechanism used by runtime New and TLS verification. It produces no
+live Plan or trusted clock. Command composition retains original public native
+custody and writes existing serve/acquisition formats; private paths are opaque
+and never opened by preparation. The
+[operation owner](../operations/qualification-release.md#source-public-trust-preparation)
+defines its finite input/output and failure boundary. Supplying credentials
+does not implement an issuer or attest independent families. Runtime key-pair
+admission, State time, process protection and joined termination remain separate.
+
 Native Route, Entry, and Node TLS use local certificates for their bounded
 attempts and selected peer keys from authenticated State and binding evidence.
 Route creates its self-signed client certificate for one attachment (currently
@@ -651,10 +664,14 @@ established TLS connection is immediately interrupted when a certificate
 expires.
 
 A finite Source fetch binds dial, handshake, response, and terminal TLS close
-to the caller's total exchange context. Cancellation closes an established
-connection and discards any partially received Object Digest; State cannot
+to the caller's total exchange context. Cancellation closes its original
+established socket, joins that exact cancellation callback before fetch returns,
+and discards any partially received Object Digest; State cannot
 start a BY_DIGEST fallback from a canceled exchange. A live partial response
 may retain its transport-observed selector for the one bounded fallback.
+Serving uses the same physical cancellation mechanism before releasing its
+active handler. A held original native TCP Close tests this join independently
+of successful authentication or State acceptance.
 
 ## Node and Resource lifecycle
 

@@ -413,6 +413,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/source_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/processresource") {
 			return true
 		}
+		if source == "cmd/ardents-next/source_preparation_process_linux_test.go" && dependency == modulePath+"/internal/successor/network/source" {
+			return true
+		}
 		if source == "cmd/ardents-next/node_join_operation_native_linux_test.go" && (dependency == modulePath+"/internal/successor/node" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
@@ -570,6 +573,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/source_linux.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/state") {
+			return true
+		}
+		if source == "cmd/ardents-next/source_preparation_linux.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/processresource") {
 			return true
 		}
 		if source == "cmd/ardents-next/installed_source_linux.go" && (dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/network/source") {

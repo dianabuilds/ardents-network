@@ -1,5 +1,27 @@
 # Package map
 
+Source public preparation is unexported composition in exactly
+`cmd/ardents-next/source_preparation_linux.go`, importing only the standard
+library, `internal/successor/network/source` and `internal/successor/processresource`
+(the existing Source profile constant). Non-Linux refusal uses the standard
+library only. `source_preparation_process_linux_test.go` additionally imports
+exactly `network/source`, the command's already admitted `network/state` and
+independent `tests/epochfixture/network`. Public grammar/fixture/native custody
+tests use only standard-library command composition. No new package is created.
+Linux-only `network/source/public_trust.go` owns public X.509 observation, sharing runtime
+declaration/collision/key-digest mechanisms without constructing a live Plan
+for callers. Its platform matches its genuine native preparation consumer;
+other platforms retain runtime and explicit command refusal, without test-only
+public observation reachability. It adds only standard-library imports. The existing installed
+Source composer retains one pure `installedNetworkAuthority` projection used by
+both runtime and preparation; private loading remains runtime-only. Native
+finite output is the existing `network_output_linux.go` mechanism, with final
+inventory following the last original-input I/O; its ordering is unchanged.
+`network/source/connection_cancellation.go` is a standard-library physical
+mechanism used by both Fetch and serving; it joins the exact original context
+callback before their connection/key/user ownership can return. It adds no
+domain callback, policy, new clock or accepting transport substitute.
+
 Initial key preparation uses only standard-library imports in the unexported
 `cmd/ardents-next/network_keys.go`, `network_keys_linux.go` and
 `network_keys_other.go` command responsibilities. Closed declaration parsing and

@@ -21,6 +21,9 @@ func main() {
 
 func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
 	if len(args) > 0 && args[0] == "source" {
+		if len(args) > 1 && args[1] == "prepare-trust" {
+			return runSourcePreparation(ctx, args[1:], out)
+		}
 		return runSource(ctx, args[1:], out, diagnostic)
 	}
 	if len(args) > 0 && args[0] == "node" {

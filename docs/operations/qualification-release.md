@@ -79,6 +79,78 @@ not a power-loss durability qualification.
 
 ## Assembly and acceptance boundary
 
+### Source public trust preparation
+
+`ardents-next source prepare-trust <public-plan> <fresh-output>` prepares public
+transport inputs from **externally supplied credentials**. Certificate/key/CA
+issuance, operational trust delivery, rotation/revocation and hot reload remain
+external responsibilities. This finite operation supplies no State or startup
+authority. Runtime alone reads its matching private pair and checks certificates
+again at each handshake using State's sole trusted clock.
+
+The plan is one complete JSON object, at most 64 KiB, with no unknown, duplicate,
+null, missing or trailing fields. Its exact fields are:
+
+- `schema`: `ardents-source-trust-preparation-v1`;
+- `reference_time`: canonical whole-second UTC RFC3339, at most five minutes
+  behind or one minute ahead of the preparation host clock, rechecked through
+  commit. It is only an offline X.509 observation;
+- `clock_observed_at`: a **separate** existing runtime Source-plan time
+  declaration; State independently verifies it and the declared live clock file;
+- `client`: the complete existing `ardents-headless-runtime-v2` declaration,
+  including all its named fields and both permission objects (`request_path`,
+  `response_path`, exact three-element `maxima`). It is retained as a local
+  declaration, not accepted Installation startup;
+- `client_certificate`, `client_root`: each exactly `{path, sha256}`, with an
+  absolute public PEM path and independently reviewed lowercase SHA-256 of the
+  **complete file bytes**;
+- `client_leaf_key_digest`: independently reviewed lowercase Source pin;
+  `client_private_key`: opaque absolute external runtime key path;
+- `order_seed`: nonzero lowercase 32-byte hex; `materialization_index`: integer
+  0..63; `refresh_interval_ms`: integer 100..60000;
+- `sources`: exactly two objects, each with `identity` (nonzero lowercase
+  32-byte hex), `family`, `endpoint_handle`, literal-IP/nonzero-port `address`,
+  `server_name`, public `certificate` and `root` objects as above,
+  `leaf_key_digest`, opaque external `private_key`, `state_root` and
+  `participation_root`.
+
+Each public PEM is at most 64 KiB and contains only 1..4 certificate blocks,
+with no mixed/private/trailing material. Explicit CA roots, chain, EKU, name and
+reference validity are checked by the new Source owner. The exact compatible
+leaf pin is SHA-256 of ASCII `ardents-h3-source-transport-key-v1`, one zero byte
+and the raw Ed25519 public key; it is neither SPKI nor a raw-key hash. Distinct
+Source identities/families/handles/addresses/keys and separate client/State
+authority keys retain the same runtime collision rules. Declared families never
+prove independent effective control. There is no TOFU or system-root fallback.
+
+The output is exactly ten 0600 files in one fresh 0700 directory:
+`client-certificate.pem`, `client-root.pem`, each
+`source-1-certificate.pem` / `source-2-certificate.pem` and corresponding
+`source-1-root.pem` / `source-2-root.pem`, `source-1-serve.json`,
+`source-2-serve.json`, `client-source.json`, `client-headless.json`.
+Serve files directly use `ardents-next source serve`; client files directly use
+the existing installed Source declaration/projection. No JSON editing or second
+runtime schema is required. All six runtime State/participation roots are
+separate from each other and output; none is opened. Private declarations are
+distinct, outside output and never opened, generated, copied or exported. Their
+presence cannot attest runtime key match/access. Private paths never appear in
+stdout or diagnostics. The receipt hashes local plans but grants no authority.
+
+The caller must be Linux root with root-controlled, non-group/other-writable
+direct ancestors. Original public descriptors must be root-owned single-link
+regular files, not writable by group/other, on actual native ext4; output's
+parent is root-owned 0700 on native ext4. Original bytes/inodes/access and every
+ancestor remain retained and reobserved through the 30-second operation. The
+finite writer performs exclusive creation, file sync/close, directory/parent
+sync and exact readback/inventory **after the final original-input barrier**.
+Physical close/join precedes receipt delivery. Cancellation, partial output,
+replacement and independent close/sync/receipt failures remain failed original
+outcomes; prefixes remain incomplete and cannot be adopted, overwritten or
+cleaned by a later invocation. No listener, process, State root or floor effect
+is admitted offline. The real runtime consumer still independently admits each
+process/profile, State and key pair; a successful preparation receipt cannot
+repair a later refusal.
+
 ### Initial State and Node keys
 
 `ardents-next network prepare-initial-keys <public-plan> <fresh-private-directory>`
