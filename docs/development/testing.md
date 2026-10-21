@@ -30,6 +30,14 @@ The compiled positive directly obtains initial provenance and fresh Release
 proofs in its original process. Independent inventory/bytes/access/account,
 empty semantic-root, selected-binding and actual stopped manager oracles check
 the effects. The retained retry must preserve original journal/selection bytes.
+The transition additionally reopens selected configuration through an independent
+read-only reader, checking its complete sealed inventory, fixed unit, runtime
+credential custody and live clock writer/access policy. Separate native custody
+controls hold the last real read, substitute an already-read named inode, change
+bytes/access/ancestors/inventory, and retain cancellation plus an actual late
+Close failure. A permitted root-written clock replacement remains live evidence;
+its inode and timestamp are not frozen. These file checks grant no startup,
+Release or State authority and execute no Source runtime.
 Pure vectors independently encode loaded protection and account preimage rules,
 including missing/wrong typed facts and changed native policy. Native refusal,
 cancellation/Close, sync uncertainty and process-cut coverage is part of the

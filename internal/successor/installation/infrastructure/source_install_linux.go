@@ -14,26 +14,6 @@ import (
 
 var ErrSourceRepairRequired = errors.New("source installation: retained initial prefix requires repair")
 
-type sourceBinding struct {
-	Schema           string        `json:"schema"`
-	Invocation       string        `json:"invocation"`
-	Generation       string        `json:"generation"`
-	Predecessor      string        `json:"predecessor"`
-	RequestSHA256    string        `json:"request_sha256"`
-	ProgramTarget    string        `json:"program_target"`
-	GenerationTarget string        `json:"generation_target"`
-	ProgramSHA256    string        `json:"program_sha256"`
-	TemplateSHA256   string        `json:"template_sha256"`
-	InventorySHA256  string        `json:"inventory_sha256"`
-	TargetsSHA256    string        `json:"targets_sha256"`
-	PlanSHA256       string        `json:"plan_sha256"`
-	UnitSHA256       string        `json:"unit_sha256"`
-	Account          string        `json:"account"`
-	UID              uint32        `json:"uid"`
-	GID              uint32        `json:"gid"`
-	Request          SourceRequest `json:"request"`
-}
-
 // InstallInitialStoppedSource directly consumes original private initial
 // provenance, fresh coherent Release proofs, and retained Source inputs. All
 // acquired native users are joined before return, including on partial failure.
@@ -123,6 +103,9 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 		return errors.Join(ErrInput, err)
 	}
 	binding = append(binding, '\n')
+	if _, err = decodeSourceBinding(binding); err != nil {
+		return err
+	}
 	files["binding.json"] = binding
 	allowed := map[string]bool{}
 	for _, path := range []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.CredentialDirectory, base, dir, filepath.Join(r.InstallationRoot, "binding.json"), "/etc/systemd/system/ardents-source.service"} {
@@ -313,6 +296,16 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	if reloadedNamespace, err = input.observeReloadedNamespace(); err != nil {
 		return fmt.Errorf("reloaded Source unit namespace: %w", err)
 	}
+	// Independently open the selected read-only configuration. Birth custody
+	// and a stopped phase do not substitute for actual installed-file readback.
+	selected, err := openSourceSelection(ctx, filepath.Join(r.InstallationRoot, "binding.json"))
+	defer func() { err = errors.Join(err, selected.close()) }()
+	if err != nil {
+		return err
+	}
+	if selected.binding != bound {
+		return ErrBinding
+	}
 	for round := 0; round < 2; round++ {
 		u, s, e := manager.ObserveLoaded()
 		if e != nil {
@@ -323,6 +316,9 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 		}
 		if err = checkSourceInventory(dir, names); err != nil {
 			return fmt.Errorf("loaded Source generation inventory: %w", err)
+		}
+		if err = selected.observe(); err != nil {
+			return err
 		}
 		if err = check(); err != nil {
 			return err

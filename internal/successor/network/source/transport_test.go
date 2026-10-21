@@ -146,10 +146,36 @@ func TestServePreservesParentDeadlineIdentity(t *testing.T) {
 		served <- serve(ctx, server{address: "127.0.0.1:0", headerTimeout: time.Second}, ready, nil, nil,
 			func(context.Context, Message) Message { return Message{Status: "not-found"} })
 	}()
-	if err := <-ready; err != nil {
+	// Deadline expiry may win either admission check before readiness. Both
+	// that refusal and termination after readiness retain the parent identity.
+	if err := <-ready; err != nil && !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal(err)
 	}
 	if err := <-served; !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("serve error = %v, want deadline identity", err)
+	}
+}
+
+func TestServePreservesRetiredParentBeforeAdmission(t *testing.T) {
+	for _, deadline := range []bool{false, true} {
+		name := "canceled"
+		if deadline {
+			name = "deadline"
+		}
+		t.Run(name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			want := context.Canceled
+			if deadline {
+				cancel()
+				ctx, cancel = context.WithDeadline(context.Background(), time.Now().Add(-time.Second))
+				want = context.DeadlineExceeded
+			}
+			cancel()
+			ready := make(chan error, 1)
+			err := serve(ctx, server{address: "invalid-before-listen"}, ready, nil, nil, nil)
+			if !errors.Is(err, want) || !errors.Is(<-ready, want) {
+				t.Fatalf("retired parent result = %v, want %v at readiness and return", err, want)
+			}
+		})
 	}
 }

@@ -64,6 +64,17 @@ database/auxiliary preimages, exact locked new identity and original helper join
 finite exact effects, bytes/access and partial failures. These remain cohesive
 private responsibilities in this existing package: only Installation admits
 their phase/order and no generic mutation Interface is exported.
+`source_binding_linux.go` owns the closed initial binding grammar shared by the
+writer and the independent first-start reader. Canonical selected configuration
+must match the exact Source request, template, rendered unit, account and target
+identities. Parsing grants no initial provenance, Release or startup authority;
+the first-start grammar refuses a predecessor rather than admitting replacement.
+`source_selection_linux.go` independently retains the selected binding, exact
+twelve-file sealed inventory, fixed unit, runtime credential files and original
+directory descriptors. It rechecks original bytes, inode/access, complete inventory
+and live clock writer/access policy, without freezing the clock inode or timestamp.
+The initial stopped transition consumes this separate readback before returning;
+neither file custody nor successful readback grants startup or State authority.
 `source_loaded_linux.go` owns Source's complete loaded stopped-policy comparison;
 the separate systemd SourceStopped handle owns physical connection/cancellation,
 one explicit reload and detached complete typed observations. It grants no Start.

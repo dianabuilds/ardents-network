@@ -9,6 +9,7 @@ artifact/coherent-pair, read-only preflight and initial stopped transition owner
 descriptor preparation/decoding, genuine initial/candidate authentication, opaque
 immutable Authorization, closed SourceRequest/template rendering and original
 SourceInputs Check/Close and InstallInitialStoppedSource. Implementation retains descriptor/resource agreement,
+the canonical initial binding and independent read-only selected-file custody,
 fresh Release pair, original file/ancestor/caller custody and same-manager native
 observation, and the separate initial stopped account/credential/directory/generation/journal/selection/reload transition; no runtime/Start. Its exact permitted imports
 in production and tests are standard library, `internal/successor/enrollment`

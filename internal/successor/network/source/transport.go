@@ -110,7 +110,7 @@ func (p *Plan) Serve(ctx context.Context, ready chan<- error, protected func() b
 func serve(ctx context.Context, server server, ready chan<- error, protected func() bool,
 	active func(int), resolve func(context.Context, Message) Message) error {
 	if ctx.Err() != nil || protected != nil && protected() {
-		err := errors.New("Source serving admission unavailable")
+		err := errors.Join(errors.New("Source serving admission unavailable"), ctx.Err())
 		ready <- err
 		return err
 	}
@@ -121,7 +121,7 @@ func serve(ctx context.Context, server server, ready chan<- error, protected fun
 		return wrapped
 	}
 	if ctx.Err() != nil || protected != nil && protected() {
-		err := errors.Join(errors.New("Source serving admission unavailable"), listener.Close())
+		err := errors.Join(errors.New("Source serving admission unavailable"), ctx.Err(), listener.Close())
 		ready <- err
 		return err
 	}
