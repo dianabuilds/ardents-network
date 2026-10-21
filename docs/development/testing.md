@@ -68,12 +68,32 @@ client through the existing installed Network projection obtains both signed
 AREP-v3 bundles, with LATEST/BY_DIGEST checks and separate State/profile
 acceptance/refusal. An invalid external second key fails and physically joins
 partial startup while the first Source remains separate; changed public PEM
-does not hot-reload a running process and new configuration is readmitted.
+retires the original process without hot reload; restored paths do not revive
+it, and a separate new invocation readmits the restored original credential.
 Original process Wait and genuine State-root reopen follow retirement. Isolated
 external CA/leaf/State/Admission fixtures share one controller and prove no
 independent families, operational ceremony, installed startup, power loss or
 privacy qualification. The complete original Source cancellation/protection/
 pressure/resource suite and Network race suite remain separately mandatory.
+
+`source-process-linux` also discovers and executes exactly
+`TestNativeSourceOriginalInputsRetire`: each original plan/certificate/key/CA
+is replaced, mutated, unlinked, access-changed or loses its ancestor during
+real held Source socket I/O. Fixed input refusal, original process Wait,
+State-root reopen and non-revival are required. Its selected native limits and
+the four separately discovered resource tests are unchanged.
+Command race controls exercise each input before exposure and after real
+State exposure I/O but before listener, with genuine signed State, native root
+reopen and absence/removal of the original guard. Held original native reads,
+concurrent/copied Check/Close, partial acquisition, late independent native
+Close/output failure and held State.Close retain original custody. Original
+cancellation must start actual State.Close while a native Check is still held;
+the test joins that Close and then releases/joins the observation. A separate
+control permits live clock-file evidence updates without changing State policy.
+Another held original input Close checks the same failed completion notice,
+retained key descriptor and independent late native Close failure through join.
+These scheduling/fault fixtures do not supply successful process admission,
+installed startup or operational authority.
 
 The existing `network-signing-linux` profile also checks initial State/Node key
 preparation through the real `prepare-initial-keys` command. It requires actual
@@ -1594,7 +1614,7 @@ execution requires no second Go installation on that driver host.
 `hosting-budget-linux` runs `make hosting-check`: isolated durable Hosting and
 test-only Admission/Hosting I/O composition and compiled command lifecycle with race checks on Linux amd64.
 It covers shared persisted samples, deadline/cancellation handoff, independent
-concurrent owners, join-before-release, genuine token spending and replay refusal. The pinned Go 1.27.2
+concurrent owners, join-before-release, genuine token spending and replay refusal. The pinned Go 1.27.3
 bookworm image already selected for diagnostics can provide this component
 environment with read-only sources and caches outside Git. It requires actual
 proc/sys counters, loopback, flock, rename, fsync and a race-capable C compiler;
@@ -2105,7 +2125,7 @@ no build-error-based filtering or passing platform skip supplies that membership
 The separate `issuer-key-material-linux` profile runs `make issuance-check`:
 real RSA keys, owner-only files, exclusive lifetime leases, fault/crash/reopen,
 compiled initialize/inspect/export commands, Admission SPKI compatibility and
-actual OTLP. It uses the same pinned Go 1.27.2 bookworm image and shares the
+actual OTLP. It uses the same pinned Go 1.27.3 bookworm image and shares the
 immutable command build. It requires proc/sys/loopback for the existing command
 tests. Windows cannot replace Linux acceptance; filesystem tests do not qualify
 power loss, full storage rollback or network security.
@@ -2117,7 +2137,7 @@ crash/reopen and concurrency tests. Compiled `ardents-next` commands exercise
 holder/allocation/current-issuer/receiver operations, SIGINT with inherited stdin,
 exact replay and refill, plus actual Hosting budget and OTLP checks. The checked
 profile is `admission-ledger-linux`; the Docker acceptance image is
-`golang:1.27.2-bookworm@sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61`.
+`golang:1.27.3-bookworm@sha256:21ade014faf952365b9ecbd8dbdb87176fbacb82fac9fb132d9f2a7b8cc3f132`.
 Command tests share one immutable compiled executable while keeping separate
 mutable roots. Linux prerequisites cannot be replaced by a Windows passing
 result. These tests provide no live issuer/State, power-loss storage or whole
@@ -2133,7 +2153,7 @@ confirmation, quota retention, journal pairs/floors, faults, crash/replay and OT
 CIRCL uses the populated reviewed module cache. No power-loss/rollback claim.
 
 The active `issuer-profile-linux` profile uses `make issuer-profile-check` on the
-pinned Go 1.27.2 Linux image. It exercises Admission, its Issuerprofile/Issuance/Issuer children,
+pinned Go 1.27.3 Linux image. It exercises Admission, its Issuerprofile/Issuance/Issuer children,
 Issuerprofile/Signing and compiled ardents-next with real files, lease/crash processes,
 race detection, actual OTLP and the prior durable token cycle. It also mutation-
 fuzzes FuzzIssuerProfile and FuzzNodeIdentityPEM for 30 seconds each, two workers
@@ -2281,7 +2301,7 @@ journal, predecessor join, manager start or installed/privacy qualification.
 
 ## Bounded Authority Custody native lane
 
-`make custody-check` requires Linux, Go 1.27.2, a race-capable compiler,
+`make custody-check` requires Linux, Go 1.27.3, a race-capable compiler,
 private actual filesystem with flock/hardlinks/rename/directory fsync, a PTY
 and the fixed 256 MiB Argon2 workspace. It exercises the new encrypted Custody
 owner and real Allocation, original Close/cancel/join, canonical envelope vector,

@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -62,6 +63,14 @@ func launchNativeSource(t *testing.T, binary, plan string) *nativeForwardingProc
 func TestNativeSourceAuthenticatedDistributionAndJoinedRetirement(t *testing.T) {
 	for _, mode := range []string{"cancel", "protection-loss", "cpu-pressure"} {
 		t.Run(mode, func(t *testing.T) { nativeSourceWorkload(t, mode) })
+	}
+}
+
+func TestNativeSourceOriginalInputsRetire(t *testing.T) {
+	for _, name := range []string{"plan", "certificate", "key", "ca"} {
+		for _, fault := range []string{"replace", "mutate", "unlink", "access", "ancestor"} {
+			t.Run(name+"/"+fault, func(t *testing.T) { nativeSourceWorkload(t, "input:"+name+":"+fault) })
+		}
 	}
 }
 
@@ -264,6 +273,70 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 		t.Cleanup(func() { stopLoad(); <-loadJoined })
 		nativeDescriptorCPUContention(t, p)
 	}
+	var restore func()
+	if strings.HasPrefix(mode, "input:") {
+		parts := strings.Split(mode, ":")
+		path := map[string]string{"plan": planPath, "certificate": cert, "key": key, "ca": rootPath}[parts[1]]
+		original, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// This genuine original socket is held in the server's TLS read while
+		// input loss occurs. Retirement must interrupt and join that handler.
+		held, err := net.Dial("tcp", address)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer held.Close()
+		if _, err := held.Write([]byte{0x16}); err != nil {
+			t.Fatal(err)
+		}
+		switch parts[2] {
+		case "replace":
+			err = os.Rename(path, path+".original")
+			if err == nil {
+				err = os.WriteFile(path, original, 0600)
+			}
+			restore = func() {
+				if err := os.Remove(path); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Rename(path+".original", path); err != nil {
+					t.Fatal(err)
+				}
+			}
+		case "mutate":
+			changed := bytes.Clone(original)
+			changed[len(changed)-1] ^= 1
+			err = os.WriteFile(path, changed, 0600)
+			clear(changed)
+		case "unlink":
+			err = os.Remove(path)
+		case "access":
+			err = os.Chmod(path, 0400)
+		case "ancestor":
+			parent := filepath.Dir(path)
+			err = os.Rename(parent, parent+".original")
+			restore = func() {
+				if err := os.Rename(parent+".original", parent); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if restore == nil {
+			restore = func() {
+				if err := os.WriteFile(path, original, 0600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chmod(path, 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+	}
 	err = p.command.Wait()
 	p.joined = true
 	_ = p.stdout.Close()
@@ -280,8 +353,17 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	if !errors.As(err, &exited) || exited.ExitCode() != expectedCode || json.Unmarshal(bytes.TrimSpace([]byte(p.diagnostic.String())), &terminal) != nil || terminal.Phase != "joined" || terminal.Outcome != expectedOutcome {
 		t.Fatal("original Source joined outcome", err, p.diagnostic.String())
 	}
-	if mode != "cancel" && terminal.First != "process" {
+	if mode != "cancel" && !strings.HasPrefix(mode, "input:") && terminal.First != "process" {
 		t.Fatal("retained original process cause absent", p.diagnostic.String())
+	}
+	if strings.HasPrefix(mode, "input:") {
+		if terminal.First != "input" {
+			t.Fatal("original input refusal cause absent", p.diagnostic.String())
+		}
+		restore()
+		if response, err := fetch(clientConfig, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(networkPlan.NetworkID)}); err == nil && response.Status == "ok" {
+			t.Fatal("restored input revived retired Source")
+		}
 	}
 	if mode == "cpu-pressure" && (terminal.Resource == nil || terminal.Resource.Cause != "cpu-pressure" || terminal.Resource.Observation == nil || terminal.Resource.Observation.CPUPressure < 1 || terminal.Resource.Observation.CPUWindowStarted.IsZero()) {
 		t.Fatal("actual established overload absent", p.diagnostic.String())

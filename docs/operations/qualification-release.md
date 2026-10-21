@@ -98,6 +98,17 @@ external responsibilities. This finite operation supplies no State or startup
 authority. Runtime alone reads its matching private pair and checks certificates
 again at each handshake using State's sole trusted clock.
 
+The development `source serve` consumer retains the original serve plan,
+certificate, matching private-key and client-CA files/ancestors until State's
+actual Close/Wait and input observers join. Supply canonical direct regular
+single-link files; keep the private key owned by the invoking user without
+group/other access. This runtime admission does not inherit the root-only
+offline key-generation directory policy. Changed/replaced/unlinked inputs or
+access/ancestor loss retire the original process; do not edit PEM or restore a
+path to revive it. A separate explicit invocation readmits all inputs after
+original join. The clock file remains live evidence owned by State. This is
+neither credential installation/delivery nor accepted infrastructure startup.
+
 The plan is one complete JSON object, at most 64 KiB, with no unknown, duplicate,
 null, missing or trailing fields. Its exact fields are:
 

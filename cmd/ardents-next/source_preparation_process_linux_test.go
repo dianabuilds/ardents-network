@@ -229,15 +229,21 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 			}
 		})
 	}
-	// Alter a copied public PEM after startup: original live servers retain
-	// their credentials, while a fresh runtime projection refuses the new bytes.
+	// Changing the original PEM retires its lifetime; it never reloads or
+	// replaces the original authority. A separate new invocation is readmitted.
 	certificatePath := filepath.Join(output, "source-1-certificate.pem")
 	original := read("source-1-certificate.pem")
 	if err := os.WriteFile(certificatePath, []byte("changed"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if response, e := planOwner.Fetch(t.Context(), 0, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(config.NetworkID)}); e != nil || response.Status != "ok" {
-		t.Fatal("running credential reloaded", e)
+	err = processes[0].command.Wait()
+	processes[0].joined = true
+	var retired *exec.ExitError
+	if !errors.As(err, &retired) || retired.ExitCode() != 1 {
+		t.Fatal("original changed-input retirement", err, processes[0].diagnostic.String())
+	}
+	if response, e := planOwner.Fetch(t.Context(), 0, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(config.NetworkID)}); e == nil && response.Status == "ok" {
+		t.Fatal("changed original input retained an accepting path")
 	}
 	servingRaw := read("source-1-serve.json")
 	serving, err := decodeSourceServePlan(servingRaw)
@@ -248,11 +254,29 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if sourceServingInputs(&fresh, serving, func() error { return nil }) == nil {
+	inputs, _, err := acquireSourceInputs(t.Context(), filepath.Join(output, "source-1-serve.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sourceServingInputs(&fresh, serving, inputs, inputs.Check) == nil {
 		t.Fatal("new configuration accepted altered credential")
+	}
+	if err := inputs.Close(); err != nil {
+		t.Fatal(err)
 	}
 	if err := os.WriteFile(certificatePath, original, 0600); err != nil {
 		t.Fatal(err)
+	}
+	if response, e := planOwner.Fetch(t.Context(), 0, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(config.NetworkID)}); e == nil && response.Status == "ok" {
+		t.Fatal("restored path revived the retired lifetime")
+	}
+	processes[0] = launchNativeSource(t, binary, filepath.Join(output, "source-1-serve.json"))
+	var readmitted map[string]string
+	if err := json.NewDecoder(processes[0].stdout).Decode(&readmitted); err != nil || readmitted["phase"] != "listening" {
+		t.Fatal("separate new Source admission", readmitted, err)
+	}
+	if response, e := planOwner.Fetch(t.Context(), 0, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(config.NetworkID)}); e != nil || response.Status != "ok" {
+		t.Fatal("separate readmitted original credential", e)
 	}
 	if e := owner.Close(); e != nil {
 		t.Fatal(e)

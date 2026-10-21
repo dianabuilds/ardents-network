@@ -895,6 +895,35 @@ orders State Close before process pin release. No acquisition, signing, refresh,
 certificate issuer, hot reload or expired-Epoch response-policy change is added.
 This development envelope selects no installed, platform or capacity claim.
 
+Command composition retains one original plan, certificate, private key and
+client CA lifetime in `source_custody_linux.go`. Direct no-symlink ancestor/file
+descriptors, inode and UID/GID/mode, single-link regular files, metadata and exact
+bounded bytes are reobserved before and after native reads. The private file
+belongs to the invoking user and excludes group/other access: retaining a
+publicly accessible private key would not protect this consumer's credential.
+This is runtime input custody, not offline signing's root-only/ext4/0700 policy
+or an installed account/delivery rule. Public inputs retain their admitted access;
+unrelated ancestor contents may evolve without replacing its identity/access.
+
+Loss permanently denies the original lifetime and cancels dependent admission.
+A 100-ms observer also detects loss during held work; effect and handoff checks
+remain synchronous through State's existing PermitWork outside State locks.
+Recovery/exposure I/O and listener creation each have post-I/O checks. Original
+caller cancellation starts the same one-time State.Close even while a command
+Check is held in native I/O. Native observations, callbacks and joins never hold
+the input lifetime's short state mutex. Composition joins State.Close, its
+original Wait and command observations before input Close joins its observers,
+erases retained file bytes and releases descriptors. The command's loaded key
+and process pins remain until that Close actually joins. The same failed
+five-second notice covers held input Close as well as State/Wait/command uses.
+Partial acquisition remains creator-owned; copied
+handles share retained Close outcomes. Independent input/State/process/output
+failures survive; fixed reports contain no raw paths or secret bytes. The
+five-second unavailable notice is failed work and keeps custody until actual join.
+Replacement requires a separately admitted new invocation, with no live reload
+or revival after restoring a pathname. Only the clock path declaration is fixed:
+State continues to verify live clock-file mtime and owns trusted time and floors.
+
 ### Issuer development process profile
 
 The selected Issuer composition requires `ardents-issuer-process-v1`. It uses
@@ -1413,7 +1442,7 @@ recorded source; source inspection alone is not execution.
 
 | Composition / exact consumer | Inputs, genuine verification and effect | Resource and terminal owners / current limit |
 |---|---|---|
-| Source: `cmd/ardents-next/source_linux.go`, `source_input_linux.go` | Closed serve plan; `network` root/ID/authority list/threshold/profile pin/clock file; Source process profile; independent participation root; address, server certificate/key, client CA and 1..3 exact client pins. `networkStateConfig`, `state.Open/Current`, Source mTLS and Guard.Check decide their separate boundaries. An independently prepared State root is required; serving does not acquire/sign/refresh State | State owns authenticated responses, exposure guards, transport/background Wait/Close and its root. Composition denies PermitWork before Close, waits for original Close and Wait, then closes process pins/clears command key. Five-second notice retains failure and continues waiting. Current bounded path reads are not retained plan/cert/key/CA inode custody |
+| Source: `cmd/ardents-next/source_linux.go`, `source_input_linux.go`, `source_custody_linux.go` | Closed serve plan; `network` root/ID/authority list/threshold/profile pin/clock file; Source process profile; independent participation root; address, server certificate/key, client CA and 1..3 exact client pins. Original plan/cert/key/CA file/ancestor custody, `networkStateConfig`, `state.Open/Current`, Source mTLS and Guard.Check retain their separate boundaries. An independently prepared State root is required; serving does not acquire/sign/refresh State | State owns authenticated responses, exposure guards, transport/background Wait/Close and its root. Composition denies PermitWork and interrupts before waiting; original State Close/Wait and command observations join before input Close, then loaded command key and process pins release. Five-second notice retains failure and continues waiting through all original uses and input Close. This development custody is not an installed binding |
 | Forwarding: `node_forwarding_linux.go` → `node.ListenForwarding` | Common Node inputs below; `work`, `termination`, finite retirement wait. CurrentRuntime → RetainDuty → exact role.Authority; original process and participation producer precede receiver work; full Forward allowance reserve precedes irreversible Receiving spend | Route owns listener/parents/children/refill/physical joins; Node owns original lifetime and purpose roots/Hosting/producer/Guard/key; command owns State last. Its bounded command wait can return completion-unavailable before its retained cleanup goroutine finishes; process exit is not proof of producer release |
 | Issuer: `node_issuer_linux.go` → `node.ListenIssuer` | Common inputs plus `issuance` plan with separate Admission quota, private key and result roots/bindings; Control work, bootstrap work and termination. Admission issuer application opens exact prepared material; signed current State binds its issuer reference | Admission owns quotas/key/results and durable debit before response; Route owns Credential listener and physical users; Hosting owns separate Control/Bootstrap coverage. Node retains all until join. No Forward refill, generic signer or key export |
 | Descriptor: `node_descriptor_linux.go` → `node.ListenDescriptor` | Common inputs plus independent Descriptor root, Control/termination coverage. Genuine `reachability.OpenStore` verifies proof/history, Receiver owns transport/admission | Store owns proof/conflict/floors and ACK; Node joins Receiver before Store/Receiving/Hosting/producer/process/key; State last. Store ACK is not Publication readiness |
@@ -1455,8 +1484,8 @@ These rows account for the genuine provisioning outputs of the public preparatio
 Record/Epoch signing, profile signing, key, Source trust and Node certificate
 changes. Isolated State/Admission/family fixtures used by their tests are not
 additional product authorities. External credentials/trust/time remain explicit
-operator inputs. The demonstrated missing mechanisms are runtime original-input
-custody, infrastructure artifact admission and installed transition/startup,
+operator inputs. The remaining missing mechanisms are infrastructure artifact
+admission and installed transition/startup,
 command/tool cutover, and source-matched final evidence; not a speculative PKI.
 
 Reverse consumers matter. `cmd/ardents-next/main.go` directly dispatches all six
@@ -1610,7 +1639,7 @@ not inferred from process-kill controls.
 ### Component order and the command/artifact boundary
 
 Source is the smallest real infrastructure consumer: State + Source + Guard.
-Its first concrete predecessor is original Source plan/certificate/private-key/CA
+Its implemented development predecessor is original Source plan/certificate/private-key/CA
 custody through actual serving and joined retirement. This uses existing
 authority, changes no persisted/wire grammar and can be verified on the genuine
 development command now. It is not an installed tracer, installer or bootstrap
@@ -1669,7 +1698,7 @@ profile ownership before execution.
 | Invariant / owner | Real positive and causal refusal / independent oracle | Existing source and future required evidence |
 |---|---|---|
 | Exact program/generation, initial provenance and forward Release floors | Independently encode descriptor/enrollment bytes; verify identical target set and initial running artifact; alter every resource/target/version/pin/metadata input, partial and extra inventory, same-version different resources; prove refusal before native mutation and no floor decrease | `generation_authentication.go`, new Enrollment/Release and Endpoint pair tests are comparison mechanisms only. New infrastructure verifier/producer and native inventory evidence are required |
-| Source original inputs / command | Genuine prepared trust and signed State serve LATEST/BY_DIGEST to actual clients. Replace/mutate/unlink plan/cert/key/CA/ancestor/access before listener and while I/O is held; deny before next effect, retain original cause and held Close, independent original root reopen only after join | `source-process-linux` / `make source-process-check`, `source_*linux_test.go`, Source transport and State race suites. Original input custody controls are missing; no successful fixture check can supply them |
+| Source original inputs / command | Genuine prepared trust and signed State serve LATEST/BY_DIGEST to actual clients. Replace/mutate/unlink plan/cert/key/CA/ancestor/access before listener and while I/O is held; deny before next effect, retain original cause and held Close, independent original root reopen only after join | Implemented development custody uses `source-process-linux` / `make source-process-check`, `source_*linux_test.go`, Source transport and State race suites. It supplies no installed input/startup binding; fixtures cannot supply those remaining mechanisms |
 | Exact installed native binding / Installation | Actual non-root fixed unit reaches independent startup and genuine Source response; substitute executable/argv/UID/GID/groups/unit/drop-in/plan/generation/manager/InvocationID/proc/cgroup and prove no Source/Node effect; root impostor/completion replay refused | Existing Endpoint native process/manager/completion mechanisms are reusable evidence of their own scope only. New Source/unit/account and two complete manager rounds must be observed on final artifacts |
 | State, time, TLS / Network and Source | Genuine prepare/sign/accept chain plus explicit external credential trust; actual mTLS verifies CA/name/EKU/key pins/live State clock and signed Epoch materializations. Wrong CA/key/pin/digest/index, stale clock, signed conflict/successor/expiry deny; original guards retained during blocked handlers | `network-signing-linux`, `source-process-linux`, native State/duty race, `source_preparation_process_linux_test.go`, `source_state_linux_test.go`. Independent test authorities/families are not operational bootstrap |
 | Process protection / processresource | Actual selected Source or role profile, measured resource use/freshness; changed placement/limits, lost descriptors, real memory/CPU/I/O pressure and event controls deny without revival; missing overload evidence fails test | Source profile separately; `node-process-linux`, `node-issuer-linux`, `node-descriptor-linux`, `node-introduction-linux`, `node-join-linux` / their exact Make targets and `run-*-native.sh` discovery. Each final non-root installed workload needs its own coverage, not another role's PASS |

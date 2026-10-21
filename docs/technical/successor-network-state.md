@@ -111,6 +111,14 @@ State borrows `PermitWork` before effects and observation, outside its lock.
 The callback may be concurrent and cannot call back into State. Process resource
 sampling, protect/drain policy and process monitoring stay with the application
 owner. State joins only its own Source and refresh work.
+For the development serving Source, command composition also retains original
+plan/certificate/private-key/CA file and ancestor custody through this same
+PermitWork seam. State reobserves after recovery and exposure I/O, before the
+Source listener, without delegating signed authority, time or floor policy.
+Command input loss cancels original admission; State.Close still owns actual
+transport/handler/guard/root join before command input/process release. The
+clock declaration is fixed in the plan, while State continues to read current
+clock-file mtime; immutable input custody never freezes that evidence.
 Closing an already active automatic Source wave retains the same orderly
 retirement classification as refusing a new wave after Close. It still denies
 authority and joins original contacts; independent terminal, durable-write and

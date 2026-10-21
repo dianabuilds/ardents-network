@@ -33,6 +33,7 @@ TestOriginalNativeSourceProcessProfile'
 discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNativeSource' | grep '^TestOriginalNativeSource' | sort)
 test "$discovered_resources" = "$expected_resources" || { echo 'Source resource discovery differs' >&2; exit 2; }
 expected='TestNativeSourceAuthenticatedDistributionAndJoinedRetirement
+TestNativeSourceOriginalInputsRetire
 TestNativeSourcePreparedCohort'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeSource' | grep '^TestNativeSource' | sort)
 test "$discovered" = "$expected" || { echo 'Source workload discovery differs' >&2; exit 2; }
@@ -46,4 +47,4 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     --setenv=GOMAXPROCS=1 --setenv=GOMEMLIMIT=512MiB \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run="^$resource_case$" -test.timeout=90s
 done
-"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeSource(AuthenticatedDistributionAndJoinedRetirement|PreparedCohort)$' -test.timeout=3m
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeSource(AuthenticatedDistributionAndJoinedRetirement|OriginalInputsRetire|PreparedCohort)$' -test.timeout=3m

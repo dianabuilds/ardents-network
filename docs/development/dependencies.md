@@ -14,6 +14,42 @@ must pass module integrity/tidiness, current vulnerability and repository gates.
 The earlier dual-Carrier selection/removal obligations below are superseded for
 this release only; unverified exclusion is not release admission.
 
+## Go X.509 security renewal
+
+Reviewed 2026-10-21 after the normal vulnerability gate reported
+[GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809) / CVE-2026-111943 in
+Go 1.27.2. Select the fixing **Go 1.27.3** patch before integration. This
+supersedes the compiler/container patch below; earlier receipts retain their
+actual compiler and do not qualify rebuilt artifacts. No new runtime module,
+protocol, trust authority or native platform policy is selected.
+
+Primary evidence accessed 2026-10-21: [Go release history](https://go.dev/doc/devel/release#go1.27.3),
+[reviewed Go advisory](https://github.com/golang/vulndb/blob/master/data/osv/GO-2026-6809.json),
+and the [upstream patch comparison](https://github.com/golang/go/compare/go1.27.2...go1.27.3).
+The four-file patch changes VERSION and crypto/x509's Go, Windows and Darwin
+verification paths to refuse chains containing distrusted SPKI hashes. The
+advisory fixes 1.27 at 1.27.3 and the preceding supported branch at 1.26.10.
+The current TLS caller closure reaches Certificate.Verify; private fixture CAs
+or leaf pins alone do not establish whole-build non-applicability. Use the
+maintained fix rather than suppressing or reclassifying the scanner result.
+The Go 1.27 branch retains its existing BSD license, security reporting/fix path
+and two-most-recent-major-branches support policy.
+
+The official 1.27.3 Bookworm image index is
+`sha256:21ade014faf952365b9ecbd8dbdb87176fbacb82fac9fb132d9f2a7b8cc3f132`;
+its Linux amd64 manifest is
+`sha256:fea12ba16096adec0f699ce1c4da2154d320450e56c1f63671f95d2a3551c77b`.
+The [official image inventory](https://github.com/docker-library/official-images/blob/master/library/golang)
+binds its Bookworm Dockerfile to docker-library/golang commit
+`41d9b4da70324ae7b6461ac2cc401b06719ff57d`. CI, profile prerequisites and the
+diagnostic build follow this patch. Bootstrap/rebuild tools only through
+explicit `make tools-install GOTOOLCHAIN=go1.27.3`; normal checks keep local
+toolchain selection and install nothing. Existing analyzer sources and reviewed
+dependency overrides remain unchanged, with their build compiler renewed.
+Fresh source/artifact scans, normal gates and applicable native/race checks
+must qualify each changed candidate. Earlier failed attempts remain evidence;
+patch selection alone is not acceptance or renewed installed qualification.
+
 ## Go and HTTP security renewal
 
 Reviewed 2026-10-09 after the fresh repository vulnerability gate found the

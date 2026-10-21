@@ -109,11 +109,21 @@ func (p *Plan) Serve(ctx context.Context, ready chan<- error, protected func() b
 
 func serve(ctx context.Context, server server, ready chan<- error, protected func() bool,
 	active func(int), resolve func(context.Context, Message) Message) error {
+	if ctx.Err() != nil || protected != nil && protected() {
+		err := errors.New("Source serving admission unavailable")
+		ready <- err
+		return err
+	}
 	listener, err := net.Listen("tcp", server.address)
 	if err != nil {
 		wrapped := fmt.Errorf("listen for Network State distribution: %w", err)
 		ready <- wrapped
 		return wrapped
+	}
+	if ctx.Err() != nil || protected != nil && protected() {
+		err := errors.Join(errors.New("Source serving admission unavailable"), listener.Close())
+		ready <- err
+		return err
 	}
 	tlsListener := tls.NewListener(listener, serverTLSConfig(server))
 	ready <- nil
@@ -153,13 +163,13 @@ func serve(ctx context.Context, server server, ready chan<- error, protected fun
 			defer func() { <-credits }()
 			// A peer controls its connection lifetime, so a response-write failure
 			// terminates only this connection and cannot stop the shared listener.
-			_ = handleConnection(ctx, server, active, connection, resolve)
+			_ = handleConnection(ctx, server, active, connection, resolve, protected)
 		}()
 	}
 }
 
 func handleConnection(ctx context.Context, server server, active func(int), connection net.Conn,
-	resolve func(context.Context, Message) Message) error {
+	resolve func(context.Context, Message) Message, protected func() bool) error {
 	// Cancellation interrupts the original socket, including a blocked TLS
 	// handshake or write. Join the callback before releasing the active user.
 	retireCancellation := sourceConnectionCancellation(ctx, connection)
@@ -183,7 +193,11 @@ func handleConnection(ctx context.Context, server server, active func(int), conn
 	if err := connection.SetDeadline(started.Add(5 * time.Second)); err != nil {
 		return fmt.Errorf("set distribution response deadline: %w", err)
 	}
-	if err := writeResponse(connection, resolve(ctx, request)); err != nil {
+	response := resolve(ctx, request)
+	if ctx.Err() != nil || protected != nil && protected() {
+		return errors.New("Source response admission unavailable")
+	}
+	if err := writeResponse(connection, response); err != nil {
 		return fmt.Errorf("write distribution response: %w", err)
 	}
 	return nil

@@ -20,9 +20,9 @@ type toolRequirement struct {
 }
 
 var requiredTools = []toolRequirement{
-	{name: "staticcheck", version: "v0.8.1", module: "honnef.co/go/tools", goVersion: "go1.27.2"},
-	{name: "govulncheck", version: "govulncheck@v1.8.0", args: []string{"-version"}, goVersion: "go1.27.2"},
-	{name: "deadcode", version: "v0.50.0", module: "golang.org/x/tools", goVersion: "go1.27.2"},
+	{name: "staticcheck", version: "v0.8.1", module: "honnef.co/go/tools", goVersion: "go1.27.3"},
+	{name: "govulncheck", version: "govulncheck@v1.8.0", args: []string{"-version"}, goVersion: "go1.27.3"},
+	{name: "deadcode", version: "v0.50.0", module: "golang.org/x/tools", goVersion: "go1.27.3"},
 }
 
 func main() {
@@ -30,7 +30,7 @@ func main() {
 	flag.Parse()
 	tools := requiredTools
 	if *diagnostic {
-		tools = append(tools, toolRequirement{name: "errcheck", version: "v1.20.0", module: "github.com/kisielk/errcheck", goVersion: "go1.27.2"})
+		tools = append(tools, toolRequirement{name: "errcheck", version: "v1.20.0", module: "github.com/kisielk/errcheck", goVersion: "go1.27.3"})
 	}
 	failed := false
 	for _, tool := range tools {

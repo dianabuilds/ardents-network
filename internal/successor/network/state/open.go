@@ -83,8 +83,20 @@ func (s *networkState) startSource(workContext context.Context) error {
 	if s.current == nil {
 		return errors.New("source mode requires a current generation")
 	}
+	// Recovery performed native I/O. Reobserve the original external owner
+	// outside State locks before publishing any local Source exposure.
+	if s.config.permitWork != nil {
+		if err := s.config.permitWork(); err != nil {
+			return err
+		}
+	}
 	if err := s.retainSourceServer(); err != nil {
 		return err
+	}
+	if s.config.permitWork != nil {
+		if err := s.config.permitWork(); err != nil {
+			return errors.Join(err, s.releaseSourceServer())
+		}
 	}
 	s.serverDone = make(chan struct{})
 	ready := make(chan error, 1)

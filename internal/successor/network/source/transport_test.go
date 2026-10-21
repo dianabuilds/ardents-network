@@ -131,7 +131,7 @@ func TestHandleConnectionReturnsFinalResponseWriteError(t *testing.T) {
 	}
 	connection := &responseWriteFailure{request: *bytes.NewReader(request.Bytes())}
 	err := handleConnection(context.Background(), server{headerTimeout: time.Second}, nil, connection,
-		func(context.Context, Message) Message { return Message{Status: "not-found"} })
+		func(context.Context, Message) Message { return Message{Status: "not-found"} }, nil)
 	if !errors.Is(err, errTestResponseWrite) || !strings.Contains(err.Error(), "response") {
 		t.Fatalf("connection error = %v, want final response write failure", err)
 	}

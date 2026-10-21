@@ -16,7 +16,7 @@ import (
 
 const staticcheckBuildModule = `module ardents-staticcheck-build
 
-go 1.27.2
+go 1.27.3
 
 require honnef.co/go/tools v0.8.1
 
@@ -29,7 +29,7 @@ github.com/stefanb/go-tools v0.7.0-0.dev.0.20261008215554-a0a7f6a7b6af/go.mod h1
 
 const errcheckBuildModule = `module ardents-errcheck-build
 
-go 1.27.2
+go 1.27.3
 
 require (
  github.com/kisielk/errcheck v1.20.0

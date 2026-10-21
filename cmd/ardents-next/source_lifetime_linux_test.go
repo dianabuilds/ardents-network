@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"sync/atomic"
 	"syscall"
 	"testing"
 
@@ -48,7 +49,7 @@ func TestSourceUnavailableJoinReportsWithoutReturningOriginalCustody(t *testing.
 	defer deny()
 	joined := make(chan error, 1)
 	go func() {
-		joined <- superviseSource(t.Context(), owner, func() error { return operation }, deny, io.Discard, notice)
+		joined <- superviseSource(t.Context(), owner, func() error { return operation }, deny, io.Discard, notice, nil)
 	}()
 	<-owner.entered
 	if admissionCtx.Err() != context.Canceled {
@@ -97,7 +98,7 @@ func TestSourceSupervisionRetainsOperationAndCleanupFailures(t *testing.T) {
 			case "protection":
 				check = func() error { return operation }
 			}
-			err := superviseSource(t.Context(), owner, check, func() {}, out, io.Discard)
+			err := superviseSource(t.Context(), owner, check, func() {}, out, io.Discard, nil)
 			if !owner.closed || !errors.Is(err, operation) || !errors.Is(err, cleanup) {
 				t.Fatal("original users or independent cause lost", owner.closed, err)
 			}
@@ -140,7 +141,7 @@ func TestSourceCallerCancellationDuringBlockedReadyOutputRetainsCaller(t *testin
 				close(checked)
 			}
 			return nil
-		}, deny, writer, io.Discard)
+		}, deny, writer, io.Discard, nil)
 	}()
 	<-checked
 	cancel()
@@ -163,8 +164,42 @@ func TestSourceOutputFailureRetainsOriginalLatchedProcessFailure(t *testing.T) {
 		return nil
 	}
 	owner := &failedSourceLifetime{}
-	err := superviseSource(t.Context(), owner, check, func() {}, sourceFailureWriter(func([]byte) (int, error) { latched = true; return 0, output }), io.Discard)
+	err := superviseSource(t.Context(), owner, check, func() {}, sourceFailureWriter(func([]byte) (int, error) { latched = true; return 0, output }), io.Discard, nil)
 	if !errors.Is(err, output) || !errors.Is(err, process) || !owner.closed {
 		t.Fatal("an original owner failure was dropped", err)
+	}
+}
+
+func TestSourceInputLossAfterHealthyObservationRetainsInputCategory(t *testing.T) {
+	// This fixture isolates first-cause projection, not successful State or
+	// native process authority. The third observation proves initial readiness
+	// was consumed before cancellation; its held late result is deliberately nil.
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	var checks atomic.Int32
+	var lost atomic.Bool
+	entered, release := make(chan struct{}), make(chan struct{})
+	check := func() error {
+		if checks.Add(1) == 3 {
+			close(entered)
+			<-release
+			return nil
+		}
+		if lost.Load() {
+			return errSourceInput
+		}
+		return nil
+	}
+	owner := &failedSourceLifetime{}
+	joined := make(chan error, 1)
+	go func() { joined <- superviseSource(ctx, owner, check, func() {}, io.Discard, io.Discard, nil) }()
+	<-entered
+	lost.Store(true)
+	cancel()
+	close(release)
+	err := <-joined
+	var terminal *sourceTerminal
+	if !errors.Is(err, errSourceInput) || !errors.As(err, &terminal) || terminal.firstOwner != "input" || !owner.closed {
+		t.Fatal("last healthy process observation replaced original input refusal", err)
 	}
 }

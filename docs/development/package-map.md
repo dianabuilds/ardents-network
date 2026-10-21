@@ -438,6 +438,16 @@ consumer supplies original process admission; State retains serving/duty policy
 and joins transport before command releases process pins. No Node or Route owner
 is imported. Source output uses bounded original native stream writes.
 
+`source_custody_linux.go` and its native scheduling/file-custody tests use only
+the standard library. Its genuine consumer is the existing Source command;
+the unexported lifetime retains original fixed files/ancestors, synchronous
+denial, native-use joins and copied terminal results. It borrows only unchanged
+direct-open/check/close primitives from `network_preparation_linux.go`, without
+offline signing's admission policy. No new package, dependency, authority or
+exported Interface is introduced. State/Source preserve their own effects and
+join; command cancellation can start that same original Close while native
+input observation is held.
+
 `source_state_linux_test.go` additionally imports only new `network/duty` and
 `network/source` for actual serving/guard retirement on failed readiness output.
 `source_fixture_linux_test.go` contains independent public TLS fixture preparation

@@ -672,6 +672,17 @@ The original native process envelope is mandatory. Output reports fixed safe
 `source.serve` phase/outcome fields. Cancellation joins State users before process
 release; readiness/output grants no authority.
 
+The original plan, certificate, private key and client CA retain direct original
+file/ancestor custody until joined retirement. Symlinks and non-single-link or
+nonregular inputs refuse; the private key belongs to the invoking user with no
+group/other access. Replacement, byte/access/ancestor loss permanently denies
+the lifetime and interrupts State; restoring a pathname cannot revive it. A
+separate invocation readmits the original inputs. There is no live PEM reload.
+State Close and original Wait join before command key/input/process release;
+input observers join before retained bytes/descriptors are released, with
+process pins last. The plan fixes the clock path, while State independently
+verifies its live mtime evidence under unchanged time/floor policy.
+
 Source reports require an interruptible native stream with a one-second write
 bound. Safe failure output additionally names fixed `first_owner` and
 `cleanup_owner` categories and available original numeric `resource` facts;

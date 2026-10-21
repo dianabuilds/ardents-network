@@ -31,6 +31,12 @@ func sourceFailureReport(out io.Writer, phase string, operation, processClose er
 		if terminal.wait != nil || terminal.cleanup != nil {
 			cleanup = "state"
 		}
+		if terminal.inputCleanup != nil {
+			if cleanup != "" {
+				cleanup += ","
+			}
+			cleanup += "input"
+		}
 	}
 	if processClose != nil {
 		if cleanup != "" {
