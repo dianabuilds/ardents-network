@@ -204,11 +204,20 @@ The separate artifact/persisted/bootstrap extension is **accepted**
 ([ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md)); acceptance
 alone records no implemented or qualified result. The separate
 `internal/successor/installation/infrastructure` now implements only Source
-descriptor/public preparation and coherent artifact admission through
-`ardents-next infrastructure`; installed transitions remain absent. Enrollment
+descriptor/public preparation, coherent artifact admission and separate Source
+read-only native preflight through `ardents-next infrastructure`; installed
+transitions remain absent. Enrollment
 owns initial-pin provenance, Release owns fresh exact-target authorization and
 floors, and infrastructure admission owns pair/resource coherence. Native
 Installation and the separately accepted exact bootstrap remain distinct gates.
+Source preflight retains original request/input/ancestor custody, closed Source
+template policy and one original read-only manager connection. Existing inputs
+and absent future destinations are different declarations; absence grants no
+creation/readiness fact. Root, account and unit namespace observations, original
+caller/manager/Release checks and physical joins precede its bounded result.
+Release floor effects stay separately owned; no State/Source runtime is opened.
+Credential delivery, birth/journal/selection and startup remain separate owners'
+future effects, requiring their own fresh observations and acceptance.
 
 The process-resource owner applies the finite development CPU/I/O trend budget
 in the [native profile contract](../technical/network-route-node.md#forwarding-development-process-profile),

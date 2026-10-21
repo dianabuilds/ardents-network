@@ -59,6 +59,11 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/artifact.go",
 			"internal/successor/installation/infrastructure/admission.go",
 			"internal/successor/installation/infrastructure/artifact_test.go",
+			"internal/successor/installation/infrastructure/source_request_linux.go",
+			"internal/successor/installation/infrastructure/source_plan_linux.go",
+			"internal/successor/installation/infrastructure/source_observation_linux.go",
+			"internal/successor/installation/infrastructure/source_request_linux_test.go",
+			"internal/successor/installation/infrastructure/source_observation_linux_test.go",
 			"internal/successor/release/static_metadata.go",
 			"internal/successor/release/static_metadata_test.go",
 		} {
@@ -623,7 +628,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-next/installation.go" || source == "cmd/ardents-next/installation_test.go") && (dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/installation/endpoint" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
-		if (source == "cmd/ardents-next/infrastructure_linux.go" || source == "cmd/ardents-next/infrastructure_linux_test.go" || source == "cmd/ardents-next/infrastructure_caller_linux_test.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
+		if (source == "cmd/ardents-next/infrastructure_linux.go" || source == "cmd/ardents-next/infrastructure_linux_test.go" || source == "cmd/ardents-next/infrastructure_caller_linux_test.go" || source == "cmd/ardents-next/infrastructure_preflight_native_linux_test.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
 		if source == "cmd/ardents-next/release_process_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
@@ -705,6 +710,15 @@ func successorImportAllowed(source, dependency string) bool {
 				}
 			}
 		}
+		if source == "internal/successor/installation/infrastructure/source_plan_linux.go" && dependency == modulePath+"/internal/successor/network/source" {
+			return true
+		}
+		if source == "internal/successor/installation/infrastructure/source_observation_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
+			return true
+		}
+		if source == "cmd/ardents-next/source_input_linux.go" && dependency == modulePath+"/internal/successor/network/source" {
+			return true
+		}
 		// A registered package's external behavior tests may import that package.
 		// This grants neither another package nor nested tests its imports.
 		if _, registered := permitted[owner]; registered && strings.HasSuffix(source, "_test.go") && dependency == modulePath+"/"+owner {
@@ -759,7 +773,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
-	if (source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go") && dependency == "github.com/godbus/dbus/v5" {
+	if (source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go" || source == "internal/successor/installation/systemd/source_preflight_linux.go") && dependency == "github.com/godbus/dbus/v5" {
 		return true
 	}
 	if (owner == "internal/successor/admission/spending" || owner == "internal/successor/network/duty" || owner == "internal/successor/network/state/durable") && dependency == "golang.org/x/sys/windows" {

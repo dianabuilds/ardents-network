@@ -1,5 +1,47 @@
 # Testing
 
+`source-preflight-linux` / `make source-preflight-check` is the separate checked
+read-only Source installation profile. It executes actual prebuilt race binaries
+under one finite private Ubuntu24.04/systemd255/cgroup-v2/native-ext4 manager,
+without installing or executing Source. The outside controller owns the existing
+shared `run-development.py exclusive` lock and original manager lifecycle. Use
+reviewed Python3.12 `-I -S`; the runner accepts only its fixed `-timeout=3m`.
+
+Set `ARDENTS_SOURCE_PREFLIGHT_{COMMAND,OWNER_TEST,MANAGER_TEST,COMMAND_TEST,SOURCE_MANIFEST}`
+and each corresponding `_SHA256` to original absolute files. Build command with
+the canonical flags, owner test from `installation/infrastructure`, manager test
+from `installation/systemd` and command test from `cmd/ardents-next`; use
+`-race -trimpath -buildvcs=false -tags network_signing_native` for all test
+binaries. The manifest contains every exact source input. Mount the immutable
+snapshot read-only as the runner's repository and retain actual Go1.27.3,
+source/binary/mount/manager/namespace/account/unit observations outside Git.
+`TMPDIR` is private root-owned 0700 ext4; the separate
+`ARDENTS_SOURCE_PREFLIGHT_FUTURE_PARENT` is root-controlled 0755 with traversable
+ancestors. No existing future root or credential delivery is a prerequisite.
+
+The dedicated fixture root must contain the exact
+`/etc/ardents-source-preflight-native-stand` marker
+`ardents-source-preflight-native-v1` plus LF, and its original systemd
+`/run/systemd/container` value is `ardents-preflight`. These are test-environment
+guards, not product authority. Only that private rootfs receives foreign
+account/group/unit/drop-in fixtures; no host account or Source unit is changed.
+The real manager/client transport observes complete fixed facts and retains
+original cancellation, loss, copied handle and independent Close errors. Held
+last-input controls mutate original ancestor access/inode and an already-read
+named input before final reobservation; late manager socket loss is refused even
+without caller cancellation. Live clock replacement remains permitted under its
+writer/access policy, and a full actual output pipe cannot produce success. The
+compiled consumer obtains genuine signed artifacts and two fresh Release proofs
+before bounded native observation. Initial and retained candidate cases remain
+distinct. Independent request/template/rendering vectors and path/access/foreign
+namespace refusals preserve absence of installation/runtime effects; Release
+floor effects are separately retained. The runner validates complete test
+discovery, exact source and every binary pin before and after execution.
+Missing prerequisites or a failed case fail, never skip. Existing Endpoint/v3,
+Source artifact and ordinary quick/full/hook checks remain required. Test
+authorities and native observations supply no operational trust, installed
+readiness, independent security review or bootstrap acceptance.
+
 Source infrastructure artifact tests independently encode the exact descriptor
 and seven-file inventory, use real ordinary Release signatures and run a canonical
 compiled consumer from the identical enrolled program file. Linux command cases

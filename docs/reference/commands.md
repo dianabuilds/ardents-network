@@ -7,6 +7,8 @@ under accepted ADR-0123 through direct new owners in `ardents-next`:
 - `infrastructure prepare-inventory <seven-file-directory> <fresh-output>` writes `infrastructure-enrollment.json`, after actual signed metadata are supplied.
 - `infrastructure authenticate-initial <distribution> <independent-inventory-pin> <new-release-history> <environment> <network> <reference-time>` checks its actual executing artifact and two fresh Release proofs.
 - `infrastructure authenticate-candidate <distribution> <retained-release-history> <environment> <network> <reference-time>` requires complete retained floors and supplies no initial-pin provenance.
+- `infrastructure preflight-initial <distribution> <independent-inventory-pin> <new-release-history> <environment> <network> <reference-time> <source-request>` performs initial artifact admission and Source read-only native preflight in the same original caller.
+- `infrastructure preflight-candidate <distribution> <retained-release-history> <environment> <network> <reference-time> <source-request>` uses complete retained floors and adds no initial provenance.
 
 All paths are canonical absolute. Preparation retains root-controlled original
 files and private native-ext4 fresh output custody. Authentication refuses
@@ -21,6 +23,17 @@ after joined Release Close, never serialized authorization or startup permission
 See the [operation](../operations/qualification-release.md#source-infrastructure-artifact-component).
 These commands do not install or start Source, provide a metadata signer, replace
 independent first-distribution trust or establish supported `ardents-node` cutover.
+
+The preflight variants additionally require Linux root on the selected
+Ubuntu24.04/systemd255/cgroup-v2/native-ext4 stand and the exact canonical
+[`ardents-source-preflight-v1` request](../technical/network-route-node.md#component-order-and-the-commandartifact-boundary).
+The existing Source plan points to future credential destinations; original
+certificate/key/CA source files are separate request inputs. The four future
+root/directory destinations and fixed account/unit namespace must be fresh, not
+adopted from an existing installation. Preflight prints only
+`source-read-only-preflight-observed` after original manager/input/Release users
+and Close join. The result grants no creation, delivery, start or later effect;
+Release's independent authentication floor effects are the only durable writes.
 
 `ardents-next source prepare-trust <public-plan> <fresh-output>` performs one
 30-second offline public observation and prepares exactly two Sources and one

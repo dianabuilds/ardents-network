@@ -14,6 +14,49 @@ must pass module integrity/tidiness, current vulnerability and repository gates.
 The earlier dual-Carrier selection/removal obligations below are superseded for
 this release only; unverified exclusion is not release admission.
 
+## Native Source preflight dependency renewal
+
+Reviewed 2026-10-21 before changing the module graph. The Source read-only
+preflight adds a third narrow consumer of the existing private godbus mechanism,
+`installation/systemd/source_preflight_linux.go`. It uses only fixed read-only
+manager/namespace calls on the original root Unix connection, retains its unique
+owner, and joins original I/O and cancellation through Close. Existing bounded
+frame validation remains mandatory; no reconnect, address discovery, FD passing,
+exported object or mutation is added.
+
+The [upstream policy](https://raw.githubusercontent.com/godbus/dbus/master/SECURITY.md)
+supports security fixes only in the latest release. The
+[release inventory](https://github.com/godbus/dbus/releases), accessed 2026-10-21,
+now names **v5.2.4** (2026-10-13). Select that maintained patch instead of the
+previous v5.2.2. The intervening
+[v5.2.3 release](https://github.com/godbus/dbus/releases/tag/v5.2.3) fixes decoder
+allocation from untrusted lengths and a read-error panic, alongside reflection,
+CI and optional transport changes. v5.2.4 fixes default system-bus error
+reporting across OSes. Ardents still supplies its fixed original transport and
+does not select TCP discovery or any optional new transport. The
+[module declaration](https://raw.githubusercontent.com/godbus/dbus/v5.2.4/go.mod)
+retains Go1.20 and x/sys v0.27.0 minimums, compatible with the already selected
+Go1.27.3/x/sys v0.48.0. The authenticated tag is commit
+`4e46d5eb6d1926b98ce405d4909cf3588698ace5`, module sum
+`h1:F2gUCy++NMIxGmo9J+z5le/+ZC8W1OgeR51P4i9ZB/U=` and go.mod sum
+`h1:3AAv2+hPq5rdnr5txxxRwiGjPXamgoIHgz9FPBfOp3c=`. The BSD-2-Clause license and volunteer support limitations
+remain. Fresh source/binary scans, exact-source native/race and existing Endpoint
+mechanism regression are required; selecting a maintained version is not PASS.
+
+Source preflight additionally invokes the existing Ubuntu `/usr/bin/getent`
+mechanism with only `passwd ardents-source` and `group ardents-source`. The
+original root-controlled binary and local NSS configuration are retained and
+reobserved; files/systemd are the only admitted NSS modules. Only exit2 proves
+absence for these bounded queries; output supplies no authority. Each helper
+has a three-second original-caller deadline and actual Run/join under its
+creating locked OS thread with parent-death SIGKILL. Ubuntu's signed libc/NSS
+packages remain a native stand dependency, not a new Go module or identity
+service. [Ubuntu's release policy](https://ubuntu.com/about/release-cycle),
+accessed 2026-10-21, retains 24.04 LTS standard security maintenance through
+May2029. Actual package versions/security updates must be recorded with each
+native stand; release support alone does not prove patch currency. The getent/libc mechanism
+retains its GNU LGPL-2.1-or-later license.
+
 ## Go X.509 security renewal
 
 Reviewed 2026-10-21 after the normal vulnerability gate reported
@@ -553,7 +596,7 @@ historical dependency chain.
 | Module | Present pin | Owned use / admission boundary |
 |---|---|---|
 | `github.com/cloudflare/circl` | `v1.6.5` | BSD-3-Clause; exact reviewed blindrsa token mechanisms, separate holder/receiver/issuer owners |
-| `github.com/godbus/dbus/v5` | `v5.2.2` | BSD-2-Clause; private original system-manager connection, reviewed above |
+| `github.com/godbus/dbus/v5` | `v5.2.4` | BSD-2-Clause; private original system-manager connection, reviewed above |
 | `golang.org/x/crypto` | `v0.57.0` | BSD-3-Clause; selected support closure and purpose-scoped Custody Argon2 |
 | `golang.org/x/sys` | `v0.48.0` | BSD-3-Clause; native platform observations, ACL/locking and atomic file mechanisms |
 | `golang.org/x/term` | `v0.46.0` | BSD-3-Clause; separate interactive no-echo Custody adapter |

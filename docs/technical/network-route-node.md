@@ -1486,8 +1486,9 @@ These rows account for the genuine provisioning outputs of the public preparatio
 Record/Epoch signing, profile signing, key, Source trust and Node certificate
 changes. Isolated State/Admission/family fixtures used by their tests are not
 additional product authorities. External credentials/trust/time remain explicit
-operator inputs. The remaining missing mechanisms are infrastructure artifact
-admission and installed transition/startup,
+operator inputs. Source infrastructure artifact admission is implemented through
+the separate Enrollment/Release/infrastructure consumer. The remaining missing
+mechanisms are installed transition/startup,
 command/tool cutover, and source-matched final evidence; not a speculative PKI.
 
 Reverse consumers matter. `cmd/ardents-next/main.go` directly dispatches all six
@@ -1661,8 +1662,49 @@ generalizing its fixed unit behind a boolean. Future code/package allowances
 require the normal complete architecture change, not this document.
 
 The separate Source artifact authentication component is implemented with a real
-compiled self-artifact consumer and public finite preparation; it grants no
-native preflight or installed permission. Other invocations remain refused.
+compiled self-artifact consumer and public finite preparation. Its same-caller
+`infrastructure preflight-initial` / `preflight-candidate` consumer additionally
+checks the closed Source request/template and read-only original native facts.
+The public result is a bounded observation, never installed permission. Other
+invocations remain refused.
+
+The canonical `ardents-source-preflight-v1` request binds exactly `schema`,
+`invocation`, `profile`, `installation_root`, `state_root`, `participation_root`,
+`credential_directory`, `plan`, `certificate`, `private_key`, `client_ca`, `clock`,
+`address`, in that order, compact JSON plus LF and at most 16 KiB. Invocation is
+`source`, profile `ardents-source-process-v1`; address is a canonical literal-IP
+TCP endpoint on an unprivileged port. All paths are canonical absolute and
+independent. Plan/certificate/key/CA are existing original inputs; the four
+root/directory fields are separate absent future destinations. The plan uses
+the future credential directory's exact `certificate.pem`, `private-key.pem`
+and `client-ca.pem` names. Preflight does not deliver them. Source owns the shared pure closed serving-declaration codec; Installation
+checks exact future-input matching and bounded preflight declarations without
+opening State or its roots. Runtime authority/time decisions remain separate.
+Root-controlled original files, access and ancestors remain retained through
+physical Close; private input bytes never enter a public receipt.
+
+The exact closed Source release template lives in the infrastructure policy,
+with an independent complete byte vector. Rendering binds only future generation
+program, binding reference and State/participation writable paths. It does not
+publish a unit or claim loaded protection. Native preflight requires actual
+Ubuntu24.04/systemd255/cgroup-v2, readable required controllers and writable ext4
+future ancestors traversable by the future non-root account. Local files/systemd
+NSS and both fixed account/group queries exclude foreign existing identities.
+The manager's complete unit search path and fixed namespace must be fresh;
+unknown existing roots, unit fragments or drop-ins refuse. Original manager
+unique owner/Version/UnitPath and caller/manager mount/PID/cgroup namespaces,
+boot/start identity, files/access/ancestors are reobserved after I/O. The original
+connection never reconnects. The live clock declares root as its writer and
+0644 read-only runtime access; its contents, inode and mtime are not frozen.
+State retains actual live time acceptance.
+
+Release alone may authenticate and advance its separate floors. Paths are checked
+before opening history, so these effects cannot create a requested runtime root.
+Initial provenance cannot be recreated once floors exist; candidate preflight
+supplies no first-install provenance. Cancellation denies the original caller,
+interrupts and joins manager/helpers, joins input borrowers and physical Close,
+and retains first failure plus independent cleanup errors. Every future mutation
+must perform fresh native admission; no observation is serialized permission.
 
 There is no stages 2–4 cycle. Committed State/source/processresource and original
 input custody support component checks now. Exact infrastructure verifier,

@@ -15,7 +15,7 @@ unchanged. Never use diagnostic keys as the operational release authority.
 ## Source infrastructure artifact component
 
 ADR-0123 accepts a distinct Source program and generation contract. Its isolated
-component uses the [four infrastructure commands](../reference/commands.md) in
+component uses the [infrastructure artifact commands](../reference/commands.md) in
 `ardents-next`, without installing a program, account, unit or Source process.
 Use the actual canonical compiled Linux-amd64 command bytes, publicly supplied
 Source unit-template bytes, a release identity and positive version to prepare
@@ -52,6 +52,34 @@ native resources. Native installation/startup and final supported command/tool
 cutover remain separate, as does the exact public bootstrap receipt requiring
 Product Owner acceptance before any future installed execution. Existing
 ADR-0120 releases and Endpoint inventories retain their scope.
+
+## Source read-only native preflight
+
+The separate `infrastructure preflight-initial` and `preflight-candidate`
+component commands consume the same genuine artifact admission in their original
+process, plus one root-controlled canonical Source preflight request. Their
+[technical owner](../technical/network-route-node.md#component-order-and-the-commandartifact-boundary)
+defines its exact fields and separates original source inputs from absent future
+installation, State, participation and credential destinations. No account,
+directory, credential, generation, selection or unit is created; no reload,
+start/stop/enable or Source runtime is invoked. Release authentication floor
+effects are separate and retained even when a later native check refuses.
+
+Run the registered `source-preflight-linux` profile only in its private finite
+Ubuntu24.04/systemd255/cgroup-v2/native-ext4 manager. The outside controller owns
+the common development exclusive lock; it supplies complete source manifest,
+canonical command and all three race test binary SHA-256 pins. The checked
+runner revalidates them before/after actual tests. Its private foreign account
+and unit fixtures are test prerequisites only and are never installed or run as
+Source. Missing manager identity, filesystem, namespace, binary or source pins
+is invalid environment. Preserve every earlier failure. See
+[testing](../development/testing.md) for the exact invocation and limitations.
+
+Success is a bounded read-only observation and transfers no native permission.
+Before any future mutation, repeat complete native admission. Credential delivery
+and initial stopped generation are separate selected boundaries. Before future
+isolated installed execution the exact bootstrap receipt still requires its
+separate Product Owner acceptance; preflight neither requires nor supplies it.
 
 ## Prepare exact public inputs
 

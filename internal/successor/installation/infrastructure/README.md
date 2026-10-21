@@ -1,10 +1,29 @@
-# Source artifact admission
+# Source artifact admission and read-only preflight
 
-This supporting Software acceptance owner implements only ADR-0123's Source
-artifact component. `artifact.go` owns canonical descriptor preparation and exact
+This supporting Software acceptance owner implements ADR-0123's Source
+artifact component and read-only native preflight. `artifact.go` owns canonical descriptor preparation and exact
 public program/template agreement. `admission.go` owns one coherent pair of fresh
 Release authorizations, the immutable handoff and retained original loader caller.
-It imports Enrollment and Release, never Endpoint Installation or runtime owners.
+It imports Enrollment and Release, never Endpoint Installation. `source_plan_linux.go` consumes only Source's pure serving-declaration codec, also used by the runtime command; Installation owns exact future-input matching and preflight admission. No runtime is constructed.
+`source_request_linux.go` owns a separate closed Source request and exact unit
+template/rendering. `source_observation_linux.go` retains original root-controlled
+request/plan/certificate/private-key/CA files and ancestors through joined Close.
+It consumes only the narrow fixed Source read-only systemd connection; this does
+not generalize Endpoint policy or grant manager mutation methods.
+
+The canonical `ardents-source-preflight-v1` request separates existing input
+sources from four absent future destinations: installation, State, participation
+and credential directory. It binds the existing Source plan's future credential
+names, literal unprivileged TCP address and exact process profile. Native checks
+observe Ubuntu24.04/systemd255, cgroup-v2, ext4 destination ancestors, local NSS
+and fresh fixed account/unit namespace. Root-owned 0644 live clock access is
+reobserved without freezing inode, mtime or contents; State retains time policy.
+The clock writer is root in this bounded request. Original manager Version and
+UnitPath plus complete absence rounds use one pinned unique owner without
+reconnect. Recheck original files/caller/Release after I/O and before observation.
+No State, Source, processresource runtime, listener or mutable root is opened.
+Absence grants no creation or readiness fact. Every future mutation must repeat
+its own native admission; credential delivery and stopped generation are separate.
 
 Enrollment alone supplies independently pinned initial provenance and the actual
 mapped-executable check. Initial admission requires empty Release floors and a
@@ -33,7 +52,8 @@ Signed metadata are explicitly supplied prerequisites, with controlled test
 authorities only in independent fixtures. Unit bytes are an exact public release
 resource; rendering and checking the fixed installed policy remain native
 Installation responsibilities. No account, manager, staging, installation,
-startup, Source listener or runtime history is opened here. Release's own native
+startup, Source listener or runtime history is opened here. The optional preflight
+consumer opens only read-only native observations. Release's own native
 floors are the only durable authentication effects.
 
 Current reference/technical/testing owners describe formats and checks. This

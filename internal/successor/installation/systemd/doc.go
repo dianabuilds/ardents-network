@@ -24,6 +24,11 @@
 // observations and command results grant no Release, process, join or startup
 // authority. Installation admits each effect and retains original pins/lease
 // until physical join; this Module never chooses or authorizes a generation.
+// SourcePreflight is a separate fixed read-only Source namespace consumer. Its
+// original connection observes Version/UnitPath and exact missing-unit responses,
+// without LoadUnit/RefUnit, mutation or reconnect. Copies share original caller,
+// denial and Close; actual manager users and cancellation callbacks join before
+// retained physical release. Source expected policy stays in infrastructure.
 package systemd
 
 import "errors"

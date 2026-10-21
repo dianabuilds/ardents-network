@@ -30,7 +30,7 @@ NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
 # Only the Node process suite may select an elevated system-scope runner.
 NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
-ifneq ($(filter source-process-check node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
+ifneq ($(filter source-preflight-check source-process-check node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
 # This native driver consumes independently built, pinned artifacts. Its host
 # needs the actual manager/kernel, not a second Go installation.
 HEADLESS_GOOS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -496,6 +496,11 @@ network-preparation-compile-check:
 	go test -c -tags network_preparation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-preparation.test" ./cmd/ardents-next
 
 .PHONY: network-signing-check network-signing-compile-check
+.PHONY: source-preflight-check
+source-preflight-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "source-preflight-check requires Ubuntu24.04/systemd255/cgroup-v2/native ext4 root"; exit 2)
+	python3 -I -S scripts/installation/run-source-preflight.py -timeout=3m
+
 network-signing-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-signing-check requires Linux root and root-controlled native ext4 TMPDIR"; exit 2)
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
@@ -506,3 +511,5 @@ network-signing-compile-check: export CGO_ENABLED := 0
 network-signing-compile-check:
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-signing.test" ./cmd/ardents-next
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/successor/installation/systemd
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/successor/installation/infrastructure
