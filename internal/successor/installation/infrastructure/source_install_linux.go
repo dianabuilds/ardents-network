@@ -40,6 +40,11 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	if err = errors.Join(input.IndependentPaths(distribution, history), a.Check(ctx, v)); err != nil {
 		return err
 	}
+	originalHistory, err := openSourceHistory(ctx, v, history)
+	defer func() { err = errors.Join(err, originalHistory.close()) }()
+	if err != nil {
+		return err
+	}
 	r := input.Declaration()
 	generation := digest(a.Descriptor())
 	unit, err := RenderSourceUnit(a.Template(), r, generation)
@@ -107,6 +112,10 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 		return err
 	}
 	files["binding.json"] = binding
+	historyCommitment, err := originalHistory.commitment(v, binding)
+	if err != nil {
+		return err
+	}
 	allowed := map[string]bool{}
 	for _, path := range []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.CredentialDirectory, base, dir, filepath.Join(r.InstallationRoot, "binding.json"), "/etc/systemd/system/ardents-source.service"} {
 		allowed[path] = true
@@ -117,7 +126,7 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	for _, name := range []string{"certificate.pem", "private-key.pem", "client-ca.pem"} {
 		allowed[filepath.Join(r.CredentialDirectory, name)] = true
 	}
-	if err = errors.Join(input.Check(), a.Check(ctx, v)); err != nil {
+	if err = errors.Join(input.Check(), originalHistory.check(v), a.Check(ctx, v)); err != nil {
 		return err
 	}
 	if _, err = manager.CheckAbsent(); err != nil {
@@ -134,12 +143,15 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	if err != nil {
 		return err
 	}
-	if err = births.record("admitted", r.InstallationRoot, nil, digest(binding), 0, account.uid, account.gid); err != nil {
+	if err = births.record("admitted", r.InstallationRoot, nil, historyCommitment, 0, account.uid, account.gid); err != nil {
 		return err
 	}
 	var bornAccount *sourceAccount
 	var reloadedNamespace map[string]os.FileInfo
 	check := func() error {
+		if e := originalHistory.check(v); e != nil {
+			return fmt.Errorf("original Source Release history: %w", e)
+		}
 		if e := manager.CheckOriginal(); e != nil {
 			return fmt.Errorf("original Source manager: %w", e)
 		}
@@ -190,7 +202,7 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 		if e := a.Check(ctx, v); e != nil {
 			return fmt.Errorf("final original Source Release: %w", e)
 		}
-		return errors.Join(manager.CheckOriginal(), ctx.Err())
+		return errors.Join(originalHistory.check(v), manager.CheckOriginal(), ctx.Err())
 	}
 	if err = check(); err != nil {
 		return err

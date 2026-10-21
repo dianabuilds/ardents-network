@@ -1649,6 +1649,19 @@ born identity precedes byte delivery/access promotion. File records bind exact
 intended public hashes or private local commitments, not exported credentials.
 The journal and private observations are never public receipts.
 
+The initial `admitted` record's private commitment binds the exact binding
+SHA-256 to the original canonical Release history path, native directory
+device/inode, mode and numeric owner/group. Its transcript is compact JSON plus
+LF, ordered `schema`, `binding_sha256`, `history`, `device`, `inode`, `mode`,
+`uid`, `gid`, with schema `ardents-source-initial-history-v1`; the record stores
+that transcript's SHA-256, not its private paths. Installation retains independent
+read-only directory/ancestor custody and checks the declared path against the
+actual original Release verifier around floor observations. Release alone keeps
+its lease, original directory/lock-file identities retained since opening, trust
+and floor policy. Substitution before Installation acquires its independent pins
+also refuses. Earlier stopped-only journals remain evidence;
+their different commitment cannot admit first startup or select another history.
+
 One fixed native `useradd` creates `ardents-source` with an unused, explicitly
 bound numeric UID/GID in 100..999, locked password, `/nonexistent`, nologin,
 no supplementary groups, home, subordinate IDs, mail spool or log initialization.

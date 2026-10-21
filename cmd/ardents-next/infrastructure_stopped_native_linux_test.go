@@ -473,6 +473,24 @@ func TestSourceStoppedNativeCompiledInitialAndRetainedRefusal(t *testing.T) {
 		t.Fatal(e)
 	}
 	assertSourceStoppedPrefix(t, before, "stopped-verified")
+	// Couple the genuine compiled transaction to its actual original history,
+	// independently of Installation's encoder and public stopped receipt.
+	historyInfo, e := os.Lstat(history)
+	if e != nil {
+		t.Fatal(e)
+	}
+	historyNative := historyInfo.Sys().(*syscall.Stat_t)
+	commitmentBytes := fmt.Sprintf(`{"schema":"ardents-source-initial-history-v1","binding_sha256":"%x","history":"%s","device":%d,"inode":%d,"mode":%d,"uid":%d,"gid":%d}`+"\n",
+		sha256.Sum256(bound), history, uint64(historyNative.Dev), historyNative.Ino, historyInfo.Mode().Perm(), historyNative.Uid, historyNative.Gid)
+	var admitted struct {
+		Phase, Path string
+		SHA256      string `json:"sha256"`
+	}
+	lines := bytes.Split(before, []byte("\n"))
+	if len(lines) < 3 || json.Unmarshal(lines[1], &admitted) != nil || admitted.Phase != "admitted" ||
+		admitted.Path != r.InstallationRoot || admitted.SHA256 != fmt.Sprintf("%x", sha256.Sum256([]byte(commitmentBytes))) {
+		t.Fatal("compiled initial admission did not bind its exact original history and selection")
+	}
 	if retryOut, e := exec.CommandContext(t.Context(), program, args...).CombinedOutput(); e == nil {
 		t.Fatal("retained floors/resources adopted", string(retryOut))
 	}

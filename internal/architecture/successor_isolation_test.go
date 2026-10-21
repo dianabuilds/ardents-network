@@ -68,6 +68,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/source_binding_linux.go",
 			"internal/successor/installation/infrastructure/source_binding_linux_test.go",
 			"internal/successor/installation/infrastructure/source_selection_linux.go",
+			"internal/successor/installation/infrastructure/source_directory_linux.go",
+			"internal/successor/installation/infrastructure/source_history_linux.go",
 			"internal/successor/installation/infrastructure/source_loaded_linux.go",
 			"internal/successor/installation/infrastructure/source_policy_linux_test.go",
 			"internal/successor/installation/systemd/source_stopped_linux.go",
@@ -76,6 +78,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/source_observation_linux_test.go",
 			"internal/successor/release/static_metadata.go",
 			"internal/successor/release/static_metadata_test.go",
+			"internal/successor/release/history_binding_linux.go",
+			"internal/successor/release/history_binding_linux_test.go",
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
 			if err != nil {

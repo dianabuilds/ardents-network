@@ -158,15 +158,12 @@ func (s *sourceSelection) pinDirectory(path string, mode os.FileMode, uid, gid u
 		}
 		return nil
 	}
-	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_DIRECTORY, 0)
+	f, info, err := openSourceDirectory(path, mode, uid, gid)
+	if f != nil {
+		s.dirs[path] = f
+	}
 	if err != nil {
 		return err
-	}
-	s.dirs[path] = f
-	info, err := f.Stat()
-	named, ne := os.Lstat(path)
-	if err != nil || ne != nil || !sourceAccess(info, mode, uid, gid, true) || !os.SameFile(info, named) || !sourceAccess(named, mode, uid, gid, true) {
-		return errors.Join(ErrBinding, err, ne)
 	}
 	s.identities[path] = info
 	return s.ctx.Err()
@@ -226,11 +223,8 @@ func (s *sourceSelection) observe() (err error) {
 	}
 	checkPaths := func() error {
 		for path, original := range s.identities {
-			now, e := s.dirs[path].Stat()
-			named, ne := os.Lstat(path)
-			st := original.Sys().(*syscall.Stat_t)
-			if e != nil || ne != nil || !os.SameFile(original, now) || !os.SameFile(original, named) || !sourceAccess(now, original.Mode().Perm(), st.Uid, st.Gid, true) || !sourceAccess(named, original.Mode().Perm(), st.Uid, st.Gid, true) {
-				return errors.Join(ErrBinding, e, ne)
+			if e := observeSourceDirectory(path, s.dirs[path], original); e != nil {
+				return e
 			}
 		}
 		for path, f := range s.files {

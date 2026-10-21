@@ -10,6 +10,9 @@ descriptor preparation/decoding, genuine initial/candidate authentication, opaqu
 immutable Authorization, closed SourceRequest/template rendering and original
 SourceInputs Check/Close and InstallInitialStoppedSource. Implementation retains descriptor/resource agreement,
 the canonical initial binding and independent read-only selected-file custody,
+the private binding/history commitment and separate native history-directory pins,
+with Release's Linux-only `CheckHistoryPath` matching the original verifier's
+declaration without lending its lease or root,
 fresh Release pair, original file/ancestor/caller custody and same-manager native
 observation, and the separate initial stopped account/credential/directory/generation/journal/selection/reload transition; no runtime/Start. Its exact permitted imports
 in production and tests are standard library, `internal/successor/enrollment`

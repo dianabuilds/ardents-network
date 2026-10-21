@@ -56,6 +56,15 @@ marker или floors любой верхней роли не создаёт init
 `FloorSet.Complete` принадлежит Release и проверяет наличие versions/digests
 всех четырёх ролей; retained opening и Installation используют одно правило.
 Полная detached проекция не аутентифицирует metadata и не выдаёт authorization.
+Linux-only `CheckHistoryPath` сопоставляет canonical declaration вызывающего с
+исходным Verifier, проверяет удерживаемые с открытия native directory и lock-file
+identities до и после чтения floors под его operation gate. Подмена до первого
+наблюдения Installation также отказывает; возврат pathname не снимает отказ.
+Он не выдаёт
+root, lease или authorization. Source Installation отдельно удерживает свои
+read-only native directory pins и private initial commitment; равные metadata
+в другом полном history не заменяют исходный путь. Целевые private proofs всё
+равно проверяются через `CheckAuthorizations`.
 Новый Installation аутентифицирует пару через реальные последовательные
 `Evaluate`; отказ второй оценки не возвращает floors первой.
 Installation сохраняет свою транзакцию и проверяет соответствие конкретных

@@ -38,6 +38,13 @@ bytes/access/ancestors/inventory, and retain cancellation plus an actual late
 Close failure. A permitted root-written clock replacement remains live evidence;
 its inode and timestamp are not frozen. These file checks grant no startup,
 Release or State authority and execute no Source runtime.
+The private admitted commitment also binds the original Release history path
+and native directory identity/access to that binding. Native controls reject a
+foreign verifier, directory/access substitution and held-observation cancellation
+with an actual late directory Close failure. An independent byte vector checks
+the private commitment; the genuine compiled installer separately uses complete
+authenticated floors. Linux Release tests distinguish two genuine equivalent
+histories without treating equal floors as the same original verifier/path.
 Pure vectors independently encode loaded protection and account preimage rules,
 including missing/wrong typed facts and changed native policy. Native refusal,
 cancellation/Close, sync uncertainty and process-cut coverage is part of the

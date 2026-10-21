@@ -75,6 +75,14 @@ directory descriptors. It rechecks original bytes, inode/access, complete invent
 and live clock writer/access policy, without freezing the clock inode or timestamp.
 The initial stopped transition consumes this separate readback before returning;
 neither file custody nor successful readback grants startup or State authority.
+`source_directory_linux.go` owns the shared physical read-only directory opening
+and original named/descriptor/access observation; its callers retain and close
+their own descriptors. `source_history_linux.go` independently pins only the
+original history directory and ancestors, checks its declaration against the
+actual Release verifier and commits that identity with the binding in the private
+initial journal. Release keeps all floor contents/policy and its separate lease.
+The native history commitment grants no first-start authority and changes neither
+the twelve-file inventory nor the immutable binding grammar.
 `source_loaded_linux.go` owns Source's complete loaded stopped-policy comparison;
 the separate systemd SourceStopped handle owns physical connection/cancellation,
 one explicit reload and detached complete typed observations. It grants no Start.

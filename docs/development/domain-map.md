@@ -219,7 +219,12 @@ caller/manager/Release checks and physical joins precede its bounded result.
 Release floor effects stay separately owned; no State/Source runtime is opened.
 The initial stopped transition owns fresh native admission, original account and
 credential/directory births, its closed initial journal, twelve-file immutable
-generation and selected fixed unit. The systemd adapter owns original physical
+generation and selected fixed unit. Its private initial admission also commits
+the exact binding to the original Release history declaration and native directory
+identity/access. Installation's independent read-only pins do not borrow Release's
+lease; Release matches its own original path, directory and lock-file identities
+retained from opening, and retains all trust/floor policy.
+The systemd adapter owns original physical
 manager custody, one explicit reload and complete typed loaded observations;
 Installation alone compares stopped policy. State and participation directories
 remain empty; their semantic owners receive no initialized contents or authority.
