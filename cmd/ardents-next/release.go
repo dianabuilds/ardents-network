@@ -44,7 +44,12 @@ func runRelease(ctx context.Context, args []string, out io.Writer) int {
 		return enrollmentReport(out, "release-unavailable", 1)
 	}
 	decision := verifier.Evaluate(ctx, in)
+	var handoffErr error
+	if proof, ok := decision.Authorization(); ok {
+		handoffErr = verifier.CheckAuthorizations(ctx, proof)
+	}
 	floors, floorErr := verifier.CurrentFloors(ctx)
+	floorErr = errors.Join(floorErr, handoffErr)
 	closeErr := verifier.Close()
 	if closeErr == nil && (errors.Is(decision.Err(), context.Canceled) || errors.Is(decision.Err(), context.DeadlineExceeded)) {
 		return enrollmentReport(out, "release-unavailable", 130)

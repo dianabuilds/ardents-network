@@ -1,5 +1,23 @@
 # Testing
 
+Source infrastructure artifact tests independently encode the exact descriptor
+and seven-file inventory, use real ordinary Release signatures and run a canonical
+compiled consumer from the identical enrolled program file. Linux command cases
+cover foreign actual executable, initial/candidate separation, retained no-update,
+wrong pin/local binding/target/resources/metadata/expiry, canonical/physical
+inventory refusal, rollback/conflict/reopen and original caller/Close handoff.
+Existing Endpoint/v3 and Release consumer positives/refusals remain separate.
+The existing `network-signing-linux` profile additionally selects
+`TestNetworkSigningInfrastructure*`: genuine public preparation to the compiled
+initial consumer, independent byte/digest oracles, original input/output mutation,
+cancellation plus native Close failure, retained partial output and a fresh
+healthy counterpart. Run that complete checked native profile with root-controlled
+private ext4 TMPDIR; missing prerequisites fail. Release owner race tests retain
+their genuine uncertainty/cancellation/floor-publication/reopen/physical-join
+controls. No test installs or starts an infrastructure role. Test signatures and
+independently supplied test pins are controlled fixtures, not operational trust,
+bootstrap acceptance or independent security validation.
+
 Forwarding resource discovery partitions out the separately registered Source
 profile as well as the four other receiving profiles. Its exact nine-test
 inventory and execution selector remain unchanged. Source's four native

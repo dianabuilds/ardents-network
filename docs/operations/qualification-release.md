@@ -12,6 +12,47 @@ selects this isolated operation. It does not qualify installation or independent
 distribution. The Release verifier and participant first-pin contract remain
 unchanged. Never use diagnostic keys as the operational release authority.
 
+## Source infrastructure artifact component
+
+ADR-0123 accepts a distinct Source program and generation contract. Its isolated
+component uses the [four infrastructure commands](../reference/commands.md) in
+`ardents-next`, without installing a program, account, unit or Source process.
+Use the actual canonical compiled Linux-amd64 command bytes, publicly supplied
+Source unit-template bytes, a release identity and positive version to prepare
+the descriptor in a fresh native output directory. Retain original protected
+inputs through physical output Close and readback. Preparation produces public
+unsigned bytes and grants no signing or trust authority.
+
+The normal Release metadata producer is an explicitly supplied prerequisite.
+It must describe `ardents/linux-amd64/node` and
+`ardents/linux-amd64/infrastructure/source` in one signed set under the existing
+five-key/ordinary-three-signature and rebuild policy. No new signer is supplied
+by this component. Assemble a separate seven-file public distribution with the
+program named `ardents-node-linux-amd64`, `ardents-source.service`,
+`infrastructure-source.json`, `root.json`, `timestamp.json`, `snapshot.json` and
+`targets.json`. Inventory preparation requires exactly those original regular
+files and writes its canonical document to another fresh output directory.
+The final distribution contains these seven files plus
+`infrastructure-enrollment.json`; no Endpoint companions or additional files.
+
+Deliver and verify the inventory SHA-256 independently before first execution.
+Running self-verification cannot establish independent trust in that first
+execution. The initial command must execute the identical enrolled file and use
+empty independent Release history. It verifies the pin before parsing and keeps
+original initial provenance in the same process as the coherent Release pair.
+After any floor exists, use only the candidate route with complete retained
+history. There is no fallback from missing history to an initial pin and no
+reset/conversion of Endpoint, Network or Release roots. Explicit reference time,
+environment and Network remain caller bindings, not distributor-selected facts.
+
+Success attests this bounded artifact check only. The public receipt carries
+digests and fresh program/generation outcomes; copying it transfers no proof.
+Retained template bytes do not attest rendered installed policy or current
+native resources. Native installation/startup and final supported command/tool
+cutover remain separate, as does the exact public bootstrap receipt requiring
+Product Owner acceptance before any future installed execution. Existing
+ADR-0120 releases and Endpoint inventories retain their scope.
+
 ## Prepare exact public inputs
 
 Build the five linux-amd64 commands twice from the exact recorded source tree

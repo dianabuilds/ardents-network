@@ -1,6 +1,7 @@
 package release
 
 import (
+	"context"
 	"crypto/sha256"
 	"time"
 )
@@ -153,6 +154,8 @@ type Authorization struct {
 
 type acceptedAuthorization struct {
 	decision Decision
+	owner    *Verifier
+	caller   context.Context
 }
 
 func (decision Decision) Authorization() (Authorization, bool) {

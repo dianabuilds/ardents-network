@@ -1,4 +1,5 @@
 github.com/dianabuilds/ardents-network/internal/endpoint/introduction
+github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure
 github.com/dianabuilds/ardents-network/internal/endpoint/source
 github.com/dianabuilds/ardents-network/internal/endpoint/service
 github.com/dianabuilds/ardents-network/internal/admission/stock

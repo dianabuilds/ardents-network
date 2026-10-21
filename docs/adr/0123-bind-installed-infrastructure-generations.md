@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-21
 ---
 
@@ -13,10 +13,11 @@ the fixed unit and private startup consumer all enforce that scope. A manifest
 Node companion is neither a Node Release authorization nor a Source generation.
 ADR-0120 authorizes its recorded qualification operation, not an unspecified
 infrastructure target or another bootstrap acceptance. No accepted decision
-currently supplies that extension. This proposal is **not accepted** and grants
-no installation, signing, execution or migration permission.
+previously supplied that extension. The Product Owner accepted this decision
+on 2026-10-21. Contract acceptance does not establish implementation,
+qualification or the separately required exact bootstrap acceptance.
 
-## Recommended decision
+## Decision
 
 1. Keep Release, Enrollment, Installation, Network, Source, Node and native
    process owners separate. Add a closed infrastructure generation contract,
@@ -30,7 +31,7 @@ no installation, signing, execution or migration permission.
    reinterpret either Endpoint target, overload Release custom fields, or
    derive successor permission from the initial pin or Node companion.
 3. Authenticate a canonical, finite descriptor and exact program/unit-template
-   bytes as specified by the [technical proposal](../technical/network-route-node.md#proposed-installed-infrastructure).
+   bytes as specified by the [technical contract](../technical/network-route-node.md#proposed-installed-infrastructure).
    Local configuration, runtime credentials, State and other mutable histories
    are separately bound installation inputs, never signed release resources.
    Resource-only change requires a strictly forward generation; a changed
@@ -66,8 +67,8 @@ Existing Endpoint bindings, journals and floors are neither converted nor
 reused. Native mechanism reuse requires explicit imports and new exact consumers;
 the fixed Endpoint policy is never treated as a generic infrastructure policy.
 
-Accept the extension only with explicit Product Owner decision; then verify
+The explicit Product Owner decision accepts the extension; implementation must verify
 independent byte oracles, wrong-target/pin/resource/coherence refusals, retained
 floors, initial provenance versus successor authority, exact native startup and
-interruption/recovery obligations from the technical proposal. Accepting this
-ADR would still neither select implementation nor qualify an installed system.
+interruption/recovery obligations from the technical contract. Acceptance of this
+ADR alone neither selects implementation nor qualifies an installed system.

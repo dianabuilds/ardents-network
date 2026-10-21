@@ -11,8 +11,9 @@ import (
 	"testing"
 )
 
-// Enrollment grammar and all portable behavior controls must be selected on
-// both platforms. Only concrete file ownership/open adapters have native tags.
+// Existing Endpoint/v3 Enrollment grammar and portable behavior controls remain
+// selected on both platforms. ADR-0123's separate Source artifact extension is
+// Linux-only and checked against its exact genuine consumer profile below.
 func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
 	directory := path.Join(repositoryRoot(t), "internal/successor/enrollment")
 	entries, err := os.ReadDir(directory)
@@ -27,6 +28,9 @@ func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
 		switch name {
 		case "file_unix.go", "file_unix_test.go", "file_windows.go", "file_unsupported.go":
 			continue
+		case "infrastructure_inventory.go", "infrastructure_inventory_test.go", "infrastructure_process_linux.go":
+			// This distinct inventory has no Windows accepting product path.
+			continue
 		}
 		for _, target := range []string{"windows", "linux"} {
 			profile := build.Default
@@ -37,6 +41,34 @@ func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
 			}
 			if !selected {
 				t.Errorf("portable Enrollment source %s excluded on %s", name, target)
+			}
+		}
+	}
+}
+
+func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, target := range []string{"linux", "windows", "darwin"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range []string{
+			"internal/successor/enrollment/infrastructure_inventory.go",
+			"internal/successor/enrollment/infrastructure_inventory_test.go",
+			"internal/successor/enrollment/infrastructure_process_linux.go",
+			"internal/successor/installation/infrastructure/doc.go",
+			"internal/successor/installation/infrastructure/artifact.go",
+			"internal/successor/installation/infrastructure/admission.go",
+			"internal/successor/installation/infrastructure/artifact_test.go",
+			"internal/successor/release/static_metadata.go",
+			"internal/successor/release/static_metadata_test.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := target == "linux"
+			if selected != want {
+				t.Errorf("native executable adapter %s on %s: %v, want %v", name, target, selected, want)
 			}
 		}
 	}
@@ -375,6 +407,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/execution/runtime":               {"execution", "execution/worker"},
 		"internal/successor/execution/worker":                {"installation/systemd", "installation/unit"},
 		"internal/successor/installation":                    {"enrollment", "release", "installation/request"},
+		"internal/successor/installation/infrastructure":     {"enrollment", "release"},
 		"internal/successor/installation/endpoint":           {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "installation/request", "installation/directory"},
 		"internal/successor/installation/cgroup":             {},
 		"internal/successor/installation/request":            {},
@@ -590,6 +623,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-next/installation.go" || source == "cmd/ardents-next/installation_test.go") && (dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/installation/endpoint" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
+		if (source == "cmd/ardents-next/infrastructure_linux.go" || source == "cmd/ardents-next/infrastructure_linux_test.go" || source == "cmd/ardents-next/infrastructure_caller_linux_test.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
+			return true
+		}
 		if source == "cmd/ardents-next/release_process_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
@@ -754,7 +790,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/successor/release/rotation_test.go" && (dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
-		if source == "cmd/ardents-next/release_process_test.go" && (dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+		if (source == "cmd/ardents-next/release_process_test.go" || source == "cmd/ardents-next/infrastructure_linux_test.go") && (dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
 		if (owner == "internal/successor/network/epoch" || owner == "internal/successor/network/state" || owner == "cmd/ardents-next") && dependency == modulePath+"/tests/epochfixture/network" {

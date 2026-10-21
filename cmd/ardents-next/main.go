@@ -20,6 +20,9 @@ func main() {
 }
 
 func run(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	if len(args) > 0 && args[0] == "infrastructure" {
+		return runInfrastructure(ctx, args[1:], out)
+	}
 	if len(args) > 0 && args[0] == "source" {
 		if len(args) > 1 && args[1] == "prepare-trust" {
 			return runSourcePreparation(ctx, args[1:], out)

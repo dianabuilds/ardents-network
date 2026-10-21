@@ -183,6 +183,20 @@ implementation defects in the current Module.
 
 ## Release and Update ownership
 
+[ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md) accepts
+distinct infrastructure program and invocation-generation targets. Infrastructure
+admission must consume two fresh coherent opaque authorizations from one frozen
+input; Release retains signature, policy, expiry and floor authority. This
+contract is implemented for the isolated Source artifact component in
+`installation/infrastructure`; native infrastructure installation remains
+unimplemented and existing Endpoint targets remain unchanged. Initial admission
+requires empty floors; complete retained history admits only the candidate path.
+`StaticMetadataFiles` projects only the three referenced URLs from fixed public
+metadata files, retaining the normal narrower metadata bounds and all signature
+and root-rotation checks. `CheckAuthorizations` reobserves original Release
+ownership, caller cancellation and unchanged floors at the pair's handoff;
+physical Close and uncertainty remain Release-owned refusals.
+
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects a protected Endpoint generation target in the same signed metadata set
 as the executable. The installation owner consumes two fresh coherent opaque

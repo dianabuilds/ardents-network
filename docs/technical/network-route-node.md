@@ -1418,7 +1418,9 @@ remain the source of readiness and typed product failure.
 
 ## Proposed installed infrastructure
 
-**Status: proposed extension, not accepted authority or implemented installation.**
+**Status: accepted contract under ADR-0123. The isolated Source artifact/admission
+component is implemented; infrastructure installed transitions and qualification
+remain unimplemented.**
 [ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md) isolates the
 consequential artifact, persisted binding and bootstrap decision. ADR-0119 and
 ADR-0120 retain their existing Endpoint/recorded-operation scope. This section
@@ -1478,7 +1480,7 @@ all roles; neither memory retention nor a self-signed leaf proves installation.
 | Hosting root and finite envelopes → new Hosting command/owner → Node/Route reservation checks | Real provider-period initialization and retained accounting exist. Installed root placement/protection is missing; a smaller workload never waives full-class coverage |
 | Receiving spends, Introduction history and Descriptor Store → actual receiving/Route/Reachability owners at original admitted startup → their own durable reopen rules | No separate provisioning task for every fixture root. Fresh-root creation and retained reopen are different operations; missing old floors cannot be repaired as empty. Installation supplies paths/access, never history bytes or successful ACK |
 | Issuer permission authority, RSA key/quota/results → purpose-specific new Allocation/Custody and Admission issuerprofile/issuance consumers (`issuer_profile*`, `issuance*`) → Admission + exact signed State profile | Their existing purpose-specific imported credentials and independent reviewed pins are explicit prerequisites. Installation does not generate/import private RSA, mint quota, accept Permission or turn a Node key into a permission authority |
-| Program, resources and initial provenance → Enrollment/Release/Installation | Current new Enrollment authenticates manifest-pinned Node/Custody companions outside Release metadata. `installation/generation_authentication.go` requires exact Endpoint targets and complete protected group. No infrastructure descriptor, coherent Node/Source pair, native binding/start/recovery consumer exists |
+| Program, resources and initial provenance → Enrollment/Release/Installation | Current new Enrollment authenticates manifest-pinned Node/Custody companions outside Release metadata. `installation/generation_authentication.go` requires exact Endpoint targets and complete protected group. The separate Source infrastructure descriptor, initial verifier and coherent pair now have an isolated consumer; no native infrastructure binding/start/recovery consumer exists |
 
 These rows account for the genuine provisioning outputs of the public preparation,
 Record/Epoch signing, profile signing, key, Source trust and Node certificate
@@ -1504,7 +1506,7 @@ consumers; they cannot delegate to a new binary or share live roots as a shortcu
 
 ### Proposed exact artifact and installation binding
 
-The following is a reviewable recommendation under ADR-0123, not an extension
+The following is the accepted contract under ADR-0123, not an extension
 of any existing accepting parser. Final commands are `ardents-node` for Source,
 the five duties and their Installation composition, `ardents-control` for public
 preparation/inspection, `ardents` for Endpoint and `ardents-custody` for its
@@ -1512,7 +1514,7 @@ existing purposes. Infrastructure initial verification and native transition
 must consume their opaque provenance/proofs in the same original command
 operation. A control-process public receipt cannot transfer those rights.
 
-The proposed `infrastructure-<invocation>.json` is UTF-8 compact JSON plus LF,
+The `infrastructure-<invocation>.json` is UTF-8 compact JSON plus LF,
 maximum 16 KiB, fields in this exact order: `schema`, `platform`,
 `release_identity`, `release_version`, `invocation`, `files`.
 Schema is `ardents-infrastructure-artifact-v1`; platform `linux-amd64`; version
@@ -1526,7 +1528,7 @@ Targets version/digest and all common local, release, policy and reference facts
 the program bytes and every resource are checked before any native mutation.
 Equal version/different descriptor refuses, including resource-only substitution.
 
-Proposed independent initial inventory is a separate
+The independent initial inventory is a separate
 `ardents-infrastructure-enrollment-v1` document, not enrollment-v3: exact ordered
 `schema`, `platform`, `release_identity`, `release_version`, `invocation`, `files`;
 the same scalar rules and canonical 16 KiB bound. `files` is a lexical map of
@@ -1538,10 +1540,15 @@ initial pin binds the entire enrollment document before parsing, and each named
 file is then verified. The running `ardents-node` must be the identical enrolled
 artifact. Independent distribution must verify its bytes before first execution;
 self-verification after launch cannot establish that provenance. A direct
-`ardents-node installation` consumer performs initial verification and transition
+final `ardents-node installation` consumer must perform initial verification and transition
 in the same root caller, and a separately admitted non-root invocation runs the
-selected Source. This is a new verifier contract requiring acceptance and independent
-oracles; existing v3/headless verification is left untouched. Later candidates
+selected Source. The isolated `ardents-next infrastructure` component now prepares
+and verifies the Source descriptor and `infrastructure-enrollment.json` inventory
+through new Enrollment/Release/infrastructure owners, without native installation.
+Existing v3/headless verification is left untouched. Metadata retain their narrower
+1 MiB per-file bound. Initial admission requires empty floors; once any floor
+exists it cannot mint initial provenance again. Original loader cancellation and
+the Release owner/floors are rechecked at immutable handoff. Later candidates
 have no first-pin provenance and require complete retained Release floors.
 
 Local Installation binding is root-controlled canonical bounded data, independently
@@ -1646,12 +1653,16 @@ development command now. It is not an installed tracer, installer or bootstrap
 acceptance. Its single implementation brief belongs in the execution ledger.
 
 After accepted infrastructure authority, the next distinct boundary is exact
-Source artifact authentication/read-only native preflight, then initial stopped
+Source read-only native preflight, then initial stopped
 generation and guarded startup with its finite interruption/recovery controls.
 Existing Endpoint native mechanisms may be reused through explicitly registered
 narrow seams, never by feeding Source into `endpoint` Request/Authorization or
 generalizing its fixed unit behind a boolean. Future code/package allowances
 require the normal complete architecture change, not this document.
+
+The separate Source artifact authentication component is implemented with a real
+compiled self-artifact consumer and public finite preparation; it grants no
+native preflight or installed permission. Other invocations remain refused.
 
 There is no stages 2–4 cycle. Committed State/source/processresource and original
 input custody support component checks now. Exact infrastructure verifier,
@@ -1697,7 +1708,7 @@ profile ownership before execution.
 
 | Invariant / owner | Real positive and causal refusal / independent oracle | Existing source and future required evidence |
 |---|---|---|
-| Exact program/generation, initial provenance and forward Release floors | Independently encode descriptor/enrollment bytes; verify identical target set and initial running artifact; alter every resource/target/version/pin/metadata input, partial and extra inventory, same-version different resources; prove refusal before native mutation and no floor decrease | `generation_authentication.go`, new Enrollment/Release and Endpoint pair tests are comparison mechanisms only. New infrastructure verifier/producer and native inventory evidence are required |
+| Exact program/generation, initial provenance and forward Release floors | Independently encode descriptor/enrollment bytes; verify identical target set and initial running artifact; alter every resource/target/version/pin/metadata input, partial and extra inventory, same-version different resources; prove refusal before native mutation and no floor decrease | `generation_authentication.go`, new Enrollment/Release and Endpoint pair tests are comparison mechanisms only. Source verifier/producer now have independent canonical/signature and compiled-consumer controls; native installed inventory evidence remains required |
 | Source original inputs / command | Genuine prepared trust and signed State serve LATEST/BY_DIGEST to actual clients. Replace/mutate/unlink plan/cert/key/CA/ancestor/access before listener and while I/O is held; deny before next effect, retain original cause and held Close, independent original root reopen only after join | Implemented development custody uses `source-process-linux` / `make source-process-check`, `source_*linux_test.go`, Source transport and State race suites. It supplies no installed input/startup binding; fixtures cannot supply those remaining mechanisms |
 | Exact installed native binding / Installation | Actual non-root fixed unit reaches independent startup and genuine Source response; substitute executable/argv/UID/GID/groups/unit/drop-in/plan/generation/manager/InvocationID/proc/cgroup and prove no Source/Node effect; root impostor/completion replay refused | Existing Endpoint native process/manager/completion mechanisms are reusable evidence of their own scope only. New Source/unit/account and two complete manager rounds must be observed on final artifacts |
 | State, time, TLS / Network and Source | Genuine prepare/sign/accept chain plus explicit external credential trust; actual mTLS verifies CA/name/EKU/key pins/live State clock and signed Epoch materializations. Wrong CA/key/pin/digest/index, stale clock, signed conflict/successor/expiry deny; original guards retained during blocked handlers | `network-signing-linux`, `source-process-linux`, native State/duty race, `source_preparation_process_linux_test.go`, `source_state_linux_test.go`. Independent test authorities/families are not operational bootstrap |

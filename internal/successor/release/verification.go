@@ -1,6 +1,7 @@
 package release
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"sync"
@@ -153,8 +154,51 @@ func (v *Verifier) Evaluate(ctx context.Context, in Inputs) Decision {
 		}())
 		decision = reject(outcomeReleaseUnavailable, "evaluation retired before handoff", err)
 	}
+	if decision.authorization != nil {
+		decision.authorization.owner = v
+		decision.authorization.caller = ctx
+	}
 	v.mu.Unlock()
 	return decision
+}
+
+// CheckAuthorizations reobserves this original verifier and its retained floors
+// at a composition handoff. It accepts only its own opaque results while their
+// original callers survive, never detached Decisions or a public receipt.
+// It performs native I/O under the operation gate, outside the state mutex.
+func (v *Verifier) CheckAuthorizations(ctx context.Context, proofs ...Authorization) error {
+	work, leave, err := v.enter(ctx)
+	if err != nil {
+		return err
+	}
+	defer leave()
+	if len(proofs) == 0 || len(proofs) > 2 {
+		return ErrTrustUnavailable
+	}
+	f, err := v.store.ReadFloors()
+	if err != nil {
+		return err
+	}
+	for _, proof := range proofs {
+		a := proof.accepted
+		if a == nil || a.owner != v || a.caller == nil {
+			return ErrTrustUnavailable
+		}
+		if err := a.caller.Err(); err != nil {
+			return err
+		}
+		d := a.decision.Floors
+		if d.RootVersion != f.RootVersion || d.TimestampVersion != f.TimestampVersion || d.SnapshotVersion != f.SnapshotVersion || d.TargetsVersion != f.TargetsVersion || !bytes.Equal(d.RootDigest, f.RootDigest) || !bytes.Equal(d.TimestampDigest, f.TimestampDigest) || !bytes.Equal(d.SnapshotDigest, f.SnapshotDigest) || !bytes.Equal(d.TargetsDigest, f.TargetsDigest) {
+			return ErrTrustUnavailable
+		}
+	}
+	err = errors.Join(ctx.Err(), work.Err())
+	v.mu.Lock()
+	if v.closed {
+		err = errors.Join(err, ErrClosed)
+	}
+	v.mu.Unlock()
+	return err
 }
 
 func freezeInputs(in Inputs) Inputs {

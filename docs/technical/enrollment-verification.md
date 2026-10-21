@@ -7,6 +7,21 @@ profile.
 
 ## Interface and ownership
 
+[ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md) accepts a
+separate closed infrastructure initial inventory and actual-running-program
+verifier. Its exact grammar belongs to the [infrastructure contract](network-route-node.md#proposed-exact-artifact-and-installation-binding).
+The isolated new owner implements this separate Source verifier through
+`ardents-next infrastructure authenticate-initial`. It does not extend the
+Endpoint/v3 inventory or turn a candidate into independent initial provenance.
+`infrastructure-enrollment.json` is pin-checked before parsing and binds exactly
+the seven public files. The snapshot retains original loader cancellation after
+all physical input descriptors join; Release/admission recheck it at handoff.
+Actual Linux mapped-executable inode and bytes must equal the enrolled program;
+same-looking paths or a copied public receipt cannot supply that result.
+This Source extension and its canonical byte oracles compile only on the selected
+Linux profile with their real consumer. Existing Endpoint/v3 grammar and tests
+remain portable; unsupported commands refuse before opening any artifact/history.
+
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects the protected distribution successor: one initial pin and bundle,
 unchanged Network v3 descriptor, and a complete protected resource group with

@@ -193,16 +193,22 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 
 ## Node composition: original lifetime boundary
 
-The [installed infrastructure proposal](../technical/network-route-node.md#proposed-installed-infrastructure)
+The [accepted installed infrastructure contract](../technical/network-route-node.md#proposed-installed-infrastructure)
 separately inventories the actual Source and five Node consumers, provisioning,
 external inputs, command/build/recovery callers and missing installed mechanisms.
 It preserves the actual owners below. Current Installation accepts Endpoint only;
 its fixed unit and program/generation pair do not admit Node/Source. Source has
 one command-owned original plan/certificate/key/CA file/ancestor lifetime; four Node roles retain
 loaded TLS material, while JOIN additionally reobserves original credential files.
-The proposed artifact/persisted/bootstrap extension is **not accepted**
-([ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md)); no new
-package, authority or realized installed result is recorded by that proposal.
+The separate artifact/persisted/bootstrap extension is **accepted**
+([ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md)); acceptance
+alone records no implemented or qualified result. The separate
+`internal/successor/installation/infrastructure` now implements only Source
+descriptor/public preparation and coherent artifact admission through
+`ardents-next infrastructure`; installed transitions remain absent. Enrollment
+owns initial-pin provenance, Release owns fresh exact-target authorization and
+floors, and infrastructure admission owns pair/resource coherence. Native
+Installation and the separately accepted exact bootstrap remain distinct gates.
 
 The process-resource owner applies the finite development CPU/I/O trend budget
 in the [native profile contract](../technical/network-route-node.md#forwarding-development-process-profile),

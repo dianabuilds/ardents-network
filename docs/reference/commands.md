@@ -1,5 +1,27 @@
 # Command reference
 
+The Linux-amd64 component commands below implement the Source artifact boundary
+under accepted ADR-0123 through direct new owners in `ardents-next`:
+
+- `infrastructure prepare-descriptor <release-identity> <positive-version> <program> <unit-template> <fresh-output>` writes `infrastructure-source.json`.
+- `infrastructure prepare-inventory <seven-file-directory> <fresh-output>` writes `infrastructure-enrollment.json`, after actual signed metadata are supplied.
+- `infrastructure authenticate-initial <distribution> <independent-inventory-pin> <new-release-history> <environment> <network> <reference-time>` checks its actual executing artifact and two fresh Release proofs.
+- `infrastructure authenticate-candidate <distribution> <retained-release-history> <environment> <network> <reference-time>` requires complete retained floors and supplies no initial-pin provenance.
+
+All paths are canonical absolute. Preparation retains root-controlled original
+files and private native-ext4 fresh output custody. Authentication refuses
+overlapping distribution/history paths and symlink history ancestors before
+effects, and uses the exact separate
+seven-file inventory plus its inventory document; metadata retain their 1 MiB
+per-file bound, descriptor/inventory 16 KiB, other artifacts 64 MiB. Reference
+time is explicit RFC3339. All other invocations/platforms refuse. Once Release
+floors exist, initial admission refuses; candidate authentication is the retained
+route. Public output reports artifact checksums and the two verification outcomes
+after joined Release Close, never serialized authorization or startup permission.
+See the [operation](../operations/qualification-release.md#source-infrastructure-artifact-component).
+These commands do not install or start Source, provide a metadata signer, replace
+independent first-distribution trust or establish supported `ardents-node` cutover.
+
 `ardents-next source prepare-trust <public-plan> <fresh-output>` performs one
 30-second offline public observation and prepares exactly two Sources and one
 client. All paths are canonical absolute. Its closed schema is
