@@ -70,6 +70,8 @@ def main():
         ("MANAGER_TEST", "internal/successor/installation/systemd", "^TestSource(StoppedNative|ObjectReply)", ["TestSourceObjectReplyRequiresExactOriginalTypedPath", "TestSourceStoppedNativeIdleOriginalManagerAndCopiedSingleReload", "TestSourceStoppedNativeCancellationJoinsHeldOriginalObservation", "TestSourceStoppedNativeIdleCancellationAndActualManagerLoss"]),
         ("COMMAND_TEST", "cmd/ardents-next", "^" + command_cases[case] + "$", [command_cases[case]]),
     ]
+    if case == "compiled":
+        tests.append(("OWNER_TEST", "internal/successor/installation/infrastructure", "^TestSourceInitialNative", ["TestSourceInitialNativeCompleteTranscriptAndCausalRefusals", "TestSourceInitialNativeHeldReadPreservesCancellationAndClose"]))
     for key, directory, selector, required in tests:
         source(root)
         binary = pinned(key)

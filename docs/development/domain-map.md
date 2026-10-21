@@ -224,6 +224,11 @@ the exact binding to the original Release history declaration and native directo
 identity/access. Installation's independent read-only pins do not borrow Release's
 lease; Release matches its own original path, directory and lock-file identities
 retained from opening, and retains all trust/floor policy.
+An independent root-only initial-transcript reader checks the complete canonical
+birth sequence and recorded Source-owned native resources; the stopped creator
+consumes it before returning its writer lease after native join. Historical
+account database effects are not immutable Source-owned host databases. Reading
+the transcript supplies no current-principal, fresh Release or Start authority.
 The systemd adapter owns original physical
 manager custody, one explicit reload and complete typed loaded observations;
 Installation alone compares stopped policy. State and participation directories

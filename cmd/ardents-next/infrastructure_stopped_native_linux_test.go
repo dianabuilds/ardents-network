@@ -501,6 +501,18 @@ func TestSourceStoppedNativeCompiledInitialAndRetainedRefusal(t *testing.T) {
 	if now, e := os.ReadFile(filepath.Join(r.InstallationRoot, "binding.json")); e != nil || !bytes.Equal(now, bound) {
 		t.Fatal("retry reset selection", e)
 	}
+	// The next checked owner cases independently consume this genuine complete
+	// transaction. This public path marker supplies no initial or Start right.
+	readback, e := json.Marshal(struct {
+		Binding string `json:"binding"`
+		History string `json:"history"`
+	}{filepath.Join(r.InstallationRoot, "binding.json"), history})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e := os.WriteFile(filepath.Join(os.Getenv("ARDENTS_SOURCE_STOPPED_FUTURE_PARENT"), "source-initial-readback.json"), append(readback, '\n'), 0600); e != nil {
+		t.Fatal(e)
+	}
 	t.Log("retained private stopped fixture", filepath.Dir(r.InstallationRoot))
 }
 

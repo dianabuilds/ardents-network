@@ -11,6 +11,8 @@ immutable Authorization, closed SourceRequest/template rendering and original
 SourceInputs Check/Close and InstallInitialStoppedSource. Implementation retains descriptor/resource agreement,
 the canonical initial binding and independent read-only selected-file custody,
 the private binding/history commitment and separate native history-directory pins,
+and the complete initial-record grammar plus independent root-only initial
+transcript/resource readback consumed by the stopped creator,
 with Release's Linux-only `CheckHistoryPath` matching the original verifier's
 declaration without lending its lease or root,
 fresh Release pair, original file/ancestor/caller custody and same-manager native

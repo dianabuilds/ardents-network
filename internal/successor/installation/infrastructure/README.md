@@ -83,6 +83,16 @@ actual Release verifier and commits that identity with the binding in the privat
 initial journal. Release keeps all floor contents/policy and its separate lease.
 The native history commitment grants no first-start authority and changes neither
 the twelve-file inventory nor the immutable binding grammar.
+`source_initial_records_linux.go` owns the complete canonical initial transcript
+grammar, including exact phase/order, intended resources and matching born/ready
+identities. `source_initial_linux.go` independently retains that root-only
+transcript, selected Source resources and original Release history. The initial
+stopped creator consumes this readback after its final record and returns its
+writer lease only after its observers/helpers join. This reader grants no Start,
+account or Release right; a future start separately admits the current principal
+and fresh proofs. Account database records describe the initial helper's history,
+not Source ownership of immutable host databases. State/participation contents
+remain with their semantic owners.
 `source_loaded_linux.go` owns Source's complete loaded stopped-policy comparison;
 the separate systemd SourceStopped handle owns physical connection/cancellation,
 one explicit reload and detached complete typed observations. It grants no Start.

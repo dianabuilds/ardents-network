@@ -33,6 +33,11 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 		return err
 	}
 	defer p.uses.Done()
+	// Return the initial writer lease only after all later native observers and
+	// helpers have physically joined. A future independent first-start reader
+	// must not overlap an initial creator still releasing its original users.
+	var births *sourceBirths
+	defer func() { err = errors.Join(err, births.close()) }()
 	ctx := p.ctx
 	if _, ok := a.InitialFacts(); !ok {
 		return ErrAuthorization
@@ -135,11 +140,8 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	if _, e := os.Lstat(journalPath); !os.IsNotExist(e) {
 		return errors.Join(ErrSourceRepairRequired, e)
 	}
-	births, err := openSourceBirths(ctx, journalPath, allowed)
+	births, err = openSourceBirths(ctx, journalPath, allowed)
 	started = births != nil && births.journal != nil
-	defer func() {
-		err = errors.Join(err, births.close())
-	}()
 	if err != nil {
 		return err
 	}
@@ -337,6 +339,17 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 		}
 	}
 	if err = births.record("stopped-verified", filepath.Join(r.InstallationRoot, "binding.json"), nil, digest(binding), 0644, 0, 0); err != nil {
+		return err
+	}
+	initial, err := openSourceInitial(ctx, v, filepath.Join(r.InstallationRoot, "binding.json"), history)
+	defer func() { err = errors.Join(err, initial.close()) }()
+	if err != nil {
+		return err
+	}
+	if err = check(); err != nil {
+		return err
+	}
+	if err = initial.check(); err != nil {
 		return err
 	}
 	return check()

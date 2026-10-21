@@ -1662,6 +1662,17 @@ and floor policy. Substitution before Installation acquires its independent pins
 also refuses. Earlier stopped-only journals remain evidence;
 their different commitment cannot admit first startup or select another history.
 
+The complete initial transcript contains exactly 112 canonical records for this
+closed inventory. Independent root-only readback consumes every phase in order,
+checks intended paths/bytes/access and matching born/ready identities, binds the
+original history commitment, and reobserves its own Source resource descriptors.
+The stopped creator performs this readback after `stopped-verified` and retains
+its writer lease until all native observers/helpers join. The reader neither
+borrows that lease nor grants creation, current account, Release or Start rights.
+Account database records retain historical helper evidence; they do not freeze
+foreign host databases across operations. A later start separately admits the
+current exact principal. State/participation contents remain semantic-owner data.
+
 One fixed native `useradd` creates `ardents-source` with an unused, explicitly
 bound numeric UID/GID in 100..999, locked password, `/nonexistent`, nologin,
 no supplementary groups, home, subordinate IDs, mail spool or log initialization.

@@ -45,6 +45,16 @@ with an actual late directory Close failure. An independent byte vector checks
 the private commitment; the genuine compiled installer separately uses complete
 authenticated floors. Linux Release tests distinguish two genuine equivalent
 histories without treating equal floors as the same original verifier/path.
+After the compiled positive completes, the runner discovers and executes the
+separate `TestSourceInitialNative` cases over that genuine retained transaction.
+Its root-only path marker is data selection, never birth or Start authority.
+These cases check the complete 112-record transcript and 24 Source-owned native
+resources, reject a foreign phase at every original sequence, malformed/torn or
+extra records and the earlier binding-only admission commitment, and retain
+original cancellation plus actual descriptor/Close failure across a held read.
+The initial writer also consumes this independent readback before its own return.
+Historical account database records do not become immutable Source-owned host
+databases; future first-start admission still needs the current exact principal.
 Pure vectors independently encode loaded protection and account preimage rules,
 including missing/wrong typed facts and changed native policy. Native refusal,
 cancellation/Close, sync uncertainty and process-cut coverage is part of the
