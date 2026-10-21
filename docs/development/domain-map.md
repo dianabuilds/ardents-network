@@ -196,17 +196,18 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 The [accepted installed infrastructure contract](../technical/network-route-node.md#proposed-installed-infrastructure)
 separately inventories the actual Source and five Node consumers, provisioning,
 external inputs, command/build/recovery callers and missing installed mechanisms.
-It preserves the actual owners below. Current Installation accepts Endpoint only;
-its fixed unit and program/generation pair do not admit Node/Source. Source has
+It preserves the actual owners below. Endpoint Installation's fixed unit and
+program/generation pair do not admit Node/Source. The separate Source component
+implements initial stopped installation with no startup or runtime admission. Source has
 one command-owned original plan/certificate/key/CA file/ancestor lifetime; four Node roles retain
 loaded TLS material, while JOIN additionally reobserves original credential files.
 The separate artifact/persisted/bootstrap extension is **accepted**
 ([ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md)); acceptance
 alone records no implemented or qualified result. The separate
-`internal/successor/installation/infrastructure` now implements only Source
+`internal/successor/installation/infrastructure` now implements Source
 descriptor/public preparation, coherent artifact admission and separate Source
-read-only native preflight through `ardents-next infrastructure`; installed
-transitions remain absent. Enrollment
+read-only native preflight and the bounded initial stopped transition through
+`ardents-next infrastructure`. Enrollment
 owns initial-pin provenance, Release owns fresh exact-target authorization and
 floors, and infrastructure admission owns pair/resource coherence. Native
 Installation and the separately accepted exact bootstrap remain distinct gates.
@@ -216,8 +217,16 @@ and absent future destinations are different declarations; absence grants no
 creation/readiness fact. Root, account and unit namespace observations, original
 caller/manager/Release checks and physical joins precede its bounded result.
 Release floor effects stay separately owned; no State/Source runtime is opened.
-Credential delivery, birth/journal/selection and startup remain separate owners'
-future effects, requiring their own fresh observations and acceptance.
+The initial stopped transition owns fresh native admission, original account and
+credential/directory births, its closed initial journal, twelve-file immutable
+generation and selected fixed unit. The systemd adapter owns original physical
+manager custody, one explicit reload and complete typed loaded observations;
+Installation alone compares stopped policy. State and participation directories
+remain empty; their semantic owners receive no initialized contents or authority.
+Failures retain partial prefixes and original joins, without adoption/reset,
+continuation or rollback. Startup remains a separate boundary, requiring fresh
+proofs and original process/barrier custody. This component supplies neither
+bootstrap acceptance nor installed runtime or operational qualification.
 
 The process-resource owner applies the finite development CPU/I/O trend budget
 in the [native profile contract](../technical/network-route-node.md#forwarding-development-process-profile),

@@ -167,6 +167,13 @@ func validText(value string, maximum int) bool {
 }
 
 func validateCredential(certificate tls.Certificate, observation bool) error {
+	if !observation {
+		return ValidateServingCredential(certificate)
+	}
+	return validateCredentialChain(certificate)
+}
+
+func validateCredentialChain(certificate tls.Certificate) error {
 	if len(certificate.Certificate) == 0 || len(certificate.Certificate) > 4 {
 		return errors.New("TLS certificate chain is incomplete")
 	}
@@ -183,12 +190,23 @@ func validateCredential(certificate tls.Certificate, observation bool) error {
 	if !ok || len(public) != ed25519.PublicKeySize {
 		return errors.New("TLS certificate key is not Ed25519")
 	}
-	if observation {
-		return nil
+	return nil
+}
+
+// ValidateServingCredential applies the same finite Ed25519 chain/private-pair
+// contract as serving, without opening a Source, accepting State or granting
+// handshake-time trust. The caller retains and erases its loaded private key.
+func ValidateServingCredential(certificate tls.Certificate) error {
+	if err := validateCredentialChain(certificate); err != nil {
+		return err
 	}
-	private, privateOK := certificate.PrivateKey.(ed25519.PrivateKey)
-	if !ok || !privateOK || len(private) != ed25519.PrivateKeySize ||
-		string(private.Public().(ed25519.PublicKey)) != string(public) {
+	leaf, err := x509.ParseCertificate(certificate.Certificate[0])
+	if err != nil {
+		return errors.New("TLS leaf certificate is invalid")
+	}
+	public, publicOK := leaf.PublicKey.(ed25519.PublicKey)
+	private, ok := certificate.PrivateKey.(ed25519.PrivateKey)
+	if !publicOK || !ok || len(private) != ed25519.PrivateKeySize || string(private.Public().(ed25519.PublicKey)) != string(public) {
 		return errors.New("TLS certificate key is not matching Ed25519")
 	}
 	return nil

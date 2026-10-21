@@ -1,5 +1,80 @@
 # Testing
 
+`source-stopped-linux` / `make source-stopped-check` is the separate initial
+stopped Source component profile. Its outside controller holds the same original
+development exclusive lock, builds an immutable full source snapshot with
+Go1.27.3 and canonical command flags, and supplies race-enabled owner/command
+test binaries built with `network_signing_native`, `-trimpath -buildvcs=false`.
+Set `ARDENTS_SOURCE_STOPPED_{COMMAND,OWNER_TEST,MANAGER_TEST,COMMAND_TEST,SOURCE_MANIFEST}` and
+each `_SHA256` to independently pinned absolute original files; set
+`ARDENTS_SOURCE_STOPPED_FUTURE_PARENT` to its root-controlled 0755 ext4 parent.
+TMPDIR is separate root-owned 0700 ext4. The immutable snapshot is mounted
+read-only as the runner's repository. The runner uses Python3.12 `-I -S` and
+only its fixed `-timeout=3m` argument. Missing prerequisites fail, never skip.
+
+Use a fresh private Ubuntu24.04/systemd255/cgroup-v2 rootfs with the exact
+`/etc/ardents-source-stopped-native-stand` marker
+`ardents-source-stopped-native-v1` plus LF and original manager container value
+`ardents-stopped`. Before account/unit effects, the outside controller verifies
+private rootfs, mount/PID/cgroup/UTS boundaries relative to its own outer stand;
+the runner and test independently match caller/manager namespaces. No host
+account, unit, hostname, limits or foreign workload may change. Each mutable
+scenario needs its own fresh stand, never deletion/reset of a retained partial
+installation to enable another run. Original driver/manager/children must join
+before the shared lock returns. Record native tool versions/integrity, full
+source and actual binary pins, loaded manager/account facts and bounded result
+outside Git. These same-controller test inputs prove no operational trust or
+independent families.
+
+The compiled positive directly obtains initial provenance and fresh Release
+proofs in its original process. Independent inventory/bytes/access/account,
+empty semantic-root, selected-binding and actual stopped manager oracles check
+the effects. The retained retry must preserve original journal/selection bytes.
+Pure vectors independently encode loaded protection and account preimage rules,
+including missing/wrong typed facts and changed native policy. Native refusal,
+cancellation/Close, sync uncertainty and process-cut coverage is part of the
+selected issue's acceptance, alongside the complete existing Source preflight,
+artifact, Endpoint/v3 and ordinary quick/full/hook gates. A prepared test or a
+narrow pass does not complete that matrix or installed Source startup.
+
+`ARDENTS_SOURCE_STOPPED_CASE` selects exactly `compiled` (default), `owner`,
+`cut`, `refusals` or `original`.
+The owner case relaunches the exact signed test executable from its enrolled
+inode to obtain genuine initial provenance and expose native causes locally;
+it does not qualify the product command. Each needs a fresh private manager.
+Native physical controls independently hold original inode admission, substitute
+the born leaf, retain an independent actual Close failure, inject uncertainty
+only after real fsync, and force an actual RLIMIT_FSIZE partial write. The
+manager cases retain copied one-reload state, a real idle-deadline regression,
+held original observation/cancellation/Close, and actual socket loss without
+reconnect. None supplies fake successful Release or runtime neighbors.
+The original case requires `ARDENTS_SOURCE_STOPPED_CONTROL` from
+`input-substitution`, `caller-cancellation`, `semantic-content`, `hook-substitution`.
+It causes actual original input replacement, SIGTERM cancellation, semantic-root
+content insertion or a forbidden useradd hook after durable admission, and
+requires refusal. Foreign bytes/hooks remain retained; a hook execution marker
+must stay absent. The refusals case covers mismatched runtime key, existing
+foreign journal and preexisting semantic root before any installation effect.
+Post-journal physical controls retire admission after real intent/born fsync and
+after body I/O, requiring no later birth/access promotion or ready record.
+The cut case additionally requires `ARDENTS_SOURCE_STOPPED_CUT_PHASE` from
+`account-intent`, `account-ready`, `directory-born`, `file-born`, `sealed`,
+`selected`, `reload-intent`. Each runs in its own fresh private manager. It kills
+the real compiled original process after observing the chosen durable phase,
+joins that child and verifies retained-history retry refusal without journal
+mutation. Its actual last complete phase may be later than the requested cut;
+neither the requested phase nor child Wait proves all-descendant completion.
+The outside original controller must join its complete private stand/cgroup
+before running the read-only `scripts/installation/inspect-source-cut.py` with
+Python `-I -S`, the original stand root and in-stand future parent. Record that
+join separately. The oracle checks retained signed inputs/history, complete
+recorded inode/bytes/access and empty semantic roots; torn/born-only prefixes
+remain uncertain repair-required. A process-cut marker additionally requires the
+actual last complete phase to equal its requested frontier; merely finding an
+earlier phase in history cannot qualify the requested uncertainty class. Foreign
+semantic-content controls separately require their exact inserted bytes retained.
+The oracle supplies no continuation or startup right.
+
 `source-preflight-linux` / `make source-preflight-check` is the separate checked
 read-only Source installation profile. It executes actual prebuilt race binaries
 under one finite private Ubuntu24.04/systemd255/cgroup-v2/native-ext4 manager,

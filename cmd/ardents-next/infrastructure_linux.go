@@ -45,12 +45,17 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		return 0
 	}
 	preflight := args[0] == "preflight-initial" || args[0] == "preflight-candidate"
+	installStopped := args[0] == "install-initial-stopped"
 	var source infrastructure.SourceInputs
-	if preflight {
-		if (args[0] == "preflight-initial" && len(args) != 8) || (args[0] == "preflight-candidate" && len(args) != 7) {
+	if preflight || installStopped {
+		if ((args[0] == "preflight-initial" || installStopped) && len(args) != 8) || (args[0] == "preflight-candidate" && len(args) != 7) {
 			return 2
 		}
-		original, cancel := context.WithTimeout(ctx, 30*time.Second)
+		duration := 30 * time.Second
+		if installStopped {
+			duration = 2 * time.Minute
+		}
+		original, cancel := context.WithTimeout(ctx, duration)
 		defer cancel()
 		ctx = original
 		var err error
@@ -62,6 +67,9 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		defer source.Close()
 		args = append([]string(nil), args[:len(args)-1]...)
 		args[0] = strings.Replace(args[0], "preflight-", "authenticate-", 1)
+		if installStopped {
+			args[0] = "authenticate-initial"
+		}
 	}
 	initial := args[0] == "authenticate-initial"
 	if (initial && len(args) != 7) || (!initial && (args[0] != "authenticate-candidate" || len(args) != 6)) {
@@ -79,7 +87,7 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if !independentInfrastructureHistory(args[1], history) {
 		return enrollmentReport(out, "infrastructure-paths-refused", 2)
 	}
-	if preflight && source.IndependentPaths(args[1], history) != nil {
+	if (preflight || installStopped) && source.IndependentPaths(args[1], history) != nil {
 		return enrollmentReport(out, "source-preflight-paths-refused", 2)
 	}
 	local := release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3+offset], Network: args[4+offset], RefTime: ref.UTC()}
@@ -139,6 +147,9 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if err == nil && preflight {
 		err = infrastructure.ObserveSource(v, a, source, args[1], history)
 	}
+	if err == nil && installStopped {
+		err = infrastructure.InstallInitialStoppedSource(v, a, source, args[1], history)
+	}
 	p, g := a.Targets()
 	pd, pok := p.AcceptedDecision()
 	gd, gok := g.AcceptedDecision()
@@ -149,6 +160,12 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	err = errors.Join(err, source.Close(), v.Close(), ctx.Err())
 	if err != nil {
 		return enrollmentReport(out, "infrastructure-authentication-refused", 1)
+	}
+	if installStopped {
+		if writeNetworkPreparationReceipt(ctx, out, []byte("{\"outcome\":\"source-initial-stopped-selected\"}\n")) != nil || ctx.Err() != nil {
+			return 1
+		}
+		return 0
 	}
 	if preflight {
 		if writeNetworkPreparationReceipt(ctx, out, []byte("{\"outcome\":\"source-read-only-preflight-observed\"}\n")) != nil || ctx.Err() != nil {

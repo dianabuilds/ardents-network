@@ -1,10 +1,10 @@
-# Source artifact admission and read-only preflight
+# Source artifact admission and bounded initial installation
 
 This supporting Software acceptance owner implements ADR-0123's Source
-artifact component and read-only native preflight. `artifact.go` owns canonical descriptor preparation and exact
+artifact component, read-only native preflight and initial stopped transition. `artifact.go` owns canonical descriptor preparation and exact
 public program/template agreement. `admission.go` owns one coherent pair of fresh
 Release authorizations, the immutable handoff and retained original loader caller.
-It imports Enrollment and Release, never Endpoint Installation. `source_plan_linux.go` consumes only Source's pure serving-declaration codec, also used by the runtime command; Installation owns exact future-input matching and preflight admission. No runtime is constructed.
+It imports Enrollment and Release, never Endpoint Installation. `source_plan_linux.go` consumes Source's pure serving-declaration codec and finite runtime credential-pair validation, also used by the runtime owner; Installation owns exact future-input matching, explicit delivery and preflight admission. No runtime is constructed.
 `source_request_linux.go` owns a separate closed Source request and exact unit
 template/rendering. `source_observation_linux.go` retains original root-controlled
 request/plan/certificate/private-key/CA files and ancestors through joined Close.
@@ -22,8 +22,8 @@ The clock writer is root in this bounded request. Original manager Version and
 UnitPath plus complete absence rounds use one pinned unique owner without
 reconnect. Recheck original files/caller/Release after I/O and before observation.
 No State, Source, processresource runtime, listener or mutable root is opened.
-Absence grants no creation or readiness fact. Every future mutation must repeat
-its own native admission; credential delivery and stopped generation are separate.
+Absence grants no creation or readiness fact. The separate initial transition
+repeats native admission before its own account, credential and generation births.
 
 Enrollment alone supplies independently pinned initial provenance and the actual
 mapped-executable check. Initial admission requires empty Release floors and a
@@ -52,11 +52,33 @@ Signed metadata are explicitly supplied prerequisites, with controlled test
 authorities only in independent fixtures. Unit bytes are an exact public release
 resource; rendering and checking the fixed installed policy remain native
 Installation responsibilities. No account, manager, staging, installation,
-startup, Source listener or runtime history is opened here. The optional preflight
+startup, Source listener or runtime history is opened by authentication. The optional preflight
 consumer opens only read-only native observations. Release's own native
 floors are the only durable authentication effects.
 
+`source_install_linux.go` owns one finite initial stopped transition through
+`install-initial-stopped`, directly consuming original initial provenance and
+fresh Release checks. `source_account_linux.go` owns the fixed native helper,
+database/auxiliary preimages, exact locked new identity and original helper join.
+`source_birth_linux.go` retains the exclusive journal, original born descriptors,
+finite exact effects, bytes/access and partial failures. These remain cohesive
+private responsibilities in this existing package: only Installation admits
+their phase/order and no generic mutation Interface is exported.
+`source_loaded_linux.go` owns Source's complete loaded stopped-policy comparison;
+the separate systemd SourceStopped handle owns physical connection/cancellation,
+one explicit reload and detached complete typed observations. It grants no Start.
+Input/destination ancestors remain original across reload. Manager generator
+output directories have separate fresh phase observations after the owned reload,
+while read-only preflight retains all of its original namespace pins.
+
+The initial journal, twelve-file sealed generation, exact selected binding and
+fixed unit are defined in the [technical owner](../../../../docs/technical/network-route-node.md#initial-stopped-source-persistence).
+Semantic State/participation directories remain empty. No failure removes a
+prefix, adopts foreign resources, resets floors, retries an uncertain birth or
+implements continuation. Account/helper and native manager observations do not
+constitute independent distribution trust or qualify an operational installation.
+
 Current reference/technical/testing owners describe formats and checks. This
 component neither establishes first-distribution trust before execution nor
-accepts a bootstrap receipt, installed generation, operator cutover or system
+accepts a bootstrap receipt, running Source, operator cutover or system
 qualification. Other five invocations have no accepting path.

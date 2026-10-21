@@ -5,4 +5,7 @@
 // state is acceptable. Its pure local serving-declaration codec is shared by
 // command composition and Installation's future-input matching; decoding grants
 // neither native preflight admission nor runtime authority.
+// ValidateServingCredential shares the existing pure finite Ed25519 chain/key
+// agreement policy with Installation's explicit runtime credential delivery;
+// it opens no Plan, clock, State, private signer or transport.
 package source

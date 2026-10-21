@@ -16,6 +16,83 @@ this release only; unverified exclusion is not release admission.
 
 ## Native Source preflight dependency renewal
 
+### Initial stopped Source mutation applicability
+
+Reviewed 2026-10-21 for the separate bounded initial stopped transition. This
+adds one fixed `useradd` invocation and original-manager D-Bus `Reload` and
+fixed Source `LoadUnit`/complete property observations. The previous read-only
+receipt is not acceptance of these mutations. No Go module version changes.
+The existing godbus v5.2.4 bounded decoder/private transport, same unique owner,
+original caller cancellation and joined Close remain required. SourceStopped
+has no arbitrary method/unit selector, reconnect, Start, Stop or enable API.
+The [systemd manager contract](https://www.freedesktop.org/software/systemd/man/255/org.freedesktop.systemd1.html),
+accessed 2026-10-21, distinguishes daemon `Reload` from service reload/restart
+and `LoadUnit` from Start. Actual systemd255 facts must verify the distinction.
+
+The native [Ubuntu Noble useradd contract](https://manpages.ubuntu.com/manpages/noble/man8/useradd.8.html),
+accessed 2026-10-21, defines system-account creation, locked default password,
+explicit numeric UID, user group, no home and no log initialization. System
+accounts do not allocate subordinate IDs without `-F`. This consumer additionally
+fixes gid range, nologin/home/comment, disables mail spool, refuses local account
+hooks and nonempty supplementary defaults, and checks exact database preimages
+and its resulting locked identity. The original fixed helper is joined under
+its creating locked OS thread, a new PID namespace and parent-death SIGKILL.
+The helper is namespace PID1; kernel teardown joins its descendants before init
+reap. Existing nscd/SSSD cache helper binaries refuse: the reviewed shadow
+[nscd](https://github.com/shadow-maint/shadow/blob/4.13/lib/nscd.c) and
+[SSSD](https://github.com/shadow-maint/shadow/blob/4.13/lib/sssd.c) mechanisms can
+spawn those fixed commands, whose cache mutations are outside this finite
+local-files account contract. Hook-directory absence/original inode/access and
+emptiness are reobserved before helper admission and through final custody.
+Native helper failure
+is retained uncertainty, never adoption or permission to repeat a birth.
+
+`passwd`/shadow, login, libc/NSS, libaudit, libcrypt, PAM and SELinux helper
+dependencies belong to Ubuntu's signed native packages; they are not a new Go
+runtime dependency or identity authority. Their license/support and current
+security acceptance require the actual stand package inventory, binary/library
+closure, package-integrity/security-update and scoped advisory evidence with
+each final native receipt. [Ubuntu's package inventory](https://packages.ubuntu.com/noble/passwd)
+identifies that native closure; release support alone or a module-only Go scan
+cannot qualify it. Existing scoped OpenPGP non-applicability likewise supplies
+no native-mutation exemption. Native/race and vulnerability results remain
+acceptance evidence in the selected issue; this registration is not a PASS.
+
+The exact-use native renewal retains Ubuntu `passwd`/login
+`1:4.13+dfsg1-4ubuntu3.2`, libc `2.39-0ubuntu8.7`, systemd/libnss-systemd
+`255.4-1ubuntu8.14` and dbus `1.14.10-4ubuntu4.1`. These are not claimed as the
+latest available patches. Capture actual linked-library/file/package integrity,
+native configuration, disabled services and tool source/binary closure with
+each final receipt. Reproduce the following scoped applicability; no severity
+or empty scanner result substitutes for it:
+
+| Known native finding / primary source accessed 2026-10-21 | Bounded stopped-transition applicability |
+|---|---|
+| [shadow CVE-2024-56433](https://ubuntu.com/security/CVE-2024-56433), subordinate-ID defaults | Fixed `--system` without `-F` bypasses subordinate-ID allocation in the reviewed useradd source. No subuid/subgid file is opened for mutation; no user namespace mapping helper is invoked |
+| [shadow CVE-2019-19882](https://ubuntu.com/security/CVE-2019-19882), setuid account tools | Ubuntu explicitly compiles with `--disable-account-tools-setuid`. Original helper is root-controlled and set-id files refuse. No arbitrary user authentication/PAM ceremony is selected |
+| [systemd USN-8119-1](https://ubuntu.com/security/notices/USN-8119-1) | Installed `.14` contains the cgroup-path and udev security fixes. New Source operations retain fixed original manager/path and never supply an arbitrary cgroup path |
+| [systemd CVE-2026-40226](https://lists.ubuntu.com/archives/noble-changes/2026-June/056564.html), fixed in `.16` | systemd-nspawn is absent and never used. The stand uses original unshare/chroot and a separately verified private rootfs/namespace/cgroup, with no nspawn settings, BindUser, Ephemeral or pivot_root input |
+| [systemd USN-8626-1](https://ubuntu.com/security/notices/USN-8626-1), newer `.17` | Affected homed/oomd and the newer-release machined paths are not started or consumed. The private minimal target starts only its manager/system bus; NSS admits only files/systemd with no homed/userdb service. No home records, login, polkit operation or pressure-kill IPC is selected |
+| [glibc USN-8611-1](https://ubuntu.com/security/notices/USN-8611-1): CVE-2026-4046, -4437, -4438, -5435, -5450, -5928, -6238 | IBM iconv conversions, DNS/reverse-DNS/debug-print records, wide-character ungetwc and scanf `%mc` with width greater than1024 are outside this finite call/input contract. Native arguments/configuration are fixed ASCII; useradd uses C locale, NSS contains no DNS backend, and the stand has private network with no external protocol input. Verify original helper/configuration and dynamic closure; product commands are Go no-cgo. This does not qualify general host libc use |
+| [PAM USN-8601-1](https://lists.ubuntu.com/archives/ubuntu-security-announce/2026-July/010963.html), CVE-2026-54411 | No PAM userdb/password comparison or repeated authentication is invoked. Source is never started, useradd's Ubuntu account-tools build omits that setuid/PAM path, and the private target supplies no login/PAM service |
+
+Actual useradd ELF linkage is libaudit, libselinux, libsemanage, libc, libcap-ng,
+PCRE2, libsepol, bzip2 and the original loader; it has no direct PAM dependency.
+The broader manager/bus/interpreter closure does link PAM, cryptographic,
+compression, XML and protection libraries, so it must be inventoried separately.
+Those links grant no use of their unselected protocols or inputs. Native
+package integrity covers every owner of the actual linked files, not merely
+the useradd package or a nominal dependency list. Preserve exact hashes,
+versions, copyright files and excluded-helper observations with that receipt.
+
+The shadow and ordinary Ubuntu native-library licenses remain those of their
+package-owned copyright files; record the actual files with the closure rather
+than assuming one license for the whole passwd package. These are existing OS
+prerequisites, not vendored or newly distributed Go libraries. The Product Owner
+and Codex own renewal before a changed native surface, configuration or advisory.
+Any operational/full-host use needs its own current patch acceptance; this review
+admits only the declared isolated stopped-transition profile.
+
 Reviewed 2026-10-21 before changing the module graph. The Source read-only
 preflight adds a third narrow consumer of the existing private godbus mechanism,
 `installation/systemd/source_preflight_linux.go`. It uses only fixed read-only

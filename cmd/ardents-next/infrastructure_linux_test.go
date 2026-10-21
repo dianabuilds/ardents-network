@@ -60,6 +60,11 @@ func TestInfrastructureCompiledRejectsOverlappingHistory(t *testing.T) {
 // ordinary 3-of-5 signatures, without product preparation/descriptor codecs.
 func infrastructureDistribution(t *testing.T, binary []byte, authority *consumerReleaseAuthority, version int64, mutate func(map[string]*metadata.TargetFiles), unitOverride ...[]byte) (string, string, map[string][]byte) {
 	t.Helper()
+	return infrastructureDistributionRoot(t, t.TempDir(), binary, authority, version, mutate, unitOverride...)
+}
+
+func infrastructureDistributionRoot(t *testing.T, parent string, binary []byte, authority *consumerReleaseAuthority, version int64, mutate func(map[string]*metadata.TargetFiles), unitOverride ...[]byte) (string, string, map[string][]byte) {
+	t.Helper()
 	expires := infrastructureReference.Add(365 * 24 * time.Hour)
 	if authority == nil {
 		authority = newConsumerReleaseAuthority(t, expires)
@@ -124,7 +129,7 @@ func infrastructureDistribution(t *testing.T, binary []byte, authority *consumer
 		t.Fatal(err)
 	}
 	files := map[string][]byte{"ardents-node-linux-amd64": binary, "ardents-source.service": unit, "infrastructure-source.json": descriptor, "root.json": authority.rootBytes, "timestamp.json": ts, "snapshot.json": sb, "targets.json": tb}
-	directory := filepath.Join(t.TempDir(), "distribution")
+	directory := filepath.Join(parent, "distribution")
 	if err := os.Mkdir(directory, 0700); err != nil {
 		t.Fatal(err)
 	}

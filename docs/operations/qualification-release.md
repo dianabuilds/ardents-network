@@ -81,6 +81,28 @@ and initial stopped generation are separate selected boundaries. Before future
 isolated installed execution the exact bootstrap receipt still requires its
 separate Product Owner acceptance; preflight neither requires nor supplies it.
 
+## Initial stopped Source component
+
+The separate `ardents-next infrastructure install-initial-stopped` consumes the
+initial independently pinned distribution, two coherent fresh Release proofs and
+the canonical Source request in the same original root process. It repeats native
+admission; an earlier authentication/preflight receipt transfers no permission.
+Use only the registered `source-stopped-linux` private native profile for this
+component's qualification. It creates the fresh locked account, explicit runtime
+credential delivery, empty semantic directories, sealed twelve-file generation,
+selected binding and fixed unit, then performs one daemon reload and compares
+actual complete loaded stopped policy. It never starts or enables Source.
+
+Preserve the original signed inputs, independent Release history and
+`<installation_root>.source-initial-journal`, including every failed prefix.
+An ambiguous or interrupted operation requires repair; this component supplies
+no repair/adoption/rollback/continuation command. Do not remove an account, journal,
+floor, unit or generation to retry. The journal contains private local observations
+and must remain outside public receipts. A successful bounded stopped outcome
+does not accept the exact bootstrap receipt or permit installed execution; those
+remain separately admitted gates. See the [technical schema](../technical/network-route-node.md#initial-stopped-source-persistence)
+and [checked profile](../development/testing.md) for ownership and evidence.
+
 ## Prepare exact public inputs
 
 Build the five linux-amd64 commands twice from the exact recorded source tree

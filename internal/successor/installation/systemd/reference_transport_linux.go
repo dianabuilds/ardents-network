@@ -217,6 +217,16 @@ func verifyManagerFrame(frame []byte, owner string, properties bool) error {
 	if properties && frame[1] == 2 && owner != "" && sender == owner && (sig == "v" || sig == "a{sv}") {
 		return verifyManagerValues(frame, int(bodyStart), sig, order)
 	}
+	// SourceStopped's one fixed LoadUnit returns this exact object path. This
+	// closed native reply extension grants no method selector or accepting fact
+	// to preflight/Startup: their own required error/dictionary checks remain.
+	if properties && frame[1] == 2 && owner != "" && sender == owner && sig == "o" {
+		object, pos, err := referenceScalar(frame, int(bodyStart), len(frame), 'o', order)
+		if err != nil || pos != len(frame) || object != "/org/freedesktop/systemd1/unit/ardents_2dsource_2eservice" {
+			return ErrObservation
+		}
+		return nil
+	}
 	if sig == "" {
 		if blen != 0 || frame[1] != 2 {
 			return ErrObservation

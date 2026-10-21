@@ -9,6 +9,7 @@ under accepted ADR-0123 through direct new owners in `ardents-next`:
 - `infrastructure authenticate-candidate <distribution> <retained-release-history> <environment> <network> <reference-time>` requires complete retained floors and supplies no initial-pin provenance.
 - `infrastructure preflight-initial <distribution> <independent-inventory-pin> <new-release-history> <environment> <network> <reference-time> <source-request>` performs initial artifact admission and Source read-only native preflight in the same original caller.
 - `infrastructure preflight-candidate <distribution> <retained-release-history> <environment> <network> <reference-time> <source-request>` uses complete retained floors and adds no initial provenance.
+- `infrastructure install-initial-stopped <distribution> <independent-inventory-pin> <new-release-history> <environment> <network> <reference-time> <source-request>` performs original initial authentication, fresh native admission, exclusive account/input/root/generation/journal creation, selection, fixed Source unit publication, one reload and actual loaded stopped-policy verification. It returns only `source-initial-stopped-selected` after original users and physical Close join. Any retained history or partial prefix refuses a new initial attempt; no adoption, reset, rollback, continuation or Start is provided.
 
 All paths are canonical absolute. Preparation retains root-controlled original
 files and private native-ext4 fresh output custody. Authentication refuses
@@ -21,8 +22,9 @@ floors exist, initial admission refuses; candidate authentication is the retaine
 route. Public output reports artifact checksums and the two verification outcomes
 after joined Release Close, never serialized authorization or startup permission.
 See the [operation](../operations/qualification-release.md#source-infrastructure-artifact-component).
-These commands do not install or start Source, provide a metadata signer, replace
-independent first-distribution trust or establish supported `ardents-node` cutover.
+Only `install-initial-stopped` performs the bounded stopped installation effects;
+none starts Source, provides a metadata signer, replaces independent
+first-distribution trust or establishes supported `ardents-node` cutover.
 
 The preflight variants additionally require Linux root on the selected
 Ubuntu24.04/systemd255/cgroup-v2/native-ext4 stand and the exact canonical

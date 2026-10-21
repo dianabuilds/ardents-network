@@ -38,7 +38,7 @@ func sourcePreflightCommand(t *testing.T) []byte {
 	return raw
 }
 
-func sourcePreflightFixture(t *testing.T) (infrastructure.SourceRequest, string) {
+func sourcePreflightFixture(t *testing.T, retain ...bool) (infrastructure.SourceRequest, string) {
 	t.Helper()
 	base := os.Getenv("ARDENTS_SOURCE_PREFLIGHT_FUTURE_PARENT")
 	if !filepath.IsAbs(base) || os.Geteuid() != 0 {
@@ -53,11 +53,13 @@ func sourcePreflightFixture(t *testing.T) (infrastructure.SourceRequest, string)
 	if err = os.Chmod(parent, 0755); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := os.RemoveAll(parent); err != nil {
-			t.Error(err)
-		}
-	})
+	if len(retain) == 0 {
+		t.Cleanup(func() {
+			if err := os.RemoveAll(parent); err != nil {
+				t.Error(err)
+			}
+		})
+	}
 	inputs := filepath.Join(parent, "inputs")
 	if err = os.Mkdir(inputs, 0700); err != nil {
 		t.Fatal(err)

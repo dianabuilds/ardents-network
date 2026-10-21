@@ -1418,9 +1418,9 @@ remain the source of readiness and typed product failure.
 
 ## Proposed installed infrastructure
 
-**Status: accepted contract under ADR-0123. The isolated Source artifact/admission
-component is implemented; infrastructure installed transitions and qualification
-remain unimplemented.**
+**Status: accepted contract under ADR-0123. Source artifact/admission, read-only
+preflight and the bounded initial stopped transition have direct component
+consumers. Source startup and installed qualification remain separate.**
 [ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md) isolates the
 consequential artifact, persisted binding and bootstrap decision. ADR-0119 and
 ADR-0120 retain their existing Endpoint/recorded-operation scope. This section
@@ -1480,7 +1480,7 @@ all roles; neither memory retention nor a self-signed leaf proves installation.
 | Hosting root and finite envelopes → new Hosting command/owner → Node/Route reservation checks | Real provider-period initialization and retained accounting exist. Installed root placement/protection is missing; a smaller workload never waives full-class coverage |
 | Receiving spends, Introduction history and Descriptor Store → actual receiving/Route/Reachability owners at original admitted startup → their own durable reopen rules | No separate provisioning task for every fixture root. Fresh-root creation and retained reopen are different operations; missing old floors cannot be repaired as empty. Installation supplies paths/access, never history bytes or successful ACK |
 | Issuer permission authority, RSA key/quota/results → purpose-specific new Allocation/Custody and Admission issuerprofile/issuance consumers (`issuer_profile*`, `issuance*`) → Admission + exact signed State profile | Their existing purpose-specific imported credentials and independent reviewed pins are explicit prerequisites. Installation does not generate/import private RSA, mint quota, accept Permission or turn a Node key into a permission authority |
-| Program, resources and initial provenance → Enrollment/Release/Installation | Current new Enrollment authenticates manifest-pinned Node/Custody companions outside Release metadata. `installation/generation_authentication.go` requires exact Endpoint targets and complete protected group. The separate Source infrastructure descriptor, initial verifier and coherent pair now have an isolated consumer; no native infrastructure binding/start/recovery consumer exists |
+| Program, resources and initial provenance → Enrollment/Release/Installation | Current new Enrollment authenticates manifest-pinned Node/Custody companions outside Release metadata. `installation/generation_authentication.go` requires exact Endpoint targets and complete protected group. The separate Source infrastructure descriptor, initial verifier and coherent pair now have an isolated consumer; the separate bounded Source initial stopped transition now selects its own binding; infrastructure startup/recovery remain absent |
 
 These rows account for the genuine provisioning outputs of the public preparation,
 Record/Epoch signing, profile signing, key, Source trust and Node certificate
@@ -1488,7 +1488,7 @@ changes. Isolated State/Admission/family fixtures used by their tests are not
 additional product authorities. External credentials/trust/time remain explicit
 operator inputs. Source infrastructure artifact admission is implemented through
 the separate Enrollment/Release/infrastructure consumer. The remaining missing
-mechanisms are installed transition/startup,
+mechanisms are installed startup/continuation,
 command/tool cutover, and source-matched final evidence; not a speculative PKI.
 
 Reverse consumers matter. `cmd/ardents-next/main.go` directly dispatches all six
@@ -1545,7 +1545,7 @@ final `ardents-node installation` consumer must perform initial verification and
 in the same root caller, and a separately admitted non-root invocation runs the
 selected Source. The isolated `ardents-next infrastructure` component now prepares
 and verifies the Source descriptor and `infrastructure-enrollment.json` inventory
-through new Enrollment/Release/infrastructure owners, without native installation.
+through new Enrollment/Release/infrastructure owners. Its separate initial stopped consumer repeats fresh native admission before account, delivery and selection effects.
 Existing v3/headless verification is left untouched. Metadata retain their narrower
 1 MiB per-file bound. Initial admission requires empty floors; once any floor
 exists it cannot mint initial provenance again. Original loader cancellation and
@@ -1623,6 +1623,93 @@ UID/access and same-inode transfer without silently copying offline authority;
 this is an Installation input-custody effect, not a new PKI or Custody authority.
 
 ### Proposed lifecycle and effect admission
+
+#### Initial stopped Source persistence
+
+`ardents-next infrastructure install-initial-stopped` consumes the original
+initial Enrollment provenance, the two fresh coherent Release authorizations
+and original Source request/input custody in one root operation. It has no
+candidate/recovery/Start form. Its four destination parents must already exist
+and satisfy preflight custody; implicit parent creation is refused. The earlier
+read-only request grammar and absence checks remain unchanged.
+
+The exclusive root-only file `<installation_root>.source-initial-journal` is
+both this operation's original native lease and its append-only initial journal.
+An existing journal refuses, including when its installation root is absent.
+It is never reopened as a new initial operation. Each record is compact JSON
+plus LF, in the ordered fields `sequence`, `phase`, `path`, `device`, `inode`,
+`sha256`, `mode`, `uid`, `gid`. Sequence starts at zero. Records distinguish
+`initial`, `admitted`, `account-preimage`, `account-auxiliary-preimage`,
+`account-intent`, `account-born`, `account-auxiliary-result`,
+`account-auxiliary-cleared`, `account-ready`,
+`directory-intent`, `directory-born`, `directory-ready`, `file-intent`,
+`file-born`, `file-ready`, `seal-intent`, `sealed`, `selected`, `reload-intent`
+and `stopped-verified`. Intent is synced before the exclusive native effect;
+born identity precedes byte delivery/access promotion. File records bind exact
+intended public hashes or private local commitments, not exported credentials.
+The journal and private observations are never public receipts.
+
+One fixed native `useradd` creates `ardents-source` with an unused, explicitly
+bound numeric UID/GID in 100..999, locked password, `/nonexistent`, nologin,
+no supplementary groups, home, subordinate IDs, mail spool or log initialization.
+The original helper and its fixed configuration are pinned; local hooks and
+nonempty supplementary-group defaults refuse. A successful original helper,
+exact unchanged foreign database bytes, one exact added locked account/group
+and retained post-effect native observations establish this operation's birth.
+Public passwd rows cannot adopt an existing account. Helper failure or ambiguous
+account completion preserves the original journal as repair-required.
+Hook absence or original directory inode/access/emptiness remains pinned and
+reobserved before helper admission and through completion. Installed nscd or
+SSSD cache helpers refuse; their effects are outside this local-files contract.
+The helper is PID1 of its own new PID namespace, with original-caller cancellation
+and parent-death SIGKILL; kernel namespace teardown joins descendants before init
+reap. Database backups, the password lock and fixed PID1 temporary lock names are
+separately recorded and checked. This is not a claim that useradd never forks.
+
+Installation creates only empty runtime-owned 0700 State and participation
+directories. Their semantic owners initialize/accept their contents in a later
+separately admitted operation. A root-owned 0755 credential directory receives
+the exact original public certificate/CA as 0444 root files and the explicit
+runtime TLS private key as a fresh runtime-owned 0600 file. Source's existing
+certificate/private-pair agreement is checked before birth; this is no offline
+authority import, PKI, State acceptance or handshake-time trust permission.
+
+The selected generation identity is the Source descriptor SHA-256. Its closed
+twelve-file inventory is the original eight-file infrastructure distribution,
+`source-plan.json`, `source-request.json`, `binding.json` and
+`rendered-source.service`. Files are root-owned 0444, except the actual program
+0555; the completed generation directory is sealed 0555. No Endpoint fifteen-file
+inventory or journal is extended. Each original inode, bytes, access and complete
+inventory remains reobserved across subsequent effects.
+
+`ardents-source-binding-v1` is compact JSON plus LF, at most 32 KiB. Ordered
+fields are `schema`, `invocation`, `generation`, `predecessor`, `request_sha256`,
+`program_target`, `generation_target`, `program_sha256`, `template_sha256`,
+`inventory_sha256`, `targets_sha256`, `plan_sha256`, `unit_sha256`, `account`,
+`uid`, `gid`, `request`. Initial predecessor is empty; request is the complete
+canonical Source request. This is immutable selected configuration, never a
+serialized Authorization. The root's 0644 `binding.json` selects its exact
+sealed generation binding; the fixed 0644 Source unit is published afterwards.
+No symlink selector or automatic rollback is used.
+
+The original manager connection survives publication, one explicit daemon
+reload, and two complete loaded Unit/Service observations around independent
+resource reobservation. Compare original unique owner, Version, UnitPath,
+boot/start and namespaces, exact fragment/argv/account/protection/resource
+envelope, no drop-ins/hooks/queued Job, inactive/dead and zero process/execution
+facts. No Start/enable/restart is called. Reload uncertainty, substitution,
+cancellation, sync/readback/access/close failure retains the partial prefix and
+first failure; files and manager are not one atomic transaction. This bounded
+consumer neither implements continuation nor claims a bootstrap or runtime
+acceptance. Exact acceptance and evidence remain in the selected issue.
+The never-started `InvocationID` is the exact empty `ay` returned by systemd255,
+not a synthetic sixteen-zero invocation. Original input/destination ancestors
+stay pinned throughout. Unit-search namespace observations are separate: after
+the owned successful reload, only `/run/systemd/generator`, `generator.early`
+and `generator.late` receive fresh phase custody because systemd recreates its
+generator output. Other namespace pins remain original. Fresh namespace absence,
+loaded fragment/drop-in/argv/protection checks and subsequent same-phase inode
+checks remain mandatory; the read-only preflight's original pins never rebind.
 
 | Boundary / effect | Proof, linearization, failure and completion owner |
 |---|---|

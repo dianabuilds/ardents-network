@@ -23,18 +23,19 @@ import (
 // Copies share the same original custody, cancellation and refusal latch.
 type SourceInputs struct{ original *sourceInputs }
 type sourceInputs struct {
-	mu              sync.Mutex
-	ioMu            sync.Mutex
-	uses            sync.WaitGroup
-	closeOnce       sync.Once
-	ctx             context.Context
-	request         SourceRequest
-	files           []*sourceFile
-	ancestors       map[string]os.FileInfo
-	closed          bool
-	terminal        error
-	managerIdentity string
-	requestPath     string
+	mu                 sync.Mutex
+	ioMu               sync.Mutex
+	uses               sync.WaitGroup
+	closeOnce          sync.Once
+	ctx                context.Context
+	request            SourceRequest
+	files              []*sourceFile
+	ancestors          map[string]os.FileInfo
+	namespaceAncestors map[string]os.FileInfo
+	closed             bool
+	terminal           error
+	managerIdentity    string
+	requestPath        string
 	// Synchronous test barrier after original physical reads. It cannot supply
 	// bytes or an accepting fact; production acquisition always leaves it nil.
 	observe func(*os.File)
@@ -53,7 +54,7 @@ func ReadSourceInputs(ctx context.Context, path string) (result SourceInputs, er
 	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || runtime.GOARCH != "amd64" || !sourcePath(path) {
 		return result, ErrInput
 	}
-	s := &sourceInputs{ctx: ctx, ancestors: map[string]os.FileInfo{}, requestPath: path}
+	s := &sourceInputs{ctx: ctx, ancestors: map[string]os.FileInfo{}, namespaceAncestors: map[string]os.FileInfo{}, requestPath: path}
 	result.original = s
 	defer func() {
 		if err != nil {
@@ -187,13 +188,24 @@ func (s *sourceInputs) open(path string, maximum int64, private bool) ([]byte, e
 		return nil, errors.Join(ErrBinding, err)
 	}
 	raw, err := io.ReadAll(io.LimitReader(file, maximum+1))
+	f.raw = raw // partial private reads remain owned until the original Close
 	if err != nil || int64(len(raw)) != info.Size() {
 		return nil, errors.Join(ErrBinding, err)
 	}
-	f.info, f.raw = info, raw
+	f.info = info
 	return raw, nil
 }
 func (s SourceInputs) Check() (err error) {
+	return s.checkAccountPhase(nil)
+}
+
+// Only the initial transition may supply its original successfully created
+// account custody. Public copies and read-only preflight retain strict checks.
+func (s SourceInputs) checkAccountPhase(account *sourceAccount) (err error) {
+	return s.checkSourcePhase(account, nil)
+}
+
+func (s SourceInputs) checkSourcePhase(account *sourceAccount, namespace map[string]os.FileInfo) (err error) {
 	p := s.original
 	if p == nil {
 		return ErrInput
@@ -217,10 +229,16 @@ func (s SourceInputs) Check() (err error) {
 	if err := p.ctx.Err(); err != nil {
 		return err
 	}
-	if err := p.checkPaths(); err != nil {
+	if err := p.checkSourcePaths(account, namespace); err != nil {
 		return err
 	}
 	for _, f := range p.files {
+		if account != nil && account.replaces(f.path) {
+			if err := account.checkOriginal(f); err != nil {
+				return err
+			}
+			continue
+		}
 		if _, err = f.file.Seek(0, io.SeekStart); err != nil {
 			return err
 		}
@@ -241,24 +259,42 @@ func (s SourceInputs) Check() (err error) {
 	// A read can yield while a named file or an original ancestor changes.
 	// Reobserve the complete retained namespace after every physical read has
 	// joined, not only each open fd's metadata before its read.
-	if err := p.checkPaths(); err != nil {
+	if err := p.checkSourcePaths(account, namespace); err != nil {
 		return err
 	}
 	return p.local()
 }
-func (p *sourceInputs) checkPaths() error {
+func (p *sourceInputs) checkSourcePaths(account *sourceAccount, namespace map[string]os.FileInfo) error {
 	for path, before := range p.ancestors {
 		now, err := os.Lstat(path)
 		if err != nil || !trustedDirectory(now) || !os.SameFile(before, now) || before.Mode() != now.Mode() {
-			return errors.Join(ErrBinding, err)
+			return fmt.Errorf("original Source ancestor %s: %w", path, errors.Join(ErrBinding, err))
+		}
+	}
+	if namespace == nil {
+		namespace = p.namespaceAncestors
+	}
+	for path, before := range namespace {
+		now, err := os.Lstat(path)
+		if before == nil && os.IsNotExist(err) {
+			continue
+		}
+		if err != nil || before == nil || !trustedDirectory(now) || !os.SameFile(before, now) || before.Mode() != now.Mode() {
+			return fmt.Errorf("source unit namespace ancestor %s: %w", path, errors.Join(ErrBinding, err))
 		}
 	}
 	for _, f := range p.files {
+		if account != nil && account.replaces(f.path) {
+			continue
+		}
 		current, err := f.file.Stat()
 		named, namedErr := os.Lstat(f.path)
 		if err != nil || namedErr != nil || !sameSourceFile(f.info, current) || !sameSourceFile(f.info, named) {
 			return errors.Join(ErrBinding, err, namedErr)
 		}
+	}
+	if account != nil {
+		return account.check()
 	}
 	return nil
 }
@@ -507,7 +543,7 @@ func (input SourceInputs) observeFresh(unitPaths []string) (err error) {
 			return ErrBinding
 		}
 		for _, leaf := range []string{"ardents-source.service", "ardents-source.service.d", "ardents-source.socket", "ardents-source.socket.d", "ardents-.service.d", "service.d", "socket.d"} {
-			if err := s.absent(filepath.Join(dir, leaf)); err != nil {
+			if err := s.absentUnit(filepath.Join(dir, leaf)); err != nil {
 				return err
 			}
 		}
@@ -544,7 +580,7 @@ func (s *sourceInputs) observeClock() (err error) {
 func sourceManagerIdentity() (identity string, err error) {
 	// The caller's filesystem and process observations must describe the same
 	// original manager namespace, not a host bus borrowed through another root.
-	for _, namespace := range []string{"mnt", "pid", "cgroup"} {
+	for _, namespace := range []string{"mnt", "pid", "cgroup", "uts"} {
 		manager, e := os.Stat("/proc/1/ns/" + namespace)
 		caller, ce := os.Stat("/proc/self/ns/" + namespace)
 		if e != nil || ce != nil || !os.SameFile(manager, caller) {
@@ -590,6 +626,48 @@ func (s *sourceInputs) has(path string) bool {
 	}
 	return false
 }
+
+// Installation's phase-specific native observations retain the same original
+// input serialization. They never change read-only preflight's absence policy.
+func (input SourceInputs) prepareInstallAncestors() error {
+	s := input.original
+	if s == nil {
+		return ErrInput
+	}
+	if err := s.begin(); err != nil {
+		return err
+	}
+	defer s.uses.Done()
+	s.ioMu.Lock()
+	defer s.ioMu.Unlock()
+	for _, path := range []string{s.request.InstallationRoot, s.request.StateRoot, s.request.ParticipationRoot, s.request.CredentialDirectory, "/etc/shadow", "/etc/gshadow", "/etc/default/useradd", "/etc/login.defs", "/usr/sbin/useradd", "/usr/sbin/nologin"} {
+		if err := s.parents(path); err != nil {
+			return err
+		}
+	}
+	return s.local()
+}
+
+func (input SourceInputs) observeInstallEnvironment() error {
+	s := input.original
+	if s == nil {
+		return ErrInput
+	}
+	if err := s.begin(); err != nil {
+		return err
+	}
+	defer s.uses.Done()
+	s.ioMu.Lock()
+	defer s.ioMu.Unlock()
+	identity, err := sourceManagerIdentity()
+	if err != nil || identity != s.managerIdentity {
+		return errors.Join(ErrBinding, err)
+	}
+	if err = s.observeClock(); err != nil {
+		return err
+	}
+	return s.local()
+}
 func (s *sourceInputs) absent(path string) error {
 	if _, err := os.Lstat(path); !os.IsNotExist(err) {
 		return errors.Join(ErrBinding, err)
@@ -613,4 +691,65 @@ func (s *sourceInputs) absent(path string) error {
 		}
 	}
 	return s.ctx.Err()
+}
+
+// Unit search locations are manager observations, distinct from original input
+// and destination ancestors. Read-only preflight pins every original location.
+func (s *sourceInputs) absentUnit(path string) error {
+	if _, err := os.Lstat(path); !os.IsNotExist(err) {
+		return errors.Join(ErrBinding, err)
+	}
+	for parent := filepath.Dir(path); ; parent = filepath.Dir(parent) {
+		info, err := os.Lstat(parent)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil || !trustedDirectory(info) {
+			return errors.Join(ErrBinding, err)
+		}
+		before, originalInput := s.ancestors[parent]
+		if !originalInput {
+			before = s.namespaceAncestors[parent]
+		}
+		if before != nil && (!os.SameFile(before, info) || before.Mode() != info.Mode()) {
+			return ErrBinding
+		}
+		if !originalInput {
+			s.namespaceAncestors[parent] = info
+		}
+		if parent == "/" {
+			return s.ctx.Err()
+		}
+	}
+}
+
+// Only the initial transition calls this after its successful one-shot reload
+// on the original manager. systemd recreates precisely these generator output
+// directories on reload. Input/destination pins and every other namespace pin
+// remain original; this returns separate phase custody and never updates them.
+func (input SourceInputs) observeReloadedNamespace() (map[string]os.FileInfo, error) {
+	p := input.original
+	if p == nil {
+		return nil, ErrInput
+	}
+	if err := p.begin(); err != nil {
+		return nil, err
+	}
+	defer p.uses.Done()
+	p.ioMu.Lock()
+	defer p.ioMu.Unlock()
+	result := make(map[string]os.FileInfo, len(p.namespaceAncestors))
+	for path, before := range p.namespaceAncestors {
+		now, err := os.Lstat(path)
+		transient := path == "/run/systemd/generator" || path == "/run/systemd/generator.early" || path == "/run/systemd/generator.late"
+		if transient && os.IsNotExist(err) {
+			result[path] = nil
+			continue
+		}
+		if err != nil || !trustedDirectory(now) || !transient && (!os.SameFile(before, now) || before.Mode() != now.Mode()) {
+			return nil, errors.Join(ErrBinding, err)
+		}
+		result[path] = now
+	}
+	return result, p.local()
 }

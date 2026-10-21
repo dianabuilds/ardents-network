@@ -125,6 +125,12 @@ func (reference *SourcePreflight) Check() (pathsResult []string, returnedErr err
 			pathsResult = nil
 		}
 	}()
+	return r.observeAbsent()
+}
+
+// observeAbsent requires the original physical serialization and active-use
+// borrow. Read-only preflight and stopped publication retain separate wrappers.
+func (r *sourcePreflight) observeAbsent() (pathsResult []string, returnedErr error) {
 	if err := r.local(); err != nil {
 		return nil, err
 	}
