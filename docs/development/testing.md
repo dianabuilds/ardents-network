@@ -46,6 +46,14 @@ each subsequent sample consumes its own fresh reply. The execution-clock
 regression uses actual native running/completed values where `ExecStartEx`
 updates its provisional fork clocks while the original typed `ExecMain` start
 clocks remain fixed. Missing or wrongly typed process fields remain refusal.
+The native identity regression cancels after admission and during the original
+manager-clock read, retaining ordinary cancellation without inventing a binding
+change. A separate foreign-clock control still fails; the combined control
+retains both an already read foreign clock and concurrent cancellation.
+These Linux unit tests require a root-owned native PID1/stat, as the manager
+identity contract does. The test caller may remain unprivileged; a container
+retains its root PID1 while dropping the test subprocess to its unprivileged UID.
+Missing custody is an invalid test environment and fails the profile.
 
 Each retained-input case first proves genuine original explicit retirement,
 then moves one original runtime certificate or State ownership marker to a

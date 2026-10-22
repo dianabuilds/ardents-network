@@ -185,8 +185,16 @@ func (i *sourceRuntimeIdentity) check() (err error) {
 		return errors.Join(ErrBinding, e, ne, fe)
 	}
 	started, e := i.managerStart()
-	if e != nil || started != i.started {
+	if e != nil && started == 0 {
+		return e
+	}
+	// A nonzero clock was parsed before a possible cancellation or Close
+	// failure. Retain an observed foreign clock alongside that actual error.
+	if started != i.started {
 		return errors.Join(ErrBinding, e)
+	}
+	if e != nil {
+		return e
 	}
 	boot, e := i.boot.Stat()
 	bootPath, be := os.Lstat("/proc/sys/kernel/random/boot_id")

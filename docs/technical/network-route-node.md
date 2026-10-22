@@ -1851,6 +1851,9 @@ Close/Wait, transport/handlers/exposure, original observations, Startup input
 Close, loaded-key erasure, Guard Close and bounded final output all join. The
 complete result must contain exclusively ordinary cancellation or no error;
 an earlier completion-unavailable notice or physical failure prevents reporting.
+An interrupted original manager-clock read retains its actual cancellation or
+physical error. It is not classified as a changed binding merely because the
+read was canceled; a successfully read foreign clock still refuses.
 The one-use opaque Startup also requires its original Close completion. It
 reopens only its original completion directory, verifies the actual root peer,
 and replies with ASCII `ardents-source-domain-joined-v1` plus LF, its original
