@@ -38,11 +38,16 @@ from selected configuration and invokes genuine State acceptance without root
 or supplementary groups; private key directories stay private.
 `MANAGER_TEST` is the same-source systemd test binary built with
 `-tags network_signing_native`. Before installation effects, the runner discovers
-the exact required test in that same pinned binary; no matching test is an invalid
+the exact required tests in that same pinned binary; a missing test is an invalid
 environment. After State preparation and before first Start,
 `TestSourceControlRetainsStoppedUnitNative` requires actual collection of the
 unreferenced stopped unit, verifies Root control retains it without Start/Stop,
 then cancels/closes the original connection and observes actual reference return.
+`TestSourceCanceledObservationCloseNative` holds an admitted original observer
+behind native I/O while cancellation and Close deny the real connection, then
+joins that borrower; complete real manager calls also race cancellation/Close.
+The original cancellation must survive without an invented local-close failure.
+Separate refusal controls retain earlier physical failures and live-close denial.
 Read-only runtime/preflight cannot load or pin an absent unit. This mechanism
 check does not supply installed startup authority or replace the real command.
 

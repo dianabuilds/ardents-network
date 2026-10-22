@@ -181,6 +181,7 @@ func (r *sourcePreflight) initializeSourceDeclaration() (err error) {
 }
 
 func (r *sourcePreflight) sourceResult(err error, ctx context.Context) error {
+	err = r.client.callFailure(ctx, err)
 	err = errors.Join(err, ctx.Err(), r.original.Err())
 	if err != nil {
 		r.mu.Lock()
@@ -220,7 +221,7 @@ func (r *sourcePreflight) sourceLoadedObservation() (result SourceObservation, e
 		return result, err
 	}
 	if !r.client.bus.Connected() {
-		return result, ErrUnavailable
+		return result, r.sourceUnavailable()
 	}
 	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
 		return result, err

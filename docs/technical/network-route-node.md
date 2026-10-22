@@ -1599,6 +1599,10 @@ Root's original control connection retains only the fixed Source unit through
 collection while it is stopped. Reference acquisition supplies no loaded-policy,
 Release or Start authority. Closing that original connection returns its server
 reference. Non-root Startup and read-only preflight retain no such loading right.
+An admitted manager observer waiting behind original I/O retains its caller's
+cancellation when physical Close denies that connection. This local close
+refusal is not an additional manager failure; earlier terminal and actual
+physical errors remain retained through the original join.
 Manager restart/disconnect, extra child, changed namespace/path/argv/account/unit
 or cgroup fails closed; reconnection cannot recreate the original custody.
 

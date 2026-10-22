@@ -216,9 +216,9 @@ def main():
             return True
 
     try:
-        manager_test = "TestSourceControlRetainsStoppedUnitNative"
-        discovered = run([paths["MANAGER_TEST"], "-test.list=^" + manager_test + "$"], "manager-test-discovery")
-        if discovered.splitlines() != [manager_test.encode("ascii")]:
+        manager_tests = ("TestSourceControlRetainsStoppedUnitNative", "TestSourceCanceledObservationCloseNative")
+        discovered = run([paths["MANAGER_TEST"], "-test.list=^(" + "|".join(manager_tests) + ")$"], "manager-test-discovery")
+        if sorted(discovered.splitlines()) != sorted(name.encode("ascii") for name in manager_tests):
             raise RuntimeError("required native manager control is absent")
         clock = Path(request["clock"])
         clock_fd = os.open(clock, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
@@ -258,6 +258,7 @@ def main():
         # initial installation. Root control must acquire its own original
         # reference, not depend on an observer keeping that unit loaded.
         run([paths["MANAGER_TEST"], "-test.run=^TestSourceControlRetainsStoppedUnitNative$", "-test.v", "-test.timeout=30s"], "stopped-unit-reference")
+        run([paths["MANAGER_TEST"], "-test.run=^TestSourceCanceledObservationCloseNative$", "-test.v", "-test.timeout=30s"], "canceled-manager-observation")
 
         # From here even a failed/uncertain start belongs to the outside own
         # stand completion obligation. The product joins its failed attempt.

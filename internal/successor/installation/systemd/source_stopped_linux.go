@@ -130,7 +130,7 @@ func (s *SourceStopped) CheckOriginal() (err error) {
 		return err
 	}
 	if !r.client.bus.Connected() {
-		return ErrUnavailable
+		return r.sourceUnavailable()
 	}
 	if err = r.client.sameOwner(r.original, r.client.manager); err != nil {
 		return err

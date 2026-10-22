@@ -149,7 +149,7 @@ func (r *sourcePreflight) observeAbsent() (pathsResult []string, returnedErr err
 		return nil, err
 	}
 	if r.client.bus == nil || !r.client.bus.Connected() {
-		return nil, ErrUnavailable
+		return nil, r.sourceUnavailable()
 	}
 	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
 	defer cancel()
@@ -215,12 +215,12 @@ func (r *sourcePreflight) begin() error {
 	if r.terminal != nil {
 		return r.terminal
 	}
-	if r.closed.Load() {
-		return ErrUnavailable
-	}
 	if err := r.original.Err(); err != nil {
 		r.terminal = err
 		return err
+	}
+	if r.closed.Load() {
+		return ErrUnavailable
 	}
 	r.uses.Add(1)
 	return nil
@@ -231,10 +231,26 @@ func (r *sourcePreflight) local() error {
 	if r.terminal != nil {
 		return r.terminal
 	}
+	// An original cancellation may race physical Close while an admitted
+	// observer waits for ioMu. Close's local denial is not a second physical
+	// failure; an earlier terminal failure above still retains precedence.
+	if err := r.original.Err(); err != nil {
+		return err
+	}
 	if r.closed.Load() {
 		return ErrUnavailable
 	}
-	return r.original.Err()
+	return nil
+}
+
+// A caller can cancel and Close can disconnect the bus after the first local
+// admission check. Reobserve that original denial before synthesizing a missing
+// connection error; an earlier retained failure still has local precedence.
+func (r *sourcePreflight) sourceUnavailable() error {
+	if err := r.local(); err != nil {
+		return err
+	}
+	return ErrUnavailable
 }
 
 // Close first interrupts actual I/O, then joins the original serialized user,
@@ -254,7 +270,10 @@ func (r *sourcePreflight) close() error {
 		r.mu.Lock()
 		r.closed.Store(true)
 		r.mu.Unlock()
-		interrupted := r.client.transport.Close()
+		// Mark only this original owner's interruption before closing the socket.
+		// Concurrent calls can then retain its context cause for the induced
+		// net.ErrClosed, while EOF and independent physical failures survive.
+		interrupted := r.client.interrupt()
 		r.uses.Wait()
 		var busErr error
 		if r.client.bus != nil {
