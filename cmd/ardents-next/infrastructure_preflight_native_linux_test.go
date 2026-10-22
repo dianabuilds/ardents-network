@@ -256,11 +256,15 @@ func TestSourcePreflightNativeCompiledInitialCandidateAndNoEffects(t *testing.T)
 func diagnoseSourcePreflight(t *testing.T, dir, history, request string) {
 	t.Helper()
 	inputs, err := infrastructure.ReadSourceInputs(t.Context(), request)
-	defer inputs.Close()
 	if err != nil {
-		t.Log("original inputs", err)
+		t.Log("original inputs", err, "joined input cleanup", inputs.Close())
 		return
 	}
+	defer func() {
+		if err := inputs.Close(); err != nil {
+			t.Log("joined original input cleanup", err)
+		}
+	}()
 	c, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
 	if err != nil {
 		t.Log("candidate", err)

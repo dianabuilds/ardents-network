@@ -384,6 +384,27 @@ Neither a public observation nor the generated headless declaration supplies
 Installation/startup permission. The native two-Source test composition uses
 that same projection explicitly without claiming qualified installed startup.
 
+The canonical `ardents-control source prepare-state` finite producer adapts the
+same public serving declaration to State with no acquisition or serving half.
+Under the actual runtime system UID/GID and no supplementary groups, it retains
+original public input/ancestor descriptors and an initially empty runtime-owned
+0700 State directory through genuine `State.Accept` and joined Close. It opens
+no runtime TLS key or Installation Startup and initializes no participation
+contents. The Source response needs the accepted Epoch and materialization;
+this producer does not accept a Route profile or establish current membership,
+duty or effective-family eligibility. Partial acceptance remains durable state,
+never permission to reset or automatically repeat initialization. Native operator
+preparation and the complete signed producer/client chain need their own evidence.
+
+`ardents-control source inspect-latest` directly consumes Source's finite
+`InspectLatest` contact. It retains original local public inputs and its own
+protected client key, uses the shared complete declaration/key-separation/mTLS
+checks, and returns only one bounded response after original socket/callback
+join. That response is private local unaccepted evidence, not a Plan, State
+observation, independent-family claim or two-source acquisition. New State's
+ordinary acquisition rule still requires two fully declared distinct families;
+inspection creates no second Source or accepting fallback.
+
 `ardents-next source serve <plan>` consumes State's existing serving configuration,
 Current/Wait/Close and PermitWork with one original `processresource` Source guard.
 It opens independently prepared State, borrows no old runtime root, and supplies
@@ -391,6 +412,14 @@ no new acquisition or refresh policy. State joins listener/handlers/background
 work and releases its own guards before composition releases process pins.
 Cancellation interrupts original Source sockets and joins their callbacks before
 active-handler release. Output success is diagnostic and grants no authority.
+Each socket retains one physical TCP Close result across cancellation and normal
+retirement. Client cleanup failure discards the response; a serving handler's
+native cleanup failure stops further accepts and remains in the joined serving
+result. TLS close-notify output remains a peer-controlled exchange outcome,
+separate from the original TCP Close. Successful physical retirement preserves
+the original cancellation identity consumed by State's shutdown classification.
+Actual TCP and mTLS shutdown controls cover late native failure, peer reset and
+callback join; they do not qualify an installed Source invocation.
 
 A five-second retirement notice reports unavailable physical completion while
 composition keeps waiting for the original Close. It retains State/process/key

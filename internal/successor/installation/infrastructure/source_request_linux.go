@@ -52,6 +52,17 @@ func DecodeSourceRequest(raw []byte) (SourceRequest, error) {
 			}
 		}
 	}
+	// The fixed release template hides these host locations. Runtime resources
+	// must remain visible as the exact admitted host inodes, not private tmp
+	// replacements or inaccessible homes. Root-only original delivery inputs are
+	// separate: Installation reads them before delivering sealed runtime copies.
+	for _, path := range []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.CredentialDirectory, r.Clock} {
+		for _, hidden := range []string{"/tmp", "/var/tmp", "/home", "/root", "/run/user"} {
+			if contains(hidden, path) {
+				return SourceRequest{}, ErrBinding
+			}
+		}
+	}
 	return r, nil
 }
 

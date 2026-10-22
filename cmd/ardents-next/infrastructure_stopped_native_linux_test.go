@@ -36,7 +36,7 @@ func TestSourceStoppedNativeCompiledProcessCut(t *testing.T) {
 	dir, pin, _ := stoppedDistribution(t, sourcePreflightCommand(t))
 	history := filepath.Join(filepath.Dir(dir), "history")
 	program := filepath.Join(dir, infrastructure.ProgramName)
-	args := []string{"infrastructure", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339), request}
+	args := []string{"installation", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", request}
 	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, program, args...)
@@ -75,7 +75,7 @@ func TestSourceStoppedNativeCompiledProcessCut(t *testing.T) {
 			if e := <-joined; e == nil {
 				t.Fatal("cut original reported success")
 			}
-			if bytes.Contains(output.Bytes(), []byte(`source-initial-stopped-selected`)) {
+			if bytes.Contains(output.Bytes(), []byte(`initial-stopped-selected`)) {
 				t.Fatal("cut original already handed off success")
 			}
 			// This marker supplies no product authority. The read-only oracle
@@ -156,10 +156,14 @@ func TestSourceStoppedNativeOriginalOwner(t *testing.T) {
 		t.Fatal(e)
 	}
 	input, e := infrastructure.ReadSourceInputs(t.Context(), request)
-	defer input.Close()
 	if e != nil {
-		t.Fatal(e)
+		t.Fatal("original inputs", e, "joined input cleanup", input.Close())
 	}
+	defer func() {
+		if err := input.Close(); err != nil {
+			t.Error("joined original input cleanup", err)
+		}
+	}()
 	if e = infrastructure.InstallInitialStoppedSource(v, a, input, dir, history); e != nil {
 		facts, _ := exec.Command("/usr/bin/systemctl", "show", "ardents-source.service").CombinedOutput()
 		t.Log("private actual manager diagnostic", string(facts))
@@ -229,8 +233,8 @@ func TestSourceStoppedNativeCompiledPreEffectRefusals(t *testing.T) {
 				}
 			}
 			history := filepath.Join(filepath.Dir(dir), "history")
-			cmd := exec.CommandContext(t.Context(), filepath.Join(dir, infrastructure.ProgramName), "infrastructure", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339), request)
-			if out, e := cmd.CombinedOutput(); e == nil || bytes.Contains(out, []byte("source-initial-stopped-selected")) {
+			cmd := exec.CommandContext(t.Context(), filepath.Join(dir, infrastructure.ProgramName), "installation", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", request)
+			if out, e := cmd.CombinedOutput(); e == nil || bytes.Contains(out, []byte("initial-stopped-selected")) {
 				t.Fatal("causal pre-effect refusal accepted", control, string(out), e)
 			}
 			for _, path := range []string{r.InstallationRoot, r.ParticipationRoot, r.CredentialDirectory, "/etc/systemd/system/ardents-source.service"} {
@@ -263,7 +267,7 @@ func TestSourceStoppedNativeCompiledOriginalInputAndCancellation(t *testing.T) {
 	dir, pin, _ := stoppedDistribution(t, sourcePreflightCommand(t))
 	history := filepath.Join(filepath.Dir(dir), "history")
 	program := filepath.Join(dir, infrastructure.ProgramName)
-	args := []string{"infrastructure", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339), request}
+	args := []string{"installation", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", request}
 	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, program, args...)
@@ -319,7 +323,7 @@ func TestSourceStoppedNativeCompiledOriginalInputAndCancellation(t *testing.T) {
 				<-joined
 				t.Fatal("causal control failed", e)
 			}
-			if e := <-joined; e == nil || bytes.Contains(output.Bytes(), []byte("source-initial-stopped-selected")) {
+			if e := <-joined; e == nil || bytes.Contains(output.Bytes(), []byte("initial-stopped-selected")) {
 				t.Fatal("original substitution/cancellation admitted", control, e, output.String())
 			}
 			if control == "hook-substitution" {
@@ -355,7 +359,7 @@ func TestSourceStoppedNativeCompiledInitialAndRetainedRefusal(t *testing.T) {
 	dir, pin, original := stoppedDistribution(t, binary)
 	history := filepath.Join(filepath.Dir(dir), "history")
 	program := filepath.Join(dir, "ardents-node-linux-amd64")
-	args := []string{"infrastructure", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339), request}
+	args := []string{"installation", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", request}
 	cmd := exec.CommandContext(t.Context(), program, args...)
 	out, err := cmd.CombinedOutput()
 	journal := r.InstallationRoot + ".source-initial-journal"
@@ -365,7 +369,7 @@ func TestSourceStoppedNativeCompiledInitialAndRetainedRefusal(t *testing.T) {
 		}
 		t.Fatalf("genuine initial stopped consumer: %s %v", out, err)
 	}
-	if !bytes.Equal(out, []byte("{\"outcome\":\"source-initial-stopped-selected\"}\n")) {
+	if !bytes.Equal(out, []byte("{\"operation\":\"installation.source\",\"outcome\":\"initial-stopped-selected\"}\n")) {
 		t.Fatal("unbounded/foreign receipt", string(out))
 	}
 	g := fmt.Sprintf("%x", sha256.Sum256(original["infrastructure-source.json"]))

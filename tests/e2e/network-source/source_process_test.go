@@ -1,9 +1,7 @@
 package state_test
 
 import (
-	"bufio"
 	"bytes"
-	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"crypto/x509"
@@ -33,11 +31,10 @@ type processCertificate struct {
 	pin             [32]byte
 }
 
-func TestFiniteSourceCommandsAsBlackBoxProcesses(t *testing.T) {
+func TestFiniteEndpointAcquisitionWithGenuineSourceOwners(t *testing.T) {
 	genesis := writeVerifierFixtureAt(t, time.Now().Unix())
 	fixture := writeVerifierSuccessor(t, genesis)
 	ardents := buildProductCommand(t, "ardents")
-	node := buildProductCommand(t, "ardents-node")
 	genesisMaterial := filepath.Join(t.TempDir(), "genesis-material.bin")
 	if err := os.WriteFile(genesisMaterial, genesis.materializations[0], 0o600); err != nil {
 		t.Fatal(err)
@@ -62,9 +59,9 @@ func TestFiniteSourceCommandsAsBlackBoxProcesses(t *testing.T) {
 	firstAddress, secondAddress := freeProcessAddress(t), freeProcessAddress(t)
 	firstPlan := writeServerPlan(t, fixture, firstRoot, firstAddress, firstServer, clientAuthority.rootPath, client.pin)
 	secondPlan := writeServerPlan(t, fixture, secondRoot, secondAddress, secondServer, clientAuthority.rootPath, client.pin)
-	stopFirst := startSourceProcess(t, node, firstPlan)
+	stopFirst := startSourceOwner(t, firstPlan)
 	defer stopFirst()
-	stopSecond := startSourceProcess(t, node, secondPlan)
+	stopSecond := startSourceOwner(t, secondPlan)
 	defer stopSecond()
 	clockObservation := filepath.Join(t.TempDir(), "clock-observation")
 	now := time.Now()
@@ -186,47 +183,6 @@ func acceptFixtureWithCommand(t *testing.T, binary string, fixture verifierFixtu
 	if output, err := exec.Command(binary, arguments...).CombinedOutput(); err != nil {
 		t.Fatalf("install fixture state: %v\n%s", err, output)
 	}
-}
-
-func startSourceProcess(t *testing.T, binary, plan string) func() {
-	t.Helper()
-	ctx, cancel := context.WithCancel(context.Background())
-	command := exec.CommandContext(ctx, binary, "source", "--config", plan)
-	stdout, err := command.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var stderr bytes.Buffer
-	command.Stderr = &stderr
-	if err := command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	ready := make(chan string, 1)
-	go func() {
-		scanner := bufio.NewScanner(stdout)
-		if scanner.Scan() {
-			ready <- scanner.Text()
-			return
-		}
-		ready <- ""
-	}()
-	select {
-	case line := <-ready:
-		var event struct {
-			Kind string
-			At   time.Time
-		}
-		if err := json.Unmarshal([]byte(line), &event); err != nil || event.Kind != "source-ready" || event.At.IsZero() {
-			cancel()
-			_ = command.Wait()
-			t.Fatalf("source did not become ready with event time: line=%q stderr=%s err=%v", line, stderr.String(), err)
-		}
-	case <-time.After(5 * time.Second):
-		cancel()
-		_ = command.Wait()
-		t.Fatal("source readiness timed out")
-	}
-	return func() { cancel(); _ = command.Wait() }
 }
 
 func writeServerPlan(t *testing.T, fixture verifierFixture, root, address string, server processCertificate, clientRoot string, clientPin [32]byte) string {

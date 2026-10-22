@@ -14,20 +14,75 @@ unchanged. Never use diagnostic keys as the operational release authority.
 
 ## Source infrastructure artifact component
 
-ADR-0123 accepts a distinct Source program and generation contract. Its isolated
-component uses the [infrastructure artifact commands](../reference/commands.md) in
-`ardents-next`, without installing a program, account, unit or Source process.
+`python3 -I -S scripts/installation/build-source-candidate.py
+--source-manifest PATH --source-manifest-sha256 SHA256 --source-revision REVISION
+--output FRESH_OUTPUT` builds the fixed five-command inventory twice with the
+selected Go1.27.3 Linux-amd64 toolchain, no cgo and canonical flags. The outside
+controller retains the common development lock and whole build-scope join,
+supplies a read-only complete source snapshot, independently pinned manifest
+and checked module cache, and keeps output outside the repository. No network
+fetch or module replacement is admitted. Both executions use project control;
+the tool explicitly reports no builder independence or installed qualification.
+Each actual execution retains its own command hashes; the tool also retains
+canonical build inputs, actual compiled-package/module inventory and its scoped build SBOM, checks
+matching output and reobserves the original source/manifest and module integrity.
+The Go module files remain exact hashed inputs; ordinary module/dependency gates
+still cover their declared graph. The build SBOM inventories the five actual
+commands' compiled closure and selects no unused package or protocol.
+An unfinished output is preserved and never adopted. `READY` describes this
+build result only. A preliminary dirty snapshot must use the explicit revision
+`snapshot-sha256:<manifest pin>`; it cannot claim the old HEAD as its source.
+The final installed candidate uses the committed exact source revision and still
+requires every normal gate and the separately accepted exact bootstrap receipt.
+
+The separate public plan transformation is:
+
+```text
+python3 -I -S scripts/installation/prepare-source-release-plan.py --build-root PATH --descriptor PATH --template PATH --network NAME --expires UTC_TIME --no-new-work-after UTC_TIME --terminate-after UTC_TIME --qualification-evidence PATH --qualification-evidence-sha256 SHA256 --output FRESH_OUTPUT
+```
+
+After the original build scope has joined, the controller delivers the exact
+public build outputs/records into root-controlled custody and rechecks their
+retained commitments; the preparer requires that custody, both actual command
+inventories and coherent source/input/module/SBOM records. It generates the
+existing Source signing-plan schema and two target-specific rebuild records,
+using actual current time and supplied finite bounds. It reads no private key.
+Supply separately reviewed, pinned prestart qualification evidence describing
+the exact candidate's checks and limits; the tool retains its digest in its
+public receipt. The existing metadata's proposed `qualified` value describes
+that bounded component evidence, never installed qualification or independent
+builders. Review the plan/receipt alongside that evidence before signing.
+The output is `source-release-plan.json`; no manual JSON editing is needed.
+The native Source signer independently checks original plan/resource/key custody
+and obtains actual Release decisions. This public transformation and any signed
+metadata still supply no direct PO bootstrap acceptance or runtime permission.
+
+ADR-0123 accepts a distinct Source program and generation contract. Canonical
+`ardents-control source prepare-descriptor` and `source prepare-inventory`
+directly prepare its public artifact bytes through new Infrastructure/Enrollment
+owners, without installing a program, account, unit or Source process. Temporary
+`ardents-next infrastructure` artifact consumers remain component mechanisms,
+separate from the canonical [command forms](../reference/commands.md).
 Use the actual canonical compiled Linux-amd64 command bytes, publicly supplied
 Source unit-template bytes, a release identity and positive version to prepare
 the descriptor in a fresh native output directory. Retain original protected
 inputs through physical output Close and readback. Preparation produces public
 unsigned bytes and grants no signing or trust authority.
+`source prepare-template` supplies that exact selected public template through
+the same fresh native output mechanism; no manual resource copying is required.
 
-The normal Release metadata producer is an explicitly supplied prerequisite.
-It must describe `ardents/linux-amd64/node` and
-`ardents/linux-amd64/infrastructure/source` in one signed set under the existing
-five-key/ordinary-three-signature and rebuild policy. No new signer is supplied
-by this component. Assemble a separate seven-file public distribution with the
+The distinct canonical `ardents-control source sign-initial-release` producer
+describes only `ardents/linux-amd64/node` and
+`ardents/linux-amd64/infrastructure/source` in one initial signed set under the
+existing five-key/ordinary-three-signature and rebuild policy. Its separate
+[closed plan and original custody](../reference/commands.md) neither reinterpret
+the Endpoint signer below nor accept an arbitrary target/message. Supply fresh
+protected operational keys from the separate `source prepare-release-keys`
+ceremony, real recorded rebuild inputs and honest scoped
+qualification facts; native fixture keys/declarations are not operational input.
+The actual Source candidate/normal preparation chain and its exact public
+bootstrap receipt remain separate from a tested signing mechanism. Assemble a
+separate seven-file public distribution with the
 program named `ardents-node-linux-amd64`, `ardents-source.service`,
 `infrastructure-source.json`, `root.json`, `timestamp.json`, `snapshot.json` and
 `targets.json`. Inventory preparation requires exactly those original regular
@@ -83,7 +138,7 @@ separate Product Owner acceptance; preflight neither requires nor supplies it.
 
 ## Initial stopped Source component
 
-The separate `ardents-next infrastructure install-initial-stopped` consumes the
+The canonical `ardents-node installation install-initial-stopped` consumes the
 initial independently pinned distribution, two coherent fresh Release proofs and
 the canonical Source request in the same original root process. It repeats native
 admission; an earlier authentication/preflight receipt transfers no permission.
@@ -133,12 +188,12 @@ history or emergency grounds.
 These targets and the maintained signer/assembly inventory do not authorize
 installed serving Source or any Node role. Headless Node/Custody companions are
 initial manifest inventory, not an infrastructure generation authorization.
-The [infrastructure proposal](../technical/network-route-node.md#proposed-installed-infrastructure)
-names the missing exact targets, custody, command/tool and native lifecycle
-boundary under [proposed ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md).
-Its acceptance and any exact public bootstrap receipt for future installed
-execution remain distinct decisions. Neither the proposal nor prior development
-receipts authorize running this operation with additional targets.
+The [infrastructure contract](../technical/network-route-node.md#proposed-installed-infrastructure)
+names the separate exact targets, custody, command/tool and native lifecycle
+boundary under [accepted ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md).
+Its acceptance and an exact public bootstrap receipt for future installed
+execution remain distinct decisions. The Endpoint-only signer below and its
+prior receipts cannot be used with additional Source targets.
 
 ## Protected operation on Linux
 

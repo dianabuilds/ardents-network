@@ -1,14 +1,16 @@
 # Installation
 
-Домен сохраняет раздельные владельцы свежей авторизации и установленного Endpoint.
+Домен сохраняет раздельные владельцы свежей авторизации и установленного поколения.
 
-Installed transactions and startup are **Endpoint-only**.
-Manifest-pinned Node/Custody companions do not extend this authority to installed
-Source or Node. Their six genuine development compositions have separate runtime
-owners, but no implemented infrastructure generation/startup transaction.
+Endpoint transactions/startup and Source transactions/startup have separate
+owners and contracts. Manifest-pinned Node/Custody companions do not extend
+Endpoint authority to Source or a Node role. Infrastructure implements Source's
+initial stopped generation, guarded first root start and independent non-root
+Startup; the five Node roles have no accepting installed transaction here.
 The [accepted infrastructure contract](../../../docs/technical/network-route-node.md#proposed-installed-infrastructure)
 and [accepted ADR-0123](../../../docs/adr/0123-bind-installed-infrastructure-generations.md)
-separately bind Source artifact admission and read-only native preflight. They grant no current install/start/recovery right;
+separately bind Source artifact admission, native effects and original startup.
+Contract selection or a public receipt grants no install/start/recovery right;
 in particular, an Endpoint Authorization or detached resource facts cannot be
 reused as infrastructure permission.
 
@@ -16,7 +18,7 @@ reused as infrastructure permission.
 |---|---|---|
 | `installation` | Две свежие coherent Release authorizations для exact program/generation; независимая initial-pin provenance; private immutable inventory | `cmd/ardents-next/installation.go`, `installation/endpoint` |
 | [`endpoint`](endpoint/README.md) | Request composition, bound generation, original lease/journal/resources, predecessor join, selection/reload, guarded startup и explicit recovery | `cmd/ardents-next/installation.go`, `cmd/ardents-next/installed_endpoint_linux.go` |
-| [`infrastructure`](infrastructure/README.md) | Source artifact admission, separate closed Source request/template and read-only fresh-native preflight; no installation/runtime mutations | `cmd/ardents-next/infrastructure_linux.go` |
+| [`infrastructure`](infrastructure/README.md) | Source artifact admission, closed request/template, original native preflight, initial stopped transition, guarded first start and independent runtime Startup | Canonical `cmd/ardents-node/source_installation_linux.go`, `source_installed_linux.go`; public preparation in Control; temporary Next component consumers |
 
 `Authorization` остаётся opaque: соседний пакет не может заполнить private proofs,
 pin или frozen bytes. `Targets` передаёт genuine Release proofs; `Descriptor`,
@@ -36,3 +38,7 @@ Implementation и lifetimes. Их присутствие не даёт прав�
 Перенос исходников и component checks не устанавливают complete interruption,
 installed Service, power-loss или privacy qualification. Execution status и
 приёмка остаются в выбранной GitHub issue.
+Installed Source execution additionally requires the exact public bootstrap
+receipt's direct PO acceptance; implemented composition and component checks do
+not supply that decision or installed qualification. Source restart/replacement
+and recovery continuation remain separate from its first-start owner.

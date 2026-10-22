@@ -29,26 +29,11 @@ func configureClientTrust(plan *Plan, input Config, authorities map[[32]byte]ed2
 	}
 	for index := range plan.clients {
 		declared := input.Sources[index]
-		roots, err := parseRoots(declared.RootPEM)
+		resolved, err := declaredClient(declared, clientCertificate, clientDigest, authorities, input.VerificationClock)
 		if err != nil {
 			return err
 		}
-		if err := validateAddress(declared.Address); err != nil {
-			return err
-		}
-		if !validText(declared.ServerName, 253) || isZero(declared.Identity) ||
-			!validText(declared.Family, 64) || !validText(declared.EndpointHandle, 96) ||
-			isZero(declared.LeafKeyDigest) {
-			return errors.New("source trust-map entry is incomplete")
-		}
-		if _, exists := authorities[declared.Identity]; exists {
-			return errors.New("source identity collides with an Epoch authority")
-		}
-		if declared.LeafKeyDigest == clientDigest || digestIsAuthority(declared.LeafKeyDigest, authorities) {
-			return errors.New("client, source, and Epoch signer keys must be separate")
-		}
-		plan.clients[index] = client{address: declared.Address, serverName: declared.ServerName,
-			roots: roots, leafKeyDigest: declared.LeafKeyDigest, certificate: clientCertificate, clock: input.VerificationClock}
+		plan.clients[index] = resolved
 		plan.details.Identities[index], plan.details.Families[index], plan.details.EndpointHandles[index] =
 			declared.Identity, declared.Family, declared.EndpointHandle
 		raw := append([]byte("ardents-h3-direct-source-exposure-v1\x00"), declared.Identity[:]...)
@@ -65,6 +50,28 @@ func configureClientTrust(plan *Plan, input Config, authorities map[[32]byte]ed2
 	}
 	plan.details.Configured = true
 	return nil
+}
+
+func declaredClient(declared Source, certificate tls.Certificate, clientDigest [32]byte, authorities map[[32]byte]ed25519.PublicKey, clock func() time.Time) (client, error) {
+	roots, err := parseRoots(declared.RootPEM)
+	if err != nil {
+		return client{}, err
+	}
+	if err := validateAddress(declared.Address); err != nil {
+		return client{}, err
+	}
+	if !validText(declared.ServerName, 253) || isZero(declared.Identity) ||
+		!validText(declared.Family, 64) || !validText(declared.EndpointHandle, 96) || isZero(declared.LeafKeyDigest) {
+		return client{}, errors.New("source trust-map entry is incomplete")
+	}
+	if _, exists := authorities[declared.Identity]; exists {
+		return client{}, errors.New("source identity collides with an Epoch authority")
+	}
+	if declared.LeafKeyDigest == clientDigest || digestIsAuthority(declared.LeafKeyDigest, authorities) {
+		return client{}, errors.New("client, source, and Epoch signer keys must be separate")
+	}
+	return client{address: declared.Address, serverName: declared.ServerName, roots: roots, leafKeyDigest: declared.LeafKeyDigest,
+		certificate: certificate, clock: clock}, nil
 }
 
 func configureServer(input Config, authorities map[[32]byte]ed25519.PublicKey) (server, error) {

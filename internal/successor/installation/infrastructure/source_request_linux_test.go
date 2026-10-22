@@ -49,6 +49,53 @@ func TestSourceRequestClosedGrammarAndFutureBoundaries(t *testing.T) {
 	}
 }
 
+func TestSourceRequestRejectsHiddenRuntimePaths(t *testing.T) {
+	for _, blocked := range []string{"/tmp", "/var/tmp", "/home", "/root", "/run/user"} {
+		for field := range 5 {
+			for _, suffix := range []string{"", "/source-input"} {
+				r, err := DecodeSourceRequest([]byte(sourceRequestOracle))
+				if err != nil {
+					t.Fatal(err)
+				}
+				fields := []*string{&r.InstallationRoot, &r.StateRoot, &r.ParticipationRoot, &r.CredentialDirectory, &r.Clock}
+				*fields[field] = blocked + suffix
+				raw, err := json.Marshal(r)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := DecodeSourceRequest(append(raw, '\n')); err == nil {
+					t.Errorf("runtime field %d under selected unit's hidden namespace was accepted: %s", field, blocked+suffix)
+				}
+			}
+		}
+	}
+}
+
+func TestSourceRequestSeparatesRootDeliveryFromRuntimeNamespace(t *testing.T) {
+	r, err := DecodeSourceRequest([]byte(sourceRequestOracle))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.Plan, r.Certificate, r.PrivateKey, r.ClientCA = "/root/source-plan", "/tmp/delivery-certificate", "/var/tmp/delivery-key", "/home/source-ca"
+	raw, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DecodeSourceRequest(append(raw, '\n')); err != nil {
+		t.Fatalf("root-only original delivery was confused with runtime reads: %v", err)
+	}
+	for _, path := range []string{"/tmp-files/source", "/var/tmp-files/source", "/home-services/source", "/root-inputs/source", "/run/users/source"} {
+		r.InstallationRoot = path
+		raw, err := json.Marshal(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := DecodeSourceRequest(append(raw, '\n')); err != nil {
+			t.Fatalf("path-component lookalike was treated as a hidden root: %s: %v", path, err)
+		}
+	}
+}
+
 func TestSourceTemplateExactPolicyAndRendering(t *testing.T) {
 	if SourceTemplate != sourceTemplateOracle {
 		t.Fatal("Source release template differs from independent complete byte vector")

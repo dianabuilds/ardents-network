@@ -463,30 +463,8 @@ func (input SourceInputs) observeFresh(unitPaths []string) (err error) {
 			}
 		}
 		if f.path == "/etc/nsswitch.conf" {
-			seen := map[string]bool{}
-			for _, line := range strings.Split(string(f.raw), "\n") {
-				line, _, _ = strings.Cut(line, "#")
-				key, value, ok := strings.Cut(line, ":")
-				key = strings.TrimSpace(key)
-				if key != "passwd" && key != "group" {
-					continue
-				}
-				if !ok || seen[key] {
-					return ErrBinding
-				}
-				seen[key] = true
-				modules := strings.Fields(value)
-				if len(modules) == 0 {
-					return ErrBinding
-				}
-				for _, module := range modules {
-					if module != "files" && module != "systemd" {
-						return ErrBinding
-					}
-				}
-			}
-			if len(seen) != 2 {
-				return ErrBinding
+			if err := validateSourceNSS(f.raw); err != nil {
+				return err
 			}
 		}
 	}

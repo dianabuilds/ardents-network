@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"io"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -24,7 +26,8 @@ type referenceTransport struct {
 	owner      atomic.Value // original manager unique bus name, never rebound
 	line       int
 	pending    []byte
-	properties bool // closed read-only Startup replies; references keep scalar admission
+	properties bool        // closed read-only Startup replies; references keep scalar admission
+	sourceJobs atomic.Bool // only fixed root Source control admits canonical job replies
 }
 
 func (t *referenceTransport) begin() bool {
@@ -92,7 +95,7 @@ func (t *referenceTransport) Read(p []byte) (int, error) {
 			return 0, err
 		}
 		owner, _ := t.owner.Load().(string)
-		if err := verifyManagerFrame(frame, owner, t.properties); err != nil {
+		if err := verifyManagerFrame(frame, owner, t.properties, t.sourceJobs.Load()); err != nil {
 			return 0, err
 		}
 		t.pending = frame
@@ -143,7 +146,7 @@ func referenceByteOrder(marker byte) (binary.ByteOrder, bool) {
 // Closed scalar reply vocabulary covers Hello/GetNameOwner/RefUnit/UnrefUnit/
 // Ping and broker notifications. Property observations additionally admit the
 // bounded GetAll dictionary grammar. Header variants retain exact scalar types.
-func verifyManagerFrame(frame []byte, owner string, properties bool) error {
+func verifyManagerFrame(frame []byte, owner string, properties, sourceJobs bool) error {
 	if len(frame) < 16 || len(frame) > 65536 {
 		return ErrObservation
 	}
@@ -222,7 +225,7 @@ func verifyManagerFrame(frame []byte, owner string, properties bool) error {
 	// to preflight/Startup: their own required error/dictionary checks remain.
 	if properties && frame[1] == 2 && owner != "" && sender == owner && sig == "o" {
 		object, pos, err := referenceScalar(frame, int(bodyStart), len(frame), 'o', order)
-		if err != nil || pos != len(frame) || object != "/org/freedesktop/systemd1/unit/ardents_2dsource_2eservice" {
+		if err != nil || pos != len(frame) || (object != "/org/freedesktop/systemd1/unit/ardents_2dsource_2eservice" && (!sourceJobs || !sourceJobPath(object))) {
 			return ErrObservation
 		}
 		return nil
@@ -241,6 +244,16 @@ func verifyManagerFrame(frame []byte, owner string, properties bool) error {
 		return ErrObservation
 	}
 	return nil
+}
+
+func sourceJobPath(object string) bool {
+	const prefix = "/org/freedesktop/systemd1/job/"
+	if !strings.HasPrefix(object, prefix) {
+		return false
+	}
+	value := strings.TrimPrefix(object, prefix)
+	number, err := strconv.ParseUint(value, 10, 32)
+	return err == nil && number != 0 && strconv.FormatUint(number, 10) == value
 }
 
 func referenceScalar(frame []byte, pos, end int, kind byte, order binary.ByteOrder) (string, int, error) {

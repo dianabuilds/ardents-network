@@ -126,6 +126,15 @@ issuance, operational trust delivery, effective family independence and installe
 qualification are not supplied by this operation. No universal Identity/PKI
 authority, private signer, new package or runtime format is introduced.
 
+Canonical Control's separate `source prepare-install-inputs` composes a single
+honest Source/client public observation through `source.ObservePublicContact`
+and emits fixed public credential copies plus the existing serving/request
+declarations. It retains independent public file commitments and original native
+custody. Runtime private-key paths, mutable roots and clock remain unopened
+declarations. Installation independently admits delivery and native effects;
+State owns acceptance/currentness. This creates no second family or acquisition
+Plan and supplies no installed or bootstrap acceptance.
+
 Initial Network provisioning has one finite offline key producer,
 `network prepare-initial-keys`, and three fixed-purpose offline signing consumers:
 `network sign-initial-node-record` and `network sign-initial-epoch` in
@@ -198,7 +207,10 @@ separately inventories the actual Source and five Node consumers, provisioning,
 external inputs, command/build/recovery callers and missing installed mechanisms.
 It preserves the actual owners below. Endpoint Installation's fixed unit and
 program/generation pair do not admit Node/Source. The separate Source component
-implements initial stopped installation with no startup or runtime admission. Source has
+implements initial stopped installation, an original root first-start transaction
+and independent non-root Startup custody. Canonical `ardents-node`
+Source/Installation directly compose these new owners; exact artifact/bootstrap
+acceptance and actual installed qualification remain separate requirements. Source has
 one command-owned original plan/certificate/key/CA file/ancestor lifetime; four Node roles retain
 loaded TLS material, while JOIN additionally reobserves original credential files.
 The separate artifact/persisted/bootstrap extension is **accepted**
@@ -206,8 +218,9 @@ The separate artifact/persisted/bootstrap extension is **accepted**
 alone records no implemented or qualified result. The separate
 `internal/successor/installation/infrastructure` now implements Source
 descriptor/public preparation, coherent artifact admission and separate Source
-read-only native preflight and the bounded initial stopped transition through
-`ardents-next infrastructure`. Enrollment
+read-only native preflight and the bounded initial stopped transition. The temporary
+`ardents-next infrastructure` component consumer remains separate from canonical
+Source/Installation composition. Enrollment
 owns initial-pin provenance, Release owns fresh exact-target authorization and
 floors, and infrastructure admission owns pair/resource coherence. Native
 Installation and the separately accepted exact bootstrap remain distinct gates.
@@ -234,9 +247,55 @@ manager custody, one explicit reload and complete typed loaded observations;
 Installation alone compares stopped policy. State and participation directories
 remain empty; their semantic owners receive no initialized contents or authority.
 Failures retain partial prefixes and original joins, without adoption/reset,
-continuation or rollback. Startup remains a separate boundary, requiring fresh
-proofs and original process/barrier custody. This component supplies neither
-bootstrap acceptance nor installed runtime or operational qualification.
+continuation or rollback. First start independently reopens the full stopped
+transcript and retains fresh proofs, current principal and original manager /
+process / cgroup / barrier custody in its own exclusive journal lifetime. The
+non-root Startup independently retains original selected inputs, actual invocation,
+namespace and manager, then completes the original root-peer exchange before
+State or Guard construction. No initial transcript, Start job, ACK or public
+receipt grants runtime authority. These mechanisms supply neither bootstrap
+acceptance nor installed runtime or operational qualification.
+
+`ardents-control source prepare-state` separately composes finite offline State
+acceptance under the runtime system UID/GID, using original public declaration /
+bundle custody and an initially empty runtime-owned root. It opens no Source
+listener/acquisition, runtime TLS key, participation owner or Installation Startup.
+State alone authenticates signed Epoch/materialization and owns durable floors;
+no Route profile, current membership or independent-family claim is supplied.
+State Close joins before public input/root descriptor release. This supporting
+producer and the real installed serving/client journey have separate evidence.
+Its distinct finite `source inspect-latest` consumer retains original local
+client credential/public inputs and invokes Source's one-contact mTLS inspection.
+Source owns declaration/key separation, bounded LATEST framing and original socket
+join. Inspection returns private local unaccepted evidence, no Plan or State
+authority. It creates no second Source, family independence or acquisition
+fallback; ordinary State acquisition retains its two-source rule.
+Canonical Control's separate `source prepare-descriptor` and `prepare-inventory`
+consume Infrastructure/Enrollment public byte preparation. Composition retains
+original root-controlled inputs and fresh output descriptors through actual
+sync/readback/Close; no signing, initial-pin, Release or runtime right is produced.
+The native offline profile's unsigned byte fixtures and actual pinned preparation
+command verify that custody only, separately from the complete signed candidate
+and installed Source journey.
+The separate canonical `source prepare-release-keys` creates only its five fresh
+distinct offline Release keys under original secret native output custody and
+emits public facts outside that key directory. No Endpoint ceremony/receipt,
+signature, independent custody or trust is supplied. Its consumer,
+`source sign-initial-release`, owns the fixed
+initial Source signing purpose, original protected five-key/input custody and
+public metadata output. Release still decides validity: the producer obtains two
+fresh same-verifier authorizations for the fixed Node/Source targets before
+publication. Actual key/signature and native custody controls with fixture build
+declarations grant no operational rebuild, independent custody or installed claim.
+Neither the Endpoint signer nor its earlier bootstrap receipt expands to Source.
+The fixed Source initial-key producer creates separate State/Node private files
+and public-only facts, without an identity or accepted State. Its one-Record
+genesis public-flag plan preparation/signing chain consumes Network's canonical initial Record /
+Epoch codecs and verifiers, original separately reviewed prepared-byte commitments,
+protected matching purpose keys and current time. Source owns bundle framing;
+State alone accepts it. This supplies no full Node/Route profile or independent
+families and no runtime TLS credential. One actual standalone numeric-UID State
+producer is distinct from the installed Source principal and startup lifetime.
 
 The process-resource owner applies the finite development CPU/I/O trend budget
 in the [native profile contract](../technical/network-route-node.md#forwarding-development-process-profile),

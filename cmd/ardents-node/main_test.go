@@ -29,7 +29,9 @@ func TestNodeOwnedPlansRejectRetiredH3Schemas(t *testing.T) {
 		raw  string
 		read func(string) error
 	}{
-		{"source-server", `{"schema":"ardents-h3-source-server-v1"}`, func(path string) error { _, err := openSource(path, nil); return err }},
+		{"source-server", `{"schema":"ardents-h3-source-server-v1"}`, func(path string) error {
+			return run(t.Context(), []string{"source", "--config", path}, new(bytes.Buffer))
+		}},
 		{"node", `{"schema":"ardents-h3-node-plan-v1"}`, func(path string) error { _, err := readNodePlan(path); return err }},
 	} {
 		t.Run(test.name, func(t *testing.T) {

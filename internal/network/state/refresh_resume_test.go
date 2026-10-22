@@ -14,16 +14,18 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 	for _, test := range []struct {
 		name            string
 		status, outcome byte
+		elapsed         bool
 	}{
-		{"completed-unverified", sourceAttemptCompleted, 0},
-		{"in-flight", sourceAttemptInFlight, 0},
-		{"failed-recorded", sourceAttemptFailed, sourceOutcomeAuthentication},
-		{"completed-recorded", sourceAttemptCompleted, sourceOutcomeValid},
+		{"completed-unverified", sourceAttemptCompleted, 0, false},
+		{"in-flight", sourceAttemptInFlight, 0, false},
+		{"failed-recorded", sourceAttemptFailed, sourceOutcomeAuthentication, false},
+		{"completed-recorded", sourceAttemptCompleted, sourceOutcomeValid, false},
+		{"completed-recorded-elapsed", sourceAttemptCompleted, sourceOutcomeValid, true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			initial, decision := newControlCommitFixture(t, false)
 			now := time.Now().UTC().Truncate(time.Second)
-			clock := func() time.Time { return now }
+			clock := resumeObservationClock(now)
 			initial.config.clock, initial.config.observe = clock, clock
 			initial.config.anchorWall, initial.config.anchorMono = now, time.Now()
 			initial.config.sourceInfo = source.Details{Configured: true, OrderSeed: sha256.Sum256([]byte("resume-order")),
@@ -72,6 +74,7 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 				t.Fatal(err)
 			}
 			calls := 0
+			var completionMinimum time.Time
 			resumed.config.fetchSourceOperation = func(ctx context.Context, index int, request source.Message) (source.Message, error) {
 				calls++
 				if index != order[1] || request.Operation != "latest" {
@@ -79,6 +82,24 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 				}
 				if got, ok := ctx.Deadline(); !ok || !got.Equal(deadline) {
 					t.Errorf("deadline changed: %v %t", got, ok)
+				}
+				if test.elapsed {
+					// Keep all three observations valid while completing after
+					// the original start second, without sleeping or extending
+					// the original wave deadline.
+					completed, err := trustedNow(resumed.config, resumed.distribution)
+					if err != nil {
+						return source.Message{}, err
+					}
+					completed = completed.Add(1500 * time.Millisecond)
+					clock := resumeObservationClock(completed)
+					resumed.config.clock, resumed.config.observe = clock, clock
+					resumed.config.anchorWall, resumed.config.anchorMono = completed, time.Now()
+				}
+				var err error
+				completionMinimum, err = trustedNow(resumed.config, resumed.distribution)
+				if err != nil {
+					return source.Message{}, err
 				}
 				return source.Message{Status: "busy"}, nil
 			}
@@ -88,6 +109,11 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 			if calls != 1 {
 				t.Fatalf("source operations=%d; want only unstarted LATEST", calls)
 			}
+			completionMaximum, err := trustedNow(resumed.config, resumed.distribution)
+			if err != nil || completionMinimum.IsZero() {
+				t.Fatal("completion observation unavailable", err)
+			}
+			retainedNext := resumed.distribution.nextAutomatic
 			want := test.outcome
 			if want == 0 {
 				want = sourceOutcomeInterrupted
@@ -110,11 +136,12 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 				if test.outcome != 0 && (d.observedEpochs[digestSlot] != 7 || d.observedDigests[digestSlot] != requested) {
 					t.Error("recorded evidence lost")
 				}
-				expected := d
-				expected.consecutiveFailures = 0
-				applyFailureBackoff(&expected, now)
-				if d.consecutiveFailures != 1 || d.backoffLevel != expected.backoffLevel || d.nextAutomatic != expected.nextAutomatic {
-					t.Error("failure backoff changed")
+				// Completion, rather than the earlier fixture start, supplies
+				// the time origin. Reopen must retain that exact deadline.
+				delay := int64(30) + int64(d.cycleSeed[1])*31/256
+				if d.consecutiveFailures != 1 || d.backoffLevel != 0 || d.nextAutomatic != retainedNext ||
+					d.nextAutomatic < completionMinimum.Unix()+delay || d.nextAutomatic > completionMaximum.Unix()+delay {
+					t.Errorf("failure backoff changed: next=%d retained=%d completion=[%d,%d] delay=%d", d.nextAutomatic, retainedNext, completionMinimum.Unix(), completionMaximum.Unix(), delay)
 				}
 				snapshot, err := s.Current()
 				if err != nil || snapshot.SourceOutcomes[digestSlot] != sourceOutcomeName(want) {
@@ -142,6 +169,8 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 				t.Fatalf("durable backoff allowed contact: %v calls=%d", err, calls)
 			}
 			now = time.Unix(reopened.distribution.nextAutomatic, 0)
+			clock = resumeObservationClock(now)
+			reopened.config.clock, reopened.config.observe = clock, clock
 			reopened.config.anchorWall, reopened.config.anchorMono = now, time.Now()
 			if _, _, err := reopened.startSourceWave(now); err != nil {
 				t.Fatal(err)
@@ -151,4 +180,9 @@ func TestRefreshResumedDigestOutcomeSurvivesCompletionAndReopen(t *testing.T) {
 			}
 		})
 	}
+}
+
+func resumeObservationClock(base time.Time) func() time.Time {
+	started := time.Now()
+	return func() time.Time { return base.Add(time.Since(started)) }
 }

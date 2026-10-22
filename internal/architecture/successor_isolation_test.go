@@ -74,8 +74,50 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/source_initial_records_linux.go",
 			"internal/successor/installation/infrastructure/source_loaded_linux.go",
 			"internal/successor/installation/infrastructure/source_policy_linux_test.go",
+			"internal/successor/installation/infrastructure/source_running_linux_test.go",
+			"internal/successor/installation/infrastructure/source_principal_linux.go",
+			"internal/successor/installation/infrastructure/source_principal_linux_test.go",
+			"internal/successor/installation/infrastructure/source_runtime_identity_linux.go",
+			"internal/successor/installation/infrastructure/source_startup_linux.go",
+			"internal/successor/installation/infrastructure/source_startup_linux_test.go",
+			"internal/successor/installation/infrastructure/source_namespace_linux.go",
+			"internal/successor/installation/infrastructure/source_start_storage_linux.go",
+			"internal/successor/installation/infrastructure/source_start_storage_linux_test.go",
+			"internal/successor/installation/infrastructure/source_first_start_linux.go",
+			"internal/successor/installation/infrastructure/source_start_barrier_linux.go",
+			"cmd/ardents-node/source_installed_linux.go",
+			"cmd/ardents-node/source_installation_linux.go",
+			"cmd/ardents-node/source_output_linux.go",
+			"cmd/ardents-node/source_supervision_linux_test.go",
+			"cmd/ardents-control/source_state_linux.go",
+			"cmd/ardents-control/source_command_linux.go",
+			"cmd/ardents-control/source_state_linux_test.go",
+			"cmd/ardents-control/source_input_linux.go",
+			"cmd/ardents-control/source_output_linux.go",
+			"cmd/ardents-control/source_inspection_linux.go",
+			"cmd/ardents-control/source_inspection_linux_test.go",
+			"cmd/ardents-control/source_artifact_linux.go",
+			"cmd/ardents-control/source_artifact_output_linux.go",
+			"cmd/ardents-control/source_release_linux.go",
+			"cmd/ardents-control/source_release_keys_linux.go",
+			"cmd/ardents-control/source_release_plan_linux.go",
+			"cmd/ardents-control/source_release_plan_linux_test.go",
+			"cmd/ardents-control/source_initial_keys_linux.go",
+			"cmd/ardents-control/source_initial_network_linux.go",
+			"cmd/ardents-control/source_initial_network_linux_test.go",
+			"cmd/ardents-control/source_initial_plan_linux.go",
+			"cmd/ardents-control/source_install_inputs_linux.go",
+			"cmd/ardents-control/source_signing_key_linux.go",
+			"internal/successor/installation/process/source_invocation_linux.go",
+			"internal/successor/installation/process/source_invocation_linux_test.go",
+			"internal/successor/installation/cgroup/source_scope_linux.go",
+			"internal/successor/installation/cgroup/source_scope_linux_test.go",
 			"internal/successor/installation/systemd/source_stopped_linux.go",
 			"internal/successor/installation/systemd/source_object_linux_test.go",
+			"internal/successor/installation/systemd/source_manager_linux.go",
+			"internal/successor/installation/systemd/source_control_linux.go",
+			"internal/successor/installation/systemd/source_control_frame_linux_test.go",
+			"internal/successor/installation/systemd/source_attempt_linux_test.go",
 			"internal/successor/installation/infrastructure/source_request_linux_test.go",
 			"internal/successor/installation/infrastructure/source_observation_linux_test.go",
 			"internal/successor/release/static_metadata.go",
@@ -372,6 +414,53 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if !inZone {
+		if source == "cmd/ardents-control/source_install_inputs_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/network/source") {
+			return true
+		}
+		if source == "cmd/ardents-control/source_initial_network_native_linux_test.go" && dependency == modulePath+"/internal/successor/network/source" {
+			return true
+		}
+		if source == "cmd/ardents-control/source_initial_network_linux.go" && (dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/network/source") {
+			return true
+		}
+		if source == "cmd/ardents-control/source_release_native_linux_test.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+			return true
+		}
+		if source == "cmd/ardents-control/source_release_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+			return true
+		}
+		if source == "cmd/ardents-control/source_release_plan_linux.go" && dependency == modulePath+"/internal/successor/installation/infrastructure" {
+			return true
+		}
+		if source == "cmd/ardents-control/source_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
+			return true
+		}
+		if (source == "cmd/ardents-control/source_inspection_linux.go" || source == "cmd/ardents-control/source_inspection_linux_test.go") && dependency == modulePath+"/internal/successor/network/source" {
+			return true
+		}
+		if source == "cmd/ardents-control/source_state_linux.go" || source == "cmd/ardents-control/source_state_linux_test.go" {
+			for _, owner := range []string{"network/source", "processresource"} {
+				if dependency == modulePath+"/internal/successor/"+owner {
+					return true
+				}
+			}
+			if source == "cmd/ardents-control/source_state_linux.go" && dependency == modulePath+"/internal/successor/network/state" {
+				return true
+			}
+		}
+		if source == "cmd/ardents-node/source_supervision_linux_test.go" && dependency == modulePath+"/internal/successor/network/state" {
+			return true
+		}
+		if source == "cmd/ardents-node/source_installed_linux.go" {
+			for _, owner := range []string{"installation/infrastructure", "network/source", "network/state", "processresource"} {
+				if dependency == modulePath+"/internal/successor/"+owner {
+					return true
+				}
+			}
+		}
+		if source == "cmd/ardents-node/source_installation_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
+			return true
+		}
 		if source == "tests/e2e/service/service_custody_process_linux_test.go" && dependency == modulePath+"/internal/successor/publication" {
 			return true
 		}
@@ -729,7 +818,16 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/successor/installation/infrastructure/source_plan_linux.go" && dependency == modulePath+"/internal/successor/network/source" {
 			return true
 		}
-		if (source == "internal/successor/installation/infrastructure/source_observation_linux.go" || source == "internal/successor/installation/infrastructure/source_install_linux.go" || source == "internal/successor/installation/infrastructure/source_loaded_linux.go" || source == "internal/successor/installation/infrastructure/source_policy_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
+		if source == "internal/successor/installation/infrastructure/source_startup_linux.go" && (dependency == modulePath+"/internal/successor/installation/process" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/completion" || dependency == modulePath+"/internal/successor/installation/systemd") {
+			return true
+		}
+		if source == "internal/successor/installation/infrastructure/source_first_start_linux.go" && (dependency == modulePath+"/internal/successor/installation/process" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
+			return true
+		}
+		if source == "internal/successor/installation/infrastructure/source_start_barrier_linux.go" && dependency == modulePath+"/internal/successor/installation/completion" {
+			return true
+		}
+		if (source == "internal/successor/installation/infrastructure/source_observation_linux.go" || source == "internal/successor/installation/infrastructure/source_install_linux.go" || source == "internal/successor/installation/infrastructure/source_loaded_linux.go" || source == "internal/successor/installation/infrastructure/source_policy_linux_test.go" || source == "internal/successor/installation/infrastructure/source_running_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
 			return true
 		}
 		if source == "cmd/ardents-next/source_input_linux.go" && dependency == modulePath+"/internal/successor/network/source" {
@@ -789,7 +887,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
-	if (source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go" || source == "internal/successor/installation/systemd/source_preflight_linux.go" || source == "internal/successor/installation/systemd/source_stopped_linux.go") && dependency == "github.com/godbus/dbus/v5" {
+	if (source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go" || source == "internal/successor/installation/systemd/source_preflight_linux.go" || source == "internal/successor/installation/systemd/source_stopped_linux.go" || source == "internal/successor/installation/systemd/source_manager_linux.go" || source == "internal/successor/installation/systemd/source_control_linux.go") && dependency == "github.com/godbus/dbus/v5" {
 		return true
 	}
 	if (owner == "internal/successor/admission/spending" || owner == "internal/successor/network/duty" || owner == "internal/successor/network/state/durable") && dependency == "golang.org/x/sys/windows" {

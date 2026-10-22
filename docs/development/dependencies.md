@@ -16,6 +16,108 @@ this release only; unverified exclusion is not release admission.
 
 ## Native Source preflight dependency renewal
 
+### Source build and qualification interpreters
+
+Reviewed 2026-10-22. The separate Source build/public-plan tools use only isolated
+CPython standard-library mechanisms (`-I -S`), with no pip dependencies or product
+Python runtime. The digest-pinned Go image supplies Debian12 Python3.11.2,
+`python3.11-minimal` / `libpython3.11-stdlib` `3.11.2-6+deb12u9`; interpreter SHA256
+`9bee109da0dce17a7c9eeaca9f420cc6770a9fe143b9382d73bd22fe59b21a5f`.
+The build recipe records the actual interpreter version and executable hash.
+Source startup qualification uses the separately reviewed Ubuntu3.12.3 `.12`
+interpreter below. Both retain PSF/package copyright terms; final receipts must
+capture actual interpreter, imported-file and linked-library package integrity.
+
+The [upstream branch policy](https://devguide.python.org/versions/), accessed on
+that date, maintains security fixes for3.11 through October2027 and3.12 through
+October2028. [Debian's Bookworm LTS handover](https://www.debian.org/News/2026/20260712)
+retains distribution support through June2028, with package exclusions requiring
+separate checking. Neither policy proves these exact patches fully fixed.
+The Bookworm `debian-security-support` `1:12+2026.06.30`
+[ended](https://sources.debian.org/src/debian-security-support/1:12%2B2026.06.30/security-support-ended.deb12)
+and [limited](https://sources.debian.org/src/debian-security-support/1:12%2B2026.06.30/security-support-limited)
+lists, accessed on that date, contain no Python3.11, OpenSSL or glibc exception.
+This distribution support is distinct from upstream patch currency. Its limited
+binutils support requires trusted build inputs; the selected no-cgo product build
+uses the pinned Go toolchain and verified source/modules, with no supplied native
+object or archive input. Explicit race-test C/compiler use remains a separately
+inventoried tool surface; it does not enter the distributed product.
+
+The [Debian3.11 tracker](https://security-tracker.debian.org/tracker/source-package/python3.11),
+accessed on that date, retains open findings in TemporaryDirectory cleanup
+(CVE-2026-12345), tarfile (-11972, -11940), XML (-7210, -6879), base64 decoding
+(-3446, CVE-2025-12781), configparser (-0864), POP/IMAP
+(CVE-2025-15367, -15366), plus the in-tree interpreter layout (-12003) and
+pkgutil resource lookup (-3479). These scripts call none of those affected APIs.
+The installed Linux interpreter/stdlib is a trusted, package-owned fixed layout;
+the build consumes a read-only source snapshot, not a supplied Python tree.
+No severity or tracker disposition supplies an exemption.
+
+The startup observer compares canonical encoding of its independently pinned
+expected bundle; it never decodes the peer's base64. Python performs no TLS,
+HTTP, mail, XML, HTML, archive extraction/decompression or credential protocol.
+Actual Source TLS remains in the Go command. The newer
+[Ubuntu USN-8744-1](https://lists.ubuntu.com/archives/ubuntu-security-announce/2026-September/011170.html)
+fixes cookie, Expat, tar extraction and HTML paths, likewise outside this use.
+The earlier interpreter review below still applies to its other excluded APIs.
+
+The build interpreter's `_hashlib` links Debian `libssl3` `3.0.22-1~deb12u1`;
+its SHA256-only use supplies no OpenSSL TLS or certificate consumer. The
+[OpenSSL package tracker](https://security-tracker.debian.org/tracker/source-package/openssl),
+accessed on that date, still lists DTLS (-84782, -75806), SM2 (-77696), CMP
+(-75805), elliptic-curve multiplication (-54872), CRL distribution points
+(-35189), all CVE-2026, and PowerPC CVE-2025-27587. None is a SHA256 path;
+this selected image is amd64. Record actual library/package integrity with the
+closure; current package version alone is not a fix or broad OpenSSL approval.
+
+The same exact-use review covers the mapped Expat, zlib and libc libraries.
+Capture package copyright, file hashes/modes, empty package-integrity results,
+non-set-id interpreter and `AT_SECURE=0`, and absence of loader/crypto injection
+environment variables. Both interpreters use trusted installed layouts; product
+Go artifacts have cgo disabled. Primary sources below were accessed 2026-10-22;
+their open findings remain open rather than being accepted by severity:
+
+| Mapped dependency and current finding | Selected interpreter use |
+|---|---|
+| [Expat tracker](https://security-tracker.debian.org/tracker/source-package/expat): CVE-2026-102633, -77214, -56132, -41080, CVE-2025-66382 and CVE-2023-52426 | No XML, DTD/entity parsing or xmlwf consumer. Check complete calls and imported modules separately from the mapped-library inventory |
+| [zlib tracker](https://security-tracker.debian.org/tracker/source-package/zlib): CVE-2026-85091, -27171 and CVE-2023-45853; [Ubuntu USN-8706-1](https://ubuntu.com/security/notices/USN-8706-1) | No gz/MiniZip, archive decompression or CRC-combine call/input. Keep the tracker findings even where version applicability is disputed; that dispute is not the exclusion |
+| [glibc tracker](https://security-tracker.debian.org/tracker/source-package/glibc): CVE-2026-97399, -95818, -86805, -89092, -80489, -77117, -19542, -19499, -18374, -8674, -6791, -6368, -6238, -5928, -5450 and -5435 | Power8 is outside amd64; the two loader cases require set-id/AT_SECURE execution. No nscd, legacy iconv, deep tdelete, strfmon, fopen ccs extension, DNS, shell wordexp, wide-character ungetwc or scanf input is supplied. No ctypes/plugin or libc regex/glob consumer is admitted. Native manager/NSS use needs its separate receipt |
+| [Ubuntu OpenSSL USN-8847-1](https://ubuntu.com/security/notices/USN-8847-1), Noble fix `.16` versus mapped `.9`; [USN-8861-1](https://lists.ubuntu.com/archives/ubuntu-security-announce/2026-October/011328.html) | SHA256-only use excludes CRL, EC/SM2, CMP, DTLS/TLS and QUIC paths. The latter notice additionally concerns26.04 QUIC. No Python protocol/certificate consumer is created |
+
+Actual mapped build versions are Expat `2.5.0-1+deb12u4`, zlib
+`1:1.2.13.dfsg-1` and libc `2.36-9+deb12u14`; native versions are Expat
+`2.6.1-2ubuntu0.4`, zlib `1:1.3.dfsg-3.1ubuntu2.1`, libc
+`2.39-0ubuntu8.7` and OpenSSL `3.0.13-0ubuntu3.9`. Package integrity and these
+API/input exclusions supply no fully patched or general host claim.
+
+Reproduce the scoped check by loading each selected script with `runpy.run_path`
+under `-I -S` without `__main__`, recording every file-backed imported module and
+its SHA256, and inspecting the complete source call surface. Exercise the actual
+offline build/plan chain separately; before PO acceptance, startup checks are
+syntax and natural invalid-environment refusal only. Sampled imports alone do
+not establish non-applicability. Final native/build receipts must bind their
+exact source, OS packages/libraries, current advisories and support exclusions;
+this registration does not qualify an installed run. Renew on any changed input,
+call surface, interpreter, library or advisory. The Product Owner and Codex own
+renewal through the existing explicit tools-install workflow.
+
+### Offline initial Source Release producer
+
+Canonical Control's separate fixed Source signing purpose directly uses the
+already registered go-tuf/v2 metadata and Sigstore signature implementations,
+with standard-library Ed25519/PKCS#8. It admits only the initial Node/Source
+target pair, the exact selected Source template and a static Linux-amd64
+`ardents-node` program; it does not extend the Endpoint-only signer or import its
+runtime owner. Five distinct protected private keys and ordinary three-signature
+roles remain unchanged. New Release independently verifies the exact generated
+pair under one fresh diagnostic history before public metadata output; keys
+remain in command composition through original input checks and joined Close.
+No module version or cryptographic primitive changes. This new caller requires
+its own final source/binary vulnerability and imported-closure receipt; earlier
+verification-only or Endpoint-signing findings do not qualify it. Project-owned
+keys/rebuild records supply no independent custody or builder claim, and signing
+supplies neither the exact PO bootstrap acceptance nor installed qualification.
+
 ### Initial stopped Source mutation applicability
 
 Reviewed 2026-10-21 for the separate bounded initial stopped transition. This

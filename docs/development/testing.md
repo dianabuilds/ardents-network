@@ -1,5 +1,62 @@
 # Testing
 
+`source-startup-linux` / `make source-startup-check` is a separate private native
+qualification consumer. **Do not execute it before the exact public bootstrap
+receipt has direct Product Owner acceptance under ADR-0123.** Its receipt pin
+identifies the candidate; file presence is not a technical approval token. The
+runner itself grants no Installation, State, Source or process authority.
+It invokes the real canonical Node stopped/first-start commands and Control
+State-preparation/one-contact inspection commands. Its selected cases are
+`positive`, `credential-substitution` and `clock-loss`, one fresh stand each;
+they do not establish the whole startup interruption/pressure matrix by themselves.
+
+The outside controller holds the shared lock, supplies a read-only exact source
+snapshot, original pinned inputs and a fresh private Ubuntu24.04/systemd255/ext4
+manager with a functioning journal, and retains its original whole-scope events
+descriptor. Use the marker `/etc/ardents-source-startup-native-stand` with exact
+`ardents-source-startup-native-v1` plus LF and container `ardents-source-startup`.
+Caller/manager mount, PID, cgroup and UTS namespaces match. The caller and every
+helper belong to the controller's `supervisor` sibling of its manager cgroup;
+the entered manager namespace reports `0::/../supervisor`. The outside scope
+covers both siblings and joins all descendants even on caller failure. No host
+account/unit/limit or foreign workload changes. Missing prerequisites fail.
+
+Supply `ARDENTS_SOURCE_STARTUP_{NODE,CONTROL,SOURCE_MANIFEST,REQUEST,BUNDLE,EPOCH,
+CLIENT_CERTIFICATE,CLIENT_KEY,SERVER_CA,PUBLIC_RECEIPT}` and each `_SHA256` as
+independently pinned original files. Set `DISTRIBUTION`, `PIN`, `HISTORY`,
+`NETWORK`, `OUTPUT`, `CASE`, `SERVER_NAME`, `SERVER_PIN`, `SOURCE_ID`, `FAMILY` and
+`HANDLE` under the same prefix. Node is exactly the enrolled distribution's
+`ardents-node-linux-amd64`; Release environment is fixed `alpha`. The independent
+receipt, real operational key ceremony/build/evidence and first-pin delivery
+must already have their actual acceptance; test artifacts do not substitute.
+Root supplies a fresh root-written 0644 live-clock file and public handoff paths
+traversable by the actual installed system UID. The runner derives that UID/GID
+from selected configuration and invokes genuine State acceptance without root
+or supplementary groups; private key directories stay private.
+
+The runner retains the actual clock writer through Source use, waits for the
+original invocation's genuine journal readiness, independently observes kernel
+argv/credentials/executable and original cgroup, and checks a real mTLS client's
+exact prepared signed bundle/Epoch digest. Mutation controls precede another
+actual contact. Native pidfd open/signal support is required before installation
+effects. The original process is retained by pidfd and receives ordinary SIGTERM
+before manager deactivation; fixed-unit Stop follows its original scope join.
+An uncertain start without that published process/scope pair instead requests
+fixed-unit cleanup. The original clock writer remains live through Source join.
+Stop alone is not join: the original cgroup events descriptor
+must report completion before release, with a bounded unavailable notice and
+continued custody otherwise. Original and cleanup failures are retained together;
+manager loss never authorizes a foreign stop. Raw response/logs stay in fresh
+private external output. The original command emits `retired` only after all
+joins when the complete result is nil or contains exclusively ordinary cancellation;
+every other result emits `retirement-failed` and remains failed. An earlier
+completion-unavailable notice cannot become clean retirement after a late join.
+The positive case requires `retired`, separately from kernel scope completion.
+Negative cases retain their failed terminal evidence and prove only causal refusal
+and original join; they do not establish clean cleanup or satisfy that positive gate.
+A selected case's result does not claim full installed,
+independence, power-loss or privacy qualification.
+
 `source-stopped-linux` / `make source-stopped-check` is the separate initial
 stopped Source component profile. Its outside controller holds the same original
 development exclusive lock, builds an immutable full source snapshot with
@@ -26,6 +83,10 @@ source and actual binary pins, loaded manager/account facts and bounded result
 outside Git. These same-controller test inputs prove no operational trust or
 independent families.
 
+The compiled scenarios consume the canonical `ardents-node installation
+install-initial-stopped` entrypoint, without a caller-supplied reference time,
+and require its exact operation/outcome pair. The test harness remains in the
+registered Next test package and never delegates runtime work through Next.
 The compiled positive directly obtains initial provenance and fresh Release
 proofs in its original process. Independent inventory/bytes/access/account,
 empty semantic-root, selected-binding and actual stopped manager oracles check
@@ -38,6 +99,12 @@ bytes/access/ancestors/inventory, and retain cancellation plus an actual late
 Close failure. A permitted root-written clock replacement remains live evidence;
 its inode and timestamp are not frozen. These file checks grant no startup,
 Release or State authority and execute no Source runtime.
+Separate `TestSourceNamespaceNative` filesystem controls in this Root profile
+retain original unit-search directories and absent overrides, reject inode
+substitution even after restoration, and retain original cancellation. They use
+only disposable Root-owned directories; they neither start Source nor qualify
+its installed invocation. These Root-owned positive fixtures are excluded from
+the ordinary unprivileged Linux unit/race profile.
 The private admitted commitment also binds the original Release history path
 and native directory identity/access to that binding. Native controls reject a
 foreign verifier, directory/access substitution and held-observation cancellation
@@ -1193,6 +1260,62 @@ selected Carriers.
   Linux Endpoint setup stays in that profile; exceeding the bound fails with
   the Go runtime's goroutine dump.
 - `make e2e` runs the positive local process package inventory.
+  After the Source command cutover, retained old Endpoint/Node client regressions
+  use genuine old State/Source owners over independently prepared fixture roots,
+  with actual TLS serving and joined Close. They import no new runtime and do not
+  execute a replacement old Source command. Their results establish those client
+  boundaries, not canonical Source process/Guard/installation qualification.
+  The compiled retired selector has separate pre-effect plan/diagnostic refusal
+  coverage; installed Source has its separately admitted native profile.
+  `network/source` also exercises a finite one-contact inspection over actual
+  mTLS, wrong server pin, original caller cancellation and unchanged two-source
+  acquisition refusal. Canonical Control tests invoke that real inspection using
+  generated credentials and original native files, then refuse a non-private
+  client key before another contact. These transport/command controls provide
+  no installed invocation or State authority. TCP Close controls retain an
+  injected late failure only after actual native closure, separately from peer
+  TLS reset and successful original cancellation; State guard-removal checks
+  retain the original root through joined cleanup.
+  Canonical Control's `network_signing_native` tests named
+  `TestSourcePreparationNative*` are a separate offline root/ext4 profile, not
+  ordinary root unit execution or installed Source qualification. Build the
+  canonical Control with the standard command flags and its test binary with
+  `-race -tags network_signing_native`. The outer controller retains the shared
+  development lock, complete source manifest, original binaries and their hashes.
+  Supply `ARDENTS_SOURCE_CONTROL_PROGRAM` and its `_SHA256` plus a root-owned
+  0700 native-ext4 `TMPDIR` under protected direct ancestors, then execute the test
+  binary with `-test.run '^TestSourcePreparationNative' -test.count=1
+  -test.timeout=3m`. Require all six discovered tests: exact descriptor/inventory
+  bytes through the actual pinned command; original input cancellation/physical
+  failure and no output adoption; and original output substitution/hardlink/extra
+  file/sync refusal; and the fixed initial Source Release purpose with real fresh
+  keys through the canonical Source-specific key producer, an independent PKCS8/
+  public-key/receipt comparison, actual canonical CLI, coherent new-Release verification and original key
+  failure retention. The latter additionally requires independently pinned
+  `ARDENTS_SOURCE_NODE_PROGRAM` / `_SHA256`; the signer refuses a substituted
+  Control ELF before signing. Missing root, filesystem, command pin or test is invalid
+  environment. The unsigned byte fixtures authenticate no Release and start no
+  Source. `network-signing-compile-check` cross-compiles this separate Control
+  binary as well as the existing provisioning owners; compilation supplies no
+  native execution result.
+  The fifth case runs actual canonical key birth, public-flag plan preparation and separately prepared/hash-bound
+  Record/Epoch signing, then invokes genuine State acceptance in an OS child with
+  numeric UID/GID199 and no supplementary groups. It requires a separate
+  root-owned 0755 native fixture parent in
+  `ARDENTS_SOURCE_STATE_FIXTURE_PARENT`; no private-key directory is made readable
+  to that child. Prepared State replay refuses and participation remains absent.
+  This numeric-UID fixture is not an installed Source account/unit or Startup /
+  Guard/serving qualification. Secret native readback copies are explicitly
+  retired after checking, and actual original file descriptors remain retained
+  through all key users and physical Close.
+  The sixth case invokes the pinned canonical public install-input command with
+  fresh real public TLS chains and an absent opaque runtime private key. It checks
+  all six durable file commitments, exact public copies and existing request facts;
+  future runtime roots and clock remain absent. Wrong public commitment/name and
+  hidden runtime path refuse before output creation. Cancellation and a distinct
+  actual descriptor Close failure are both retained. Source's ordinary public
+  contact tests additionally exercise CA, EKU, validity, pin, declaration and
+  authority-key/identity separation without transport or a two-source Plan.
 - `make quick-check` runs the unit inventory, including architecture and
   formatting checks, plus vet, the four named command builds, module tidiness,
   and the canonical artifact representation proof. `make format-check` remains

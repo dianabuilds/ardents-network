@@ -27,6 +27,46 @@ type PublicTrust struct {
 	ClientKeyDigest      [32]byte
 }
 
+// PublicContact is an offline public observation for one fully declared
+// Source/client pair. It is not a finite acquisition plan or family evidence.
+// Private credential paths and live owners are deliberately absent.
+type PublicContact struct {
+	Source               PublicSource
+	ClientCertificatePEM []byte
+	ClientRootPEM        []byte
+	ClientKeyDigest      [32]byte
+}
+
+// ObservePublicContact checks one pair using the same chain, purpose, key pin
+// and declaration rules as actual transport and two-source preparation. It
+// creates no Plan, trusted clock, State, private signer or native permission.
+func ObservePublicContact(input PublicContact, authorities map[[32]byte]ed25519.PublicKey, reference time.Time) error {
+	if reference.IsZero() || reference.Nanosecond() != 0 {
+		return errors.New("source observation reference is invalid")
+	}
+	client, err := observeChain(input.ClientCertificatePEM, input.ClientRootPEM, "", x509.ExtKeyUsageClientAuth, reference)
+	if err != nil {
+		return err
+	}
+	clientPin, err := certificateDigest(client)
+	if err != nil || clientPin != input.ClientKeyDigest || digestIsAuthority(clientPin, authorities) {
+		return errors.New("source client observation pin differs or collides")
+	}
+	server, err := observeChain(input.Source.CertificatePEM, input.Source.Source.RootPEM, input.Source.Source.ServerName, x509.ExtKeyUsageServerAuth, reference)
+	if err != nil {
+		return err
+	}
+	serverPin, err := certificateDigest(server)
+	if err != nil || serverPin != input.Source.Source.LeafKeyDigest {
+		return errors.New("source observation pin differs")
+	}
+	if _, err := configureServerTrust(Config{ServeAddress: input.Source.Source.Address, ServeCertificate: server, ServeClientRootPEM: input.ClientRootPEM, ServeClientKeyDigests: [][32]byte{input.ClientKeyDigest}}, authorities, true); err != nil {
+		return err
+	}
+	_, err = declaredClient(input.Source.Source, client, clientPin, authorities, nil)
+	return err
+}
+
 // ObservePublicTrust checks public credential purpose, explicit CA/name/pin and
 // the same collision/declaration rules used by New. Reference is solely the
 // caller's offline observation; runtime State independently owns handshake time.

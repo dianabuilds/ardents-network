@@ -77,6 +77,15 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/successor/network/source.InspectLatest"
+        ],
+        "classification": "Linux native Source inspection composition with portable protocol tests",
+        "rationale": "Canonical ardents-control source inspect-latest genuinely consumes this exact one-contact mTLS operation on Linux. The Windows command refuses before native input effects; portable Source inspection tests exercise its protocol and physical completion rules. No Linux production exception is granted.",
+        "owner": "Product Owner and Codex; Network Source and canonical Control composition",
+        "retirement": "Remove this exact Windows entry when a selected Windows native inspection consumer reaches it, or the owning operation is retired."
+      },
+      {
+        "symbols": [
           "internal/successor/network.NodeParticipationFacts.Restriction",
           "internal/successor/network.NodeParticipationFacts.OriginalNodeRestriction",
           "internal/successor/network/duty.nodeParticipationRestriction",

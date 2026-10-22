@@ -33,8 +33,10 @@ type Invocation struct {
 	pid, uid, gid               uint32
 	invocation                  [16]byte
 	started                     uint64
-	program, installationRoot   string
+	program                     string
+	arguments, placement        string
 	programDevice, programInode uint64
+	namespaces                  map[string]*os.File // Source only; original kernel objects
 }
 
 func Retain(ctx context.Context, expected Expected) (result *Invocation, returnedErr error) {
@@ -56,6 +58,23 @@ func RetainSelf(ctx context.Context, expected Expected) (*Invocation, error) {
 }
 
 func retain(ctx context.Context, expected Expected) (result *Invocation, returnedErr error) {
+	return retainFixed(ctx, expected, endpointInvocationPolicy(expected))
+}
+
+// A closed policy is chosen only by the separate fixed-purpose openers. No
+// public input can select a program name, argument vector, unit or cgroup.
+type invocationPolicy struct {
+	program, arguments, placement string
+}
+
+func endpointInvocationPolicy(expected Expected) invocationPolicy {
+	program := filepath.Join(expected.InstallationRoot, "generations", expected.Generation, "ardents-linux-amd64")
+	return invocationPolicy{program: program,
+		arguments: strings.Join([]string{program, "endpoint", "start-installed", expected.InstallationRoot, ""}, "\x00"),
+		placement: "0::/system.slice/ardents-endpoint.service\n"}
+}
+
+func retainFixed(ctx context.Context, expected Expected, policy invocationPolicy) (result *Invocation, returnedErr error) {
 	if ctx == nil || expected.PID == 0 || expected.UID == 0 || expected.GID == 0 ||
 		expected.UID == ^uint32(0) || expected.GID == ^uint32(0) ||
 		expected.Invocation == [16]byte{} ||
@@ -80,8 +99,8 @@ func retain(ctx context.Context, expected Expected) (result *Invocation, returne
 		return nil, err
 	}
 	observed := &Invocation{root: root, pid: expected.PID, uid: expected.UID, gid: expected.GID,
-		invocation: expected.Invocation, installationRoot: expected.InstallationRoot,
-		program:       filepath.Join(expected.InstallationRoot, "generations", expected.Generation, "ardents-linux-amd64"),
+		invocation: expected.Invocation,
+		program:    policy.program, arguments: policy.arguments, placement: policy.placement,
 		programDevice: uint64(native.Dev), programInode: native.Ino}
 	defer func() {
 		if returnedErr != nil {
@@ -126,6 +145,9 @@ func (pin *Invocation) Observe(ctx context.Context) error {
 	if pin == nil || ctx == nil || pin.root == nil || pin.identity == nil {
 		return errInput
 	}
+	if err := pin.observeSourceNamespaces(ctx); err != nil {
+		return err
+	}
 	before, err := pin.root.Stat(".")
 	if err != nil || !os.SameFile(pin.identity, before) {
 		return errors.Join(errBinding, err)
@@ -152,7 +174,7 @@ func (pin *Invocation) Observe(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if !bytes.Equal(arguments, []byte(strings.Join([]string{program, "endpoint", "start-installed", pin.installationRoot, ""}, "\x00"))) {
+	if !bytes.Equal(arguments, []byte(pin.arguments)) {
 		return errBinding
 	}
 	status, err := pin.read(ctx, "status", 64<<10)
@@ -166,7 +188,7 @@ func (pin *Invocation) Observe(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if !bytes.Equal(cgroup, []byte("0::/system.slice/ardents-endpoint.service\n")) {
+	if !bytes.Equal(cgroup, []byte(pin.placement)) {
 		return errBinding
 	}
 	environment, err := pin.read(ctx, "environ", 64<<10)
@@ -186,14 +208,18 @@ func (pin *Invocation) Observe(ctx context.Context) error {
 		return errors.Join(errBinding, err, identityErr)
 	}
 	pin.started = started
-	return ctx.Err()
+	return pin.observeSourceNamespaces(ctx)
 }
 
 func (pin *Invocation) Close() error {
 	if pin == nil || pin.root == nil {
 		return nil
 	}
-	err := pin.root.Close()
+	var err error
+	for _, file := range pin.namespaces {
+		err = errors.Join(err, file.Close())
+	}
+	err = errors.Join(err, pin.root.Close())
 	pin.root = nil
 	return err
 }

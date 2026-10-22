@@ -29,6 +29,13 @@
 // without LoadUnit/RefUnit, mutation or reconnect. Copies share original caller,
 // denial and Close; actual manager users and cancellation callbacks join before
 // retained physical release. Source expected policy stays in infrastructure.
+// SourceRuntime opens its own non-root read-only GetUnit/property connection;
+// SourceControl opens a separate root connection with one fixed Source Start
+// and one cleanup Stop, both mode fail. It admits canonical native job replies
+// only on that control connection. A job is asynchronous request evidence,
+// never process identity or join. Copies share original attempt/Close state;
+// cleanup cannot restore denied admission or reconnect. Native control and
+// observations grant no Release, Startup or Source serving authority.
 package systemd
 
 import "errors"

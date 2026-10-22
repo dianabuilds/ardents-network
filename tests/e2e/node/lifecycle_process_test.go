@@ -1,7 +1,6 @@
 package state_test
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"crypto/ed25519"
@@ -85,7 +84,7 @@ func TestTwoNodeProcessesRefreshWithdrawRestartAndReassign(t *testing.T) {
 		sourceServers[index] = makeLeaf(t, authority, fmt.Sprintf("source-%d.test", index), true)
 		plan := writeJSON(t, fmt.Sprintf("source-%d.json", index), sourceServerPlan(fixture, sourceRoots[index], sourceAddresses[index], sourceServers[index], sourceClientCA.root, clientPins))
 		sourcePorts[index].release(t)
-		stopSources[index] = startSource(t, nodeBinary, plan)
+		stopSources[index] = startSourceOwner(t, plan)
 		defer stopSources[index]()
 	}
 	diagnosticRoot := t.TempDir()
@@ -242,40 +241,6 @@ func sourcePlan(fixture lifecycleStateFixture, addresses [2]string, servers [2]p
 		"authority_public": []string{hex.EncodeToString(fixture.authorityPublic)}, "threshold": 1,
 		"clock_observed_at": time.Now().UTC().Format(time.RFC3339), "order_seed": strings.Repeat("44", 32),
 		"materialization_index": 0, "client_certificate": client.certificate, "client_key": client.key, "sources": sources}
-}
-
-func startSource(t *testing.T, binary, plan string) func() {
-	t.Helper()
-	ctx, cancel := context.WithCancel(context.Background())
-	command := exec.CommandContext(ctx, binary, "source", "--config", plan)
-	stdout, err := command.StdoutPipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var stderr bytes.Buffer
-	command.Stderr = &stderr
-	if err := command.Start(); err != nil {
-		t.Fatal(err)
-	}
-	scanner := bufio.NewScanner(stdout)
-	ready := make(chan bool, 1)
-	go func() {
-		ready <- scanner.Scan() && strings.Contains(scanner.Text(), `"schema":"ardents-source-event-v1"`) &&
-			strings.Contains(scanner.Text(), `"kind":"source-ready"`)
-	}()
-	select {
-	case ok := <-ready:
-		if !ok {
-			cancel()
-			_ = command.Wait()
-			t.Fatalf("source not ready: %s", stderr.String())
-		}
-	case <-time.After(5 * time.Second):
-		cancel()
-		_ = command.Wait()
-		t.Fatal("source readiness timed out")
-	}
-	return func() { cancel(); _ = command.Wait() }
 }
 
 func startNode(t *testing.T, binary, plan string) *nodeProcess {

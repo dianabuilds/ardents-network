@@ -29,6 +29,19 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if ctx.Err() != nil {
 		return 130
 	}
+	startSource := args[0] == "start-source"
+	var sourceBinding string
+	if startSource {
+		if len(args) != 6 || os.Geteuid() != 0 {
+			return 2
+		}
+		original, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		ctx = original
+		sourceBinding = args[5]
+		args = append(append([]string(nil), args[:5]...), time.Now().UTC().Format(time.RFC3339Nano))
+		args[0] = "authenticate-candidate"
+	}
 	if args[0] == "prepare-descriptor" || args[0] == "prepare-inventory" {
 		raw, err := executeInfrastructurePreparation(ctx, args, nil)
 		if err != nil {
@@ -150,6 +163,9 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if err == nil && installStopped {
 		err = infrastructure.InstallInitialStoppedSource(v, a, source, args[1], history)
 	}
+	if err == nil && startSource {
+		err = executeSourceFirstStart(ctx, v, a, sourceBinding, history, out)
+	}
 	p, g := a.Targets()
 	pd, pok := p.AcceptedDecision()
 	gd, gok := g.AcceptedDecision()
@@ -160,6 +176,9 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	err = errors.Join(err, source.Close(), v.Close(), ctx.Err())
 	if err != nil {
 		return enrollmentReport(out, "infrastructure-authentication-refused", 1)
+	}
+	if startSource {
+		return enrollmentReport(out, "source-first-start-completed", 0)
 	}
 	if installStopped {
 		if writeNetworkPreparationReceipt(ctx, out, []byte("{\"outcome\":\"source-initial-stopped-selected\"}\n")) != nil || ctx.Err() != nil {
@@ -185,6 +204,27 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// A bounded failure notice never releases the original operation or its
+// verifier. Even an uncertain Start continues retaining its own native joins.
+func executeSourceFirstStart(ctx context.Context, v *release.Verifier, a infrastructure.Authorization, binding, history string, out io.Writer) error {
+	done := make(chan error, 1)
+	go func() { done <- infrastructure.StartSource(ctx, v, a, binding, history) }()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+	}
+	notice := time.NewTimer(5 * time.Second)
+	defer notice.Stop()
+	select {
+	case err := <-done:
+		return err
+	case <-notice.C:
+		output := writeNetworkPreparationReceipt(context.WithoutCancel(ctx), out, []byte("{\"outcome\":\"source-start-completion-unavailable\"}\n"))
+		return errors.Join(errors.New("source first-start completion unavailable"), output, <-done)
+	}
 }
 
 // Immutable distribution and mutable Release history cannot contain one another.

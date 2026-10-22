@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -40,6 +41,19 @@ func OpenSourcePreflight(ctx context.Context) (result *SourcePreflight, returned
 	if ctx == nil || os.Geteuid() != 0 {
 		return nil, ErrInput
 	}
+	r, err := openSourceReference(ctx)
+	if r == nil {
+		return nil, err
+	}
+	return &SourcePreflight{owner: r}, err
+}
+
+// Each fixed-purpose Source opener owns a new physical connection. This helper
+// authenticates only the actual caller; it accepts no supplied UID or bus path.
+func openSourceReference(ctx context.Context) (result *sourcePreflight, returnedErr error) {
+	if ctx == nil {
+		return nil, ErrInput
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -55,7 +69,7 @@ func OpenSourcePreflight(ctx context.Context) (result *SourcePreflight, returned
 	}
 	t := &referenceTransport{socket: u, properties: true}
 	r := &sourcePreflight{original: ctx, client: startupBus{transport: t, interruptedIO: new(atomic.Bool)}}
-	result = &SourcePreflight{owner: r}
+	result = r
 	defer func() {
 		if returnedErr != nil {
 			r.terminal = returnedErr
@@ -88,7 +102,7 @@ func OpenSourcePreflight(ctx context.Context) (result *SourcePreflight, returned
 	if err != nil {
 		return result, err
 	}
-	if err = r.client.bus.Auth([]dbus.Auth{dbus.AuthExternal("0")}); err != nil {
+	if err = r.client.bus.Auth([]dbus.Auth{dbus.AuthExternal(strconv.Itoa(os.Geteuid()))}); err != nil {
 		return result, err
 	}
 	if err = r.client.bus.Hello(); err != nil {
@@ -142,30 +156,9 @@ func (r *sourcePreflight) observeAbsent() (pathsResult []string, returnedErr err
 	if err := r.client.sameOwner(ctx, r.client.manager); err != nil {
 		return nil, err
 	}
-	get := func(name string) (dbus.Variant, error) {
-		call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties.Get", "org.freedesktop.systemd1.Manager", name)
-		var v dbus.Variant
-		if err != nil {
-			return v, err
-		}
-		err = call.Store(&v)
-		return v, err
-	}
-	v, err := get("Version")
-	if err != nil || v.Signature().String() != "s" {
-		return nil, errors.Join(ErrObservation, err)
-	}
-	version, ok := v.Value().(string)
-	if !ok || !(version == "255" || strings.HasPrefix(version, "255.")) {
-		return nil, ErrObservation
-	}
-	v, err = get("UnitPath")
-	if err != nil || v.Signature().String() != "as" {
-		return nil, errors.Join(ErrObservation, err)
-	}
-	paths, ok := v.Value().([]string)
-	if !ok || len(paths) == 0 || len(paths) > 32 {
-		return nil, ErrObservation
+	version, paths, err := r.sourceDeclaration(ctx)
+	if err != nil {
+		return nil, err
 	}
 	for _, unit := range []string{"ardents-source.service", "ardents-source.socket"} {
 		for _, method := range []struct{ name, absent string }{
@@ -250,7 +243,13 @@ func (reference *SourcePreflight) Close() error {
 	if reference == nil || reference.owner == nil {
 		return nil
 	}
-	r := reference.owner
+	return reference.owner.close()
+}
+
+func (r *sourcePreflight) close() error {
+	if r == nil {
+		return nil
+	}
 	r.closeOnce.Do(func() {
 		r.mu.Lock()
 		r.closed.Store(true)

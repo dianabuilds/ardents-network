@@ -22,7 +22,7 @@ var (
 	ErrFraming = errors.New("distribution source framing failed")
 )
 
-func fetch(ctx context.Context, client client, request Message) (Message, error) {
+func fetch(ctx context.Context, client client, request Message) (response Message, result error) {
 	dialTimeout := time.Second
 	handshakeTimeout := 2 * time.Second
 	exchangeTimeout := 5 * time.Second
@@ -32,11 +32,19 @@ func fetch(ctx context.Context, client client, request Message) (Message, error)
 	if err != nil {
 		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: %w", ErrUnavailable, err))
 	}
-	defer connection.Close()
+	connection = &sourceSocket{Conn: connection}
 	// DialContext and HandshakeContext stop at their own boundaries. Keep the
 	// established socket tied to the complete exchange and caller lifetime.
 	retireCancellation := sourceConnectionCancellation(totalContext, connection)
-	defer retireCancellation()
+	defer func() {
+		physical := connection.Close()
+		retireCancellation()
+		caller := totalContext.Err()
+		result = errors.Join(result, sourceCloseResult(physical), caller, context.Cause(totalContext))
+		if physical != nil || caller != nil {
+			response = Message{}
+		}
+	}()
 	if err := connection.SetDeadline(time.Now().Add(exchangeTimeout)); err != nil {
 		return fetchFailure(totalContext, Message{}, fmt.Errorf("%w: set exchange deadline: %w", ErrUnavailable, err))
 	}
@@ -54,7 +62,7 @@ func fetch(ctx context.Context, client client, request Message) (Message, error)
 	if err := writeRequest(tlsConnection, request); err != nil {
 		return fetchFailure(totalContext, Message{}, fmt.Errorf("write distribution request: %w", err))
 	}
-	response, err := readResponse(tlsConnection)
+	response, err = readResponse(tlsConnection)
 	if err != nil {
 		cause := ErrFraming
 		if transportReadFailure(err) {
@@ -108,7 +116,7 @@ func (p *Plan) Serve(ctx context.Context, ready chan<- error, protected func() b
 }
 
 func serve(ctx context.Context, server server, ready chan<- error, protected func() bool,
-	active func(int), resolve func(context.Context, Message) Message) error {
+	active func(int), resolve func(context.Context, Message) Message) (result error) {
 	if ctx.Err() != nil || protected != nil && protected() {
 		err := errors.Join(errors.New("Source serving admission unavailable"), ctx.Err())
 		ready <- err
@@ -125,26 +133,37 @@ func serve(ctx context.Context, server server, ready chan<- error, protected fun
 		ready <- err
 		return err
 	}
-	tlsListener := tls.NewListener(listener, serverTLSConfig(server))
+	tlsConfig := serverTLSConfig(server)
 	ready <- nil
+	var closeOnce sync.Once
+	var listenerClose error
+	closeListener := func() { closeOnce.Do(func() { listenerClose = listener.Close() }) }
+	var connections sync.WaitGroup
+	var cleanupMu sync.Mutex
+	var cleanup error
 	stop := make(chan struct{})
 	stopped := make(chan struct{})
 	go func() {
 		defer close(stopped)
 		select {
 		case <-ctx.Done():
-			_ = tlsListener.Close()
+			closeListener()
 		case <-stop:
 		}
 	}()
-	defer func() { close(stop); <-stopped }()
-	defer tlsListener.Close()
+	defer func() {
+		closeListener()
+		close(stop)
+		<-stopped
+		connections.Wait()
+		if listenerClose != nil || cleanup != nil {
+			result = errors.Join(result, sourceCloseResult(listenerClose), cleanup)
+		}
+	}()
 	credits := make(chan struct{}, 8)
-	var connections sync.WaitGroup
-	defer connections.Wait()
 	for {
 		credits <- struct{}{}
-		connection, acceptErr := tlsListener.Accept()
+		connection, acceptErr := listener.Accept()
 		if acceptErr != nil {
 			<-credits
 			if ctx.Err() != nil {
@@ -154,31 +173,65 @@ func serve(ctx context.Context, server server, ready chan<- error, protected fun
 		}
 		if protected != nil && protected() {
 			<-credits
-			_ = connection.Close()
+			if err := connection.Close(); err != nil {
+				return sourceCloseResult(err)
+			}
 			continue
 		}
+		socket := &sourceSocket{Conn: connection}
+		connection = &sourceServerConnection{Conn: tls.Server(socket, tlsConfig), socket: socket}
 		connections.Add(1)
 		go func() {
 			defer connections.Done()
 			defer func() { <-credits }()
 			// A peer controls its connection lifetime, so a response-write failure
 			// terminates only this connection and cannot stop the shared listener.
-			_ = handleConnection(ctx, server, active, connection, resolve, protected)
+			err := handleConnection(ctx, server, active, connection, resolve, protected)
+			var physical *sourcePhysicalClose
+			if errors.As(err, &physical) {
+				cleanupMu.Lock()
+				cleanup = errors.Join(cleanup, physical)
+				cleanupMu.Unlock()
+				// Deny further accepts on physical cleanup failure. Existing
+				// handlers retain their own sockets and join before Serve returns.
+				closeListener()
+			}
 		}()
 	}
 }
 
+// TLS alert output belongs to the peer-controlled exchange; the original TCP
+// Close is separately retained. Cancellation closes TCP immediately, without
+// waiting for a TLS close-notify write or a handshake mutex.
+type sourceServerConnection struct {
+	*tls.Conn
+	socket *sourceSocket
+}
+
+func (c *sourceServerConnection) Close() error { return c.socket.Close() }
+
 func handleConnection(ctx context.Context, server server, active func(int), connection net.Conn,
-	resolve func(context.Context, Message) Message, protected func() bool) error {
+	resolve func(context.Context, Message) Message, protected func() bool) (result error) {
 	// Cancellation interrupts the original socket, including a blocked TLS
 	// handshake or write. Join the callback before releasing the active user.
+	original := connection
+	connection = &sourceSocket{Conn: connection}
 	retireCancellation := sourceConnectionCancellation(ctx, connection)
 	if active != nil {
 		active(1)
 		defer active(-1)
 	}
-	defer connection.Close()
-	defer retireCancellation()
+	defer func() {
+		if secured, ok := original.(*sourceServerConnection); ok {
+			// Conn.Close attempts the bounded TLS alert, then closes the same
+			// socket. Its cached raw Close result is retained below even if
+			// TLS instead reports a peer-induced close-notify write failure.
+			_ = secured.Conn.Close()
+		}
+		physical := connection.Close()
+		retireCancellation()
+		result = errors.Join(result, sourceCloseResult(physical), ctx.Err())
+	}()
 	started := time.Now()
 	if err := connection.SetDeadline(started.Add(server.headerTimeout)); err != nil {
 		return fmt.Errorf("set distribution request deadline: %w", err)

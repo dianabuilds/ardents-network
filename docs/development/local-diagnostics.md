@@ -229,6 +229,10 @@ The explicit `ARDENTS_DEBUG_SOCKET` mode in `ardents` and `ardents-node` supplie
 current Go-runtime counters and private profile capture. This is a diagnostic
 process Interface, never an Application/Network Interface or an authority.
 Empty input creates no listener, goroutine, profiling rates or capture files.
+The canonical Source and Source Installation selectors bypass this optional
+setup: installed startup must precede runtime effects, and the retired
+`source --config` selector refuses without reading its plan or opening a debug
+socket. Their bounded outcome output supplies no raw profile or startup authority.
 Configured diagnostics refuse before work on unsupported platforms or unsafe
 placement. The parent must exist, be canonical without symlinks, owned by the
 process UID with mode 0700; the Unix socket has mode 0600. Existing paths are

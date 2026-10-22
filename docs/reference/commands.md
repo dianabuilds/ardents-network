@@ -462,24 +462,205 @@ The Node owns both roots until its listeners have joined. The current State
 profile still supplies the issuer identity, keys, recipients and validity;
 these local storage paths confer no network authority. Missing admission
 storage makes startup unavailable.
-`ardents-node source --config PATH` runs one selected Direct-Origin Source
-server from an `ardents-source-server-v1` input and emits
-`ardents-source-event-v1` after its State view is ready. A terminal background
-or cleanup failure after readiness emits `source-failed` with only the bounded
-`background-work` or `cleanup` reason; the full error remains on stderr. Plan
-and State admission refusals still emit no runtime event.
-The retained `native_rendezvous_profile` field identifies old input only and
-returns `old Source profile is retired` after bounded schema recognition,
-before trust-map validation, root or key access, listener bind, output or
-Network work. Combining it with current profile fields receives the same
-refusal and cannot fall back.
-For the selected closed Route, the Source input specifies
-`state_profile: "ardents-route-v3"` and `state_profile_authority`, an Ed25519
-public key in hex already pinned by `authority_public`. Unsupported profiles,
-missing or foreign pins are refused. These Source-only
-fields cannot override a Node's duty-selected profile. The Source distributes
-signed Epoch evidence; this does not distribute the separate closed profile
-or qualify Node duties.
+`ardents-node source --config PATH` is retired before reading the plan, opening
+optional diagnostics, State, keys or listeners. It returns
+`old Source profile is retired` for the recognized complete selector; no old
+Source backend or automatic plan conversion remains.
+
+`ardents-node source start-installed BINDING` is the distinct native entrypoint
+for the selected non-root Source unit. Independent Installation Startup verifies
+its exact original generation, account, process, namespace, cgroup and manager,
+and completes the original root-peer exchange before constructing genuine State
+and the mandatory Source Guard. State owns signed serving/time/exposure decisions.
+Original checks continue through serving; denial interrupts work and joins State,
+observers and native input/key/process custody. A completion-unavailable notice
+retains failure and keeps waiting; it releases no resource or original duty.
+After every join and native Close, the command reports `retired` only for a nil
+result or an error tree containing exclusively ordinary cancellation. Every
+other retained result reports `retirement-failed`; a late join cannot erase an
+earlier unavailable notice. Reporting failure also remains command failure.
+These bounded observations supply no runtime authority or installed qualification.
+This selector bypasses optional debug-socket setup.
+
+`ardents-control source prepare-state SERVE_PLAN BUNDLE` is a separate finite
+offline producer under the actual Source system UID/GID, without supplementary
+groups. It consumes the public serving declaration and bounded signed Epoch /
+materialization bundle with original file/ancestor custody, and requires the
+already created runtime-owned 0700 State directory to be empty. New State
+authenticates and durably accepts the bundle under its independently selected
+pins and actual time. The command joins State before releasing inputs and emits
+only a bounded outcome. It opens no serving/acquisition transport, process Guard,
+Installation Startup or runtime TLS key. Partial failure preserves the resulting
+State files; it supplies no reset, adoption, retry or rollback operation.
+It accepts no Route profile and proves no Node duty, independent-family supply,
+installed runtime admission or bootstrap acceptance.
+
+The distinct finite inspection form is:
+
+```text
+ardents-control source inspect-latest SERVE_PLAN CLIENT_CERT CLIENT_KEY SERVER_CA SERVER_NAME SERVER_KEY_PIN SOURCE_ID FAMILY HANDLE MATERIAL_INDEX
+```
+
+It contacts exactly the Source address in the public serving declaration, using
+the independently supplied CA, hostname and lowercase hex server-key pin / Source
+identity, one honest family and endpoint handle, and decimal material index 0–63.
+The caller-owned client private key must be 0600; original plan, credential and
+CA files remain retained through the joined mTLS exchange. It performs one LATEST
+request, with no retry/fallback or fabricated second Source. The ordinary
+two-family acquisition policy remains unchanged. The bounded local output carries
+the response status, object digest and base64 payload, not accepted State or
+independence evidence. Keep raw Source responses as private local evidence;
+bootstrap/public receipts contain only their reviewed finite commitments and limits.
+
+Canonical public Source artifact preparation uses:
+
+```text
+ardents-control source prepare-descriptor RELEASE_ID VERSION PROGRAM TEMPLATE FRESH_OUTPUT
+ardents-control source prepare-inventory SEVEN_FILE_DISTRIBUTION FRESH_OUTPUT
+```
+
+These Linux root operations retain original protected native ext4 inputs and
+write one public descriptor or inventory into a fresh 0700 directory under a
+protected root-owned 0700 parent. Output files are exclusive 0600 originals,
+synced and re-read through retained descriptors before bounded receipt output.
+Existing/partial output is never adopted or overwritten. Inventory requires the
+exact seven Source files and independently checks descriptor/resource agreement;
+it authenticates no Release signature or initial pin. The ordinary Source signing
+producer, exact compiled program and installed bootstrap remain separate gates.
+
+The public closed template producer writes only the fixed selected resource
+`ardents-source.service`, without rendering local paths or publishing a unit:
+
+```text
+ardents-control source prepare-template FRESH_OUTPUT
+```
+
+The separate closed initial Source key birth and signing forms are:
+
+```text
+ardents-control source prepare-release-keys FRESH_PRIVATE_OUTPUT
+ardents-control source sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
+```
+
+Key birth writes exactly five fresh distinct `release-key-1.pem` through
+`release-key-5.pem`, under original protected root/native-ext4 custody. Its
+public-only standard-output receipt lists file/public-key/digest facts and the
+ordinary threshold three, with `independent_custody: false`. Retain this receipt
+outside the private key directory so the signer's exact five-file inventory
+stays intact. No key is imported from fixtures or another release ceremony;
+this operation signs nothing and grants no trust or bootstrap acceptance.
+
+Its exact public plan fields are `schema`, `network`, `reference_time`, `expires`,
+`program`, `descriptor`, `template`, `program_custom` and `generation_custom`.
+Schema is `ardents-source-initial-release-plan-v1`; this is not the Endpoint
+signer's schema. The program must be a static Linux-amd64 Go `ardents-node`,
+descriptor version one and template the exact selected Source resource. Both
+custom values use the existing Release grammar and common build/policy facts;
+their two actual rebuild records bind each respective target digest. Retain the
+real execution receipts and honest qualification limits behind those declarations.
+Reference must be current, metadata lifetime at most seven days. No successor,
+arbitrary target, generic signing message or Endpoint translation is accepted.
+
+The private directory contains exactly five distinct canonical PKCS#8 Ed25519
+`release-key-1.pem` through `release-key-5.pem`, root-owned 0600 under protected
+ancestors. Both fresh destinations have private root-owned 0700 parents on
+native ext4. The command keeps original files/keys and namespaces through
+three-signature metadata creation, actual new-Release verification of the coherent
+pair under one fresh diagnostic history, and durable public output readback.
+Diagnostic floors stay separate from participant history and distribution files.
+It outputs exactly `root.json`, `timestamp.json`, `snapshot.json`, `targets.json`;
+partial output/history is never adopted on another operation. The bounded receipt
+claims no installed qualification, independent custody/builders or bootstrap
+acceptance. The exact public Source bootstrap receipt still requires direct PO
+acceptance before installed execution.
+
+The fixed offline one-Record genesis chain is:
+
+```text
+ardents-control source prepare-initial-keys FRESH_PRIVATE_OUTPUT
+ardents-control source prepare-initial-plan --network ID --node ID --node-key PUBLIC_KEY --state-key PUBLIC_KEY --family FAMILY --endpoint IP:PORT --valid-from UTC_TIME --valid-until UTC_TIME --assignment-seed SEED --domains DOMAIN[,DOMAIN...] --output FRESH_OUTPUT
+ardents-control source prepare-initial-record PUBLIC_PLAN FRESH_OUTPUT
+ardents-control source sign-initial-record PUBLIC_PLAN PREPARED_RECORD PREPARED_SHA256 NODE_PRIVATE_KEY FRESH_OUTPUT
+ardents-control source prepare-initial-epoch PUBLIC_PLAN SIGNED_RECORD FRESH_OUTPUT
+ardents-control source sign-initial-epoch PUBLIC_PLAN SIGNED_RECORD PREPARED_EPOCH PREPARED_SHA256 STATE_PRIVATE_KEY FRESH_OUTPUT
+```
+
+Key preparation creates exactly two distinct standard-library keys, named
+`source-state-key.pem` and `source-node-key.pem`, with protected original native
+output and secret-buffer retirement. Its receipt contains only public keys;
+it creates no identity, family, assignment or accepted State. These keys are
+separate from Release and external runtime/client TLS credentials.
+
+The public flag preparer writes `source-initial-network.json` in a fresh protected
+native output; its current reference time comes from the original command. It
+creates no identity/key or random assignment seed: select those public facts
+explicitly and preserve the produced plan through the separately reviewed signing
+steps. No JSON editing is required. Comma-separated Role Domains keep their supplied
+order; Network's later Epoch preparation validates them with the actual signed
+Record and computes assignment. A prepared declaration is not an accepted Epoch.
+
+Public plan schema `ardents-source-initial-network-plan-v1` has exactly `schema`,
+`reference_time`, `network_id`, `node_id`, `node_public_key`, `state_public_key`,
+`family`, `endpoint`, `valid_from`, `valid_until`, `assignment_seed` and `domains`.
+Identifiers/pins/seed use exact lowercase 32-byte hex, times are current and within
+the canonical bounded interval, and the endpoint is literal-IP TCP. The supplied
+domains remain Network's ordered Role Domain declarations, never a sixth Source
+role. The producer fixes generation/Epoch one, one signed Record with capacity
+one, one honest family and selected TCP/TLS. Network's existing preparers/verifiers
+own canonical bytes, signatures, eligibility and assignment. Both signers rederive
+and match the original prepared artifact and its separately reviewed SHA-256 before
+importing the matching protected private key. They accept no arbitrary message.
+
+Epoch signing writes `epoch.bin`, `material-00.bin` and `source-bundle.bin` after
+genuine verification of the signature, original Record and materialization. It
+accepts no State or Route profile and creates no Node duty or independent-family
+supply; the complete Route remains unavailable under one effective controller.
+All operations require fresh output, original root-controlled native files and
+actual time, with no prefix adoption, reset or automatic retry. Keep real
+operator preparation separate from the native tests' generated fixture keys.
+
+The single-Source public input preparer is:
+
+```text
+ardents-control source prepare-install-inputs --network ID --state-key PUBLIC_KEY --identity ID --family FAMILY --handle HANDLE --address IP:PORT --server-name NAME --installation-root PATH --state-root PATH --participation-root PATH --credential-directory PATH --clock PATH --server-private-key PATH --output FRESH_OUTPUT --server-certificate PATH --server-certificate-sha256 SHA256 --server-ca PATH --server-ca-sha256 SHA256 --server-key-pin PIN --client-certificate PATH --client-certificate-sha256 SHA256 --client-ca PATH --client-ca-sha256 SHA256 --client-key-pin PIN
+```
+
+It retains four original public files under independently supplied SHA-256
+commitments and checks explicit CA, name, EKU, current validity and Source's
+transport-key separation. IDs, public key and pins are exact lowercase 32-byte
+hex; key pins use Source's transport-key transcript. A fresh protected native
+output contains exactly `source-certificate.pem`, `source-ca.pem`,
+`client-certificate.pem`, `client-ca.pem`, `source-serve.json` and
+`source-request.json`. The request refers to those prepared public copies and
+the separately supplied external server private-key path; the serving declaration
+uses Installation's fixed future credential names. Private-key input, mutable
+roots and clock are declarations only and remain unopened. The command creates
+no State, runtime root, TLS credential, second family or acquisition Plan. Its
+public receipt commits each file and reports `native_admission: false`.
+Installation independently checks actual private-pair delivery and native
+admission; offline observation does not supply installed/bootstrap acceptance.
+
+The root command forms are:
+
+```text
+ardents-node installation install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST
+ardents-node installation start-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING
+```
+
+They directly consume separate Enrollment, Release and Source Installation owners
+in the same original operation, with actual current reference time and independent
+native resources. Initial installation verifies the independent pin and actual
+running artifact; first start revalidates fresh coherent proofs against retained
+history and the complete original stopped transcript. A separate exclusive
+first-start journal refuses replay, restart or continuation. Durable archival
+precedes the one completion ACK. Root completion reports transaction completion,
+never State authority, runtime readiness or a transferable permission.
+
+Both native operations require the selected Ubuntu24.04/systemd255/cgroup-v2/ext4
+profile; unsupported environments refuse. Before any isolated installed Source
+execution, ADR-0123 requires the completed public exact-artifact bootstrap receipt
+and its separate direct Product Owner acceptance. A compiled command, component
+pass or this command reference supplies no such acceptance or qualification.
 
 `ardents-node node --config PATH` runs one separately keyed Node process from
 an `ardents-node-plan-v1` input. The schema remains shared with current closed

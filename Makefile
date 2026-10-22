@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e fixture-network-test format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check issue60-checks mod-check package-e2e package-ubuntu-deb qualification qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e fixture-network-test format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check issue60-checks mod-check package-e2e package-ubuntu-deb qualification qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln source-startup-check
 
 define newline
 
@@ -30,7 +30,7 @@ NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
 # Only the Node process suite may select an elevated system-scope runner.
 NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
-ifneq ($(filter source-stopped-check source-preflight-check source-process-check node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
+ifneq ($(filter source-startup-check source-stopped-check source-preflight-check source-process-check node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
 # This native driver consumes independently built, pinned artifacts. Its host
 # needs the actual manager/kernel, not a second Go installation.
 HEADLESS_GOOS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -127,7 +127,7 @@ headless-evidence: headless-build
 	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))" "$(abspath $(HEADLESS_NODE_ARTIFACT))" "$(abspath $(HEADLESS_CONTROL_ARTIFACT))" "$(abspath $(HEADLESS_CUSTODY_ARTIFACT))"
 	go test ./internal/enrollment -run '^(TestVerifyReturnsV3HeadlessArtifactsOutsideReleaseMetadata|TestVerifyRejectsUnknownInventoryAndExecutableSubstitution)$$' -count=1
 	go test ./tests/e2e/endpoint -run '^(TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest|TestAlphaControlReaderVerifiesPinnedBundleAndCachedRestart)$$' -count=1
-	go test ./tests/e2e/network-source -run '^TestFiniteSourceCommandsAsBlackBoxProcesses$$' -count=1
+	go test ./tests/e2e/network-source -run '^TestFiniteEndpointAcquisitionWithGenuineSourceOwners$$' -count=1
 	go test ./tests/e2e/node -run '^TestClosedTextTopologyProvisioningAcrossProcesses$$' -count=1
 	go test ./tests/e2e/service -run '^TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses$$' -count=1
 
@@ -498,6 +498,12 @@ network-preparation-compile-check:
 .PHONY: network-signing-check network-signing-compile-check
 .PHONY: source-preflight-check
 .PHONY: source-stopped-check
+# Requires the exact public bootstrap receipt's direct PO acceptance first.
+# The private native controller owns original whole-scope termination/join.
+source-startup-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "source-startup-check requires the separately accepted exact bootstrap and private Ubuntu startup stand"; exit 2)
+	python3 -I -S ./scripts/installation/run-source-startup.py -timeout=3m
+
 source-stopped-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "source-stopped-check requires isolated Ubuntu24.04/systemd255/cgroup-v2/native ext4 root"; exit 2)
 	python3 -I -S scripts/installation/run-source-stopped.py -timeout=3m
@@ -516,5 +522,6 @@ network-signing-compile-check: export CGO_ENABLED := 0
 network-signing-compile-check:
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-signing.test" ./cmd/ardents-next
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-control-preparation.test" ./cmd/ardents-control
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/successor/installation/systemd
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/successor/installation/infrastructure

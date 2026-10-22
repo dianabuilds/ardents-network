@@ -16,9 +16,9 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-// Real Source commands must distribute the same signed closed Epoch that the
-// offline command accepted. This does not qualify a Node duty or publication.
-func TestClosedSourceProcessesDistributeAcceptedState(t *testing.T) {
+// Genuine legacy Source owners distribute the same signed closed Epoch that the
+// offline command accepted. This qualifies no canonical Source command, installed invocation, Node duty or publication.
+func TestClosedSourceOwnersDistributeAcceptedState(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	authority := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{3}, ed25519.SeedSize))
 	nodeKey := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{4}, ed25519.SeedSize))
@@ -67,12 +67,12 @@ func TestClosedSourceProcessesDistributeAcceptedState(t *testing.T) {
 				ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 				output, err := exec.CommandContext(ctx, node, "source", "--config", path).CombinedOutput()
 				cancel()
-				if err == nil || !bytes.Contains(output, []byte(invalid.reason)) || bytes.Contains(output, []byte("source-ready")) {
-					t.Fatalf("invalid source profile %s=%v: %v / %s", invalid.field, invalid.value, err, output)
+				if err == nil || !bytes.Contains(output, []byte("old Source profile is retired")) || bytes.Contains(output, []byte("source-ready")) {
+					t.Fatalf("retired Source parsed previous %s case %s=%v: %v / %s", invalid.reason, invalid.field, invalid.value, err, output)
 				}
 			}
 		}
-		stop := startSource(t, node, writeJSON(t, fmt.Sprintf("closed-source-%d.json", index), plan))
+		stop := startSourceOwner(t, writeJSON(t, fmt.Sprintf("closed-source-%d.json", index), plan))
 		t.Cleanup(stop)
 		pem, err := os.ReadFile(server.root)
 		if err != nil {
@@ -96,7 +96,7 @@ func TestClosedSourceProcessesDistributeAcceptedState(t *testing.T) {
 	actual, refreshErr := owner.Refresh(t.Context())
 	closeErr := owner.Close()
 	if refreshErr != nil || closeErr != nil || actual.Generation != expected.Generation || actual.Digest != expected.Digest || actual.Epoch != expected.Epoch {
-		t.Fatalf("closed Source processes did not supply accepted State: %v / %v; generation=%s want=%s digest=%s",
+		t.Fatalf("genuine legacy Source owners did not supply accepted State: %v / %v; generation=%s want=%s digest=%s",
 			refreshErr, closeErr, actual.Generation, expected.Generation, hex.EncodeToString(actual.Digest[:]))
 	}
 }

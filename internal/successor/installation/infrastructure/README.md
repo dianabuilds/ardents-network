@@ -1,7 +1,8 @@
 # Source artifact admission and bounded initial installation
 
 This supporting Software acceptance owner implements ADR-0123's Source
-artifact component, read-only native preflight and initial stopped transition. `artifact.go` owns canonical descriptor preparation and exact
+artifact component, read-only native preflight, initial stopped transition and
+guarded first startup. `artifact.go` owns canonical descriptor preparation and exact
 public program/template agreement. `admission.go` owns one coherent pair of fresh
 Release authorizations, the immutable handoff and retained original loader caller.
 It imports Enrollment and Release, never Endpoint Installation. `source_plan_linux.go` consumes Source's pure serving-declaration codec and finite runtime credential-pair validation, also used by the runtime owner; Installation owns exact future-input matching, explicit delivery and preflight admission. No runtime is constructed.
@@ -44,7 +45,7 @@ resources. `Check` requires the original snapshot caller, original Release owner
 and unchanged complete floors. Copies of public bytes/Decisions cannot recreate
 the private result; Close/cancellation cannot be bypassed with another caller.
 
-The real Linux consumer is `ardents-next infrastructure`: separate public
+The temporary Linux component consumer is `ardents-next infrastructure`: separate public
 descriptor/inventory preparation and initial/candidate authentication. It reads
 its actual executable through Enrollment, never an override or old backend.
 Preparation owns finite original native input/output custody and signs nothing.
@@ -55,6 +56,13 @@ Installation responsibilities. No account, manager, staging, installation,
 startup, Source listener or runtime history is opened by authentication. The optional preflight
 consumer opens only read-only native observations. Release's own native
 floors are the only durable authentication effects.
+
+Canonical `ardents-node installation` directly composes Enrollment, Release and
+these Source owners in its original root operation; `source start-installed`
+directly consumes independent Startup before State/Source/Guard construction.
+Canonical Control separately prepares public resources/inventory/serving inputs,
+initial signed State and Source-specific Release metadata. No delegation to
+Next, Endpoint authority or old runtime enters these accepting Source paths.
 
 `source_install_linux.go` owns one finite initial stopped transition through
 `install-initial-stopped`, directly consuming original initial provenance and
@@ -93,6 +101,22 @@ account or Release right; a future start separately admits the current principal
 and fresh proofs. Account database records describe the initial helper's history,
 not Source ownership of immutable host databases. State/participation contents
 remain with their semantic owners.
+
+`source_first_start_linux.go` retains fresh coherent proofs, complete original
+initial readback, current principal and independent native observations under
+its exclusive first-start journal. `source_start_storage_linux.go` and
+`source_start_barrier_linux.go` retain original born journal/socket/guard custody,
+peer/process checks and durable archival before the full completion ACK. An
+uncertain attempt keeps its original process/cgroup until actual join; a full
+ACK remains an irreversible handoff even if later reporting or Close fails.
+`source_startup_linux.go` independently retains original selected inputs,
+non-root invocation, process, cgroup, namespace, principal and manager through
+the root-peer exchange and continuing checks. It shares no root lease or runtime
+authority with the producer. Stop denies and interrupts before physical Close
+joins original observers; command composition joins State users before retiring
+Startup and erasing loaded keys. Read-only namespace/runtime identity and native
+physical adapters preserve their own purposes and failure/Close lifetimes.
+No restart, replacement, replay or recovery continuation is admitted here.
 `source_loaded_linux.go` owns Source's complete loaded stopped-policy comparison;
 the separate systemd SourceStopped handle owns physical connection/cancellation,
 one explicit reload and detached complete typed observations. It grants no Start.
@@ -109,5 +133,8 @@ constitute independent distribution trust or qualify an operational installation
 
 Current reference/technical/testing owners describe formats and checks. This
 component neither establishes first-distribution trust before execution nor
-accepts a bootstrap receipt, running Source, operator cutover or system
-qualification. Other five invocations have no accepting path.
+accepts a bootstrap receipt or qualifies an installed Source, complete operator
+cutover or system. Other five invocations have no accepting path.
+Before any installed Source execution the completed exact public bootstrap
+receipt requires direct Product Owner acceptance. Its presence, a Start job or
+ACK supplies neither that human decision nor State authority or runtime readiness.

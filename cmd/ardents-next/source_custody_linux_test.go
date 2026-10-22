@@ -93,6 +93,11 @@ func TestSourceOriginalInputsRetainEveryFileAndAncestor(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
+				if fault == "access" {
+					if err := os.Chmod(selected, 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
 				if err := os.WriteFile(selected, original, 0600); err != nil {
 					t.Fatal(err)
 				}

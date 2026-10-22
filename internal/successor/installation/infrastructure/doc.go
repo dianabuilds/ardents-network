@@ -6,5 +6,8 @@
 // template rendering and one initial stopped installation transition with its
 // separate closed journal, account/credential births, immutable generation and
 // fixed-unit selection. The native systemd adapter owns the original connection
-// and one reload. It owns no State contents, continuation, runtime or Start.
+// and one reload. A distinct guarded first-start transaction revalidates the
+// original selected resources, current principal and fresh Release proofs;
+// independent non-root Startup owns its own observations and root exchange.
+// It owns no State contents, serving authority or restart/recovery continuation.
 package infrastructure

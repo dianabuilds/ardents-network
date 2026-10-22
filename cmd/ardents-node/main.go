@@ -14,13 +14,36 @@ import (
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), nodeTerminationSignals()...)
 	defer stop()
-	if err := processdiag.Run(ctx, os.Getenv("ARDENTS_DEBUG_SOCKET"), func(workCtx context.Context) error { return run(workCtx, os.Args[1:], os.Stdout) }); err != nil {
+	arguments := os.Args[1:]
+	if err := runCommand(ctx, arguments, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 }
 
+func runCommand(ctx context.Context, arguments []string, output io.Writer) error {
+	// Installed Source and its retired selector reach their own admission before
+	// any optional diagnostic socket is opened. Installation is a distinct root
+	// operation, with no process diagnostic side effect either.
+	if len(arguments) > 0 && (arguments[0] == "source" || arguments[0] == "installation") {
+		return run(ctx, arguments, output)
+	}
+	return processdiag.Run(ctx, os.Getenv("ARDENTS_DEBUG_SOCKET"), func(workCtx context.Context) error { return run(workCtx, arguments, output) })
+}
+
 func run(ctx context.Context, arguments []string, output io.Writer) error {
+	if len(arguments) > 0 && arguments[0] == "source" {
+		if len(arguments) == 3 && arguments[1] == "--config" {
+			return errOldSourceProfileRetired
+		}
+		if len(arguments) == 3 && arguments[1] == "start-installed" {
+			return runInstalledSource(ctx, arguments[2], output)
+		}
+		return errors.New("usage: ardents-node source start-installed BINDING")
+	}
+	if len(arguments) > 0 && arguments[0] == "installation" {
+		return runSourceInstallation(ctx, arguments[1:], output)
+	}
 	if len(arguments) > 0 && arguments[0] == "issuer" {
 		return runIssuer(ctx, arguments[1:], output)
 	}
@@ -33,13 +56,5 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if arguments[0] == "node" {
 		return runNode(ctx, arguments[2], output)
 	}
-	if arguments[0] != "source" {
-		return errors.New("usage: ardents-node (source|node) --config PATH | issuer (initialize|serve) --config PATH | hosting initialize --config PATH")
-	}
-	events := newEventOutput(output)
-	store, err := openSource(arguments[2], events.append)
-	if err != nil {
-		return err
-	}
-	return runOpenedSource(ctx, store, events)
+	return errors.New("usage: ardents-node source start-installed BINDING | node --config PATH | issuer (initialize|serve) --config PATH | hosting initialize --config PATH")
 }

@@ -1480,7 +1480,7 @@ all roles; neither memory retention nor a self-signed leaf proves installation.
 | Hosting root and finite envelopes → new Hosting command/owner → Node/Route reservation checks | Real provider-period initialization and retained accounting exist. Installed root placement/protection is missing; a smaller workload never waives full-class coverage |
 | Receiving spends, Introduction history and Descriptor Store → actual receiving/Route/Reachability owners at original admitted startup → their own durable reopen rules | No separate provisioning task for every fixture root. Fresh-root creation and retained reopen are different operations; missing old floors cannot be repaired as empty. Installation supplies paths/access, never history bytes or successful ACK |
 | Issuer permission authority, RSA key/quota/results → purpose-specific new Allocation/Custody and Admission issuerprofile/issuance consumers (`issuer_profile*`, `issuance*`) → Admission + exact signed State profile | Their existing purpose-specific imported credentials and independent reviewed pins are explicit prerequisites. Installation does not generate/import private RSA, mint quota, accept Permission or turn a Node key into a permission authority |
-| Program, resources and initial provenance → Enrollment/Release/Installation | Current new Enrollment authenticates manifest-pinned Node/Custody companions outside Release metadata. `installation/generation_authentication.go` requires exact Endpoint targets and complete protected group. The separate Source infrastructure descriptor, initial verifier and coherent pair now have an isolated consumer; the separate bounded Source initial stopped transition now selects its own binding; infrastructure startup/recovery remain absent |
+| Program, resources and initial provenance → Enrollment/Release/Installation | Current new Enrollment authenticates manifest-pinned Node/Custody companions outside Release metadata. `installation/generation_authentication.go` requires exact Endpoint targets and complete protected group. The separate Source infrastructure descriptor, initial verifier and coherent pair now have an isolated consumer; the separate bounded Source initial stopped transition now selects its own binding; guarded first startup has a canonical Node consumer, while installed qualification and recovery continuation remain separate |
 
 These rows account for the genuine provisioning outputs of the public preparation,
 Record/Epoch signing, profile signing, key, Source trust and Node certificate
@@ -1488,8 +1488,10 @@ changes. Isolated State/Admission/family fixtures used by their tests are not
 additional product authorities. External credentials/trust/time remain explicit
 operator inputs. Source infrastructure artifact admission is implemented through
 the separate Enrollment/Release/infrastructure consumer. The remaining missing
-mechanisms are installed startup/continuation,
-command/tool cutover, and source-matched final evidence; not a speculative PKI.
+boundaries are installed Source qualification, Node installation/startup and
+infrastructure restart/replacement/recovery continuation, remaining command/tool
+cutover and source-matched final evidence; not a speculative PKI. Source's bounded
+first-start composition is implemented separately from those acceptance gates.
 
 Reverse consumers matter. `cmd/ardents-next/main.go` directly dispatches all six
 new compositions and public preparation. `network.go` directly accepts signed
@@ -1502,8 +1504,11 @@ development processes; systemd-run does not create an immutable installed bindin
 `scripts/protected-generation-check.go`, `scripts/sign-qualification-release.go`
 and the qualification release operation retain their existing command/Endpoint
 inventories. They neither package nor sign the proposed infrastructure contract.
-The maintained `ardents-node` and qualification command still have predecessor
-consumers; they cannot delegate to a new binary or share live roots as a shortcut.
+Canonical `ardents-node` Source/Installation directly consume the new owners;
+their needed Control and artifact/qualification tools have separate explicit
+consumers. Unselected Node commands and retained qualification scenarios still
+have predecessor consumers; none may delegate to a new binary or share live roots
+as a shortcut.
 
 ### Proposed exact artifact and installation binding
 
@@ -1584,7 +1589,7 @@ The unit is `Type=exec`, `Restart=no`, `KillMode=control-group`, working directo
 no command override or inherited listener. Root renders exactly one absolute
 generation executable and closed argv: `source start-installed` plus its
 absolute binding reference; role dispatch comes from the binding, never a first
-available duty. The proposed entrypoint is not implemented. Bind exact manager
+available duty. Canonical `ardents-node` implements this bounded entrypoint with independent Source Startup, followed by actual State and Guard composition; installed execution and qualification remain separately gated. Bind exact manager
 unique owner/version/boot/start identity, fragment, loaded configuration, InvocationID,
 MainPID, proc inode/start clock, executable inode/bytes, complete argv, real/effective/
 saved IDs/groups, original cgroup inode/path and sole-process membership. Two
@@ -1617,10 +1622,11 @@ For Source runtime inputs the exact first engineering predecessor is limited to
 plan/certificate/private-key/client-CA custody. It must not silently freeze the
 clock file inode or change Network's live clock-admission semantics.
 
-No maintained native credential-delivery transaction for these infrastructure
-accounts is currently implemented. It must prove fresh exclusive bytes, actual
-UID/access and same-inode transfer without silently copying offline authority;
-this is an Installation input-custody effect, not a new PKI or Custody authority.
+The bounded Source initial stopped transaction implements fresh exclusive
+runtime-credential delivery, actual UID/access and same-inode transfer without
+copying offline authority. The five Node accounts' delivery remains separate.
+This is an Installation input-custody effect, not a new PKI or Custody authority;
+its presence alone qualifies no installed invocation.
 
 ### Proposed lifecycle and effect admission
 
@@ -1793,6 +1799,16 @@ checks exact future-input matching and bounded preflight declarations without
 opening State or its roots. Runtime authority/time decisions remain separate.
 Root-controlled original files, access and ancestors remain retained through
 physical Close; private input bytes never enter a public receipt.
+Runtime installation, State, participation, credential and clock paths must also
+remain visible under the fixed unit's namespace. Equal or descendant paths under
+`/tmp`, `/var/tmp`, `/home`, `/root` and `/run/user` refuse during request decoding,
+before installation effects: selected `PrivateTmp=yes` supplies different temporary
+directories, and `ProtectHome=yes` makes the home locations inaccessible. Root-only
+original plan/certificate/key/CA delivery inputs are separate; the runtime consumes
+their sealed/delivered copies instead. This follows the selected
+[systemd255 namespace semantics](https://www.freedesktop.org/software/systemd/man/255/systemd.exec.html)
+(accessed 2026-10-22), without disabling protection or adding path exceptions.
+Earlier stopped-only evidence grants no startup admission for a hidden path.
 
 The exact closed Source release template lives in the infrastructure policy,
 with an independent complete byte vector. Rendering binds only future generation

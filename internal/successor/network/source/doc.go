@@ -8,4 +8,11 @@
 // ValidateServingCredential shares the existing pure finite Ed25519 chain/key
 // agreement policy with Installation's explicit runtime credential delivery;
 // it opens no Plan, clock, State, private signer or transport.
+// InspectLatest owns one bounded authenticated diagnostic contact, using the
+// same complete one-source trust checks, with no acquisition Plan, retry,
+// independence claim or accepted State. Its real canonical Control consumer
+// retains original local inputs and erases client key copies only after join.
+// ObservePublicContact separately checks one public Source/client declaration
+// for offline installation-input preparation. It opens no transport and grants
+// neither the two-source acquisition Plan nor State/bootstrap authority.
 package source

@@ -40,7 +40,7 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 		address := freeAddress(t)
 		plan := sourceServerPlanFixture(network, public, time.Now().UTC(), root, roleRoot, address, server, clientAuthority.root, client.sourcePin)
 		plan["state_profile"], plan["state_profile_authority"], plan["materialization_index"] = "ardents-route-v3", hex.EncodeToString(public), 1
-		stop := startSource(t, node, writeJSON(t, fmt.Sprintf("issuer-source-%d.json", index), plan))
+		stop := startSourceOwner(t, writeJSON(t, fmt.Sprintf("issuer-source-%d.json", index), plan))
 		t.Cleanup(stop)
 		digest := sha256.Sum256([]byte(name))
 		sources[index] = map[string]any{"address": address, "server_name": name, "identity": hex.EncodeToString(digest[:]),

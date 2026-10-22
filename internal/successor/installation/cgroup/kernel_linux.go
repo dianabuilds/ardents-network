@@ -17,14 +17,21 @@ const cgroup2Magic = 0x63677270
 // Retain the original kernel events object, not a pathname that can be reused.
 // Its owner must finish physical join before closing this descriptor.
 type pin struct {
-	events   *os.File
-	identity os.FileInfo
+	events    *os.File
+	identity  os.FileInfo
+	directory os.FileInfo
 }
 
 func pinScope(ctx context.Context, unit string) (result *pin, returnedErr error) {
 	if ctx == nil || !scopeUnit(unit) {
 		return nil, errInput
 	}
+	return pinFixedScope(ctx, unit)
+}
+
+// Callers select a closed purpose before reaching this physical mechanism.
+// Endpoint's scope inventory remains unchanged; Source has its own opener.
+func pinFixedScope(ctx context.Context, unit string) (result *pin, returnedErr error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -73,7 +80,7 @@ func pinScope(ctx context.Context, unit string) (result *pin, returnedErr error)
 	if err != nil {
 		return nil, err
 	}
-	observed := &pin{events: events, identity: identity}
+	observed := &pin{events: events, identity: identity, directory: opened}
 	removed, _, err := observed.read()
 	if err != nil || removed {
 		return nil, errors.Join(errBinding, err)

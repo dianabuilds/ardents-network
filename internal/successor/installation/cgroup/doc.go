@@ -6,6 +6,13 @@
 // effect; pending-start PID zero cannot match any worker. The caller joins every
 // retained original descriptor before releasing that failed attempt's lease;
 // it grants no Release, manager, process identity, stop or startup authority.
+// SourceScope separately retains the fixed Source directory and original events
+// object, observes one original PID with no child scopes, and reports actual
+// original join independently of caller cancellation. Root's post-attempt
+// partial observation and non-root actual-self observation are distinct openers;
+// neither widens the Endpoint/worker scope inventory. Copies share one original
+// Source observation and physical Close result. Installation owns attempt,
+// process/manager matching, stopping and when to release these observations.
 package cgroup
 
 import "errors"

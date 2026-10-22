@@ -334,6 +334,16 @@ func sourceAccountDelta(path string, before, after []byte, uid, gid uint32) erro
 	if rest.String() != string(before) || own == "" {
 		return ErrBinding
 	}
+	return validateSourcePrincipalRow(path, own, uid, gid)
+}
+
+// The initial creator checks its foreign-byte delta separately. Later native
+// admission independently checks the same fixed principal's current rows; this
+// pure condition supplies neither creation provenance nor account ownership.
+func validateSourcePrincipalRow(path, own string, uid, gid uint32) error {
+	if !strings.HasPrefix(own, "ardents-source:") {
+		return ErrBinding
+	}
 	u, g := strconv.FormatUint(uint64(uid), 10), strconv.FormatUint(uint64(gid), 10)
 	switch path {
 	case "/etc/passwd":

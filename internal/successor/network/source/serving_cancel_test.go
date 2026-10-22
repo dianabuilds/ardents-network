@@ -53,6 +53,9 @@ func TestServingCancellationJoinsOriginalBlockedHandshake(t *testing.T) {
 		if !errors.Is(err, context.Canceled) {
 			t.Fatal(err)
 		}
+		if err != context.Canceled {
+			t.Fatal("successful physical retirement changed original cancellation identity", err)
+		}
 	case <-time.After(time.Second):
 		t.Fatal("canceled original handshake retained socket until deadline")
 	}
