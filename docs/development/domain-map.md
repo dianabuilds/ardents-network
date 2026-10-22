@@ -250,7 +250,10 @@ Failures retain partial prefixes and original joins, without adoption/reset,
 continuation or rollback. First start independently reopens the full stopped
 transcript and retains fresh proofs, current principal and original manager /
 process / cgroup / barrier custody in its own exclusive journal lifetime. The
-non-root Startup independently retains original selected inputs, actual invocation,
+Root control connection acquires one fixed Source unit reference so a stopped
+unit can be freshly observed after manager collection; physical connection
+closure returns that reference. This loads no runtime or accepting authority.
+Non-root Startup independently retains original selected inputs, actual invocation,
 namespace and manager, then completes the original root-peer exchange before
 State or Guard construction. No initial transcript, Start job, ACK or public
 receipt grants runtime authority. These mechanisms supply neither bootstrap

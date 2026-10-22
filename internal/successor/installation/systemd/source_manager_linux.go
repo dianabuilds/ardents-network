@@ -30,7 +30,8 @@ type sourceRuntime struct {
 }
 
 // SourceControl owns root's separate first-start connection. It can attempt
-// exactly one fixed Source Start and one fixed Stop; neither result proves join.
+// one fixed Source reference, one Start and one Stop; none proves admission or
+// process join. The original connection keeps a stopped unit from collection.
 type SourceControl struct{ original *sourceControl }
 
 type sourceControl struct {
@@ -55,14 +56,60 @@ func OpenSourceControl(ctx context.Context) (*SourceControl, error) {
 	if ctx == nil || os.Geteuid() != 0 {
 		return nil, ErrInput
 	}
-	r, err := openLoadedSourceReference(ctx)
+	r, err := openSourceReference(ctx)
 	if r == nil {
 		return nil, err
+	}
+	result := &SourceControl{original: &sourceControl{reference: r}}
+	if err != nil {
+		return result, err
+	}
+	if err = r.initializeSourceDeclaration(); err != nil {
+		return result, err
+	}
+	if err = r.retainSourceControlUnit(); err != nil {
+		return result, err
+	}
+	if _, err = r.sourceLoadedObservation(); err != nil {
+		return result, err
 	}
 	// Other Source/Endpoint observations retain their closed read-only vocabulary.
 	// This admits only canonical native job replies, never a method/unit selector.
 	r.client.transport.sourceJobs.Store(true)
-	return &SourceControl{original: &sourceControl{reference: r}}, err
+	return result, nil
+}
+
+// RefUnit loads only the fixed Source and binds its in-memory lifetime to this
+// original root connection. A successful reply grants no Start or loaded-policy
+// fact. Runtime/preflight never call it. Closing the original connection drops
+// its server-side reference, including after an uncertain reply or cancellation.
+func (r *sourcePreflight) retainSourceControlUnit() (err error) {
+	if err = r.begin(); err != nil {
+		return err
+	}
+	defer r.uses.Done()
+	r.ioMu.Lock()
+	defer r.ioMu.Unlock()
+	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
+	defer cancel()
+	defer func() { err = r.sourceResult(err, ctx) }()
+	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
+		return err
+	}
+	if err = r.matchSourceDeclaration(ctx); err != nil {
+		return err
+	}
+	call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.RefUnit", "ardents-source.service")
+	if err != nil || len(call.Body) != 0 {
+		return errors.Join(ErrObservation, err)
+	}
+	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
+		return err
+	}
+	if err = r.local(); err != nil {
+		return err
+	}
+	return r.client.transport.socket.SetDeadline(time.Time{})
 }
 
 func openLoadedSourceReference(ctx context.Context) (*sourcePreflight, error) {

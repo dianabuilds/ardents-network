@@ -78,7 +78,7 @@ def main():
                 raise RuntimeError("source differs from actual candidate input")
 
     source()
-    paths = {name: pinned(name) for name in ("NODE", "CONTROL", "REQUEST", "BUNDLE", "EPOCH", "CLIENT_CERTIFICATE", "CLIENT_KEY", "SERVER_CA", "PUBLIC_RECEIPT")}
+    paths = {name: pinned(name) for name in ("NODE", "CONTROL", "MANAGER_TEST", "REQUEST", "BUNDLE", "EPOCH", "UNSIGNED_EPOCH", "CLIENT_CERTIFICATE", "CLIENT_KEY", "SERVER_CA", "PUBLIC_RECEIPT")}
     distribution = Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION"])
     if paths["NODE"] != distribution / "ardents-node-linux-amd64":
         raise RuntimeError("execute the actual enrolled initial program")
@@ -216,6 +216,10 @@ def main():
             return True
 
     try:
+        manager_test = "TestSourceControlRetainsStoppedUnitNative"
+        discovered = run([paths["MANAGER_TEST"], "-test.list=^" + manager_test + "$"], "manager-test-discovery")
+        if discovered.splitlines() != [manager_test.encode("ascii")]:
+            raise RuntimeError("required native manager control is absent")
         clock = Path(request["clock"])
         clock_fd = os.open(clock, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
         clock_info = os.fstat(clock_fd)
@@ -249,6 +253,11 @@ def main():
         # delivery traversable by this actual UID; private key directories stay
         # private. There is no fixture-root or root-user State substitution.
         run([paths["CONTROL"], "source", "prepare-state", plan, paths["BUNDLE"]], "state-preparation", user=uid, group=gid, extra_groups=[])
+
+        # An inactive unit may have left the manager's in-memory inventory after
+        # initial installation. Root control must acquire its own original
+        # reference, not depend on an observer keeping that unit loaded.
+        run([paths["MANAGER_TEST"], "-test.run=^TestSourceControlRetainsStoppedUnitNative$", "-test.v", "-test.timeout=30s"], "stopped-unit-reference")
 
         # From here even a failed/uncertain start belongs to the outside own
         # stand completion obligation. The product joins its failed attempt.
@@ -303,7 +312,10 @@ def main():
                    os.environ["ARDENTS_SOURCE_STARTUP_FAMILY"], os.environ["ARDENTS_SOURCE_STARTUP_HANDLE"], "0"]
         response = json.loads(run(inspect, "actual-client"))
         expected_payload = base64.b64encode(paths["BUNDLE"].read_bytes()).decode("ascii")
-        if response.get("operation") != "source.inspect-latest" or response.get("status") != "ok" or response.get("payload") != expected_payload or bytes(response["object_digest"]).hex() != digest(paths["EPOCH"]):
+        # AREP's protocol identity hashes the prepared unsigned envelope. The
+        # signed file commitment includes its signer section and is different.
+        # Exact bundle equality separately covers the complete signed payload.
+        if response.get("operation") != "source.inspect-latest" or response.get("status") != "ok" or response.get("payload") != expected_payload or bytes(response["object_digest"]).hex() != digest(paths["UNSIGNED_EPOCH"]):
             raise RuntimeError("genuine Source response differs from accepted prepared State")
         outcome["response_epoch_sha256"] = digest(paths["EPOCH"])
         if case == "credential-substitution":
@@ -326,12 +338,15 @@ def main():
             clock_stop.set()
             clock_thread.join()
             os.utime(clock_fd, (1, 1))
-            # Actual State's trusted-time owner observes this loss. No supplied
-            # timestamp/boolean replaces its checks or the original floor.
-            refused, response_raw = run(inspect, "stale-clock-client", refusal=True)
-            if refused == 0 and json.loads(response_raw).get("status") == "ok":
-                raise RuntimeError("stale original clock admitted new response")
-            outcome["stale_clock_denied"] = True
+            if os.fstat(clock_fd).st_mtime_ns != 1_000_000_000:
+                raise RuntimeError("original clock loss was not established")
+            # The current Source contract distributes retained signed bytes;
+            # current membership/time authority is a separate State observation.
+            # Neither inspection nor offline preparation establishes that right.
+            after = json.loads(run(inspect, "stale-clock-retained-distribution"))
+            if after != response:
+                raise RuntimeError("retained Source distribution changed after clock loss")
+            outcome["stale_clock_retained_distribution_observed"] = True
         observe()
     except BaseException as error:
         failures.append(error)

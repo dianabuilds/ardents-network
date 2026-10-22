@@ -30,7 +30,11 @@
 // denial and Close; actual manager users and cancellation callbacks join before
 // retained physical release. Source expected policy stays in infrastructure.
 // SourceRuntime opens its own non-root read-only GetUnit/property connection;
-// SourceControl opens a separate root connection with one fixed Source Start
+// SourceControl opens a separate root connection, refs only the fixed Source
+// unit to prevent inactive-unit collection, and retains that original reference
+// until physical connection Close. Reference acquisition grants no permission
+// or loaded-policy fact and cannot be used by preflight or non-root runtime.
+// It permits one fixed Source Start
 // and one cleanup Stop, both mode fail. It admits canonical native job replies
 // only on that control connection. A job is asynchronous request evidence,
 // never process identity or join. Copies share original attempt/Close state;

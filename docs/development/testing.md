@@ -18,10 +18,13 @@ descriptor. Use the marker `/etc/ardents-source-startup-native-stand` with exact
 Caller/manager mount, PID, cgroup and UTS namespaces match. The caller and every
 helper belong to the controller's `supervisor` sibling of its manager cgroup;
 the entered manager namespace reports `0::/../supervisor`. The outside scope
-covers both siblings and joins all descendants even on caller failure. No host
+covers both siblings and joins all descendants even on caller failure. The mount
+namespace must have its own root mount (for example, with `pivot_root`), so
+private systemd namespaces preserve canonical executable paths in procfs;
+chroot alone does not establish that prerequisite. No host
 account/unit/limit or foreign workload changes. Missing prerequisites fail.
 
-Supply `ARDENTS_SOURCE_STARTUP_{NODE,CONTROL,SOURCE_MANIFEST,REQUEST,BUNDLE,EPOCH,
+Supply `ARDENTS_SOURCE_STARTUP_{NODE,CONTROL,MANAGER_TEST,SOURCE_MANIFEST,REQUEST,BUNDLE,EPOCH,UNSIGNED_EPOCH,
 CLIENT_CERTIFICATE,CLIENT_KEY,SERVER_CA,PUBLIC_RECEIPT}` and each `_SHA256` as
 independently pinned original files. Set `DISTRIBUTION`, `PIN`, `HISTORY`,
 `NETWORK`, `OUTPUT`, `CASE`, `SERVER_NAME`, `SERVER_PIN`, `SOURCE_ID`, `FAMILY` and
@@ -33,11 +36,22 @@ Root supplies a fresh root-written 0644 live-clock file and public handoff paths
 traversable by the actual installed system UID. The runner derives that UID/GID
 from selected configuration and invokes genuine State acceptance without root
 or supplementary groups; private key directories stay private.
+`MANAGER_TEST` is the same-source systemd test binary built with
+`-tags network_signing_native`. Before installation effects, the runner discovers
+the exact required test in that same pinned binary; no matching test is an invalid
+environment. After State preparation and before first Start,
+`TestSourceControlRetainsStoppedUnitNative` requires actual collection of the
+unreferenced stopped unit, verifies Root control retains it without Start/Stop,
+then cancels/closes the original connection and observes actual reference return.
+Read-only runtime/preflight cannot load or pin an absent unit. This mechanism
+check does not supply installed startup authority or replace the real command.
 
 The runner retains the actual clock writer through Source use, waits for the
 original invocation's genuine journal readiness, independently observes kernel
 argv/credentials/executable and original cgroup, and checks a real mTLS client's
-exact prepared signed bundle/Epoch digest. Mutation controls precede another
+exact prepared signed bundle and unsigned-envelope protocol digest. `EPOCH`
+separately commits the complete signed file; `UNSIGNED_EPOCH` is the original
+independently pinned public preparation. Mutation controls precede another
 actual contact. Native pidfd open/signal support is required before installation
 effects. The original process is retained by pidfd and receives ordinary SIGTERM
 before manager deactivation; fixed-unit Stop follows its original scope join.
@@ -52,8 +66,14 @@ joins when the complete result is nil or contains exclusively ordinary cancellat
 every other result emits `retirement-failed` and remains failed. An earlier
 completion-unavailable notice cannot become clean retirement after a late join.
 The positive case requires `retired`, separately from kernel scope completion.
-Negative cases retain their failed terminal evidence and prove only causal refusal
-and original join; they do not establish clean cleanup or satisfy that positive gate.
+The credential-substitution case retains its failed terminal evidence and proves
+causal refusal plus original join; it does not establish clean cleanup or satisfy
+that positive gate. The clock-loss case stops/joins the original updater,
+confirms the original file's stale mtime, and checks unchanged retained signed
+byte distribution through another real mTLS request. Source inspection and
+finite offline preparation establish neither current membership nor trusted-time
+authority. This case does not change expired-Epoch serving policy, demand Source
+retirement, or qualify a fresh runtime authority observation without clock evidence.
 A selected case's result does not claim full installed,
 independence, power-loss or privacy qualification.
 

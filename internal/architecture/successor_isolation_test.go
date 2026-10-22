@@ -887,7 +887,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
-	if (source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go" || source == "internal/successor/installation/systemd/source_preflight_linux.go" || source == "internal/successor/installation/systemd/source_stopped_linux.go" || source == "internal/successor/installation/systemd/source_manager_linux.go" || source == "internal/successor/installation/systemd/source_control_linux.go") && dependency == "github.com/godbus/dbus/v5" {
+	if (source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go" || source == "internal/successor/installation/systemd/source_preflight_linux.go" || source == "internal/successor/installation/systemd/source_stopped_linux.go" || source == "internal/successor/installation/systemd/source_manager_linux.go" || source == "internal/successor/installation/systemd/source_control_linux.go" || source == "internal/successor/installation/systemd/source_reference_native_linux_test.go") && dependency == "github.com/godbus/dbus/v5" {
 		return true
 	}
 	if (owner == "internal/successor/admission/spending" || owner == "internal/successor/network/duty" || owner == "internal/successor/network/state/durable") && dependency == "golang.org/x/sys/windows" {
@@ -1020,6 +1020,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"old Endpoint cannot consume new Execution", "internal/endpoint/worker_grant_linux.go", modulePath + "/internal/successor/execution", false},
 		{"native original manager reference owns bus client", "internal/successor/installation/systemd/endpoint_reference_linux.go", "github.com/godbus/dbus/v5", true},
 		{"fresh Startup manager observation owns bus client", "internal/successor/installation/systemd/startup_observation_linux.go", "github.com/godbus/dbus/v5", true},
+		{"native Source reference regression checks genuine bus refusal", "internal/successor/installation/systemd/source_reference_native_linux_test.go", "github.com/godbus/dbus/v5", true},
 		{"manager value validation excludes bus client", "internal/successor/installation/systemd/manager_values_linux.go", "github.com/godbus/dbus/v5", false},
 		{"manager transport excludes bus client", "internal/successor/installation/systemd/reference_transport_linux.go", "github.com/godbus/dbus/v5", false},
 		{"Installation decisions exclude bus client", "internal/successor/installation/endpoint/predecessor_linux.go", "github.com/godbus/dbus/v5", false},

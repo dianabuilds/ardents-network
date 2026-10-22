@@ -1594,6 +1594,11 @@ unique owner/version/boot/start identity, fragment, loaded configuration, Invoca
 MainPID, proc inode/start clock, executable inode/bytes, complete argv, real/effective/
 saved IDs/groups, original cgroup inode/path and sole-process membership. Two
 fresh complete manager rounds surround independent file/process reobservation.
+Root's original control connection retains only the fixed Source unit through
+`RefUnit`, which loads its configuration without starting it and prevents
+collection while it is stopped. Reference acquisition supplies no loaded-policy,
+Release or Start authority. Closing that original connection returns its server
+reference. Non-root Startup and read-only preflight retain no such loading right.
 Manager restart/disconnect, extra child, changed namespace/path/argv/account/unit
 or cgroup fails closed; reconnection cannot recreate the original custody.
 
