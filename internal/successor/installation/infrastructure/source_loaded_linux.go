@@ -104,12 +104,40 @@ func sourceExecutionStatus(service systemd.Properties) (result sourceExecution, 
 	if value.Type != "a(sasasttttuii)" || systemd.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
 		return result, ErrBinding
 	}
-	// The four native fields are start realtime/monotonic, then exit
-	// realtime/monotonic, followed by PID, wait code and status.
-	for index, target := range []any{&result.startedRealtime, &result.startedMonotonic, &result.exitedRealtime, &result.exitedMonotonic, &result.pid, &result.code, &result.status} {
+	// ExecStartEx initially carries the command's fork clock. systemd replaces
+	// it with the main process clock when reaping that same process. Retain the
+	// separate ExecMain clocks, which identify the process throughout its life.
+	var command sourceExecution
+	for index, target := range []any{&command.startedRealtime, &command.startedMonotonic, &command.exitedRealtime, &command.exitedMonotonic, &command.pid, &command.code, &command.status} {
 		if systemd.Decode(entries[0][index+3], target) != nil {
 			return sourceExecution{}, ErrBinding
 		}
+	}
+	for _, field := range []struct {
+		name, signature string
+		target          any
+	}{
+		{"ExecMainStartTimestamp", "t", &result.startedRealtime},
+		{"ExecMainStartTimestampMonotonic", "t", &result.startedMonotonic},
+		{"ExecMainExitTimestamp", "t", &result.exitedRealtime},
+		{"ExecMainExitTimestampMonotonic", "t", &result.exitedMonotonic},
+		{"ExecMainPID", "u", &result.pid},
+		{"ExecMainCode", "i", &result.code},
+		{"ExecMainStatus", "i", &result.status},
+	} {
+		value, present := service[field.name]
+		if !present || value.Type != field.signature || systemd.Decode(value.Data, field.target) != nil {
+			return sourceExecution{}, ErrBinding
+		}
+	}
+	if command.pid != result.pid || command.code != result.code || command.status != result.status ||
+		command.exitedRealtime != result.exitedRealtime || command.exitedMonotonic != result.exitedMonotonic ||
+		(command.startedRealtime == 0) != (result.startedRealtime == 0) || (command.startedMonotonic == 0) != (result.startedMonotonic == 0) ||
+		command.startedRealtime > result.startedRealtime || command.startedMonotonic > result.startedMonotonic {
+		return sourceExecution{}, ErrBinding
+	}
+	if result.code != 0 && (command.startedRealtime != result.startedRealtime || command.startedMonotonic != result.startedMonotonic) {
+		return sourceExecution{}, ErrBinding
 	}
 	return result, nil
 }

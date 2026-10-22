@@ -1816,6 +1816,13 @@ cuts unavailable; the full ACK's live handoff is not durable restart permission.
 Stop independently matches the original archive to actual manager execution
 clocks and InvocationID, current principal/selected files, original proc inode,
 argv/executable/namespaces, retained pidfd and original cgroup directory/events.
+The archived process clocks are the typed `ExecMainStartTimestamp` and
+`ExecMainStartTimestampMonotonic` fields. Their original values remain fixed
+through process exit. `ExecStartEx` initially reports the command's earlier fork
+clocks and may replace them with the main-process clocks on reap; those earlier
+values cannot identify the retained process start. Both observations must still
+agree on PID, exit clocks and wait result, and completed command clocks must
+match the original main-process clocks exactly.
 Its short admission excludes successors before physical interruption. The
 process adapter sends one SIGTERM through the original pidfd, without numeric
 PID killing or StopUnit on a possibly replaced invocation. Existing first-start

@@ -252,6 +252,18 @@ def main():
                 self.child.wait()
                 self.log.close()
                 raise
+            # The helper emits an initial observation before accepting commands.
+            # Consume it now so every later sample is the reply to that sample's
+            # actual observe request, rather than the preceding queued snapshot.
+            try:
+                if not isinstance(self.receive(), dict):
+                    raise RuntimeError("original initial native observation missing")
+            except BaseException as error:
+                try:
+                    self.close()
+                except BaseException as cleanup:
+                    raise BaseExceptionGroup("original observer initialization and cleanup failed", [error, cleanup])
+                raise
 
         def receive(self):
             while True:
@@ -373,7 +385,7 @@ def main():
         run([paths["MANAGER_TEST"], "-test.run=^TestSourceCanceledObservationCloseNative$", "-test.v", "-test.timeout=30s"], "canceled-manager-observation")
         if restart_profile:
             native_observer = NativeObserver()
-            initial_facts = native_observer.receive()
+            initial_facts = native_observer.sample()
             if initial_facts["Unit"]["ActiveState"] != {"type": "s", "data": "inactive"} or initial_facts["Service"]["MainPID"] != {"type": "u", "data": 0}:
                 raise RuntimeError("independent native observer did not retain original stopped unit")
 

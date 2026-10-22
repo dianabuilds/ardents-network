@@ -41,6 +41,11 @@ return. Its retained reference prevents collection from erasing the independent
 native exit oracle. Neither these observations nor the helper's success are
 inputs to product admission or retirement records. All product commands retain
 their independent original owners and checks.
+The initial unsolicited helper observation is consumed before any sample request;
+each subsequent sample consumes its own fresh reply. The execution-clock
+regression uses actual native running/completed values where `ExecStartEx`
+updates its provisional fork clocks while the original typed `ExecMain` start
+clocks remain fixed. Missing or wrongly typed process fields remain refusal.
 
 Each retained-input case first proves genuine original explicit retirement,
 then moves one original runtime certificate or State ownership marker to a

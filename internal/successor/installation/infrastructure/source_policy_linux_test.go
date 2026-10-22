@@ -85,5 +85,11 @@ func sourceLoadedVector(t *testing.T) (systemd.Properties, systemd.Properties) {
 	if json.Unmarshal([]byte(unit), &u) != nil || json.Unmarshal([]byte(service), &s) != nil {
 		t.Fatal("invalid independent vector")
 	}
+	for _, name := range []string{"ExecMainStartTimestamp", "ExecMainStartTimestampMonotonic", "ExecMainExitTimestamp", "ExecMainExitTimestampMonotonic"} {
+		s[name] = systemd.Value{Type: "t", Data: json.RawMessage(`0`)}
+	}
+	for _, name := range []string{"ExecMainCode", "ExecMainStatus"} {
+		s[name] = systemd.Value{Type: "i", Data: json.RawMessage(`0`)}
+	}
 	return u, s
 }
