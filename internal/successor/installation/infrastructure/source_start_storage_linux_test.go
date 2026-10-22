@@ -81,10 +81,15 @@ func TestSourceStartPendingRefusesUnknownCompletedLookingFirstAttempt(t *testing
 		t.Fatal(err)
 	}
 	selection := &sourceSelection{binding: sourceBinding{Request: SourceRequest{InstallationRoot: root}}}
-	// No installed authority is supplied: the physical reader must refuse the
-	// blocker before inspecting any possibly complete-looking original records.
-	if _, err := readSourceStartHistory(selection, 0, strings.Repeat("a", 64), ""); !errors.Is(err, ErrBinding) {
-		t.Fatal("unknown first start passed its original blocker", err)
+	// The root-only reader rejects an unprivileged caller before native history
+	// inspection. Under root it must refuse the blocker before inspecting any
+	// possibly complete-looking records; neither case supplies installed authority.
+	wanted := ErrBinding
+	if os.Geteuid() != 0 {
+		wanted = ErrInput
+	}
+	if _, err := readSourceStartHistory(selection, 0, strings.Repeat("a", 64), ""); !errors.Is(err, wanted) {
+		t.Fatalf("unknown first start refusal = %v, want %v", err, wanted)
 	}
 	for _, failure := range []error{os.ErrClosed, context.Canceled, errors.New("original sync outcome uncertain")} {
 		storage := &sourceStartStorage{ctx: context.Background(), closed: true, terminal: failure, pending: &sourceBirth{path: path}}
