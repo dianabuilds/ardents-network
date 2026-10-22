@@ -106,6 +106,7 @@ def main():
     scope_fd = None
     source_pid = None
     source_pidfd = None
+    invocation = None
     source_started = False
     native_observer = None
     failures = []
