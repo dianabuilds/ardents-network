@@ -37,3 +37,15 @@ func TestSourceReferenceClosePreservesOriginalCancellation(t *testing.T) {
 		})
 	}
 }
+
+func TestSourceCanceledDeclarationPreservesOriginalCause(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	reference := &sourcePreflight{original: ctx}
+	cancel()
+	// Failure-only admission: the canceled request must return before touching
+	// a connection. An absent reply is not a malformed received declaration.
+	_, _, err := reference.sourceDeclaration(ctx)
+	if err != context.Canceled {
+		t.Fatalf("original canceled request invented a reply failure: %v", err)
+	}
+}

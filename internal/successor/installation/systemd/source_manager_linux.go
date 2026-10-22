@@ -100,8 +100,11 @@ func (r *sourcePreflight) retainSourceControlUnit() (err error) {
 		return err
 	}
 	call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.RefUnit", "ardents-source.service")
-	if err != nil || len(call.Body) != 0 {
-		return errors.Join(ErrObservation, err)
+	if err != nil {
+		return err
+	}
+	if len(call.Body) != 0 {
+		return ErrObservation
 	}
 	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
 		return err
@@ -132,19 +135,28 @@ func (r *sourcePreflight) sourceDeclaration(ctx context.Context) (string, []stri
 			return value, err
 		}
 		err = call.Store(&value)
-		return value, err
+		if err != nil {
+			return value, errors.Join(ErrObservation, err)
+		}
+		return value, nil
 	}
 	v, err := get("Version")
-	if err != nil || v.Signature().String() != "s" {
-		return "", nil, errors.Join(ErrObservation, err)
+	if err != nil {
+		return "", nil, err
+	}
+	if v.Signature().String() != "s" {
+		return "", nil, ErrObservation
 	}
 	version, ok := v.Value().(string)
 	if !ok || !(version == "255" || strings.HasPrefix(version, "255.")) {
 		return "", nil, ErrObservation
 	}
 	v, err = get("UnitPath")
-	if err != nil || v.Signature().String() != "as" {
-		return "", nil, errors.Join(ErrObservation, err)
+	if err != nil {
+		return "", nil, err
+	}
+	if v.Signature().String() != "as" {
+		return "", nil, ErrObservation
 	}
 	paths, ok := v.Value().([]string)
 	if !ok || len(paths) == 0 || len(paths) > 32 {

@@ -48,6 +48,8 @@ behind native I/O while cancellation and Close deny the real connection, then
 joins that borrower; complete real manager calls also race cancellation/Close.
 The original cancellation must survive without an invented local-close failure.
 Separate refusal controls retain earlier physical failures and live-close denial.
+Cancellation between live admission and a declaration request must not turn an
+absent reply into a malformed-reply error; received malformed replies still fail.
 Read-only runtime/preflight cannot load or pin an absent unit. This mechanism
 check does not supply installed startup authority or replace the real command.
 

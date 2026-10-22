@@ -15,6 +15,28 @@ func TestSourceCanceledObservationCloseNative(t *testing.T) {
 	if os.Geteuid() != 0 || err != nil || string(marker) != "ardents-source-startup-native-v1\n" {
 		t.Fatal("invalid private Source startup native environment", err)
 	}
+	// Force cancellation after live admission and before the next declaration
+	// request. No reply was received, so no reply-shape failure may be invented.
+	ctx, cancel := context.WithCancel(t.Context())
+	control, err := OpenSourceControl(ctx)
+	if err != nil {
+		cancel()
+		if control != nil {
+			_ = control.Close()
+		}
+		t.Fatal(err)
+	}
+	if err := control.original.reference.local(); err != nil {
+		cancel()
+		_ = control.Close()
+		t.Fatal(err)
+	}
+	cancel()
+	_, _, declarationErr := control.original.reference.sourceDeclaration(ctx)
+	closedErr := control.Close()
+	if !sourceReferenceCancellationOnly(declarationErr) || !sourceReferenceCancellationOnly(closedErr) {
+		t.Fatalf("original canceled declaration invented a reply failure: observation=%v cleanup=%v", declarationErr, closedErr)
+	}
 	for index := 0; index < 32; index++ {
 		ctx, cancel := context.WithCancel(t.Context())
 		control, err := OpenSourceControl(ctx)
