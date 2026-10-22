@@ -58,6 +58,7 @@ type config struct {
 	automatic              time.Duration
 	permitWork             func() error
 	localRoles             string
+	retainedHistory        bool
 	anchorWall             time.Time
 	anchorMono             time.Time
 }

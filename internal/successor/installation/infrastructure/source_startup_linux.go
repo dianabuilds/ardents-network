@@ -24,30 +24,37 @@ import (
 type SourceStartup struct{ original *sourceStartup }
 
 type sourceStartup struct {
-	mu             sync.Mutex // local admission/terminal state only; no foreign I/O
-	ioMu           sync.Mutex
-	uses           sync.WaitGroup
-	ctx            context.Context
-	parent         context.Context
-	cancel         context.CancelFunc
-	selection      *sourceSelection
-	invocation     *process.Invocation
-	scope          *cgroup.SourceScope
-	identity       *sourceRuntimeIdentity
-	namespace      *sourceNamespace
-	manager        *systemd.SourceRuntime
-	exchange       *completion.Exchange
-	id             [16]byte
-	denied, closed bool
-	terminal       error
-	closeOnce      sync.Once
-	closeErr       error
+	mu                      sync.Mutex // local admission/terminal state only; no foreign I/O
+	ioMu                    sync.Mutex
+	uses                    sync.WaitGroup
+	ctx                     context.Context
+	parent                  context.Context
+	cancel                  context.CancelFunc
+	selection               *sourceSelection
+	invocation              *process.Invocation
+	scope                   *cgroup.SourceScope
+	identity                *sourceRuntimeIdentity
+	namespace               *sourceNamespace
+	manager                 *systemd.SourceRuntime
+	exchange                *completion.Exchange
+	id                      [16]byte
+	attempt                 sourceAttemptNumber
+	denied, closed          bool
+	terminal                error
+	closeOnce               sync.Once
+	closeErr                error
+	closeDone               chan struct{}
+	ready, reportAttempted  bool
+	completionFrame         [160]byte
+	completionDirectory     string
+	completionDirectoryInfo os.FileInfo
 }
 
 // SourceRuntimeInputs contains detached bytes, never Startup or State authority.
 // The sole runtime consumer clears its key copies after all State/TLS users join.
 // No field belongs in a public receipt or automatic JSON serialization.
 type SourceRuntimeInputs struct {
+	Invocation  uint32 `json:"-"`
 	Plan        []byte `json:"-"`
 	Certificate []byte `json:"-"`
 	PrivateKey  []byte `json:"-"`
@@ -59,7 +66,7 @@ func OpenSourceStartup(parent context.Context, binding string) (result *SourceSt
 		return nil, ErrInput
 	}
 	ctx, cancel := context.WithCancel(parent)
-	s := &sourceStartup{ctx: ctx, parent: parent, cancel: cancel}
+	s := &sourceStartup{ctx: ctx, parent: parent, cancel: cancel, closeDone: make(chan struct{})}
 	defer func() {
 		if err != nil {
 			s.record(err)
@@ -114,7 +121,11 @@ func OpenSourceStartup(parent context.Context, binding string) (result *SourceSt
 	if err = s.observe(); err != nil {
 		return nil, err
 	}
-	directory := filepath.Join(b.Request.InstallationRoot, "source-startup")
+	s.attempt, err = latestSourceAttempt(s.selection)
+	if err != nil {
+		return nil, err
+	}
+	directory := s.attempt.directory(b.Request.InstallationRoot)
 	if err = s.selection.pinDirectory(directory, 0750, 0, b.GID); err != nil {
 		return nil, err
 	}
@@ -122,6 +133,9 @@ func OpenSourceStartup(parent context.Context, binding string) (result *SourceSt
 	if e != nil {
 		return nil, e
 	}
+	s.completionFrame = frame
+	s.completionDirectory = directory
+	s.completionDirectoryInfo = s.selection.identities[directory]
 	setup, finish := context.WithTimeout(ctx, 2*time.Minute)
 	defer finish()
 	s.exchange, err = completion.Connect(setup, directory, s.selection.identities[directory], b.GID, frame)
@@ -141,6 +155,7 @@ func OpenSourceStartup(parent context.Context, binding string) (result *SourceSt
 	if err = s.observe(); err != nil {
 		return nil, err
 	}
+	s.ready = true
 	return &SourceStartup{original: s}, nil
 }
 
@@ -317,7 +332,7 @@ func (s *SourceStartup) Inputs() (result SourceRuntimeInputs, err error) {
 	}
 	get := func(path string) []byte { return bytes.Clone(o.selection.files[path].raw) }
 	r := o.selection.binding.Request
-	result = SourceRuntimeInputs{Plan: get(filepath.Join(o.selection.sealed, "source-plan.json")), Certificate: get(filepath.Join(r.CredentialDirectory, "certificate.pem")), PrivateKey: get(filepath.Join(r.CredentialDirectory, "private-key.pem")), ClientCA: get(filepath.Join(r.CredentialDirectory, "client-ca.pem"))}
+	result = SourceRuntimeInputs{Invocation: uint32(o.attempt), Plan: get(filepath.Join(o.selection.sealed, "source-plan.json")), Certificate: get(filepath.Join(r.CredentialDirectory, "certificate.pem")), PrivateKey: get(filepath.Join(r.CredentialDirectory, "private-key.pem")), ClientCA: get(filepath.Join(r.CredentialDirectory, "client-ca.pem"))}
 	if err = o.local(); err != nil {
 		clear(result.Plan)
 		clear(result.Certificate)
@@ -345,6 +360,9 @@ func (s *sourceStartup) close() error {
 		managerErr := s.manager.Close() // interrupt before joining held observers
 		s.uses.Wait()
 		s.closeErr = errors.Join(s.terminal, managerErr, s.exchange.Close(), s.selection.close(), s.scope.Close(), s.namespace.close(), s.identity.close(), s.invocation.Close(), s.parent.Err())
+		if s.closeDone != nil {
+			close(s.closeDone)
+		}
 	})
 	return s.closeErr
 }

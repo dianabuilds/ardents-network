@@ -18,11 +18,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
-// One original first-start operation owns its distinct writer lease and native
+// One original start attempt owns its distinct writer lease and native
 // observers. The runtime independently opens every observation; it borrows none
 // of these objects. An irreversible full ACK remains a handoff despite a later
 // journal, cancellation or physical Close failure.
-type sourceFirstStart struct {
+type sourceStartAttempt struct {
 	ctx               context.Context
 	verifier          *release.Verifier
 	authorization     Authorization
@@ -40,6 +40,7 @@ type sourceFirstStart struct {
 	id                [16]byte
 	attempted, handed bool
 	terminal          error
+	predecessor       *sourceRetirement
 }
 
 // StartSource admits only the first explicit start of an already selected
@@ -50,19 +51,42 @@ type sourceFirstStart struct {
 // original join can remain unavailable indefinitely; the command reports that
 // bounded notice while retaining this original operation and all its custody.
 func StartSource(ctx context.Context, v *release.Verifier, a Authorization, binding, history string) (err error) {
+	return startSourceAttempt(ctx, v, a, binding, history, nil)
+}
+
+// RestartSource admits a new exclusive invocation only after independent full
+// original retirement readback under the original first journal's lease. It
+// repeats fresh artifact/Release/native admission and never reopens or removes
+// the first-start barrier as a new operation.
+func RestartSource(ctx context.Context, v *release.Verifier, a Authorization, binding, history string) (err error) {
+	retired, err := openSourceRetirement(ctx, v, binding, history)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, retired.close()) }()
+	if retired.chain.latest.number+1 >= sourceAttemptLimit {
+		return ErrBinding
+	}
+	return startSourceAttempt(ctx, v, a, binding, history, retired)
+}
+
+func startSourceAttempt(ctx context.Context, v *release.Verifier, a Authorization, binding, history string, predecessor *sourceRetirement) (err error) {
 	if ctx == nil || v == nil || os.Geteuid() != 0 {
 		return ErrInput
 	}
 	if _, bounded := ctx.Deadline(); !bounded {
 		return ErrInput
 	}
-	s := &sourceFirstStart{ctx: ctx, verifier: v, authorization: a}
+	s := &sourceStartAttempt{ctx: ctx, verifier: v, authorization: a, predecessor: predecessor}
 	defer func() {
 		s.terminal = errors.Join(s.terminal, err)
 		if s.attempted && !s.handed {
 			s.joinFailedAttempt()
 		}
 		err = errors.Join(s.terminal, s.close())
+		if err == nil && s.handed {
+			err = s.storage.publishStart()
+		}
 	}()
 	if err = ctx.Err(); err != nil {
 		return err
@@ -122,7 +146,14 @@ func StartSource(ctx context.Context, v *release.Verifier, a Authorization, bind
 	if err = s.observeStopped(); err != nil {
 		return err
 	}
-	s.storage, err = openSourceStartStorage(ctx, selection)
+	if predecessor == nil {
+		s.storage, err = openSourceStartStorage(ctx, selection)
+	} else {
+		if err = predecessor.check(); err != nil {
+			return err
+		}
+		s.storage, err = openSourceInvocationStorage(ctx, selection, predecessor.chain.latest.number+1)
+	}
 	if err != nil {
 		return err
 	}
@@ -154,7 +185,35 @@ func StartSource(ctx context.Context, v *release.Verifier, a Authorization, bind
 	if err = s.archive(); err != nil {
 		return err
 	}
-	return s.barrier.acknowledge()
+	if err = s.barrier.acknowledge(); err != nil {
+		return err
+	}
+	return s.checkCompletedTranscript()
+}
+
+// This writer-side check exercises the same complete grammar that a later
+// independent stop reader must consume. It neither proves domain retirement
+// nor releases the first-start barrier for another attempt.
+func (s *sourceStartAttempt) checkCompletedTranscript() error {
+	frame, err := s.barrier.frame()
+	if err != nil {
+		return err
+	}
+	storage, barrier := s.storage, s.barrier
+	binding := s.initial.selection.files[filepath.Join(s.initial.selection.binding.Request.InstallationRoot, "binding.json")].raw
+	recorded, err := decodeSourceStartRecords(storage.journal.body, storage.number, storage.journal.path, storage.path,
+		digest(binding), digest(barrier.guard.body), digest(barrier.record.body), digest(barrier.archive.body), digest(frame[:]), s.initial.selection.binding.GID)
+	if err != nil {
+		return err
+	}
+	for _, original := range append([]*sourceBirth{storage.journal}, storage.files...) {
+		native, ok := original.info.Sys().(*syscall.Stat_t)
+		r, exists := recorded[original.path]
+		if !ok || !exists || r.Device != uint64(native.Dev) || r.Inode != native.Ino || r.Mode != uint32(original.info.Mode().Perm()) || r.UID != native.Uid || r.GID != native.Gid {
+			return ErrBinding
+		}
+	}
+	return s.observeRunning()
 }
 
 func verifySourceControllerProgram(ctx context.Context, wanted []byte) (err error) {
@@ -181,7 +240,7 @@ func verifySourceControllerProgram(ctx context.Context, wanted []byte) (err erro
 	return ctx.Err()
 }
 
-func (s *sourceFirstStart) base() error {
+func (s *sourceStartAttempt) base() error {
 	if err := s.ctx.Err(); err != nil {
 		return err
 	}
@@ -215,30 +274,46 @@ func (s *sourceFirstStart) base() error {
 			return err
 		}
 	}
+	if s.predecessor != nil {
+		if err := s.predecessor.check(); err != nil {
+			return err
+		}
+	}
 	return s.ctx.Err()
 }
 
-func (s *sourceFirstStart) observeStopped() error {
+func (s *sourceStartAttempt) observeStopped() error {
 	b := s.initial.selection.binding
 	if err := s.base(); err != nil {
 		return err
 	}
 	for round := 0; round < 2; round++ {
+		if err := cgroup.CheckSourceQuiescent(s.ctx); err != nil {
+			return err
+		}
 		facts, err := s.manager.Observe()
 		if err != nil {
 			return err
 		}
-		if err = verifySourceStopped(facts.Unit, facts.Service, b.Request, b.Generation); err != nil {
+		if s.predecessor == nil {
+			err = verifySourceStopped(facts.Unit, facts.Service, b.Request, b.Generation)
+		} else {
+			err = s.predecessor.stopped(facts)
+		}
+		if err != nil {
 			return err
 		}
 		if err = s.base(); err != nil {
+			return err
+		}
+		if err = cgroup.CheckSourceQuiescent(s.ctx); err != nil {
 			return err
 		}
 	}
 	return s.ctx.Err()
 }
 
-func (s *sourceFirstStart) awaitRunning() error {
+func (s *sourceStartAttempt) awaitRunning() error {
 	timer := time.NewTicker(10 * time.Millisecond)
 	defer timer.Stop()
 	for {
@@ -256,6 +331,9 @@ func (s *sourceFirstStart) awaitRunning() error {
 			s.pid, s.id, err = sourceInvocation(facts.Unit, facts.Service)
 			if err != nil {
 				return err
+			}
+			if s.predecessor != nil && s.id == s.predecessor.chain.latest.id {
+				return ErrBinding
 			}
 			b := s.initial.selection.binding
 			program := s.initial.selection.files[filepath.Join(s.initial.selection.sealed, ProgramName)]
@@ -298,7 +376,7 @@ func sourceOwnQueuedJob(unit systemd.Properties, object string) bool {
 		systemd.Matches(unit, "Job", "(uo)", []any{uint32(id), object})
 }
 
-func (s *sourceFirstStart) observeRunning() error {
+func (s *sourceStartAttempt) observeRunning() error {
 	if s.pid == 0 || s.id == [16]byte{} || s.invocation == nil || s.scope == nil {
 		return ErrBinding
 	}
@@ -330,7 +408,7 @@ func (s *sourceFirstStart) observeRunning() error {
 	return s.ctx.Err()
 }
 
-func (s *sourceFirstStart) joinFailedAttempt() {
+func (s *sourceStartAttempt) joinFailedAttempt() {
 	// No timeout, PID absence, manager inactive flag or replacement scope can
 	// manufacture original completion. Keep unknown custody even after failure.
 	if s.scope == nil {
@@ -360,12 +438,12 @@ func (s *sourceFirstStart) joinFailedAttempt() {
 	}
 }
 
-func (s *sourceFirstStart) close() error {
+func (s *sourceStartAttempt) close() error {
 	if s == nil {
 		return nil
 	}
 	// Failed attempts have joined the original scope above. Full ACK transfers
 	// startup to the independently observing runtime; none of these root objects
 	// is borrowed by it. Its own State/process completion remains separately owned.
-	return errors.Join(s.barrier.close(), s.manager.Close(), s.namespace.close(), s.identity.close(), s.scope.Close(), s.invocation.Close(), s.initial.close(), s.storage.close(), s.ctx.Err())
+	return errors.Join(s.barrier.close(), s.manager.Close(), s.namespace.close(), s.identity.close(), s.scope.Close(), s.invocation.Close(), s.initial.close(), s.predecessor.close(), s.storage.close(), s.ctx.Err())
 }

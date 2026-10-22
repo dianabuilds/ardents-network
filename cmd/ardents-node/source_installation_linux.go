@@ -16,11 +16,13 @@ import (
 
 func runSourceInstallation(parent context.Context, args []string, out io.Writer) error {
 	if parent == nil || len(args) == 0 {
-		return errors.New("usage: ardents-node installation (install-initial-stopped|start-source) [ARGUMENTS]")
+		return errors.New("usage: ardents-node installation (install-initial-stopped|start-source|stop-source|restart-source) [ARGUMENTS]")
 	}
 	initial := args[0] == "install-initial-stopped"
-	if (initial && len(args) != 7) || (!initial && (args[0] != "start-source" || len(args) != 6)) {
-		return errors.New("usage: ardents-node installation install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST | start-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING")
+	stopping := args[0] == "stop-source"
+	starting := args[0] == "start-source" || args[0] == "restart-source"
+	if (initial && len(args) != 7) || (stopping && len(args) != 3) || (starting && len(args) != 6) || (!initial && !stopping && !starting) {
+		return errors.New("usage: ardents-node installation install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST | (start-source|restart-source) DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING | stop-source HISTORY BINDING")
 	}
 	if os.Geteuid() != 0 {
 		return &sourceCommandFailure{infrastructure.ErrInput}
@@ -35,6 +37,10 @@ func runSourceInstallation(parent context.Context, args []string, out io.Writer)
 		outcome := "first-start-completed"
 		if initial {
 			outcome = "initial-stopped-selected"
+		} else if stopping {
+			outcome = "source-stopped-completed"
+		} else if args[0] == "restart-source" {
+			outcome = "source-restart-completed"
 		}
 		if err := writeSourceCommandOutcome(ctx, out, "installation.source", outcome); err != nil {
 			return &sourceCommandFailure{err}
@@ -53,6 +59,13 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 		}
 		err = errors.Join(err, ctx.Err())
 	}()
+	if args[0] == "stop-source" {
+		verifier, err = release.OpenRetained(args[1])
+		if err != nil {
+			return err
+		}
+		return infrastructure.StopSource(ctx, verifier, args[2], args[1])
+	}
 	offset := 0
 	if initial {
 		offset = 1
@@ -112,6 +125,9 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 	}
 	if initial {
 		return infrastructure.InstallInitialStoppedSource(verifier, authorization, inputs, distribution, history)
+	}
+	if args[0] == "restart-source" {
+		return infrastructure.RestartSource(ctx, verifier, authorization, args[5], history)
 	}
 	return infrastructure.StartSource(ctx, verifier, authorization, args[5], history)
 }

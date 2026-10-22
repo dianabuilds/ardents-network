@@ -645,6 +645,8 @@ The root command forms are:
 ```text
 ardents-node installation install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST
 ardents-node installation start-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING
+ardents-node installation stop-source HISTORY BINDING
+ardents-node installation restart-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING
 ```
 
 They directly consume separate Enrollment, Release and Source Installation owners
@@ -652,11 +654,24 @@ in the same original operation, with actual current reference time and independe
 native resources. Initial installation verifies the independent pin and actual
 running artifact; first start revalidates fresh coherent proofs against retained
 history and the complete original stopped transcript. A separate exclusive
-first-start journal refuses replay, restart or continuation. Durable archival
+first-start journal refuses replay, reuse or continuation. Durable archival
 precedes the one completion ACK. Root completion reports transaction completion,
 never State authority, runtime readiness or a transferable permission.
 
-Both native operations require the selected Ubuntu24.04/systemd255/cgroup-v2/ext4
+Stop checks the archived original invocation and uses its retained pidfd. A
+separate original domain-completion exchange, clean process exit, native scope
+join and complete synced root transcript precede the final removal of its
+blocking marker. A public `retired` line, old ACK or inactive unit is insufficient.
+Restart independently checks every start/retirement record under the original
+first journal's lease and admits fresh Release/native/startup work in a new
+exclusive invocation directory. It preserves the same generation, account,
+credentials, roots and semantic histories; State refuses empty retained history.
+Failed or uncertain prefixes remain repair-required, with no reset/adoption or
+automatic restart. The finite retained history admits at most 64 total attempts.
+Root outputs `source-stopped-completed` or `source-restart-completed` only for
+their completed bounded operation; reporting grants no runtime authority.
+
+These native operations require the selected Ubuntu24.04/systemd255/cgroup-v2/ext4
 profile; unsupported environments refuse. Before any isolated installed Source
 execution, ADR-0123 requires the completed public exact-artifact bootstrap receipt
 and its separate direct Product Owner acceptance. A compiled command, component

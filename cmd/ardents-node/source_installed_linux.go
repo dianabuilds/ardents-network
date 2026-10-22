@@ -23,8 +23,26 @@ type sourceCommandFailure struct{ cause error }
 func (e *sourceCommandFailure) Error() string { return "source command failed" }
 func (e *sourceCommandFailure) Unwrap() error { return e.cause }
 
+// Only a complete original command result plus a successful one-use root
+// retirement exchange can produce this terminal marker. The cancellation cause
+// remains inspectable; main exits cleanly only for this exact completed stop.
+type sourceExplicitStop struct{ cause error }
+
+func (e *sourceExplicitStop) Error() string { return "source explicitly stopped" }
+func (e *sourceExplicitStop) Unwrap() error { return e.cause }
+
+func completedExplicitSourceStop(err error) bool {
+	completed, ok := err.(*sourceExplicitStop)
+	return ok && completed != nil && sourceCancellationOnly(completed.cause)
+}
+
 func runInstalledSource(ctx context.Context, binding string, out io.Writer) error {
-	result := waitSourceCommand(ctx, out, "source.start-installed", func() error { return serveInstalledSource(ctx, binding, out) })
+	var startup *infrastructure.SourceStartup
+	result := waitSourceCommand(ctx, out, "source.start-installed", func() error {
+		var err error
+		startup, err = serveInstalledSource(ctx, binding, out)
+		return err
+	})
 	outcome := "retirement-failed"
 	if sourceCancellationOnly(result) {
 		outcome = "retired"
@@ -35,6 +53,17 @@ func runInstalledSource(ctx context.Context, binding string, out io.Writer) erro
 		report := writeSourceCommandOutcome(context.WithoutCancel(ctx), out, "source.start-installed", outcome)
 		if report != nil {
 			return &sourceCommandFailure{errors.Join(result, report)}
+		}
+	}
+	if ctx != nil && startup != nil && sourceCancellationOnly(result) {
+		completion, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
+		reported, err := startup.ReportRetirement(completion, result)
+		cancel()
+		if err != nil {
+			return &sourceCommandFailure{errors.Join(result, err)}
+		}
+		if reported {
+			return &sourceExplicitStop{result}
 		}
 	}
 	return result
@@ -85,10 +114,11 @@ func waitSourceCommand(ctx context.Context, out io.Writer, operation string, wor
 	}
 }
 
-func serveInstalledSource(ctx context.Context, binding string, out io.Writer) (result error) {
-	startup, err := infrastructure.OpenSourceStartup(ctx, binding)
+func serveInstalledSource(ctx context.Context, binding string, out io.Writer) (startup *infrastructure.SourceStartup, result error) {
+	var err error
+	startup, err = infrastructure.OpenSourceStartup(ctx, binding)
 	if err != nil {
-		return &sourceCommandFailure{err}
+		return nil, &sourceCommandFailure{err}
 	}
 	defer startup.Stop()
 	var guard *processresource.Guard
@@ -115,19 +145,19 @@ func serveInstalledSource(ctx context.Context, binding string, out io.Writer) (r
 	}()
 	material, err = startup.Inputs()
 	if err != nil {
-		return err
+		return startup, err
 	}
 	plan, err := distribution.DecodeServingDeclaration(material.Plan)
 	if err != nil {
-		return err
+		return startup, err
 	}
 	config, err = installedSourceStateConfig(plan)
 	if err != nil {
-		return err
+		return startup, err
 	}
 	guard, err = processresource.Open(startup.Context(), processresource.SourceProfile)
 	if err != nil {
-		return err
+		return startup, err
 	}
 	check := func() error {
 		original := startup.Check()
@@ -143,23 +173,27 @@ func serveInstalledSource(ctx context.Context, binding string, out io.Writer) (r
 	}
 	config.PermitWork = check
 	if err = check(); err != nil {
-		return err
+		return startup, err
 	}
 	config.Source.ServeCertificate, err = tls.X509KeyPair(material.Certificate, material.PrivateKey)
 	if err != nil {
-		return err
+		return startup, err
 	}
 	config.Source.ServeClientRootPEM = append([]byte(nil), material.ClientCA...)
 	config.Source.ServeAddress = plan.Address
 	config.Source.ServeClientKeyDigests = append([][32]byte(nil), plan.ClientPins...)
 	if err = check(); err != nil {
-		return err
+		return startup, err
 	}
-	owner, err := state.Open(config)
+	openState := state.Open
+	if material.Invocation != 0 {
+		openState = state.OpenRetained
+	}
+	owner, err := openState(config)
 	if err != nil {
-		return err
+		return startup, err
 	} // State joins every partial acquisition itself.
-	return superviseInstalledSource(startup.Context(), owner, check, startup.Stop, out)
+	return startup, superviseInstalledSource(startup.Context(), owner, check, startup.Stop, out)
 }
 
 // This declaration adaptation creates no accepted State or trusted time.

@@ -32,6 +32,21 @@ func TestSourceRetirementDoesNotHideJoinedPhysicalFailure(t *testing.T) {
 	}
 }
 
+func TestSourceExplicitStopExitRetainsCancellationAndRejectsLateFailure(t *testing.T) {
+	completed := &sourceExplicitStop{context.Canceled}
+	if !errors.Is(completed, context.Canceled) || !completedExplicitSourceStop(completed) {
+		t.Fatal("completed stop erased cancellation or refused clean exit")
+	}
+	physical := errors.New("late original close failure")
+	for _, result := range []error{nil, context.Canceled, &sourceCommandFailure{context.Canceled},
+		errors.Join(completed, physical), &sourceExplicitStop{errors.Join(context.Canceled, physical)},
+		&sourceExplicitStop{context.DeadlineExceeded}} {
+		if completedExplicitSourceStop(result) {
+			t.Fatal("unproven or failed command acquired clean stop exit", result)
+		}
+	}
+}
+
 type sourceRetirementControl struct {
 	closeBegun chan struct{}
 	closeJoin  chan struct{}

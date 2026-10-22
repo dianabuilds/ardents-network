@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -27,6 +28,24 @@ func RetainSource(ctx context.Context, expected SourceExpected) (*Invocation, er
 		return nil, errInput
 	}
 	return retainSource(ctx, expected)
+}
+
+// RetainSourceStop observes the exact already archived original process before
+// explicit-stop admission. Detached inode facts grant no right; this opener
+// still checks the genuine process, executable, argv, namespace and pidfd.
+func RetainSourceStop(ctx context.Context, expected SourceExpected, device, inode uint64) (*Invocation, error) {
+	if device == 0 || inode == 0 {
+		return nil, errInput
+	}
+	pin, err := RetainSource(ctx, expected)
+	if err != nil {
+		return nil, err
+	}
+	native, ok := pin.identity.Sys().(*syscall.Stat_t)
+	if !ok || uint64(native.Dev) != device || native.Ino != inode {
+		return nil, errors.Join(errBinding, pin.Close())
+	}
+	return pin, nil
 }
 
 // RetainSourceSelf can observe only the actual non-root Source calling process.
@@ -53,10 +72,58 @@ func retainSource(ctx context.Context, expected SourceExpected) (*Invocation, er
 	if err = pin.retainSourceNamespaces(ctx); err == nil {
 		err = pin.Observe(ctx)
 	}
+	if err == nil && os.Geteuid() == 0 {
+		err = pin.retainSourcePIDFD(ctx)
+	}
 	if err != nil {
 		return nil, errors.Join(err, pin.Close())
 	}
 	return pin, nil
+}
+
+// The installed Source contract selects Linux amd64. These kernel entrypoints
+// have no pointer arguments, cgo or unsafe. Pin before reobserving original proc
+// identity/start clock, so PID reuse cannot turn a signal into a foreign effect.
+type sourceSignal struct {
+	file        *os.File
+	interrupted bool
+}
+
+func (pin *Invocation) retainSourcePIDFD(ctx context.Context) error {
+	if runtime.GOARCH != "amd64" || pin == nil || pin.sourceSignal != nil {
+		return errInput
+	}
+	const pidfdOpenAMD64 = 434
+	fd, _, failure := syscall.Syscall(pidfdOpenAMD64, uintptr(pin.pid), 0, 0)
+	if failure != 0 {
+		return failure
+	}
+	pin.sourceSignal = &sourceSignal{file: os.NewFile(fd, "original Source pidfd")}
+	return pin.Observe(ctx)
+}
+
+// InterruptSource sends one SIGTERM through the retained original pidfd. It is
+// a physical operation only; Installation separately admits explicit stop and
+// retains the complete domain result and original cgroup join. Its caller
+// serializes this operation and joins it before Close; no numeric PID kill,
+// reconnect, replacement process or accepting authority is supplied here.
+func (pin *Invocation) InterruptSource(ctx context.Context) (bool, error) {
+	if pin == nil || ctx == nil || os.Geteuid() != 0 || runtime.GOARCH != "amd64" || pin.sourceSignal == nil || pin.sourceSignal.file == nil || pin.sourceSignal.interrupted {
+		return false, errInput
+	}
+	if err := pin.Observe(ctx); err != nil {
+		return false, err
+	}
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	pin.sourceSignal.interrupted = true
+	const pidfdSendSignalAMD64 = 424
+	_, _, failure := syscall.Syscall6(pidfdSendSignalAMD64, pin.sourceSignal.file.Fd(), uintptr(syscall.SIGTERM), 0, 0, 0, 0)
+	if failure != 0 {
+		return true, failure
+	}
+	return true, ctx.Err()
 }
 
 // Namespace links are intentional kernel links, opened only for the original

@@ -37,6 +37,24 @@ func RetainSourceStarted(ctx context.Context, pid uint32) (*SourceScope, error) 
 	return retainSourceScope(ctx, pid, true)
 }
 
+// RetainSourceStop independently observes an archived original scope before a
+// new explicit stop. Before any interruption it is read-only observation;
+// after an attempted effect Installation retains it through actual Joined.
+func RetainSourceStop(ctx context.Context, pid uint32, device, inode uint64) (*SourceScope, error) {
+	if os.Geteuid() != 0 || device == 0 || inode == 0 {
+		return nil, errInput
+	}
+	scope, err := retainSourceScope(ctx, pid, true)
+	if err != nil {
+		return scope, err
+	}
+	native, ok := sourceScopeNative(scope.original.kernel.directory)
+	if !ok || uint64(native.Dev) != device || native.Ino != inode {
+		return scope, errBinding
+	}
+	return scope, nil
+}
+
 // RetainSourceSelf observes only this actual non-root calling process. It owns
 // no root transition lease, stop right or foreign process selection.
 func RetainSourceSelf(ctx context.Context) (*SourceScope, error) {

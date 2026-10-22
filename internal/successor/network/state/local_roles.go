@@ -61,7 +61,7 @@ func (s *networkState) holdSourceExposures(notAfter time.Time) error {
 }
 
 func (s *networkState) replaceSourceExposures(notAfter time.Time, state string) error {
-	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
+	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: !s.config.retainedHistory})
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func (s *networkState) releaseJoinedSourceWave() error {
 	if bound.After(s.config.clock()) {
 		return s.retainSourceExposures(bound)
 	}
-	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
+	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: !s.config.retainedHistory})
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (s *networkState) retainSourceServer() error {
 	if s.current == nil {
 		return errors.New("direct Source server has no current identity")
 	}
-	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: true})
+	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock, Create: !s.config.retainedHistory})
 	if err != nil {
 		return err
 	}

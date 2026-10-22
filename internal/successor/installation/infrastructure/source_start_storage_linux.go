@@ -11,17 +11,19 @@ import (
 	"syscall"
 )
 
-// sourceStartStorage is the first-start transaction's distinct exclusive
-// journal and original born resources. It cannot reopen an existing prefix.
+// sourceStartStorage is one attempt's distinct exclusive journal and original
+// born resources. First/subsequent constructors never reopen an existing prefix.
 // Its records are private evidence, never permission to replay Start or ACK.
 type sourceStartStorage struct {
 	ctx           context.Context
 	journal       *sourceBirth
+	pending       *sourceBirth
 	files         []*sourceBirth
 	directory     *os.File
 	directoryInfo os.FileInfo
 	path          string
 	sequence      uint32
+	number        sourceAttemptNumber
 	terminal      error
 	closed        bool
 }
@@ -40,11 +42,23 @@ type sourceStartEntry struct {
 }
 
 func openSourceStartStorage(ctx context.Context, selection *sourceSelection) (s *sourceStartStorage, err error) {
+	return createSourceStartStorage(ctx, selection, 0)
+}
+
+func openSourceInvocationStorage(ctx context.Context, selection *sourceSelection, number sourceAttemptNumber) (*sourceStartStorage, error) {
+	if number == 0 || number >= sourceAttemptLimit {
+		return nil, ErrInput
+	}
+	return createSourceStartStorage(ctx, selection, number)
+}
+
+func createSourceStartStorage(ctx context.Context, selection *sourceSelection, number sourceAttemptNumber) (s *sourceStartStorage, err error) {
 	if ctx == nil || selection == nil || os.Geteuid() != 0 {
 		return nil, ErrInput
 	}
-	s = &sourceStartStorage{ctx: ctx, path: filepath.Join(selection.binding.Request.InstallationRoot, "source-startup")}
-	path := selection.binding.Request.InstallationRoot + ".source-first-start-journal"
+	root := selection.binding.Request.InstallationRoot
+	s = &sourceStartStorage{ctx: ctx, path: number.directory(root), number: number}
+	path := number.journal(root)
 	if err = selection.pinParents(path); err != nil {
 		return s, err
 	}
@@ -70,7 +84,8 @@ func openSourceStartStorage(ctx context.Context, selection *sourceSelection) (s 
 	if err = errors.Join(file.Sync(), syncSourceParent(path)); err != nil {
 		return s, err
 	}
-	err = s.record("first-start", path, s.journal.info, digest(selection.files[filepath.Join(selection.binding.Request.InstallationRoot, "binding.json")].raw))
+	_, phase, _, _ := number.schema()
+	err = s.record(phase, path, s.journal.info, digest(selection.files[filepath.Join(root, "binding.json")].raw))
 	return s, err
 }
 
@@ -91,14 +106,23 @@ func (s *sourceStartStorage) record(phase, path string, info os.FileInfo, sha st
 		return err
 	}
 	switch phase {
-	case "first-start", "directory-intent", "directory-born", "directory-ready", "file-intent", "file-born", "file-ready", "socket-intent", "socket-born", "socket-ready", "start-attempt", "invocation-observed", "completion-received", "archived", "ack-attempt", "ack-written":
+	case "first-start":
+		if s.number != 0 {
+			return ErrBinding
+		}
+	case "invocation":
+		if s.number == 0 {
+			return ErrBinding
+		}
+	case "directory-intent", "directory-born", "directory-ready", "file-intent", "file-born", "file-ready", "socket-intent", "socket-born", "socket-ready", "start-attempt", "invocation-observed", "completion-received", "archived", "ack-attempt", "ack-written":
 	default:
 		return ErrBinding
 	}
 	if err = s.check(); err != nil {
 		return err
 	}
-	entry := sourceStartEntry{Schema: "ardents-source-first-start-record-v1", Sequence: s.sequence, Phase: phase, Path: path, SHA256: sha}
+	schema, _, _, _ := s.number.schema()
+	entry := sourceStartEntry{Schema: schema, Sequence: s.sequence, Phase: phase, Path: path, SHA256: sha}
 	if info != nil {
 		native, ok := info.Sys().(*syscall.Stat_t)
 		if !ok {
@@ -241,6 +265,35 @@ func (s *sourceStartStorage) write(name string, body []byte, admit func() error)
 	return born, admit()
 }
 
+func (s *sourceStartStorage) preparePending(binding string) error {
+	if s == nil || s.directory == nil || s.pending != nil || !sourceInitialSHA(binding) {
+		return ErrInput
+	}
+	if err := s.check(); err != nil {
+		return err
+	}
+	path := filepath.Join(s.path, "source-start-pending")
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0600)
+	if err != nil {
+		return err
+	}
+	s.pending = &sourceBirth{path: path, file: file}
+	body := []byte("ardents-source-start-pending-v1\n" + binding + "\n")
+	count, err := file.Write(body)
+	s.pending.body = bytes.Clone(body[:count])
+	if err != nil || count != len(body) {
+		return errors.Join(io.ErrShortWrite, err)
+	}
+	if err = errors.Join(file.Sync(), s.directory.Sync()); err != nil {
+		return err
+	}
+	s.pending.info, err = file.Stat()
+	if err != nil || !sourceAccess(s.pending.info, 0600, 0, 0, false) {
+		return errors.Join(ErrBinding, err)
+	}
+	return s.pending.check()
+}
+
 func (s *sourceStartStorage) check() (err error) {
 	if s == nil || s.ctx == nil || s.closed || s.journal == nil {
 		return ErrInput
@@ -261,6 +314,11 @@ func (s *sourceStartStorage) check() (err error) {
 	}
 	for _, file := range s.files {
 		if err = file.check(); err != nil {
+			return err
+		}
+	}
+	if s.pending != nil {
+		if err = s.pending.check(); err != nil {
 			return err
 		}
 	}
@@ -285,6 +343,9 @@ func (s *sourceStartStorage) close() error {
 		if s.directory != nil {
 			s.terminal = errors.Join(s.terminal, s.directory.Close())
 		}
+		if s.pending != nil {
+			s.terminal = errors.Join(s.terminal, s.pending.file.Close())
+		}
 		// The writer lease is released last, after the owner's other borrowers.
 		if s.journal != nil {
 			s.terminal = errors.Join(s.terminal, s.journal.file.Close())
@@ -292,4 +353,25 @@ func (s *sourceStartStorage) close() error {
 		s.terminal = errors.Join(s.terminal, s.ctx.Err())
 	}
 	return s.terminal
+}
+
+func (s *sourceStartStorage) publishStart() error {
+	if s == nil || !s.closed || s.terminal != nil || s.pending == nil || s.directoryInfo == nil {
+		return ErrBinding
+	}
+	if err := s.ctx.Err(); err != nil {
+		return err
+	}
+	directory, err := os.Lstat(s.path)
+	native, ok := s.directoryInfo.Sys().(*syscall.Stat_t)
+	if err != nil || !ok || !os.SameFile(s.directoryInfo, directory) || !sourceAccess(directory, 0750, 0, native.Gid, true) {
+		return errors.Join(ErrBinding, err)
+	}
+	current, err := os.Lstat(s.pending.path)
+	if err != nil || !sameSourceFile(s.pending.info, current) {
+		return errors.Join(ErrBinding, err)
+	}
+	// All accepting proof bytes were synced and all root observers/writers
+	// closed before this final unlink. Its loss restores refusal, never Start.
+	return os.Remove(s.pending.path)
 }

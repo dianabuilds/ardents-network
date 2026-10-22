@@ -102,7 +102,7 @@ and fresh proofs. Account database records describe the initial helper's history
 not Source ownership of immutable host databases. State/participation contents
 remain with their semantic owners.
 
-`source_first_start_linux.go` retains fresh coherent proofs, complete original
+`source_start_linux.go` retains fresh coherent proofs, complete original
 initial readback, current principal and independent native observations under
 its exclusive first-start journal. `source_start_storage_linux.go` and
 `source_start_barrier_linux.go` retain original born journal/socket/guard custody,
@@ -116,7 +116,22 @@ authority with the producer. Stop denies and interrupts before physical Close
 joins original observers; command composition joins State users before retiring
 Startup and erasing loaded keys. Read-only namespace/runtime identity and native
 physical adapters preserve their own purposes and failure/Close lifetimes.
-No restart, replacement, replay or recovery continuation is admitted here.
+`source_stop_linux.go` separately admits explicit original stop, retains the
+archived proc/cgroup/manager and uses the original pidfd. The original non-root
+command reports its joined domain result through `source_retirement_exchange_linux.go`
+only after Startup and command-owned State/Guard/key/output uses close. Root
+additionally checks original native exit/join and closes its physical observers.
+`source_stop_storage_linux.go` retains an exclusive blocking marker through all
+sync/readback/Close before its final original unlink. Complete-looking bytes
+under that blocker never admit restart. `source_retirement_records_linux.go`
+and `source_retirement_history_linux.go` independently consume every canonical
+start/retirement record, resource identity and original completion commitment.
+`RestartSource` requires this complete history under the original first journal's
+lease and obtains fresh Release/native/startup admission for a separate exclusive
+attempt. `source_attempt_linux.go` owns contiguous finite attempt naming, not
+runtime authority; State alone reopens its retained semantic histories. No first
+journal/directory is deleted or reused. Replacement, replay and recovery
+continuation remain excluded; component checks do not qualify installed restart.
 `source_loaded_linux.go` owns Source's complete loaded stopped-policy comparison;
 the separate systemd SourceStopped handle owns physical connection/cancellation,
 one explicit reload and detached complete typed observations. It grants no Start.

@@ -40,5 +40,7 @@ installed Service, power-loss или privacy qualification. Execution status и
 приёмка остаются в выбранной GitHub issue.
 Installed Source execution additionally requires the exact public bootstrap
 receipt's direct PO acceptance; implemented composition and component checks do
-not supply that decision or installed qualification. Source restart/replacement
-and recovery continuation remain separate from its first-start owner.
+not supply that decision or installed qualification. Source explicit stop/restart
+separately consumes complete original retirement and fresh invocation admission;
+installed qualification remains separately gated. Replacement and recovery
+continuation remain excluded from these consumers.

@@ -1770,6 +1770,127 @@ recovery must refuse a new Node rather than erase that fact. Bounded recovery
 can legitimately remain unavailable. Power-loss and arbitrary host repair are
 not inferred from process-kill controls.
 
+#### Explicit Source retirement and subsequent invocation
+
+The supported root consumers are `ardents-node installation stop-source HISTORY
+BINDING` and `restart-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`.
+Stop verifies retained history identity and the exact selected running program;
+it does not require unexpired Release authorization to interrupt original work.
+Restart independently obtains two fresh coherent Release authorizations under
+the surviving floors. Neither operation adopts, replaces or updates a generation.
+
+The first-start journal and its original `source-startup` directory remain
+unchanged histories. An independent root descriptor takes an exclusive native
+lock on the original first-start journal for later stop/restart operations;
+this excludes its original writer and concurrent successors. First start still
+requires exclusive creation and never reopens that journal as a new attempt.
+Subsequent invocations exclusively create `source-invocation-NNNNNNNN` and the
+sibling `<installation_root>.source-invocation-NNNNNNNN-journal`, starting at
+00000001. Discovery requires a contiguous canonical prefix. The bounded history
+holds at most 64 attempts including first start; exhaustion refuses without
+pruning or reusing any name. No mutable selector, directory deletion or empty
+reinitialization supplies another attempt.
+
+All 22 start records, in order through `ack-written`, are independently checked
+with their canonical bytes and matching born/ready inode identities. Subsequent
+start records use schema `ardents-source-invocation-record-v1` and first phase
+`invocation`; the existing first-start grammar retains its original schema and
+phase. The subsequent guard schema is `ardents-source-invocation-intent-v1`,
+with the existing ordered intent fields followed by nonzero `attempt` and
+`predecessor_sha256`, the exact previous retirement file commitment. Socket and
+archive schemas are `ardents-source-invocation-socket-v1` and
+`ardents-source-invocation-archive-v1`, with the existing ordered fields. First
+start omits those two successor intent fields. Each new invocation has its own
+root peer, socket, guard, archive and ACK; an older ACK is never replayed.
+
+Each start directory also receives the original root-only
+`source-start-pending` blocker before guard/socket use. Its fixed bytes are
+`ardents-source-start-pending-v1`, LF, the binding SHA256 and LF. The first or
+subsequent start writer removes only that original blocker after complete
+archive/ACK journaling, every proof sync and original observer/writer Close
+succeed. No required sync follows the final unlink. Independent stop/history
+readers refuse its presence even if all 22 records appear complete. This keeps
+archive-before-ACK, uncertain final append, failed Close and pre-commit process
+cuts unavailable; the full ACK's live handoff is not durable restart permission.
+
+Stop independently matches the original archive to actual manager execution
+clocks and InvocationID, current principal/selected files, original proc inode,
+argv/executable/namespaces, retained pidfd and original cgroup directory/events.
+Its short admission excludes successors before physical interruption. The
+process adapter sends one SIGTERM through the original pidfd, without numeric
+PID killing or StopUnit on a possibly replaced invocation. Existing first-start
+`SourceControl.Stop` remains cleanup of that control's own attempted Start.
+
+Within the original attempt directory, root first exclusively creates
+`source-retirement-pending`, containing the exact ASCII line
+`ardents-source-retirement-pending-v1`, LF, the 64-character start-archive SHA256
+and LF. It synchronizes this blocker and its directory before continuing.
+Presence of any blocker, including an empty/torn one, refuses retirement use.
+The separately exclusive 0600 `source-retirement-journal` uses ordered
+fields `schema`, `sequence`, `phase`, `path`, `device`, `inode`, `sha256`, `mode`,
+`uid`, `gid`, with schema `ardents-source-retirement-record-v1`.
+Its exactly 12 phases are `stop`, `socket-intent`, `socket-born`, `socket-ready`,
+`interrupt-attempt`, `domain-joined`, `native-joined`, `native-closed`,
+`file-intent`, `file-born`, `file-ready`, `retired`. Header binds the original
+start archive and journal inode. Socket/file births precede use; every append
+is synchronized and read back. Challenge, domain frame and result commitments
+have distinct records; a phase search or detached cleanup struct is insufficient.
+
+Root publishes one original `stop-completion.socket`, 0660 root:Source-group
+under the existing 0750 root:Source-group attempt directory. It verifies the
+actual peer PID/UID/GID against its retained original process and sends one fresh
+32-byte challenge. The original non-root command may reply only after State
+Close/Wait, transport/handlers/exposure, original observations, Startup input
+Close, loaded-key erasure, Guard Close and bounded final output all join. The
+complete result must contain exclusively ordinary cancellation or no error;
+an earlier completion-unavailable notice or physical failure prevents reporting.
+The one-use opaque Startup also requires its original Close completion. It
+reopens only its original completion directory, verifies the actual root peer,
+and replies with ASCII `ardents-source-domain-joined-v1` plus LF, its original
+160-byte startup frame and the exact challenge. It closes this exchange before
+the command can produce its private completed-stop result. Main preserves the
+original cancellation in that result and exits zero only for this exact clean
+stop; ordinary signals and failed reporting retain their failed exit.
+
+The root consumer then independently joins its original kernel events object
+and requires the original manager's matching start/exit clocks, PID and clean
+native wait code/status 1/0 in two complete observations. It closes the original
+manager, proc/pidfd and cgroup before recording `native-closed`. Exit zero,
+inactive unit or an empty cgroup alone cannot substitute for the domain frame.
+Every failure retains the original result and the blocker. A canceled or failed
+observer after attempted interruption still joins original physical work before
+returning custody; a timeout never proves completion.
+
+The root-only 0600 `source-retirement.json` is compact JSON plus LF, at most
+64 KiB, with ordered fields `schema`, `attempt`, `generation`, `binding_sha256`,
+`start_sha256`, `invocation_id`, `pid`, `manager`, `challenge`,
+`completion_sha256`, `started_realtime`, `started_monotonic`, `exited_realtime`,
+`exited_monotonic`, `code`, `status`. Schema is `ardents-source-retirement-v1`.
+The reader recomputes the domain frame, consumes the complete start and stop
+transcripts and checks original named resource identities. This private evidence
+is not public receipt material and cannot reconstruct a live Startup right.
+
+Root removes only its exact original blocker as the last commit effect, after
+all proof sync/readback and original observer/input/writer Close succeed. No
+required sync follows that unlink: losing the unlink can restore refusal, while
+an uncertain earlier sync or Close leaves the blocker present. A process cut
+before this point remains refusal even if complete-looking result bytes exist.
+A cut after the point does not undo already proved domain/native completion;
+later command cancellation/reporting failure is retained, not an automatic
+restart. Power-loss, arbitrary disk repair and root compromise remain unqualified.
+
+Restart rechecks blocker absence around complete proof readback and at effects,
+requires the same generation/credentials/roots/account/manager and repeats fresh
+Release, native stopped/empty-scope and independent startup admission. A collected
+unit may have no retained execution fields; it still requires the complete
+durable original retirement proof. State's `OpenRetained` refuses missing
+ownership/control history and uses existing participation with `Create: false`;
+State alone verifies signed generations, conflicts, exposure and time floors.
+This changes no expired-Epoch serving or CurrentRuntime authority rule. No old
+State object, root lease, guard, key borrow or accepting lifetime crosses to
+the new invocation. An incomplete start, unknown process exit or retained failed
+stop remains repair-required; these consumers implement no recovery continuation.
+
 ### Component order and the command/artifact boundary
 
 Source is the smallest real infrastructure consumer: State + Source + Guard.

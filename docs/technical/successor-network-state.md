@@ -107,6 +107,18 @@ samples trusted time after that I/O and binds membership to current authenticate
 Epoch records. Expiry, owner failure and changed bytes/context cannot use the
 retained result as permission; it only avoids repeating identical cryptography.
 
+`OpenRetained` is the separate Linux already-initialized opening used by a
+subsequent installed Source invocation. Durable storage requires the existing ownership
+marker, lease file, generation/control directories and complete retained control
+pointer/generation before opening; it never creates missing semantic structure.
+State verifies the same signed/current/pending/conflict/time bytes as ordinary
+Open. Source exposure operations use existing participation with `Create: false`,
+so an emptied participation root cannot become a fresh journal after last Close.
+The first installed Source still uses ordinary Open after independently prepared
+signed State and may initialize its originally empty participation root. Neither
+opening supplies Installation permission or alters expired-Epoch distribution
+or CurrentRuntime authority semantics.
+
 State borrows `PermitWork` before effects and observation, outside its lock.
 The callback may be concurrent and cannot call back into State. Process resource
 sampling, protect/drain policy and process monitoring stay with the application

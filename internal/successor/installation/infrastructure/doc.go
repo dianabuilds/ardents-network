@@ -9,5 +9,8 @@
 // and one reload. A distinct guarded first-start transaction revalidates the
 // original selected resources, current principal and fresh Release proofs;
 // independent non-root Startup owns its own observations and root exchange.
-// It owns no State contents, serving authority or restart/recovery continuation.
+// Separate explicit stop and restart consumers require original domain/native
+// completion, a fully checked retirement transcript and a fresh invocation;
+// State retains semantic history/currentness and its strict retained opening.
+// It owns no State contents, serving authority or recovery continuation.
 package infrastructure

@@ -8,6 +8,8 @@ import (
 	"io"
 )
 
+func completedExplicitSourceStop(error) bool { return false }
+
 func runInstalledSource(context.Context, string, io.Writer) error {
 	return errors.New("installed Source requires the selected native Linux profile")
 }

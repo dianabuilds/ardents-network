@@ -259,6 +259,24 @@ State or Guard construction. No initial transcript, Start job, ACK or public
 receipt grants runtime authority. These mechanisms supply neither bootstrap
 acceptance nor installed runtime or operational qualification.
 
+Explicit Source retirement has distinct original owners. Canonical
+`ardents-node installation stop-source` retains the archived original proc/pidfd,
+scope and manager, and interrupts only that invocation. The original non-root
+Source command reports its joined State/input/Guard/key/output result only after
+those users physically close. Infrastructure independently joins the original
+kernel scope, verifies matching native exit/clocks and closes its own observers
+before committing the independently readable retirement transcript. Its blocking
+marker survives partial or uncertain sync/Close; complete-looking bytes alone
+cannot admit restart. `restart-source` separately verifies the whole retained
+chain under the original first journal lease, creates a distinct finite attempt
+and obtains fresh Release/native/process/credential/startup admission. It lends
+no old live owner to the successor. Network State's Linux `OpenRetained` and its
+retained local participation opening refuse missing semantic history rather than
+initializing it; only State owns signed acceptance and security/time floors.
+These implemented boundaries remain distinct from source-matched installed
+qualification and the exact bootstrap receipt's direct Product Owner acceptance.
+No automatic restart, crash continuation, adoption, reset or replacement follows.
+
 `ardents-control source prepare-state` separately composes finite offline State
 acceptance under the runtime system UID/GID, using original public declaration /
 bundle custody and an initially empty runtime-owned root. It opens no Source

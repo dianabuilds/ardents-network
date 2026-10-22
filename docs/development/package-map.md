@@ -1,7 +1,7 @@
 # Package map
 | Directory | Declaration | Responsibility and consumer | Permitted imports |
 |---|---|---|---|
-| `internal/successor/installation/infrastructure` | `package infrastructure` | Source descriptor/public byte preparation and fresh coherent program/generation admission with private initial provenance; Source-specific closed request/template/rendering policy and original read-only fresh-native preflight custody. Real consumer `cmd/ardents-next/infrastructure_linux.go`. Bounded initial stopped Source installation and a distinct guarded first-start transaction; independent non-root Startup observations. Canonical `ardents-node` Source/Installation directly consume these owners; installed qualification remains separate. | Standard library; `internal/successor/enrollment`, `internal/successor/release`; `internal/successor/installation/systemd` only in `source_observation_linux.go`, `source_install_linux.go`, `source_loaded_linux.go`, `source_policy_linux_test.go` and `source_running_linux_test.go`; `internal/successor/network/source` only in `source_plan_linux.go` for pure serving-declaration and runtime credential-pair validation; `internal/successor/installation/process`, `internal/successor/installation/cgroup`, `internal/successor/installation/completion` and `internal/successor/installation/systemd` additionally in exactly `source_startup_linux.go` for independent non-root observation and completion exchange; `internal/successor/installation/process`, `internal/successor/installation/cgroup` and `internal/successor/installation/systemd` also in `source_first_start_linux.go`; `internal/successor/installation/completion` also in `source_start_barrier_linux.go` |
+| `internal/successor/installation/infrastructure` | `package infrastructure` | Source descriptor/public byte preparation and fresh coherent program/generation admission with private initial provenance; Source-specific closed request/template/rendering policy and original read-only fresh-native preflight custody. Real consumer `cmd/ardents-next/infrastructure_linux.go`. Bounded initial stopped Source installation and a distinct guarded first-start transaction; independent non-root Startup observations. Canonical `ardents-node` Source/Installation directly consume these owners; installed qualification remains separate. | Standard library; `internal/successor/enrollment`, `internal/successor/release`; `internal/successor/installation/systemd` only in `source_observation_linux.go`, `source_install_linux.go`, `source_loaded_linux.go`, `source_policy_linux_test.go` and `source_running_linux_test.go`; `internal/successor/network/source` only in `source_plan_linux.go` for pure serving-declaration and runtime credential-pair validation; `internal/successor/installation/process`, `internal/successor/installation/cgroup`, `internal/successor/installation/completion` and `internal/successor/installation/systemd` additionally in exactly `source_startup_linux.go` for independent non-root observation and completion exchange; `internal/successor/installation/process`, `internal/successor/installation/cgroup` and `internal/successor/installation/systemd` also in `source_start_linux.go`; `internal/successor/installation/completion` also in `source_start_barrier_linux.go` and `source_start_history_linux.go`; `internal/successor/installation/completion` and `internal/successor/installation/systemd` also in `source_retirement_history_linux.go`; `internal/successor/installation/process`, `internal/successor/installation/cgroup`, `internal/successor/installation/completion` and `internal/successor/installation/systemd` also in `source_stop_linux.go` |
 
 `internal/successor/installation/infrastructure` is the separate Linux Source
 artifact/coherent-pair, read-only preflight and initial stopped transition owner. Interface: canonical public
@@ -15,10 +15,10 @@ transcript/resource readback consumed by the stopped creator,
 with Release's Linux-only `CheckHistoryPath` matching the original verifier's
 declaration without lending its lease or root,
 fresh Release pair, original file/ancestor/caller custody and same-manager native
-observation, and the separate initial stopped account/credential/directory/generation/journal/selection/reload transition. First start uses its own exclusive journal and original peer barrier, fresh proofs and the independent initial reader; non-root Startup retains its own observations and completion exchange. No restart or recovery continuation is admitted. Its exact permitted imports
+observation, and the separate initial stopped account/credential/directory/generation/journal/selection/reload transition. First start uses its own exclusive journal and original peer barrier, fresh proofs and the independent initial reader; non-root Startup retains its own observations and completion exchange. Explicit stop/restart has separate retirement and fresh-invocation owners; recovery continuation is not admitted. Its exact permitted imports
 in production and tests are standard library, `internal/successor/enrollment`
 and `internal/successor/release`, plus `internal/successor/installation/systemd`
-only in `source_observation_linux.go`, `source_install_linux.go`, `source_loaded_linux.go`, `source_policy_linux_test.go` and `source_running_linux_test.go`; `source_startup_linux.go` additionally consumes exactly the physical `installation/process`, `installation/cgroup`, `installation/completion` and `installation/systemd` owners. `source_first_start_linux.go` consumes the separate physical process/cgroup/systemd owners for first Start and failed-attempt original join; `source_start_barrier_linux.go` consumes the completion codec for its original peer and durable archive-before-ACK ordering. Startup retains an independent original lifetime; canonical `cmd/ardents-node/source_installed_linux.go` consumes it before State/Guard construction, while `source_installation_linux.go` consumes first-start and stopped installation. Installed qualification remains separate. Component non-test caller: Linux-only
+only in `source_observation_linux.go`, `source_install_linux.go`, `source_loaded_linux.go`, `source_policy_linux_test.go` and `source_running_linux_test.go`; `source_startup_linux.go` additionally consumes exactly the physical `installation/process`, `installation/cgroup`, `installation/completion` and `installation/systemd` owners. `source_start_linux.go` consumes the separate physical process/cgroup/systemd owners for first Start and failed-attempt original join; `source_start_barrier_linux.go` consumes the completion codec for its original peer and durable archive-before-ACK ordering. Startup retains an independent original lifetime; canonical `cmd/ardents-node/source_installed_linux.go` consumes it before State/Guard construction, while `source_installation_linux.go` consumes first-start and stopped installation. Installed qualification remains separate. Component non-test caller: Linux-only
 `cmd/ardents-next/infrastructure_linux.go`; that file and its behavior tests may
 import exactly those three owners, with existing command test metadata/signature
 fixtures remaining under their existing registration. Command ownership is
@@ -33,12 +33,22 @@ verifier use only the standard library. Release's `CheckAuthorizations` checks
 its own opaque results/original callers and current native floors at handoff.
 Neither changes Endpoint/v3 or adds runtime dependencies.
 
+`source_start_records_linux.go` independently validates the complete canonical
+first-start transcript: all twenty-two ordered records, native birth continuity
+and archive-before-ACK. The real first-start producer consumes this grammar
+before returning. Its tests use an independently stated byte vector and causal
+prefix/substitution controls. Both files import only the standard library;
+start history supplies neither domain retirement nor restart authority.
+
 Source's native leaves retain separate fixed purposes. `process.SourceExpected`,
-`RetainSource` and `RetainSourceSelf` select only the node executable, exact
+`RetainSource`, `RetainSourceSelf` and root-only `RetainSourceStop` select only the node executable, exact
 Source argv and fixed Source cgroup; Endpoint's process contract is unchanged.
 `cgroup.SourceScope` retains the original Source directory/events object, sole
 PID and no-child observation, partial post-attempt custody and physical join;
 copies share original close state. The Endpoint/worker inventory is unchanged.
+`CheckSourceQuiescent` freshly checks the fixed empty/absent Source scope before
+new start effects; it cannot infer historical join. Root-only `InterruptSource`
+signals one retained original pidfd once; it cannot address a replacement PID.
 `systemd.SourceRuntime` has its own non-root read-only GetUnit/property connection;
 `SourceControl` has a separate root connection with one fixed Source Start and
 one cleanup Stop, both mode fail, and closed canonical job replies only there.
@@ -46,6 +56,18 @@ Copies share attempt/failure/Close state. A native job, detached dictionary or
 scope observation grants no Release, Startup, Source serving or joined process.
 Installation owns those policies and the original attempt's physical completion.
 The genuine canonical Node consumer composes these physical interfaces through Installation; their presence grants no installed qualification or bootstrap acceptance.
+
+The same consumer reaches explicit stop and subsequent start directly through
+`StopSource` and `RestartSource`. `source_stop_linux.go` owns root stop admission
+and original domain/native completion ordering. The separate storage, transcript
+and exchange files retain their original physical/proof responsibilities; their
+exact completion/systemd/process/cgroup imports are registered in the table above.
+`source_retirement_history_linux.go` owns independent complete predecessor-chain
+verification under the original first-journal lease. Non-root Startup's one-use
+`ReportRetirement` reports joined composition only; it grants no restart right.
+Linux-only State/durable `OpenRetained` have actual successor Source consumers
+and share State's existing recovery/lifetime implementation without initialization
+of missing retained history. No new package or runtime dependency is introduced.
 
 The distinct Source inventory/codec and its new admission package compile only
 on Linux, matching their genuine accepting consumer; non-Linux commands refuse

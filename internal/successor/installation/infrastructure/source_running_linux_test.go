@@ -87,3 +87,48 @@ func TestSourceRunningPolicyRequiresOriginalInvocationAndCompleteProtection(t *t
 		}
 	}
 }
+
+func TestSourceCompletedStopRequiresOriginalExecutionAndCleanExit(t *testing.T) {
+	r := SourceRequest{InstallationRoot: "/opt/ardents", StateRoot: "/var/lib/ardents-state", ParticipationRoot: "/var/lib/ardents-participation"}
+	u, s := sourceLoadedVector(t)
+	id := [16]byte{1, 2, 3}
+	put := func(p systemd.Properties, name, signature string, value any) {
+		raw, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		p[name] = systemd.Value{Type: signature, Data: raw}
+	}
+	put(u, "InvocationID", "ay", id)
+	put(u, "TriggeredBy", "as", []string{})
+	put(s, "MainPID", "u", uint32(0))
+	put(s, "ExecMainPID", "u", uint32(71))
+	put(s, "ControlPID", "u", uint32(0))
+	put(s, "NRestarts", "u", uint32(0))
+	put(s, "DynamicUser", "b", false)
+	put(s, "ControlGroup", "s", "")
+	put(s, "StandardInput", "s", "null")
+	s["ExecStartEx"] = systemd.Value{Type: "a(sasasttttuii)", Data: json.RawMessage(`[["/opt/ardents/generations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ardents-node-linux-amd64",["/opt/ardents/generations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/ardents-node-linux-amd64","source","start-installed","/opt/ardents/binding.json"],["no-env-expand"],100,200,300,400,71,1,0]]`)}
+	started := &sourceStartHistory{id: id, archive: sourceStartArchive{PID: 71, StartedRealtime: 100, StartedMonotonic: 200}}
+	execution := sourceExecution{100, 200, 300, 400, 71, 1, 0}
+	generation := strings.Repeat("a", 64)
+	if err := verifySourceCompletedStop(u, s, r, generation, started, execution); err != nil {
+		t.Fatal("independent complete stop vector refused", err)
+	}
+	for _, wrong := range []sourceExecution{
+		{100, 200, 300, 400, 72, 1, 0},
+		{101, 200, 300, 400, 71, 1, 0},
+		{100, 201, 300, 400, 71, 1, 0},
+		{100, 200, 0, 0, 71, 1, 0},
+		{100, 200, 300, 400, 71, 1, 2},
+		{100, 200, 300, 400, 71, 2, 9},
+	} {
+		if verifySourceCompletedStop(u, s, r, generation, started, wrong) == nil {
+			t.Fatal("foreign, crashed or failed completion accepted", wrong)
+		}
+	}
+	put(u, "InvocationID", "ay", [16]byte{9})
+	if verifySourceCompletedStop(u, s, r, generation, started, execution) == nil {
+		t.Fatal("another native invocation supplied original retirement")
+	}
+}

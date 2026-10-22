@@ -158,6 +158,34 @@ does not accept the exact bootstrap receipt or permit installed execution; those
 remain separately admitted gates. See the [technical schema](../technical/network-route-node.md#initial-stopped-source-persistence)
 and [checked profile](../development/testing.md) for ownership and evidence.
 
+## Explicit Source stop and subsequent invocation
+
+Use canonical `ardents-node installation stop-source HISTORY BINDING` to stop
+the original running Source. This requires its complete retained initial/start
+history and actual original principal/process/manager/scope. Expired Release
+authorization does not prevent safe shutdown; fresh authorization is required
+again for startup. Keep the same original Release history and every start and
+retirement journal. The command's coarse result alone is not a restart right.
+
+After independently proved complete retirement, use
+`ardents-node installation restart-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
+with the same exact generation, account, roots and credentials. Each invocation
+gets a separate retained attempt and fresh admission; at most 64 total attempts
+are admitted without pruning. State and participation histories are reopened by
+their own semantic owners, never reset. A missing, uncertain or incomplete
+retirement leaves restart unavailable. Preserve the prefix; there is no supported
+adoption, automatic recovery or command to clear it for another attempt.
+
+The [technical owner](../technical/network-route-node.md#explicit-source-retirement-and-subsequent-invocation)
+defines the original domain/native completion and blocked durable transcript.
+The [checked native profiles](../development/testing.md) use only a private owned
+Ubuntu stand, retain every original descendant through join and keep raw evidence
+private. A new candidate and the explicit restart scope require their own exact
+bootstrap receipt and direct Product Owner acceptance before any installed
+execution. First-start receipts, file presence, old ACKs and test compilation
+cannot widen that acceptance. Qualification does not authorize deployment or
+independent-operation/privacy claims.
+
 ## Prepare exact public inputs
 
 Build the five linux-amd64 commands twice from the exact recorded source tree

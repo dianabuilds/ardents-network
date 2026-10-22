@@ -17,7 +17,7 @@ import (
 )
 
 type sourceStartBarrier struct {
-	owner                                 *sourceFirstStart
+	owner                                 *sourceStartAttempt
 	guard, record, archive                *sourceBirth
 	socket                                os.FileInfo
 	listener                              *net.UnixListener
@@ -33,6 +33,8 @@ type sourceStartIntent struct {
 	TargetsSHA256        string `json:"targets_sha256"`
 	UID                  uint32 `json:"uid"`
 	GID                  uint32 `json:"gid"`
+	Attempt              uint32 `json:"attempt,omitempty"`
+	PredecessorSHA256    string `json:"predecessor_sha256,omitempty"`
 }
 type sourceSocketRecord struct {
 	Schema      string `json:"schema"`
@@ -42,7 +44,7 @@ type sourceSocketRecord struct {
 	GID         uint32 `json:"gid"`
 }
 
-func prepareSourceStartBarrier(owner *sourceFirstStart) (barrier *sourceStartBarrier, err error) {
+func prepareSourceStartBarrier(owner *sourceStartAttempt) (barrier *sourceStartBarrier, err error) {
 	if owner == nil || owner.storage == nil {
 		return nil, ErrInput
 	}
@@ -54,6 +56,9 @@ func prepareSourceStartBarrier(owner *sourceFirstStart) (barrier *sourceStartBar
 		return barrier, err
 	}
 	binding := owner.initial.selection.files[filepath.Join(b.Request.InstallationRoot, "binding.json")].raw
+	if err = s.preparePending(digest(binding)); err != nil {
+		return barrier, err
+	}
 	history, err := owner.initial.history.commitment(owner.verifier, binding)
 	if err != nil {
 		return barrier, err
@@ -63,7 +68,12 @@ func prepareSourceStartBarrier(owner *sourceFirstStart) (barrier *sourceStartBar
 	if !ok || len(decision.Floors.TargetsDigest) != 32 {
 		return barrier, ErrAuthorization
 	}
-	guard, err := json.Marshal(sourceStartIntent{"ardents-source-first-start-intent-v1", digest(binding), history, hex.EncodeToString(decision.Floors.TargetsDigest), b.UID, b.GID})
+	_, _, intentSchema, _ := s.number.schema()
+	intent := sourceStartIntent{Schema: intentSchema, BindingSHA256: digest(binding), InitialHistorySHA256: history, TargetsSHA256: hex.EncodeToString(decision.Floors.TargetsDigest), UID: b.UID, GID: b.GID, Attempt: uint32(s.number)}
+	if owner.predecessor != nil {
+		intent.PredecessorSHA256 = owner.predecessor.sha256
+	}
+	guard, err := json.Marshal(intent)
 	if err != nil {
 		return barrier, err
 	}
@@ -125,7 +135,11 @@ func prepareSourceStartBarrier(owner *sourceFirstStart) (barrier *sourceStartBar
 		return barrier, err
 	}
 	native = barrier.socket.Sys().(*syscall.Stat_t)
-	raw, err := json.Marshal(sourceSocketRecord{"ardents-source-first-start-socket-v1", digest(barrier.guard.body), uint64(native.Dev), native.Ino, b.GID})
+	socketSchema := "ardents-source-first-start-socket-v1"
+	if s.number != 0 {
+		socketSchema = "ardents-source-invocation-socket-v1"
+	}
+	raw, err := json.Marshal(sourceSocketRecord{socketSchema, digest(barrier.guard.body), uint64(native.Dev), native.Ino, b.GID})
 	if err != nil {
 		return barrier, err
 	}
@@ -291,7 +305,7 @@ type sourceStartArchive struct {
 	StartedMonotonic uint64 `json:"started_monotonic"`
 }
 
-func (s *sourceFirstStart) archive() error {
+func (s *sourceStartAttempt) archive() error {
 	if s.barrier == nil || !s.barrier.accepted || s.barrier.archive != nil {
 		return ErrBinding
 	}
@@ -324,7 +338,8 @@ func (s *sourceFirstStart) archive() error {
 	}
 	b := s.initial.selection.binding
 	binding := s.initial.selection.files[filepath.Join(b.Request.InstallationRoot, "binding.json")].raw
-	archive := sourceStartArchive{"ardents-source-first-start-archive-v1", digest(s.barrier.guard.body), digest(binding), b.Generation, s.pid, hex.EncodeToString(s.id[:]), uint64(p.Dev), p.Ino, uint64(c.Dev), c.Ino, facts.Manager, execution.startedRealtime, execution.startedMonotonic}
+	_, _, _, archiveSchema := s.storage.number.schema()
+	archive := sourceStartArchive{archiveSchema, digest(s.barrier.guard.body), digest(binding), b.Generation, s.pid, hex.EncodeToString(s.id[:]), uint64(p.Dev), p.Ino, uint64(c.Dev), c.Ino, facts.Manager, execution.startedRealtime, execution.startedMonotonic}
 	raw, err := json.Marshal(archive)
 	if err != nil {
 		return err

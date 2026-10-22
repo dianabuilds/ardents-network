@@ -176,6 +176,28 @@ func (s *sourceSelection) read(path string, limit int64, mode os.FileMode, uid, 
 	if err := s.pinParents(path); err != nil {
 		return nil, err
 	}
+	return s.readPinned(path, limit, mode, uid, gid)
+}
+
+// Callers with a separately bound root-owned, Source-group-readable startup
+// directory use its original pin rather than pretending its group is root.
+func (s *sourceSelection) readPinned(path string, limit int64, mode os.FileMode, uid, gid uint32) ([]byte, error) {
+	parent := filepath.Dir(path)
+	if s == nil || s.ctx == nil || s.closed || s.identities[parent] == nil || s.dirs[parent] == nil {
+		return nil, ErrInput
+	}
+	if err := s.ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := observeSourceDirectory(parent, s.dirs[parent], s.identities[parent]); err != nil {
+		return nil, err
+	}
+	if original := s.files[path]; original != nil {
+		if !sourceAccess(original.info, mode, uid, gid, false) || int64(len(original.raw)) > limit {
+			return nil, ErrBinding
+		}
+		return bytes.Clone(original.raw), s.observe()
+	}
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err

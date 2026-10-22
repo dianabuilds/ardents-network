@@ -1,5 +1,58 @@
 # Testing
 
+`source-restart-linux` / `make source-restart-check` selects the same private
+stand and pinned `ARDENTS_SOURCE_STARTUP_*` input declarations below, with an
+eight-minute original profile bound and a **separately accepted exact bootstrap
+receipt covering this candidate and explicit stop/restart scope**. Preparation,
+syntax checking and compiling/discovering its tests do not execute an installed
+entrypoint and do not qualify this profile. Earlier first-start acceptance does
+not authorize its execution. Missing prerequisites fail; no timeout supplies join.
+
+Select one of `restart`, `restart-credential-loss` or `restart-state-loss` per
+fresh stand. The positive case invokes canonical first start, explicit stop,
+restart, stop, second restart and final stop. Each live invocation has an original
+pidfd and kernel scope observer and must serve the exact signed bundle to an
+actual mTLS client. Pre-retirement restart must refuse without changing that
+live Source or creating the next attempt. All three invocation IDs and retirement
+challenges differ. The independent qualification reader checks all 22 startup
+and 12 retirement phases, exact original archive/binding/frame commitments,
+unblocked completion and two fresh native exit/status/clock observations. Root,
+generation, account and original credential bytes/inodes remain unchanged;
+State and participation retain their own nonempty original roots. Component
+State tests separately prove retained signed successor floors and refusal to
+reinitialize missing semantic histories; a root identity check alone is not that
+semantic proof.
+
+The positive case additionally holds the actual first Source with its original
+pidfd's SIGSTOP. After the real root stop reaches its recorded interrupt attempt,
+the independently observed original process remains stopped and its original
+scope populated. No domain frame or retirement result may appear and a concurrent
+restart must refuse without creating a successor. SIGCONT releases that same
+original process, then the original stop command must join and prove its normal
+retirement. This is a causal held-process/native-join control; component
+supervisor tests separately hold actual State.Close and input observations.
+
+The manager test binary must additionally contain
+`TestSourceRetirementObserverNative`. After the unreferenced-unit collection and
+original cancellation tests below finish, this selected helper retains its own
+read-only original unit reference. It reports bounded typed manager observations
+over a finite private pipe exchange, starts/stops nothing and closes/joins before
+return. Its retained reference prevents collection from erasing the independent
+native exit oracle. Neither these observations nor the helper's success are
+inputs to product admission or retirement records. All product commands retain
+their independent original owners and checks.
+
+Each retained-input case first proves genuine original explicit retirement,
+then moves one original runtime certificate or State ownership marker to a
+separate retained evidence name. It deletes no history and restores nothing.
+Credential loss must refuse root startup; State loss must fail the actual
+installed command after its independently checked startup, which may already
+have emitted its root ACK. Neither outcome can produce successful retirement or
+admit another successor. The outside stand still owns every failed attempt's
+original descendants through whole-scope join. These cases do not by themselves
+cover the complete concurrency, held-join, late-result or interruption matrix;
+the selected issue's acceptance still requires its remaining causal controls.
+
 `source-startup-linux` / `make source-startup-check` is a separate private native
 qualification consumer. **Do not execute it before the exact public bootstrap
 receipt has direct Product Owner acceptance under ADR-0123.** Its receipt pin

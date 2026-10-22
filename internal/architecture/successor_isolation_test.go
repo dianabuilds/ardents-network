@@ -83,7 +83,25 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/source_namespace_linux.go",
 			"internal/successor/installation/infrastructure/source_start_storage_linux.go",
 			"internal/successor/installation/infrastructure/source_start_storage_linux_test.go",
-			"internal/successor/installation/infrastructure/source_first_start_linux.go",
+			"internal/successor/installation/infrastructure/source_start_records_linux.go",
+			"internal/successor/installation/infrastructure/source_start_records_linux_test.go",
+			"internal/successor/installation/infrastructure/source_attempt_linux.go",
+			"internal/successor/installation/infrastructure/source_attempt_linux_test.go",
+			"internal/successor/installation/infrastructure/source_start_history_linux.go",
+			"internal/successor/installation/infrastructure/source_retirement_records_linux.go",
+			"internal/successor/installation/infrastructure/source_retirement_records_linux_test.go",
+			"internal/successor/installation/infrastructure/source_retirement_history_linux.go",
+			"internal/successor/installation/infrastructure/source_retirement_exchange_linux.go",
+			"internal/successor/installation/infrastructure/source_retirement_exchange_linux_test.go",
+			"internal/successor/installation/cgroup/source_quiescence_linux.go",
+			"internal/successor/network/state/retained_open_linux.go",
+			"internal/successor/network/state/retained_open_linux_test.go",
+			"internal/successor/network/state/durable/retained_open_linux.go",
+			"internal/successor/network/state/durable/retained_open_linux_test.go",
+			"internal/successor/installation/infrastructure/source_stop_linux.go",
+			"internal/successor/installation/infrastructure/source_stop_storage_linux.go",
+			"internal/successor/installation/infrastructure/source_stop_storage_linux_test.go",
+			"internal/successor/installation/infrastructure/source_start_linux.go",
 			"internal/successor/installation/infrastructure/source_start_barrier_linux.go",
 			"cmd/ardents-node/source_installed_linux.go",
 			"cmd/ardents-node/source_installation_linux.go",
@@ -821,10 +839,19 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/successor/installation/infrastructure/source_startup_linux.go" && (dependency == modulePath+"/internal/successor/installation/process" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/completion" || dependency == modulePath+"/internal/successor/installation/systemd") {
 			return true
 		}
-		if source == "internal/successor/installation/infrastructure/source_first_start_linux.go" && (dependency == modulePath+"/internal/successor/installation/process" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
+		if source == "internal/successor/installation/infrastructure/source_start_linux.go" && (dependency == modulePath+"/internal/successor/installation/process" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
 			return true
 		}
 		if source == "internal/successor/installation/infrastructure/source_start_barrier_linux.go" && dependency == modulePath+"/internal/successor/installation/completion" {
+			return true
+		}
+		if source == "internal/successor/installation/infrastructure/source_start_history_linux.go" && dependency == modulePath+"/internal/successor/installation/completion" {
+			return true
+		}
+		if source == "internal/successor/installation/infrastructure/source_retirement_history_linux.go" && (dependency == modulePath+"/internal/successor/installation/completion" || dependency == modulePath+"/internal/successor/installation/systemd") {
+			return true
+		}
+		if source == "internal/successor/installation/infrastructure/source_stop_linux.go" && (dependency == modulePath+"/internal/successor/installation/process" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/completion" || dependency == modulePath+"/internal/successor/installation/systemd") {
 			return true
 		}
 		if (source == "internal/successor/installation/infrastructure/source_observation_linux.go" || source == "internal/successor/installation/infrastructure/source_install_linux.go" || source == "internal/successor/installation/infrastructure/source_loaded_linux.go" || source == "internal/successor/installation/infrastructure/source_policy_linux_test.go" || source == "internal/successor/installation/infrastructure/source_running_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {

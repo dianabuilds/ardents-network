@@ -27,6 +27,10 @@ func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<-
 	if err != nil {
 		return nil, err
 	}
+	return activateState(resolved, storage, automaticTicks, automaticResults)
+}
+
+func activateState(resolved config, storage *durable.Root, automaticTicks <-chan time.Time, automaticResults chan<- error) (openedState *networkState, resultErr error) {
 	opened := false
 	defer func() {
 		if !opened {

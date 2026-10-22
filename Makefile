@@ -30,7 +30,7 @@ NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
 # Only the Node process suite may select an elevated system-scope runner.
 NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
-ifneq ($(filter source-startup-check source-stopped-check source-preflight-check source-process-check node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
+ifneq ($(filter source-restart-check source-startup-check source-stopped-check source-preflight-check source-process-check node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
 # This native driver consumes independently built, pinned artifacts. Its host
 # needs the actual manager/kernel, not a second Go installation.
 HEADLESS_GOOS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -498,11 +498,16 @@ network-preparation-compile-check:
 .PHONY: network-signing-check network-signing-compile-check
 .PHONY: source-preflight-check
 .PHONY: source-stopped-check
+.PHONY: source-restart-check
 # Requires the exact public bootstrap receipt's direct PO acceptance first.
 # The private native controller owns original whole-scope termination/join.
 source-startup-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "source-startup-check requires the separately accepted exact bootstrap and private Ubuntu startup stand"; exit 2)
 	python3 -I -S ./scripts/installation/run-source-startup.py -timeout=3m
+
+source-restart-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "source-restart-check requires the separately accepted exact restart bootstrap and private Ubuntu stand"; exit 2)
+	python3 -I -S ./scripts/installation/run-source-startup.py -timeout=8m
 
 source-stopped-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "source-stopped-check requires isolated Ubuntu24.04/systemd255/cgroup-v2/native ext4 root"; exit 2)

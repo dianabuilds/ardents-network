@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -66,5 +67,32 @@ func TestSourceFirstStartJournalCancellationCannotAppend(t *testing.T) {
 	}
 	if err := s.close(); !errors.Is(err, context.Canceled) {
 		t.Fatalf("Close lost original cancellation: %v", err)
+	}
+}
+
+func TestSourceStartPendingRefusesUnknownCompletedLookingFirstAttempt(t *testing.T) {
+	root := t.TempDir()
+	directory := filepath.Join(root, "source-startup")
+	if err := os.Mkdir(directory, 0750); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(directory, "source-start-pending")
+	if err := os.WriteFile(path, []byte("retained original uncertain start"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	selection := &sourceSelection{binding: sourceBinding{Request: SourceRequest{InstallationRoot: root}}}
+	// No installed authority is supplied: the physical reader must refuse the
+	// blocker before inspecting any possibly complete-looking original records.
+	if _, err := readSourceStartHistory(selection, 0, strings.Repeat("a", 64), ""); !errors.Is(err, ErrBinding) {
+		t.Fatal("unknown first start passed its original blocker", err)
+	}
+	for _, failure := range []error{os.ErrClosed, context.Canceled, errors.New("original sync outcome uncertain")} {
+		storage := &sourceStartStorage{ctx: context.Background(), closed: true, terminal: failure, pending: &sourceBirth{path: path}}
+		if err := storage.publishStart(); !errors.Is(err, ErrBinding) {
+			t.Fatal("failed first-start writer removed original barrier", err)
+		}
+		if _, err := os.Lstat(path); err != nil {
+			t.Fatal("failed first-start barrier was removed", err)
+		}
 	}
 }

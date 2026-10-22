@@ -157,3 +157,29 @@ func verifySourceRunning(unit, service systemd.Properties, r SourceRequest, gene
 	}
 	return nil
 }
+
+// Native terminal facts are checked only in conjunction with the original
+// domain frame and kernel scope join. These copied properties alone never
+// establish clean completion or permit a new invocation.
+func verifySourceCompletedStop(unit, service systemd.Properties, r SourceRequest, generation string, original *sourceStartHistory, execution sourceExecution) error {
+	if original == nil || execution.pid != original.archive.PID || execution.startedRealtime != original.archive.StartedRealtime || execution.startedMonotonic != original.archive.StartedMonotonic || execution.exitedRealtime < execution.startedRealtime || execution.exitedMonotonic < execution.startedMonotonic || execution.code != 1 || execution.status != 0 {
+		return ErrBinding
+	}
+	if err := verifySourceConfiguration(unit, service, r, generation); err != nil {
+		return err
+	}
+	if !systemd.Matches(unit, "ActiveState", "s", "inactive") || !systemd.Matches(unit, "SubState", "s", "dead") ||
+		!(systemd.Matches(unit, "InvocationID", "ay", original.id) || systemd.Matches(unit, "InvocationID", "ay", []any{})) ||
+		!systemd.Matches(unit, "TriggeredBy", "as", []string{}) || !systemd.Matches(service, "MainPID", "u", uint32(0)) ||
+		!systemd.Matches(service, "ExecMainPID", "u", original.archive.PID) || !systemd.Matches(service, "ControlPID", "u", uint32(0)) ||
+		!systemd.Matches(service, "NRestarts", "u", uint32(0)) || !systemd.Matches(service, "DynamicUser", "b", false) ||
+		!systemd.Matches(service, "StandardInput", "s", "null") ||
+		!(systemd.Matches(service, "ControlGroup", "s", "") || systemd.Matches(service, "ControlGroup", "s", "/system.slice/ardents-source.service")) {
+		return ErrBinding
+	}
+	actual, err := sourceExecutionStatus(service)
+	if err != nil || actual != execution {
+		return ErrBinding
+	}
+	return nil
+}

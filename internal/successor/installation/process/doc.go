@@ -8,7 +8,10 @@
 // node-executable/Source-argv/Source-cgroup policy; Endpoint's Expected/Retain
 // contract is unchanged. No public selector generalizes either purpose.
 // Installation checks its original lease, bytes and manager around observations;
-// cgroup separately owns descendant join. No process stop is performed here.
+// cgroup separately owns descendant join. Root Source observation additionally
+// retains its original pidfd; InterruptSource performs only one original
+// SIGTERM, after Installation's independent explicit-stop admission. It grants
+// no manager, startup, retirement or replacement permission.
 package process
 
 import "errors"
