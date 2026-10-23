@@ -1,4 +1,4 @@
-# Source artifact admission and bounded initial installation
+# Source artifact admission and explicit installation transitions
 
 This supporting Software acceptance owner implements ADR-0123's Source
 artifact component, read-only native preflight, initial stopped transition and
@@ -63,6 +63,21 @@ directly consumes independent Startup before State/Source/Guard construction.
 Canonical Control separately prepares public resources/inventory/serving inputs,
 initial signed State and Source-specific Release metadata. No delegation to
 Next, Endpoint authority or old runtime enters these accepting Source paths.
+
+`source_replace_linux.go` owns a separate explicit forward stopped transition.
+It consumes the complete original retirement chain, fresh coherent Release pair,
+original input custody and State's opaque read-only semantic inspection. It
+retains account/credentials, State/participation and Release history, seals a
+distinct twelve-file generation, publishes the binding/unit through their
+original inodes and explicitly reloads/readbacks the original manager. Its
+distinct replacement binding and55-record journal preserve every predecessor;
+partial effects retain a pending blocker with no repair, rollback or continuation.
+Every original observer, writer and semantic inspection joins before final
+completion publication. A separate `restart-source` operation obtains fresh
+startup admission. Resource-only replacement requires an actual permitted
+listen-address change and a strictly forward version with identical program
+bytes. The technical installed Source owner specifies the complete grammar;
+file/transcript presence alone grants neither Release nor runtime authority.
 
 `source_install_linux.go` owns one finite initial stopped transition through
 `install-initial-stopped`, directly consuming original initial provenance and

@@ -277,6 +277,19 @@ These implemented boundaries remain distinct from source-matched installed
 qualification and the exact bootstrap receipt's direct Product Owner acceptance.
 No automatic restart, crash continuation, adoption, reset or replacement follows.
 
+Explicit forward Source replacement has its own distinct selection grammar and
+transition journal in Infrastructure. Canonical Node directly composes the
+original retirement, fresh coherent Release pair and retained original public
+inputs. Network State supplies an opaque read-only `SourceInspection` under its
+own independently acquired existing State/participation leases. It validates
+signed/security/time history and unresolved producer policy without initializing,
+repairing, pruning or lending a mutable root or runtime right. Installation binds
+that inspection to the exact serving declaration and numeric principal, retains
+all predecessor evidence, and owns separate sealed-generation, same-inode
+selection/unit, explicit manager reload and joined-completion effects. A separate
+restart obtains a fresh invocation. These implemented component boundaries do
+not establish installed replacement qualification or bootstrap acceptance.
+
 `ardents-control source prepare-state` separately composes finite offline State
 acceptance under the runtime system UID/GID, using original public declaration /
 bundle custody and an initially empty runtime-owned root. It opens no Source

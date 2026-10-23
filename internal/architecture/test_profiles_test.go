@@ -153,6 +153,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
+		"source-replacement-linux":          false,
 		"source-restart-linux":              false,
 		"source-startup-linux":              false,
 		"source-stopped-linux":              false,

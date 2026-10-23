@@ -13,6 +13,7 @@ Missing prerequisites fail. No host-wide changes, reset, retry/adoption or
 Source protection override is admitted. Each selected case needs a fresh stand.
 """
 import base64
+from datetime import datetime
 import errno
 import hashlib
 import json
@@ -21,6 +22,7 @@ from pathlib import Path
 import platform
 import queue
 import signal
+import socket
 import stat
 import subprocess
 import sys
@@ -43,9 +45,10 @@ def pinned(name):
 
 
 def main():
-    restart_profile = sys.argv[1:] == ["-timeout=8m"]
-    bound = 480 if restart_profile else 180
-    if sys.argv[1:] not in (["-timeout=3m"], ["-timeout=8m"]) or not sys.flags.isolated or not sys.flags.no_site or sys.version_info[:2] != (3, 12):
+    replacement_profile = sys.argv[1:] == ["-timeout=10m"]
+    restart_profile = replacement_profile or sys.argv[1:] == ["-timeout=8m"]
+    bound = 600 if replacement_profile else 480 if restart_profile else 180
+    if sys.argv[1:] not in (["-timeout=3m"], ["-timeout=8m"], ["-timeout=10m"]) or not sys.flags.isolated or not sys.flags.no_site or sys.version_info[:2] != (3, 12):
         raise RuntimeError("fixed isolated Python3.12 profile required")
     if sys.platform != "linux" or os.geteuid() != 0:
         raise RuntimeError("private native Linux root controller required")
@@ -66,7 +69,10 @@ def main():
     finally:
         os.close(probe)
     case = os.environ["ARDENTS_SOURCE_STARTUP_CASE"]
-    cases = ("restart", "restart-credential-loss", "restart-state-loss") if restart_profile else ("positive", "credential-substitution", "clock-loss")
+    replacement_cases = ("replacement", "replacement-credential-loss", "replacement-state-loss", "replacement-candidate-collision", "replacement-selection-readonly", "replacement-unit-readonly", "replacement-account-substitution", "replacement-binding-substitution", "replacement-unit-substitution", "replacement-expired-release")
+    history_faults = ("before-lock", "malformed-attempt", "gapped-attempt", "transcript", "retirement")
+    replacement_cases += tuple("replacement-history-" + fault for fault in history_faults)
+    cases = replacement_cases if replacement_profile else ("restart", "restart-credential-loss", "restart-state-loss") if restart_profile else ("positive", "credential-substitution", "clock-loss")
     if case not in cases:
         raise RuntimeError("unknown finite Source startup case")
     root = Path(__file__).resolve().parents[2]
@@ -83,9 +89,20 @@ def main():
 
     source()
     paths = {name: pinned(name) for name in ("NODE", "CONTROL", "MANAGER_TEST", "REQUEST", "BUNDLE", "EPOCH", "UNSIGNED_EPOCH", "CLIENT_CERTIFICATE", "CLIENT_KEY", "SERVER_CA", "PUBLIC_RECEIPT")}
+    if replacement_profile:
+        paths.update({name: pinned(name) for name in ("NODE_B", "NODE_C", "NODE_EXPIRED", "REQUEST_B", "REQUEST_C", "OWNER_TEST")})
     distribution = Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION"])
     if paths["NODE"] != distribution / "ardents-node-linux-amd64":
         raise RuntimeError("execute the actual enrolled initial program")
+    active_node = paths["NODE"]
+    initial_distribution = distribution
+    if replacement_profile:
+        for suffix in ("B", "C", "EXPIRED"):
+            candidate = Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION_" + suffix])
+            if paths["NODE_" + suffix] != candidate / "ardents-node-linux-amd64":
+                raise RuntimeError("execute each actual candidate program")
+        if digest(paths["NODE"]) == digest(paths["NODE_B"]) or any(digest(paths["NODE_B"]) != digest(paths["NODE_" + suffix]) for suffix in ("C", "EXPIRED")):
+            raise RuntimeError("actual program replacement followed by unchanged-program resource replacement required")
     request = json.loads(paths["REQUEST"].read_text())
     binding = Path(request["installation_root"]) / "binding.json"
     history = os.environ["ARDENTS_SOURCE_STARTUP_HISTORY"]
@@ -201,14 +218,14 @@ def main():
     class NativeObserver:
         # This independent read-only reference preserves the native exit oracle
         # across systemd collection. Its reports never enter product admission.
-        def __init__(self):
-            self.log = (output / "original-native-observer.log").open("xb")
+        def __init__(self, name="original-native-observer"):
+            self.log = (output / (name + ".log")).open("xb")
             self.events = queue.Queue(maxsize=34)
             self.errors = []
             self.closed = False
             env = dict(os.environ, ARDENTS_SOURCE_STARTUP_READ_ONLY_OBSERVER="1")
             try:
-                self.child = subprocess.Popen([str(paths["MANAGER_TEST"]), "-test.run=^TestSourceRetirementObserverNative$", "-test.v", "-test.timeout=8m"],
+                self.child = subprocess.Popen([str(paths["MANAGER_TEST"]), "-test.run=^TestSourceRetirementObserverNative$", "-test.v", "-test.timeout=" + ("10m" if replacement_profile else "8m")],
                                               stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
             except BaseException:
                 self.log.close()
@@ -344,6 +361,11 @@ def main():
         discovered = run([paths["MANAGER_TEST"], "-test.list=^(" + "|".join(manager_tests) + ")$"], "manager-test-discovery")
         if sorted(discovered.splitlines()) != sorted(name.encode("ascii") for name in manager_tests):
             raise RuntimeError("required native manager control is absent")
+        if replacement_profile:
+            owner_tests = ("TestSourceHistoryAcquisitionNative", "TestSourceStoppedNativeHistoryHeldObservationAndClose", "TestSourceStoppedNativeSelectionHeldLastReadAndCloseFailure", "TestSourceInitialNativeHeldReadPreservesCancellationAndClose")
+            discovered = run([paths["OWNER_TEST"], "-test.list=^(" + "|".join(owner_tests) + ")$"], "history-owner-test-discovery")
+            if sorted(discovered.splitlines()) != sorted(name.encode("ascii") for name in owner_tests):
+                raise RuntimeError("original history FD/flock regression is absent")
         clock = Path(request["clock"])
         clock_fd = os.open(clock, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
         clock_info = os.fstat(clock_fd)
@@ -368,7 +390,7 @@ def main():
         # Offline State acceptance already needs a fresh independent clock;
         # keep this same original writer live during installation and preparation.
         run([paths["NODE"], "installation", "install-initial-stopped", distribution, os.environ["ARDENTS_SOURCE_STARTUP_PIN"], history, "alpha", network, paths["REQUEST"]], "initial-stopped")
-        selected = json.loads(binding.read_text())
+        selected_document = selected = json.loads(binding.read_text())
         uid, gid = selected["uid"], selected["gid"]
         if not 100 <= uid <= 999 or uid != gid:
             raise RuntimeError("actual fixed Source principal required")
@@ -458,7 +480,7 @@ def main():
         outcome["response_epoch_sha256"] = digest(paths["EPOCH"])
         if restart_profile:
             installation = Path(request["installation_root"])
-            immutable = [binding, *plan.parent.iterdir(), *Path(request["credential_directory"]).iterdir()]
+            immutable = ([binding] if not replacement_profile else []) + [*plan.parent.iterdir(), *Path(request["credential_directory"]).iterdir()]
 
             def identity(path):
                 info = path.stat()
@@ -466,14 +488,17 @@ def main():
 
             originals = {path: (identity(path), digest(path)) for path in immutable}
             roots = {Path(request[name]): identity(Path(request[name])) for name in ("state_root", "participation_root")}
+            roots[Path(history)] = identity(Path(history))
+            selection_inodes = {path: identity(path) for path in (binding, Path("/etc/systemd/system/ardents-source.service"))}
             invocations, challenges = [], []
+            lineage_initial = selected["generation"]
             start_phases = ["first-start", "directory-intent", "directory-born", "directory-ready", "file-intent", "file-born", "file-ready",
                             "socket-intent", "socket-born", "socket-ready", "file-intent", "file-born", "file-ready", "start-attempt",
                             "invocation-observed", "completion-received", "file-intent", "file-born", "file-ready", "archived", "ack-attempt", "ack-written"]
             stop_phases = ["stop", "socket-intent", "socket-born", "socket-ready", "interrupt-attempt", "domain-joined", "native-joined", "native-closed", "file-intent", "file-born", "file-ready", "retired"]
 
             def retained():
-                if json.loads(binding.read_text()) != selected:
+                if json.loads(binding.read_text()) != selected_document:
                     raise RuntimeError("immutable selected generation/account changed")
                 for path, expected in originals.items():
                     if (identity(path), digest(path)) != expected:
@@ -481,6 +506,8 @@ def main():
                 for path, expected in roots.items():
                     if identity(path) != expected or not any(path.iterdir()):
                         raise RuntimeError("original semantic history root replaced or emptied")
+                if replacement_profile and any(identity(path) != expected for path, expected in selection_inodes.items()):
+                    raise RuntimeError("replacement changed an original selection/unit inode or access")
 
             def records(path, phases):
                 raw = path.read_bytes()
@@ -492,7 +519,7 @@ def main():
                 return rows
 
             def refuse_restart(name):
-                code, _ = run([paths["NODE"], "installation", "restart-source", distribution, history, "alpha", network, binding], name, refusal=True)
+                code, _ = run([active_node, "installation", "restart-source", distribution, history, "alpha", network, binding], name, refusal=True)
                 if code == 0:
                     raise RuntimeError("restart admitted without original complete retirement")
                 if int(subprocess.check_output(["/usr/bin/systemctl", "show", "ardents-source.service", "-p", "MainPID", "--value"])) != source_pid or original_join():
@@ -508,8 +535,8 @@ def main():
                 records(journal, phases)
                 if (current_directory / "source-start-pending").exists():
                     raise RuntimeError("full-looking startup transcript remained uncommitted")
-                stop_command = [paths["NODE"], "installation", "stop-source", history, binding]
-                if number == 0 and case == "restart":
+                stop_command = [active_node, "installation", "stop-source", history, binding]
+                if number == 0 and case in ("restart", "replacement"):
                     # Hold the actual original process, rather than inventing a
                     # completion callback. Root can interrupt it but cannot get
                     # its domain frame or native join until this hold releases.
@@ -544,9 +571,13 @@ def main():
                         if (current_directory / "source-retirement.json").exists() or b'"phase":"domain-joined"' in body:
                             raise RuntimeError("held original process supplied domain retirement")
                         refuse_restart("held-original-concurrent-restart")
+                        if replacement_profile:
+                            refuse_replacement("B", "held-original-concurrent-replacement")
                         if (installation / "source-invocation-00000001").exists() or not stopper.is_alive():
                             raise RuntimeError("held original retirement released successor admission")
                         outcome["held_original_join_denied_restart"] = True
+                        if replacement_profile:
+                            outcome["held_original_join_denied_replacement"] = True
                     finally:
                         try:
                             signal.pidfd_send_signal(source_pidfd, signal.SIGCONT)
@@ -595,23 +626,280 @@ def main():
                 if proof["started_realtime"] != archive["started_realtime"] or proof["started_monotonic"] != archive["started_monotonic"]:
                     raise RuntimeError("retirement followed another invocation's clocks")
                 retained()
+                if replacement_profile:
+                    host, port = request["address"].rsplit(":", 1)
+                    host = host.removeprefix("[").removesuffix("]")
+                    family = socket.AF_INET6 if ":" in host else socket.AF_INET
+                    with socket.socket(family, socket.SOCK_STREAM) as probe:
+                        probe.settimeout(0.5)
+                        try:
+                            probe.connect((host, int(port)))
+                        except OSError as error:
+                            if error.errno != errno.ECONNREFUSED:
+                                raise RuntimeError("old listener completion is uncertain") from error
+                        else:
+                            raise RuntimeError("old Source listener still accepts after original domain/native join")
+                    outcome["old_listeners_closed"] = len(invocations) + 1
                 os.close(scope_fd)
                 scope_fd = None
                 os.close(source_pidfd)
                 source_pidfd = None
                 source_started = False
                 invocations.append(invocation)
+                if replacement_profile:
+                    run([paths["OWNER_TEST"], "-test.run=^TestSourceHistoryAcquisitionNative$", "-test.v", "-test.timeout=1m"], f"history-success-{number}",
+                        env=dict(os.environ, ARDENTS_SOURCE_HISTORY_BINDING=str(binding), ARDENTS_SOURCE_HISTORY_RELEASE=history, ARDENTS_SOURCE_HISTORY_CASE="success"))
 
-            for number in range(3):
+            def replacement_command(suffix):
+                if suffix == "A":
+                    return [active_node, "installation", "replace-source", initial_distribution, history, "alpha", network, binding, paths["REQUEST"]]
+                if suffix == "EXPIRED":
+                    return [paths["NODE_EXPIRED"], "installation", "replace-source", Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION_EXPIRED"]), history, "alpha", network, binding, paths["REQUEST_B"]]
+                return [paths["NODE_" + suffix], "installation", "replace-source", Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION_" + suffix]), history, "alpha", network, binding, paths["REQUEST_" + suffix]]
+
+            def refuse_replacement(suffix, name):
+                before = binding.read_bytes()
+                before_unit = Path("/etc/systemd/system/ardents-source.service").read_bytes()
+                generations = sorted(path.name for path in (installation / "generations").iterdir())
+                journals = sorted(path.name for path in installation.parent.glob(installation.name + ".source-replacement-*-journal"))
+                code, _ = run(replacement_command(suffix), name, refusal=True)
+                if code == 0 or binding.read_bytes() != before or Path("/etc/systemd/system/ardents-source.service").read_bytes() != before_unit:
+                    raise RuntimeError("refused replacement changed selection/unit")
+                if sorted(path.name for path in (installation / "generations").iterdir()) != generations or sorted(path.name for path in installation.parent.glob(installation.name + ".source-replacement-*-journal")) != journals or (installation / "source-replacement-pending").exists():
+                    raise RuntimeError("pre-effect replacement refusal created a transition")
+
+            def replace_generation(suffix, number):
+                nonlocal selected_document, selected, plan, request, distribution, active_node, native_observer, selected_floors
+                predecessor = dict(selected)
+                predecessor_descriptor = json.loads((plan.parent / "infrastructure-source.json").read_text())
+                before_floors = selected_floors
+                predecessor_sha = digest(binding)
+                predecessor_unit = digest(Path("/etc/systemd/system/ardents-source.service"))
+                retirement_path = installation / ("source-startup" if number == 0 else f"source-invocation-{number:08d}") / "source-retirement.json"
+                retirement_sha = digest(retirement_path)
+                # Return the independent native observer's own fixed-unit
+                # reference before replacement. The product must establish its
+                # own manager custody even after collection.
+                native_observer.close()
+                native_observer = None
+                raw = run(replacement_command(suffix), "replacement-" + suffix)
+                if json.loads(raw) != {"operation":"installation.source", "outcome":"source-replacement-stopped-selected"}:
+                    raise RuntimeError("foreign replacement completion projection")
+                selected_document = json.loads(binding.read_text())
+                if list(selected_document) != ["schema", "configuration", "initial_generation", "predecessor_binding_sha256", "retirement_sha256", "predecessor_attempt"] or selected_document["schema"] != "ardents-source-replacement-binding-v1" or selected_document["initial_generation"] != lineage_initial or selected_document["predecessor_binding_sha256"] != predecessor_sha or selected_document["retirement_sha256"] != retirement_sha or selected_document["predecessor_attempt"] != number:
+                    raise RuntimeError("replacement lineage commitment differs")
+                selected = selected_document["configuration"]
+                if selected["schema"] != "ardents-source-replacement-configuration-v1" or selected["predecessor"] != predecessor["generation"] or selected["generation"] == predecessor["generation"] or (selected["uid"], selected["gid"]) != (uid, gid):
+                    raise RuntimeError("replacement is not strictly forward on original principal")
+                directory = installation / "generations" / selected["generation"]
+                plan = directory / "source-plan.json"
+                descriptor = json.loads((directory / "infrastructure-source.json").read_text())
+                if descriptor["release_version"] <= predecessor_descriptor["release_version"]:
+                    raise RuntimeError("replacement descriptor is not strictly forward")
+                after_floors = release_floors()
+                if before_floors["root"] != after_floors["root"] or any(after_floors[role][0] <= before_floors[role][0] for role in ("timestamp", "snapshot", "targets")):
+                    raise RuntimeError("replacement reset Root continuity or failed to advance Release floors")
+                selected_floors = after_floors
+                request = json.loads(paths["REQUEST_" + suffix].read_text())
+                if suffix == "C" and (selected["program_sha256"] != predecessor["program_sha256"] or request["address"] == predecessor["request"]["address"]):
+                    raise RuntimeError("resource-only replacement did not preserve program and change address")
+                if suffix == "B" and selected["program_sha256"] == predecessor["program_sha256"]:
+                    raise RuntimeError("program replacement did not change actual bytes")
+                names = sorted(path.name for path in directory.iterdir())
+                if len(names) != 12 or (directory / "binding.json").read_bytes() != binding.read_bytes():
+                    raise RuntimeError("complete sealed replacement inventory missing")
+                phases = ["initial", "replacement-admitted", "predecessor-binding", "predecessor-unit", "predecessor-retired"] + ["file-intent", "file-born", "file-ready"] + ["directory-intent", "directory-born", "directory-ready"] + [phase for _ in names for phase in ("file-intent", "file-born", "file-ready")] + ["seal-intent", "sealed", "selection-intent", "selection-written", "unit-intent", "unit-written", "reload-intent", "replacement-verified"]
+                journal = Path(str(installation) + ".source-replacement-" + selected["generation"] + "-journal")
+                rows = records(journal, phases)
+                if len(rows) != 55 or any(list(row) != ["sequence", "phase", "path", "device", "inode", "sha256", "mode", "uid", "gid"] for row in rows) or any(json.dumps(row, separators=(",", ":")).encode() != line for row, line in zip(rows, journal.read_bytes().splitlines(), strict=True)):
+                    raise RuntimeError("canonical replacement transcript differs")
+                if rows[2]["sha256"] != predecessor_sha or rows[3]["sha256"] != predecessor_unit or rows[4]["sha256"] != retirement_sha or rows[-1]["sha256"] != digest(binding):
+                    raise RuntimeError("independent replacement preimage commitments differ")
+                hi = Path(history).stat()
+                commitment = {"schema":"ardents-source-replacement-history-v1", "binding_sha256":digest(binding), "history":history, "device":hi.st_dev, "inode":hi.st_ino, "mode":stat.S_IMODE(hi.st_mode), "uid":hi.st_uid, "gid":hi.st_gid}
+                if rows[1]["sha256"] != hashlib.sha256(json.dumps(commitment, separators=(",", ":")).encode() + b"\n").hexdigest():
+                    raise RuntimeError("replacement is not committed to original Release native history")
+                for index, name in enumerate(names):
+                    triplet = rows[11 + index * 3:14 + index * 3]
+                    path = directory / name
+                    info = path.stat()
+                    for row in triplet:
+                        if row["path"] != str(path) or row["sha256"] != digest(path) or row["mode"] != (0o555 if name == "ardents-node-linux-amd64" else 0o444) or (row["uid"], row["gid"]) != (0, 0):
+                            raise RuntimeError("independent replacement file commitment differs")
+                    if (triplet[0]["device"], triplet[0]["inode"]) != (0, 0) or any((row["device"], row["inode"]) != (info.st_dev, info.st_ino) for row in triplet[1:]):
+                        raise RuntimeError("replacement file birth/readback native identity differs")
+                    originals[path] = (identity(path), digest(path))
+                for path, intent, written in ((binding, 49, 50), (Path("/etc/systemd/system/ardents-source.service"), 51, 52)):
+                    info = path.stat()
+                    for row in (rows[intent], rows[written]):
+                        if row["path"] != str(path) or row["sha256"] != digest(path) or (row["device"], row["inode"]) != (info.st_dev, info.st_ino):
+                            raise RuntimeError("same-inode replacement publication differs")
+                if (installation / "source-replacement-pending").exists():
+                    raise RuntimeError("replacement completion retained blocker")
+                distribution = Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION_" + suffix])
+                active_node = paths["NODE_" + suffix]
+                inspect[3] = plan
+                retained()
+                refuse_replacement(suffix, "replacement-replay-" + suffix)
+                refuse_replacement("A", "replacement-rollback-A-after-" + suffix)
+                native_observer = NativeObserver("native-observer-after-" + suffix)
+                stopped = native_observer.sample()
+                if stopped["Service"]["MainPID"] != {"type":"u", "data":0} or stopped["Unit"]["ActiveState"] != {"type":"s", "data":"inactive"}:
+                    raise RuntimeError("replacement started a runtime without explicit fresh start")
+                outcome["replacement_" + suffix + "_generation"] = selected["generation"]
+
+            def partial_replacement():
+                previous = binding.read_bytes()
+                unit = Path("/etc/systemd/system/ardents-source.service")
+                previous_unit = unit.read_bytes()
+                candidate = Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION_B"])
+                generation = digest(candidate / "infrastructure-source.json")
+                journal = Path(str(installation) + ".source-replacement-" + generation + "-journal")
+                mounted = None
+                partial_errors = []
+                try:
+                    if case == "replacement-candidate-collision":
+                        # A real independent preexisting directory causes the
+                        # exclusive birth to fail. It supplies no successful
+                        # candidate, authority, byte receipt or continuation.
+                        (installation / "generations" / generation).mkdir(mode=0o755)
+                    else:
+                        target = binding if case == "replacement-selection-readonly" else unit
+                        original = identity(target)
+                        subprocess.run(["/usr/bin/mount", "--bind", str(target), str(target)], check=True)
+                        mounted = target
+                        subprocess.run(["/usr/bin/mount", "-o", "remount,bind,ro", str(mounted)], check=True)
+                        if identity(mounted) != original or not os.statvfs(mounted).f_flag & os.ST_RDONLY:
+                            raise RuntimeError("original same-inode read-only native failure not established")
+                    code, _ = run(replacement_command("B"), "partial-replacement", refusal=True)
+                    body = journal.read_bytes()
+                    rows = [json.loads(line) for line in body.splitlines()]
+                    pending = installation / "source-replacement-pending"
+                    if code == 0 or not pending.is_file() or not body.endswith(b"\n") or not 8 < len(rows) < 55 or [row["sequence"] for row in rows] != list(range(len(rows))):
+                        raise RuntimeError("failed native transition did not preserve original partial blocker/journal")
+                    if unit.read_bytes() != previous_unit or any(identity(path) != expected for path, expected in selection_inodes.items()):
+                        raise RuntimeError("partial replacement changed fixed-unit bytes or original publication inodes")
+                    if case == "replacement-unit-readonly":
+                        if binding.read_bytes() == previous or rows[-1]["phase"] != "selection-written":
+                            raise RuntimeError("unit failure did not follow actual separate selection publication")
+                    elif binding.read_bytes() != previous:
+                        raise RuntimeError("pre-selection failure published new selection")
+                    saved = {path: path.read_bytes() for path in (binding, unit, pending, journal)}
+                except BaseException as error:
+                    partial_errors.append(error)
+                finally:
+                    if mounted is not None:
+                        try:
+                            subprocess.run(["/usr/bin/umount", str(mounted)], check=True)
+                        except BaseException as error:
+                            partial_errors.append(error)
+                if partial_errors:
+                    raise BaseExceptionGroup("original partial replacement and native fault cleanup failed", partial_errors)
+                # Releasing the physical failure is not repair/continuation.
+                # The original partial journal and blocker still deny effects.
+                for command, name in ((replacement_command("B"), "partial-replacement-replay"),
+                                      ([paths["NODE_B"], "installation", "restart-source", candidate, history, "alpha", network, binding], "partial-replacement-start")):
+                    code, _ = run(command, name, refusal=True)
+                    if code == 0 or any(path.read_bytes() != raw for path, raw in saved.items()) or (installation / "source-invocation-00000001").exists():
+                        raise RuntimeError("partial transition admitted continuation/start or rewrote evidence")
+                outcome["partial_native_transition_denied"] = True
+
+            def release_floors():
+                current = (Path(history) / "current").read_text()
+                if len(current) != 65 or not current.endswith("\n") or any(c not in "0123456789abcdef" for c in current[:-1]):
+                    raise RuntimeError("complete original Release pointer required")
+                raw = (Path(history) / "generations" / current[:-1] / "state.bin").read_text()
+                result = {}
+                for line in raw.splitlines():
+                    role, version, sha = line.split()
+                    if not role.startswith("role=") or not version.startswith("version=") or not sha.startswith("digest="):
+                        raise RuntimeError("independent Release floor framing differs")
+                    name = role[5:]
+                    if name in result or len(sha[7:]) != 64:
+                        raise RuntimeError("independent Release floor inventory differs")
+                    result[name] = (int(version[8:]), sha[7:])
+                if set(result) != {"root", "timestamp", "snapshot", "targets"}:
+                    raise RuntimeError("complete original Release floors required")
+                return result
+
+            selected_floors = release_floors() if replacement_profile else None
+            for number in range(4 if replacement_profile else 3):
                 if invocation in invocations:
                     raise RuntimeError("successor reused an old invocation identity")
                 refuse_restart(f"pre-retirement-restart-{number}")
                 if (installation / f"source-invocation-{number + 1:08d}").exists():
                     raise RuntimeError("refused pre-retirement restart created a successor attempt")
                 explicit_stop(number)
-                if number == 2:
+                if number == (3 if replacement_profile else 2):
                     break
-                if number == 0 and case != "restart":
+                if replacement_profile:
+                    if number == 0 and case == "replacement-expired-release":
+                        metadata = Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION_EXPIRED"]) / "timestamp.json"
+                        expires = datetime.fromisoformat(json.loads(metadata.read_text())["signed"]["expires"].replace("Z", "+00:00")).timestamp()
+                        while time.time() <= expires:
+                            observe()
+                            time.sleep(0.2)
+                        refuse_replacement("EXPIRED", "replacement-actual-expired-release")
+                        retained()
+                        outcome["expired_release_denied"] = True
+                        break
+                    if number == 0 and case.startswith("replacement-history-"):
+                        fault = case[len("replacement-history-"):]
+                        run([paths["OWNER_TEST"], "-test.run=^TestSourceHistoryAcquisitionNative$", "-test.v", "-test.timeout=1m"], "original-history-refusal-cleanup",
+                            env=dict(os.environ, ARDENTS_SOURCE_HISTORY_BINDING=str(binding), ARDENTS_SOURCE_HISTORY_RELEASE=history, ARDENTS_SOURCE_HISTORY_CASE=fault))
+                        if fault == "retirement":
+                            with Path("/etc/ardents-source-stopped-native-stand").open("x") as marker:
+                                marker.write("ardents-source-stopped-native-v1\n")
+                            with Path("/var/lib/source-initial-readback.json").open("x") as fixture:
+                                json.dump({"binding":str(binding), "history":history}, fixture)
+                            run([paths["OWNER_TEST"], "-test.run=^(" + "|".join(owner_tests[1:]) + ")$", "-test.v", "-test.timeout=1m"], "original-held-read-and-close-errors",
+                                env=dict(os.environ, ARDENTS_SOURCE_STOPPED_FUTURE_PARENT="/var/lib"))
+                            outcome["original_held_read_close_errors_retained"] = True
+                        outcome["original_history_refusal_cleanup_proved"] = True
+                        break
+                    if number == 0 and case in ("replacement-account-substitution", "replacement-binding-substitution", "replacement-unit-substitution"):
+                        if case == "replacement-account-substitution":
+                            passwd = Path("/etc/passwd")
+                            rows = passwd.read_text().splitlines()
+                            matches = [i for i, row in enumerate(rows) if row.startswith("ardents-source:")]
+                            if len(matches) != 1:
+                                raise RuntimeError("original fixed Source account unavailable")
+                            fields = rows[matches[0]].split(":")
+                            if int(fields[2]) != uid:
+                                raise RuntimeError("original Source UID differs before native control")
+                            (output / "passwd-preimage").write_bytes(passwd.read_bytes())
+                            fields[2] = "99999"
+                            rows[matches[0]] = ":".join(fields)
+                            passwd.write_text("\n".join(rows) + "\n")
+                        else:
+                            changed = binding if case == "replacement-binding-substitution" else Path("/etc/systemd/system/ardents-source.service")
+                            raw, info = changed.read_bytes(), changed.stat()
+                            changed.rename(changed.with_name(changed.name + ".qualification-retained"))
+                            with changed.open("xb") as stream:
+                                stream.write(raw)
+                            os.chown(changed, info.st_uid, info.st_gid)
+                            os.chmod(changed, stat.S_IMODE(info.st_mode))
+                            if identity(changed)[:2] == (info.st_dev, info.st_ino):
+                                raise RuntimeError("original publication inode substitution was not established")
+                        refuse_replacement("B", "replacement-retained-identity-substitution")
+                        outcome["retained_identity_substitution_denied"] = True
+                        break
+                    if number == 0 and case in ("replacement-candidate-collision", "replacement-selection-readonly", "replacement-unit-readonly"):
+                        partial_replacement()
+                        break
+                    if number == 0 and case in ("replacement-credential-loss", "replacement-state-loss"):
+                        lost = Path(request["credential_directory"]) / "certificate.pem" if case == "replacement-credential-loss" else Path(request["state_root"]) / ".ardents-network-state-v1"
+                        original_lost = lost.with_name(lost.name + ".qualification-retained")
+                        old_identity, old_digest = identity(lost), digest(lost)
+                        lost.rename(original_lost)
+                        refuse_replacement("B", "replacement-missing-retained-input")
+                        if lost.exists() or identity(original_lost) != old_identity or digest(original_lost) != old_digest:
+                            raise RuntimeError("refused replacement recreated lost semantic input")
+                        outcome["missing_retained_input_denied"] = True
+                        break
+                    if number < 2:
+                        replace_generation("B" if number == 0 else "C", number)
+                if not replacement_profile and number == 0 and case != "restart":
                     lost = Path(request["credential_directory"]) / "certificate.pem" if case == "restart-credential-loss" else Path(request["state_root"]) / ".ardents-network-state-v1"
                     original_lost = lost.with_name(lost.name + ".qualification-retained")
                     old_identity, old_digest = identity(lost), digest(lost)
@@ -643,7 +931,7 @@ def main():
                     # future restart right; outside stand still joins all users.
                     break
                 source_started = True
-                raw = run([paths["NODE"], "installation", "restart-source", distribution, history, "alpha", network, binding], f"restart-{number + 1}")
+                raw = run([active_node, "installation", "restart-source", distribution, history, "alpha", network, binding], f"restart-{number + 1}")
                 if json.loads(raw) != {"operation": "installation.source", "outcome": "source-restart-completed"}:
                     raise RuntimeError("foreign subsequent invocation completion")
                 retain_invocation()
@@ -755,15 +1043,29 @@ def main():
         if not outcome["original_scope_joined"]:
             raise RuntimeError("no original Source scope completion observation")
         if restart_profile:
-            expected = 3 if case == "restart" else 1
+            expected = 4 if case == "replacement" else 3 if case == "restart" else 1
             if outcome.get("completed_explicit_retirements") != expected or outcome.get("distinct_original_invocations") != expected:
                 raise RuntimeError("required genuine original retirement sequence incomplete")
-            if case == "restart" and not outcome.get("held_original_join_denied_restart"):
+            if replacement_profile and outcome.get("old_listeners_closed") != expected:
+                raise RuntimeError("independent old-listener closure observations missing")
+            if case in ("restart", "replacement") and not outcome.get("held_original_join_denied_restart"):
                 raise RuntimeError("actual held original join refusal missing")
-            if case != "restart" and not outcome.get("missing_retained_input_denied"):
+            if case in ("restart-credential-loss", "restart-state-loss", "replacement-credential-loss", "replacement-state-loss") and not outcome.get("missing_retained_input_denied"):
                 raise RuntimeError("causal retained-input refusal missing")
+            if case in ("replacement-candidate-collision", "replacement-selection-readonly", "replacement-unit-readonly") and not outcome.get("partial_native_transition_denied"):
+                raise RuntimeError("causal partial native transition refusal missing")
+            if case in ("replacement-account-substitution", "replacement-binding-substitution", "replacement-unit-substitution") and not outcome.get("retained_identity_substitution_denied"):
+                raise RuntimeError("causal original identity substitution refusal missing")
+            if case.startswith("replacement-history-") and not outcome.get("original_history_refusal_cleanup_proved"):
+                raise RuntimeError("original history refusal FD/flock regression missing")
+            if case == "replacement-history-retirement" and not outcome.get("original_held_read_close_errors_retained"):
+                raise RuntimeError("original held-read/cancellation/Close-error regression missing")
+            if case == "replacement-expired-release" and not outcome.get("expired_release_denied"):
+                raise RuntimeError("actual signed expired Release refusal missing")
             outcome["retirement_outcome"] = "explicit-retirements-proved"
-            outcome["clean_retirement"] = case == "restart"
+            if case == "replacement" and (not outcome.get("held_original_join_denied_replacement") or not outcome.get("replacement_B_generation") or not outcome.get("replacement_C_generation")):
+                raise RuntimeError("complete program and resource-only original replacement sequence missing")
+            outcome["clean_retirement"] = case in ("restart", "replacement")
         else:
             # Normal return through the command's joined supervisor is different
             # from a manager timeout/SIGKILL. No clean physical result is inferred

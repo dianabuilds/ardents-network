@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare the fixed public initial Source signing plan from actual build records.
+"""Prepare a fixed public Source signing plan from actual build records.
 
 This public transformation signs nothing and reads no private key. The Source
 signer independently retains and validates the plan/resources/keys; Release alone
@@ -38,6 +38,7 @@ def unique(pairs):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--forward", action="store_true", help="prepare the distinct forward signing purpose; predecessor trust is checked by sign-forward-release")
     for name in ("build-root", "descriptor", "template", "qualification-evidence", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
     for name in ("network", "expires", "no-new-work-after", "terminate-after", "qualification-evidence-sha256"):
@@ -116,8 +117,9 @@ def main():
     descriptor = document(p.descriptor)
     template = read(p.template, 64 << 10)
     program = p.build_root / "build-1" / "ardents-node"
-    if descriptor.get("release_version") != 1 or descriptor.get("files") != {"ardents-node-linux-amd64": common["files"]["ardents-node"], "ardents-source.service": sha(template)}:
-        raise RuntimeError("initial Source resources disagree with actual builds")
+    version = descriptor.get("release_version")
+    if type(version) is not int or not 1 <= version <= (1 << 63) - 1 or (p.forward and version <= 1) or (not p.forward and version != 1) or descriptor.get("files") != {"ardents-node-linux-amd64": common["files"]["ardents-node"], "ardents-source.service": sha(template)}:
+        raise RuntimeError("Source purpose/resources disagree with actual builds")
     now = datetime.now(timezone.utc).replace(microsecond=0)
 
     def instant(text):
@@ -136,14 +138,15 @@ def main():
     def custom(target_pin):
         result = {key: common[key] for key in ("source_revision", "build_input_commitment", "build_identity", "dependency_identity", "sbom_identity")}
         result.update(schema_version=1, profile="ardents-h3-release-v1", platform="linux-amd64", architecture="amd64", environment="alpha", network=p.network,
-                      release_identity=descriptor["release_identity"], release_version=1, attestation_policy="two-builder", qualification="qualified", build_state="current",
+                      release_identity=descriptor["release_identity"], release_version=version, attestation_policy="two-builder", qualification="qualified", build_state="current",
                       protocol_phase="announced", build_safety_no_new_work_after=utc(no_new), build_safety_terminate_after=utc(terminate))
         result["builder_attestations"] = [{"builder_identity": receipt["builder_identity"], "build_identity": common["build_identity"],
                                            "source_revision": common["source_revision"], "build_input_commitment": common["build_input_commitment"],
                                            "target_sha256": target_pin} for receipt in receipts]
         return result
 
-    plan = {"schema": "ardents-source-initial-release-plan-v1", "network": p.network, "reference_time": utc(now), "expires": utc(expires),
+    schema = "ardents-source-forward-release-plan-v1" if p.forward else "ardents-source-initial-release-plan-v1"
+    plan = {"schema": schema, "network": p.network, "reference_time": utc(now), "expires": utc(expires),
             "program": str(program), "descriptor": str(p.descriptor), "template": str(p.template),
             "program_custom": custom(common["files"]["ardents-node"]), "generation_custom": custom(observed[p.descriptor])}
     # Metadata's existing qualified value is proposed bounded qualification; it

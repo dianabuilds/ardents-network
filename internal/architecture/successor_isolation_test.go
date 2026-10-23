@@ -65,6 +65,16 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/source_account_linux.go",
 			"internal/successor/installation/infrastructure/source_birth_linux.go",
 			"internal/successor/installation/infrastructure/source_install_linux.go",
+			"internal/successor/installation/infrastructure/source_replace_linux.go",
+			"internal/successor/installation/infrastructure/source_replacement_candidate_linux.go",
+			"internal/successor/installation/infrastructure/source_replacement_history_linux.go",
+			"internal/successor/installation/infrastructure/source_replacement_binding_linux.go",
+			"internal/successor/installation/infrastructure/source_replacement_binding_linux_test.go",
+			"internal/successor/installation/infrastructure/source_replacement_records_linux.go",
+			"internal/successor/installation/infrastructure/source_replacement_records_linux_test.go",
+			"internal/successor/installation/infrastructure/source_replacement_plan_linux_test.go",
+			"internal/successor/installation/infrastructure/source_reload_namespace_linux.go",
+			"internal/successor/installation/systemd/source_replacement_linux.go",
 			"internal/successor/installation/infrastructure/source_binding_linux.go",
 			"internal/successor/installation/infrastructure/source_binding_linux_test.go",
 			"internal/successor/installation/infrastructure/source_selection_linux.go",
@@ -94,6 +104,9 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/source_retirement_exchange_linux.go",
 			"internal/successor/installation/infrastructure/source_retirement_exchange_linux_test.go",
 			"internal/successor/installation/cgroup/source_quiescence_linux.go",
+			"internal/successor/network/state/source_inspection_linux.go",
+			"internal/successor/network/state/durable/source_inspection_linux.go",
+			"internal/successor/network/duty/source_inspection_linux.go",
 			"internal/successor/network/state/retained_open_linux.go",
 			"internal/successor/network/state/retained_open_linux_test.go",
 			"internal/successor/network/state/durable/retained_open_linux.go",
@@ -117,6 +130,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"cmd/ardents-control/source_artifact_linux.go",
 			"cmd/ardents-control/source_artifact_output_linux.go",
 			"cmd/ardents-control/source_release_linux.go",
+			"cmd/ardents-control/source_release_predecessor_linux.go",
 			"cmd/ardents-control/source_release_keys_linux.go",
 			"cmd/ardents-control/source_release_plan_linux.go",
 			"cmd/ardents-control/source_release_plan_linux_test.go",
@@ -150,6 +164,20 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			want := target == "linux"
 			if selected != want {
 				t.Errorf("native executable adapter %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		for _, tagged := range []bool{false, true} {
+			profile.BuildTags = nil
+			if tagged {
+				profile.BuildTags = []string{"network_signing_native"}
+			}
+			name := "internal/successor/network/state/source_inspection_native_linux_test.go"
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := target == "linux" && tagged; selected != want {
+				t.Errorf("Source inspection native profile on %s tagged=%v: %v, want %v", target, tagged, selected, want)
 			}
 		}
 	}
@@ -447,6 +475,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/source_release_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
+		if source == "cmd/ardents-control/source_release_predecessor_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+			return true
+		}
 		if source == "cmd/ardents-control/source_release_plan_linux.go" && dependency == modulePath+"/internal/successor/installation/infrastructure" {
 			return true
 		}
@@ -476,7 +507,7 @@ func successorImportAllowed(source, dependency string) bool {
 				}
 			}
 		}
-		if source == "cmd/ardents-node/source_installation_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
+		if source == "cmd/ardents-node/source_installation_linux.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/state" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
 		if source == "tests/e2e/service/service_custody_process_linux_test.go" && dependency == modulePath+"/internal/successor/publication" {
@@ -840,6 +871,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "internal/successor/installation/infrastructure/source_start_linux.go" && (dependency == modulePath+"/internal/successor/installation/process" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
+			return true
+		}
+		if source == "internal/successor/installation/infrastructure/source_replace_linux.go" && (dependency == modulePath+"/internal/successor/network/state" || dependency == modulePath+"/internal/successor/installation/fixedfile" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
 			return true
 		}
 		if source == "internal/successor/installation/infrastructure/source_start_barrier_linux.go" && dependency == modulePath+"/internal/successor/installation/completion" {

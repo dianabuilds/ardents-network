@@ -30,7 +30,7 @@ NODE_PROCESS_PACKAGES := $(filter %/tests/e2e/node,$(PROCESS_PACKAGES))
 # Only the Node process suite may select an elevated system-scope runner.
 NODE_PROCESS_TEST_COMMAND ?= go
 HEADLESS_COMMANDS := $(subst $(newline), ,$(file <tests/profiles/headless-commands.txt))
-ifneq ($(filter source-restart-check source-startup-check source-stopped-check source-preflight-check source-process-check node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
+ifneq ($(filter source-replacement-check source-restart-check source-startup-check source-stopped-check source-preflight-check source-process-check node-development-check node-process-check node-issuer-check node-descriptor-check node-introduction-check node-join-check,$(MAKECMDGOALS)),)
 # This native driver consumes independently built, pinned artifacts. Its host
 # needs the actual manager/kernel, not a second Go installation.
 HEADLESS_GOOS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -498,7 +498,7 @@ network-preparation-compile-check:
 .PHONY: network-signing-check network-signing-compile-check
 .PHONY: source-preflight-check
 .PHONY: source-stopped-check
-.PHONY: source-restart-check
+.PHONY: source-restart-check source-replacement-check
 # Requires the exact public bootstrap receipt's direct PO acceptance first.
 # The private native controller owns original whole-scope termination/join.
 source-startup-check:
@@ -508,6 +508,10 @@ source-startup-check:
 source-restart-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "source-restart-check requires the separately accepted exact restart bootstrap and private Ubuntu stand"; exit 2)
 	python3 -I -S ./scripts/installation/run-source-startup.py -timeout=8m
+
+source-replacement-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "source-replacement-check requires the separately accepted exact replacement bootstrap and private Ubuntu stand"; exit 2)
+	python3 -I -S ./scripts/installation/run-source-startup.py -timeout=10m
 
 source-stopped-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "source-stopped-check requires isolated Ubuntu24.04/systemd255/cgroup-v2/native ext4 root"; exit 2)
@@ -520,6 +524,7 @@ source-preflight-check:
 network-signing-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-signing-check requires Linux root and root-controlled native ext4 TMPDIR"; exit 2)
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/network/state -run '^TestSourceInspectionNative' -count=1 -v -timeout=3m
 
 network-signing-compile-check: export GOOS := linux
 network-signing-compile-check: export GOARCH := amd64
@@ -530,3 +535,4 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-control-preparation.test" ./cmd/ardents-control
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/successor/installation/systemd
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/successor/installation/infrastructure
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/successor/network/state

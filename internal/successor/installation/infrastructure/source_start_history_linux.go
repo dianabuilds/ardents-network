@@ -47,7 +47,7 @@ func readSourceStartHistory(selection *sourceSelection, number sourceAttemptNumb
 		return nil, ErrBinding
 	}
 	_, _, intentSchema, archiveSchema := number.schema()
-	binding := digest(selection.files[filepath.Join(root, "binding.json")].raw)
+	binding := digest(selection.bindingBytes())
 	if intent.Schema != intentSchema || intent.BindingSHA256 != binding || intent.InitialHistorySHA256 != initialHistory || !sourceInitialSHA(intent.TargetsSHA256) || intent.UID != b.UID || intent.GID != b.GID || intent.Attempt != uint32(number) || intent.PredecessorSHA256 != predecessor {
 		return nil, ErrBinding
 	}

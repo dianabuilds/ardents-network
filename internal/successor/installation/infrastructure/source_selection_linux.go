@@ -17,14 +17,16 @@ import (
 // Its caller serializes observation and joins all uses before close. No writer
 // lease, initial provenance, Release proof or process admission crosses here.
 type sourceSelection struct {
-	ctx        context.Context
-	binding    sourceBinding
-	sealed     string
-	files      map[string]*sourceFile
-	dirs       map[string]*os.File
-	identities map[string]os.FileInfo
-	closed     bool
-	terminal   error
+	ctx         context.Context
+	binding     sourceBinding
+	bindingPath string
+	replacement *sourceReplacementBinding
+	sealed      string
+	files       map[string]*sourceFile
+	dirs        map[string]*os.File
+	identities  map[string]os.FileInfo
+	closed      bool
+	terminal    error
 	// Test-only hold after real file I/O; it cannot supply observations.
 	observed func(*os.File)
 }
@@ -34,6 +36,20 @@ func sourceGenerationNames() []string {
 }
 
 func openSourceSelection(ctx context.Context, bindingPath string) (result *sourceSelection, err error) {
+	return openSourceSelectionMode(ctx, bindingPath, false)
+}
+
+// An archived generation supplies retained immutable bytes, never active
+// selection, completed transition, Release or startup authority. The lineage
+// reader separately validates its original birth and transition transcript.
+func openSourceArchivedSelection(ctx context.Context, root, generation string) (*sourceSelection, error) {
+	if !sourcePath(root) || !sourceInitialSHA(generation) {
+		return nil, ErrInput
+	}
+	return openSourceSelectionMode(ctx, filepath.Join(root, "generations", generation, "binding.json"), true)
+}
+
+func openSourceSelectionMode(ctx context.Context, bindingPath string, archived bool) (result *sourceSelection, err error) {
 	if ctx == nil || ctx.Err() != nil || !sourcePath(bindingPath) || filepath.Base(bindingPath) != "binding.json" {
 		return nil, ErrInput
 	}
@@ -44,16 +60,25 @@ func openSourceSelection(ctx context.Context, bindingPath string) (result *sourc
 			result = nil
 		}
 	}()
-	raw, err := s.read(bindingPath, 32<<10, 0644, 0, 0)
+	mode := os.FileMode(0644)
+	if archived {
+		mode = 0444
+	}
+	raw, err := s.read(bindingPath, 32<<10, mode, 0, 0)
 	if err != nil {
 		return nil, err
 	}
-	s.binding, err = decodeSourceBinding(raw)
+	s.binding, s.replacement, err = decodeSourceSelectedBinding(raw)
 	if err != nil {
 		return nil, err
 	}
 	b := s.binding
-	if bindingPath != filepath.Join(b.Request.InstallationRoot, "binding.json") ||
+	s.bindingPath = bindingPath
+	wantedBinding := filepath.Join(b.Request.InstallationRoot, "binding.json")
+	if archived {
+		wantedBinding = filepath.Join(b.Request.InstallationRoot, "generations", b.Generation, "binding.json")
+	}
+	if bindingPath != wantedBinding ||
 		(os.Geteuid() != 0 && (uint32(os.Geteuid()) != b.UID || uint32(os.Getegid()) != b.GID)) {
 		return nil, ErrBinding
 	}
@@ -125,7 +150,11 @@ func openSourceSelection(ctx context.Context, bindingPath string) (result *sourc
 	if err = checkSourceRuntimePair(s.files[filepath.Join(b.Request.CredentialDirectory, "certificate.pem")].raw, s.files[filepath.Join(b.Request.CredentialDirectory, "private-key.pem")].raw); err != nil {
 		return nil, err
 	}
-	unit, err := s.read("/etc/systemd/system/ardents-source.service", 16<<10, 0644, 0, 0)
+	unitPath, unitMode := "/etc/systemd/system/ardents-source.service", os.FileMode(0644)
+	if archived {
+		unitPath, unitMode = filepath.Join(s.sealed, "rendered-source.service"), 0444
+	}
+	unit, err := s.read(unitPath, 16<<10, unitMode, 0, 0)
 	if err != nil || !bytes.Equal(unit, get("rendered-source.service")) {
 		return nil, errors.Join(ErrBinding, err)
 	}
@@ -133,6 +162,20 @@ func openSourceSelection(ctx context.Context, bindingPath string) (result *sourc
 		return nil, err
 	}
 	return s, s.observe()
+}
+
+func (s *sourceSelection) bindingBytes() []byte {
+	if s == nil {
+		return nil
+	}
+	path := s.bindingPath
+	if path == "" {
+		path = filepath.Join(s.binding.Request.InstallationRoot, "binding.json")
+	}
+	if s.files[path] == nil {
+		return nil
+	}
+	return s.files[path].raw
 }
 
 func (s *sourceSelection) pinParents(path string) error {

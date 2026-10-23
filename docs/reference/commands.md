@@ -540,6 +540,7 @@ The separate closed initial Source key birth and signing forms are:
 ```text
 ardents-control source prepare-release-keys FRESH_PRIVATE_OUTPUT
 ardents-control source sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
+ardents-control source sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION
 ```
 
 Key birth writes exactly five fresh distinct `release-key-1.pem` through
@@ -558,8 +559,21 @@ descriptor version one and template the exact selected Source resource. Both
 custom values use the existing Release grammar and common build/policy facts;
 their two actual rebuild records bind each respective target digest. Retain the
 real execution receipts and honest qualification limits behind those declarations.
-Reference must be current, metadata lifetime at most seven days. No successor,
-arbitrary target, generic signing message or Endpoint translation is accepted.
+Reference must be current, metadata lifetime at most seven days. The initial
+form refuses successor plans; neither form accepts an arbitrary target, generic
+signing message or Endpoint translation.
+
+The separate forward form requires schema
+`ardents-source-forward-release-plan-v1`, a strictly higher descriptor version
+than the complete eight-file predecessor distribution, the same five private
+keys and unchanged predecessor Root. Timestamp, snapshot and Targets versions
+advance by one with exact consistent-snapshot references. The original protected
+predecessor inputs remain held through output. Before signing, Release
+authenticates the predecessor and its coherent pair in the exclusively born
+diagnostic history; the new pair then advances that same history. This verifier
+is diagnostic only. Installation must independently verify the candidate against
+its actual retained trust history and monotonic floors. No fresh initial pin,
+diagnostic history or public signing receipt supplies successor permission.
 
 The private directory contains exactly five distinct canonical PKCS#8 Ed25519
 `release-key-1.pem` through `release-key-5.pem`, root-owned 0600 under protected
@@ -647,6 +661,7 @@ ardents-node installation install-initial-stopped DISTRIBUTION PIN HISTORY ENVIR
 ardents-node installation start-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING
 ardents-node installation stop-source HISTORY BINDING
 ardents-node installation restart-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING
+ardents-node installation replace-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST
 ```
 
 They directly consume separate Enrollment, Release and Source Installation owners
@@ -670,6 +685,22 @@ Failed or uncertain prefixes remain repair-required, with no reset/adoption or
 automatic restart. The finite retained history admits at most 64 total attempts.
 Root outputs `source-stopped-completed` or `source-restart-completed` only for
 their completed bounded operation; reporting grants no runtime authority.
+
+Replacement requires the complete original explicit retirement and two fresh
+coherent forward Release authorizations against that same retained history.
+Prepare its descriptor/inventory and inputs with the canonical public commands;
+use `prepare-source-release-plan.py --forward` and the distinct
+`source sign-forward-release` purpose with the original keys and predecessor
+distribution. Initial-only signers and a fresh Enrollment pin cannot authorize
+a successor. Replacement preserves account, credentials, semantic roots and
+predecessor evidence, and checks State's read-only retained-history inspection.
+It seals the candidate, rewrites the original selection/unit inodes and explicitly
+reloads/readbacks the manager. Output `source-replacement-stopped-selected`
+describes that completed stopped transition. Explicit `restart-source` then
+obtains a fresh invocation; no automatic Start or rollback follows. With
+unchanged program bytes, an actual permitted listen-address change and strictly
+forward descriptor/metadata are still required. Incomplete transitions retain
+blocking evidence and provide no repair/continuation command in this slice.
 
 These native operations require the selected Ubuntu24.04/systemd255/cgroup-v2/ext4
 profile; unsupported environments refuse. Before any isolated installed Source

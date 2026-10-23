@@ -180,6 +180,99 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	if err != nil || len(targets.Signed.Targets) != 2 || targets.Signed.Targets["ardents/linux-amd64/node"] == nil || targets.Signed.Targets["ardents/linux-amd64/infrastructure/source"] == nil || len(targets.Signatures) != 3 {
 		t.Fatal("Source target purpose changed", err)
 	}
+	// Assemble the complete actual predecessor distribution without a new pin.
+	// The forward producer must keep its Root and genuinely advance the same
+	// diagnostic Release history; its output is no installation permission.
+	previous := filepath.Join(parent, "previous-distribution")
+	if err := os.Mkdir(previous, 0700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"root.json", "timestamp.json", "snapshot.json", "targets.json"} {
+		raw, err := os.ReadFile(filepath.Join(output, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(previous, name), raw, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for name, raw := range map[string][]byte{infrastructure.ProgramName: nodeBytes, infrastructure.TemplateName: preparedTemplate, infrastructure.DescriptorName: descriptorBytes} {
+		if err := os.WriteFile(filepath.Join(previous, name), raw, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	inventoryOutput := filepath.Join(parent, "previous-inventory")
+	if _, err := prepareSourceArtifact(t.Context(), []string{"prepare-inventory", previous, inventoryOutput}, nil); err != nil {
+		t.Fatal(err)
+	}
+	inventoryRaw, err := os.ReadFile(filepath.Join(inventoryOutput, "infrastructure-enrollment.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(previous, "infrastructure-enrollment.json"), inventoryRaw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	forwardDescriptor, err := infrastructure.PrepareDescriptor("two", 2, nodeBytes, preparedTemplate)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(descriptor, forwardDescriptor, 0600); err != nil {
+		t.Fatal(err)
+	}
+	forwardCustom := func(artifact []byte) json.RawMessage {
+		var fields map[string]any
+		if err := json.Unmarshal(custom(artifact), &fields); err != nil {
+			t.Fatal(err)
+		}
+		fields["release_identity"], fields["release_version"] = "two", 2
+		raw, err := json.Marshal(fields)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	initialPlan := plan
+	plan.Schema = "ardents-source-forward-release-plan-v1"
+	plan.ProgramCustom, plan.GenerationCustom = forwardCustom(nodeBytes), forwardCustom(forwardDescriptor)
+	writePlan()
+	forwardOutput, forwardHistory := filepath.Join(parent, "forward-metadata"), filepath.Join(parent, "forward-verification")
+	forwardArgs := []string{planPath, keyRoot, forwardOutput, forwardHistory, previous}
+	forwardChild := exec.CommandContext(t.Context(), command, append([]string{"source", "sign-forward-release"}, forwardArgs...)...)
+	if out, err := forwardChild.CombinedOutput(); err != nil || !bytes.Contains(out, []byte(`"operation":"source.sign-forward-release"`)) {
+		t.Fatal("canonical forward signing", string(out), err)
+	}
+	forwardRoot, err := os.ReadFile(filepath.Join(forwardOutput, "root.json"))
+	if err != nil || !bytes.Equal(forwardRoot, rootBytes) {
+		t.Fatal("forward Root changed", err)
+	}
+	for _, name := range []string{"timestamp.json", "snapshot.json", "targets.json"} {
+		raw, err := os.ReadFile(filepath.Join(forwardOutput, name))
+		var value struct {
+			Signed struct {
+				Version int64 `json:"version"`
+			} `json:"signed"`
+		}
+		if err != nil || json.Unmarshal(raw, &value) != nil || value.Signed.Version != 2 {
+			t.Fatal("metadata did not advance", name, err)
+		}
+	}
+	// Equal descriptor version refuses before any output/diagnostic birth.
+	if err := os.WriteFile(descriptor, descriptorBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	plan.ProgramCustom, plan.GenerationCustom = custom(nodeBytes), custom(descriptorBytes)
+	writePlan()
+	refusedOutput, refusedHistory := filepath.Join(parent, "equal-metadata"), filepath.Join(parent, "equal-verification")
+	if raw, err := signSourceRelease(t.Context(), []string{planPath, keyRoot, refusedOutput, refusedHistory, previous}, true, nil); err == nil || raw != nil {
+		t.Fatal("equal release signed", err)
+	}
+	for _, path := range []string{refusedOutput, refusedHistory} {
+		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("equal-version dependent effect", path, err)
+		}
+	}
+	plan = initialPlan
+	writePlan()
 	// A real Control ELF cannot be substituted for the Node target, even with
 	// matching descriptor hashes and otherwise accepted fixture declarations.
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
@@ -195,7 +288,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	plan.ProgramCustom, plan.GenerationCustom = custom(controlBytes), custom(badDescriptor)
 	writePlan()
 	signed := false
-	if raw, err := signInitialSourceRelease(t.Context(), []string{planPath, keyRoot, filepath.Join(parent, "wrong-program"), filepath.Join(parent, "wrong-verification")}, func(string, *os.File) { signed = true }); err == nil || raw != nil || signed {
+	if raw, err := signSourceRelease(t.Context(), []string{planPath, keyRoot, filepath.Join(parent, "wrong-program"), filepath.Join(parent, "wrong-verification")}, false, func(string, *os.File) { signed = true }); err == nil || raw != nil || signed {
 		t.Fatal("wrong executable reached signing", err, signed)
 	}
 	if err := os.WriteFile(program, nodeBytes, 0600); err != nil {
@@ -209,7 +302,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	seen := false
-	raw, err := signInitialSourceRelease(ctx, []string{planPath, keyRoot, filepath.Join(parent, "failed-metadata"), filepath.Join(parent, "failed-verification")}, func(stage string, file *os.File) {
+	raw, err := signSourceRelease(ctx, []string{planPath, keyRoot, filepath.Join(parent, "failed-metadata"), filepath.Join(parent, "failed-verification")}, false, func(stage string, file *os.File) {
 		if stage != "signed" {
 			return
 		}

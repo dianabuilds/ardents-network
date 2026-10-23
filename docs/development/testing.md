@@ -16,6 +16,44 @@ place, without repair, reset or deletion. A baseline binary containing only this
 regression addition supplies the causal RED control; it grants no installed or
 Release authority and its failures remain evidence alongside the fixed result.
 
+`source-replacement-linux` / `make source-replacement-check` selects the same
+private Ubuntu stand with the fixed `-timeout=10m` runner. It requires a NEW exact
+bootstrap receipt and direct Product Owner acceptance before installed execution.
+Additional pinned `NODE_B`, `NODE_C`, `NODE_EXPIRED`, `REQUEST_B`, `REQUEST_C`, `OWNER_TEST` and independently
+prepared `DISTRIBUTION_B`, `DISTRIBUTION_C`, `DISTRIBUTION_EXPIRED` inputs use the existing
+`ARDENTS_SOURCE_STARTUP_` prefix. A is the real initial program, B has different
+program bytes, and C has the same B program with an actual permitted address
+change. Cases are `replacement`, `replacement-credential-loss` and
+`replacement-state-loss`; the runner also selects original account/binding/unit
+substitutions, an actual candidate-directory collision, same-inode read-only
+selection/unit mounts, an actually expired canonically signed forward Release
+and five original history-refusal FD/flock controls. The expired candidate uses
+the same B program and fresh forward-purpose metadata with a short declared
+expiry; the test observes actual time beyond that expiry, rather than changing
+Release's reference clock or substituting a verification result. Every
+case uses a fresh own stand. Mount controls require actual root `mount`/`umount`
+inside that original private namespace, preserving first and cleanup failures.
+The positive case proves
+four distinct invocations with complete original domain/native retirement,
+held-join denial, two strict forward replacements, replay refusal and actual
+non-root mTLS distribution after each start. An independent TCP probe must see
+the previous listener refuse after each joined retirement. An independent55-record/native
+oracle checks sealed inventories, exact predecessor/retirement/Release-history
+commitments and same-inode selection/unit publication. Missing retained input
+controls must refuse before transition births. Every complete retired invocation
+also runs the same-source original history FD/flock success/contention oracle
+without GC; the five refusal cases retain its exact earlier cleanup regressions.
+Real partial transitions must keep the blocker and unchanged journal through
+subsequent replay/start refusal after the physical fault is removed. No case establishes crash
+continuation, independent families or whole-product qualification.
+
+`network-signing-linux` additionally runs Source's native read-only State
+inspection tests: signed retained history, actual numeric ownership, existing
+exclusive lease, copied-handle denial/join, live-original refusal, expiry,
+missing/substituted semantic inputs and failed-acquisition descriptor release
+without GC. These component checks initialize no installed Source and require
+no installed bootstrap decision. Cross-compilation includes their exact binary.
+
 `source-restart-linux` / `make source-restart-check` selects the same private
 stand and pinned `ARDENTS_SOURCE_STARTUP_*` input declarations below, with an
 eight-minute original profile bound and a **separately accepted exact bootstrap

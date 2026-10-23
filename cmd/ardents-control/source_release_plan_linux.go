@@ -26,10 +26,14 @@ type sourceReleasePlan struct {
 	GenerationCustom json.RawMessage `json:"generation_custom"`
 }
 
-func decodeSourceReleasePlan(raw []byte, now time.Time) (sourceReleasePlan, error) {
+func decodeSourceReleasePurpose(raw []byte, now time.Time, forward bool) (sourceReleasePlan, error) {
 	var plan sourceReleasePlan
+	schema := "ardents-source-initial-release-plan-v1"
+	if forward {
+		schema = "ardents-source-forward-release-plan-v1"
+	}
 	if len(raw) == 0 || len(raw) > 1<<20 || sourceDeclarationObject(raw, &plan, "schema", "network", "reference_time", "expires", "program", "descriptor", "template", "program_custom", "generation_custom") != nil ||
-		plan.Schema != "ardents-source-initial-release-plan-v1" || plan.Network == "" || plan.Reference.IsZero() || !plan.Expires.After(now) || !plan.Expires.After(plan.Reference) || plan.Expires.Sub(plan.Reference) > 7*24*time.Hour ||
+		plan.Schema != schema || plan.Network == "" || plan.Reference.IsZero() || !plan.Expires.After(now) || !plan.Expires.After(plan.Reference) || plan.Expires.Sub(plan.Reference) > 7*24*time.Hour ||
 		plan.Reference.Before(now.Add(-5*time.Minute)) || plan.Reference.After(now.Add(time.Minute)) {
 		return sourceReleasePlan{}, errSourceControlInput
 	}
@@ -78,7 +82,7 @@ func sourceDeclarationObject(raw []byte, value any, fields ...string) error {
 
 func validateSourceReleaseResources(plan sourceReleasePlan, program, descriptor, template []byte) error {
 	d, err := infrastructure.ValidateResources(descriptor, program, template)
-	if err != nil || d.ReleaseVersion != 1 || !bytes.Equal(template, []byte(infrastructure.SourceTemplate)) {
+	if err != nil || (plan.Schema == "ardents-source-initial-release-plan-v1" && d.ReleaseVersion != 1) || !bytes.Equal(template, []byte(infrastructure.SourceTemplate)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))
@@ -113,7 +117,7 @@ func validateSourceReleaseResources(plan sourceReleasePlan, program, descriptor,
 			Release string `json:"release_identity"`
 			Version int64  `json:"release_version"`
 		}
-		if json.Unmarshal(raw, &identity) != nil || identity.Release != d.ReleaseIdentity || identity.Version != 1 {
+		if json.Unmarshal(raw, &identity) != nil || identity.Release != d.ReleaseIdentity || identity.Version != d.ReleaseVersion {
 			return errSourceControlInput
 		}
 		var fields map[string]json.RawMessage

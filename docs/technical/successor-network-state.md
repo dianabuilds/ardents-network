@@ -408,6 +408,22 @@ duty or effective-family eligibility. Partial acceptance remains durable state,
 never permission to reset or automatically repeat initialization. Native operator
 preparation and the complete signed producer/client chain need their own evidence.
 
+The root-only Linux `OpenSourceInspection` supports explicit stopped Source
+replacement through the canonical Node composition. It retains the original
+finite caller, independently opens existing read-only State/participation
+descriptors under their own exclusive leases, and binds checks to the exact
+serving declaration and observed numeric principal. It validates the retained
+signed chain, security floor, pending evidence, trusted currentness and absence
+of unresolved participation producers. Missing markers, pointers or floors,
+unknown/partial entries, substitution and original native failures refuse;
+opening never initializes, repairs, prunes, clears exposure or activates a pending
+generation. It constructs no mutable State runtime, Source listener, acquisition
+plan or `CurrentRuntime` observation. Copies share synchronous local denial,
+first failure and joined descriptor/lease release. Installation owns the separate
+original retirement and replacement transaction; it closes the inspection
+before publishing successful completion. Native component tests belong to
+`network-signing-linux`; they do not establish installed replacement acceptance.
+
 `ardents-control source inspect-latest` directly consumes Source's finite
 `InspectLatest` contact. It retains original local public inputs and its own
 protected client key, uses the shared complete declaration/key-separation/mTLS

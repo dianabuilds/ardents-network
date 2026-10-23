@@ -29,6 +29,8 @@ func runSourceControl(args []string, out io.Writer) error {
 		return runSourceInitialKeys(args[1:], out)
 	case "sign-initial-release":
 		return runSourceReleaseSigning(args[1:], out)
+	case "sign-forward-release":
+		return runSourceReleasePurpose(args[1:], out, true)
 	case "prepare-template", "prepare-descriptor", "prepare-inventory":
 		return runSourceArtifactPreparation(args, out)
 	case "inspect-latest":

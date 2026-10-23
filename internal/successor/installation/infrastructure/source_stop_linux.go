@@ -61,6 +61,9 @@ func StopSource(ctx context.Context, v *release.Verifier, binding, history strin
 		return err
 	}
 	selection := s.chain.initial.selection
+	if s.chain.latestSelection != selection {
+		return ErrBinding
+	}
 	b := selection.binding
 	started := s.chain.latest
 	if err = verifySourceControllerProgram(ctx, selection.files[filepath.Join(selection.sealed, ProgramName)].raw); err != nil {

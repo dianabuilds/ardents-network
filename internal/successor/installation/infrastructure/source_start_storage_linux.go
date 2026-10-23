@@ -85,7 +85,7 @@ func createSourceStartStorage(ctx context.Context, selection *sourceSelection, n
 		return s, err
 	}
 	_, phase, _, _ := number.schema()
-	err = s.record(phase, path, s.journal.info, digest(selection.files[filepath.Join(root, "binding.json")].raw))
+	err = s.record(phase, path, s.journal.info, digest(selection.bindingBytes()))
 	return s, err
 }
 

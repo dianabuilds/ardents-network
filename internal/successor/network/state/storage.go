@@ -14,6 +14,10 @@ func loadCurrent(config config, storage *durable2.Root) (*epoch2.Decision, error
 	if err != nil {
 		return nil, err
 	}
+	return loadCurrentValues(config, current, values)
+}
+
+func loadCurrentValues(config config, current string, values []durable2.Generation) (*epoch2.Decision, error) {
 	generations := make(map[string]durable2.Generation, len(values))
 	for _, value := range values {
 		generations[value.Name] = value

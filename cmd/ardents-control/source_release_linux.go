@@ -25,14 +25,25 @@ import (
 )
 
 func runSourceReleaseSigning(args []string, out io.Writer) error {
-	if len(args) != 4 {
+	return runSourceReleasePurpose(args, out, false)
+}
+
+func runSourceReleasePurpose(args []string, out io.Writer, forward bool) error {
+	wanted, operation := 4, "sign-initial-release"
+	if forward {
+		wanted, operation = 5, "sign-forward-release"
+	}
+	if len(args) != wanted {
+		if forward {
+			return errors.New("usage: ardents-control source sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION")
+		}
 		return errors.New("usage: ardents-control source sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	root, err := signInitialSourceRelease(ctx, args, nil)
+	root, err := signSourceRelease(ctx, args, forward, nil)
 	if err != nil {
 		return &sourceControlFailure{err}
 	}
@@ -44,7 +55,7 @@ func runSourceReleaseSigning(args []string, out io.Writer) error {
 		Installed           bool     `json:"installed_qualification"`
 		IndependentCustody  bool     `json:"independent_custody"`
 		IndependentBuilders bool     `json:"independent_builders"`
-	}{"source.sign-initial-release", hex.EncodeToString(digest[:]), []string{infrastructure.ProgramTarget, infrastructure.GenerationTarget}, false, false, false})
+	}{"source." + operation, hex.EncodeToString(digest[:]), []string{infrastructure.ProgramTarget, infrastructure.GenerationTarget}, false, false, false})
 	if err != nil {
 		return err
 	}
@@ -52,11 +63,15 @@ func runSourceReleaseSigning(args []string, out io.Writer) error {
 }
 
 // Original private keys never enter Release/Installation. This one root
-// operation admits only the two initial Source targets, obtains actual Release
+// operation admits only the two purpose-bound Source targets, obtains actual Release
 // decisions under one diagnostic verifier, then writes public metadata after
 // all original input and physical cleanup checks. Partial outputs stay retained.
-func signInitialSourceRelease(ctx context.Context, args []string, observe func(string, *os.File)) (result []byte, returned error) {
-	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != 4 {
+func signSourceRelease(ctx context.Context, args []string, forward bool, observe func(string, *os.File)) (result []byte, returned error) {
+	wantedArguments := 4
+	if forward {
+		wantedArguments = 5
+	}
+	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != wantedArguments {
 		return nil, errSourceControlInput
 	}
 	for _, path := range args {
@@ -82,7 +97,7 @@ func signInitialSourceRelease(ctx context.Context, args []string, observe func(s
 	if err != nil {
 		return nil, err
 	}
-	plan, err := decodeSourceReleasePlan(planRaw, time.Now().UTC())
+	plan, err := decodeSourceReleasePurpose(planRaw, time.Now().UTC(), forward)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +119,13 @@ func signInitialSourceRelease(ctx context.Context, args []string, observe func(s
 	}
 	if err := validateSourceReleaseResources(plan, artifacts[0], artifacts[1], artifacts[2]); err != nil {
 		return nil, err
+	}
+	var predecessor *sourceReleasePredecessor
+	if forward {
+		predecessor, err = readSourceReleasePredecessor(inputs, args[4], plan, artifacts[1])
+		if err != nil {
+			return nil, err
+		}
 	}
 	keyDirectory, err := inputs.directory(args[1])
 	if err != nil {
@@ -127,7 +149,7 @@ func signInitialSourceRelease(ctx context.Context, args []string, observe func(s
 	}
 	// Retain both future-output parent namespaces before private-key use.
 	var outputParents [2]*sourceControlFile
-	for i, path := range args[2:] {
+	for i, path := range args[2:4] {
 		parent, err := inputs.directory(filepath.Dir(path))
 		if err != nil {
 			return nil, err
@@ -163,6 +185,11 @@ func signInitialSourceRelease(ctx context.Context, args []string, observe func(s
 		for _, name := range names {
 			if !wanted[name] {
 				return errSourceControlInput
+			}
+		}
+		if predecessor != nil {
+			if err := predecessor.check(); err != nil {
+				return err
 			}
 		}
 		return inputs.checkProtected()
@@ -216,7 +243,29 @@ func signInitialSourceRelease(ctx context.Context, args []string, observe func(s
 	for _, role := range metadata.TOP_LEVEL_ROLE_NAMES {
 		root.Signed.Roles[role] = &metadata.Role{KeyIDs: append([]string(nil), keyIDs...), Threshold: 3}
 	}
+	var diagnostic *release.Verifier
+	defer func() {
+		if diagnostic != nil {
+			returned = errors.Join(returned, diagnostic.Close())
+		}
+	}()
+	if predecessor != nil {
+		if err := predecessor.matchKeys(keyIDs); err != nil {
+			return nil, err
+		}
+		root = predecessor.root
+		diagnostic, err = openSourceReleaseDiagnostic(inputs, outputParents[1], args[3], check)
+		if err != nil {
+			return nil, err
+		}
+		if err := predecessor.authenticate(ctx, diagnostic, plan); err != nil {
+			return nil, err
+		}
+	}
 	targets := metadata.Targets(plan.Expires)
+	if predecessor != nil {
+		targets.Signed.Version = predecessor.targetsVersion + 1
+	}
 	paths := []string{infrastructure.ProgramTarget, infrastructure.GenerationTarget}
 	customs := []json.RawMessage{plan.ProgramCustom, plan.GenerationCustom}
 	for i, path := range paths {
@@ -236,9 +285,14 @@ func signInitialSourceRelease(ctx context.Context, args []string, observe func(s
 		raw, err := value.ToBytes(false)
 		return raw, errors.Join(err, check())
 	}
-	rootBytes, err := sign(root)
-	if err != nil {
-		return nil, err
+	var rootBytes []byte
+	if predecessor == nil {
+		rootBytes, err = sign(root)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		rootBytes = bytes.Clone(predecessor.files["root.json"])
 	}
 	targetBytes, err := sign(targets)
 	if err != nil {
@@ -246,12 +300,20 @@ func signInitialSourceRelease(ctx context.Context, args []string, observe func(s
 	}
 	snapshot := metadata.Snapshot(plan.Expires)
 	snapshot.Signed.Meta["targets.json"] = sourceMetadataReference(targetBytes)
+	snapshot.Signed.Meta["targets.json"].Version = targets.Signed.Version
+	if predecessor != nil {
+		snapshot.Signed.Version = predecessor.snapshotVersion + 1
+	}
 	snapshotBytes, err := sign(snapshot)
 	if err != nil {
 		return nil, err
 	}
 	timestamp := metadata.Timestamp(plan.Expires)
 	timestamp.Signed.Meta["snapshot.json"] = sourceMetadataReference(snapshotBytes)
+	timestamp.Signed.Meta["snapshot.json"].Version = snapshot.Signed.Version
+	if predecessor != nil {
+		timestamp.Signed.Version = predecessor.timestampVersion + 1
+	}
 	timestampBytes, err := sign(timestamp)
 	if err != nil {
 		return nil, err
@@ -263,23 +325,12 @@ func signInitialSourceRelease(ctx context.Context, args []string, observe func(s
 		return nil, err
 	}
 	// The diagnostic history is exclusively born and never reused on failure.
-	parent := outputParents[1]
-	if err := syscall.Mkdirat(int(parent.file.Fd()), filepath.Base(args[3]), 0700); err != nil {
-		return nil, err
-	}
-	directory, err := sourceControlOpen(parent, filepath.Base(args[3]), true)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := inputs.retain(directory, parent, filepath.Base(args[3])); err != nil {
-		return nil, err
-	}
-	if err := errors.Join(parent.file.Sync(), check()); err != nil {
-		return nil, err
-	}
-	v, err := release.Open(args[3])
-	if err != nil {
-		return nil, err
+	v := diagnostic
+	if v == nil {
+		v, err = openSourceReleaseDiagnostic(inputs, outputParents[1], args[3], check)
+		if err != nil {
+			return nil, err
+		}
 	}
 	metadataFiles, err := release.StaticMetadataFiles(rootBytes, timestampBytes, snapshotBytes, targetBytes)
 	if err == nil {
@@ -301,6 +352,7 @@ func signInitialSourceRelease(ctx context.Context, args []string, observe func(s
 		}
 	}
 	err = errors.Join(err, v.Close(), check())
+	diagnostic = nil
 	if err != nil {
 		return nil, err
 	}
@@ -309,6 +361,26 @@ func signInitialSourceRelease(ctx context.Context, args []string, observe func(s
 		return nil, err
 	}
 	return bytes.Clone(rootBytes), check()
+}
+
+func openSourceReleaseDiagnostic(inputs *sourceControlInputs, parent *sourceControlFile, path string, check func() error) (*release.Verifier, error) {
+	if err := check(); err != nil {
+		return nil, err
+	}
+	if err := syscall.Mkdirat(int(parent.file.Fd()), filepath.Base(path), 0700); err != nil {
+		return nil, err
+	}
+	directory, err := sourceControlOpen(parent, filepath.Base(path), true)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := inputs.retain(directory, parent, filepath.Base(path)); err != nil {
+		return nil, err
+	}
+	if err := errors.Join(parent.file.Sync(), check()); err != nil {
+		return nil, err
+	}
+	return release.Open(path)
 }
 
 type sourceSignableMetadata interface {

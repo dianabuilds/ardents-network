@@ -17,13 +17,14 @@ type sourceNamespace struct {
 	absent      map[string]bool
 	terminal    error
 	closed      bool
+	paths       []string
 }
 
 func openSourceNamespace(ctx context.Context, paths []string) (result *sourceNamespace, err error) {
 	if ctx == nil || len(paths) == 0 || len(paths) > 32 {
 		return nil, ErrInput
 	}
-	n := &sourceNamespace{ctx: ctx, directories: map[string]*os.File{}, identities: map[string]os.FileInfo{}, absent: map[string]bool{}}
+	n := &sourceNamespace{ctx: ctx, directories: map[string]*os.File{}, identities: map[string]os.FileInfo{}, absent: map[string]bool{}, paths: append([]string(nil), paths...)}
 	defer func() {
 		if err != nil {
 			n.terminal = err

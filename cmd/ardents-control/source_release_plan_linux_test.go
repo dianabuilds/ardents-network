@@ -19,8 +19,18 @@ func TestSourceReleasePlanKeepsDistinctClosedCurrentPurpose(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := decodeSourceReleasePlan(raw, now); err != nil {
+	if _, err := decodeSourceReleasePurpose(raw, now, false); err != nil {
 		t.Fatal("complete current declaration", err)
+	}
+	forward := bytes.ReplaceAll(raw, []byte("ardents-source-initial-release-plan-v1"), []byte("ardents-source-forward-release-plan-v1"))
+	if _, err := decodeSourceReleasePurpose(forward, now, false); err == nil {
+		t.Fatal("forward purpose entered initial signing")
+	}
+	if _, err := decodeSourceReleasePurpose(raw, now, true); err == nil {
+		t.Fatal("initial purpose entered forward signing")
+	}
+	if _, err := decodeSourceReleasePurpose(forward, now, true); err != nil {
+		t.Fatal("distinct complete forward purpose", err)
 	}
 	for name, bad := range map[string][]byte{
 		"endpoint-purpose": bytes.ReplaceAll(raw, []byte("ardents-source-initial-release-plan-v1"), []byte("ardents-qualification-release-signing-plan-v1")),
@@ -31,21 +41,21 @@ func TestSourceReleasePlanKeepsDistinctClosedCurrentPurpose(t *testing.T) {
 		"trailing":         append(bytes.Clone(raw), []byte(` {}`)...),
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := decodeSourceReleasePlan(bad, now); err == nil {
+			if _, err := decodeSourceReleasePurpose(bad, now, false); err == nil {
 				t.Fatal("foreign/ambiguous purpose admitted")
 			}
 		})
 	}
 	for name, at := range map[string]time.Time{"stale": now.Add(6 * time.Minute), "future-reference": now.Add(-2 * time.Minute), "expired": now.Add(2 * time.Hour)} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := decodeSourceReleasePlan(raw, at); err == nil {
+			if _, err := decodeSourceReleasePurpose(raw, at, false); err == nil {
 				t.Fatal("uncurrent signing time admitted")
 			}
 		})
 	}
 	plan.Expires = now.Add(8 * 24 * time.Hour)
 	raw, _ = json.Marshal(plan)
-	if _, err := decodeSourceReleasePlan(raw, now); err == nil {
+	if _, err := decodeSourceReleasePurpose(raw, now, false); err == nil {
 		t.Fatal("unbounded metadata lifetime admitted")
 	}
 }

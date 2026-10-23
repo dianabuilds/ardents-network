@@ -99,11 +99,10 @@ func startSourceAttempt(ctx context.Context, v *release.Verifier, a Authorizatio
 		return err
 	}
 	selection := s.initial.selection
-	b := selection.binding
 	// A complete final record is not proof that the original creator returned.
 	// This independent shared lock excludes its original exclusive writer until
 	// it has joined every observer/helper and released the initial descriptor.
-	originalJournal := selection.files[b.Request.InstallationRoot+".source-initial-journal"]
+	originalJournal := s.initial.birthJournal
 	if originalJournal == nil {
 		return ErrBinding
 	}
@@ -200,7 +199,7 @@ func (s *sourceStartAttempt) checkCompletedTranscript() error {
 		return err
 	}
 	storage, barrier := s.storage, s.barrier
-	binding := s.initial.selection.files[filepath.Join(s.initial.selection.binding.Request.InstallationRoot, "binding.json")].raw
+	binding := s.initial.selection.bindingBytes()
 	recorded, err := decodeSourceStartRecords(storage.journal.body, storage.number, storage.journal.path, storage.path,
 		digest(binding), digest(barrier.guard.body), digest(barrier.record.body), digest(barrier.archive.body), digest(frame[:]), s.initial.selection.binding.GID)
 	if err != nil {

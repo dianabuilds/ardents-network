@@ -13,9 +13,10 @@ import (
 )
 
 type sourceHistoryChain struct {
-	initial *sourceInitial
-	latest  *sourceStartHistory
-	prior   string
+	initial         *sourceInitial
+	latest          *sourceStartHistory
+	prior           string
+	latestSelection *sourceSelection
 }
 
 type sourceRetirement struct {
@@ -52,11 +53,20 @@ func openSourceHistoryChain(ctx context.Context, v *release.Verifier, binding, h
 	if err != nil {
 		return nil, err
 	}
-	initialHistory, err := chain.initial.history.commitment(v, s.files[binding].raw)
+	initialHistory, err := chain.initial.history.selectedCommitment(v, s.bindingBytes())
 	if err != nil {
 		return nil, err
 	}
-	for n := sourceAttemptNumber(0); n <= last; n++ {
+	chain.prior = chain.initial.priorRetirement
+	chain.latestSelection = s
+	if last < chain.initial.firstAttempt {
+		if chain.initial.previousStart == nil || last+1 != chain.initial.firstAttempt || chain.initial.previousStart.number != last {
+			return nil, ErrBinding
+		}
+		chain.latest, chain.latestSelection = chain.initial.previousStart, chain.initial.previousSelection
+		return chain, chain.initial.check()
+	}
+	for n := chain.initial.firstAttempt; n <= last; n++ {
 		chain.latest, err = readSourceStartHistory(s, n, initialHistory, chain.prior)
 		if err != nil {
 			return nil, err
@@ -83,7 +93,7 @@ func openSourceRetirement(ctx context.Context, v *release.Verifier, binding, his
 			retired = nil
 		}
 	}()
-	retired, err = readSourceRetirement(chain.initial.selection, chain.latest)
+	retired, err = readSourceRetirement(chain.latestSelection, chain.latest)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +138,7 @@ func readSourceRetirementProof(s *sourceSelection, started *sourceStartHistory) 
 	}
 	f := r.result
 	a := started.archive
-	binding := digest(s.files[filepath.Join(b.Request.InstallationRoot, "binding.json")].raw)
+	binding := digest(s.bindingBytes())
 	if f.Schema != "ardents-source-retirement-v1" || f.Attempt != uint32(started.number) || f.Generation != b.Generation || f.BindingSHA256 != binding || f.StartSHA256 != started.sha256 || f.InvocationID != a.InvocationID || f.PID != a.PID || f.Manager != a.Manager || f.StartedRealtime != a.StartedRealtime || f.StartedMonotonic != a.StartedMonotonic || f.ExitedRealtime < f.StartedRealtime || f.ExitedMonotonic < f.StartedMonotonic || f.Code != 1 || f.Status != 0 {
 		return nil, ErrBinding
 	}
@@ -190,19 +200,29 @@ func (r *sourceRetirement) check() error {
 }
 
 func (r *sourceRetirement) stopped(facts systemd.SourceObservation) error {
+	if r == nil || r.chain == nil || r.chain.initial == nil {
+		return ErrInput
+	}
+	b := r.chain.initial.selection.binding
+	return r.stoppedFor(facts, b.Request, b.Generation)
+}
+
+// Replacement compares the newly loaded immutable configuration while retaining
+// the exact old execution/join result. Inactive/zero fields alone never supply
+// that result. No first-start or arbitrary manager policy is generalized here.
+func (r *sourceRetirement) stoppedFor(facts systemd.SourceObservation, request SourceRequest, generation string) error {
 	if err := r.check(); err != nil {
 		return err
 	}
-	s := r.chain.initial.selection
 	if facts.Manager != r.result.Manager {
 		return ErrBinding
 	}
 	// A collected, newly loaded inactive object has no execution facts. The
 	// original complete durable retirement remains mandatory in either case.
-	if verifySourceStopped(facts.Unit, facts.Service, s.binding.Request, s.binding.Generation) == nil {
+	if verifySourceStopped(facts.Unit, facts.Service, request, generation) == nil {
 		return nil
 	}
-	return verifySourceCompletedStop(facts.Unit, facts.Service, s.binding.Request, s.binding.Generation, r.chain.latest, r.result.execution())
+	return verifySourceCompletedStop(facts.Unit, facts.Service, request, generation, r.chain.latest, r.result.execution())
 }
 
 func (c *sourceHistoryChain) close() error {

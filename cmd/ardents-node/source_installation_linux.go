@@ -11,18 +11,21 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
+	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
 func runSourceInstallation(parent context.Context, args []string, out io.Writer) error {
 	if parent == nil || len(args) == 0 {
-		return errors.New("usage: ardents-node installation (install-initial-stopped|start-source|stop-source|restart-source) [ARGUMENTS]")
+		return errors.New("usage: ardents-node installation (install-initial-stopped|start-source|stop-source|restart-source|replace-source) [ARGUMENTS]")
 	}
 	initial := args[0] == "install-initial-stopped"
 	stopping := args[0] == "stop-source"
 	starting := args[0] == "start-source" || args[0] == "restart-source"
-	if (initial && len(args) != 7) || (stopping && len(args) != 3) || (starting && len(args) != 6) || (!initial && !stopping && !starting) {
-		return errors.New("usage: ardents-node installation install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST | (start-source|restart-source) DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING | stop-source HISTORY BINDING")
+	replacing := args[0] == "replace-source"
+	if (initial && len(args) != 7) || (stopping && len(args) != 3) || (starting && len(args) != 6) || (replacing && len(args) != 7) || (!initial && !stopping && !starting && !replacing) {
+		return errors.New("usage: ardents-node installation install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST | (start-source|restart-source) DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING | stop-source HISTORY BINDING | replace-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST")
 	}
 	if os.Geteuid() != 0 {
 		return &sourceCommandFailure{infrastructure.ErrInput}
@@ -41,6 +44,8 @@ func runSourceInstallation(parent context.Context, args []string, out io.Writer)
 			outcome = "source-stopped-completed"
 		} else if args[0] == "restart-source" {
 			outcome = "source-restart-completed"
+		} else if replacing {
+			outcome = "source-replacement-stopped-selected"
 		}
 		if err := writeSourceCommandOutcome(ctx, out, "installation.source", outcome); err != nil {
 			return &sourceCommandFailure{err}
@@ -51,8 +56,11 @@ func runSourceInstallation(parent context.Context, args []string, out io.Writer)
 
 func performSourceInstallation(ctx context.Context, args []string, initial bool) (err error) {
 	var inputs infrastructure.SourceInputs
+	var inspection state.SourceInspection
+	replacing := args[0] == "replace-source"
 	var verifier *release.Verifier
 	defer func() {
+		err = errors.Join(err, inspection.Close())
 		err = errors.Join(err, inputs.Close())
 		if verifier != nil {
 			err = errors.Join(err, verifier.Close())
@@ -74,7 +82,7 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 	if !sourceInstallationIndependent(distribution, history) {
 		return infrastructure.ErrBinding
 	}
-	if initial {
+	if initial || replacing {
 		inputs, err = infrastructure.ReadSourceInputs(ctx, args[6])
 		if err != nil {
 			return err
@@ -125,6 +133,25 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 	}
 	if initial {
 		return infrastructure.InstallInitialStoppedSource(verifier, authorization, inputs, distribution, history)
+	}
+	if replacing {
+		raw, err := inputs.ServingPlan()
+		if err != nil {
+			return err
+		}
+		plan, err := source.DecodeServingDeclaration(raw)
+		if err != nil {
+			return err
+		}
+		config, err := installedSourceStateConfig(plan)
+		if err != nil {
+			return err
+		}
+		inspection, err = state.OpenSourceInspection(ctx, config)
+		if err != nil {
+			return err
+		}
+		return infrastructure.ReplaceSource(ctx, verifier, authorization, inputs, inspection, args[5], distribution, history)
 	}
 	if args[0] == "restart-source" {
 		return infrastructure.RestartSource(ctx, verifier, authorization, args[5], history)

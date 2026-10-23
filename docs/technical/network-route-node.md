@@ -1770,6 +1770,122 @@ recovery must refuse a new Node rather than erase that fact. Bounded recovery
 can legitimately remain unavailable. Power-loss and arbitrary host repair are
 not inferred from process-kill controls.
 
+#### Explicit forward Source transition grammar
+
+The bounded manual replacement has three distinct operations, with no implicit
+stop or Start: prepare/sign a forward candidate, `stop-source` the original
+invocation, then `replace-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK
+BINDING REQUEST`. A separate explicit `restart-source` starts the newly selected
+generation. These are the implementation contract for the selected replacement
+slice; the existing initial and restart consumers alone do not implement it.
+
+Preparation retains the original purpose-specific private inputs and public
+predecessor metadata. `sign-forward-release` preserves the exact predecessor
+Root and key set, increments timestamp/snapshot/Targets versions and requires a
+strictly greater descriptor release version. It first authenticates the complete
+predecessor pair, then the candidate pair under that same diagnostic verifier;
+the diagnostic history is separate from the installation's retained history.
+Only Release decides either pair. A fresh diagnostic root or output receipt
+never substitutes for the installed verifier's original trust and floors.
+
+Replacement requires complete original retirement and the original first-start
+journal's exclusive lease before any candidate birth. It retains the initial
+birth transcript, every prior generation's complete immutable inventory, every
+start/retirement transcript, exact account/UID/GID, original credentials, State,
+participation and Release-history identities. Replacement provenance is distinct
+from the initial binding grammar; an arbitrary predecessor field cannot enter
+the initial/first-start reader. The replacement commitment names the exact old
+binding, generation and final retirement, new descriptor/plan/request and
+retained native resources. It grants no runtime or Release authority.
+
+Before the first replacement effect and around subsequent native observations,
+Installation consumes Network State's opaque `SourceInspection` against the
+exact original public serving declaration and numeric UID/GID. State retains
+independent read-only descriptors and the existing exclusive State and local
+participation leases. It authenticates the retained signed chain, current
+security floor, pending evidence and trusted time, and refuses missing,
+conflicting, uncertain or expired history and unresolved participation producers.
+It initializes, repairs and prunes nothing, opens no runtime or listener and
+returns no `CurrentRuntime` authority. Its original caller and copied handles
+share denial and joined Close; all physical inspection users and descriptors
+close before Installation removes its final replacement blocker. The old
+invocation's genuine retirement proof remains independently mandatory.
+
+The replacement writer records intent before each exclusive birth, seal,
+selection and fixed-unit publication, explicit manager reload and independent
+readback. Selected binding and fixed unit are separate durable effects, not one
+atomic transaction. An exclusive pending blocker survives any partial/uncertain
+write, readback, reload or Close; complete-looking records under that blocker
+refuse Start and replacement. No operation adopts, repairs, rolls back, removes
+or resumes a failed prefix. All original physical users join before custody
+returns; cancellation and late success preserve the original first failure and
+independent cleanup causes. A new explicit Start obtains its own fresh coherent
+Release/native/State/time/credential/protection observations and root-peer
+archive/ACK; no old ACK crosses a generation boundary.
+
+A resource-only generation may change the Source's bounded local serving
+declaration (for example its literal unprivileged listen address), preserving
+the exact program, signed fixed unit template, credentials and all semantic
+roots. The request and plan must agree and receive immutable replacement
+binding; a strictly forward signed descriptor/Release version is still required.
+This is an actual configuration change, not a comment, padding or protection
+template change. It supplies no new trust or capacity. Both old and new native
+listeners must be observed in their respective original invocations, with old
+listener/domain/native join preceding replacement and the new listener opening.
+
+The replacement selection is compact JSON plus LF, at most32KiB, ordered fields
+`schema`, `configuration`, `initial_generation`, `predecessor_binding_sha256`,
+`retirement_sha256`, `predecessor_attempt`. Schema is
+`ardents-source-replacement-binding-v1`. Its nested configuration has the
+existing binding field order but distinct schema
+`ardents-source-replacement-configuration-v1` and a nonempty exact predecessor
+generation. The original initial binding decoder remains initial-only. The
+initial generation, exact previous binding and complete original retirement
+commitment bind one retained lineage. The attempt sequence remains global,
+contiguous and bounded by64 across generations. An unchanged program requires
+an actually changed canonical listen address; formatting or descriptor-version
+changes alone supply no configuration delta. State/trust, credentials and the
+fixed protection policy remain exact.
+
+`<installation_root>.source-replacement-<generation>-journal` is root-only0600
+and exclusively born. Its55 ordered records use the existing closed record
+fields, with phases: `initial`, `replacement-admitted`, `predecessor-binding`,
+`predecessor-unit`, `predecessor-retired`; the original pending file's
+`file-intent/born/ready`; candidate `directory-intent/born/ready`; all twelve
+lexically ordered generation files' `file-intent/born/ready`; `seal-intent`,
+`sealed`; `selection-intent`, `selection-written`, `unit-intent`, `unit-written`,
+`reload-intent`, `replacement-verified`. The admitted commitment has distinct
+schema `ardents-source-replacement-history-v1`, binding the complete new selection
+to the same original Release-history native identity. Initial history commitment
+bytes are unchanged. A namespace bound of4096 sibling names prevents an unbounded
+ledger scan; exhaustion refuses without pruning.
+
+`<installation_root>/source-replacement-pending` has exact bytes
+`ardents-source-replacement-pending-v1`, LF, complete selection SHA256, LF.
+Unknown replacement journals refuse even before pending-file birth. Complete
+records under that blocker never admit a later start. Final original unlink
+follows every required sync/readback and original physical Close, with no required
+sync after unlink; losing that final unlink can only restore refusal. This is
+safe prefix retention, not recovery continuation.
+
+The fixed selection and unit are rewritten through independently retained
+physical mutation handles on their original inodes. Their complete predecessor
+bytes remain in the sealed generation; original preimage/native records and
+same-inode publication records account for the changed active bytes. Independent
+lineage readback checks those exact two historical observations against the
+current fixed-file inodes and every other initial/native birth against its
+unchanged actual resource. It consumes every intervening start/retirement record
+under that attempt's own generation, never the newest binding. A replacement
+writer's synchronous readback checks its own original blocked journal/identity;
+subsequent readers must acquire their own lock after that writer has joined.
+No public receipt or serialized phase recreates those original rights.
+
+Only the successful owned reload admits fresh observations of the three
+systemd generator output directories. All other original namespace pins and
+absence checks survive, and the original replaced observers physically close.
+The replacement manager handle exposes fixed observations and one reload;
+it exposes no Start, Stop, Enable, arbitrary selector or reconnect operation.
+
 #### Explicit Source retirement and subsequent invocation
 
 The supported root consumers are `ardents-node installation stop-source HISTORY

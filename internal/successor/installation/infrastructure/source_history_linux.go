@@ -110,6 +110,24 @@ func (h *sourceHistory) commitment(v *release.Verifier, binding []byte) (string,
 	if _, err := decodeSourceBinding(binding); err != nil {
 		return "", err
 	}
+	return h.commitmentBytes(v, binding, "ardents-source-initial-history-v1")
+}
+
+// A replacement has a separate private history commitment. This accepts only
+// its complete immutable grammar, never an initial binding with a predecessor
+// inserted. Original history custody and Release floors remain independently
+// checked; the digest does not supply a join, authorization or runtime permit.
+func (h *sourceHistory) selectedCommitment(v *release.Verifier, binding []byte) (string, error) {
+	if _, err := decodeSourceBinding(binding); err == nil {
+		return h.commitment(v, binding)
+	}
+	if _, err := decodeSourceReplacementBinding(binding); err != nil {
+		return "", err
+	}
+	return h.commitmentBytes(v, binding, "ardents-source-replacement-history-v1")
+}
+
+func (h *sourceHistory) commitmentBytes(v *release.Verifier, binding []byte, schema string) (string, error) {
 	if err := h.check(v); err != nil {
 		return "", err
 	}
@@ -123,7 +141,7 @@ func (h *sourceHistory) commitment(v *release.Verifier, binding []byte) (string,
 		Mode          uint32 `json:"mode"`
 		UID           uint32 `json:"uid"`
 		GID           uint32 `json:"gid"`
-	}{"ardents-source-initial-history-v1", digest(binding), h.path, uint64(native.Dev), native.Ino,
+	}{schema, digest(binding), h.path, uint64(native.Dev), native.Ino,
 		uint32(h.identities[h.path].Mode().Perm()), native.Uid, native.Gid})
 	if err != nil {
 		return "", err

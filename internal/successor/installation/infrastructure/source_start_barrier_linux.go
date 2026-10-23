@@ -55,11 +55,11 @@ func prepareSourceStartBarrier(owner *sourceStartAttempt) (barrier *sourceStartB
 	if err = s.birthDirectory(b.GID, admit); err != nil {
 		return barrier, err
 	}
-	binding := owner.initial.selection.files[filepath.Join(b.Request.InstallationRoot, "binding.json")].raw
+	binding := owner.initial.selection.bindingBytes()
 	if err = s.preparePending(digest(binding)); err != nil {
 		return barrier, err
 	}
-	history, err := owner.initial.history.commitment(owner.verifier, binding)
+	history, err := owner.initial.history.selectedCommitment(owner.verifier, binding)
 	if err != nil {
 		return barrier, err
 	}
@@ -193,7 +193,7 @@ func (b *sourceStartBarrier) observe() error {
 
 func (b *sourceStartBarrier) frame() ([160]byte, error) {
 	s := b.owner
-	binding := s.initial.selection.files[filepath.Join(s.initial.selection.binding.Request.InstallationRoot, "binding.json")].raw
+	binding := s.initial.selection.bindingBytes()
 	return completion.Encode(s.id, s.initial.selection.binding.Generation, digest(binding))
 }
 
@@ -337,7 +337,7 @@ func (s *sourceStartAttempt) archive() error {
 		return err
 	}
 	b := s.initial.selection.binding
-	binding := s.initial.selection.files[filepath.Join(b.Request.InstallationRoot, "binding.json")].raw
+	binding := s.initial.selection.bindingBytes()
 	_, _, _, archiveSchema := s.storage.number.schema()
 	archive := sourceStartArchive{archiveSchema, digest(s.barrier.guard.body), digest(binding), b.Generation, s.pid, hex.EncodeToString(s.id[:]), uint64(p.Dev), p.Ino, uint64(c.Dev), c.Ino, facts.Manager, execution.startedRealtime, execution.startedMonotonic}
 	raw, err := json.Marshal(archive)

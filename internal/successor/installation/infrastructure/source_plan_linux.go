@@ -4,9 +4,32 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"path/filepath"
+	"reflect"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 )
+
+// ServingPlan returns detached public declaration bytes under original input
+// admission. It grants no State authority and contains no private credential.
+func (s SourceInputs) ServingPlan() ([]byte, error) {
+	p := s.original
+	if p == nil {
+		return nil, ErrInput
+	}
+	if err := p.begin(); err != nil {
+		return nil, err
+	}
+	defer p.uses.Done()
+	p.ioMu.Lock()
+	defer p.ioMu.Unlock()
+	if err := p.local(); err != nil {
+		return nil, err
+	}
+	if len(p.files) < 2 || p.files[1].path != p.request.Plan {
+		return nil, ErrInput
+	}
+	return append([]byte(nil), p.files[1].raw...), nil
+}
 
 func checkSourceRuntimePair(certificate, key []byte) error {
 	pair, err := tls.X509KeyPair(certificate, key)
@@ -19,6 +42,25 @@ func checkSourceRuntimePair(certificate, key []byte) error {
 		}
 	}()
 	return source.ValidateServingCredential(pair)
+}
+
+// The bounded replacement may move its unprivileged listener but retains the
+// original Network/trust/credential/protection declaration. New actual runtime
+// TLS and State observations are still required at independent startup.
+func checkSourceForwardPlan(previous, candidate []byte) error {
+	old, err := source.DecodeServingDeclaration(previous)
+	if err != nil {
+		return err
+	}
+	next, err := source.DecodeServingDeclaration(candidate)
+	if err != nil {
+		return err
+	}
+	next.Address = old.Address
+	if !reflect.DeepEqual(old, next) {
+		return ErrBinding
+	}
+	return nil
 }
 
 // Installation owns Source-specific matching against the original plan bytes.

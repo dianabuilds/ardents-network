@@ -53,6 +53,14 @@ public receipt. The existing metadata's proposed `qualified` value describes
 that bounded component evidence, never installed qualification or independent
 builders. Review the plan/receipt alongside that evidence before signing.
 The output is `source-release-plan.json`; no manual JSON editing is needed.
+For an explicit forward candidate, add `--forward` and supply its actual
+strictly higher descriptor version and matching build records. This prepares
+the distinct forward plan schema; it neither copies an installed history nor
+creates another initial pin. Use canonical `source sign-forward-release` with
+the retained original five-key directory and complete predecessor distribution.
+The signer preserves the exact Root, authenticates the predecessor pair, then
+authenticates the successor under that diagnostic history. Installation still
+requires fresh decisions under its own original retained history and floors.
 The native Source signer independently checks original plan/resource/key custody
 and obtains actual Release decisions. This public transformation and any signed
 metadata still supply no direct PO bootstrap acceptance or runtime permission.

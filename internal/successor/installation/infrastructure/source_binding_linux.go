@@ -40,26 +40,40 @@ func decodeSourceBinding(raw []byte) (sourceBinding, error) {
 		return sourceBinding{}, ErrInput
 	}
 	if b.Schema != "ardents-source-binding-v1" || b.Invocation != "source" || b.Predecessor != "" ||
+		b.ProgramTarget != ProgramTarget || b.GenerationTarget != GenerationTarget {
+		return sourceBinding{}, ErrBinding
+	}
+	if err := validateSourceBindingConfiguration(b); err != nil {
+		return sourceBinding{}, err
+	}
+	return b, nil
+}
+
+// Shared configuration validation has no persisted-schema admission. Initial
+// and replacement readers independently select and authenticate their distinct
+// provenance grammars before calling it. It grants no Release or Start right.
+func validateSourceBindingConfiguration(b sourceBinding) error {
+	if b.Invocation != "source" ||
 		b.ProgramTarget != ProgramTarget || b.GenerationTarget != GenerationTarget || b.Account != "ardents-source" ||
 		b.UID < 100 || b.UID > 999 || b.GID != b.UID {
-		return sourceBinding{}, ErrBinding
+		return ErrBinding
 	}
 	for _, d := range []string{b.Generation, b.RequestSHA256, b.ProgramSHA256, b.TemplateSHA256, b.InventorySHA256, b.TargetsSHA256, b.PlanSHA256, b.UnitSHA256} {
 		if len(d) != 64 || strings.Trim(d, "0123456789abcdef") != "" {
-			return sourceBinding{}, ErrBinding
+			return ErrBinding
 		}
 	}
 	request, err := json.Marshal(b.Request)
 	if err != nil {
-		return sourceBinding{}, ErrInput
+		return ErrInput
 	}
 	request = append(request, '\n')
 	if _, err = DecodeSourceRequest(request); err != nil || digest(request) != b.RequestSHA256 {
-		return sourceBinding{}, ErrBinding
+		return ErrBinding
 	}
 	unit, err := RenderSourceUnit([]byte(SourceTemplate), b.Request, b.Generation)
 	if err != nil || b.TemplateSHA256 != digest([]byte(SourceTemplate)) || b.UnitSHA256 != digest(unit) {
-		return sourceBinding{}, ErrBinding
+		return ErrBinding
 	}
-	return b, nil
+	return nil
 }
