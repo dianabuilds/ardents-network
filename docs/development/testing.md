@@ -1,5 +1,21 @@
 # Testing
 
+`TestSourceHistoryAcquisitionNative` (`network_signing_native`) consumes a fresh
+genuinely installed and explicitly retired Source per selected case. The outside
+Source restart controller supplies `ARDENTS_SOURCE_HISTORY_BINDING`,
+`ARDENTS_SOURCE_HISTORY_RELEASE` and `ARDENTS_SOURCE_HISTORY_CASE`: `before-lock`,
+`malformed-attempt`, `gapped-attempt`, `transcript`, `retirement` or `success`.
+Run its pinned infrastructure race binary only within the separately accepted
+exact installed bootstrap scope. The test disables automatic GC, repeatedly
+calls the actual history acquisition, inventories original file/ancestor
+descriptors through procfs and probes the first journal with an independent
+native flock. Refused acquisitions must release their original descriptors and
+lease before return; successful acquisition retains its lease through concurrent
+foreign refusals until its own Close. Faults leave their original histories in
+place, without repair, reset or deletion. A baseline binary containing only this
+regression addition supplies the causal RED control; it grants no installed or
+Release authority and its failures remain evidence alongside the fixed result.
+
 `source-restart-linux` / `make source-restart-check` selects the same private
 stand and pinned `ARDENTS_SOURCE_STARTUP_*` input declarations below, with an
 eight-minute original profile bound and a **separately accepted exact bootstrap

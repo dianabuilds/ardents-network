@@ -24,12 +24,12 @@ type sourceRetirement struct {
 	sha256 string
 }
 
-func openSourceHistoryChain(ctx context.Context, v *release.Verifier, binding, history string) (chain *sourceHistoryChain, err error) {
-	chain = &sourceHistoryChain{}
+func openSourceHistoryChain(ctx context.Context, v *release.Verifier, binding, history string) (result *sourceHistoryChain, err error) {
+	chain := &sourceHistoryChain{}
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, chain.close())
-			chain = nil
+			result = nil
 		}
 	}()
 	chain.initial, err = openSourceInitial(ctx, v, binding, history)
