@@ -1,5 +1,37 @@
 # Testing
 
+The `source-replacement-linux` case `replacement-reload-cancel` additionally
+requires the same-source, independently pinned `ARDENTS_SOURCE_STARTUP_CUT_TEST`
+and `_SHA256`, a `cmd/ardents-next` test binary with `network_signing_native`.
+Its kernel observer launches the genuine enrolled canonical replacement command,
+tracks its original threads and actual system-bus Reload write, and holds a
+successful native read on that original socket before returning manager bytes
+to the caller. It delivers SIGTERM to another original thread and keeps the read
+held until the production command physically writes its existing
+`completion-unavailable` notice. That notice acknowledges processed cancellation
+while original work remains unjoined; mere signal delivery cannot release the
+read. The controller then releases the read and reaps every original thread.
+Original pending/journal bytes and native identities captured at the held
+frontier must survive the original failed completion unchanged.
+A missing ptrace privilege, syscall
+frontier or native join fails the selected profile. No manager response or
+authority is injected. The outside runner independently checks the retained
+54-record reload-intent prefix/blocker and actual subsequent canonical
+replacement/start refusals without rewriting that evidence. Public command
+failure is deliberately redacted: this kernel control does not inspect the
+in-process first/cleanup error chain or establish power-loss recovery. Existing
+owner cancellation/physical-Close regressions retain their narrower scope.
+`TestSourceReplacementNativeClosePreservesFailureAndJoins` separately exercises
+the actual replacement coordinator's terminal owner with real journal/file
+writers. An actual prematurely closed leaf yields an independent native Close
+failure; original failure and cancellation must both survive. Automatic GC is
+disabled, procfs must show only the independent probe descriptor after return,
+and that probe must acquire the journal's formerly held native flock. This
+component proof supplies no Release or manager observation and does not replace
+the canonical Reload control.
+This is an installed scenario and needs its own exact accepted bootstrap
+receipt before execution; compiling/discovering the control is preparation only.
+
 `TestSourceSelectionReadbackAllocationsDoNotScaleWithArtifact` repeatedly
 reobserves a real 4 MiB file with automatic GC disabled. Complete Source
 selection byte readback uses a private bounded scratch buffer, independently

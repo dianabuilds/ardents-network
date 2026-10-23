@@ -72,6 +72,7 @@ def main():
     replacement_cases = ("replacement", "replacement-credential-loss", "replacement-state-loss", "replacement-candidate-collision", "replacement-selection-readonly", "replacement-unit-readonly", "replacement-account-substitution", "replacement-binding-substitution", "replacement-unit-substitution", "replacement-expired-release")
     history_faults = ("before-lock", "malformed-attempt", "gapped-attempt", "transcript", "retirement")
     replacement_cases += tuple("replacement-history-" + fault for fault in history_faults)
+    replacement_cases += ("replacement-reload-cancel",)
     cases = replacement_cases if replacement_profile else ("restart", "restart-credential-loss", "restart-state-loss") if restart_profile else ("positive", "credential-substitution", "clock-loss")
     if case not in cases:
         raise RuntimeError("unknown finite Source startup case")
@@ -91,6 +92,8 @@ def main():
     paths = {name: pinned(name) for name in ("NODE", "CONTROL", "MANAGER_TEST", "REQUEST", "BUNDLE", "EPOCH", "UNSIGNED_EPOCH", "CLIENT_CERTIFICATE", "CLIENT_KEY", "SERVER_CA", "PUBLIC_RECEIPT")}
     if replacement_profile:
         paths.update({name: pinned(name) for name in ("NODE_B", "NODE_C", "NODE_EXPIRED", "REQUEST_B", "REQUEST_C", "OWNER_TEST")})
+    if case == "replacement-reload-cancel":
+        paths["CUT_TEST"] = pinned("CUT_TEST")
     distribution = Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION"])
     if paths["NODE"] != distribution / "ardents-node-linux-amd64":
         raise RuntimeError("execute the actual enrolled initial program")
@@ -363,9 +366,16 @@ def main():
             raise RuntimeError("required native manager control is absent")
         if replacement_profile:
             owner_tests = ("TestSourceHistoryAcquisitionNative", "TestSourceStoppedNativeHistoryHeldObservationAndClose", "TestSourceStoppedNativeSelectionHeldLastReadAndCloseFailure", "TestSourceInitialNativeHeldReadPreservesCancellationAndClose")
+            if case == "replacement-reload-cancel":
+                owner_tests += ("TestSourceReplacementNativeClosePreservesFailureAndJoins",)
             discovered = run([paths["OWNER_TEST"], "-test.list=^(" + "|".join(owner_tests) + ")$"], "history-owner-test-discovery")
             if sorted(discovered.splitlines()) != sorted(name.encode("ascii") for name in owner_tests):
                 raise RuntimeError("original history FD/flock regression is absent")
+        if case == "replacement-reload-cancel":
+            name = "TestSourceReplacementReloadCancellationNative"
+            discovered = run([paths["CUT_TEST"], "-test.list=^" + name + "$"], "replacement-kernel-control-discovery")
+            if discovered.splitlines() != [name.encode("ascii")]:
+                raise RuntimeError("actual replacement kernel control is absent")
         clock = Path(request["clock"])
         clock_fd = os.open(clock, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
         clock_info = os.fstat(clock_fd)
@@ -804,6 +814,38 @@ def main():
                         raise RuntimeError("partial transition admitted continuation/start or rewrote evidence")
                 outcome["partial_native_transition_denied"] = True
 
+            def canceled_reload():
+                # A separate kernel observer retains all original command
+                # threads through reaping. The native manager is never replaced
+                # by a successful test neighbor or an accepting callback.
+                nonlocal native_observer
+                with Path("/etc/ardents-source-stopped-native-stand").open("x") as marker:
+                    marker.write("ardents-source-stopped-native-v1\n")
+                run([paths["OWNER_TEST"], "-test.run=^TestSourceReplacementNativeClosePreservesFailureAndJoins$", "-test.v", "-test.timeout=30s"], "replacement-terminal-owner-causes",
+                    env=dict(os.environ, ARDENTS_SOURCE_STOPPED_FUTURE_PARENT="/var/lib"))
+                native_observer.close()
+                native_observer = None
+                command = [str(part) for part in replacement_command("B")]
+                run([paths["CUT_TEST"], "-test.run=^TestSourceReplacementReloadCancellationNative$", "-test.v", "-test.timeout=2m"], "original-reload-cancellation",
+                    env=dict(os.environ, ARDENTS_SOURCE_REPLACEMENT_COMMAND=json.dumps(command),
+                             ARDENTS_SOURCE_REPLACEMENT_CUT_OUTPUT=str(output / "original-replacement.log")))
+                generation = digest(Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION_B"]) / "infrastructure-source.json")
+                journal = Path(str(installation) + ".source-replacement-" + generation + "-journal")
+                pending = installation / "source-replacement-pending"
+                unit = Path("/etc/systemd/system/ardents-source.service")
+                body = journal.read_bytes()
+                phases = ["initial", "replacement-admitted", "predecessor-binding", "predecessor-unit", "predecessor-retired"] + ["file-intent", "file-born", "file-ready"] + ["directory-intent", "directory-born", "directory-ready"] + [phase for _ in range(12) for phase in ("file-intent", "file-born", "file-ready")] + ["seal-intent", "sealed", "selection-intent", "selection-written", "unit-intent", "unit-written", "reload-intent"]
+                rows = records(journal, phases)
+                if len(rows) != 54 or not pending.is_file() or any(list(row) != ["sequence", "phase", "path", "device", "inode", "sha256", "mode", "uid", "gid"] for row in rows) or any(json.dumps(row, separators=(",", ":")).encode() != line for row, line in zip(rows, body.splitlines(), strict=True)):
+                    raise RuntimeError("canceled actual Reload lost its exact original prefix/blocker")
+                saved = {path: path.read_bytes() for path in (binding, unit, pending, journal)}
+                for command, name in ((replacement_command("B"), "canceled-replacement-replay"),
+                                      ([paths["NODE_B"], "installation", "restart-source", Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION_B"]), history, "alpha", network, binding], "canceled-replacement-start")):
+                    code, _ = run(command, name, refusal=True)
+                    if code == 0 or any(path.read_bytes() != raw for path, raw in saved.items()) or (installation / "source-invocation-00000001").exists():
+                        raise RuntimeError("uncertain Reload admitted later replacement/start or rewrote original evidence")
+                outcome["original_reload_cancellation_join_and_refusal_proved"] = True
+
             def release_floors():
                 current = (Path(history) / "current").read_text()
                 if len(current) != 65 or not current.endswith("\n") or any(c not in "0123456789abcdef" for c in current[:-1]):
@@ -833,6 +875,9 @@ def main():
                 if number == (3 if replacement_profile else 2):
                     break
                 if replacement_profile:
+                    if number == 0 and case == "replacement-reload-cancel":
+                        canceled_reload()
+                        break
                     if number == 0 and case == "replacement-expired-release":
                         metadata = Path(os.environ["ARDENTS_SOURCE_STARTUP_DISTRIBUTION_EXPIRED"]) / "timestamp.json"
                         expires = datetime.fromisoformat(json.loads(metadata.read_text())["signed"]["expires"].replace("Z", "+00:00")).timestamp()
@@ -1062,6 +1107,8 @@ def main():
                 raise RuntimeError("original held-read/cancellation/Close-error regression missing")
             if case == "replacement-expired-release" and not outcome.get("expired_release_denied"):
                 raise RuntimeError("actual signed expired Release refusal missing")
+            if case == "replacement-reload-cancel" and not outcome.get("original_reload_cancellation_join_and_refusal_proved"):
+                raise RuntimeError("actual coordinator Reload cancellation/original join/refusal proof missing")
             outcome["retirement_outcome"] = "explicit-retirements-proved"
             if case == "replacement" and (not outcome.get("held_original_join_denied_replacement") or not outcome.get("replacement_B_generation") or not outcome.get("replacement_C_generation")):
                 raise RuntimeError("complete program and resource-only original replacement sequence missing")
