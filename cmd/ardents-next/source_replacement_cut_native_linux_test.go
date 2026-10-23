@@ -86,6 +86,11 @@ func TestSourceReplacementReloadCancellationNative(t *testing.T) {
 	if err := <-drained; err != nil {
 		t.Fatal("original output join", err)
 	}
+	encoded, encodeErr := json.Marshal(observation)
+	if encodeErr != nil {
+		t.Fatal(encodeErr)
+	}
+	t.Log(string(encoded))
 	if traceErr != nil {
 		t.Fatal("original replacement kernel control failed", traceErr, waitErr)
 	}
@@ -99,11 +104,6 @@ func TestSourceReplacementReloadCancellationNative(t *testing.T) {
 	if err != nil || !bytes.Contains(raw, []byte("source command failed")) || bytes.Contains(raw, []byte("source-replacement-stopped-selected")) {
 		t.Fatal("original failed result lost", err, string(raw))
 	}
-	encoded, err := json.Marshal(observation)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(string(encoded))
 }
 
 type sourceReplacementCutObservation struct {
@@ -111,6 +111,7 @@ type sourceReplacementCutObservation struct {
 	ReloadBytes, ReplyBytes                  int64
 	OriginalExit                             int
 	CancellationAcknowledged                 bool
+	NoticeWritesObserved, HeldStopsBeforeAck int
 	Pending, Journal, Selected, Unit         sourceReplacementCutFile
 }
 
@@ -198,6 +199,9 @@ func traceSourceReplacementCancellation(pid int, process *os.Process, binding st
 		if !status.Stopped() {
 			return result, errors.New("unknown trace status")
 		}
+		if held != 0 && tid == held {
+			result.HeldStopsBeforeAck++
+		}
 		if status.TrapCause() == syscall.PTRACE_EVENT_CLONE {
 			child, err := syscall.PtraceGetEventMsg(tid)
 			if err != nil || len(threads) >= 128 {
@@ -208,7 +212,7 @@ func traceSourceReplacementCancellation(pid int, process *os.Process, binding st
 		if status.StopSignal() == syscall.SIGTRAP|0x80 {
 			var regs syscall.PtraceRegs
 			if err := syscall.PtraceGetRegs(tid, &regs); err != nil {
-				return result, err
+				return result, fmt.Errorf("read original registers thread %d with held thread %d: %w", tid, held, err)
 			}
 			// Other Linux targets remain compilable; admission above selects the
 			// amd64 ABI before any installed execution.
@@ -249,12 +253,13 @@ func traceSourceReplacementCancellation(pid int, process *os.Process, binding st
 					result.ReloadFD, result.ReloadBytes = int(call.fd), returned
 				}
 				if call.notice {
+					result.NoticeWritesObserved++
 					if !delivered || held == 0 || returned != int64(call.size) {
 						return result, errors.New("cancellation notice did not complete under the held read")
 					}
 					result.CancellationAcknowledged = true
 					if err := syscall.PtraceSyscall(held, 0); err != nil {
-						return result, err
+						return result, fmt.Errorf("release original held read thread %d after notice: %w", held, err)
 					}
 					held = 0
 				}
