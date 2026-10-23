@@ -1,5 +1,14 @@
 # Testing
 
+`TestSourceSelectionReadbackAllocationsDoNotScaleWithArtifact` repeatedly
+reobserves a real 4 MiB file with automatic GC disabled. Complete Source
+selection byte readback uses a private bounded scratch buffer, independently
+checks exact EOF and erases scratch on return; allocation must not scale with
+the artifact size on each observation of retained lineage. Its companion test
+checks middle/last-byte changes, appended/truncated input, cancellation and a
+closed original descriptor. These physical-reader checks grant no installed
+authority; the genuine installed history oracle below remains mandatory.
+
 `TestSourceHistoryAcquisitionNative` (`network_signing_native`) consumes a fresh
 genuinely installed and explicitly retired Source per selected case. The outside
 Source restart controller supplies `ARDENTS_SOURCE_HISTORY_BINDING`,

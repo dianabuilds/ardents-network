@@ -312,21 +312,47 @@ func (s *sourceSelection) observe() (err error) {
 		if err = s.ctx.Err(); err != nil {
 			return err
 		}
-		raw := make([]byte, len(f.raw)+1)
-		n, e := f.file.ReadAt(raw, 0)
+		e := observeSourceSelectionBytes(s.ctx, f)
 		if s.observed != nil {
 			s.observed(f.file)
 		}
-		equal := bytes.Equal(raw[:n], f.raw)
-		clear(raw)
-		if (e != nil && e != io.EOF) || !equal {
-			return errors.Join(ErrBinding, e)
+		if e != nil {
+			return e
 		}
 	}
 	if err = checkPaths(); err != nil {
 		return err
 	}
 	return s.ctx.Err()
+}
+
+func observeSourceSelectionBytes(ctx context.Context, f *sourceFile) error {
+	// Reobserve every original byte without making another program-sized copy
+	// for each check of every retained generation. This scratch is private to
+	// this physical read and is erased before returning, including on refusal.
+	var scratch [32 << 10]byte
+	defer clear(scratch[:])
+	for offset := 0; offset < len(f.raw); {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		end := offset + min(len(scratch), len(f.raw)-offset)
+		raw := scratch[:end-offset]
+		n, err := f.file.ReadAt(raw, int64(offset))
+		if err != nil || n != len(raw) || !bytes.Equal(raw, f.raw[offset:end]) {
+			return errors.Join(ErrBinding, err)
+		}
+		offset = end
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	// Matching the original prefix is insufficient: appended bytes must fail.
+	n, err := f.file.ReadAt(scratch[:1], int64(len(f.raw)))
+	if n != 0 || err != io.EOF {
+		return errors.Join(ErrBinding, err)
+	}
+	return ctx.Err()
 }
 
 func (s *sourceSelection) close() error {
