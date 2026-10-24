@@ -70,6 +70,28 @@ func TestSourceTransitionNativeDriver(t *testing.T) {
 	defer runtime.UnlockOSThread()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
+	if os.Getenv("ARDENTS_SOURCE_CUT_NATIVE_PREEMPT_ACK") == "1" {
+		signals := make(chan os.Signal, 1)
+		signal.Notify(signals, syscall.SIGUSR1)
+		done := make(chan struct{})
+		go func(gcContext context.Context) {
+			defer close(done)
+			select {
+			case <-gcContext.Done():
+				return
+			case <-signals:
+				runtime.GC()
+				if err := os.WriteFile(filepath.Join(os.Getenv("ARDENTS_SOURCE_TRANSITION_NATIVE_ROOT"), "native-ack-gc-completed"), []byte("original GC completed\n"), 0600); err != nil {
+					t.Error(err)
+				}
+			}
+		}(ctx)
+		defer func() {
+			cancel()
+			signal.Stop(signals)
+			<-done
+		}()
+	}
 	scenario := os.Getenv("ARDENTS_SOURCE_TRANSITION_NATIVE_CASE")
 	if scenario == "external-cut" || scenario == "unsafe-external-cut" {
 		var stop context.CancelFunc
@@ -328,6 +350,26 @@ func sourceTransitionNativeCoordinator(t *testing.T) {
 	}
 	if err := births.record("admitted", root, nil, strings.Repeat("c", 64), 0, 999, 999); err != nil {
 		t.Fatal(err)
+	}
+	if os.Getenv("ARDENTS_SOURCE_CUT_NATIVE_PREEMPT_ACK") == "1" {
+		// The first actual ACK is preempted by GC. Do not create the next
+		// frontier until GC has completed: a ptrace-held Go caller must not
+		// prevent that GC's world stop from finishing during cancellation.
+		for {
+			raw, err := os.ReadFile(filepath.Join(root, "native-ack-gc-completed"))
+			if err == nil {
+				if string(raw) != "original GC completed\n" {
+					t.Fatal("original GC completion differs")
+				}
+				break
+			}
+			if !errors.Is(err, os.ErrNotExist) {
+				t.Fatal(err)
+			}
+			if err := waitSourceTransitionTick(ctx); err != nil {
+				t.Fatal(err)
+			}
+		}
 	}
 	if os.Getenv("ARDENTS_SOURCE_TRANSITION_NATIVE_CASE") == "external-cut" {
 		// Native framing/process control only: repeated observations are not a

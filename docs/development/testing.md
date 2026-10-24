@@ -622,7 +622,7 @@ These are file/process counterexamples with no installed account, State,
 Release or manager, and do not prove equivalence to any installed phase or
 disk/power-loss durability. Full installed causal coverage remains separate.
 
-Every selected recovery stand first discovers and runs the finite thirty-three-test
+Every selected recovery stand first discovers and runs the finite thirty-four-test
 `RECOVERY_NATIVE_TESTS` inventory through its same pinned observer binary,
 with a ninety-second test bound inside the unchanged ten-minute profile bound.
 It includes process cuts, original coordinator/packet ownership, prefix and
@@ -642,6 +642,16 @@ canonical five-second cancellation notice. Its original one-use ACK entry,
 unchanged prefix, completed cut proof and complete native join must survive
 delayed resume; a repeated Go preemption prologue is not another semantic ACK.
 Existing outstanding-ACK and changed/unknown-prefix controls still refuse.
+`TestSourcePreemptedAcknowledgementNative` requests genuine Go GC while the
+first original ACK caller is held and observes actual thread-pending SIGURG
+before resume. It requires at least one causally identified entry replay, then
+exactly two ACKs, three unchanged records, original cut proof and complete join.
+The observer distinguishes replays only after actual SIGURG at that same entry,
+with the same Go caller/register arguments/return address, original journal
+inode, access metadata, bytes and modification/change times. Replays are reported
+separately; every selected prefix/phase, proof and physical join check remains.
+The native coordinator waits for that GC to complete before the later selected
+cut; no GC or native fixture grants installed recovery authority.
 Successful file-only controls never replace the later genuine installed cut,
 recovery, contact or retirement proof.
 

@@ -112,6 +112,8 @@ type sourceCutObservation struct {
 	ThreadsJoined                      int                     `json:"threads_joined"`
 	Processes                          int                     `json:"processes"`
 	AcknowledgementHits                int                     `json:"acknowledgement_hits"`
+	AcknowledgementReplays             int                     `json:"acknowledgement_replays"`
+	NativeACKPreemptionObserved        bool                    `json:"native_ack_preemption_observed,omitempty"`
 	GroupStops                         int                     `json:"group_stops"`
 	SelectedRecords                    int                     `json:"selected_records"`
 	OutputSHA256                       string                  `json:"output_sha256"`
@@ -875,6 +877,11 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	if err := command.Process.Signal(syscall.SIGCONT); err != nil {
 		return result, err
 	}
+	var acknowledgements sourceCutACKObserver
+	preemption := sourceCutNativePreemption{enabled: os.Getenv("ARDENTS_SOURCE_CUT_NATIVE_PREEMPT_ACK") == "1"}
+	if preemption.enabled && (installed || profile != nil || physical != nil || returnProbe || nativeCase != "external-cut" || nativeRecords != 3) {
+		return result, errors.New("private native ACK preemption requires its exact file/process fixture")
+	}
 	held := 0
 	returnHeld := 0
 	returnStops := map[int]bool{}
@@ -893,6 +900,11 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 		}
 	}
 	for len(tracked) != 0 {
+		if !failed {
+			if err := preemption.poll(result.Entry, &result); err != nil {
+				fail(err)
+			}
+		}
 		if physical != nil && physical.externalCut && physicalControl.tid != 0 && !failed {
 			if e := physicalControl.poll(physical, command.Process, journal, root, physicalImage, started, &result); e != nil {
 				fail(e)
@@ -1225,6 +1237,16 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 			}
 		default:
 			signal := status.StopSignal()
+			if physical == nil && !returnProbe && groups[tid] == pid && signal == syscall.SIGURG {
+				var registers syscall.PtraceRegs
+				if err := syscall.PtraceGetRegs(tid, &registers); err != nil {
+					fail(err)
+				} else if registers.Rip == result.Entry {
+					if err := acknowledgements.interrupt(tid, registers, journal); err != nil {
+						fail(err)
+					}
+				}
+			}
 			if signal == syscall.SIGTRAP|0x80 {
 				if exclusion == nil && missingCut == nil && startupPending == nil && earlyPrefix == nil || !result.RefusalAdmissionObserved || result.RefusalOwnershipReleasedBeforeExit || groups[tid] != pid {
 					fail(errors.New("unexpected or foreign original exclusion syscall stop"))
@@ -1391,7 +1413,23 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 					continue
 				}
 				if groups[tid] == pid && registers.Rip == result.Entry {
+					if replay, err := acknowledgements.enter(tid, registers, journal); err != nil {
+						fail(err)
+						continue
+					} else if replay {
+						result.AcknowledgementReplays++
+						if err := resumeSourceCutBreakpoint(tid, &registers); err != nil {
+							fail(err)
+						}
+						continue
+					}
 					result.AcknowledgementHits++
+					if held, err := preemption.hold(pid, tid, result.AcknowledgementHits, groups); err != nil {
+						fail(err)
+						continue
+					} else if held {
+						continue
+					}
 					if result.AcknowledgementHits == selectedHit {
 						raw, info, e := readSourceCutObserverFile(journal, 4<<20)
 						if e != nil {
