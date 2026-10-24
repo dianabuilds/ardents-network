@@ -622,7 +622,7 @@ These are file/process counterexamples with no installed account, State,
 Release or manager, and do not prove equivalence to any installed phase or
 disk/power-loss durability. Full installed causal coverage remains separate.
 
-Every selected recovery stand first discovers and runs the finite thirty-two-test
+Every selected recovery stand first discovers and runs the finite thirty-three-test
 `RECOVERY_NATIVE_TESTS` inventory through its same pinned observer binary,
 with a ninety-second test bound inside the unchanged ten-minute profile bound.
 It includes process cuts, original coordinator/packet ownership, prefix and
@@ -637,6 +637,11 @@ private `077` mask. The ordinary Linux architecture regression
 runner child owner and native-controls call with a file-only probe; it checks
 exact `0644`/`0555` creation, private evidence access and unchanged parent mask.
 It constructs no Source, manager or recovery authority.
+The native inventory also holds the genuine original transition through the
+canonical five-second cancellation notice. Its original one-use ACK entry,
+unchanged prefix, completed cut proof and complete native join must survive
+delayed resume; a repeated Go preemption prologue is not another semantic ACK.
+Existing outstanding-ACK and changed/unknown-prefix controls still refuse.
 Successful file-only controls never replace the later genuine installed cut,
 recovery, contact or retirement proof.
 

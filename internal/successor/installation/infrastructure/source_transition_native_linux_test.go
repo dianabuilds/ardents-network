@@ -77,6 +77,11 @@ func TestSourceTransitionNativeDriver(t *testing.T) {
 		noticed := make(chan error, 1)
 		go func() {
 			<-ctx.Done()
+			if os.Getenv("ARDENTS_SOURCE_CUT_NATIVE_DELAYED_NOTICE") == "1" {
+				// The canonical command reports completion-unavailable after this
+				// same interval while its original work remains physically held.
+				time.Sleep(5 * time.Second)
+			}
 			_, err := fmt.Fprintln(os.Stdout, "native-original-cancellation-observed")
 			noticed <- err
 		}()

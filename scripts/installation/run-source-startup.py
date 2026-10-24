@@ -32,6 +32,7 @@ import time
 
 
 RECOVERY_NATIVE_TESTS = (
+    "TestSourceDelayedCutCancellationNative",
     "TestSourceReleaseExpiryProfileNative",
     "TestSourceRecoveryPhysicalNativeProcessCuts",
     "TestSourcePhysicalRefusalCloseRetainsIndependentFailure",

@@ -721,6 +721,10 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	physicalSelected := false
 	var physicalImage *sourcePhysicalImage
 	failed := false
+	// A later terminal-outcome check must not overwrite the trace failure that
+	// caused native interruption. Join it after the complete physical drain.
+	var traceFailure error
+	defer func() { returned = errors.Join(traceFailure, returned) }()
 	var expired atomic.Bool
 	var deadlineErr error
 	deadlineDone := make(chan struct{})
@@ -763,17 +767,17 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 		if err == nil {
 			return
 		}
-		returned = errors.Join(returned, fmt.Errorf("native trace tid=%d status=%#x: %w", lastTraceTID, uint32(lastTraceStatus), err))
+		traceFailure = errors.Join(traceFailure, fmt.Errorf("native trace tid=%d status=%#x: %w", lastTraceTID, uint32(lastTraceStatus), err))
 		if failed {
 			return
 		}
 		failed = true
-		returned = errors.Join(returned, command.Process.Kill())
+		traceFailure = errors.Join(traceFailure, command.Process.Kill())
 		unique := map[int]bool{}
 		for _, group := range groups {
 			if !unique[group] {
 				unique[group] = true
-				returned = errors.Join(returned, syscall.Kill(group, syscall.SIGKILL))
+				traceFailure = errors.Join(traceFailure, syscall.Kill(group, syscall.SIGKILL))
 			}
 		}
 	}
@@ -1012,11 +1016,25 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 				fail(e)
 			} else if registers.Rip != result.Entry {
 				fail(errors.New("held original acknowledgement entry moved"))
-			} else if e := resumeSourceCutBreakpoint(held, &registers); e != nil {
-				fail(e)
 			} else {
-				result.ExternalCancellationAcknowledged = true
-				held = 0
+				if physical == nil && nativeCase == "external-cut" {
+					// This exact frozen boundary is one-use after cancellation.
+					// Go's preemption prologue can restart the same entry after
+					// RF resume; that is not another semantic ACK. Only retire
+					// DR0 on this still-held caller. Physical return probes and
+					// every independent final prefix/proof/join check remain.
+					if e := sourceCutPtrace(syscall.PTRACE_POKEUSR, held, sourceCutDebugRegisters+7*8, 0); e != nil {
+						fail(e)
+					}
+				}
+				if !failed {
+					if e := resumeSourceCutBreakpoint(held, &registers); e != nil {
+						fail(e)
+					} else {
+						result.ExternalCancellationAcknowledged = true
+						held = 0
+					}
+				}
 			}
 		}
 		if expired.Load() && !failed {
@@ -1101,7 +1119,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 				fail(errors.New("observer original process bound exceeded"))
 			}
 			if failed {
-				returned = errors.Join(returned, syscall.Kill(group, syscall.SIGKILL))
+				traceFailure = errors.Join(traceFailure, syscall.Kill(group, syscall.SIGKILL))
 			}
 			arm := group == pid
 			if physical != nil {
