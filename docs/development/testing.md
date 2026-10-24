@@ -678,8 +678,15 @@ The observer distinguishes replays only after actual SIGURG at that same entry,
 with the same Go caller/register arguments/return address, original journal
 inode, access metadata, bytes and modification/change times. Replays are reported
 separately; every selected prefix/phase, proof and physical join check remains.
-The native coordinator waits for that GC to complete before the later selected
-cut; no GC or native fixture grants installed recovery authority.
+The before-frontier case waits for that GC to complete before the later selected
+cut. The separate held-frontier case starts genuine GC while the selected
+54th ACK remains frozen, and sends cancellation only after its actual pending
+SIGURG is observed. The observer lets that preemption run and holds the same
+causally proven entry replay again; the next ACK effect stays forbidden until
+the cancellation notice. This case requires completed GC, exactly54 ACKs and55
+unchanged records, original cut proof and full join. Neither case increases a
+deadline or memory allowance; no GC or native fixture grants installed recovery
+authority.
 Successful file-only controls never replace the later genuine installed cut,
 recovery, contact or retirement proof.
 

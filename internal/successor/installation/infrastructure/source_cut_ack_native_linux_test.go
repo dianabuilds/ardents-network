@@ -5,7 +5,10 @@ package infrastructure
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -23,6 +26,36 @@ type sourceCutACKEntry struct {
 type sourceCutACKObserver struct {
 	previous    map[uint64]sourceCutACKEntry
 	interrupted map[uint64]sourceCutACKEntry
+}
+
+// A Go caller held at an ACK entry still owns its P. A genuine pending
+// preemption must run before another goroutine can finish a GC world stop and
+// acknowledge cancellation. The caller is resumed only for that real signal;
+// its subsequent entry still requires the original signal/caller/image replay
+// proof and is held again before any ACK effect.
+func sourceCutACKPendingPreemption(tid int, entry uint64) (syscall.PtraceRegs, bool, error) {
+	var registers syscall.PtraceRegs
+	raw, err := os.ReadFile(fmt.Sprintf("/proc/%d/status", tid))
+	if err != nil {
+		return registers, false, err
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if !strings.HasPrefix(line, "SigPnd:") {
+			continue
+		}
+		pending, err := strconv.ParseUint(strings.TrimSpace(strings.TrimPrefix(line, "SigPnd:")), 16, 64)
+		if err != nil || pending&(1<<(uint(syscall.SIGURG)-1)) == 0 {
+			return registers, false, err
+		}
+		if err := syscall.PtraceGetRegs(tid, &registers); err != nil {
+			return registers, false, err
+		}
+		if registers.Rip != entry {
+			return registers, false, errors.New("held original ACK moved before pending preemption")
+		}
+		return registers, true, nil
+	}
+	return registers, false, errors.New("original ACK thread pending signals absent")
 }
 
 func readSourceCutACKEntry(tid int, registers syscall.PtraceRegs, journal string) (sourceCutACKEntry, error) {

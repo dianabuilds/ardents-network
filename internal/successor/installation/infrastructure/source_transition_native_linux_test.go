@@ -70,7 +70,7 @@ func TestSourceTransitionNativeDriver(t *testing.T) {
 	defer runtime.UnlockOSThread()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
-	if os.Getenv("ARDENTS_SOURCE_CUT_NATIVE_PREEMPT_ACK") == "1" {
+	if os.Getenv("ARDENTS_SOURCE_CUT_NATIVE_PREEMPT_ACK") == "1" || os.Getenv("ARDENTS_SOURCE_CUT_NATIVE_HELD_GC") == "1" {
 		signals := make(chan os.Signal, 1)
 		signal.Notify(signals, syscall.SIGUSR1)
 		done := make(chan struct{})

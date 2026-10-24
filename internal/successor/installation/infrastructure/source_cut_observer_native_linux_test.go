@@ -902,6 +902,11 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 		return result, errors.New("private native ACK preemption requires its exact file/process fixture")
 	}
 	held := 0
+	selectedACKHeld := false
+	heldGC := sourceCutNativeHeldGC{enabled: os.Getenv("ARDENTS_SOURCE_CUT_NATIVE_HELD_GC") == "1"}
+	if heldGC.enabled && (installed || profile != nil || physical != nil || returnProbe || nativeCase != "external-cut" || nativeRecords != 55) {
+		return result, errors.New("private held ACK GC requires its exact file/process fixture")
+	}
 	returnHeld := 0
 	returnStops := map[int]bool{}
 	returnSignals := map[int]int{}
@@ -1043,6 +1048,19 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 		if err := drain(); err != nil {
 			fail(err)
 		}
+		if held != 0 && selectedACKHeld && !failed && !bytes.Contains(captured, acknowledgement) {
+			if registers, pending, err := sourceCutACKPendingPreemption(held, result.Entry); err != nil {
+				fail(err)
+			} else if pending {
+				if err := heldGC.cancelAfterPreemption(pid, result.SignalledRootThread); err != nil {
+					fail(err)
+				} else if err := resumeSourceCutBreakpoint(held, &registers); err != nil {
+					fail(err)
+				} else {
+					held = 0
+				}
+			}
+		}
 		if held != 0 && !failed && bytes.Contains(captured, acknowledgement) {
 			var registers syscall.PtraceRegs
 			if e := syscall.PtraceGetRegs(held, &registers); e != nil {
@@ -1065,6 +1083,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 						fail(e)
 					} else {
 						result.ExternalCancellationAcknowledged = true
+						selectedACKHeld = false
 						held = 0
 					}
 				}
@@ -1441,6 +1460,14 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 						continue
 					} else if replay {
 						result.AcknowledgementReplays++
+						if selectedACKHeld {
+							if held != 0 || result.AcknowledgementHits != selectedHit || result.SelectedRecords != selectedRecords {
+								fail(errors.New("selected original ACK preemption hold differs"))
+								continue
+							}
+							held, result.HeldRootThread = tid, tid
+							continue
+						}
 						if err := resumeSourceCutBreakpoint(tid, &registers); err != nil {
 							fail(err)
 						}
@@ -1490,7 +1517,8 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 							continue
 						}
 						held, result.HeldRootThread, result.SignalledRootThread = tid, tid, other
-						if e := syscall.Tgkill(pid, other, syscall.SIGTERM); e != nil {
+						selectedACKHeld = true
+						if e := heldGC.start(pid, other); e != nil {
 							fail(e)
 						}
 						continue
