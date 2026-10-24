@@ -630,6 +630,13 @@ completion leases, cancellation/Close joins, empty-born continuation and
 uncertainty/guard refusal controls. The stand must also provide the native
 file-test marker `/etc/ardents-source-stopped-native-stand` and actual ext4
 under its fresh private evidence directory. Missing tests or prerequisites fail.
+Only this file-control child uses `umask 022`, so its requested public-resource
+permissions survive creation. The runner and all other children retain its
+private `077` mask. The ordinary Linux architecture regression
+`TestSourceRecoveryNativeProfilePreservesRecordedAccess` executes the actual
+runner child owner and native-controls call with a file-only probe; it checks
+exact `0644`/`0555` creation, private evidence access and unchanged parent mask.
+It constructs no Source, manager or recovery authority.
 Successful file-only controls never replace the later genuine installed cut,
 recovery, contact or retirement proof.
 

@@ -2589,7 +2589,9 @@ def main():
                                       ARDENTS_SOURCE_CUT_CONTROL_RUNNER=str(paths["CUT_CONTROL_RUNNER"]),
                                       ARDENTS_SOURCE_CUT_CONTROL_RUNNER_SHA256=digest(paths["CUT_CONTROL_RUNNER"]))
             run([paths["RECOVERY_OBSERVER"], "-test.run=" + native_pattern, "-test.v", "-test.timeout=90s"],
-                "recovery-native-controls", env=native_environment)
+                # File-only controls observe exact public resource access. Set
+                # their child mask without changing this runner's private mask.
+                "recovery-native-controls", env=native_environment, umask=0o022)
         manager_tests = ("TestSourceControlRetainsStoppedUnitNative", "TestSourceCanceledObservationCloseNative")
         if restart_profile:
             manager_tests += ("TestSourceRetirementObserverNative",)
