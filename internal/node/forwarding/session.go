@@ -39,7 +39,8 @@ type session struct {
 	binding     *routecarrier.ClosedCarrierLease
 	invalidate  func() error
 	mu          sync.Mutex
-	writer      sync.Mutex
+	writer      chan struct{}
+	done        chan struct{}
 	children    map[uint32]*frameQueue
 	queues      map[uint32]func(ardp.Frame) error
 	retirements map[uint32]func() bool
@@ -214,8 +215,8 @@ func (sessions *sessionSet) joinedResult() error {
 	return sessions.cleanupErr
 }
 
-func (session *session) attach(open route.ClosedOpen, restriction route.ClosedChildRestriction, queue func(ardp.Frame) error, retired func() bool) (uint32, *frameQueue, error) {
-	if session == nil {
+func (session *session) attach(ctx context.Context, open route.ClosedOpen, restriction route.ClosedChildRestriction, queue func(ardp.Frame) error, retired func() bool) (uint32, *frameQueue, error) {
+	if session == nil || ctx == nil {
 		return 0, nil, errors.New("closed forwarding Carrier session is unavailable")
 	}
 	body, err := route.EncodeClosedNodeOpen(open, restriction)
@@ -224,8 +225,15 @@ func (session *session) attach(open route.ClosedOpen, restriction route.ClosedCh
 	}
 	// The writer owns allocation order as well as complete OPEN frames. Two
 	// prefix callers must not allocate1/3 and emit3 before1 on a shared Carrier.
-	session.writer.Lock()
-	defer session.writer.Unlock()
+	deadline := closedForwardingHandshakeDeadline(open.Deadline, time.Now().UTC())
+	if end, ok := ctx.Deadline(); ok && end.Before(deadline) {
+		deadline = end
+	}
+	acquired, err := session.acquireWriter(ctx, deadline, nil, false)
+	if err != nil || !acquired {
+		return 0, nil, err
+	}
+	defer session.releaseWriter()
 	session.mu.Lock()
 	if session.closed || len(session.children)+len(session.retired) >= 256 || session.lastOdd > ^uint32(0)-2 {
 		session.mu.Unlock()
@@ -249,7 +257,7 @@ func (session *session) attach(open route.ClosedOpen, restriction route.ClosedCh
 	}
 	session.retirements[lane] = retired
 	session.mu.Unlock()
-	err = closedForwardingWriteDeadline(session.carrier, closedForwardingHandshakeDeadline(open.Deadline, time.Now().UTC()))
+	err = closedForwardingWriteDeadline(session.carrier, deadline)
 	if err == nil {
 		err = ardp.WriteFrame(session.carrier, ardp.Frame{Kind: 4, Lane: lane, Body: body})
 	}
@@ -264,39 +272,115 @@ func (session *session) attach(open route.ClosedOpen, restriction route.ClosedCh
 // A received child terminal retires queued upstream work even when its reverse
 // copier is blocked. Recheck under the reader's lock after writer acquisition:
 // it may receive CLOSE while this writer is waiting. Generic Carrier EOF never
-// supplies this evidence. Once physical emission starts, every error remains
+// supplies peer-terminal evidence. An accepted local CLOSE cancels unemitted
+// payload, but preserves its required outbound CLOSE. Full link retirement
+// still cancels both. Once physical emission starts, every error remains
 // an error and retires the Carrier: a partial frame cannot be reused by siblings.
 func (session *session) writeChildFrame(frame ardp.Frame, deadline time.Time, reverse *frameQueue) (bool, error) {
-	if reverse.peerClosed() {
-		return false, nil
+	acquired, err := session.acquireWriter(context.Background(), deadline, reverse, frame.Kind == ardp.KindClose)
+	if err != nil || !acquired {
+		return false, err
 	}
-	if session == nil {
-		return false, errors.New("closed forwarding Carrier session is unavailable")
-	}
-	session.writer.Lock()
-	defer session.writer.Unlock()
-	session.mu.Lock()
-	closed, terminal := session.closed, reverse.peerClosed()
-	session.mu.Unlock()
-	if terminal {
-		return false, nil
-	}
-	if closed {
-		return false, errors.New("closed forwarding Carrier session is unavailable")
-	}
-	if deadline.IsZero() {
-		return false, errors.New("closed forwarding write deadline is unavailable")
-	}
+	defer session.releaseWriter()
 	if err := closedForwardingWriteDeadline(session.carrier, deadline); err != nil {
 		return false, err
 	}
-	err := ardp.WriteFrame(session.carrier, frame)
+	err = ardp.WriteFrame(session.carrier, frame)
 	if err != nil {
 		_ = session.carrier.Close()
 	}
 	return err == nil, err
 }
 
+// acquireWriter waits within this request's authority without changing the
+// active frame's physical deadline. No waiter owns a background writer: after
+// return it cannot emit a frame. Allocation and OPEN emission use the same
+// reservation so cancellation cannot reorder wire IDs or allocate unknown lanes.
+func (session *session) acquireWriter(ctx context.Context, deadline time.Time, reverse *frameQueue, closing bool) (bool, error) {
+	if reverse.peerClosed() {
+		return false, nil
+	}
+	if session == nil {
+		return false, errors.New("closed forwarding Carrier session is unavailable")
+	}
+	if deadline.IsZero() {
+		return false, errors.New("closed forwarding write deadline is unavailable")
+	}
+	session.mu.Lock()
+	if session.writer == nil {
+		session.writer = make(chan struct{}, 1)
+		session.writer <- struct{}{}
+		session.done = make(chan struct{})
+		if session.closed {
+			close(session.done)
+		}
+	}
+	writer, done := session.writer, session.done
+	session.mu.Unlock()
+	var retired, localClose <-chan struct{}
+	if reverse != nil {
+		retired = reverse.retirement
+		if !closing {
+			localClose = reverse.localClose
+		}
+	}
+	// Recheck before and after the reservation. A ready writer, timer or local
+	// retirement can win the same select; none grants expired physical output.
+	check := func() (bool, error) {
+		if reverse.peerClosed() {
+			return false, nil
+		}
+		session.mu.Lock()
+		closed := session.closed
+		session.mu.Unlock()
+		if closed {
+			return false, errors.New("closed forwarding Carrier session is unavailable")
+		}
+		if err := ctx.Err(); err != nil {
+			return false, err
+		}
+		if !time.Now().Before(deadline) {
+			return false, context.DeadlineExceeded
+		}
+		if reverse != nil {
+			reverse.mu.Lock()
+			closed = reverse.closed
+			locallyClosed := reverse.localTerminal
+			reverse.mu.Unlock()
+			if closed {
+				return false, context.Canceled
+			}
+			if locallyClosed && !closing {
+				return false, nil
+			}
+		}
+		return true, nil
+	}
+	if ready, err := check(); !ready {
+		return false, err
+	}
+	timer := time.NewTimer(time.Until(deadline))
+	defer timer.Stop()
+	select {
+	case <-writer:
+		if ready, err := check(); !ready {
+			session.releaseWriter()
+			return false, err
+		}
+		return true, nil
+	case <-timer.C:
+	case <-ctx.Done():
+	case <-retired:
+	case <-localClose:
+	case <-done:
+	}
+	if ready, err := check(); !ready {
+		return false, err
+	}
+	return false, context.DeadlineExceeded
+}
+
+func (session *session) releaseWriter() { session.writer <- struct{}{} }
 func (session *session) retire(lane uint32) {
 	if session == nil {
 		return
@@ -376,6 +460,9 @@ func (session *session) fail() {
 		return
 	}
 	session.closed = true
+	if session.done != nil {
+		close(session.done)
+	}
 	children := session.children
 	session.children = make(map[uint32]*frameQueue)
 	clear(session.retired)
@@ -444,11 +531,14 @@ type frameQueue struct {
 	frames         []ardp.Frame
 	bytes, maximum int
 	closed         bool
+	retirement     chan struct{}
+	localClose     chan struct{}
+	localTerminal  bool
 	terminal       bool // Complete, reserved peer CLOSE; transport EOF alone is not terminal.
 }
 
 func newFrameQueue(maximum int) *frameQueue {
-	queue := &frameQueue{maximum: maximum}
+	queue := &frameQueue{maximum: maximum, retirement: make(chan struct{}), localClose: make(chan struct{})}
 	queue.changed = sync.NewCond(&queue.mu)
 	return queue
 }
@@ -468,6 +558,9 @@ func (queue *frameQueue) push(frame ardp.Frame, reserve func(ardp.Frame) error) 
 	queue.frames = append(queue.frames, frame)
 	queue.bytes += size
 	if frame.Kind == 9 {
+		if !queue.terminal && !queue.closed {
+			close(queue.retirement)
+		}
 		queue.terminal = true
 	}
 	queue.changed.Signal()
@@ -495,6 +588,9 @@ func (queue *frameQueue) next() (ardp.Frame, bool) {
 
 func (queue *frameQueue) close() {
 	queue.mu.Lock()
+	if !queue.closed && !queue.terminal {
+		close(queue.retirement)
+	}
 	queue.closed = true
 	queue.changed.Broadcast()
 	queue.mu.Unlock()
@@ -509,4 +605,15 @@ func (queue *frameQueue) peerClosed() bool {
 	queue.mu.Lock()
 	defer queue.mu.Unlock()
 	return queue.terminal
+}
+
+// markLocalClose records a complete accepted incoming child CLOSE. It cancels
+// unemitted payload while preserving the required outbound terminal CLOSE.
+func (queue *frameQueue) markLocalClose() {
+	queue.mu.Lock()
+	if !queue.localTerminal {
+		queue.localTerminal = true
+		close(queue.localClose)
+	}
+	queue.mu.Unlock()
 }
