@@ -354,6 +354,13 @@ func sourceTransitionNativeCoordinator(t *testing.T) {
 	if err := births.close(); err != nil {
 		t.Fatal("original real Close failure retained", err)
 	}
+	if os.Getenv("ARDENTS_SOURCE_PHYSICAL_OBSERVER_WINDOW") == "pending-before-unlink" {
+		// Native file mechanism only: the outside observer must hold the real
+		// Remove entry after successful original Close, before this leaf is lost.
+		if err := os.Remove(next); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func TestSourceTransitionNativeDescendant(t *testing.T) {

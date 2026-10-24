@@ -36,9 +36,22 @@ def unique(pairs):
     return result
 
 
+def check_time_bounds(now, expires, no_new, terminate, *, timestamp_only):
+    # A Timestamp may expire before the unchanged artifact safety bounds. This
+    # permits a causal expiry control without silently renewing those bounds.
+    # The signer separately compares the original declarations and caps expiry
+    # by each unchanged parent role.
+    if (not now < expires or not now < no_new < terminate
+            or (expires - now).total_seconds() > 7 * 86400
+            or (not timestamp_only and terminate > expires)):
+        raise RuntimeError("current finite Source purpose bounds required")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--forward", action="store_true", help="prepare the distinct forward signing purpose; predecessor trust is checked by sign-forward-release")
+    purpose = parser.add_mutually_exclusive_group()
+    purpose.add_argument("--forward", action="store_true", help="prepare the distinct forward signing purpose; predecessor trust is checked by sign-forward-release")
+    purpose.add_argument("--timestamp-only", action="store_true", help="prepare timestamp refresh; the signer requires exact retained resources/custom declarations and copies Root/Snapshot/Targets unchanged")
     for name in ("build-root", "descriptor", "template", "qualification-evidence", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
     for name in ("network", "expires", "no-new-work-after", "terminate-after", "qualification-evidence-sha256"):
@@ -118,7 +131,7 @@ def main():
     template = read(p.template, 64 << 10)
     program = p.build_root / "build-1" / "ardents-node"
     version = descriptor.get("release_version")
-    if type(version) is not int or not 1 <= version <= (1 << 63) - 1 or (p.forward and version <= 1) or (not p.forward and version != 1) or descriptor.get("files") != {"ardents-node-linux-amd64": common["files"]["ardents-node"], "ardents-source.service": sha(template)}:
+    if type(version) is not int or not 1 <= version <= (1 << 63) - 1 or (p.forward and version <= 1) or (not p.forward and not p.timestamp_only and version != 1) or descriptor.get("files") != {"ardents-node-linux-amd64": common["files"]["ardents-node"], "ardents-source.service": sha(template)}:
         raise RuntimeError("Source purpose/resources disagree with actual builds")
     now = datetime.now(timezone.utc).replace(microsecond=0)
 
@@ -129,8 +142,9 @@ def main():
         return value
 
     expires, no_new, terminate = map(instant, (p.expires, p.no_new_work_after, p.terminate_after))
-    if not now < no_new < terminate <= expires or (expires - now).total_seconds() > 7 * 86400 or not p.network.strip():
-        raise RuntimeError("current finite initial Source bounds required")
+    check_time_bounds(now, expires, no_new, terminate, timestamp_only=p.timestamp_only)
+    if not p.network.strip():
+        raise RuntimeError("nonempty Source network required")
 
     def utc(value):
         return value.isoformat().replace("+00:00", "Z")
@@ -146,6 +160,8 @@ def main():
         return result
 
     schema = "ardents-source-forward-release-plan-v1" if p.forward else "ardents-source-initial-release-plan-v1"
+    if p.timestamp_only:
+        schema = "ardents-source-timestamp-release-plan-v1"
     plan = {"schema": schema, "network": p.network, "reference_time": utc(now), "expires": utc(expires),
             "program": str(program), "descriptor": str(p.descriptor), "template": str(p.template),
             "program_custom": custom(common["files"]["ardents-node"]), "generation_custom": custom(observed[p.descriptor])}

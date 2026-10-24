@@ -25,17 +25,24 @@ import (
 )
 
 func runSourceReleaseSigning(args []string, out io.Writer) error {
-	return runSourceReleasePurpose(args, out, false)
+	return runSourceReleasePurpose(args, out, sourceReleaseInitial)
 }
 
-func runSourceReleasePurpose(args []string, out io.Writer, forward bool) error {
+func runSourceReleasePurpose(args []string, out io.Writer, purpose sourceReleasePurpose) error {
 	wanted, operation := 4, "sign-initial-release"
-	if forward {
+	if purpose == sourceReleaseForward {
 		wanted, operation = 5, "sign-forward-release"
+	} else if purpose == sourceReleaseTimestamp {
+		wanted, operation = 5, "refresh-release-timestamp"
+	} else if purpose != sourceReleaseInitial {
+		return errSourceControlInput
 	}
 	if len(args) != wanted {
-		if forward {
+		if purpose == sourceReleaseForward {
 			return errors.New("usage: ardents-control source sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION")
+		}
+		if purpose == sourceReleaseTimestamp {
+			return errors.New("usage: ardents-control source refresh-release-timestamp PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION CURRENT_DISTRIBUTION")
 		}
 		return errors.New("usage: ardents-control source sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION")
 	}
@@ -43,7 +50,7 @@ func runSourceReleasePurpose(args []string, out io.Writer, forward bool) error {
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	root, err := signSourceRelease(ctx, args, forward, nil)
+	root, err := signSourceRelease(ctx, args, purpose, nil)
 	if err != nil {
 		return &sourceControlFailure{err}
 	}
@@ -66,10 +73,12 @@ func runSourceReleasePurpose(args []string, out io.Writer, forward bool) error {
 // operation admits only the two purpose-bound Source targets, obtains actual Release
 // decisions under one diagnostic verifier, then writes public metadata after
 // all original input and physical cleanup checks. Partial outputs stay retained.
-func signSourceRelease(ctx context.Context, args []string, forward bool, observe func(string, *os.File)) (result []byte, returned error) {
+func signSourceRelease(ctx context.Context, args []string, purpose sourceReleasePurpose, observe func(string, *os.File)) (result []byte, returned error) {
 	wantedArguments := 4
-	if forward {
+	if purpose == sourceReleaseForward || purpose == sourceReleaseTimestamp {
 		wantedArguments = 5
+	} else if purpose != sourceReleaseInitial {
+		return nil, errSourceControlInput
 	}
 	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != wantedArguments {
 		return nil, errSourceControlInput
@@ -97,7 +106,7 @@ func signSourceRelease(ctx context.Context, args []string, forward bool, observe
 	if err != nil {
 		return nil, err
 	}
-	plan, err := decodeSourceReleasePurpose(planRaw, time.Now().UTC(), forward)
+	plan, err := decodeSourceReleasePurpose(planRaw, time.Now().UTC(), purpose)
 	if err != nil {
 		return nil, err
 	}
@@ -121,10 +130,15 @@ func signSourceRelease(ctx context.Context, args []string, forward bool, observe
 		return nil, err
 	}
 	var predecessor *sourceReleasePredecessor
-	if forward {
+	if purpose != sourceReleaseInitial {
 		predecessor, err = readSourceReleasePredecessor(inputs, args[4], plan, artifacts[1])
 		if err != nil {
 			return nil, err
+		}
+		if purpose == sourceReleaseTimestamp {
+			if err := predecessor.checkTimestampResources(plan, artifacts); err != nil {
+				return nil, err
+			}
 		}
 	}
 	keyDirectory, err := inputs.directory(args[1])
@@ -262,17 +276,7 @@ func signSourceRelease(ctx context.Context, args []string, forward bool, observe
 			return nil, err
 		}
 	}
-	targets := metadata.Targets(plan.Expires)
-	if predecessor != nil {
-		targets.Signed.Version = predecessor.targetsVersion + 1
-	}
 	paths := []string{infrastructure.ProgramTarget, infrastructure.GenerationTarget}
-	customs := []json.RawMessage{plan.ProgramCustom, plan.GenerationCustom}
-	for i, path := range paths {
-		digest := sha256.Sum256(artifacts[i])
-		custom := json.RawMessage(bytes.Clone(customs[i]))
-		targets.Signed.Targets[path] = &metadata.TargetFiles{Length: int64(len(artifacts[i])), Hashes: metadata.Hashes{"sha256": digest[:]}, Path: path, Custom: &custom}
-	}
 	sign := func(value sourceSignableMetadata) ([]byte, error) {
 		for _, signer := range signers[:3] {
 			if err := check(); err != nil {
@@ -294,23 +298,44 @@ func signSourceRelease(ctx context.Context, args []string, forward bool, observe
 	} else {
 		rootBytes = bytes.Clone(predecessor.files["root.json"])
 	}
-	targetBytes, err := sign(targets)
-	if err != nil {
-		return nil, err
-	}
-	snapshot := metadata.Snapshot(plan.Expires)
-	snapshot.Signed.Meta["targets.json"] = sourceMetadataReference(targetBytes)
-	snapshot.Signed.Meta["targets.json"].Version = targets.Signed.Version
-	if predecessor != nil {
-		snapshot.Signed.Version = predecessor.snapshotVersion + 1
-	}
-	snapshotBytes, err := sign(snapshot)
-	if err != nil {
-		return nil, err
+	var targetBytes, snapshotBytes []byte
+	snapshotVersion := int64(1)
+	if purpose == sourceReleaseTimestamp {
+		// This purpose signs only Timestamp. Even equivalent reserialization of
+		// Root, Snapshot or Targets would destroy the expiry control's cause.
+		targetBytes = bytes.Clone(predecessor.files["targets.json"])
+		snapshotBytes = bytes.Clone(predecessor.files["snapshot.json"])
+		snapshotVersion = predecessor.snapshotVersion
+	} else {
+		targets := metadata.Targets(plan.Expires)
+		if predecessor != nil {
+			targets.Signed.Version = predecessor.targetsVersion + 1
+		}
+		customs := []json.RawMessage{plan.ProgramCustom, plan.GenerationCustom}
+		for i, path := range paths {
+			digest := sha256.Sum256(artifacts[i])
+			custom := json.RawMessage(bytes.Clone(customs[i]))
+			targets.Signed.Targets[path] = &metadata.TargetFiles{Length: int64(len(artifacts[i])), Hashes: metadata.Hashes{"sha256": digest[:]}, Path: path, Custom: &custom}
+		}
+		targetBytes, err = sign(targets)
+		if err != nil {
+			return nil, err
+		}
+		snapshot := metadata.Snapshot(plan.Expires)
+		snapshot.Signed.Meta["targets.json"] = sourceMetadataReference(targetBytes)
+		snapshot.Signed.Meta["targets.json"].Version = targets.Signed.Version
+		if predecessor != nil {
+			snapshot.Signed.Version = predecessor.snapshotVersion + 1
+		}
+		snapshotVersion = snapshot.Signed.Version
+		snapshotBytes, err = sign(snapshot)
+		if err != nil {
+			return nil, err
+		}
 	}
 	timestamp := metadata.Timestamp(plan.Expires)
 	timestamp.Signed.Meta["snapshot.json"] = sourceMetadataReference(snapshotBytes)
-	timestamp.Signed.Meta["snapshot.json"].Version = snapshot.Signed.Version
+	timestamp.Signed.Meta["snapshot.json"].Version = snapshotVersion
 	if predecessor != nil {
 		timestamp.Signed.Version = predecessor.timestampVersion + 1
 	}

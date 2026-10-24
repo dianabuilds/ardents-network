@@ -541,6 +541,7 @@ The separate closed initial Source key birth and signing forms are:
 ardents-control source prepare-release-keys FRESH_PRIVATE_OUTPUT
 ardents-control source sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
 ardents-control source sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION
+ardents-control source refresh-release-timestamp PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION CURRENT_DISTRIBUTION
 ```
 
 Key birth writes exactly five fresh distinct `release-key-1.pem` through

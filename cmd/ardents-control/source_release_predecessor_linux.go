@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -69,9 +70,15 @@ func readSourceReleasePredecessor(inputs *sourceControlInputs, path string, plan
 	if err != nil {
 		return nil, err
 	}
-	next, err := infrastructure.DecodeDescriptor(candidate)
-	if err != nil || next.ReleaseVersion <= previous.ReleaseVersion {
-		return nil, errors.Join(errSourceControlInput, err)
+	if plan.Schema == "ardents-source-timestamp-release-plan-v1" {
+		if !bytes.Equal(candidate, p.files[infrastructure.DescriptorName]) {
+			return nil, errSourceControlInput
+		}
+	} else {
+		next, err := infrastructure.DecodeDescriptor(candidate)
+		if plan.Schema != "ardents-source-forward-release-plan-v1" || err != nil || next.ReleaseVersion <= previous.ReleaseVersion {
+			return nil, errors.Join(errSourceControlInput, err)
+		}
 	}
 	p.root, err = metadata.Root().FromBytes(p.files["root.json"])
 	if err != nil {
@@ -89,12 +96,46 @@ func readSourceReleasePredecessor(inputs *sourceControlInputs, path string, plan
 		if err := json.Unmarshal(p.files[name], &version); err != nil {
 			return nil, err
 		}
-		if version.Signed.Version < 1 || version.Signed.Version == math.MaxInt64 {
+		if version.Signed.Version < 1 || version.Signed.Version == math.MaxInt64 && (plan.Schema != "ardents-source-timestamp-release-plan-v1" || name == "timestamp.json") {
 			return nil, errSourceControlInput
 		}
 		*destination = version.Signed.Version
 	}
 	return p, errors.Join(check(), inputs.checkProtected(), p.candidate.Check())
+}
+
+// Exact retained resources and custom declarations, rather than an equal version
+// or detached identifier, delimit timestamp refresh. The original diagnostic
+// verifier still authenticates both targets before any signature is produced.
+func (p *sourceReleasePredecessor) checkTimestampResources(plan sourceReleasePlan, artifacts [3][]byte) error {
+	for i, name := range []string{infrastructure.ProgramName, infrastructure.DescriptorName, infrastructure.TemplateName} {
+		if !bytes.Equal(artifacts[i], p.files[name]) {
+			return errSourceControlInput
+		}
+	}
+	targets, err := metadata.Targets().FromBytes(p.files["targets.json"])
+	if err != nil || len(targets.Signed.Targets) != 2 {
+		return errors.Join(errSourceControlInput, err)
+	}
+	snapshot, err := metadata.Snapshot().FromBytes(p.files["snapshot.json"])
+	if err != nil {
+		return err
+	}
+	if plan.Expires.After(p.root.Signed.Expires) || plan.Expires.After(targets.Signed.Expires) || plan.Expires.After(snapshot.Signed.Expires) {
+		return errSourceControlInput
+	}
+	for i, name := range []string{infrastructure.ProgramTarget, infrastructure.GenerationTarget} {
+		target := targets.Signed.Targets[name]
+		if target == nil || target.Custom == nil {
+			return errSourceControlInput
+		}
+		requested := []json.RawMessage{plan.ProgramCustom, plan.GenerationCustom}[i]
+		var original, proposed bytes.Buffer
+		if json.Compact(&original, *target.Custom) != nil || json.Compact(&proposed, requested) != nil || !bytes.Equal(original.Bytes(), proposed.Bytes()) {
+			return errSourceControlInput
+		}
+	}
+	return nil
 }
 
 func (p *sourceReleasePredecessor) matchKeys(ids []string) error {

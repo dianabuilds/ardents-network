@@ -44,7 +44,7 @@ func verifySourcePhysicalRootFDs(pid int, original *sourcePhysicalImage) error {
 		if err != nil {
 			return err
 		}
-		if os.SameFile(info, original.journalInfo) || original.payloadInfo != nil && os.SameFile(info, original.payloadInfo) {
+		if os.SameFile(info, original.journalInfo) || original.payloadInfo != nil && os.SameFile(info, original.payloadInfo) || original.pendingInfo != nil && os.SameFile(info, original.pendingInfo) {
 			return errors.New("original native writer descriptor still live after Close")
 		}
 	}

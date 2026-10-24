@@ -12,7 +12,15 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 )
 
-// A distinct closed initial Source purpose. Endpoint metadata plans/receipts
+type sourceReleasePurpose uint8
+
+const (
+	sourceReleaseInitial sourceReleasePurpose = iota
+	sourceReleaseForward
+	sourceReleaseTimestamp
+)
+
+// Distinct closed Source purposes. Endpoint metadata plans/receipts
 // are not translated, and no caller chooses a target, metadata role or message.
 type sourceReleasePlan struct {
 	Schema           string          `json:"schema"`
@@ -26,11 +34,17 @@ type sourceReleasePlan struct {
 	GenerationCustom json.RawMessage `json:"generation_custom"`
 }
 
-func decodeSourceReleasePurpose(raw []byte, now time.Time, forward bool) (sourceReleasePlan, error) {
+func decodeSourceReleasePurpose(raw []byte, now time.Time, purpose sourceReleasePurpose) (sourceReleasePlan, error) {
 	var plan sourceReleasePlan
 	schema := "ardents-source-initial-release-plan-v1"
-	if forward {
+	switch purpose {
+	case sourceReleaseInitial:
+	case sourceReleaseForward:
 		schema = "ardents-source-forward-release-plan-v1"
+	case sourceReleaseTimestamp:
+		schema = "ardents-source-timestamp-release-plan-v1"
+	default:
+		return sourceReleasePlan{}, errSourceControlInput
 	}
 	if len(raw) == 0 || len(raw) > 1<<20 || sourceDeclarationObject(raw, &plan, "schema", "network", "reference_time", "expires", "program", "descriptor", "template", "program_custom", "generation_custom") != nil ||
 		plan.Schema != schema || plan.Network == "" || plan.Reference.IsZero() || !plan.Expires.After(now) || !plan.Expires.After(plan.Reference) || plan.Expires.Sub(plan.Reference) > 7*24*time.Hour ||

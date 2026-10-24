@@ -1,5 +1,524 @@
 # Testing
 
+The canonical physical observer additionally has two initial-only early effect
+windows. `account-before-complete-birth` holds the next real `/etc/group`
+account-born record after the original helper has joined but only `/etc/passwd`
+birth is recorded (prefix24). It retains all four actual database images and
+thirteen auxiliary paths, checks the original preimage backups and exact new
+account delta, and compares recorded native births with the actual inodes,
+bytes and access. This observes a completed helper effect with incomplete birth
+history, not interruption while the helper writes. `directory-born-before-record`
+holds the first real root directory birth at prefix42, after Mkdir/open/stat and
+before its born record or ready promotion; the exact root must be empty0700.
+Both retain the account/directory native image through original coordinator
+teardown without producing an eligible original-cut proof. Their closed profile
+and native image controls supply no Source/Release/manager authority. The finite
+runner declares both initial-only cuts and preserves absent future semantic and
+credential roots, account/auxiliary images and native ancestors. Both later
+canonical refusals require a distinct fresh-prefix observer: successful actual
+exclusive journal flock, complete contiguous reads of the original inode/bytes
+and successful Close before the existing no-GC resource-release probe. These
+early prefixes refuse before original-cut lookup; they cannot borrow its ENOENT
+cause. Native file-only controls exercise24/42 with the real prefix reader and
+reject unattempted, unlocked, partial and foreign-inode reads, plus actual
+exclusive-to-unlocked/shared transitions before reading, with both race and
+CGO-disabled drivers. Successful release/downgrade invalidates custody even if
+the caller later reacquires it. This prepares80 finite runner selectors; final matrix,
+controller, receipt acceptance and installed execution remain separate evidence.
+
+The native canonical signing fixture additionally constructs a deliberately
+hostile threshold-signed Source metadata set. Its two genuine Release target
+authorizations differ only in the generation target's no-new-work bound. The
+maintained signer refuses that mismatched public plan before output birth;
+test-only signing supplies the hostile metadata without adding a command.
+The actual `AuthenticateCandidate` consumer first admits a healthy candidate
+against retained floors, then refuses the hostile pair twice with `ErrBinding`.
+Each target must independently authorize, so a bad signature, expired role or
+wrong artifact cannot stand in for pair incoherence. Already admitted floors
+remain unchanged through the repeated refusal. This is native component
+admission evidence, not installed recovery or canonical command cleanup proof.
+
+Two finite `recovery-refusal-{initial,replacement}-timestamp-expiry` cases
+freeze the same eight-file candidate before its genuine original cut70/49.
+Separate exact `release_expiry` predictions require no failed-completion header
+or startup effect. After the original caller joins, the retained Release
+observer must produce a coherent authorized `no-update` pair before Timestamp
+expiry and an unauthorized `release-expired` pair after the actual wall-clock
+crossing. Every parent/safety bound stays live and signed protocol facts remain
+announced without competing emergency/overlap clocks. Exact report/profile
+pins and process observation intervals bind the outside pair to the unchanged
+original candidate. Both later canonical recover-source calls must refuse and
+join before return; original journals, cut proof, blocker, fixed unit and
+account/credential/semantic/Release history remain unchanged. The generic
+command failure is not used alone to identify expiry: its separate genuine
+Release cause observations are retained too. Short inputs must still be valid
+at the original cut; expired preparation fails without refresh or wider bounds.
+These branches prepare installed expiry controls; execution awaits the final
+exact new public receipt and direct Decision6 acceptance.
+
+The separate `source-release-expiry-observer-v1` native diagnostic reads an
+exact eight-file canonical candidate and an already admitted retained Release
+history. It captures actual wall time once for both real target evaluations;
+profiles cannot supply reference time. Before expiry both must authorize with
+`no-update` and form a coherent pair. After expiry both must return
+`release-expired` without authorization. Root/Snapshot/Targets and both target
+safety bounds must remain later than the Timestamp and the observed time.
+Both signed targets must use the prepared announced/no-emergency protocol
+facts with no overlap clock; another signed protocol clock is refused by this
+finite diagnostic and retains its ordinary product Release policy.
+Floors remain unchanged and the verifier closes before the report. This
+observer grants no Installation action or runtime authority. Its canonical
+signer fixture additionally requires an independently pinned Infrastructure
+observer binary through `ARDENTS_SOURCE_EXPIRY_OBSERVER_PROGRAM` and its
+`_SHA256`, a native preparation marker and a real short Timestamp wall-clock
+crossing; wrong-phase observations on both sides refuse. These native controls
+remain distinct from an accepted installed expiry/recovery cohort.
+
+Each positive Source recovery lifecycle separately invokes canonical
+`recover-source` against both the latest complete startup journal and its
+committed retirement journal after the original Source has joined. A distinct
+`completed_classifications` matrix entry fixes the stopped-selected, no-write
+outcome for each attempt/journal kind. The exact current declaration is selected
+by its original binding commitment, including after B/C replacement. Account,
+semantic/Release/credential history, all original root sibling journals and
+fixed unit/selection bytes/native identities remain unchanged; the independently
+held manager observation remains stopped. Terminal accounting requires the
+complete ordered pair after every positive lifecycle invocation. This prepares
+actual read-only classification coverage; installed evidence remains pending.
+
+Six finite `recovery-retirement-ATTEMPT-WINDOW` cases cover attempts0/1 and
+`native-before-joined`, `result-before-close`, `pending-before-unlink`. Each
+requires its separate exact `retirement_cuts` prediction. The outside owner
+retains the live Source pidfd/proc/cgroup before launching stop-source and
+matches its original archive, manager and execution clocks. While root is held,
+both original pidfd exit and original scope emptiness must be observed before
+requesting the root cut. The retirement journal, startup journal/archive,
+optional result, guard and fixed selection/unit retain bytes/native identities
+through SIGKILL/reaps and separate Source join. Two fresh canonical recovery
+callers must prove the exact retirement-pending refusal and release their own
+resources before return; ordinary start/restart also refuse with unchanged
+history. Detached report controls reject startup-purpose substitution, foreign
+archives/results, graceful output and incomplete root reaps. This is prepared
+runner coverage; installed execution still requires the final exact new
+Decision6 receipt and does not follow from these development checks.
+
+The distinct `source-retirement-recovery-refusal-observer-v1` declaration pins
+the exact attempt0..63 retirement journal and original
+`source-retirement-pending` guard. It shares the native syscall custody oracle
+with startup while retaining separate profile fields, journal paths, installed
+modes and result fields. Both-purpose profiles and cross-purpose observations
+refuse. Native controls require the paired successful nofollow stat of the
+original retirement inode and reject no lookup, another existing file,
+following stat and a successful lookup of the startup guard. The outside
+runner additionally supplies its independently retained guard inode/hash.
+Offline ELF/profile and native syscall controls prepare this causal refusal;
+they do not execute installed recovery or establish Source/domain completion.
+
+The distinct `source-retirement-physical-cut-observer-v1` declaration pins the
+canonical `installation stop-source` arguments, exact first/subsequent attempt,
+selected program/binding and original complete startup journal/archive hashes.
+Its finite windows select `sourceStopStorage.record` at `native-joined` (six
+records), the actual `sourceStopStorage.close` (twelve records/result), or final
+retirement pending `os.Remove`. The first two bind the actual live writer
+receiver and original journal descriptor/flock. Final unlink requires journal,
+result and pending descriptors closed and journal exclusion independently
+available. Complete startup grammar/native inodes must remain unguarded; the
+separate retirement blocker remains present in every window. Full result
+matching includes original InvocationID/process/archive, challenge, closed
+completion codec, manager and execution clocks. A READY observation retains
+the exact archive/result image; one outside `cut` directive precedes original
+root SIGKILL/reaps and unchanged-image/available-journal readback. Those root
+observations supply no Source-unit join or graceful application Close.
+`inspect-retirement-physical` reads the actual ELF only. Installed mode still
+requires final new exact Decision6 acceptance and the outside runner's original
+Source pidfd/cgroup retention before launching stop. All64 finite paths have
+offline profile/entry controls and unsigned linked startup/retirement native
+image controls. These fixtures grant no accepting Source or original join;
+actual retirement process-cut/runner qualification remains separate.
+
+The outside retirement physical-prefix reader distinguishes the six-record
+`native-before-joined` prefix from complete twelve-record `result-before-close`
+and `pending-before-unlink` images. The six records end at `domain-joined` and
+cannot supply native completion; full records reuse the unchanged complete
+grammar, with no synthesized suffix or committed-retirement exception. The
+native image requires exact journal/socket/result birth identities and access,
+one-link files, retained directory metadata, original bytes/change/modify times
+and the root0600 retirement-pending commitment. An unrecorded result must stay
+absent at six records; the pending guard must stay present in every image.
+`TestSourceRetirementPhysicalPrefixNative` covers all64 actual attempt paths
+with native files, an append-only outside writer and a real Unix frame transfer.
+Unknown/ambiguous/truncated records, changed paths, aliased journal and copied
+same-byte result inode refuse. Product readers still refuse these guarded
+fixtures. The unsigned framing fixture supplies no Source, manager, account,
+retirement or history authority; its own writer Close tests image/exclusion
+only. Actual native-join effect observation, `sourceStopStorage.close`, final
+publication and installed first/subsequent process cuts remain separate work.
+
+The finite recovery runner additionally selects first/subsequent attempt0/1 at
+`archive-before-archived` and `ack-before-written`. Each case requires its own
+exact published `startup_cuts` prediction before the cut. While the root entry
+is held, the outside runner independently reads the canonical archive and
+retains the actual Source pidfd and original cgroup events descriptor, matching
+proc/cgroup native identities, executable/arguments/principal, InvocationID and
+manager execution clocks. It does not wait for listening before the first ACK.
+After the directed root SIGKILL and tracer reaps, it separately interrupts the
+original Source and requires both pidfd exit readiness and original kernel
+scope emptiness. Only then does it release those handles and require two fresh
+causal pending-guard recovery refusals plus ordinary start/restart refusals,
+with unchanged partial startup/native identities and all retained histories.
+No retirement, recovery completion or later attempt may appear. Native pipe
+controls also check a real private child's pidfd before and after actual exit;
+that child is not a Source or PID1 unit. These four prepared runner cases still
+need the final source-bound matrix/controller, new exact Decision6 acceptance
+and actual installed execution; root reaps alone prove no Source completion.
+
+The separate `source-startup-recovery-refusal-observer-v1` profile binds one
+exact startup journal and attempt0..63 with its Source group. It cannot combine
+recovery holds, missing-cut observations, external leases or damaged access.
+`inspect-startup-pending` reads the actual canonical ELF without execution;
+installed mode still requires the new completed exact Decision6 acceptance.
+Before the canonical recovery entry proceeds, the observer retains the original
+root0600 pending guard and journal hashes/native identities and trusted parent
+identities. It requires a paired actual Linux amd64 `newfstatat` entry/success
+with `AT_SYMLINK_NOFOLLOW` for precisely that guard, and matches returned
+device/inode, regular0600 access, root owner/group and one link against the
+retained original. Guard/journal bytes and native identities remain unchanged
+through the before-return descriptor/flock/manager-user release check.
+Native controls distinguish this exact lookup from no lookup, a successful
+lookup of another existing file, and following `Stat` of the exact path; both
+race and CGO=0 drivers must reject those substitutes. Offline profile inspection
+covers every finite startup attempt, and detached report controls require the
+outside runner's independently retained guard identity/hash. These checks
+prepare causal refusal evidence; they do not execute canonical recovery,
+qualify an installed startup cut, replay ACK or prove Source-unit completion.
+
+The closed `source-startup-physical-cut-observer-v1` profile selects only the
+actual `sourceStartStorage.record` entry before `archived` or `ack-written`,
+with exact canonical start/restart arguments, attempt0..63, original journal,
+generation/binding/program/receipt pins and Source group. `inspect-startup-physical`
+reads the actual ELF without executing it; installed mode still requires the
+new completed exact bootstrap receipt and direct Decision6 acceptance. At the
+held entry, the observer checks the actual live writer receiver/startup
+journal FD and original writer flock, canonical guard/socket/archive/frame
+bindings, native file images, original archived process/program and cgroup.
+`SOURCE_PHYSICAL_CUT_READY` identifies that retained observation. It does not
+prove that the outside controller has retained the separately owned PID1 unit.
+The controller must retain and check that original pidfd/cgroup before sending
+exactly `cut\n`; only then may the observer SIGKILL its own original root through
+the from-birth process owner, reap its original tree and reobserve the unchanged
+startup image and available writer exclusion. Root reaps supply no Source-unit
+join, graceful Close, processed cancellation or domain completion claim.
+
+The native-only `root-controlled-file-ready-before-record` case exercises the
+same actual root hold/control/Kill/reap transport on a disposable original file
+writer. The maintained pipe owner joins its helper, reader and pipes on success,
+wrong/duplicate directives and EOF. Its separate `CUT_CONTROL_RUNNER` input is
+independently pinned in the prepared recovery cohort; the exact helper/driver
+artifact must retain its native `.test` role name. Unsigned native snapshot
+fixtures must fail live Source matching. Startup entry selection and the
+separate actual PID1 unit/controller join still need their installed cohort.
+
+The outside startup physical-prefix reader recognizes only
+`archive-before-archived` (19 records) and `ack-before-written` (21 records).
+It checks the exact first/subsequent schema, all ordered native birth triples,
+socket promotion, original paths and public commitments. Its separate native
+image reader binds the original journal and byte-bearing resources, directory,
+stale/live socket metadata and retained start-pending marker, including native
+change/modify times. It does not read a socket as a regular file. The product's
+complete-only startup reader remains unchanged and must refuse both prefixes.
+`TestSourceStartupPhysicalPrefixNative` uses all64 actual finite attempt paths,
+the real native storage writer/births and an actual full Unix frame write/read;
+copied same-byte archive inodes and foreign/unknown/ambiguous prefixes refuse.
+The fixture's unsigned guard/archive bodies grant no Source, account, Release,
+manager or original-process authority. This prepares the partial-image oracle;
+it does not yet qualify hardware entry selection, a canonical startup process
+cut or the separately retained PID1 Source unit's pidfd/cgroup join.
+
+The distinct `source-recovery-missing-cut-observer-v1` declaration adds exactly
+`missing_original_cut:true` to the refusal profile. It forbids recovery holds,
+external leases and damaged journal access. `inspect-missing-cut` inspects the
+actual canonical ELF without executing it; `installed-missing-cut` still needs
+the new completed exact cohort receipt and direct Decision6 acceptance.
+The observer retains the original journal bytes/inode and every trusted parent
+directory identity before effects. It requires the actual root's paired Linux
+amd64 `openat` read of precisely `<journal>.original-cut-journal`, with readonly,
+nofollow, nonblocking and close-on-exec flags, followed by kernel `ENOENT`.
+The target stays absent and every parent stays present with its original
+identity, excluding a missing/substituted parent as an alternative cause.
+Before-return cleanup must follow that observed pair, with no pending pair.
+Native controls invoke the real prefix owner's read and joined failure; an
+unattempted read, actual `ENOENT` on another path, and an `O_PATH` metadata-only
+lookup of the exact absent path must fail this oracle. Only the exact file
+owner's read flags qualify.
+These native file/process controls provide no accepting Source authority.
+
+The separate `source-physical-cut-observer-v1` declaration selects canonical
+initial/replacement windows `file-born-before-record` (original prefix69/12),
+`file-ready-before-record` (70/13), `file-born-before-journal-sync` (70/13),
+`seal-before-sealed` (105/48), `binding-before-record` (109/50),
+`unit-before-record` (113/52), `reload-before-verified` (114/54),
+`journal-complete-before-close` (115/55), and `pending-before-unlink` (115/55).
+It fixes the actual command,
+program/receipt pins, original journal, generation, count and last phase. Its
+`inspect-physical` mode reads the actual canonical ELF without invoking it;
+`installed-physical` additionally requires the original private installed stand
+and the new completed exact receipt's direct Product Owner Decision6 acceptance.
+These prepared profiles are not installed evidence or phase equivalence.
+
+Four separate native-only `root-process-` windows select journal Sync,
+file-born/file-ready record, or original writer Close entry in the private file
+driver. The observer requests SIGKILL through its original from-birth process
+owner while that entry remains held, observes actual root SIGKILL and reaps all
+original threads. Only after those reaps does it independently reopen the
+unchanged image and prove the original journal lease is available. This is
+kernel release after a process cut, not successful application Close or domain
+completion. It neither arms nor consumes the native graceful-return marker and
+must not claim processed cancellation or before-exit release. Canonical
+installed profiles cannot select these native-only variants. Actual recovered
+publication, startup and retirement still require their own profile, original
+owners and installed evidence; Source processes launched by PID1 additionally
+require their separate original pidfd/cgroup join.
+
+The distinct `source-recovery-physical-cut-observer-v1` declaration prepares
+recovery-root `completion-before-close` and `pending-before-unlink` entries.
+Its original immutable prefix is separately pinned at initial70/115 or
+replacement13/55; the new complete recovery envelope must bind that original
+native journal, exact prefix hash/count, generation and binding. The combined
+transcript supplies the full sealed inventory, both fixed publications and
+original pending birth. Original-cut journal/result remain unchanged and
+unguarded, and the result has its own exact pin. Native file times/inodes and
+bytes remain part of the retained image. Before Close, the actual writer
+receiver must own the live completion FD and both leases remain held; before
+pending Remove, both leases must be available and no original journal,
+completion or pending FD may remain. The actual held root is then killed and
+fully reaped, with fresh original/completion/Release exclusion observed only
+after exit. These are process cuts, never clean application completion.
+
+`inspect-recovery-physical` inspects only the actual canonical ELF;
+`installed-recovery-physical` requires the new completed exact receipt's direct
+Decision6 acceptance. Ten offline profile combinations and native image
+controls cover this preparation. Their unsigned native file/codec fixture
+does not construct eligible Source or manager authority and never invokes a
+recovery command. Eight finite runner cases
+`recovery-root-OPERATION-N-completion-before-close` and
+`recovery-root-OPERATION-N-pending-before-unlink` use initial N70/115 or
+replacement N13/55. Before the original cut, each requires its own exact
+`root_recovery_cuts` prediction. After a genuine eligible original cut and
+ordinary refusal, a fresh canonical recovery is held and killed. The outside
+consumer independently validates its complete original-bound envelope and
+native image, retains pending, then requires ordinary replay/start and two
+separate fresh recovery commands to refuse without adopting or changing it.
+Both fresh callers require actual before-return cleanup proof. These prepared
+consumers remain unexecuted until the completed exact receipt has direct D6
+acceptance; they are not passing installed cases.
+
+Two further recovery-root cases select `repaired-body-before-record` at
+initial70 or replacement13. At the actual `sourceBirths.record` entry, the
+next phase/path must be the first program's `file-ready`. The observed writer
+receiver owns the live completion FD, the original journal/completion/Release
+leases are held, and the repaired program retains its original recorded born
+inode, final access and exact program bytes. The completion contains only its
+canonical original-bound header with zero suffix records. Its partial bytes,
+program/pending/native times and original-cut proof remain unchanged after
+SIGKILL/reaps and through later causal refusals. A complete envelope cannot
+stand in for this partial image. Separate unsigned initial/replacement native
+fixtures exercise image and substitution checks without invoking recovery or
+supplying Source authority. These two cases bring the prepared runner inventory
+to66; actual installed execution still requires the completed new exact D6
+acceptance.
+
+The whole-installation retention oracle records stale Unix sockets through
+native identity, mode, owner and change/modify times. It does not open them as
+regular files or infer a live runtime from their names. The same finite byte
+budget applies to all regular files; FIFO, symlink and other non-regular input
+remain refused. Separate native socket/regular/FIFO/symlink controls exercise
+that distinction without starting Source.
+
+At `file-born-before-journal-sync`, the actual `sourceBirths.sync` argument must
+be the original journal's live descriptor. The observer reads its real
+`os.File`/`poll.FD.Sysfd` representation using offsets from the same Go1.27.3
+Linux amd64 types, without `unsafe` or tracee writes. Native pre-Sync controls
+also require that this argument rejects a different real native inode. The
+visible canonical born record has not yet completed Sync; its original program
+inode must still be empty root0600. Written bytes, another inode or an earlier
+ACK cannot qualify this window. The pending marker and original journal remain
+unchanged after the controller kills and joins its held coordinator.
+
+At `seal-before-sealed`, the actual `record("sealed", generation, ...)` entry
+has only the original `seal-intent` prefix. The same original generation
+directory is already root0555. Its original directory intent/born/ready and all
+twelve original file triples must match actual native inodes, modes and bytes;
+the program hash additionally matches the pinned canonical executable. No extra
+or missing file is permitted. An open original directory spans the inventory
+readback, and a retained image includes each file's native change/modify times
+as well as its identity, mode, size and hash. A later restored same-inode body
+cannot erase changed native metadata. The original pending marker and complete
+sealed inventory survive the original coordinator's kill/join. The native
+`TestSourceCanonicalPhysicalSealNative` controls perform real births/sealing
+with deliberately non-authoritative fixture bodies and reject altered lineage,
+unsealed access, unknown/missing/copied files and body/metadata changes.
+
+The fixed publication windows retain the complete original sealed inventory
+and require binding/unit bytes from that generation's `binding.json` or
+`rendered-source.service`. Initial publication retains its original0644
+intent/born/ready inode before `selected` or `reload-intent` is recorded.
+Replacement instead observes the actual `selection-intent`/`unit-intent` entry
+before its append and Commit: the real old0644 file must still match the
+recorded predecessor's inode and hash. The subsequent hold before
+`selection-written`/`unit-written` requires that observation, unchanged original
+prefix, the same inode and exact new candidate bytes. The outside consumer
+independently retains old bytes' hash/device/inode before launching the original
+command and requires the matching explicit report; new bytes, another inode or
+an unattempted preimage read cannot supply this earlier fact. The native
+`TestSourceCanonicalPhysicalPublicationNative` controls exercise actual fresh
+births and `fixedfile.Replace`/Commit on private ext4 leaves, with deliberately
+unsigned bodies and no systemd or Source authority. Missing/late preimage,
+foreign inode/access/hash and actual body substitution must refuse.
+
+The last two windows retain the sealed inventory and both completed fixed
+publications. Initial files require original birth triples; replacement files
+require their original adjacent intent/written pairs and recorded predecessor
+inodes. Actual root0644 bytes must match the sealed candidate. These completed
+records do not claim an observed pre-Commit preimage or manager success.
+`reload-before-verified` stops at the actual final verified-record entry.
+`journal-complete-before-close` instead stops at the original `sourceBirths.close`
+entry, checks its actual receiver's `closed == false` and binds that receiver's
+still-live journal descriptor to the original inode. A read-only history Close,
+another writer or a repeated Close cannot substitute. The native original Close
+controls additionally reject a nil receiver and a foreign real inode.
+`TestSourceCanonicalPhysicalCompletedImageNative` exercises both complete fixed
+images with genuine births/Commit on private leaves and unsigned fixture bytes;
+it grants no Source/manager authority. Actual installed cuts remain outstanding.
+
+`pending-before-unlink` observes the actual `os.Remove` entry for the original
+pending marker after the complete transcript. At this separate point, independent
+journal exclusion must be available, and the held coordinator must have no live
+descriptor for that journal, pending marker or sealed generation directory.
+The matching complete files and pending birth remain unchanged after the
+original controller's kill/join. A native control holds a real Remove after
+successful `sourceBirths.close`, and the earlier Close-entry controls reject
+descriptor-free claims while their actual original journal FD remains live.
+Normal initial/replacement publication occurs inside the managed coordinator;
+the separate recovered publication in the root process is not covered here.
+
+At the actual `sourceBirths.record` entry the outside observer checks phase/path,
+the real original journal header/inode, an empty root0600 unrecorded program or
+its original born inode's exact root0555 bytes before ready. It independently
+binds the pending marker's canonical bytes/access/inode to its original
+intent/born/ready triple. Only then does it signal the distinct original root
+thread, before its unchanged deadline or any processed cancellation notice.
+The original controller must kill and join its held coordinator; the root must
+retain failure. Reobservation requires unchanged journal, payload and pending,
+released journal exclusion, and no manufactured original-cut or recovery proof.
+Such an unrecorded effect stays repair-required; thread counts never prove a
+Source runtime join. Native payload probes and offline inspection cover only
+their exact file/profile/ELF boundaries; the accepted canonical cohort remains
+required, as do the other non-equivalent physical windows.
+
+Select `recovery-physical-OPERATION-file-born-before-record` or
+`recovery-physical-OPERATION-file-ready-before-record` or
+`recovery-physical-OPERATION-file-born-before-journal-sync` or
+`recovery-physical-OPERATION-seal-before-sealed`,
+`recovery-physical-OPERATION-binding-before-record` or
+`recovery-physical-OPERATION-unit-before-record`,
+`recovery-physical-OPERATION-reload-before-verified`, or
+`recovery-physical-OPERATION-journal-complete-before-close`, or
+`recovery-physical-OPERATION-pending-before-unlink`, with OPERATION exactly
+`initial` or `replacement`. These eighteen consumers require separate exact
+`physical_cuts` predictions before the original operation; an ACK/prefix
+prediction cannot substitute. After the actual cut they preserve the complete
+remaining installation, account, credential, semantic and Release image,
+pending, fixed unit and absence of all eligible proof/completion sidecars.
+Ordinary replay/start and two separate fresh canonical recovery callers must
+refuse without changing that image. Each recovery caller supplies its actual
+before-return resource-release/join proof and the separate actual missing-cut
+read/ENOENT proof. The consumer independently retains the original journal
+parent's device/inode before ordinary attempts and requires that same identity
+in both reports; a generic final error or another missing file cannot qualify.
+Detached report controls reject missing, foreign and mixed-purpose claims.
+No failure header is permitted for
+these missing-original-proof cases. The new consumers remain unexecuted
+preparation until the completed exact cohort receipt has direct D6 acceptance.
+
+The dedicated native file/process control `TestSourceRecoveryConcurrentNative`
+uses `ARDENTS_SOURCE_RECOVERY_CONCURRENT_PROGRAM` to select the actual built
+native test driver. Two sibling tracer helpers retain separate original roots
+and `Wait4` ownership. The first repairs an original empty born inode under a
+fresh recovery writer and is held at the actual `sourceBirths.record` entry
+before its first suffix record. Independent file probes require its original
+journal, partial completion and separate fixture lock to remain exclusively held.
+The second caller observes both real exclusions and proves its own descriptors
+and leases released before return. Only then does the outside caller send the
+exact cancellation command. The first must observe actual cancellation before
+resuming the held entry, retain only cancellation in its operation/Close results,
+join its signal user, and prove resource release while still alive. Original
+journal, partial header and repaired original inode remain unchanged through
+both callers and a later refused envelope acquisition. This mechanism supplies
+no Release, State, account or manager authority, and cannot execute an installed
+profile; the canonical concurrent recovery cohort remains separately required.
+
+The separate `source-recovery-cancellation-observer-v1` declaration adds one
+`recovery_hold` object to the strict refusal profile. It admits only original
+initial70 or replacement13, the first exact generation `ProgramName` born file,
+its actual program hash, generation/binding and original journal pin. Existing
+external leases and damaged access are forbidden for that first caller. Use
+`inspect-cancellation` for offline actual-ELF inspection; `installed-cancellation`
+requires the completed exact cohort receipt and direct Decision6 acceptance.
+The observer checks recorded final payload access and original inode without
+changing permissions. After the outside cancellation it requires the canonical
+processed-cancellation notice before releasing the held record. A notice that
+precedes the outside signal is rejected. Both signal and processed observation
+must precede the conservative two-minute bound measured from actual process
+birth; this does not extend the product context. Native early-notice controls
+must reject and join the actual root without claiming successful before-return
+cleanup. Format/ELF inspection and native mechanisms are not installed evidence.
+
+The outside consumer's cancellation report validator binds the ready and final
+observations to one original root, held thread, three distinct code entries,
+profile, program, receipt and journal. It requires a different signalled thread,
+the actual processed notice, preserved held image, before-return release and
+complete joins. Its separate helper transport retains bounded output and joins
+the original process, pipe reader and log on completion or abort. Detached
+grammar controls and actual child-process transport controls cover mixed claims,
+duplicate events and final-message delivery at the timeout/EOF boundary. These
+prepared components do not themselves run the canonical concurrent cohort.
+
+The separately selected `recovery-concurrent-initial` and
+`recovery-concurrent-replacement` consumers require an exact
+`concurrent_cancellation` matrix entry before making the original cut at70 or13.
+The first canonical recovery is held after repairing the exact original program
+inode and before its first completion record. Independent outside reads bind
+the partial empty envelope and complete held history. A sibling second caller
+must prove the earlier actual Release exclusion and its own before-return
+release/join; its PID differs from the still-held first root. Only then is the
+first canceled and joined. A later separate caller must refuse without appending
+or adopting the retained partial envelope. Original cut/failure, account,
+credentials, semantic/Release histories, pending and fixed unit remain retained.
+These terminal controls perform no Start and cannot count root tracer threads
+as a Source runtime join. The consumers remain unexecuted until the new completed
+exact cohort receipt has direct Product Owner Decision6 acceptance.
+
+For an externally held lease, the refusal observer also requires the actual
+root's paired Linux amd64 `flock` entry/exit: `LOCK_EX|LOCK_NB`, an independently
+bound original fd/inode and kernel `EWOULDBLOCK`. Its syscall stops are observed
+only after admission; after the complete before-return proof ordinary process
+continuation resumes. A synthetic syscall-stop is never injected as a signal.
+If Release and journal are both held, require the earlier actual Release lock
+refusal; that does not claim this caller attempted the later journal acquisition.
+The consumer compares the reported device/inode with its independently retained
+external owner. A real external lease with no caller attempt is a causal negative
+control and must not pass merely because the caller releases its descriptors.
+
+`ARDENTS_SOURCE_REFUSAL_CHILD_STOP_FIRST=1` is a native-only tracer scheduling
+control. It retains an actual parent clone notification, consumes the actual
+child initial stop first, then handles the retained parent notification. Both
+callers must report that observed order. The observer retains previously observed
+thread identities, including reaped children: a late parent notification must
+neither reset an armed child to fresh nor wait again for its consumed initial
+stop. This control changes no product instruction, argument, effect selection,
+deadline or installed admission. The existing no-GC, resume-order and full native
+join checks remain mandatory.
+
 `source-recovery-linux` uses the existing `make source-replacement-check`
 entrypoint and its fixed ten-minute outside bound. Select exactly one
 `ARDENTS_SOURCE_STARTUP_CASE=recovery-initial-N` for N70/106/110/113/114/115, or
@@ -103,7 +622,7 @@ These are file/process counterexamples with no installed account, State,
 Release or manager, and do not prove equivalence to any installed phase or
 disk/power-loss durability. Full installed causal coverage remains separate.
 
-Every selected recovery stand first discovers and runs the finite twenty-test
+Every selected recovery stand first discovers and runs the finite thirty-two-test
 `RECOVERY_NATIVE_TESTS` inventory through its same pinned observer binary,
 with a ninety-second test bound inside the unchanged ten-minute profile bound.
 It includes process cuts, original coordinator/packet ownership, prefix and
@@ -113,6 +632,16 @@ file-test marker `/etc/ardents-source-stopped-native-stand` and actual ext4
 under its fresh private evidence directory. Missing tests or prerequisites fail.
 Successful file-only controls never replace the later genuine installed cut,
 recovery, contact or retirement proof.
+
+The offline native Source signing controls also exercise canonical timestamp
+refresh and its unchanged Root/Snapshot/Targets bytes, fixed artifacts and exact
+Snapshot reference. The actual Release verifier uses one retained diagnostic
+history: both Source targets authorize before the short Timestamp expires,
+refuse at an explicit later reference time, and authorize with only the next
+Timestamp changed. A valid forward generation and an expiry beyond an unchanged
+parent role refuse the timestamp-only purpose before dependent output births.
+This controlled verifier-time check is separate from actual installed wall-clock
+expiry and recovery, which still require their exact accepted cohort.
 
 The native Infrastructure test driver also accepts a dedicated externally
 cancelled file/process case. Its actual root signal context reports the distinct
@@ -143,7 +672,7 @@ the effect: that root must kill and reap it under the unchanged original bound.
 Fresh prefix exclusion/readback must preserve the original inode/bytes/access
 and refuse missing cut provenance, without producing any completion/proof.
 These controls remain separate from `RECOVERY_NATIVE_TESTS`; selecting that
-twenty-test inventory does not execute these four observer windows. Neither
+thirty-two-test inventory does not execute these four observer windows. Neither
 inventory establishes equivalence to an installed Source phase or power loss.
 An EXIT trace stop needs continuation and actual reap, not another application
 breakpoint or an executable observation after the group leader has exited.
@@ -166,6 +695,45 @@ the first breakpoint and all exit/join checks stay active. The optional
 `ARDENTS_SOURCE_ROOT_RETURN_STRESS=1` holds that already-proven return point
 for25ms to exercise scheduler preemption. It neither selects the original cut
 nor changes its ten-second caller or25-second observer deadline.
+
+The separate `TestSourceRefusalObserverNative` helper accepts only a closed
+`source-recovery-refusal-observer-v1` declaration for canonical `recover-source`.
+It pins the actual command, receipt and retained journal bytes, declared journal
+mode0600 (or the deliberate0640 negative), and separately declared external
+journal/Release lease holders. These observations grant no recovery authority.
+Installed mode remains subject to the exact new receipt's direct D6 acceptance.
+Offline inspection locates the actual `main.(*sourceCommandFailure).Error`
+entry without invoking the Node command. At that entry, after the operation
+and its deferred owners return, the observer holds every original root thread
+and compares the complete `/proc/PID/task` inventory. A separate one-use entry
+probe at `main.runSourceInstallation` first freezes all original threads and
+binds Go1.27.3's retained read-only cgroup-v2 `cpu.max` descriptor, if present,
+by number, kernel filesystem, inode and flags before product effects. With
+`GOGC=off` and `GOMEMLIMIT=off`, only that same original runtime CPU handle, original
+stdin/stdout/stderr and at most one runtime eventpoll/eventfd pair may remain.
+All three standard descriptors must exist; both outputs must match the
+original pipe. Independent original-file flock probes distinguish release from
+an explicitly retained outside holder, without changing damaged bytes/access.
+Actual broker inventory must retain the private PID1 manager and release every
+connection of this still-alive root. Only then is the one-use breakpoint
+disarmed; all original threads and output readers must subsequently join.
+Every held thread is disarmed before any is resumed, and the actual caller
+entry resumes last. `ARDENTS_SOURCE_REFUSAL_RESUME_STRESS=1` inserts5ms between
+peer resumes while that caller remains stopped, exercising rapid-exit ordering
+without selecting a product effect or extending either original deadline.
+The native fixture controls exercise real files/flocks/processes, including
+deliberately retained descriptors, a second CPU-file handle and missing stdout.
+They supply no successful
+Source, Release, manager or installed recovery, and do not replace the accepted
+canonical cohort. `TestSourceRefusalLeaseProbeNative` checks the damaged-access
+and independently held exclusion observations without repairing either.
+Each terminal recovery negative invokes two separate canonical callers through
+this observer. The consumer requires their completed before-return proof,
+original profile/program/receipt/output hashes and actual exit2/thread joins
+before retaining its independent unchanged-history observations. A native-only
+or inspect-only report cannot satisfy that installed observation. The detached
+report-grammar controls reject incomplete/substituted claims; they provide no
+physical cleanup evidence of their own.
 
 `TestSourceRecoveryEveryInvocationRetainsCompleteOnlyHistories` checks the
 independent22-record startup and12-record retirement vectors at every canonical

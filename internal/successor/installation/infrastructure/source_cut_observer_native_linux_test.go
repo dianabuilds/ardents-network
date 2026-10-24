@@ -49,35 +49,77 @@ const (
 )
 
 type sourceCutObservation struct {
-	PhysicalWindow                   string `json:"physical_window,omitempty"`
-	HeldCoordinatorThread            int    `json:"held_coordinator_thread,omitempty"`
-	HeldCoordinatorKilled            bool   `json:"held_coordinator_killed,omitempty"`
-	RootCloseEntry                   uint64 `json:"root_close_entry,omitempty"`
-	RootOwnershipReleasedBeforeExit  bool   `json:"root_ownership_released_before_exit,omitempty"`
-	RootCloseObservations            int    `json:"root_close_observations,omitempty"`
-	InspectionOnly                   bool   `json:"inspection_only"`
-	ProfileSHA256                    string `json:"profile_sha256,omitempty"`
-	PublicReceiptSHA256              string `json:"public_receipt_sha256,omitempty"`
-	InstalledExecution               bool   `json:"installed_execution"`
-	ExternalCancellationAcknowledged bool   `json:"external_cancellation_acknowledged"`
-	HeldRootThread                   int    `json:"held_root_thread"`
-	SignalledRootThread              int    `json:"signalled_root_thread"`
-	SelectedJournalSHA256            string `json:"selected_journal_sha256"`
-	OriginalCutSHA256                string `json:"original_cut_sha256"`
-	ProgramSHA256                    string `json:"program_sha256"`
-	Entry                            uint64 `json:"entry"`
-	RootPID                          int    `json:"root_pid"`
-	RootExit                         int    `json:"root_exit"`
-	ThreadsJoined                    int    `json:"threads_joined"`
-	Processes                        int    `json:"processes"`
-	AcknowledgementHits              int    `json:"acknowledgement_hits"`
-	GroupStops                       int    `json:"group_stops"`
-	SelectedRecords                  int    `json:"selected_records"`
-	OutputSHA256                     string `json:"output_sha256"`
+	RefusalRetirementPendingObserved   bool                    `json:"refusal_retirement_pending_observed,omitempty"`
+	RefusalRetirementPendingDevice     uint64                  `json:"refusal_retirement_pending_device,omitempty"`
+	RefusalRetirementPendingInode      uint64                  `json:"refusal_retirement_pending_inode,omitempty"`
+	RefusalRetirementPendingSHA256     string                  `json:"refusal_retirement_pending_sha256,omitempty"`
+	RetirementResult                   *sourceRetirementResult `json:"retirement_result,omitempty"`
+	RefusalStartupPendingObserved      bool                    `json:"refusal_startup_pending_observed,omitempty"`
+	RefusalStartupPendingDevice        uint64                  `json:"refusal_startup_pending_device,omitempty"`
+	RefusalStartupPendingInode         uint64                  `json:"refusal_startup_pending_inode,omitempty"`
+	RefusalStartupPendingSHA256        string                  `json:"refusal_startup_pending_sha256,omitempty"`
+	ExternalCutReady                   bool                    `json:"external_cut_ready,omitempty"`
+	ExternalCutRequested               bool                    `json:"external_cut_requested,omitempty"`
+	StartupArchive                     *sourceStartArchive     `json:"startup_archive,omitempty"`
+	RefusalMissingCutObserved          bool                    `json:"refusal_missing_cut_observed,omitempty"`
+	RefusalMissingCutParentDevice      uint64                  `json:"refusal_missing_cut_parent_device,omitempty"`
+	RefusalMissingCutParentInode       uint64                  `json:"refusal_missing_cut_parent_inode,omitempty"`
+	RefusalExclusionObserved           bool                    `json:"refusal_exclusion_observed,omitempty"`
+	RefusalExclusionKind               string                  `json:"refusal_exclusion_kind,omitempty"`
+	RefusalExclusionDevice             uint64                  `json:"refusal_exclusion_device,omitempty"`
+	RefusalExclusionInode              uint64                  `json:"refusal_exclusion_inode,omitempty"`
+	RefusalEarlyPrefixObserved         bool                    `json:"refusal_early_prefix_observed,omitempty"`
+	RefusalEarlyPrefixRecords          int                     `json:"refusal_early_prefix_records,omitempty"`
+	RefusalEarlyPrefixDevice           uint64                  `json:"refusal_early_prefix_device,omitempty"`
+	RefusalEarlyPrefixInode            uint64                  `json:"refusal_early_prefix_inode,omitempty"`
+	RefusalEarlyPrefixSHA256           string                  `json:"refusal_early_prefix_sha256,omitempty"`
+	RefusalEarlyPrefixClosed           bool                    `json:"refusal_early_prefix_closed,omitempty"`
+	CloneNotificationsAfterChildStop   int                     `json:"clone_notifications_after_child_stop,omitempty"`
+	RecoveryHoldEntry                  uint64                  `json:"recovery_hold_entry,omitempty"`
+	RecoveryHeldBeforeRecord           bool                    `json:"recovery_held_before_record,omitempty"`
+	RecoveryHeldImagePreserved         bool                    `json:"recovery_held_image_preserved,omitempty"`
+	RecoveryCancellationElapsedNS      int64                   `json:"recovery_cancellation_elapsed_ns,omitempty"`
+	RefusalAdmissionEntry              uint64                  `json:"refusal_admission_entry,omitempty"`
+	RefusalAdmissionObserved           bool                    `json:"refusal_admission_observed,omitempty"`
+	RefusalOwnershipReleasedBeforeExit bool                    `json:"refusal_ownership_released_before_exit,omitempty"`
+	RefusalStoppedThreads              int                     `json:"refusal_stopped_threads,omitempty"`
+	PhysicalWindow                     string                  `json:"physical_window,omitempty"`
+	PhysicalPreimageObserved           bool                    `json:"physical_preimage_observed,omitempty"`
+	PhysicalPreimageSHA256             string                  `json:"physical_preimage_sha256,omitempty"`
+	PhysicalPreimageDevice             uint64                  `json:"physical_preimage_device,omitempty"`
+	PhysicalPreimageInode              uint64                  `json:"physical_preimage_inode,omitempty"`
+	HeldCoordinatorThread              int                     `json:"held_coordinator_thread,omitempty"`
+	HeldCoordinatorKilled              bool                    `json:"held_coordinator_killed,omitempty"`
+	RootKillRequested                  bool                    `json:"root_kill_requested,omitempty"`
+	RootKilledByObserver               bool                    `json:"root_killed_by_observer,omitempty"`
+	RootSignal                         int                     `json:"root_signal,omitempty"`
+	RootCloseEntry                     uint64                  `json:"root_close_entry,omitempty"`
+	RootOwnershipReleasedBeforeExit    bool                    `json:"root_ownership_released_before_exit,omitempty"`
+	RootCloseObservations              int                     `json:"root_close_observations,omitempty"`
+	InspectionOnly                     bool                    `json:"inspection_only"`
+	ProfileSHA256                      string                  `json:"profile_sha256,omitempty"`
+	PublicReceiptSHA256                string                  `json:"public_receipt_sha256,omitempty"`
+	InstalledExecution                 bool                    `json:"installed_execution"`
+	ExternalCancellationAcknowledged   bool                    `json:"external_cancellation_acknowledged"`
+	HeldRootThread                     int                     `json:"held_root_thread"`
+	SignalledRootThread                int                     `json:"signalled_root_thread"`
+	SelectedJournalSHA256              string                  `json:"selected_journal_sha256"`
+	OriginalCutSHA256                  string                  `json:"original_cut_sha256"`
+	ProgramSHA256                      string                  `json:"program_sha256"`
+	Entry                              uint64                  `json:"entry"`
+	RootPID                            int                     `json:"root_pid"`
+	RootExit                           int                     `json:"root_exit"`
+	ThreadsJoined                      int                     `json:"threads_joined"`
+	Processes                          int                     `json:"processes"`
+	AcknowledgementHits                int                     `json:"acknowledgement_hits"`
+	GroupStops                         int                     `json:"group_stops"`
+	SelectedRecords                    int                     `json:"selected_records"`
+	OutputSHA256                       string                  `json:"output_sha256"`
 }
 
-// This describes only an observed initial/replacement process cut. It cannot
-// start a Service or run recovery and makes no qualification/authority claim.
+// Common fields of a pinned outside process-cut declaration. Each closed
+// purpose validates its own command; these fields grant no Service, recovery
+// or bootstrap authority and make no installed qualification claim.
 type sourceCutObserverProfile struct {
 	Schema              string   `json:"schema"`
 	ProgramSHA256       string   `json:"program_sha256"`
@@ -174,46 +216,58 @@ func readSourceCutObserverProfile(path, pin, program, root string) (profile *sou
 	if encoded != nil || !bytes.Equal(raw, append(canonical, '\n')) {
 		return nil, errors.New("canonical exact profile required")
 	}
-	if decoder.Decode(new(any)) != io.EOF || p.Schema != "source-original-cut-observer-v1" ||
+	if decoder.Decode(new(any)) != io.EOF {
+		return nil, errors.New("one exact observer declaration required")
+	}
+	if err := validateSourceCutObserverCommand(p, program, root, "source-original-cut-observer-v1"); err != nil {
+		return nil, err
+	}
+	p.sha256 = pin
+	return p, nil
+}
+
+// This checks only the closed command shape, never Installation admission or
+// permission to execute an installed profile. Each caller fixes its purpose.
+func validateSourceCutObserverCommand(p *sourceCutObserverProfile, program, root, schema string) error {
+	if p == nil || p.Schema != schema ||
 		!sourceCutObserverSHA(p.ProgramSHA256) || !sourceCutObserverSHA(p.PublicReceiptSHA256) || len(p.Arguments) != 8 ||
 		p.Arguments[0] != "installation" || p.PrefixRecords < 2 || p.PrefixRecords > 115 ||
 		len(p.LastPhase) == 0 || len(p.LastPhase) > 64 || !filepath.IsAbs(program) ||
 		program != filepath.Join(p.Arguments[2], "ardents-node-linux-amd64") {
-		return nil, errors.New("closed canonical observer profile differs")
+		return errors.New("closed canonical observer profile differs")
 	}
 	initial := p.Arguments[1] == "install-initial-stopped"
 	if !initial && p.Arguments[1] != "replace-source" {
-		return nil, errors.New("only original initial/replacement cut sourceCutObservation permitted")
+		return errors.New("only original initial/replacement cut sourceCutObservation permitted")
 	}
 	paths, environment, network := []int{2, 3, 6, 7}, 4, 5
 	if initial {
 		paths, environment, network = []int{2, 4, 7}, 5, 6
 		if !sourceCutObserverSHA(p.Arguments[3]) {
-			return nil, errors.New("initial independent pin differs")
+			return errors.New("initial independent pin differs")
 		}
 	}
 	if p.Arguments[environment] != "alpha" || !sourceCutObserverNetwork(p.Arguments[network]) {
-		return nil, errors.New("closed-alpha environment/network identifiers required")
+		return errors.New("closed-alpha environment/network identifiers required")
 	}
 	for _, i := range paths {
 		argument := p.Arguments[i]
 		if !filepath.IsAbs(argument) || filepath.Clean(argument) != argument || len(argument) > 4096 {
-			return nil, errors.New("exact finite absolute command arguments required")
+			return errors.New("exact finite absolute command arguments required")
 		}
 	}
 	if initial {
 		if p.Journal != root+".source-initial-journal" {
-			return nil, errors.New("initial original journal differs")
+			return errors.New("initial original journal differs")
 		}
 	} else {
 		prefix := root + ".source-replacement-"
 		generation := strings.TrimSuffix(strings.TrimPrefix(p.Journal, prefix), "-journal")
 		if !sourceCutObserverSHA(generation) || p.Journal != prefix+generation+"-journal" || p.PrefixRecords > 55 || p.Arguments[6] != filepath.Join(root, "binding.json") {
-			return nil, errors.New("replacement original journal/binding differs")
+			return errors.New("replacement original journal/binding differs")
 		}
 	}
-	p.sha256 = pin
-	return p, nil
+	return nil
 }
 
 func TestSourceCutObserverNative(t *testing.T) {
@@ -314,19 +368,75 @@ func sourceCutThreadGroup(pid int) (int, error) {
 }
 
 func observeSourceCut(program, root, output, nativeCase string, profile *sourceCutObserverProfile, inspectOnly bool, nativeRecords int, physical *sourcePhysicalCut) (result sourceCutObservation, returned error) {
+	return observeSourceProcess(program, root, output, nativeCase, profile, inspectOnly, nativeRecords, physical, nil)
+}
+
+func observeSourceProcess(program, root, output, nativeCase string, profile *sourceCutObserverProfile, inspectOnly bool, nativeRecords int, physical *sourcePhysicalCut, refusal *sourceRefusalObserverProfile) (result sourceCutObservation, returned error) {
 	result.InspectionOnly, result.RootExit = inspectOnly, -1
+	if refusal != nil && len(refusal.Arguments) != 8 {
+		return result, errors.New("exact original recovery argv required")
+	}
+	if refusal != nil && refusal.MissingOriginalCut && !refusal.validMissingCutObservation() {
+		return result, errors.New("distinct missing-original-cut read purpose required")
+	}
+	if refusal != nil && refusal.EarlyInitialPrefix != 0 && !refusal.validEarlyPrefixObservation(root) {
+		return result, errors.New("distinct fresh early-prefix purpose required")
+	}
+	earlyKind, _ := sourceEarlyPrefixNativeCase(nativeCase)
+	returnProbe := nativeCase == "refusal-closed" || nativeCase == "refusal-held" || nativeCase == "refusal-held-release" || nativeCase == "refusal-leaked" || nativeCase == "refusal-missing-stdout" || nativeCase == "refusal-cpu-duplicate" || nativeCase == "refusal-held-both" || nativeCase == "refusal-held-unattempted" || nativeCase == "refusal-recovery-cancel" || nativeCase == "refusal-recovery-early-notice" || sourceMissingCutNativeCase(nativeCase) || sourceStartupPendingNativeCase(nativeCase) || sourceRetirementPendingNativeCase(nativeCase)
+	if (nativeCase == "refusal-recovery-cancel" || nativeCase == "refusal-recovery-early-notice") && refusal != nil || refusal != nil && refusal.RecoveryHold != nil && !refusal.validCancellationObservation(root) {
+		return result, errors.New("distinct original-born cancellation purpose required")
+	}
+	recoveryHold := newSourceRecoveryHold(nativeCase, root, refusal)
+	earlyPrefix := newSourceEarlyPrefix(root, nativeCase, refusal)
+	returnProbe = returnProbe || earlyKind != ""
+	if earlyPrefix != nil {
+		defer func() { clear(earlyPrefix.raw) }()
+	}
+	exclusion := newSourceRefusalExclusion(root, nativeCase, refusal)
+	missingCut := newSourceMissingCut(root, nativeCase, refusal)
+	startupPending := newSourcePendingGuard(root, nativeCase, refusal)
+	if earlyPrefix != nil && (exclusion != nil || missingCut != nil || startupPending != nil || recoveryHold != nil) {
+		return result, errors.New("early-prefix read cannot borrow another refusal purpose")
+	}
+	if refusal != nil && refusal.StartupPending != nil && !refusal.validStartupPendingObservation(root) {
+		return result, errors.New("distinct canonical startup pending observation required")
+	}
+	if refusal != nil && refusal.RetirementPending != nil && !refusal.validRetirementPendingObservation(root) {
+		return result, errors.New("distinct retirement pending purpose required")
+	}
+	if startupPending != nil && (exclusion != nil || missingCut != nil || recoveryHold != nil) {
+		return result, errors.New("startup pending observation cannot borrow another refusal cause")
+	}
+	if missingCut != nil && (exclusion != nil || recoveryHold != nil) {
+		return result, errors.New("missing-cut observation cannot borrow another refusal purpose")
+	}
+	resume := func(tid, signal int) error {
+		if (exclusion != nil || missingCut != nil || startupPending != nil || earlyPrefix != nil) && result.RefusalAdmissionObserved && !result.RefusalOwnershipReleasedBeforeExit {
+			return syscall.PtraceSyscall(tid, signal)
+		}
+		return syscall.PtraceCont(tid, signal)
+	}
+	canonicalPhysical := physical != nil && physical.canonical != nil
+	canonicalRecovery := physical != nil && physical.recovery != nil
+	canonicalStartup := physical != nil && physical.startup != nil
+	canonicalRetirement := physical != nil && physical.retirement != nil
+	installed := profile != nil || refusal != nil || canonicalPhysical || canonicalRecovery || canonicalStartup || canonicalRetirement
+	if refusal != nil && (!returnProbe || profile != nil || physical != nil || nativeRecords != 2) || returnProbe && (profile != nil || physical != nil || nativeRecords != 2) {
+		return result, errors.New("distinct closed refusal observation required")
+	}
 	if nativeRecords < 2 || nativeRecords > 55 || (nativeRecords != 2 && (profile != nil || nativeCase != "external-cut")) {
 		return result, errors.New("finite native-only target differs")
 	}
-	if physical != nil && (profile != nil || inspectOnly || nativeRecords != 2 || !physical.valid() ||
+	if physical != nil && (profile != nil || inspectOnly && !canonicalPhysical && !canonicalRecovery && !canonicalStartup && !canonicalRetirement || nativeRecords != 2 || !physical.valid() ||
 		nativeCase != "unsafe-external-cut" && !physical.root || nativeCase != "unsafe-root-cut" && physical.root) {
 		return result, errors.New("closed native-only physical cut required")
 	}
-	if nativeCase != "complete" && nativeCase != "external-cut" && !((nativeCase == "unsafe-external-cut" || nativeCase == "unsafe-root-cut") && physical != nil) {
+	if nativeCase != "complete" && nativeCase != "external-cut" && !returnProbe && !((nativeCase == "unsafe-external-cut" || nativeCase == "unsafe-root-cut") && physical != nil) {
 		return result, errors.New("unknown native file-only case")
 	}
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" || os.Geteuid() != 0 ||
-		!filepath.IsAbs(program) || (profile == nil && !strings.HasSuffix(program, ".test")) || !filepath.IsAbs(root) || (!inspectOnly && !filepath.IsAbs(output)) {
+		!filepath.IsAbs(program) || (!installed && !strings.HasSuffix(program, ".test")) || !filepath.IsAbs(root) || (!inspectOnly && !filepath.IsAbs(output)) {
 		return result, errors.New("native root amd64 file-only test profile required")
 	}
 	file, err := os.OpenFile(program, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
@@ -361,6 +471,49 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 		// The actual command retains its unchanged two-minute product deadline.
 		bound = 150 * time.Second
 	}
+	if refusal != nil {
+		if result.ProgramSHA256 != refusal.ProgramSHA256 {
+			return result, errors.New("actual refusal program pin differs")
+		}
+		result.ProfileSHA256, result.PublicReceiptSHA256 = refusal.sha256, refusal.PublicReceiptSHA256
+		journal, bound = refusal.Arguments[7], 150*time.Second
+	}
+	if canonicalPhysical {
+		p := physical.canonical
+		if result.ProgramSHA256 != p.ProgramSHA256 || p.root != root {
+			return result, errors.New("actual canonical physical program/root differs")
+		}
+		result.ProfileSHA256, result.PublicReceiptSHA256 = p.sha256, p.PublicReceiptSHA256
+		journal, bound = p.Journal, 150*time.Second
+		acknowledgement = []byte("{\"operation\":\"installation.source\",\"outcome\":\"completion-unavailable\"}\n")
+	}
+	if canonicalRecovery {
+		p := physical.recovery
+		if result.ProgramSHA256 != p.ProgramSHA256 || p.root != root {
+			return result, errors.New("actual root recovery program/root differs")
+		}
+		result.ProfileSHA256, result.PublicReceiptSHA256 = p.sha256, p.PublicReceiptSHA256
+		journal, bound = p.Journal, 150*time.Second
+		acknowledgement = []byte("{\"operation\":\"installation.source\",\"outcome\":\"completion-unavailable\"}\n")
+	}
+	if canonicalStartup {
+		p := physical.startup
+		if result.ProgramSHA256 != p.ProgramSHA256 || p.root != root {
+			return result, errors.New("actual startup physical program/root differs")
+		}
+		result.ProfileSHA256, result.PublicReceiptSHA256 = p.sha256, p.PublicReceiptSHA256
+		journal, bound = p.Journal, 150*time.Second
+		acknowledgement = []byte("{\"operation\":\"installation.source\",\"outcome\":\"completion-unavailable\"}\n")
+	}
+	if canonicalRetirement {
+		p := physical.retirement
+		if result.ProgramSHA256 != p.ProgramSHA256 || p.root != root {
+			return result, errors.New("actual retirement physical program/root differs")
+		}
+		result.ProfileSHA256, result.PublicReceiptSHA256 = p.sha256, p.PublicReceiptSHA256
+		journal, bound = p.Journal, 150*time.Second
+		acknowledgement = []byte("{\"operation\":\"installation.source\",\"outcome\":\"completion-unavailable\"}\n")
+	}
 	image, err := elf.NewFile(file)
 	if err != nil {
 		return result, err
@@ -373,16 +526,43 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 		return result, err
 	}
 	selectedSymbol := sourceCutAcknowledgementSymbol
+	admissionSymbol := sourceRefusalNativeAdmissionSymbol
+	if returnProbe {
+		build, err := buildinfo.Read(file)
+		if err != nil || build.GoVersion != "go1.27.3" || runtime.Version() != "go1.27.3" {
+			return result, errors.Join(errors.New("refusal observer requires exact inspected Go runtime"), err)
+		}
+		selectedSymbol = sourceRefusalNativeReturnSymbol
+		if recoveryHold != nil && !installed {
+			admissionSymbol = sourceRecoveryHoldNativeAdmissionSymbol
+		}
+		if refusal != nil {
+			selectedSymbol = sourceRefusalReturnSymbol
+			admissionSymbol = sourceRefusalAdmissionSymbol
+		}
+	}
 	if physical != nil {
 		build, err := buildinfo.Read(file)
-		if err != nil || build.GoVersion != "go1.27.3" {
+		if err != nil || build.GoVersion != "go1.27.3" || runtime.Version() != "go1.27.3" {
 			return result, errors.Join(errors.New("physical observer requires exact inspected Go ABI"), err)
 		}
 		selectedSymbol, result.PhysicalWindow = physical.symbol, physical.window
 		selectedRecords = physical.records
 	}
 	for _, symbol := range symbols {
-		if physical != nil && physical.root && symbol.Name == sourcePhysicalRootReturnSymbol && elf.ST_TYPE(symbol.Info) == elf.STT_FUNC && symbol.Size != 0 {
+		if recoveryHold != nil && symbol.Name == sourceRecoveryHoldRecordSymbol && elf.ST_TYPE(symbol.Info) == elf.STT_FUNC && symbol.Size != 0 {
+			if result.RecoveryHoldEntry != 0 {
+				return result, errors.New("duplicate original recovery record entry")
+			}
+			result.RecoveryHoldEntry = symbol.Value
+		}
+		if returnProbe && symbol.Name == admissionSymbol && elf.ST_TYPE(symbol.Info) == elf.STT_FUNC && symbol.Size != 0 {
+			if result.RefusalAdmissionEntry != 0 {
+				return result, errors.New("duplicate original refusal admission entry")
+			}
+			result.RefusalAdmissionEntry = symbol.Value
+		}
+		if physical != nil && physical.root && !physical.killRoot && symbol.Name == sourcePhysicalRootReturnSymbol && elf.ST_TYPE(symbol.Info) == elf.STT_FUNC && symbol.Size != 0 {
 			if result.RootCloseEntry != 0 {
 				return result, errors.New("duplicate native root return entry")
 			}
@@ -399,15 +579,38 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 	if result.Entry == 0 || text == nil || result.Entry < text.Addr || result.Entry >= text.Addr+text.Size {
 		return result, errors.New("actual acknowledgement entry missing from executable text")
 	}
-	if physical != nil && physical.root && (result.RootCloseEntry == 0 || result.RootCloseEntry == result.Entry || result.RootCloseEntry < text.Addr || result.RootCloseEntry >= text.Addr+text.Size) {
+	if returnProbe && (result.RefusalAdmissionEntry == 0 || result.RefusalAdmissionEntry == result.Entry || result.RefusalAdmissionEntry < text.Addr || result.RefusalAdmissionEntry >= text.Addr+text.Size) {
+		return result, errors.New("actual original refusal admission entry missing from executable text")
+	}
+	if recoveryHold != nil && (result.RecoveryHoldEntry == 0 || result.RecoveryHoldEntry == result.Entry || result.RecoveryHoldEntry == result.RefusalAdmissionEntry || result.RecoveryHoldEntry < text.Addr || result.RecoveryHoldEntry >= text.Addr+text.Size) {
+		return result, errors.New("actual recovery record entry missing from executable text")
+	}
+	if physical != nil && physical.root && !physical.killRoot && (result.RootCloseEntry == 0 || result.RootCloseEntry == result.Entry || result.RootCloseEntry < text.Addr || result.RootCloseEntry >= text.Addr+text.Size) {
 		return result, errors.New("actual native root return entry missing from executable text")
 	}
 	armEntries := func(tid int) error {
+		if returnProbe && result.RefusalOwnershipReleasedBeforeExit {
+			return sourceCutPtrace(syscall.PTRACE_POKEUSR, tid, sourceCutDebugRegisters+7*8, 0)
+		}
 		if err := armSourceCutBreakpoint(tid, result.Entry); err != nil {
 			return err
 		}
-		if physical != nil && physical.root {
+		if recoveryHold != nil && !result.RecoveryHeldBeforeRecord {
+			if err := sourceCutPtrace(syscall.PTRACE_POKEUSR, tid, sourceCutDebugRegisters+2*8, uintptr(result.RecoveryHoldEntry)); err != nil {
+				return err
+			}
+			if result.RefusalAdmissionObserved {
+				return sourceCutPtrace(syscall.PTRACE_POKEUSR, tid, sourceCutDebugRegisters+7*8, 17)
+			}
+		}
+		if physical != nil && physical.root && !physical.killRoot {
 			if err := sourceCutPtrace(syscall.PTRACE_POKEUSR, tid, sourceCutDebugRegisters+8, uintptr(result.RootCloseEntry)); err != nil {
+				return err
+			}
+			return sourceCutPtrace(syscall.PTRACE_POKEUSR, tid, sourceCutDebugRegisters+7*8, 5)
+		}
+		if returnProbe && !result.RefusalAdmissionObserved {
+			if err := sourceCutPtrace(syscall.PTRACE_POKEUSR, tid, sourceCutDebugRegisters+8, uintptr(result.RefusalAdmissionEntry)); err != nil {
 				return err
 			}
 			return sourceCutPtrace(syscall.PTRACE_POKEUSR, tid, sourceCutDebugRegisters+7*8, 5)
@@ -417,7 +620,7 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 	if inspectOnly {
 		return result, nil
 	}
-	if profile != nil {
+	if installed {
 		marker, err := os.ReadFile("/etc/ardents-source-startup-native-stand")
 		container, containerErr := os.ReadFile("/run/systemd/container")
 		cgroup, cgroupErr := os.ReadFile("/proc/self/cgroup")
@@ -442,6 +645,10 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 		return result, err
 	}
 	defer func() { returned = errors.Join(returned, reader.Close()) }()
+	outputPipeInfo, err := writer.Stat()
+	if err != nil {
+		return result, errors.Join(err, writer.Close())
+	}
 	writerClosed := false
 	defer func() {
 		if !writerClosed {
@@ -462,25 +669,53 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 	if profile != nil {
 		command = exec.Command(program, profile.Arguments...)
 	}
+	if canonicalPhysical {
+		command = exec.Command(program, physical.canonical.Arguments...)
+	}
+	if canonicalRecovery {
+		command = exec.Command(program, physical.recovery.Arguments...)
+	}
+	if canonicalStartup {
+		command = exec.Command(program, physical.startup.Arguments...)
+	}
+	if canonicalRetirement {
+		command = exec.Command(program, physical.retirement.Arguments...)
+	}
+	if returnProbe {
+		command = exec.Command(program, "-test.run=^TestSourceRefusalNativeDriver$", "-test.v")
+		if recoveryHold != nil && !installed {
+			command = exec.Command(program, "-test.run=^TestSourceRecoveryCancelNativeDriver$", "-test.v")
+		}
+		if refusal != nil {
+			command = exec.Command(program, refusal.Arguments...)
+		}
+	}
 	for _, value := range os.Environ() {
-		if !strings.HasPrefix(value, "ARDENTS_SOURCE_TRANSITION_") && !strings.HasPrefix(value, "GOMAXPROCS=") && !strings.HasPrefix(value, "ARDENTS_DEBUG_SOCKET=") {
+		if !strings.HasPrefix(value, "ARDENTS_SOURCE_TRANSITION_") && !strings.HasPrefix(value, "GOMAXPROCS=") && !strings.HasPrefix(value, "ARDENTS_DEBUG_SOCKET=") && (!returnProbe || !strings.HasPrefix(value, "GOGC=") && !strings.HasPrefix(value, "GOMEMLIMIT=")) {
 			command.Env = append(command.Env, value)
 		}
 	}
-	if profile == nil {
+	if !installed {
 		command.Env = append(command.Env, "ARDENTS_SOURCE_TRANSITION_NATIVE_ROLE=controller", "ARDENTS_SOURCE_TRANSITION_NATIVE_CASE="+nativeCase, "ARDENTS_SOURCE_TRANSITION_NATIVE_ROOT="+root, "ARDENTS_SOURCE_TRANSITION_NATIVE_RECORDS="+strconv.Itoa(nativeRecords))
 	}
 	command.Env = append(command.Env, "GOMAXPROCS=2")
+	if returnProbe {
+		command.Env = append(command.Env, "GOGC=off", "GOMEMLIMIT=off")
+	}
 	command.Stdout, command.Stderr = writer, writer
 	command.SysProcAttr = &syscall.SysProcAttr{Ptrace: true, Pdeathsig: syscall.SIGKILL, PidFD: &pidfd}
 	started := time.Now()
+	if recoveryHold != nil {
+		recoveryHold.started = started
+	}
 	if err := command.Start(); err != nil {
 		return result, err
 	}
 	pid := command.Process.Pid
-	result.InstalledExecution = profile != nil
+	result.InstalledExecution = installed
 	result.RootPID, result.RootExit = pid, -1
 	tracked := map[int]bool{pid: false}
+	observedThreads := map[int]bool{pid: true}
 	groups := map[int]int{pid: pid}
 	processes := map[int]bool{pid: true}
 	physicalSelected := false
@@ -615,6 +850,9 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 		return result, errors.Join(errors.New("pre-instruction native group stop missing"), err)
 	}
 	options := syscall.PTRACE_O_TRACECLONE | syscall.PTRACE_O_TRACEFORK | syscall.PTRACE_O_TRACEVFORK | syscall.PTRACE_O_TRACEEXEC | syscall.PTRACE_O_TRACEEXIT | sourceCutExitKill
+	if exclusion != nil || missingCut != nil || startupPending != nil || earlyPrefix != nil {
+		options |= syscall.PTRACE_O_TRACESYSGOOD
+	}
 	if err := sourceCutPtrace(sourceCutSeize, pid, 0, uintptr(options)); err != nil {
 		return result, err
 	}
@@ -634,7 +872,137 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 		return result, err
 	}
 	held := 0
+	returnHeld := 0
+	returnStops := map[int]bool{}
+	returnSignals := map[int]int{}
+	var runtimeCPU *sourceRefusalRuntimeCPU
+	// Linux may report a child's initial ptrace stop before its parent's clone
+	// notification. Native stress deliberately consumes those two actual wait
+	// events in that order; no instruction or application state is substituted.
+	var pendingCloneTID, pendingCloneChild int
+	var pendingCloneStatus syscall.WaitStatus
+	var physicalControl sourcePhysicalCutControl
+	childStopFirst := returnProbe && !installed && os.Getenv("ARDENTS_SOURCE_REFUSAL_CHILD_STOP_FIRST") == "1"
+	if recoveryHold != nil || physical != nil && physical.externalCut {
+		if err := syscall.SetNonblock(int(os.Stdin.Fd()), true); err != nil {
+			return result, err
+		}
+	}
 	for len(tracked) != 0 {
+		if physical != nil && physical.externalCut && physicalControl.tid != 0 && !failed {
+			if e := physicalControl.poll(physical, command.Process, journal, root, physicalImage, started, &result); e != nil {
+				fail(e)
+			}
+		}
+		if recoveryHold != nil && recoveryHold.tid != 0 && !failed {
+			if e := drain(); e != nil {
+				fail(e)
+			} else if e := recoveryHold.control(pid, groups, tracked, captured, &result); e != nil {
+				fail(e)
+			}
+		}
+		if returnHeld != 0 && !failed && len(returnStops) == len(tracked) {
+			admission := !result.RefusalAdmissionObserved
+			probe := func() error {
+				if admission {
+					var err error
+					runtimeCPU, err = captureSourceRefusalRuntimeCPU(pid)
+					if err != nil {
+						return err
+					}
+					if err := verifySourceRefusalFDs(pid, outputPipeInfo, runtimeCPU); err != nil {
+						return err
+					}
+					if exclusion != nil {
+						return exclusion.capture()
+					}
+					if missingCut != nil {
+						return missingCut.capture()
+					}
+					if startupPending != nil {
+						return startupPending.capture()
+					}
+					if earlyPrefix != nil {
+						return earlyPrefix.capture()
+					}
+					return nil
+				}
+				if err := verifySourceRefusalResources(pid, root, outputPipeInfo, runtimeCPU, refusal, nativeCase); err != nil {
+					return err
+				}
+				if exclusion != nil {
+					return exclusion.verify()
+				}
+				if missingCut != nil {
+					return missingCut.verify()
+				}
+				if startupPending != nil {
+					return startupPending.verify()
+				}
+				if earlyPrefix != nil {
+					return earlyPrefix.verify(&result)
+				}
+				if recoveryHold != nil {
+					return recoveryHold.preserved()
+				}
+				return nil
+			}
+			if e := verifySourceRefusalStoppedThreads(pid, tracked, returnStops); e != nil {
+				fail(e)
+			} else if same, e := sourcePhysicalSameProgram(pid, info); e != nil || !same {
+				fail(errors.Join(errors.New("original refusal program changed before return"), e))
+			} else if e := probe(); e != nil {
+				fail(e)
+			} else {
+				control := uintptr(0)
+				if admission {
+					result.RefusalAdmissionObserved = true
+					control = 1 // Keep only the actual post-operation return probe.
+					if recoveryHold != nil {
+						control |= 16
+					}
+				} else {
+					result.RefusalOwnershipReleasedBeforeExit, result.RefusalStoppedThreads = true, len(returnStops)
+				}
+				// This is a one-use observation. Disarm every actual root thread
+				// only after the independent proof while the caller remains alive.
+				for stopped := range returnStops {
+					if e := sourceCutPtrace(syscall.PTRACE_POKEUSR, stopped, sourceCutDebugRegisters+7*8, control); e != nil {
+						fail(fmt.Errorf("disarm refusal thread%d: %w", stopped, e))
+						break
+					}
+				}
+				// Do not interleave disarm with resume: the caller could return
+				// and exit_group before the remaining stopped threads are touched.
+				// The actual entry thread resumes last, after every peer.
+				for stopped := range returnStops {
+					if failed || stopped == returnHeld {
+						continue
+					}
+					if e := resume(stopped, returnSignals[stopped]); e != nil {
+						fail(fmt.Errorf("resume refusal peer%d: %w", stopped, e))
+						break
+					}
+					if os.Getenv("ARDENTS_SOURCE_REFUSAL_RESUME_STRESS") == "1" {
+						time.Sleep(5 * time.Millisecond)
+					}
+				}
+				if !failed {
+					var registers syscall.PtraceRegs
+					expected := result.Entry
+					if admission {
+						expected = result.RefusalAdmissionEntry
+					}
+					if e := syscall.PtraceGetRegs(returnHeld, &registers); e != nil || registers.Rip != expected {
+						fail(errors.Join(errors.New("original refusal entry moved before final resume"), e))
+					} else if e := resume(returnHeld, returnSignals[returnHeld]); e != nil {
+						fail(fmt.Errorf("resume refusal caller%d: %w", returnHeld, e))
+					}
+				}
+				returnHeld = 0
+				returnStops, returnSignals = map[int]bool{}, map[int]int{}
+			}
+		}
 		if err := drain(); err != nil {
 			fail(err)
 		}
@@ -652,10 +1020,30 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 			}
 		}
 		if expired.Load() && !failed {
-			fail(errors.New("finite original deadline"))
+			fail(fmt.Errorf("finite original deadline: return-held=%d tracked=%v stopped=%v signals=%v", returnHeld, tracked, returnStops, returnSignals))
 		}
 		var status syscall.WaitStatus
-		tid, err := syscall.Wait4(-1, &status, sourceCutWaitAll|syscall.WNOHANG, nil)
+		var tid int
+		var err error
+		if pendingCloneTID != 0 && observedThreads[pendingCloneChild] {
+			tid, status = pendingCloneTID, pendingCloneStatus
+			pendingCloneTID, pendingCloneChild = 0, 0
+		} else {
+			waitFor := -1
+			if pendingCloneTID != 0 && !failed {
+				waitFor = pendingCloneChild
+			}
+			tid, err = syscall.Wait4(waitFor, &status, sourceCutWaitAll|syscall.WNOHANG, nil)
+			if childStopFirst && pendingCloneTID == 0 && err == nil && tid > 0 && status.Stopped() && int(uint32(status)>>16) == syscall.PTRACE_EVENT_CLONE {
+				child, e := syscall.PtraceGetEventMsg(tid)
+				if e != nil || child == 0 {
+					fail(errors.Join(errors.New("original clone event has no child"), e))
+				} else if !observedThreads[int(child)] {
+					pendingCloneTID, pendingCloneChild, pendingCloneStatus = tid, int(child), status
+					continue
+				}
+			}
+		}
 		if err == syscall.EINTR {
 			continue
 		}
@@ -667,7 +1055,17 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 			continue
 		}
 		lastTraceTID, lastTraceStatus = tid, status
+		observedThreads[tid] = true
+		if len(observedThreads) > 256 {
+			fail(errors.New("observer original native thread lifetime bound exceeded"))
+		}
 		if status.Exited() || status.Signaled() {
+			if tid == pid && status.Signaled() {
+				result.RootSignal = int(status.Signal())
+				if physical != nil && physical.killRoot && physicalSelected && result.RootKillRequested && status.Signal() == syscall.SIGKILL {
+					result.RootKilledByObserver = true
+				}
+			}
 			if tid == result.HeldCoordinatorThread && status.Signaled() && status.Signal() == syscall.SIGKILL && result.SignalledRootThread != 0 {
 				result.HeldCoordinatorKilled = true
 			}
@@ -691,6 +1089,14 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 				continue
 			}
 			tracked[tid], groups[tid], processes[group] = false, group, true
+			if returnHeld != 0 && !failed {
+				if group != pid {
+					fail(errors.New("refusal retained a foreign process before return"))
+				} else {
+					returnStops[tid] = true
+					continue
+				}
+			}
 			if len(processes) > 32 {
 				fail(errors.New("observer original process bound exceeded"))
 			}
@@ -704,7 +1110,7 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 				// Its group leader may have exited; there is no application entry
 				// left to arm. Continue to the real wait/reap below instead of
 				// inspecting a vanished /proc/<leader>/exe during teardown.
-				if int(uint32(status)>>16) != syscall.PTRACE_EVENT_EXIT {
+				if !(physical.killRoot && result.RootKillRequested) && int(uint32(status)>>16) != syscall.PTRACE_EVENT_EXIT {
 					arm, e = sourcePhysicalSameProgram(group, info)
 					if e != nil {
 						fail(e)
@@ -716,10 +1122,36 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 					fail(e)
 				}
 			}
-			if e := syscall.PtraceCont(tid, 0); e != nil {
+			if e := resume(tid, 0); e != nil {
 				fail(e)
 			}
 			continue
+		}
+		if returnHeld != 0 && !failed {
+			if groups[tid] != pid || int(uint32(status)>>16) == syscall.PTRACE_EVENT_EXIT || int(uint32(status)>>16) == syscall.PTRACE_EVENT_EXEC {
+				fail(errors.New("original refusal changed lifetime while stopping threads"))
+			} else {
+				switch int(uint32(status) >> 16) {
+				case syscall.PTRACE_EVENT_CLONE:
+					child, e := syscall.PtraceGetEventMsg(tid)
+					if e != nil || child == 0 || len(tracked) >= 256 {
+						fail(errors.Join(errors.New("refusal thread birth differs"), e))
+					} else {
+						if !observedThreads[int(child)] {
+							tracked[int(child)] = true
+						} else {
+							result.CloneNotificationsAfterChildStop++
+						}
+					}
+				case syscall.PTRACE_EVENT_FORK, syscall.PTRACE_EVENT_VFORK:
+					fail(errors.New("refusal created a process while stopping threads"))
+				}
+				returnStops[tid] = true
+				if int(uint32(status)>>16) == 0 && status.StopSignal() != syscall.SIGTRAP && status.StopSignal() != syscall.SIGTRAP|0x80 {
+					returnSignals[tid] = int(status.StopSignal())
+				}
+				continue
+			}
 		}
 		switch int(uint32(status) >> 16) {
 		case syscall.PTRACE_EVENT_CLONE, syscall.PTRACE_EVENT_FORK, syscall.PTRACE_EVENT_VFORK:
@@ -727,12 +1159,20 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 			if e != nil || child == 0 {
 				fail(errors.Join(errors.New("native birth event invalid"), e))
 			} else {
-				tracked[int(child)] = true
+				// Never reset a child already observed (or already reaped).
+				// Its initial stop may precede this parent notification. Resetting
+				// it would swallow its next real breakpoint as an initial stop or
+				// wait forever for an initial stop already consumed.
+				if !observedThreads[int(child)] {
+					tracked[int(child)] = true
+				} else {
+					result.CloneNotificationsAfterChildStop++
+				}
 				if len(tracked) > 256 {
 					fail(errors.New("observer original native thread bound exceeded"))
 				}
 			}
-			if e := syscall.PtraceCont(tid, 0); e != nil {
+			if e := resume(tid, 0); e != nil {
 				fail(e)
 			}
 		case syscall.PTRACE_EVENT_EXEC:
@@ -748,11 +1188,11 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 					fail(e)
 				}
 			}
-			if e := syscall.PtraceCont(tid, 0); e != nil {
+			if e := resume(tid, 0); e != nil {
 				fail(e)
 			}
 		case syscall.PTRACE_EVENT_EXIT:
-			if e := syscall.PtraceCont(tid, 0); e != nil {
+			if e := resume(tid, 0); e != nil {
 				fail(e)
 			}
 		case sourceCutEventStop:
@@ -762,18 +1202,77 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 				if e := sourceCutPtrace(sourceCutListen, tid, 0, 0); e != nil {
 					fail(e)
 				}
-			} else if e := syscall.PtraceCont(tid, 0); e != nil {
+			} else if e := resume(tid, 0); e != nil {
 				fail(e)
 			}
 		default:
 			signal := status.StopSignal()
+			if signal == syscall.SIGTRAP|0x80 {
+				if exclusion == nil && missingCut == nil && startupPending == nil && earlyPrefix == nil || !result.RefusalAdmissionObserved || result.RefusalOwnershipReleasedBeforeExit || groups[tid] != pid {
+					fail(errors.New("unexpected or foreign original exclusion syscall stop"))
+				} else if exclusion != nil {
+					if e := exclusion.syscall(pid, tid, &result); e != nil {
+						fail(e)
+					}
+				} else if missingCut != nil {
+					if e := missingCut.syscall(tid, &result); e != nil {
+						fail(e)
+					}
+				} else if startupPending != nil {
+					if e := startupPending.syscall(tid, &result); e != nil {
+						fail(e)
+					}
+				} else if e := earlyPrefix.syscall(pid, tid, &result); e != nil {
+					fail(e)
+				}
+				if e := resume(tid, 0); e != nil {
+					fail(e)
+				}
+				continue
+			}
 			if signal == syscall.SIGTRAP {
 				var registers syscall.PtraceRegs
 				if e := syscall.PtraceGetRegs(tid, &registers); e != nil {
 					fail(e)
 					continue
 				}
-				if physical != nil && physical.root && registers.Rip == result.RootCloseEntry {
+				if recoveryHold != nil && !installed {
+					fmt.Printf("SOURCE_RECOVERY_NATIVE_TRAP tid=%d rip=%x return=%x held=%d\n", tid, registers.Rip, result.Entry, returnHeld)
+				}
+				if returnProbe && (registers.Rip == result.Entry || registers.Rip == result.RefusalAdmissionEntry) && !failed {
+					admission := registers.Rip == result.RefusalAdmissionEntry
+					if groups[tid] != pid || returnHeld != 0 || result.RefusalOwnershipReleasedBeforeExit || len(processes) != 1 || admission == result.RefusalAdmissionObserved {
+						fail(errors.New("refusal return entry has foreign or repeated lifetime"))
+					} else {
+						returnHeld, returnStops[tid] = tid, true
+						for other, fresh := range tracked {
+							if other != tid && !fresh {
+								if e := sourceCutPtrace(sourceCutInterrupt, other, 0, 0); e != nil {
+									fail(e)
+								}
+							}
+						}
+						continue
+					}
+				}
+				if recoveryHold != nil && registers.Rip == result.RecoveryHoldEntry && !failed {
+					matched, e := recoveryHold.match(tid, &registers)
+					if e != nil {
+						fail(e)
+					} else if matched {
+						if !result.RefusalAdmissionObserved || groups[tid] != pid || recoveryHold.tid != 0 || result.RecoveryHeldBeforeRecord || len(processes) != 1 {
+							fail(errors.New("recovery hold has foreign or repeated lifetime"))
+						} else if e := recoveryHold.freeze(tid, &result); e != nil {
+							fail(e)
+						}
+						continue
+					}
+					if e := resumeSourceCutBreakpoint(tid, &registers); e != nil {
+						fail(e)
+					}
+					continue
+				}
+				if physical != nil && physical.root && !physical.killRoot && registers.Rip == result.RootCloseEntry {
 					result.RootCloseObservations++
 					if e := drain(); e != nil {
 						fail(e)
@@ -815,12 +1314,37 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 						if e != nil {
 							fail(e)
 						} else if matched {
-							if time.Since(started) >= 8*time.Second {
-								fail(errors.New("physical selection did not precede original ten-second deadline"))
+							selectionBound := 8 * time.Second
+							if canonicalPhysical || canonicalRecovery || canonicalStartup || canonicalRetirement {
+								selectionBound = 2 * time.Minute
+							}
+							if time.Since(started) >= selectionBound || bytes.Contains(captured, acknowledgement) {
+								fail(errors.New("physical selection did not precede original cancellation/deadline"))
 							} else {
 								physicalSelected, physicalImage = true, observed
 								result.SelectedRecords = physical.records
 								result.SelectedJournalSHA256 = observed.journalSHA
+								if before := physical.publicationBefore; before != nil {
+									result.PhysicalPreimageObserved = true
+									result.PhysicalPreimageSHA256 = before.record.SHA256
+									result.PhysicalPreimageDevice, result.PhysicalPreimageInode = before.record.Device, before.record.Inode
+								}
+								if physical.killRoot {
+									// A process cut is deliberately not a clean owner Close.
+									// Kill the original from-birth pidfd while its real entry
+									// remains held; never resume the unrecorded next effect.
+									result.HeldRootThread = tid
+									if physical.externalCut {
+										if e := physicalControl.ready(tid, physical, physicalImage, &result); e != nil {
+											fail(e)
+										}
+									} else if e := command.Process.Kill(); e != nil {
+										fail(e)
+									} else {
+										result.RootKillRequested = true
+									}
+									continue
+								}
 								if physical.root {
 									held, result.HeldRootThread = tid, tid
 								} else {
@@ -898,18 +1422,55 @@ func observeSourceCut(program, root, output, nativeCase string, profile *sourceC
 					continue
 				}
 			}
-			if e := syscall.PtraceCont(tid, int(signal)); e != nil {
+			if e := resume(tid, int(signal)); e != nil {
 				fail(e)
 			}
 		}
 	}
+	if returnProbe {
+		wantedExit := 0
+		if refusal != nil {
+			wantedExit = 2
+		}
+		if failed || !result.RefusalAdmissionObserved || !result.RefusalOwnershipReleasedBeforeExit || result.RefusalStoppedThreads < 2 || returnHeld != 0 || result.RootExit != wantedExit || len(processes) != 1 {
+			return result, errors.Join(returned, fmt.Errorf("actual refusal before-return observation incomplete: return-held=%d stopped=%v", returnHeld, returnStops))
+		}
+		if recoveryHold != nil {
+			if !result.RecoveryHeldBeforeRecord || !result.ExternalCancellationAcknowledged || recoveryHold.tid != 0 || result.RecoveryCancellationElapsedNS <= 0 || result.RecoveryCancellationElapsedNS >= int64(2*time.Minute) {
+				return result, errors.New("actual recovery cancellation hold incomplete")
+			}
+			if err := recoveryHold.preserved(); err != nil {
+				return result, err
+			}
+			result.RecoveryHeldImagePreserved = true
+		}
+		return result, nil
+	}
 	if physical != nil {
 		result.ExternalCancellationAcknowledged = bytes.Contains(captured, acknowledgement)
+		if physical.killRoot {
+			if physical.externalCut && (!result.ExternalCutReady || !result.ExternalCutRequested) {
+				return result, errors.Join(returned, errors.New("original root was not cut after external retention directive"))
+			}
+			if failed || !physicalSelected || !result.RootKillRequested || !result.RootKilledByObserver || result.RootSignal != int(syscall.SIGKILL) || result.RootExit != -1 ||
+				result.HeldRootThread == 0 || held != 0 || len(processes) != 1 || result.ThreadsJoined == 0 || result.ExternalCancellationAcknowledged ||
+				result.RootCloseEntry != 0 || result.RootCloseObservations != 0 || result.RootOwnershipReleasedBeforeExit {
+				return result, errors.Join(returned, fmt.Errorf("actual original root process cut differs: %+v", result))
+			}
+			// Fresh exclusion is observed only after actual original thread reaps.
+			// This cannot establish the killed application's Close/domain success.
+			return result, physical.verifyRetained(journal, root, physicalImage)
+		}
 		joined := !physical.root && result.HeldCoordinatorKilled && len(processes) == 2
+		wantedExit := 0
+		if canonicalPhysical {
+			joined = !physical.root && result.HeldCoordinatorKilled && len(processes) >= 2
+			wantedExit = 2
+		}
 		if physical.root {
 			joined = result.RootOwnershipReleasedBeforeExit && result.RootCloseObservations == 1 && result.HeldRootThread != 0 && held == 0 && len(processes) == 1
 		}
-		if failed || !physicalSelected || !joined || !result.ExternalCancellationAcknowledged || result.RootExit != 0 {
+		if failed || !physicalSelected || !joined || !result.ExternalCancellationAcknowledged || result.RootExit != wantedExit {
 			return result, errors.Join(returned, fmt.Errorf("actual unsafe physical cut differs: %+v", result))
 		}
 		return result, physical.verifyRetained(journal, root, physicalImage)

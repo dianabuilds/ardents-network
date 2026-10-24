@@ -21,6 +21,7 @@ import os
 from pathlib import Path
 import platform
 import queue
+import select
 import signal
 import socket
 import stat
@@ -31,6 +32,7 @@ import time
 
 
 RECOVERY_NATIVE_TESTS = (
+    "TestSourceReleaseExpiryProfileNative",
     "TestSourceRecoveryPhysicalNativeProcessCuts",
     "TestSourcePhysicalRefusalCloseRetainsIndependentFailure",
     "TestSourceTransitionNativeOriginalScope",
@@ -51,6 +53,17 @@ RECOVERY_NATIVE_TESTS = (
     "TestSourceRecoveryInitialPendingNativePublicationAfterClose",
     "TestSourceRecoveryInitialPendingNativeFailureRetainsGuard",
     "TestSourceRecoveryInitialEvidenceNativePresenceForcesRecoveredPath",
+    "TestSourceCanonicalPhysicalPayloadNative",
+    "TestSourceCanonicalPhysicalEarlyImageNative",
+    "TestSourceCanonicalPhysicalSealNative",
+    "TestSourceCanonicalPhysicalPublicationNative",
+    "TestSourceCanonicalPhysicalCompletedImageNative",
+    "TestSourceRecoveryPhysicalImageNative",
+    "TestSourceRecoveryRepairedImageNative",
+    "TestSourceStartupPhysicalPrefixNative",
+    "TestSourceRetirementPhysicalPrefixNative",
+    "TestSourceRetirementPhysicalImageNative",
+    "TestSourcePhysicalCutControlNative",
 )
 
 
@@ -68,6 +81,30 @@ def pinned(name):
     return path
 
 
+def source_physical_frontiers(operation):
+    """Finite outside qualification windows, with no continuation authority."""
+    if operation not in ("initial", "replacement"):
+        raise RuntimeError("finite original operation required")
+    born, seal = (70, 105) if operation == "initial" else (13, 48)
+    frontiers = {
+        "file-born-before-record": (born - 1, "file-intent", "ardents-node-linux-amd64", "unrecorded-empty"),
+        "file-ready-before-record": (born, "file-born", "ardents-node-linux-amd64", "recorded-born-complete-before-ready"),
+        "file-born-before-journal-sync": (born, "file-born", "ardents-node-linux-amd64", "recorded-born-empty-before-journal-sync"),
+        "seal-before-sealed": (seal, "seal-intent", "generation", "original-sealed-generation-before-record"),
+        "binding-before-record": (109 if operation == "initial" else 50, "file-ready" if operation == "initial" else "selection-intent", "binding.json", "original-published-binding-before-record"),
+        "unit-before-record": (113 if operation == "initial" else 52, "file-ready" if operation == "initial" else "unit-intent", "ardents-source.service", "original-published-unit-before-record"),
+        "reload-before-verified": (114 if operation == "initial" else 54, "reload-intent", "binding-and-unit", "original-completed-publications-before-verified"),
+        "journal-complete-before-close": (115 if operation == "initial" else 55, "stopped-verified" if operation == "initial" else "replacement-verified", "binding-and-unit", "original-complete-journal-before-writer-close"),
+        "pending-before-unlink": (115 if operation == "initial" else 55, "stopped-verified" if operation == "initial" else "replacement-verified", "pending", "original-closed-journal-before-pending-unlink"),
+    }
+    if operation == "initial":
+        frontiers.update({
+            "account-before-complete-birth": (24, "account-born", "account-databases", "completed-helper-incomplete-account-birth"),
+            "directory-born-before-record": (42, "directory-intent", "installation-root", "unrecorded-empty-root-directory"),
+        })
+    return frontiers
+
+
 def source_profile(arguments, requested_case):
     """Select a finite qualification operation; this grants no runtime right."""
     if arguments not in (["-timeout=3m"], ["-timeout=8m"], ["-timeout=10m"]):
@@ -76,13 +113,13 @@ def source_profile(arguments, requested_case):
     replacement_profile = arguments == ["-timeout=10m"]
     restart_profile = recovery_profile or replacement_profile or arguments == ["-timeout=8m"]
     bound = 600 if recovery_profile or replacement_profile else 480 if restart_profile else 180
-    case, operation, count, fault = requested_case, None, None, None
+    case, operation, count, fault, concurrent, physical, root_physical, startup_physical, retirement_physical = requested_case, None, None, None, False, None, None, None, None
     if recovery_profile:
         # A positive frontier inventory does not cover unsafe physical windows
         # or replace the separately required causal-negative matrix.
         counts = {"initial": (70, 106, 110, 113, 114, 115), "replacement": (13, 49, 50, 51, 52, 53, 54, 55)}
         selected = {f"recovery-{op}-{number}": (op, number) for op, values in counts.items() for number in values}
-        faults = ("held-journal-lease", "copied-journal", "copied-cut-result", "journal-access", "torn-journal", "missing-pending", "partial-completion", "copied-generation-file", "manager-reexec")
+        faults = ("held-journal-lease", "copied-journal", "copied-cut-result", "journal-access", "torn-journal", "missing-pending", "partial-completion", "copied-generation-file", "manager-reexec", "timestamp-expiry")
         negatives = {f"recovery-refusal-{op}-{reason}": (op, number, reason)
                      for op, number in (("initial", 70), ("replacement", 49)) for reason in faults}
         # These are distinct predecessor facts. A real process exit, complete
@@ -90,7 +127,30 @@ def source_profile(arguments, requested_case):
         negatives.update({f"recovery-refusal-replacement-{reason}": ("replacement", 49, reason)
                           for reason in ("missing-startup-journal", "missing-startup-archive",
                                          "missing-retirement-journal", "missing-retirement-result")})
-        if case in negatives:
+        concurrent_cases = {f"recovery-concurrent-{op}": (op, number) for op, number in (("initial", 70), ("replacement", 13))}
+        physical_cases = {f"recovery-physical-{op}-{window}": (op, frontier[0], window)
+                          for op in ("initial", "replacement") for window, frontier in source_physical_frontiers(op).items()}
+        root_cases = {f"recovery-root-{op}-{number}-{window}": (op, number, window)
+                      for op, values in (("initial", (70, 115)), ("replacement", (13, 55)))
+                      for number in values for window in ("completion-before-close", "pending-before-unlink")}
+        root_cases.update({f"recovery-root-{op}-{number}-repaired-body-before-record": (op, number, "repaired-body-before-record")
+                           for op, number in (("initial", 70), ("replacement", 13))})
+        startup_cases = {f"recovery-startup-{attempt}-{window}": {"attempt": attempt, "window": window}
+                         for attempt in (0, 1) for window in ("archive-before-archived", "ack-before-written")}
+        retirement_cases = {f"recovery-retirement-{attempt}-{window}": {"attempt": attempt, "window": window}
+                            for attempt in (0, 1) for window in ("native-before-joined", "result-before-close", "pending-before-unlink")}
+        if case in retirement_cases:
+            operation, retirement_physical = "retirement", retirement_cases[case]
+        elif case in startup_cases:
+            operation, startup_physical = "startup", startup_cases[case]
+        elif case in root_cases:
+            operation, count, root_physical = root_cases[case]
+        elif case in physical_cases:
+            operation, count, physical = physical_cases[case]
+        elif case in concurrent_cases:
+            operation, count = concurrent_cases[case]
+            concurrent = True
+        elif case in negatives:
             operation, count, fault = negatives[case]
         elif case in selected:
             operation, count = selected[case]
@@ -104,8 +164,311 @@ def source_profile(arguments, requested_case):
     if case not in cases:
         raise RuntimeError("unknown finite Source startup case")
     return {"recovery": recovery_profile, "replacement": replacement_profile, "restart": restart_profile, "bound": bound,
-            "case": case, "requested_case": requested_case, "operation": operation, "prefix_records": count, "fault": fault}
+            "case": case, "requested_case": requested_case, "operation": operation, "prefix_records": count, "fault": fault,
+            "concurrent": concurrent, "physical": physical, "root_physical": root_physical, "startup_physical": startup_physical, "retirement_physical": retirement_physical}
 
+
+def source_startup_prediction(matrix, attempt, window):
+    if type(attempt) is not int or attempt not in (0, 1) or window not in ("archive-before-archived", "ack-before-written"):
+        raise RuntimeError("finite first/subsequent startup cut required")
+    expected = {"attempt": attempt, "window": window, "prefix_records": 19 if window == "archive-before-archived" else 21,
+                "root_signal": "SIGKILL", "source_join": "original-pidfd-and-cgroup", "pending": "retained",
+                "after_cut": "repair-required", "start_permitted": False}
+    inventory = matrix.get("startup_cuts")
+    if (not isinstance(inventory, list) or any(not isinstance(value, dict) for value in inventory)
+            or json.dumps([value for value in inventory if value.get("attempt") == attempt and value.get("window") == window], sort_keys=True, separators=(",", ":"))
+            != json.dumps([expected], sort_keys=True, separators=(",", ":"))):
+        raise RuntimeError("separate exact published startup cut prediction required")
+    return expected
+
+
+def source_startup_cut_observation(profile, ready, report=None, raw=None):
+    """Root hold/reap evidence only; the outside owner separately joins Source."""
+    pin = hashlib.sha256(json.dumps(profile, separators=(",", ":")).encode() + b"\n").hexdigest()
+    window = profile.get("window")
+    count = 19 if window == "archive-before-archived" else 21
+    numeric = ("entry", "root_pid", "held_root_thread", "selected_records")
+    archive = ready.get("startup_archive")
+    archive_numbers = ("pid", "process_device", "process_inode", "cgroup_device", "cgroup_inode", "started_realtime", "started_monotonic")
+    if (profile.get("schema") != "source-startup-physical-cut-observer-v1" or window not in ("archive-before-archived", "ack-before-written")
+            or type(profile.get("attempt")) is not int or profile["attempt"] not in (0, 1)
+            or any(type(ready.get(name)) is not int or ready[name] <= 0 for name in numeric)
+            or ready["selected_records"] != count or ready.get("profile_sha256") != pin
+            or ready.get("program_sha256") != profile["program_sha256"] or ready.get("public_receipt_sha256") != profile["public_receipt_sha256"]
+            or ready.get("physical_window") != window or ready.get("inspection_only") is not False or ready.get("installed_execution") is not True
+            or ready.get("external_cut_ready") is not True or ready.get("external_cut_requested", False) is not False
+            or type(ready.get("root_exit")) is not int or ready["root_exit"] != -1
+            or type(ready.get("root_signal", 0)) is not int or ready.get("root_signal", 0) != 0
+            or any(ready.get(name, False) is not False for name in ("root_kill_requested", "root_killed_by_observer", "external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "recovery_held_before_record"))
+            or source_report_has_pending_guard(ready) or ready.get("retirement_result") is not None or not isinstance(archive, dict)
+            or any(type(archive.get(name)) is not int or archive[name] <= 0 for name in archive_numbers)
+            or archive.get("schema") != ("ardents-source-first-start-archive-v1" if profile["attempt"] == 0 else "ardents-source-invocation-archive-v1")
+            or not isinstance(archive.get("invocation_id"), str) or len(archive["invocation_id"]) != 32
+            or archive["invocation_id"] == "0" * 32 or any(value not in "0123456789abcdef" for value in archive["invocation_id"])
+            or archive.get("generation") != profile["generation"] or archive.get("binding_sha256") != profile["binding_sha256"]
+            or not isinstance(ready.get("selected_journal_sha256"), str) or len(ready["selected_journal_sha256"]) != 64
+            or any(value not in "0123456789abcdef" for value in ready["selected_journal_sha256"])):
+        raise RuntimeError("actual original startup held root/archive observation required")
+    if report is None:
+        if raw is not None:
+            raise RuntimeError("completed startup output without report")
+        return {name: ready[name] for name in numeric} | {"profile_sha256": pin}
+    if (raw is None or any(type(report.get(name)) is not int or report[name] != ready[name] for name in numeric)
+            or any(report.get(name) != ready.get(name) for name in ("profile_sha256", "program_sha256", "public_receipt_sha256", "physical_window", "selected_journal_sha256", "startup_archive"))
+            or report.get("inspection_only") is not False or report.get("installed_execution") is not True
+            or report.get("external_cut_ready") is not True or report.get("external_cut_requested") is not True
+            or type(report.get("root_exit")) is not int or report["root_exit"] != -1
+            or type(report.get("root_signal")) is not int or report["root_signal"] != 9
+            or type(report.get("processes")) is not int or report["processes"] != 1
+            or type(report.get("threads_joined")) is not int or not 1 <= report["threads_joined"] <= 256
+            or report.get("root_kill_requested") is not True or report.get("root_killed_by_observer") is not True
+            or any(report.get(name, False) is not False for name in ("external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "recovery_held_before_record", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
+            or any(type(report.get(name, 0)) is not int or report.get(name, 0) != 0 for name in ("root_close_entry", "root_close_observations", "refusal_admission_entry", "held_coordinator_thread", "signalled_root_thread"))
+            or source_report_has_pending_guard(report) or report.get("retirement_result") is not None or report.get("original_cut_sha256") != ""
+            or report.get("output_sha256") != hashlib.sha256(raw).hexdigest()
+            or b'"operation":"installation.source"' in raw or b"source command failed" in raw):
+        raise RuntimeError("actual startup root SIGKILL/reaps without domain completion required")
+    return {name: report[name] for name in numeric + ("threads_joined", "root_signal")} | {"profile_sha256": pin, "output_sha256": report["output_sha256"]}
+
+
+SOURCE_EXPIRY_FILES = ("ardents-node-linux-amd64", "infrastructure-source.json", "ardents-source.service", "root.json", "timestamp.json", "snapshot.json", "targets.json", "infrastructure-enrollment.json")
+
+
+def source_release_expiry_prediction(matrix, operation, count):
+    if type(count) is not int or (operation, count) not in (("initial", 70), ("replacement", 49)):
+        raise RuntimeError("finite original expiry frontier required")
+    expected = {"operation": operation, "prefix_records": count, "fault": "timestamp-expiry",
+                "observation": "same-eight-files-actual-wall-crossing", "other_bounds": "live-announced-no-emergency",
+                "after_cut": "repair-required", "failure_header_permitted": False, "start_permitted": False}
+    inventory = matrix.get("release_expiry")
+    if (not isinstance(inventory, list) or any(not isinstance(value, dict) for value in inventory)
+            or json.dumps([value for value in inventory if value.get("operation") == operation and value.get("prefix_records") == count], sort_keys=True, separators=(",", ":"))
+            != json.dumps([expected], sort_keys=True, separators=(",", ":"))):
+        raise RuntimeError("separate exact published Release expiry prediction required")
+    return expected
+
+
+def source_release_expiry_observation(profile, report, before=None):
+    """Real Release decisions only; canonical refusal/join is separate evidence."""
+    if not isinstance(profile, dict) or not isinstance(report, dict):
+        raise RuntimeError("typed original expiry profile and report required")
+    def hexadecimal(value):
+        return isinstance(value, str) and len(value) == 64 and all(c in "0123456789abcdef" for c in value)
+
+    def instant(value):
+        if not isinstance(value, str) or not value.endswith("Z"):
+            raise RuntimeError("actual UTC expiry observation required")
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as error:
+            raise RuntimeError("actual UTC expiry observation required") from error
+
+    profile_fields = {"schema", "public_receipt_sha256", "distribution", "history", "network", "phase", "files"}
+    report_fields = {"profile_sha256", "public_receipt_sha256", "phase", "reference_time", "timestamp_expires", "other_bounds", "files", "outcomes", "authorized", "floors_unchanged", "verifier_closed", "installed_execution"}
+    phase = profile.get("phase")
+    files = profile.get("files")
+    if (set(profile) != profile_fields or profile.get("schema") != "source-release-expiry-observer-v1" or phase not in ("before", "expired")
+            or not hexadecimal(profile.get("public_receipt_sha256"))
+            or any(not isinstance(profile.get(name), str) or not profile[name] for name in ("distribution", "history", "network"))
+            or not isinstance(files, dict) or set(files) != set(SOURCE_EXPIRY_FILES) or any(not hexadecimal(value) for value in files.values())):
+        raise RuntimeError("closed exact original expiry profile required")
+    pin = hashlib.sha256(json.dumps(profile, separators=(",", ":")).encode() + b"\n").hexdigest()
+    if (set(report) != report_fields or report.get("profile_sha256") != pin or report.get("public_receipt_sha256") != profile["public_receipt_sha256"]
+            or report.get("phase") != phase or report.get("files") != files
+            or report.get("floors_unchanged") is not True or report.get("verifier_closed") is not True or report.get("installed_execution") is not True
+            or report.get("outcomes") != (["no-update", "no-update"] if phase == "before" else ["release-expired", "release-expired"])
+            or not isinstance(report.get("authorized"), list) or len(report["authorized"]) != 2
+            or any(value is not (phase == "before") for value in report["authorized"])):
+        raise RuntimeError("actual completed installed Release decision pair required")
+    reference, expiry = instant(report.get("reference_time")), instant(report.get("timestamp_expires"))
+    if (phase == "before") != (reference < expiry):
+        raise RuntimeError("reported wall time does not match actual expiry phase")
+    bounds = report.get("other_bounds")
+    names = {"root.json", "snapshot.json", "targets.json"} | {target + suffix for target in ("ardents/linux-amd64/node", "ardents/linux-amd64/infrastructure/source") for suffix in ("/no-new", "/terminate")}
+    if not isinstance(bounds, dict) or set(bounds) != names or any(instant(value) <= reference or instant(value) <= expiry for value in bounds.values()):
+        raise RuntimeError("another original authority clock competes with Timestamp expiry")
+    if phase == "expired":
+        if not isinstance(before, dict):
+            raise RuntimeError("actual same-input pre-expiry observation required")
+        source_release_expiry_observation(dict(profile, phase="before"), before)
+        if (before["timestamp_expires"] != report["timestamp_expires"] or before["other_bounds"] != bounds
+                or before["files"] != files or not instant(before["reference_time"]) < expiry <= reference):
+            raise RuntimeError("expiry observations changed original inputs or clocks")
+    elif before is not None:
+        raise RuntimeError("completed before observation cannot borrow an earlier report")
+    return {"profile_sha256": pin, "reference_time": report["reference_time"], "timestamp_expires": report["timestamp_expires"],
+            "files_sha256": hashlib.sha256(json.dumps(files, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+            "outcomes": report["outcomes"], "floors_unchanged": True, "verifier_closed": True}
+
+
+def source_completed_prediction(matrix, attempt, kind):
+    if type(attempt) is not int or attempt not in (0, 1, 2, 3) or kind not in ("startup", "retirement"):
+        raise RuntimeError("finite completed Source classification required")
+    expected = {"attempt": attempt, "journal_kind": kind, "startup_records": 22, "retirement_records": 12,
+                "after": "stopped-selected", "persistent_effects": "none", "start_permitted": False}
+    inventory = matrix.get("completed_classifications")
+    if (not isinstance(inventory, list) or any(not isinstance(value, dict) for value in inventory)
+            or json.dumps([value for value in inventory if value.get("attempt") == attempt and value.get("journal_kind") == kind], sort_keys=True, separators=(",", ":"))
+            != json.dumps([expected], sort_keys=True, separators=(",", ":"))):
+        raise RuntimeError("separate exact completed Source prediction required")
+    return expected
+
+
+def source_retirement_prediction(matrix, attempt, window):
+    if type(attempt) is not int or attempt not in (0, 1) or window not in ("native-before-joined", "result-before-close", "pending-before-unlink"):
+        raise RuntimeError("finite first/subsequent retirement cut required")
+    expected = {"attempt": attempt, "window": window, "prefix_records": 6 if window == "native-before-joined" else 12,
+                "root_signal": "SIGKILL", "source_join": "original-pidfd-and-cgroup-before-root-cut", "pending": "retained",
+                "result": "absent" if window == "native-before-joined" else "complete-retained",
+                "after_cut": "repair-required", "start_permitted": False}
+    inventory = matrix.get("retirement_cuts")
+    if (not isinstance(inventory, list) or any(not isinstance(value, dict) for value in inventory)
+            or json.dumps([value for value in inventory if value.get("attempt") == attempt and value.get("window") == window], sort_keys=True, separators=(",", ":"))
+            != json.dumps([expected], sort_keys=True, separators=(",", ":"))):
+        raise RuntimeError("separate exact published retirement cut prediction required")
+    return expected
+
+
+def source_retirement_cut_observation(profile, ready, report=None, raw=None):
+    """Root hold/reaps and retained image only; this cannot attest Source join."""
+    def hexadecimal(value, size=64):
+        return isinstance(value, str) and len(value) == size and all(c in "0123456789abcdef" for c in value)
+
+    pin = hashlib.sha256(json.dumps(profile, separators=(",", ":")).encode() + b"\n").hexdigest()
+    window = profile.get("window")
+    count = 6 if window == "native-before-joined" else 12
+    numeric = ("entry", "root_pid", "held_root_thread", "selected_records")
+    archive = ready.get("startup_archive")
+    archive_numbers = ("pid", "process_device", "process_inode", "cgroup_device", "cgroup_inode", "started_realtime", "started_monotonic")
+    if (profile.get("schema") != "source-retirement-physical-cut-observer-v1" or window not in ("native-before-joined", "result-before-close", "pending-before-unlink")
+            or type(profile.get("attempt")) is not int or profile["attempt"] not in (0, 1)
+            or profile.get("prefix_records") != count or type(profile.get("prefix_records")) is not int
+            or profile.get("last_phase") != ("domain-joined" if count == 6 else "retired")
+            or any(not hexadecimal(profile.get(name)) for name in ("program_sha256", "public_receipt_sha256", "generation", "binding_sha256", "start_sha256", "start_journal_sha256"))
+            or any(type(ready.get(name)) is not int or ready[name] <= 0 for name in numeric)
+            or ready["selected_records"] != count or ready.get("profile_sha256") != pin
+            or ready.get("program_sha256") != profile["program_sha256"] or ready.get("public_receipt_sha256") != profile["public_receipt_sha256"]
+            or ready.get("physical_window") != window or ready.get("inspection_only") is not False or ready.get("installed_execution") is not True
+            or ready.get("external_cut_ready") is not True or ready.get("external_cut_requested", False) is not False
+            or type(ready.get("root_exit")) is not int or ready["root_exit"] != -1
+            or type(ready.get("root_signal", 0)) is not int or ready.get("root_signal", 0) != 0
+            or any(ready.get(name, False) is not False for name in ("root_kill_requested", "root_killed_by_observer", "external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "recovery_held_before_record", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
+            or source_report_has_pending_guard(ready) or not isinstance(archive, dict)
+            or any(type(archive.get(name)) is not int or archive[name] <= 0 for name in archive_numbers)
+            or archive.get("schema") != ("ardents-source-first-start-archive-v1" if profile["attempt"] == 0 else "ardents-source-invocation-archive-v1")
+            or not hexadecimal(archive.get("invocation_id"), 32) or archive["invocation_id"] == "0" * 32
+            or not isinstance(archive.get("manager"), str) or not archive["manager"]
+            or archive.get("generation") != profile["generation"] or archive.get("binding_sha256") != profile["binding_sha256"]
+            or hashlib.sha256(json.dumps(archive, separators=(",", ":")).encode() + b"\n").hexdigest() != profile["start_sha256"]
+            or not hexadecimal(ready.get("selected_journal_sha256"))):
+        raise RuntimeError("actual original retirement held root/archive observation required")
+    result = ready.get("retirement_result")
+    if count == 6:
+        if result is not None:
+            raise RuntimeError("unrecorded retirement result cannot supply completion")
+    else:
+        fields = ("schema", "attempt", "generation", "binding_sha256", "start_sha256", "invocation_id", "pid", "manager", "challenge", "completion_sha256", "started_realtime", "started_monotonic", "exited_realtime", "exited_monotonic", "code", "status")
+        integers = ("attempt", "pid", "started_realtime", "started_monotonic", "exited_realtime", "exited_monotonic", "code", "status")
+        if (not isinstance(result, dict) or set(result) != set(fields) or any(type(result.get(name)) is not int for name in integers)
+                or result["schema"] != "ardents-source-retirement-v1" or result["attempt"] != profile["attempt"]
+                or result["start_sha256"] != profile["start_sha256"] or result["code"] != 1 or result["status"] != 0
+                or any(result[name] != archive[name] for name in ("generation", "binding_sha256", "invocation_id", "pid", "manager", "started_realtime", "started_monotonic"))
+                or result["exited_realtime"] < archive["started_realtime"] or result["exited_monotonic"] < archive["started_monotonic"]
+                or not hexadecimal(result["challenge"]) or result["challenge"] == "0" * 64):
+            raise RuntimeError("retirement result differs from original archived invocation")
+        frame = b"ardents-source-domain-joined-v1\n" + (archive["invocation_id"] + profile["generation"] + profile["binding_sha256"]).encode("ascii") + bytes.fromhex(result["challenge"])
+        if result["completion_sha256"] != hashlib.sha256(frame).hexdigest():
+            raise RuntimeError("retirement result does not bind original domain frame")
+    if report is None:
+        if raw is not None:
+            raise RuntimeError("completed retirement output without report")
+        return {name: ready[name] for name in numeric} | {"profile_sha256": pin}
+    if (raw is None or any(type(report.get(name)) is not int or report[name] != ready[name] for name in numeric)
+            or any(json.dumps(report.get(name), sort_keys=True, separators=(",", ":")) != json.dumps(ready.get(name), sort_keys=True, separators=(",", ":"))
+                   for name in ("profile_sha256", "program_sha256", "public_receipt_sha256", "physical_window", "selected_journal_sha256", "startup_archive", "retirement_result"))
+            or report.get("inspection_only") is not False or report.get("installed_execution") is not True
+            or report.get("external_cut_ready") is not True or report.get("external_cut_requested") is not True
+            or type(report.get("root_exit")) is not int or report["root_exit"] != -1
+            or type(report.get("root_signal")) is not int or report["root_signal"] != 9
+            or type(report.get("processes")) is not int or report["processes"] != 1
+            or type(report.get("threads_joined")) is not int or not 1 <= report["threads_joined"] <= 256
+            or report.get("root_kill_requested") is not True or report.get("root_killed_by_observer") is not True
+            or any(report.get(name, False) is not False for name in ("external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "recovery_held_before_record", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
+            or any(type(report.get(name, 0)) is not int or report.get(name, 0) != 0 for name in ("root_close_entry", "root_close_observations", "refusal_admission_entry", "held_coordinator_thread", "signalled_root_thread"))
+            or source_report_has_pending_guard(report) or report.get("original_cut_sha256") != ""
+            or report.get("output_sha256") != hashlib.sha256(raw).hexdigest()
+            or b'"operation":"installation.source"' in raw or b"source command failed" in raw):
+        raise RuntimeError("actual retirement root SIGKILL/reaps without graceful completion required")
+    return {name: report[name] for name in numeric + ("threads_joined", "root_signal")} | {"profile_sha256": pin, "output_sha256": report["output_sha256"]}
+
+
+def source_root_recovery_prediction(matrix, operation, count, window):
+    if (type(count) is not int or (operation, count) not in (("initial", 70), ("initial", 115), ("replacement", 13), ("replacement", 55))
+            or window not in ("repaired-body-before-record", "completion-before-close", "pending-before-unlink")
+            or window == "repaired-body-before-record" and (operation, count) not in (("initial", 70), ("replacement", 13))):
+        raise RuntimeError("finite original recovery root window required")
+    expected = {"operation": operation, "prefix_records": count, "window": window, "root_signal": "SIGKILL",
+                "completion": "partial-retained-no-append" if window == "repaired-body-before-record" else "complete-retained",
+                "pending": "retained", "after_cut": "repair-required", "start_permitted": False}
+    inventory = matrix.get("root_recovery_cuts")
+    if not isinstance(inventory, list) or any(not isinstance(value, dict) for value in inventory):
+        raise RuntimeError("separate published root recovery predictions required")
+    selected = [value for value in inventory if value.get("operation") == operation and value.get("prefix_records") == count and value.get("window") == window]
+    if json.dumps(selected, sort_keys=True, separators=(",", ":")) != json.dumps([expected], sort_keys=True, separators=(",", ":")):
+        raise RuntimeError("exact root process cut prediction required")
+    return expected
+
+
+def source_root_recovery_observation(profile, report, raw):
+    # This detached report describes the Linux wait status, even when its
+    # grammar is checked on Windows, whose signal module has no SIGKILL.
+    linux_sigkill = 9
+    pin = hashlib.sha256(json.dumps(profile, separators=(",", ":")).encode() + b"\n").hexdigest()
+    numbers = ("entry", "root_pid", "root_exit", "root_signal", "threads_joined", "processes", "held_root_thread", "signalled_root_thread", "selected_records")
+    if any(type(report.get(name)) is not int for name in numbers) or source_report_has_directed_cut(report) or source_report_has_pending_guard(report):
+        raise RuntimeError("actual root process cut numeric inventory required")
+    arguments = profile.get("arguments")
+    if (profile.get("schema") != "source-recovery-physical-cut-observer-v1" or not isinstance(arguments, list) or len(arguments) != 8
+            or arguments[:2] != ["installation", "recover-source"] or profile.get("window") not in ("repaired-body-before-record", "completion-before-close", "pending-before-unlink")
+            or report.get("profile_sha256") != pin or report.get("program_sha256") != profile["program_sha256"]
+            or report.get("public_receipt_sha256") != profile["public_receipt_sha256"] or report.get("selected_journal_sha256") != profile["journal_sha256"]
+            or report.get("physical_window") != profile["window"] or report["selected_records"] != profile["prefix_records"]
+            or report.get("inspection_only") is not False or report.get("installed_execution") is not True
+            or report["entry"] <= 0 or report["root_pid"] <= 0 or report["root_exit"] != -1 or report["root_signal"] != linux_sigkill
+            or report["processes"] != 1 or not 1 <= report["threads_joined"] <= 256 or report["held_root_thread"] <= 0 or report["signalled_root_thread"] != 0
+            or report.get("root_kill_requested") is not True or report.get("root_killed_by_observer") is not True
+            or report.get("external_cancellation_acknowledged") is not False or report.get("root_ownership_released_before_exit", False) is not False
+            or any(type(report.get(name, 0)) is not int or report.get(name, 0) != 0 for name in ("root_close_entry", "root_close_observations", "held_coordinator_thread", "recovery_hold_entry", "recovery_cancellation_elapsed_ns", "refusal_admission_entry", "refusal_stopped_threads"))
+            or any(report.get(name, False) is not False for name in ("recovery_held_before_record", "recovery_held_image_preserved", "refusal_admission_observed", "refusal_ownership_released_before_exit", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
+            or report.get("held_coordinator_killed", False) is not False or report.get("original_cut_sha256") != ""
+            or report.get("output_sha256") != hashlib.sha256(raw).hexdigest()
+            or b'"operation":"installation.source"' in raw or b"source command failed" in raw):
+        raise RuntimeError("actual held root SIGKILL/reaps without Close/cancellation claims required")
+    return {name: report[name] for name in numbers} | {"profile_sha256": pin, "output_sha256": report["output_sha256"]}
+
+
+def source_report_has_directed_cut(report):
+    return (report.get("external_cut_ready", False) is not False
+            or report.get("external_cut_requested", False) is not False
+            or report.get("startup_archive") is not None or report.get("retirement_result") is not None)
+
+
+def source_report_has_startup_pending(report):
+    return (report.get("refusal_startup_pending_observed", False) is not False
+            or report.get("refusal_startup_pending_device", 0) != 0
+            or report.get("refusal_startup_pending_inode", 0) != 0
+            or report.get("refusal_startup_pending_sha256", "") != "")
+
+
+def source_report_has_retirement_pending(report):
+    return (report.get("refusal_retirement_pending_observed", False) is not False
+            or report.get("refusal_retirement_pending_device", 0) != 0
+            or report.get("refusal_retirement_pending_inode", 0) != 0
+            or report.get("refusal_retirement_pending_sha256", "") != "")
+
+
+def source_report_has_pending_guard(report):
+    return source_report_has_startup_pending(report) or source_report_has_retirement_pending(report)
 
 def recovery_fault_retention(installation, generation):
     # Keep native originals on the same parent filesystem, outside both the
@@ -116,8 +479,438 @@ def recovery_fault_retention(installation, generation):
     return retained
 
 
+def source_retained_leaf(path, read_file):
+    """Retain a stale native socket as identity, never as readable file data."""
+    before = path.lstat()
+    if stat.S_ISSOCK(before.st_mode):
+        def identity(info):
+            return (info.st_dev, info.st_ino, stat.S_IMODE(info.st_mode), info.st_uid, info.st_gid, info.st_ctime_ns, info.st_mtime_ns)
+        if identity(path.lstat()) != identity(before):
+            raise RuntimeError("original retained socket changed during observation")
+        return (("socket", identity(before)[:5], before.st_ctime_ns, before.st_mtime_ns), 0)
+    raw, native = read_file(path, 32 << 20)
+    return (("file", native, hashlib.sha256(raw).hexdigest()), len(raw))
+
+
+def source_concurrent_prediction(matrix, operation, count):
+    """Require the separate published prediction before the original cut."""
+    if type(count) is not int or (operation, count) not in (("initial", 70), ("replacement", 13)):
+        raise RuntimeError("finite original first-program birth required")
+    expected = {"operation": operation, "prefix_records": count, "hold_phase": "file-ready",
+                "held_file": "ardents-node-linux-amd64", "second_refusal": "original-release-flock",
+                "after_cancellation": "repair-required", "partial_completion": "retained-no-append", "start_permitted": False}
+    inventory = matrix.get("concurrent_cancellation")
+    if not isinstance(inventory, list) or any(not isinstance(value, dict) for value in inventory):
+        raise RuntimeError("separate published concurrent prediction inventory required")
+    selected = [value for value in inventory if value.get("operation") == operation]
+    if json.dumps(selected, sort_keys=True, separators=(",", ":")) != json.dumps([expected], sort_keys=True, separators=(",", ":")):
+        raise RuntimeError("exact published concurrent recovery/cancellation prediction required")
+    return expected
+
+
+def source_physical_prediction(matrix, operation, count, window):
+    """No prefix/ACK prediction can stand in for an unrecorded physical effect."""
+    frontier = source_physical_frontiers(operation).get(window)
+    if frontier is None or type(count) is not int or count != frontier[0]:
+        raise RuntimeError("finite original physical frontier required")
+    expected = {"operation": operation, "prefix_records": count, "window": window, "held_file": frontier[2], "payload": frontier[3],
+                "predicted_outcome": "repair-required", "original_cut_proof": "absent", "completion": "absent", "start_permitted": False}
+    inventory = matrix.get("physical_cuts")
+    if not isinstance(inventory, list) or any(not isinstance(value, dict) for value in inventory):
+        raise RuntimeError("separate published physical-cut inventory required")
+    selected = [value for value in inventory if value.get("operation") == operation and value.get("window") == window]
+    if json.dumps(selected, sort_keys=True, separators=(",", ":")) != json.dumps([expected], sort_keys=True, separators=(",", ":")):
+        raise RuntimeError("exact physical-effect repair-required prediction required")
+    return expected
+
+
 class RecoveryRefusalComplete(Exception):
     """Outside profile control flow after a fully observed terminal refusal."""
+
+
+def source_pidfd_exited(descriptor):
+    poller = select.poll()
+    poller.register(descriptor, select.POLLIN)
+    events = poller.poll(0)
+    if any(fd != descriptor or mask & ~(select.POLLIN | select.POLLHUP) for fd, mask in events):
+        raise RuntimeError("original Source pidfd exit observation failed")
+    return bool(events)
+
+
+def source_refusal_observation(profile, report, raw, exclusion_identity=None, missing_cut_parent_identity=None, startup_pending_identity=None, retirement_pending_identity=None, early_prefix_identity=None):
+    """Check the pinned observer's actual completed canonical invocation only."""
+    if source_report_has_directed_cut(report):
+        raise RuntimeError("directed physical cut cannot supply a before-return refusal")
+    numeric = ("entry", "refusal_admission_entry", "root_pid", "root_exit", "threads_joined", "processes", "refusal_stopped_threads")
+    if any(type(report.get(name)) is not int for name in numeric):
+        raise RuntimeError("actual refusal observer numeric inventory required")
+    profile_pin = hashlib.sha256(json.dumps(profile, separators=(",", ":")).encode() + b"\n").hexdigest()
+    if (report.get("profile_sha256") != profile_pin or report.get("inspection_only") is not False or report.get("installed_execution") is not True
+            or report.get("refusal_admission_observed") is not True or report.get("refusal_ownership_released_before_exit") is not True
+            or report["entry"] <= 0 or report["refusal_admission_entry"] <= 0 or report["entry"] == report["refusal_admission_entry"]
+            or report["root_pid"] <= 0 or report["root_exit"] != 2 or report["processes"] != 1
+            or not 2 <= report["refusal_stopped_threads"] <= report["threads_joined"] <= 256
+            or report.get("program_sha256") != profile["program_sha256"] or report.get("public_receipt_sha256") != profile["public_receipt_sha256"]
+            or report.get("output_sha256") != hashlib.sha256(raw).hexdigest() or not raw.endswith(b"source command failed\n")):
+        raise RuntimeError("actual canonical before-return refusal/cleanup/join proof missing")
+
+    exclusion = "release" if profile["external_release_lease"] else "journal" if profile["external_journal_lease"] else None
+    if exclusion is not None:
+        if (exclusion_identity is None or len(exclusion_identity) != 2
+                or any(type(value) is not int or value <= 0 for value in exclusion_identity)
+                or report.get("refusal_exclusion_observed") is not True or report.get("refusal_exclusion_kind") != exclusion
+                or type(report.get("refusal_exclusion_device")) is not int or type(report.get("refusal_exclusion_inode")) is not int
+                or (report["refusal_exclusion_device"], report["refusal_exclusion_inode"]) != tuple(exclusion_identity)):
+            raise RuntimeError("actual original kernel flock exclusion/inode proof missing")
+    missing_cut = profile.get("missing_original_cut", False)
+    if missing_cut is True:
+        if (profile.get("schema") != "source-recovery-missing-cut-observer-v1"
+                or exclusion is not None or profile.get("recovery_hold") is not None or profile.get("startup_pending") is not None or profile.get("retirement_pending") is not None
+                or profile.get("journal_mode") != "0600"
+                or missing_cut_parent_identity is None or len(missing_cut_parent_identity) != 2
+                or any(type(value) is not int or value <= 0 for value in missing_cut_parent_identity)
+                or report.get("refusal_missing_cut_observed") is not True
+                or type(report.get("refusal_missing_cut_parent_device")) is not int
+                or type(report.get("refusal_missing_cut_parent_inode")) is not int
+                or (report["refusal_missing_cut_parent_device"], report["refusal_missing_cut_parent_inode"]) != tuple(missing_cut_parent_identity)):
+            raise RuntimeError("actual original-cut read ENOENT/parent inode proof missing")
+    elif (missing_cut is not False or profile.get("schema") == "source-recovery-missing-cut-observer-v1"
+          or missing_cut_parent_identity is not None or report.get("refusal_missing_cut_observed", False) is not False
+          or report.get("refusal_missing_cut_parent_device", 0) != 0 or report.get("refusal_missing_cut_parent_inode", 0) != 0):
+        raise RuntimeError("mixed original-cut observation purpose")
+    pending = profile.get("startup_pending")
+    if pending is not None:
+        if (not isinstance(pending, dict) or set(pending) != {"attempt", "gid"}
+                or type(pending.get("attempt")) is not int or not 0 <= pending["attempt"] < 64
+                or type(pending.get("gid")) is not int or not 100 <= pending["gid"] <= 999
+                or profile.get("schema") != "source-startup-recovery-refusal-observer-v1"
+                or profile.get("journal_mode") != "0600" or profile.get("recovery_hold") is not None
+                or missing_cut is not False or exclusion is not None or exclusion_identity is not None or profile.get("retirement_pending") is not None
+                or report.get("refusal_exclusion_observed", False) is not False
+                or startup_pending_identity is None or len(startup_pending_identity) != 3
+                or any(type(value) is not int or value <= 0 for value in startup_pending_identity[:2])
+                or not isinstance(startup_pending_identity[2], str) or len(startup_pending_identity[2]) != 64
+                or any(value not in "0123456789abcdef" for value in startup_pending_identity[2])
+                or report.get("refusal_startup_pending_observed") is not True
+                or type(report.get("refusal_startup_pending_device")) is not int
+                or type(report.get("refusal_startup_pending_inode")) is not int
+                or (report["refusal_startup_pending_device"], report["refusal_startup_pending_inode"], report.get("refusal_startup_pending_sha256")) != tuple(startup_pending_identity)):
+            raise RuntimeError("actual original startup pending nofollow stat/identity proof missing")
+    elif (profile.get("schema") == "source-startup-recovery-refusal-observer-v1"
+          or startup_pending_identity is not None or source_report_has_startup_pending(report)):
+        raise RuntimeError("mixed startup pending observation purpose")
+    retirement_pending = profile.get("retirement_pending")
+    if retirement_pending is not None:
+        if (not isinstance(retirement_pending, dict) or set(retirement_pending) != {"attempt", "gid"}
+                or type(retirement_pending.get("attempt")) is not int or not 0 <= retirement_pending["attempt"] < 64
+                or type(retirement_pending.get("gid")) is not int or not 100 <= retirement_pending["gid"] <= 999
+                or profile.get("schema") != "source-retirement-recovery-refusal-observer-v1"
+                or profile.get("journal_mode") != "0600" or profile.get("recovery_hold") is not None
+                or missing_cut is not False or exclusion is not None or exclusion_identity is not None or profile.get("startup_pending") is not None
+                or report.get("refusal_exclusion_observed", False) is not False
+                or retirement_pending_identity is None or len(retirement_pending_identity) != 3
+                or any(type(value) is not int or value <= 0 for value in retirement_pending_identity[:2])
+                or not isinstance(retirement_pending_identity[2], str) or len(retirement_pending_identity[2]) != 64
+                or any(value not in "0123456789abcdef" for value in retirement_pending_identity[2])
+                or report.get("refusal_retirement_pending_observed") is not True
+                or type(report.get("refusal_retirement_pending_device")) is not int
+                or type(report.get("refusal_retirement_pending_inode")) is not int
+                or (report["refusal_retirement_pending_device"], report["refusal_retirement_pending_inode"], report.get("refusal_retirement_pending_sha256")) != tuple(retirement_pending_identity)):
+            raise RuntimeError("actual original retirement pending nofollow stat/identity proof missing")
+    elif (profile.get("schema") == "source-retirement-recovery-refusal-observer-v1"
+          or retirement_pending_identity is not None or source_report_has_retirement_pending(report)):
+        raise RuntimeError("mixed retirement pending observation purpose")
+    early_count = profile.get("early_initial_prefix", 0)
+    early_fields = ("refusal_early_prefix_observed", "refusal_early_prefix_closed", "refusal_early_prefix_records",
+                    "refusal_early_prefix_device", "refusal_early_prefix_inode", "refusal_early_prefix_sha256")
+    if early_count != 0:
+        arguments = profile.get("arguments")
+        if (type(early_count) is not int or early_count not in (24, 42)
+                or profile.get("schema") != "source-early-prefix-recovery-refusal-observer-v1"
+                or not isinstance(arguments, list) or len(arguments) != 8 or not isinstance(arguments[7], str)
+                or profile.get("journal_mode") != "0600" or not arguments[7].endswith(".source-initial-journal")
+                or exclusion is not None or exclusion_identity is not None or missing_cut is not False
+                or profile.get("recovery_hold") is not None or pending is not None or retirement_pending is not None
+                or report.get("refusal_exclusion_observed", False) is not False
+                or early_prefix_identity is None or len(early_prefix_identity) != 3
+                or any(type(value) is not int or value <= 0 for value in early_prefix_identity[:2])
+                or not isinstance(early_prefix_identity[2], str) or len(early_prefix_identity[2]) != 64
+                or any(value not in "0123456789abcdef" for value in early_prefix_identity[2])
+                or early_prefix_identity[2] != profile.get("journal_sha256")
+                or report.get("refusal_early_prefix_observed") is not True or report.get("refusal_early_prefix_closed") is not True
+                or any(type(report.get(name)) is not int for name in early_fields[2:5])
+                or report["refusal_early_prefix_records"] != early_count
+                or (report["refusal_early_prefix_device"], report["refusal_early_prefix_inode"], report.get("refusal_early_prefix_sha256")) != tuple(early_prefix_identity)):
+            raise RuntimeError("actual fresh original early-prefix lease/read/close proof missing")
+    elif (type(early_count) is not int or profile.get("schema") == "source-early-prefix-recovery-refusal-observer-v1"
+          or early_prefix_identity is not None
+          or any(report.get(name, False) is not False for name in early_fields[:2])
+          or any(type(report.get(name, 0)) is not int or report.get(name, 0) != 0 for name in early_fields[2:5])
+          or report.get(early_fields[5], "") != ""):
+        raise RuntimeError("mixed early-prefix custody observation purpose")
+    result = {"profile_sha256": report["profile_sha256"], "program_sha256": report["program_sha256"],
+              "output_sha256": report["output_sha256"], "root_exit": report["root_exit"],
+              "root_pid": report["root_pid"],
+              "stopped_threads_before_return": report["refusal_stopped_threads"], "threads_joined": report["threads_joined"]}
+    if exclusion is not None:
+        result["exclusion"] = {"observed": True, "kind": exclusion, "device": report["refusal_exclusion_device"], "inode": report["refusal_exclusion_inode"]}
+    if missing_cut:
+        result["missing_original_cut"] = {"observed": True, "parent_device": report["refusal_missing_cut_parent_device"],
+                                          "parent_inode": report["refusal_missing_cut_parent_inode"]}
+    if pending is not None:
+        result["startup_pending"] = {"observed": True, "attempt": pending["attempt"], "device": report["refusal_startup_pending_device"],
+                                     "inode": report["refusal_startup_pending_inode"], "sha256": report["refusal_startup_pending_sha256"]}
+    if retirement_pending is not None:
+        result["retirement_pending"] = {"observed": True, "attempt": retirement_pending["attempt"], "device": report["refusal_retirement_pending_device"],
+                                     "inode": report["refusal_retirement_pending_inode"], "sha256": report["refusal_retirement_pending_sha256"]}
+    if early_count:
+        result["early_prefix"] = {"observed": True, "closed": True, "records": early_count,
+                                  "device": report["refusal_early_prefix_device"], "inode": report["refusal_early_prefix_inode"],
+                                  "sha256": report["refusal_early_prefix_sha256"]}
+    return result
+
+
+def source_cancellation_observation(profile, ready, report=None, raw=None):
+    """Bind the held and completed observations of one original canonical root."""
+    if (profile.get("schema") != "source-recovery-cancellation-observer-v1"
+            or profile.get("external_journal_lease") is not False or profile.get("external_release_lease") is not False
+            or type(profile.get("recovery_hold", {}).get("prefix_records")) is not int
+            or profile["recovery_hold"]["prefix_records"] not in (70, 13)):
+        raise RuntimeError("separate canonical cancellation purpose required")
+    pin = hashlib.sha256(json.dumps(profile, separators=(",", ":")).encode() + b"\n").hexdigest()
+    entries = ("entry", "refusal_admission_entry", "recovery_hold_entry")
+    numeric = entries + ("root_pid", "held_root_thread")
+    if (any(type(ready.get(name)) is not int or ready[name] <= 0 for name in numeric)
+            or len({ready[name] for name in entries}) != 3
+            or ready.get("profile_sha256") != pin or ready.get("inspection_only") is not False
+            or ready.get("installed_execution") is not True or ready.get("refusal_admission_observed") is not True
+            or ready.get("recovery_held_before_record") is not True
+            or ready.get("external_cancellation_acknowledged") is not False
+            or ready.get("refusal_ownership_released_before_exit", False) is not False
+            or ready.get("program_sha256") != profile["program_sha256"]
+            or ready.get("public_receipt_sha256") != profile["public_receipt_sha256"]
+            or ready.get("selected_journal_sha256") != profile["journal_sha256"]):
+        raise RuntimeError("actual original pinned recovery hold missing")
+    if report is None:
+        if raw is not None:
+            raise RuntimeError("completed cancellation output without report")
+        return {"root_pid": ready["root_pid"], "held_root_thread": ready["held_root_thread"], "profile_sha256": pin}
+    result = source_refusal_observation(profile, report, raw)
+    stable = numeric + ("selected_journal_sha256",)
+    if (any(type(report.get(name)) is not int for name in numeric)
+            or any(report.get(name) != ready[name] for name in stable)
+            or report.get("recovery_held_before_record") is not True or report.get("recovery_held_image_preserved") is not True
+            or report.get("external_cancellation_acknowledged") is not True
+            or type(report.get("signalled_root_thread")) is not int or report["signalled_root_thread"] <= 0
+            or report["signalled_root_thread"] == report["held_root_thread"]
+            or type(report.get("recovery_cancellation_elapsed_ns")) is not int
+            or not 0 < report["recovery_cancellation_elapsed_ns"] < 120_000_000_000
+            or raw.splitlines().count(b'{"operation":"installation.source","outcome":"completion-unavailable"}') != 1
+            or b'"outcome":"source-recovery-stopped-selected"' in raw):
+        raise RuntimeError("actual original causal cancellation/preserved-image/join proof missing")
+    result.update(root_pid=report["root_pid"], held_root_thread=report["held_root_thread"],
+                  signalled_root_thread=report["signalled_root_thread"],
+                  cancellation_elapsed_ns=report["recovery_cancellation_elapsed_ns"],
+                  original_journal_sha256=report["selected_journal_sha256"], held_image_preserved=True)
+    return result
+
+
+def source_physical_observation(profile, report, raw, publication_preimage=None):
+    if source_report_has_directed_cut(report) or source_report_has_pending_guard(report):
+        raise RuntimeError("directed root cut cannot supply managed cancellation")
+    numeric = ("entry", "root_pid", "root_exit", "threads_joined", "processes", "held_coordinator_thread", "signalled_root_thread", "selected_records")
+    if any(type(report.get(name)) is not int for name in numeric):
+        raise RuntimeError("actual physical cut numeric inventory required")
+    pin = hashlib.sha256(json.dumps(profile, separators=(",", ":")).encode() + b"\n").hexdigest()
+    if (profile.get("schema") != "source-physical-cut-observer-v1" or report.get("profile_sha256") != pin
+            or report.get("inspection_only") is not False or report.get("installed_execution") is not True
+            or report.get("program_sha256") != profile["program_sha256"] or report.get("public_receipt_sha256") != profile["public_receipt_sha256"]
+            or report.get("physical_window") != profile["window"] or report["selected_records"] != profile["prefix_records"]
+            or report["entry"] <= 0 or report["root_pid"] <= 0 or report["root_exit"] != 2
+            or not 2 <= report["processes"] <= 32 or not report["processes"] <= report["threads_joined"] <= 256
+            or report["held_coordinator_thread"] <= 0 or report["held_coordinator_thread"] == report["root_pid"]
+            or report["signalled_root_thread"] <= 0 or report["signalled_root_thread"] == report["held_coordinator_thread"]
+            or report.get("held_coordinator_killed") is not True or report.get("external_cancellation_acknowledged") is not True
+            or report.get("original_cut_sha256") != "" or report.get("output_sha256") != hashlib.sha256(raw).hexdigest()
+            or not raw.endswith(b"source command failed\n")
+            or raw.splitlines().count(b'{"operation":"installation.source","outcome":"completion-unavailable"}') != 1):
+        raise RuntimeError("actual original physical cut/cancellation/native join proof missing")
+    publication = profile["window"] in ("binding-before-record", "unit-before-record")
+    arguments = profile.get("arguments")
+    if publication and (not isinstance(arguments, list) or len(arguments) != 8 or arguments[0] != "installation"
+                        or arguments[1] not in ("install-initial-stopped", "replace-source")):
+        raise RuntimeError("closed original publication command required")
+    required = publication and arguments[1] == "replace-source"
+    if required:
+        if (not isinstance(publication_preimage, dict) or set(publication_preimage) != {"device", "inode", "sha256"}
+                or any(type(publication_preimage[name]) is not int or publication_preimage[name] <= 0 for name in ("device", "inode"))
+                or not isinstance(publication_preimage["sha256"], str) or len(publication_preimage["sha256"]) != 64
+                or any(value not in "0123456789abcdef" for value in publication_preimage["sha256"])
+                or report.get("physical_preimage_observed") is not True
+                or type(report.get("physical_preimage_device")) is not int or type(report.get("physical_preimage_inode")) is not int
+                or (report["physical_preimage_device"], report["physical_preimage_inode"], report.get("physical_preimage_sha256"))
+                != (publication_preimage["device"], publication_preimage["inode"], publication_preimage["sha256"])):
+            raise RuntimeError("actual original pre-Commit publication preimage missing")
+    elif (publication_preimage is not None or report.get("physical_preimage_observed", False) is not False
+          or report.get("physical_preimage_device", 0) != 0 or report.get("physical_preimage_inode", 0) != 0
+          or report.get("physical_preimage_sha256", "") != ""):
+        raise RuntimeError("mixed publication preimage purpose")
+    result = {"profile_sha256": pin, "root_pid": report["root_pid"], "root_exit": report["root_exit"],
+            "held_coordinator_thread": report["held_coordinator_thread"], "threads_joined": report["threads_joined"],
+            "processes": report["processes"], "physical_window": report["physical_window"], "output_sha256": report["output_sha256"]}
+    if required:
+        result["publication_preimage"] = dict(publication_preimage, observed=True)
+    return result
+
+
+class RecoveryCancellationObserver:
+    """Own one sibling tracer, its control pipe, bounded output and final join."""
+
+    ready_marker = b"SOURCE_RECOVERY_HOLD_READY "
+    completion_marker = b"SOURCE_REFUSAL_OBSERVATION "
+    control_command = b"cancel\n"
+
+    def __init__(self, argv, environment, log_path, observe):
+        self.observe, self.errors = observe, []
+        self.events = queue.Queue(maxsize=3)
+        self.closed = self.cancelled = False
+        self.log = log_path.open("xb")
+        try:
+            self.child = subprocess.Popen([str(value) for value in argv], stdin=subprocess.PIPE,
+                                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=environment)
+        except BaseException:
+            self.log.close()
+            raise
+
+        def drain():
+            total = 0
+            try:
+                while True:
+                    line = self.child.stdout.readline(65538)
+                    if not line:
+                        break
+                    total += len(line)
+                    if len(line) > 65537 or total > 4 << 20:
+                        raise RuntimeError("recovery cancellation observer output exceeds finite bound")
+                    self.log.write(line)
+                    for marker, kind in ((self.ready_marker, "ready"), (self.completion_marker, "completed")):
+                        if line.startswith(marker):
+                            self.events.put_nowait((kind, json.loads(line[len(marker):])))
+            except BaseException as error:
+                self.errors.append(error)
+                # Retain the actual pipe until EOF even after malformed output.
+                try:
+                    while self.child.stdout.read(65536):
+                        pass
+                except OSError as cleanup:
+                    self.errors.append(cleanup)
+            finally:
+                try:
+                    self.child.stdout.close()
+                except OSError as error:
+                    self.errors.append(error)
+
+        self.reader = threading.Thread(target=drain)
+        try:
+            self.reader.start()
+            kind, self.ready = self.receive()
+            if kind != "ready":
+                raise RuntimeError("original recovery hold must precede completion")
+        except BaseException as error:
+            try:
+                self.close()
+            except BaseException as cleanup:
+                raise BaseExceptionGroup("recovery hold initialization and join failed", [error, cleanup])
+            raise
+
+    def receive(self):
+        while True:
+            self.observe()
+            if self.errors:
+                raise BaseExceptionGroup("recovery cancellation output failed", list(self.errors))
+            try:
+                return self.events.get(timeout=0.05)
+            except queue.Empty:
+                if self.child.poll() is not None and not self.reader.is_alive():
+                    # The reader may enqueue and exit after get() timed out.
+                    # Once joined/finished, one final queue read is authoritative.
+                    try:
+                        return self.events.get_nowait()
+                    except queue.Empty:
+                        raise RuntimeError("recovery observer ended before original observation") from None
+
+    def cancel(self):
+        self.observe()
+        if self.closed or self.cancelled or self.child.poll() is not None:
+            raise RuntimeError("one cancellation of the original held recovery required")
+        self.child.stdin.write(self.control_command)
+        self.child.stdin.flush()
+        self.cancelled = True
+
+    def finish(self):
+        errors, report = [], None
+        try:
+            if not self.cancelled:
+                raise RuntimeError("outside control must precede completion")
+            kind, report = self.receive()
+            if kind != "completed":
+                raise RuntimeError("one completed original recovery observation required")
+        except BaseException as error:
+            errors.append(error)
+        try:
+            self.close(require_success=True)
+        except BaseException as error:
+            errors.append(error)
+        if errors:
+            raise BaseExceptionGroup("recovery cancellation completion/join failed", errors)
+        return report
+
+    def close(self, require_success=False):
+        if self.closed:
+            return
+        self.closed = True
+        errors = []
+        try:
+            # EOF makes the tracer abort and join its root if still held.
+            self.child.stdin.close()
+        except OSError as error:
+            errors.append(error)
+        if self.reader.ident is None:
+            try:
+                self.child.stdout.close()
+            except OSError as error:
+                errors.append(error)
+        code = self.child.wait()
+        if self.reader.ident is not None:
+            self.reader.join()
+        try:
+            self.log.close()
+        except OSError as error:
+            errors.append(error)
+        errors.extend(self.errors)
+        if require_success and (code != 0 or not self.events.empty()):
+            errors.append(RuntimeError("recovery observer failed or emitted duplicate observations"))
+        if errors:
+            raise BaseExceptionGroup("original recovery observer pipe/process join failed", errors)
+
+
+class PhysicalCutObserver(RecoveryCancellationObserver):
+    """Own the held native root until one explicit outside cut directive."""
+
+    ready_marker = b"SOURCE_PHYSICAL_CUT_READY "
+    completion_marker = b"SOURCE_PHYSICAL_CUT_OBSERVATION "
+    control_command = b"cut\n"
+
+    def cut(self):
+        super().cancel()
+
+
+class StartupPhysicalCutObserver(PhysicalCutObserver):
+    completion_marker = b"SOURCE_STARTUP_PHYSICAL_OBSERVATION "
+
+
+class RetirementPhysicalCutObserver(PhysicalCutObserver):
+    completion_marker = b"SOURCE_RETIREMENT_PHYSICAL_OBSERVATION "
 
 
 def main():
@@ -125,6 +918,12 @@ def main():
     recovery_profile, replacement_profile, restart_profile = (profile[name] for name in ("recovery", "replacement", "restart"))
     bound, case, requested_case = (profile[name] for name in ("bound", "case", "requested_case"))
     recovery_operation, recovery_count, recovery_fault = (profile[name] for name in ("operation", "prefix_records", "fault"))
+    recovery_concurrent = profile["concurrent"]
+    recovery_physical = profile["physical"]
+    recovery_root_physical = profile["root_physical"]
+    startup_physical = profile["startup_physical"]
+    retirement_physical = profile["retirement_physical"]
+    positive_recovery = recovery_profile and recovery_fault is None and not recovery_concurrent and recovery_physical is None and recovery_root_physical is None and startup_physical is None and retirement_physical is None
     if not sys.flags.isolated or not sys.flags.no_site or sys.version_info[:2] != (3, 12):
         raise RuntimeError("fixed isolated Python3.12 profile required")
     if sys.platform != "linux" or os.geteuid() != 0:
@@ -169,7 +968,7 @@ def main():
         paths.update({name: pinned(name) for name in names})
     recovery_matrix = None
     if recovery_profile:
-        paths.update({name: pinned(name) for name in ("RECOVERY_OBSERVER", "RECOVERY_MATRIX")})
+        paths.update({name: pinned(name) for name in ("RECOVERY_OBSERVER", "RECOVERY_MATRIX", "CUT_CONTROL_RUNNER")})
         with paths["RECOVERY_MATRIX"].open("rb") as stream:
             matrix_raw = stream.read((16 << 20) + 1)
         if len(matrix_raw) > 16 << 20:
@@ -193,6 +992,7 @@ def main():
         if digest(paths["NODE"]) == digest(paths["NODE_B"]) or any(digest(paths["NODE_B"]) != digest(paths["NODE_" + suffix]) for suffix in candidate_suffixes if suffix != "B"):
             raise RuntimeError("actual program replacement followed by unchanged-program resource replacement required")
     request = json.loads(paths["REQUEST"].read_text())
+    active_request = paths["REQUEST"]
     binding = Path(request["installation_root"]) / "binding.json"
     history = os.environ["ARDENTS_SOURCE_STARTUP_HISTORY"]
     network = os.environ["ARDENTS_SOURCE_STARTUP_NETWORK"]
@@ -340,7 +1140,7 @@ def main():
             raise RuntimeError("canonical original spelling differs")
         return rows
 
-    def recovery_snapshot(declaration, installation=False):
+    def recovery_snapshot(declaration, installation=False, *, early=False):
         # This is a finite private-stand preservation oracle, not State or
         # Release admission. It does not export private bytes or repair files.
         saved, total = {}, 0
@@ -348,6 +1148,12 @@ def main():
         if installation:
             roots.append(Path(declaration["installation_root"]))
         for directory in roots:
+            if early and directory != Path(history) and directory != Path(declaration["installation_root"]):
+                if directory.exists() or directory.is_symlink():
+                    raise RuntimeError("early prefix acquired a future semantic or credential root")
+            if early and not directory.exists() and not directory.is_symlink():
+                saved[str(directory)] = ("absent",)
+                continue
             info = directory.lstat()
             if not stat.S_ISDIR(info.st_mode):
                 raise RuntimeError("original semantic/credential directory missing")
@@ -359,11 +1165,11 @@ def main():
                 if stat.S_ISDIR(info.st_mode):
                     saved[str(path)] = ("directory", native_identity(info))
                 else:
-                    raw, identity = native_image(path, 32 << 20)
-                    total += len(raw)
+                    entry, size = source_retained_leaf(path, native_image)
+                    total += size
                     if total > 128 << 20:
                         raise RuntimeError("private preservation bytes exceed finite bound")
-                    saved[str(path)] = ("file", identity, hashlib.sha256(raw).hexdigest())
+                    saved[str(path)] = entry
         account = {"/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow"}
         account.update(row["resource"] for row in recovery_matrix["canonical_prefixes"] if row["operation"] == "initial-recoverable" and row["phase"] == "account-auxiliary-preimage")
         for name in sorted(account):
@@ -385,12 +1191,335 @@ def main():
                 raise RuntimeError("original cut or recovery completion changed")
         return evidence["transcript"]
 
-    def cut_and_recover(command, operation, declaration_path):
-        if recovery_evidence or operation != recovery_operation:
-            raise RuntimeError("one exact recovery cut per fresh stand required")
+    def prepare_refusal_observer(command, declaration_path, installation, journal, name, *, external_journal=False, external_release=False, hold=None, missing_cut=False, startup_pending=None, retirement_pending=None, early_prefix=0):
+        if early_prefix and (type(early_prefix) is not int or early_prefix not in (24, 42) or external_journal or external_release or hold is not None or missing_cut or startup_pending is not None or retirement_pending is not None):
+            raise RuntimeError("separate early-prefix custody purpose required")
+        if (startup_pending is not None or retirement_pending is not None) and (missing_cut or hold is not None or external_journal or external_release or startup_pending is not None and retirement_pending is not None):
+            raise RuntimeError("separate startup pending refusal purpose required")
+        if missing_cut and (hold is not None or external_journal or external_release):
+            raise RuntimeError("separate original-cut refusal purpose required")
+        refusal_command = [command[0], "installation", "recover-source", command[3], history, "alpha", network, declaration_path, journal]
+        declaration = {"schema": "source-early-prefix-recovery-refusal-observer-v1" if early_prefix else "source-retirement-recovery-refusal-observer-v1" if retirement_pending is not None else "source-startup-recovery-refusal-observer-v1" if startup_pending is not None else "source-recovery-missing-cut-observer-v1" if missing_cut else "source-recovery-cancellation-observer-v1" if hold is not None else "source-recovery-refusal-observer-v1",
+                       "program_sha256": digest(Path(command[0])), "public_receipt_sha256": outcome["public_receipt_sha256"],
+                       "arguments": [str(value) for value in refusal_command[1:]], "journal_sha256": digest(journal),
+                       "journal_mode": f"{stat.S_IMODE(journal.lstat().st_mode):04o}",
+                       "external_journal_lease": external_journal, "external_release_lease": external_release}
+        if hold is not None:
+            declaration["recovery_hold"] = hold
+        if missing_cut:
+            declaration["missing_original_cut"] = True
+        if startup_pending is not None:
+            declaration["startup_pending"] = startup_pending
+        if retirement_pending is not None:
+            declaration["retirement_pending"] = retirement_pending
+        if early_prefix:
+            declaration["early_initial_prefix"] = early_prefix
+        path = output / (name + "-profile.json")
+        with path.open("xb") as stream:
+            stream.write(json.dumps(declaration, separators=(",", ":")).encode() + b"\n")
+        original_output = output / (name + "-original.log")
+        environment = dict(os.environ, ARDENTS_SOURCE_REFUSAL_OBSERVER_MODE="installed-early-prefix" if early_prefix else "installed-retirement-pending" if retirement_pending is not None else "installed-startup-pending" if startup_pending is not None else "installed-missing-cut" if missing_cut else "installed-cancellation" if hold is not None else "installed-refusal",
+                           ARDENTS_SOURCE_CUT_OBSERVER_PROFILE=str(path), ARDENTS_SOURCE_CUT_OBSERVER_PROFILE_SHA256=digest(path),
+                           ARDENTS_SOURCE_CUT_OBSERVER_PROGRAM=str(command[0]), ARDENTS_SOURCE_CUT_OBSERVER_ROOT=str(installation),
+                           ARDENTS_SOURCE_CUT_OBSERVER_OUTPUT=str(original_output))
+        return declaration, environment, original_output
+
+    def before_return_refusal(command, declaration_path, installation, journal, name, *, external_journal=False, external_release=False, exclusion_identity=None, missing_cut_parent_identity=None, startup_pending=None, startup_pending_identity=None, retirement_pending=None, retirement_pending_identity=None, early_prefix=0, early_prefix_identity=None):
+        selected, environment, original_output = prepare_refusal_observer(command, declaration_path, installation, journal, name, external_journal=external_journal, external_release=external_release, missing_cut=missing_cut_parent_identity is not None, startup_pending=startup_pending, retirement_pending=retirement_pending, early_prefix=early_prefix)
+        observed = run([paths["RECOVERY_OBSERVER"], "-test.run=^TestSourceRefusalObserverNative$", "-test.v", "-test.timeout=3m"], name + "-observer", env=environment)
+        reports = [json.loads(line[len(b"SOURCE_REFUSAL_OBSERVATION "):]) for line in observed.splitlines() if line.startswith(b"SOURCE_REFUSAL_OBSERVATION ")]
+        if len(reports) != 1 or reports[0].get("profile_sha256") != digest(Path(environment["ARDENTS_SOURCE_CUT_OBSERVER_PROFILE"])):
+            raise RuntimeError("one original pinned before-return refusal report required")
+        refused, _ = native_image(original_output, 1 << 20)
+        return source_refusal_observation(selected, reports[0], refused, exclusion_identity, missing_cut_parent_identity, startup_pending_identity, retirement_pending_identity, early_prefix_identity), refused
+
+    def physical_sealed_generation(rows, installation, generation, program_pin, *, before_sealed=True):
+        directory = installation / "generations" / generation
+        info = directory.lstat()
+        native = native_identity(info)
+        intents = [row for row in rows if row["phase"] == "seal-intent" and row["path"] == str(directory)]
+        if len(intents) != 1:
+            raise RuntimeError("one original seal intent required")
+        last = intents[0]
+        if (not stat.S_ISDIR(info.st_mode) or native[2:] != (0o555, 0, 0)
+                or (last["path"], last["device"], last["inode"], last["sha256"], last["mode"], last["uid"], last["gid"])
+                != (str(directory), native[0], native[1], generation, 0o555, 0, 0)):
+            raise RuntimeError("actual original sealed generation and seal intent required")
+        if before_sealed:
+            if last["sequence"] != len(rows)-1:
+                raise RuntimeError("seal effect must precede sealed record")
+        elif last["sequence"]+1 >= len(rows) or rows[last["sequence"]+1] != dict(last, sequence=last["sequence"]+1, phase="sealed"):
+            raise RuntimeError("original completed seal pair required")
+        names = sorted(("ardents-node-linux-amd64", "ardents-source.service", "binding.json", "infrastructure-enrollment.json",
+                        "infrastructure-source.json", "rendered-source.service", "root.json", "snapshot.json", "source-plan.json",
+                        "source-request.json", "targets.json", "timestamp.json"))
+        if sorted(path.name for path in directory.iterdir()) != names:
+            raise RuntimeError("exact sealed generation inventory required")
+        retained_files, total = [], 0
+        for name in names:
+            path = directory / name
+            matches = [row for row in rows if row["phase"] == "file-ready" and row["path"] == str(path)]
+            if len(matches) != 1:
+                raise RuntimeError("one original sealed file ready record required")
+            ready = matches[0]
+            body, identity = native_image(path, 64 << 20)
+            total += len(body)
+            mode = 0o555 if name == "ardents-node-linux-amd64" else 0o444
+            if (total > 128 << 20 or identity != (ready["device"], ready["inode"], mode, 0, 0)
+                    or (ready["mode"], ready["uid"], ready["gid"]) != (mode, 0, 0)
+                    or hashlib.sha256(body).hexdigest() != ready["sha256"]
+                    or name == "ardents-node-linux-amd64" and ready["sha256"] != program_pin):
+                raise RuntimeError("actual original sealed generation file differs")
+            retained_files.append(path)
+        after = directory.lstat()
+        if (native_identity(after) != native or after.st_ctime_ns != info.st_ctime_ns or after.st_mtime_ns != info.st_mtime_ns
+                or sorted(path.name for path in directory.iterdir()) != names):
+            raise RuntimeError("sealed generation changed during readback")
+        return (directory, *retained_files)
+
+    def physical_cut_and_refuse(command, operation, declaration_path):
+        source_physical_prediction(recovery_matrix, operation, recovery_count, recovery_physical)
         declaration = json.loads(declaration_path.read_text())
         installation = Path(declaration["installation_root"])
         generation = digest(Path(command[3]) / "infrastructure-source.json")
+        journal = Path(str(installation) + (".source-initial-journal" if operation == "initial" else ".source-replacement-" + generation + "-journal"))
+        pending = Path(str(installation) + ".source-initial-pending") if operation == "initial" else installation / "source-replacement-pending"
+        matrix_operation = "initial-recoverable" if operation == "initial" else "replacement"
+        phases = [row["phase"] for row in recovery_matrix["canonical_prefixes"] if row["operation"] == matrix_operation]
+        last_phase = source_physical_frontiers(operation)[recovery_physical][1]
+        if len(phases) < recovery_count or phases[recovery_count-1] != last_phase:
+            raise RuntimeError("published original physical phase/frontier differs")
+        selected = {"schema": "source-physical-cut-observer-v1", "program_sha256": digest(Path(command[0])),
+                    "public_receipt_sha256": outcome["public_receipt_sha256"], "arguments": [str(value) for value in command[1:]],
+                    "journal": str(journal), "prefix_records": recovery_count, "last_phase": last_phase,
+                    "window": recovery_physical, "generation": generation}
+        path = output / "original-physical-cut-profile.json"
+        with path.open("xb") as stream:
+            stream.write(json.dumps(selected, separators=(",", ":")).encode() + b"\n")
+        original_output = output / "original-physical-command.log"
+        environment = dict(os.environ, ARDENTS_SOURCE_CANONICAL_PHYSICAL_OBSERVER_MODE="installed-physical",
+                           ARDENTS_SOURCE_CUT_OBSERVER_PROFILE=str(path), ARDENTS_SOURCE_CUT_OBSERVER_PROFILE_SHA256=digest(path),
+                           ARDENTS_SOURCE_CUT_OBSERVER_PROGRAM=str(command[0]), ARDENTS_SOURCE_CUT_OBSERVER_ROOT=str(installation),
+                           ARDENTS_SOURCE_CUT_OBSERVER_OUTPUT=str(original_output))
+        publication_preimage = None
+        fixed = None
+        if recovery_physical in ("binding-before-record", "unit-before-record"):
+            fixed = installation / "binding.json" if recovery_physical == "binding-before-record" else Path("/etc/systemd/system/ardents-source.service")
+            if operation == "replacement":
+                before, native = native_image(fixed, 32 << 10)
+                if native[2:] != (0o644, 0, 0):
+                    raise RuntimeError("original fixed publication preimage access required")
+                publication_preimage = {"device": native[0], "inode": native[1], "sha256": hashlib.sha256(before).hexdigest()}
+        observed = run([paths["RECOVERY_OBSERVER"], "-test.run=^TestSourceCanonicalPhysicalCutObserverNative$", "-test.v", "-test.timeout=3m"],
+                       "original-physical-observer", env=environment)
+        reports = [json.loads(line[len(b"SOURCE_CANONICAL_PHYSICAL_OBSERVATION "):]) for line in observed.splitlines() if line.startswith(b"SOURCE_CANONICAL_PHYSICAL_OBSERVATION ")]
+        if len(reports) != 1 or reports[0].get("profile_sha256") != digest(path):
+            raise RuntimeError("one original pinned canonical physical observation required")
+        original_raw, _ = native_image(original_output, 1 << 20)
+        physical = source_physical_observation(selected, reports[0], original_raw, publication_preimage)
+        original, identity = native_image(journal)
+        rows = canonical_rows(original)
+        if len(rows) != recovery_count or [row["phase"] for row in rows] != phases[:recovery_count] or hashlib.sha256(original).hexdigest() != reports[0].get("selected_journal_sha256"):
+            raise RuntimeError("actual physical cut differs from published original prefix")
+        sealed_files = ()
+        early = operation == "initial" and recovery_physical in ("account-before-complete-birth", "directory-born-before-record")
+        completed = recovery_physical in ("reload-before-verified", "journal-complete-before-close", "pending-before-unlink")
+        if early:
+            if recovery_physical == "account-before-complete-birth":
+                if rows[-1]["path"] != "/etc/passwd" or installation.exists() or installation.is_symlink():
+                    raise RuntimeError("incomplete account birth acquired an installation directory")
+            elif rows[-1]["path"] != str(installation):
+                raise RuntimeError("original first-directory intent differs")
+            if any(row["phase"] in ("file-born", "directory-born") for row in rows[5:]):
+                # The only earlier file-born is the initial pending blocker.
+                raise RuntimeError("early prefix includes dependent native births")
+        elif recovery_physical == "seal-before-sealed" or fixed is not None or completed:
+            sealed_files = physical_sealed_generation(rows, installation, generation, selected["program_sha256"], before_sealed=recovery_physical == "seal-before-sealed")
+            if completed:
+                def one(phase, target):
+                    matches = [row for row in rows if row["phase"] == phase and row["path"] == str(target)]
+                    if len(matches) != 1:
+                        raise RuntimeError("one exact original completed publication record required")
+                    return matches[0]
+
+                hashes = {}
+                for target, name, intent, written, predecessor in (
+                        (installation / "binding.json", "binding.json", "selection-intent", "selection-written", "predecessor-binding"),
+                        (Path("/etc/systemd/system/ardents-source.service"), "rendered-source.service", "unit-intent", "unit-written", "predecessor-unit")):
+                    candidate, _ = native_image(installation / "generations" / generation / name, 32 << 10)
+                    actual, native = native_image(target, 32 << 10)
+                    ready = one("file-ready" if operation == "initial" else written, target)
+                    if (actual != candidate or native != (ready["device"], ready["inode"], 0o644, 0, 0)
+                            or (ready["mode"], ready["uid"], ready["gid"]) != (0o644, 0, 0)
+                            or ready["sha256"] != hashlib.sha256(actual).hexdigest()):
+                        raise RuntimeError("actual original completed fixed publication differs")
+                    if operation == "initial":
+                        born, planned = one("file-born", target), one("file-intent", target)
+                        if (born != dict(ready, sequence=ready["sequence"]-1, phase="file-born")
+                                or planned != dict(ready, sequence=ready["sequence"]-2, phase="file-intent", device=0, inode=0)):
+                            raise RuntimeError("original completed publication birth triple differs")
+                    else:
+                        previous = one(predecessor, target)
+                        if (one(intent, target) != dict(ready, sequence=ready["sequence"]-1, phase=intent)
+                                or previous["sequence"] >= ready["sequence"]-1
+                                or (previous["device"], previous["inode"], previous["mode"], previous["uid"], previous["gid"]) != native):
+                            raise RuntimeError("original completed publication pair/predecessor differs")
+                    hashes[name] = ready["sha256"]
+                    sealed_files += (target,)
+                unit_path = Path("/etc/systemd/system/ardents-source.service")
+                reload_record = {"sequence": recovery_count-1, "phase": "reload-intent", "path": str(unit_path),
+                                 "device": 0, "inode": 0, "sha256": hashes["rendered-source.service"], "mode": 0o644, "uid": 0, "gid": 0}
+                if recovery_physical != "reload-before-verified":
+                    reload_record["sequence"] -= 1
+                    complete_record = dict(reload_record, sequence=recovery_count-1, phase=last_phase,
+                                           path=str(installation / "binding.json"), sha256=hashes["binding.json"])
+                    if rows[-1] != complete_record:
+                        raise RuntimeError("original complete frontier differs")
+                if one("reload-intent", unit_path) != reload_record:
+                    raise RuntimeError("original reload frontier differs")
+            if fixed is not None:
+                name = "binding.json" if recovery_physical == "binding-before-record" else "rendered-source.service"
+                candidate, _ = native_image(installation / "generations" / generation / name, 32 << 10)
+                actual, native = native_image(fixed, 32 << 10)
+                last = rows[-1]
+                if (actual != candidate or last["path"] != str(fixed) or last["sha256"] != hashlib.sha256(actual).hexdigest()
+                        or native != (last["device"], last["inode"], 0o644, 0, 0)
+                        or (last["mode"], last["uid"], last["gid"]) != (0o644, 0, 0)
+                        or publication_preimage is not None and native[:2] != (publication_preimage["device"], publication_preimage["inode"])):
+                    raise RuntimeError("actual original fixed-file publication differs")
+                sealed_files += (fixed,)
+        else:
+            payload = installation / "generations" / generation / "ardents-node-linux-amd64"
+            body, payload_identity = native_image(payload, 64 << 20)
+            last = rows[-1]
+            if last["path"] != str(payload) or last["sha256"] != selected["program_sha256"] or (last["mode"], last["uid"], last["gid"]) != (0o555, 0, 0):
+                raise RuntimeError("original physical first-program record differs")
+            if recovery_physical == "file-born-before-record":
+                if body or payload_identity[2:] != (0o600, 0, 0) or (last["device"], last["inode"]) != (0, 0):
+                    raise RuntimeError("actual empty unrecorded original program birth required")
+            elif recovery_physical == "file-born-before-journal-sync":
+                if body or payload_identity != (last["device"], last["inode"], 0o600, 0, 0):
+                    raise RuntimeError("actual empty original born program before journal Sync required")
+            elif (hashlib.sha256(body).hexdigest() != selected["program_sha256"]
+                  or payload_identity != (last["device"], last["inode"], 0o555, 0, 0)):
+                raise RuntimeError("actual original born program body before ready required")
+        absent = tuple(Path(str(journal) + suffix) for suffix in (".original-cut-journal", ".original-cut-result", ".original-cut-pending", ".recovery-completion"))
+        watched = (journal, pending, Path("/etc/systemd/system/ardents-source.service")) + absent
+
+        def retained_image():
+            saved = recovery_snapshot(declaration, installation=True, early=early)
+            if early:
+                if recovery_physical == "directory-born-before-record":
+                    native = installation.lstat()
+                    if not stat.S_ISDIR(native.st_mode) or native_identity(native)[2:] != (0o700, 0, 0) or list(installation.iterdir()):
+                        raise RuntimeError("actual unrecorded empty root0700 directory changed")
+                    saved[("early-directory-times", str(installation))] = (native.st_ctime_ns, native.st_mtime_ns)
+                elif saved[str(installation)] != ("absent",):
+                    raise RuntimeError("incomplete account history acquired an installation root")
+                for field in ("state_root", "participation_root", "credential_directory", "installation_root"):
+                    ancestor = Path(declaration[field]).parent
+                    while True:
+                        native = ancestor.lstat()
+                        if not stat.S_ISDIR(native.st_mode) or native.st_uid != 0 or native.st_mode & 0o022:
+                            raise RuntimeError("trusted early native ancestor required")
+                        saved[("early-ancestor", str(ancestor))] = native_identity(native)
+                        if ancestor == ancestor.parent:
+                            break
+                        ancestor = ancestor.parent
+                for name in tuple(saved):
+                    if isinstance(name, str) and name.startswith("/etc/") and saved[name][0] == "file":
+                        native = Path(name).lstat()
+                        saved[("early-account-times", name)] = (native.st_ctime_ns, native.st_mtime_ns)
+            parent = journal.parent.lstat()
+            if not stat.S_ISDIR(parent.st_mode) or parent.st_uid != 0 or parent.st_mode & 0o022:
+                raise RuntimeError("trusted original journal parent required")
+            saved[str(journal.parent)] = ("directory", parent.st_dev, parent.st_ino, stat.S_IMODE(parent.st_mode), parent.st_uid, parent.st_gid)
+            for item in sealed_files:
+                native = item.lstat()
+                saved[("sealed-file-times", str(item))] = (native.st_ctime_ns, native.st_mtime_ns)
+            for item in watched:
+                if not item.exists() and not item.is_symlink():
+                    saved[str(item)] = ("absent",)
+                else:
+                    raw, native = native_image(item, 32 << 20)
+                    saved[str(item)] = ("file", native, hashlib.sha256(raw).hexdigest())
+            return saved
+
+        retained = retained_image()
+        if retained[str(pending)][0] != "file" or any(retained[str(item)] != ("absent",) for item in absent):
+            raise RuntimeError("uncertain physical cut lost pending or manufactured eligible evidence")
+        startup = [command[0], "installation", "start-source", command[3], history, "alpha", network, binding]
+        if operation == "replacement":
+            startup = [paths["NODE"], "installation", "restart-source", initial_distribution, history, "alpha", network, binding]
+        # This is the applicable ordinary entrypoint, not a claim that pending
+        # is its sole possible refusal: current Release/State remain separate.
+        for argv, name in ((command, "physical-interrupted-replay"), (startup, "physical-interrupted-startup")):
+            code, _ = run(argv, name, refusal=True)
+            if code == 0 or retained_image() != retained:
+                raise RuntimeError("ordinary operation accepted or changed physical-cut history")
+        refused = []
+        for attempt in range(2):
+            proof, _ = before_return_refusal(command, declaration_path, installation, journal, f"physical-recovery-refusal-{attempt}",
+                                           missing_cut_parent_identity=None if early else retained[str(journal.parent)][1:3],
+                                           early_prefix=recovery_count if early else 0,
+                                           early_prefix_identity=(*identity[:2], hashlib.sha256(original).hexdigest()) if early else None)
+            refused.append(proof)
+            if retained_image() != retained:
+                raise RuntimeError("physical recovery refusal changed history or manufactured completion")
+        outcome["recovery_refusal"] = {"operation": operation, "prefix_records": recovery_count, "fault": recovery_physical,
+                                        "original_failed_exit": physical["root_exit"], "original_failure_retained": True,
+                                        "physical_cut": physical, "before_return_refusals": refused, "separate_refused_invocations": 2,
+                                        "history_preserved": True, "original_prefix_sha256": hashlib.sha256(original).hexdigest(),
+                                        "eligible_cut_proof_absent": True, "completion_absent": True, "matrix_sha256": digest(paths["RECOVERY_MATRIX"])}
+        if operation == "initial":
+            if source_started or source_pidfd is not None or scope_fd is not None or outcome["original_scope_joined"]:
+                raise RuntimeError("never-started initial physical cut acquired a Source runtime scope")
+            outcome["source_scope_not_started"] = True
+        raise RecoveryRefusalComplete()
+
+    def expiry_artifact_image(distribution):
+        image = {}
+        for name in sorted(SOURCE_EXPIRY_FILES):
+            raw, native = native_image(Path(distribution) / name, 64 << 20)
+            image[name] = (hashlib.sha256(raw).hexdigest(), native, len(raw))
+        return image
+
+    def release_expiry_observer(command, phase, original, before=None):
+        if expiry_artifact_image(command[3]) != original:
+            raise RuntimeError("expiry candidate changed after original canonical cut")
+        selected = {"schema": "source-release-expiry-observer-v1", "public_receipt_sha256": outcome["public_receipt_sha256"],
+                    "distribution": str(command[3]), "history": history, "network": network, "phase": phase,
+                    "files": {name: value[0] for name, value in sorted(original.items())}}
+        path = output / ("release-expiry-" + phase + "-profile.json")
+        with path.open("xb") as stream:
+            stream.write(json.dumps(selected, separators=(",", ":")).encode() + b"\n")
+        environment = dict(os.environ, ARDENTS_SOURCE_RELEASE_EXPIRY_OBSERVER_MODE="installed-release-expiry",
+                           ARDENTS_SOURCE_RELEASE_EXPIRY_PROFILE=str(path), ARDENTS_SOURCE_RELEASE_EXPIRY_PROFILE_SHA256=digest(path))
+        began = time.time()
+        raw = run([paths["RECOVERY_OBSERVER"], "-test.run=^TestSourceReleaseExpiryObserverNative$", "-test.v", "-test.timeout=45s"], "release-expiry-" + phase, env=environment)
+        ended = time.time()
+        reports = [json.loads(line[len(b"SOURCE_RELEASE_EXPIRY_OBSERVATION "):]) for line in raw.splitlines() if line.startswith(b"SOURCE_RELEASE_EXPIRY_OBSERVATION ")]
+        if len(reports) != 1 or expiry_artifact_image(command[3]) != original:
+            raise RuntimeError("one actual original unchanged expiry observation required")
+        report = reports[0]
+        proof = source_release_expiry_observation(selected, report, before)
+        reference = datetime.fromisoformat(report["reference_time"].replace("Z", "+00:00")).timestamp()
+        if not began <= reference <= ended:
+            raise RuntimeError("actual Release reference time escaped original observation interval")
+        return report, proof
+
+
+    def cut_and_recover(command, operation, declaration_path):
+        if recovery_evidence or operation != recovery_operation:
+            raise RuntimeError("one exact recovery cut per fresh stand required")
+        if recovery_physical is not None:
+            return physical_cut_and_refuse(command, operation, declaration_path)
+        declaration = json.loads(declaration_path.read_text())
+        installation = Path(declaration["installation_root"])
+        generation = digest(Path(command[3]) / "infrastructure-source.json")
+        expiry_original = expiry_artifact_image(command[3]) if recovery_fault == "timestamp-expiry" else None
+        if expiry_original is not None:
+            source_release_expiry_prediction(recovery_matrix, operation, recovery_count)
         journal = Path(str(installation) + (".source-initial-journal" if operation == "initial" else ".source-replacement-" + generation + "-journal"))
         pending = Path(str(installation) + ".source-initial-pending") if operation == "initial" else installation / "source-replacement-pending"
         matrix_operation = "initial-recoverable" if operation == "initial" else "replacement"
@@ -402,6 +1531,10 @@ def main():
             predictions = [value for value in recovery_matrix["causal_refusals"] if value["operation"] == operation and value["prefix_records"] == recovery_count and value["fault"] == recovery_fault]
             if len(predictions) != 1 or predictions[0]["predicted_outcome"] != "repair-required" or predictions[0]["failure_header_permitted"] != (recovery_fault in ("missing-pending", "copied-generation-file")):
                 raise RuntimeError("exact published terminal refusal prediction required")
+        if recovery_concurrent:
+            source_concurrent_prediction(recovery_matrix, operation, recovery_count)
+        if recovery_root_physical is not None:
+            source_root_recovery_prediction(recovery_matrix, operation, recovery_count, recovery_root_physical)
         profile = {"schema": "source-original-cut-observer-v1", "program_sha256": digest(Path(command[0])),
                    "public_receipt_sha256": outcome["public_receipt_sha256"], "arguments": [str(value) for value in command[1:]],
                    "journal": str(journal), "prefix_records": recovery_count, "last_phase": row[0]["phase"]}
@@ -440,8 +1573,10 @@ def main():
         before = recovery_snapshot(declaration)
         # These are attempted ordinary operations under the interrupted state,
         # not a claim that the pending marker is their only possible refusal.
-        for argv, name in ((command, "interrupted-replay"),
-                           ([command[0], "installation", "start-source", command[3], history, "alpha", network, binding], "interrupted-start")):
+        startup = [command[0], "installation", "start-source", command[3], history, "alpha", network, binding]
+        if operation == "replacement":
+            startup = [paths["NODE"], "installation", "restart-source", initial_distribution, history, "alpha", network, binding]
+        for argv, name in ((command, "interrupted-replay"), (startup, "interrupted-startup")):
             code, _ = run(argv, name, refusal=True)
             if code == 0 or native_image(pending) != (pending_raw, pending_identity):
                 raise RuntimeError("interrupted ordinary operation accepted or changed blocker")
@@ -451,6 +1586,214 @@ def main():
             raw, info = native_image(Path(path))
             if (info, hashlib.sha256(raw).hexdigest()) != expected:
                 raise RuntimeError("refused operation rewrote original interruption proof")
+
+        if recovery_root_physical is not None:
+            completion = Path(str(journal) + ".recovery-completion")
+            if completion.exists() or completion.is_symlink():
+                raise RuntimeError("fresh recovery completion required before root process cut")
+            recovery_command = [command[0], "installation", "recover-source", command[3], history, "alpha", network, declaration_path, journal]
+            selected = {"schema": "source-recovery-physical-cut-observer-v1", "program_sha256": digest(Path(command[0])),
+                        "public_receipt_sha256": outcome["public_receipt_sha256"], "arguments": [str(value) for value in recovery_command[1:]],
+                        "journal": str(journal), "prefix_records": recovery_count, "last_phase": row[0]["phase"],
+                        "window": recovery_root_physical, "generation": generation, "binding_sha256": boundary["binding_sha256"],
+                        "journal_sha256": hashlib.sha256(original).hexdigest(), "original_cut_sha256": hashlib.sha256(proof_raw).hexdigest()}
+            path = output / "root-recovery-cut-profile.json"
+            with path.open("xb") as stream:
+                stream.write(json.dumps(selected, separators=(",", ":")).encode() + b"\n")
+            original_output = output / "root-recovery-cut-original.log"
+            environment = dict(os.environ, ARDENTS_SOURCE_RECOVERY_PHYSICAL_OBSERVER_MODE="installed-recovery-physical",
+                               ARDENTS_SOURCE_CUT_OBSERVER_PROFILE=str(path), ARDENTS_SOURCE_CUT_OBSERVER_PROFILE_SHA256=digest(path),
+                               ARDENTS_SOURCE_CUT_OBSERVER_PROGRAM=str(command[0]), ARDENTS_SOURCE_CUT_OBSERVER_ROOT=str(installation),
+                               ARDENTS_SOURCE_CUT_OBSERVER_OUTPUT=str(original_output))
+            observed = run([paths["RECOVERY_OBSERVER"], "-test.run=^TestSourceRecoveryPhysicalCutObserverNative$", "-test.v", "-test.timeout=3m"],
+                           "root-recovery-process-cut", env=environment)
+            reports = [json.loads(line[len(b"SOURCE_RECOVERY_PHYSICAL_OBSERVATION "):]) for line in observed.splitlines() if line.startswith(b"SOURCE_RECOVERY_PHYSICAL_OBSERVATION ")]
+            if len(reports) != 1:
+                raise RuntimeError("one original root recovery cut report required")
+            original_raw, _ = native_image(original_output, 1 << 20)
+            physical = source_root_recovery_observation(selected, reports[0], original_raw)
+            completion_raw, completion_identity = native_image(completion)
+            partial = recovery_root_physical == "repaired-body-before-record"
+            ending = b'],"transcript_sha256":""}'
+            encoded = completion_raw + ending if partial else completion_raw.rstrip(b"\n")
+            suffix = json.loads(encoded)
+            fields = ["schema", "operation", "journal", "device", "inode", "prefix_sha256", "prefix_records", "generation", "binding_sha256", "records", "transcript_sha256"]
+            if (list(suffix) != fields or suffix["schema"] != "ardents-source-recovery-completion-v1" or suffix["operation"] != operation
+                    or suffix["journal"] != str(journal) or (suffix["device"], suffix["inode"]) != identity[:2]
+                    or suffix["prefix_sha256"] != selected["journal_sha256"] or suffix["prefix_records"] != recovery_count
+                    or suffix["generation"] != generation or suffix["binding_sha256"] != boundary["binding_sha256"]
+                    or not isinstance(suffix["records"], list)
+                    or partial and (suffix["records"] != [] or suffix["transcript_sha256"] != "" or not completion_raw.endswith(b'"records":['))):
+                raise RuntimeError("independent original-bound recovery envelope required")
+            if (json.dumps(suffix, separators=(",", ":"), ensure_ascii=False).encode() + (b"" if partial else b"\n")
+                    != (encoded if partial else completion_raw)
+                    or not partial and len(suffix["records"]) + len(rows) != len(phases)):
+                raise RuntimeError("canonical recovery envelope differs from selected physical window")
+            transcript = original + b"".join(json.dumps(value, separators=(",", ":"), ensure_ascii=False).encode() + b"\n" for value in suffix["records"])
+            combined = canonical_rows(transcript)
+            if ([value["phase"] for value in combined] != (phases[:recovery_count] if partial else phases)
+                    or not partial and hashlib.sha256(transcript).hexdigest() != suffix["transcript_sha256"]):
+                raise RuntimeError("recovery root transcript differs from selected matrix window")
+            if recovery_snapshot(declaration) != before or native_image(pending) != (pending_raw, pending_identity):
+                raise RuntimeError("root recovery cut changed semantic history or removed original pending")
+            for item, expected in immutable.items():
+                body, native = native_image(Path(item))
+                if (native, hashlib.sha256(body).hexdigest()) != expected:
+                    raise RuntimeError("root recovery rewrote original interruption evidence")
+            if partial:
+                payload = installation / "generations" / generation / "ardents-node-linux-amd64"
+                body, native = native_image(payload, 64 << 20)
+                born = rows[-1]
+                if (born["phase"] != "file-born" or born["path"] != str(payload) or born["sha256"] != selected["program_sha256"]
+                        or hashlib.sha256(body).hexdigest() != born["sha256"]
+                        or native != (born["device"], born["inode"], born["mode"], born["uid"], born["gid"])):
+                    raise RuntimeError("actual complete repaired original born inode required")
+                retained_files = (payload,)
+            else:
+                retained_files = physical_sealed_generation(combined, installation, generation, selected["program_sha256"], before_sealed=False)
+            publications = () if partial else ((installation / "binding.json", "binding.json", "file-ready" if operation == "initial" else "selection-written"),
+                                        (Path("/etc/systemd/system/ardents-source.service"), "rendered-source.service", "file-ready" if operation == "initial" else "unit-written"))
+            for target, name, phase in publications:
+                matches = [value for value in combined if value["phase"] == phase and value["path"] == str(target)]
+                if len(matches) != 1:
+                    raise RuntimeError("one completed original publication required")
+                ready = matches[0]
+                candidate, _ = native_image(installation / "generations" / generation / name, 32 << 10)
+                actual, native = native_image(target, 32 << 10)
+                if (actual != candidate or native != (ready["device"], ready["inode"], 0o644, 0, 0)
+                        or (ready["mode"], ready["uid"], ready["gid"]) != (0o644, 0, 0) or ready["sha256"] != hashlib.sha256(actual).hexdigest()):
+                    raise RuntimeError("root recovery fixed publication differs")
+                retained_files += (target,)
+            unit = Path("/etc/systemd/system/ardents-source.service")
+            watched = (journal, control, result, pending, completion) + ((unit,) if not partial or operation == "replacement" else ())
+
+            def root_cut_image():
+                saved = recovery_snapshot(declaration, installation=True)
+                if partial and operation == "initial" and (unit.exists() or unit.is_symlink()):
+                    raise RuntimeError("initial repaired-file root cut published a unit")
+                for item in watched:
+                    body, native = native_image(item, 32 << 20)
+                    saved[str(item)] = ("file", native, hashlib.sha256(body).hexdigest())
+                for item in (*watched, *retained_files):
+                    info = item.lstat()
+                    saved[("root-cut-native-times", str(item))] = (info.st_ctime_ns, info.st_mtime_ns)
+                if guard.exists() or guard.is_symlink():
+                    raise RuntimeError("root recovery changed original proof guard")
+                return saved
+
+            retained = root_cut_image()
+            for argv, name in ((command, "root-cut-ordinary-replay"), (startup, "root-cut-ordinary-startup")):
+                code, _ = run(argv, name, refusal=True)
+                if code == 0 or root_cut_image() != retained:
+                    raise RuntimeError("ordinary operation accepted or changed root-cut history")
+            refused = []
+            for attempt in range(2):
+                proof, _ = before_return_refusal(command, declaration_path, installation, journal, f"root-cut-fresh-refusal-{attempt+1}")
+                refused.append(proof)
+                if root_cut_image() != retained:
+                    raise RuntimeError("fresh recovery adopted or changed existing root-cut completion")
+            outcome["recovery_refusal"] = {"operation": operation, "prefix_records": recovery_count, "fault": recovery_root_physical,
+                                            "root_cut": physical, "separate_refused_invocations": 2, "before_return_refusals": refused,
+                                            "original_failed_exit": report["root_exit"], "original_failure_retained": True,
+                                            "completion": "partial-retained-no-append" if partial else "complete-retained", "pending": "retained", "history_preserved": True,
+                                            "matrix_sha256": digest(paths["RECOVERY_MATRIX"])}
+            if operation == "initial":
+                if source_started or source_pidfd is not None or scope_fd is not None or outcome["original_scope_joined"]:
+                    raise RuntimeError("never-started root recovery acquired a Source runtime")
+                outcome["source_scope_not_started"] = True
+            raise RecoveryRefusalComplete()
+
+        if recovery_concurrent:
+            # Independent sibling helpers own their own original Wait4 roots.
+            # Snapshot after the admitted repair, before the second invocation.
+            completion = Path(str(journal) + ".recovery-completion")
+            if completion.exists() or completion.is_symlink():
+                raise RuntimeError("fresh first recovery completion required")
+            payload = installation / "generations" / generation / "ardents-node-linux-amd64"
+            if len(rows) != recovery_count or rows[-1]["phase"] != "file-born" or rows[-1]["path"] != str(payload) or rows[-1]["sha256"] != digest(Path(command[0])):
+                raise RuntimeError("exact original first program birth required for concurrent recovery")
+            hold = {"phase": "file-ready", "path": str(payload), "body_sha256": digest(Path(command[0])),
+                    "generation": generation, "binding_sha256": boundary["binding_sha256"], "prefix_records": recovery_count}
+            watched = (journal, control, result, pending, completion, Path("/etc/systemd/system/ardents-source.service"))
+
+            def held_image():
+                snapshot = recovery_snapshot(declaration, installation=True)
+                for path in watched:
+                    if not path.exists() and not path.is_symlink():
+                        snapshot[str(path)] = ("absent",)
+                    else:
+                        raw, native = native_image(path, 32 << 20)
+                        snapshot[str(path)] = ("file", native, hashlib.sha256(raw).hexdigest())
+                return snapshot
+
+            baseline = held_image()
+            if recovery_snapshot(declaration) != before or native_image(pending) != (pending_raw, pending_identity):
+                raise RuntimeError("pre-recovery semantic/account/credential/Release or pending history changed")
+            for path, expected in immutable.items():
+                raw, native = native_image(Path(path))
+                if (native, hashlib.sha256(raw).hexdigest()) != expected:
+                    raise RuntimeError("pre-recovery original cut/failure evidence changed")
+            if baseline.get(str(completion)) != ("absent",) or baseline.get(str(payload)) != ("file", (rows[-1]["device"], rows[-1]["inode"], 0o600, 0, 0), hashlib.sha256(b"").hexdigest()):
+                raise RuntimeError("independent original empty born inode and absent suffix required")
+            selected, environment, original_output = prepare_refusal_observer(command, declaration_path, installation, journal, "concurrent-first-recovery", hold=hold)
+            helper, errors = None, []
+            try:
+                observe()
+                helper = RecoveryCancellationObserver([paths["RECOVERY_OBSERVER"], "-test.run=^TestSourceRefusalObserverNative$", "-test.v", "-test.timeout=3m"],
+                                                       environment, output / "concurrent-first-recovery-observer.log", observe)
+                source_cancellation_observation(selected, helper.ready)
+                header = {"schema": "ardents-source-recovery-completion-v1", "operation": operation, "journal": str(journal),
+                          "device": identity[0], "inode": identity[1], "prefix_sha256": report["selected_journal_sha256"],
+                          "prefix_records": recovery_count, "generation": generation, "binding_sha256": boundary["binding_sha256"]}
+                expected_header = json.dumps(header, separators=(",", ":"), ensure_ascii=False).encode()[:-1] + b',"records":['
+                actual_header, header_identity = native_image(completion)
+                body, body_identity = native_image(payload, 64 << 20)
+                if (actual_header != expected_header or header_identity[2:] != (0o600, 0, 0)
+                        or hashlib.sha256(body).hexdigest() != hold["body_sha256"]
+                        or body_identity != (rows[-1]["device"], rows[-1]["inode"], 0o555, 0, 0)):
+                    raise RuntimeError("actual preserved partial envelope and repaired original program required")
+                preserved = dict(baseline)
+                preserved[str(payload)] = ("file", body_identity, hashlib.sha256(body).hexdigest())
+                preserved[str(completion)] = ("file", header_identity, hashlib.sha256(actual_header).hexdigest())
+                if held_image() != preserved:
+                    raise RuntimeError("held recovery changed history beyond exact original program repair and new empty envelope")
+                release_lock = Path(history) / ".ardents-release-decision-lock"
+                _, release_identity = native_image(release_lock)
+                second, _ = before_return_refusal(command, declaration_path, installation, journal, "concurrent-second-refusal", external_journal=True, external_release=True,
+                                                  exclusion_identity=release_identity[:2])
+                if second["root_pid"] == helper.ready["root_pid"] or helper.child.poll() is not None or held_image() != preserved:
+                    raise RuntimeError("second original caller did not preserve the still-held recovery")
+                helper.cancel()  # Only after the actual second exclusion and join.
+                completed = helper.finish()
+                first_raw, _ = native_image(original_output, 1 << 20)
+                first = source_cancellation_observation(selected, helper.ready, completed, first_raw)
+                if held_image() != preserved:
+                    raise RuntimeError("canceled recovery changed retained original/partial evidence")
+                later, _ = before_return_refusal(command, declaration_path, installation, journal, "concurrent-later-partial-refusal")
+                if held_image() != preserved:
+                    raise RuntimeError("later caller appended/adopted the partial recovery")
+                outcome["recovery_refusal"] = {"operation": operation, "prefix_records": recovery_count, "fault": "concurrent-cancellation",
+                                                "original_failed_exit": report["root_exit"], "original_threads_joined": report["threads_joined"],
+                                                "original_failure_retained": True, "first_cancellation": first,
+                                                "second_exclusion_refusal": second, "later_partial_refusal": later,
+                                                "held_history_preserved": True, "partial_completion_sha256": digest(completion),
+                                                "matrix_sha256": digest(paths["RECOVERY_MATRIX"])}
+                if operation == "initial":
+                    if source_started or source_pidfd is not None or scope_fd is not None or outcome["original_scope_joined"]:
+                        raise RuntimeError("never-started initial concurrent recovery acquired a Source scope")
+                    outcome["source_scope_not_started"] = True
+            except BaseException as error:
+                errors.append(error)
+            finally:
+                if helper is not None:
+                    try:
+                        helper.close()
+                    except BaseException as error:
+                        errors.append(error)
+            if errors:
+                raise BaseExceptionGroup("concurrent original recovery/cancellation/refusal failed", errors)
+            raise RecoveryRefusalComplete()
+
         if recovery_fault is not None:
             # One terminal fault per private stand. Keep damaged history and
             # originals; never restore it and count the same stand as positive.
@@ -458,6 +1801,12 @@ def main():
             lease = None
             retained_root = None
             watched = [journal, control, result, pending, Path(str(journal) + ".recovery-completion")]
+            if expiry_original is not None:
+                siblings = sorted(installation.parent.glob(installation.name + ".source-*"))
+                if len(siblings) > 512:
+                    raise RuntimeError("finite original expiry sibling history required")
+                watched += [Path(command[3]) / name for name in SOURCE_EXPIRY_FILES]
+                watched += [Path("/etc/systemd/system/ardents-source.service"), *siblings]
 
             def synchronize_parent(path):
                 descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
@@ -514,19 +1863,39 @@ def main():
 
             def preserved_refusal_state():
                 state = recovery_snapshot(declaration, installation=True)
+                if expiry_original is not None:
+                    state["expiry-root-sibling-names"] = tuple(sorted(path.name for path in installation.parent.glob(installation.name + ".source-*")))
+                    state["expiry-original-distribution"] = expiry_artifact_image(command[3])
                 for path in watched:
                     if not path.exists() and not path.is_symlink():
                         state[str(path)] = ("absent",)
                     elif path.is_dir() and not path.is_symlink():
                         state[str(path)] = ("directory", native_identity(path.lstat()), tuple(sorted(child.name for child in path.iterdir())))
                     else:
-                        body, native = native_image(path, 32 << 20)
+                        body, native = native_image(path, 64 << 20)
                         state[str(path)] = ("file", native, hashlib.sha256(body).hexdigest())
                 return state
 
             fault_failures = []
             try:
-                if recovery_fault == "held-journal-lease":
+                if recovery_fault == "timestamp-expiry":
+                    prediction = source_release_expiry_prediction(recovery_matrix, operation, recovery_count)
+                    undamaged = preserved_refusal_state()
+                    before_report, before_proof = release_expiry_observer(command, "before", expiry_original)
+                    if preserved_refusal_state() != undamaged:
+                        raise RuntimeError("pre-expiry observation changed original recovery history")
+                    expiry = datetime.fromisoformat(before_report["timestamp_expires"].replace("Z", "+00:00")).timestamp()
+                    while time.time() < expiry:
+                        observe()
+                        if preserved_refusal_state() != undamaged:
+                            raise RuntimeError("original recovery inputs changed while Timestamp elapsed")
+                        time.sleep(min(0.2, max(0, expiry-time.time())))
+                    expired_report, expired_proof = release_expiry_observer(command, "expired", expiry_original, before_report)
+                    if preserved_refusal_state() != undamaged:
+                        raise RuntimeError("actual expiry observation changed original recovery history")
+                    outcome["release_expiry"] = {"prediction": prediction, "before": before_proof, "expired": expired_proof,
+                                                  "same_original_distribution": True, "history_unchanged": True}
+                elif recovery_fault == "held-journal-lease":
                     lease = os.open(journal, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
                     fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 elif recovery_fault in ("copied-journal", "copied-cut-result"):
@@ -614,8 +1983,13 @@ def main():
                           "device": identity[0], "inode": identity[1], "prefix_sha256": report["selected_journal_sha256"],
                           "prefix_records": recovery_count, "generation": generation, "binding_sha256": boundary["binding_sha256"]}
                 allowed_failed_header = json.dumps(header, separators=(",", ":"), ensure_ascii=False).encode()[:-1] + b',"records":['
+                before_return_refusals = []
                 for attempt in range(2):
-                    code, refused = run([command[0], "installation", "recover-source", command[3], history, "alpha", network, declaration_path, journal], f"terminal-recovery-refusal-{attempt}", refusal=True)
+                    name = f"terminal-recovery-refusal-{attempt}"
+                    observed, refused = before_return_refusal(command, declaration_path, installation, journal, name, external_journal=lease is not None,
+                                                              exclusion_identity=identity[:2] if lease is not None else None)
+                    before_return_refusals.append(observed)
+                    code = observed["root_exit"]
                     actual = preserved_refusal_state()
                     # Allow only a new exclusive empty failure header on the
                     # first refusal; a second caller cannot append/adopt it.
@@ -632,6 +2006,7 @@ def main():
                 outcome["recovery_refusal"] = {"operation": operation, "prefix_records": recovery_count, "fault": recovery_fault,
                                                 "original_failed_exit": report["root_exit"], "original_threads_joined": report["threads_joined"],
                                                 "separate_refused_invocations": 2, "original_failure_retained": True,
+                                                "before_return_refusals": before_return_refusals,
                                                 "matrix_sha256": digest(paths["RECOVERY_MATRIX"])}
                 if operation == "initial":
                     if source_started or source_pidfd is not None or scope_fd is not None or outcome["original_scope_joined"]:
@@ -821,11 +2196,385 @@ def main():
                 raise
             return True
 
+    def retain_invocation(*, archive=None, wait_ready=True):
+        nonlocal source_pid, source_pidfd, scope_fd, invocation
+        if source_pidfd is not None or scope_fd is not None:
+            raise RuntimeError("prior original Source custody must finish before retaining another")
+        source_pid = int(subprocess.check_output(["/usr/bin/systemctl", "show", "ardents-source.service", "-p", "MainPID", "--value"]))
+        if source_pid <= 1:
+            raise RuntimeError("actual original non-root Source process missing")
+        process_path = Path("/proc") / str(source_pid)
+        process_info = process_path.stat()
+        source_pidfd = os.pidfd_open(source_pid, 0)
+        signal.pidfd_send_signal(source_pidfd, 0)
+        current_process = process_path.stat()
+        if (current_process.st_dev, current_process.st_ino) != (process_info.st_dev, process_info.st_ino):
+            raise RuntimeError("original Source process changed during pidfd acquisition")
+        expected = [str(plan.parent / "ardents-node-linux-amd64"), "source", "start-installed", str(binding)]
+        if (Path("/proc") / str(source_pid) / "cmdline").read_bytes().split(b"\0") != [s.encode() for s in expected] + [b""]:
+            raise RuntimeError("actual original Source argv differs")
+        status = dict(line.split(":", 1) for line in (Path("/proc") / str(source_pid) / "status").read_text().splitlines() if ":" in line)
+        if [int(value) for value in status["Uid"].split()] != [uid] * 4 or [int(value) for value in status["Gid"].split()] != [gid] * 4:
+            raise RuntimeError("actual Source real/effective/saved/filesystem credentials differ")
+        if any(int(value) != gid for value in status["Groups"].split()) or any(int(status[key].strip(), 16) for key in ("CapInh", "CapPrm", "CapEff", "CapBnd", "CapAmb")):
+            raise RuntimeError("actual Source supplementary groups/capabilities differ")
+        actual_program, selected_program = (Path("/proc") / str(source_pid) / "exe").stat(), (plan.parent / "ardents-node-linux-amd64").stat()
+        if (actual_program.st_dev, actual_program.st_ino) != (selected_program.st_dev, selected_program.st_ino):
+            raise RuntimeError("actual original Source executable differs")
+        scope = Path("/sys/fs/cgroup/system.slice/ardents-source.service")
+        scope_info = scope.lstat()
+        scope_fd = os.open(scope / "cgroup.events", os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        if os.fstat(scope_fd).st_dev != Path("/sys/fs/cgroup").stat().st_dev or original_join():
+            raise RuntimeError("original active kernel Source scope unavailable")
+        invocation = subprocess.check_output(["/usr/bin/systemctl", "show", "ardents-source.service", "-p", "InvocationID", "--value"]).decode().strip()
+        if len(invocation) != 32 or any(c not in "0123456789abcdef" for c in invocation):
+            raise RuntimeError("actual original invocation identity unavailable")
+        if archive is not None:
+            signal.pidfd_send_signal(source_pidfd, 0)
+            current_process, current_scope = process_path.stat(), scope.lstat()
+            named_events, retained_events = (scope / "cgroup.events").stat(), os.fstat(scope_fd)
+            if (archive["pid"] != source_pid or archive["invocation_id"] != invocation
+                    or (archive["process_device"], archive["process_inode"]) != (process_info.st_dev, process_info.st_ino)
+                    or (current_process.st_dev, current_process.st_ino) != (process_info.st_dev, process_info.st_ino)
+                    or (archive["cgroup_device"], archive["cgroup_inode"]) != (scope_info.st_dev, scope_info.st_ino)
+                    or (current_scope.st_dev, current_scope.st_ino) != (scope_info.st_dev, scope_info.st_ino)
+                    or (named_events.st_dev, named_events.st_ino) != (retained_events.st_dev, retained_events.st_ino)
+                    or archive["manager"] != manager_identity() or manager_owner() != original_manager or original_join()):
+                raise RuntimeError("outside original Source pidfd/proc/cgroup differs from held startup archive")
+            facts = native_observer.sample()
+            clocks = {"MainPID": ("u", source_pid), "ExecMainPID": ("u", source_pid),
+                      "ExecMainStartTimestamp": ("t", archive["started_realtime"]),
+                      "ExecMainStartTimestampMonotonic": ("t", archive["started_monotonic"])}
+            if facts["Manager"] != archive["manager"] or any(facts["Service"][name] != {"type": signature, "data": value} for name, (signature, value) in clocks.items()):
+                raise RuntimeError("outside original manager Source execution differs from startup archive")
+        if not wait_ready:
+            return
+        ready = False
+        while not ready:
+            observe()
+            if manager_owner() != original_manager:
+                raise RuntimeError("original manager changed before runtime readiness")
+            journal = subprocess.check_output(["/usr/bin/journalctl", "--no-pager", "--output=cat", "--lines=32", "--unit=ardents-source.service", "_SYSTEMD_INVOCATION_ID=" + invocation])
+            if len(journal) > 64 << 10:
+                raise RuntimeError("original readiness observation exceeds bound")
+            for line in journal.splitlines():
+                if line == b'{"operation":"source.start-installed","outcome":"listening"}':
+                    ready = True
+            if not ready:
+                if original_join():
+                    raise RuntimeError("original Source ended before genuine runtime readiness")
+                time.sleep(0.05)
+
+
+    def completed_classification(number):
+        # Inspect only this latest complete committed original invocation.
+        if source_started or source_pidfd is not None or scope_fd is not None or not outcome["original_scope_joined"]:
+            raise RuntimeError("read-only classification requires separately joined original Source")
+        installation = Path(request["installation_root"])
+        directory = installation / ("source-startup" if number == 0 else f"source-invocation-{number:08d}")
+        startup = Path(str(installation) + (".source-first-start-journal" if number == 0 else f".source-invocation-{number:08d}-journal"))
+        if digest(active_request) != selected["request_sha256"] or json.loads(active_request.read_text()) != request:
+            raise RuntimeError("exact original selected declaration required for completed classification")
+
+        def retained_completed():
+            image = recovery_snapshot(request, installation=True)
+            siblings = sorted(installation.parent.glob(installation.name + ".source-*"))
+            if len(siblings) > 512:
+                raise RuntimeError("finite retained original journal inventory required")
+            for path in [Path("/etc/systemd/system/ardents-source.service"), *siblings]:
+                info = path.lstat()
+                leaf, _ = source_retained_leaf(path, native_image)
+                image[str(path)] = (leaf, info.st_ctime_ns, info.st_mtime_ns)
+            for path in [directory / "source-start-pending", directory / "source-retirement-pending", installation / f"source-invocation-{number + 1:08d}"]:
+                if path.exists() or path.is_symlink():
+                    raise RuntimeError("completed classification has a blocker or later invocation")
+            return image
+
+        retained = retained_completed()
+        original_facts = native_observer.sample()
+        for kind, journal in (("startup", startup), ("retirement", directory / "source-retirement-journal")):
+            prediction = source_completed_prediction(recovery_matrix, number, kind)
+            raw = run([active_node, "installation", "recover-source", distribution, history, "alpha", network, active_request, journal],
+                      f"completed-{number}-{kind}-classification")
+            if json.loads(raw) != {"operation": "installation.source", "outcome": "source-recovery-stopped-selected"}:
+                raise RuntimeError("completed classification returned a foreign outcome")
+            if retained_completed() != retained or manager_owner() != original_manager or native_observer.sample() != original_facts:
+                raise RuntimeError("read-only completed classification changed retained history or stopped manager")
+            outcome.setdefault("completed_source_classifications", []).append({"attempt": number, "journal_kind": kind, "prediction": prediction,
+                                                                              "generation": selected["generation"], "output_sha256": hashlib.sha256(raw).hexdigest(),
+                                                                              "original_history_unchanged": True})
+
+
+    def retirement_cut_and_refuse(number):
+        nonlocal source_started, scope_fd, source_pidfd
+        window = retirement_physical["window"]
+        prediction = source_retirement_prediction(recovery_matrix, number, window)
+        installation = Path(request["installation_root"])
+        directory = installation / ("source-startup" if number == 0 else f"source-invocation-{number:08d}")
+        start_journal = Path(str(installation) + (".source-first-start-journal" if number == 0 else f".source-invocation-{number:08d}-journal"))
+        journal = directory / "source-retirement-journal"
+        archive_raw, archive_identity = native_image(directory / "start-archived.json", 64 << 10)
+        archive = json.loads(archive_raw)
+        if (archive_identity[2:] != (0o600, 0, 0) or json.dumps(archive, separators=(",", ":")).encode() + b"\n" != archive_raw
+                or source_pidfd is None or scope_fd is None or not source_started):
+            raise RuntimeError("original live Source custody required before stop launch")
+        signal.pidfd_send_signal(source_pidfd, 0)
+        process = (Path("/proc") / str(source_pid)).stat()
+        scope = Path("/sys/fs/cgroup/system.slice/ardents-source.service")
+        scope_info, named_events, retained_events = scope.lstat(), (scope / "cgroup.events").stat(), os.fstat(scope_fd)
+        if (source_pidfd_exited(source_pidfd) or original_join() or manager_owner() != original_manager
+                or archive["pid"] != source_pid or archive["invocation_id"] != invocation or archive["manager"] != manager_identity()
+                or (archive["process_device"], archive["process_inode"]) != (process.st_dev, process.st_ino)
+                or (archive["cgroup_device"], archive["cgroup_inode"]) != (scope_info.st_dev, scope_info.st_ino)
+                or (named_events.st_dev, named_events.st_ino) != (retained_events.st_dev, retained_events.st_ino)):
+            raise RuntimeError("pre-stop retained Source differs from original archived invocation")
+        facts = native_observer.sample()
+        clocks = {"MainPID": ("u", source_pid), "ExecMainPID": ("u", source_pid),
+                  "ExecMainStartTimestamp": ("t", archive["started_realtime"]),
+                  "ExecMainStartTimestampMonotonic": ("t", archive["started_monotonic"])}
+        if facts["Manager"] != archive["manager"] or any(facts["Service"][name] != {"type": signature, "data": value} for name, (signature, value) in clocks.items()):
+            raise RuntimeError("pre-stop original manager execution clocks differ")
+        command = [active_node, "installation", "stop-source", history, binding]
+        selected_profile = {"schema": "source-retirement-physical-cut-observer-v1", "program_sha256": digest(active_node),
+                            "public_receipt_sha256": outcome["public_receipt_sha256"], "arguments": [str(value) for value in command[1:]],
+                            "journal": str(journal), "prefix_records": prediction["prefix_records"],
+                            "last_phase": "domain-joined" if window == "native-before-joined" else "retired",
+                            "window": window, "attempt": number, "generation": selected["generation"], "binding_sha256": digest(binding),
+                            "start_sha256": hashlib.sha256(archive_raw).hexdigest(), "start_journal_sha256": digest(start_journal), "gid": gid}
+        profile_path = output / "retirement-physical-profile.json"
+        with profile_path.open("xb") as stream:
+            stream.write(json.dumps(selected_profile, separators=(",", ":")).encode() + b"\n")
+        original_output = output / "retirement-physical-original.log"
+        environment = dict(os.environ, ARDENTS_SOURCE_RETIREMENT_PHYSICAL_OBSERVER_MODE="installed-retirement-physical",
+                           ARDENTS_SOURCE_CUT_OBSERVER_PROFILE=str(profile_path), ARDENTS_SOURCE_CUT_OBSERVER_PROFILE_SHA256=digest(profile_path),
+                           ARDENTS_SOURCE_CUT_OBSERVER_PROGRAM=str(active_node), ARDENTS_SOURCE_CUT_OBSERVER_ROOT=str(installation),
+                           ARDENTS_SOURCE_CUT_OBSERVER_OUTPUT=str(original_output))
+
+        def partial_image():
+            saved = {}
+            entries = sorted(directory.iterdir())
+            if len(entries) > 16:
+                raise RuntimeError("finite original retirement directory required")
+            for path in [start_journal, binding, Path("/etc/systemd/system/ardents-source.service"), *entries]:
+                info = path.lstat()
+                leaf, _ = source_retained_leaf(path, native_image)
+                saved[str(path)] = (leaf, info.st_ctime_ns, info.st_mtime_ns)
+            info = directory.lstat()
+            saved[str(directory)] = (native_identity(info), info.st_ctime_ns, info.st_mtime_ns)
+            return saved
+
+        # The Source handles above belong to the earlier actual start and are
+        # live before launching root; no already exited PID is reacquired.
+        tracer = RetirementPhysicalCutObserver([paths["RECOVERY_OBSERVER"], "-test.run=^TestSourceRetirementPhysicalCutObserverNative$", "-test.v", "-test.timeout=3m"],
+                                             environment, output / "retirement-physical-observer.log", observe)
+        try:
+            source_retirement_cut_observation(selected_profile, tracer.ready)
+            if tracer.ready["startup_archive"] != archive:
+                raise RuntimeError("held stop follows another archived original Source")
+            original, _ = native_image(journal, 128 << 10)
+            rows = canonical_rows(original)
+            if len(rows) != prediction["prefix_records"] or hashlib.sha256(original).hexdigest() != tracer.ready["selected_journal_sha256"]:
+                raise RuntimeError("held retirement prefix differs from independently published prediction")
+            if prediction["result"] == "absent":
+                path = directory / "source-retirement.json"
+                if path.exists() or path.is_symlink():
+                    raise RuntimeError("native-before-joined cut supplied an unrecorded result")
+            else:
+                result_raw, result_identity = native_image(directory / "source-retirement.json", 64 << 10)
+                result = json.loads(result_raw)
+                if result_identity[2:] != (0o600, 0, 0) or json.dumps(result, separators=(",", ":")).encode() + b"\n" != result_raw or result != tracer.ready["retirement_result"]:
+                    raise RuntimeError("outside original retirement result differs from held native image")
+            retained_partial = partial_image()
+            # Root waits at a real stop boundary while PID1 reaps its original
+            # Source. Both retained kernel objects must independently finish.
+            while not original_join() or not source_pidfd_exited(source_pidfd):
+                observe()
+                if manager_owner() != original_manager:
+                    raise RuntimeError("original manager changed before retirement cut")
+                time.sleep(0.02)
+            if manager_owner() != original_manager or partial_image() != retained_partial:
+                raise RuntimeError("original retirement image changed through separate Source join")
+            outcome["original_scope_joined"] = True
+            tracer.cut()
+            report = tracer.finish()
+            original_raw, _ = native_image(original_output, 1 << 20)
+            root_proof = source_retirement_cut_observation(selected_profile, tracer.ready, report, original_raw)
+            if partial_image() != retained_partial:
+                raise RuntimeError("root retirement cut changed retained original image")
+        except BaseException as error:
+            try:
+                tracer.close()
+            except BaseException as cleanup:
+                raise BaseExceptionGroup("retirement cut and original tracer join failed", [error, cleanup])
+            raise
+        else:
+            tracer.close()
+        run(["/usr/bin/systemctl", "stop", "ardents-source.service"], "retirement-cut-unit-stop")
+        if not original_join() or not source_pidfd_exited(source_pidfd) or manager_owner() != original_manager:
+            raise RuntimeError("original Source join lost after retirement root cut")
+        original_scope, scope_fd = scope_fd, None
+        os.close(original_scope)
+        original_process, source_pidfd = source_pidfd, None
+        os.close(original_process)
+        source_started = False
+        pending_raw, pending_identity = native_image(directory / "source-retirement-pending", 4096)
+        pending_proof = (*pending_identity[:2], hashlib.sha256(pending_raw).hexdigest())
+        next_directory = installation / f"source-invocation-{number + 1:08d}"
+
+        def retained_image():
+            image = recovery_snapshot(request, installation=True)
+            image["retirement-physical"] = partial_image()
+            for path in [next_directory, Path(str(journal) + ".recovery-completion")]:
+                if path.exists() or path.is_symlink():
+                    raise RuntimeError("retirement cut manufactured continuation or later invocation")
+            return image
+
+        retained = retained_image()
+        refused = []
+        # The refusal transport takes its distribution from this canonical
+        # command shape; stop-source's argv does not contain a distribution.
+        refusal_command = [active_node, "installation", "restart-source", distribution, history, "alpha", network, binding]
+        for attempt in range(2):
+            proof, _ = before_return_refusal(refusal_command, paths["REQUEST"], installation, journal, f"retirement-recovery-refusal-{attempt}",
+                                           retirement_pending={"attempt": number, "gid": gid}, retirement_pending_identity=pending_proof)
+            refused.append(proof)
+            if retained_image() != retained:
+                raise RuntimeError("refused retirement recovery changed original histories")
+        for operation in ("start-source", "restart-source"):
+            code, _ = run([active_node, "installation", operation, distribution, history, "alpha", network, binding], "retirement-cut-refused-" + operation, refusal=True)
+            if code == 0 or retained_image() != retained:
+                raise RuntimeError("ordinary startup admitted or changed interrupted retirement")
+        outcome["recovery_refusal"] = {"operation": "retirement", "attempt": number, "window": window, "prediction": prediction,
+                                       "root_cut": root_proof, "separate_source_pidfd_exit_and_scope_join_before_root_cut": True,
+                                       "original_retirement_sha256": hashlib.sha256(original).hexdigest(), "refusals": refused}
+        raise RecoveryRefusalComplete()
+
+
+    def startup_cut_and_refuse(number):
+        nonlocal source_started, scope_fd, source_pidfd
+        window = startup_physical["window"]
+        prediction = source_startup_prediction(recovery_matrix, number, window)
+        installation = Path(request["installation_root"])
+        directory = installation / ("source-startup" if number == 0 else f"source-invocation-{number:08d}")
+        journal = Path(str(installation) + (".source-first-start-journal" if number == 0 else f".source-invocation-{number:08d}-journal"))
+        command = [active_node, "installation", "start-source" if number == 0 else "restart-source", distribution, history, "alpha", network, binding]
+        selected_profile = {"schema": "source-startup-physical-cut-observer-v1", "program_sha256": digest(active_node),
+                            "public_receipt_sha256": outcome["public_receipt_sha256"], "arguments": [str(value) for value in command[1:]],
+                            "journal": str(journal), "prefix_records": prediction["prefix_records"],
+                            "last_phase": "file-ready" if window == "archive-before-archived" else "ack-attempt",
+                            "window": window, "attempt": number, "generation": selected["generation"], "binding_sha256": digest(binding), "gid": gid}
+        profile_path = output / "startup-physical-profile.json"
+        with profile_path.open("xb") as stream:
+            stream.write(json.dumps(selected_profile, separators=(",", ":")).encode() + b"\n")
+        original_output = output / "startup-physical-original.log"
+        environment = dict(os.environ, ARDENTS_SOURCE_STARTUP_PHYSICAL_OBSERVER_MODE="installed-startup-physical",
+                           ARDENTS_SOURCE_CUT_OBSERVER_PROFILE=str(profile_path), ARDENTS_SOURCE_CUT_OBSERVER_PROFILE_SHA256=digest(profile_path),
+                           ARDENTS_SOURCE_CUT_OBSERVER_PROGRAM=str(active_node), ARDENTS_SOURCE_CUT_OBSERVER_ROOT=str(installation),
+                           ARDENTS_SOURCE_CUT_OBSERVER_OUTPUT=str(original_output))
+        source_started = True  # Own a partial PID1 invocation before launch.
+        tracer = StartupPhysicalCutObserver([paths["RECOVERY_OBSERVER"], "-test.run=^TestSourceStartupPhysicalCutObserverNative$", "-test.v", "-test.timeout=3m"],
+                                          environment, output / "startup-physical-observer.log", observe)
+        try:
+            source_startup_cut_observation(selected_profile, tracer.ready)
+            archive_raw, archive_identity = native_image(directory / "start-archived.json", 64 << 10)
+            archive = json.loads(archive_raw)
+            if (archive != tracer.ready["startup_archive"] or archive_identity[2:] != (0o600, 0, 0)
+                    or json.dumps(archive, separators=(",", ":")).encode() + b"\n" != archive_raw):
+                raise RuntimeError("outside original startup archive differs from held native observation")
+            # Do not wait for listening: archive-before-archived has no ACK yet.
+            retain_invocation(archive=archive, wait_ready=False)
+
+            def partial_image():
+                saved = {}
+                entries = sorted(directory.iterdir())
+                if len(entries) > 8:
+                    raise RuntimeError("finite original startup directory required")
+                for path in [journal, binding, Path("/etc/systemd/system/ardents-source.service"), *entries]:
+                    info = path.lstat()
+                    leaf, _ = source_retained_leaf(path, native_image)
+                    saved[str(path)] = (leaf, info.st_ctime_ns, info.st_mtime_ns)
+                info = directory.lstat()
+                saved[str(directory)] = (native_identity(info), info.st_ctime_ns, info.st_mtime_ns)
+                return saved
+
+            original, _ = native_image(journal, 128 << 10)
+            rows = canonical_rows(original)
+            if len(rows) != prediction["prefix_records"] or hashlib.sha256(original).hexdigest() != tracer.ready["selected_journal_sha256"]:
+                raise RuntimeError("held startup prefix differs from independently published prediction")
+            retained_partial = partial_image()
+            # Recheck from the original kernel handles immediately before cut.
+            signal.pidfd_send_signal(source_pidfd, 0)
+            if source_pidfd_exited(source_pidfd) or original_join() or manager_owner() != original_manager:
+                raise RuntimeError("original Source ended or manager changed before startup cut")
+            tracer.cut()
+            report = tracer.finish()
+            original_raw, _ = native_image(original_output, 1 << 20)
+            root_proof = source_startup_cut_observation(selected_profile, tracer.ready, report, original_raw)
+            if partial_image() != retained_partial:
+                raise RuntimeError("root startup cut changed retained original image")
+        except BaseException as error:
+            try:
+                tracer.close()
+            except BaseException as cleanup:
+                raise BaseExceptionGroup("startup cut and original tracer join failed", [error, cleanup])
+            raise
+        else:
+            tracer.close()
+        # The tracer cannot join a PID1 child. Retain both originals until the
+        # Source pidfd reports exit AND its original kernel scope is empty.
+        try:
+            signal.pidfd_send_signal(source_pidfd, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        while not original_join() or not source_pidfd_exited(source_pidfd):
+            observe()
+            time.sleep(0.02)
+        outcome["original_scope_joined"] = True
+        if manager_owner() != original_manager or partial_image() != retained_partial:
+            raise RuntimeError("original manager/startup image changed through separate Source join")
+        run(["/usr/bin/systemctl", "stop", "ardents-source.service"], "startup-cut-unit-stop")
+        original_scope, scope_fd = scope_fd, None
+        os.close(original_scope)
+        original_process, source_pidfd = source_pidfd, None
+        os.close(original_process)
+        source_started = False
+        pending_raw, pending_identity = native_image(directory / "source-start-pending", 4096)
+        pending_proof = (*pending_identity[:2], hashlib.sha256(pending_raw).hexdigest())
+        absent = [directory / "source-retirement-journal", directory / "source-retirement.json", directory / "source-retirement-pending",
+                  Path(str(journal) + ".recovery-completion")]
+        next_directory = installation / f"source-invocation-{number + 1:08d}"
+
+        def retained_image():
+            image = recovery_snapshot(request, installation=True)
+            image["startup-physical"] = partial_image()
+            for path in [*absent, next_directory]:
+                if path.exists() or path.is_symlink():
+                    raise RuntimeError("startup cut manufactured retirement, continuation or later invocation")
+            return image
+
+        retained = retained_image()
+        refused = []
+        for attempt in range(2):
+            proof, _ = before_return_refusal(command, paths["REQUEST"], installation, journal, f"startup-recovery-refusal-{attempt}",
+                                           startup_pending={"attempt": number, "gid": gid}, startup_pending_identity=pending_proof)
+            refused.append(proof)
+            if retained_image() != retained:
+                raise RuntimeError("refused startup recovery changed original histories")
+        for operation in ("start-source", "restart-source"):
+            code, _ = run([active_node, "installation", operation, distribution, history, "alpha", network, binding], "startup-cut-refused-" + operation, refusal=True)
+            if code == 0 or retained_image() != retained:
+                raise RuntimeError("ordinary startup admitted or changed interrupted original")
+        outcome["recovery_refusal"] = {"operation": "startup", "attempt": number, "window": window, "prediction": prediction,
+                                       "root_cut": root_proof, "separate_source_pidfd_exit_and_scope_join": True,
+                                       "original_startup_sha256": hashlib.sha256(original).hexdigest(), "refusals": refused}
+        raise RecoveryRefusalComplete()
+
     try:
         if recovery_profile:
-            observer_name = "TestSourceCutObserverNative"
-            discovered = run([paths["RECOVERY_OBSERVER"], "-test.list=^" + observer_name + "$"], "recovery-observer-discovery")
-            if discovered.splitlines() != [observer_name.encode("ascii")]:
+            observer_names = ("TestSourceCutObserverNative", "TestSourceRefusalObserverNative", "TestSourceCanonicalPhysicalCutObserverNative",
+                              "TestSourceRecoveryPhysicalCutObserverNative", "TestSourceStartupPhysicalCutObserverNative", "TestSourceRetirementPhysicalCutObserverNative", "TestSourceReleaseExpiryObserverNative")
+            discovered = run([paths["RECOVERY_OBSERVER"], "-test.list=^(" + "|".join(observer_names) + ")$"], "recovery-observer-discovery")
+            if sorted(discovered.splitlines()) != sorted(name.encode("ascii") for name in observer_names):
                 raise RuntimeError("same-source native recovery observer is absent")
             native_pattern = "^(" + "|".join(RECOVERY_NATIVE_TESTS) + ")$"
             discovered = run([paths["RECOVERY_OBSERVER"], "-test.list=" + native_pattern], "recovery-native-discovery")
@@ -835,7 +2584,10 @@ def main():
             # it obtains no installed or semantic authority from their result.
             native_root = output / "native-component"
             native_root.mkdir(mode=0o700)
-            native_environment = dict(os.environ, ARDENTS_SOURCE_STOPPED_FUTURE_PARENT=str(native_root))
+            native_environment = dict(os.environ, ARDENTS_SOURCE_STOPPED_FUTURE_PARENT=str(native_root),
+                                      ARDENTS_SOURCE_CUT_CONTROL_PROGRAM=str(paths["RECOVERY_OBSERVER"]),
+                                      ARDENTS_SOURCE_CUT_CONTROL_RUNNER=str(paths["CUT_CONTROL_RUNNER"]),
+                                      ARDENTS_SOURCE_CUT_CONTROL_RUNNER_SHA256=digest(paths["CUT_CONTROL_RUNNER"]))
             run([paths["RECOVERY_OBSERVER"], "-test.run=" + native_pattern, "-test.v", "-test.timeout=90s"],
                 "recovery-native-controls", env=native_environment)
         manager_tests = ("TestSourceControlRetainsStoppedUnitNative", "TestSourceCanceledObservationCloseNative")
@@ -908,54 +2660,11 @@ def main():
         # From here even a failed/uncertain start belongs to the outside own
         # stand completion obligation. The product joins its failed attempt.
         source_started = True
+        if startup_physical is not None and startup_physical["attempt"] == 0:
+            startup_cut_and_refuse(0)
         raw = run([paths["NODE"], "installation", "start-source", distribution, history, "alpha", network, binding], "first-start")
         if json.loads(raw) != {"operation": "installation.source", "outcome": "first-start-completed"}:
             raise RuntimeError("foreign first-start completion projection")
-        def retain_invocation():
-            nonlocal source_pid, source_pidfd, scope_fd, invocation
-            source_pid = int(subprocess.check_output(["/usr/bin/systemctl", "show", "ardents-source.service", "-p", "MainPID", "--value"]))
-            if source_pid <= 1:
-                raise RuntimeError("actual original non-root Source process missing")
-            process_path = Path("/proc") / str(source_pid)
-            process_info = process_path.stat()
-            source_pidfd = os.pidfd_open(source_pid, 0)
-            signal.pidfd_send_signal(source_pidfd, 0)
-            current_process = process_path.stat()
-            if (current_process.st_dev, current_process.st_ino) != (process_info.st_dev, process_info.st_ino):
-                raise RuntimeError("original Source process changed during pidfd acquisition")
-            expected = [str(plan.parent / "ardents-node-linux-amd64"), "source", "start-installed", str(binding)]
-            if (Path("/proc") / str(source_pid) / "cmdline").read_bytes().split(b"\0") != [s.encode() for s in expected] + [b""]:
-                raise RuntimeError("actual original Source argv differs")
-            status = dict(line.split(":", 1) for line in (Path("/proc") / str(source_pid) / "status").read_text().splitlines() if ":" in line)
-            if [int(value) for value in status["Uid"].split()] != [uid] * 4 or [int(value) for value in status["Gid"].split()] != [gid] * 4:
-                raise RuntimeError("actual Source real/effective/saved/filesystem credentials differ")
-            if any(int(value) != gid for value in status["Groups"].split()) or any(int(status[key].strip(), 16) for key in ("CapInh", "CapPrm", "CapEff", "CapBnd", "CapAmb")):
-                raise RuntimeError("actual Source supplementary groups/capabilities differ")
-            actual_program, selected_program = (Path("/proc") / str(source_pid) / "exe").stat(), (plan.parent / "ardents-node-linux-amd64").stat()
-            if (actual_program.st_dev, actual_program.st_ino) != (selected_program.st_dev, selected_program.st_ino):
-                raise RuntimeError("actual original Source executable differs")
-            scope_fd = os.open("/sys/fs/cgroup/system.slice/ardents-source.service/cgroup.events", os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
-            if os.fstat(scope_fd).st_dev != Path("/sys/fs/cgroup").stat().st_dev or original_join():
-                raise RuntimeError("original active kernel Source scope unavailable")
-            invocation = subprocess.check_output(["/usr/bin/systemctl", "show", "ardents-source.service", "-p", "InvocationID", "--value"]).decode().strip()
-            if len(invocation) != 32 or any(c not in "0123456789abcdef" for c in invocation):
-                raise RuntimeError("actual original invocation identity unavailable")
-            ready = False
-            while not ready:
-                observe()
-                if manager_owner() != original_manager:
-                    raise RuntimeError("original manager changed before runtime readiness")
-                journal = subprocess.check_output(["/usr/bin/journalctl", "--no-pager", "--output=cat", "--lines=32", "--unit=ardents-source.service", "_SYSTEMD_INVOCATION_ID=" + invocation])
-                if len(journal) > 64 << 10:
-                    raise RuntimeError("original readiness observation exceeds bound")
-                for line in journal.splitlines():
-                    if line == b'{"operation":"source.start-installed","outcome":"listening"}':
-                        ready = True
-                if not ready:
-                    if original_join():
-                        raise RuntimeError("original Source ended before genuine runtime readiness")
-                    time.sleep(0.05)
-
         retain_invocation()
         inspect = [paths["CONTROL"], "source", "inspect-latest", plan, paths["CLIENT_CERTIFICATE"], paths["CLIENT_KEY"], paths["SERVER_CA"],
                    os.environ["ARDENTS_SOURCE_STARTUP_SERVER_NAME"], os.environ["ARDENTS_SOURCE_STARTUP_SERVER_PIN"], os.environ["ARDENTS_SOURCE_STARTUP_SOURCE_ID"],
@@ -1029,6 +2738,8 @@ def main():
                 records(journal, phases)
                 if (current_directory / "source-start-pending").exists():
                     raise RuntimeError("full-looking startup transcript remained uncommitted")
+                if retirement_physical is not None and retirement_physical["attempt"] == number:
+                    retirement_cut_and_refuse(number)
                 stop_command = [active_node, "installation", "stop-source", history, binding]
                 if number == 0 and case in ("restart", "replacement"):
                     # Hold the actual original process, rather than inventing a
@@ -1139,6 +2850,8 @@ def main():
                 os.close(source_pidfd)
                 source_pidfd = None
                 source_started = False
+                if positive_recovery:
+                    completed_classification(number)
                 invocations.append(invocation)
                 if replacement_profile:
                     run([paths["OWNER_TEST"], "-test.run=^TestSourceHistoryAcquisitionNative$", "-test.v", "-test.timeout=1m"], f"history-success-{number}",
@@ -1163,7 +2876,7 @@ def main():
                     raise RuntimeError("pre-effect replacement refusal created a transition")
 
             def replace_generation(suffix, number):
-                nonlocal selected_document, selected, plan, request, distribution, active_node, native_observer, selected_floors
+                nonlocal selected_document, selected, plan, request, active_request, distribution, active_node, native_observer, selected_floors
                 predecessor = dict(selected)
                 predecessor_descriptor = json.loads((plan.parent / "infrastructure-source.json").read_text())
                 before_floors = selected_floors
@@ -1197,6 +2910,7 @@ def main():
                     raise RuntimeError("replacement reset Root continuity or failed to advance Release floors")
                 selected_floors = after_floors
                 request = json.loads(paths["REQUEST_" + suffix].read_text())
+                active_request = paths["REQUEST_" + suffix]
                 if suffix == "C" and (selected["program_sha256"] != predecessor["program_sha256"] or request["address"] == predecessor["request"]["address"]):
                     raise RuntimeError("resource-only replacement did not preserve program and change address")
                 if suffix == "B" and selected["program_sha256"] == predecessor["program_sha256"]:
@@ -1359,6 +3073,8 @@ def main():
                 if (installation / f"source-invocation-{number + 1:08d}").exists():
                     raise RuntimeError("refused pre-retirement restart created a successor attempt")
                 explicit_stop(number)
+                if startup_physical is not None and number + 1 == startup_physical["attempt"]:
+                    startup_cut_and_refuse(number + 1)
                 if number == (3 if replacement_profile else 2):
                     break
                 if replacement_profile:
@@ -1525,11 +3241,13 @@ def main():
                     subprocess.run(["/usr/bin/systemctl", "stop", "ardents-source.service"], check=True)
             except BaseException as error:
                 failures.append(error)
-        if scope_fd is not None:
+        if scope_fd is not None or source_pidfd is not None:
             notice, join_error = False, None
             while True:
                 try:
-                    if original_join():
+                    # Keep any partially acquired originals too. An empty
+                    # scope cannot replace the retained process's exit event.
+                    if (scope_fd is None or original_join()) and (source_pidfd is None or source_pidfd_exited(source_pidfd)):
                         break
                 except BaseException as error:
                     if join_error is None:
@@ -1540,11 +3258,12 @@ def main():
                 time.sleep(0.1)
             if join_error is not None:
                 failures.append(join_error)
-            outcome["original_scope_joined"] = True
-            try:
-                os.close(scope_fd)
-            except OSError as error:
-                failures.append(error)
+            if scope_fd is not None:
+                outcome["original_scope_joined"] = True
+                try:
+                    os.close(scope_fd)
+                except OSError as error:
+                    failures.append(error)
         if source_started and source_pidfd is not None and scope_fd is not None:
             try:
                 if manager_owner() != original_manager:
@@ -1574,11 +3293,15 @@ def main():
                 failures.append(error)
     try:
         observe()
-        if recovery_profile and recovery_fault is None:
+        if positive_recovery:
             if not outcome.get("recovery") or not recovery_evidence:
                 raise RuntimeError("selected positive recovery was not executed")
             recovered_transcript()
-        if recovery_fault is not None:
+            classified = outcome.get("completed_source_classifications", [])
+            expected = [(number, kind) for number in range(4 if replacement_profile else 3) for kind in ("startup", "retirement")]
+            if [(item.get("attempt"), item.get("journal_kind")) for item in classified] != expected:
+                raise RuntimeError("complete read-only startup/retirement classification sequence missing")
+        if recovery_fault is not None or recovery_concurrent or recovery_physical is not None or recovery_root_physical is not None or startup_physical is not None or retirement_physical is not None:
             if not outcome.get("recovery_refusal") or recovery_evidence or source_started or source_pidfd is not None or scope_fd is not None:
                 raise RuntimeError("terminal recovery refusal/native completion missing")
             outcome["retirement_outcome"] = "terminal-recovery-refusal"

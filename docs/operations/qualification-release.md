@@ -65,6 +65,23 @@ The native Source signer independently checks original plan/resource/key custody
 and obtains actual Release decisions. This public transformation and any signed
 metadata still supply no direct PO bootstrap acceptance or runtime permission.
 
+For a causal Release-expiry control, `--timestamp-only` prepares the distinct
+`ardents-source-timestamp-release-plan-v1` schema from the same original build,
+resources, declarations and safety bounds. It is mutually exclusive with
+`--forward`. Canonical `source refresh-release-timestamp` additionally requires
+the complete current distribution and original matching five-key custody. It
+authenticates both existing Source targets through a fresh diagnostic verifier,
+requires exact artifact/descriptor/template and compact custom declarations,
+copies Root/Snapshot/Targets bytes unchanged, and signs only the next Timestamp
+version referencing that same Snapshot. Its expiry cannot exceed any unchanged
+parent role. It neither renews artifact safety bounds nor advances a generation,
+installs a Source, changes participant floors or establishes runtime authority.
+Keep the original safety bounds even when the short Timestamp expires before
+them; only this preparation purpose permits that expiry relationship. Initial
+and forward metadata must still cover their declared artifact termination.
+Prepare every actual metadata variant and inventory before the exact bootstrap
+receipt is accepted; a later dynamic variant cannot silently join its cohort.
+
 ADR-0123 accepts a distinct Source program and generation contract. Canonical
 `ardents-control source prepare-descriptor` and `source prepare-inventory`
 directly prepare its public artifact bytes through new Infrastructure/Enrollment

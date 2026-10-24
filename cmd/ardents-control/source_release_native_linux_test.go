@@ -212,6 +212,8 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	if err := os.WriteFile(filepath.Join(previous, "infrastructure-enrollment.json"), inventoryRaw, 0600); err != nil {
 		t.Fatal(err)
 	}
+	exerciseSourceTimestampRefresh(t, sourceTimestampNativeInput{command: command, planPath: planPath, keys: keyRoot,
+		parent: parent, distribution: previous, plan: plan, program: nodeBytes, descriptor: descriptorBytes})
 	forwardDescriptor, err := infrastructure.PrepareDescriptor("two", 2, nodeBytes, preparedTemplate)
 	if err != nil {
 		t.Fatal(err)
@@ -256,6 +258,19 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 			t.Fatal("metadata did not advance", name, err)
 		}
 	}
+	// A genuinely valid forward generation is not a timestamp-only request.
+	plan.Schema = "ardents-source-timestamp-release-plan-v1"
+	writePlan()
+	timestampOutput, timestampHistory := filepath.Join(parent, "changed-timestamp-metadata"), filepath.Join(parent, "changed-timestamp-verification")
+	if raw, err := signSourceRelease(t.Context(), []string{planPath, keyRoot, timestampOutput, timestampHistory, previous}, sourceReleaseTimestamp, nil); err == nil || raw != nil {
+		t.Fatal("timestamp purpose changed generation", err)
+	}
+	for _, path := range []string{timestampOutput, timestampHistory} {
+		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("changed-generation timestamp dependent effect", path, err)
+		}
+	}
+	plan.Schema = "ardents-source-forward-release-plan-v1"
 	// Equal descriptor version refuses before any output/diagnostic birth.
 	if err := os.WriteFile(descriptor, descriptorBytes, 0600); err != nil {
 		t.Fatal(err)
@@ -263,7 +278,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	plan.ProgramCustom, plan.GenerationCustom = custom(nodeBytes), custom(descriptorBytes)
 	writePlan()
 	refusedOutput, refusedHistory := filepath.Join(parent, "equal-metadata"), filepath.Join(parent, "equal-verification")
-	if raw, err := signSourceRelease(t.Context(), []string{planPath, keyRoot, refusedOutput, refusedHistory, previous}, true, nil); err == nil || raw != nil {
+	if raw, err := signSourceRelease(t.Context(), []string{planPath, keyRoot, refusedOutput, refusedHistory, previous}, sourceReleaseForward, nil); err == nil || raw != nil {
 		t.Fatal("equal release signed", err)
 	}
 	for _, path := range []string{refusedOutput, refusedHistory} {
@@ -288,7 +303,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	plan.ProgramCustom, plan.GenerationCustom = custom(controlBytes), custom(badDescriptor)
 	writePlan()
 	signed := false
-	if raw, err := signSourceRelease(t.Context(), []string{planPath, keyRoot, filepath.Join(parent, "wrong-program"), filepath.Join(parent, "wrong-verification")}, false, func(string, *os.File) { signed = true }); err == nil || raw != nil || signed {
+	if raw, err := signSourceRelease(t.Context(), []string{planPath, keyRoot, filepath.Join(parent, "wrong-program"), filepath.Join(parent, "wrong-verification")}, sourceReleaseInitial, func(string, *os.File) { signed = true }); err == nil || raw != nil || signed {
 		t.Fatal("wrong executable reached signing", err, signed)
 	}
 	if err := os.WriteFile(program, nodeBytes, 0600); err != nil {
@@ -302,7 +317,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	seen := false
-	raw, err := signSourceRelease(ctx, []string{planPath, keyRoot, filepath.Join(parent, "failed-metadata"), filepath.Join(parent, "failed-verification")}, false, func(stage string, file *os.File) {
+	raw, err := signSourceRelease(ctx, []string{planPath, keyRoot, filepath.Join(parent, "failed-metadata"), filepath.Join(parent, "failed-verification")}, sourceReleaseInitial, func(stage string, file *os.File) {
 		if stage != "signed" {
 			return
 		}
