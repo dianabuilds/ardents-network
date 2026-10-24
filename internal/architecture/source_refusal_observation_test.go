@@ -114,6 +114,64 @@ for kind in (None,"initial","replacement","start","stop"):
 	}
 }
 
+func TestSourceCompletedClassificationRetainsManagerFactsAcrossAvailableMemoryChanges(t *testing.T) {
+	python := "python3"
+	if runtime.GOOS == "windows" {
+		python = "python"
+	}
+	command := exec.CommandContext(t.Context(), python, "-I", "-S", "-c", `
+import ast,copy,runpy,sys
+from pathlib import Path
+path=Path(sys.argv[1]);loaded=runpy.run_path(str(path));tree=ast.parse(path.read_bytes())
+main=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=="main")
+owner=next(n for n in main.body if isinstance(n,ast.FunctionDef) and n.name=="completed_classification")
+capture=next(n for n in owner.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=="original_facts" for t in n.targets))
+guard=next(n for n in ast.walk(owner) if isinstance(n,ast.If) and any(isinstance(s,ast.Raise) and isinstance(s.exc,ast.Call)
+    and s.exc.args and isinstance(s.exc.args[0],ast.Constant) and s.exc.args[0].value=="read-only completed classification changed retained history or stopped manager" for s in n.body))
+before={"Manager":":1.0","Version":"255.4","UnitPaths":["/etc/systemd/system"],
+        "Unit":{"ActiveState":{"type":"s","data":"inactive"},"InvocationID":{"type":"ay","data":[1,2]}},
+        "Service":{"MemoryAvailable":{"type":"t","data":32317673472},"MemoryMax":{"type":"t","data":1048576},
+                   "MainPID":{"type":"u","data":0},"ExecMainPID":{"type":"u","data":395},
+                   "ExecMainExitTimestamp":{"type":"t","data":123},"ExecMainStatus":{"type":"i","data":0}}}
+
+def check(first,second,*,history="same",manager=":1.0"):
+    class Observer:
+        def __init__(self): self.samples=iter((first,second))
+        def sample(self): return next(self.samples)
+    scope=dict(loaded,native_observer=Observer(),retained_completed=lambda:history,retained="same",
+               manager_owner=lambda:manager,original_manager=":1.0")
+    for statement in (capture,guard):
+        exec(compile(ast.fix_missing_locations(ast.Module(body=[statement],type_ignores=[])),str(path),"exec"),scope)
+
+def reject(first,second,**kw):
+    try: check(first,second,**kw)
+    except RuntimeError: return
+    raise AssertionError("completed classification accepted changed or malformed original facts")
+
+after=copy.deepcopy(before);after["Service"]["MemoryAvailable"]["data"]+=4096
+saved=copy.deepcopy((before,after))
+check(before,after);check(before,before)
+assert (before,after)==saved,"projection mutated retained raw observations"
+for section in ("Unit","Service"):
+    for key in before[section]:
+        if key=="MemoryAvailable": continue
+        changed=copy.deepcopy(after);changed[section][key]={"type":"s","data":"foreign"}
+        reject(before,changed)
+for key,value in (("Manager",":1.99"),("Version","other"),("UnitPaths",["/foreign"]),("unknown",True)):
+    changed=copy.deepcopy(after);changed[key]=value;reject(before,changed)
+reject(before,after,history="changed");reject(before,after,manager=":1.99")
+for value in (None,{}, {"type":"u","data":1},{"type":"t","data":True},{"type":"t","data":-1},
+              {"type":"t","data":1<<64},{"type":"t","data":1,"extra":True}):
+    changed=copy.deepcopy(before);changed["Service"]["MemoryAvailable"]=value
+    reject(changed,changed);reject(before,changed)
+missing=copy.deepcopy(before);del missing["Service"]["MemoryAvailable"]
+reject(missing,missing);reject(before,missing)
+`, filepath.Join(repositoryRoot(t), "scripts", "installation", "run-source-startup.py"))
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("completed classification confused available memory with original manager facts: %v\n%s", err, output)
+	}
+}
+
 func TestSourceRetirementCutRequiresOriginalArchiveAndSeparatePrediction(t *testing.T) {
 	python := "python3"
 	if runtime.GOOS == "windows" {

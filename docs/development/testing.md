@@ -85,6 +85,14 @@ fixed unit/selection bytes/native identities remain unchanged; the independently
 held manager observation remains stopped. Terminal accounting requires the
 complete ordered pair after every positive lifecycle invocation. This prepares
 actual read-only classification coverage; installed evidence remains pending.
+The stopped-manager comparison preserves every observed property except
+`Service.MemoryAvailable`: systemd derives that capacity telemetry partly from
+physical and parent-slice memory consumed by other units. Its exact unsigned
+64-bit observation remains mandatory and retained in the raw native log.
+Configured limits, manager identity, invocation, exit clocks/status and all other
+properties still compare exactly, as do the separate history and join proofs.
+The architecture regression exercises the actual classification condition with
+varying available memory and causal substitutions of the retained facts.
 
 Six finite `recovery-retirement-ATTEMPT-WINDOW` cases cover attempts0/1 and
 `native-before-joined`, `result-before-close`, `pending-before-unlink`. Each

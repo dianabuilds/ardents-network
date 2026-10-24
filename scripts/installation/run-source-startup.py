@@ -303,6 +303,23 @@ def source_release_expiry_observation(profile, report, before=None):
             "outcomes": report["outcomes"], "floors_unchanged": True, "verifier_closed": True}
 
 
+def source_completed_manager_facts(facts):
+    """Keep all stopped-manager facts except independently varying free RAM.
+
+    systemd's Service.MemoryAvailable includes physical/parent-slice consumption
+    by other units (org.freedesktop.systemd1). It is not an original invocation,
+    configured limit or retirement fact. Preserve the raw report in the native
+    observer log and require its exact uint64 type even when comparing facts.
+    """
+    service = facts.get("Service") if isinstance(facts, dict) else None
+    available = service.get("MemoryAvailable") if isinstance(service, dict) else None
+    if (not isinstance(available, dict) or set(available) != {"type", "data"}
+            or available["type"] != "t" or type(available["data"]) is not int
+            or not 0 <= available["data"] < 1 << 64):
+        raise RuntimeError("typed original manager available-memory observation required")
+    return dict(facts, Service={key: value for key, value in service.items() if key != "MemoryAvailable"})
+
+
 def source_completed_prediction(matrix, attempt, kind):
     if type(attempt) is not int or attempt not in (0, 1, 2, 3) or kind not in ("startup", "retirement"):
         raise RuntimeError("finite completed Source classification required")
@@ -2293,14 +2310,14 @@ def main():
             return image
 
         retained = retained_completed()
-        original_facts = native_observer.sample()
+        original_facts = source_completed_manager_facts(native_observer.sample())
         for kind, journal in (("startup", startup), ("retirement", directory / "source-retirement-journal")):
             prediction = source_completed_prediction(recovery_matrix, number, kind)
             raw = run([active_node, "installation", "recover-source", distribution, history, "alpha", network, active_request, journal],
                       f"completed-{number}-{kind}-classification")
             if json.loads(raw) != {"operation": "installation.source", "outcome": "source-recovery-stopped-selected"}:
                 raise RuntimeError("completed classification returned a foreign outcome")
-            if retained_completed() != retained or manager_owner() != original_manager or native_observer.sample() != original_facts:
+            if retained_completed() != retained or manager_owner() != original_manager or source_completed_manager_facts(native_observer.sample()) != original_facts:
                 raise RuntimeError("read-only completed classification changed retained history or stopped manager")
             outcome.setdefault("completed_source_classifications", []).append({"attempt": number, "journal_kind": kind, "prediction": prediction,
                                                                               "generation": selected["generation"], "output_sha256": hashlib.sha256(raw).hexdigest(),
