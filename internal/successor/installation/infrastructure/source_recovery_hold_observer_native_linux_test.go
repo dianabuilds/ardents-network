@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -152,6 +153,7 @@ func (h *sourceRecoveryHold) freeze(tid int, result *sourceCutObservation) error
 		}
 	}
 	h.tid, result.HeldRootThread, result.RecoveryHeldBeforeRecord = tid, tid, true
+	result.RecoveryRootOnlyAtHold = true
 	result.SelectedJournalSHA256 = digest(h.journalRaw)
 	raw, err := json.Marshal(result)
 	if err != nil {
@@ -314,6 +316,17 @@ func (h *sourceRecoveryHold) control(pid int, groups map[int]int, tracked map[in
 	return nil
 }
 
+func joinSourceRecoveryNativeHelpers(t *testing.T) {
+	t.Helper()
+	for range 3 {
+		child := exec.Command("/bin/true")
+		if err := child.Run(); err != nil {
+			t.Fatal("original native helper join", err)
+		}
+		fmt.Printf("SOURCE_RECOVERY_NATIVE_JOINED_CHILD pid=%d\n", child.Process.Pid)
+	}
+}
+
 // Real prefix/writer/inode/lease cancellation only. These fixture hashes supply
 // no Release, semantic history, account, native manager or Source authority.
 func TestSourceRecoveryCancelNativeDriver(t *testing.T) {
@@ -352,6 +365,23 @@ func TestSourceRecoveryCancelNativeDriver(t *testing.T) {
 	}()
 	stopSignals := sync.OnceFunc(func() { signal.Stop(signals); close(stop); <-done })
 	defer stopSignals()
+	// Admission precedes these real, separately reaped helper lifetimes. The
+	// installed verifier also runs native helpers before reaching its record.
+	// Their historical existence must not be confused with a live descendant.
+	joinSourceRecoveryNativeHelpers(t)
+	if os.Getenv("ARDENTS_SOURCE_RECOVERY_NATIVE_LIVE_CHILD") == "1" {
+		child := exec.Command("/bin/sleep", "60")
+		if err := child.Start(); err != nil {
+			t.Fatal("original live-child negative fixture", err)
+		}
+		defer func() {
+			killed, waited := child.Process.Kill(), child.Wait()
+			if killed != nil || waited == nil {
+				t.Error("live-child fixture cleanup did not retain interruption", killed, waited)
+			}
+		}()
+		fmt.Printf("SOURCE_RECOVERY_NATIVE_LIVE_CHILD pid=%d\n", child.Process.Pid)
+	}
 	if scenario == "refusal-recovery-early-notice" {
 		if _, err := fmt.Println("native-recovery-cancellation-observed"); err != nil {
 			t.Fatal(err)

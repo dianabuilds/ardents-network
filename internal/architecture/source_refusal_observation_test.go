@@ -418,14 +418,18 @@ profile = {"schema":"source-recovery-refusal-observer-v1", "program_sha256":zero
 raw = b"source command failed\n"
 report = {"profile_sha256":hashlib.sha256(json.dumps(profile,separators=(",",":")).encode()+b"\n").hexdigest(),
           "inspection_only":False, "installed_execution":True, "refusal_admission_observed":True,
-          "refusal_ownership_released_before_exit":True, "entry":1000, "refusal_admission_entry":2000,
+          "refusal_ownership_released_before_exit":True, "refusal_original_scope_joined":True, "entry":1000, "refusal_admission_entry":2000,
           "root_pid":77, "root_exit":2, "processes":1, "refusal_stopped_threads":4, "threads_joined":4,
           "program_sha256":zero, "public_receipt_sha256":zero, "output_sha256":hashlib.sha256(raw).hexdigest()}
 check(profile, report, raw)
+joined = check(profile, dict(report, processes=22, threads_joined=25), raw)
+assert joined["original_scope_joined"] is True and joined["processes"] == 22
 for field, value in (
     ("inspection_only",True), ("installed_execution",False), ("refusal_admission_observed",False),
     ("refusal_ownership_released_before_exit",False), ("entry",0), ("entry",True), ("refusal_admission_entry",1000),
-    ("root_pid",0), ("root_exit",0), ("root_exit",True), ("processes",2), ("refusal_stopped_threads",1),
+    ("root_pid",0), ("root_exit",0), ("root_exit",True), ("processes",0), ("processes",33), ("processes",True),
+    ("processes",5), ("refusal_original_scope_joined",False), ("refusal_original_scope_joined",1),
+    ("recovery_root_only_at_hold",True), ("refusal_stopped_threads",1),
     ("threads_joined",3), ("threads_joined",257), ("program_sha256",other), ("public_receipt_sha256",other),
     ("profile_sha256",other), ("output_sha256",other),
     ("external_cut_ready",True),("external_cut_requested",True),("startup_archive",{}),("retirement_result",{}),
@@ -437,7 +441,7 @@ for field, value in (
         pass
     else:
         raise AssertionError("incomplete/substituted report claim admitted: " + field)
-for field in ("entry", "refusal_admission_observed", "refusal_ownership_released_before_exit"):
+for field in ("entry", "refusal_admission_observed", "refusal_ownership_released_before_exit", "refusal_original_scope_joined"):
     altered = dict(report)
     del altered[field]
     try:
@@ -505,7 +509,7 @@ base={"schema":"source-early-prefix-recovery-refusal-observer-v1","program_sha25
       "arguments":["installation","recover-source","/distribution","/history","alpha","one-network","/request","/source.source-initial-journal"],
       "journal_sha256":zero,"journal_mode":"0600","external_journal_lease":False,"external_release_lease":False}
 report={"inspection_only":False,"installed_execution":True,"refusal_admission_observed":True,
-        "refusal_ownership_released_before_exit":True,"entry":1000,"refusal_admission_entry":2000,"root_pid":77,
+        "refusal_ownership_released_before_exit":True, "refusal_original_scope_joined":True,"entry":1000,"refusal_admission_entry":2000,"root_pid":77,
         "root_exit":2,"processes":1,"refusal_stopped_threads":4,"threads_joined":4,"program_sha256":zero,
         "public_receipt_sha256":zero,"output_sha256":hashlib.sha256(raw).hexdigest(),"refusal_early_prefix_observed":True,
         "refusal_early_prefix_closed":True,"refusal_early_prefix_device":55,"refusal_early_prefix_inode":66,"refusal_early_prefix_sha256":zero}
@@ -566,7 +570,7 @@ profile = {"schema":"source-recovery-missing-cut-observer-v1", "program_sha256":
            "journal_mode":"0600", "external_journal_lease":False, "external_release_lease":False, "missing_original_cut":True}
 raw = b"source command failed\n"
 report = {"inspection_only":False, "installed_execution":True, "refusal_admission_observed":True,
-          "refusal_ownership_released_before_exit":True, "entry":1000, "refusal_admission_entry":2000,
+          "refusal_ownership_released_before_exit":True, "refusal_original_scope_joined":True, "entry":1000, "refusal_admission_entry":2000,
           "root_pid":77, "root_exit":2, "processes":1, "refusal_stopped_threads":4, "threads_joined":4,
           "program_sha256":zero, "public_receipt_sha256":zero, "output_sha256":hashlib.sha256(raw).hexdigest(),
           "refusal_missing_cut_observed":True, "refusal_missing_cut_parent_device":55, "refusal_missing_cut_parent_inode":66}
@@ -622,7 +626,7 @@ raw=b"source command failed\n"
 base={"schema":"source-startup-recovery-refusal-observer-v1","program_sha256":zero,"public_receipt_sha256":zero,
       "journal_mode":"0600","external_journal_lease":False,"external_release_lease":False,"startup_pending":{"attempt":0,"gid":500}}
 report={"inspection_only":False,"installed_execution":True,"refusal_admission_observed":True,
-        "refusal_ownership_released_before_exit":True,"entry":1000,"refusal_admission_entry":2000,"root_pid":77,
+        "refusal_ownership_released_before_exit":True, "refusal_original_scope_joined":True,"entry":1000,"refusal_admission_entry":2000,"root_pid":77,
         "root_exit":2,"processes":1,"refusal_stopped_threads":4,"threads_joined":4,"program_sha256":zero,
         "public_receipt_sha256":zero,"output_sha256":hashlib.sha256(raw).hexdigest(),
         "refusal_startup_pending_observed":True,"refusal_startup_pending_device":55,"refusal_startup_pending_inode":66,
@@ -681,7 +685,7 @@ raw=b"source command failed\n"
 base={"schema":"source-retirement-recovery-refusal-observer-v1","program_sha256":zero,"public_receipt_sha256":zero,
       "journal_mode":"0600","external_journal_lease":False,"external_release_lease":False,"retirement_pending":{"attempt":0,"gid":500}}
 report={"inspection_only":False,"installed_execution":True,"refusal_admission_observed":True,
-        "refusal_ownership_released_before_exit":True,"entry":1000,"refusal_admission_entry":2000,"root_pid":77,
+        "refusal_ownership_released_before_exit":True, "refusal_original_scope_joined":True,"entry":1000,"refusal_admission_entry":2000,"root_pid":77,
         "root_exit":2,"processes":1,"refusal_stopped_threads":4,"threads_joined":4,"program_sha256":zero,
         "public_receipt_sha256":zero,"output_sha256":hashlib.sha256(raw).hexdigest(),
         "refusal_retirement_pending_observed":True,"refusal_retirement_pending_device":55,"refusal_retirement_pending_inode":66,
@@ -740,16 +744,17 @@ profile = {"schema":"source-recovery-cancellation-observer-v1", "program_sha256"
            "recovery_hold":{"prefix_records":70}}
 ready = {"profile_sha256":hashlib.sha256(json.dumps(profile,separators=(",",":")).encode()+b"\n").hexdigest(),
          "inspection_only":False,"installed_execution":True,"refusal_admission_observed":True,
-         "recovery_held_before_record":True,"external_cancellation_acknowledged":False,
+         "recovery_held_before_record":True,"recovery_root_only_at_hold":True,"external_cancellation_acknowledged":False,
          "entry":1000,"refusal_admission_entry":2000,"recovery_hold_entry":3000,"root_pid":77,"held_root_thread":78,
          "program_sha256":zero,"public_receipt_sha256":zero,"selected_journal_sha256":zero}
 notice = b'{"operation":"installation.source","outcome":"completion-unavailable"}\n'
 raw = notice + b"source command failed\n"
-report = dict(ready, external_cancellation_acknowledged=True, refusal_ownership_released_before_exit=True,
+report = dict(ready, external_cancellation_acknowledged=True, refusal_ownership_released_before_exit=True, refusal_original_scope_joined=True,
               recovery_held_image_preserved=True, signalled_root_thread=79, recovery_cancellation_elapsed_ns=1234567,
               root_exit=2,processes=1,refusal_stopped_threads=4,threads_joined=5,output_sha256=hashlib.sha256(raw).hexdigest())
 assert check(profile,ready)["root_pid"] == 77
 assert check(profile,ready,report,raw)["held_image_preserved"] is True
+assert check(profile,ready,dict(report,processes=22,threads_joined=25),raw)["original_scope_joined"] is True
 def reject(selected, held, final=report, output=raw):
     try:
         check(selected,held,final,output)
@@ -760,7 +765,8 @@ for field,value in (("root_pid",True),("held_root_thread",0),("entry",True),("re
                     ("profile_sha256",other),("program_sha256",other),("public_receipt_sha256",other),
                     ("selected_journal_sha256",other),("recovery_held_before_record",False),
                     ("installed_execution",False),("external_cancellation_acknowledged",True),
-                    ("refusal_ownership_released_before_exit",True)):
+                    ("refusal_ownership_released_before_exit",True),("refusal_original_scope_joined",True),
+                    ("recovery_root_only_at_hold",False)):
     reject(profile,dict(ready,**{field:value}))
 for field,value in (("root_pid",80),("held_root_thread",79),("recovery_hold_entry",3001),
                     ("selected_journal_sha256",other),("recovery_held_before_record",False),
@@ -768,7 +774,8 @@ for field,value in (("root_pid",80),("held_root_thread",79),("recovery_hold_entr
                     ("signalled_root_thread",78),("signalled_root_thread",True),
                     ("recovery_cancellation_elapsed_ns",True),("recovery_cancellation_elapsed_ns",0),
                     ("recovery_cancellation_elapsed_ns",120000000000),
-                    ("refusal_ownership_released_before_exit",False),("threads_joined",3)):
+                    ("refusal_ownership_released_before_exit",False),("refusal_original_scope_joined",False),
+                    ("refusal_original_scope_joined",1),("threads_joined",3)):
     reject(profile,ready,dict(report,**{field:value}))
 for field,value in (("schema","source-recovery-refusal-observer-v1"),("external_journal_lease",True),
                     ("external_release_lease",True),("recovery_hold",{"prefix_records":49}),

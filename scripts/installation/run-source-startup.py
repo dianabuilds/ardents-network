@@ -32,6 +32,8 @@ import time
 
 
 RECOVERY_NATIVE_TESTS = (
+    "TestSourceRecoveryConcurrentNative",
+    "TestSourceRecoveryUnexpectedNoticeNative",
     "TestSourcePreemptedAcknowledgementNative",
     "TestSourceDelayedCutCancellationNative",
     "TestSourceReleaseExpiryProfileNative",
@@ -201,7 +203,7 @@ def source_startup_cut_observation(profile, ready, report=None, raw=None):
             or ready.get("external_cut_ready") is not True or ready.get("external_cut_requested", False) is not False
             or type(ready.get("root_exit")) is not int or ready["root_exit"] != -1
             or type(ready.get("root_signal", 0)) is not int or ready.get("root_signal", 0) != 0
-            or any(ready.get(name, False) is not False for name in ("root_kill_requested", "root_killed_by_observer", "external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "recovery_held_before_record"))
+            or any(ready.get(name, False) is not False for name in ("root_kill_requested", "root_killed_by_observer", "external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "refusal_original_scope_joined", "recovery_root_only_at_hold", "recovery_held_before_record"))
             or source_report_has_pending_guard(ready) or ready.get("retirement_result") is not None or not isinstance(archive, dict)
             or any(type(archive.get(name)) is not int or archive[name] <= 0 for name in archive_numbers)
             or archive.get("schema") != ("ardents-source-first-start-archive-v1" if profile["attempt"] == 0 else "ardents-source-invocation-archive-v1")
@@ -224,7 +226,7 @@ def source_startup_cut_observation(profile, ready, report=None, raw=None):
             or type(report.get("processes")) is not int or report["processes"] != 1
             or type(report.get("threads_joined")) is not int or not 1 <= report["threads_joined"] <= 256
             or report.get("root_kill_requested") is not True or report.get("root_killed_by_observer") is not True
-            or any(report.get(name, False) is not False for name in ("external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "recovery_held_before_record", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
+            or any(report.get(name, False) is not False for name in ("external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "refusal_original_scope_joined", "recovery_root_only_at_hold", "recovery_held_before_record", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
             or any(type(report.get(name, 0)) is not int or report.get(name, 0) != 0 for name in ("root_close_entry", "root_close_observations", "refusal_admission_entry", "held_coordinator_thread", "signalled_root_thread"))
             or source_report_has_pending_guard(report) or report.get("retirement_result") is not None or report.get("original_cut_sha256") != ""
             or report.get("output_sha256") != hashlib.sha256(raw).hexdigest()
@@ -371,7 +373,7 @@ def source_retirement_cut_observation(profile, ready, report=None, raw=None):
             or ready.get("external_cut_ready") is not True or ready.get("external_cut_requested", False) is not False
             or type(ready.get("root_exit")) is not int or ready["root_exit"] != -1
             or type(ready.get("root_signal", 0)) is not int or ready.get("root_signal", 0) != 0
-            or any(ready.get(name, False) is not False for name in ("root_kill_requested", "root_killed_by_observer", "external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "recovery_held_before_record", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
+            or any(ready.get(name, False) is not False for name in ("root_kill_requested", "root_killed_by_observer", "external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "refusal_original_scope_joined", "recovery_root_only_at_hold", "recovery_held_before_record", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
             or source_report_has_pending_guard(ready) or not isinstance(archive, dict)
             or any(type(archive.get(name)) is not int or archive[name] <= 0 for name in archive_numbers)
             or archive.get("schema") != ("ardents-source-first-start-archive-v1" if profile["attempt"] == 0 else "ardents-source-invocation-archive-v1")
@@ -412,7 +414,7 @@ def source_retirement_cut_observation(profile, ready, report=None, raw=None):
             or type(report.get("processes")) is not int or report["processes"] != 1
             or type(report.get("threads_joined")) is not int or not 1 <= report["threads_joined"] <= 256
             or report.get("root_kill_requested") is not True or report.get("root_killed_by_observer") is not True
-            or any(report.get(name, False) is not False for name in ("external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "recovery_held_before_record", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
+            or any(report.get(name, False) is not False for name in ("external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "refusal_original_scope_joined", "recovery_root_only_at_hold", "recovery_held_before_record", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
             or any(type(report.get(name, 0)) is not int or report.get(name, 0) != 0 for name in ("root_close_entry", "root_close_observations", "refusal_admission_entry", "held_coordinator_thread", "signalled_root_thread"))
             or source_report_has_pending_guard(report) or report.get("original_cut_sha256") != ""
             or report.get("output_sha256") != hashlib.sha256(raw).hexdigest()
@@ -458,7 +460,7 @@ def source_root_recovery_observation(profile, report, raw):
             or report.get("root_kill_requested") is not True or report.get("root_killed_by_observer") is not True
             or report.get("external_cancellation_acknowledged") is not False or report.get("root_ownership_released_before_exit", False) is not False
             or any(type(report.get(name, 0)) is not int or report.get(name, 0) != 0 for name in ("root_close_entry", "root_close_observations", "held_coordinator_thread", "recovery_hold_entry", "recovery_cancellation_elapsed_ns", "refusal_admission_entry", "refusal_stopped_threads"))
-            or any(report.get(name, False) is not False for name in ("recovery_held_before_record", "recovery_held_image_preserved", "refusal_admission_observed", "refusal_ownership_released_before_exit", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
+            or any(report.get(name, False) is not False for name in ("recovery_held_before_record", "recovery_held_image_preserved", "refusal_admission_observed", "refusal_ownership_released_before_exit", "refusal_original_scope_joined", "recovery_root_only_at_hold", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
             or report.get("held_coordinator_killed", False) is not False or report.get("original_cut_sha256") != ""
             or report.get("output_sha256") != hashlib.sha256(raw).hexdigest()
             or b'"operation":"installation.source"' in raw or b"source command failed" in raw):
@@ -566,8 +568,11 @@ def source_refusal_observation(profile, report, raw, exclusion_identity=None, mi
     profile_pin = hashlib.sha256(json.dumps(profile, separators=(",", ":")).encode() + b"\n").hexdigest()
     if (report.get("profile_sha256") != profile_pin or report.get("inspection_only") is not False or report.get("installed_execution") is not True
             or report.get("refusal_admission_observed") is not True or report.get("refusal_ownership_released_before_exit") is not True
+            or report.get("refusal_original_scope_joined") is not True
+            or report.get("recovery_root_only_at_hold", False) is not (profile.get("recovery_hold") is not None)
             or report["entry"] <= 0 or report["refusal_admission_entry"] <= 0 or report["entry"] == report["refusal_admission_entry"]
-            or report["root_pid"] <= 0 or report["root_exit"] != 2 or report["processes"] != 1
+            or report["root_pid"] <= 0 or report["root_exit"] != 2 or not 1 <= report["processes"] <= 32
+            or report["processes"] > report["threads_joined"]
             or not 2 <= report["refusal_stopped_threads"] <= report["threads_joined"] <= 256
             or report.get("program_sha256") != profile["program_sha256"] or report.get("public_receipt_sha256") != profile["public_receipt_sha256"]
             or report.get("output_sha256") != hashlib.sha256(raw).hexdigest() or not raw.endswith(b"source command failed\n")):
@@ -670,6 +675,7 @@ def source_refusal_observation(profile, report, raw, exclusion_identity=None, mi
     result = {"profile_sha256": report["profile_sha256"], "program_sha256": report["program_sha256"],
               "output_sha256": report["output_sha256"], "root_exit": report["root_exit"],
               "root_pid": report["root_pid"],
+              "original_scope_joined": True, "processes": report["processes"],
               "stopped_threads_before_return": report["refusal_stopped_threads"], "threads_joined": report["threads_joined"]}
     if exclusion is not None:
         result["exclusion"] = {"observed": True, "kind": exclusion, "device": report["refusal_exclusion_device"], "inode": report["refusal_exclusion_inode"]}
@@ -704,6 +710,8 @@ def source_cancellation_observation(profile, ready, report=None, raw=None):
             or ready.get("profile_sha256") != pin or ready.get("inspection_only") is not False
             or ready.get("installed_execution") is not True or ready.get("refusal_admission_observed") is not True
             or ready.get("recovery_held_before_record") is not True
+            or ready.get("recovery_root_only_at_hold") is not True
+            or ready.get("refusal_original_scope_joined", False) is not False
             or ready.get("external_cancellation_acknowledged") is not False
             or ready.get("refusal_ownership_released_before_exit", False) is not False
             or ready.get("program_sha256") != profile["program_sha256"]
@@ -2604,6 +2612,7 @@ def main():
             native_root = output / "native-component"
             native_root.mkdir(mode=0o700)
             native_environment = dict(os.environ, ARDENTS_SOURCE_STOPPED_FUTURE_PARENT=str(native_root),
+                                      ARDENTS_SOURCE_RECOVERY_CONCURRENT_PROGRAM=str(paths["RECOVERY_OBSERVER"]),
                                       ARDENTS_SOURCE_CUT_CONTROL_PROGRAM=str(paths["RECOVERY_OBSERVER"]),
                                       ARDENTS_SOURCE_CUT_CONTROL_RUNNER=str(paths["CUT_CONTROL_RUNNER"]),
                                       ARDENTS_SOURCE_CUT_CONTROL_RUNNER_SHA256=digest(paths["CUT_CONTROL_RUNNER"]))

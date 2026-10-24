@@ -465,6 +465,26 @@ both callers and a later refused envelope acquisition. This mechanism supplies
 no Release, State, account or manager authority, and cannot execute an installed
 profile; the canonical concurrent recovery cohort remains separately required.
 
+Both file/process callers launch and actually wait for three separate native
+helpers before repair or their original refusal. The observer retains
+the complete historical process inventory, but recovery hold and post-operation
+return require that only known original root threads remain in its live
+`Wait4` inventory. A fresh unresolved child stop, missing group identity or live
+descendant refuses; historical helper exits cannot stand in for a live join.
+The same regression starts a still-live helper and requires refusal before any
+hold readiness. Initial admission still requires one historical process, and
+all prefix, original inode/image, lease, FD, cancellation and terminal join
+checks remain. Child lifetimes retain fork/exec/exit and terminal wait tracking;
+only root-thread syscalls can supply the original refusal cause. The unattempted
+root negative includes an actual original-inode flock refusal by a separately
+joined child, which cannot supply the root's missing exclusion. A completed
+report separately records `refusal_original_scope_joined`; its consumers require
+that fact, bounded historical process/thread counts and the original pre-return
+FD proof. A held report separately proves `recovery_root_only_at_hold`.
+The selected recovery native inventory includes this actual
+concurrency regression and its premature-notice negative, with the same pinned
+helper explicitly supplied through `ARDENTS_SOURCE_RECOVERY_CONCURRENT_PROGRAM`.
+
 The separate `source-recovery-cancellation-observer-v1` declaration adds one
 `recovery_hold` object to the strict refusal profile. It admits only original
 initial70 or replacement13, the first exact generation `ProgramName` born file,
@@ -630,7 +650,7 @@ These are file/process counterexamples with no installed account, State,
 Release or manager, and do not prove equivalence to any installed phase or
 disk/power-loss durability. Full installed causal coverage remains separate.
 
-Every selected recovery stand first discovers and runs the finite thirty-four-test
+Every selected recovery stand first discovers and runs the finite thirty-six-test
 `RECOVERY_NATIVE_TESTS` inventory through its same pinned observer binary,
 with a ninety-second test bound inside the unchanged ten-minute profile bound.
 It includes process cuts, original coordinator/packet ownership, prefix and

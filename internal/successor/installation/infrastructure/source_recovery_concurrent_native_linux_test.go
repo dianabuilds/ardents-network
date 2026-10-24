@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -40,17 +41,17 @@ func TestSourceRecoveryConcurrentNative(t *testing.T) {
 			}
 		}
 	})
-	command := func(mode, name string) *exec.Cmd {
+	command := func(mode, name, selectedRoot string) *exec.Cmd {
 		cmd := exec.Command(helper, "-test.run=^TestSourceRefusalObserverNative$", "-test.v", "-test.timeout=60s")
 		for _, value := range os.Environ() {
 			if !strings.HasPrefix(value, "ARDENTS_SOURCE_REFUSAL_OBSERVER_MODE=") && !strings.HasPrefix(value, "ARDENTS_SOURCE_CUT_OBSERVER_") {
 				cmd.Env = append(cmd.Env, value)
 			}
 		}
-		cmd.Env = append(cmd.Env, "ARDENTS_SOURCE_REFUSAL_OBSERVER_MODE="+mode, "ARDENTS_SOURCE_CUT_OBSERVER_PROGRAM="+program, "ARDENTS_SOURCE_CUT_OBSERVER_ROOT="+root, "ARDENTS_SOURCE_CUT_OBSERVER_OUTPUT="+root+"-"+name+".log")
+		cmd.Env = append(cmd.Env, "ARDENTS_SOURCE_REFUSAL_OBSERVER_MODE="+mode, "ARDENTS_SOURCE_CUT_OBSERVER_PROGRAM="+program, "ARDENTS_SOURCE_CUT_OBSERVER_ROOT="+selectedRoot, "ARDENTS_SOURCE_CUT_OBSERVER_OUTPUT="+root+"-"+name+".log")
 		return cmd
 	}
-	first := command("native-recovery-hold", "first")
+	first := command("native-recovery-hold", "first", root)
 	input, err := first.StdinPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -115,16 +116,16 @@ func TestSourceRecoveryConcurrentNative(t *testing.T) {
 	case <-done:
 		t.Fatal("actual recovery did not reach held record entry", captured.String(), readErr)
 	}
-	if !held.RecoveryHeldBeforeRecord || !held.RefusalAdmissionObserved || held.RootPID <= 0 || held.HeldRootThread <= 0 || held.InstalledExecution || held.RefusalOwnershipReleasedBeforeExit || held.RootExit != -1 {
+	if !held.RecoveryHeldBeforeRecord || !held.RecoveryRootOnlyAtHold || !held.RefusalAdmissionObserved || held.RootPID <= 0 || held.HeldRootThread <= 0 || held.InstalledExecution || held.RefusalOwnershipReleasedBeforeExit || held.RefusalOriginalScopeJoined || held.RootExit != -1 {
 		t.Fatal("invalid actual original held lifetime", held)
 	}
 	var secondOutput sourceRefusalBusOutput
-	second := command("native-held-both", "second")
+	second := command("native-held-both", "second", root)
 	second.Stdout, second.Stderr = &secondOutput, &secondOutput
 	if err := second.Run(); err != nil {
 		t.Fatal("actual second helper exclusion", err, secondOutput.String())
 	}
-	decode := func(raw string) sourceCutObservation {
+	decode := func(raw string, processes int) sourceCutObservation {
 		t.Helper()
 		var result sourceCutObservation
 		found := 0
@@ -136,12 +137,13 @@ func TestSourceRecoveryConcurrentNative(t *testing.T) {
 				found++
 			}
 		}
-		if found != 1 || !result.RefusalAdmissionObserved || !result.RefusalOwnershipReleasedBeforeExit || result.RefusalStoppedThreads < 2 || result.RootExit != 0 || result.ThreadsJoined < result.RefusalStoppedThreads || result.Processes != 1 || result.InstalledExecution {
+		if found != 1 || !result.RefusalAdmissionObserved || !result.RefusalOwnershipReleasedBeforeExit || !result.RefusalOriginalScopeJoined || result.RefusalStoppedThreads < 2 || result.RootExit != 0 || result.ThreadsJoined < result.RefusalStoppedThreads || result.ThreadsJoined < result.Processes ||
+			(processes == 1 && result.Processes != 1 || processes > 1 && result.Processes < processes) || result.InstalledExecution {
 			t.Fatal("actual native before-return result incomplete", found, result, raw)
 		}
 		return result
 	}
-	other := decode(secondOutput.String())
+	other := decode(secondOutput.String(), 4)
 	if other.RootPID == held.RootPID || other.RecoveryHeldBeforeRecord {
 		t.Fatal("second caller borrowed original lifetime", held, other)
 	}
@@ -167,7 +169,24 @@ func TestSourceRecoveryConcurrentNative(t *testing.T) {
 	if err != nil || readErr != nil {
 		t.Fatal("actual cancelled caller/helper join", err, readErr, captured.String())
 	}
-	completed := decode(captured.String())
+	completed := decode(captured.String(), 4)
+	joinedOutput, err := os.ReadFile(root + "-first.log")
+	if err != nil {
+		t.Fatal("original helper join report", err)
+	}
+	joinedChildren := make(map[int]bool)
+	for _, line := range strings.Split(string(joinedOutput), "\n") {
+		if strings.HasPrefix(line, "SOURCE_RECOVERY_NATIVE_JOINED_CHILD ") {
+			var pid int
+			if n, err := fmt.Sscanf(line, "SOURCE_RECOVERY_NATIVE_JOINED_CHILD pid=%d", &pid); err != nil || n != 1 || pid <= 0 || joinedChildren[pid] {
+				t.Fatal("three distinct actual joined helper processes required", line, err)
+			}
+			joinedChildren[pid] = true
+		}
+	}
+	if len(joinedChildren) != 3 {
+		t.Fatal("original helpers did not all reach actual Wait", string(joinedOutput))
+	}
 	if completed.RootPID != held.RootPID || !completed.RecoveryHeldBeforeRecord || !completed.RecoveryHeldImagePreserved || !completed.ExternalCancellationAcknowledged || completed.SignalledRootThread == 0 || completed.SignalledRootThread == completed.HeldRootThread {
 		t.Fatal("actual recovery cancellation or original custody incomplete", held, completed)
 	}
@@ -205,6 +224,17 @@ func TestSourceRecoveryConcurrentNative(t *testing.T) {
 		t.Fatal("later refused owner changed partial completion", err)
 	}
 	t.Logf("actual sibling roots first=%d second=%d; first cancellation joined, both before-return proofs, partial envelope retained", held.RootPID, other.RootPID)
+
+	// The same record entry with an actually live descendant must still refuse.
+	// EOF alone cannot satisfy this negative: require the precise scope guard.
+	live := command("native-recovery-hold", "live", root+"-live")
+	live.Env = append(live.Env, "ARDENTS_SOURCE_RECOVERY_NATIVE_LIVE_CHILD=1")
+	var liveOutput sourceRefusalBusOutput
+	live.Stdout, live.Stderr = &liveOutput, &liveOutput
+	if err := live.Run(); err == nil || !strings.Contains(liveOutput.String(), "recovery hold has foreign or repeated lifetime") || strings.Contains(liveOutput.String(), "SOURCE_RECOVERY_HOLD_READY ") {
+		t.Fatal("actual live descendant escaped recovery hold refusal", err, liveOutput.String())
+	}
+	t.Logf("actual live-descendant refusal:\n%s", liveOutput.String())
 }
 
 func TestSourceRecoveryUnexpectedNoticeNative(t *testing.T) {
@@ -249,7 +279,7 @@ func TestSourceRecoveryUnexpectedNoticeNative(t *testing.T) {
 			found++
 		}
 	}
-	if found != 1 || !observed.RefusalAdmissionObserved || !observed.RecoveryHeldBeforeRecord || observed.ExternalCancellationAcknowledged || observed.RefusalOwnershipReleasedBeforeExit || observed.SignalledRootThread != 0 || observed.RecoveryCancellationElapsedNS != 0 || observed.Processes != 1 || observed.ThreadsJoined < 2 {
+	if found != 1 || !observed.RefusalAdmissionObserved || !observed.RecoveryHeldBeforeRecord || !observed.RecoveryRootOnlyAtHold || observed.ExternalCancellationAcknowledged || observed.RefusalOwnershipReleasedBeforeExit || observed.RefusalOriginalScopeJoined || observed.SignalledRootThread != 0 || observed.RecoveryCancellationElapsedNS != 0 || observed.Processes < 4 || observed.ThreadsJoined < observed.Processes {
 		t.Fatal("early notice claimed a signal, accepted cleanup, or lost native joins", observed)
 	}
 }

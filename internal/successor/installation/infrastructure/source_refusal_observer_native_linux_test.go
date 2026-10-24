@@ -391,6 +391,9 @@ func TestSourceRefusalNativeDriver(t *testing.T) {
 	if !sourcePath(root) || os.Geteuid() != 0 || os.Getenv("GOGC") != "off" || os.Getenv("GOMEMLIMIT") != "off" {
 		t.Fatal("original no-GC native refusal driver required")
 	}
+	if scenario == "refusal-held-both" {
+		joinSourceRecoveryNativeHelpers(t)
+	}
 	held := scenario == "refusal-held" || scenario == "refusal-held-release" || scenario == "refusal-held-both" || scenario == "refusal-held-unattempted"
 	missingCut := sourceMissingCutNativeCase(scenario)
 	startupPending := sourceStartupPendingNativeCase(scenario) || sourceRetirementPendingNativeCase(scenario)
@@ -487,8 +490,13 @@ func TestSourceRefusalNativeDriver(t *testing.T) {
 		t.Fatal(err)
 	}
 	if scenario == "refusal-held-unattempted" {
-		// The outside lease is real, but this caller never attempts flock.
-		// Merely returning with clean descriptors must not prove exclusion.
+		// Only a separately joined child attempts the actual original flock.
+		// Its real EWOULDBLOCK cannot prove exclusion for this root caller.
+		child := exec.Command(os.Args[0], "-test.run=^TestSourceRefusalChildExclusionNative$", "-test.v")
+		child.Env = append(os.Environ(), "ARDENTS_SOURCE_REFUSAL_CHILD_LEASE="+filepath.Join(root, lease))
+		if raw, err := child.CombinedOutput(); err != nil || !bytes.Contains(raw, []byte("native-child-exclusion-observed")) {
+			t.Fatal("actual separately joined child exclusion", err, string(raw))
+		}
 		if err := f.Close(); err != nil {
 			t.Fatal(err)
 		}
@@ -543,6 +551,25 @@ func TestSourceRefusalNativeDriver(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+}
+
+func TestSourceRefusalChildExclusionNative(t *testing.T) {
+	path := os.Getenv("ARDENTS_SOURCE_REFUSAL_CHILD_LEASE")
+	if path == "" {
+		return // Private child of the selected file/process refusal fixture only.
+	}
+	if os.Geteuid() != 0 || !sourcePath(path) {
+		t.Fatal("original native child lease fixture required")
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	locked := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+	if closed := f.Close(); !errors.Is(locked, syscall.EWOULDBLOCK) || closed != nil {
+		t.Fatal("actual child exclusion and descriptor Close required", locked, closed)
+	}
+	fmt.Println("native-child-exclusion-observed")
 }
 
 func TestSourceRefusalLeaseProbeNative(t *testing.T) {

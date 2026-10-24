@@ -77,11 +77,13 @@ type sourceCutObservation struct {
 	CloneNotificationsAfterChildStop   int                     `json:"clone_notifications_after_child_stop,omitempty"`
 	RecoveryHoldEntry                  uint64                  `json:"recovery_hold_entry,omitempty"`
 	RecoveryHeldBeforeRecord           bool                    `json:"recovery_held_before_record,omitempty"`
+	RecoveryRootOnlyAtHold             bool                    `json:"recovery_root_only_at_hold,omitempty"`
 	RecoveryHeldImagePreserved         bool                    `json:"recovery_held_image_preserved,omitempty"`
 	RecoveryCancellationElapsedNS      int64                   `json:"recovery_cancellation_elapsed_ns,omitempty"`
 	RefusalAdmissionEntry              uint64                  `json:"refusal_admission_entry,omitempty"`
 	RefusalAdmissionObserved           bool                    `json:"refusal_admission_observed,omitempty"`
 	RefusalOwnershipReleasedBeforeExit bool                    `json:"refusal_ownership_released_before_exit,omitempty"`
+	RefusalOriginalScopeJoined         bool                    `json:"refusal_original_scope_joined,omitempty"`
 	RefusalStoppedThreads              int                     `json:"refusal_stopped_threads,omitempty"`
 	PhysicalWindow                     string                  `json:"physical_window,omitempty"`
 	PhysicalPreimageObserved           bool                    `json:"physical_preimage_observed,omitempty"`
@@ -369,6 +371,21 @@ func sourceCutThreadGroup(pid int) (int, error) {
 	return 0, errors.New("native Tgid missing")
 }
 
+// tracked retains every original child until its actual terminal Wait4. A
+// historical process count cannot distinguish a joined helper from a live one.
+// Unknown initial stops and missing group identities remain unjoined here.
+func sourceRefusalOriginalRootThreads(pid int, tracked map[int]bool, groups map[int]int) bool {
+	if fresh, exists := tracked[pid]; !exists || fresh || len(groups) != len(tracked) {
+		return false
+	}
+	for tid, fresh := range tracked {
+		if fresh || groups[tid] != pid {
+			return false
+		}
+	}
+	return true
+}
+
 func observeSourceCut(program, root, output, nativeCase string, profile *sourceCutObserverProfile, inspectOnly bool, nativeRecords int, physical *sourcePhysicalCut) (result sourceCutObservation, returned error) {
 	return observeSourceProcess(program, root, output, nativeCase, profile, inspectOnly, nativeRecords, physical, nil)
 }
@@ -412,12 +429,6 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	}
 	if missingCut != nil && (exclusion != nil || recoveryHold != nil) {
 		return result, errors.New("missing-cut observation cannot borrow another refusal purpose")
-	}
-	resume := func(tid, signal int) error {
-		if (exclusion != nil || missingCut != nil || startupPending != nil || earlyPrefix != nil) && result.RefusalAdmissionObserved && !result.RefusalOwnershipReleasedBeforeExit {
-			return syscall.PtraceSyscall(tid, signal)
-		}
-		return syscall.PtraceCont(tid, signal)
 	}
 	canonicalPhysical := physical != nil && physical.canonical != nil
 	canonicalRecovery := physical != nil && physical.recovery != nil
@@ -720,6 +731,14 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	observedThreads := map[int]bool{pid: true}
 	groups := map[int]int{pid: pid}
 	processes := map[int]bool{pid: true}
+	resume := func(tid, signal int) error {
+		// Helpers retain birth/exec/exit tracing and terminal Wait4 ownership.
+		// Their syscalls cannot supply the original caller's refusal cause.
+		if groups[tid] == pid && (exclusion != nil || missingCut != nil || startupPending != nil || earlyPrefix != nil) && result.RefusalAdmissionObserved && !result.RefusalOwnershipReleasedBeforeExit {
+			return syscall.PtraceSyscall(tid, signal)
+		}
+		return syscall.PtraceCont(tid, signal)
+	}
 	physicalSelected := false
 	var physicalImage *sourcePhysicalImage
 	failed := false
@@ -963,7 +982,9 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 				}
 				return nil
 			}
-			if e := verifySourceRefusalStoppedThreads(pid, tracked, returnStops); e != nil {
+			if !sourceRefusalOriginalRootThreads(pid, tracked, groups) {
+				fail(errors.New("refusal retained an unresolved original descendant before observation"))
+			} else if e := verifySourceRefusalStoppedThreads(pid, tracked, returnStops); e != nil {
 				fail(e)
 			} else if same, e := sourcePhysicalSameProgram(pid, info); e != nil || !same {
 				fail(errors.Join(errors.New("original refusal program changed before return"), e))
@@ -1281,7 +1302,9 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 				}
 				if returnProbe && (registers.Rip == result.Entry || registers.Rip == result.RefusalAdmissionEntry) && !failed {
 					admission := registers.Rip == result.RefusalAdmissionEntry
-					if groups[tid] != pid || returnHeld != 0 || result.RefusalOwnershipReleasedBeforeExit || len(processes) != 1 || admission == result.RefusalAdmissionObserved {
+					if groups[tid] != pid || returnHeld != 0 || result.RefusalOwnershipReleasedBeforeExit ||
+						(admission && len(processes) != 1) ||
+						admission == result.RefusalAdmissionObserved {
 						fail(errors.New("refusal return entry has foreign or repeated lifetime"))
 					} else {
 						returnHeld, returnStops[tid] = tid, true
@@ -1300,7 +1323,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 					if e != nil {
 						fail(e)
 					} else if matched {
-						if !result.RefusalAdmissionObserved || groups[tid] != pid || recoveryHold.tid != 0 || result.RecoveryHeldBeforeRecord || len(processes) != 1 {
+						if !result.RefusalAdmissionObserved || groups[tid] != pid || recoveryHold.tid != 0 || result.RecoveryHeldBeforeRecord || !sourceRefusalOriginalRootThreads(pid, tracked, groups) {
 							fail(errors.New("recovery hold has foreign or repeated lifetime"))
 						} else if e := recoveryHold.freeze(tid, &result); e != nil {
 							fail(e)
@@ -1488,7 +1511,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 		if refusal != nil {
 			wantedExit = 2
 		}
-		if failed || !result.RefusalAdmissionObserved || !result.RefusalOwnershipReleasedBeforeExit || result.RefusalStoppedThreads < 2 || returnHeld != 0 || result.RootExit != wantedExit || len(processes) != 1 {
+		if failed || !result.RefusalAdmissionObserved || !result.RefusalOwnershipReleasedBeforeExit || result.RefusalStoppedThreads < 2 || returnHeld != 0 || result.RootExit != wantedExit || len(processes) > result.ThreadsJoined {
 			return result, errors.Join(returned, fmt.Errorf("actual refusal before-return observation incomplete: return-held=%d stopped=%v", returnHeld, returnStops))
 		}
 		if recoveryHold != nil {
@@ -1500,6 +1523,9 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 			}
 			result.RecoveryHeldImagePreserved = true
 		}
+		// The loop ended only after a real terminal wait for every tracked user;
+		// the earlier stopped return snapshot independently proved root-only FDs.
+		result.RefusalOriginalScopeJoined = true
 		return result, nil
 	}
 	if physical != nil {
