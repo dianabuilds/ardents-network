@@ -137,7 +137,14 @@ func (s *sourceInitial) readReplacementTranscript(link sourceReplacementLink) er
 	}
 	// Complete-looking bytes cannot bypass the still-live writer's original
 	// lease. A shared read lock stays held until this reader physically closes.
-	if s.transition != nil && s.transition.journal != nil && s.transition.journal.path == journal {
+	if s.transition != nil && s.transition.recovery != nil && s.transition.recovery.prefix.journal.path == journal {
+		if !os.SameFile(s.transition.recovery.prefix.journal.info, current.files[journal].info) || !s.transition.recovery.finished {
+			return ErrBinding
+		}
+		if err := s.transition.check(); err != nil {
+			return err
+		}
+	} else if s.transition != nil && s.transition.journal != nil && s.transition.journal.path == journal {
 		if !os.SameFile(s.transition.journal.info, current.files[journal].info) {
 			return ErrBinding
 		}
@@ -158,6 +165,14 @@ func (s *sourceInitial) readReplacementTranscript(link sourceReplacementLink) er
 	selected, unit := filepath.Join(b.Request.InstallationRoot, "binding.json"), "/etc/systemd/system/ardents-source.service"
 	hashes[selected], hashes[unit] = digest(current.bindingBytes()), b.UnitSHA256
 	recorded, err := decodeSourceReplacementRecords(raw, link.provenance, hashes, admitted, previous.binding.UnitSHA256)
+	_, completionErr := os.Lstat(journal + ".recovery-completion")
+	if err != nil || !errors.Is(completionErr, os.ErrNotExist) {
+		transcript, e := s.readReplacementCompletion(current, journal)
+		if e != nil {
+			return e
+		}
+		recorded, err = decodeSourceReplacementRecords(transcript, link.provenance, hashes, admitted, previous.binding.UnitSHA256)
+	}
 	if err != nil {
 		return err
 	}
@@ -200,14 +215,25 @@ func (s *sourceInitial) checkReplacementJournals() error {
 			}
 		}
 		if original == nil {
-			return errors.Join(ErrSourceRepairRequired, err)
-		}
-		if err := original.check(); err != nil {
-			return err
+			if s.recovery == nil {
+				return errors.Join(ErrSourceRepairRequired, err)
+			}
+			if err := s.checkRecoveryPredecessorPending(); err != nil {
+				return err
+			}
+		} else {
+			if err := original.check(); err != nil {
+				return err
+			}
 		}
 	}
 	if s.transition != nil {
 		if err := s.transition.check(); err != nil {
+			return err
+		}
+	}
+	if s.recovery != nil {
+		if err := s.checkRecoveryPredecessorPending(); err != nil {
 			return err
 		}
 	}
@@ -230,6 +256,9 @@ func (s *sourceInitial) checkReplacementJournals() error {
 		}
 		path := filepath.Join(filepath.Dir(root), name)
 		known := s.replacementJournals[path]
+		if s.recovery != nil && s.knownRecoveryPredecessorPath(path) {
+			known = true
+		}
 		if s.transition != nil && s.transition.journal != nil && s.transition.journal.path == path {
 			known = true
 		}

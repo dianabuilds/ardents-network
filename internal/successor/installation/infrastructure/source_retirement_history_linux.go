@@ -26,17 +26,25 @@ type sourceRetirement struct {
 }
 
 func openSourceHistoryChain(ctx context.Context, v *release.Verifier, binding, history string) (result *sourceHistoryChain, err error) {
-	chain := &sourceHistoryChain{}
+	initial, err := openSourceInitial(ctx, v, binding, history)
+	if err != nil {
+		return nil, err
+	}
+	return readSourceHistoryChain(initial)
+}
+
+// Takes ownership of this newly opened initial reader, including on failure.
+// The recovery predecessor constructor supplies its own independently pinned
+// reader; no old transaction, lease or successful retirement is injected.
+func readSourceHistoryChain(initial *sourceInitial) (result *sourceHistoryChain, err error) {
+	chain := &sourceHistoryChain{initial: initial}
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, chain.close())
 			result = nil
 		}
 	}()
-	chain.initial, err = openSourceInitial(ctx, v, binding, history)
-	if err != nil {
-		return nil, err
-	}
+	v := initial.verifier
 	s := chain.initial.selection
 	root := s.binding.Request.InstallationRoot
 	// The original first journal remains immutable and supplies the one shared
@@ -87,6 +95,10 @@ func openSourceRetirement(ctx context.Context, v *release.Verifier, binding, his
 	if err != nil {
 		return nil, err
 	}
+	return readSourceRetirementChain(chain)
+}
+
+func readSourceRetirementChain(chain *sourceHistoryChain) (retired *sourceRetirement, err error) {
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, chain.close())

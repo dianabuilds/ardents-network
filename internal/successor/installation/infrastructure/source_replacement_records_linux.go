@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"path/filepath"
 	"slices"
 )
@@ -29,10 +30,22 @@ func decodeSourceReplacementRecords(raw []byte, replacement sourceReplacementBin
 			return nil, ErrBinding
 		}
 	}
+	owned, err := walkSourceReplacementRecords(records, replacement, hashes, admitted, previousUnit)
+	if err == errSourceReplacementPrefixBoundary {
+		return nil, ErrBinding
+	}
+	return owned, err
+}
+
+var errSourceReplacementPrefixBoundary = errors.New("source replacement record boundary")
+
+// This walker gives a bounded prefix its semantic ordering without returning
+// partial ownership or widening the ordinary exact55 reader above.
+func walkSourceReplacementRecords(records []sourceRecord, replacement sourceReplacementBinding, hashes map[string]string, admitted, previousUnit string) (map[string]sourceRecord, error) {
 	position := 0
 	next := func(wanted sourceRecord, native bool) (sourceRecord, error) {
 		if position >= len(records) {
-			return sourceRecord{}, ErrBinding
+			return sourceRecord{}, errSourceReplacementPrefixBoundary
 		}
 		actual := records[position]
 		wanted.Sequence = position
@@ -149,7 +162,10 @@ func decodeSourceReplacementRecords(raw []byte, replacement sourceReplacementBin
 	if _, err = next(sourceRecord{Phase: "reload-intent", Path: unit, SHA256: hashes[unit], Mode: 0644}, false); err != nil {
 		return nil, err
 	}
-	if _, err = next(sourceRecord{Phase: "replacement-verified", Path: selected, SHA256: hashes[selected], Mode: 0644}, false); err != nil || position != len(records) {
+	if _, err = next(sourceRecord{Phase: "replacement-verified", Path: selected, SHA256: hashes[selected], Mode: 0644}, false); err != nil {
+		return nil, err
+	}
+	if position != len(records) {
 		return nil, ErrBinding
 	}
 	// The original retirement file remains pinned and must match this record;

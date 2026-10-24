@@ -17,7 +17,8 @@ var ErrSourceRepairRequired = errors.New("source installation: retained initial 
 // InstallInitialStoppedSource directly consumes original private initial
 // provenance, fresh coherent Release proofs, and retained Source inputs. All
 // acquired native users are joined before return, including on partial failure.
-// This operation never starts Source, opens State, or returns runtime authority.
+// It consumes input custody before final stopped-selection publication. This
+// operation never starts Source, opens State, or returns runtime authority.
 func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input SourceInputs, distribution, history string) (err error) {
 	started := false
 	defer func() {
@@ -32,13 +33,24 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	if err = p.begin(); err != nil {
 		return err
 	}
-	defer p.uses.Done()
+	ctx := p.ctx
+	var births *sourceBirths
+	var pending *sourceBirth
+	var pendingParent os.FileInfo
+	stoppedSelected := false
+	defer func() {
+		p.uses.Done()
+		err = errors.Join(err, input.Close())
+		if err == nil && stoppedSelected {
+			if err = a.Check(ctx, v); err == nil {
+				err = publishSourceInitialPending(ctx, births, pending, pendingParent)
+			}
+		}
+	}()
 	// Return the initial writer lease only after all later native observers and
 	// helpers have physically joined. A future independent first-start reader
 	// must not overlap an initial creator still releasing its original users.
-	var births *sourceBirths
 	defer func() { err = errors.Join(err, births.close()) }()
-	ctx := p.ctx
 	if _, ok := a.InitialFacts(); !ok {
 		return ErrAuthorization
 	}
@@ -84,9 +96,12 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 		return err
 	}
 	journalPath := r.InstallationRoot + ".source-initial-journal"
+	pendingPath := sourceInitialPendingPath(r.InstallationRoot)
 	for _, path := range append(r.paths(), distribution, history, p.requestPath) {
-		if contains(path, journalPath) || contains(journalPath, path) {
-			return ErrBinding
+		for _, retained := range []string{journalPath, pendingPath} {
+			if contains(path, retained) || contains(retained, path) {
+				return ErrBinding
+			}
 		}
 	}
 	account, err := prepareSourceAccount(ctx, input)
@@ -121,7 +136,7 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	if err != nil {
 		return err
 	}
-	allowed := map[string]bool{}
+	allowed := map[string]bool{pendingPath: true}
 	for _, path := range []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.CredentialDirectory, base, dir, filepath.Join(r.InstallationRoot, "binding.json"), "/etc/systemd/system/ardents-source.service"} {
 		allowed[path] = true
 	}
@@ -140,10 +155,38 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	if _, e := os.Lstat(journalPath); !os.IsNotExist(e) {
 		return errors.Join(ErrSourceRepairRequired, e)
 	}
-	births, err = openSourceBirths(ctx, journalPath, allowed)
+	if _, e := os.Lstat(pendingPath); !os.IsNotExist(e) {
+		return errors.Join(ErrSourceRepairRequired, e)
+	}
+	pendingParent, err = os.Lstat(filepath.Dir(pendingPath))
+	if err != nil || !trustedDirectory(pendingParent) {
+		return errors.Join(ErrBinding, err)
+	}
+	managerIdentity, err := manager.ManagerIdentity()
+	if err != nil {
+		return err
+	}
+	births, err = openSourceRecoverableInitialBirths(ctx, journalPath, allowed)
 	started = births != nil && births.journal != nil
 	if err != nil {
 		return err
+	}
+	if err = births.bindTransition(generation, digest(binding), "initial", managerIdentity); err != nil {
+		return err
+	}
+	guardAdmission := func() error {
+		return errors.Join(input.Check(), originalHistory.check(v), a.Check(ctx, v), births.check())
+	}
+	if err = births.write(pendingPath, sourceInitialPending(digest(binding)), 0600, 0, 0, guardAdmission); err != nil {
+		return err
+	}
+	for _, original := range births.files {
+		if original.path == pendingPath {
+			pending = original
+		}
+	}
+	if pending == nil {
+		return ErrBinding
 	}
 	if err = births.record("admitted", r.InstallationRoot, nil, historyCommitment, 0, account.uid, account.gid); err != nil {
 		return err
@@ -341,7 +384,7 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	if err = births.record("stopped-verified", filepath.Join(r.InstallationRoot, "binding.json"), nil, digest(binding), 0644, 0, 0); err != nil {
 		return err
 	}
-	initial, err := openSourceInitial(ctx, v, filepath.Join(r.InstallationRoot, "binding.json"), history)
+	initial, err := openSourceInitialTransition(ctx, v, filepath.Join(r.InstallationRoot, "binding.json"), history, births)
 	defer func() { err = errors.Join(err, initial.close()) }()
 	if err != nil {
 		return err
@@ -352,7 +395,11 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	if err = initial.check(); err != nil {
 		return err
 	}
-	return check()
+	if err = check(); err != nil {
+		return err
+	}
+	stoppedSelected = true
+	return nil
 }
 
 func checkSourceInventory(dir string, names []string) error {

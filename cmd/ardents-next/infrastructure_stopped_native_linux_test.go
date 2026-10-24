@@ -491,9 +491,14 @@ func TestSourceStoppedNativeCompiledInitialAndRetainedRefusal(t *testing.T) {
 		SHA256      string `json:"sha256"`
 	}
 	lines := bytes.Split(before, []byte("\n"))
-	if len(lines) < 3 || json.Unmarshal(lines[1], &admitted) != nil || admitted.Phase != "admitted" ||
+	var first struct{ Phase string }
+	if len(lines) != 116 || json.Unmarshal(lines[0], &first) != nil || first.Phase != "initial-recoverable" ||
+		json.Unmarshal(lines[4], &admitted) != nil || admitted.Phase != "admitted" ||
 		admitted.Path != r.InstallationRoot || admitted.SHA256 != fmt.Sprintf("%x", sha256.Sum256([]byte(commitmentBytes))) {
 		t.Fatal("compiled initial admission did not bind its exact original history and selection")
+	}
+	if _, e := os.Lstat(r.InstallationRoot + ".source-initial-pending"); !os.IsNotExist(e) {
+		t.Fatal("complete initial producer retained an unpublished pending guard", e)
 	}
 	if retryOut, e := exec.CommandContext(t.Context(), program, args...).CombinedOutput(); e == nil {
 		t.Fatal("retained floors/resources adopted", string(retryOut))
@@ -510,7 +515,8 @@ func TestSourceStoppedNativeCompiledInitialAndRetainedRefusal(t *testing.T) {
 	readback, e := json.Marshal(struct {
 		Binding string `json:"binding"`
 		History string `json:"history"`
-	}{filepath.Join(r.InstallationRoot, "binding.json"), history})
+		Format  string `json:"initial_journal_format"`
+	}{filepath.Join(r.InstallationRoot, "binding.json"), history, "recoverable115"})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -540,7 +546,7 @@ func assertSourceStoppedPrefix(t *testing.T, raw []byte, last string) {
 			t.Fatal("unrecognized prefix: repair-required")
 		}
 		switch r.Phase {
-		case "initial", "admitted", "account-preimage", "account-auxiliary-preimage", "account-intent", "account-born", "account-auxiliary-result", "account-auxiliary-cleared", "account-ready", "directory-intent", "directory-born", "directory-ready", "file-intent", "file-born", "file-ready", "seal-intent", "sealed", "selected", "reload-intent", "stopped-verified":
+		case "initial", "initial-recoverable", "admitted", "account-preimage", "account-auxiliary-preimage", "account-intent", "account-born", "account-auxiliary-result", "account-auxiliary-cleared", "account-ready", "directory-intent", "directory-born", "directory-ready", "file-intent", "file-born", "file-ready", "seal-intent", "sealed", "selected", "reload-intent", "stopped-verified":
 		default:
 			t.Fatal("unknown phase: repair-required", r.Phase)
 		}

@@ -30,13 +30,24 @@ func decodeSourceInitialRecords(raw []byte, b sourceBinding, hashes map[string]s
 			return nil, ErrBinding
 		}
 	}
+	owned, err := walkSourceInitialRecords(records, b, hashes, admitted)
+	if err == errSourceInitialPrefixBoundary {
+		return nil, ErrBinding
+	}
+	return owned, err
+}
+
+// The ordinary reader above remains exact112 complete-only. Recovery uses the
+// same ordered semantic walk on a separately framed prefix, never its returned
+// inventory or a partial-transcript exception in the ordinary reader.
+func walkSourceInitialRecords(records []sourceRecord, b sourceBinding, hashes map[string]string, admitted string) (map[string]sourceRecord, error) {
 	position := 0
 	// Physical identities are supplied only by a canonical born record, must
 	// survive each matching ready/seal record, and are checked against retained
 	// native resources by the independent reader. Detached numbers grant none.
 	next := func(wanted sourceRecord, native bool) (sourceRecord, error) {
 		if position >= len(records) {
-			return sourceRecord{}, ErrBinding
+			return sourceRecord{}, errSourceInitialPrefixBoundary
 		}
 		actual := records[position]
 		wanted.Sequence = position
@@ -63,7 +74,7 @@ func decodeSourceInitialRecords(raw []byte, b sourceBinding, hashes map[string]s
 	}
 	protected := func(phase, path string, optional bool) (sourceRecord, error) {
 		if position >= len(records) {
-			return sourceRecord{}, ErrBinding
+			return sourceRecord{}, errSourceInitialPrefixBoundary
 		}
 		r := records[position]
 		if optional && r.Device == 0 && r.Inode == 0 {
@@ -206,7 +217,10 @@ func decodeSourceInitialRecords(raw []byte, b sourceBinding, hashes map[string]s
 	if _, err = next(sourceRecord{Phase: "reload-intent", Path: unit, SHA256: hashes[unit], Mode: 0644}, false); err != nil {
 		return nil, err
 	}
-	if _, err = next(sourceRecord{Phase: "stopped-verified", Path: binding, SHA256: hashes[binding], Mode: 0644}, false); err != nil || position != len(records) {
+	if _, err = next(sourceRecord{Phase: "stopped-verified", Path: binding, SHA256: hashes[binding], Mode: 0644}, false); err != nil {
+		return nil, err
+	}
+	if position != len(records) {
 		return nil, ErrBinding
 	}
 	return owned, nil

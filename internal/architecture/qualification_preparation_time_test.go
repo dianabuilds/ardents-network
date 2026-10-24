@@ -1,6 +1,7 @@
 package architecture
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -119,13 +120,27 @@ func TestQualificationClockObserverStaysCurrentWhenDurableSyncIsSlow(t *testing.
 	command := exec.Command(python,
 		filepath.Join(root, "tests", "qualification", "stream-network-two-host", "clock_observer.py"), observation)
 	command.Env = append(os.Environ(), "PYTHONPATH="+injection)
+	var output bytes.Buffer
+	command.Stdout, command.Stderr = &output, &output
+	started := time.Now()
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
 	}
+	joined := false
 	t.Cleanup(func() {
-		_ = command.Process.Kill()
-		_ = command.Wait()
+		if !joined {
+			_ = command.Process.Kill()
+			_ = command.Wait()
+		}
 	})
+	fail := func(message string) {
+		// Wait joins the actual child and both output readers before reading
+		// the buffer. Preserve diagnostics without relaxing either deadline.
+		killed := command.Process.Kill()
+		waited := command.Wait()
+		joined = true
+		t.Fatalf("%s (elapsed %s; interrupt %v; wait %v):\n%s", message, time.Since(started), killed, waited, output.String())
+	}
 
 	var first time.Time
 	firstDeadline := time.Now().Add(5 * time.Second)
@@ -137,7 +152,7 @@ func TestQualificationClockObserverStaysCurrentWhenDurableSyncIsSlow(t *testing.
 		time.Sleep(50 * time.Millisecond)
 	}
 	if first.IsZero() {
-		t.Fatal("clock observer published no initial observation")
+		fail("clock observer published no initial observation")
 	}
 	advanceDeadline := time.Now().Add(2500 * time.Millisecond)
 	for time.Now().Before(advanceDeadline) {
@@ -146,5 +161,5 @@ func TestQualificationClockObserverStaysCurrentWhenDurableSyncIsSlow(t *testing.
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	t.Fatal("clock observation did not remain inside the two-second confidence bound while durable sync was slow")
+	fail("clock observation did not remain inside the two-second confidence bound while durable sync was slow")
 }

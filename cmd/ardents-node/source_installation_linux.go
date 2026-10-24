@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"os"
@@ -18,22 +20,45 @@ import (
 
 func runSourceInstallation(parent context.Context, args []string, out io.Writer) error {
 	if parent == nil || len(args) == 0 {
-		return errors.New("usage: ardents-node installation (install-initial-stopped|start-source|stop-source|restart-source|replace-source) [ARGUMENTS]")
+		return errors.New("usage: ardents-node installation (install-initial-stopped|start-source|stop-source|restart-source|replace-source|recover-source) [ARGUMENTS]")
 	}
 	initial := args[0] == "install-initial-stopped"
 	stopping := args[0] == "stop-source"
 	starting := args[0] == "start-source" || args[0] == "restart-source"
 	replacing := args[0] == "replace-source"
-	if (initial && len(args) != 7) || (stopping && len(args) != 3) || (starting && len(args) != 6) || (replacing && len(args) != 7) || (!initial && !stopping && !starting && !replacing) {
-		return errors.New("usage: ardents-node installation install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST | (start-source|restart-source) DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING | stop-source HISTORY BINDING | replace-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST")
+	recovering := args[0] == "recover-source"
+	if (initial && len(args) != 7) || (stopping && len(args) != 3) || (starting && len(args) != 6) || (replacing && len(args) != 7) || (recovering && len(args) != 7) || (!initial && !stopping && !starting && !replacing && !recovering) {
+		return errors.New("usage: ardents-node installation install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST | (start-source|restart-source) DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING | stop-source HISTORY BINDING | replace-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST | recover-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK REQUEST JOURNAL")
 	}
 	if os.Geteuid() != 0 {
 		return &sourceCommandFailure{infrastructure.ErrInput}
 	}
+	operation := ""
+	if initial {
+		operation = "initial"
+	} else if replacing {
+		operation = "replacement"
+	}
+	coordinator, managed, err := infrastructure.OpenSourceTransitionCoordinator(operation)
+	if err != nil {
+		return &sourceCommandFailure{err}
+	}
+	if managed {
+		result := performSourceInstallation(coordinator.Context(), args, initial)
+		if err := errors.Join(result, coordinator.Close()); err != nil {
+			return &sourceCommandFailure{err}
+		}
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
 	defer cancel()
 	return waitSourceCommand(ctx, out, "installation.source", func() error {
-		err := performSourceInstallation(ctx, args, initial)
+		var err error
+		if initial || replacing {
+			err = infrastructure.RunSourceTransition(ctx, args)
+		} else {
+			err = performSourceInstallation(ctx, args, initial)
+		}
 		if err != nil {
 			return &sourceCommandFailure{err}
 		}
@@ -46,6 +71,8 @@ func runSourceInstallation(parent context.Context, args []string, out io.Writer)
 			outcome = "source-restart-completed"
 		} else if replacing {
 			outcome = "source-replacement-stopped-selected"
+		} else if recovering {
+			outcome = "source-recovery-stopped-selected"
 		}
 		if err := writeSourceCommandOutcome(ctx, out, "installation.source", outcome); err != nil {
 			return &sourceCommandFailure{err}
@@ -58,6 +85,7 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 	var inputs infrastructure.SourceInputs
 	var inspection state.SourceInspection
 	replacing := args[0] == "replace-source"
+	recovering := args[0] == "recover-source"
 	var verifier *release.Verifier
 	defer func() {
 		err = errors.Join(err, inspection.Close())
@@ -82,8 +110,12 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 	if !sourceInstallationIndependent(distribution, history) {
 		return infrastructure.ErrBinding
 	}
-	if initial || replacing {
-		inputs, err = infrastructure.ReadSourceInputs(ctx, args[6])
+	if initial || replacing || recovering {
+		request := args[6]
+		if recovering {
+			request = args[5]
+		}
+		inputs, err = infrastructure.ReadSourceInputs(ctx, request)
 		if err != nil {
 			return err
 		}
@@ -134,7 +166,9 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 	if initial {
 		return infrastructure.InstallInitialStoppedSource(verifier, authorization, inputs, distribution, history)
 	}
-	if replacing {
+	generation := sha256.Sum256(authorization.Descriptor())
+	recoveringReplacement := recovering && args[6] == inputs.Declaration().InstallationRoot+".source-replacement-"+hex.EncodeToString(generation[:])+"-journal"
+	if replacing || recoveringReplacement {
 		raw, err := inputs.ServingPlan()
 		if err != nil {
 			return err
@@ -151,7 +185,12 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 		if err != nil {
 			return err
 		}
-		return infrastructure.ReplaceSource(ctx, verifier, authorization, inputs, inspection, args[5], distribution, history)
+		if replacing {
+			return infrastructure.ReplaceSource(ctx, verifier, authorization, inputs, inspection, args[5], distribution, history)
+		}
+	}
+	if recovering {
+		return infrastructure.RecoverSource(ctx, verifier, authorization, inputs, inspection, args[6], distribution, history)
 	}
 	if args[0] == "restart-source" {
 		return infrastructure.RestartSource(ctx, verifier, authorization, args[5], history)

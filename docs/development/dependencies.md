@@ -790,6 +790,15 @@ selects no fix, new probe, fork or gate waiver.
 The separately reviewed OTel, Release, test-only PTY and development tool
 closures are enumerated at their owners below/above.
 
+**Linux Source transition controller:** only Installation Infrastructure's
+`source_transition_scope_linux.go` uses the already selected
+`golang.org/x/sys v0.48.0/unix` for integer-only subreaper setup, from-birth
+pidfd signalling, non-reaping stop observations and polling. No first-party
+unsafe, cgo, primitive or dependency/version change is introduced. The dedicated
+canonical process has no other children and retains the launching thread until
+its original coordinator and adopted descendants have physically joined.
+This native mechanism is not recovery authority or installed qualification.
+
 **Windows platform use:** current platform-specific owners use
 `golang.org/x/sys/windows` on Windows to apply a protected DACL granting the
 current process owner full control and nobody else. The module is a direct

@@ -1,5 +1,76 @@
 # Package map
 
+The fixed systemd recovery replacement opener matches the genuine expected
+broker-instance/unique owner on its original connection before any RefUnit or
+unit load. It has the same exact imports and physical Close owner as ordinary
+replacement. Its real caller is the fresh recovery composer; an expectation
+string does not grant Installation authority or replace the original-cut proof.
+
+`infrastructure/source_recovery_completed_linux.go` consumes exactly the
+standard library, `release`, `installation/cgroup` and `installation/systemd`
+(under `internal/successor`). `RecoverSource` directly consumes it to classify
+only genuinely complete start/retirement histories with fresh stopped/native
+observations. It owns no replay, Start, Stop, reload, writer or cleanup effect.
+
+Infrastructure's `source_recover_replacement_linux.go` consumes exactly the
+standard library, `installation/systemd`, `network/state` and `release` (under
+`internal/successor`). Its direct caller is `RecoverSource` in
+`source_recover_linux.go`, which additionally consumes `network/state` for the
+opaque independently opened inspection. Canonical Node directly composes that
+inspection; Installation never opens or borrows a live State root.
+`source_recovery_predecessor_linux.go` consumes only the standard library and
+`release`; it owns fresh read-only predecessor/retirement composition under the
+exact guarded cut. The replacement grammar/readback companions consume only
+the standard library. Their direct consumers are the fresh recovery composer
+and complete ordinary lineage reader. Original journals stay immutable; only a
+distinct completion suffix is written. No predecessor writer is reconstructed.
+
+`installation/systemd/source_identity_linux.go` imports only the standard
+library. Initial/replacement producers use its original-connection
+`ManagerIdentity`; ordinary recovered readers use its fixed fresh root read-only
+`ObserveSourceManagerIdentity`. Both return broker-instance/unique-owner facts,
+never stopped policy or mutation authority. `infrastructure/source_initial_linux.go`
+additionally imports exactly `installation/systemd` (under `internal/successor`)
+for this fresh observation. `infrastructure/source_cut_history_linux.go` imports
+only the standard library and retains the original result files' independent
+native custody with their prefix owner. Both recovery and ordinary recovered
+transcript consumers require this original result and fresh manager comparison.
+
+Infrastructure's `source_transition_channel_linux.go` and
+`source_transition_controller_linux.go` use the standard library for the private
+original coordinator channel and canonical launch. Only
+`source_transition_scope_linux.go` additionally imports `golang.org/x/sys/unix`
+for native original-process/subreaper custody. The genuine caller is
+`cmd/ardents-node/source_installation_linux.go`; initial and replacement remain
+in their original service-manager namespaces. This process mechanism grants no
+Recovery, Release, State or Start authority; completed original-cut proof and
+its independent consumers remain required.
+
+`source_transition_cut_linux.go` owns the serialized frozen/denied versus
+ACK-outstanding decision and independent original-prefix custody.
+`source_transition_process_linux.go` and `source_transition_origin_linux.go`
+capture actual original process/program/kernel facts; `source_cut_result_linux.go`
+and `source_cut_publication_linux.go` own their bounded private physical-result
+codec and guarded publication. These exact files import only the standard
+library. Canonical control consumes the genuine producer. This is historical
+physical completion, not Release, State, manager or recovery authority; recovery
+and ordinary recovered readers must independently consume its native lineage
+and still obtain fresh domain admission.
+
+`internal/successor/installation/infrastructure/source_recover_linux.go` imports
+exactly the standard library, `internal/successor/release`,
+`internal/successor/network/state` and `internal/successor/installation/systemd`. It owns fresh initial recovery
+composition and its physical stopped observation, not Release, State or Start
+authority. Its `source_recovery_*` and `source_initial_pending_*` grammar,
+native-custody and publication companions import only the standard library.
+Canonical `cmd/ardents-node/source_installation_linux.go` is the direct consumer.
+Recovery requires independently admissible original interruption outcome in
+addition to native prefix/byte custody; complete-looking bytes do not supply it.
+Initial recovery after complete fixed-unit publication independently retains
+every recorded resource before the matched manager connection may load/reference
+the unit. Its concrete `SourceReplacement` reference performs only a fixed reload
+and zero-execution observations; it grants no predecessor or Start authority.
+
 `internal/successor/installation/infrastructure/source_replace_linux.go` imports
 exactly the standard library, `internal/successor/release`,
 `internal/successor/installation/fixedfile`, `installation/cgroup` and

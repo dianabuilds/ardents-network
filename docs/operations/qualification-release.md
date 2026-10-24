@@ -158,8 +158,9 @@ actual complete loaded stopped policy. It never starts or enables Source.
 
 Preserve the original signed inputs, independent Release history and
 `<installation_root>.source-initial-journal`, including every failed prefix.
-An ambiguous or interrupted operation requires repair; this component supplies
-no repair/adoption/rollback/continuation command. Do not remove an account, journal,
+An ambiguous operation remains repair-required. A separately admitted explicit
+`recover-source` may continue only its proven supported original prefix; initial
+installation itself supplies no automatic repair, adoption or rollback. Do not remove an account, journal,
 floor, unit or generation to retry. The journal contains private local observations
 and must remain outside public receipts. A successful bounded stopped outcome
 does not accept the exact bootstrap receipt or permit installed execution; those
@@ -181,8 +182,42 @@ with the same exact generation, account, roots and credentials. Each invocation
 gets a separate retained attempt and fresh admission; at most 64 total attempts
 are admitted without pruning. State and participation histories are reopened by
 their own semantic owners, never reset. A missing, uncertain or incomplete
-retirement leaves restart unavailable. Preserve the prefix; there is no supported
-adoption, automatic recovery or command to clear it for another attempt.
+retirement leaves restart unavailable. Preserve the prefix. The explicit
+`ardents-node installation recover-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK REQUEST JOURNAL`
+obtains fresh admission against the same original history. It never replays
+Start/ACK or removes damaged history to clear another attempt. Controlled
+initial/replacement continuation requires the genuine guarded original-cut
+result and exact native resources. An invocation/retirement prefix remains
+repair-required unless the complete original start and committed retirement
+are independently proved; a stopped classification grants no restart right.
+No adoption or automatic recovery is supported. A new installed recovery
+cohort needs its own completed exact bootstrap receipt and direct acceptance
+before execution.
+
+The registered `source-recovery-linux` consumer uses
+`make source-replacement-check` with an explicitly selected
+`recovery-initial-N`, `recovery-replacement-N` or terminal
+`recovery-refusal-OPERATION-FAULT` case. `manager-reexec` changes only the
+private manager after all Source/native observers join; it must demonstrate a
+changed coherent broker/unique-owner identity before both fresh refusals, with
+original disk histories preserved and no recovery completion. No identity
+change is a failed causal control. An initial terminal refusal reports no
+Source scope birth, while replacement retains actual predecessor retirement.
+The
+[checked profile](../development/testing.md) owns the finite frontier inventory,
+same-source observer and matrix pins, native/private-stand prerequisites and
+positive cases' later separate Source contact/stop/restart obligations. A positive frontier run
+and the bounded terminal refusal set do not substitute for the full causal
+negative/unsafe-window matrix. A negative stand preserves its fault and is never
+repaired into a positive case. Retain substituted originals in a separate private
+same-filesystem evidence directory outside installation inventory and journal-name
+scans. Replacement-only missing-history cases retain exactly one original
+startup journal/archive or retirement journal/result after genuine A completion;
+both fresh recovery refusals must leave all remaining evidence unchanged and
+create no completion header. Keep
+the original failed command log, immutable original journal, physical cut proof
+and separate recovery completion private; only exact reviewed public evidence
+and hashes belong in bootstrap publication.
 
 The [technical owner](../technical/network-route-node.md#explicit-source-retirement-and-subsequent-invocation)
 defines the original domain/native completion and blocked durable transcript.

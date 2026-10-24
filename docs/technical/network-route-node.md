@@ -1654,7 +1654,8 @@ An existing journal refuses, including when its installation root is absent.
 It is never reopened as a new initial operation. Each record is compact JSON
 plus LF, in the ordered fields `sequence`, `phase`, `path`, `device`, `inode`,
 `sha256`, `mode`, `uid`, `gid`. Sequence starts at zero. Records distinguish
-`initial`, `admitted`, `account-preimage`, `account-auxiliary-preimage`,
+`initial` (the retained legacy format), `initial-recoverable`, `admitted`,
+`account-preimage`, `account-auxiliary-preimage`,
 `account-intent`, `account-born`, `account-auxiliary-result`,
 `account-auxiliary-cleared`, `account-ready`,
 `directory-intent`, `directory-born`, `directory-ready`, `file-intent`,
@@ -1677,16 +1678,119 @@ and floor policy. Substitution before Installation acquires its independent pins
 also refuses. Earlier stopped-only journals remain evidence;
 their different commitment cannot admit first startup or select another history.
 
-The complete initial transcript contains exactly 112 canonical records for this
-closed inventory. Independent root-only readback consumes every phase in order,
+The legacy complete initial transcript contains exactly 112 canonical records.
+New initial producers use the distinct `initial-recoverable` first phase and
+exactly 115 records. Immediately after the original journal record, a
+`file-intent`/`file-born`/`file-ready` triple binds the root-owned 0600 sibling
+`<installation_root>.source-initial-pending`; `admitted` and the remaining
+original effects follow. The marker bytes are exactly
+`ardents-source-initial-pending-v1\n<BINDING_SHA256>\n`. Its original born inode
+and ready identity must agree. This transient marker is not a thirteenth
+generation resource or a runtime permission.
+
+Both initial formats have separate complete-only validation. After checking
+the recoverable header and its exact marker triple, a detached normalized
+112-record view may reuse the unchanged legacy semantic validator; neither
+the original journal nor its past result is rewritten. Ordinary readers require
+marker absence and retain an independent shared journal flock. The actual
+current creator may read back its own complete blocked transcript only through
+its original tracked journal/marker descriptors. No ordinary caller or copied
+marker obtains that exception. Partial legacy initial journals acquire no
+new birth provenance by creating a marker afterwards.
+
+Independent root-only readback consumes every phase in order,
 checks intended paths/bytes/access and matching born/ready identities, binds the
 original history commitment, and reobserves its own Source resource descriptors.
 The stopped creator performs this readback after `stopped-verified` and retains
-its writer lease until all native observers/helpers join. The reader neither
+its writer lease until all native observers/helpers join. It consumes and joins
+its original inputs before final marker removal, rechecks its still-live Release
+owner and original parent/marker native identity/access, and leaves the marker
+on any prior or cleanup failure. No required Installation sync or manager
+effect follows removal; lost removal restores refusal. The reader neither
 borrows that lease nor grants creation, current account, Release or Start rights.
 Account database records retain historical helper evidence; they do not freeze
 foreign host databases across operations. A later start separately admits the
 current exact principal. State/participation contents remain semantic-owner data.
+
+Canonical initial/replacement commands own a dedicated original coordinator
+process, executing the same retained running artifact through a private inherited
+Unix packet channel. They preserve the actual manager PID/mount/cgroup
+namespaces. The controller retains its launching thread, original from-birth
+pidfd and unreaped process-group leader, and acts as a dedicated subreaper with
+no unrelated children. Denial precedes group interruption; actual waits join
+the coordinator and every adopted descendant before native scope release.
+Ordinary success additionally refuses descendants that the controller had to
+reap: killing a helper cannot supply its missing domain completion.
+
+After successful journal Sync/readback, the coordinator may report one exact
+native journal identity, prefix commitment/count, generation and binding. It
+self-stops before another effect. The controller verifies root peer credentials,
+original program, nonce/sequence and the actual kernel stop before sending the
+next-effect ACK and resuming the original pidfd. An attempted ACK makes the next
+effect outstanding even when its send is uncertain. Original cancellation and
+the one finite deadline belong to the controller; no competing coordinator
+deadline callback may begin cleanup while a boundary is frozen. Unknown packets,
+channel loss, native errors and uncertain Close preserve failure. Received
+file descriptors are never channel inputs and must be physically closed before
+refusing their packet, including truncation and missing credentials.
+
+These private process/channel facts alone grant no recovery permission. A
+separate completed original-cut proof, guarded through all required controller
+Close and independently bound to that exact prefix, must be mandatory both at
+recovery admission and ordinary recovered-transcript consumption. An
+uncontrolled old prefix, ambiguous Sync/Close or unproven domain join remains
+repair-required. Physical process release does not assert application Close.
+
+The separate root-only original-cut journal/result retain the exact frozen
+boundary, original from-birth process, program commitment, native manager
+namespace/boot facts and the original connection's broker-instance/unique-owner
+identity. A pending marker survives every required publisher Sync/readback/Close;
+its final removal follows actual process and observer join. Complete-looking
+result bytes under that marker remain unusable. This records a controlled
+process cut, not disk/power-loss durability or a clean application shutdown.
+Fresh recovery and ordinary recovered-initial readers independently open and
+retain the original prefix and both result files, validate their exact closed
+grammar/native lineage and require guard absence. They separately compare fresh
+broker/native manager observations; detached historical facts cannot supply
+current stopped policy, Release/State authority or an accepting manager reply.
+
+Explicit recovery acquires a fresh exclusive original journal lease and writes
+only a separate `ardents-source-recovery-completion-v1` envelope beside it. The
+envelope binds original journal path/device/inode, exact prefix hash/count,
+operation, generation, binding hash, subsequent canonical records and complete
+transcript hash. It neither rewrites original records nor erases the interrupted
+caller's failure. Partial envelopes are retained and cannot be reopened for
+append by another attempt. Ordinary readers independently retain both files,
+the genuine original-cut result and their shared leases, then validate the
+unchanged complete operation grammar and native resources. Any initial cut
+journal/result/pending or completion sidecar forces this recovered
+validation even if the original itself contains all115 records. Such evidence
+cannot be ignored because the initial pending marker is absent. An empty suffix is
+valid only when the original full115/full55 transcript was already recorded;
+the original pending guard still excludes ordinary consumption until all fresh
+recovery users have joined and fresh Release/native rechecks permit its removal.
+
+Initial recovery requires complete original account and directory/credential
+provenance, empty State/participation roots and no invocation history. Only
+exact independently reopened empty0600 original born files may finish delivery;
+partial bytes or promoted access without ready provenance refuse. Complete
+generation/seal/selection may continue under the same fresh checks. After a
+complete fixed-unit birth, all recorded native resources are matched before a
+fresh broker/unique-owner-matched manager reference can load the unit. Exact
+never-started properties remain mandatory. A previously recorded successful
+reload is not repeated. Intent-only or incomplete fixed-unit birth remains
+repair-required; no preflight absence exception adopts it.
+
+Replacement recovery independently retains the full predecessor lineage and
+committed retirement, fresh State inspection, original fixed-file preimages and
+the exact old/new current bytes allowed by that prefix. Fixed selection and unit
+effects remain separate; unknown/torn/mixed publication refuses. Neither a
+fresh manager reference nor its copied expectation grants retirement or State
+authority. Startup/archive/ACK and retirement journals are never replayed. A
+read-only recovery classification may report stopped only for the requested
+latest complete and committed attempt under the currently selected generation,
+after fresh input/Release/native/stopped and quiescent checks. Missing original
+domain/native/Close completion remains repair-required after process exit.
 
 One fixed native `useradd` creates `ardents-source` with an unused, explicitly
 bound numeric UID/GID in 100..999, locked password, `/nonexistent`, nologin,

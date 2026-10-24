@@ -12,6 +12,20 @@ import (
 type SourceReplacement struct{ original *sourceStopped }
 
 func OpenSourceReplacement(ctx context.Context) (*SourceReplacement, error) {
+	return openSourceReplacement(ctx, "")
+}
+
+// OpenSourceRecoveryReplacement matches the actual original broker/manager
+// before any LoadUnit/RefUnit effect. The copied expectation grants no policy
+// or recovery authority; Installation separately owns the genuine cut proof.
+func OpenSourceRecoveryReplacement(ctx context.Context, expected string) (*SourceReplacement, error) {
+	if expected == "" || len(expected) > 288 {
+		return nil, ErrInput
+	}
+	return openSourceReplacement(ctx, expected)
+}
+
+func openSourceReplacement(ctx context.Context, expected string) (*SourceReplacement, error) {
 	if ctx == nil || os.Geteuid() != 0 {
 		return nil, ErrInput
 	}
@@ -22,6 +36,15 @@ func OpenSourceReplacement(ctx context.Context) (*SourceReplacement, error) {
 	s := &SourceReplacement{original: &sourceStopped{reference: &SourcePreflight{owner: r}}}
 	if err != nil {
 		return s, err
+	}
+	if expected != "" {
+		actual, err := r.sourceManagerIdentity()
+		if err != nil {
+			return s, err
+		}
+		if actual != expected {
+			return s, r.sourceResult(ErrObservation, ctx)
+		}
 	}
 	if err := r.initializeSourceDeclaration(); err != nil {
 		return s, err

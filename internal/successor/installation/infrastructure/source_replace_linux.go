@@ -29,6 +29,7 @@ type sourceReplacement struct {
 	manager            *systemd.SourceReplacement
 	namespace          *sourceNamespace
 	births             *sourceBirths
+	recovery           *sourceRecoveryPrefix
 	mutations          []*fixedfile.Mutation
 	readback           *sourceInitial
 	pending            *sourceBirth
@@ -119,8 +120,15 @@ func ReplaceSource(ctx context.Context, v *release.Verifier, a Authorization, in
 			return ErrBinding
 		}
 	}
+	managerIdentity, err := s.manager.ManagerIdentity()
+	if err != nil {
+		return err
+	}
 	s.births, err = openSourceBirths(ctx, journal, allowed)
 	if err != nil {
+		return err
+	}
+	if err = s.births.bindTransition(b.Generation, digest(s.candidate.raw), "replacement", managerIdentity); err != nil {
 		return err
 	}
 	s.retired.chain.initial.transition = s.births
@@ -184,35 +192,69 @@ func ReplaceSource(ctx context.Context, v *release.Verifier, a Authorization, in
 	if err := s.births.record("sealed", sealed, s.births.directories[sealed], b.Generation, 0555, 0, 0); err != nil {
 		return err
 	}
+	return s.finishReplacement()
+}
+
+// Both ordinary replacement and a fresh admitted recovery own these concrete
+// native effects. Recovery never reruns a completed original effect or appends
+// to the original journal; its new writer records only the remaining suffix.
+func (s *sourceReplacement) finishReplacement() error {
+	b := s.candidate.binding.Configuration
+	selected, unit := filepath.Join(b.Request.InstallationRoot, "binding.json"), "/etc/systemd/system/ardents-source.service"
 	if err := s.observe(); err != nil {
 		return err
 	}
-	if err := s.replaceFile(selected, s.candidate.raw, "selection-intent", "selection-written"); err != nil {
-		return err
+	if s.births.sequence <= 50 {
+		if err := s.replaceFile(selected, s.candidate.raw, "selection-intent", "selection-written"); err != nil {
+			return err
+		}
 	}
-	if err := s.replaceFile(unit, s.candidate.unit, "unit-intent", "unit-written"); err != nil {
-		return err
+	if s.births.sequence <= 52 {
+		if err := s.replaceFile(unit, s.candidate.unit, "unit-intent", "unit-written"); err != nil {
+			return err
+		}
 	}
-	if err := s.births.record("reload-intent", unit, nil, digest(s.candidate.unit), 0644, 0, 0); err != nil {
-		return err
+	if s.births.sequence == 53 {
+		if err := s.births.record("reload-intent", unit, nil, digest(s.candidate.unit), 0644, 0, 0); err != nil {
+			return err
+		}
 	}
 	if err := s.observe(); err != nil {
 		return err
 	}
-	if err := s.manager.Reload(); err != nil {
-		return err
+	if s.births.sequence == 54 {
+		if err := s.manager.Reload(); err != nil {
+			return err
+		}
+		if err := s.namespace.reobserveAfterReload(); err != nil {
+			return err
+		}
+		s.reloaded = true
+		if err := s.observe(); err != nil {
+			return err
+		}
+		if err := s.births.record("replacement-verified", selected, nil, digest(s.candidate.raw), 0644, 0, 0); err != nil {
+			return err
+		}
 	}
-	if err := s.namespace.reobserveAfterReload(); err != nil {
-		return err
+	if s.births.sequence != 55 || !s.reloaded {
+		return ErrBinding
 	}
-	s.reloaded = true
-	if err := s.observe(); err != nil {
-		return err
+	if s.recovery != nil {
+		admitted, err := s.retired.chain.initial.history.selectedCommitment(s.verifier, s.candidate.raw)
+		if err != nil {
+			return err
+		}
+		hashes := map[string]string{}
+		for path, raw := range sourceReplacementRecoveryBodies(s.candidate) {
+			hashes[path] = digest(raw)
+		}
+		if err := s.births.finishSourceRecoveryRecords(s.candidate.raw, hashes, admitted, s.retired.chain.initial.selection.binding.UnitSHA256); err != nil {
+			return err
+		}
 	}
-	if err := s.births.record("replacement-verified", selected, nil, digest(s.candidate.raw), 0644, 0, 0); err != nil {
-		return err
-	}
-	s.readback, err = openSourceInitialTransition(ctx, v, selected, history, s.births)
+	var err error
+	s.readback, err = openSourceInitialTransition(s.ctx, s.verifier, selected, s.retired.chain.initial.history.path, s.births)
 	if err != nil {
 		return err
 	}
@@ -235,6 +277,16 @@ func (s *sourceReplacement) replaceFile(path string, body []byte, intent, writte
 		return err
 	}
 	old := s.retired.chain.initial.selection
+	expected := 49
+	if path == "/etc/systemd/system/ardents-source.service" {
+		expected = 51
+	} else if path != filepath.Join(s.candidate.binding.Configuration.Request.InstallationRoot, "binding.json") {
+		return ErrBinding
+	}
+	newIntent := s.births.sequence == expected
+	if !newIntent && (s.recovery == nil || s.births.sequence != expected+1 || len(s.recovery.records) != expected+1 || s.recovery.records[expected].Phase != intent) {
+		return ErrBinding
+	}
 	original := old.files[path]
 	if original == nil {
 		return ErrBinding
@@ -246,8 +298,10 @@ func (s *sourceReplacement) replaceFile(path string, body []byte, intent, writte
 	if err != nil {
 		return err
 	}
-	if err := s.births.record(intent, path, mutation.Identity(), digest(body), 0644, 0, 0); err != nil {
-		return err
+	if newIntent {
+		if err := s.births.record(intent, path, mutation.Identity(), digest(body), 0644, 0, 0); err != nil {
+			return err
+		}
 	}
 	if err := s.observe(); err != nil {
 		return err
@@ -297,6 +351,19 @@ func (s *sourceReplacement) observe() error {
 	if err != nil || identity != s.managerIdentity {
 		return errors.Join(ErrBinding, err)
 	}
+	if s.recovery != nil {
+		manager, err := s.manager.ManagerIdentity()
+		if err != nil {
+			return err
+		}
+		if err := s.recovery.checkCutManager(manager); err != nil {
+			return err
+		}
+		sealed := filepath.Join(b.Request.InstallationRoot, "generations", b.Generation)
+		if err := checkSourceRecoveryGeneration(s.recovery, s.births, sealed); err != nil {
+			return err
+		}
+	}
 	if err := s.namespace.check(); err != nil {
 		return err
 	}
@@ -309,6 +376,12 @@ func (s *sourceReplacement) observe() error {
 			return err
 		}
 		if s.reloaded {
+			err = s.retired.stoppedFor(facts, b.Request, b.Generation)
+		} else if s.recovery != nil && len(s.recovery.records) >= 53 && verifySourceStopped(facts.Unit, facts.Service, b.Request, b.Generation) == nil {
+			// The old connection is gone. A fresh RefUnit can load the known
+			// already-published candidate before this caller's explicit reload.
+			// Only this exact zero-execution policy is additionally possible;
+			// genuine complete retirement and original manager still apply.
 			err = s.retired.stoppedFor(facts, b.Request, b.Generation)
 		} else {
 			err = s.retired.stopped(facts)
@@ -373,6 +446,7 @@ func (s *sourceReplacement) close() error {
 		s.input.original.uses.Done()
 		s.terminal = errors.Join(s.terminal, s.input.Close())
 	}
+	s.terminal = errors.Join(s.terminal, s.recovery.close())
 	return errors.Join(s.terminal, s.ctx.Err())
 }
 
@@ -382,6 +456,9 @@ func (s *sourceReplacement) close() error {
 // original command and is rechecked independently at this final commit point.
 func (s *sourceReplacement) publish() error {
 	if !s.verified || s.terminal != nil || s.pending == nil || s.rootInfo == nil || s.births == nil || !s.births.closed || s.births.terminal != nil {
+		return ErrBinding
+	}
+	if s.recovery != nil && (!s.recovery.closed || s.recovery.terminal != nil || s.births.recovery == nil || !s.births.recovery.finished) {
 		return ErrBinding
 	}
 	if err := s.authorization.Check(s.ctx, s.verifier); err != nil {

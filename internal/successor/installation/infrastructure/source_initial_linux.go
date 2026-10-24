@@ -6,6 +6,7 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
@@ -28,6 +29,12 @@ type sourceInitial struct {
 	previousSelection   *sourceSelection
 	transition          *sourceBirths
 	birthJournal        *sourceFile
+	cuts                []*sourceRecoveryPrefix
+	// Borrowed only from the current fresh recovery operation. The original
+	// native prefix/proof and this read-only predecessor have distinct owners.
+	recovery        *sourceRecoveryPrefix
+	recoveryWriter  *sourceBirths
+	recoveryPending *sourceFile
 }
 
 func openSourceInitial(ctx context.Context, v *release.Verifier, binding, history string) (result *sourceInitial, err error) {
@@ -76,6 +83,16 @@ func (s *sourceInitial) readInitialBirth(origin *sourceSelection) error {
 		return err
 	}
 	s.birthJournal = origin.files[journal]
+	if s.transition != nil && s.transition.journal != nil && s.transition.journal.path == journal {
+		if !os.SameFile(s.transition.journal.info, s.birthJournal.info) {
+			return ErrBinding
+		}
+		if err := s.transition.journal.check(); err != nil {
+			return err
+		}
+	} else if err := syscall.Flock(int(s.birthJournal.file.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); err != nil {
+		return err
+	}
 	admitted, err := s.history.commitment(s.verifier, origin.bindingBytes())
 	if err != nil {
 		return err
@@ -87,7 +104,49 @@ func (s *sourceInitial) readInitialBirth(origin *sourceSelection) error {
 	selected := b.Request.InstallationRoot + "/binding.json"
 	unit := "/etc/systemd/system/ardents-source.service"
 	hashes[selected], hashes[unit] = digest(origin.bindingBytes()), b.UnitSHA256
-	recorded, err := decodeSourceInitialRecords(raw, b, hashes, admitted)
+	recorded, err := decodeSourceInitialBirthRecords(raw, b, hashes, admitted)
+	recoveryEvidence, evidenceErr := sourceInitialRecoveryEvidencePresent(journal)
+	if evidenceErr != nil {
+		return evidenceErr
+	}
+	if err != nil || recoveryEvidence {
+		// An unrelated current replacement writer does not own this historical
+		// initial journal. Its recovered lineage still needs independent SH
+		// custody, rather than being rejected or borrowing that writer's lease.
+		if s.transition != nil && s.transition.journal != nil && s.transition.journal.path == journal {
+			return ErrBinding
+		}
+		// Even a full115 prefix needs genuine cut/completion evidence when
+		// interrupted before the original pending marker's final removal.
+		prefix, e := decodeSourceRecoveryPrefix(raw, sourceRecoverableInitialRecords)
+		if e != nil || !sourceInitialRecoveryPrefixSupported(prefix) {
+			return ErrBinding
+		}
+		cut, e := openSourceRecoveryPrefixCustody(s.ctx, journal, "initial", false)
+		if e != nil {
+			return e
+		}
+		s.cuts = append(s.cuts, cut)
+		if e = syscall.Flock(int(cut.journal.file.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); e != nil {
+			return e
+		}
+		if !os.SameFile(cut.journal.info, s.birthJournal.info) {
+			return ErrBinding
+		}
+		if e = cut.readOriginalCut(b.Generation, digest(origin.bindingBytes()), b.ProgramSHA256); e != nil {
+			return e
+		}
+		// The independent cut owner retains both original and completion
+		// descriptors/leases through every later check and joined Close.
+		transcript, e := cut.readCompletion(b.Generation, digest(origin.bindingBytes()))
+		if e != nil {
+			return e
+		}
+		recorded, err = decodeSourceInitialBirthRecords(transcript, b, hashes, admitted)
+		if e := origin.observe(); e != nil {
+			return e
+		}
+	}
 	if err != nil {
 		return err
 	}
@@ -145,8 +204,28 @@ func (s *sourceInitial) check() (err error) {
 			return err
 		}
 	}
+	if err = observeSourceInitialPending(s.selection.binding.Request.InstallationRoot, s.transition); err != nil {
+		return err
+	}
 	if err = s.checkReplacementJournals(); err != nil {
 		return err
+	}
+	currentRecovery := s.transition != nil && s.transition.recovery != nil
+	if len(s.cuts) != 0 || currentRecovery {
+		manager, e := systemd.ObserveSourceManagerIdentity(s.ctx)
+		if e != nil {
+			return e
+		}
+		for _, cut := range s.cuts {
+			if err = cut.checkCutManager(manager); err != nil {
+				return err
+			}
+		}
+		if currentRecovery {
+			if err = s.transition.recovery.prefix.checkCutManager(manager); err != nil {
+				return err
+			}
+		}
 	}
 	return s.history.check(s.verifier)
 }
@@ -157,6 +236,9 @@ func (s *sourceInitial) close() error {
 	}
 	if !s.closed {
 		s.closed = true
+		for _, cut := range s.cuts {
+			s.terminal = errors.Join(s.terminal, cut.close())
+		}
 		for _, original := range s.lineage {
 			s.terminal = errors.Join(s.terminal, original.close())
 		}

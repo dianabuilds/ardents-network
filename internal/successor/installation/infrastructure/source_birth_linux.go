@@ -35,6 +35,7 @@ type sourceBirth struct {
 type sourceBirths struct {
 	ctx            context.Context
 	journal        *sourceBirth
+	firstPhase     string
 	sequence       int
 	files          []*sourceBirth
 	directories    map[string]os.FileInfo
@@ -46,11 +47,25 @@ type sourceBirths struct {
 	// Failure-only native test seam, invoked after the real fsync completes.
 	// It cannot replace physical I/O or supply accepting bytes/provenance.
 	afterSync func(*os.File) error
+	// A fresh recovery writer owns a separate completion file. It never lends
+	// the old journal descriptor to this append path or revives its caller.
+	recovery             *sourceRecoveryWriting
+	transitionGeneration string
+	transitionBinding    string
+	transitionManager    string
 }
 
 func openSourceBirths(ctx context.Context, journalPath string, allowed map[string]bool) (*sourceBirths, error) {
-	s := &sourceBirths{ctx: ctx, allowed: allowed, directories: map[string]os.FileInfo{}, directoryFiles: map[string]*os.File{}}
-	if ctx == nil || ctx.Err() != nil || !sourcePath(journalPath) {
+	return openSourceBirthsWithPhase(ctx, journalPath, allowed, "initial")
+}
+
+func openSourceRecoverableInitialBirths(ctx context.Context, journalPath string, allowed map[string]bool) (*sourceBirths, error) {
+	return openSourceBirthsWithPhase(ctx, journalPath, allowed, sourceRecoverableInitialPhase)
+}
+
+func openSourceBirthsWithPhase(ctx context.Context, journalPath string, allowed map[string]bool, phase string) (*sourceBirths, error) {
+	s := &sourceBirths{ctx: ctx, firstPhase: phase, allowed: allowed, directories: map[string]os.FileInfo{}, directoryFiles: map[string]*os.File{}}
+	if ctx == nil || ctx.Err() != nil || !sourcePath(journalPath) || phase != "initial" && phase != sourceRecoverableInitialPhase && phase != "source-cut" {
 		return s, ErrInput
 	}
 	parent, err := os.Lstat(filepath.Dir(journalPath))
@@ -72,7 +87,7 @@ func openSourceBirths(ctx context.Context, journalPath string, allowed map[strin
 	if err = errors.Join(f.Sync(), syncSourceParent(journalPath)); err != nil {
 		return s, err
 	}
-	return s, s.record("initial", journalPath, s.journal.info, "", 0600, 0, 0)
+	return s, s.record(phase, journalPath, s.journal.info, "", 0600, 0, 0)
 }
 
 func syncSourceParent(path string) (err error) {
@@ -115,9 +130,6 @@ func (s *sourceBirths) record(phase, path string, info os.FileInfo, sha string, 
 	if err := s.ctx.Err(); err != nil {
 		return err
 	}
-	if err := s.journal.check(); err != nil {
-		return err
-	}
 	r := sourceRecord{Sequence: s.sequence, Phase: phase, Path: path, SHA256: sha, Mode: uint32(mode), UID: uid, GID: gid}
 	if info != nil {
 		st, ok := info.Sys().(*syscall.Stat_t)
@@ -130,9 +142,68 @@ func (s *sourceBirths) record(phase, path string, info os.FileInfo, sha string, 
 	if err != nil {
 		return err
 	}
-	raw = append(raw, '\n')
-	if len(raw) > 32<<10 || len(s.journal.body)+len(raw) > 4<<20 {
+	if len(raw)+1 > 32<<10 {
 		return ErrBinding
+	}
+	canonical := raw
+	if s.recovery != nil {
+		if err := s.recovery.beforeRecord(s); err != nil {
+			return err
+		}
+		if len(s.recovery.records) != 0 {
+			raw = append([]byte{','}, raw...)
+		}
+	} else {
+		raw = append(raw, '\n')
+	}
+	if err := s.appendJournal(raw); err != nil {
+		return err
+	}
+	if s.recovery != nil {
+		s.recovery.records = append(s.recovery.records, r)
+		s.recovery.transcript = append(s.recovery.transcript, canonical...)
+		s.recovery.transcript = append(s.recovery.transcript, '\n')
+	}
+	s.sequence++
+	if err := s.ctx.Err(); err != nil {
+		return err
+	}
+	if s.recovery == nil && s.transitionGeneration != "" {
+		if coordinator, ok := s.ctx.Value(sourceTransitionContextKey{}).(*SourceTransitionCoordinator); ok {
+			return coordinator.report(s)
+		}
+	}
+	return nil
+}
+
+func (s *sourceBirths) bindTransition(generation, binding, operation, manager string) error {
+	if s == nil || s.closed || s.terminal != nil || !sourceInitialSHA(generation) || !sourceInitialSHA(binding) {
+		return ErrInput
+	}
+	if coordinator, ok := s.ctx.Value(sourceTransitionContextKey{}).(*SourceTransitionCoordinator); ok && coordinator.operation != operation {
+		return ErrBinding
+	}
+	s.transitionGeneration, s.transitionBinding = generation, binding
+	s.transitionManager = manager
+	return nil
+}
+
+// Append to this operation's actual file, preserving visible partial bytes on
+// any error. The caller owns record grammar and never retries uncertain I/O.
+func (s *sourceBirths) appendJournal(raw []byte) (err error) {
+	defer func() {
+		if err != nil && s.terminal == nil {
+			s.terminal = err
+		}
+	}()
+	if s.closed || s.terminal != nil || s.journal == nil || len(raw) == 0 || len(s.journal.body)+len(raw) > 4<<20 {
+		return errors.Join(ErrBinding, s.terminal)
+	}
+	if err := s.ctx.Err(); err != nil {
+		return err
+	}
+	if err := s.journal.check(); err != nil {
+		return err
 	}
 	f := s.journal.file
 	if _, err = f.Seek(0, io.SeekEnd); err != nil {
@@ -158,7 +229,6 @@ func (s *sourceBirths) record(phase, path string, info os.FileInfo, sha string, 
 		s.terminal = err
 		return err
 	}
-	s.sequence++
 	return s.ctx.Err()
 }
 
@@ -335,6 +405,11 @@ func (s *sourceBirths) check() (err error) {
 	if err := s.journal.check(); err != nil {
 		return err
 	}
+	if s.recovery != nil {
+		if err := s.recovery.prefix.check(); err != nil {
+			return err
+		}
+	}
 	for path, before := range s.directories {
 		now, err := os.Lstat(path)
 		original, oe := s.directoryFiles[path].Stat()
@@ -397,6 +472,13 @@ func (s *sourceBirths) close() error {
 		s.terminal = errors.Join(s.terminal, s.ctx.Err())
 	} else {
 		s.terminal = errors.Join(s.terminal, ErrInput)
+	}
+	if s.recovery != nil && s.recovery.borrowed {
+		// Keep original-prefix exclusion until every new native writer/user has
+		// physically closed, including a failed acquisition or partial envelope.
+		s.recovery.prefix.record(s.terminal)
+		s.recovery.borrowed = false
+		s.recovery.prefix.users.Done()
 	}
 	return s.terminal
 }

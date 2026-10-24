@@ -1,5 +1,213 @@
 # Testing
 
+`source-recovery-linux` uses the existing `make source-replacement-check`
+entrypoint and its fixed ten-minute outside bound. Select exactly one
+`ARDENTS_SOURCE_STARTUP_CASE=recovery-initial-N` for N70/106/110/113/114/115, or
+`recovery-replacement-N` for N13/49/50/51/52/53/54/55, in a fresh private Source
+stand. A NEW completed exact bootstrap receipt and direct Product Owner
+Decision6 acceptance are mandatory before execution; earlier Source receipts
+do not transfer. These fourteen positive cases and the finite refusal controls below do not
+establish the complete unsafe-window/causal-negative matrix or full recovery
+acceptance.
+
+For one terminal negative control select `recovery-refusal-initial-FAULT` or
+`recovery-refusal-replacement-FAULT`, at original prefix70 or49 respectively.
+FAULT is exactly `held-journal-lease`, `copied-journal`, `copied-cut-result`,
+`journal-access`, `torn-journal`, `missing-pending`, `partial-completion`,
+`copied-generation-file`, or `manager-reexec`. The actual original cut and native join precede one
+intentional physical fault. Two separate canonical recovery callers must refuse.
+Retained originals stay in a fresh same-filesystem private evidence directory
+outside both the closed generation inventory and the predecessor's replacement
+journal-name scanner, so neither extra entry can mask the selected inode fault. The controller
+compares the complete installation, semantic/Release, credential and account
+images after each refusal; it permits only a new exact empty failure-envelope
+header on the first attempt, never an appended/adopted suffix on the second.
+It retains the damaged history and never restores it for a positive recovery.
+The held-journal-lease case observes actual exclusion by a fresh independently
+held journal descriptor; the separate native live-writer test still owns proof
+of exclusion by the original writer. Replacement negatives first require genuine
+predecessor contact and complete domain/native retirement. A terminal negative
+does not fall through the positive continuation/start/restart path.
+
+The manager control closes all retained read-only references and requires no
+live Source before invoking `daemon-reexec` only in the private stand. It must
+observe an actual changed broker/unique-owner identity, coherent fresh readback
+and the same original PID1/program/namespaces. If that identity does not change,
+the causal control fails. Both subsequent canonical recoveries must refuse
+without a completion header and preserve all original on-disk evidence. The
+outside controller separately reads the new identity; host manager identity and
+whole private scope completion remain separate mandatory checks.
+An initial terminal refusal never calls Start and reports no Source scope birth;
+root coordinator reaps are not Source runtime joins. Replacement refusals retain
+the genuine predecessor's completed domain/native join.
+
+Four additional replacement-only terminal controls at prefix49 remove exactly
+one genuine predecessor fact: `missing-startup-journal`,
+`missing-startup-archive`, `missing-retirement-journal`, or
+`missing-retirement-result`. Each first verifies A's actual first invocation
+and committed retirement, then renames only the selected original file into
+the private retention directory. Both fresh recovery callers must refuse
+without creating a completion header. The missing path, retained original
+inode/bytes and remaining histories stay unchanged. Another complete proof,
+the candidate's seal or A's process exit cannot replace the missing fact.
+
+The runner additionally pins `RECOVERY_MATRIX` and `RECOVERY_OBSERVER` using the
+existing `ARDENTS_SOURCE_STARTUP_` path/SHA256 convention. The matrix's owner
+hashes must match the complete source manifest. The observer is a same-source
+Infrastructure native test executable, built with `network_signing_native` on
+Linux amd64, containing `TestSourceCutObserverNative`. Its dedicated installed
+mode reads a canonical hash-pinned finite profile through
+`ARDENTS_SOURCE_CUT_OBSERVER_PROFILE`/`_PROFILE_SHA256`, plus `_PROGRAM`, `_ROOT`
+and `_OUTPUT`; `_MODE=installed-cut` is selected only by the accepted cohort.
+These fields identify observations and do not authorize Installation or replace
+the human bootstrap decision. The helper's `inspect-only` mode returns after
+actual ELF/profile inspection without starting a tracee.
+
+The native observer holds the actual original root at the exact ACK entry,
+signals another original root thread, and requires the canonical
+`installation.source` completion-unavailable notice before releasing the held
+thread. It retains actual native births, stops and exits through all joins.
+The runner independently verifies the original failed exit2, exact prefix and
+physical cut proof, refused ordinary operations under the blocker, and native
+identity/digests for account, credentials and semantic/Release histories. It
+then invokes a separate canonical `recover-source` for a positive case, preserves the original
+journal and reads only its distinct complete suffix. Positive initial cases retain the
+three-invocation positive restart sequence; positive replacement cases retain actual
+A-to-B program change, B-to-C resource-only change and four complete joined
+invocations. Source contact and startup are later independent operations.
+Source unit protection and product deadlines are unchanged. PID1-launched
+Service users remain covered by the original native manager/pidfd/cgroup and
+outside whole-stand joins, never by the root tracer's child count.
+
+Supported initial/replacement prefix classification is shared by recovery
+admission and ordinary recovered consumption, including current-writer readback.
+The independent115/55 vectors enumerate exact supported counts separately from
+complete suffix/framing checks. A semantically complete suffix cannot authorize
+an unsupported original account/directory/intent-only prefix. The genuine early
+native cut control also refuses Source continuation despite completed physical
+proof. These controls supply no installed Source or domain authority.
+Native presence controls cover each initial cut/completion sidecar alone and
+real ENOTDIR refusal. Genuine original-cut controls require recovered validation
+for both guarded and complete physical proofs without a recovery suffix. A
+full115 transcript cannot hide explicit interruption evidence behind marker absence.
+
+`TestSourceRecoveryPhysicalNativeProcessCuts` additionally runs the real native
+file/journal owner in a separate test process on ext4. Six distinct stops cover
+intent Sync before original readback, recorded empty birth, written body before
+access promotion, body Sync before ready, ready Sync before original readback,
+and completed ready readback. Each observes actual kernel SIGSTOP and original
+writer flock, then SIGKILL and Wait before fresh independent prefix custody.
+Exact original journal/file inodes, bytes and access survive the join; missing
+controlled-cut proof refuses without creating any cut or recovery evidence.
+These are file/process counterexamples with no installed account, State,
+Release or manager, and do not prove equivalence to any installed phase or
+disk/power-loss durability. Full installed causal coverage remains separate.
+
+Every selected recovery stand first discovers and runs the finite twenty-test
+`RECOVERY_NATIVE_TESTS` inventory through its same pinned observer binary,
+with a ninety-second test bound inside the unchanged ten-minute profile bound.
+It includes process cuts, original coordinator/packet ownership, prefix and
+completion leases, cancellation/Close joins, empty-born continuation and
+uncertainty/guard refusal controls. The stand must also provide the native
+file-test marker `/etc/ardents-source-stopped-native-stand` and actual ext4
+under its fresh private evidence directory. Missing tests or prerequisites fail.
+Successful file-only controls never replace the later genuine installed cut,
+recovery, contact or retirement proof.
+
+The native Infrastructure test driver also accepts a dedicated externally
+cancelled file/process case. Its actual root signal context reports the distinct
+`native-original-cancellation-observed` marker and joins that reporting user;
+this is not canonical Source completion output. A hardware execution breakpoint
+may hold the genuine controller before ACK, deliver SIGTERM to another original
+root thread and require that marker before resuming. The test then independently
+checks the genuine guarded cut publication, unchanged original prefix, absent
+next effect and physical/native descriptor joins. Its default two-record file prefix
+has no Source account/manager/Release/State admission and remains unsupported
+for Source continuation. A finite outside-control target may request2..55 records
+through `ARDENTS_SOURCE_TRANSITION_NATIVE_RECORDS`; the coordinator then performs
+actual repeated native record Sync/STOP/ACK cycles before its next file effect.
+These repeated framing observations deliberately do not form a valid Source
+initial transcript. They check selection of a later physical frontier, never a
+successful semantic owner or phase-equivalence waiver. Installed execution needs
+its own exact gated profile.
+
+The separately selected `TestSourcePhysicalCutObserverNative` covers four
+closed file/process windows through `ARDENTS_SOURCE_PHYSICAL_OBSERVER_WINDOW`:
+`journal-before-sync`, `file-born-before-record`, `file-ready-before-record`
+and `file-complete-before-close`.
+It uses only the actual native test executable and no installed profile. Exact
+Go1.27.3 amd64 ABI inspection and hardware entry breakpoints identify the
+coordinator's actual Sync, record or Close call, prefix and original file image before
+signalling the original root. The held coordinator is never resumed to finish
+the effect: that root must kill and reap it under the unchanged original bound.
+Fresh prefix exclusion/readback must preserve the original inode/bytes/access
+and refuse missing cut provenance, without producing any completion/proof.
+These controls remain separate from `RECOVERY_NATIVE_TESTS`; selecting that
+twenty-test inventory does not execute these four observer windows. Neither
+inventory establishes equivalence to an installed Source phase or power loss.
+An EXIT trace stop needs continuation and actual reap, not another application
+breakpoint or an executable observation after the group leader has exited.
+
+The four corresponding `root-` window selectors use a distinct direct native
+file writer with GC disabled, not a canonical installed command. The observer
+holds the actual root call, delivers SIGTERM to a different original thread and
+requires processed cancellation before RF resume. A second hardware breakpoint
+at the driver's real post-Close call keeps that same process alive while an
+independent process acquires the original journal lease, rechecks bytes/native
+identity, refuses missing cut proof and checks bounded `/proc/PID/fd` inventory
+for the original journal and payload. Only then may the driver return. No GC or
+process exit can supply that lease/descriptor release. These controls cover the
+actual file owner's Close; they are not canonical Source command, manager or
+whole installed recovery cleanup evidence, and do not execute through native20.
+After successful native proof, the post-Close breakpoint is disarmed before
+RF resume. A Go preemption prologue may revisit that same entry without a new
+semantic call. The dedicated root driver remains locked to its original thread;
+the first breakpoint and all exit/join checks stay active. The optional
+`ARDENTS_SOURCE_ROOT_RETURN_STRESS=1` holds that already-proven return point
+for25ms to exercise scheduler preemption. It neither selects the original cut
+nor changes its ten-second caller or25-second observer deadline.
+
+`TestSourceRecoveryEveryInvocationRetainsCompleteOnlyHistories` checks the
+independent22-record startup and12-record retirement vectors at every canonical
+record boundary for each of64 finite invocation names/schemas. Every proper
+prefix refuses, including archive, ACK, domain/native join and physical-close
+boundaries. The existing byte-prefix controls cover torn framing separately.
+These are grammar checks; genuine complete history readers and fresh native
+observations remain mandatory for a stopped classification. No Start/ACK or
+retirement effect can be replayed by recovery.
+
+`TestSourceRecoveryReplacementEveryCanonicalPrefix` consumes an independent
+closed55 byte vector at every canonical prefix boundary, rejects a foreign
+phase at every recorded position and verifies that ordinary readers still
+refuse every canonical partial transcript. Its publication companion rejects
+selection/unit writes that switch original inode. These are detached grammar
+checks, not a successful Source, retirement, manager or installed recovery.
+
+Source transition channel/process controls use `network_signing_native` in the
+isolated root/ext4 file stand, with the existing native marker and
+`ARDENTS_SOURCE_STOPPED_FUTURE_PARENT`. `TestSourceTransitionNativeOriginalScope`
+launches only the test executable through the real inherited credential-bound
+channel and from-birth native scope. It checks normal completion, actual Sync
+and Close uncertainty, refusal of exit zero with an unjoined helper, and a
+kernel-stopped cut before ACK with exact retained bytes and fresh flock after
+whole-scope join. The cut fixture deliberately has an unjoined descendant: it
+proves physical cleanup only and cannot provide semantic recovery permission.
+Each subreaper runs in its own dedicated helper process; it cannot reap other
+tests' children. Native packet controls reject noncanonical/oversized frames and
+repeated actual SCM_RIGHTS delivery without required credentials, checking
+descriptor release before return with automatic GC disabled. These controls
+construct no installed Source, Release, State or accepting manager. The separate
+`cut-proof` cases use this genuine original controller to publish its physical
+cut result from an actual two-record file prefix. Both proof Sync uncertainty
+and real Close failure retain the guard despite complete-looking result bytes.
+Independent readers repeatedly reopen the original/control/result custody and
+retain shared flocks until Close; refused reads release their own descriptors
+with GC disabled. Their empty manager identity cannot satisfy Source admission.
+`cut-ack-outstanding` cancels after the actual ACK decision has left frozen
+custody, before any socket send: even unchanged original bytes plus actual
+SIGKILL/join cannot manufacture an eligible cut. These cannot replace an accepted bootstrap or installed
+positive recovery cohort.
+
 The `source-replacement-linux` case `replacement-reload-cancel` additionally
 requires the same-source, independently pinned `ARDENTS_SOURCE_STARTUP_CUT_TEST`
 and `_SHA256`, a `cmd/ardents-next` test binary with `network_signing_native`.
@@ -303,11 +511,27 @@ histories without treating equal floors as the same original verifier/path.
 After the compiled positive completes, the runner discovers and executes the
 separate `TestSourceInitialNative` cases over that genuine retained transaction.
 Its root-only path marker is data selection, never birth or Start authority.
-These cases check the complete 112-record transcript and 24 Source-owned native
+These cases check the declared complete transcript and 24 Source-owned native
 resources, reject a foreign phase at every original sequence, malformed/torn or
 extra records and the earlier binding-only admission commitment, and retain
 original cancellation plus actual descriptor/Close failure across a held read.
 The initial writer also consumes this independent readback before its own return.
+Current initial-producer qualification additionally requires the exact
+recoverable115 format, its journal-born pending triple and retention through
+all observer/writer/input Close failures before final publication. Legacy112
+compatibility remains a separate complete-only case; selecting an earlier
+artifact's oracle does not qualify a current producer. The compiled current
+producer writes `initial_journal_format: recoverable115` in the checked
+readback data selector. A replacement cohort explicitly pins
+`ARDENTS_SOURCE_STARTUP_INITIAL_JOURNAL_FORMAT` to `legacy112` or
+`recoverable115` for its actual predecessor artifact; no default or detection
+from the journal selects that oracle. This declaration grants no provenance or
+runtime authority and belongs to the new receipt's exact controller inputs.
+Independent byte vectors
+must reject every partial recoverable115 prefix, wrong marker commitment and
+born/ready substitution. Native-file controls separately prove writer exclusion,
+marker/parent identity and refusal on cancellation/actual Close failure without
+constructing an accepting Source or treating those controls as installed proof.
 Historical account database records do not become immutable Source-owned host
 databases; future first-start admission still needs the current exact principal.
 Pure vectors independently encode loaded protection and account preimage rules,

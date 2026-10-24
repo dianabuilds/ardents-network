@@ -17,7 +17,7 @@ import (
 // The checked runner invokes these only after the real compiled initial
 // installer has completed on this private stand. The marker selects data;
 // it provides no provenance, authorization, initial birth or startup right.
-func nativeSourceInitial(t *testing.T, ctx context.Context) (*sourceInitial, *release.Verifier, string, string) {
+func nativeSourceInitial(t *testing.T, ctx context.Context) (*sourceInitial, *release.Verifier, string, string, int) {
 	t.Helper()
 	parent := os.Getenv("ARDENTS_SOURCE_STOPPED_FUTURE_PARENT")
 	if os.Geteuid() != 0 || !sourcePath(parent) {
@@ -27,11 +27,24 @@ func nativeSourceInitial(t *testing.T, ctx context.Context) (*sourceInitial, *re
 	var fixture struct {
 		Binding string `json:"binding"`
 		History string `json:"history"`
+		Format  string `json:"initial_journal_format"`
 	}
 	if err != nil || len(raw) > 16<<10 || json.Unmarshal(raw, &fixture) != nil ||
 		!sourcePath(fixture.Binding) || !sourcePath(fixture.History) ||
 		!contains(parent, fixture.Binding) || !contains(parent, fixture.History) {
 		t.Fatal("invalid environment: genuine completed fixture unavailable", err)
+	}
+	// The checked cohort declares its actual producer's grammar independently
+	// of journal contents. Autodetection could let a current producer emitting
+	// the old format satisfy the wrong qualification oracle.
+	count, phase := 0, ""
+	switch fixture.Format {
+	case "legacy112":
+		count, phase = 112, "initial"
+	case "recoverable115":
+		count, phase = 115, "initial-recoverable"
+	default:
+		t.Fatal("invalid environment: exact initial producer format required")
 	}
 	v, err := release.OpenRetained(fixture.History)
 	if err != nil {
@@ -47,11 +60,17 @@ func nativeSourceInitial(t *testing.T, ctx context.Context) (*sourceInitial, *re
 		t.Fatal("genuine complete initial transcript readback", err)
 	}
 	t.Cleanup(func() { _ = s.close() })
-	return s, v, fixture.Binding, fixture.History
+	journal := s.selection.binding.Request.InstallationRoot + ".source-initial-journal"
+	lines := bytes.Split(bytes.TrimSuffix(s.selection.files[journal].raw, []byte{'\n'}), []byte{'\n'})
+	var first sourceRecord
+	if len(lines) != count || json.Unmarshal(lines[0], &first) != nil || first.Phase != phase {
+		t.Fatal("actual initial producer differs from declared cohort grammar", len(lines), first.Phase)
+	}
+	return s, v, fixture.Binding, fixture.History, count
 }
 
 func TestSourceInitialNativeCompleteTranscriptAndCausalRefusals(t *testing.T) {
-	s, v, binding, history := nativeSourceInitial(t, t.Context())
+	s, v, binding, history, count := nativeSourceInitial(t, t.Context())
 	journal := s.selection.binding.Request.InstallationRoot + ".source-initial-journal"
 	raw := append([]byte(nil), s.selection.files[journal].raw...)
 	admitted, err := s.history.commitment(v, s.selection.files[binding].raw)
@@ -64,14 +83,14 @@ func TestSourceInitialNativeCompleteTranscriptAndCausalRefusals(t *testing.T) {
 	}
 	b := s.selection.binding
 	bindingSHA := digest(s.selection.files[binding].raw)
-	owned, err := decodeSourceInitialRecords(raw, b, hashes, admitted)
+	owned, err := decodeSourceInitialBirthRecords(raw, b, hashes, admitted)
 	if err != nil || len(owned) != 24 {
 		t.Fatal("complete original owned-resource inventory", len(owned), err)
 	}
 	// Every phase in the genuinely produced transcript must be consumed in
 	// place. Merely finding its final stopped marker cannot pass this oracle.
 	lines := bytes.Split(raw[:len(raw)-1], []byte{'\n'})
-	if len(lines) != 112 {
+	if len(lines) != count {
 		t.Fatal("independent finite transcript count", len(lines))
 	}
 	for i, line := range lines {
@@ -83,7 +102,7 @@ func TestSourceInitialNativeCompleteTranscriptAndCausalRefusals(t *testing.T) {
 		changed, _ := json.Marshal(record)
 		mutated := append([][]byte(nil), lines...)
 		mutated[i] = changed
-		if _, err := decodeSourceInitialRecords(append(bytes.Join(mutated, []byte{'\n'}), '\n'), b, hashes, admitted); err == nil {
+		if _, err := decodeSourceInitialBirthRecords(append(bytes.Join(mutated, []byte{'\n'}), '\n'), b, hashes, admitted); err == nil {
 			t.Fatal("foreign phase accepted at original sequence", i)
 		}
 	}
@@ -139,7 +158,7 @@ func TestSourceInitialNativeCompleteTranscriptAndCausalRefusals(t *testing.T) {
 func TestSourceInitialNativeHeldReadPreservesCancellationAndClose(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	s, _, _, _ := nativeSourceInitial(t, ctx)
+	s, _, _, _, _ := nativeSourceInitial(t, ctx)
 	journal := s.selection.binding.Request.InstallationRoot + ".source-initial-journal"
 	entered, resume := make(chan struct{}), make(chan struct{})
 	read := 0

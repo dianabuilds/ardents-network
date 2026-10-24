@@ -1,5 +1,81 @@
 # Source artifact admission and explicit installation transitions
 
+Late initial recovery retains every recorded native resource before its fresh
+matched manager reference may load the complete unit. It checks exact
+never-started policy, performs only an outstanding reload and returns stopped.
+Full115 recovery writes an empty suffix and never repeats the completed reload.
+The ordinary complete reader independently validates the original cut and
+completion even when the interrupted original already recorded115 phases.
+Incomplete fixed-unit birth remains repair-required. No empty semantic root,
+complete-looking bytes or typed manager response supplies missing provenance.
+
+`source_recovery_completed_linux.go` classifies only a complete original start
+and committed retirement with fresh native stopped observations. It never
+replays startup archival, ACK or retirement commitment and writes no recovery
+result. Partial or uncertain histories stay repair-required. A stopped result
+grants neither semantic State readiness nor a later Start/Restart permission.
+It references and may load the fixed native manager unit, retaining that original
+connection through joined Close; it performs no persistent recovery writes.
+Ordinary completion readers enforce the same supported-prefix boundary as the
+recovery producers. Full suffix grammar never authorizes an earlier unsupported
+account/directory or intent-only continuation, even with genuine cut proof.
+
+`source_recover_replacement_linux.go` composes a fresh replacement recovery
+operation with its own original-prefix exclusion, genuine cut proof, complete
+predecessor start/retirement chain and separately supplied State inspection.
+The predecessor reader independently authenticates recorded old/native preimages
+and the exact old/new selector pair dictated by the known prefix. It recognizes
+only that retained original journal and its actual proof/completion descriptors.
+Unknown sidecars or an earlier failed recovery still refuse. Remaining original
+generation writes, sealing, selection, unit and reload use concrete native
+owners and a separate suffix. The final original blocker remains through all
+required Close. Ordinary recovered replacement consumers independently validate
+the complete55 semantic transcript and guarded original-cut proof; only the
+actual current recovery writer has its own pre-publication readback exception.
+
+`source_cut_history_linux.go` independently retains both original-cut result
+files under shared flocks, their ancestors, exact bytes/native lineage and
+guard absence through the prefix owner's joined Close. `RecoverSource` requires
+this result before a recovery writer can be born; the ordinary partial-initial
+completion reader independently requires it too. Both compare fresh native
+manager facts and the actual broker-instance/unique owner. The initial and
+replacement original connections supply that historical identity before any
+journalled effect. Native file/process fixtures deliberately supply no manager
+identity and cannot satisfy this Source admission. This implementation still
+requires causal manager and installed qualification under the selected issue.
+
+`source_transition_controller_linux.go` owns the canonical initial/replacement
+coordinator's original private process lifetime. Its channel companion binds
+actual root credentials and exact program/nonce/sequence; its scope companion
+retains the launching thread, from-birth pidfd, unreaped group leader and actual
+subreaper waits in the existing manager namespaces. Successful synced record
+reports self-stop before the next effect; only a verified kernel stop may receive
+ACK and resume. Original failure/cancellation and adopted helper uncertainty
+cannot become successful ordinary completion. Refused packets release every
+received descriptor physically, without GC.
+
+The original controller serializes frozen-boundary custody against any ACK
+attempt. Its guarded physical-result publisher runs only after known matching
+native kill/join and required controller Close; uncertain proof Sync/Close keeps
+its own pending guard. The ordered thirteen-record transcript binds original
+process/program/kernel facts, held Source prefix and actual result-file birth.
+It never rewrites the interrupted Source journal or removes its original blocker.
+This physical result alone grants no recovery authority. Mandatory independent
+consumers and fresh domain admission are required by the
+[installed lifecycle owner](../../../../docs/technical/network-route-node.md#initial-stopped-source-persistence).
+No old uncontrolled prefix or unknown prior Sync/Close acquires a continuation
+right from its canonical bytes, released lease or missing process.
+
+The separate native physical observer holds the actual coordinator before
+journal Sync, before recording an already performed file birth/body effect, or
+before required writer Close with the complete file-only transcript visible.
+The original controller handles cancellation and must kill/reap that held child;
+the observer never resumes it to finish an uncertain effect. Fresh native
+prefix custody still refuses absent original-cut proof. These closed file-only
+controls supply neither installed Source authority nor phase equivalence. The
+existing ACK observer and its separately gated installed profile retain their
+own exact grammar and accepting-proof checks.
+
 This supporting Software acceptance owner implements ADR-0123's Source
 artifact component, read-only native preflight, initial stopped transition and
 guarded first startup. `artifact.go` owns canonical descriptor preparation and exact
@@ -106,12 +182,20 @@ actual Release verifier and commits that identity with the binding in the privat
 initial journal. Release keeps all floor contents/policy and its separate lease.
 The native history commitment grants no first-start authority and changes neither
 the twelve-file inventory nor the immutable binding grammar.
-`source_initial_records_linux.go` owns the complete canonical initial transcript
-grammar, including exact phase/order, intended resources and matching born/ready
-identities. `source_initial_linux.go` independently retains that root-only
+`source_initial_records_linux.go` owns the unchanged legacy112 complete grammar.
+`source_initial_pending_records_linux.go` separately checks the recoverable115
+format: its distinct initial header and original pending-file triple precede the
+same complete semantic rules. `source_initial_pending_linux.go` owns the transient
+marker observation and last physical publication. New initial producers retain
+that journal-born marker through native observer/writer/input Close and fresh
+Release recheck. Failure leaves it in place; no required Installation effect
+follows removal. An absent marker is not itself a successful transcript or Start
+right. `source_initial_linux.go` independently retains that root-only
 transcript, selected Source resources and original Release history. The initial
 stopped creator consumes this readback after its final record and returns its
-writer lease only after its observers/helpers join. This reader grants no Start,
+writer lease only after its observers/helpers join. Ordinary readers retain a
+shared journal flock; only the actual original writer can read back its own
+complete blocked transcript. This reader grants no Start,
 account or Release right; a future start separately admits the current principal
 and fresh proofs. Account database records describe the initial helper's history,
 not Source ownership of immutable host databases. State/participation contents
@@ -156,15 +240,17 @@ while read-only preflight retains all of its original namespace pins.
 
 The initial journal, twelve-file sealed generation, exact selected binding and
 fixed unit are defined in the [technical owner](../../../../docs/technical/network-route-node.md#initial-stopped-source-persistence).
-Semantic State/participation directories remain empty. No failure removes a
-prefix, adopts foreign resources, resets floors, retries an uncertain birth or
-implements continuation. Account/helper and native manager observations do not
+Semantic State/participation contents remain with their owners. No failure
+removes a prefix, adopts foreign resources, resets floors or retries an
+uncertain birth. Explicit recovery requires genuine original-cut evidence,
+fresh admission and the exact original resources described above.
+Account/helper and native manager observations do not
 constitute independent distribution trust or qualify an operational installation.
 
 Current reference/technical/testing owners describe formats and checks. This
 component neither establishes first-distribution trust before execution nor
 accepts a bootstrap receipt or qualifies an installed Source, complete operator
-cutover or system. Other five invocations have no accepting path.
+cutover or system. Other infrastructure duties remain outside this Source owner.
 Before any installed Source execution the completed exact public bootstrap
 receipt requires direct Product Owner acceptance. Its presence, a Start job or
 ACK supplies neither that human decision nor State authority or runtime readiness.

@@ -66,6 +66,28 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/source_birth_linux.go",
 			"internal/successor/installation/infrastructure/source_install_linux.go",
 			"internal/successor/installation/infrastructure/source_replace_linux.go",
+			"internal/successor/installation/infrastructure/source_recover_linux.go",
+			"internal/successor/installation/infrastructure/source_transition_channel_linux.go",
+			"internal/successor/installation/infrastructure/source_transition_controller_linux.go",
+			"internal/successor/installation/infrastructure/source_transition_scope_linux.go",
+			"internal/successor/installation/infrastructure/source_transition_cut_linux.go",
+			"internal/successor/installation/infrastructure/source_transition_process_linux.go",
+			"internal/successor/installation/infrastructure/source_transition_origin_linux.go",
+			"internal/successor/installation/infrastructure/source_cut_result_linux.go",
+			"internal/successor/installation/infrastructure/source_cut_publication_linux.go",
+			"internal/successor/installation/infrastructure/source_initial_pending_linux.go",
+			"internal/successor/installation/infrastructure/source_initial_pending_records_linux.go",
+			"internal/successor/installation/infrastructure/source_initial_pending_records_linux_test.go",
+			"internal/successor/installation/infrastructure/source_recovery_prefix_linux.go",
+			"internal/successor/installation/infrastructure/source_recovery_completion_linux.go",
+			"internal/successor/installation/infrastructure/source_recovery_writing_linux.go",
+			"internal/successor/installation/infrastructure/source_recovery_file_linux.go",
+			"internal/successor/installation/infrastructure/source_recovery_initial_custody_linux.go",
+			"internal/successor/installation/infrastructure/source_recovery_initial_grammar_linux.go",
+			"internal/successor/installation/infrastructure/source_recovery_initial_grammar_linux_test.go",
+			"internal/successor/installation/infrastructure/source_recovery_records_linux.go",
+			"internal/successor/installation/infrastructure/source_recovery_records_linux_test.go",
+			"internal/successor/installation/infrastructure/source_recovery_grammar_linux_test.go",
 			"internal/successor/installation/infrastructure/source_replacement_candidate_linux.go",
 			"internal/successor/installation/infrastructure/source_replacement_history_linux.go",
 			"internal/successor/installation/infrastructure/source_replacement_binding_linux.go",
@@ -75,6 +97,13 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/source_replacement_plan_linux_test.go",
 			"internal/successor/installation/infrastructure/source_reload_namespace_linux.go",
 			"internal/successor/installation/systemd/source_replacement_linux.go",
+			"internal/successor/installation/systemd/source_identity_linux.go",
+			"internal/successor/installation/infrastructure/source_cut_history_linux.go",
+			"internal/successor/installation/infrastructure/source_recovery_replacement_grammar_linux.go",
+			"internal/successor/installation/infrastructure/source_recovery_replacement_readback_linux.go",
+			"internal/successor/installation/infrastructure/source_recovery_predecessor_linux.go",
+			"internal/successor/installation/infrastructure/source_recover_replacement_linux.go",
+			"internal/successor/installation/infrastructure/source_recovery_completed_linux.go",
 			"internal/successor/installation/infrastructure/source_binding_linux.go",
 			"internal/successor/installation/infrastructure/source_binding_linux_test.go",
 			"internal/successor/installation/infrastructure/source_selection_linux.go",
@@ -876,6 +905,18 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/successor/installation/infrastructure/source_replace_linux.go" && (dependency == modulePath+"/internal/successor/network/state" || dependency == modulePath+"/internal/successor/installation/fixedfile" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
 			return true
 		}
+		if (source == "internal/successor/installation/infrastructure/source_recover_linux.go" || source == "internal/successor/installation/infrastructure/source_initial_linux.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
+			return true
+		}
+		if source == "internal/successor/installation/infrastructure/source_recover_linux.go" && dependency == modulePath+"/internal/successor/network/state" {
+			return true
+		}
+		if source == "internal/successor/installation/infrastructure/source_recover_replacement_linux.go" && (dependency == modulePath+"/internal/successor/release" || dependency == modulePath+"/internal/successor/network/state" || dependency == modulePath+"/internal/successor/installation/systemd") {
+			return true
+		}
+		if source == "internal/successor/installation/infrastructure/source_recovery_completed_linux.go" && (dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
+			return true
+		}
 		if source == "internal/successor/installation/infrastructure/source_start_barrier_linux.go" && dependency == modulePath+"/internal/successor/installation/completion" {
 			return true
 		}
@@ -990,6 +1031,9 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 	}
 
+	if source == "internal/successor/installation/infrastructure/source_transition_scope_linux.go" && dependency == "golang.org/x/sys/unix" {
+		return true
+	}
 	// OTel composition is confined to the exact command package.
 	// No arbitrary third-party bridge is permitted.
 	if owner == "cmd/ardents-next" {

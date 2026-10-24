@@ -164,6 +164,18 @@ detached observations nor durable phase presence grant Release, mutation,
 Start, ACK replay or runtime rights. [Installation's current owner](../../internal/successor/installation/README.md)
 and [Release/Custody](../technical/release-update-custody.md) hold exact admission,
 record, recovery and fixed-resource rules.
+Source recovery is a distinct Infrastructure lifetime with its own original
+journal exclusion, independent native resources and immutable original-cut
+proof. It writes a separate completion suffix, retains every original failure
+and releases the original pending guard only after its own required joins and
+fresh Release checks. Release retains trust/floors; State alone supplies opaque
+signed/time/participation inspection. Initial recovery requires empty semantic
+roots and complete original account provenance; replacement requires genuine
+predecessor retirement. Native manager matching and zero-execution observations
+grant no semantic authority. Startup/retirement classification never replays
+Start, ACK, archival or retirement effects. The [Source lifecycle owner](../technical/network-route-node.md#initial-stopped-source-persistence)
+defines these separate boundaries; installed causal acceptance remains in the
+selected issue ledger.
 Private installed Startup reads fresh fixed manager facts on one bounded native
 connection per observation, retaining the unique manager across its original
 lifetime. Both complete property rounds, original file/process reobservations

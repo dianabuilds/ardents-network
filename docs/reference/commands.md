@@ -662,6 +662,7 @@ ardents-node installation start-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK 
 ardents-node installation stop-source HISTORY BINDING
 ardents-node installation restart-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING
 ardents-node installation replace-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST
+ardents-node installation recover-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK REQUEST JOURNAL
 ```
 
 They directly consume separate Enrollment, Release and Source Installation owners
@@ -700,7 +701,22 @@ describes that completed stopped transition. Explicit `restart-source` then
 obtains a fresh invocation; no automatic Start or rollback follows. With
 unchanged program bytes, an actual permitted listen-address change and strictly
 forward descriptor/metadata are still required. Incomplete transitions retain
-blocking evidence and provide no repair/continuation command in this slice.
+their original blocking evidence.
+
+For explicit recovery, supply the original retained journal, the matching
+prepared Source request and authenticated candidate distribution against the
+same retained Release history. Recovery never accepts a new initial pin or
+clears damaged evidence. A controlled initial/replacement prefix additionally
+needs its genuine completed original-cut result, original native files and
+fresh domain admission. It writes only a separate completion suffix and the
+permitted remaining effects, returning `source-recovery-stopped-selected`
+after required Close. Start remains a separate explicit command with fresh
+admission. Startup/retirement journals are never replayed: only complete start
+and committed retirement histories plus fresh stopped observations can return
+stopped. Unknown birth, torn records, uncertain Sync/Close, missing history,
+unproven domain join or substituted manager remains repair-required. Preserve
+that prefix; recovery supplies no rollback, account adoption, key rotation,
+history reset or arbitrary host repair.
 
 These native operations require the selected Ubuntu24.04/systemd255/cgroup-v2/ext4
 profile; unsupported environments refuse. Before any isolated installed Source

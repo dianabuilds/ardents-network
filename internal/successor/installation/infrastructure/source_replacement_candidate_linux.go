@@ -24,6 +24,15 @@ func prepareSourceReplacement(retired *sourceRetirement, a Authorization, input 
 		return nil, ErrAuthorization
 	}
 	old := retired.chain.initial.selection
+	return prepareSourceReplacementConfiguration(old, retired.result, retired.sha256, a, input)
+}
+
+// Detached configuration preparation only. A recovery caller must separately
+// consume the genuine complete predecessor retirement before any new effect.
+func prepareSourceReplacementConfiguration(old *sourceSelection, result sourceRetirementResult, retirement string, a Authorization, input SourceInputs) (*sourceReplacementCandidate, error) {
+	if old == nil || input.original == nil || len(input.original.files) != 5 || a.origin == nil || !sourceInitialSHA(retirement) {
+		return nil, ErrInput
+	}
 	p := old.binding
 	r := input.Declaration()
 	if r.InstallationRoot != p.Request.InstallationRoot || r.StateRoot != p.Request.StateRoot || r.ParticipationRoot != p.Request.ParticipationRoot ||
@@ -38,7 +47,7 @@ func prepareSourceReplacement(retired *sourceRetirement, a Authorization, input 
 	if err != nil || next.ReleaseVersion <= previous.ReleaseVersion {
 		return nil, errors.Join(ErrBinding, err)
 	}
-	if retired.chain.latest.number+1 >= sourceAttemptLimit {
+	if result.Schema != "ardents-source-retirement-v1" || result.Code != 1 || result.Status != 0 || result.Attempt+1 >= sourceAttemptLimit || result.Generation != p.Generation || result.BindingSHA256 != digest(old.bindingBytes()) {
 		return nil, ErrBinding
 	}
 	if err := checkSourceForwardPlan(old.files[filepath.Join(old.sealed, "source-plan.json")].raw, input.original.files[1].raw); err != nil {
@@ -70,7 +79,7 @@ func prepareSourceReplacement(retired *sourceRetirement, a Authorization, input 
 		c.files[name] = raw
 	}
 	c.files["source-plan.json"], c.files["source-request.json"], c.files["rendered-source.service"] = bytes.Clone(input.original.files[1].raw), bytes.Clone(input.original.files[0].raw), unit
-	c.binding = sourceReplacementBinding{Schema: "ardents-source-replacement-binding-v1", InitialGeneration: p.Generation, PredecessorBindingSHA256: digest(old.bindingBytes()), RetirementSHA256: retired.sha256, PredecessorAttempt: uint32(retired.chain.latest.number),
+	c.binding = sourceReplacementBinding{Schema: "ardents-source-replacement-binding-v1", InitialGeneration: p.Generation, PredecessorBindingSHA256: digest(old.bindingBytes()), RetirementSHA256: retirement, PredecessorAttempt: result.Attempt,
 		Configuration: sourceBinding{Schema: "ardents-source-replacement-configuration-v1", Invocation: "source", Generation: generation, Predecessor: p.Generation, RequestSHA256: digest(c.files["source-request.json"]), ProgramTarget: ProgramTarget, GenerationTarget: GenerationTarget,
 			ProgramSHA256: digest(a.Program()), TemplateSHA256: digest(a.Template()), InventorySHA256: digest(c.files["infrastructure-enrollment.json"]), TargetsSHA256: digest(c.files["targets.json"]), PlanSHA256: digest(c.files["source-plan.json"]), UnitSHA256: digest(unit), Account: p.Account, UID: p.UID, GID: p.GID, Request: r}}
 	if old.replacement != nil {
