@@ -224,6 +224,7 @@ def source_startup_cut_observation(profile, ready, report=None, raw=None):
             or type(report.get("root_exit")) is not int or report["root_exit"] != -1
             or type(report.get("root_signal")) is not int or report["root_signal"] != 9
             or type(report.get("processes")) is not int or report["processes"] != 1
+            or type(report.get("peak_live_processes")) is not int or report["peak_live_processes"] != 1
             or type(report.get("threads_joined")) is not int or not 1 <= report["threads_joined"] <= 256
             or report.get("root_kill_requested") is not True or report.get("root_killed_by_observer") is not True
             or any(report.get(name, False) is not False for name in ("external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "refusal_original_scope_joined", "recovery_root_only_at_hold", "recovery_held_before_record", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
@@ -412,6 +413,7 @@ def source_retirement_cut_observation(profile, ready, report=None, raw=None):
             or type(report.get("root_exit")) is not int or report["root_exit"] != -1
             or type(report.get("root_signal")) is not int or report["root_signal"] != 9
             or type(report.get("processes")) is not int or report["processes"] != 1
+            or type(report.get("peak_live_processes")) is not int or report["peak_live_processes"] != 1
             or type(report.get("threads_joined")) is not int or not 1 <= report["threads_joined"] <= 256
             or report.get("root_kill_requested") is not True or report.get("root_killed_by_observer") is not True
             or any(report.get(name, False) is not False for name in ("external_cancellation_acknowledged", "root_ownership_released_before_exit", "refusal_ownership_released_before_exit", "refusal_original_scope_joined", "recovery_root_only_at_hold", "recovery_held_before_record", "refusal_exclusion_observed", "refusal_missing_cut_observed"))
@@ -445,7 +447,7 @@ def source_root_recovery_observation(profile, report, raw):
     # grammar is checked on Windows, whose signal module has no SIGKILL.
     linux_sigkill = 9
     pin = hashlib.sha256(json.dumps(profile, separators=(",", ":")).encode() + b"\n").hexdigest()
-    numbers = ("entry", "root_pid", "root_exit", "root_signal", "threads_joined", "processes", "held_root_thread", "signalled_root_thread", "selected_records")
+    numbers = ("entry", "root_pid", "root_exit", "root_signal", "threads_joined", "processes", "peak_live_processes", "held_root_thread", "signalled_root_thread", "selected_records")
     if any(type(report.get(name)) is not int for name in numbers) or source_report_has_directed_cut(report) or source_report_has_pending_guard(report):
         raise RuntimeError("actual root process cut numeric inventory required")
     arguments = profile.get("arguments")
@@ -456,7 +458,7 @@ def source_root_recovery_observation(profile, report, raw):
             or report.get("physical_window") != profile["window"] or report["selected_records"] != profile["prefix_records"]
             or report.get("inspection_only") is not False or report.get("installed_execution") is not True
             or report["entry"] <= 0 or report["root_pid"] <= 0 or report["root_exit"] != -1 or report["root_signal"] != linux_sigkill
-            or report["processes"] != 1 or not 1 <= report["threads_joined"] <= 256 or report["held_root_thread"] <= 0 or report["signalled_root_thread"] != 0
+            or report["processes"] != 1 or report["peak_live_processes"] != 1 or not 1 <= report["threads_joined"] <= 256 or report["held_root_thread"] <= 0 or report["signalled_root_thread"] != 0
             or report.get("root_kill_requested") is not True or report.get("root_killed_by_observer") is not True
             or report.get("external_cancellation_acknowledged") is not False or report.get("root_ownership_released_before_exit", False) is not False
             or any(type(report.get(name, 0)) is not int or report.get(name, 0) != 0 for name in ("root_close_entry", "root_close_observations", "held_coordinator_thread", "recovery_hold_entry", "recovery_cancellation_elapsed_ns", "refusal_admission_entry", "refusal_stopped_threads"))
@@ -562,7 +564,7 @@ def source_refusal_observation(profile, report, raw, exclusion_identity=None, mi
     """Check the pinned observer's actual completed canonical invocation only."""
     if source_report_has_directed_cut(report):
         raise RuntimeError("directed physical cut cannot supply a before-return refusal")
-    numeric = ("entry", "refusal_admission_entry", "root_pid", "root_exit", "threads_joined", "processes", "refusal_stopped_threads")
+    numeric = ("entry", "refusal_admission_entry", "root_pid", "root_exit", "threads_joined", "processes", "peak_live_processes", "refusal_stopped_threads")
     if any(type(report.get(name)) is not int for name in numeric):
         raise RuntimeError("actual refusal observer numeric inventory required")
     profile_pin = hashlib.sha256(json.dumps(profile, separators=(",", ":")).encode() + b"\n").hexdigest()
@@ -571,8 +573,10 @@ def source_refusal_observation(profile, report, raw, exclusion_identity=None, mi
             or report.get("refusal_original_scope_joined") is not True
             or report.get("recovery_root_only_at_hold", False) is not (profile.get("recovery_hold") is not None)
             or report["entry"] <= 0 or report["refusal_admission_entry"] <= 0 or report["entry"] == report["refusal_admission_entry"]
-            or report["root_pid"] <= 0 or report["root_exit"] != 2 or not 1 <= report["processes"] <= 32
-            or report["processes"] > report["threads_joined"]
+            or report["root_pid"] <= 0 or report["root_exit"] != 2
+            or not 1 <= report["peak_live_processes"] <= 32
+            or (report["processes"] > 1 and report["peak_live_processes"] < 2)
+            or not report["peak_live_processes"] <= report["processes"] <= report["threads_joined"]
             or not 2 <= report["refusal_stopped_threads"] <= report["threads_joined"] <= 256
             or report.get("program_sha256") != profile["program_sha256"] or report.get("public_receipt_sha256") != profile["public_receipt_sha256"]
             or report.get("output_sha256") != hashlib.sha256(raw).hexdigest() or not raw.endswith(b"source command failed\n")):
@@ -675,7 +679,7 @@ def source_refusal_observation(profile, report, raw, exclusion_identity=None, mi
     result = {"profile_sha256": report["profile_sha256"], "program_sha256": report["program_sha256"],
               "output_sha256": report["output_sha256"], "root_exit": report["root_exit"],
               "root_pid": report["root_pid"],
-              "original_scope_joined": True, "processes": report["processes"],
+              "original_scope_joined": True, "processes": report["processes"], "peak_live_processes": report["peak_live_processes"],
               "stopped_threads_before_return": report["refusal_stopped_threads"], "threads_joined": report["threads_joined"]}
     if exclusion is not None:
         result["exclusion"] = {"observed": True, "kind": exclusion, "device": report["refusal_exclusion_device"], "inode": report["refusal_exclusion_inode"]}
@@ -745,7 +749,7 @@ def source_cancellation_observation(profile, ready, report=None, raw=None):
 def source_physical_observation(profile, report, raw, publication_preimage=None):
     if source_report_has_directed_cut(report) or source_report_has_pending_guard(report):
         raise RuntimeError("directed root cut cannot supply managed cancellation")
-    numeric = ("entry", "root_pid", "root_exit", "threads_joined", "processes", "held_coordinator_thread", "signalled_root_thread", "selected_records")
+    numeric = ("entry", "root_pid", "root_exit", "threads_joined", "processes", "peak_live_processes", "held_coordinator_thread", "signalled_root_thread", "selected_records")
     if any(type(report.get(name)) is not int for name in numeric):
         raise RuntimeError("actual physical cut numeric inventory required")
     pin = hashlib.sha256(json.dumps(profile, separators=(",", ":")).encode() + b"\n").hexdigest()
@@ -754,7 +758,8 @@ def source_physical_observation(profile, report, raw, publication_preimage=None)
             or report.get("program_sha256") != profile["program_sha256"] or report.get("public_receipt_sha256") != profile["public_receipt_sha256"]
             or report.get("physical_window") != profile["window"] or report["selected_records"] != profile["prefix_records"]
             or report["entry"] <= 0 or report["root_pid"] <= 0 or report["root_exit"] != 2
-            or not 2 <= report["processes"] <= 32 or not report["processes"] <= report["threads_joined"] <= 256
+            or report["processes"] < 2 or not 2 <= report["peak_live_processes"] <= 32
+            or not report["peak_live_processes"] <= report["processes"] <= report["threads_joined"] <= 256
             or report["held_coordinator_thread"] <= 0 or report["held_coordinator_thread"] == report["root_pid"]
             or report["signalled_root_thread"] <= 0 or report["signalled_root_thread"] == report["held_coordinator_thread"]
             or report.get("held_coordinator_killed") is not True or report.get("external_cancellation_acknowledged") is not True
@@ -784,7 +789,7 @@ def source_physical_observation(profile, report, raw, publication_preimage=None)
         raise RuntimeError("mixed publication preimage purpose")
     result = {"profile_sha256": pin, "root_pid": report["root_pid"], "root_exit": report["root_exit"],
             "held_coordinator_thread": report["held_coordinator_thread"], "threads_joined": report["threads_joined"],
-            "processes": report["processes"], "physical_window": report["physical_window"], "output_sha256": report["output_sha256"]}
+            "processes": report["processes"], "peak_live_processes": report["peak_live_processes"], "physical_window": report["physical_window"], "output_sha256": report["output_sha256"]}
     if required:
         result["publication_preimage"] = dict(publication_preimage, observed=True)
     return result
@@ -1577,6 +1582,10 @@ def main():
         if len(reports) != 1:
             raise RuntimeError("one actual original-cut observer result required")
         report = reports[0]
+        if (any(type(report.get(name)) is not int for name in ("processes", "peak_live_processes", "threads_joined"))
+                or not 2 <= report["peak_live_processes"] <= 32
+                or not report["peak_live_processes"] <= report["processes"] <= report["threads_joined"] <= 256):
+            raise RuntimeError("actual original live process bound and complete historical join required")
         if report["inspection_only"] or not report["installed_execution"] or not report["external_cancellation_acknowledged"] or report["root_exit"] != 2 or report["selected_records"] != recovery_count or report["acknowledgement_hits"] != recovery_count - 1 or report["threads_joined"] < 2 or report["processes"] < 2:
             raise RuntimeError("actual original root cancellation/frontier/native join missing")
         original, identity = native_image(journal)

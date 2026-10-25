@@ -465,7 +465,7 @@ both callers and a later refused envelope acquisition. This mechanism supplies
 no Release, State, account or manager authority, and cannot execute an installed
 profile; the canonical concurrent recovery cohort remains separately required.
 
-Both file/process callers launch and actually wait for three separate native
+Both file/process callers launch and actually wait for forty separate native
 helpers before repair or their original refusal. The observer retains
 the complete historical process inventory, but recovery hold and post-operation
 return require that only known original root threads remain in its live
@@ -481,6 +481,13 @@ joined child, which cannot supply the root's missing exclusion. A completed
 report separately records `refusal_original_scope_joined`; its consumers require
 that fact, bounded historical process/thread counts and the original pre-return
 FD proof. A held report separately proves `recovery_root_only_at_hold`.
+Historical process identities remain subject to the existing 256 observed TID
+lifetime bound. The separate 32-process capacity bound counts only groups whose
+threads have not reached terminal `Wait4`; a report retains both total historical
+`processes` and `peak_live_processes`. Forty sequentially reaped helpers must
+retain their full history while using only two live slots. An additional actual
+root plus 32 unreaped helpers must refuse and join before any recovery hold.
+No thread, memory, deadline, prefix, proof or join bound increases.
 The selected recovery native inventory includes this actual
 concurrency regression and its premature-notice negative, with the same pinned
 helper explicitly supplied through `ARDENTS_SOURCE_RECOVERY_CONCURRENT_PROGRAM`.

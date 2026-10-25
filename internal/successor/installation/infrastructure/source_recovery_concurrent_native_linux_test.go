@@ -143,7 +143,7 @@ func TestSourceRecoveryConcurrentNative(t *testing.T) {
 		}
 		return result
 	}
-	other := decode(secondOutput.String(), 4)
+	other := decode(secondOutput.String(), sourceRecoveryNativeHelperCount+1)
 	if other.RootPID == held.RootPID || other.RecoveryHeldBeforeRecord {
 		t.Fatal("second caller borrowed original lifetime", held, other)
 	}
@@ -169,7 +169,7 @@ func TestSourceRecoveryConcurrentNative(t *testing.T) {
 	if err != nil || readErr != nil {
 		t.Fatal("actual cancelled caller/helper join", err, readErr, captured.String())
 	}
-	completed := decode(captured.String(), 4)
+	completed := decode(captured.String(), sourceRecoveryNativeHelperCount+1)
 	joinedOutput, err := os.ReadFile(root + "-first.log")
 	if err != nil {
 		t.Fatal("original helper join report", err)
@@ -179,13 +179,16 @@ func TestSourceRecoveryConcurrentNative(t *testing.T) {
 		if strings.HasPrefix(line, "SOURCE_RECOVERY_NATIVE_JOINED_CHILD ") {
 			var pid int
 			if n, err := fmt.Sscanf(line, "SOURCE_RECOVERY_NATIVE_JOINED_CHILD pid=%d", &pid); err != nil || n != 1 || pid <= 0 || joinedChildren[pid] {
-				t.Fatal("three distinct actual joined helper processes required", line, err)
+				t.Fatal("distinct actual joined helper processes required", line, err)
 			}
 			joinedChildren[pid] = true
 		}
 	}
-	if len(joinedChildren) != 3 {
+	if len(joinedChildren) != sourceRecoveryNativeHelperCount {
 		t.Fatal("original helpers did not all reach actual Wait", string(joinedOutput))
+	}
+	if completed.PeakLiveProcesses != 2 || other.PeakLiveProcesses != 2 {
+		t.Fatal("sequential reaped helpers must consume only two live process slots", completed, other)
 	}
 	if completed.RootPID != held.RootPID || !completed.RecoveryHeldBeforeRecord || !completed.RecoveryHeldImagePreserved || !completed.ExternalCancellationAcknowledged || completed.SignalledRootThread == 0 || completed.SignalledRootThread == completed.HeldRootThread {
 		t.Fatal("actual recovery cancellation or original custody incomplete", held, completed)
@@ -235,6 +238,28 @@ func TestSourceRecoveryConcurrentNative(t *testing.T) {
 		t.Fatal("actual live descendant escaped recovery hold refusal", err, liveOutput.String())
 	}
 	t.Logf("actual live-descendant refusal:\n%s", liveOutput.String())
+
+	// Root plus 32 unreaped children must still exceed the original live bound.
+	// Reaped history is not a waiver for actual simultaneous process pressure.
+	overfull := command("native-recovery-hold", "overfull", root+"-overfull")
+	overfull.Env = append(overfull.Env, "ARDENTS_SOURCE_RECOVERY_NATIVE_LIVE_CHILD=32")
+	var overfullOutput sourceRefusalBusOutput
+	overfull.Stdout, overfull.Stderr = &overfullOutput, &overfullOutput
+	if err := overfull.Run(); err == nil || !strings.Contains(overfullOutput.String(), "observer original live process bound exceeded") || strings.Contains(overfullOutput.String(), "SOURCE_RECOVERY_HOLD_READY ") {
+		t.Fatal("actual 33 live processes escaped the original bound", err, overfullOutput.String())
+	}
+	var exceeded sourceCutObservation
+	for _, line := range strings.Split(overfullOutput.String(), "\n") {
+		if strings.HasPrefix(line, "SOURCE_REFUSAL_OBSERVATION ") {
+			if err := json.Unmarshal([]byte(strings.TrimPrefix(line, "SOURCE_REFUSAL_OBSERVATION ")), &exceeded); err != nil {
+				t.Fatal("actual overfull scope report", err)
+			}
+		}
+	}
+	if exceeded.PeakLiveProcesses != 33 || exceeded.Processes > exceeded.ThreadsJoined || exceeded.ThreadsJoined > 256 {
+		t.Fatal("actual overfull scope was not completely joined within the lifetime bound", exceeded, overfullOutput.String())
+	}
+	t.Logf("actual overfull live-process refusal:\n%s", overfullOutput.String())
 }
 
 func TestSourceRecoveryUnexpectedNoticeNative(t *testing.T) {

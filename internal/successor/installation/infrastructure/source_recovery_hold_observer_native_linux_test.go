@@ -316,9 +316,11 @@ func (h *sourceRecoveryHold) control(pid int, groups map[int]int, tracked map[in
 	return nil
 }
 
+const sourceRecoveryNativeHelperCount = 40
+
 func joinSourceRecoveryNativeHelpers(t *testing.T) {
 	t.Helper()
-	for range 3 {
+	for range sourceRecoveryNativeHelperCount {
 		child := exec.Command("/bin/true")
 		if err := child.Run(); err != nil {
 			t.Fatal("original native helper join", err)
@@ -369,7 +371,17 @@ func TestSourceRecoveryCancelNativeDriver(t *testing.T) {
 	// installed verifier also runs native helpers before reaching its record.
 	// Their historical existence must not be confused with a live descendant.
 	joinSourceRecoveryNativeHelpers(t)
-	if os.Getenv("ARDENTS_SOURCE_RECOVERY_NATIVE_LIVE_CHILD") == "1" {
+	liveChildren := 0
+	switch os.Getenv("ARDENTS_SOURCE_RECOVERY_NATIVE_LIVE_CHILD") {
+	case "":
+	case "1":
+		liveChildren = 1
+	case "32":
+		liveChildren = 32
+	default:
+		t.Fatal("closed native live-child fixture count required")
+	}
+	for range liveChildren {
 		child := exec.Command("/bin/sleep", "60")
 		if err := child.Start(); err != nil {
 			t.Fatal("original live-child negative fixture", err)

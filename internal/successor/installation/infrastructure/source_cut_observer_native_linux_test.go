@@ -113,6 +113,7 @@ type sourceCutObservation struct {
 	RootExit                           int                     `json:"root_exit"`
 	ThreadsJoined                      int                     `json:"threads_joined"`
 	Processes                          int                     `json:"processes"`
+	PeakLiveProcesses                  int                     `json:"peak_live_processes"`
 	AcknowledgementHits                int                     `json:"acknowledgement_hits"`
 	AcknowledgementReplays             int                     `json:"acknowledgement_replays"`
 	NativeACKPreemptionObserved        bool                    `json:"native_ack_preemption_observed,omitempty"`
@@ -384,6 +385,17 @@ func sourceRefusalOriginalRootThreads(pid int, tracked map[int]bool, groups map[
 		}
 	}
 	return true
+}
+
+// groups loses a thread only after its terminal Wait4. Historical process
+// identities remain in processes and are bounded by the existing 256 observed
+// thread lifetimes; they cannot consume the separate 32 live-process slots.
+func sourceCutLiveProcessCount(groups map[int]int) int {
+	live := make(map[int]bool)
+	for _, group := range groups {
+		live[group] = true
+	}
+	return len(live)
 }
 
 func observeSourceCut(program, root, output, nativeCase string, profile *sourceCutObserverProfile, inspectOnly bool, nativeRecords int, physical *sourcePhysicalCut) (result sourceCutObservation, returned error) {
@@ -731,6 +743,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	observedThreads := map[int]bool{pid: true}
 	groups := map[int]int{pid: pid}
 	processes := map[int]bool{pid: true}
+	result.PeakLiveProcesses = 1
 	resume := func(tid, signal int) error {
 		// Helpers retain birth/exec/exit tracing and terminal Wait4 ownership.
 		// Their syscalls cannot supply the original caller's refusal cause.
@@ -1167,8 +1180,12 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 					continue
 				}
 			}
-			if len(processes) > 32 {
-				fail(errors.New("observer original process bound exceeded"))
+			liveProcesses := sourceCutLiveProcessCount(groups)
+			if liveProcesses > result.PeakLiveProcesses {
+				result.PeakLiveProcesses = liveProcesses
+			}
+			if liveProcesses > 32 {
+				fail(errors.New("observer original live process bound exceeded"))
 			}
 			if failed {
 				traceFailure = errors.Join(traceFailure, syscall.Kill(group, syscall.SIGKILL))

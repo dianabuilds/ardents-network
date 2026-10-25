@@ -223,7 +223,7 @@ for attempt in (0,1):
         result["completion_sha256"]=hashlib.sha256(frame).hexdigest()
         if count==12: ready["retirement_result"]=result
         assert observe(profile,ready)["root_pid"]==77
-        report=dict(ready,external_cut_requested=True,root_signal=9,processes=1,threads_joined=5,root_kill_requested=True,
+        report=dict(ready,external_cut_requested=True,root_signal=9,processes=1,peak_live_processes=1,threads_joined=5,root_kill_requested=True,
                     root_killed_by_observer=True,original_cut_sha256="",output_sha256=hashlib.sha256(b"").hexdigest())
         assert observe(profile,ready,report,b"")["root_signal"]==9
         for field,value in (("root_pid",True),("entry",0),("selected_records",count+1),("profile_sha256",other),
@@ -249,7 +249,7 @@ for attempt in (0,1):
             rejection(lambda:observe(changed,dict(ready,profile_sha256=hashlib.sha256(encode(changed)).hexdigest())))
         for field,value in (("held_root_thread",79),("selected_journal_sha256",zero),("startup_archive",{}),
                             ("external_cut_requested",False),("root_signal",15),("root_exit",0),("processes",2),
-                            ("threads_joined",True),("threads_joined",0),("root_killed_by_observer",False),
+                            ("peak_live_processes",True),("peak_live_processes",0),("peak_live_processes",2),("threads_joined",True),("threads_joined",0),("root_killed_by_observer",False),
                             ("root_ownership_released_before_exit",True),("root_close_entry",123),
                             ("external_cancellation_acknowledged",True),("refusal_exclusion_observed",True),
                             ("refusal_startup_pending_observed",True),("refusal_retirement_pending_observed",True),
@@ -300,7 +300,7 @@ for attempt in (0,1):
                "profile_sha256":pin,"program_sha256":zero,"public_receipt_sha256":zero,"physical_window":window,
                "inspection_only":False,"installed_execution":True,"external_cut_ready":True,"root_exit":-1,"selected_journal_sha256":other}
         assert observe(profile,ready)["root_pid"]==77
-        report=dict(ready,external_cut_requested=True,root_signal=9,processes=1,threads_joined=5,root_kill_requested=True,
+        report=dict(ready,external_cut_requested=True,root_signal=9,processes=1,peak_live_processes=1,threads_joined=5,root_kill_requested=True,
                     root_killed_by_observer=True,original_cut_sha256="",output_sha256=hashlib.sha256(b"").hexdigest())
         assert observe(profile,ready,report,b"")["root_signal"]==9
         for field,value in (("root_pid",True),("entry",0),("selected_records",count+1),("profile_sha256",other),
@@ -317,7 +317,7 @@ for attempt in (0,1):
             else: raise AssertionError("invalid held archive accepted: "+field)
         for field,value in (("held_root_thread",79),("selected_journal_sha256",zero),("startup_archive",{}),("retirement_result",{}),
                             ("external_cut_requested",False),("root_signal",15),("root_exit",0),("processes",2),
-                            ("threads_joined",True),("threads_joined",0),("root_killed_by_observer",False),
+                            ("peak_live_processes",True),("peak_live_processes",0),("peak_live_processes",2),("threads_joined",True),("threads_joined",0),("root_killed_by_observer",False),
                             ("root_ownership_released_before_exit",True),("root_close_entry",123),
                             ("external_cancellation_acknowledged",True),("refusal_exclusion_observed",True),
                             ("refusal_startup_pending_observed",True),("original_cut_sha256",other),("output_sha256",other)):
@@ -368,7 +368,7 @@ for operation,counts in (("initial",(70,115)),("replacement",(13,55))):
                      "arguments":["installation","recover-source","/distribution","/history","alpha","network","/request","/journal"],
                      "window":window,"prefix_records":count,"journal_sha256":other}
             pin=hashlib.sha256(json.dumps(profile,separators=(",",":")).encode()+b"\n").hexdigest()
-            report={"entry":1234,"root_pid":77,"root_exit":-1,"root_signal":9,"threads_joined":8,"processes":1,
+            report={"entry":1234,"root_pid":77,"root_exit":-1,"root_signal":9,"threads_joined":8,"processes":1,"peak_live_processes":1,
                     "held_root_thread":79,"signalled_root_thread":0,"selected_records":count,"profile_sha256":pin,
                     "program_sha256":zero,"public_receipt_sha256":zero,"selected_journal_sha256":other,
                     "physical_window":window,"inspection_only":False,"installed_execution":True,
@@ -419,15 +419,24 @@ raw = b"source command failed\n"
 report = {"profile_sha256":hashlib.sha256(json.dumps(profile,separators=(",",":")).encode()+b"\n").hexdigest(),
           "inspection_only":False, "installed_execution":True, "refusal_admission_observed":True,
           "refusal_ownership_released_before_exit":True, "refusal_original_scope_joined":True, "entry":1000, "refusal_admission_entry":2000,
-          "root_pid":77, "root_exit":2, "processes":1, "refusal_stopped_threads":4, "threads_joined":4,
+          "root_pid":77, "root_exit":2, "processes":1,"peak_live_processes":1, "refusal_stopped_threads":4, "threads_joined":4,
           "program_sha256":zero, "public_receipt_sha256":zero, "output_sha256":hashlib.sha256(raw).hexdigest()}
 check(profile, report, raw)
-joined = check(profile, dict(report, processes=22, threads_joined=25), raw)
-assert joined["original_scope_joined"] is True and joined["processes"] == 22
+joined = check(profile, dict(report, processes=41, threads_joined=45, peak_live_processes=2), raw)
+assert joined["original_scope_joined"] is True and joined["processes"] == 41 and joined["peak_live_processes"] == 2
+assert check(profile, dict(report, processes=32, threads_joined=40, peak_live_processes=32), raw)["peak_live_processes"] == 32
+for altered in (dict(report, processes=2), dict(report, processes=33, threads_joined=40, peak_live_processes=33),
+                dict(report, processes=257, threads_joined=257, peak_live_processes=2)):
+    try:
+        check(profile, altered, raw)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("contradictory peak or actual live/lifetime bound admitted")
 for field, value in (
     ("inspection_only",True), ("installed_execution",False), ("refusal_admission_observed",False),
     ("refusal_ownership_released_before_exit",False), ("entry",0), ("entry",True), ("refusal_admission_entry",1000),
-    ("root_pid",0), ("root_exit",0), ("root_exit",True), ("processes",0), ("processes",33), ("processes",True),
+    ("root_pid",0), ("root_exit",0), ("root_exit",True), ("processes",0), ("processes",33), ("processes",True), ("peak_live_processes",True), ("peak_live_processes",0), ("peak_live_processes",33), ("peak_live_processes",2),
     ("processes",5), ("refusal_original_scope_joined",False), ("refusal_original_scope_joined",1),
     ("recovery_root_only_at_hold",True), ("refusal_stopped_threads",1),
     ("threads_joined",3), ("threads_joined",257), ("program_sha256",other), ("public_receipt_sha256",other),
@@ -441,7 +450,7 @@ for field, value in (
         pass
     else:
         raise AssertionError("incomplete/substituted report claim admitted: " + field)
-for field in ("entry", "refusal_admission_observed", "refusal_ownership_released_before_exit", "refusal_original_scope_joined"):
+for field in ("peak_live_processes", "entry", "refusal_admission_observed", "refusal_ownership_released_before_exit", "refusal_original_scope_joined"):
     altered = dict(report)
     del altered[field]
     try:
@@ -510,7 +519,7 @@ base={"schema":"source-early-prefix-recovery-refusal-observer-v1","program_sha25
       "journal_sha256":zero,"journal_mode":"0600","external_journal_lease":False,"external_release_lease":False}
 report={"inspection_only":False,"installed_execution":True,"refusal_admission_observed":True,
         "refusal_ownership_released_before_exit":True, "refusal_original_scope_joined":True,"entry":1000,"refusal_admission_entry":2000,"root_pid":77,
-        "root_exit":2,"processes":1,"refusal_stopped_threads":4,"threads_joined":4,"program_sha256":zero,
+        "root_exit":2,"processes":1,"peak_live_processes":1,"refusal_stopped_threads":4,"threads_joined":4,"program_sha256":zero,
         "public_receipt_sha256":zero,"output_sha256":hashlib.sha256(raw).hexdigest(),"refusal_early_prefix_observed":True,
         "refusal_early_prefix_closed":True,"refusal_early_prefix_device":55,"refusal_early_prefix_inode":66,"refusal_early_prefix_sha256":zero}
 def pinned(p,r):
@@ -571,7 +580,7 @@ profile = {"schema":"source-recovery-missing-cut-observer-v1", "program_sha256":
 raw = b"source command failed\n"
 report = {"inspection_only":False, "installed_execution":True, "refusal_admission_observed":True,
           "refusal_ownership_released_before_exit":True, "refusal_original_scope_joined":True, "entry":1000, "refusal_admission_entry":2000,
-          "root_pid":77, "root_exit":2, "processes":1, "refusal_stopped_threads":4, "threads_joined":4,
+          "root_pid":77, "root_exit":2, "processes":1,"peak_live_processes":1, "refusal_stopped_threads":4, "threads_joined":4,
           "program_sha256":zero, "public_receipt_sha256":zero, "output_sha256":hashlib.sha256(raw).hexdigest(),
           "refusal_missing_cut_observed":True, "refusal_missing_cut_parent_device":55, "refusal_missing_cut_parent_inode":66}
 def pinned(p, r):
@@ -627,7 +636,7 @@ base={"schema":"source-startup-recovery-refusal-observer-v1","program_sha256":ze
       "journal_mode":"0600","external_journal_lease":False,"external_release_lease":False,"startup_pending":{"attempt":0,"gid":500}}
 report={"inspection_only":False,"installed_execution":True,"refusal_admission_observed":True,
         "refusal_ownership_released_before_exit":True, "refusal_original_scope_joined":True,"entry":1000,"refusal_admission_entry":2000,"root_pid":77,
-        "root_exit":2,"processes":1,"refusal_stopped_threads":4,"threads_joined":4,"program_sha256":zero,
+        "root_exit":2,"processes":1,"peak_live_processes":1,"refusal_stopped_threads":4,"threads_joined":4,"program_sha256":zero,
         "public_receipt_sha256":zero,"output_sha256":hashlib.sha256(raw).hexdigest(),
         "refusal_startup_pending_observed":True,"refusal_startup_pending_device":55,"refusal_startup_pending_inode":66,
         "refusal_startup_pending_sha256":other}
@@ -686,7 +695,7 @@ base={"schema":"source-retirement-recovery-refusal-observer-v1","program_sha256"
       "journal_mode":"0600","external_journal_lease":False,"external_release_lease":False,"retirement_pending":{"attempt":0,"gid":500}}
 report={"inspection_only":False,"installed_execution":True,"refusal_admission_observed":True,
         "refusal_ownership_released_before_exit":True, "refusal_original_scope_joined":True,"entry":1000,"refusal_admission_entry":2000,"root_pid":77,
-        "root_exit":2,"processes":1,"refusal_stopped_threads":4,"threads_joined":4,"program_sha256":zero,
+        "root_exit":2,"processes":1,"peak_live_processes":1,"refusal_stopped_threads":4,"threads_joined":4,"program_sha256":zero,
         "public_receipt_sha256":zero,"output_sha256":hashlib.sha256(raw).hexdigest(),
         "refusal_retirement_pending_observed":True,"refusal_retirement_pending_device":55,"refusal_retirement_pending_inode":66,
         "refusal_retirement_pending_sha256":other}
@@ -751,10 +760,10 @@ notice = b'{"operation":"installation.source","outcome":"completion-unavailable"
 raw = notice + b"source command failed\n"
 report = dict(ready, external_cancellation_acknowledged=True, refusal_ownership_released_before_exit=True, refusal_original_scope_joined=True,
               recovery_held_image_preserved=True, signalled_root_thread=79, recovery_cancellation_elapsed_ns=1234567,
-              root_exit=2,processes=1,refusal_stopped_threads=4,threads_joined=5,output_sha256=hashlib.sha256(raw).hexdigest())
+              root_exit=2,processes=1,peak_live_processes=1,refusal_stopped_threads=4,threads_joined=5,output_sha256=hashlib.sha256(raw).hexdigest())
 assert check(profile,ready)["root_pid"] == 77
 assert check(profile,ready,report,raw)["held_image_preserved"] is True
-assert check(profile,ready,dict(report,processes=22,threads_joined=25),raw)["original_scope_joined"] is True
+assert check(profile,ready,dict(report,processes=41,threads_joined=45,peak_live_processes=2),raw)["original_scope_joined"] is True
 def reject(selected, held, final=report, output=raw):
     try:
         check(selected,held,final,output)
@@ -960,7 +969,7 @@ for op,born in (("initial",70),("replacement",13)):
                  "arguments":["installation","install-initial-stopped","/distribution",zero,"/history","alpha","one-network","/request"]
                  if op=="initial" else ["installation","replace-source","/distribution","/history","alpha","one-network","/source/binding.json","/request"]}
         report={"profile_sha256":hashlib.sha256(json.dumps(profile,separators=(",",":")).encode()+b"\n").hexdigest(),
-                "entry":1000,"root_pid":77,"root_exit":2,"threads_joined":8,"processes":2,
+                "entry":1000,"root_pid":77,"root_exit":2,"threads_joined":8,"processes":2,"peak_live_processes":2,
                 "held_coordinator_thread":79,"signalled_root_thread":78,"selected_records":count,
                 "inspection_only":False,"installed_execution":True,"program_sha256":zero,"public_receipt_sha256":zero,
                 "physical_window":window,"held_coordinator_killed":True,"external_cancellation_acknowledged":True,
@@ -978,7 +987,7 @@ for op,born in (("initial",70),("replacement",13)):
         check=lambda p,r,o:observe(p,r,o,preimage)
         assert check(profile,report,raw)["root_exit"]==2
         for field,value in (("entry",True),("root_pid",0),("root_exit",0),("threads_joined",1),("threads_joined",257),
-                            ("processes",1),("processes",33),("held_coordinator_thread",77),("signalled_root_thread",79),
+                            ("peak_live_processes",True),("peak_live_processes",0),("peak_live_processes",1),("peak_live_processes",33),("peak_live_processes",3),("processes",1),("processes",33),("held_coordinator_thread",77),("signalled_root_thread",79),
                             ("selected_records",count+1),("inspection_only",True),("installed_execution",False),
                             ("program_sha256",other),("public_receipt_sha256",other),("profile_sha256",other),
                             ("physical_window","other"),("held_coordinator_killed",False),
