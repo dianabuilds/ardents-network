@@ -801,6 +801,75 @@ def source_physical_observation(profile, report, raw, publication_preimage=None)
     return result
 
 
+def source_failure_evidence(failures):
+    """Bounded private causal evidence; never an accepting result or authority."""
+    nodes, seen = [], {}
+    truncated = len(failures) > 64
+
+    def text(value, limit):
+        nonlocal truncated
+        raw = value.encode("utf-8", errors="replace")
+        truncated |= len(raw) > limit
+        return raw[:limit].decode("utf-8", errors="replace")
+
+    def retain(error, parent, relation, depth):
+        nonlocal truncated
+        if len(nodes) >= 64 or depth >= 16:
+            truncated = True
+            return
+        index = len(nodes)
+        node = {"parent": parent, "relation": relation}
+        nodes.append(node)
+        if id(error) in seen:
+            node.update(type="retained-reference", message="", reference=seen[id(error)])
+            return
+        seen[id(error)] = index
+        try:
+            message = str(error)
+        except BaseException:
+            message = "exception message unavailable"
+            truncated = True
+        node.update(type=text(type(error).__module__ + "." + type(error).__qualname__, 96), message=text(message, 256))
+        if isinstance(error, subprocess.CalledProcessError):
+            node["returncode"] = error.returncode
+        if isinstance(error, BaseExceptionGroup):
+            node["children"] = len(error.exceptions)
+            for child in error.exceptions[:64]:
+                retain(child, index, "group", depth + 1)
+            truncated |= len(error.exceptions) > 64
+        if error.__cause__ is not None:
+            retain(error.__cause__, index, "cause", depth + 1)
+        elif error.__context__ is not None and not error.__suppress_context__:
+            retain(error.__context__, index, "context", depth + 1)
+
+    for error in failures[:64]:
+        retain(error, None, "root", 0)
+    result = {"schema": "source-private-failure-evidence-v1", "root_failures": len(failures), "truncated": truncated, "errors": nodes}
+    if len(json.dumps(result, ensure_ascii=False).encode()) > 64 << 10:
+        raise RuntimeError("private failure evidence exceeds finite bound")
+    return result
+
+
+def source_failure_journal(output, invocation):
+    """Retain only fixed terminal messages for this original failed invocation."""
+    if not isinstance(invocation, str) or len(invocation) != 32 or any(c not in "0123456789abcdef" for c in invocation):
+        raise RuntimeError("original failed invocation required for private journal evidence")
+    # Exact finite MESSAGE alternatives prevent arbitrary application/log data
+    # from entering this diagnostic. This reader grants no retirement proof.
+    pattern = r'^(source command failed|context canceled|\{"operation":"source[.]start-installed","outcome":"(retired|retirement-failed|completion-unavailable)"\})$'
+    argv = ["/usr/bin/journalctl", "--no-pager", "--output=cat", "--lines=32", "--unit=ardents-source.service", "--case-sensitive=yes", "--grep=" + pattern,
+            "_SYSTEMD_INVOCATION_ID=" + invocation]
+    fd = os.open(output / "private-source-terminal.log", os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+    with os.fdopen(fd, "wb") as stream:
+        # subprocess.run kills and waits its own child on timeout. Its failure
+        # remains diagnostic failure; no timeout supplies Source completion.
+        subprocess.run(argv, stdout=stream, stderr=subprocess.STDOUT, check=True, timeout=3)
+        stream.flush()
+        os.fsync(stream.fileno())
+        if stream.tell() > 64 << 10:
+            raise RuntimeError("private original terminal journal exceeds finite bound")
+
+
 class RecoveryCancellationObserver:
     """Own one sibling tracer, its control pipe, bounded output and final join."""
 
@@ -3316,6 +3385,11 @@ def main():
             try:
                 if manager_owner() != original_manager:
                     raise RuntimeError("original manager changed after Source join")
+                if failures:
+                    try:
+                        source_failure_journal(output, invocation)
+                    except BaseException as error:
+                        failures.append(error)
                 subprocess.run(["/usr/bin/systemctl", "stop", "ardents-source.service"], check=True)
             except BaseException as error:
                 failures.append(error)
@@ -3425,6 +3499,15 @@ def main():
     except OSError as error:
         failures.append(error)
     if failures:
+        try:
+            raw = json.dumps(source_failure_evidence(failures), ensure_ascii=False, sort_keys=True).encode() + b"\n"
+            fd = os.open(output / "private-failure.json", os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+            with os.fdopen(fd, "wb") as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+        except BaseException as error:
+            failures.append(error)
         raise BaseExceptionGroup("original Source qualification/cleanup failed", failures)
     print(json.dumps({"operation": "source.startup-qualification", **outcome}, sort_keys=True))
 

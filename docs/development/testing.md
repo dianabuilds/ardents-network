@@ -97,6 +97,22 @@ classification accounting: no new-command call before recovery, both original
 observer releases before every classification, and the old A history check
 still runs. This prepares
 actual read-only classification coverage; installed evidence remains pending.
+
+Failed Source qualification retains a bounded private causal graph in
+`private-failure.json`, including nested exception groups, process return codes
+and chained causes. It preserves the original failures if diagnostic creation,
+write, sync or close fails; existing evidence is never overwritten. The graph
+is limited to 64 nodes, 16 levels and 64 KiB with explicit truncation. Messages
+and type names have separate byte bounds. Before deactivating a failed original
+unit, after its original process/scope join, the runner also reads only fixed
+terminal messages for that exact invocation into `private-source-terminal.log`.
+Its own diagnostic child has a finite timeout and is killed and waited on by
+the subprocess owner on expiry. Diagnostic failure cannot skip unit cleanup.
+These private artifacts may contain operational paths and are excluded from
+public receipts and reports. A captured message, empty journal or diagnostic
+timeout supplies no retirement, prefix, recovery or joined-completion proof;
+all original acceptance checks and terminal failures remain authoritative.
+
 The stopped-manager comparison preserves every observed property except
 `Service.MemoryAvailable`: systemd derives that capacity telemetry partly from
 physical and parent-slice memory consumed by other units. Its exact unsigned
