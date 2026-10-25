@@ -755,13 +755,38 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	groups := map[int]int{pid: pid}
 	processes := map[int]bool{pid: true}
 	result.PeakLiveProcesses = 1
+	refusalExit := 0
+	if refusal != nil {
+		refusalExit = 2
+	}
+	var pendingResumes sourceRefusalResumes
+	defer func() { returned = errors.Join(returned, pendingResumes.unresolved()) }()
 	resume := func(tid, signal int) error {
 		// Helpers retain birth/exec/exit tracing and terminal Wait4 ownership.
 		// Their syscalls cannot supply the original caller's refusal cause.
+		var err error
 		if groups[tid] == pid && (exclusion != nil || missingCut != nil || startupPending != nil || earlyPrefix != nil) && result.RefusalAdmissionObserved && !result.RefusalOwnershipReleasedBeforeExit {
-			return syscall.PtraceSyscall(tid, signal)
+			err = syscall.PtraceSyscall(tid, signal)
+		} else {
+			err = syscall.PtraceCont(tid, signal)
 		}
-		return syscall.PtraceCont(tid, signal)
+		_, original := tracked[tid]
+		if returnProbe && original && observedThreads[tid] && groups[tid] != 0 &&
+			(groups[tid] != pid || result.RefusalOwnershipReleasedBeforeExit) && err == syscall.ESRCH {
+			// A completed caller can exit_group while a peer's queued stop is
+			// being consumed; a separately owned helper can also finish first.
+			// Keep its original group and wait obligation. Only its actual
+			// expected terminal reap resolves this request, never ESRCH or
+			// process-path absence. A canonical caller refuses with exit2;
+			// native fixtures and independent helpers must exit0.
+			wantedExit := 0
+			if groups[tid] == pid {
+				wantedExit = refusalExit
+			}
+			pendingResumes.retain(tid, groups[tid], wantedExit, fmt.Errorf("original refusal resume thread%d awaiting expected reap: %w", tid, err))
+			return nil
+		}
+		return err
 	}
 	physicalSelected := false
 	var physicalImage *sourcePhysicalImage
@@ -1154,6 +1179,9 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 			fail(errors.New("observer original native thread lifetime bound exceeded"))
 		}
 		if status.Exited() || status.Signaled() {
+			if err := pendingResumes.joined(tid, groups[tid], status); err != nil {
+				fail(err)
+			}
 			if physical != nil && physical.root && physicalSelected && (groups[tid] == 0 || tracked[tid]) {
 				result.RootOnlyAtPhysicalCut = false
 				fail(errors.New("physical root cut joined an unresolved descendant"))
@@ -1617,11 +1645,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 		}
 	}
 	if returnProbe {
-		wantedExit := 0
-		if refusal != nil {
-			wantedExit = 2
-		}
-		if failed || !result.RefusalAdmissionObserved || !result.RefusalOwnershipReleasedBeforeExit || result.RefusalStoppedThreads < 2 || returnHeld != 0 || result.RootExit != wantedExit || len(processes) > result.ThreadsJoined {
+		if failed || !result.RefusalAdmissionObserved || !result.RefusalOwnershipReleasedBeforeExit || result.RefusalStoppedThreads < 2 || returnHeld != 0 || result.RootExit != refusalExit || len(processes) > result.ThreadsJoined {
 			return result, errors.Join(returned, fmt.Errorf("actual refusal before-return observation incomplete: return-held=%d stopped=%v", returnHeld, returnStops))
 		}
 		if recoveryHold != nil {

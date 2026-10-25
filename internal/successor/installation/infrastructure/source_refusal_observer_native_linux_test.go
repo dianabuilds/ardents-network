@@ -620,6 +620,51 @@ func TestSourceRefusalObserverNative(t *testing.T) {
 	if mode == "" {
 		return // Dedicated outside caller selects this helper.
 	}
+	if mode == "native-mechanism" {
+		t.Run("resume-reap-retention", func(t *testing.T) {
+			// These are error-accounting controls, not native join evidence.
+			// The real ptrace cases below still require original terminal waits.
+			original := fmt.Errorf("retained original resume request: %w", syscall.ESRCH)
+			for _, test := range []struct {
+				name             string
+				tid, group, exit int
+			}{
+				{"native-caller", 1, 1, 0},
+				{"canonical-caller", 1, 1, 2},
+				{"canonical-peer", 2, 1, 2},
+				{"helper", 3, 3, 0},
+			} {
+				t.Run(test.name, func(t *testing.T) {
+					var pending sourceRefusalResumes
+					pending.retain(test.tid, test.group, test.exit, original)
+					if !errors.Is(pending.unresolved(), original) {
+						t.Fatal("unreaped original resume disappeared")
+					}
+					if err := pending.joined(99, test.group, 0); err != nil || !errors.Is(pending.unresolved(), original) {
+						t.Fatal("foreign terminal reap released original", err)
+					}
+					if err := pending.joined(test.tid, 99, 0); !errors.Is(err, original) || !errors.Is(pending.unresolved(), original) {
+						t.Fatal("foreign group supplied original completion", err)
+					}
+					if err := pending.joined(test.tid, test.group, syscall.WaitStatus(uint32(syscall.SIGTRAP)<<8|0x7f)); !errors.Is(err, original) || !errors.Is(pending.unresolved(), original) {
+						t.Fatal("nonterminal stop supplied original completion", err)
+					}
+					if err := pending.joined(test.tid, test.group, syscall.WaitStatus(test.exit<<8)); err != nil || pending.unresolved() != nil {
+						t.Fatal("expected original terminal reap did not resolve resume", err)
+					}
+					for _, status := range []syscall.WaitStatus{0, 1 << 8, 2 << 8, syscall.WaitStatus(syscall.SIGKILL)} {
+						if status.Exited() && status.ExitStatus() == test.exit {
+							continue
+						}
+						pending.retain(test.tid, test.group, test.exit, original)
+						if err := pending.joined(test.tid, test.group, status); !errors.Is(err, original) || !errors.Is(err, syscall.ESRCH) {
+							t.Fatal("mismatched original exit erased retained request", status, err)
+						}
+					}
+				})
+			}
+		})
+	}
 	program, root, output := os.Getenv("ARDENTS_SOURCE_CUT_OBSERVER_PROGRAM"), os.Getenv("ARDENTS_SOURCE_CUT_OBSERVER_ROOT"), os.Getenv("ARDENTS_SOURCE_CUT_OBSERVER_OUTPUT")
 	var profile *sourceRefusalObserverProfile
 	inspect := mode == "inspect-only" || mode == "inspect-cancellation" || mode == "inspect-missing-cut" || mode == "inspect-startup-pending" || mode == "inspect-retirement-pending" || mode == "inspect-early-prefix"

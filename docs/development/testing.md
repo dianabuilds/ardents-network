@@ -288,6 +288,18 @@ lookup of the exact absent path must fail this oracle. Only the exact file
 owner's read flags qualify.
 These native file/process controls provide no accepting Source authority.
 
+The refusal tracer retains an ESRCH resume request only for a known original
+helper or a caller thread after its before-return resource proof. The request
+retains its original group and expected exit code:0 for native callers/helpers,
+2 for a canonical refusing caller's group. It remains unresolved until that
+exact thread's original Wait4 reports its expected terminal exit. A foreign
+thread/group, nonterminal stop, signal, mismatched exit or missing reap cannot
+resolve it; other ptrace errors and pre-proof caller failures remain failures.
+This handles an exit_group race with a queued peer stop without using
+ESRCH or process-path absence as completion. Every independent causal refusal,
+before-return descriptor/flock proof and complete original scope join remains
+required.
+
 The separate `source-physical-cut-observer-v1` declaration selects canonical
 initial/replacement windows `file-born-before-record` (original prefix69/12),
 `file-ready-before-record` (70/13), `file-born-before-journal-sync` (70/13),
