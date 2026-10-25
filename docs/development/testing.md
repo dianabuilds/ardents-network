@@ -74,7 +74,7 @@ observer binary through `ARDENTS_SOURCE_EXPIRY_OBSERVER_PROGRAM` and its
 crossing; wrong-phase observations on both sides refuse. These native controls
 remain distinct from an accepted installed expiry/recovery cohort.
 
-Each positive Source recovery lifecycle separately invokes canonical
+Each positive Source lifecycle after the selected recovery separately invokes canonical
 `recover-source` against both the latest complete startup journal and its
 committed retirement journal after the original Source has joined. A distinct
 `completed_classifications` matrix entry fixes the stopped-selected, no-write
@@ -83,7 +83,19 @@ by its original binding commitment, including after B/C replacement. Account,
 semantic/Release/credential history, all original root sibling journals and
 fixed unit/selection bytes/native identities remain unchanged; the independently
 held manager observation remains stopped. Terminal accounting requires the
-complete ordered pair after every positive lifecycle invocation. This prepares
+complete ordered pair after every post-recovery lifecycle invocation. Initial
+recovery classifies attempts0/1/2; replacement recovery classifies attempts1/2/3
+under the actual B/B/C selected executable and declaration. The genuine old A
+attempt0 precedes replacement recovery and need not implement the newer
+`recover-source` command. Its full original startup/retirement transcript,
+domain/kernel/listener join, held-original exclusion, retained histories and
+separate native history-acquisition check remain mandatory; its retirement is
+not counted as a new-command completed classification. All four replacement
+lifecycles and all selected original-cut/prefix/completion proofs remain required.
+The architecture regression executes the actual stop tail and terminal
+classification accounting: no new-command call before recovery, both original
+observer releases before every classification, and the old A history check
+still runs. This prepares
 actual read-only classification coverage; installed evidence remains pending.
 The stopped-manager comparison preserves every observed property except
 `Service.MemoryAvailable`: systemd derives that capacity telemetry partly from

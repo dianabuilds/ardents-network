@@ -2894,7 +2894,11 @@ def main():
                 os.close(source_pidfd)
                 source_pidfd = None
                 source_started = False
-                if positive_recovery:
+                # Replacement first retires the genuine old A, before the
+                # selected recovery exists. A need not implement the newer
+                # command. Its original history/native checks still run below;
+                # canonical completed classification belongs to recovered B/C.
+                if positive_recovery and recovery_evidence:
                     completed_classification(number)
                 invocations.append(invocation)
                 if replacement_profile:
@@ -3342,7 +3346,7 @@ def main():
                 raise RuntimeError("selected positive recovery was not executed")
             recovered_transcript()
             classified = outcome.get("completed_source_classifications", [])
-            expected = [(number, kind) for number in range(4 if replacement_profile else 3) for kind in ("startup", "retirement")]
+            expected = [(number, kind) for number in range(1 if replacement_profile else 0, 4 if replacement_profile else 3) for kind in ("startup", "retirement")]
             if [(item.get("attempt"), item.get("journal_kind")) for item in classified] != expected:
                 raise RuntimeError("complete read-only startup/retirement classification sequence missing")
         if recovery_fault is not None or recovery_concurrent or recovery_physical is not None or recovery_root_physical is not None or startup_physical is not None or retirement_physical is not None:
