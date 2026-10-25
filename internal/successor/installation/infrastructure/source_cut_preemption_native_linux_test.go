@@ -45,7 +45,7 @@ func (p *sourceCutNativePreemption) poll(entry uint64, result *sourceCutObservat
 	if p.held == 0 {
 		return nil
 	}
-	registers, pending, err := sourceCutACKPendingPreemption(p.held, entry)
+	registers, pending, err := sourceCutPendingPreemption(p.held, entry)
 	if err != nil || !pending {
 		return err
 	}

@@ -448,6 +448,10 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	canonicalStartup := physical != nil && physical.startup != nil
 	canonicalRetirement := physical != nil && physical.retirement != nil
 	installed := profile != nil || refusal != nil || canonicalPhysical || canonicalRecovery || canonicalStartup || canonicalRetirement
+	recoveryPreemption, err := newSourceRecoveryNativePreemption(nativeCase, installed, refusal)
+	if err != nil {
+		return result, err
+	}
 	if refusal != nil && (!returnProbe || profile != nil || physical != nil || nativeRecords != 2) || returnProbe && (profile != nil || physical != nil || nativeRecords != 2) {
 		return result, errors.New("distinct closed refusal observation required")
 	}
@@ -576,6 +580,9 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 		selectedRecords = physical.records
 	}
 	for _, symbol := range symbols {
+		if err := recoveryPreemption.symbol(symbol); err != nil {
+			return result, err
+		}
 		if recoveryHold != nil && symbol.Name == sourceRecoveryHoldRecordSymbol && elf.ST_TYPE(symbol.Info) == elf.STT_FUNC && symbol.Size != 0 {
 			if result.RecoveryHoldEntry != 0 {
 				return result, errors.New("duplicate original recovery record entry")
@@ -610,6 +617,9 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	}
 	if recoveryHold != nil && (result.RecoveryHoldEntry == 0 || result.RecoveryHoldEntry == result.Entry || result.RecoveryHoldEntry == result.RefusalAdmissionEntry || result.RecoveryHoldEntry < text.Addr || result.RecoveryHoldEntry >= text.Addr+text.Size) {
 		return result, errors.New("actual recovery record entry missing from executable text")
+	}
+	if err := recoveryPreemption.validate(text.Addr, text.Size); err != nil {
+		return result, err
 	}
 	if physical != nil && physical.root && !physical.killRoot && (result.RootCloseEntry == 0 || result.RootCloseEntry == result.Entry || result.RootCloseEntry < text.Addr || result.RootCloseEntry >= text.Addr+text.Size) {
 		return result, errors.New("actual native root return entry missing from executable text")
@@ -951,7 +961,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 		if recoveryHold != nil && recoveryHold.tid != 0 && !failed {
 			if e := drain(); e != nil {
 				fail(e)
-			} else if e := recoveryHold.control(pid, groups, tracked, captured, &result); e != nil {
+			} else if e := recoveryHold.control(pid, groups, tracked, captured, &result, &recoveryPreemption); e != nil {
 				fail(e)
 			}
 		}
@@ -1063,7 +1073,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 			fail(err)
 		}
 		if held != 0 && selectedACKHeld && !failed && !bytes.Contains(captured, acknowledgement) {
-			if registers, pending, err := sourceCutACKPendingPreemption(held, result.Entry); err != nil {
+			if registers, pending, err := sourceCutPendingPreemption(held, result.Entry); err != nil {
 				fail(err)
 			} else if pending {
 				if err := heldGC.cancelAfterPreemption(pid, result.SignalledRootThread); err != nil {
@@ -1306,6 +1316,16 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 			}
 		default:
 			signal := status.StopSignal()
+			if recoveryHold != nil && groups[tid] == pid && signal == syscall.SIGURG && result.RecoveryHeldBeforeRecord && result.ExternalCancellationAcknowledged {
+				var registers syscall.PtraceRegs
+				if err := syscall.PtraceGetRegs(tid, &registers); err != nil {
+					fail(err)
+				} else if registers.Rip == result.RecoveryHoldEntry {
+					if err := recoveryHold.interrupt(tid, registers); err != nil {
+						fail(err)
+					}
+				}
+			}
 			if physical == nil && !returnProbe && groups[tid] == pid && signal == syscall.SIGURG {
 				var registers syscall.PtraceRegs
 				if err := syscall.PtraceGetRegs(tid, &registers); err != nil {
@@ -1348,6 +1368,11 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 				if recoveryHold != nil && !installed {
 					fmt.Printf("SOURCE_RECOVERY_NATIVE_TRAP tid=%d rip=%x return=%x held=%d\n", tid, registers.Rip, result.Entry, returnHeld)
 				}
+				if stopped, err := recoveryPreemption.stop(tid, registers, result.ExternalCancellationAcknowledged); err != nil {
+					fail(err)
+				} else if stopped {
+					continue
+				}
 				if returnProbe && (registers.Rip == result.Entry || registers.Rip == result.RefusalAdmissionEntry) && !failed {
 					admission := registers.Rip == result.RefusalAdmissionEntry
 					if groups[tid] != pid || returnHeld != 0 || result.RefusalOwnershipReleasedBeforeExit ||
@@ -1371,9 +1396,34 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 					if e != nil {
 						fail(e)
 					} else if matched {
+						if result.RecoveryHeldBeforeRecord && result.ExternalCancellationAcknowledged && recoveryHold.tid == 0 &&
+							groups[tid] == pid && !result.RefusalOwnershipReleasedBeforeExit && sourceOriginalRootThreads(pid, tracked, groups) {
+							if err := recoveryPreemption.verifyReplay(tid, registers, recoveryHold); err != nil {
+								fail(err)
+								continue
+							}
+							replayed, err := recoveryHold.replay(tid, registers)
+							if err != nil {
+								fail(err)
+								continue
+							}
+							if replayed {
+								if err := recoveryPreemption.release(); err != nil {
+									fail(err)
+									continue
+								}
+								if !installed {
+									fmt.Printf("SOURCE_RECOVERY_NATIVE_REPLAY tid=%d\n", tid)
+								}
+								if err := resumeSourceCutBreakpoint(tid, &registers); err != nil {
+									fail(err)
+								}
+								continue
+							}
+						}
 						if !result.RefusalAdmissionObserved || groups[tid] != pid || recoveryHold.tid != 0 || result.RecoveryHeldBeforeRecord || !sourceOriginalRootThreads(pid, tracked, groups) {
 							fail(errors.New("recovery hold has foreign or repeated lifetime"))
-						} else if e := recoveryHold.freeze(tid, &result); e != nil {
+						} else if e := recoveryHold.freeze(tid, registers, &result); e != nil {
 							fail(e)
 						}
 						continue

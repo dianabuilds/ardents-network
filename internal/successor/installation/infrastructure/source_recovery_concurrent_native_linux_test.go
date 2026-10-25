@@ -21,6 +21,17 @@ import (
 // its own root. No tracer can reap the other caller or confuse its lifetime.
 // These are real file/process owners, not authenticated installed recovery.
 func TestSourceRecoveryConcurrentNative(t *testing.T) {
+	for _, fixture := range []struct {
+		name       string
+		preemption bool
+	}{{name: "original"}, {name: "preempted-caller", preemption: true}} {
+		t.Run(fixture.name, func(t *testing.T) {
+			testSourceRecoveryConcurrentNative(t, fixture.preemption)
+		})
+	}
+}
+
+func testSourceRecoveryConcurrentNative(t *testing.T, preemption bool) {
 	program := os.Getenv("ARDENTS_SOURCE_RECOVERY_CONCURRENT_PROGRAM")
 	if program == "" {
 		return // The dedicated native file profile selects the actual driver ELF.
@@ -44,11 +55,14 @@ func TestSourceRecoveryConcurrentNative(t *testing.T) {
 	command := func(mode, name, selectedRoot string) *exec.Cmd {
 		cmd := exec.Command(helper, "-test.run=^TestSourceRefusalObserverNative$", "-test.v", "-test.timeout=60s")
 		for _, value := range os.Environ() {
-			if !strings.HasPrefix(value, "ARDENTS_SOURCE_REFUSAL_OBSERVER_MODE=") && !strings.HasPrefix(value, "ARDENTS_SOURCE_CUT_OBSERVER_") {
+			if !strings.HasPrefix(value, "ARDENTS_SOURCE_REFUSAL_OBSERVER_MODE=") && !strings.HasPrefix(value, "ARDENTS_SOURCE_CUT_OBSERVER_") && !strings.HasPrefix(value, sourceRecoveryNativePreemptionFlag+"=") {
 				cmd.Env = append(cmd.Env, value)
 			}
 		}
 		cmd.Env = append(cmd.Env, "ARDENTS_SOURCE_REFUSAL_OBSERVER_MODE="+mode, "ARDENTS_SOURCE_CUT_OBSERVER_PROGRAM="+program, "ARDENTS_SOURCE_CUT_OBSERVER_ROOT="+selectedRoot, "ARDENTS_SOURCE_CUT_OBSERVER_OUTPUT="+root+"-"+name+".log")
+		if preemption && name == "first" {
+			cmd.Env = append(cmd.Env, sourceRecoveryNativePreemptionFlag+"=1")
+		}
 		return cmd
 	}
 	first := command("native-recovery-hold", "first", root)
@@ -227,6 +241,33 @@ func TestSourceRecoveryConcurrentNative(t *testing.T) {
 		t.Fatal("later refused owner changed partial completion", err)
 	}
 	t.Logf("actual sibling roots first=%d second=%d; first cancellation joined, both before-return proofs, partial envelope retained", held.RootPID, other.RootPID)
+	if preemption {
+		var scheduler, replay int
+		var schedulerHeld bool
+		schedulerLine, replayLine := -1, -1
+		for index, line := range strings.Split(captured.String(), "\n") {
+			if strings.HasPrefix(line, "SOURCE_RECOVERY_NATIVE_SCHEDULE_ENTRY ") {
+				if _, err := fmt.Sscanf(line, "SOURCE_RECOVERY_NATIVE_SCHEDULE_ENTRY tid=%d held=%t", &scheduler, &schedulerHeld); err != nil {
+					t.Fatal(err)
+				}
+				schedulerLine = index
+			}
+			if strings.HasPrefix(line, "SOURCE_RECOVERY_NATIVE_REPLAY ") {
+				if _, err := fmt.Sscanf(line, "SOURCE_RECOVERY_NATIVE_REPLAY tid=%d", &replay); err != nil {
+					t.Fatal(err)
+				}
+				if replayLine < 0 {
+					replayLine = index
+				}
+			}
+		}
+		if scheduler != held.HeldRootThread || replay <= 0 || replay == scheduler || schedulerLine < 0 || replayLine < 0 ||
+			schedulerHeld != (schedulerLine < replayLine) ||
+			!strings.Contains(captured.String(), "SOURCE_RECOVERY_NATIVE_REPLAY_GUARDS substitutions=16 consumed_signal_refused=true") {
+			t.Fatal("actual Go preemption/migration witness missing", scheduler, replay, held, captured.String())
+		}
+		return
+	}
 
 	// The same record entry with an actually live descendant must still refuse.
 	// EOF alone cannot satisfy this negative: require the precise scope guard.

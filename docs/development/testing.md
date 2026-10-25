@@ -505,6 +505,21 @@ The selected recovery native inventory includes this actual
 concurrency regression and its premature-notice negative, with the same pinned
 helper explicitly supplied through `ARDENTS_SOURCE_RECOVERY_CONCURRENT_PROGRAM`.
 
+The `preempted-caller` subtest retains a real pending SIGURG at the held record
+entry and probes that original M's actual Go scheduler entry. If the scheduler
+arrives first, the fixture holds it until a different M resumes the original
+goroutine; if migration arrives first, the later scheduler probe is retired
+without leaving an orphaned hold. This private native fixture cannot admit an
+installed profile. Entry replay requires its own actual SIGURG after processed
+cancellation, the original goroutine, stack/base/caller frame, all nine register
+and three stack arguments, and unchanged original journal/header/payload native
+images. It consumes the signal proof once and creates no new hold, cancellation,
+deadline or semantic record. Sixteen detached evidence substitutions against
+that actual stopped caller, plus a consumed-signal negative, must refuse. Actual
+live-descendant and process-capacity negatives retain the separate scope guards.
+The ACK and recovery observers share only the native Go frame/signal/image
+primitives; their semantic counters and cancellation/hold lifetimes stay distinct.
+
 The separate `source-recovery-cancellation-observer-v1` declaration adds one
 `recovery_hold` object to the strict refusal profile. It admits only original
 initial70 or replacement13, the first exact generation `ProgramName` born file,

@@ -62,6 +62,9 @@ type sourceRecoveryHold struct {
 	journalInfo           os.FileInfo
 	headerInfo            os.FileInfo
 	payloadInfo           os.FileInfo
+	entry                 sourceCutGoEntry
+	stackArguments        [12]byte
+	interrupted           bool
 }
 
 func newSourceRecoveryHold(scenario, root string, refusal *sourceRefusalObserverProfile) *sourceRecoveryHold {
@@ -143,10 +146,23 @@ func (h *sourceRecoveryHold) capture() error {
 	return nil
 }
 
-func (h *sourceRecoveryHold) freeze(tid int, result *sourceCutObservation) error {
+func (h *sourceRecoveryHold) freeze(tid int, registers syscall.PtraceRegs, result *sourceCutObservation) error {
 	if err := h.capture(); err != nil {
 		return err
 	}
+	entry, err := readSourceCutGoFrame(tid, registers)
+	if err != nil || registers.R14 == 0 {
+		return errors.Join(errors.New("original recovery Go caller unavailable"), err)
+	}
+	// The pinned Go ABI places the record's mode/UID/GID uint32 arguments
+	// immediately after the caller return address. Keep every actual argument,
+	// not just the phase/path projection used to select this physical frontier.
+	n, err := syscall.PtracePeekData(tid, uintptr(registers.Rsp)+8, h.stackArguments[:])
+	if err != nil || n != len(h.stackArguments) {
+		return errors.Join(errors.New("original recovery stack arguments unavailable"), err)
+	}
+	entry.raw, entry.info = h.journalRaw, h.journalInfo
+	h.entry = entry
 	for _, path := range []string{h.journal, h.journal + ".recovery-completion", h.lock} {
 		if err := probeSourceRefusalLease(path, "", 0600, true); err != nil {
 			return err
@@ -161,6 +177,49 @@ func (h *sourceRecoveryHold) freeze(tid int, result *sourceCutObservation) error
 	}
 	_, err = fmt.Printf("SOURCE_RECOVERY_HOLD_READY %s\n", raw)
 	return err
+}
+
+func (h *sourceRecoveryHold) sameEntry(tid int, registers syscall.PtraceRegs) (bool, error) {
+	current, err := readSourceCutGoEntry(tid, registers, h.journal)
+	if err != nil {
+		return false, err
+	}
+	left, right := h.entry.registers, current.registers
+	if !h.entry.same(current) || left.Rdi != right.Rdi || left.Rsi != right.Rsi ||
+		left.R8 != right.R8 || left.R9 != right.R9 || left.R10 != right.R10 || left.R11 != right.R11 {
+		return false, nil
+	}
+	var arguments [12]byte
+	n, err := syscall.PtracePeekData(tid, uintptr(registers.Rsp)+8, arguments[:])
+	if err != nil || n != len(arguments) {
+		return false, errors.Join(errors.New("resumed recovery stack arguments unavailable"), err)
+	}
+	return arguments == h.stackArguments, nil
+}
+
+func (h *sourceRecoveryHold) interrupt(tid int, registers syscall.PtraceRegs) error {
+	h.interrupted = false
+	matched, err := h.sameEntry(tid, registers)
+	if err == nil && matched {
+		h.interrupted = true
+	}
+	return err
+}
+
+func (h *sourceRecoveryHold) replay(tid int, registers syscall.PtraceRegs) (bool, error) {
+	interrupted := h.interrupted
+	h.interrupted = false // Each replay must have its own actual signal cause.
+	if !interrupted {
+		return false, nil
+	}
+	matched, err := h.sameEntry(tid, registers)
+	if err != nil || !matched {
+		return false, err
+	}
+	if err := h.preserved(); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func (h *sourceRecoveryHold) preserved() error {
@@ -248,7 +307,7 @@ func TestSourceRecoveryHeldPayloadNative(t *testing.T) {
 	}
 }
 
-func (h *sourceRecoveryHold) control(pid int, groups map[int]int, tracked map[int]bool, output []byte, result *sourceCutObservation) error {
+func (h *sourceRecoveryHold) control(pid int, groups map[int]int, tracked map[int]bool, output []byte, result *sourceCutObservation, preemption *sourceRecoveryNativePreemption) error {
 	// Process birth precedes the canonical operation's two-minute context.
 	// This conservative monotonic observation bound neither extends that
 	// context nor counts a previously processed timeout as our cancellation.
@@ -306,8 +365,10 @@ func (h *sourceRecoveryHold) control(pid int, groups map[int]int, tracked map[in
 	if err := syscall.PtraceGetRegs(h.tid, &registers); err != nil || registers.Rip != result.RecoveryHoldEntry {
 		return errors.Join(errors.New("original recovery hold entry moved"), err)
 	}
-	if err := sourceCutPtrace(syscall.PTRACE_POKEUSR, h.tid, sourceCutDebugRegisters+7*8, 1); err != nil {
+	if ready, err := preemption.arm(h.tid, result.RecoveryHoldEntry); err != nil {
 		return err
+	} else if !ready {
+		return nil
 	}
 	if err := resumeSourceCutBreakpoint(h.tid, &registers); err != nil {
 		return err
