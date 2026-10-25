@@ -242,7 +242,16 @@ func TestSourceRecoveryPhysicalNativeWorker(t *testing.T) {
 		if err := syscall.Kill(os.Getpid(), syscall.SIGSTOP); err != nil {
 			return err
 		}
-		return errors.New("outside owner resumed a terminal physical-cut worker")
+		// A process-directed stop may be delivered to another runtime thread:
+		// Kill can return before the whole process has stopped. Never unwind
+		// into births.close while the outside owner is retaining this cut.
+		// Even an unexpected continuation keeps the original writer until the
+		// parent kills and joins it; it cannot run the next effect or cleanup.
+		for {
+			if err := syscall.Pause(); err != nil && !errors.Is(err, syscall.EINTR) {
+				return err
+			}
+		}
 	}
 	births.afterSync = func(file *os.File) error {
 		if file == births.journal.file {

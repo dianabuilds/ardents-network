@@ -707,6 +707,11 @@ intent Sync before original readback, recorded empty birth, written body before
 access promotion, body Sync before ready, ready Sync before original readback,
 and completed ready readback. Each observes actual kernel SIGSTOP and original
 writer flock, then SIGKILL and Wait before fresh independent prefix custody.
+The worker remains blocked after requesting its own stop: process-directed
+SIGSTOP can reach another runtime thread before the sending thread stops.
+Returning from that request must not unwind the writer and release its flock.
+An unexpected continuation likewise cannot perform another effect or cleanup;
+the outside parent still owns the final SIGKILL and original Wait.
 Exact original journal/file inodes, bytes and access survive the join; missing
 controlled-cut proof refuses without creating any cut or recovery evidence.
 These are file/process counterexamples with no installed account, State,
