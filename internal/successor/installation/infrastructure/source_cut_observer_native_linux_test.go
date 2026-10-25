@@ -448,6 +448,11 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	canonicalStartup := physical != nil && physical.startup != nil
 	canonicalRetirement := physical != nil && physical.retirement != nil
 	installed := profile != nil || refusal != nil || canonicalPhysical || canonicalRecovery || canonicalStartup || canonicalRetirement
+	principalLoad := os.Getenv("ARDENTS_SOURCE_PRINCIPAL_NATIVE_LOOKUPS")
+	if principalLoad != "" &&
+		(principalLoad != "1" && principalLoad != "112" || installed || physical != nil || nativeCase != "external-cut" || nativeRecords != 2) {
+		return result, errors.New("principal lookup load is a distinct native-only control")
+	}
 	recoveryPreemption, err := newSourceRecoveryNativePreemption(nativeCase, installed, refusal)
 	if err != nil {
 		return result, err
@@ -480,6 +485,12 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	}
 	if !info.Mode().IsRegular() || info.Size() <= 0 || info.Size() > 256<<20 {
 		return result, errors.New("bounded native test executable required")
+	}
+	if principalLoad != "" {
+		build, err := buildinfo.Read(file)
+		if err != nil || build.GoVersion != "go1.27.3" || runtime.Version() != "go1.27.3" {
+			return result, errors.Join(errors.New("native principal inventory requires exact inspected Go runtime"), err)
+		}
 	}
 	hash := sha256.New()
 	if _, err := io.Copy(hash, io.LimitReader(file, (256<<20)+1)); err != nil {
@@ -1699,7 +1710,25 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	if profile != nil {
 		wantedExit = 2
 	}
-	if result.RootExit != wantedExit || result.AcknowledgementHits != wantedHits || result.SelectedRecords != selectedRecords || result.GroupStops < wantedHits || (profile == nil && len(processes) != 2) || (profile != nil && len(processes) < 2) {
+	wantedNativeProcesses := 2
+	if principalLoad != "" {
+		// This distinct native fixture performs 64 or 112 real observations, each
+		// with separately joined passwd/group helpers, before the original
+		// two-process file/control exchange. Go1.27.3's first os/exec call also
+		// performs the real os.checkPidfd -> syscall.checkClonePidfd child probe.
+		// Retain every group, including that independently reaped runtime child;
+		// the existing 256-TID and 32-live-process limits remain unchanged.
+		observations := 64
+		if principalLoad == "112" {
+			observations = 112
+		}
+		wantedNativeProcesses += observations*2 + 1
+		completed, _, err := readSourceCutObserverFile(filepath.Join(root, "native-principal-lookups-complete"), 128)
+		if err != nil || string(completed) != fmt.Sprintf("%d original principal observations joined\n", observations) {
+			return result, errors.Join(errors.New("original native principal observations incomplete"), err)
+		}
+	}
+	if result.RootExit != wantedExit || result.AcknowledgementHits != wantedHits || result.SelectedRecords != selectedRecords || result.GroupStops < wantedHits || (profile == nil && len(processes) != wantedNativeProcesses) || (profile != nil && len(processes) < 2) {
 		return result, fmt.Errorf("actual original-controller outcome differs: %+v", result)
 	}
 	if nativeCase == "external-cut" {

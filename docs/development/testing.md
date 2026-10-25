@@ -541,6 +541,38 @@ threads have not reached terminal `Wait4`; a report retains both total historica
 retain their full history while using only two live slots. An additional actual
 root plus 32 unreaped helpers must refuse and join before any recovery hold.
 No thread, memory, deadline, prefix, proof or join bound increases.
+
+The distinct native principal workload uses `TestSourceCutObserverNative` in
+`native-external` mode with `ARDENTS_SOURCE_PRINCIPAL_NATIVE_LOOKUPS=1` for64
+fresh observations or `112` for112. It requires the dedicated root fixture
+marker `/etc/ardents-source-principal-native-stand` containing exactly
+`ardents-source-principal-native-v1` plus LF and a native-only fixed
+`ardents-source` account with UID/GID900 and the normal locked rows. The pinned
+Go1.27.3 `.test` executable must have its normal root-owned0555 custody. Four
+joined native workers call the real principal owner; no successful NSS mock,
+Source installation, Release, manager, State or runtime authority is supplied.
+Both current name and numeric-ID lookups remain mandatory for passwd/group.
+The native-only completion file records all64 or112 original observations only
+after those callers and their helpers have joined. The ordinary native
+two-process Sync/STOP/ACK/cancellation and original-cut proof then remain required.
+The observer retains all131 or227 historical groups: two file/control owners,
+two helpers per observation and Go1.27.3's independently reaped one-time
+`os.checkPidfd`/`syscall.checkClonePidfd` child. No historical group is discarded;
+the256-TID,32-live-process and25-second outside bounds are unchanged. The load
+cannot accompany any installed or physical-cut profile, and other values refuse.
+This explicit offline native fixture is separate from the installed cohort's
+native prerequisite inventory and does not supply canonical installed evidence.
+
+`TestSourcePrincipalNativeRefusal` uses the same dedicated native marker/account
+and an explicitly selected `ARDENTS_SOURCE_PRINCIPAL_NATIVE_REFUSAL` mode:
+`binding`, `canceled` or `deadline`. Its outside fixture supplies only malformed
+or failed NSS output: one row, foreign first/second row, an extra row, or a failed
+exit despite complete-looking bytes. A separate delayed helper exercises the
+unchanged three-second native deadline; cancellation retains its own original
+cause. After an actually refused warm observation, two more original refusals
+must release their descriptors before return with GC disabled. Successful NSS
+facts come only from the separate real-getent workload; these fault-only
+fixtures supply no accepting account, manager, installation or recovery proof.
 The selected recovery native inventory includes this actual
 concurrency regression and its premature-notice negative, with the same pinned
 helper explicitly supplied through `ARDENTS_SOURCE_RECOVERY_CONCURRENT_PROGRAM`.

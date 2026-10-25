@@ -54,9 +54,16 @@ func observeSourcePrincipal(ctx context.Context, uid, gid uint32) (err error) {
 				return errors.Join(ErrBinding, e)
 			}
 		}
-		for _, query := range []struct{ database, value string }{
-			{"passwd", "ardents-source"}, {"passwd", strconv.FormatUint(uint64(uid), 10)},
-			{"group", "ardents-source"}, {"group", strconv.FormatUint(uint64(gid), 10)},
+		// Each database still independently resolves both the fixed name and
+		// numeric identity. One getent process accepts both keys and returns
+		// both rows in order; require two exact rows, not one deduplicated or
+		// partially successful result. This keeps every fresh NSS observation
+		// while avoiding a second namespace/helper lifetime for that database.
+		for _, query := range []struct {
+			database string
+			id       uint32
+		}{
+			{"passwd", uid}, {"group", gid},
 		} {
 			if err = ctx.Err(); err != nil {
 				return err
@@ -65,7 +72,7 @@ func observeSourcePrincipal(ctx context.Context, uid, gid uint32) (err error) {
 				return err
 			}
 			bounded, cancel := context.WithTimeout(ctx, 3*time.Second)
-			command := exec.CommandContext(bounded, "/usr/bin/getent", query.database, query.value)
+			command := exec.CommandContext(bounded, "/usr/bin/getent", query.database, "ardents-source", strconv.FormatUint(uint64(query.id), 10))
 			command.Env = []string{"LANG=C", "PATH=/usr/bin:/bin"}
 			var output sourceAccountDiagnostic
 			command.Stdout = &output
@@ -77,7 +84,7 @@ func observeSourcePrincipal(ctx context.Context, uid, gid uint32) (err error) {
 			runtime.UnlockOSThread()
 			contextErr := bounded.Err()
 			cancel()
-			if runErr != nil || contextErr != nil || output.body.String() != rows[query.database]+"\n" {
+			if runErr != nil || contextErr != nil || output.body.String() != strings.Repeat(rows[query.database]+"\n", 2) {
 				return errors.Join(ErrBinding, runErr, contextErr)
 			}
 		}

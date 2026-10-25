@@ -1712,6 +1712,16 @@ Account database records retain historical helper evidence; they do not freeze
 foreign host databases across operations. A later start separately admits the
 current exact principal. State/participation contents remain semantic-owner data.
 
+Each fresh root principal observation reads the current protected account/NSS
+files and resolves both the fixed name and numeric identity in each of the
+passwd and group databases. Each database uses one original `getent` helper
+with both keys; both ordered output rows must exactly match the validated
+current row. A missing key, partial output, foreign row, failed exit or deadline
+refuses. The helper retains its original PID namespace and joined completion;
+the actual `getent` file and every account/NSS file are reobserved before a
+successful observation returns.
+Combining keys does not cache principal authority or remove either lookup.
+
 Canonical initial/replacement commands own a dedicated original coordinator
 process, executing the same retained running artifact through a private inherited
 Unix packet channel. They preserve the actual manager PID/mount/cgroup

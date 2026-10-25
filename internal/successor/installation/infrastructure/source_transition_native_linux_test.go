@@ -66,6 +66,9 @@ func TestSourceTransitionNativeDriver(t *testing.T) {
 	}
 	previous := debug.SetGCPercent(-1)
 	defer debug.SetGCPercent(previous)
+	if os.Getenv("ARDENTS_SOURCE_PRINCIPAL_NATIVE_LOOKUPS") != "" {
+		sourcePrincipalNativeLookups(t)
+	}
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
