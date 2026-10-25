@@ -66,6 +66,7 @@ with tempfile.TemporaryDirectory(prefix="cut-",dir=os.environ["TMPDIR"]) as name
             assert ready["installed_execution"] is False and ready["external_cut_ready"] is True
             assert ready.get("external_cut_requested",False) is False and ready.get("root_kill_requested",False) is False
             assert ready.get("startup_archive") is None and ready["held_root_thread"]>0
+            assert ready.get("root_only_at_physical_cut") is True
             assert pathlib.Path("/proc",str(ready["root_pid"]),"exe").stat()
             journal=root/"original.source-initial-journal"
             fd=os.open(journal,os.O_RDONLY|os.O_NOFOLLOW)
@@ -95,7 +96,8 @@ with tempfile.TemporaryDirectory(prefix="cut-",dir=os.environ["TMPDIR"]) as name
         assert len(reports)==1
         result=reports[0]
         assert result["installed_execution"] is False and result["root_signal"]==9 and result["root_exit"]==-1
-        assert result["processes"]==1 and result["threads_joined"]>=1
+        assert 41<=result["processes"]<=result["threads_joined"]<=256 and result["peak_live_processes"]==2
+        assert result.get("root_only_at_physical_cut") is True
         assert result["external_cancellation_acknowledged"] is False and result.get("root_close_entry",0)==0
         assert result.get("root_close_observations",0)==0 and result.get("root_ownership_released_before_exit",False) is False
         assert result["external_cut_ready"] is True and result.get("external_cut_requested",False) is (scenario=="cut")
@@ -111,6 +113,49 @@ with tempfile.TemporaryDirectory(prefix="cut-",dir=os.environ["TMPDIR"]) as name
         print("SOURCE_DIRECTED_CUT_NATIVE_OBSERVATION",scenario,json.dumps(result,separators=(",",":")))
         if scenario!="cut":
             print("EXPECTED_NATIVE_CONTROL_REFUSAL",scenario,text)
+    for scenario in ("live","late"):
+        root=base/scenario
+        root.mkdir(mode=0o700)
+        log=base/(scenario+".log")
+        environment=dict(os.environ,ARDENTS_SOURCE_PHYSICAL_OBSERVER_WINDOW="root-controlled-file-ready-before-record",
+                         ARDENTS_SOURCE_CUT_OBSERVER_PROGRAM=program,ARDENTS_SOURCE_CUT_OBSERVER_ROOT=str(root),
+                         ARDENTS_SOURCE_CUT_OBSERVER_OUTPUT=str(base/(scenario+"-original.log")),
+                         ARDENTS_SOURCE_PHYSICAL_NATIVE_CHILD=scenario)
+        deadline=time.monotonic()+20
+        actor=None
+        try:
+            try:
+                actor=Observer([helper,"-test.run=^TestSourcePhysicalCutObserverNative$","-test.v","-test.timeout=30s"],environment,log,observe)
+            except RuntimeError:
+                assert scenario=="live"
+            else:
+                assert scenario=="late" and actor.ready.get("root_only_at_physical_cut") is True
+                (root/"native-child-after-cut").write_bytes(b"native-only child birth trigger\n")
+                while actor.child.poll() is None:
+                    observe()
+                    time.sleep(.01)
+                try: actor.close(require_success=True)
+                except BaseExceptionGroup: pass
+                else: raise AssertionError("late descendant supplied root-only cut")
+        finally:
+            if actor is not None: actor.close()
+        if actor is not None:
+            assert actor.closed and actor.child.poll() is not None and not actor.reader.is_alive()
+            assert actor.child.stdin.closed and actor.child.stdout.closed and actor.log.closed
+        text=log.read_text()
+        reports=[json.loads(line[len("SOURCE_PHYSICAL_CUT_OBSERVATION "):]) for line in text.splitlines() if line.startswith("SOURCE_PHYSICAL_CUT_OBSERVATION ")]
+        assert len(reports)==1
+        result=reports[0]
+        assert result.get("root_only_at_physical_cut",False) is False
+        assert result["root_signal"]==9 and 42<=result["processes"]<=result["threads_joined"]<=256
+        assert result["peak_live_processes"]==2 and result["installed_execution"] is False
+        assert ("SOURCE_PHYSICAL_CUT_READY " in text) is (scenario=="late")
+        expected="physical root cut retained a live or unresolved descendant" if scenario=="live" else "physical root cut acquired a descendant after selection"
+        assert expected in text
+        fd=os.open(root/"original.source-initial-journal",os.O_RDONLY|os.O_NOFOLLOW)
+        try: fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        finally: os.close(fd)
+        print("EXPECTED_NATIVE_LIVE_SCOPE_REFUSAL",scenario,text)
 `, helper, program, runner)
 	output, err := command.CombinedOutput()
 	t.Logf("%s", output)

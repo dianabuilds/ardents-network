@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -99,6 +100,55 @@ func TestSourcePhysicalRootNativeDriver(t *testing.T) {
 		}
 	}
 	defer func() { cancel(); stop(); joinNotice() }()
+	joinSourceRecoveryNativeHelpers(t)
+	childMode := os.Getenv("ARDENTS_SOURCE_PHYSICAL_NATIVE_CHILD")
+	if childMode != "" {
+		if childMode != "live" && childMode != "late" {
+			t.Fatal("closed native physical child fixture required")
+		}
+		childContext, cancelChild := context.WithCancel(ctx)
+		ready := make(chan struct{})
+		var child *exec.Cmd
+		var childError error
+		go func() {
+			defer close(ready)
+			for childMode == "late" {
+				if childContext.Err() != nil {
+					return
+				}
+				_, err := os.Stat(filepath.Join(root, "native-child-after-cut"))
+				if err == nil {
+					break
+				}
+				if !errors.Is(err, os.ErrNotExist) {
+					childError = err
+					return
+				}
+				time.Sleep(time.Millisecond)
+			}
+			child = exec.Command("/bin/sleep", "60")
+			childError = child.Start()
+		}()
+		defer func() {
+			cancelChild()
+			<-ready
+			if childError != nil {
+				t.Error("native physical child birth", childError)
+			}
+			if child != nil && child.Process != nil {
+				killed, waited := child.Process.Kill(), child.Wait()
+				if killed != nil || waited == nil {
+					t.Error("native physical child interruption/join", killed, waited)
+				}
+			}
+		}()
+		if childMode == "live" {
+			<-ready
+			if childError != nil {
+				t.Fatal("native live descendant birth", childError)
+			}
+		}
+	}
 	journal, payload := filepath.Join(root, "original.source-initial-journal"), filepath.Join(root, "next-effect")
 	births, err := openSourceRecoverableInitialBirths(ctx, journal, map[string]bool{payload: true})
 	if err != nil {

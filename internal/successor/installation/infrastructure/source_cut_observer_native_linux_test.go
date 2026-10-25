@@ -94,6 +94,7 @@ type sourceCutObservation struct {
 	HeldCoordinatorKilled              bool                    `json:"held_coordinator_killed,omitempty"`
 	RootKillRequested                  bool                    `json:"root_kill_requested,omitempty"`
 	RootKilledByObserver               bool                    `json:"root_killed_by_observer,omitempty"`
+	RootOnlyAtPhysicalCut              bool                    `json:"root_only_at_physical_cut,omitempty"`
 	RootSignal                         int                     `json:"root_signal,omitempty"`
 	RootCloseEntry                     uint64                  `json:"root_close_entry,omitempty"`
 	RootOwnershipReleasedBeforeExit    bool                    `json:"root_ownership_released_before_exit,omitempty"`
@@ -375,7 +376,7 @@ func sourceCutThreadGroup(pid int) (int, error) {
 // tracked retains every original child until its actual terminal Wait4. A
 // historical process count cannot distinguish a joined helper from a live one.
 // Unknown initial stops and missing group identities remain unjoined here.
-func sourceRefusalOriginalRootThreads(pid int, tracked map[int]bool, groups map[int]int) bool {
+func sourceOriginalRootThreads(pid int, tracked map[int]bool, groups map[int]int) bool {
 	if fresh, exists := tracked[pid]; !exists || fresh || len(groups) != len(tracked) {
 		return false
 	}
@@ -1000,7 +1001,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 				}
 				return nil
 			}
-			if !sourceRefusalOriginalRootThreads(pid, tracked, groups) {
+			if !sourceOriginalRootThreads(pid, tracked, groups) {
 				fail(errors.New("refusal retained an unresolved original descendant before observation"))
 			} else if e := verifySourceRefusalStoppedThreads(pid, tracked, returnStops); e != nil {
 				fail(e)
@@ -1143,6 +1144,10 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 			fail(errors.New("observer original native thread lifetime bound exceeded"))
 		}
 		if status.Exited() || status.Signaled() {
+			if physical != nil && physical.root && physicalSelected && (groups[tid] == 0 || tracked[tid]) {
+				result.RootOnlyAtPhysicalCut = false
+				fail(errors.New("physical root cut joined an unresolved descendant"))
+			}
 			if tid == pid && status.Signaled() {
 				result.RootSignal = int(status.Signal())
 				if physical != nil && physical.killRoot && physicalSelected && result.RootKillRequested && status.Signal() == syscall.SIGKILL {
@@ -1167,11 +1172,18 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 		if fresh, exists := tracked[tid]; !exists || fresh {
 			group, e := sourceCutThreadGroup(tid)
 			if e != nil {
+				if physical != nil && physical.root && physicalSelected {
+					result.RootOnlyAtPhysicalCut = false
+				}
 				fail(e)
 				_ = syscall.PtraceCont(tid, int(syscall.SIGKILL))
 				continue
 			}
 			tracked[tid], groups[tid], processes[group] = false, group, true
+			if physical != nil && physical.root && physicalSelected && group != pid {
+				result.RootOnlyAtPhysicalCut = false
+				fail(errors.New("physical root cut acquired a descendant after selection"))
+			}
 			if returnHeld != 0 && !failed {
 				if group != pid {
 					fail(errors.New("refusal retained a foreign process before return"))
@@ -1359,7 +1371,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 					if e != nil {
 						fail(e)
 					} else if matched {
-						if !result.RefusalAdmissionObserved || groups[tid] != pid || recoveryHold.tid != 0 || result.RecoveryHeldBeforeRecord || !sourceRefusalOriginalRootThreads(pid, tracked, groups) {
+						if !result.RefusalAdmissionObserved || groups[tid] != pid || recoveryHold.tid != 0 || result.RecoveryHeldBeforeRecord || !sourceOriginalRootThreads(pid, tracked, groups) {
 							fail(errors.New("recovery hold has foreign or repeated lifetime"))
 						} else if e := recoveryHold.freeze(tid, &result); e != nil {
 							fail(e)
@@ -1376,7 +1388,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 					if e := drain(); e != nil {
 						fail(e)
 					}
-					if groups[tid] != pid || !physicalSelected || held != 0 || !result.ExternalCancellationAcknowledged || result.RootOwnershipReleasedBeforeExit || !bytes.Contains(captured, []byte("native-root-writer-closed\n")) {
+					if groups[tid] != pid || !physicalSelected || held != 0 || !result.RootOnlyAtPhysicalCut || !sourceOriginalRootThreads(pid, tracked, groups) || !result.ExternalCancellationAcknowledged || result.RootOwnershipReleasedBeforeExit || !bytes.Contains(captured, []byte("native-root-writer-closed\n")) {
 						fail(errors.New("native root return preceded cancellation or original Close"))
 					} else if e := physical.verifyRetained(journal, root, physicalImage); e != nil {
 						fail(e)
@@ -1419,8 +1431,11 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 							}
 							if time.Since(started) >= selectionBound || bytes.Contains(captured, acknowledgement) {
 								fail(errors.New("physical selection did not precede original cancellation/deadline"))
+							} else if physical.root && !sourceOriginalRootThreads(pid, tracked, groups) {
+								fail(errors.New("physical root cut retained a live or unresolved descendant"))
 							} else {
 								physicalSelected, physicalImage = true, observed
+								result.RootOnlyAtPhysicalCut = physical.root
 								result.SelectedRecords = physical.records
 								result.SelectedJournalSHA256 = observed.journalSHA
 								if before := physical.publicationBefore; before != nil {
@@ -1580,7 +1595,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 				return result, errors.Join(returned, errors.New("original root was not cut after external retention directive"))
 			}
 			if failed || !physicalSelected || !result.RootKillRequested || !result.RootKilledByObserver || result.RootSignal != int(syscall.SIGKILL) || result.RootExit != -1 ||
-				result.HeldRootThread == 0 || held != 0 || len(processes) != 1 || result.ThreadsJoined == 0 || result.ExternalCancellationAcknowledged ||
+				result.HeldRootThread == 0 || held != 0 || !result.RootOnlyAtPhysicalCut || len(processes) > result.ThreadsJoined || result.ThreadsJoined == 0 || result.ExternalCancellationAcknowledged ||
 				result.RootCloseEntry != 0 || result.RootCloseObservations != 0 || result.RootOwnershipReleasedBeforeExit {
 				return result, errors.Join(returned, fmt.Errorf("actual original root process cut differs: %+v", result))
 			}
@@ -1595,7 +1610,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 			wantedExit = 2
 		}
 		if physical.root {
-			joined = result.RootOwnershipReleasedBeforeExit && result.RootCloseObservations == 1 && result.HeldRootThread != 0 && held == 0 && len(processes) == 1
+			joined = result.RootOnlyAtPhysicalCut && result.RootOwnershipReleasedBeforeExit && result.RootCloseObservations == 1 && result.HeldRootThread != 0 && held == 0 && len(processes) <= result.ThreadsJoined
 		}
 		if failed || !physicalSelected || !joined || !result.ExternalCancellationAcknowledged || result.RootExit != wantedExit {
 			return result, errors.Join(returned, fmt.Errorf("actual unsafe physical cut differs: %+v", result))

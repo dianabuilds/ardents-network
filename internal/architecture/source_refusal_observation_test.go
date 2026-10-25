@@ -214,7 +214,7 @@ for attempt in (0,1):
         pin=hashlib.sha256(encode(profile)).hexdigest()
         ready={"entry":1000,"root_pid":77,"held_root_thread":78,"selected_records":count,"startup_archive":archive,
                "profile_sha256":pin,"program_sha256":zero,"public_receipt_sha256":zero,"physical_window":window,
-               "inspection_only":False,"installed_execution":True,"external_cut_ready":True,"root_exit":-1,"selected_journal_sha256":other}
+               "inspection_only":False,"installed_execution":True,"external_cut_ready":True,"root_only_at_physical_cut":True,"root_exit":-1,"selected_journal_sha256":other}
         result={"schema":"ardents-source-retirement-v1","attempt":attempt,"generation":other,"binding_sha256":zero,
                 "start_sha256":profile["start_sha256"],"invocation_id":archive["invocation_id"],"pid":80,"manager":archive["manager"],
                 "challenge":"2"*64,"completion_sha256":"", "started_realtime":100,"started_monotonic":200,
@@ -226,7 +226,13 @@ for attempt in (0,1):
         report=dict(ready,external_cut_requested=True,root_signal=9,processes=1,peak_live_processes=1,threads_joined=5,root_kill_requested=True,
                     root_killed_by_observer=True,original_cut_sha256="",output_sha256=hashlib.sha256(b"").hexdigest())
         assert observe(profile,ready,report,b"")["root_signal"]==9
-        for field,value in (("root_pid",True),("entry",0),("selected_records",count+1),("profile_sha256",other),
+        assert observe(profile,ready,dict(report,processes=41,threads_joined=45,peak_live_processes=2),b"")["root_signal"]==9
+        for missing in ("root_only_at_physical_cut","processes","peak_live_processes","threads_joined"):
+            incomplete=dict(report);del incomplete[missing]
+            try: observe(profile,ready,incomplete,b"")
+            except RuntimeError: pass
+            else: raise AssertionError("missing physical root inventory/proof admitted: "+missing)
+        for field,value in (("root_only_at_physical_cut",False),("root_only_at_physical_cut",1),("root_pid",True),("entry",0),("selected_records",count+1),("profile_sha256",other),
                             ("installed_execution",False),("external_cut_ready",False),("external_cut_requested",True),
                             ("root_exit",0),("root_signal",True),("root_kill_requested",True),("startup_archive",{}),
                             ("retirement_result",result if count==6 else None),("refusal_startup_pending_observed",True),
@@ -248,7 +254,7 @@ for attempt in (0,1):
             changed=dict(profile,**{field:value})
             rejection(lambda:observe(changed,dict(ready,profile_sha256=hashlib.sha256(encode(changed)).hexdigest())))
         for field,value in (("held_root_thread",79),("selected_journal_sha256",zero),("startup_archive",{}),
-                            ("external_cut_requested",False),("root_signal",15),("root_exit",0),("processes",2),
+                            ("root_only_at_physical_cut",False),("root_only_at_physical_cut",1),("external_cut_requested",False),("root_signal",15),("root_exit",0),("processes",2),
                             ("peak_live_processes",True),("peak_live_processes",0),("peak_live_processes",2),("threads_joined",True),("threads_joined",0),("root_killed_by_observer",False),
                             ("root_ownership_released_before_exit",True),("root_close_entry",123),
                             ("external_cancellation_acknowledged",True),("refusal_exclusion_observed",True),
@@ -298,12 +304,18 @@ for attempt in (0,1):
                  "started_realtime":100,"started_monotonic":200}
         ready={"entry":1000,"root_pid":77,"held_root_thread":78,"selected_records":count,"startup_archive":archive,
                "profile_sha256":pin,"program_sha256":zero,"public_receipt_sha256":zero,"physical_window":window,
-               "inspection_only":False,"installed_execution":True,"external_cut_ready":True,"root_exit":-1,"selected_journal_sha256":other}
+               "inspection_only":False,"installed_execution":True,"external_cut_ready":True,"root_only_at_physical_cut":True,"root_exit":-1,"selected_journal_sha256":other}
         assert observe(profile,ready)["root_pid"]==77
         report=dict(ready,external_cut_requested=True,root_signal=9,processes=1,peak_live_processes=1,threads_joined=5,root_kill_requested=True,
                     root_killed_by_observer=True,original_cut_sha256="",output_sha256=hashlib.sha256(b"").hexdigest())
         assert observe(profile,ready,report,b"")["root_signal"]==9
-        for field,value in (("root_pid",True),("entry",0),("selected_records",count+1),("profile_sha256",other),
+        assert observe(profile,ready,dict(report,processes=41,threads_joined=45,peak_live_processes=2),b"")["root_signal"]==9
+        for missing in ("root_only_at_physical_cut","processes","peak_live_processes","threads_joined"):
+            incomplete=dict(report);del incomplete[missing]
+            try: observe(profile,ready,incomplete,b"")
+            except RuntimeError: pass
+            else: raise AssertionError("missing physical root inventory/proof admitted: "+missing)
+        for field,value in (("root_only_at_physical_cut",False),("root_only_at_physical_cut",1),("root_pid",True),("entry",0),("selected_records",count+1),("profile_sha256",other),
                             ("installed_execution",False),("external_cut_ready",False),("external_cut_requested",True),
                             ("root_exit",0),("root_signal",True),("root_kill_requested",True),("startup_archive",{}),("retirement_result",{}),
                             ("refusal_startup_pending_observed",True)):
@@ -316,7 +328,7 @@ for attempt in (0,1):
             except RuntimeError: pass
             else: raise AssertionError("invalid held archive accepted: "+field)
         for field,value in (("held_root_thread",79),("selected_journal_sha256",zero),("startup_archive",{}),("retirement_result",{}),
-                            ("external_cut_requested",False),("root_signal",15),("root_exit",0),("processes",2),
+                            ("root_only_at_physical_cut",False),("root_only_at_physical_cut",1),("external_cut_requested",False),("root_signal",15),("root_exit",0),("processes",2),
                             ("peak_live_processes",True),("peak_live_processes",0),("peak_live_processes",2),("threads_joined",True),("threads_joined",0),("root_killed_by_observer",False),
                             ("root_ownership_released_before_exit",True),("root_close_entry",123),
                             ("external_cancellation_acknowledged",True),("refusal_exclusion_observed",True),
@@ -368,15 +380,21 @@ for operation,counts in (("initial",(70,115)),("replacement",(13,55))):
                      "arguments":["installation","recover-source","/distribution","/history","alpha","network","/request","/journal"],
                      "window":window,"prefix_records":count,"journal_sha256":other}
             pin=hashlib.sha256(json.dumps(profile,separators=(",",":")).encode()+b"\n").hexdigest()
-            report={"entry":1234,"root_pid":77,"root_exit":-1,"root_signal":9,"threads_joined":8,"processes":1,"peak_live_processes":1,
+            report={"entry":1234,"root_pid":77,"root_exit":-1,"root_signal":9,"threads_joined":8,"processes":1,"peak_live_processes":1,"root_only_at_physical_cut":True,
                     "held_root_thread":79,"signalled_root_thread":0,"selected_records":count,"profile_sha256":pin,
                     "program_sha256":zero,"public_receipt_sha256":zero,"selected_journal_sha256":other,
                     "physical_window":window,"inspection_only":False,"installed_execution":True,
                     "root_kill_requested":True,"root_killed_by_observer":True,"external_cancellation_acknowledged":False,
                     "original_cut_sha256":"","output_sha256":hashlib.sha256(b"").hexdigest()}
             assert observe(profile,report,b"")["root_signal"]==9
+            assert observe(profile,dict(report,processes=41,threads_joined=45,peak_live_processes=2),b"")["processes"]==41
+            for missing in ("root_only_at_physical_cut","processes","peak_live_processes","threads_joined"):
+                incomplete=dict(report);del incomplete[missing]
+                try: observe(profile,incomplete,b"")
+                except RuntimeError: pass
+                else: raise AssertionError("missing root scope/native inventory admitted: "+missing)
             for field,value in (("entry",True),("root_pid",0),("root_exit",0),("root_signal",15),("threads_joined",0),
-                                ("threads_joined",257),("processes",2),("held_root_thread",0),("signalled_root_thread",78),
+                                ("root_only_at_physical_cut",False),("root_only_at_physical_cut",1),("threads_joined",257),("processes",2),("held_root_thread",0),("signalled_root_thread",78),
                                 ("selected_records",count+1),("profile_sha256",other),("program_sha256",other),
                                 ("public_receipt_sha256",other),("selected_journal_sha256",zero),("physical_window","other"),
                                 ("inspection_only",True),("installed_execution",False),("root_kill_requested",False),
@@ -441,7 +459,7 @@ for field, value in (
     ("recovery_root_only_at_hold",True), ("refusal_stopped_threads",1),
     ("threads_joined",3), ("threads_joined",257), ("program_sha256",other), ("public_receipt_sha256",other),
     ("profile_sha256",other), ("output_sha256",other),
-    ("external_cut_ready",True),("external_cut_requested",True),("startup_archive",{}),("retirement_result",{}),
+    ("root_only_at_physical_cut",True),("external_cut_ready",True),("external_cut_requested",True),("startup_archive",{}),("retirement_result",{}),
 ):
     altered = dict(report, **{field:value})
     try:
@@ -990,7 +1008,7 @@ for op,born in (("initial",70),("replacement",13)):
                             ("peak_live_processes",True),("peak_live_processes",0),("peak_live_processes",1),("peak_live_processes",33),("peak_live_processes",3),("processes",1),("processes",33),("held_coordinator_thread",77),("signalled_root_thread",79),
                             ("selected_records",count+1),("inspection_only",True),("installed_execution",False),
                             ("program_sha256",other),("public_receipt_sha256",other),("profile_sha256",other),
-                            ("physical_window","other"),("held_coordinator_killed",False),
+                            ("root_only_at_physical_cut",True),("physical_window","other"),("held_coordinator_killed",False),
                             ("external_cancellation_acknowledged",False),("original_cut_sha256",zero),("output_sha256",other),
                             ("external_cut_ready",True),("external_cut_requested",True),("startup_archive",{}),("retirement_result",{})):
             try:

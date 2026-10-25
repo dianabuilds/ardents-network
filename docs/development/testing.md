@@ -287,6 +287,19 @@ publication, startup and retirement still require their own profile, original
 owners and installed evidence; Source processes launched by PID1 additionally
 require their separate original pidfd/cgroup join.
 
+Root cuts retain the complete history of joined helpers. Immediately before
+selecting the cut, every live tracked TID must have a known original-root group;
+a live or unresolved descendant refuses before readiness. The report separately
+requires `root_only_at_physical_cut`. A descendant first observed after selection,
+or an unresolved terminal TID, invalidates that proof and drains the original
+scope. Historical helpers cannot supply this live proof or disappear from final
+join counts. Native controls wait for forty helpers before each root cut and
+retain their history with peak two; separate live-before-selection and
+born-after-readiness controls must refuse and join. Root startup, retirement and
+recovery consumers require this exact typed proof and the unchanged 32-live and
+256-TID bounds. Native graceful-return controls additionally retain the live
+post-Close FD/lease proof. No process exit supplies missing domain completion.
+
 The distinct `source-recovery-physical-cut-observer-v1` declaration prepares
 recovery-root `completion-before-close` and `pending-before-unlink` entries.
 Its original immutable prefix is separately pinned at initial70/115 or
