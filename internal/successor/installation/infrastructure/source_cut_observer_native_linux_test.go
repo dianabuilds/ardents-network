@@ -92,6 +92,8 @@ type sourceCutObservation struct {
 	PhysicalPreimageInode              uint64                  `json:"physical_preimage_inode,omitempty"`
 	HeldCoordinatorThread              int                     `json:"held_coordinator_thread,omitempty"`
 	HeldCoordinatorKilled              bool                    `json:"held_coordinator_killed,omitempty"`
+	CoordinatorExitHeldBeforeJoin      bool                    `json:"coordinator_exit_held_before_join,omitempty"`
+	CoordinatorExitReleasedAfterNotice bool                    `json:"coordinator_exit_released_after_notice,omitempty"`
 	RootKillRequested                  bool                    `json:"root_kill_requested,omitempty"`
 	RootKilledByObserver               bool                    `json:"root_killed_by_observer,omitempty"`
 	RootOnlyAtPhysicalCut              bool                    `json:"root_only_at_physical_cut,omitempty"`
@@ -801,6 +803,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	}
 	physicalSelected := false
 	var physicalImage *sourcePhysicalImage
+	physicalExitGroup, physicalExitHeld := 0, 0
 	failed := false
 	// A later terminal-outcome check must not overwrite the trace failure that
 	// caused native interruption. Join it after the complete physical drain.
@@ -1108,6 +1111,19 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 		if err := drain(); err != nil {
 			fail(err)
 		}
+		if physicalExitHeld != 0 && (failed || bytes.Contains(captured, acknowledgement)) {
+			// PTRACE_EVENT_EXIT precedes the real terminal wait. Continuing this
+			// doomed SIGKILL leader cannot resume its unrecorded application effect.
+			// Keep original join pending until the actual cancellation notice, rather
+			// than assuming a fast controller return must emit a timeout diagnostic.
+			tid := physicalExitHeld
+			physicalExitHeld = 0
+			if err := resume(tid, 0); err != nil {
+				fail(err)
+			} else if !failed {
+				result.CoordinatorExitReleasedAfterNotice = true
+			}
+		}
 		if held != 0 && selectedACKHeld && !failed && !bytes.Contains(captured, acknowledgement) {
 			if registers, pending, err := sourceCutPendingPreemption(held, result.Entry); err != nil {
 				fail(err)
@@ -1340,6 +1356,16 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 				fail(e)
 			}
 		case syscall.PTRACE_EVENT_EXIT:
+			if physical != nil && !physical.root && physicalSelected && !failed && tid == physicalExitGroup {
+				status, err := syscall.PtraceGetEventMsg(tid)
+				if err != nil || status != uint(syscall.SIGKILL) || physicalExitHeld != 0 || result.CoordinatorExitHeldBeforeJoin || result.CoordinatorExitReleasedAfterNotice {
+					fail(errors.Join(errors.New("original coordinator SIGKILL exit hold differs"), err))
+				} else {
+					physicalExitHeld = tid
+					result.CoordinatorExitHeldBeforeJoin = true
+					continue
+				}
+			}
 			if e := resume(tid, 0); e != nil {
 				fail(e)
 			}
@@ -1552,6 +1578,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 									held, result.HeldRootThread = tid, tid
 								} else {
 									result.HeldCoordinatorThread = tid
+									physicalExitGroup = groups[tid]
 								}
 								for candidate, group := range groups {
 									if group == pid && candidate != tid && (result.SignalledRootThread == 0 || candidate < result.SignalledRootThread) {
@@ -1696,6 +1723,8 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 		}
 		if physical.root {
 			joined = result.RootOnlyAtPhysicalCut && result.RootOwnershipReleasedBeforeExit && result.RootCloseObservations == 1 && result.HeldRootThread != 0 && held == 0 && len(processes) <= result.ThreadsJoined
+		} else {
+			joined = joined && physicalExitGroup > 0 && physicalExitHeld == 0 && result.CoordinatorExitHeldBeforeJoin && result.CoordinatorExitReleasedAfterNotice
 		}
 		if failed || !physicalSelected || !joined || !result.ExternalCancellationAcknowledged || result.RootExit != wantedExit {
 			return result, errors.Join(returned, fmt.Errorf("actual unsafe physical cut differs: %+v", result))

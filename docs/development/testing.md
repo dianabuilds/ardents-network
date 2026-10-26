@@ -762,7 +762,7 @@ These are file/process counterexamples with no installed account, State,
 Release or manager, and do not prove equivalence to any installed phase or
 disk/power-loss durability. Full installed causal coverage remains separate.
 
-Every selected recovery stand first discovers and runs the finite thirty-six-test
+Every selected recovery stand first discovers and runs the finite thirty-seven-test
 `RECOVERY_NATIVE_TESTS` inventory through its same pinned observer binary,
 with a ninety-second test bound inside the unchanged ten-minute profile bound.
 It includes process cuts, original coordinator/packet ownership, prefix and
@@ -801,6 +801,20 @@ deadline or memory allowance; no GC or native fixture grants installed recovery
 authority.
 Successful file-only controls never replace the later genuine installed cut,
 recovery, contact or retirement proof.
+
+The coordinator physical-cut observer retains the original SIGKILL leader at
+its actual `PTRACE_EVENT_EXIT`, before the controller can finish its terminal
+wait. It releases that exit-stop only after the actual cancellation diagnostic
+arrives, then joins every original native user and rechecks the unchanged prefix.
+Continuing an exit-stop cannot resume the unrecorded application effect. A fast
+kill/join need not produce the command's pending-completion diagnostic, so an
+unconditional delayed native notice is not a valid substitute.
+`TestSourcePhysicalCoordinatorJoinNative` uses the actual file/process driver
+whose delayed notice is canceled if work finishes first; it requires both the
+before-join exit hold and release-after-notice facts. The finite outside consumer
+independently requires these typed facts too. No cancellation, prefix, proof,
+join, thread/process or deadline bound is relaxed; native fixtures still supply
+no installed Source authority.
 
 The offline native Source signing controls also exercise canonical timestamp
 refresh and its unchanged Root/Snapshot/Targets bytes, fixed artifacts and exact

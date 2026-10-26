@@ -68,6 +68,7 @@ RECOVERY_NATIVE_TESTS = (
     "TestSourceRetirementPhysicalPrefixNative",
     "TestSourceRetirementPhysicalImageNative",
     "TestSourcePhysicalCutControlNative",
+    "TestSourcePhysicalCoordinatorJoinNative",
 )
 
 
@@ -769,6 +770,7 @@ def source_physical_observation(profile, report, raw, publication_preimage=None)
             or report["held_coordinator_thread"] <= 0 or report["held_coordinator_thread"] == report["root_pid"]
             or report["signalled_root_thread"] <= 0 or report["signalled_root_thread"] == report["held_coordinator_thread"]
             or report.get("held_coordinator_killed") is not True or report.get("external_cancellation_acknowledged") is not True
+            or report.get("coordinator_exit_held_before_join") is not True or report.get("coordinator_exit_released_after_notice") is not True
             or report.get("original_cut_sha256") != "" or report.get("output_sha256") != hashlib.sha256(raw).hexdigest()
             or not raw.endswith(b"source command failed\n")
             or raw.splitlines().count(b'{"operation":"installation.source","outcome":"completion-unavailable"}') != 1):
@@ -795,7 +797,8 @@ def source_physical_observation(profile, report, raw, publication_preimage=None)
         raise RuntimeError("mixed publication preimage purpose")
     result = {"profile_sha256": pin, "root_pid": report["root_pid"], "root_exit": report["root_exit"],
             "held_coordinator_thread": report["held_coordinator_thread"], "threads_joined": report["threads_joined"],
-            "processes": report["processes"], "peak_live_processes": report["peak_live_processes"], "physical_window": report["physical_window"], "output_sha256": report["output_sha256"]}
+            "processes": report["processes"], "peak_live_processes": report["peak_live_processes"], "physical_window": report["physical_window"], "output_sha256": report["output_sha256"],
+            "coordinator_exit_held_before_join": True, "coordinator_exit_released_after_notice": True}
     if required:
         result["publication_preimage"] = dict(publication_preimage, observed=True)
     return result

@@ -991,6 +991,7 @@ for op,born in (("initial",70),("replacement",13)):
                 "held_coordinator_thread":79,"signalled_root_thread":78,"selected_records":count,
                 "inspection_only":False,"installed_execution":True,"program_sha256":zero,"public_receipt_sha256":zero,
                 "physical_window":window,"held_coordinator_killed":True,"external_cancellation_acknowledged":True,
+                "coordinator_exit_held_before_join":True,"coordinator_exit_released_after_notice":True,
                 "original_cut_sha256":"","output_sha256":hashlib.sha256(raw).hexdigest()}
         preimage={"device":55,"inode":66,"sha256":other} if op=="replacement" and window in ("binding-before-record","unit-before-record") else None
         if preimage is not None:
@@ -1010,6 +1011,8 @@ for op,born in (("initial",70),("replacement",13)):
                             ("program_sha256",other),("public_receipt_sha256",other),("profile_sha256",other),
                             ("root_only_at_physical_cut",True),("physical_window","other"),("held_coordinator_killed",False),
                             ("external_cancellation_acknowledged",False),("original_cut_sha256",zero),("output_sha256",other),
+                            ("coordinator_exit_held_before_join",False),("coordinator_exit_held_before_join",1),
+                            ("coordinator_exit_released_after_notice",False),("coordinator_exit_released_after_notice",1),
                             ("external_cut_ready",True),("external_cut_requested",True),("startup_archive",{}),("retirement_result",{})):
             try:
                 check(profile,dict(report,**{field:value}),raw)

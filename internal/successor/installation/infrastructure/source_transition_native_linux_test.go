@@ -100,17 +100,28 @@ func TestSourceTransitionNativeDriver(t *testing.T) {
 		var stop context.CancelFunc
 		ctx, stop = signal.NotifyContext(ctx, syscall.SIGTERM)
 		noticed := make(chan error, 1)
+		finished := make(chan struct{})
 		go func() {
 			<-ctx.Done()
 			if os.Getenv("ARDENTS_SOURCE_CUT_NATIVE_DELAYED_NOTICE") == "1" {
 				// The canonical command reports completion-unavailable after this
 				// same interval while its original work remains physically held.
-				time.Sleep(5 * time.Second)
+				timer := time.NewTimer(5 * time.Second)
+				defer timer.Stop()
+				// The real command emits no pending-completion notice after fast
+				// original join. Do not manufacture one from a return defer.
+				select {
+				case <-finished:
+					noticed <- nil
+					return
+				case <-timer.C:
+				}
 			}
 			_, err := fmt.Fprintln(os.Stdout, "native-original-cancellation-observed")
 			noticed <- err
 		}()
 		defer func() {
+			close(finished)
 			cancel()
 			stop()
 			if err := <-noticed; err != nil {

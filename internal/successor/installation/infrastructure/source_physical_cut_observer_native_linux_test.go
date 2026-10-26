@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -390,4 +391,45 @@ func TestSourcePhysicalCutObserverNative(t *testing.T) {
 	if err != nil || encoded != nil {
 		t.Fatal("actual native unsafe physical cut", err, encoded)
 	}
+}
+
+// The canonical pending-completion diagnostic exists only while original work
+// is still unjoined. A native driver that always prints it in a return defer
+// masks fast coordinator kill/join. Exercise the real exit-stop hold instead.
+func TestSourcePhysicalCoordinatorJoinNative(t *testing.T) {
+	marker, err := os.ReadFile("/etc/ardents-source-stopped-native-stand")
+	if err != nil || string(marker) != "ardents-source-stopped-native-v1\n" || os.Geteuid() != 0 {
+		t.Fatal("original native file/process stand required", err)
+	}
+	root, err := os.MkdirTemp(os.Getenv("ARDENTS_SOURCE_STOPPED_FUTURE_PARENT"), "coordinator-join-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	program, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := exec.CommandContext(t.Context(), program, "-test.run=^TestSourcePhysicalCutObserverNative$", "-test.v", "-test.timeout=35s")
+	command.Env = append(os.Environ(), "GOMAXPROCS=2", "ARDENTS_SOURCE_CUT_NATIVE_DELAYED_NOTICE=1",
+		"ARDENTS_SOURCE_PHYSICAL_OBSERVER_WINDOW=file-born-before-record", "ARDENTS_SOURCE_CUT_OBSERVER_PROGRAM="+program,
+		"ARDENTS_SOURCE_CUT_OBSERVER_ROOT="+root, "ARDENTS_SOURCE_CUT_OBSERVER_OUTPUT="+filepath.Join(root, "original.log"))
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("actual original coordinator join hold: %v\n%s", err, output)
+	}
+	var report sourceCutObservation
+	reports := 0
+	for _, line := range bytes.Split(output, []byte{'\n'}) {
+		if raw, ok := bytes.CutPrefix(line, []byte("SOURCE_PHYSICAL_CUT_OBSERVATION ")); ok {
+			reports++
+			if err := json.Unmarshal(raw, &report); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if reports != 1 || report.InstalledExecution || report.InspectionOnly || !report.CoordinatorExitHeldBeforeJoin || !report.CoordinatorExitReleasedAfterNotice ||
+		!report.ExternalCancellationAcknowledged || !report.HeldCoordinatorKilled || report.RootExit != 0 || report.SelectedRecords != 3 || report.Processes != 2 || report.ThreadsJoined < 2 || report.OriginalCutSHA256 != "" {
+		t.Fatalf("actual native pending-notice/original join proof missing: %+v", report)
+	}
+	t.Logf("retained native original join proof %s\n%s", root, output)
 }
