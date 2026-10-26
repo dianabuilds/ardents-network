@@ -33,8 +33,15 @@ func TestSourceTransitionNativeOriginalScope(t *testing.T) {
 	for count := 1; count <= 13; count++ {
 		scenarios = append(scenarios, fmt.Sprintf("cut-proof-prefix-%02d", count))
 	}
+	// Controllers have disjoint native roots and private subreapers. Bound
+	// their overlap to two so every original scope is exercised within the
+	// unchanged whole-profile deadline.
+	controllers := make(chan struct{}, 2)
 	for _, scenario := range scenarios {
 		t.Run(scenario, func(t *testing.T) {
+			t.Parallel()
+			controllers <- struct{}{}
+			defer func() { <-controllers }()
 			root, err := os.MkdirTemp(os.Getenv("ARDENTS_SOURCE_STOPPED_FUTURE_PARENT"), "transition-")
 			if err != nil {
 				t.Fatal(err)
