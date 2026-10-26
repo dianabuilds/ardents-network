@@ -29,7 +29,11 @@ func TestSourceTransitionNativeOriginalScope(t *testing.T) {
 	if err != nil || string(marker) != "ardents-source-stopped-native-v1\n" || os.Geteuid() != 0 {
 		t.Fatal("invalid native stand", err)
 	}
-	for _, scenario := range []string{"complete", "sync-uncertain", "close-uncertain", "complete-with-descendant", "cut-frozen", "cut-ack-outstanding", "cut-proof", "cut-proof-sync-uncertain", "cut-proof-close-uncertain"} {
+	scenarios := []string{"complete", "sync-uncertain", "close-uncertain", "complete-with-descendant", "cut-frozen", "cut-ack-outstanding", "cut-proof", "cut-proof-sync-uncertain", "cut-proof-close-uncertain"}
+	for count := 1; count <= 13; count++ {
+		scenarios = append(scenarios, fmt.Sprintf("cut-proof-prefix-%02d", count))
+	}
+	for _, scenario := range scenarios {
 		t.Run(scenario, func(t *testing.T) {
 			root, err := os.MkdirTemp(os.Getenv("ARDENTS_SOURCE_STOPPED_FUTURE_PARENT"), "transition-")
 			if err != nil {

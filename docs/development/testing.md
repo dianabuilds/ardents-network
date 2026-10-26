@@ -771,6 +771,39 @@ These are file/process counterexamples with no installed account, State,
 Release or manager, and do not prove equivalence to any installed phase or
 disk/power-loss durability. Full installed causal coverage remains separate.
 
+`TestSourceRecoveryPredecessorPairNative` is a separate file-only native profile,
+selected with `-test.run=^TestSourceRecoveryPredecessorPairNative$ -test.v` in
+the Infrastructure test executable. It requires its own private shell-parent
+container namespace, the usual stopped-native marker and ext4 fixture parent,
+plus `/etc/ardents-source-pair-native-stand` containing
+`ardents-source-pair-native-v1\n`. Both `/var/lib` and the fixed-unit directory
+must be private root-controlled ext4 mounts, without an existing installation,
+journal or Source unit. Missing prerequisites fail; this profile must never
+fall back to a host unit or an installed Source stand.
+Twenty-four fresh native cases exercise the actual prefix-dependent predecessor
+consumer at counts49,51,53. Matching old/old, new/old and new/new pairs must
+reach its next deliberately absent pending file; every wrong pair must refuse
+before that read. Each pair also has a fresh countercontrol that physically
+closes a retained descriptor before the consumer's real Close. The entire
+returned error tree must reject that independent failure as a clean refusal;
+finding the expected error through `errors.Is` alone is insufficient.
+Actual file observations, unchanged retained bytes and
+before-GC descriptor/flock release are required. Each case is retained under
+distinct names instead of restoring damaged inputs. Empty retained Release
+history and supplied private boundary vectors isolate this lower consumer;
+they provide no authorization, original-cut proof or successful recovery.
+Selecting the ordinary recovery native inventory does not run this separate
+profile, and this control does not substitute for installed qualification.
+
+`TestSourceArchivedManagerBindsOwnerAndOriginalBrokerAtLiveGuards` evaluates
+the actual retirement/startup preconditions with detached contract-shaped
+values. The archive's unique manager name must match the retained original
+owner, while the separately pinned full broker/name identity remains unchanged.
+A new broker reusing the same owner, and substitutions of original PID,
+invocation, process/cgroup/event identities or join facts, must still refuse.
+This pure regression supplies no live/native authority and does not replace
+the installed retirement/startup causal profiles.
+
 Every selected recovery stand first discovers and runs the finite thirty-seven-test
 `RECOVERY_NATIVE_TESTS` inventory through its same pinned observer binary,
 with a ninety-second test bound inside the unchanged ten-minute profile bound.
@@ -963,6 +996,15 @@ and real Close failure retain the guard despite complete-looking result bytes.
 Independent readers repeatedly reopen the original/control/result custody and
 retain shared flocks until Close; refused reads release their own descriptors
 with GC disabled. Their empty manager identity cannot satisfy Source admission.
+The thirteen `cut-proof-prefix-N` controls each use a distinct fresh native
+controller and complete physical proof. Counts1..12 shorten only that fixture's
+original control inode, retaining the full result and a separate complete
+control image; count13 is the positive control. Exact native sizes prevent an
+earlier size mismatch from masking prefix grammar. Two fresh readers per case
+check the original refusal and require Close without any additional cleanup
+failure, then prove descriptor/ancestor and flock release before GC. Original
+journal, result and tested prefix bytes remain unchanged after those reads;
+no damaged fixture is restored into a later case or used as Source authority.
 `cut-ack-outstanding` cancels after the actual ACK decision has left frozen
 custody, before any socket send: even unchanged original bytes plus actual
 SIGKILL/join cannot manufacture an eligible cut. These cannot replace an accepted bootstrap or installed

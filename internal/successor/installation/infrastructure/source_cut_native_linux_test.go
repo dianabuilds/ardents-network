@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -33,7 +34,7 @@ func sourceCutNativeProof(t *testing.T, ctx context.Context, cancel context.Canc
 	if err != nil {
 		t.Fatal(err)
 	}
-	completedProof := scenario == "cut-proof" || scenario == "external-cut"
+	completedProof := scenario == "cut-proof" || strings.HasPrefix(scenario, "cut-proof-prefix-") || scenario == "external-cut"
 	if scenario != "external-cut" {
 		scope.frozen = cancel
 	}
@@ -118,6 +119,10 @@ func sourceCutNativeProof(t *testing.T, ctx context.Context, cancel context.Canc
 	}
 	if _, err := decodeSourceCutResult(controlRaw, resultRaw, after, controlInfo, resultInfo, info, cut.message.Journal, "initial", cut.message.Generation, cut.message.BindingSHA256, origin.ProgramSHA256); err != nil {
 		t.Fatal("complete ordered physical result codec", err)
+	}
+	if strings.HasPrefix(scenario, "cut-proof-prefix-") {
+		sourceCutNativeControlPrefix(t, completion, cut.message, origin.ProgramSHA256, scenario)
+		return
 	}
 	// Complete-looking result bytes also exist in the two fault cases. The
 	// retained guard is mandatory; the codec alone supplies no permission.

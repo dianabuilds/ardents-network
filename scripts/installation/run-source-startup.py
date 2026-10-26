@@ -562,6 +562,27 @@ class RecoveryRefusalComplete(Exception):
     """Outside profile control flow after a fully observed terminal refusal."""
 
 
+def source_archived_manager_matches(archived_owner, original_owner, original_identity, current_identity):
+    """Match an archive's owner without discarding the retained broker identity.
+
+    The archive persists the unique manager name. Original-cut provenance uses
+    the distinct broker/name pair. These detached values grant no native
+    custody; callers still check their original connection, process and scope.
+    """
+    if (type(archived_owner) is not str or type(original_owner) is not bytes
+            or type(original_identity) is not str or type(current_identity) is not str
+            or not original_owner.startswith(b's ":1.')):
+        return False
+    try:
+        owner = json.loads(original_owner[2:])
+    except (ValueError, TypeError):
+        return False
+    broker, separator, identity_owner = original_identity.partition("/")
+    return (type(owner) is str and re.fullmatch(r":1\.[0-9]+", owner) is not None
+            and re.fullmatch(r"[0-9a-f]{32}", broker) is not None and separator == "/"
+            and archived_owner == owner == identity_owner and current_identity == original_identity)
+
+
 def source_pidfd_exited(descriptor):
     poller = select.poll()
     poller.register(descriptor, select.POLLIN)
@@ -2300,6 +2321,10 @@ def main():
     original_manager = manager_owner()
     if not original_manager.startswith(b's ":1.') or not subprocess.check_output(["/usr/bin/systemctl", "show", "-p", "Version", "--value"]).startswith(b"255."):
         raise RuntimeError("selected original manager unavailable")
+    original_manager_identity = manager_identity()
+    if (not source_archived_manager_matches(json.loads(original_manager[2:]), original_manager, original_manager_identity, manager_identity())
+            or manager_owner() != original_manager):
+        raise RuntimeError("original coherent broker/manager snapshot unavailable")
 
     def original_join():
         # Only this retained kernel object supplies the Source join observation.
@@ -2360,7 +2385,8 @@ def main():
                     or (archive["cgroup_device"], archive["cgroup_inode"]) != (scope_info.st_dev, scope_info.st_ino)
                     or (current_scope.st_dev, current_scope.st_ino) != (scope_info.st_dev, scope_info.st_ino)
                     or (named_events.st_dev, named_events.st_ino) != (retained_events.st_dev, retained_events.st_ino)
-                    or archive["manager"] != manager_identity() or manager_owner() != original_manager or original_join()):
+                    or not source_archived_manager_matches(archive["manager"], original_manager, original_manager_identity, manager_identity())
+                    or manager_owner() != original_manager or original_join()):
                 raise RuntimeError("outside original Source pidfd/proc/cgroup differs from held startup archive")
             facts = native_observer.sample()
             clocks = {"MainPID": ("u", source_pid), "ExecMainPID": ("u", source_pid),
@@ -2444,7 +2470,8 @@ def main():
         scope = Path("/sys/fs/cgroup/system.slice/ardents-source.service")
         scope_info, named_events, retained_events = scope.lstat(), (scope / "cgroup.events").stat(), os.fstat(scope_fd)
         if (source_pidfd_exited(source_pidfd) or original_join() or manager_owner() != original_manager
-                or archive["pid"] != source_pid or archive["invocation_id"] != invocation or archive["manager"] != manager_identity()
+                or archive["pid"] != source_pid or archive["invocation_id"] != invocation
+                or not source_archived_manager_matches(archive["manager"], original_manager, original_manager_identity, manager_identity())
                 or (archive["process_device"], archive["process_inode"]) != (process.st_dev, process.st_ino)
                 or (archive["cgroup_device"], archive["cgroup_inode"]) != (scope_info.st_dev, scope_info.st_ino)
                 or (named_events.st_dev, named_events.st_ino) != (retained_events.st_dev, retained_events.st_ino)):
