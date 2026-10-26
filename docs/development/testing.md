@@ -19,7 +19,16 @@ canonical refusals require a distinct fresh-prefix observer: successful actual
 exclusive journal flock, complete contiguous reads of the original inode/bytes
 and successful Close before the existing no-GC resource-release probe. These
 early prefixes refuse before original-cut lookup; they cannot borrow its ENOENT
-cause. Native file-only controls exercise24/42 with the real prefix reader and
+cause. The initial `file-born-before-record` window likewise retains an unsupported
+intent-only prefix69: it needs its own complete read/Close proof, while preserving
+the later generation/native image rather than the early account/directory image.
+The finite runner separates these refusal causes from resource-image selection.
+Supported prefix70 and completed fixed-publication prefixes109/113 still require
+the distinct missing-original-cut lookup; no proof becomes optional.
+The replacement `file-born-before-record` prefix12 likewise ends in file-intent
+and needs its distinct replacement-journal purpose and full read/Close evidence.
+Initial/replacement purpose fields and journal grammars cannot be mixed.
+Native file-only controls exercise24/42/69/12 with the real prefix reader and
 reject unattempted, unlocked, partial and foreign-inode reads, plus actual
 exclusive-to-unlocked/shared transitions before reading, with both race and
 CGO-disabled drivers. Successful release/downgrade invalidates custody even if

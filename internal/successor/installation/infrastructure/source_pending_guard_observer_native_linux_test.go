@@ -17,7 +17,7 @@ type sourcePendingGuardProfile struct {
 }
 
 func (p *sourceRefusalObserverProfile) validStartupPendingObservation(root string) bool {
-	return p != nil && p.EarlyInitialPrefix == 0 && p.StartupPending != nil && p.Schema == "source-startup-recovery-refusal-observer-v1" &&
+	return p != nil && p.EarlyInitialPrefix == 0 && p.EarlyReplacementPrefix == 0 && p.StartupPending != nil && p.Schema == "source-startup-recovery-refusal-observer-v1" &&
 		p.RetirementPending == nil &&
 		p.StartupPending.Attempt < uint32(sourceAttemptLimit) && p.StartupPending.GID >= 100 && p.StartupPending.GID <= 999 &&
 		len(p.Arguments) == 8 && p.Arguments[7] == sourceAttemptNumber(p.StartupPending.Attempt).journal(root) &&

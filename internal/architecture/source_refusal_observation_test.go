@@ -546,13 +546,20 @@ def reject(p,r,identity=(55,66,zero),**kwargs):
     try: check(p,pinned(p,r),raw,early_prefix_identity=identity,**kwargs)
     except RuntimeError: return
     raise AssertionError("missing or borrowed early-prefix custody accepted")
-for count,window in ((24,"account-before-complete-birth"),(42,"directory-born-before-record")):
-    case=select(["-timeout=10m"],"recovery-physical-initial-"+window)
+for operation,count,window in (("initial",24,"account-before-complete-birth"),("initial",42,"directory-born-before-record"),("initial",69,"file-born-before-record"),("replacement",12,"file-born-before-record")):
+    case=select(["-timeout=10m"],"recovery-physical-"+operation+"-"+window)
     assert case["prefix_records"]==count and case["physical"]==window
-    try: select(["-timeout=10m"],"recovery-physical-replacement-"+window)
-    except RuntimeError: pass
-    else: raise AssertionError("initial-only effect admitted as replacement")
-    p,r=dict(base,early_initial_prefix=count),dict(report,refusal_early_prefix_records=count)
+    if count in (24,42):
+        try: select(["-timeout=10m"],"recovery-physical-replacement-"+window)
+        except RuntimeError: pass
+        else: raise AssertionError("initial-only effect admitted as replacement")
+    else:
+        assert select(["-timeout=10m"],"recovery-physical-replacement-"+window)["replacement"] is True
+    purpose_field="early_replacement_prefix" if operation=="replacement" else "early_initial_prefix"
+    p,r=dict(base,**{purpose_field:count}),dict(report,refusal_early_prefix_records=count)
+    p["arguments"]=list(base["arguments"])
+    if operation=="replacement":p["arguments"][7]="/source.source-replacement-"+zero+"-journal"
+    reject(dict(p,early_initial_prefix=24,early_replacement_prefix=12),r)
     assert check(p,pinned(p,r),raw,early_prefix_identity=(55,66,zero))["early_prefix"]=={
         "observed":True,"closed":True,"records":count,"device":55,"inode":66,"sha256":zero}
     for field in ("refusal_early_prefix_observed","refusal_early_prefix_closed","refusal_early_prefix_records",
@@ -566,8 +573,8 @@ for count,window in ((24,"account-before-complete-birth"),(42,"directory-born-be
                         ("refusal_early_prefix_inode",67),("refusal_early_prefix_sha256",other),
                         ("refusal_exclusion_observed",True),("refusal_missing_cut_observed",True)):
         reject(p,dict(r,**{field:value}))
-    for field,value in (("schema","source-recovery-refusal-observer-v1"),("early_initial_prefix",count+1),
-                        ("early_initial_prefix",0),("early_initial_prefix",float(count)),("journal_mode","0640"),
+    for field,value in (("schema","source-recovery-refusal-observer-v1"),(purpose_field,count+1),
+                        (purpose_field,0),(purpose_field,float(count)),("journal_mode","0640"),
                         ("external_journal_lease",True),("external_release_lease",True),("missing_original_cut",True),
                         ("startup_pending",{}),("retirement_pending",{}),("recovery_hold",{}),
                         ("arguments",[]),("journal_sha256",other)):
@@ -576,7 +583,7 @@ for count,window in ((24,"account-before-complete-birth"),(42,"directory-born-be
         reject(p,r,identity)
     reject(p,r,missing_cut_parent_identity=(55,66))
     reject(p,r,exclusion_identity=(55,66))
-    plain=dict(p,schema="source-recovery-refusal-observer-v1",early_initial_prefix=0)
+    plain=dict(p,schema="source-recovery-refusal-observer-v1",**{purpose_field:0})
     reject(plain,r,None)
 `, filepath.Join(repositoryRoot(t), "scripts", "installation", "run-source-startup.py"))
 	if output, err := command.CombinedOutput(); err != nil {
@@ -1063,5 +1070,50 @@ for name in ("recovery-physical-initial-root-file-ready-before-record","recovery
 `, filepath.Join(repositoryRoot(t), "scripts", "installation", "run-source-startup.py"))
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("Source physical recovery prediction/observation grammar: %v\n%s", err, output)
+	}
+}
+
+func TestSourcePhysicalRefusalPlannerSeparatesUnsupportedPrefixCause(t *testing.T) {
+	python := "python3"
+	if runtime.GOOS == "windows" {
+		python = "python"
+	}
+	command := exec.CommandContext(t.Context(), python, "-I", "-S", "-c", `
+import ast,json,runpy,sys
+from pathlib import Path
+source=Path(sys.argv[1])
+tree=ast.parse(source.read_bytes())
+main=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='main')
+function=next(n for n in main.body if isinstance(n,ast.FunctionDef) and n.name=='physical_cut_and_refuse')
+call=next(n for n in ast.walk(function) if isinstance(n,ast.Call) and isinstance(n.func,ast.Name) and n.func.id=='before_return_refusal')
+keywords={v.arg:v.value for v in call.keywords}
+allowed=(ast.Expression,ast.BoolOp,ast.Compare,ast.Name,ast.Load,ast.Constant,ast.Tuple,ast.List,ast.And,ast.Or,ast.Eq,ast.NotEq,ast.In,ast.NotIn,ast.IfExp,ast.UnaryOp,ast.Not)
+def evaluate(expression,env):
+    assert all(isinstance(n,allowed) for n in ast.walk(expression))
+    return eval(compile(ast.Expression(expression),str(source),'eval'),{'__builtins__':{}},env)
+frontiers=runpy.run_path(str(source))['source_physical_frontiers']
+cases=[('account-before-complete-birth',24,24,True),('directory-born-before-record',42,42,True),('file-born-before-record',69,69,False),('binding-before-record',109,0,False),('unit-before-record',113,0,False),('file-born-before-journal-sync',70,0,False),('file-ready-before-record',70,0,False)]
+mismatches=[]
+cases=[('initial',*case) for case in cases]+[('replacement','file-born-before-record',12,12,False),('replacement','file-born-before-journal-sync',13,0,False),('replacement','binding-before-record',50,0,False),('replacement','unit-before-record',52,0,False)]
+for operation,window,count,wanted,structural in cases:
+    assert frontiers(operation)[window][0]==count
+    env=dict(operation=operation,recovery_physical=window,recovery_count=count)
+    for n in function.body:
+        if isinstance(n,ast.Assign) and len(n.targets)==1 and isinstance(n.targets[0],ast.Name):
+            try:value=evaluate(n.value,env)
+            except (AssertionError,NameError):continue
+            env[n.targets[0].id]=value
+    selected=evaluate(keywords['early_prefix'],env)
+    assert env['early'] is structural,'do not widen the resource-preservation early branch'
+    missing=keywords['missing_cut_parent_identity'];assert isinstance(missing,ast.IfExp)
+    selected_branch=missing.body if evaluate(missing.test,env) else missing.orelse
+    needs_missing=not (isinstance(selected_branch,ast.Constant) and selected_branch.value is None)
+    if selected!=wanted or needs_missing!=(wanted==0):
+        mismatches.append(dict(operation=operation,window=window,prefix=count,expected_full_read_close_prefix=wanted,actual_early_prefix=selected,actual_missing_cut_requirement=needs_missing))
+print(json.dumps(dict(actual_callsite=str(source),mismatches=mismatches,installed_execution=False,scope='planner-only, native causal proof still required')))
+assert not mismatches,'physical unsupported-prefix planner selected an unvisited missing-cut cause'
+`, filepath.Join(repositoryRoot(t), "scripts", "installation", "run-source-startup.py"))
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("physical refusal planner must retain the genuine prefix cause: %v\n%s", err, output)
 	}
 }

@@ -21,6 +21,7 @@ import os
 from pathlib import Path
 import platform
 import queue
+import re
 import select
 import signal
 import socket
@@ -656,15 +657,19 @@ def source_refusal_observation(profile, report, raw, exclusion_identity=None, mi
     elif (profile.get("schema") == "source-retirement-recovery-refusal-observer-v1"
           or retirement_pending_identity is not None or source_report_has_retirement_pending(report)):
         raise RuntimeError("mixed retirement pending observation purpose")
-    early_count = profile.get("early_initial_prefix", 0)
+    early_initial = profile.get("early_initial_prefix", 0)
+    early_replacement = profile.get("early_replacement_prefix", 0)
+    early_count = early_initial or early_replacement
     early_fields = ("refusal_early_prefix_observed", "refusal_early_prefix_closed", "refusal_early_prefix_records",
                     "refusal_early_prefix_device", "refusal_early_prefix_inode", "refusal_early_prefix_sha256")
     if early_count != 0:
         arguments = profile.get("arguments")
-        if (type(early_count) is not int or early_count not in (24, 42)
+        if (type(early_initial) is not int or type(early_replacement) is not int
+                or not ((early_initial in (24, 42, 69) and early_replacement == 0) or (early_initial == 0 and early_replacement == 12))
                 or profile.get("schema") != "source-early-prefix-recovery-refusal-observer-v1"
                 or not isinstance(arguments, list) or len(arguments) != 8 or not isinstance(arguments[7], str)
-                or profile.get("journal_mode") != "0600" or not arguments[7].endswith(".source-initial-journal")
+                or profile.get("journal_mode") != "0600"
+                or not (arguments[7].endswith(".source-initial-journal") if early_initial else re.fullmatch(r".+\.source-replacement-[0-9a-f]{64}-journal", arguments[7]))
                 or exclusion is not None or exclusion_identity is not None or missing_cut is not False
                 or profile.get("recovery_hold") is not None or pending is not None or retirement_pending is not None
                 or report.get("refusal_exclusion_observed", False) is not False
@@ -678,7 +683,7 @@ def source_refusal_observation(profile, report, raw, exclusion_identity=None, mi
                 or report["refusal_early_prefix_records"] != early_count
                 or (report["refusal_early_prefix_device"], report["refusal_early_prefix_inode"], report.get("refusal_early_prefix_sha256")) != tuple(early_prefix_identity)):
             raise RuntimeError("actual fresh original early-prefix lease/read/close proof missing")
-    elif (type(early_count) is not int or profile.get("schema") == "source-early-prefix-recovery-refusal-observer-v1"
+    elif (type(early_initial) is not int or type(early_replacement) is not int or profile.get("schema") == "source-early-prefix-recovery-refusal-observer-v1"
           or early_prefix_identity is not None
           or any(report.get(name, False) is not False for name in early_fields[:2])
           or any(type(report.get(name, 0)) is not int or report.get(name, 0) != 0 for name in early_fields[2:5])
@@ -1302,7 +1307,7 @@ def main():
         return evidence["transcript"]
 
     def prepare_refusal_observer(command, declaration_path, installation, journal, name, *, external_journal=False, external_release=False, hold=None, missing_cut=False, startup_pending=None, retirement_pending=None, early_prefix=0):
-        if early_prefix and (type(early_prefix) is not int or early_prefix not in (24, 42) or external_journal or external_release or hold is not None or missing_cut or startup_pending is not None or retirement_pending is not None):
+        if early_prefix and (type(early_prefix) is not int or early_prefix not in (24, 42, 69, 12) or external_journal or external_release or hold is not None or missing_cut or startup_pending is not None or retirement_pending is not None):
             raise RuntimeError("separate early-prefix custody purpose required")
         if (startup_pending is not None or retirement_pending is not None) and (missing_cut or hold is not None or external_journal or external_release or startup_pending is not None and retirement_pending is not None):
             raise RuntimeError("separate startup pending refusal purpose required")
@@ -1323,7 +1328,7 @@ def main():
         if retirement_pending is not None:
             declaration["retirement_pending"] = retirement_pending
         if early_prefix:
-            declaration["early_initial_prefix"] = early_prefix
+            declaration["early_replacement_prefix" if early_prefix == 12 else "early_initial_prefix"] = early_prefix
         path = output / (name + "-profile.json")
         with path.open("xb") as stream:
             stream.write(json.dumps(declaration, separators=(",", ":")).encode() + b"\n")
@@ -1433,6 +1438,9 @@ def main():
             raise RuntimeError("actual physical cut differs from published original prefix")
         sealed_files = ()
         early = operation == "initial" and recovery_physical in ("account-before-complete-birth", "directory-born-before-record")
+        # An intent-only generation file prefix is also rejected by the shared
+        # grammar before original-cut lookup, but retains the later native image.
+        early_refusal = early or recovery_physical == "file-born-before-record"
         completed = recovery_physical in ("reload-before-verified", "journal-complete-before-close", "pending-before-unlink")
         if early:
             if recovery_physical == "account-before-complete-birth":
@@ -1570,9 +1578,9 @@ def main():
         refused = []
         for attempt in range(2):
             proof, _ = before_return_refusal(command, declaration_path, installation, journal, f"physical-recovery-refusal-{attempt}",
-                                           missing_cut_parent_identity=None if early else retained[str(journal.parent)][1:3],
-                                           early_prefix=recovery_count if early else 0,
-                                           early_prefix_identity=(*identity[:2], hashlib.sha256(original).hexdigest()) if early else None)
+                                           missing_cut_parent_identity=None if early_refusal else retained[str(journal.parent)][1:3],
+                                           early_prefix=recovery_count if early_refusal else 0,
+                                           early_prefix_identity=(*identity[:2], hashlib.sha256(original).hexdigest()) if early_refusal else None)
             refused.append(proof)
             if retained_image() != retained:
                 raise RuntimeError("physical recovery refusal changed history or manufactured completion")

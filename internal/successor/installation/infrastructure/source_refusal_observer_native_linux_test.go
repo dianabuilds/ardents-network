@@ -30,30 +30,31 @@ const sourceRefusalNativeAdmissionSymbol = "github.com/dianabuilds/ardents-netwo
 // The journal hash pins even a deliberately damaged original negative control;
 // no parser here can upgrade its bytes into Source provenance.
 type sourceRefusalObserverProfile struct {
-	Schema               string                     `json:"schema"`
-	ProgramSHA256        string                     `json:"program_sha256"`
-	PublicReceiptSHA256  string                     `json:"public_receipt_sha256"`
-	Arguments            []string                   `json:"arguments"`
-	JournalSHA256        string                     `json:"journal_sha256"`
-	JournalMode          string                     `json:"journal_mode"`
-	ExternalJournalLease bool                       `json:"external_journal_lease"`
-	ExternalReleaseLease bool                       `json:"external_release_lease"`
-	RecoveryHold         *sourceRecoveryHoldProfile `json:"recovery_hold,omitempty"`
-	MissingOriginalCut   bool                       `json:"missing_original_cut,omitempty"`
-	StartupPending       *sourcePendingGuardProfile `json:"startup_pending,omitempty"`
-	RetirementPending    *sourcePendingGuardProfile `json:"retirement_pending,omitempty"`
-	EarlyInitialPrefix   int                        `json:"early_initial_prefix,omitempty"`
-	sha256               string
+	Schema                 string                     `json:"schema"`
+	ProgramSHA256          string                     `json:"program_sha256"`
+	PublicReceiptSHA256    string                     `json:"public_receipt_sha256"`
+	Arguments              []string                   `json:"arguments"`
+	JournalSHA256          string                     `json:"journal_sha256"`
+	JournalMode            string                     `json:"journal_mode"`
+	ExternalJournalLease   bool                       `json:"external_journal_lease"`
+	ExternalReleaseLease   bool                       `json:"external_release_lease"`
+	RecoveryHold           *sourceRecoveryHoldProfile `json:"recovery_hold,omitempty"`
+	MissingOriginalCut     bool                       `json:"missing_original_cut,omitempty"`
+	StartupPending         *sourcePendingGuardProfile `json:"startup_pending,omitempty"`
+	RetirementPending      *sourcePendingGuardProfile `json:"retirement_pending,omitempty"`
+	EarlyInitialPrefix     int                        `json:"early_initial_prefix,omitempty"`
+	EarlyReplacementPrefix int                        `json:"early_replacement_prefix,omitempty"`
+	sha256                 string
 }
 
 func (p *sourceRefusalObserverProfile) validCancellationObservation(root string) bool {
-	return p != nil && p.EarlyInitialPrefix == 0 && p.RecoveryHold != nil && len(p.Arguments) == 8 && p.Schema == "source-recovery-cancellation-observer-v1" &&
+	return p != nil && p.EarlyInitialPrefix == 0 && p.EarlyReplacementPrefix == 0 && p.RecoveryHold != nil && len(p.Arguments) == 8 && p.Schema == "source-recovery-cancellation-observer-v1" &&
 		p.JournalMode == "0600" && p.StartupPending == nil && p.RetirementPending == nil && !p.MissingOriginalCut && !p.ExternalJournalLease && !p.ExternalReleaseLease && p.RecoveryHold.BodySHA256 == p.ProgramSHA256 &&
 		p.RecoveryHold.valid(root, p.Arguments[7])
 }
 
 func (p *sourceRefusalObserverProfile) validMissingCutObservation() bool {
-	return p != nil && p.EarlyInitialPrefix == 0 && p.MissingOriginalCut && p.Schema == "source-recovery-missing-cut-observer-v1" && len(p.Arguments) == 8 &&
+	return p != nil && p.EarlyInitialPrefix == 0 && p.EarlyReplacementPrefix == 0 && p.MissingOriginalCut && p.Schema == "source-recovery-missing-cut-observer-v1" && len(p.Arguments) == 8 &&
 		p.JournalMode == "0600" && p.StartupPending == nil && p.RetirementPending == nil && p.RecoveryHold == nil && !p.ExternalJournalLease && !p.ExternalReleaseLease
 }
 
@@ -100,7 +101,7 @@ func readSourceRefusalObserverProfile(path, pin, program, root string) (*sourceR
 	} else if journal != root+".source-initial-journal" && (journal != prefix+generation+"-journal" || !sourceCutObserverSHA(generation)) {
 		return nil, errors.New("original initial/replacement journal required")
 	}
-	if p.EarlyInitialPrefix != 0 {
+	if p.EarlyInitialPrefix != 0 || p.EarlyReplacementPrefix != 0 {
 		if !p.validEarlyPrefixObservation(root) {
 			return nil, errors.New("distinct fresh early-prefix custody purpose required")
 		}
@@ -397,7 +398,7 @@ func TestSourceRefusalNativeDriver(t *testing.T) {
 	held := scenario == "refusal-held" || scenario == "refusal-held-release" || scenario == "refusal-held-both" || scenario == "refusal-held-unattempted"
 	missingCut := sourceMissingCutNativeCase(scenario)
 	startupPending := sourceStartupPendingNativeCase(scenario) || sourceRetirementPendingNativeCase(scenario)
-	earlyKind, _ := sourceEarlyPrefixNativeCase(scenario)
+	earlyKind, earlyCount := sourceEarlyPrefixNativeCase(scenario)
 	if !held && !missingCut && !startupPending && earlyKind == "" {
 		if err := os.Mkdir(root, 0700); err != nil {
 			t.Fatal(err)
@@ -409,7 +410,7 @@ func TestSourceRefusalNativeDriver(t *testing.T) {
 		}
 	}
 	if earlyKind != "" {
-		runSourceEarlyPrefixNative(t, root, earlyKind)
+		runSourceEarlyPrefixNative(t, root, earlyKind, earlyCount)
 		if err := sourceRefusalNativeReturn(); err != nil {
 			t.Fatal(err)
 		}
@@ -686,7 +687,7 @@ func TestSourceRefusalObserverNative(t *testing.T) {
 		if (profile.RetirementPending != nil) != (mode == "inspect-retirement-pending" || mode == "installed-retirement-pending") {
 			t.Fatal("observer mode differs from exact retirement pending purpose")
 		}
-		if (profile.EarlyInitialPrefix != 0) != (mode == "inspect-early-prefix" || mode == "installed-early-prefix") {
+		if (profile.EarlyInitialPrefix != 0 || profile.EarlyReplacementPrefix != 0) != (mode == "inspect-early-prefix" || mode == "installed-early-prefix") {
 			t.Fatal("observer mode differs from exact early-prefix purpose")
 		}
 	} else if mode != "native-mechanism" && mode != "native-recovery-hold" && mode != "native-held-both" && mode != "native-early-notice" {
@@ -720,7 +721,7 @@ func TestSourceRefusalObserverNative(t *testing.T) {
 		return
 	}
 	scenarios := []string{"refusal-closed", "refusal-held", "refusal-held-release", "refusal-leaked", "refusal-missing-stdout", "refusal-cpu-duplicate", "refusal-held-unattempted", "refusal-missing-cut", "refusal-missing-cut-unattempted", "refusal-missing-cut-foreign", "refusal-missing-cut-path-only", "refusal-startup-pending", "refusal-startup-pending-unattempted", "refusal-startup-pending-foreign", "refusal-startup-pending-follow", "refusal-retirement-pending", "refusal-retirement-pending-unattempted", "refusal-retirement-pending-foreign", "refusal-retirement-pending-follow", "refusal-retirement-pending-startup"}
-	for _, count := range []int{24, 42} {
+	for _, count := range []int{24, 42, 69, 12} {
 		for _, kind := range []string{"read", "unattempted", "unlocked", "partial", "foreign", "released", "shared"} {
 			scenarios = append(scenarios, "refusal-early-"+kind+"-"+strconv.Itoa(count))
 		}

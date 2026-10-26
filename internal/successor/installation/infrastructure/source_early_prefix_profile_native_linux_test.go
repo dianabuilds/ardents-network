@@ -35,7 +35,12 @@ func prepareSourceEarlyPrefixNative(t *testing.T, root string, count int) string
 		}
 	}()
 	raw, _, _ := sourceInitialRecordVector(t, true)
-	records, err := decodeSourceRecoveryPrefix(raw, sourceRecoverableInitialRecords)
+	maximum, phase := sourceRecoverableInitialRecords, sourceRecoverableInitialPhase
+	if count == 12 {
+		raw, _, _ = sourceReplacementRecordVector(t)
+		maximum, phase = 55, "initial"
+	}
+	records, err := decodeSourceRecoveryPrefix(raw, maximum)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +49,7 @@ func prepareSourceEarlyPrefixNative(t *testing.T, root string, count int) string
 		t.Fatal(err)
 	}
 	native := info.Sys().(*syscall.Stat_t)
-	records[0] = sourceRecord{Phase: sourceRecoverableInitialPhase, Path: path, Device: uint64(native.Dev), Inode: native.Ino, Mode: 0600}
+	records[0] = sourceRecord{Phase: phase, Path: path, Device: uint64(native.Dev), Inode: native.Ino, Mode: 0600}
 	var body []byte
 	for _, record := range records[:count] {
 		line, err := json.Marshal(record)
@@ -65,16 +70,20 @@ func prepareSourceEarlyPrefixNative(t *testing.T, root string, count int) string
 	return sourcePhysicalSHA(body)
 }
 
-func runSourceEarlyPrefixNative(t *testing.T, root, kind string) {
+func runSourceEarlyPrefixNative(t *testing.T, root, kind string, count int) {
 	t.Helper()
 	path := filepath.Join(root, "original-journal")
 	switch kind {
 	case "read":
-		prefix, err := openSourceRecoveryPrefix(context.Background(), path, "initial")
+		operation := "initial"
+		if count == 12 {
+			operation = "replacement"
+		}
+		prefix, err := openSourceRecoveryPrefix(context.Background(), path, operation)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if sourceInitialRecoveryPrefixSupported(prefix.records) {
+		if count == 12 && sourceReplacementRecoveryPrefixSupported(prefix.records) || count != 12 && sourceInitialRecoveryPrefixSupported(prefix.records) {
 			t.Fatal("unsupported native fixture became continuation")
 		}
 		if err := prefix.close(); err != nil {
@@ -153,10 +162,15 @@ func TestSourceEarlyPrefixProfileInspectionNative(t *testing.T) {
 		}
 		return readSourceRefusalObserverProfile(path, sourcePhysicalSHA(raw), program, root)
 	}
-	for _, count := range []int{24, 42} {
+	for _, count := range []int{24, 42, 69, 12} {
 		t.Run(strconv.Itoa(count), func(t *testing.T) {
 			p := sourceRefusalObserverProfile{Schema: "source-early-prefix-recovery-refusal-observer-v1", ProgramSHA256: sourcePhysicalSHA(programRaw), PublicReceiptSHA256: zero,
 				Arguments: []string{"installation", "recover-source", filepath.Dir(program), "/testtmp/history", "alpha", "one-network", "/testtmp/request", root + ".source-initial-journal"}, JournalSHA256: zero, JournalMode: "0600", EarlyInitialPrefix: count}
+			if count == 12 {
+				p.EarlyInitialPrefix = 0
+				p.EarlyReplacementPrefix = 12
+				p.Arguments[7] = sourceReplacementJournal(root, zero)
+			}
 			admitted, err := load(p)
 			if err != nil {
 				t.Fatal(err)
@@ -166,10 +180,17 @@ func TestSourceEarlyPrefixProfileInspectionNative(t *testing.T) {
 				t.Fatal("offline prefix inspection executed or claimed native custody", result, err)
 			}
 			for name, mutate := range map[string]func(*sourceRefusalObserverProfile){
-				"other-count":        func(p *sourceRefusalObserverProfile) { p.EarlyInitialPrefix++ },
-				"missing-count":      func(p *sourceRefusalObserverProfile) { p.EarlyInitialPrefix = 0 },
+				"other-count": func(p *sourceRefusalObserverProfile) {
+					if count == 12 {
+						p.EarlyReplacementPrefix++
+					} else {
+						p.EarlyInitialPrefix++
+					}
+				},
+				"missing-count":      func(p *sourceRefusalObserverProfile) { p.EarlyInitialPrefix = 0; p.EarlyReplacementPrefix = 0 },
 				"base-purpose":       func(p *sourceRefusalObserverProfile) { p.Schema = "source-recovery-refusal-observer-v1" },
 				"missing-cut":        func(p *sourceRefusalObserverProfile) { p.MissingOriginalCut = true },
+				"mixed-prefix":       func(p *sourceRefusalObserverProfile) { p.EarlyInitialPrefix = 24; p.EarlyReplacementPrefix = 12 },
 				"held-journal":       func(p *sourceRefusalObserverProfile) { p.ExternalJournalLease = true },
 				"held-release":       func(p *sourceRefusalObserverProfile) { p.ExternalReleaseLease = true },
 				"startup-pending":    func(p *sourceRefusalObserverProfile) { p.StartupPending = &sourcePendingGuardProfile{} },
@@ -177,7 +198,11 @@ func TestSourceEarlyPrefixProfileInspectionNative(t *testing.T) {
 				"recovery-hold":      func(p *sourceRefusalObserverProfile) { p.RecoveryHold = &sourceRecoveryHoldProfile{} },
 				"damaged-access":     func(p *sourceRefusalObserverProfile) { p.JournalMode = "0640" },
 				"replacement": func(p *sourceRefusalObserverProfile) {
-					p.Arguments[7] = root + ".source-replacement-" + zero + "-journal"
+					if count == 12 {
+						p.Arguments[7] = root + ".source-initial-journal"
+					} else {
+						p.Arguments[7] = sourceReplacementJournal(root, zero)
+					}
 				},
 			} {
 				changed := p

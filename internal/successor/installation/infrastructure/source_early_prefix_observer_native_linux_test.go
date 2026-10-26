@@ -15,15 +15,21 @@ import (
 )
 
 func (p *sourceRefusalObserverProfile) validEarlyPrefixObservation(root string) bool {
-	return p != nil && (p.EarlyInitialPrefix == 24 || p.EarlyInitialPrefix == 42) &&
+	if p == nil || len(p.Arguments) != 8 {
+		return false
+	}
+	initial := (p.EarlyInitialPrefix == 24 || p.EarlyInitialPrefix == 42 || p.EarlyInitialPrefix == 69) && p.EarlyReplacementPrefix == 0 && p.Arguments[7] == root+".source-initial-journal"
+	generation := strings.TrimSuffix(strings.TrimPrefix(p.Arguments[7], root+".source-replacement-"), "-journal")
+	replacement := p.EarlyInitialPrefix == 0 && p.EarlyReplacementPrefix == 12 && sourceCutObserverSHA(generation) && p.Arguments[7] == sourceReplacementJournal(root, generation)
+	return (initial || replacement) &&
 		p.Schema == "source-early-prefix-recovery-refusal-observer-v1" && len(p.Arguments) == 8 &&
-		p.Arguments[7] == root+".source-initial-journal" && p.JournalMode == "0600" &&
+		p.JournalMode == "0600" &&
 		p.StartupPending == nil && p.RetirementPending == nil && p.RecoveryHold == nil && !p.MissingOriginalCut &&
 		!p.ExternalJournalLease && !p.ExternalReleaseLease
 }
 
 func sourceEarlyPrefixNativeCase(scenario string) (string, int) {
-	for _, count := range []int{24, 42} {
+	for _, count := range []int{24, 42, 69, 12} {
 		for _, kind := range []string{"read", "unattempted", "unlocked", "partial", "foreign", "released", "shared"} {
 			if scenario == "refusal-early-"+kind+"-"+strconv.Itoa(count) {
 				return kind, count
@@ -57,10 +63,10 @@ func newSourceEarlyPrefix(root, scenario string, profile *sourceRefusalObserverP
 	_, count := sourceEarlyPrefixNativeCase(scenario)
 	path, pin := filepath.Join(root, "original-journal"), ""
 	if profile != nil {
-		if profile.EarlyInitialPrefix == 0 {
+		if profile.EarlyInitialPrefix == 0 && profile.EarlyReplacementPrefix == 0 {
 			return nil
 		}
-		path, pin, count = profile.Arguments[7], profile.JournalSHA256, profile.EarlyInitialPrefix
+		path, pin, count = profile.Arguments[7], profile.JournalSHA256, profile.EarlyInitialPrefix+profile.EarlyReplacementPrefix
 	}
 	if count == 0 {
 		return nil
@@ -73,12 +79,19 @@ func (p *sourceEarlyPrefix) capture() error {
 	if err != nil || !sourceAccess(info, 0600, 0, 0, false) || p.pin != "" && sourcePhysicalSHA(raw) != p.pin {
 		return errors.Join(errors.New("original early prefix pin/access required"), err)
 	}
-	records, err := decodeSourceRecoveryPrefix(raw, sourceRecoverableInitialRecords)
-	if err != nil || len(records) != p.count || sourceInitialRecoveryPrefixSupported(records) {
-		return errors.Join(errors.New("exact unsupported early initial prefix required"), err)
+	maximum, phase := sourceRecoverableInitialRecords, sourceRecoverableInitialPhase
+	if p.count == 12 {
+		maximum, phase = 55, "initial"
+	}
+	records, err := decodeSourceRecoveryPrefix(raw, maximum)
+	if err != nil || len(records) != p.count {
+		return errors.Join(errors.New("exact unsupported prefix required"), err)
+	}
+	if p.count == 12 && sourceReplacementRecoveryPrefixSupported(records) || p.count != 12 && sourceInitialRecoveryPrefixSupported(records) {
+		return errors.New("supported prefix cannot borrow early refusal cause")
 	}
 	native := info.Sys().(*syscall.Stat_t)
-	if records[0] != (sourceRecord{Phase: sourceRecoverableInitialPhase, Path: p.path, Device: uint64(native.Dev), Inode: native.Ino, Mode: 0600}) {
+	if records[0] != (sourceRecord{Phase: phase, Path: p.path, Device: uint64(native.Dev), Inode: native.Ino, Mode: 0600}) {
 		return errors.New("original early prefix header/native lineage required")
 	}
 	p.raw, p.info, p.pin = raw, info, sourcePhysicalSHA(raw)

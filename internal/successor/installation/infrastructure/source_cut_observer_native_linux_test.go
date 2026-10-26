@@ -413,7 +413,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	if refusal != nil && refusal.MissingOriginalCut && !refusal.validMissingCutObservation() {
 		return result, errors.New("distinct missing-original-cut read purpose required")
 	}
-	if refusal != nil && refusal.EarlyInitialPrefix != 0 && !refusal.validEarlyPrefixObservation(root) {
+	if refusal != nil && (refusal.EarlyInitialPrefix != 0 || refusal.EarlyReplacementPrefix != 0) && !refusal.validEarlyPrefixObservation(root) {
 		return result, errors.New("distinct fresh early-prefix purpose required")
 	}
 	earlyKind, _ := sourceEarlyPrefixNativeCase(nativeCase)
