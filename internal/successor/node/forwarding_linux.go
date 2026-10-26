@@ -101,6 +101,25 @@ type forwarding struct {
 // ListenForwarding acquires original owners and rejects/joins every partial
 // startup before returning. No successor binding or automatic restart exists.
 func ListenForwarding(ctx context.Context, config ForwardingConfig) (_ *Forwarding, result error) {
+	return listenForwarding(ctx, config, createOrReopenForwarding)
+}
+
+// ListenForwardingRetained admits a new original invocation using only complete
+// existing participation and receiving histories. It supplies no Installation
+// restart permission or predecessor completion; composition must prove those
+// independently before calling it. All ordinary duty/protection/join checks apply.
+func ListenForwardingRetained(ctx context.Context, config ForwardingConfig) (*Forwarding, error) {
+	return listenForwarding(ctx, config, retainForwardingHistory)
+}
+
+type forwardingOpening uint8
+
+const (
+	createOrReopenForwarding forwardingOpening = iota
+	retainForwardingHistory
+)
+
+func listenForwarding(ctx context.Context, config ForwardingConfig, opening forwardingOpening) (_ *Forwarding, result error) {
 	if ctx == nil || config.Authority.Current == nil || !separateRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot) {
 		return nil, errors.New("original Node configuration invalid")
 	}
@@ -134,7 +153,7 @@ func ListenForwarding(ctx context.Context, config ForwardingConfig) (_ *Forwardi
 	if string(f.credential.key.Public().(ed25519.PublicKey)) != string(m.PublicKey[:]) {
 		return nil, errors.New("original Forwarding TLS key differs")
 	}
-	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: true}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
+	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: opening != retainForwardingHistory}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +167,11 @@ func ListenForwarding(ctx context.Context, config ForwardingConfig) (_ *Forwardi
 	}
 	p := view.Profile()
 	binding := receiving.Receiver{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, ProfileDigest: p.Digest, NodeID: m.NodeID, DutyGeneration: m.DutyGeneration}
-	f.receiving, err = receiving.Open(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeAdmission(binding) })
+	openReceiving := receiving.Open
+	if opening == retainForwardingHistory {
+		openReceiving = receiving.OpenRetained
+	}
+	f.receiving, err = openReceiving(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeAdmission(binding) })
 	if err != nil {
 		return nil, err
 	}

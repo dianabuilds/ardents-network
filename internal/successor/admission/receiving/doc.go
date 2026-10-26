@@ -3,4 +3,6 @@
 // issuer key, receiver, class and hour; it grants no State authority and owns
 // no transport, listener or provider resource budget. Redemption owns reserve-
 // before-spend ordering, final expiry, and rollback without token refunds.
+// OpenRetained selects the strict existing spend owner, without creating or
+// repairing missing/damaged history or issuing a fresh-root fact.
 package receiving

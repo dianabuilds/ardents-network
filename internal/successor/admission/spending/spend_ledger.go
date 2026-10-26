@@ -59,13 +59,35 @@ func Open(root string, binding Binding) (*Ledger, error) {
 	return openLedger(root, binding, syncClosedSpendRoot)
 }
 
+// OpenRetained requires an existing exclusive lease and complete spend history.
+// It never initializes an empty directory, repairs a crash tail or issues a fresh
+// root fact. Missing or damaged history remains unavailable for explicit restart.
+func OpenRetained(root string, binding Binding) (*Ledger, error) {
+	return openSpendHistory(root, binding, syncClosedSpendRoot, retainedSpendHistory)
+}
+
+type spendOpening uint8
+
+const (
+	createOrReopenSpendHistory spendOpening = iota
+	retainedSpendHistory
+)
+
 // The private persistence seam exercises unavailable durability on the same
 // initialization/reopen path without replacing authority or journal behavior.
 func openLedger(root string, binding Binding, syncRoot func(string) error) (*Ledger, error) {
+	return openSpendHistory(root, binding, syncRoot, createOrReopenSpendHistory)
+}
+
+func openSpendHistory(root string, binding Binding, syncRoot func(string) error, opening spendOpening) (*Ledger, error) {
 	if !filepath.IsAbs(root) || filepath.Clean(root) != root || !validBinding(binding) {
 		return nil, errors.New("closed spend ledger binding is invalid")
 	}
-	lease, err := acquireClosedSpendLease(filepath.Join(root, closedSpendLockName))
+	acquire := acquireClosedSpendLease
+	if opening == retainedSpendHistory {
+		acquire = acquireRetainedClosedSpendLease
+	}
+	lease, err := acquire(filepath.Join(root, closedSpendLockName))
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +108,15 @@ func openLedger(root string, binding Binding, syncRoot func(string) error) (*Led
 	if err != nil {
 		return fail(err)
 	}
-	ledger, err := decodeLedger(path, binding, raw)
+	decode := decodeLedger
+	if opening == retainedSpendHistory {
+		decode = func(path string, binding Binding, raw []byte) (*Ledger, error) {
+			return decodeLedgerWithRepair(path, binding, raw, func(string, int64) error {
+				return errors.New("retained closed spend history is incomplete")
+			})
+		}
+	}
+	ledger, err := decode(path, binding, raw)
 	if err != nil {
 		return fail(err)
 	}

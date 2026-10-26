@@ -29,3 +29,26 @@ func openClosedSpendLeaseFile(path string) (*os.File, bool, error) {
 	file, err = os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDWR, 0o600)
 	return file, err == nil, err
 }
+
+// Retained opening obtains the actual original file without any creating flag.
+// A separate stat-before-ordinary-Open would still allow erased history to be
+// initialized. Detached existence is not retained native custody.
+func openRetainedClosedSpendLeaseFile(path string) (*os.File, error) {
+	before, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !before.Mode().IsRegular() || before.Size() != 0 {
+		return nil, errors.New("retained closed spend lease is invalid")
+	}
+	file, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err != nil {
+		return nil, err
+	}
+	after, err := file.Stat()
+	named, namedErr := os.Lstat(path)
+	if err != nil || namedErr != nil || !os.SameFile(before, after) || !os.SameFile(before, named) || after.Mode() != before.Mode() || after.Size() != 0 {
+		return nil, errors.Join(errors.New("retained closed spend lease changed"), err, namedErr, file.Close())
+	}
+	return file, nil
+}

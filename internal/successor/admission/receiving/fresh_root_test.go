@@ -3,6 +3,8 @@ package receiving
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -73,13 +75,35 @@ func TestReceivingFreshRootCannotSurviveAttemptOrRetainedReopen(t *testing.T) {
 			if _, err := owner.TakeFreshRoot(); err == nil {
 				t.Fatal("closed receiving owner issued creation fact")
 			}
-			reopened, err := Open(root, receiver, observe)
+			reopened, err := OpenRetained(root, receiver, observe)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer reopened.Close()
 			if _, err := reopened.TakeFreshRoot(); err == nil {
 				t.Fatal("retained header-only root reissued creation fact")
+			}
+			if err := reopened.Close(); err != nil {
+				t.Fatal(err)
+			}
+			retained := t.TempDir()
+			for _, name := range []string{".ardents-closed-spend-lock", "closed-token-spends"} {
+				if err := os.Rename(filepath.Join(root, name), filepath.Join(retained, name)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for range 2 {
+				missing, err := OpenRetained(root, receiver, observe)
+				if missing != nil {
+					_ = missing.Close()
+				}
+				if missing != nil || err == nil {
+					t.Fatal("Receiving recreated erased retained history")
+				}
+				entries, err := os.ReadDir(root)
+				if err != nil || len(entries) != 0 {
+					t.Fatal("Receiving refusal created native history", err)
+				}
 			}
 		})
 	}

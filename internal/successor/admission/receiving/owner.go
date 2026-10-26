@@ -32,6 +32,16 @@ type Owner struct {
 }
 
 func Open(root string, receiver Receiver, observe func() (Observation, error)) (*Owner, error) {
+	return openReceiving(root, receiver, observe, spending.Open)
+}
+
+// OpenRetained reopens complete original receiving history without creating or
+// repairing it. It grants no new root fact, duty, token or physical reservation.
+func OpenRetained(root string, receiver Receiver, observe func() (Observation, error)) (*Owner, error) {
+	return openReceiving(root, receiver, observe, spending.OpenRetained)
+}
+
+func openReceiving(root string, receiver Receiver, observe func() (Observation, error), openSpend func(string, spending.Binding) (*spending.Ledger, error)) (*Owner, error) {
 	if observe == nil {
 		return nil, errors.New("receiver observer absent")
 	}
@@ -39,7 +49,7 @@ func Open(root string, receiver Receiver, observe func() (Observation, error)) (
 	if _, err := o.current(); err != nil {
 		return nil, err
 	}
-	ledger, err := spending.Open(root, spending.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
+	ledger, err := openSpend(root, spending.Binding{NetworkID: receiver.NetworkID, ProfileDigest: receiver.ProfileDigest, ReceiverNodeID: receiver.NodeID, ReceiverDutyGeneration: receiver.DutyGeneration})
 	if err != nil {
 		return nil, err
 	}

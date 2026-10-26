@@ -136,6 +136,16 @@ The allowance is bounded by both profile and duty; refill retains the original
 deadline. A successful Grant transfers reservation release to the work owner.
 Closing Receiving does not release already accepted work.
 
+`receiving.OpenRetained` separately selects `spending.OpenRetained` for an
+explicit retained invocation. It requires the original existing lease and
+complete bound journal, never creates either file, repairs no incomplete crash
+tail and issues no fresh-root fact. An original directory left empty after
+both files disappear remains unavailable. Ordinary fresh opening retains its
+existing initialization/recovery behavior; strict restart cannot select it as
+a missing-history fallback. Failed strict opening closes only its own native
+lease and preserves malformed bytes. Network duty/time and Installation's
+original retirement/startup permission remain independent requirements.
+
 The selected class policy remains Control 64 KiB/30 seconds, Forward
 32 MiB/1,800 seconds and Registration 1 MiB/600 seconds. Registration includes
 bidirectional capsule/control traffic and has no forwarding refill right.

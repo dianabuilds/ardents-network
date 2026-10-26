@@ -18,9 +18,20 @@ func acquireClosedSpendLease(path string) (closedSpendLease, error) {
 	if err != nil {
 		return closedSpendLease{}, err
 	}
+	return lockClosedSpendLease(file, created)
+}
+
+func acquireRetainedClosedSpendLease(path string) (closedSpendLease, error) {
+	file, err := openRetainedClosedSpendLeaseFile(path)
+	if err != nil {
+		return closedSpendLease{}, err
+	}
+	return lockClosedSpendLease(file, false)
+}
+
+func lockClosedSpendLease(file *os.File, created bool) (closedSpendLease, error) {
 	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		_ = file.Close()
-		return closedSpendLease{}, errors.New("closed spend journal is already owned")
+		return closedSpendLease{}, errors.Join(errors.New("closed spend journal is already owned"), err, file.Close())
 	}
 	return closedSpendLease{file: file, created: created}, nil
 }
