@@ -18,6 +18,22 @@ directory. All processes must share one root for one allowance. Lost handles
 retain their reservations; no reset, refund recovery or automatic migration is
 provided. Explicitly separate test roots are not multiple production allowances.
 
+Linux `OpenInspection` supplies a separate root-only, finite, read-only lifetime
+for complete existing history. It independently holds the original numeric
+principal, directory/ancestor and three file identities, exact policy commitment
+and existing exclusive allowance lease. Only canonical committed history with
+zero retained reservations is inspectable; missing lock/pin/state, pending or
+unknown files and uncertain history refuse without creation or repair. The
+shared canonical byte decoder owns the same policy/checksum/floor validation as
+ordinary runtime opening. Inspection does not call runtime observation, measure
+or charge new traffic, reserve capacity, return a reservation, or lend a Budget.
+It is historical observation, not current capacity or installation permission.
+Check reobserves original bytes/native identities and writable ext4 path flags;
+real failure permanently denies that lifetime. Close seals local admission before
+joining its original readers and physical closes, returning the allowance lease
+last and retaining late failure/cancellation. No timeout or process-exit claim
+can clear an unresolved durable reservation.
+
 An Installation-created empty directory is not an absent fresh root:
 `Initialize` still refuses it. Deleting and recreating that directory would lose
 the original installation birth. Installed preparation must preserve the exact

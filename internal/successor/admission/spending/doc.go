@@ -6,4 +6,8 @@
 // before any receiving attempt; retained empty history never recreates that fact.
 // OpenRetained requires both existing native files and complete history, without
 // initialization or crash-tail repair; it is the strict explicit-restart seam.
+// Linux Inspection separately retains complete original history read-only under
+// its existing exclusive lease and numeric principal. It never initializes,
+// repairs, prunes, spends or lends runtime authority; Close joins original reads
+// and physical closes before returning that lease.
 package spending

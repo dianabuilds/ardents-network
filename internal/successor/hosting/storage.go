@@ -136,11 +136,20 @@ func readHostingState(root *os.Root) (hostingState, error) {
 }
 
 func readCommittedHostingState(root *os.Root) (hostingState, error) {
-	var state hostingState
 	raw, err := readHostingFile(root, "budget.json", 16<<10)
 	if err != nil {
-		return state, err
+		return hostingState{}, err
 	}
+	pin, err := readHostingFile(root, "budget.pin", 64)
+	if err != nil {
+		return hostingState{}, err
+	}
+	return decodeCommittedHostingState(raw, pin)
+}
+
+// Shared byte validation lends no root, lease or live accounting authority.
+func decodeCommittedHostingState(raw, pin []byte) (hostingState, error) {
+	var state hostingState
 	var envelope struct {
 		State  json.RawMessage `json:"state"`
 		SHA256 string          `json:"sha256"`
@@ -164,10 +173,6 @@ func readCommittedHostingState(root *os.Root) (hostingState, error) {
 		if state.Reading.Interfaces[index].Name != name || state.Reading.Interfaces[index].Index == 0 {
 			return state, errors.New("hosting state interface differs")
 		}
-	}
-	pin, err := readHostingFile(root, "budget.pin", 64)
-	if err != nil {
-		return state, err
 	}
 	policyBytes, err := json.Marshal(state.Policy)
 	if err != nil {

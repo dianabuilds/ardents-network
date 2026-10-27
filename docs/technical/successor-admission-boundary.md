@@ -205,6 +205,16 @@ Route retains slot policy and its own lease; Admission never stores new slots.
 
 ## Evidence scope
 
+Linux Spending `OpenInspection` is a distinct root-only, finite read-only
+lifetime over complete existing receiving history, its exact public binding,
+numeric principal and original exclusive lease. It retains its own native
+file/ancestor identities and exact bytes, creates no files, repairs no crash
+tail, prunes/spends nothing and issues no fresh-root fact. Check permanently
+denies on real change; restoring files cannot revive the original observation.
+Close denies new checks before joining original readers and physical closes,
+returns the spend lease last and preserves late errors/cancellation. This seam
+lends no Ledger, token, Network currentness or installation/recovery authority.
+
 The independent holder/issuer/receiver cycle uses real permission signatures,
 blind issuance, the public Stock operation, durable presentation, quota and
 result roots, and a receiver spend root. It includes exact issuance retry after

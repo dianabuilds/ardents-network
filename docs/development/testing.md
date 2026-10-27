@@ -2780,6 +2780,32 @@ substitute for independent review.
 
 ## Ordinary checks
 
+`TestHostingInspectionNative*` is a separate owner selection in the same
+root/ext4 `network-signing-linux` profile:
+`go test -race -tags network_signing_native ./internal/successor/hosting -run '^TestHostingInspectionNative' -count=1 -timeout=2m`.
+It uses actual Hosting initialization, kernel interface observations and durable
+reservations, then independently inspects original bytes/policy/principal under
+the original allowance lease. Missing/damaged/foreign/pending history refuses
+without repair or creation. A live original reservation remains charged until
+its genuine owner returns it; inspection never supplies that return. Held reads,
+cancellation, local denial, physical late Close failure and copied completion
+check custody through actual join. These controls establish no installed
+replacement/recovery or capacity permission.
+
+`TestSpendInspectionNative*` belongs to the existing root/ext4
+`network-signing-linux` profile. Run its bounded owner selection with
+`go test -race -tags network_signing_native ./internal/successor/admission/spending -run '^TestSpendInspectionNative' -count=1 -timeout=2m`
+under the profile's original development lock, private root-controlled native
+TMPDIR and pinned toolchain/dependencies. It uses genuine spend persistence and
+native exclusive leases, checking unchanged bytes, retained burn, missing or
+damaged history without repair/creation, numeric principal, changed inode/bytes/
+inventory/root, permanent refusal after restoration, copied Close, cancellation
+and held original readers/Close with actual late close failure. The lease must
+remain unavailable until original users and descriptor closes join. Supplied
+binding/token bytes isolate storage; this is no signed State, installed duty,
+retirement, replacement or recovery acceptance. Its selected execution and source
+identity remain separate from compilation and ordinary deterministic checks.
+
 `TestReceivingHeldForeignWorkDeniesBeforeJoin` and
 `TestReceivingOriginalAttemptCancellationAndRefill` hold Receiving's original
 authority/reservation boundaries across Close, cancellation and concurrent
