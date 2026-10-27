@@ -136,6 +136,21 @@ The allowance is bounded by both profile and duty; refill retains the original
 deadline. A successful Grant transfers reservation release to the work owner.
 Closing Receiving does not release already accepted work.
 
+Receiving retains each original operation before waiting for its separate
+serialization token. Fresh observations, time-floor advances, verification,
+reservation, irreversible spending and final handoff remain ordered. Foreign
+authority/reservation callbacks, refusal release and durable I/O run outside
+the local state mutex. Close synchronously seals admission, wakes queued callers
+and invalidates fresh-root evidence before joining original users and returning
+the spend lease. A queued canceled caller need not join another owner's held
+observation or reservation. Returning foreign results recheck original denial,
+caller cancellation, authority and immutable bounds before spend; final Grant
+transfer is ordered under the local admission barrier. An already admitted
+spend may finish its I/O during retirement, but cannot publish a late Grant and
+is never refunded. Close still waits for refused reservations' actual release,
+including late failures; the attempt returns its cleanup cause. Accepted work
+retains its own exactly-once release independently of Receiving Close.
+
 `receiving.OpenRetained` separately selects `spending.OpenRetained` for an
 explicit retained invocation. It requires the original existing lease and
 complete bound journal, never creates either file, repairs no incomplete crash

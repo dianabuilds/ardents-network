@@ -21,14 +21,18 @@ type Observation struct {
 // capacity. Closing it joins synchronous admissions but never releases an
 // already transferred work reservation.
 type Owner struct {
-	mu       sync.Mutex
-	receiver Receiver
-	ledger   *spending.Ledger
-	observe  func() (Observation, error)
-	gate     VerificationGate
-	floor    time.Time
-	closed   bool
-	closeErr error
+	mu        sync.Mutex
+	serial    chan struct{}
+	denied    chan struct{}
+	users     sync.WaitGroup
+	closeOnce sync.Once
+	receiver  Receiver
+	ledger    *spending.Ledger
+	observe   func() (Observation, error)
+	gate      VerificationGate
+	floor     time.Time
+	closed    bool
+	closeErr  error
 }
 
 func Open(root string, receiver Receiver, observe func() (Observation, error)) (*Owner, error) {
@@ -45,7 +49,7 @@ func openReceiving(root string, receiver Receiver, observe func() (Observation, 
 	if observe == nil {
 		return nil, errors.New("receiver observer absent")
 	}
-	o := &Owner{receiver: receiver, observe: observe}
+	o := &Owner{receiver: receiver, observe: observe, serial: make(chan struct{}, 1), denied: make(chan struct{})}
 	if _, err := o.current(); err != nil {
 		return nil, err
 	}
@@ -58,12 +62,18 @@ func openReceiving(root string, receiver Receiver, observe func() (Observation, 
 }
 
 func (o *Owner) current() (Observation, error) {
-	if o.closed {
+	o.mu.Lock()
+	closed := o.closed
+	o.mu.Unlock()
+	if closed {
 		return Observation{}, errors.New("receiver closed")
 	}
 	v, err := o.observe()
-	if err != nil || v.Receiver != o.receiver || v.Profile.ValidateAt(v.Now) != nil || v.Now.Before(o.floor) || !v.Now.Before(v.NotAfter) ||
-		v.Profile.NetworkID != o.receiver.NetworkID || v.Profile.Digest != o.receiver.ProfileDigest || v.Profile.StateGeneration != o.receiver.StateGeneration || v.Profile.StateDigest != o.receiver.StateDigest {
+	valid := err == nil && v.Receiver == o.receiver && v.Profile.ValidateAt(v.Now) == nil && v.Now.Before(v.NotAfter) &&
+		v.Profile.NetworkID == o.receiver.NetworkID && v.Profile.Digest == o.receiver.ProfileDigest && v.Profile.StateGeneration == o.receiver.StateGeneration && v.Profile.StateDigest == o.receiver.StateDigest
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.closed || !valid || v.Now.Before(o.floor) {
 		return Observation{}, errors.Join(errors.New("receiver authority unavailable"), err)
 	}
 	o.floor = v.Now
@@ -71,6 +81,51 @@ func (o *Owner) current() (Observation, error) {
 		v.NotAfter = v.Profile.NotAfter
 	}
 	return v, nil
+}
+
+// begin retains original custody before waiting. The separate serialization
+// token orders observations, time floors and irreversible spending without
+// holding the local denial mutex over a neighboring owner's I/O. Queued callers
+// can leave on cancellation or denial. Close seals admission before joining all
+// original users, including callbacks which cannot be interrupted here.
+func (o *Owner) begin(ctx context.Context) (func(), error) {
+	o.mu.Lock()
+	if o.closed || ctx.Err() != nil {
+		o.mu.Unlock()
+		return nil, errors.Join(errors.New("receiver unavailable"), ctx.Err())
+	}
+	o.users.Add(1)
+	o.mu.Unlock()
+	select {
+	case o.serial <- struct{}{}:
+	case <-ctx.Done():
+		o.users.Done()
+		return nil, ctx.Err()
+	case <-o.denied:
+		o.users.Done()
+		return nil, errors.New("receiver closed")
+	}
+	end := func() { <-o.serial; o.users.Done() }
+	o.mu.Lock()
+	closed := o.closed
+	o.mu.Unlock()
+	if closed || ctx.Err() != nil {
+		end()
+		return nil, errors.Join(errors.New("receiver unavailable"), ctx.Err())
+	}
+	return end, nil
+}
+
+// checkAttempt admits the next local step against synchronous retirement.
+// A successful check claims that step for this original user; its foreign I/O
+// runs without mu and must recheck before any following effect or transfer.
+func (o *Owner) checkAttempt(ctx context.Context, prior Grant) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.closed || ctx.Err() != nil || prior.state != nil && prior.state.ended.Load() {
+		return errors.Join(errors.New("admission attempt retired"), ctx.Err())
+	}
+	return nil
 }
 
 // Grant transfers the successful capacity reservation to the work owner.
@@ -127,13 +182,16 @@ func (o *Owner) admit(ctx context.Context, class admission.Class, raw []byte, de
 	if o == nil || ctx == nil || reserve == nil {
 		return Grant{}, errors.New("receiver unavailable")
 	}
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if ctx.Err() != nil {
-		return Grant{}, ctx.Err()
+	end, err := o.begin(ctx)
+	if err != nil {
+		return Grant{}, err
 	}
+	defer end()
 	initial, err := o.current()
 	if err != nil {
+		return Grant{}, err
+	}
+	if err := ctx.Err(); err != nil {
 		return Grant{}, err
 	}
 	finish, err := o.gate.Begin(initial.Now)
@@ -141,6 +199,9 @@ func (o *Owner) admit(ctx context.Context, class admission.Class, raw []byte, de
 		return Grant{}, err
 	}
 	defer finish()
+	if err := o.checkAttempt(ctx, prior); err != nil {
+		return Grant{}, err
+	}
 	allowance, err := NewAllowance(class, initial.Now, deadline, initial.NotAfter)
 	if prior.state != nil {
 		if prior.state.ended.Load() {
@@ -164,14 +225,17 @@ func (o *Owner) admit(ctx context.Context, class admission.Class, raw []byte, de
 			return ctx.Err()
 		}
 		v, err := o.current()
-		if err != nil || v.Profile != initial.Profile || !v.Now.Before(allowance.Deadline()) || allowance.Deadline().After(v.NotAfter) || (prior.state != nil && prior.state.ended.Load()) {
-			return errors.Join(errors.New("admission changed during commit"), err)
+		if err != nil || ctx.Err() != nil || v.Profile != initial.Profile || !v.Now.Before(allowance.Deadline()) || allowance.Deadline().After(v.NotAfter) || (prior.state != nil && prior.state.ended.Load()) {
+			return errors.Join(errors.New("admission changed during commit"), err, ctx.Err())
 		}
 		currentTime = v.Now
 		return nil
 	}
 	approval, err := Redeem(Redemption{Class: class, Token: raw, Deadline: allowance.Deadline()}, o.ledger, func() time.Time { return currentTime },
 		func() (Approval, error) {
+			if err := o.checkAttempt(ctx, prior); err != nil {
+				return Approval{}, err
+			}
 			release, err := reserve()
 			if err == nil {
 				err = recheck()
@@ -181,6 +245,18 @@ func (o *Owner) admit(ctx context.Context, class admission.Class, raw []byte, de
 	if err != nil {
 		return Grant{}, err
 	}
+	// Final local transfer is ordered against Close. A spend admitted before
+	// denial may finish its original I/O, but can never publish a late Grant.
+	o.mu.Lock()
+	if o.closed || ctx.Err() != nil || (prior.state != nil && prior.state.ended.Load()) {
+		o.mu.Unlock()
+		var releaseErr error
+		if approval.Release != nil {
+			releaseErr = approval.Release()
+		}
+		return Grant{}, errors.Join(errors.New("admission retired before transfer"), ctx.Err(), releaseErr)
+	}
+	defer o.mu.Unlock()
 	return Grant{&grantState{owner: o, allowance: allowance, release: approval.Release}}, nil
 }
 
@@ -190,24 +266,38 @@ func (o *Owner) TakeFreshRoot() (*spending.FreshRoot, error) {
 	if o == nil || o.ledger == nil {
 		return nil, errors.New("receiver unavailable")
 	}
-	o.mu.Lock()
-	defer o.mu.Unlock()
+	end, err := o.begin(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	defer end()
 	if _, err := o.current(); err != nil {
 		o.ledger.InvalidateFreshRoot()
 		return nil, err
 	}
-	return o.ledger.TakeFreshRoot()
+	fact, err := o.ledger.TakeFreshRoot()
+	o.mu.Lock()
+	closed := o.closed
+	o.mu.Unlock()
+	if closed {
+		o.ledger.InvalidateFreshRoot()
+		return nil, errors.New("receiver closed")
+	}
+	return fact, err
 }
 
 func (o *Owner) Close() error {
 	if o == nil {
 		return nil
 	}
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if !o.closed {
+	o.closeOnce.Do(func() {
+		o.mu.Lock()
 		o.closed = true
+		close(o.denied)
+		o.mu.Unlock()
+		o.ledger.InvalidateFreshRoot()
+		o.users.Wait()
 		o.closeErr = o.ledger.Close()
-	}
+	})
 	return o.closeErr
 }

@@ -2780,6 +2780,32 @@ substitute for independent review.
 
 ## Ordinary checks
 
+`TestReceivingHeldForeignWorkDeniesBeforeJoin` and
+`TestReceivingOriginalAttemptCancellationAndRefill` hold Receiving's original
+authority/reservation boundaries across Close, cancellation and concurrent
+admission. Genuine token verification and retained spend reopening distinguish
+pre-spend refusal from irreversible post-spend burn. They check late cleanup
+causes, no late Grant, original refill deadlines and exactly-once reservation
+transfer. Their supplied authority facts and reservation callbacks qualify only
+the Receiving boundary. They run in the ordinary deterministic profile on
+Windows and Linux, with race checks for the concurrent paths.
+`TestReceivingCloseDuringVerificationDeniesReservation` separately holds the
+actual VerificationGate after the original observation's committed time-floor
+advance. Close must seal admission before that gate is released; the continued
+attempt must reserve and spend nothing and publish no Grant. This is a local
+effect-admission oracle, distinct from holding a neighboring owner callback.
+
+Linux `TestNetworkReceivingHeldForeignWorkRetainsOriginalCustody` in the existing
+`cmd/ardents-next` deterministic owner instead uses signed Network State, actual
+tokens and genuine Hosting reservations. Accept/Refill each hold observation or
+reservation across original cancellation/Close. A separately held refusal
+release proves that capacity and the spend lease remain retained until physical
+callback join, including its late failure. Original spend bytes and predecessor
+capacity remain unchanged. Linux is required by these actual durable owners;
+the scenario starts no installed role and grants no bootstrap, installed,
+availability or EOF-repair qualification. Existing signed successor/post-spend
+and joined socket-work tests retain their separate coverage.
+
 Installation's staging, selection, Unix completion and staged-recovery filesystem
 scenarios, including generation-file birth refusal cases, run independently in
 parallel with distinct temporary installation roots, writer leases, original
