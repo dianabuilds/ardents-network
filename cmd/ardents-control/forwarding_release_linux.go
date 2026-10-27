@@ -24,17 +24,30 @@ import (
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
-// Forwarding has only this closed initial signing purpose. It never enters
-// Source's initial/forward/timestamp dispatcher or authorizes a native effect.
+// Forwarding's fixed initial/forward purposes never enter Source signing policy
+// or turn a public plan into installed permission.
 func runForwardingReleaseSigning(args []string, out io.Writer) error {
-	if len(args) != 4 {
+	return runForwardingReleasePurpose(args, out, forwardingReleaseInitial)
+}
+
+func runForwardingReleasePurpose(args []string, out io.Writer, purpose forwardingReleasePurpose) error {
+	wanted, operation := 4, "sign-initial-release"
+	if purpose == forwardingReleaseForward {
+		wanted, operation = 5, "sign-forward-release"
+	} else if purpose != forwardingReleaseInitial {
+		return errSourceControlInput
+	}
+	if len(args) != wanted {
+		if purpose == forwardingReleaseForward {
+			return errors.New("usage: ardents-control forwarding sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION")
+		}
 		return errors.New("usage: ardents-control forwarding sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	root, err := signForwardingRelease(ctx, args, nil)
+	root, err := signForwardingReleasePurpose(ctx, args, purpose, nil)
 	if err != nil {
 		return &forwardingControlFailure{err}
 	}
@@ -45,14 +58,23 @@ func runForwardingReleaseSigning(args []string, out io.Writer) error {
 		Targets     []string `json:"targets"`
 		Installed   bool     `json:"installed_qualification"`
 		Independent bool     `json:"independent_custody"`
-	}{"forwarding.sign-initial-release", hex.EncodeToString(sum[:]), []string{infrastructure.ProgramTarget, infrastructure.ForwardingGenerationTarget}, false, false})
+	}{"forwarding." + operation, hex.EncodeToString(sum[:]), []string{infrastructure.ProgramTarget, infrastructure.ForwardingGenerationTarget}, false, false})
 	if err != nil {
 		return err
 	}
 	return writeSourceControlBytes(ctx, out, append(raw, '\n'))
 }
 func signForwardingRelease(ctx context.Context, args []string, observe func(string, *os.File)) (result []byte, returned error) {
-	const wantedArguments = 4
+	return signForwardingReleasePurpose(ctx, args, forwardingReleaseInitial, observe)
+}
+
+func signForwardingReleasePurpose(ctx context.Context, args []string, purpose forwardingReleasePurpose, observe func(string, *os.File)) (result []byte, returned error) {
+	wantedArguments := 4
+	if purpose == forwardingReleaseForward {
+		wantedArguments = 5
+	} else if purpose != forwardingReleaseInitial {
+		return nil, errSourceControlInput
+	}
 	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != wantedArguments {
 		return nil, errSourceControlInput
 	}
@@ -79,7 +101,7 @@ func signForwardingRelease(ctx context.Context, args []string, observe func(stri
 	if err != nil {
 		return nil, err
 	}
-	plan, err := decodeForwardingReleasePlan(planRaw, time.Now().UTC())
+	plan, err := decodeForwardingReleasePurpose(planRaw, time.Now().UTC(), purpose)
 	if err != nil {
 		return nil, err
 	}
@@ -101,6 +123,13 @@ func signForwardingRelease(ctx context.Context, args []string, observe func(stri
 	}
 	if err := validateForwardingReleaseResources(plan, artifacts[0], artifacts[1], artifacts[2]); err != nil {
 		return nil, err
+	}
+	var predecessor *forwardingReleasePredecessor
+	if purpose == forwardingReleaseForward {
+		predecessor, err = readForwardingReleasePredecessor(inputs, args[4], plan, artifacts[1])
+		if err != nil {
+			return nil, err
+		}
 	}
 	keyDirectory, err := inputs.directory(args[1])
 	if err != nil {
@@ -149,6 +178,14 @@ func signForwardingRelease(ctx context.Context, args []string, observe func(stri
 		now := time.Now().UTC()
 		if plan.Reference.Before(now.Add(-5*time.Minute)) || plan.Reference.After(now.Add(time.Minute)) || !now.Before(plan.Expires) {
 			return errSourceControlInput
+		}
+		if predecessor != nil {
+			if err := predecessor.check(); err != nil {
+				return err
+			}
+			if err := predecessor.candidate.Check(); err != nil {
+				return err
+			}
 		}
 		if _, err := keyDirectory.file.Seek(0, io.SeekStart); err != nil {
 			return err
@@ -213,6 +250,25 @@ func signForwardingRelease(ctx context.Context, args []string, observe func(stri
 	for _, role := range metadata.TOP_LEVEL_ROLE_NAMES {
 		root.Signed.Roles[role] = &metadata.Role{KeyIDs: append([]string(nil), keyIDs...), Threshold: 3}
 	}
+	var diagnostic *release.Verifier
+	defer func() {
+		if diagnostic != nil {
+			returned = errors.Join(returned, diagnostic.Close())
+		}
+	}()
+	if predecessor != nil {
+		if err := predecessor.matchKeys(keyIDs); err != nil {
+			return nil, err
+		}
+		diagnostic, err = openSourceReleaseDiagnostic(inputs, outputParents[1], args[3], check)
+		if err != nil {
+			return nil, err
+		}
+		if err := predecessor.authenticate(ctx, diagnostic, plan); err != nil {
+			return nil, err
+		}
+		root = predecessor.root
+	}
 
 	paths := []string{infrastructure.ProgramTarget, infrastructure.ForwardingGenerationTarget}
 	sign := func(value sourceSignableMetadata) ([]byte, error) {
@@ -227,11 +283,19 @@ func signForwardingRelease(ctx context.Context, args []string, observe func(stri
 		raw, err := value.ToBytes(false)
 		return raw, errors.Join(err, check())
 	}
-	rootBytes, err := sign(root)
-	if err != nil {
-		return nil, err
+	var rootBytes []byte
+	if predecessor == nil {
+		rootBytes, err = sign(root)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		rootBytes = bytes.Clone(predecessor.files["root.json"])
 	}
 	targets := metadata.Targets(plan.Expires)
+	if predecessor != nil {
+		targets.Signed.Version = predecessor.targetsVersion + 1
+	}
 	for i, path := range paths {
 		custom := []json.RawMessage{plan.ProgramCustom, plan.GenerationCustom}[i]
 		sum := sha256.Sum256(artifacts[i])
@@ -244,12 +308,20 @@ func signForwardingRelease(ctx context.Context, args []string, observe func(stri
 	}
 	snapshot := metadata.Snapshot(plan.Expires)
 	snapshot.Signed.Meta["targets.json"] = sourceMetadataReference(targetBytes)
+	snapshot.Signed.Meta["targets.json"].Version = targets.Signed.Version
+	if predecessor != nil {
+		snapshot.Signed.Version = predecessor.snapshotVersion + 1
+	}
 	snapshotBytes, err := sign(snapshot)
 	if err != nil {
 		return nil, err
 	}
 	timestamp := metadata.Timestamp(plan.Expires)
 	timestamp.Signed.Meta["snapshot.json"] = sourceMetadataReference(snapshotBytes)
+	timestamp.Signed.Meta["snapshot.json"].Version = snapshot.Signed.Version
+	if predecessor != nil {
+		timestamp.Signed.Version = predecessor.timestampVersion + 1
+	}
 	timestampBytes, err := sign(timestamp)
 	if err != nil {
 		return nil, err
@@ -261,9 +333,12 @@ func signForwardingRelease(ctx context.Context, args []string, observe func(stri
 		return nil, err
 	}
 	// The diagnostic history is exclusively born and never reused on failure.
-	v, err := openSourceReleaseDiagnostic(inputs, outputParents[1], args[3], check)
-	if err != nil {
-		return nil, err
+	v := diagnostic
+	if v == nil {
+		v, err = openSourceReleaseDiagnostic(inputs, outputParents[1], args[3], check)
+		if err != nil {
+			return nil, err
+		}
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
 	metadataFiles, err := release.StaticMetadataFiles(rootBytes, timestampBytes, snapshotBytes, targetBytes)

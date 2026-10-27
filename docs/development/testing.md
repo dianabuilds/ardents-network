@@ -400,6 +400,17 @@ No successful root escapes; partial output retains its inode and refuses fresh
 retry. The fixture's two named builders share one controller and supply no
 independent-build, operational, installed or bootstrap qualification claim.
 
+`TestForwardingPreparationNativeForwardReleasePreservesRootAndRaisesFloors`
+uses the same offline root/native-ext4 profile and two independently pinned
+canonical programs. It invokes actual descriptor, key, public-plan, initial/
+forward-signing and inventory commands for three successive versions, retaining
+one exact initial Root and increasing each signed metadata version and reference.
+Same-version predecessor and different-key controls must refuse before creating
+metadata or diagnostic history. The controlled public build claims qualify only
+this signing boundary; the installed resource-only journey uses actual build
+records and separate bootstrap acceptance. Neither test starts a Node, selects
+an installed generation, consumes a runtime root or supplies a recovery proof.
+
 The Forwarding native preparation profile also owns `TestForwardingBirthsNative`:
 real journal flock exclusion/return, retained retry refusal, original directory/
 file births, joined descriptor closure and actual-sync result uncertainty with

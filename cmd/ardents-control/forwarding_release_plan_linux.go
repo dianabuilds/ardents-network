@@ -24,9 +24,26 @@ type forwardingReleasePlan struct {
 	GenerationCustom json.RawMessage `json:"generation_custom"`
 }
 
+type forwardingReleasePurpose uint8
+
+const (
+	forwardingReleaseInitial forwardingReleasePurpose = iota
+	forwardingReleaseForward
+)
+
 func decodeForwardingReleasePlan(raw []byte, now time.Time) (forwardingReleasePlan, error) {
+	return decodeForwardingReleasePurpose(raw, now, forwardingReleaseInitial)
+}
+
+func decodeForwardingReleasePurpose(raw []byte, now time.Time, purpose forwardingReleasePurpose) (forwardingReleasePlan, error) {
 	var p forwardingReleasePlan
-	if len(raw) == 0 || len(raw) > 1<<20 || sourceDeclarationObject(raw, &p, "schema", "network", "reference_time", "expires", "program", "descriptor", "template", "program_custom", "generation_custom") != nil || p.Schema != "ardents-forwarding-initial-release-plan-v1" || p.Network == "" || p.Reference.IsZero() || !p.Expires.After(now) || !p.Expires.After(p.Reference) || p.Expires.Sub(p.Reference) > 7*24*time.Hour || p.Reference.Before(now.Add(-5*time.Minute)) || p.Reference.After(now.Add(time.Minute)) {
+	schema := "ardents-forwarding-initial-release-plan-v1"
+	if purpose == forwardingReleaseForward {
+		schema = "ardents-forwarding-forward-release-plan-v1"
+	} else if purpose != forwardingReleaseInitial {
+		return p, errSourceControlInput
+	}
+	if len(raw) == 0 || len(raw) > 1<<20 || sourceDeclarationObject(raw, &p, "schema", "network", "reference_time", "expires", "program", "descriptor", "template", "program_custom", "generation_custom") != nil || p.Schema != schema || p.Network == "" || p.Reference.IsZero() || !p.Expires.After(now) || !p.Expires.After(p.Reference) || p.Expires.Sub(p.Reference) > 7*24*time.Hour || p.Reference.Before(now.Add(-5*time.Minute)) || p.Reference.After(now.Add(time.Minute)) {
 		return p, errSourceControlInput
 	}
 	for _, path := range []string{p.Program, p.Descriptor, p.Template} {
@@ -38,7 +55,9 @@ func decodeForwardingReleasePlan(raw []byte, now time.Time) (forwardingReleasePl
 }
 func validateForwardingReleaseResources(plan forwardingReleasePlan, program, descriptor, template []byte) error {
 	d, err := infrastructure.ValidateForwardingResources(descriptor, program, template)
-	if err != nil || d.ReleaseVersion != 1 || !bytes.Equal(template, []byte(forwarding.Template)) {
+	initial := plan.Schema == "ardents-forwarding-initial-release-plan-v1"
+	forward := plan.Schema == "ardents-forwarding-forward-release-plan-v1"
+	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(forwarding.Template)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))

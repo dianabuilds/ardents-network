@@ -53,6 +53,9 @@ func runForwardingControl(args []string, out io.Writer) error {
 	if len(args) > 0 && args[0] == "sign-initial-release" {
 		return runForwardingReleaseSigning(args[1:], out)
 	}
+	if len(args) > 0 && args[0] == "sign-forward-release" {
+		return runForwardingReleasePurpose(args[1:], out, forwardingReleaseForward)
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -100,6 +103,9 @@ func prepareForwardingArtifact(ctx context.Context, args []string, observe func(
 		name = "forwarding-plan.json"
 	case "prepare-release-plan":
 		result, destination, returned = forwardingReleasePlanArguments(args[1:], inputs)
+		name = "forwarding-release-plan.json"
+	case "prepare-forward-release-plan":
+		result, destination, returned = forwardingReleasePurposeArguments(args[1:], inputs, forwardingReleaseForward)
 		name = "forwarding-release-plan.json"
 	case "prepare-descriptor":
 		if len(args) != 6 {

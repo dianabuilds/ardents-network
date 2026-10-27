@@ -138,12 +138,14 @@ producer validates canonical declarations and original input custody, not signed
 State, private credentials or sufficient runtime allowance. Missing full Forward
 coverage still refuses before receiving spend at runtime.
 
-The separate Linux Forwarding initial Release producers are:
+The separate Linux Forwarding Release producers are:
 
 ```text
 ardents-control forwarding prepare-release-keys FRESH_PRIVATE_OUTPUT
 ardents-control forwarding prepare-release-plan --network NETWORK --reference RFC3339 --expires RFC3339 --program NODE --descriptor DESCRIPTOR --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_PLAN_OUTPUT
 ardents-control forwarding sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
+ardents-control forwarding prepare-forward-release-plan --network NETWORK --reference RFC3339 --expires RFC3339 --program NODE --descriptor DESCRIPTOR --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_PLAN_OUTPUT
+ardents-control forwarding sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION
 ```
 
 Before initial signing, the separate
@@ -177,6 +179,24 @@ seven days after reference. Neither public receipt nor self-verification supplie
 the independently delivered initial pin, installation or bootstrap acceptance.
 Source, Endpoint and forward-replacement signing plans are refused by this
 initial-only purpose.
+
+The separate forward purpose accepts schema
+`ardents-forwarding-forward-release-plan-v1` and a descriptor version strictly
+greater than the exact complete eight-file predecessor distribution. The same
+five private keys must match its original three-of-five Root roles; Root bytes
+remain exact, preserving the independently delivered initial pin. Before any
+forward signature, a fresh diagnostic Release history verifies the predecessor's
+actual coherent Node/Forwarding pair. New Targets, Snapshot and Timestamp versions
+each advance by one with matching version/hash references, then the new pair
+advances that same diagnostic history. Protected predecessor files and namespaces
+remain retained through output. Missing/changed/stale/mixed predecessor authority,
+different keys, exhausted metadata versions or non-forward descriptors refuse.
+No timestamp-only purpose, Root rotation or Source target enters this operation.
+The public build-plan script's `--forward` switch produces this separate plan
+from actual build records and a forward descriptor, without JSON editing. Its
+signatures and diagnostic floors remain separate from Installation's actual
+retained trust, stopped replacement, subsequent explicit Start and bootstrap
+acceptance. Existing partial output or diagnostic history is never reused.
 
 The Linux-amd64 component commands below implement the Source artifact boundary
 under accepted ADR-0123 through direct new owners in `ardents-next`:

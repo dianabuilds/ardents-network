@@ -2165,6 +2165,16 @@ cases, exact source/artifacts/inputs and observed results before installed use.
 | Explicit stop | Deny synchronously, interrupt Receiver/Route, join original users, then purpose roots/Hosting/producer/Guard/key, with State last | Held borrower/native Close, cancellation and late failure retain resources and every original cleanup cause; unavailable completion notice, PID absence or inactive unit is insufficient | Independently proved original domain result and native scope join precede retirement commitment |
 | Explicit restart | Reopen retained State/participation/spend/Hosting/Release histories; fresh independently admitted invocation of the same immutable generation; real contact and final stop | Concurrent restart while predecessor held, unknown join, missing/damaged history or stale Release/time/credential/protection: refuse without initialization or transferred live handles | Preserve account/keys and all histories; new invocation has its own producer/native/startup custody |
 
+Canonical Control has distinct initial and forward Release preparation/signing
+purposes. Forward signing retains the original protected complete eight-file
+predecessor, matches its five Root keys and three-signature roles, and obtains
+genuine coherent Node/Forwarding Release decisions before signing the next pair.
+It preserves original Root bytes and advances Targets/Snapshot/Timestamp versions
+and exact version references by one. Its freshly born diagnostic history is
+separate from the installation's retained trust and floors. Public build-plan
+preparation supports the separate forward schema without JSON editing; it grants
+no signature, initial pin, installed replacement or bootstrap acceptance.
+
 Compatibility with the next lifecycle is deliberately bounded. Resource/program
 replacement requires a strictly forward generation, fresh coherent Release pair
 and proven predecessor retirement; the first-lifetime path does not implement or

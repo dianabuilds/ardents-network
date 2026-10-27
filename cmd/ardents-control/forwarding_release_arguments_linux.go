@@ -10,12 +10,21 @@ import (
 // Public declarations and existing artifact bytes only. No key, signature,
 // initial pin or qualification fact is manufactured by this preparer.
 func forwardingReleasePlanArguments(args []string, inputs *sourceControlInputs) ([]byte, string, error) {
+	return forwardingReleasePurposeArguments(args, inputs, forwardingReleaseInitial)
+}
+
+func forwardingReleasePurposeArguments(args []string, inputs *sourceControlInputs, purpose forwardingReleasePurpose) ([]byte, string, error) {
 	if inputs == nil {
 		return nil, "", errSourceControlInput
 	}
 	set := flag.NewFlagSet("forwarding prepare-release-plan", flag.ContinueOnError)
 	set.SetOutput(io.Discard)
 	p := forwardingReleasePlan{Schema: "ardents-forwarding-initial-release-plan-v1"}
+	if purpose == forwardingReleaseForward {
+		p.Schema = "ardents-forwarding-forward-release-plan-v1"
+	} else if purpose != forwardingReleaseInitial {
+		return nil, "", errSourceControlInput
+	}
 	var reference, expires, programCustom, generationCustom, destination string
 	set.StringVar(&p.Network, "network", "", "approved software network declaration")
 	set.StringVar(&reference, "reference", "", "current UTC RFC3339 time")
@@ -50,7 +59,7 @@ func forwardingReleasePlanArguments(args []string, inputs *sourceControlInputs) 
 	if err != nil {
 		return nil, "", err
 	}
-	if _, err = decodeForwardingReleasePlan(raw, time.Now().UTC()); err != nil {
+	if _, err = decodeForwardingReleasePurpose(raw, time.Now().UTC(), purpose); err != nil {
 		return nil, "", err
 	}
 	var files [3][]byte

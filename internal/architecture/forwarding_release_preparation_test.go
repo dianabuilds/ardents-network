@@ -74,6 +74,17 @@ from datetime import datetime, timedelta, timezone
 tool = runpy.run_path(sys.argv[1])
 assert tool["COMMANDS"] == ("ardents-node", "ardents-control")
 check = tool["check_time_bounds"]
+version = tool["check_release_version"]
+version(1, False)
+for candidate in (2, 3, (1 << 63) - 1):
+    version(candidate, True)
+for candidate, forward in ((0, False), (2, False), (True, False), (1, True), (0, True), (-1, True), (1 << 63, True), (2.0, True)):
+    try:
+        version(candidate, forward)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("foreign Forwarding signing version accepted")
 now = datetime(2026, 10, 27, tzinfo=timezone.utc)
 no_new, terminate = now + timedelta(hours=2), now + timedelta(hours=3)
 for expires in (terminate, now + timedelta(days=7)):

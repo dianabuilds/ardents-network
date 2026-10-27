@@ -39,11 +39,18 @@ def unique(pairs):
 def check_time_bounds(now, expires, no_new, terminate):
     if (not now < no_new < terminate <= expires
             or (expires - now).total_seconds() > 7 * 86400):
-        raise RuntimeError("current finite initial Forwarding purpose bounds required")
+        raise RuntimeError("current finite Forwarding purpose bounds required")
+
+
+def check_release_version(version, forward):
+    if (type(version) is not int or version < 1 or version > (1 << 63) - 1
+            or (version <= 1 if forward else version != 1)):
+        raise RuntimeError("exact initial or strictly forward Forwarding version required")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--forward", action="store_true", help="prepare the separate strictly forward signing purpose; original root/predecessor verification remains with the signer")
     for name in ("build-root", "descriptor", "template", "qualification-evidence", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
     for name in ("network", "expires", "no-new-work-after", "terminate-after", "qualification-evidence-sha256"):
@@ -126,9 +133,9 @@ def main():
     template = read(p.template, 64 << 10)
     program = p.build_root / "build-1" / "ardents-node"
     version = descriptor.get("release_version")
+    check_release_version(version, p.forward)
     exact(descriptor, ("schema", "platform", "release_identity", "release_version", "invocation", "files"))
-    if (type(version) is not int or version != 1
-            or descriptor["schema"] != "ardents-infrastructure-artifact-v1" or descriptor["platform"] != "linux-amd64"
+    if (descriptor["schema"] != "ardents-infrastructure-artifact-v1" or descriptor["platform"] != "linux-amd64"
             or descriptor["invocation"] != "forwarding" or not isinstance(descriptor["release_identity"], str)
             or not descriptor["release_identity"].strip()
             or descriptor["files"] != {"ardents-node-linux-amd64": common["files"]["ardents-node"], "ardents-forwarding.service": sha(template)}):
@@ -159,7 +166,7 @@ def main():
                                            "target_sha256": target_pin} for receipt in receipts]
         return result
 
-    schema = "ardents-forwarding-initial-release-plan-v1"
+    schema = "ardents-forwarding-forward-release-plan-v1" if p.forward else "ardents-forwarding-initial-release-plan-v1"
     plan = {"schema": schema, "network": p.network, "reference_time": utc(now), "expires": utc(expires),
             "program": str(program), "descriptor": str(p.descriptor), "template": str(p.template),
             "program_custom": custom(common["files"]["ardents-node"]), "generation_custom": custom(observed[p.descriptor])}

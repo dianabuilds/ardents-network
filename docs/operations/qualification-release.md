@@ -48,6 +48,21 @@ Decision6 remain mandatory before installed execution. Source build/plan
 schemas and its signer cannot authorize this purpose. Forward replacement,
 Timestamp refresh and other Node roles are outside this initial producer.
 
+For a separately admitted forward Release, invoke this same public plan tool
+with `--forward` and a strictly forward Forwarding descriptor. It preserves
+the actual build/claim/evidence and safety checks and emits only schema
+`ardents-forwarding-forward-release-plan-v1`. Canonical Control's distinct
+`forwarding sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA
+FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION` requires the exact eight-file
+predecessor, matches the same five keys to its original Root and authenticates
+its actual coherent Node/Forwarding pair before signing. Root bytes remain
+unchanged; Targets/Snapshot/Timestamp and their exact version references advance
+by one. New metadata is independently verified in that fresh diagnostic history
+before output. This is offline preparation, not an installation history or first
+pin, a stopped replacement, original-prefix recovery or bootstrap acceptance.
+The installed replacement/recovery campaign still needs its own completed exact
+receipt and separate direct acceptance before execution.
+
 ## Source infrastructure artifact component
 
 `python3 -I -S scripts/installation/build-source-candidate.py
