@@ -353,6 +353,18 @@ spend history and noncreating participation. It requires separately proved prior
 retirement and installed startup at composition; these mechanisms alone supply
 no accepting installed transaction or qualification.
 
+Stopped-history observation remains with each semantic owner. State's separate
+`NodeInspection` authenticates retained signed/security/time/profile/member
+history and requires no participation producer record, sharing only independent
+native read mechanisms with the distinct Source exposure inspection. It returns
+copied binding facts, no RuntimeView or mutable root. Spending independently
+retains exact complete receiving history without creation, repair, prune or burn;
+Hosting independently retains the original policy/period and requires zero
+reservations without charging or refunding. Each inspection keeps its original
+leases through reader and physical joins. These components supply neither an
+original Node domain-join proof nor Release/Installation permission; replacement,
+recovery and their genuine lifecycle consumers retain separate boundaries.
+
 The [accepted installed infrastructure contract](../technical/network-route-node.md#proposed-installed-infrastructure)
 separately inventories the actual Source and five Node consumers, provisioning,
 external inputs, command/build/recovery callers and missing installed mechanisms.

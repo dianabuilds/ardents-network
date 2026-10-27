@@ -15,22 +15,23 @@ import (
 	"syscall"
 )
 
-// SourceInspection owns independent read-only descriptors and an existing
-// exclusive State lease. It exposes no mutation, initialization or recovery.
-// State alone authenticates the returned bytes and decides currentness.
-type SourceInspection struct {
+// Inspection owns independent read-only descriptors and an existing exclusive
+// State lease. It exposes no mutation, initialization, recovery or role policy.
+// State alone authenticates returned bytes and decides currentness; its owning
+// inspection serializes these reads and Check before joining this physical Close.
+type Inspection struct {
 	ctx        context.Context
 	root       *Root
 	lease      *os.File
-	entries    map[string]*sourceInspectionEntry
-	order      []*sourceInspectionEntry
+	entries    map[string]*inspectionEntry
+	order      []*inspectionEntry
 	parents    map[string]*os.File
 	parentInfo map[string]os.FileInfo
 	uid, gid   uint32
 	terminal   error
 }
 
-type sourceInspectionEntry struct {
+type inspectionEntry struct {
 	path   string
 	file   *os.File
 	info   os.FileInfo
@@ -38,14 +39,14 @@ type sourceInspectionEntry struct {
 	names  []string
 }
 
-// OpenSourceInspection never creates a missing marker, lease, pointer or file.
+// OpenInspection never creates a missing marker, lease, pointer or file.
 // Every retained leaf/ancestor has its own descriptor through joined Close;
 // descriptor/resource exhaustion refuses without deleting or pruning history.
-func OpenSourceInspection(ctx context.Context, path string, limits Limits) (result *SourceInspection, err error) {
+func OpenInspection(ctx context.Context, path string, limits Limits) (result *Inspection, err error) {
 	if ctx == nil || ctx.Err() != nil || !filepath.IsAbs(path) || filepath.Clean(path) != path || os.Geteuid() != 0 || limits.EpochBytes <= 0 || limits.RecordBytes <= 0 || limits.ClosedProfileBytes <= 0 {
-		return nil, errors.New("invalid Source State inspection")
+		return nil, errors.New("invalid retained State inspection")
 	}
-	s := &SourceInspection{ctx: ctx, root: &Root{path: path, limits: limits}, entries: map[string]*sourceInspectionEntry{}, parents: map[string]*os.File{}, parentInfo: map[string]os.FileInfo{}}
+	s := &Inspection{ctx: ctx, root: &Root{path: path, limits: limits}, entries: map[string]*inspectionEntry{}, parents: map[string]*os.File{}, parentInfo: map[string]os.FileInfo{}}
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, s.Close())
@@ -61,7 +62,7 @@ func OpenSourceInspection(ctx context.Context, path string, limits Limits) (resu
 		info, e := f.Stat()
 		named, ne := os.Lstat(parent)
 		if e != nil || ne != nil || !os.SameFile(info, named) || !info.IsDir() || info.Mode().Perm()&0022 != 0 || info.Sys().(*syscall.Stat_t).Uid != 0 {
-			return nil, errors.Join(errors.New("Source State ancestor differs"), e, ne)
+			return nil, errors.Join(errors.New("retained State ancestor differs"), e, ne)
 		}
 		s.parentInfo[parent] = info
 		if parent == "/" {
@@ -72,11 +73,11 @@ func OpenSourceInspection(ctx context.Context, path string, limits Limits) (resu
 	if err != nil {
 		return nil, err
 	}
-	rootEntry := &sourceInspectionEntry{path: path, file: f}
+	rootEntry := &inspectionEntry{path: path, file: f}
 	s.order = append(s.order, rootEntry)
 	rootEntry.info, err = f.Stat()
 	if err != nil || rootEntry.info.Mode() != os.ModeDir|0700 {
-		return nil, errors.Join(errors.New("Source State root access differs"), err)
+		return nil, errors.Join(errors.New("retained State root access differs"), err)
 	}
 	native := rootEntry.info.Sys().(*syscall.Stat_t)
 	s.uid, s.gid = native.Uid, native.Gid
@@ -102,17 +103,17 @@ func OpenSourceInspection(ctx context.Context, path string, limits Limits) (resu
 	lock := s.entries[filepath.Join(path, rootLockName)]
 	leaseInfo, err := s.lease.Stat()
 	if err != nil || lock == nil || !os.SameFile(lock.info, leaseInfo) {
-		return nil, errors.Join(errors.New("Source State original lease differs"), err)
+		return nil, errors.Join(errors.New("retained State original lease differs"), err)
 	}
 	return s, s.Check()
 }
 
-func (s *SourceInspection) capture(entry *sourceInspectionEntry) error {
+func (s *Inspection) capture(entry *inspectionEntry) error {
 	if err := s.ctx.Err(); err != nil {
 		return err
 	}
 	if len(s.entries) >= maximumRootStableEntries+maximumStateGenerations*70+maximumControlGenerations*2+32 {
-		return errors.New("Source State inspection inventory bound exceeded")
+		return errors.New("retained State inspection inventory bound exceeded")
 	}
 	s.entries[entry.path] = entry
 	info, err := entry.file.Stat()
@@ -121,15 +122,15 @@ func (s *SourceInspection) capture(entry *sourceInspectionEntry) error {
 	}
 	entry.info = info
 	if !s.knownEntry(entry.path, info.IsDir()) {
-		return errors.New("Source State contains an unknown retained entry")
+		return errors.New("retained State contains an unknown retained entry")
 	}
 	native, ok := info.Sys().(*syscall.Stat_t)
 	if !ok || native.Uid != s.uid || native.Gid != s.gid {
-		return errors.New("Source State owner differs")
+		return errors.New("retained State owner differs")
 	}
 	if info.IsDir() {
 		if info.Mode() != os.ModeDir|0700 {
-			return errors.New("Source State directory access differs")
+			return errors.New("retained State directory access differs")
 		}
 		names, err := entry.file.Readdirnames(maximumControlGenerations*2 + maximumStateGenerations*70 + maximumRootStableEntries + 33)
 		if err != nil && err != io.EOF {
@@ -139,12 +140,12 @@ func (s *SourceInspection) capture(entry *sourceInspectionEntry) error {
 		entry.names = names
 		for _, name := range names {
 			if strings.HasPrefix(name, ".stage-") || strings.HasPrefix(name, ".current-") || strings.HasPrefix(name, ".closed-profile-") {
-				return errors.New("Source State has an uncertain retained prefix")
+				return errors.New("retained State has an uncertain retained prefix")
 			}
 			path := filepath.Join(entry.path, name)
 			named, err := os.Lstat(path)
 			if err != nil || named.Mode()&os.ModeSymlink != 0 {
-				return errors.Join(errors.New("Source State entry differs"), err)
+				return errors.Join(errors.New("retained State entry differs"), err)
 			}
 			flags := syscall.O_RDONLY | syscall.O_CLOEXEC | syscall.O_NOFOLLOW | syscall.O_NONBLOCK
 			if named.IsDir() {
@@ -154,7 +155,7 @@ func (s *SourceInspection) capture(entry *sourceInspectionEntry) error {
 			if err != nil {
 				return err
 			}
-			child := &sourceInspectionEntry{path: path, file: os.NewFile(uintptr(fd), path)}
+			child := &inspectionEntry{path: path, file: os.NewFile(uintptr(fd), path)}
 			s.order = append(s.order, child)
 			if err := s.capture(child); err != nil {
 				return err
@@ -162,13 +163,13 @@ func (s *SourceInspection) capture(entry *sourceInspectionEntry) error {
 		}
 		return nil
 	}
-	if !info.Mode().IsRegular() || info.Mode().Perm() != 0600 || native.Nlink != 1 || info.Size() < 0 || info.Size() > max(s.root.limits.EpochBytes, s.root.limits.RecordBytes, s.root.limits.ClosedProfileBytes, 4096) {
-		return errors.New("Source State leaf access or size differs")
+	if info.Mode() != 0600 || native.Nlink != 1 || info.Size() < 0 || info.Size() > max(s.root.limits.EpochBytes, s.root.limits.RecordBytes, s.root.limits.ClosedProfileBytes, 4096) {
+		return errors.New("retained State leaf access or size differs")
 	}
 	h := sha256.New()
 	n, err := io.Copy(h, io.LimitReader(entry.file, info.Size()+1))
 	if err != nil || n != info.Size() {
-		return errors.Join(errors.New("Source State bounded read differs"), err)
+		return errors.Join(errors.New("retained State bounded read differs"), err)
 	}
 	copy(entry.digest[:], h.Sum(nil))
 	return nil
@@ -176,7 +177,7 @@ func (s *SourceInspection) capture(entry *sourceInspectionEntry) error {
 
 // This reader admits only the existing durable layout. An unknown directory
 // must not cause recursive traversal or become an implicitly accepted floor.
-func (s *SourceInspection) knownEntry(path string, directory bool) bool {
+func (s *Inspection) knownEntry(path string, directory bool) bool {
 	relative, err := filepath.Rel(s.root.path, path)
 	if err != nil {
 		return false
@@ -226,28 +227,35 @@ func (s *SourceInspection) knownEntry(path string, directory bool) bool {
 	return err == nil && index >= 0 && index < 64 && parts[3] == fmt.Sprintf("%04d.bin", index)
 }
 
-func (s *SourceInspection) Principal() (uint32, uint32) {
+func (s *Inspection) Principal() (uint32, uint32) {
 	if s == nil {
 		return 0, 0
 	}
 	return s.uid, s.gid
 }
-func (s *SourceInspection) ReadState() (string, []Generation, error) {
+func (s *Inspection) ReadState() (string, []Generation, error) {
 	if s == nil || s.root == nil {
-		return "", nil, errors.New("Source State inspection absent")
+		return "", nil, errors.New("retained State inspection absent")
 	}
 	return s.root.LoadState()
 }
-func (s *SourceInspection) ReadControl() (string, []byte, error) {
+func (s *Inspection) ReadControl() (string, []byte, error) {
 	if s == nil || s.root == nil {
-		return "", nil, errors.New("Source State inspection absent")
+		return "", nil, errors.New("retained State inspection absent")
 	}
 	return s.root.LoadControl()
 }
 
-func (s *SourceInspection) Check() (err error) {
+func (s *Inspection) ReadClosedProfile(generation [32]byte) (ClosedProfileState, []byte, error) {
 	if s == nil || s.root == nil {
-		return errors.New("Source State inspection absent")
+		return ClosedProfileState{}, nil, errors.New("retained State inspection absent")
+	}
+	return s.root.LoadClosedProfile(generation)
+}
+
+func (s *Inspection) Check() (err error) {
+	if s == nil || s.root == nil {
+		return errors.New("retained State inspection absent")
 	}
 	s.root.mu.Lock()
 	defer s.root.mu.Unlock()
@@ -257,9 +265,12 @@ func (s *SourceInspection) Check() (err error) {
 		}
 	}()
 	if s.root.closed || s.terminal != nil {
-		return errors.Join(errors.New("Source State inspection closed"), s.terminal)
+		return errors.Join(errors.New("retained State inspection closed"), s.terminal)
 	}
 	if err := s.ctx.Err(); err != nil {
+		return err
+	}
+	if err := s.nativeRoot(); err != nil {
 		return err
 	}
 	for path, file := range s.parents {
@@ -267,14 +278,14 @@ func (s *SourceInspection) Check() (err error) {
 		named, ne := os.Lstat(path)
 		original := s.parentInfo[path]
 		if e != nil || ne != nil || !os.SameFile(original, opened) || !os.SameFile(original, named) || original.Mode() != named.Mode() || named.Sys().(*syscall.Stat_t).Uid != 0 || named.Sys().(*syscall.Stat_t).Gid != original.Sys().(*syscall.Stat_t).Gid {
-			return errors.Join(errors.New("Source State original ancestor lost"), e, ne)
+			return errors.Join(errors.New("retained State original ancestor lost"), e, ne)
 		}
 	}
 	for _, entry := range s.order {
 		opened, e := entry.file.Stat()
 		named, ne := os.Lstat(entry.path)
-		if e != nil || ne != nil || !sameSourceInspectionFile(entry.info, opened) || !sameSourceInspectionFile(entry.info, named) {
-			return errors.Join(errors.New("Source State original entry lost"), e, ne)
+		if e != nil || ne != nil || !sameInspectionFile(entry.info, opened) || !sameInspectionFile(entry.info, named) {
+			return errors.Join(errors.New("retained State original entry lost"), e, ne)
 		}
 		if _, err := entry.file.Seek(0, io.SeekStart); err != nil {
 			return err
@@ -286,32 +297,57 @@ func (s *SourceInspection) Check() (err error) {
 			}
 			slices.Sort(names)
 			if !slices.Equal(names, entry.names) {
-				return errors.New("Source State original inventory changed")
+				return errors.New("retained State original inventory changed")
 			}
 		} else {
 			h := sha256.New()
 			n, e := io.Copy(h, io.LimitReader(entry.file, entry.info.Size()+1))
 			if e != nil || n != entry.info.Size() || !bytes.Equal(h.Sum(nil), entry.digest[:]) {
-				return errors.Join(errors.New("Source State original bytes changed"), e)
+				return errors.Join(errors.New("retained State original bytes changed"), e)
 			}
 		}
 		opened, e = entry.file.Stat()
 		named, ne = os.Lstat(entry.path)
-		if e != nil || ne != nil || !sameSourceInspectionFile(entry.info, opened) || !sameSourceInspectionFile(entry.info, named) {
-			return errors.Join(errors.New("Source State late entry changed"), e, ne)
+		if e != nil || ne != nil || !sameInspectionFile(entry.info, opened) || !sameInspectionFile(entry.info, named) {
+			return errors.Join(errors.New("retained State late entry changed"), e, ne)
 		}
 	}
 	for _, entry := range s.order {
 		opened, e := entry.file.Stat()
 		named, ne := os.Lstat(entry.path)
-		if e != nil || ne != nil || !sameSourceInspectionFile(entry.info, opened) || !sameSourceInspectionFile(entry.info, named) {
-			return errors.Join(errors.New("Source State final namespace changed"), e, ne)
+		if e != nil || ne != nil || !sameInspectionFile(entry.info, opened) || !sameInspectionFile(entry.info, named) {
+			return errors.Join(errors.New("retained State final namespace changed"), e, ne)
 		}
+	}
+	return s.nativeRoot()
+}
+
+// A same-inode bind mount can change pathname flags without changing the
+// retained descriptor. Both observations and the fresh reader's Close matter.
+func (s *Inspection) nativeRoot() (returned error) {
+	original := s.order[0]
+	var fs syscall.Statfs_t
+	if err := syscall.Fstatfs(int(original.file.Fd()), &fs); err != nil || fs.Type != 0xef53 || fs.Flags&1 != 0 {
+		return errors.Join(errors.New("retained State filesystem differs"), err)
+	}
+	named, err := os.OpenFile(s.root.path, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := named.Close(); err != nil {
+			returned = errors.Join(returned, err)
+		}
+	}()
+	info, err := named.Stat()
+	fsErr := syscall.Fstatfs(int(named.Fd()), &fs)
+	if err != nil || fsErr != nil || !sameInspectionFile(original.info, info) || fs.Type != 0xef53 || fs.Flags&1 != 0 {
+		return errors.Join(errors.New("retained State named filesystem differs"), err, fsErr)
 	}
 	return s.ctx.Err()
 }
 
-func sameSourceInspectionFile(a, b os.FileInfo) bool {
+func sameInspectionFile(a, b os.FileInfo) bool {
 	if a == nil || b == nil || !os.SameFile(a, b) || a.Mode() != b.Mode() || a.Size() != b.Size() {
 		return false
 	}
@@ -320,7 +356,7 @@ func sameSourceInspectionFile(a, b os.FileInfo) bool {
 	return xok && yok && x.Uid == y.Uid && x.Gid == y.Gid && x.Nlink == y.Nlink && x.Ctim == y.Ctim && x.Mtim == y.Mtim
 }
 
-func (s *SourceInspection) Close() error {
+func (s *Inspection) Close() error {
 	if s == nil || s.root == nil {
 		return nil
 	}

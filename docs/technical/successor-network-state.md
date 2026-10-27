@@ -453,6 +453,29 @@ original retirement and replacement transaction; it closes the inspection
 before publishing successful completion. Native component tests belong to
 `network-signing-linux`; they do not establish installed replacement acceptance.
 
+Linux `OpenNodeInspection` is a separate read-only lifetime for an exact Node,
+original numeric principal and complete State/participation configuration. It
+independently acquires existing leases, checks native writable ext4 identities
+and exact private access, authenticates the retained Epoch chain, security and
+pending floors, and joins the accepted signed closed profile to actual Records.
+Trusted time is sampled again after physical reads and profile verification.
+Every participation record blocks this stopped-Node inspection, including an
+expired original Node producer or a Source exposure record. Inspection neither
+prunes that record nor substitutes process exit for its original release.
+Source retains its distinct exposure policy; only independently instantiated
+native custody and signed-history validation are shared as code.
+
+`NodeInspection.Check` returns only copied `NodeHistory` binding facts: Network,
+profile digest, Node/public key and duty generation. It returns no RuntimeView,
+producer, fresh-root fact, mutable root or operation right. The owning consumer
+must retain and recheck the original inspection, independently prove original
+retirement/native context and obtain its separate Release/Installation admission.
+Changed, missing, conflicted or uncertain history denies that lifetime; restoring
+files cannot revive it. Close seals local admission and cancels its own readers
+before waiting, retains the original leases through actual reader/physical joins
+and preserves late failures and original caller cancellation. No recovery,
+pointer repair, pending activation, runtime or installed role is opened here.
+
 `ardents-control source inspect-latest` directly consumes Source's finite
 `InspectLatest` contact. It retains original local public inputs and its own
 protected client key, uses the shared complete declaration/key-separation/mTLS

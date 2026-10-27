@@ -2780,6 +2780,23 @@ substitute for independent review.
 
 ## Ordinary checks
 
+`TestNodeInspectionNative*` in `network/duty` and `network/state` belongs to the
+existing root/ext4 `network-signing-linux` profile. Its explicit owner selection
+is `go test -race -tags network_signing_native ./internal/successor/network/duty ./internal/successor/network/state -run '^Test(Node|Source)InspectionNative' -count=1 -timeout=3m`
+under the original shared development lock and private native TMPDIR. Duty uses
+genuine producer operations and original leases: expired live records cannot be
+cleared by inspection, Source exposure policy cannot admit stopped Node history,
+and missing marker/pointer/floor/lease refuses without repair or initialization.
+Held native readers and actual late Close failure retain the original lease.
+State instead uses independently encoded signed Records/Epoch and ordinary intake,
+canonical public profile preparation plus an isolated test signature, and actual
+closed-profile intake. It checks exact Node binding, foreign profile pin, expiry,
+principal, absent history, copied concurrent checks and a held original clock
+callback across cancellation/Close. No substituted authenticated Header supplies
+that successful chain. Original Source native regressions retain their own policy
+coverage. These controls grant no installed retirement, replacement or recovery
+qualification; explicit bound facts in the Duty-only cases remain local fixtures.
+
 `TestHostingInspectionNative*` is a separate owner selection in the same
 root/ext4 `network-signing-linux` profile:
 `go test -race -tags network_signing_native ./internal/successor/hosting -run '^TestHostingInspectionNative' -count=1 -timeout=2m`.

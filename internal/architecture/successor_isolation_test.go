@@ -134,8 +134,14 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/source_retirement_exchange_linux_test.go",
 			"internal/successor/installation/cgroup/source_quiescence_linux.go",
 			"internal/successor/network/state/source_inspection_linux.go",
-			"internal/successor/network/state/durable/source_inspection_linux.go",
+			"internal/successor/network/state/inspection_state_linux.go",
+			"internal/successor/network/state/node_inspection_linux.go",
+			"internal/successor/network/state/durable/inspection_linux.go",
 			"internal/successor/network/duty/source_inspection_linux.go",
+			"internal/successor/network/duty/inspection_linux.go",
+			"internal/successor/network/duty/node_inspection_linux.go",
+			"internal/successor/admission/spending/inspection_linux.go",
+			"internal/successor/hosting/inspection_linux.go",
 			"internal/successor/network/state/retained_open_linux.go",
 			"internal/successor/network/state/retained_open_linux_test.go",
 			"internal/successor/network/state/durable/retained_open_linux.go",
@@ -203,13 +209,20 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			if tagged {
 				profile.BuildTags = []string{"network_signing_native"}
 			}
-			name := "internal/successor/network/state/source_inspection_native_linux_test.go"
-			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if want := target == "linux" && tagged; selected != want {
-				t.Errorf("Source inspection native profile on %s tagged=%v: %v, want %v", target, tagged, selected, want)
+			for _, name := range []string{
+				"internal/successor/network/state/source_inspection_native_linux_test.go",
+				"internal/successor/network/state/node_inspection_native_linux_test.go",
+				"internal/successor/network/duty/inspection_native_linux_test.go",
+				"internal/successor/admission/spending/inspection_native_linux_test.go",
+				"internal/successor/hosting/inspection_native_linux_test.go",
+			} {
+				selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if want := target == "linux" && tagged; selected != want {
+					t.Errorf("history inspection native profile %s on %s tagged=%v: %v, want %v", name, target, tagged, selected, want)
+				}
 			}
 		}
 	}

@@ -8,4 +8,9 @@
 // continuity, and watermark rollback protection are preserved while the spend
 // records are dropped - but no writer emits version 1, and the first
 // replacement commits version 2.
+// Linux SourceInspection and NodeInspection independently retain existing
+// read-only histories under their original leases. Source permits only retained
+// exposure records; stopped Node inspection permits no producer record at all.
+// Neither policy clears, repairs or initializes history, and native readers join
+// before their original lease returns.
 package duty

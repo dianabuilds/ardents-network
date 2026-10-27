@@ -24,4 +24,8 @@
 // CurrentRuntimeWitness additionally retains an opaque, locally checked
 // original-owner refusal projection. It cannot replace the full observation,
 // and synchronous retirement never changes or revives the immutable view.
+// Linux NodeInspection separately authenticates retained signed/time/security
+// history and stopped participation without opening runtime work. Its copied
+// public binding facts grant no RuntimeView, producer or Installation right;
+// original reader and descriptor joins precede returning its existing leases.
 package state

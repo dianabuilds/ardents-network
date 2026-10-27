@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	"os"
 	"sync"
 
@@ -29,7 +28,7 @@ type sourceInspection struct {
 	cancel      context.CancelFunc
 	config      config
 	clockPath   string
-	state       *durable.SourceInspection
+	state       *durable.Inspection
 	roles       *duty.SourceInspection
 	uid, gid    uint32
 	closed      bool
@@ -61,7 +60,7 @@ func OpenSourceInspection(parent context.Context, input Config) (result SourceIn
 			result = SourceInspection{}
 		}
 	}()
-	s.state, err = durable.OpenSourceInspection(ctx, resolved.root, storageLimits())
+	s.state, err = durable.OpenInspection(ctx, resolved.root, storageLimits())
 	if err != nil {
 		return result, err
 	}
@@ -140,46 +139,9 @@ func (s *sourceInspection) inspect() error {
 	if err := s.roles.Check(); err != nil {
 		return err
 	}
-	name, values, err := s.state.ReadState()
+	current, journal, err := readRetainedInspection(s.config, s.state)
 	if err != nil {
 		return err
-	}
-	current, err := loadCurrentValues(s.config, name, values)
-	if err != nil {
-		return err
-	}
-	if current == nil {
-		return ErrNoCurrentGeneration
-	}
-	control, raw, err := s.state.ReadControl()
-	if err != nil {
-		return err
-	}
-	journal, err := decodeDistributionState(raw)
-	if err != nil || control == "" || distributionDigest(raw) != control || journal.epochFloor != current.Header.Number || journal.epochDigest != current.Header.Digest || journal.conflicting || journal.cycleActive {
-		return errors.Join(errors.New("retained Source security history unavailable without explicit recovery"), err)
-	}
-	if journal.pendingDigest != [32]byte{} {
-		if journal.pendingDigest == current.Header.Digest {
-			return errors.New("retained Source pending state requires explicit recovery")
-		}
-		found := false
-		for _, value := range values {
-			if value.Name != fmt.Sprintf("%x", journal.pendingDigest) {
-				continue
-			}
-			decision, err := loadGeneration(s.config, value, epochPredecessor(current))
-			if err != nil || decision.Header.ValidFrom.Unix() != journal.pendingValidFrom {
-				return errors.Join(errors.New("retained Source pending history differs"), err)
-			}
-			if err := classifyRetainedClosedSchema(s.config, decision.Header, "inspection pending"); err != nil {
-				return err
-			}
-			found = true
-		}
-		if !found {
-			return errors.New("retained Source pending generation missing")
-		}
 	}
 	if err := s.state.Check(); err != nil {
 		return err

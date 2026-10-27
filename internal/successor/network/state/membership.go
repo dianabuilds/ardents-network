@@ -17,15 +17,19 @@ type membership struct {
 }
 
 func (s *networkState) bindCurrentMembership(profile closedprofile.Profile) (membership, error) {
-	bound, err := bindMembership(profile, s.current.Candidates)
+	return bindAcceptedMembership(s.current, profile)
+}
+
+func bindAcceptedMembership(current *epoch.Decision, profile closedprofile.Profile) (membership, error) {
+	bound, err := bindMembership(profile, current.Candidates)
 	if err != nil {
 		return membership{}, err
 	}
-	generation, err := closedProfileGeneration(s.current.Snapshot.Generation)
+	generation, err := closedProfileGeneration(current.Snapshot.Generation)
 	if err != nil {
 		return membership{}, err
 	}
-	header := s.current.Header
+	header := current.Header
 	facts := networkdomain.EpochFacts{Network: header.NetworkID, Number: header.Number, Digest: header.Digest,
 		Previous: header.Previous, ValidFrom: header.ValidFrom, ValidUntil: header.ValidUntil}
 	bound.accepted, err = networkdomain.BindAcceptedState(facts, generation, profileFacts(profile), bound.participants)
