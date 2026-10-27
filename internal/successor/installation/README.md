@@ -6,8 +6,15 @@ Endpoint transactions/startup and Source transactions/startup have separate
 owners and contracts. Manifest-pinned Node/Custody companions do not extend
 Endpoint authority to Source or a Node role. Infrastructure implements Source's
 initial stopped generation, guarded root/non-root startup, explicit stop/restart,
-forward replacement and original-prefix recovery. The five Node roles have no
-accepting installed transaction here.
+forward replacement and original-prefix recovery. Forwarding's distinct initial
+stopped creator and canonical Node consumer retain their own account/birth/
+selection lifetimes. Its separate root first-start producer and independently
+opened non-root Startup retain distinct original custody and root archival/ACK;
+explicit retirement/restart and native installed startup qualification
+remain required. The other four Node roles have no accepting installed
+transaction here. Separate canonical Control consumers can
+prepare Forwarding descriptor and initial-inventory bytes through Infrastructure
+and Enrollment; public preparation supplies no Release or installed authority.
 The [accepted infrastructure contract](../../../docs/technical/network-route-node.md#proposed-installed-infrastructure)
 and [accepted ADR-0123](../../../docs/adr/0123-bind-installed-infrastructure-generations.md)
 separately bind Source artifact admission, native effects and original startup.
@@ -20,6 +27,7 @@ reused as infrastructure permission.
 | `installation` | Две свежие coherent Release authorizations для exact program/generation; независимая initial-pin provenance; private immutable inventory | `cmd/ardents-next/installation.go`, `installation/endpoint` |
 | [`endpoint`](endpoint/README.md) | Request composition, bound generation, original lease/journal/resources, predecessor join, selection/reload, guarded startup и explicit recovery | `cmd/ardents-next/installation.go`, `cmd/ardents-next/installed_endpoint_linux.go` |
 | [`infrastructure`](infrastructure/README.md) | Source artifact admission, closed request/template, native preflight, initial/replacement/recovery transactions, guarded startup and explicit stop/restart | Canonical `cmd/ardents-node/source_installation_linux.go`, `source_installed_linux.go`; public preparation in Control; temporary Next component consumers |
+| `forwarding` | Separate fixed Forwarding request/plan/template policy, original input custody and initial stopped creator; independent bytes and native component controls, with full transaction/startup qualification outstanding | Canonical Control Forwarding public preparation and distinct initial Release signing; canonical Node read-only preflight and initial stopped consumer; Infrastructure retains the distinct artifact pair |
 
 `Authorization` остаётся opaque: соседний пакет не может заполнить private proofs,
 pin или frozen bytes. `Targets` передаёт genuine Release proofs; `Descriptor`,

@@ -19,7 +19,7 @@ func TestSourceReferenceClosePreservesOriginalCancellation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			reference := &sourcePreflight{original: ctx, terminal: test.terminal}
+			reference := &managerReference{original: ctx, terminal: test.terminal}
 			if test.canceled {
 				cancel()
 			}
@@ -28,7 +28,7 @@ func TestSourceReferenceClosePreservesOriginalCancellation(t *testing.T) {
 			if err := reference.local(); err != test.want {
 				t.Fatalf("local check replaced original result: got %v, want %v", err, test.want)
 			}
-			if err := reference.sourceUnavailable(); err != test.want {
+			if err := reference.unavailable(); err != test.want {
 				t.Fatalf("disconnection replaced original result: got %v, want %v", err, test.want)
 			}
 			if err := reference.begin(); err != test.want {
@@ -40,11 +40,11 @@ func TestSourceReferenceClosePreservesOriginalCancellation(t *testing.T) {
 
 func TestSourceCanceledDeclarationPreservesOriginalCause(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
-	reference := &sourcePreflight{original: ctx}
+	reference := &managerReference{original: ctx}
 	cancel()
 	// Failure-only admission: the canceled request must return before touching
 	// a connection. An absent reply is not a malformed received declaration.
-	_, _, err := reference.sourceDeclaration(ctx)
+	_, _, err := reference.managerDeclaration(ctx)
 	if err != context.Canceled {
 		t.Fatalf("original canceled request invented a reply failure: %v", err)
 	}

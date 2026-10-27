@@ -16,7 +16,7 @@ func main() {
 	defer stop()
 	arguments := os.Args[1:]
 	if err := runCommand(ctx, arguments, os.Stdout); err != nil {
-		if completedExplicitSourceStop(err) {
+		if completedExplicitSourceStop(err) || completedExplicitForwardingStop(err) {
 			return
 		}
 		fmt.Fprintln(os.Stderr, err)
@@ -28,13 +28,16 @@ func runCommand(ctx context.Context, arguments []string, output io.Writer) error
 	// Installed Source and its retired selector reach their own admission before
 	// any optional diagnostic socket is opened. Installation is a distinct root
 	// operation, with no process diagnostic side effect either.
-	if len(arguments) > 0 && (arguments[0] == "source" || arguments[0] == "installation") {
+	if len(arguments) > 0 && (arguments[0] == "source" || arguments[0] == "installation" || arguments[0] == "forwarding") {
 		return run(ctx, arguments, output)
 	}
 	return processdiag.Run(ctx, os.Getenv("ARDENTS_DEBUG_SOCKET"), func(workCtx context.Context) error { return run(workCtx, arguments, output) })
 }
 
 func run(ctx context.Context, arguments []string, output io.Writer) error {
+	if len(arguments) > 0 && arguments[0] == "forwarding" {
+		return runForwardingInstallation(ctx, arguments[1:], output)
+	}
 	if len(arguments) > 0 && arguments[0] == "source" {
 		if len(arguments) == 3 && arguments[1] == "--config" {
 			return errOldSourceProfileRetired

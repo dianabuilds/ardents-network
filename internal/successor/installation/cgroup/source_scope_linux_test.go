@@ -33,7 +33,7 @@ func TestSourceScopeOrdinaryFilesCannotSupplyOriginalJoinOrReviveClose(t *testin
 		_ = events.Close()
 		t.Fatal(err)
 	}
-	s := &SourceScope{original: &sourceScope{ctx: t.Context(), pid: uint32(os.Getpid()), kernel: &pin{events: events, identity: info}}}
+	s := &SourceScope{original: &processScope{ctx: t.Context(), pid: uint32(os.Getpid()), kernel: &pin{events: events, identity: info}}}
 	copied := *s
 	t.Cleanup(func() { _ = s.Close() })
 	if joined, err := s.Joined(); joined || err == nil {

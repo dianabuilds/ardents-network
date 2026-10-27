@@ -109,13 +109,24 @@ for the real accepted boundary. Summaries do not override the contract.
 ### R01: Isolate both directions
 
 New Route belongs in the new-domain tree at `internal/successor/route`.
-Its real composition consumer belongs in `cmd/ardents-next`. Exact packages
-require the normal complete registration.
+Its development composition consumer belongs in `cmd/ardents-next`. On
+2026-10-27 the Product Owner directly authorized the narrow canonical installed
+Forwarding exception, recorded in [#542](https://github.com/dianabuilds/ardents-network/issues/542#issuecomment-6436276753):
+only `cmd/ardents-node/forwarding_installed_linux.go` may directly compose new
+Installation/Network/Node owners and `internal/successor/route/role` for this
+installed invocation. Its exact five permitted imports are
+`internal/successor/installation/forwarding`, `internal/successor/network`,
+`internal/successor/network/state`, `internal/successor/node` and
+`internal/successor/route/role`. No other old-command or test consumer, role,
+wrapper, callback, process bridge or shared live root is admitted. All other
+R01 restrictions remain. Bootstrap acceptance remains separately required by
+ADR-0123 Decision 6. Exact packages require normal complete registration.
 
 New Route must not import or execute old `internal/route`, `internal/entry`,
 `internal/endpoint`, `internal/node`, `internal/admission`, `internal/hosting`,
 `internal/service` or another old runtime owner. Old packages, commands and
-tests must not consume new Route. The prohibition includes subpackages,
+tests must not consume new Route, apart from the exact canonical installed
+Forwarding file explicitly admitted above. The prohibition includes subpackages,
 build-tagged code, external-package tests, transitive imports, alias imports,
 wrappers, callback adapters, plugins and local protocol bridges to old runtime.
 Renaming or moving an old bridge to another directory does not make it new.

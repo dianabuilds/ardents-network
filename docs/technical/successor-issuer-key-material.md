@@ -4,6 +4,18 @@ This bounded offline owner prepares immutable RSA keys and an unsigned local
 inventory. It does not appoint an issuer, authenticate State, sign ARDCIP01,
 issue tokens or provide network admission. Admission and Hosting remain separate.
 
+Canonical `ardents-control forwarding prepare-token-keys` is a separate finite
+offline caller of these same `Initialize`, `Open`, `Inventory`, `Check` and
+`Close` contracts. Public flags fix the Network, issuer Node, public Node signer
+and one to six aligned UTC hours. No Node private key is opened. A fresh protected
+enclosing output retains its original birth and public declaration while Admission
+creates the distinct `material` root; only the public inventory is exported into
+the separate `public` directory. The original material lease remains held through
+output readback and closes before input descriptors and acknowledgement. Repeated
+or partial enclosing outputs refuse without adoption, export retry or reset.
+Future preparation and expired intervals remain local material facts, never
+current State, duty, Permission, installed Issuer or bootstrap acceptance.
+
 ## Interface and identity
 
 `Initialize(ctx, root, Binding) error` generates before creating a fresh root.

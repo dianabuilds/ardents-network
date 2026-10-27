@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 )
@@ -69,7 +68,7 @@ func retainSource(ctx context.Context, expected SourceExpected) (*Invocation, er
 	if err != nil {
 		return nil, err
 	}
-	if err = pin.retainSourceNamespaces(ctx); err == nil {
+	if err = pin.retainNamespaces(ctx); err == nil {
 		err = pin.Observe(ctx)
 	}
 	if err == nil && os.Geteuid() == 0 {
@@ -124,40 +123,6 @@ func (pin *Invocation) InterruptSource(ctx context.Context) (bool, error) {
 		return true, failure
 	}
 	return true, ctx.Err()
-}
-
-// Namespace links are intentional kernel links, opened only for the original
-// already matched process. Observe checks the retained proc/start clock around
-// them, so PID reuse cannot select another namespace. Endpoint policy is unchanged.
-func (pin *Invocation) retainSourceNamespaces(ctx context.Context) error {
-	pin.namespaces = make(map[string]*os.File)
-	for _, name := range []string{"mnt", "pid", "cgroup", "uts", "user", "net", "ipc"} {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		file, err := os.OpenFile(filepath.Join("/proc", strconv.FormatUint(uint64(pin.pid), 10), "ns", name), os.O_RDONLY|syscall.O_CLOEXEC, 0)
-		if err != nil {
-			return err
-		}
-		pin.namespaces[name] = file
-	}
-	return pin.observeSourceNamespaces(ctx)
-}
-
-func (pin *Invocation) observeSourceNamespaces(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	for name, file := range pin.namespaces {
-		opened, err := file.Stat()
-		named, pathErr := os.Stat(filepath.Join("/proc", strconv.FormatUint(uint64(pin.pid), 10), "ns", name))
-		var fs syscall.Statfs_t
-		fsErr := syscall.Fstatfs(int(file.Fd()), &fs)
-		if err != nil || pathErr != nil || fsErr != nil || fs.Type != 0x6e736673 || !os.SameFile(opened, named) {
-			return errors.Join(errBinding, err, pathErr, fsErr)
-		}
-	}
-	return ctx.Err()
 }
 
 func sourceInvocationPolicy(expected SourceExpected) invocationPolicy {

@@ -62,7 +62,9 @@ func initializeHosting(path string, policy Policy, reading hostingReading, now t
 	if err != nil {
 		return err
 	}
-	defer root.Close()
+	// The initializer owns this directory through actual close. A late close
+	// failure remains an uncertain initialization, including after readback.
+	defer func() { outcome = errors.Join(outcome, root.Close()) }()
 	policyBytes, err := json.Marshal(policy)
 	if err != nil {
 		return err
@@ -86,16 +88,22 @@ func initializeHosting(path string, policy Policy, reading hostingReading, now t
 }
 
 func createHostingFile(root *os.Root, name string, body []byte) error {
+	_, err := createHostingOriginal(root, name, body)
+	return err
+}
+
+func createHostingOriginal(root *os.Root, name string, body []byte) (os.FileInfo, error) {
 	file, err := root.OpenFile(name, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	count, writeErr := file.Write(body)
 	if writeErr == nil && count != len(body) {
 		writeErr = io.ErrShortWrite
 	}
 	syncErr := file.Sync()
-	return errors.Join(writeErr, syncErr, file.Close())
+	info, statErr := file.Stat()
+	return info, errors.Join(writeErr, syncErr, statErr, file.Close())
 }
 
 func readHostingFile(root *os.Root, name string, maximum int64) ([]byte, error) {

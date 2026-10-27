@@ -34,7 +34,7 @@ func (s *SourceControl) Start() (result SourceJob, err error) {
 	defer r.ioMu.Unlock()
 	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
 	defer cancel()
-	defer func() { err = r.sourceResult(err, ctx) }()
+	defer func() { err = r.managerResult(err, ctx) }()
 	if err = r.local(); err != nil {
 		return result, err
 	}
@@ -44,7 +44,7 @@ func (s *SourceControl) Start() (result SourceJob, err error) {
 	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
 		return result, err
 	}
-	if err = r.matchSourceDeclaration(ctx); err != nil {
+	if err = r.matchManagerDeclaration(ctx); err != nil {
 		return result, err
 	}
 	if err = r.local(); err != nil {
@@ -106,7 +106,7 @@ func (s *SourceControl) Stop(ctx context.Context) (result SourceJob, err error) 
 	if err = r.client.sameOwner(bounded, r.client.manager); err != nil {
 		return result, err
 	}
-	if err = r.matchSourceDeclaration(bounded); err != nil {
+	if err = r.matchManagerDeclaration(bounded); err != nil {
 		return result, err
 	}
 	if err = o.admitSourceStop(bounded); err != nil {
@@ -163,7 +163,7 @@ func (s *sourceControl) admitSourceStop(ctx context.Context) error {
 }
 
 // The selector is private and reached only by the two closed public purposes.
-func (r *sourcePreflight) sourceJob(ctx context.Context, method string) (string, error) {
+func (r *managerReference) sourceJob(ctx context.Context, method string) (string, error) {
 	if method != "org.freedesktop.systemd1.Manager.StartUnit" && method != "org.freedesktop.systemd1.Manager.StopUnit" {
 		return "", ErrInput
 	}
@@ -175,7 +175,7 @@ func (r *sourcePreflight) sourceJob(ctx context.Context, method string) (string,
 		return "", ErrObservation
 	}
 	object, ok := call.Body[0].(dbus.ObjectPath)
-	if !ok || !sourceJobPath(string(object)) {
+	if !ok || !managerJobPath(string(object)) {
 		return "", ErrObservation
 	}
 	return string(object), nil

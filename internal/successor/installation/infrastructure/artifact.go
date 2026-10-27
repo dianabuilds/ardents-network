@@ -39,10 +39,14 @@ type Declaration struct {
 // The template is an immutable release resource; this operation neither renders
 // installation-specific argv/paths nor validates an installed native policy.
 func PrepareDescriptor(identity string, version int64, program, template []byte) ([]byte, error) {
+	return prepareDescriptor(identity, version, program, template, "source", TemplateName)
+}
+
+func prepareDescriptor(identity string, version int64, program, template []byte, invocation, templateName string) ([]byte, error) {
 	if len(identity) > 16<<10 || strings.TrimSpace(identity) == "" || version <= 0 || len(program) == 0 || len(program) > 64<<20 || len(template) == 0 || len(template) > 64<<20 {
 		return nil, ErrInput
 	}
-	d := Declaration{"ardents-infrastructure-artifact-v1", "linux-amd64", identity, version, "source", map[string]string{ProgramName: digest(program), TemplateName: digest(template)}}
+	d := Declaration{"ardents-infrastructure-artifact-v1", "linux-amd64", identity, version, invocation, map[string]string{ProgramName: digest(program), templateName: digest(template)}}
 	raw, err := json.Marshal(d)
 	if err != nil || len(raw)+1 > 16<<10 {
 		return nil, errors.Join(ErrInput, err)
@@ -53,14 +57,18 @@ func PrepareDescriptor(identity string, version int64, program, template []byte)
 // DecodeDescriptor accepts only the selected Source grammar. Other invocations
 // remain refused even though ADR-0123 reserves their exact vocabulary.
 func DecodeDescriptor(raw []byte) (Declaration, error) {
+	return decodeDescriptor(raw, "source", TemplateName)
+}
+
+func decodeDescriptor(raw []byte, invocation, templateName string) (Declaration, error) {
 	var d Declaration
 	if len(raw) == 0 || len(raw) > 16<<10 || json.Unmarshal(raw, &d) != nil {
 		return Declaration{}, ErrInput
 	}
-	if d.Schema != "ardents-infrastructure-artifact-v1" || d.Platform != "linux-amd64" || strings.TrimSpace(d.ReleaseIdentity) == "" || d.ReleaseVersion <= 0 || d.Invocation != "source" || len(d.Files) != 2 {
+	if d.Schema != "ardents-infrastructure-artifact-v1" || d.Platform != "linux-amd64" || strings.TrimSpace(d.ReleaseIdentity) == "" || d.ReleaseVersion <= 0 || d.Invocation != invocation || len(d.Files) != 2 {
 		return Declaration{}, ErrInput
 	}
-	for _, name := range []string{ProgramName, TemplateName} {
+	for _, name := range []string{ProgramName, templateName} {
 		value := d.Files[name]
 		if len(value) != 64 || strings.ToLower(value) != value {
 			return Declaration{}, ErrInput

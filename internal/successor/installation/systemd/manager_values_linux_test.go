@@ -9,7 +9,7 @@ import (
 
 // Reference-frame vectors use the production decoder's scalar-only vocabulary.
 func verifyReferenceFrame(frame []byte, owner string) error {
-	return verifyManagerFrame(frame, owner, false, false)
+	return verifyManagerFrame(frame, owner, false, false, sourceUnitReply)
 }
 
 // Independently encoded property bodies isolate decoder admission only. They
@@ -99,18 +99,18 @@ func TestReadOnlyManagerReplyCannotBroadenReferenceAdmission(t *testing.T) {
 	}
 	frame = append(frame, body...)
 	binary.LittleEndian.PutUint32(frame[4:8], uint32(len(body)))
-	if err := verifyManagerFrame(frame, ":1.2", true, false); err != nil {
+	if err := verifyManagerFrame(frame, ":1.2", true, false, sourceUnitReply); err != nil {
 		t.Fatal("independent original property reply refused", err)
 	}
 	if err := verifyReferenceFrame(frame, ":1.2"); err == nil {
 		t.Fatal("property vocabulary expanded the scalar reference client")
 	}
-	if err := verifyManagerFrame(frame, ":1.3", true, false); err == nil {
+	if err := verifyManagerFrame(frame, ":1.3", true, false, sourceUnitReply); err == nil {
 		t.Fatal("foreign manager supplied original observations")
 	}
 	oversized := bytes.Clone(frame)
 	binary.LittleEndian.PutUint32(oversized[len(frame)-len(body):], ^uint32(0))
-	if err := verifyManagerFrame(oversized, ":1.2", true, false); err == nil {
+	if err := verifyManagerFrame(oversized, ":1.2", true, false, sourceUnitReply); err == nil {
 		t.Fatal("original property frame admitted unchecked nested allocation")
 	}
 }

@@ -21,6 +21,13 @@ type Policy struct {
 	LowWatermarkBytes uint64    `json:"low_watermark_bytes"`
 }
 
+// Validate checks the immutable allowance declaration without observing counters
+// or creating a period. It grants no reservation or initialization provenance.
+func (policy Policy) Validate() error {
+	_, err := policy.limit()
+	return err
+}
+
 // Traffic keeps ingress and egress separate until the actual provider's
 // counted directions are applied. It describes an upper reservation, not a
 // measurement of useful Application bytes or an admission token's authority.

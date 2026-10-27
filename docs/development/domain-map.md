@@ -100,7 +100,10 @@ remain proposed until their current contracts and real consumers are verified.
 ## Supporting mechanisms and composition
 
 Local Node certificate provisioning is one offline supporting composition,
-`ardents-next network prepare-node-certificate`. Network/epoch owns canonical
+`ardents-next network prepare-node-certificate` and the separate canonical
+`ardents-control forwarding prepare-node-certificate`. Canonical Control's fixed
+Node-key birth and public Record preparation/signing supply that latter path
+without JSON editing, fixture-key extraction or delegation. Network/epoch owns canonical
 initial Record bytes, ordinary signature verification and detached public facts.
 Composition owns the closed reviewed purpose, original protected matching Node
 key, standard-library X.509 leaf creation/verification and finite public output.
@@ -194,7 +197,7 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | `admission/issuerprofile/signing` | Independently pinned imported Ed25519 material, original lease/failure/Close and validated issuer-profile signing within Admission | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
-| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route |
+| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Forwarding file admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
 | State/Hosting/Route physical adapters | Byte verification, durable transactions, counters, sockets and Carrier mechanisms under their declared owners | Mechanisms cannot mint authority, reset floors or copy a second domain decision implementation |
 | Installation mutable-directory birth | `installation/directory` retains one original creation caller and private born inode state, exclusively creates caller-admitted paths and synchronizes same-inode account/mode promotion; checked Identity facts are detached, and Matches serves independent installed inspection | Root Installation selects paths/account, admits Release/journal/lease/effects and projects binding facts. Directory creation grants no adoption/recovery, selection, manager or startup authority; shared trusted-root predicates remain with Root lease/fixed/recovery lifetimes |
 | Installation request declarations and original input | `installation/request` owns canonical bounded declarations, detached copies, native direct root-owned input and opaque original byte/inode/access reobservation; the root Request facade is consumed by actual command and transaction composition | No Release authorization, writer lease, journal, account/root creation, generation selection, manager or startup authority. General trusted-path observations remain with root Installation lease/staging/inspection, independently of request provenance |
@@ -213,6 +216,142 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Qualification | Selected Run/workload composition, observers, measurements, completion barriers and retained reports; current `qualification` and `application/streamqualification` | Qualification is a proof producer with its own selected environment, not an ordinary Job, a permission issuer or a runtime domain substitute. A passing module test cannot qualify an installed product |
 
 ## Node composition: original lifetime boundary
+
+The directly authorized installed Forwarding composition is confined to
+`cmd/ardents-node/forwarding_installed_linux.go` and R01's exact five imports.
+It constructs new owners directly, without old-runtime delegation or a shared
+live root. This boundary decision does not accept the bootstrap receipt or
+qualify installed execution; ADR-0123 Decision 6 remains a separate gate.
+
+Forwarding's distinct `installation/forwarding` owner has the fixed installed
+request/plan/template policy, with real canonical Control preparation consumers
+and independent byte vectors. Infrastructure retains its separate opaque artifact
+pair; neither public preparation nor Source Startup grants installed Node rights.
+Canonical Control's separate Forwarding key, public-plan and initial-signing
+consumers retain their own fixed initial purpose and fresh secret/output custody.
+They share physical input/output and key codecs with Source, never its signing
+purpose or Startup. Release independently checks the two exact target proofs
+before public metadata output; that diagnostic supplies no independent initial
+pin, operational build qualification or installed acceptance.
+Its separate canonical Node read-only input preflight observes all five fixed
+Node service/socket slots, original manager/search paths, absent future resources
+and absent shared account, then joins its own native input/manager users. The
+physical manager connection is shared as source code only: every fixed-purpose
+Source or Forwarding owner opens and closes its own original connection. No
+preflight observation grants native mutation, Start or runtime permission.
+The distinct Forwarding initial creator consumes genuine initial Enrollment and
+fresh coherent Release proofs, original input and verifier lifetimes, a fixed
+shared Node account, finite original births and its own stopped unit/selection.
+Four empty semantic roots remain under their respective future owners. Initial
+pending publication follows every original native/input/verifier join. It grants
+no semantic initialization, Source authority, installed startup, generation
+replacement or recovery. Native full-transaction and installed qualification
+remain separate evidence obligations.
+The distinct completed-initial reader independently acquires its own journal
+lease, original files/ancestors and current principal after pending publication.
+It checks the entire birth transcript without reading semantic histories or
+borrowing creator custody. Canonical Node's initial-history verification matches
+a separate fresh Release pair to the same installed targets and joins its own
+users before output. Historical native provenance and fresh artifact permission
+remain separate from manager/process/State admission, Start and independent
+non-root Startup; no Source authority or live root crosses this boundary.
+Independent non-root file observation acquires only its own selected generation,
+credentials, unit and clock/ancestor descriptors under the bound Node principal.
+Its closed byte grammar is shared with root inspection as pure source, without
+a root journal, Release lease, completed-history proof or live handle handoff.
+Actual immutable read-only mounts and four writable directory identities are
+reobserved through retained and freshly named descriptors. File custody alone
+supplies no manager/process/root completion or domain admission; each remains
+with its distinct Startup, native observation or runtime owner.
+Forwarding's separate root manager control and non-root read-only connection
+retain original physical bus custody and closed fixed-unit vocabularies. Root's
+reference and finite native attempts grant no Release or installed admission;
+read-only observations load nothing and cannot borrow Source or root job rights.
+All five Node slots, original manager identity and actual original I/O/Close
+remain native observations. Installation separately compares full running policy
+and process/Startup provenance and owns admission and original completion.
+Its separate root first-start owner freshly reopens initial/native history and
+matches a coherent Release pair, then retains its own unit-search, controller,
+manager/kernel and original process/scope custody. Canonical Node's `forwarding
+start-initial` consumes it directly. Its own exclusive attempt journal records
+births and the original completion/archive before ACK; successful root observer
+joins and writer closes precede pending publication. Full ACK retains handoff
+despite a later error; uncertain/no ACK preserves original native cleanup and
+blocking provenance. This supplies no domain retirement, retained restart reader,
+bootstrap acceptance or installed qualification.
+Forwarding's independent first-start observation reopens the complete ordered
+transcript and its original root:Node completion directory, private files and
+stale socket inode without reconnecting. It acquires its own start/initial leases
+and matches the retained Release directory identity. Canonical read-only start
+history verification consumes it; copied archive facts grant no live process,
+domain/native retirement, Stop or restart permission. Original descriptors and
+uses join before both leases return, with the initial lease last.
+The original Forwarding command reports through its own one-use Startup only
+after Node/Route users, purpose roots/Hosting/producer/Guard/key, State and
+Startup observations have actually joined. Its separate retirement frame binds
+the original startup and fresh root challenge; copied cancellation, a diagnostic
+or process exit cannot create that report. Physical retirement births have their
+own exclusive journal and separate finite directory, preserving first-start
+inventory and partial-prefix refusal. Root retains the decision and independent
+original peer/process/scope, native exit/close and committed retirement proof;
+neither these storage mechanisms nor runtime reporting grants restart authority.
+The root Forwarding stop consumer independently retains the archived
+original proc/pidfd, scope/events, manager and namespace custody before a signal.
+Its actual peer/challenge report, kernel join, two matching native exit rounds
+and observer closes precede independent synced-file readback and final blocker
+publication. The readback retains a present blocker; committed history requires
+absence and a separate exclusive journal lease. The history owner independently
+retains the entire finite start/retirement chain, refusing holes, duplicate
+InvocationIDs and mismatched predecessors. Explicit same-generation restart
+repeats fresh Release/native admission before a new independent Startup; its
+new intent binds the immediately preceding retirement commitment. All earlier
+history leases remain held through new root handoff/Close, without live runtime
+transfer or semantic history initialization. Installed qualification remains a
+separate boundary. No Source live owner crosses it.
+Canonical Control's distinct Forwarding offline State preparation consumes only root-controlled public
+declarations and signed Epoch/materialization/profile bytes under the actual
+Node account. State owns authentication and floors; no Source, Startup, Guard,
+participation, spend or Hosting runtime opens. Original State and physical
+inputs join before output; existing/partial State refuses another initialization.
+This preparation supplies no live duty or installed qualification.
+Canonical Control's Forwarding State-key and Epoch preparation are separate
+offline composition. They retain original protected key/input/output custody;
+new Epoch owns signature, candidate/collision, commitment, assignment and proof
+rules. The exact reviewed genesis and fixed seed are rebuilt before State-key
+use. All signed inputs and one explicitly selected Node materialization cross
+the Source bundle codec as bytes only, without Source serving authority, State
+acceptance, a live root or runtime right. A historical signed Node declaration
+does not renew its past signing reference; the Epoch verifier independently
+requires its signed validity and eligibility.
+Canonical Control's `forwarding prepare-token-keys` is a finite offline caller
+of Admission's existing immutable key-material owner, not an installed Issuer.
+Composition retains the fresh enclosing output and its public binding; Admission
+owns distinct class/hour keys, original material root/lease and public inventory.
+That lease joins before public acknowledgement and original input release.
+No private key, quota, Permission, State or duty authority crosses to composition;
+partial enclosing output cannot be adopted or reset.
+Canonical Control's separate profile preparation/signing consumes the actual
+signed Epoch bundle and public Admission inventory. Network owns exact Record,
+role/issuer/interval joins and closedprofile grammar/transcript/signature;
+composition retains independent public pins, explicit duty refinement and the
+original reviewed bytes before protected State-key use. Detached consistency
+checks grant no State/current-time acceptance, new assignment or runtime right.
+Original input/output and signer users join before acknowledgement; State's
+independent intake, histories and live admission remain mandatory.
+Canonical Control's separate `forwarding prepare-hosting` requests one owned
+Installation effect on its genuine completed, known-born empty allowance root.
+Installation retains the original directory, stopped manager/namespace/principal
+observations and one-use root-only journal/blocker outside the writable budget.
+Hosting alone validates policy/counters and creates its finite files. Installation
+matches their original native births before Node ownership delivery, joins all
+preparation users and only then publishes completion. Root Start independently
+retains the transcript and original immutable pin/lock identities; it transfers
+no live budget or foreign root lease. Partial/repeated/unknown roots refuse.
+This changes no provider allowance, reservation or runtime authority.
+Node's strict retained Forwarding opening consumes Admission's existing-only
+spend history and noncreating participation. It requires separately proved prior
+retirement and installed startup at composition; these mechanisms alone supply
+no accepting installed transaction or qualification.
 
 The [accepted installed infrastructure contract](../technical/network-route-node.md#proposed-installed-infrastructure)
 separately inventories the actual Source and five Node consumers, provisioning,

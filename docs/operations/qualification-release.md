@@ -12,6 +12,42 @@ selects this isolated operation. It does not qualify installation or independent
 distribution. The Release verifier and participant first-pin contract remain
 unchanged. Never use diagnostic keys as the operational release authority.
 
+## Forwarding infrastructure artifact component
+
+`python3 -I -S scripts/installation/build-forwarding-candidate.py
+--source-manifest PATH --source-manifest-sha256 SHA256 --source-revision REVISION
+--output FRESH_OUTPUT` builds exactly `ardents-node` and `ardents-control` twice
+under the outside controller's original development lock and joined build scope.
+The complete read-only source manifest records each file's `sha256` and Git
+`mode` (`100644` or `100755`). The tool checks both bytes and modes, the selected
+Go1.27.3 Linux-amd64 toolchain, module integrity and actual compiled dependency
+closure. It retains both executions, canonical build inputs and a scoped SBOM;
+matching output grants no independent-builder or installed qualification claim.
+An unfinished output is preserved and cannot be adopted. A dirty preliminary
+snapshot uses `snapshot-sha256:<manifest pin>`; final delivery still requires the
+committed exact revision, normal gates and independent source/remote audit.
+
+The separate public transformation is:
+
+```text
+python3 -I -S scripts/installation/prepare-forwarding-release-plan.py --build-root PATH --descriptor PATH --template PATH --network NAME --expires UTC_TIME --no-new-work-after UTC_TIME --terminate-after UTC_TIME --qualification-evidence PATH --qualification-evidence-sha256 SHA256 --output FRESH_OUTPUT
+```
+
+After the build scope joins, deliver the exact records and outputs into
+root-controlled custody. The preparer rechecks both actual command inventories,
+source/input/module/SBOM commitments, a separately reviewed evidence commitment,
+the exact initial Forwarding descriptor and finite safety horizon. It emits
+`forwarding-release-plan.json` for the existing canonical
+`ardents-control forwarding sign-initial-release` consumer. It reads no private
+key and grants no first pin, signature, native installation or runtime right.
+The two named executions remain under project control. Metadata's existing
+`qualified` value describes only the pinned prestart component evidence and
+limits; neither it nor `READY` establishes installed qualification. A completed
+exact public receipt and direct Product Owner acceptance under ADR-0123
+Decision6 remain mandatory before installed execution. Source build/plan
+schemas and its signer cannot authorize this purpose. Forward replacement,
+Timestamp refresh and other Node roles are outside this initial producer.
+
 ## Source infrastructure artifact component
 
 `python3 -I -S scripts/installation/build-source-candidate.py
@@ -448,6 +484,19 @@ operational bootstrap receipt acceptance remains separate under ADR-0120.
 ### Fixed-purpose signing
 
 #### Local Node certificate
+
+Canonical Control's bounded Forwarding path uses `forwarding prepare-node-key`,
+`prepare-node-record`, `sign-node-record` and `prepare-node-certificate` as
+specified in the [command reference](../reference/commands.md). The public flags
+produce the canonical `ardents-forwarding-node-record-plan-v1` declaration and
+unsigned Record; no hidden JSON editing or fixture-key extraction is required.
+Its frozen reference and original Node facts enforce the same time, secret,
+X.509 and joined-output rules below. The certificate command consumes that exact
+declaration, signed Record, reviewed signed-Record SHA-256, protected Node key and
+fresh output. Public receipts explicitly mark State acceptance, installed
+qualification and runtime authority false. This separate canonical composition
+calls only the new Epoch owner and native mechanisms; no Next process or old
+runtime supplies its successful authority.
 
 `ardents-next network prepare-node-certificate <public-plan> <signed-record>
 <reviewed-record-sha256> <original-node-key> <fresh-output-directory>` produces

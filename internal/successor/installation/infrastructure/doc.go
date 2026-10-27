@@ -1,6 +1,9 @@
 //go:build linux
 
-// Package infrastructure binds exact Source artifact bytes to two fresh coherent
+// Package infrastructure prepares separate Source and Forwarding public artifact
+// descriptors, with exact invocation-specific inventories. Forwarding preparation
+// grants no installed transaction, startup or runtime permission.
+// It binds exact Source artifact bytes to two fresh coherent
 // Release authorizations and separate Enrollment initial provenance. It owns
 // Source-specific read-only preflight policy, original input custody and closed
 // template rendering and one initial stopped installation transition with its

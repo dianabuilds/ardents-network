@@ -1,5 +1,183 @@
 # Command reference
 
+`ardents-control forwarding prepare-profile --network-id HEX32
+--authority-key HEX32 --issuance-authority-key HEX32 --bundle ABSOLUTE_BUNDLE
+--token-inventory ABSOLUTE_PUBLIC_INVENTORY --duty NODE_HEX32:DOMAIN:SUBROLE
+--output FRESH_ABSOLUTE_DIRECTORY` prepares only the initial signed Epoch's
+closed profile. Repeat `--duty` up to 32 times in canonical Node-ID order;
+every other option is required once. Domains/subroles are the existing closed
+profile numbers. No role or family is selected automatically. The genuine
+canonical token-key producer's public inventory supplies the fixed aligned
+interval and keys; its issuer/public Node signer must match the actual Epoch.
+The State pin and separate permission authority pin must be independently
+reviewed. The exact signed Epoch, canonical key cohorts, Record references,
+domain assignments and profile interval are verified before output. On protected
+root-owned ext4, fresh output contains `profile-plan.json` and `profile.unsigned`.
+
+`ardents-control forwarding sign-profile PLAN PREPARED REVIEWED_SHA256 STATE_KEY
+FRESH_OUTPUT` rebuilds that exact original public preparation before reading
+the matching root-owned 0600 PKCS8 State key and writes only `profile.bin`.
+The frozen preparation reference allows five minutes of elapsed time and one
+minute of future skew within the original profile interval; it is never renewed
+by signing. Unknown/duplicate scalar options, changed bytes or pins, conflicting
+roles, stale time, wrong signer and existing/partial output refuse without
+adoption or reset. Receipt SHA names the unsigned/signed artifact respectively;
+State acceptance, runtime authority and installed qualification remain false.
+State must independently authenticate and persist this profile before use.
+
+`ardents-control forwarding prepare-token-keys --network-id HEX32
+--issuer-node-id HEX32 --issuer-node-key HEX32 --start UTC_HOUR --end UTC_HOUR
+--output FRESH_ABSOLUTE_DIRECTORY` prepares one to six aligned UTC hours of
+offline Admission material. Each scalar option is required exactly once. The
+public issuer Node key is explicit; this command opens no Node private key and
+appoints no issuer. Run as root on protected ext4 with an existing root-owned
+0700 output parent. The new output contains `token-key-plan.json`, Admission's
+private `material` root and the separate public `public/token-inventory.json`.
+Only the public inventory SHA-256 and false authority/qualification flags reach
+stdout. Retain the private material root separately from public distribution;
+the public file cannot authorize issuance or replace a Node-signed issuer
+profile or State-signed closed profile. Existing or partial output refuses
+without adoption or reset. Cancellation joins original Admission/native users;
+no installed Node/Issuer, token issuance or bootstrap acceptance occurs.
+
+Canonical Linux `ardents-control forwarding prepare-state-key FRESH_PRIVATE_OUTPUT`
+creates a separate protected `state-key.pem` and returns only its public key.
+It grants no installed trust or State acceptance. `forwarding prepare-epoch`
+requires `--network-id`, `--authority-key`, `--assignment-seed`, `--node-id`,
+`--valid-from`, `--valid-until`, `--domain`, `--record-plan`, `--record` and
+`--output`. Repeat `--domain` in canonical order (1..16), and pair each of 1..64
+`--record-plan` paths with the corresponding `--record` in the supplied order.
+These are actual outputs from Node Record preparation/signing; no JSON editing
+or private Node-key read is required. The fixed seed is never redrawn. It writes
+`epoch-plan.json` and `epoch.unsigned`. The selected Node must occur in the exact
+signed inputs; selecting its proof does not select or grant a duty.
+
+`forwarding sign-epoch PLAN PREPARED REVIEWED_SHA256 STATE_KEY FRESH_OUTPUT`
+rebuilds exact AREP-v3 genesis bytes, matches the reviewed unsigned commitment,
+and only then admits the protected matching State key. This bounded producer
+supports one explicit State authority and threshold one; it neither changes
+runtime trust nor weakens another configured threshold. New Epoch verifies the
+actual signature and every signed Record. Output is exactly `epoch.bin`,
+`material.bin` and `state-bundle.bin`, containing all inputs and one verified
+proof for the explicitly selected Node, including a nonzero candidate index.
+Original reference/current time checks, exclusive output and joined key/input
+custody remain mandatory through acknowledgement. Historical Node declaration
+references authenticate no current operation; their signed facts must still
+cover the Epoch under its owning verifier. Receipts mark State acceptance,
+installed qualification and runtime authority false. There is no Source serving
+right, automatic successor, assignment redraw or output adoption.
+
+Canonical Linux `ardents-control forwarding prepare-node-key FRESH_PRIVATE_OUTPUT`
+creates one protected `node-key.pem` and prints only its public key. It creates
+no NodeID, effective family, State authority or membership.
+`forwarding prepare-node-record` requires exactly `--network-id`, `--node-id`,
+`--node-key`, `--family`, `--endpoint`, `--valid-from`, `--valid-until`,
+`--capacity` and `--output`. Network ID, NodeID and public key are separately
+supplied lowercase 32-byte hex values. The endpoint is canonical literal-IP TCP with an unprivileged
+port; validity is whole-second UTC RFC3339, at most seven days. Capacity is
+1..1024. It creates `node-record-plan.json` and `node-record.signing-input` in
+fresh protected output, without opening a private key or assigning a duty.
+
+`forwarding sign-node-record PLAN PREPARED REVIEWED_SHA256 NODE_KEY FRESH_OUTPUT`
+reconstructs the exact unsigned Record from that public plan and matches the
+reviewed SHA-256 before admitting the original protected matching Node key.
+It writes only `node-record.bin`. Then `forwarding prepare-node-certificate
+PLAN SIGNED_RECORD REVIEWED_SHA256 NODE_KEY FRESH_OUTPUT` verifies the entire
+signed Record and writes only `node-certificate.pem`. Each frozen preparation
+reference must remain within five minutes past/one minute future and inside
+the original validity interval through final acknowledgement. Outputs are
+exclusive; existing or partial output is never adopted or overwritten. Public
+receipts mark State acceptance, installed qualification and runtime authority
+false. These are fixed offline Node purposes, with no Source/Next backend,
+generic signer, exported private key or accepting State/process right.
+
+On Linux, canonical `ardents-control forwarding prepare-descriptor
+<release-identity> <positive-version> <program> <unit-template> <fresh-output>`
+writes `infrastructure-forwarding.json`. `ardents-control forwarding
+prepare-inventory <seven-file-directory> <fresh-output>` writes the separate
+`infrastructure-enrollment.json`; the input directory contains exactly the Node
+program, Forwarding template/descriptor and four Release metadata files. Both
+operations require root-controlled original inputs/ancestors and create exclusive
+protected output. Their public SHA-256 result confirms byte preparation only;
+it grants no signature, first-pin provenance, installation or runtime right.
+`forwarding prepare-hosting` runs once as root after completed stopped
+installation, before the first start. Supply exactly `--binding`, `--provider`,
+`--start`, `--end`, `--unit`, `--quantity`, `--directions`, `--interfaces`,
+`--initial-used-bytes` and `--low-watermark-bytes`. Dates use RFC3339 whole
+seconds; interfaces are comma-separated actual names. The original binding
+selects the one already-born host allowance directory; no alternate root option
+exists. Existing contents, any prior invocation or partial preparation refuse.
+It preserves the directory inode, delivers original period files to the Node
+account and retains a separate root-only one-use transcript. Output supplies no
+runtime authority. A failed partial operation cannot reset or retry the period.
+
+`forwarding prepare-state PLAN BUNDLE SIGNED_PROFILE` runs finite offline
+preparation as the `ardents-node` system account. The root-controlled plan comes
+from `forwarding prepare-plan`; the bundle and profile contain independently
+supplied signed public Network inputs. State verifies both and checks the declared
+Node before the command closes its State/input owners and prints
+`state_accepted:true` with `runtime_authority:false`. The State directory must
+already be empty and owned 0700 by that account. Existing/partial directories
+refuse another initialization. This command opens no private key, participation,
+spend or Hosting root and supplies no installed Startup or role authority.
+
+`forwarding prepare-template <fresh-output>` writes the fixed
+`ardents-forwarding.service`. `forwarding prepare-request` requires exactly one
+each of `--installation-root`, `--state-root`, `--participation-root`,
+`--spend-root`, `--hosting-root`, `--credential-directory`, `--plan`,
+`--certificate`, `--private-key`, `--clock` and `--output`. It writes the closed
+`forwarding-request.json` to a separate fresh protected directory. Declared
+runtime/input paths are not opened or created by this preparation.
+`forwarding prepare-plan` requires `--request`, `--output`, `--network-id`,
+`--node-id`, `--profile-authority`, one or more `--authority`, `--threshold`,
+`--work-tx`, `--work-rx`, `--termination-tx`, `--termination-rx` and
+`--retirement-wait-ms`. IDs and independently approved public keys are lowercase
+64-digit hex. Output must be the directory already declared for the request's
+`forwarding-plan.json`; all runtime paths come from that retained request. The
+producer validates canonical declarations and original input custody, not signed
+State, private credentials or sufficient runtime allowance. Missing full Forward
+coverage still refuses before receiving spend at runtime.
+
+The separate Linux Forwarding initial Release producers are:
+
+```text
+ardents-control forwarding prepare-release-keys FRESH_PRIVATE_OUTPUT
+ardents-control forwarding prepare-release-plan --network NETWORK --reference RFC3339 --expires RFC3339 --program NODE --descriptor DESCRIPTOR --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_PLAN_OUTPUT
+ardents-control forwarding sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
+```
+
+Before initial signing, the separate
+[controlled Forwarding build and public-plan tools](../operations/qualification-release.md#forwarding-infrastructure-artifact-component)
+can produce `forwarding-release-plan.json` from two actual Node/Control builds
+and separately pinned prestart evidence. This avoids hand-authoring build claims.
+Use the canonical `sign-initial-release` command above with that plan and fresh
+protected keys. Build records and signatures do not grant independent builders,
+a participant first pin or the separate bootstrap acceptance.
+
+Key preparation creates five distinct Ed25519 PKCS8 files, `release-key-1.pem`
+through `release-key-5.pem`, under exclusive root-owned 0700 native ext4 custody;
+the files are 0600. Its receipt contains only public keys and commitments. Plan
+preparation retains the exact public artifact and reviewed claim files and writes
+`forwarding-release-plan.json` with schema
+`ardents-forwarding-initial-release-plan-v1`. It requires all nine flags exactly
+once, version one, the fixed Forwarding template and an actual static Linux-amd64
+canonical Node executable. It invents no build or qualification claim. The
+public claims must describe the actual artifacts and evidence; component fixture
+claims are not operational qualification or independent builds.
+
+Signing retains that plan, the original five-key directory and protected inputs,
+checks current time, signs the existing Release root/targets/snapshot/timestamp
+metadata with threshold three of five and exactly the Node and Forwarding
+descriptor targets, then obtains two coherent authorizations from Release in a
+separate fresh verification history before publishing metadata. Every input,
+secret and output user joins before success. Partial output remains retained
+and cannot be adopted as a fresh retry. Reference time must be within five
+minutes behind or one minute ahead of current UTC; expiry is later and at most
+seven days after reference. Neither public receipt nor self-verification supplies
+the independently delivered initial pin, installation or bootstrap acceptance.
+Source, Endpoint and forward-replacement signing plans are refused by this
+initial-only purpose.
+
 The Linux-amd64 component commands below implement the Source artifact boundary
 under accepted ADR-0123 through direct new owners in `ardents-next`:
 
@@ -340,6 +518,91 @@ the independently delivered manifest pin argument.
 
 ## `ardents-node`
 
+`forwarding inspect-inputs REQUEST` is a separate root-only Linux read-only
+preflight. It retains the original Forwarding request/plan/TLS files and direct
+ancestors, checks the actual systemd255 manager and all five absent Node
+service/socket slots, absent common account and future runtime destinations,
+then joins its native users before public output. It creates no resource or
+Release history and grants no install, Start or runtime permission.
+
+`forwarding install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK
+REQUEST` directly verifies the actual first Node executable and Forwarding
+inventory, obtains the coherent fresh Release pair, and invokes its distinct
+initial creator. It creates only the fixed shared Node account, empty semantic
+directories, protected credentials, immutable generation and stopped unit. Partial
+or uncertain prefixes refuse ordinary retry and remain repair-required. It does
+not start a runtime or initialize State/spend/Hosting; full native transaction and
+installed startup acceptance remain required.
+
+`forwarding inspect-initial-history DISTRIBUTION HISTORY ENVIRONMENT NETWORK
+BINDING` independently opens the completed initial journal and original files,
+retains its own exclusive lease, checks the current fixed principal and obtains
+fresh coherent Release decisions for the same installed targets. It creates no
+history or semantic root and repairs no partial result. The public result
+`forwarding-initial-history-verified` supplies no runtime authority or current
+manager/invocation admission. Original descriptors and the verifier close before
+that result. This is a separate verification step, not an installed Start.
+
+`forwarding start-initial DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
+directly obtains a fresh coherent Release pair and invokes root's separate
+first-start owner. It repeats original initial/native admission, admits at most
+one fixed-unit Start, verifies the actual non-root peer/process/scope and syncs
+the original archive before ACK. The pending marker is published only after
+root's original observers and writers join. A completion-unavailable notice
+continues waiting for original physical completion; it grants no successful
+start or join. Existing/uncertain attempt storage refuses replay or fresh retry.
+The public `forwarding-initial-start-completed` result grants no transferable
+runtime authority. This command does not supply explicit retirement/restart,
+bootstrap acceptance or installed qualification.
+
+`forwarding inspect-start-history HISTORY BINDING` independently reopens only a
+fully published finite invocation/retirement chain, retains its own initial/start/retirement journal
+leases and checks every original file/socket identity and the retained Release
+history directory. It creates or repairs no history. Its public result
+`forwarding-start-history-verified` has `runtime_authority:false` and
+`retirement_proved:false`; it supplies no current process, Stop or restart right.
+
+`forwarding stop HISTORY BINDING` is the separate root latest-invocation stop
+consumer. It requires complete published start history and independently matched
+original program/process/scope/manager custody. It interrupts only the original
+pidfd, requires the original command's joined-domain report, actual kernel join,
+matching native exit and observer closes, then commits independently reopened
+retirement bytes. Release expiry does not prevent shutdown. A two-minute bound
+may print `forwarding-stop-completion-unavailable`; the command keeps waiting
+for original physical completion. Unknown or partial completion retains blocking
+history. The successful result `forwarding-original-stop-completed` has
+`restart_admitted:false`. It refuses a latest invocation already retired or any
+unknown/partial earlier history. An installed run still requires its exact
+bootstrap acceptance.
+
+`forwarding restart DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING` requires
+the entire retained chain and the latest committed original retirement. It
+repeats fresh coherent Release and actual stopped/native protection checks,
+then starts the next independently admitted invocation of the same immutable
+generation. The new intent commits its immediate predecessor's retirement
+hash; no old live owner transfers. Missing/damaged/held/partial histories refuse,
+and at most 64 retained invocations exist without path reuse or automatic reset.
+
+The non-root `forwarding start-installed BINDING` consumer emits a bounded
+`forwarding.start-installed` event after a failed original lifetime has joined.
+Its `trigger`, `first_owner` and `cleanup_owner` are fixed local categories;
+optional `first_failure` uses Node's existing numeric/category projection, with
+no identities, paths or private error text. This event preserves diagnosis only:
+it grants no domain retirement proof or restart right, and failure to write it
+remains part of the original failed result.
+All installed Forwarding lifecycle events use one original nonblocking native
+descriptor. The listening event has a one-second write bound, shortened by the
+startup caller's deadline or cancellation. Retirement notices and failed joined
+results instead receive a fresh one-second cleanup allowance after caller
+cancellation; they retain no expired runtime authority. Saturated output and
+broken peers remain errors; no detached writer can retain Startup or private
+plan material after command completion.
+Account, credentials and semantic histories remain retained. Its public result
+is `forwarding-same-generation-restart-completed`, with `runtime_authority:false`;
+runtime State/duty and role authority remain separately owned. This command
+selects no generation replacement, recovery continuation, automatic boot or
+restart, and supplies no installed qualification by itself.
+
 The isolated development consumer `ardents-next node forwarding --config <file>`
 starts one original authenticated Forwarding duty on Linux. Its closed input
 contains `network`, `node_id`, `process_profile`, `participation_root`,
@@ -349,7 +612,8 @@ and `retirement_wait_ms` (1..5000). It requires the sole
 [Node/resource owner](../technical/network-route-node.md#forwarding-development-process-profile).
 Roots are canonical, independent and new-domain owned; certificates must match
 the exact signed member. Work must cover the receiving class allowance through
-Hosting before spend. Restart and installed cutover remain unselected.
+Hosting before spend. This development consumer supplies no installed restart
+or cutover acceptance; the separately selected installed contract owns those gates.
 
 `ardents-next node issuer --config <file>` composes one original closed Issuer
 duty under mandatory `ardents-issuer-process-v1` on Linux. It accepts the same

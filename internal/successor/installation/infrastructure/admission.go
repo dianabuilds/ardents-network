@@ -51,7 +51,7 @@ func (a Authorization) InitialFacts() (enrollment.InfrastructureFacts, bool) {
 
 func AuthenticateInitial(ctx context.Context, v *release.Verifier, b enrollment.InfrastructureBundle, input release.Inputs) (Authorization, error) {
 	f, ok := b.Facts()
-	if !ok || ctx == nil || v == nil {
+	if !ok || f.Invocation != "source" || ctx == nil || v == nil {
 		return Authorization{}, ErrInput
 	}
 	floors, err := v.CurrentFloors(ctx)
@@ -76,7 +76,7 @@ func AuthenticateInitial(ctx context.Context, v *release.Verifier, b enrollment.
 
 func AuthenticateCandidate(ctx context.Context, v *release.Verifier, c enrollment.InfrastructureCandidate, input release.Inputs) (Authorization, error) {
 	f, ok := c.Facts()
-	if !ok || ctx == nil || v == nil {
+	if !ok || f.Invocation != "source" || ctx == nil || v == nil {
 		return Authorization{}, ErrInput
 	}
 	floors, err := v.CurrentFloors(ctx)
@@ -112,7 +112,14 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 	if err != nil {
 		return Authorization{}, err
 	}
-	if d.ReleaseIdentity != f.ReleaseIdentity || d.ReleaseVersion != f.ReleaseVersion || d.Files[ProgramName] != digest(program) || d.Files[TemplateName] != digest(template) || !bytes.Equal(root, in.RootBytes) || !bytes.Equal(program, in.Artifact) {
+	return authenticateBoundPair(ctx, v, files, f, in, d, program, template, descriptor, root, GenerationTarget)
+}
+
+// This common immutable-byte/Release operation admits no native role policy.
+// Its two callers independently validate their closed invocation/resources;
+// only their distinct public authorization types can reach native consumers.
+func authenticateBoundPair(ctx context.Context, v *release.Verifier, files inventory, f enrollment.InfrastructureFacts, in release.Inputs, d Declaration, program, template, descriptor, root []byte, target string) (Authorization, error) {
+	if d.Invocation != f.Invocation || d.ReleaseIdentity != f.ReleaseIdentity || d.ReleaseVersion != f.ReleaseVersion || !bytes.Equal(root, in.RootBytes) || !bytes.Equal(program, in.Artifact) {
 		return Authorization{}, ErrBinding
 	}
 	ts, _ := files.File("timestamp.json")
@@ -136,7 +143,7 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 	if !ok {
 		return Authorization{}, errors.Join(ErrAuthorization, fmt.Errorf("program: %s", p.Outcome), p.Err())
 	}
-	in.TargetPath, in.Artifact = GenerationTarget, descriptor
+	in.TargetPath, in.Artifact = target, descriptor
 	g := v.Evaluate(ctx, in)
 	gp, ok := g.Authorization()
 	if !ok {
@@ -145,7 +152,7 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 	pd, pok := pp.AcceptedDecision()
 	gd, gok := gp.AcceptedDecision()
 	ps, gs := sha256.Sum256(program), sha256.Sum256(descriptor)
-	if !pok || !gok || !coherent(pd, gd, d) || !bytes.Equal(pd.Digest, ps[:]) || !bytes.Equal(gd.Digest, gs[:]) {
+	if !pok || !gok || !coherentTarget(pd, gd, d, target) || !bytes.Equal(pd.Digest, ps[:]) || !bytes.Equal(gd.Digest, gs[:]) {
 		return Authorization{}, ErrBinding
 	}
 	// Release owns original closure/cancellation/current-floor admission. Public
@@ -159,8 +166,8 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 	return Authorization{origin: files, program: pp, generation: gp, descriptor: descriptor, executable: program, template: template}, nil
 }
 
-func coherent(p, g release.Decision, d Declaration) bool {
-	return p.Path == ProgramTarget && g.Path == GenerationTarget && p.ReleaseIdentity == d.ReleaseIdentity && g.ReleaseIdentity == d.ReleaseIdentity && p.ReleaseVersion == d.ReleaseVersion && g.ReleaseVersion == d.ReleaseVersion &&
+func coherentTarget(p, g release.Decision, d Declaration, target string) bool {
+	return p.Path == ProgramTarget && g.Path == target && p.ReleaseIdentity == d.ReleaseIdentity && g.ReleaseIdentity == d.ReleaseIdentity && p.ReleaseVersion == d.ReleaseVersion && g.ReleaseVersion == d.ReleaseVersion &&
 		p.Platform == d.Platform && g.Platform == d.Platform && p.Architecture == g.Architecture && p.Environment == g.Environment && p.Network == g.Network && p.ReferenceTime.Equal(g.ReferenceTime) &&
 		p.SourceRevision == g.SourceRevision && p.BuildInputCommitment == g.BuildInputCommitment && p.AttestationPolicy == g.AttestationPolicy && p.Qualification == g.Qualification && p.BuildState == g.BuildState && p.ProtocolPhase == g.ProtocolPhase &&
 		p.BuildSafety == g.BuildSafety && p.Protocol == g.Protocol && p.BuildSafetyNoNewWorkAfter.Equal(g.BuildSafetyNoNewWorkAfter) && p.BuildSafetyTerminateAfter.Equal(g.BuildSafetyTerminateAfter) && p.ProtocolTransitionDeadline.Equal(g.ProtocolTransitionDeadline) &&

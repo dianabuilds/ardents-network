@@ -3,7 +3,6 @@ package systemd
 import (
 	"context"
 	"errors"
-	"strings"
 	"sync"
 	"time"
 
@@ -130,43 +129,18 @@ func (s *SourceStopped) CheckOriginal() (err error) {
 		return err
 	}
 	if !r.client.bus.Connected() {
-		return r.sourceUnavailable()
+		return r.unavailable()
 	}
 	if err = r.client.sameOwner(r.original, r.client.manager); err != nil {
 		return err
 	}
-	if err = r.sourceManagerProperties(); err != nil {
+	if err = r.managerProperties(); err != nil {
 		return err
 	}
 	if err = r.client.sameOwner(r.original, r.client.manager); err != nil {
 		return err
 	}
 	return errors.Join(r.client.transport.socket.SetDeadline(time.Time{}), r.local())
-}
-
-func (r *sourcePreflight) sourceManagerProperties() error {
-	for _, name := range []string{"Version", "UnitPath"} {
-		call, e := r.client.call(r.original, "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties.Get", "org.freedesktop.systemd1.Manager", name)
-		if e != nil {
-			return e
-		}
-		var v dbus.Variant
-		if e = call.Store(&v); e != nil {
-			return e
-		}
-		if name == "Version" {
-			value, ok := v.Value().(string)
-			if !ok || v.Signature().String() != "s" || value != r.version {
-				return ErrObservation
-			}
-		} else {
-			value, ok := v.Value().([]string)
-			if !ok || v.Signature().String() != "as" || strings.Join(value, "\x00") != strings.Join(r.paths, "\x00") {
-				return ErrObservation
-			}
-		}
-	}
-	return nil
 }
 
 // ObserveLoaded obtains detached complete Unit/Service dictionaries on the
@@ -199,7 +173,7 @@ func (s *SourceStopped) ObserveLoaded() (unit, service Properties, err error) {
 	if err = r.client.sameOwner(r.original, r.client.manager); err != nil {
 		return nil, nil, err
 	}
-	if err = r.sourceManagerProperties(); err != nil {
+	if err = r.managerProperties(); err != nil {
 		return nil, nil, err
 	}
 	call, e := r.client.call(r.original, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.LoadUnit", "ardents-source.service")

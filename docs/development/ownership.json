@@ -106,6 +106,27 @@
   ],
   "pr_check_mappings": [
     {
+      "path_prefix": "scripts/installation/run-forwarding-installed.py",
+      "race": false,
+      "owners": [
+        {"package": "internal/architecture", "test_pattern": "^TestForwardingInstalledProfileRequiresExactPreparedScope$"}
+      ]
+    },
+    {
+      "path_prefix": "scripts/installation/build-forwarding-candidate.py",
+      "race": false,
+      "owners": [
+        {"package": "internal/architecture", "test_pattern": "^TestForwardingBuildRecordsAndSourceManifestRules$"}
+      ]
+    },
+    {
+      "path_prefix": "scripts/installation/prepare-forwarding-release-plan.py",
+      "race": false,
+      "owners": [
+        {"package": "internal/architecture", "test_pattern": "^TestForwardingInitialReleasePreparationRequiresCompleteSafetyHorizon$"}
+      ]
+    },
+    {
       "path_prefix": "scripts/diagnostics/",
       "race": true,
       "owners": [

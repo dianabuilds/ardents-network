@@ -13,6 +13,14 @@ import (
 // Installation must already hold independently checked original retirement.
 // It never creates a cgroup, adopts an old events object or interrupts work.
 func CheckSourceQuiescent(ctx context.Context) (err error) {
+	return checkFixedQuiescent(ctx, "ardents-source.service")
+}
+
+// Only fixed-purpose public openers choose these two literal physical scopes.
+func checkFixedQuiescent(ctx context.Context, unit string) (err error) {
+	if unit != "ardents-source.service" && unit != "ardents-forwarding.service" {
+		return errInput
+	}
 	if ctx == nil || os.Geteuid() != 0 {
 		return errInput
 	}
@@ -20,6 +28,7 @@ func CheckSourceQuiescent(ctx context.Context) (err error) {
 		return err
 	}
 	const parentPath = "/sys/fs/cgroup/system.slice"
+	scopePath := parentPath + "/" + unit
 	if err = observeAncestors(parentPath); err != nil {
 		return err
 	}
@@ -42,9 +51,9 @@ func CheckSourceQuiescent(ctx context.Context) (err error) {
 		}
 		return ctx.Err()
 	}
-	fd, err := syscall.Openat(int(parent.Fd()), "ardents-source.service", syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	fd, err := syscall.Openat(int(parent.Fd()), unit, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
 	if errors.Is(err, syscall.ENOENT) {
-		if _, e := os.Lstat(sourceScopePath); !errors.Is(e, os.ErrNotExist) {
+		if _, e := os.Lstat(scopePath); !errors.Is(e, os.ErrNotExist) {
 			return errors.Join(errBinding, e)
 		}
 		return checkParent()
@@ -52,13 +61,13 @@ func CheckSourceQuiescent(ctx context.Context) (err error) {
 	if err != nil {
 		return err
 	}
-	directory := os.NewFile(uintptr(fd), "fresh stopped Source scope")
+	directory := os.NewFile(uintptr(fd), "fresh fixed stopped scope")
 	defer func() { err = errors.Join(err, directory.Close()) }()
 	info, err := directory.Stat()
 	if err != nil || !trustedDirectory(info) {
 		return errors.Join(errBinding, err)
 	}
-	kernel, err := pinFixedScope(ctx, "ardents-source.service")
+	kernel, err := pinFixedScope(ctx, unit)
 	if err != nil {
 		return err
 	}
@@ -71,7 +80,7 @@ func CheckSourceQuiescent(ctx context.Context) (err error) {
 		if e != nil || removed || populated {
 			return errors.Join(errBinding, e)
 		}
-		current, e := os.Lstat(sourceScopePath)
+		current, e := os.Lstat(scopePath)
 		if e != nil || !trustedDirectory(current) || !os.SameFile(info, current) {
 			return errors.Join(errBinding, e)
 		}

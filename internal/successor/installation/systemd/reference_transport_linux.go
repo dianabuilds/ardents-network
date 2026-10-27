@@ -14,20 +14,22 @@ import (
 // The client decoder is never given an unchecked frame or auth line. In
 // particular a finite outer frame alone does not bound nested length fields.
 type referenceTransport struct {
-	socket     *net.UnixConn
-	mu         sync.Mutex
-	closed     bool
-	active     sync.WaitGroup
-	closeOnce  sync.Once
-	closeErr   error
-	readMu     sync.Mutex
-	writeMu    sync.Mutex
-	binary     atomic.Bool
-	owner      atomic.Value // original manager unique bus name, never rebound
-	line       int
-	pending    []byte
-	properties bool        // closed read-only Startup replies; references keep scalar admission
-	sourceJobs atomic.Bool // only fixed root Source control admits canonical job replies
+	socket         *net.UnixConn
+	mu             sync.Mutex
+	closed         bool
+	active         sync.WaitGroup
+	closeOnce      sync.Once
+	closeErr       error
+	readMu         sync.Mutex
+	writeMu        sync.Mutex
+	binary         atomic.Bool
+	owner          atomic.Value // original manager unique bus name, never rebound
+	line           int
+	pending        []byte
+	properties     bool             // closed read-only Startup replies; references keep scalar admission
+	unitReply      managerUnitReply // immutable before the decoder starts
+	sourceJobs     atomic.Bool      // only fixed root Source control admits canonical job replies
+	forwardingJobs atomic.Bool      // distinct fixed root Forwarding control; never Source permission
 }
 
 func (t *referenceTransport) begin() bool {
@@ -95,8 +97,14 @@ func (t *referenceTransport) Read(p []byte) (int, error) {
 			return 0, err
 		}
 		owner, _ := t.owner.Load().(string)
-		if err := verifyManagerFrame(frame, owner, t.properties, t.sourceJobs.Load()); err != nil {
-			return 0, err
+		var frameErr error
+		if t.unitReply == forwardingUnitReply {
+			frameErr = verifyForwardingManagerFrame(frame, owner, t.properties, t.forwardingJobs.Load())
+		} else {
+			frameErr = verifyManagerFrame(frame, owner, t.properties, t.sourceJobs.Load(), t.unitReply)
+		}
+		if frameErr != nil {
+			return 0, frameErr
 		}
 		t.pending = frame
 	}
@@ -146,8 +154,16 @@ func referenceByteOrder(marker byte) (binary.ByteOrder, bool) {
 // Closed scalar reply vocabulary covers Hello/GetNameOwner/RefUnit/UnrefUnit/
 // Ping and broker notifications. Property observations additionally admit the
 // bounded GetAll dictionary grammar. Header variants retain exact scalar types.
-func verifyManagerFrame(frame []byte, owner string, properties, sourceJobs bool) error {
-	if len(frame) < 16 || len(frame) > 65536 {
+func verifyManagerFrame(frame []byte, owner string, properties, sourceJobs bool, reply managerUnitReply) error {
+	return verifyClosedManagerFrame(frame, owner, properties, sourceJobs, false, reply)
+}
+
+func verifyForwardingManagerFrame(frame []byte, owner string, properties, forwardingJobs bool) error {
+	return verifyClosedManagerFrame(frame, owner, properties, false, forwardingJobs, forwardingUnitReply)
+}
+
+func verifyClosedManagerFrame(frame []byte, owner string, properties, sourceJobs, forwardingJobs bool, reply managerUnitReply) error {
+	if len(frame) < 16 || len(frame) > 65536 || reply.object() == "" {
 		return ErrObservation
 	}
 	order, ok := referenceByteOrder(frame[0])
@@ -220,12 +236,13 @@ func verifyManagerFrame(frame []byte, owner string, properties, sourceJobs bool)
 	if properties && frame[1] == 2 && owner != "" && sender == owner && (sig == "v" || sig == "a{sv}") {
 		return verifyManagerValues(frame, int(bodyStart), sig, order)
 	}
-	// SourceStopped's one fixed LoadUnit returns this exact object path. This
-	// closed native reply extension grants no method selector or accepting fact
-	// to preflight/Startup: their own required error/dictionary checks remain.
+	// Each connection admits only its fixed unit's native LoadUnit reply. Job
+	// replies belong only to that purpose's original root control. This grammar
+	// grants no method selector, loaded policy or accepting startup fact.
 	if properties && frame[1] == 2 && owner != "" && sender == owner && sig == "o" {
 		object, pos, err := referenceScalar(frame, int(bodyStart), len(frame), 'o', order)
-		if err != nil || pos != len(frame) || (object != "/org/freedesktop/systemd1/unit/ardents_2dsource_2eservice" && (!sourceJobs || !sourceJobPath(object))) {
+		allowJob := reply == sourceUnitReply && sourceJobs || reply == forwardingUnitReply && forwardingJobs
+		if err != nil || pos != len(frame) || (object != reply.object() && (!allowJob || !managerJobPath(object))) {
 			return ErrObservation
 		}
 		return nil
@@ -246,7 +263,7 @@ func verifyManagerFrame(frame []byte, owner string, properties, sourceJobs bool)
 	return nil
 }
 
-func sourceJobPath(object string) bool {
+func managerJobPath(object string) bool {
 	const prefix = "/org/freedesktop/systemd1/job/"
 	if !strings.HasPrefix(object, prefix) {
 		return false

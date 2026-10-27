@@ -77,6 +77,16 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/successor/admission/receiving.OpenRetained",
+          "internal/successor/admission/spending.OpenRetained"
+        ],
+        "classification": "Linux retained Forwarding composition with portable history tests",
+        "rationale": "The genuine Linux Node retained Forwarding opening consumes receiving.OpenRetained and its strict spending.OpenRetained owner without creating or repairing missing history. Windows has no native Node caller; portable Receiving and Spending tests exercise retained reopen, damaged history, original lease return and no fresh-root authority. No Linux production exception is granted, and both platform test analyses must remain empty.",
+        "owner": "Product Owner and Codex; Admission retained history and original Node lifetime",
+        "retirement": "Remove each exact Windows entry when its owning contract is retired or a separately selected genuine Windows runtime consumer reaches it. Lost Linux production reachability requires repair, not another allowance."
+      },
+      {
+        "symbols": [
           "internal/successor/network/source.InspectLatest"
         ],
         "classification": "Linux native Source inspection composition with portable protocol tests",

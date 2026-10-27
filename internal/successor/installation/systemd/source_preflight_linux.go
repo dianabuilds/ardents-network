@@ -3,13 +3,8 @@ package systemd
 import (
 	"context"
 	"errors"
-	"net"
 	"os"
-	"strconv"
 	"strings"
-	"sync"
-	"sync/atomic"
-	"syscall"
 	"time"
 
 	"github.com/godbus/dbus/v5"
@@ -17,23 +12,7 @@ import (
 
 // SourcePreflight owns one read-only original manager connection. It never
 // loads, references, reloads or starts a unit. Detached paths grant no authority.
-type SourcePreflight struct{ owner *sourcePreflight }
-type sourcePreflight struct {
-	client    startupBus
-	original  context.Context
-	version   string
-	paths     []string
-	mu        sync.Mutex // short admission/result state only
-	ioMu      sync.Mutex // physical observation serialization
-	uses      sync.WaitGroup
-	closeOnce sync.Once
-	closeErr  error
-	closed    atomic.Bool
-	terminal  error
-	// Test-only barrier after actual original manager I/O, before handoff.
-	// No observation or authority can be injected through it.
-	observe func()
-}
+type SourcePreflight struct{ owner *managerReference }
 
 // OpenSourcePreflight returns partial custody after connection acquisition;
 // the creator must Close even after refusal. No bus/name/method is configurable.
@@ -41,81 +20,11 @@ func OpenSourcePreflight(ctx context.Context) (result *SourcePreflight, returned
 	if ctx == nil || os.Geteuid() != 0 {
 		return nil, ErrInput
 	}
-	r, err := openSourceReference(ctx)
+	r, err := openManagerReference(ctx, sourceUnitReply)
 	if r == nil {
 		return nil, err
 	}
 	return &SourcePreflight{owner: r}, err
-}
-
-// Each fixed-purpose Source opener owns a new physical connection. This helper
-// authenticates only the actual caller; it accepts no supplied UID or bus path.
-func openSourceReference(ctx context.Context) (result *sourcePreflight, returnedErr error) {
-	if ctx == nil {
-		return nil, ErrInput
-	}
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-	bounded, cancel := context.WithTimeout(ctx, 3*time.Second)
-	defer cancel()
-	socket, err := (&net.Dialer{}).DialContext(bounded, "unix", "/run/dbus/system_bus_socket")
-	if err != nil {
-		return nil, startupDialFailure(bounded, err)
-	}
-	u, ok := socket.(*net.UnixConn)
-	if !ok {
-		return nil, errors.Join(ErrObservation, socket.Close())
-	}
-	t := &referenceTransport{socket: u, properties: true}
-	r := &sourcePreflight{original: ctx, client: startupBus{transport: t, interruptedIO: new(atomic.Bool)}}
-	result = r
-	defer func() {
-		if returnedErr != nil {
-			r.terminal = returnedErr
-		}
-	}()
-	joined := make(chan struct{})
-	stop := context.AfterFunc(bounded, func() { _ = r.client.interrupt(); close(joined) })
-	defer func() {
-		if !stop() {
-			<-joined
-		}
-		returnedErr = errors.Join(returnedErr, bounded.Err())
-	}()
-	raw, err := u.SyscallConn()
-	if err != nil {
-		return result, err
-	}
-	var peer *syscall.Ucred
-	var native error
-	if err = raw.Control(func(fd uintptr) {
-		peer, native = syscall.GetsockoptUcred(int(fd), syscall.SOL_SOCKET, syscall.SO_PEERCRED)
-	}); err != nil || native != nil || peer == nil || peer.Uid != 0 || peer.Pid <= 0 {
-		return result, errors.Join(ErrObservation, err, native)
-	}
-	deadline, _ := bounded.Deadline()
-	if err = u.SetDeadline(deadline); err != nil {
-		return result, err
-	}
-	r.client.bus, err = dbus.NewConn(t, dbus.WithContext(context.WithoutCancel(ctx)))
-	if err != nil {
-		return result, err
-	}
-	if err = r.client.bus.Auth([]dbus.Auth{dbus.AuthExternal(strconv.Itoa(os.Geteuid()))}); err != nil {
-		return result, err
-	}
-	if err = r.client.bus.Hello(); err != nil {
-		return result, err
-	}
-	if err = r.client.owner(bounded, &r.client.manager); err != nil {
-		return result, err
-	}
-	if !strings.HasPrefix(r.client.manager, ":") || len(r.client.manager) > 255 {
-		return result, ErrObservation
-	}
-	t.owner.Store(r.client.manager)
-	return result, nil
 }
 
 // Check obtains complete fixed namespace observations on the original manager.
@@ -144,19 +53,19 @@ func (reference *SourcePreflight) Check() (pathsResult []string, returnedErr err
 
 // observeAbsent requires the original physical serialization and active-use
 // borrow. Read-only preflight and stopped publication retain separate wrappers.
-func (r *sourcePreflight) observeAbsent() (pathsResult []string, returnedErr error) {
+func (r *managerReference) observeAbsent() (pathsResult []string, returnedErr error) {
 	if err := r.local(); err != nil {
 		return nil, err
 	}
 	if r.client.bus == nil || !r.client.bus.Connected() {
-		return nil, r.sourceUnavailable()
+		return nil, r.unavailable()
 	}
 	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
 	defer cancel()
 	if err := r.client.sameOwner(ctx, r.client.manager); err != nil {
 		return nil, err
 	}
-	version, paths, err := r.sourceDeclaration(ctx)
+	version, paths, err := r.managerDeclaration(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -209,50 +118,6 @@ func (r *sourcePreflight) observeAbsent() (pathsResult []string, returnedErr err
 	return append([]string(nil), paths...), errors.Join(ctx.Err(), r.original.Err())
 }
 
-func (r *sourcePreflight) begin() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.terminal != nil {
-		return r.terminal
-	}
-	if err := r.original.Err(); err != nil {
-		r.terminal = err
-		return err
-	}
-	if r.closed.Load() {
-		return ErrUnavailable
-	}
-	r.uses.Add(1)
-	return nil
-}
-func (r *sourcePreflight) local() error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.terminal != nil {
-		return r.terminal
-	}
-	// An original cancellation may race physical Close while an admitted
-	// observer waits for ioMu. Close's local denial is not a second physical
-	// failure; an earlier terminal failure above still retains precedence.
-	if err := r.original.Err(); err != nil {
-		return err
-	}
-	if r.closed.Load() {
-		return ErrUnavailable
-	}
-	return nil
-}
-
-// A caller can cancel and Close can disconnect the bus after the first local
-// admission check. Reobserve that original denial before synthesizing a missing
-// connection error; an earlier retained failure still has local precedence.
-func (r *sourcePreflight) sourceUnavailable() error {
-	if err := r.local(); err != nil {
-		return err
-	}
-	return ErrUnavailable
-}
-
 // Close first interrupts actual I/O, then joins the original serialized user,
 // library goroutines and transport. Repeated calls retain the same close result.
 func (reference *SourcePreflight) Close() error {
@@ -260,28 +125,4 @@ func (reference *SourcePreflight) Close() error {
 		return nil
 	}
 	return reference.owner.close()
-}
-
-func (r *sourcePreflight) close() error {
-	if r == nil {
-		return nil
-	}
-	r.closeOnce.Do(func() {
-		r.mu.Lock()
-		r.closed.Store(true)
-		r.mu.Unlock()
-		// Mark only this original owner's interruption before closing the socket.
-		// Concurrent calls can then retain its context cause for the induced
-		// net.ErrClosed, while EOF and independent physical failures survive.
-		interrupted := r.client.interrupt()
-		r.uses.Wait()
-		var busErr error
-		if r.client.bus != nil {
-			busErr = r.client.bus.Close()
-		}
-		r.mu.Lock()
-		r.closeErr = errors.Join(r.terminal, interrupted, busErr)
-		r.mu.Unlock()
-	})
-	return r.closeErr
 }

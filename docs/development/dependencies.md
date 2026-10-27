@@ -18,6 +18,14 @@ this release only; unverified exclusion is not release admission.
 
 ### Source build and qualification interpreters
 
+The separate Forwarding controlled-build and public initial-plan tools use the
+same isolated standard-library interpreter surfaces reviewed here. They build
+only the actual Node and Control inventory and retain Forwarding-specific
+records; they call no Source preparer or signer. Their additional `stat` use
+compares source file modes. No Python package, product runtime, TLS, archive or
+private signing dependency is added. Capture the actual interpreter hash and
+package integrity with their final build receipt under the same exact-use rule.
+
 Reviewed 2026-10-22. The separate Source build/public-plan tools use only isolated
 CPython standard-library mechanisms (`-I -S`), with no pip dependencies or product
 Python runtime. The digest-pinned Go image supplies Debian12 Python3.11.2,
@@ -421,6 +429,12 @@ client keeps its preceding scalar-only vocabulary. Property projection consumes
 decoded original variants directly: the client's map Store conversion recreates
 variants from reflected values and can change an ExecStartEx struct signature.
 Native comparison with independent busctl facts is the compatibility oracle.
+An original bus request interrupted by its own canceled context can receive
+either the native socket's closed error or godbus's exact `dbus.ErrClosed`
+sentinel. The private adapter retains that original context cause for either
+form only when its own interruption is recorded. A live or foreign close,
+same-text substitute, EOF, protocol error, joined independent failure and actual
+Close failure remain failures; this never supplies a successful manager fact.
 The v5.2.2 message decoder reads final header padding outside its internal
 panic-to-error boundary. Closing between header decoding and padding therefore
 panics if the transport refuses every remaining read. The private transport
@@ -798,6 +812,13 @@ unsafe, cgo, primitive or dependency/version change is introduced. The dedicated
 canonical process has no other children and retains the launching thread until
 its original coordinator and adopted descendants have physically joined.
 This native mechanism is not recovery authority or installed qualification.
+
+**Forwarding installed QA:** only the new-command test owner
+`cmd/ardents-next/forwarding_installed_native_linux_test.go` additionally uses
+already selected `golang.org/x/sys v0.48.0/unix` for integer-only original pidfd
+acquisition, polling and close. This test-only mechanism grants no production
+Forwarding import, native Start, bootstrap acceptance or installed qualification.
+No dependency version, first-party unsafe or cgo is introduced.
 
 **Windows platform use:** current platform-specific owners use
 `golang.org/x/sys/windows` on Windows to apply a protected DACL granting the

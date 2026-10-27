@@ -82,13 +82,21 @@ func (s *infrastructureSnapshot) file(name string) ([]byte, bool) {
 	return bytes.Clone(raw), ok
 }
 
-func infrastructureNames() []string {
-	return []string{"ardents-node-linux-amd64", "ardents-source.service", "infrastructure-source.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"}
+func infrastructureNames(invocation string) []string {
+	switch invocation {
+	case "source":
+		return []string{"ardents-node-linux-amd64", "ardents-source.service", "infrastructure-source.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"}
+	case "forwarding":
+		return []string{"ardents-forwarding.service", "ardents-node-linux-amd64", "infrastructure-forwarding.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"}
+	default:
+		return nil
+	}
 }
 
 func validInfrastructureFacts(f InfrastructureFacts) bool {
-	// Other invocation contracts have no accepting path in this component.
-	return f.Platform == "linux-amd64" && f.Invocation == "source" && f.ReleaseVersion > 0 && len(f.ReleaseIdentity) <= 16<<10 && strings.TrimSpace(f.ReleaseIdentity) != ""
+	// Only these two exact immutable inventories have current consumers. This
+	// selection grants no role dispatch, native installation or startup right.
+	return f.Platform == "linux-amd64" && len(infrastructureNames(f.Invocation)) == 7 && f.ReleaseVersion > 0 && len(f.ReleaseIdentity) <= 16<<10 && strings.TrimSpace(f.ReleaseIdentity) != ""
 }
 
 // PrepareInfrastructureInventory emits public canonical bytes after all actual
@@ -98,7 +106,7 @@ func PrepareInfrastructureInventory(f InfrastructureFacts, files map[string][]by
 		return nil, ErrInventory
 	}
 	d := infrastructureInventory{"ardents-infrastructure-enrollment-v1", f.Platform, f.ReleaseIdentity, f.ReleaseVersion, f.Invocation, make(map[string]string, 7)}
-	for _, name := range infrastructureNames() {
+	for _, name := range infrastructureNames(f.Invocation) {
 		raw, ok := files[name]
 		if !ok || len(raw) == 0 || int64(len(raw)) > infrastructureLimit(name) {
 			return nil, ErrInventory
@@ -122,7 +130,7 @@ func parseInfrastructureInventory(raw []byte) (infrastructureInventory, error) {
 	if d.Schema != "ardents-infrastructure-enrollment-v1" || !validInfrastructureFacts(f) || len(d.Files) != 7 {
 		return d, ErrInventory
 	}
-	for _, name := range infrastructureNames() {
+	for _, name := range infrastructureNames(f.Invocation) {
 		if !canonicalDigest(d.Files[name]) {
 			return d, ErrInventory
 		}
@@ -136,7 +144,7 @@ func parseInfrastructureInventory(raw []byte) (infrastructureInventory, error) {
 
 func infrastructureLimit(name string) int64 {
 	switch name {
-	case "infrastructure-source.json":
+	case "infrastructure-source.json", "infrastructure-forwarding.json":
 		return 16 << 10
 	case "root.json", "snapshot.json", "targets.json", "timestamp.json":
 		return 1 << 20
@@ -167,7 +175,7 @@ func ReadInfrastructureCandidate(ctx context.Context, root string) (Infrastructu
 	return InfrastructureCandidate{candidate: s}, nil
 }
 
-func checkInfrastructureDirectory(root *os.Root) (err error) {
+func checkInfrastructureDirectory(root *os.Root, invocation string) (err error) {
 	d, err := root.Open(".")
 	if err != nil {
 		return err
@@ -181,7 +189,7 @@ func checkInfrastructureDirectory(root *os.Root) (err error) {
 		return ErrInventory
 	}
 	wanted := map[string]bool{InfrastructureInventoryName: true}
-	for _, name := range infrastructureNames() {
+	for _, name := range infrastructureNames(invocation) {
 		wanted[name] = true
 	}
 	for _, e := range entries {
@@ -267,12 +275,12 @@ func loadInfrastructure(ctx context.Context, path, pin string) (result *infrastr
 	if err != nil {
 		return nil, err
 	}
-	if err := checkInfrastructureDirectory(root); err != nil {
+	if err := checkInfrastructureDirectory(root, d.Invocation); err != nil {
 		return nil, err
 	}
 	files := map[string][]byte{InfrastructureInventoryName: raw}
 	identities := map[string]os.FileInfo{InfrastructureInventoryName: info}
-	for _, name := range infrastructureNames() {
+	for _, name := range infrastructureNames(d.Invocation) {
 		body, fi, err := read(name, infrastructureLimit(name))
 		if err != nil {
 			return nil, err
@@ -287,7 +295,7 @@ func loadInfrastructure(ctx context.Context, path, pin string) (result *infrastr
 			return nil, err
 		}
 	}
-	if err := checkInfrastructureDirectory(root); err != nil {
+	if err := checkInfrastructureDirectory(root, d.Invocation); err != nil {
 		return nil, err
 	}
 	for name, before := range identities {

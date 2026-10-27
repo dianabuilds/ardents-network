@@ -32,23 +32,23 @@ func TestSourceNamespaceMechanismRetainsOwnKernelObjects(t *testing.T) {
 	defer cancel()
 	pin := &Invocation{root: root, pid: uint32(os.Getpid())}
 	defer pin.Close()
-	if err := pin.retainSourceNamespaces(ctx); err != nil {
+	if err := pin.retainNamespaces(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if len(pin.namespaces) != 7 {
 		t.Fatal("incomplete Source namespace inventory")
 	}
-	if err := pin.observeSourceNamespaces(ctx); err != nil {
+	if err := pin.observeNamespaces(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if err := pin.namespaces["mnt"].Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := pin.observeSourceNamespaces(ctx); !errors.Is(err, os.ErrClosed) {
+	if err := pin.observeNamespaces(ctx); !errors.Is(err, os.ErrClosed) {
 		t.Fatalf("original namespace descriptor loss was accepted: %v", err)
 	}
 	cancel()
-	if err := pin.observeSourceNamespaces(ctx); err != context.Canceled {
+	if err := pin.observeNamespaces(ctx); err != context.Canceled {
 		t.Fatalf("original cancellation did not deny namespace observation: %v", err)
 	}
 	if err := pin.Close(); !errors.Is(err, os.ErrClosed) {

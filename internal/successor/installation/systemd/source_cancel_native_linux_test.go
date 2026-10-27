@@ -32,7 +32,7 @@ func TestSourceCanceledObservationCloseNative(t *testing.T) {
 		t.Fatal(err)
 	}
 	cancel()
-	_, _, declarationErr := control.original.reference.sourceDeclaration(ctx)
+	_, _, declarationErr := control.original.reference.managerDeclaration(ctx)
 	closedErr := control.Close()
 	if !sourceReferenceCancellationOnly(declarationErr) || !sourceReferenceCancellationOnly(closedErr) {
 		t.Fatalf("original canceled declaration invented a reply failure: observation=%v cleanup=%v", declarationErr, closedErr)
@@ -68,7 +68,7 @@ func TestSourceCanceledObservationCloseNative(t *testing.T) {
 			reference.ioMu.Lock()
 			defer reference.ioMu.Unlock()
 			defer reference.uses.Done()
-			observed <- reference.sourceUnavailable()
+			observed <- reference.unavailable()
 		}()
 		<-entered
 		cancel()

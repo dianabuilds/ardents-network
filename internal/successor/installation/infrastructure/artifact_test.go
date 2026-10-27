@@ -68,13 +68,13 @@ func TestCoherenceIncludesCommonSafetyAndReference(t *testing.T) {
 	p := release.Decision{Path: ProgramTarget, Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: 1, Floors: release.FloorSet{TargetsVersion: 1, TargetsDigest: make([]byte, 32)}}
 	g := p
 	g.Path = GenerationTarget
-	if !coherent(p, g, d) {
+	if !coherentTarget(p, g, d, GenerationTarget) {
 		t.Fatal("healthy counterpart")
 	}
 	for _, change := range []func(*release.Decision){func(g *release.Decision) { g.Network = "other" }, func(g *release.Decision) { g.AttestationPolicy = "other" }, func(g *release.Decision) { g.BuildState = "revoked" }, func(g *release.Decision) { g.SourceRevision = "other" }, func(g *release.Decision) { g.ReleaseVersion++ }, func(g *release.Decision) { g.Floors.TargetsVersion++ }, func(g *release.Decision) { g.Path = "ardents/linux-amd64/protected-endpoint" }} {
 		other := g
 		change(&other)
-		if coherent(p, other, d) {
+		if coherentTarget(p, other, d, GenerationTarget) {
 			t.Fatal("incoherent pair accepted")
 		}
 	}

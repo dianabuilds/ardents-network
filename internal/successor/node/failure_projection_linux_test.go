@@ -7,11 +7,64 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
 )
+
+func TestForwardingWorkRefusalRetainsOriginalWithoutDenyingInvocation(t *testing.T) {
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(time.Minute))
+	defer cancel()
+	first := errors.New("private token, Target and native path")
+	original := &forwarding{done: make(chan struct{})}
+	handle := &Forwarding{original: original}
+	original.retainWorkRefusal(ctx, "refill", "coverage", time.Now().Add(-time.Second), first)
+	var writers sync.WaitGroup
+	defer writers.Wait()
+	for range 32 {
+		writers.Go(func() { original.retainWorkRefusal(ctx, "admission", "receiving", time.Now(), context.Canceled) })
+	}
+	for range 32 {
+		fact, cause := handle.WorkRefusal()
+		if cause != first || fact == nil || fact.Kind != "refusal" || fact.Phase != "refill-coverage" || fact.ElapsedMS < 1000 || fact.DeadlineRemainingMS == nil {
+			t.Fatal("original failed work observation changed", fact)
+		}
+		fact.Phase = "mutated"
+		*fact.DeadlineRemainingMS = 0
+	}
+	writers.Wait()
+	fact, cause := handle.WorkRefusal()
+	encoded, err := json.Marshal(fact)
+	if err != nil || strings.Contains(string(encoded), "private") || strings.Contains(string(encoded), "Target") || cause != first || fact.Phase != "refill-coverage" || *fact.DeadlineRemainingMS <= 0 {
+		t.Fatal("copy or private cause changed diagnostic custody", string(encoded), err)
+	}
+	if original.denied || original.first != nil || original.result != nil || original.failure.first != nil {
+		t.Fatal("channel refusal changed invocation authority or terminal result")
+	}
+	select {
+	case <-original.done:
+		t.Fatal("work observation manufactured physical completion")
+	default:
+	}
+	close(original.done)
+}
+
+func TestForwardingWorkRefusalAbsenceAndContextRemainDistinct(t *testing.T) {
+	original := &forwarding{}
+	handle := &Forwarding{original: original}
+	original.retainWorkRefusal(t.Context(), "admission", "receiving", time.Now(), nil)
+	if fact, cause := handle.WorkRefusal(); fact != nil || cause != nil {
+		t.Fatal("successful work manufactured a refusal")
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	original.retainWorkRefusal(ctx, "refill", "receiving", time.Now(), ctx.Err())
+	if fact, cause := handle.WorkRefusal(); cause != context.Canceled || fact.Cause != "canceled" || fact.Kind != "refusal" || original.denied {
+		t.Fatal("original canceled work changed invocation admission or cause", fact)
+	}
+}
 
 func TestOriginalFirstFailureProjectionSurvivesCleanupAndCopies(t *testing.T) {
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Minute))

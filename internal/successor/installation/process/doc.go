@@ -1,5 +1,5 @@
 // Package process retains original kernel process observations of the separately
-// fixed installed Endpoint and Source. It owns proc-directory identity, start clock, executable,
+// fixed installed Endpoint, Source and Forwarding. It owns proc-directory identity, start clock, executable,
 // arguments, credentials, cgroup membership and InvocationID observations.
 // Retain is root-only predecessor observation; RetainSelf is limited to the
 // actual non-root calling process. Kernel supplementary groups may contain only
@@ -12,6 +12,13 @@
 // retains its original pidfd; InterruptSource performs only one original
 // SIGTERM, after Installation's independent explicit-stop admission. It grants
 // no manager, startup, retirement or replacement permission.
+// ForwardingExpected and its root/self openers choose only the Forwarding argv
+// and unit. ForwardingInvocation hides the underlying Source-capable type,
+// retains its own root pidfd and shares permanent refusal/joined Close across
+// copies. InterruptForwarding supplies only an original physical SIGTERM;
+// Installation must separately establish stop admission and original domain join.
+// RetainForwardingStop additionally compares the archived original proc inode
+// after fresh fixed-purpose admission; copied archive facts grant no signal right.
 package process
 
 import "errors"

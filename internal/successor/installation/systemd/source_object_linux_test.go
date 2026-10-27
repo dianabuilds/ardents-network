@@ -37,19 +37,19 @@ func sourceObjectReplyVector(owner, path string) []byte {
 func TestSourceObjectReplyRequiresExactOriginalTypedPath(t *testing.T) {
 	const path = "/org/freedesktop/systemd1/unit/ardents_2dsource_2eservice"
 	frame := sourceObjectReplyVector(":1.4", path)
-	if e := verifyManagerFrame(frame, ":1.4", true, false); e != nil {
+	if e := verifyManagerFrame(frame, ":1.4", true, false, sourceUnitReply); e != nil {
 		t.Fatal("exact Source LoadUnit native reply", e)
 	}
-	if verifyManagerFrame(frame, ":1.4", false, false) == nil {
+	if verifyManagerFrame(frame, ":1.4", false, false, sourceUnitReply) == nil {
 		t.Fatal("closed scalar-only reference generalized")
 	}
 	for _, bad := range [][]byte{sourceObjectReplyVector(":1.5", path), sourceObjectReplyVector(":1.4", "/org/freedesktop/systemd1/unit/ardents_2dendpoint_2eservice"), sourceObjectReplyVector(":1.4", path+"x"), sourceObjectReplyVector("org.freedesktop.DBus", path)} {
-		if verifyManagerFrame(bad, ":1.4", true, false) == nil {
+		if verifyManagerFrame(bad, ":1.4", true, false, sourceUnitReply) == nil {
 			t.Fatal("foreign/native object reply accepted")
 		}
 	}
 	for length := 0; length < len(frame); length++ {
-		if verifyManagerFrame(frame[:length], ":1.4", true, false) == nil {
+		if verifyManagerFrame(frame[:length], ":1.4", true, false, sourceUnitReply) == nil {
 			t.Fatal("truncated object reply accepted", length)
 		}
 	}

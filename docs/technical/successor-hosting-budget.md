@@ -18,6 +18,31 @@ directory. All processes must share one root for one allowance. Lost handles
 retain their reservations; no reset, refund recovery or automatic migration is
 provided. Explicitly separate test roots are not multiple production allowances.
 
+An Installation-created empty directory is not an absent fresh root:
+`Initialize` still refuses it. Deleting and recreating that directory would lose
+the original installation birth. Installed preparation must preserve the exact
+original directory, independently prove its fresh birth, and durably exclude a
+second initialization outside the Node-writable allowance root. Copied inode or
+policy facts grant no installation permission. Hosting retains policy,
+measurement and budget-file creation; Installation retains birth admission,
+one-use preparation and start admission. A partial preparation cannot be retried
+as a fresh allowance. Successful initialization includes actual directory close;
+a late close failure retains the uncertain result even after durable readback.
+
+`InitializeFiles` is the Linux-only file-creation effect for that installation
+composition. It borrows the original empty native directory, validates the
+policy and real counters, creates every period file exclusively, and returns
+only their original native birth observations. Those facts grant no installation
+permission or live budget; the caller matches each actual descriptor before
+ownership delivery and joins its own directory. The temporary pending record
+survives an incomplete initial file write; an inserted `budget.json` is never
+overwritten. `Policy.Validate` checks only a declaration. Both ordinary `Open`
+and the absent-path `Initialize` retain their existing refusal boundaries.
+An installation result file or fully written preparation transcript still grants
+no completed preparation while its separate original blocker remains. Actual
+cancellation and late native close errors retain that blocker and cannot be
+cleared by another initializer.
+
 The finite command exposes hosting initialize/observe/hold --config PATH,
 optionally followed by a numeric loopback collector URL. Config files are
 bounded regular files of at most 16 KiB, with exact fields and no duplicates.

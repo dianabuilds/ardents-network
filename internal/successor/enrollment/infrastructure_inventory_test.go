@@ -11,6 +11,49 @@ import (
 	"testing"
 )
 
+func TestForwardingInventoryIndependentCanonicalOracle(t *testing.T) {
+	files := map[string][]byte{}
+	var pairs []string
+	for _, name := range []string{"ardents-forwarding.service", "ardents-node-linux-amd64", "infrastructure-forwarding.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"} {
+		files[name] = []byte("forwarding-public:" + name)
+		sum := sha256.Sum256(files[name])
+		pairs = append(pairs, fmt.Sprintf("%q:%q", name, hex.EncodeToString(sum[:])))
+	}
+	want := []byte("{\"schema\":\"ardents-infrastructure-enrollment-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"one\",\"release_version\":2,\"invocation\":\"forwarding\",\"files\":{" + strings.Join(pairs, ",") + "}}\n")
+	facts := InfrastructureFacts{"linux-amd64", "one", 2, "forwarding"}
+	got, err := PrepareInfrastructureInventory(facts, files)
+	if err != nil || !bytes.Equal(got, want) {
+		t.Fatalf("independent forwarding bytes %q: %v", got, err)
+	}
+	if _, err := parseInfrastructureInventory(want); err != nil {
+		t.Fatal(err)
+	}
+	for _, mutation := range []struct{ before, after string }{
+		{"\"forwarding\"", "\"source\""}, {"\"forwarding\"", "\"issuer\""},
+		{"ardents-forwarding.service", "ardents-source.service"},
+		{"infrastructure-forwarding.json", "infrastructure-source.json"},
+		{"\"files\":", "\"extra\":0,\"files\":"},
+	} {
+		if _, err := parseInfrastructureInventory([]byte(strings.Replace(string(want), mutation.before, mutation.after, 1))); err == nil {
+			t.Fatal("foreign inventory accepted", mutation)
+		}
+	}
+	delete(files, "ardents-forwarding.service")
+	files["ardents-source.service"] = []byte("source")
+	if _, err := PrepareInfrastructureInventory(facts, files); err == nil {
+		t.Fatal("Source resource substituted in Forwarding inventory")
+	}
+	files["ardents-forwarding.service"] = []byte("forwarding")
+	if _, err := PrepareInfrastructureInventory(facts, files); err == nil {
+		t.Fatal("extra inventory accepted")
+	}
+	delete(files, "ardents-source.service")
+	files["infrastructure-forwarding.json"] = bytes.Repeat([]byte("x"), (16<<10)+1)
+	if _, err := PrepareInfrastructureInventory(facts, files); err == nil {
+		t.Fatal("descriptor bound widened")
+	}
+}
+
 func TestInfrastructureInventoryIndependentCanonicalOracle(t *testing.T) {
 	files := map[string][]byte{}
 	var pairs []string

@@ -31,6 +31,35 @@ failure rules belong to the [operation](../operations/qualification-release.md#i
 
 ## Model and invariants
 
+Canonical Control's `forwarding prepare-profile` and `sign-profile` are fixed
+offline initial-profile consumers. Preparation verifies the actual signed Epoch
+bundle under independent Network/State public pins and retains its original
+materialization index. Explicit Node duty declarations are joined to exact signed
+Record digests/generations; Network's `BindMembership` and `BindAcceptedState`
+decide assignment/issuer/interval consistency. The actual public Admission
+inventory must have complete canonical class/hour cohorts and an issuer Node
+signer matching the verified Record. Its local digest grants no authority.
+Closedprofile owns ARDCPR03 grammar and its distinct signing transcript. The
+separately supplied permission authority differs from State and Node keys.
+The signer rebuilds the frozen public plan and compares exact reviewed bytes
+and SHA-256 before opening the original root-protected matching State key.
+Post-signature verification repeats the actual Network join with the signed
+digest. Original native inputs/output, finite time and secret erasure remain
+composition responsibilities. No State/participation root, runtime right,
+Permission, installed Issuer or bootstrap acceptance is created.
+
+Canonical Control's bounded Forwarding preparation has a separate fixed
+`prepare-state-key` and `prepare-epoch`/`sign-epoch` path. It supplies original
+protected State-key custody and public flag adaptation, never a Source backend
+or generic signer. New Epoch alone verifies canonical signed Records, collision
+and authority-key exclusions, commitments, assignments, exact genesis bytes and
+materialization. The command preserves the supplied seed/input order and emits
+one proof for the explicitly named Node with all signed inputs in the existing
+bundle grammar. The public declaration/reference is not current State authority;
+State still owns independent trust, currentness, profile intake and floors.
+The single-authority initial producer selects no weaker accepting runtime mode
+and cannot override another configured threshold or create a successor.
+
 Offline local Node certificate composition consumes the Linux
 `epoch.VerifyInitialClosedRecord` mechanism. It compares the complete signed
 generation-one ARNR-v2 Record with the canonical public preparation and verifies

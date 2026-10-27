@@ -24,6 +24,22 @@
 // observations and command results grant no Release, process, join or startup
 // authority. Installation admits each effect and retains original pins/lease
 // until physical join; this Module never chooses or authorizes a generation.
+// ForwardingStopped independently opens the shared physical manager-reference
+// mechanism, checks all five fixed Node service/socket slots, and may attempt
+// one reload and fixed Forwarding LoadUnit. It never opens a Source lifetime,
+// starts/stops a Node or chooses writable roots. Its complete typed observations
+// leave expected policy, artifact admission and native completion to Forwarding
+// Installation. Each Source/Forwarding owner has its own original connection.
+// Its fixed LoadUnit reply vocabulary is bound before decoder startup. A Source
+// connection refuses Forwarding objects; a Forwarding connection refuses Source,
+// other units and Source job replies. This is native frame validation, not role
+// dispatch or shared policy/authority.
+// ForwardingRuntime independently observes only the fixed Forwarding unit and
+// all five Node slots, without loading, retaining or mutating a unit.
+// ForwardingControl has its own root reference and one fixed Start/cleanup Stop;
+// its native job vocabulary is distinct from Source and every read-only client.
+// Native job replies and fixed references grant neither installed admission nor
+// original domain/process completion. No Source live connection or right crosses.
 // SourcePreflight is a separate fixed read-only Source namespace consumer. Its
 // original connection observes Version/UnitPath and exact missing-unit responses,
 // without LoadUnit/RefUnit, mutation or reconnect. Copies share original caller,

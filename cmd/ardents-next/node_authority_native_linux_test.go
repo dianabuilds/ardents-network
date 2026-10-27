@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/json"
@@ -55,9 +56,13 @@ func TestNativeNodeOriginalAuthorityAndJoinTCP(t *testing.T) {
 	}
 	for _, carrier := range []transport.CarrierProfile{transport.ClosedCarrierTCP} {
 		t.Run(string(carrier), func(t *testing.T) {
-			for index, fault := range []string{"stop", "caller", "stale-measurement", "successor", "profile-conflict", "member-expiry", "startup-cancel"} {
+			for index, fault := range []string{"stop", "caller", "stale-measurement", "successor", "profile-conflict", "member-expiry", "startup-cancel", "deferred-quic"} {
 				t.Run(fault, func(t *testing.T) {
-					f, sockets, certificates := newRouteFixture(t, carrier)
+					selectedCarrier := carrier
+					if fault == "deferred-quic" {
+						selectedCarrier = transport.ClosedCarrierQUIC
+					}
+					f, sockets, certificates := newRouteFixture(t, selectedCarrier)
 					if fault == "member-expiry" {
 						for index := range f.spec.Nodes {
 							if f.spec.Nodes[index].NodeID == [32]byte{12} {
@@ -103,6 +108,23 @@ func TestNativeNodeOriginalAuthorityAndJoinTCP(t *testing.T) {
 					plan.Conflict = changed.Profile
 					path := hostingConfig(t, plan)
 					sockets[[32]byte{12}]()
+					if fault == "deferred-quic" {
+						// A tripwire only: never accept or supply a successful peer.
+						// Historical signed QUIC may not be reinterpreted as TCP.
+						view, err := f.current()
+						if err != nil {
+							t.Fatal(err)
+						}
+						member, err := view.Member([32]byte{12}, view.ObservedAt())
+						if err != nil {
+							t.Fatal(err)
+						}
+						tcp, err := net.Listen("tcp", member.Endpoint)
+						if err != nil {
+							t.Fatal("TCP fallback tripwire unavailable", err)
+						}
+						defer tcp.Close()
+					}
 					unit := fmt.Sprintf("ardents-forwarding-owner-%d-%d.service", os.Getpid(), index)
 					t.Cleanup(func() { _ = exec.Command("systemctl", "stop", unit).Run() })
 					command := exec.CommandContext(t.Context(), "systemd-run", "--quiet", "--wait", "--pipe", "--collect", "--unit="+unit,
@@ -174,10 +196,74 @@ func testNativeOriginalAuthorityChild(t *testing.T, path string) {
 		}
 		return actual, err
 	}
+	var budgetBefore []byte
+	if plan.Fault == "deferred-quic" {
+		budgetBefore, err = os.ReadFile(filepath.Join(plan.Hosting, "budget.json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 	original, err := node.ListenForwarding(ctx, node.ForwardingConfig{Authority: role.Authority{Current: current, Duty: retained, Profile: view.Profile().ProfileBinding},
 		ParticipationRoot: plan.Participation, SpendRoot: plan.Spend, HostingRoot: plan.Hosting, Certificate: plan.Certificate, PrivateKey: plan.PrivateKey,
 		Work: hosting.Traffic{Tx: 32 << 20, Rx: 32 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}})
 	binding := spending.Binding{NetworkID: view.Profile().Network, ProfileDigest: view.Profile().Digest, ReceiverNodeID: member.NodeID, ReceiverDutyGeneration: member.DutyGeneration}
+	if plan.Fault == "deferred-quic" {
+		if original != nil {
+			_ = original.Close()
+			t.Fatal("deferred Carrier returned an original invocation")
+		}
+		var onlyDeferred func(error) bool
+		seenDeferred := false
+		onlyDeferred = func(cause error) bool {
+			if cause == nil {
+				return false
+			}
+			if joined, ok := cause.(interface{ Unwrap() []error }); ok {
+				children := joined.Unwrap()
+				if len(children) == 0 {
+					return false
+				}
+				for _, child := range children {
+					if !onlyDeferred(child) {
+						return false
+					}
+				}
+				return true
+			}
+			if _, wrapped := cause.(interface{ Unwrap() error }); wrapped {
+				return false
+			}
+			switch cause.Error() {
+			case "route Carrier profile is unsupported":
+				seenDeferred = true
+				return true
+			case "original Forwarding assignment unavailable":
+				// The Node's fixed startup context accompanies Authority.Member's
+				// refusal; it is not a physical cleanup wrapper or another cause.
+				return true
+			default:
+				return false
+			}
+		}
+		if member.CarrierProfile != string(transport.ClosedCarrierQUIC) || node.StartupFailure(err) == nil || !onlyDeferred(errors.Unwrap(err)) || !seenDeferred {
+			t.Fatal("actual process Guard/Node did not produce the exact deferred-Carrier refusal", err, errors.Unwrap(err))
+		}
+		if _, err := os.Lstat(plan.Participation); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("deferred Carrier created a producer root", err)
+		}
+		entries, err := os.ReadDir(plan.Spend)
+		if err != nil || len(entries) != 0 {
+			t.Fatal("deferred Carrier opened receiving history", err)
+		}
+		budgetAfter, err := os.ReadFile(filepath.Join(plan.Hosting, "budget.json"))
+		if err != nil || !bytes.Equal(budgetBefore, budgetAfter) {
+			t.Fatal("deferred Carrier opened or changed provider accounting", err)
+		}
+		if nativeOriginalListenerOccupied(t, member) {
+			t.Fatal("deferred Carrier retained a UDP listener")
+		}
+		return
+	}
 	if plan.Fault == "startup-cancel" {
 		if original != nil {
 			_ = original.Close()

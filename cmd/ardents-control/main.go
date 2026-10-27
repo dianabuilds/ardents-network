@@ -16,7 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
 
-const commandUsage = "usage: ardents-control source, inspect-bundle, inspect-transitions, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile, prepare-qualification-evidence, prepare-qualification-catalog, prepare-qualification-node-record, or prepare-qualification-epoch"
+const commandUsage = "usage: ardents-control source, forwarding, inspect-bundle, inspect-transitions, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile, prepare-qualification-evidence, prepare-qualification-catalog, prepare-qualification-node-record, or prepare-qualification-epoch"
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout); err != nil {
@@ -30,6 +30,8 @@ func run(arguments []string, output io.Writer) error {
 		return errors.New(commandUsage)
 	}
 	switch arguments[0] {
+	case "forwarding":
+		return runForwardingControl(arguments[1:], output)
 	case "source":
 		return runSourceControl(arguments[1:], output)
 	case "inspect-bundle":

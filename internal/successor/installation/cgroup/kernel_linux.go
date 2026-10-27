@@ -30,7 +30,8 @@ func pinScope(ctx context.Context, unit string) (result *pin, returnedErr error)
 }
 
 // Callers select a closed purpose before reaching this physical mechanism.
-// Endpoint's scope inventory remains unchanged; Source has its own opener.
+// Endpoint's scope inventory remains unchanged; Source and Forwarding each have
+// their own fixed-purpose opener and original physical custody.
 func pinFixedScope(ctx context.Context, unit string) (result *pin, returnedErr error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

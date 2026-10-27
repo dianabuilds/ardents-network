@@ -637,6 +637,18 @@ defines exact inputs, effects and failure; the certificate supplies neither
 State trust, assignment, currentness nor process admission. Runtime Node and
 Route independently retain their exact member/key, TLS/ALPN and lifetime checks.
 
+Canonical Control exposes the same closed Node certificate profile through
+`forwarding prepare-node-certificate`, without calling a Next or old runtime
+backend. Its separate `prepare-node-key` creates only a protected local Node key;
+`prepare-node-record` constructs the public declaration and unsigned message
+from explicit flags, and `sign-node-record` consumes their exact reviewed bytes.
+The independent NodeID, effective-family assertion and Network ID are never
+derived from that key. New Epoch owns canonical preparation/signature verification;
+composition owns exact purpose, current finite reference, original secret/native
+custody, standard X.509 construction and joined output. The plan is machine
+generated, not a requirement to edit JSON. No State acceptance, role assignment,
+Source authority, runtime launch or private key export is supplied.
+
 Offline `ardents-next source prepare-trust` consumes only externally supplied
 public chains/roots and independently reviewed file commitments/leaf pins for
 two Sources and one client. `network/source.ObservePublicTrust` checks X.509
@@ -1622,7 +1634,7 @@ installed profile needs its own evidence, not the development driver's receipt.
 |---|---|
 | Immutable executable, template, descriptor, rendered plan/unit and binding | Root-controlled direct ancestors, no symlinks, original same-inode bytes/access and closed inventory; runtime read/execute only. No mutable root may contain or parent these files or Release history. Root writer lease stays separate from read-only startup custody |
 | State, participation, spend/Hosting/Store/Registry/issuer roots | Exact caller-admitted canonical paths and born provenance, independent within the invocation, 0700 for their dedicated owner. The same provider allowance retains its one Hosting root across Node roles/processes, as required by Hosting; role changes never initialize another period or duplicate capacity. Root may create admitted empty directories after journal birth; each semantic owner initializes/verifies its own contents. Runtime writable paths are exactly the role's inventory. No generic writable ancestor, foreign live lease or old/new shared root; retained native reopens preserve all floors |
-| Source/Node runtime private TLS key | Explicit operator-provided purpose-specific key, not the offline signing directory. Fresh protected delivery to runtime-owned 0600 file under a root-controlled, runtime-readable but non-writable directory; no symlink/hardlink, public export, argv/env secret, generic signer or root-owned-0600 handoff to non-root. Original file/ancestor/access/bytes and matching public key remain pinned through join. Credential replacement requires explicit fresh invocation after old join |
+| Source/Node runtime private TLS key | Explicit operator-provided purpose-specific key, not the offline signing directory. Source retains runtime-owned 0600 delivery. The bounded Forwarding profile below selects root-owned, exclusive Node-group-readable 0640 delivery under root-controlled non-writable ancestors; its independent Startup verifies the fixed exclusive account/group. The Node physical reader checks this exact system UID/GID file layout, no hard links, root-controlled direct ancestors and original metadata around reads, without granting Startup or duty authority. Ordinary runtime-owned private-file admission remains separate. No symlink/hardlink, public export, argv/env secret, generic signer or root-owned-0600 handoff to non-root. Original file/ancestor/access/bytes and matching public key remain pinned through join. Credential replacement requires explicit fresh invocation after old join |
 | Public certificate, CA and pins | Exact immutable original files/plan bytes read-only to runtime, independently approved trust. Source TLS verifies CA/EKU/name/pins with State's clock at handshake; Node TLS matches current member/key/purpose. File commitment alone grants neither right |
 | Live clock file | Bind canonical path, explicit writer identity and original parent/access policy, readable to runtime, not runtime-writable. State retains its existing regular-file mtime/time/floor semantics; Installation must not freeze a timestamp or invent content authentication. The authorized writer may update evidence under the bound path; each current file must meet the admitted writer/access/type policy. Replaced ancestor/path declaration or changed trust policy denies; fresh evidence is reverified by State |
 | Release floors and installation journals | Root-only writable, exact separate native leases and schemas; runtime only reads admitted selection/binding, not private intent. Release remains sole floor owner. Unknown partial storage is retained, not reformatted or treated as a new install |
@@ -1638,6 +1650,536 @@ This is an Installation input-custody effect, not a new PKI or Custody authority
 its presence alone qualifies no installed invocation.
 
 ### Proposed lifecycle and effect admission
+
+#### Forwarding initial lifetime and explicit same-generation restart
+
+The closed installed Forwarding plan opens genuine retained State without a
+Source server or automatic refresh worker. Its composition supervises the
+original Node and Startup; Node rechecks State `CurrentRuntime`, signed duty and
+time at effects and in its own original supervisor. `State.Wait` observes
+configured background work and reports its absence in this configuration; that
+absence is not an operational failure of the accepted State. Command composition
+keeps State owned until Node/Route and purpose/resource users have joined, then
+closes it last. No State authority check, lifetime bound or acquisition fallback
+is supplied by omitting a wait for an unconfigured worker.
+
+The original Node separately retains its first failed admission or refill as
+`WorkRefusal`: fixed operation/stage, duration and original local error custody.
+This detached observation neither denies the invocation nor changes its first
+lifetime failure, terminal result, spend or reservations. It supplies no success,
+currentness or physical-completion fact. Canonical installed composition emits
+at most one bounded `work-refused` diagnostic per invocation, using fixed
+categories and numeric observations without private error text or identities.
+Diagnostic output follows the same finite original output ownership as other
+events; it is never admission, retirement or restart evidence.
+
+Forwarding native process observation has separate root and actual non-root
+self openers. Its fixed policy admits only the selected generation's Node
+executable, exact `forwarding start-installed BINDING` argv, shared Node
+UID/GID with no foreign supplementary group, and the Forwarding unit cgroup.
+It retains original proc/start-clock, executable and namespace identities.
+Copies share permanent observation refusal and joined descriptor retirement;
+the root observer's own pidfd permits at most one original SIGTERM after fresh
+checks. Source's process/signal handle is never exposed through this type.
+These physical observations supply no Release, manager, Startup, Guard, domain
+join or restart permission; Installation must establish those independently.
+
+Its distinct native cgroup observer selects only the Forwarding service and
+retains its own original directory and `cgroup.events` object. Root's
+post-attempt partial acquisition, non-root actual-self observation and explicit
+stop's archived-native-identity check are separate operations. Observation
+requires the same sole PID and no child scopes. Original kernel join remains
+observable after caller denial; a missing pathname, new empty directory or
+process exit cannot supply it. Source shares only the private physical reading
+mechanism, with its own fixed opener and live resources. Installation still
+owns effect admission, domain completion and release after actual native join.
+
+Forwarding manager observation has distinct native root and non-root owners.
+The runtime connection exposes only fixed-unit read operations and checks the
+other four Node service/socket slots and Forwarding socket before and after
+each complete property observation. Root control independently retains the
+fixed Forwarding unit through `RefUnit`; it may attempt one fixed Start and one
+cleanup Stop, each mode `fail`. Its own native job-reply grammar grants no right
+to a Source or read-only connection. Neither reference, job nor detached manager
+identity grants Installation admission, process identity or original join.
+Original manager declaration/unique owner is rechecked around observations;
+cancellation and Close interrupt and join original physical users without
+reconnecting. Two complete running-property rounds and native reobservation
+remain the Startup owner's separate responsibility.
+
+A neighboring-slot absence query interrupted solely by its original context
+returns that failed context observation, not a synthetic changed-unit identity.
+Only exact original cancellation/deadline leaves and joins containing solely
+those leaves qualify; physical wrappers, foreign errors and independent failures
+remain failures. No interrupted query supplies a successful absence fact, and a
+deadline remains distinct from ordinary cancellation.
+
+The distinct Forwarding `Startup` owns independent non-root files, actual
+Forwarding executable/argv/principal/InvocationID, original kernel scope,
+namespace and visible manager/boot observations. Two complete running manager
+rounds surround reobservation of those originals and the fixed unit-search
+namespace. Root's completed initial reader, authorization or connection cannot
+construct it. It connects through the original root-owned, Node-group-readable
+0750 completion directory and the shared fixed 160-byte physical exchange;
+matching original invocation, generation and binding plus fresh reobservation
+before and after root ACK precede publication of a usable Startup. ACK alone
+grants no State, role, process-resource, Admission or Hosting authority.
+
+The finite initial-generation invocation inventory uses `forwarding-startup`
+for attempt zero and `forwarding-invocation-%08d` for attempts 1..63. Its separate
+root journal names are `<installation_root>.forwarding-first-start-journal`
+and `<installation_root>.forwarding-invocation-%08d-journal`. Every original
+attempt remains; gaps, duplicates, foreign/noncanonical names or exhaustion
+refuse. Directory discovery chooses only an original root-peer exchange and
+does not prove Start, archive, previous retirement or replayable completion.
+Root independently authenticates its full start/retirement chain before each
+effect. Runtime acquires its own read-only directory identity; it never reads
+private guard/journal contents or borrows the root writer lease.
+
+The private root start journal uses `ardents-forwarding-start-journal-v1` and
+ordered compact JSON/LF fields `schema`, `sequence`, `phase`, `path`, `device`,
+`inode`, `sha256`, `mode`, `uid`, `gid`. Sequence begins at zero; the opening
+phase is `first-start` for attempt zero and `invocation` otherwise, committing
+the exact binding digest. The physical writer permits at most 256 records,
+32 KiB per record and 128 KiB total. Its closed phase vocabulary distinguishes
+directory/file/socket intent, birth and readiness; `start-attempt`,
+`invocation-observed`, `completion-received`, `archived`, `ack-attempt` and
+`ack-written`. These bounded physical records are not a complete-chain verdict.
+The root producer and independent retained reader must additionally enforce
+the actual transition order and native/domain evidence before any authority.
+
+Each journal is an exclusively created root-only 0600 native ext4 file under
+original retained ancestors, with its own nonblocking exclusive flock. The
+completion directory is born root-only 0700 and promoted on the same inode to
+root:Node 0750 after durable birth evidence. Its only private record names are
+`start-guard.json`, `start-socket.json`, `start-archived.json` and
+`forwarding-start-pending`; the exchange socket is `start-completion.socket`.
+File intent precedes exclusive empty creation, synced birth precedes bytes and
+the synced exact file precedes readiness. Every append reobserves original
+journal bytes, resources and ancestors. A failure, including after actual sync,
+permanently denies later append; Close joins all owned files and ancestors before
+releasing the journal lease and retains original/physical failures. Partial
+prefixes survive Close and refuse fresh creation. This physical storage grants
+no Start, ACK, runtime, retirement, recovery or automatic retry permission.
+
+Root `StartInitial` consumes its own independently reopened completed initial
+installation and fresh coherent Forwarding Release pair. It checks path
+independence, the actual mapped controller program, original root kernel/boot
+identity, manager connection and all five unit-search slots. Root's
+mount/PID/cgroup/UTS/user namespaces must match the
+visible original manager; a manager bus borrowed through a different root
+namespace refuses. Non-root PrivateTmp observation remains separately owned.
+Two stopped-policy
+and native-quiescence rounds precede the sole fixed Start attempt. Every future
+invocation journal and completion directory must remain absent before the first
+attempt; unrecognized contents of the installation root refuse too. The original
+initial journal's exclusive lease survives the whole root operation and all its
+native joins. No original creator or non-root observer is borrowed.
+
+The private root intent `ardents-forwarding-start-intent-v1` binds the exact
+binding, completed initial-history and freshly accepted targets digests, numeric
+UID/GID and attempt. `ardents-forwarding-start-socket-v1` binds guard digest and
+actual socket device/inode/group. The exact original peer PID/UID/GID, process,
+cgroup and two complete running-policy rounds surround the 160-byte completion
+request. `ardents-forwarding-start-archive-v1` binds that same guard/binding,
+generation, PID/InvocationID, proc and cgroup identities, manager and original
+main-process realtime/monotonic start clocks. The archive is synced before ACK.
+The completed transcript has exactly 25 canonical ordered records, including the
+pending file's three birth records. Full grammar, native identity and running
+readback precede joined root publication; an isolated archive or ACK is insufficient.
+
+A complete ACK transfers startup even if a later append, cancellation or Close
+fails. That failure preserves the pending marker and does not authorize rollback,
+another Start or replay. Without full ACK, the root owner retains its original
+scope through actual joined cleanup, using only an independently observed original
+process for cleanup Stop. Unknown original scope/join remains unavailable while
+its custody is retained; the command reports completion unavailable and continues
+waiting rather than converting a deadline or absent process into completion.
+Only successful root/native observer joins and writer closes allow the final
+pending unlink. The explicit stop/domain retirement and retained restart reader
+remain separate obligations; this mechanism does not establish installed qualification.
+
+`ReadStarted` independently opens a fully published first-start transcript under
+its own initial and start-journal leases. The completion directory has the exact
+root:Node 0750 policy; its group does not widen the ordinary root-owned ancestor
+checks. The reader acquires its own parent/directory/file descriptors and an
+`O_PATH` socket inode descriptor without connecting to the stale endpoint. It
+matches all 25 records, canonical intent/socket/archive bytes, exact binding and
+initial-history commitments, original recorded inodes/access and pending absence.
+The intentionally unlinked pending file is historical evidence, never a required
+current file or a recreated marker. A held original writer, partial prefix,
+substitution, missing archive or uncertain publication refuses; no file is created,
+rewritten, repaired or adopted. Copies share denial and original users; Close
+joins observations before returning the start lease, then the initial lease last.
+
+This reader matches the original retained Release directory identity through its
+own live verifier, without requiring unexpired artifact authorization: expiry must
+not prevent safe shutdown. Its archive fields remain historical observations.
+Stop still needs fresh actual original process/manager/scope checks and independently
+proved domain/native completion; restart additionally needs fresh Release, time,
+credentials, State and protection admission. Read-only public verification grants
+none of those rights and supplies no qualified installed outcome.
+
+The Forwarding start archive's manager field retains the full broker-instance
+identifier and unique manager owner, freshly rechecked by the original root
+attempt. The loaded observation's unique owner alone cannot replace that pair.
+Stop and same-generation restart compare the independently observed full identity;
+a shortened historical value cannot be adopted or repaired into permission.
+
+Request admission checks every finite start and retirement completion socket
+pathname against Linux's 107-byte payload limit, before native installation
+effects. A first-start socket that fits does not make longer retained restart
+or retirement paths usable. Other declared paths retain their existing bounds.
+
+Explicit Forwarding retirement uses a separate finite
+`forwarding-retirement-%08d` directory under the installation root, independently
+of the exact four-file first-start directory. Its own root-only exclusive journal
+is created and synced before directory births; an existing or uncertain prefix
+refuses adoption or a fresh retry. The directory is born 0700 and promoted on the
+same inode to root:Node 0750. Its only owned leaves are `retirement-pending`,
+`retirement-result.json` and `stop-completion.socket`; file intent, durable empty
+birth and exact ready bytes remain separate records. The physical writer uses
+`ardents-forwarding-retirement-journal-v1`, the same bounded native record fields,
+and explicit stop/birth/interrupt/domain-joined/native-joined/native-closed/retired
+phases. These physical records grant no interruption, domain/native join or
+retirement authority. The root stop producer must independently prove those
+transitions before publication and retain the blocker through all physical closes.
+The complete retirement grammar has exactly 18 canonical ordered records,
+including its directory and pending-file births. The root-private pending bytes
+are `ardents-forwarding-retirement-pending-v1` plus LF, the original start-archive
+digest and LF. The result schema `ardents-forwarding-retirement-v1` binds attempt,
+generation/binding/start archive, PID/InvocationID/manager, fresh challenge and
+completion digest, matching original main start/exit clocks and clean native
+exit code/status. A complete-looking result or `native-closed` record found in
+a shorter or reordered prefix supplies no retirement evidence.
+
+The original non-root Startup may report once only after its actual Close has
+joined, with the command's complete joined Node/State/Guard/key/output result.
+It independently reopens the new retirement directory under the original retained
+installation-root identity, checks actual read-only native mounts and root peer,
+and answers a fresh nonzero 32-byte challenge. The finite reply is exactly
+`ardents-forwarding-domain-joined-v1` plus LF, the original 160-byte startup frame
+and that challenge. Source frames and another invocation cannot substitute.
+Only exact cancellation leaves and multi-error joins of those leaves classify as
+ordinary cancellation; a physical single-error wrapper, deadline or late failure
+is retained. Node/State/Startup close, plan-copy erasure and all output users join
+before reporting. A clean process exit is reserved for the exact private explicit
+stop marker after that one-use exchange. Root still needs the original peer,
+native scope/exit/clocks, all observer closes and durable retirement proof;
+the message, process exit or marker alone proves none of them. Ordinary retirement
+with no root endpoint creates no restart evidence.
+
+The distinct root `forwarding stop HISTORY BINDING` consumer first reopens
+published initial and complete invocation/retirement history, verifies the controller's actual mapped program,
+and independently retains the archived original process inode/pidfd, cgroup
+inode/events, manager and namespaces. It never calls a Source stop or borrows
+the start writer. A fresh challenge and exact original Node peer precede the
+joined-domain report; actual original kernel join and two matching completed
+manager observations follow. Main process ID and both start clocks must match
+the archive, both exit clocks must be at least their starts, and native exit
+must be CLD_EXITED with status zero. Inactive state alone is insufficient.
+The root consumer closes native observers before recording `native-closed`,
+then independently reopens synced result/journal/directory/socket files while
+the blocker remains. Every observer and writer closes before its final unlink.
+The independent committed-history reader instead requires blocker absence and
+its own exclusive retirement-journal lease. Neither reader lends live objects
+to a successor. Missing or incomplete predecessors, duplicate InvocationIDs,
+unknown owned prefixes and mismatched journal/directory inventories refuse.
+These mechanisms do not establish installed stop/restart qualification or
+bootstrap acceptance.
+
+The explicit `forwarding restart DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
+consumer requires the latest committed retirement in that same complete chain,
+then repeats fresh coherent Release, current stopped/native protection and
+independent non-root startup admission for the same immutable generation. It
+retains all old native file/journal observations under the initial lease through
+new start handoff and physical root Close. The new startup owns no old runtime
+handle; State/participation/spend/Hosting use retained existing-only openings.
+Attempt zero preserves `ardents-forwarding-start-intent-v1` exactly. Attempts
+1..63 use `ardents-forwarding-invocation-intent-v1` with the same ordered fields
+plus final `predecessor_sha256`, the exact immediately preceding retirement
+result commitment. Missing or substituted links refuse; exhaustion never
+recycles paths or resets a semantic root. Root selects the next unused attempt
+only from its independently read chain. A late/failed start preserves its own
+blocking prefix and original join obligation. Restart is explicit, with no
+replacement, crash continuation or automatic boot/retry policy.
+
+Canonical Control's separate `forwarding prepare-hosting` initializes the exact
+empty Hosting directory proved by the completed initial birth. It requires root,
+the original fixed Node account and actual stopped manager/namespace/cgroup
+observations, with no prior invocation. Its exclusive root-only Hosting journal,
+intent, completion and pending blocker are separate from the Node-writable budget.
+Hosting validates the original provider period and real counters, exclusively
+creates its files and returns original native births. Installation matches each
+descriptor before Node UID/GID delivery; all original preparation users close
+before pending publication. First start and restart independently retain the
+complete ordered preparation and original `budget.pin`/`budget.lock` identities,
+with no borrowed live budget. A partial prefix, unknown inode, missing commitment
+or repeated initialization refuses; deleting/recreating the original directory
+or selecting another allowance path is never a retry. This supplies no installed
+execution or reservation permission.
+
+Canonical Control's separate `forwarding prepare-state PLAN BUNDLE SIGNED_PROFILE`
+is finite offline preparation under the actual `ardents-node` system UID/GID,
+with no supplementary groups other than that primary group. It retains original
+root-controlled public plan, signed bundle/profile and ancestor descriptors,
+and only an existing empty Node-owned 0700 State directory. State alone accepts
+the Epoch/materialization and closed signed profile, then supplies a checked
+member observation for the declared Node. The original State Close and all
+input checks/closes precede output. Existing or partial roots refuse rather
+than initialize again, including after a failed profile transition. No private
+credential, participation, spend or Hosting root opens; no Source serving or
+acquisition configuration, Startup, Guard or runtime authority is supplied.
+The bundle uses Source's opaque framing codec only; that grants no Source
+installation or serving right. Installed runtime independently reopens and
+reverifies State, time, membership and the exact role at its own effects.
+
+Startup Stop denies new checks and cancels its original context before any
+join. Close interrupts its own manager, joins admitted observations, then
+closes completion, file/key, scope, namespace/kernel and process observations,
+retaining first and physical failures through copies. Detached runtime input
+copies are handed out only after original checks and must remain private through
+their actual users' joined cleanup. Complete domain retirement and the real
+root start/archive/ACK producer remain separate obligations of their owners.
+
+The bounded first installed Forwarding contract admits only `forwarding`, not
+another Node duty or Source. Its artifact pair uses the exact Node program target
+and `ardents/linux-amd64/infrastructure/forwarding`; its descriptor and initial
+inventory use `infrastructure-forwarding.json` and `ardents-forwarding.service`.
+Source descriptor, initial provenance, Startup and retirement records cannot be
+reinterpreted as Forwarding authority. Enrollment may share its finite immutable
+inventory mechanism; each Installation consumer still checks its exact invocation.
+
+Canonical Control has distinct Forwarding initial key, public release-plan and
+signing producers, documented in the [command reference](../reference/commands.md).
+Five fresh offline keys and the reviewed public claims remain under original
+root-controlled native custody. The closed version-one purpose checks the actual
+static Node program and fixed template, signs only Node/Forwarding targets and
+requires two coherent Release decisions before publishing metadata. Shared
+physical codecs/output mechanisms confer no Source signing right. Public claims
+and diagnostic self-verification supply neither independent build evidence nor
+the initial pin or separately accepted installed bootstrap.
+
+The separate controlled build and public-plan consumers in the
+[qualification operation](../operations/qualification-release.md#forwarding-infrastructure-artifact-component)
+replace hand-authored build claims with two actual Node/Control build records,
+their exact compiled dependency/SBOM commitments and separately pinned prestart
+evidence. Both executions remain under project control. Their Forwarding-only
+initial formats neither consume Source authority nor grant a first pin,
+independent builders, installation, startup or bootstrap acceptance. The existing
+canonical signer still independently validates the exact resources and obtains
+both fresh Release decisions before metadata output.
+
+The separate `ardents-forwarding-installation-v1` request is compact canonical
+JSON plus LF, at most 16 KiB, with exact ordered fields `schema`, `invocation`,
+`profile`, `installation_root`, `state_root`, `participation_root`, `spend_root`,
+`hosting_root`, `credential_directory`, `plan`, `certificate`, `private_key`,
+`clock`. Invocation/profile are exactly `forwarding` and
+`ardents-forwarding-process-v1`. Paths are canonical absolute, pairwise disjoint
+including ancestors. The plan/certificate/private-key are original delivery
+inputs, not runtime-writable files. Runtime destinations and clock must remain
+visible under PrivateTmp/ProtectHome, excluding `/tmp`, `/var/tmp`, `/home`,
+`/root` and `/run/user`. The separate fixed template uses `ardents-node`, exact
+`forwarding start-installed` argv and exactly State/participation/spend/Hosting
+writable roots; it keeps the unchanged fixed protection/resource envelope.
+Canonical Control's flag-based request/template producers prepare bytes only;
+they neither open declared inputs nor create these future destinations. Actual
+Installation must independently admit births and runtime input matching.
+The initial journal/pending and all 64 finite invocation journal siblings are
+reserved independently of their existence, along with the 64 separate
+`<installation_root>.forwarding-retirement-%08d-journal` siblings.
+Request/delivery declarations,
+distribution, Release history and live clock cannot occupy or contain them.
+Initial preflight and creation require that entire future journal namespace to
+be absent; an unknown future-attempt prefix is preserved and refuses initial
+effects, even if the installation directory has not yet been born.
+
+The installed plan has its own `ardents-forwarding-runtime-v1` schema; it does
+not reinterpret Source serving or the development command's unversioned plan.
+Its canonical compact JSON plus LF is at most 16 KiB, ordered `schema`, `network`,
+`node_id`, `process_profile`, `participation_root`, `spend_root`, `hosting_root`,
+`certificate`, `private_key`, `work`, `termination`, `retirement_wait_ms`.
+`network` contains ordered `root`, `network_id`, `authorities`, `threshold`,
+`profile_authority`, `clock_observation_file`; IDs/keys use exact 32-byte arrays,
+1..16 distinct State authority keys and a valid threshold. Work/termination
+retain Hosting's separate `tx`/`rx` declarations; Node still checks complete
+Forward allowance before spend. The 1..5000 ms retirement wait bounds a notice,
+not original join. Paths must match the original request, with exact delivered
+credential names. Canonical Control prepares this declaration from the original
+protected request and explicit independently approved public pins/coverage;
+neither private keys nor State/participation/spend/Hosting roots are opened.
+Signed currentness, actual credential match and protection remain runtime checks.
+
+Root-only `forwarding.ReadInputs` independently retains original request, plan,
+certificate, private-key and ancestor descriptors before native effects. Paths
+are bounded to 4096 bytes and 128 components. Existing delivery files must be
+direct root-owned regular files on native ext4, without hard links or writable
+group/other access; request, plan and key use 0600. Original bytes, inode,
+ownership, access, timestamps and named ancestor links are reobserved around
+reads. The certificate/private-key pair must match Ed25519. Its declared live
+clock retains original root-controlled ancestors and a direct root-owned 0644
+file, while legitimate updates or inode replacement remain available to State's
+time owner. Check denies after original failure or closure; Close denies new
+uses synchronously, joins original readers, retains first and physical cleanup
+failures, then erases private bytes and releases descriptors. Rejected partial
+acquisitions complete that same cleanup before returning no usable handle.
+This input lifetime initializes no future root, account, Release verifier or
+manager, and grants no independent installed startup authority.
+
+Canonical `ardents-node forwarding inspect-inputs REQUEST` separately composes
+that input lifetime and a fresh root-only fixed manager connection. It observes
+all five Node service/socket slots as both unloaded and uninstalled, checks the
+direct manager search paths for exact unit/drop-in overrides, and refuses an
+existing `ardents-node` account or future root/journal/pending resource. Every
+destination parent must already exist and retain its root-controlled original
+identity. Original input/account-database and manager observations repeat before
+the read-only result; private inputs and manager users join before public output.
+It opens no Release history and grants no install, Start or runtime permission.
+The actual creator must independently admit and reobserve all required effects.
+The native manager adapter independently retains its own connection and exact
+Version/UnitPath/unique-manager identity. Its separate fixed one-reload/loaded
+Forwarding observation has no arbitrary unit, Source lifetime or Start operation;
+successful native observations never replace Installation's policy comparison.
+
+`forwarding install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK
+REQUEST` has a distinct initial creator. It requires the actual first executable
+and Forwarding inventory, private initial Enrollment provenance and two coherent
+fresh Release authorizations. The original input and verifier lifetimes are
+consumed: all native users, account/helper custody, inputs, journal and verifier
+must close successfully before final pending publication. It never starts a unit
+or initializes State, participation, spend or Hosting history. Every native
+destination parent already exists, is root-controlled and traversable by the
+future principal, and has writable native ext4 storage. Ubuntu24.04 and the
+original systemd255 manager are required. Unknown resources are not adopted.
+
+The shared fixed `ardents-node` account is created through one fixed bounded
+`useradd`, with original host database/helper/configuration preimages, closed
+local-files/systemd NSS policy and fresh name/numeric absence checks. Its helper
+is PID1 of a separate PID namespace with parent-death SIGKILL; original Run joins
+namespace descendants before any created-account result. Foreign database bytes,
+auxiliary backups, hooks, supplementary groups and unlocked credentials refuse.
+Fresh account rows and NSS are independently reobserved. This is the one Node
+principal across the prospective five duties; Source retains its separate account.
+
+The selected `ardents-forwarding-binding-v1` is canonical compact JSON plus LF,
+at most 32 KiB, ordered `schema`, `invocation`, `generation`, `program_target`,
+`generation_target`, `program_sha256`, `template_sha256`, `inventory_sha256`,
+`targets_sha256`, `request_sha256`, `plan_sha256`, `unit_sha256`,
+`certificate_sha256`, `account`, `uid`, `gid`, `history`, `request`. It admits only
+the initial Forwarding identity, fixed shared Node account and equal system
+UID/GID in 100..999. Every digest is lowercase SHA-256. Request, fixed unit and
+original history declarations must agree; parsing supplies no original proof.
+The twelve-file immutable generation comprises the eight frozen artifact files,
+`forwarding-request.json`, `forwarding-plan.json`, `rendered-forwarding.service`
+and `binding.json`. Program is root-owned 0555, other generation leaves 0444 and
+the sealed generation directory 0555. Selected binding and fixed service are
+root-owned 0644. The separate credential directory contains root-owned 0444
+certificate and root-owned, Node-group-readable 0640 private key. Four independent
+semantic directories are born empty, Node-owned 0700; this grants no capacity or
+permission and does not initialize a second Hosting allowance.
+
+The root-only exclusive `<installation_root>.forwarding-initial-journal` uses
+closed LF-delimited JSON records, at most 4 MiB total and 32 KiB per record,
+ordered `sequence`, `phase`, `path`, `device`, `inode`, `sha256`, `mode`, `uid`,
+`gid`. Its first phase is exactly `forwarding-initial-v1`.
+The `admitted` record binds the exact original Release history path, native
+directory device/inode and root-owned 0700 access to the binding digest. A copied
+history or equal floors cannot replace that original history declaration.
+Intent precedes each
+account/directory/file effect, original birth identity precedes byte/access
+promotion, and original native readback precedes seal/selection/reload/stopped
+completion. The journal and `<installation_root>.forwarding-initial-pending`
+remain root-owned 0600. Pending bytes are
+`ardents-forwarding-initial-pending-v1\n<BINDING_SHA256>\n` and cannot grant Start.
+Partial or uncertain effects retain their original prefix and require repair;
+ordinary initial retry, adoption and reset refuse. Final unlink is the last
+effect after successful original joins and fresh Release checks; no required
+operation follows it. Lost unlink restores denial. Neither complete-looking
+records nor absence of a process substitute for separately admitted startup,
+original completion or power-loss qualification. Native transaction and installed
+runtime acceptance still require their selected source-matched evidence.
+
+Before returning its writer custody, the creator separately reopens the complete
+119-record transcript and every recorded current native resource. The closed
+reader consumes all phases in order, with exact canonical bytes and binding/file
+commitments, and matches 27 distinct original device/inode identities and final
+access. Born files are root-owned 0600 before final promotion; born directories
+are root-owned 0700. The journal, pending marker and original Release directory
+are distinct resources. Historical host database records are checked as helper
+provenance, not retained immutable database ownership. This creator readback runs
+under the original still-blocking pending marker and original ancestor/writer
+custody; failure after `completed` still preserves denial. It is no standalone
+completed-installation opener or Startup. A later start must independently acquire
+its own completed journal lease, ancestors, current principal, fresh Release and
+native invocation observations without borrowing the creator.
+
+`forwarding.ReadCompleted` separately reopens only a complete initial installation
+as a root-only, noncreating native observation. It requires pending absence and
+its own nonblocking exclusive journal lease before reading the full transcript.
+It checks every original resource identity except the intentionally unlinked
+pending file, the twelve sealed files and two credential leaves, current locked
+fixed account/NSS, the selected/rendered unit, matching Ed25519 credentials,
+original ancestors and live clock writer/access policy. Semantic directory
+identity/access is retained without reading or initializing another owner's
+history. Unknown, missing, partial or substituted resources refuse; there is no
+adoption, repair, recovery or original-writer handoff.
+
+Canonical `forwarding inspect-initial-history DISTRIBUTION HISTORY ENVIRONMENT
+NETWORK BINDING` consumes this separate observation, checks path independence
+before opening the existing Release root, obtains two fresh coherent Forwarding
+authorizations and matches their program/descriptor/template to the installed
+generation. Fresh trusted metadata may advance Release floors without rewriting
+historical sealed initial metadata or granting a replacement generation. All
+native observations and Release users join before the public verification result.
+This operation neither observes a running manager invocation nor grants Start,
+retirement, State or runtime authority; those independent gates remain required.
+
+The independent non-root selected-file reader acquires its own original
+descriptors under the exact bound Node UID/GID. It reads the same closed
+twelve-file byte grammar and two matching credential files, selected binding,
+fixed unit and clock custody; it cannot open the root journal or Release history.
+It reobserves root-owned immutable directories on read-only native ext4 mounts
+and exactly the four Node-owned writable native directories. Both retained and
+freshly named directory descriptors are measured: a new bind mount of the same
+inode cannot borrow the old descriptor's read-only flags. It opens no semantic
+history contents. Cancellation, lost bytes/descriptors, access or mount mismatch
+deny permanently through original physical Close. These file observations grant
+no manager/process, root completion, Guard, Startup or domain admission.
+
+Original Check/Close copies share denial and first/physical failures. Close denies
+new checks, joins actual reads, closes other descriptors and only then returns
+the original journal lease. A late restored file cannot revive the failed handle.
+
+The following finite matrix specifies effects and original completion, not a
+qualification result. Each causal family needs an independent denied-effect
+oracle and retained first/cleanup failures. The execution ledger binds concrete
+cases, exact source/artifacts/inputs and observed results before installed use.
+
+| Boundary / owner | Positive operation and effects | Causal refusal / independently observed invariant | Original completion |
+|---|---|---|---|
+| Enrollment and Release | Independent first pin and actual executable; two fresh coherent Node/Forwarding target decisions | Wrong pin/program/descriptor/role/target/resource, unknown or partial inventory, mixed metadata or retained floor conflict: no native installation effect; committed Release floors never decrease | Original immutable input reads and Release observations join; copied receipt grants nothing |
+| Initial Installation | Exact finite request/template; original fixed account, empty independent semantic directories, immutable generation, selection and stopped unit | Existing unknown account/root/unit, alternate Hosting allowance, partial or uncertain birth/write/seal/reload: retain provenance and repair-required; no adoption, reset or automatic continuation | Original input/native/journal users join before returning; uncertainty retains blocking evidence |
+| Root start and independent non-root Startup | Fresh Release pair; exact program/argv/IDs/groups/unit/manager/InvocationID/proc/cgroup/input inventory; all five Node unit slots checked | Substituted inputs/ancestors/credentials/account/manager/invocation or another active slot: no State producer, Receiving spend, Hosting reservation or Route listener | Root barrier and independent startup own their physical observations; no borrowed Source Startup |
+| Network, Node and process protection | Genuine signed current duty, separate local producer, original Guard and loaded purpose credential | Wrong member/key/profile, signed conflict/successor/expiry, unavailable time/metrics, changed limits or real pressure: synchronous denial before dependent effects | Held observation/cancellation/late result keeps original producer and native custody until join |
+| Admission, Hosting and Route | Real authenticated TCP/TLS initial Forward admission and parent refill; full class coverage reserved before spend | Undercoverage or genuine capacity/authority loss before spend leaves exact spend history unchanged; post-spend failure never refunds; deferred QUIC refuses before effects without fallback | Real held parent/child/receiver work keeps the physical reservation until Route join; Hosting independently proves actual return |
+| Explicit stop | Deny synchronously, interrupt Receiver/Route, join original users, then purpose roots/Hosting/producer/Guard/key, with State last | Held borrower/native Close, cancellation and late failure retain resources and every original cleanup cause; unavailable completion notice, PID absence or inactive unit is insufficient | Independently proved original domain result and native scope join precede retirement commitment |
+| Explicit restart | Reopen retained State/participation/spend/Hosting/Release histories; fresh independently admitted invocation of the same immutable generation; real contact and final stop | Concurrent restart while predecessor held, unknown join, missing/damaged history or stale Release/time/credential/protection: refuse without initialization or transferred live handles | Preserve account/keys and all histories; new invocation has its own producer/native/startup custody |
+
+Compatibility with the next lifecycle is deliberately bounded. Resource/program
+replacement requires a strictly forward generation, fresh coherent Release pair
+and proven predecessor retirement; the first-lifetime path does not implement or
+accept it. The one-use Hosting preparation, original allowance directory and
+pin/lock births remain retained compatibility obligations; a new binding or
+role cannot initialize another allowance or discard the initial birth proof.
+Any future replacement must explicitly preserve that provenance rather than
+treat the first-lifetime binding check as a migration mechanism.
+Interruption before complete stopped installation or during uncertain
+start/retirement retains its original journal/births and refuses ordinary retry
+as a fresh installation or restart. Crash recovery requires a separately admitted
+original-prefix/completion contract; this slice supplies no continuation, replay
+of Start/ACK, history repair or capacity reset. Complete same-generation explicit
+stop/restart must preserve enough immutable generation and original retirement
+evidence for that later contract, without preauthorizing it.
 
 #### Initial stopped Source persistence
 

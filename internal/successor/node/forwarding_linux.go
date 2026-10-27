@@ -78,6 +78,8 @@ func (handle *Forwarding) JoinedFailureOwners() (first, cleanup string) {
 
 type forwarding struct {
 	failure                  failureRecord
+	workRefusal              failureRecord
+	workRefusalCause         error
 	mu                       sync.Mutex
 	caller, ctx              context.Context
 	cancel                   context.CancelFunc
@@ -416,17 +418,22 @@ func (f *forwarding) observeAdmission(binding receiving.Receiver) (receiving.Obs
 	return receiving.Observation{Profile: facts, Receiver: binding, Now: view.ObservedAt(), NotAfter: end}, nil
 }
 
-func (f *forwarding) admit(ctx context.Context, c receiver.Channel, raw []byte) (receiving.Grant, error) {
+func (f *forwarding) admit(ctx context.Context, c receiver.Channel, raw []byte) (_ receiving.Grant, returned error) {
+	started, stage := time.Now(), "purpose"
+	defer func() { f.retainWorkRefusal(ctx, "admission", stage, started, returned) }()
 	class, err := role.AdmissionClass(c.Hello.Purpose)
 	if err != nil || class != admission.ForwardClass {
 		return receiving.Grant{}, errors.Join(errors.New("original Forwarding purpose differs"), err)
 	}
+	stage = "receiving"
 	return f.receiving.Accept(ctx, class, raw, c.Hello.Deadline, func() (func() error, error) {
+		stage = "reservation"
 		held, err := f.budget.Reserve(ctx, hosting.ReservationRequest{Work: f.config.Work, Termination: f.config.Termination, WorkUntil: c.Hello.Deadline, HoldUntil: c.Hello.Deadline.Add(5 * time.Second)})
 		if err != nil {
 			return nil, err
 		}
 		limit := class.ByteLimit()
+		stage = "coverage"
 		if err := f.budget.CoversJoint(ctx, held, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
 			// No physical borrower or receiving spend exists yet. An operator's
 			// smaller envelope cannot back the token's complete allowance.
@@ -435,12 +442,17 @@ func (f *forwarding) admit(ctx context.Context, c receiver.Channel, raw []byte) 
 		f.reservationsMu.Lock()
 		f.reservations[c] = held
 		f.reservationsMu.Unlock()
-		return c.HoldReservation(func() error {
+		stage = "retention"
+		release, err := c.HoldReservation(func() error {
 			f.reservationsMu.Lock()
 			delete(f.reservations, c)
 			f.reservationsMu.Unlock()
 			return releaseReservation(held)
 		})
+		if err == nil {
+			stage = "receiving-commit"
+		}
+		return release, err
 	})
 }
 func releaseReservation(held *hosting.Reservation) error {
@@ -448,7 +460,9 @@ func releaseReservation(held *hosting.Reservation) error {
 	defer cancel()
 	return held.Release(ctx)
 }
-func (f *forwarding) refill(ctx context.Context, c receiver.Channel, original receiving.Grant, remaining uint64, raw []byte) (receiving.Grant, error) {
+func (f *forwarding) refill(ctx context.Context, c receiver.Channel, original receiving.Grant, remaining uint64, raw []byte) (_ receiving.Grant, returned error) {
+	started, stage := time.Now(), "purpose"
+	defer func() { f.retainWorkRefusal(ctx, "refill", stage, started, returned) }()
 	limit := admission.ForwardClass.ByteLimit()
 	if c.Hello.Purpose != ardp.PurposeForwarding || remaining == 0 || remaining >= limit {
 		return receiving.Grant{}, errors.New("original Forwarding refill unavailable")
@@ -456,17 +470,54 @@ func (f *forwarding) refill(ctx context.Context, c receiver.Channel, original re
 	f.reservationsMu.Lock()
 	held := f.reservations[c]
 	f.reservationsMu.Unlock()
+	stage = "receiving"
 	return f.receiving.Refill(ctx, original, remaining, raw, func() (func() error, error) {
+		stage = "coverage"
 		if err := f.budget.CoversJoint(ctx, held, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
 			return nil, err
 		}
 		delta := limit - remaining
+		stage = "reservation"
 		additional, err := f.budget.ReserveAdditionalJoint(ctx, held, hosting.JointTraffic{Tx: delta, Rx: delta, Total: delta})
 		if err != nil {
 			return nil, err
 		}
-		return c.HoldReservation(func() error { return releaseReservation(additional) })
+		stage = "retention"
+		release, err := c.HoldReservation(func() error { return releaseReservation(additional) })
+		if err == nil {
+			stage = "receiving-commit"
+		}
+		return release, err
 	})
+}
+
+// WorkRefusal returns the first failed admission/refill observation. It does not
+// wait for completion or grant authority, and does not change FirstFailure,
+// denial, spending, reservations or the invocation's retained terminal result.
+// The error is original local evidence; callers must not print its private text.
+func (handle *Forwarding) WorkRefusal() (*FailureDiagnostic, error) {
+	if handle == nil || handle.original == nil {
+		return nil, nil
+	}
+	f := handle.original
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.workRefusal.snapshot(f.workRefusalCause), f.workRefusalCause
+}
+
+func (f *forwarding) retainWorkRefusal(ctx context.Context, operation, stage string, started time.Time, cause error) {
+	if cause == nil {
+		return
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.workRefusal.first != nil {
+		return
+	}
+	f.workRefusal.started, f.workRefusal.serving = started, true
+	f.workRefusal.retain(cause, ctx, "work")
+	f.workRefusal.first.Kind, f.workRefusal.first.Phase = "refusal", operation+"-"+stage
+	f.workRefusalCause = cause
 }
 
 // FirstFailure returns detached original facts without observing or waiting for completion.

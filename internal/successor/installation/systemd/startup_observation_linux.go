@@ -171,13 +171,13 @@ func (client *startupBus) callFailure(ctx context.Context, err error) error {
 	return startupCallFailure(ctx, err, client.interruptedIO.Load())
 }
 
-// Only the closed-socket error induced by this original observation's own
+// Only the closed-connection error induced by this original observation's own
 // interruption becomes its context cause. EOF, protocol errors, joined failures
 // and actual Close errors remain separate. This supplies no successful reply.
 func startupCallFailure(ctx context.Context, err error, interrupted bool) error {
 	if interrupted && ctx.Err() != nil {
 		for cause := err; cause != nil; cause = errors.Unwrap(cause) {
-			if cause == net.ErrClosed {
+			if cause == net.ErrClosed || cause == dbus.ErrClosed {
 				return ctx.Err()
 			}
 		}

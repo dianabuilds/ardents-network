@@ -10,13 +10,13 @@ import (
 // installed Source, successful manager request or accepting authority is faked.
 func TestSourceControlLocalAttemptCannotFollowOriginalDenialOrClose(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
-	r := &sourcePreflight{original: ctx}
+	r := &managerReference{original: ctx}
 	s := &sourceControl{reference: r}
 	cancel()
 	if err := s.admitSourceStart(); err != context.Canceled || s.startAttempted {
 		t.Fatal("cancelled original admitted native Start attempt", err)
 	}
-	r = &sourcePreflight{original: t.Context()}
+	r = &managerReference{original: t.Context()}
 	s = &sourceControl{reference: r}
 	r.closed.Store(true)
 	if err := s.admitSourceStart(); !errors.Is(err, ErrUnavailable) || s.startAttempted {
@@ -26,7 +26,7 @@ func TestSourceControlLocalAttemptCannotFollowOriginalDenialOrClose(t *testing.T
 
 func TestSourceControlCleanupAttemptNeverRestoresAdmission(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
-	r := &sourcePreflight{original: ctx}
+	r := &managerReference{original: ctx}
 	s := &sourceControl{reference: r}
 	if err := s.admitSourceStart(); err != nil {
 		t.Fatal(err)

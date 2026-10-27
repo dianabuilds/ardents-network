@@ -29,7 +29,7 @@ func openSourceReplacement(ctx context.Context, expected string) (*SourceReplace
 	if ctx == nil || os.Geteuid() != 0 {
 		return nil, ErrInput
 	}
-	r, err := openSourceReference(ctx)
+	r, err := openManagerReference(ctx, sourceUnitReply)
 	if r == nil {
 		return nil, err
 	}
@@ -38,15 +38,15 @@ func openSourceReplacement(ctx context.Context, expected string) (*SourceReplace
 		return s, err
 	}
 	if expected != "" {
-		actual, err := r.sourceManagerIdentity()
+		actual, err := r.managerIdentity()
 		if err != nil {
 			return s, err
 		}
 		if actual != expected {
-			return s, r.sourceResult(ErrObservation, ctx)
+			return s, r.managerResult(ErrObservation, ctx)
 		}
 	}
-	if err := r.initializeSourceDeclaration(); err != nil {
+	if err := r.initializeManagerDeclaration(); err != nil {
 		return s, err
 	}
 	if err := r.retainSourceControlUnit(); err != nil {

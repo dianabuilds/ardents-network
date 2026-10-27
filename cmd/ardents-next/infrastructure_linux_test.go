@@ -64,7 +64,18 @@ func infrastructureDistribution(t *testing.T, binary []byte, authority *consumer
 }
 
 func infrastructureDistributionRoot(t *testing.T, parent string, binary []byte, authority *consumerReleaseAuthority, version int64, mutate func(map[string]*metadata.TargetFiles), unitOverride ...[]byte) (string, string, map[string][]byte) {
+	return infrastructureDistributionInvocation(t, parent, binary, authority, version, mutate, "source", unitOverride...)
+}
+
+// Only public signed test artifacts share this oracle; no runtime, native
+// installation policy, private root or accepting role dispatcher is shared.
+func infrastructureDistributionInvocation(t *testing.T, parent string, binary []byte, authority *consumerReleaseAuthority, version int64, mutate func(map[string]*metadata.TargetFiles), invocation string, unitOverride ...[]byte) (string, string, map[string][]byte) {
 	t.Helper()
+	if invocation != "source" && invocation != "forwarding" {
+		t.Fatal("unsupported test artifact invocation")
+	}
+	unitName, descriptorName := "ardents-"+invocation+".service", "infrastructure-"+invocation+".json"
+	targetName := "ardents/linux-amd64/infrastructure/" + invocation
 	expires := infrastructureReference.Add(365 * 24 * time.Hour)
 	if authority == nil {
 		authority = newConsumerReleaseAuthority(t, expires)
@@ -74,9 +85,12 @@ func infrastructureDistributionRoot(t *testing.T, parent string, binary []byte, 
 		unit = unitOverride[0]
 	}
 	descriptor := []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"infrastructure-fixture\",\"release_version\":%d,\"invocation\":\"source\",\"files\":{\"ardents-node-linux-amd64\":\"%x\",\"ardents-source.service\":\"%x\"}}\n", version, sha256.Sum256(binary), sha256.Sum256(unit)))
+	if invocation == "forwarding" {
+		descriptor = []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"infrastructure-fixture\",\"release_version\":%d,\"invocation\":\"forwarding\",\"files\":{\"ardents-forwarding.service\":\"%x\",\"ardents-node-linux-amd64\":\"%x\"}}\n", version, sha256.Sum256(unit), sha256.Sum256(binary)))
+	}
 	targets := metadata.Targets(expires)
 	targets.Signed.Version = version
-	for target, body := range map[string][]byte{"ardents/linux-amd64/node": binary, "ardents/linux-amd64/infrastructure/source": descriptor} {
+	for target, body := range map[string][]byte{"ardents/linux-amd64/node": binary, targetName: descriptor} {
 		sum := sha256.Sum256(body)
 		attestations := []map[string]string{}
 		for _, builder := range []string{"fixture-builder-one", "fixture-builder-two"} {
@@ -128,7 +142,7 @@ func infrastructureDistributionRoot(t *testing.T, parent string, binary []byte, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	files := map[string][]byte{"ardents-node-linux-amd64": binary, "ardents-source.service": unit, "infrastructure-source.json": descriptor, "root.json": authority.rootBytes, "timestamp.json": ts, "snapshot.json": sb, "targets.json": tb}
+	files := map[string][]byte{"ardents-node-linux-amd64": binary, unitName: unit, descriptorName: descriptor, "root.json": authority.rootBytes, "timestamp.json": ts, "snapshot.json": sb, "targets.json": tb}
 	directory := filepath.Join(parent, "distribution")
 	if err := os.Mkdir(directory, 0700); err != nil {
 		t.Fatal(err)
@@ -141,11 +155,15 @@ func infrastructureDistributionRoot(t *testing.T, parent string, binary []byte, 
 	if err := os.Chmod(filepath.Join(directory, "ardents-node-linux-amd64"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	pin := writeInfrastructureOracleInventory(t, directory, files, version)
+	pin := writeInfrastructureOracleInvocationInventory(t, directory, files, version, invocation)
 	return directory, pin, files
 }
 
 func writeInfrastructureOracleInventory(t *testing.T, dir string, files map[string][]byte, version int64) string {
+	return writeInfrastructureOracleInvocationInventory(t, dir, files, version, "source")
+}
+
+func writeInfrastructureOracleInvocationInventory(t *testing.T, dir string, files map[string][]byte, version int64, invocation string) string {
 	t.Helper()
 	names := []string{}
 	for name := range files {
@@ -157,7 +175,7 @@ func writeInfrastructureOracleInventory(t *testing.T, dir string, files map[stri
 		sum := sha256.Sum256(files[name])
 		pairs = append(pairs, fmt.Sprintf("%q:%q", name, hex.EncodeToString(sum[:])))
 	}
-	raw := []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-enrollment-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"infrastructure-fixture\",\"release_version\":%d,\"invocation\":\"source\",\"files\":{%s}}\n", version, strings.Join(pairs, ",")))
+	raw := []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-enrollment-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"infrastructure-fixture\",\"release_version\":%d,\"invocation\":%q,\"files\":{%s}}\n", version, invocation, strings.Join(pairs, ",")))
 	if err := os.WriteFile(filepath.Join(dir, "infrastructure-enrollment.json"), raw, 0600); err != nil {
 		t.Fatal(err)
 	}

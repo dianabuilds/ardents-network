@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -24,7 +23,7 @@ type SourceObservation struct {
 type SourceRuntime struct{ original *sourceRuntime }
 
 type sourceRuntime struct {
-	reference *sourcePreflight
+	reference *managerReference
 	closeOnce sync.Once
 	closeErr  error
 }
@@ -35,7 +34,7 @@ type sourceRuntime struct {
 type SourceControl struct{ original *sourceControl }
 
 type sourceControl struct {
-	reference                     *sourcePreflight
+	reference                     *managerReference
 	startAttempted, stopAttempted bool // original physical I/O mutex
 	closeOnce                     sync.Once
 	closeErr                      error
@@ -56,7 +55,7 @@ func OpenSourceControl(ctx context.Context) (*SourceControl, error) {
 	if ctx == nil || os.Geteuid() != 0 {
 		return nil, ErrInput
 	}
-	r, err := openSourceReference(ctx)
+	r, err := openManagerReference(ctx, sourceUnitReply)
 	if r == nil {
 		return nil, err
 	}
@@ -64,7 +63,7 @@ func OpenSourceControl(ctx context.Context) (*SourceControl, error) {
 	if err != nil {
 		return result, err
 	}
-	if err = r.initializeSourceDeclaration(); err != nil {
+	if err = r.initializeManagerDeclaration(); err != nil {
 		return result, err
 	}
 	if err = r.retainSourceControlUnit(); err != nil {
@@ -83,7 +82,7 @@ func OpenSourceControl(ctx context.Context) (*SourceControl, error) {
 // original root connection. A successful reply grants no Start or loaded-policy
 // fact. Runtime/preflight never call it. Closing the original connection drops
 // its server-side reference, including after an uncertain reply or cancellation.
-func (r *sourcePreflight) retainSourceControlUnit() (err error) {
+func (r *managerReference) retainSourceControlUnit() (err error) {
 	if err = r.begin(); err != nil {
 		return err
 	}
@@ -92,11 +91,11 @@ func (r *sourcePreflight) retainSourceControlUnit() (err error) {
 	defer r.ioMu.Unlock()
 	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
 	defer cancel()
-	defer func() { err = r.sourceResult(err, ctx) }()
+	defer func() { err = r.managerResult(err, ctx) }()
 	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
 		return err
 	}
-	if err = r.matchSourceDeclaration(ctx); err != nil {
+	if err = r.matchManagerDeclaration(ctx); err != nil {
 		return err
 	}
 	call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.RefUnit", "ardents-source.service")
@@ -115,106 +114,19 @@ func (r *sourcePreflight) retainSourceControlUnit() (err error) {
 	return r.client.transport.socket.SetDeadline(time.Time{})
 }
 
-func openLoadedSourceReference(ctx context.Context) (*sourcePreflight, error) {
-	r, err := openSourceReference(ctx)
+func openLoadedSourceReference(ctx context.Context) (*managerReference, error) {
+	r, err := openManagerReference(ctx, sourceUnitReply)
 	if err != nil {
 		return r, err
 	}
-	if err = r.initializeSourceDeclaration(); err != nil {
+	if err = r.initializeManagerDeclaration(); err != nil {
 		return r, err
 	}
 	_, err = r.sourceLoadedObservation()
 	return r, err
 }
 
-func (r *sourcePreflight) sourceDeclaration(ctx context.Context) (string, []string, error) {
-	get := func(name string) (dbus.Variant, error) {
-		call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties.Get", "org.freedesktop.systemd1.Manager", name)
-		var value dbus.Variant
-		if err != nil {
-			return value, err
-		}
-		err = call.Store(&value)
-		if err != nil {
-			return value, errors.Join(ErrObservation, err)
-		}
-		return value, nil
-	}
-	v, err := get("Version")
-	if err != nil {
-		return "", nil, err
-	}
-	if v.Signature().String() != "s" {
-		return "", nil, ErrObservation
-	}
-	version, ok := v.Value().(string)
-	if !ok || !(version == "255" || strings.HasPrefix(version, "255.")) {
-		return "", nil, ErrObservation
-	}
-	v, err = get("UnitPath")
-	if err != nil {
-		return "", nil, err
-	}
-	if v.Signature().String() != "as" {
-		return "", nil, ErrObservation
-	}
-	paths, ok := v.Value().([]string)
-	if !ok || len(paths) == 0 || len(paths) > 32 {
-		return "", nil, ErrObservation
-	}
-	return version, append([]string(nil), paths...), nil
-}
-
-func (r *sourcePreflight) initializeSourceDeclaration() (err error) {
-	if err = r.begin(); err != nil {
-		return err
-	}
-	defer r.uses.Done()
-	r.ioMu.Lock()
-	defer r.ioMu.Unlock()
-	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
-	defer cancel()
-	defer func() { err = r.sourceResult(err, ctx) }()
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return err
-	}
-	version, paths, err := r.sourceDeclaration(ctx)
-	if err != nil {
-		return err
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return err
-	}
-	if err = r.local(); err != nil {
-		return err
-	}
-	r.version, r.paths = version, paths
-	return r.client.transport.socket.SetDeadline(time.Time{})
-}
-
-func (r *sourcePreflight) sourceResult(err error, ctx context.Context) error {
-	err = r.client.callFailure(ctx, err)
-	err = errors.Join(err, ctx.Err(), r.original.Err())
-	if err != nil {
-		r.mu.Lock()
-		r.terminal = errors.Join(r.terminal, err)
-		r.mu.Unlock()
-	}
-	return err
-}
-
-func (r *sourcePreflight) matchSourceDeclaration(ctx context.Context) error {
-	version, paths, err := r.sourceDeclaration(ctx)
-	if err != nil {
-		return err
-	}
-	if r.version == "" || version != r.version || strings.Join(paths, "\x00") != strings.Join(r.paths, "\x00") {
-		return ErrObservation
-	}
-	return nil
-}
-
-func (r *sourcePreflight) sourceLoadedObservation() (result SourceObservation, err error) {
+func (r *managerReference) sourceLoadedObservation() (result SourceObservation, err error) {
 	if err = r.begin(); err != nil {
 		return result, err
 	}
@@ -224,7 +136,7 @@ func (r *sourcePreflight) sourceLoadedObservation() (result SourceObservation, e
 	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
 	defer cancel()
 	defer func() {
-		err = r.sourceResult(err, ctx)
+		err = r.managerResult(err, ctx)
 		if err != nil {
 			result = SourceObservation{}
 		}
@@ -233,12 +145,12 @@ func (r *sourcePreflight) sourceLoadedObservation() (result SourceObservation, e
 		return result, err
 	}
 	if !r.client.bus.Connected() {
-		return result, r.sourceUnavailable()
+		return result, r.unavailable()
 	}
 	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
 		return result, err
 	}
-	if err = r.matchSourceDeclaration(ctx); err != nil {
+	if err = r.matchManagerDeclaration(ctx); err != nil {
 		return result, err
 	}
 	call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.GetUnit", "ardents-source.service")

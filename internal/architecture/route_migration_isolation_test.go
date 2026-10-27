@@ -17,7 +17,8 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 	routeSource := strings.HasPrefix(source, directory+"/")
 	routeDependency := dependency == imported || strings.HasPrefix(dependency, imported+"/")
 	newSource := strings.HasPrefix(source, "internal/successor/") || strings.HasPrefix(source, "cmd/ardents-next/")
-	if routeDependency && !newSource {
+	canonicalForwarding := source == "cmd/ardents-node/forwarding_installed_linux.go" && dependency == imported+"/role"
+	if routeDependency && !newSource && !canonicalForwarding {
 		return false
 	}
 	if routeSource && strings.HasPrefix(dependency, modulePath+"/") && !strings.HasPrefix(dependency, modulePath+"/internal/successor/") {
@@ -66,6 +67,11 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"old Node dependency in test", "internal/successor/route/role_test.go", modulePath + "/internal/node/outer", false},
 		{"external fixture dependency", "internal/successor/route/selection_test.go", modulePath + "/tests/epochfixture/network", false},
 		{"new command boundary", "cmd/ardents-next/route.go", modulePath + "/internal/successor/route", true},
+		{"canonical installed Forwarding role only", "cmd/ardents-node/forwarding_installed_linux.go", modulePath + "/internal/successor/route/role", true},
+		{"canonical installed Forwarding sibling denied", "cmd/ardents-node/other.go", modulePath + "/internal/successor/route/role", false},
+		{"canonical installed Forwarding tests denied", "cmd/ardents-node/forwarding_installed_linux_test.go", modulePath + "/internal/successor/route/role", false},
+		{"canonical installed Forwarding Route root denied", "cmd/ardents-node/forwarding_installed_linux.go", modulePath + "/internal/successor/route", false},
+		{"canonical installed Forwarding receiver denied", "cmd/ardents-node/forwarding_installed_linux.go", modulePath + "/internal/successor/route/receiver", false},
 		{"new Admission boundary", "internal/successor/route/receiving/admission.go", modulePath + "/internal/successor/admission/receiving", true},
 		{"new Network boundary", "internal/successor/route/selection.go", modulePath + "/internal/successor/network/state", true},
 		{"new Hosting boundary", "internal/successor/route/receiving/reservation.go", modulePath + "/internal/successor/hosting", true},

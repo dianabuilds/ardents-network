@@ -195,7 +195,7 @@ func observeSourceReleaseExpiry(ctx context.Context, p *sourceReleaseExpiryProfi
 		}
 		decisions = append(decisions, decision)
 	}
-	if p.Phase == "before" && !coherent(decisions[0], decisions[1], declaration) {
+	if p.Phase == "before" && !coherentTarget(decisions[0], decisions[1], declaration, GenerationTarget) {
 		return result, errors.New("actual pre-expiry target pair is incoherent")
 	}
 	after, err := verifier.CurrentFloors(ctx)
