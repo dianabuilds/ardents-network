@@ -3096,6 +3096,15 @@ neither file presence nor this QA schema can create a missing domain join.
 Installed execution still requires its separately accepted exact bootstrap
 receipt before the controller runs.
 
+A nonzero original test result remains a failed result. If both original physical
+join facts are proved and the independently pinned result matches its exact exit,
+the finalizer may archive that failed case and retire only its declared verified
+duplicate binaries. The complete original result and exit remain in the archive;
+qualification for QA disposition grants no product acceptance or retry. Unknown
+join, exit mismatch, active references or incomplete archival keep the reservation.
+A later case requires a fresh reservation; the original failed root is never
+adopted, reset or reused.
+
 The finalizer independently matches the original reservation, result, current
 input bodies/native metadata and restored immutable pack. It archives the full
 case through `qa_archive.preserve`, including native provenance and state, and
@@ -3104,7 +3113,10 @@ declared regular, independently born ELF copies with an exact
 retained immutable input keeper may be unlinked, including small auxiliary binaries.
 Unknown ELF files,
 foreign/linked paths, missing keepers, changed inputs, unknown joins or active
-references retain the slot. Input pack and case archives remain private evidence;
+references retain the slot. For a multi-root maintenance disposition, all
+keepers are checked before and after the batch; each root freshly checks the
+keepers for its actual unlink targets. A two-root native fixture observes real
+SHA reads for each matching keeper at all three boundaries. Input pack and case archives remain private evidence;
 they grant no installation, runtime or extracted-inode authority.
 
 After exact disposition, all other entries remain unchanged except the
@@ -3126,7 +3138,9 @@ archive/disposition readers use that same closed payload-method check.
 The fixture runs actual auxiliary controllers, sequential case finalization,
 shared-pack reuse, retained state/native identities/hardlinks/symlinks/xattrs,
 component/case exclusion and causal unknown-join, failed-exit, held-reader,
-foreign-path, corrupted archive/proof and unavailable-directory-sync refusals. Expected failure QA is
+foreign-path, corrupted archive/proof and unavailable-directory-sync refusals. Two actual nonzero
+controller exits retain their exact results and state through verified archival,
+reject forged zero exits and unknown joins, and require a fresh next-case reservation. Expected failure QA is
 archived before the exact disposable fixture teardown. These are tooling
 fixtures, without a product installation, accepted bootstrap or installed
 Forwarding recovery qualification.

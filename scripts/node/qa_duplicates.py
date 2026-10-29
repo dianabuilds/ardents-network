@@ -26,8 +26,9 @@ def execute(plan_path,output,apply=False,expected_sha=None):
     if len(files)!=len(set(files)):raise RuntimeError('Repeated file')
     keepers=plan['keep_original_canonical']
     keeper_inputs=plan.get('immutable_keeper_inputs',{})
-    def check_keepers():
-        for h in {entries[name]['sha256'] for name in files}:
+    def check_keepers(selected_files=None):
+        targets = files if selected_files is None else selected_files
+        for h in {entries[name]['sha256'] for name in targets}:
             keeper=keepers.get(h)
             if not keeper or keeper in files:raise RuntimeError('Missing retained original keeper '+h)
             r=entries.get(keeper,keeper_inputs.get(keeper));p=Path(keeper)
@@ -77,7 +78,7 @@ def execute(plan_path,output,apply=False,expected_sha=None):
             selected=[p for p in files if Path(root) in Path(p).parents]
             if not selected:continue
             references(Path(root))
-            check_keepers()
+            check_keepers(selected)
             for name in selected:
                 p=Path(name);r=entries[name]
                 if p.resolve()!=p or m.facts(p)!={k:v for k,v in r.items() if k!='sha256'} or m.sha(p)!=r['sha256']:raise RuntimeError('Changed before unlink '+name)

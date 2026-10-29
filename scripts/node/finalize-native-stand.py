@@ -55,8 +55,8 @@ def finalize(evidence, case, terminal_path, terminal_sha256):
     if set(terminal) != required or terminal['schema'] != 'ardents-native-case-terminal-v1' or terminal['case'] != case:
         raise RuntimeError('exact original terminal case proof required')
     active, _ = native_stand.retained_case(case, evidence, terminal['reservation_sha256'])
-    if type(terminal['test_exit']) is not int or terminal['test_exit'] != 0 or terminal['original_scope_joined'] is not True or terminal['original_resources_joined'] is not True:
-        raise RuntimeError('failed or unknown original joins retain the active case')
+    if type(terminal['test_exit']) is not int or terminal['original_scope_joined'] is not True or terminal['original_resources_joined'] is not True:
+        raise RuntimeError('unknown original exit or joins retain the active case')
     native_stand.references(active)
     closure = Path(terminal['input_closure']['directory'])
     inputs = verified_inputs(closure, terminal['input_closure']['verified_sha256'], terminal['immutable_inputs'])
@@ -67,7 +67,7 @@ def finalize(evidence, case, terminal_path, terminal_sha256):
     if active not in result_path.parents:
         raise RuntimeError('original case result must remain in its own QA tree')
     result, result_raw = pinned_json(result_path, terminal['result']['sha256'])
-    if result.get('schema') != 'ardents-native-case-result-v1' or result.get('case') != case or result.get('controller_sha256') != controller['sha256'] or result.get('reservation_sha256') != terminal['reservation_sha256'] or type(result.get('test_exit')) is not int or result['test_exit'] != 0 or result.get('original_scope_joined') is not True or result.get('original_resources_joined') is not True:
+    if result.get('schema') != 'ardents-native-case-result-v1' or result.get('case') != case or result.get('controller_sha256') != controller['sha256'] or result.get('reservation_sha256') != terminal['reservation_sha256'] or type(result.get('test_exit')) is not int or result['test_exit'] != terminal['test_exit'] or result.get('original_scope_joined') is not True or result.get('original_resources_joined') is not True:
         raise RuntimeError('actual original controller/result join proof required')
     entries = qa_archive.inventory([str(active)])
     declared = terminal['disposable_binary_paths']
@@ -97,6 +97,7 @@ def finalize(evidence, case, terminal_path, terminal_sha256):
     qualification = output / 'qualification.private.json'
     qa_archive.save_json(qualification, {
         'qualified_terminal_qa': True, 'roots': [str(active)],
+        'original_test_exit': terminal['test_exit'], 'product_acceptance': False,
         'receipts': [{'terminal_sha256': terminal_sha256, 'terminal_base64': base64.b64encode(terminal_raw).decode(),
                       'result_base64': base64.b64encode(result_raw).decode(), 'controller_sha256': controller['sha256']}],
     })
@@ -128,6 +129,8 @@ def finalize(evidence, case, terminal_path, terminal_sha256):
             raise RuntimeError('case changed before empty disposition')
         qa_archive.make_directory(disposition)
         qa_archive.save_json(disposition / 'applied.json', {'deleted_files': 0, 'remaining_entries_unchanged': True})
+    # The actual test result remains in both pinned original records and the
+    # full archive. Physical disposition grants no product pass or retry.
     # Root and metadata stay at their original paths. Only this fully completed
     # case's active reservation may be released after its durable archive proof.
     return native_stand.release_case(case, evidence, terminal['reservation_sha256'], {

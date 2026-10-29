@@ -91,6 +91,54 @@ def check_payload_compression(output):
     qa_archive.sync_directory(directory)
 
 
+
+def check_keeper_hash_coverage(base, output, expected, pack):
+    """Each removed body needs its own fresh keeper, plus the global brackets."""
+    programs = [base / 'canonical-program', base / 'small-canonical-program']
+    roots = [base / 'keeper-coverage-one', base / 'keeper-coverage-two']
+    copies = []
+    for root, program in zip(roots, programs):
+        qa_archive.make_directory(root)
+        copy = root / 'copied-program'
+        copy.write_bytes(program.read_bytes())
+        copies.append(str(copy))
+    qualification = output / 'keeper-coverage-qualification.json'
+    qa_archive.save_json(qualification, {'qualified_terminal_qa': True, 'roots': [str(root) for root in roots],
+                                       'receipts': [{'fixture': 'two closed copied-file roots; no spawned runtime'}]})
+    archive = output / 'keeper-coverage-archive'
+    qa_archive.preserve(qualification, archive, pack)
+    inputs = json.loads((pack / 'manifest.private.json').read_bytes())['current_entries']
+    plan = {'owner_qualified_duplicate_files': True, 'files': copies,
+            'full_qa_archive': str(archive), 'full_qa_verified_sha256': qa_archive.sha(archive / 'verified.json'),
+            'keep_original_canonical': {expected[str(program)]: str(program) for program in programs},
+            'immutable_keeper_inputs': {str(program): inputs[str(program)] for program in programs},
+            'input_closure': str(pack), 'input_closure_verified_sha256': qa_archive.sha(pack / 'verified.json')}
+    plan_path = output / 'keeper-coverage-plan.json'
+    qa_archive.save_json(plan_path, plan)
+    duplicates = finalizer.qa_duplicates
+    original_sha = duplicates.m.sha
+    calls = {str(program): 0 for program in programs}
+    def observed_sha(path):
+        name = str(path)
+        if name in calls:
+            calls[name] += 1
+        return original_sha(path)  # Observe real reads; never supply a hash.
+    duplicates.m.sha = observed_sha
+    try:
+        duplicates.execute(plan_path, output / 'keeper-coverage-disposition', apply=True,
+                           expected_sha=qa_archive.sha(plan_path))
+    finally:
+        duplicates.m.sha = original_sha
+    assert calls == {str(program): 3 for program in programs}, calls
+    assert all(not Path(copy).exists() for copy in copies)
+    assert all(qa_archive.sha(program) == expected[str(program)] for program in programs)
+    qa_archive.save_json(output / 'keeper-coverage-results.json', {
+        'two_original_roots': True, 'exact_keeper_sha_reads': calls,
+        'keeper_bytes_hashed': sum(program.stat().st_size * calls[str(program)] for program in programs),
+        'initial_and_final_global_checks_retained': True, 'each_root_checks_its_own_targets': True,
+        'actual_duplicate_files_removed': len(copies), 'product_acceptance': False})
+
+
 def main():
     if sys.version_info[:2] != (3, 12) or not sys.flags.isolated or not sys.flags.no_site or os.geteuid() != 0 or os.getegid() != 0 or len(sys.argv) != 2:
         raise RuntimeError('Linux root Python3.12 -I -S and fresh external evidence required')
@@ -185,6 +233,7 @@ def main():
         observations.append({'case': case, 'state_retained_in_place': True, 'duplicate_files_removed': 3, 'small_binary_copy_removed': True, 'shared_input_pack': pack_sha})
     assert qa_archive.sha(pack / 'original-inputs.zip') == pack_sha
     native_stand.check_idle()
+    check_keeper_hash_coverage(base, output, expected, pack)
     proof = output / 'preparation900101-finalized' / 'disposition' / 'applied.json'
     original_proof = proof.read_bytes()
     proof.write_bytes(original_proof + b' ')
@@ -211,15 +260,41 @@ def main():
     qualification = output / 'sync-failure-fixture-qualification.json'
     qa_archive.save_json(qualification, {'qualified_terminal_qa': True, 'roots': [str(root)], 'receipts': [terminal]})
     qa_archive.preserve(qualification, output / 'sync-failure-fixture-archive', pack)
-    # A real nonzero auxiliary process result remains blocking. Its fixture QA
-    # is archived read-only for teardown, never finalized into an idle slot.
+    # Actual failed product results remain failures. Known physical completion
+    # still permits verified forensic archival and exact copy disposition.
     native_stand.WORK_ROOT = base / 'failed-work'
-    root, failed = produce('preparation900104', 7)
-    require_refusal(lambda: complete('preparation900104', failed), 'actual nonzero controller exit')
-    require_refusal(native_stand.allocate, 'failed case remains occupied')
-    qualification = output / 'failed-fixture-qualification.json'
-    qa_archive.save_json(qualification, {'qualified_terminal_qa': True, 'roots': [str(root)], 'receipts': [failed]})
-    qa_archive.preserve(qualification, output / 'failed-fixture-archive', pack)
+    failed_observations = []
+    for case, code in [('preparation900104', 7), ('installed900105', 23)]:
+        root, failed = produce(case, code)
+        before = qa_archive.inventory([str(root)])
+        result_raw = (root / 'case-result.json').read_bytes()
+        require_refusal(native_stand.allocate, 'unarchived failed case remains occupied')
+        bad = {**failed, 'original_resources_joined': False}
+        require_refusal(lambda: complete(case, bad, '-unknown-resources'), 'failed case with unknown original resources')
+        bad = {**failed, 'test_exit': 0}
+        require_refusal(lambda: complete(case, bad, '-forged-pass'), 'failed original result cannot become zero')
+        with (root / 'state').open('rb'):
+            require_refusal(lambda: complete(case, failed, '-held-reader'), 'failed case still-held original state descriptor')
+        assert qa_archive.inventory([str(root)]) == before
+        complete(case, failed)
+        after = qa_archive.inventory([str(root)])
+        assert set(after) == set(before) - set(failed['disposable_binary_paths'])
+        for name, record in after.items():
+            ignored = {'mtime_ns', 'ctime_ns', 'size'} if name == str(root) else set()
+            assert {k: v for k, v in record.items() if k not in ignored} == {k: v for k, v in before[name].items() if k not in ignored}
+        assert (root / 'case-result.json').read_bytes() == result_raw
+        assert json.loads(result_raw)['test_exit'] == code
+        qualification = json.loads((output / (case + '-finalized') / 'qualification.private.json').read_bytes())
+        assert qualification['original_test_exit'] == code and qualification['product_acceptance'] is False
+        assert not (native_stand.WORK_ROOT / 'case-active.json').exists()
+        native_stand.check_idle()
+        require_refusal(lambda: native_stand.reserve_case(case, output), 'archived failed environment cannot be adopted', (OSError, RuntimeError))
+        assert qa_archive.facts(first_state[0]) == first_state[1]
+        assert qa_archive.sha(program) == expected[str(program)]
+        assert qa_archive.sha(small_program) == expected[str(small_program)]
+        failed_observations.append({'case': case, 'actual_test_exit': code, 'original_result_preserved': True,
+                                    'product_acceptance': False, 'duplicate_files_removed': 3,
+                                    'state_retained_in_place': True, 'next_case_requires_fresh_reservation': True})
     native_stand.references(base)
     assert native_stand.native(base) == original_base
     # Only this exact original disposable test tree is retired; all successful
@@ -231,8 +306,8 @@ def main():
             path = Path(directory) / name
             path.unlink() if path.is_symlink() else path.rmdir()
     base.rmdir()
-    qa_archive.save_json(output / 'results.json', {'passed': True, 'cases': observations, 'failed_case_retained_until_fixture_teardown': True, 'directory_sync_failure_keeps_copies_and_reservation': True, 'physical_archive_restore': True, 'no_installed_qualification': True})
-    print('PASS: sequential original-path cases, shared binary pack, exact duplicate disposition, state/history/links/xattrs preserved, active/unknown/failed/held-reader refusals', flush=True)
+    qa_archive.save_json(output / 'results.json', {'passed': True, 'cases': observations, 'failed_cases': failed_observations, 'unknown_failed_case_retains_reservation': True, 'directory_sync_failure_keeps_copies_and_reservation': True, 'physical_archive_restore': True, 'no_installed_qualification': True})
+    print('PASS: sequential original-path cases, shared binary pack, exact duplicate disposition, state/history/links/xattrs preserved, known-ended failed-case archival, active/unknown/mismatched-exit/held-reader refusals', flush=True)
 
 
 if __name__ == '__main__':
