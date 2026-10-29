@@ -13,6 +13,16 @@ import (
 // Returned native numbers are untrusted observations until independently matched;
 // neither complete bytes nor this parser grants Release or startup authority.
 func decodeInitialRecords(raw []byte, b binding, hashes map[string]string) (map[string]initialRecord, error) {
+	return decodeInitialTranscript(raw, b, hashes, false)
+}
+
+// This pure prefix parser returns only untrusted original inventory. It never
+// supplies missing stopped/completed rows or permission to attempt Reload.
+func decodeInitialPreReloadRecords(raw []byte, b binding, hashes map[string]string) (map[string]initialRecord, error) {
+	return decodeInitialTranscript(raw, b, hashes, true)
+}
+
+func decodeInitialTranscript(raw []byte, b binding, hashes map[string]string, preReload bool) (map[string]initialRecord, error) {
 	if len(raw) == 0 || len(raw) > 4<<20 || raw[len(raw)-1] != '\n' || len(hashes) != 17 {
 		return nil, ErrBinding
 	}
@@ -47,7 +57,7 @@ func decodeInitialRecords(raw []byte, b binding, hashes map[string]string) (map[
 		}
 	}
 	lines := bytes.Split(raw[:len(raw)-1], []byte{'\n'})
-	if len(lines) != 119 {
+	if preReload && (len(lines) < 72 || len(lines) > 118) || !preReload && len(lines) != 119 && len(lines) != 120 {
 		return nil, ErrBinding
 	}
 	records := make([]initialRecord, len(lines))
@@ -80,22 +90,46 @@ func decodeInitialRecords(raw []byte, b binding, hashes map[string]string) (map[
 		return actual, nil
 	}
 	journal := b.Request.InstallationRoot + ".forwarding-initial-journal"
-	first, err := next(initialRecord{Phase: "forwarding-initial-v1", Path: journal, Mode: 0600}, true)
+	phase := "forwarding-initial-v1"
+	if preReload || len(records) == 120 {
+		phase = "forwarding-initial-v2"
+	}
+	first, err := next(initialRecord{Phase: phase, Path: journal, Mode: 0600}, true)
 	if err != nil {
 		return nil, err
 	}
 	owned := map[string]initialRecord{journal: first}
+	if phase == "forwarding-initial-v2" {
+		sha := records[position].SHA256
+		if !initialSHA(sha) {
+			return nil, ErrBinding
+		}
+		if _, err := next(initialRecord{Phase: "native-context", Path: b.Request.InstallationRoot, SHA256: sha}, false); err != nil {
+			return nil, err
+		}
+	}
 	write := func(path string, mode, uid, gid uint32) error {
 		sha := hashes[path]
 		if !initialSHA(sha) {
 			return ErrBinding
 		}
+		partialLeaf := preReload && (path == "/etc/systemd/system/ardents-forwarding.service" || path == filepath.Join(b.Request.InstallationRoot, "binding.json") || filepath.Dir(path) == sealed)
+		if partialLeaf && position == len(records) {
+			return nil
+		}
 		if _, err := next(initialRecord{Phase: "file-intent", Path: path, SHA256: sha, Mode: mode, UID: uid, GID: gid}, false); err != nil {
 			return err
+		}
+		if partialLeaf && position == len(records) {
+			return nil
 		}
 		born, err := next(initialRecord{Phase: "file-born", Path: path, Mode: 0600}, true)
 		if err != nil {
 			return err
+		}
+		if partialLeaf && position == len(records) {
+			owned[path] = born
+			return nil
 		}
 		born.Phase, born.SHA256, born.Mode, born.UID, born.GID = "file-ready", sha, mode, uid, gid
 		ready, err := next(born, false)
@@ -210,18 +244,25 @@ func decodeInitialRecords(raw []byte, b binding, hashes map[string]string) (map[
 	d := owned[sealed]
 	d.Mode, d.SHA256 = 0555, b.Generation
 	for _, phase := range []string{"seal-intent", "sealed"} {
+		if preReload && position == len(records) {
+			break
+		}
 		d.Phase = phase
 		if d, err = next(d, false); err != nil {
 			return nil, err
 		}
+		if phase == "sealed" {
+			owned[sealed] = d
+		}
 	}
-	owned[sealed] = d
 	selection := filepath.Join(b.Request.InstallationRoot, "binding.json")
 	if err := write(selection, 0644, 0, 0); err != nil {
 		return nil, err
 	}
-	if _, err := next(initialRecord{Phase: "selected", Path: selection, SHA256: boundSHA, Mode: 0644}, false); err != nil {
-		return nil, err
+	if !preReload || position < len(records) {
+		if _, err := next(initialRecord{Phase: "selected", Path: selection, SHA256: boundSHA, Mode: 0644}, false); err != nil {
+			return nil, err
+		}
 	}
 	unit := "/etc/systemd/system/ardents-forwarding.service"
 	if err := write(unit, 0644, 0, 0); err != nil {
@@ -232,11 +273,31 @@ func decodeInitialRecords(raw []byte, b binding, hashes map[string]string) (map[
 		{Phase: "stopped-verified", Path: selection, SHA256: boundSHA, Mode: 0644},
 		{Phase: "completed", Path: journal, SHA256: boundSHA, Mode: 0600},
 	} {
+		if preReload && position == len(records) {
+			break
+		}
 		if _, err := next(r, false); err != nil {
 			return nil, err
 		}
 	}
-	if position != len(records) || len(owned) != 27 {
+	wantedOwned := 27
+	if preReload && len(records) <= 115 {
+		wantedOwned = 26
+	}
+	if preReload && len(records) <= 111 {
+		wantedOwned = 25
+	}
+	if preReload && len(records) <= 107 {
+		// Thirteen complete journal/pending/history, directory and credential
+		// objects precede the twelve ordered three-record artifact groups.
+		// An intent grants no file; a birth retains only its original empty inode.
+		artifactRows := len(records) - 72
+		wantedOwned = 13 + artifactRows/3
+		if artifactRows%3 == 2 {
+			wantedOwned++
+		}
+	}
+	if position != len(records) || len(owned) != wantedOwned {
 		return nil, ErrBinding
 	}
 	identities := map[[2]uint64]bool{}

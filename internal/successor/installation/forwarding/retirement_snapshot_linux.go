@@ -1,6 +1,7 @@
 package forwarding
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -31,6 +32,7 @@ type retirementSnapshot struct {
 	purpose                   retirementReadPurpose
 	closed                    bool
 	terminal                  error
+	recovery                  *retirementRecovery
 	// Negative physical controls only; cannot supply successful observations.
 	observe func(string, *os.File)
 }
@@ -43,6 +45,10 @@ const (
 )
 
 func readRetirementSnapshot(ctx context.Context, b binding, number attemptNumber, bindingSHA, startSHA string, archive startArchive, id [16]byte, purpose retirementReadPurpose) (h *retirementSnapshot, returned error) {
+	return readRetirementSnapshotContext(ctx, b, number, bindingSHA, startSHA, archive, id, purpose, nil)
+}
+
+func readRetirementSnapshotContext(ctx context.Context, b binding, number attemptNumber, bindingSHA, startSHA string, archive startArchive, id [16]byte, purpose retirementReadPurpose, owner *completedInitial) (h *retirementSnapshot, returned error) {
 	h = &retirementSnapshot{ctx: ctx, binding: b, number: number, bindingSHA: bindingSHA, startSHA: startSHA, archive: archive, id: id, purpose: purpose, files: map[string]*initialFile{}, path: number.retirement(b.Request.InstallationRoot)}
 	defer func() {
 		if returned != nil {
@@ -71,6 +77,19 @@ func readRetirementSnapshot(ctx context.Context, b binding, number attemptNumber
 		return h, errors.Join(ErrBinding, err, fsErr)
 	}
 	journal := number.retirementJournal(b.Request.InstallationRoot)
+	var original *recoveryOriginal
+	var known *recoveryPublication
+	if owner != nil {
+		if active := owner.files.interrupted; active != nil && active.cut.Boundary.Journal == journal {
+			if active.cut.Boundary.Operation != "retirement" {
+				return h, ErrBinding
+			}
+			original = active
+		}
+		if published := owner.files.recoveryReadback; published != nil && published.completion.Journal == journal && published.completion.Operation == "retirement" {
+			known = published
+		}
+	}
 	journalParent, err := h.parents.parents(journal)
 	if err != nil {
 		return h, err
@@ -81,19 +100,29 @@ func readRetirementSnapshot(ctx context.Context, b binding, number attemptNumber
 	}
 	h.journal = &initialFile{path: journal, file: file}
 	h.files[journal], h.order = h.journal, append(h.order, h.journal)
-	if purpose == retirementCommitted {
+	if purpose == retirementCommitted && original == nil {
 		if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-			return h, err
-		}
-		if err := h.pendingAbsent(); err != nil {
 			return h, err
 		}
 	}
 	if err := h.readFile(h.journal, 128<<10); err != nil {
 		return h, err
 	}
+	if original != nil {
+		if err := original.check(); err != nil {
+			return h, err
+		}
+		if !sameInputFile(h.journal.info, original.prefix.journal.info) || !bytes.Equal(h.journal.body, original.prefix.journal.body) {
+			return h, ErrBinding
+		}
+	}
+	if purpose == retirementCommitted && original == nil && known == nil {
+		if err := h.pendingAbsent(); err != nil {
+			return h, err
+		}
+	}
 	names := []string{"retirement-result.json"}
-	if purpose == retirementReadback {
+	if purpose == retirementReadback || original != nil || known != nil {
 		names = append(names, "retirement-pending")
 	}
 	for _, name := range names {
@@ -120,6 +149,9 @@ func readRetirementSnapshot(ctx context.Context, b binding, number attemptNumber
 	fsErr = syscall.Fstatfs(int(h.socket.Fd()), &fs)
 	if err != nil || fsErr != nil || fs.Type != 0xef53 || !sameStartSocket(h.socketInfo, h.socketInfo, 0660, b.GID) {
 		return h, errors.Join(ErrBinding, err, fsErr)
+	}
+	if err := h.readRecovery(owner, original, known); err != nil {
+		return h, err
 	}
 	if err := h.validate(); err != nil {
 		return h, err
@@ -156,12 +188,16 @@ func (h *retirementSnapshot) validate() error {
 	if err != nil {
 		return err
 	}
-	recorded, err := decodeRetirementRecords(h.journal.body, h.journal.path, h.path, h.startSHA, digest(challenge[:]), h.result.CompletionSHA256, digest(raw), h.binding.GID)
+	transcript := h.journal.body
+	if h.recovery != nil {
+		transcript = h.recovery.logical
+	}
+	recorded, err := decodeRetirementRecords(transcript, h.journal.path, h.path, h.startSHA, digest(challenge[:]), h.result.CompletionSHA256, digest(raw), h.binding.GID)
 	if err != nil {
 		return err
 	}
 	for path, record := range recorded {
-		if path == filepath.Join(h.path, "retirement-pending") && h.purpose == retirementCommitted {
+		if path == filepath.Join(h.path, "retirement-pending") && h.pending == nil {
 			continue
 		}
 		var info os.FileInfo
@@ -203,7 +239,7 @@ func (h *retirementSnapshot) inventory() error {
 		return err
 	}
 	wanted := 2
-	if h.purpose == retirementReadback {
+	if h.pending != nil {
 		wanted = 3
 	}
 	entries, err := h.directory.ReadDir(wanted + 1)
@@ -217,7 +253,7 @@ func (h *retirementSnapshot) inventory() error {
 		switch entry.Name() {
 		case "retirement-result.json", "stop-completion.socket":
 		case "retirement-pending":
-			if h.purpose != retirementReadback {
+			if h.pending == nil {
 				return ErrBinding
 			}
 		default:
@@ -245,6 +281,9 @@ func (h *retirementSnapshot) check() (returned error) {
 	if err := h.parents.links(); err != nil {
 		return err
 	}
+	if err := h.recovery.check(h); err != nil {
+		return err
+	}
 	for round := 0; round < 2; round++ {
 		info, err := h.directory.Stat()
 		named, nameErr := os.Lstat(h.path)
@@ -256,7 +295,7 @@ func (h *retirementSnapshot) check() (returned error) {
 		if err != nil || nameErr != nil || !sameStartSocket(h.socketInfo, info, 0660, h.binding.GID) || !sameStartSocket(h.socketInfo, named, 0660, h.binding.GID) {
 			return errors.Join(ErrBinding, err, nameErr)
 		}
-		if h.purpose == retirementCommitted {
+		if h.pending == nil {
 			if err := h.pendingAbsent(); err != nil {
 				return err
 			}
@@ -310,6 +349,10 @@ func (h *retirementSnapshot) close() error {
 		}
 		if h.ctx != nil {
 			h.terminal = errors.Join(h.terminal, h.ctx.Err())
+		}
+		if h.recovery != nil {
+			clear(h.recovery.logical)
+			clear(h.recovery.nativeRaw)
 		}
 	}
 	return h.terminal

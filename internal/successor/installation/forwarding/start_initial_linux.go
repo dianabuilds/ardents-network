@@ -41,6 +41,8 @@ type startAttempt struct {
 	id                [16]byte
 	job               string
 	predecessor       string
+	historyOpening    uint8
+	intent            []byte
 	attempted, handed bool
 	terminal          error
 }
@@ -48,8 +50,9 @@ type startAttempt struct {
 var errControllerProgram = errors.New("forwarding installation: original controller program differs")
 
 // StartInitial admits only the first explicit start of a completed stopped
-// Forwarding installation. The caller owns the original fresh Release verifier
-// through return. Existing attempt storage refuses, including after uncertainty.
+// Forwarding installation. It consumes and closes the original fresh Release
+// verifier before completion publication. Existing attempt storage refuses,
+// including after uncertainty.
 // A failed native Start retains original custody until actual kernel join;
 // no deadline, process absence or stopped manager flag manufactures completion.
 func StartInitial(ctx context.Context, v *release.Verifier, authorization infrastructure.ForwardingAuthorization, bindingPath, distribution, history string) (returned error) {
@@ -66,6 +69,7 @@ func StartInitial(ctx context.Context, v *release.Verifier, authorization infras
 			s.joinFailedAttempt()
 		}
 		returned = errors.Join(s.terminal, s.close())
+		returned = errors.Join(returned, v.Close(), finishTransition(ctx))
 		if returned == nil && s.handed {
 			returned = s.storage.publish()
 		}
@@ -87,6 +91,18 @@ func StartInitial(ctx context.Context, v *release.Verifier, authorization infras
 	}
 	if err := s.completed.CheckAuthorization(v, authorization); err != nil {
 		return err
+	}
+	if chain := c.files.invocations; chain != nil && chain.head() != nil {
+		if chain.snapshot != nil || len(chain.starts) != 0 || chain.head().number+1 >= attemptLimit {
+			return ErrBinding
+		}
+		predecessor, err := chain.head().predecessor()
+		if err != nil {
+			return err
+		}
+		s.history = Started{original: &started{invocationChain: chain, ctx: ctx, verifier: v, completed: s.completed}}
+		s.nextNumber = chain.head().number + 1
+		s.predecessor = predecessor
 	}
 	return s.launch()
 }
@@ -126,8 +142,40 @@ func (s *startAttempt) launch() error {
 	if err := s.observeStopped(); err != nil {
 		return err
 	}
+	// This choice comes from independently completed original runtime history,
+	// never an attempt number, a plan flag or a missing semantic-root pathname.
+	// Completed never-started entries retain their own proof but do not create
+	// runtime history. Every actual runtime must still have a genuine archive.
+	if h := s.history.original; h != nil {
+		if err := s.history.Check(); err != nil {
+			return err
+		}
+		for _, prior := range h.starts {
+			if prior == nil || prior.archive.PID == 0 {
+				return ErrBinding
+			}
+			s.historyOpening = 1
+		}
+	}
+	s.intent, err = s.startIntentBytes()
+	if err != nil {
+		return err
+	}
+	nativeContext, err := captureNativeContext(s.identity, s.managerIdentity, s.namespace, nil, c.files)
+	if err != nil {
+		return err
+	}
+	if err := s.observeStopped(); err != nil {
+		return err
+	}
+	if err := bindStartTransition(ctx, s.nextNumber.journal(c.binding.Request.InstallationRoot), c.binding.Generation, c.files.files[bindingPath].body, nativeContext, s.managerIdentity, s.intent); err != nil {
+		return err
+	}
 	s.storage, err = createStartStorage(ctx, c.binding.Request.InstallationRoot, s.nextNumber, digest(c.files.files[bindingPath].body))
 	if err != nil {
+		return err
+	}
+	if err := s.storage.record("native-context", c.binding.Request.InstallationRoot, nil, digest(nativeContext)); err != nil {
 		return err
 	}
 	s.barrier, err = prepareStartBarrier(s)
@@ -284,7 +332,11 @@ func (s *startAttempt) checkCompletedTranscript() error {
 		return err
 	}
 	storage, barrier := s.storage, s.barrier
-	recorded, err := decodeStartRecords(storage.journal.body, storage.number, storage.journal.path, storage.path, digest(s.bindingBytes()), digest(barrier.guard.body), digest(barrier.record.body), digest(barrier.archive.body), digest(frame[:]), s.completed.original.binding.GID)
+	ack, err := barrier.ackFrame()
+	if err != nil {
+		return err
+	}
+	recorded, err := decodeStartRecordsFrames(storage.journal.body, storage.number, storage.journal.path, storage.path, digest(s.bindingBytes()), digest(barrier.guard.body), digest(barrier.record.body), digest(barrier.archive.body), digest(frame[:]), digest(ack[:]), s.completed.original.binding.GID)
 	if err != nil {
 		return err
 	}
@@ -318,7 +370,7 @@ func (s *startAttempt) observeStopped() error {
 		if err != nil {
 			return err
 		}
-		if s.history.original == nil {
+		if s.history.original == nil || s.history.original.snapshot == nil {
 			if err := verifyForwardingStopped(facts.Unit, facts.Service, b.Request, b.Generation); err != nil {
 				return err
 			}
@@ -327,7 +379,17 @@ func (s *startAttempt) observeStopped() error {
 			if h.latestRetirement == nil || s.managerIdentity != h.snapshot.archive.Manager {
 				return ErrBinding
 			}
-			if err := verifyForwardingRestartStopped(facts.Unit, facts.Service, b.Request, b.Generation, h.snapshot.archive, h.snapshot.id, h.latestRetirement.result.execution()); err != nil {
+			selected, ok := h.completed.original.selections[digest(s.bindingBytes())]
+			if !ok {
+				return ErrBinding
+			}
+			var policy error
+			if b.Generation == h.snapshot.archive.Generation {
+				policy = verifyForwardingRestartStopped(facts.Unit, facts.Service, b.Request, b.Generation, h.snapshot.archive, h.snapshot.id, h.latestRetirement.result.execution())
+			} else {
+				policy = verifyForwardingReplacementStopped(facts.Unit, facts.Service, selected, h.snapshot.archive, h.snapshot.number, h.snapshot.id, h.latestRetirement.result, h.latestRetirement.sha256)
+			}
+			if err := policy; err != nil {
 				return err
 			}
 		}
@@ -497,5 +559,6 @@ func (s *startAttempt) close() error {
 	} else {
 		physical = errors.Join(physical, s.completed.Close())
 	}
+	clear(s.intent)
 	return errors.Join(physical, s.ctx.Err())
 }

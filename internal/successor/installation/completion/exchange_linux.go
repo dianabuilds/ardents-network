@@ -96,7 +96,15 @@ func Connect(ctx context.Context, directory string, expected os.FileInfo, gid ui
 // original absolute deadline. Root may retire its private guard/socket after
 // sending the reply; subsequent runtime admission belongs to Installation.
 func (e *Exchange) Wait() (returnedErr error) {
-	if e == nil || e.ctx == nil || e.root == nil || e.connection == nil || e.attempted {
+	var reply [160]byte
+	return e.exchange(reply[:])
+}
+
+// The two fixed public constructors retain their own original native custody.
+// Only their closed callers choose the reply buffer; no role or authority is
+// passed into this shared physical request/read/peer-observation mechanism.
+func (e *Exchange) exchange(reply []byte) (returnedErr error) {
+	if e == nil || e.ctx == nil || e.root == nil || e.connection == nil || e.attempted || len(reply) != 160 && len(reply) != 161 {
 		return ErrInput
 	}
 	if e.terminal != nil {
@@ -131,11 +139,10 @@ func (e *Exchange) Wait() (returnedErr error) {
 	if _, err := io.Copy(connection, bytes.NewReader(e.frame[:])); err != nil {
 		return err
 	}
-	var reply [160]byte
-	if _, err := io.ReadFull(connection, reply[:]); err != nil {
+	if _, err := io.ReadFull(connection, reply); err != nil {
 		return err
 	}
-	if reply != e.frame {
+	if len(reply) < len(e.frame) || !bytes.Equal(reply[:len(e.frame)], e.frame[:]) {
 		return ErrBinding
 	}
 	if err := e.observePeer(); err != nil {

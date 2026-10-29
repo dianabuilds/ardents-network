@@ -1,5 +1,220 @@
 # Testing
 
+The native metadata proposal controls cover every Initial72..107 artifact
+prefix using an independently ordered twelve-file fixture. Original ready
+metadata is read from actual root0444 files; an original empty root0600 birth
+or absence is preserved. Full canonical Enrollment and original binding checks
+distinguish exact proposals from advanced metadata/inventory, missing or changed
+original ready metadata and canceled reads. Original bytes, inodes, access and
+the directory inventory remain unchanged. This is byte reconstruction and
+physical historical-read evidence, not original-cut, Release, native
+continuation or installed qualification; actual admission below105 remains
+unimplemented.
+
+The earlier Initial72..104 pure-byte control uses literal positions for all
+twelve generation artifacts. Every prefix retains only completed files or one
+recorded empty birth, preserves directory-ready50/root0755, and rejects changed
+artifact paths. It separately confirms that decoding these earlier inventories
+does not admit native continuation; original account, directories and credentials
+must already be complete. These vectors supply no physical cut or recovery right.
+
+Initial105/106/107 pure-byte controls distinguish an absent timestamp from its
+original empty birth106, preserve directory-ready50/root0755 and reject every
+changed original path. Their incomplete inventories cannot become a complete
+installation or supply native admission. These vectors provide no native cut, Release,
+artifact reconstruction or accepting recovery authority.
+The native timestamp-proposal control independently reads four actual historical
+files while retaining the supplied timestamp proposal. Full original canonical
+inventory/binding verification accepts only matching bytes; advanced proposals,
+changed/missing inventories and cancellation refuse without creating timestamp
+or rewriting historical inputs. These public byte fixtures provide no original
+cut, signed Release or accepting continuation.
+Initial105/106/107 logical continuation vectors require the real new timestamp
+birth where applicable and preserve original birth106 otherwise. Native control
+vectors independently bind28/29-row grammar, timestamp access/bytes/inode and
+logical ready107, rejecting changed rows and missing/substituted provenance.
+The fixed-file read-only-birth native control exercises Create/ContinueBirth
+at root:root0444 with retained original inode and joined descriptors, and proves
+that complete0444 replacement and a foreign public-file group remain refused
+without modifying the original.
+`TestForwardingRecoveryPublicationNativeOriginalTimestamp` exercises actual
+exclusive and original-empty physical custody, root0444 Commit/readback and
+both real writer openings/phases; cancellation and replaced-inode controls
+retain the original empty file and failure. These physical/public-byte fixtures
+grant no original process cut, Release or installed recovery authority.
+
+The native metadata-continuity regression uses two complete independent public
+byte vectors plus actual protected original files. It restores historical
+metadata after the current vector advances, requires the matching original
+Enrollment inventory, and refuses missing/substituted inventory or cancellation
+without rewriting files. It reproduces the four-file-only restoration defect;
+these fixtures provide no signed Release, original cut or successful recovery
+authority. Current artifact admission remains separately required.
+
+Initial108/109 byte vectors preserve original generation-directory-ready50 at
+root0755 without inventing sealing, then bind the separate missing seal rows
+and actual later births into a complete logical transcript. Physical26-row
+control fixtures reject missing/substituted directory provenance, synthetic
+already-sealed before state and every changed control row. The selected native
+`TestForwardingRecoveryPublicationNativeOriginalSeal` exercises the actual
+same-directory access/sync/readback mechanism and exact writer opening/phases.
+Unknown entries, changed inode/access and cancellation refuse before mutation;
+post-Sync cancellation and late errors remain uncertain on the retained original
+FD, with no repeated effect or fabricated completion. This is physical/component
+evidence, not original-cut, Release, manager or installed recovery qualification.
+
+Initial110/111 controls distinguish25 original native objects from a selection
+that does not exist, require the separate actual selection birth and match both
+new selection and unit births in the24-row control/logical continuation. The
+actual writer fixture exercises the exact selection-creation opening and
+intent/born/written phases. Changed rows, missing birth, substituted inode or
+selection bytes refuse. These fixtures supply no installed authority; actual
+process/native interruption and successful recovery still require the admitted
+installed campaign.
+
+Initial112 byte controls retain selection-born111 without inventing readiness,
+preserve its original native numbers in the logical continuation and reject all
+earlier unsupported boundaries. The physical23-row control fixtures match an
+independently observed current selection and original birth, reject missing or
+substituted selection provenance/bytes and every changed row. An actual writer
+subcase exercises the new exact header and retained/written appends around a
+synced original empty fixture. These component tests grant no original process
+cut, fresh Release/manager admission or installed recovery success.
+
+Initial113 byte vectors prove the original selection already reached file-ready,
+refuse incomplete earlier selection boundaries, and reconstruct only the missing
+selected acknowledgement before the existing unit-creation continuation.
+The21-row control binds the unit birth at its exact offset after those logical
+rows. No test-vector acknowledgement grants a native selection or installed
+recovery right.
+
+Initial114/115 byte controls require26 original objects and no invented unit
+birth. Separate continuation vectors require the actual new birth and complete
+120-row logical transcript. The physical control-codec checks both21-row
+creation grammars against independently opened native files and rejects changed
+rows, missing completion birth and substituted unit identity. These component
+checks supply no actual process cut, manager/Release admission or installed
+recovery; that campaign remains separately admitted.
+The native writer subcase opens the actual creation-control journal and appends
+intent/born/written rows around an exclusively created, synchronized leaf. It
+causally rejects missing writer-phase registration; literal decoder vectors do
+not establish that real writer path. This fixture supplies no fixed-unit,
+original-cut, manager or Release admission.
+
+Initial116 byte controls distinguish an actual unit-born row from readiness,
+preserve its original inode in the separate continuation, and require the20-row
+retained/written proof before complete readback. Fixed-file native continuation
+supplies only physical custody; actual controlled Initial116 continuation and
+its manager/process interruption cases still require the separately admitted
+installed profile.
+
+Fixed-file native checks include independently reopening a recorded empty
+root0600 birth, retaining its parent/inode through first byte delivery and
+access promotion, and closing every descriptor. Changed bytes, inode, mode or
+link count before opening, and changed bytes or cancellation after journal I/O,
+refuse without overwriting or releasing custody before Close. These physical
+fixtures grant no original-cut, journal, Release or recovery admission.
+
+Replacement pre-Reload byte controls independently check57/58 original rows,
+all20 original native objects, every original path and unchanged cut context.
+They reject treating the prefix as completed/stopped history. Separate v2
+continuations commit the recovery-owned canonical after birth without changing
+the original prefix. A physical absence control preserves an unrecorded after
+leaf and refuses adoption. These component vectors provide no genuine original
+scope, Reload or accepting installed recovery.
+
+Initial pre-Reload byte controls independently check117/118 original records,
+all27 owned native identities, every original path, source/context commitments,
+and the refusal to treat that inventory as completed/stopped history. Separate
+v2-completion vectors bind the actual after-context digest and reject missing,
+unversioned, cross-operation and unrelated-native changes. Invented native
+values in these byte vectors supply no real Reload or accepting recovery.
+
+Never-started Forwarding byte controls cover all original1..18-record boundaries,
+path/inode substitution, incomplete sidecars and legacy original guard-preimage
+requirements. They supply no original native cut or successful recovery right.
+The accepting recovery consumes the actual independently reopened terminal
+child, fresh coherent candidate, genuine semantic owners and two complete
+stopped native rounds. Its separate11/14-record publication retains original
+resources unchanged; independent readback and all physical closes precede either
+original-blocker removal or the concrete absent-original-blocker check, with
+the recovery guard removed last. Actual installed continuation and process-cut
+qualification still require the separately accepted exact installed profile.
+
+Forwarding's stopped-initial recovery classifier has independent complete
+120-record byte vectors, both119/120-record stopped boundaries and causal
+earlier-prefix/context/manager/program/grammar refusals. These vectors have
+invented native identities and supply no installed authority. The separately
+selected physical `TestForwardingRecoveryPublicationNativeGuardsSpanPhysicalClose`
+requires the disposable root/ext4 preparation stand. It holds the actual
+writer Close and checks both guards, preserved late Close/cancellation failures,
+original-blocker publication under the still-present recovery guard, and final
+guard removal only after successful close. It supplies no Release, original-cut,
+manager, domain or installed qualification. Genuine recovery/readback and the
+remaining operation matrix belong to the separately admitted installed profile.
+The accompanying physical control-codec case checks exact guard device/inode
+matching; equal bytes in another inode and internally consistent invented birth
+rows refuse. It does not grant original-cut or candidate authority.
+
+Stopped replacement recovery independently checks original61/62-record byte
+prefixes against the complete62-record v2 vector. Only the final verification
+row may appear in the separate continuation at61; at62 it is empty. Foreign
+program, binding, manager, before/after context and ready-inode controls refuse;
+the original prefix stays unchanged. These are byte-classifier checks, not
+genuine native or Release admission. The physical publication test additionally
+uses distinct original-blocker and suffix parents and refuses a substituted
+parent without removing either blocker.
+
+Completed-generation custody acquires child invocation journals once and owns
+their physical close before its original initial lease. The namespace control
+rejects orphan first/last start and retirement journal births as empty history.
+`TestForwardingStartSnapshotNativeParentOwnsChildLease` retains actual parent
+and child flocks while the child's Close is held, then checks joined release
+and retained cancellation or actual late Close failure. Its detached archive
+supplies no original process, domain join, Release or installed recovery right.
+
+Retirement recovery byte vectors retain the original result and all original
+domain/native-join/close rows at17/18-record boundaries. Only the final `retired`
+row may appear in the separate continuation; earlier prefixes and substituted
+frame, result, challenge, exit, native identity, context or program refuse.
+These detached vectors grant no original cut or authority. Native historical
+reader controls add incomplete cut/recovery sidecars to a valid physical-only
+baseline, require refusal while its original lease remains held through Close,
+and preserve all original/history/blocker bytes. Publication controls additionally
+use the root:Node0750 retirement parent. Context graph controls place an older
+recovered retirement before a later owned reload and reject a missing reload
+proof or a later retirement's generator/manager substitution.
+
+Start-boundary intent controls retain exact initial/predecessor, fresh-target
+digest, attempt and history-choice bytes before any guard birth. They reject
+mixed private versions, changed guard/start commitments, a later metadata
+preimage, noncanonical intent and values beyond8KiB; boundary-v1 encoding omits
+the new field. The physical packet case carries the complete64/64/32/8KiB
+snapshot/binding/intent tuple with real kernel credentials under the unchanged
+256KiB packet bound. The original-scope case also cuts a real same-program
+start coordinator before its directory birth, verifies denied next effect and
+independent cut-result retention of the original intent. Its detached Release
+and deliberately invalid native-context fixtures supply no safe continuation,
+installed Start, domain join or recovery authority.
+
+Forwarding replacement-v2 byte controls independently assemble62 records with
+two snapshot birth triples, retain complete56-record v1 reading, and refuse
+partial/aliased/mixed context proofs. Recovered native-lineage controls reject
+a v1 gap, changed original manager/process/namespace/ancestor, or dropped prior
+ancestor even when both later snapshots agree with each other. Controlled-cut
+checks permit the current snapshot only at the exact after-file group following
+the original reload intent, or final replacement verification.
+The retained generator-gap RED additionally demonstrates an internally coherent
+later pair whose before snapshot already substituted a previous generator inode.
+The repaired lineage rejects that unproved intervening change; only the actual
+proved before-to-after transition may change generator observations.
+`TestForwardingReplacementContextNativeGeneratorJoin` separately creates only
+absent disposable generator fixtures, observes actual root namespaces and new
+directory inodes, and holds the original descriptor Close. A fresh native
+observation is withheld until all old descriptors join; late Close failure and
+cancellation refuse transfer. The case has no systemd broker, genuine reload,
+Release or installed authority and cannot qualify an installed transition.
+
 `forwarding-installed-linux` / `make forwarding-installed-check` runs the
 explicit finite cases `lifetime-refill`, `retirement-history-missing`,
 `retirement-history-damaged` and `unknown-domain-join` through the corresponding
@@ -75,6 +290,21 @@ crashed Node's durable reservation remains charged after the remote component
 has physically joined. Actual holder/remote Route cleanup failures caused by
 this negative case are retained separately; positive cases still require clean
 physical cleanup. This is crash refusal, not recovery continuation or reset.
+
+Forwarding's physical transition controls run with `network_signing_native`
+in an explicitly marked disposable root/ext4 preparation stand. The packet
+tests exercise actual root credentials, finite complete snapshot bytes,
+foreign-PID refusal, closure of every delivered descriptor, truncation and
+orderly peer closure. `TestForwardingTransitionScopeNativeFromBirth` launches
+its own same-program process through the real pidfd/subreaper/channel mechanism,
+uses actual synced journal records, independently holds the frozen prefix and
+checks continuation, cut, frozen cancellation and outstanding-ACK cancellation.
+Its late proof-Close control retains the guard and exclusive original lease
+while Close is held, and preserves the refusal after releasing actual custody.
+The detached binding and explicitly non-native context in this physical test
+supply no signed Release, installed transaction, manager, domain join or safe
+recovery. Genuine canonical transitions and the complete installed campaign
+retain their separate prerequisite, receipt and acceptance requirements.
 
 `TestForwardingBuildRecordsAndSourceManifestRules` exercises the public build
 producer's exact source byte/mode grammar, duplicate refusal and actual compiled
@@ -2776,6 +3006,121 @@ Ardents separates deterministic Module checks, local process behavior,
 artifact profiles, and explicitly selected qualifications. A historical result
 is evidence about its exact candidate; it is not an entrypoint for current
 code.
+
+## Disposable development stand lifecycle
+
+New local component, preparation and installed controllers must use one stable
+native staging root, `/var/lib/ardents-development-work`, under the existing
+shared exclusive development lock. Components allocate its fresh `active` child;
+preparation and installed cases allocate their original `cases/<case>` path and
+one separate active reservation shared with the component lane. A retained active
+slot blocks another allocation; a new case name, retry or source identity must
+not allocate another stand beside it. Historical controllers
+and their qualified source/receipt bytes remain immutable and are not templates
+for allocating new per-run Docker bind roots.
+
+`scripts/node/run-filesystem-component.py` implements this lifecycle for the
+existing isolated Go filesystem-component lane. Invoke it with Python3.12
+`-I -S`, an external evidence directory and `intentN`, inside
+`run-development.py exclusive`. It consumes that directory's original
+`intentN-work.sh` and `sourceN.sha256`; the script uses
+`/testtmp/active/tmp` for native temporary files. Source and evidence are read-only
+stable mounts; the one native staging mount is `/testtmp`. The existing shared
+compiler-cache volume and all profile/test/source checks remain required.
+Docker Desktop may retain that permanent integration bind after `--rm`; it does
+not retain a separately mounted root for every completed case.
+
+The controller joins its exact container, checks process descriptors/maps,
+mount namespaces, retained container configuration and loaded unit references,
+preserves and verifies discovery files outside Git, then removes only those
+known files and empty original directories. A failed test, changed original,
+unknown leftover or unavailable join/reference check retains the occupied slot
+and an explicit result. No recursive deletion or automatic recovery is allowed.
+The caller must still run the shared compiler-cache retention after the attempt;
+maintenance results do not replace the test result.
+
+Preparation and installed controllers call `scripts/node/reserve-native-stand.py`
+with the original external evidence directory and `preparationN` or `installedN`
+inside the same exclusive invocation, before copying rootfs/source/artifacts.
+This uses the component controller's actual `native_stand.py` lifecycle; a
+reservation remains occupied after the command returns and across process exits.
+The returned case path is original from birth, rather than a renamed or extracted
+earlier stand. It supplies no installed permission. Raw native state and histories
+remain on that original path after completion. Releasing its separate active
+reservation requires complete original process/manager/child join proof and a
+checked private archive and manifest preserving bytes, ownership, access,
+timestamps, links and extended attributes, plus fresh reference checks and exact
+duplicate-binary disposition. A finalized case is retained history, not another
+active stand or a root available for adoption.
+Archived native numbers describe the original observation; extraction cannot
+recreate original inode/lease authority or authorize recovery. Unknown state,
+active references and all Windows QA histories stay protected. A directory name,
+inactive unit, process exit or old passing receipt is insufficient disposition.
+Missing lifecycle preparation blocks a new campaign; it is not a passing skip.
+The component controller supplies no installed admission or bootstrap acceptance.
+
+Qualification preparation captures its complete explicit immutable input map
+once with `scripts/node/prepare-native-inputs.py INPUT_MAP_JSON INPUT_MAP_SHA256
+EXTERNAL_DESTINATION`, using root Python3.12 `-I -S` inside the same exclusive
+wrapper. `qa_archive.preserve_inputs` physically restores every body and its
+access/owner/time/xattrs, rechecks unchanged originals and synchronizes the
+content-addressed archive before publishing its verification receipt. Hardlinked
+or indirect immutable input paths refuse. This one private input pack supplies
+the shared bodies for subsequent case archives; large binary copies must not
+be recompressed into a new complete payload archive for every case.
+The archive, manifest, verification and disposition paths also require successful
+directory synchronization, including newly created destination directories and
+their parent entries. Unsupported or failed synchronization is a refusal before
+duplicate deletion or active-slot release, not a skipped durability check.
+
+After a genuine original controller finishes, the qualified recipe invokes
+`scripts/node/finalize-native-stand.py EXTERNAL_EVIDENCE CASE TERMINAL_JSON
+TERMINAL_SHA256`. The closed `ardents-native-case-terminal-v1` record contains
+`schema`, `case`, `reservation_sha256`, `test_exit`, `original_scope_joined`,
+`original_resources_joined`, pinned `controller` and `result` path/SHA pairs,
+the complete `immutable_inputs` path/SHA map, `input_closure` directory and
+verification-receipt SHA, and exact `disposable_binary_paths`. Its original
+in-case `ardents-native-case-result-v1` binds that same case, reservation and
+controller SHA, actual exit and original joins. A new qualified controller must
+derive those fields from its actual owner/manager/child completion checks;
+neither file presence nor this QA schema can create a missing domain join.
+Installed execution still requires its separately accepted exact bootstrap
+receipt before the controller runs.
+
+The finalizer independently matches the original reservation, result, current
+input bodies/native metadata and restored immutable pack. It archives the full
+case through `qa_archive.preserve`, including native provenance and state, and
+physically verifies restoration before calling `qa_duplicates.execute`. Only
+declared regular, independently born ELF copies with an exact
+retained immutable input keeper may be unlinked, including small auxiliary binaries.
+Unknown ELF files,
+foreign/linked paths, missing keepers, changed inputs, unknown joins or active
+references retain the slot. Input pack and case archives remain private evidence;
+they grant no installation, runtime or extracted-inode authority.
+
+After exact disposition, all other entries remain unchanged except the
+immediate parent directory's expected unlink metadata; the original metadata
+remains archived. State, histories, links and QA files stay at their original
+case paths. Only after durable archive/disposition proof does the finalizer
+record `case-history/<case>.json` and release the active reservation. The allocator
+checks the case/history bijection, original native identities, referenced proof
+hashes and fresh physical references before another allocation. Unknown or
+orphan cases never become idle by choosing another name. It creates no per-case
+Docker mount or compiler cache and performs no global deletion or process stop.
+
+`scripts/node/check-qa-retention.py EXTERNAL_EVIDENCE` checks this tooling on a
+fresh ext4 fixture under root Python3.12 `-I -S` and the existing exclusive
+wrapper. Before case allocation it checks real STORED/DEFLATE reads and refuses
+BZIP2, LZMA, Zstandard, unknown methods and encryption from literal ZIP headers;
+a failure-only decompressor sentinel proves refusal precedes decoding. All
+archive/disposition readers use that same closed payload-method check.
+The fixture runs actual auxiliary controllers, sequential case finalization,
+shared-pack reuse, retained state/native identities/hardlinks/symlinks/xattrs,
+component/case exclusion and causal unknown-join, failed-exit, held-reader,
+foreign-path, corrupted archive/proof and unavailable-directory-sync refusals. Expected failure QA is
+archived before the exact disposable fixture teardown. These are tooling
+fixtures, without a product installation, accepted bootstrap or installed
+Forwarding recovery qualification.
 
 ## Qualification evidence
 

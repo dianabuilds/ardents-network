@@ -762,7 +762,7 @@ opaque blinding State is never serialized and no other CIRCL scheme or private
 cryptographic fork is admitted. Route capsule uses the selected standard-library
 HPKE mechanism; it does not restore the removed OHTTP/Naming importer.
 
-The current compiler is Go 1.27.2, with the fixing x/net v0.60.0 closure and
+The current compiler is Go 1.27.3, with the selected x/net v0.60.0 closure and
 exact compatibility tool builds specified above. Sigstore v1.11.0 and
 go-containerregistry v0.22.1 replace their earlier selections. `go.mod` and
 `go.sum` pin the full present closure; table entries below identify the same
@@ -785,6 +785,24 @@ version/import/configuration change retain the full acceptance rule above.
 The removed OHTTP/Naming tree has no maintained accepting caller. OTel is a
 separately reviewed finite command-composition use; it is not restored by that
 historical dependency chain.
+
+Reviewed 2026-10-29 against the upstream Go advisory records
+[GO-2026-6866](https://github.com/golang/vulndb/blob/master/data/osv/GO-2026-6866.json)
+and [GO-2026-6860](https://github.com/golang/vulndb/blob/master/data/osv/GO-2026-6860.json).
+Both affect `golang.org/x/net/html` before v0.62.0. The retained v0.60.0 pin is
+not claimed to contain those HTML fixes. Its admitted network/HTTP use has no
+affected package: actual `go list -deps -test` closures for `./cmd/...`,
+`./internal/...` and `./tests/...` exclude `x/net/html` and its children on
+Windows/amd64 with CGO0/1 and Linux/amd64 with CGO0/1. Native Linux CGO1 also
+checks the selected `network_signing_native` and `installation_native` tags.
+The same inspection renews the OpenPGP package exclusion recorded below.
+The verbose source scan reports these three module findings and no affected
+imported package or symbol. This is package-absence evidence for the exact
+source/configurations, not a severity waiver or blanket safety claim. Retain
+the package lists, source/tool identities and original advisory observations;
+repeat final artifact scans before installed admission. A changed dependency,
+import, tag, platform or advisory invalidates this disposition. Any new HTML
+use requires the fixing release and normal dependency admission first.
 
 | Module | Present pin | Owned use / admission boundary |
 |---|---|---|
@@ -1141,7 +1159,7 @@ artifact qualification runner. Any version or runtime use repeats this review.
 
 | Tool | Version | Purpose |
 |---|---:|---|
-| Go | 1.27.2 | compiler, formatter, tests, vet |
+| Go | 1.27.3 | compiler, formatter, tests, vet |
 | Staticcheck | v0.8.1 with exact PR1834 compatibility source above | additional correctness analysis; temporary reviewed build candidate |
 | govulncheck | v1.8.0 | reachable Go vulnerability analysis |
 | deadcode | v0.50.0 (`golang.org/x/tools`) | reachability analysis for reviewed production code and test-only code |
@@ -1174,6 +1192,52 @@ gates never call this bootstrap. Failed primary CVE-page retrieval is not a
 passing vulnerability scan or independent security validation.
 
 ## Local diagnostic tools
+
+### Native QA archive and case-retention tools
+
+Reviewed 2026-10-29. The separate `scripts/node` input-pack, archive, duplicate
+disposition and case-finalization tools use root CPython3.12 `-I -S` on the
+declared Ubuntu24.04/ext4 development stand. They are private QA tools, not
+product runtime or installation authority. The runner-only exclusions below
+do not grant these additional archive APIs. No pip or Go dependency is added.
+The Product Owner and Codex own renewal through the explicit tools workflow.
+
+The exercised interpreter remains Ubuntu `3.12.3-1ubuntu0.12`, with the same
+executable hash recorded below. Its closure includes `zlib1g`
+`1:1.3.dfsg-3.1ubuntu2.1`, `libbz2-1.0` `1.0.8-5.1build0.1` and `liblzma5`
+`5.6.1+really5.4.5-1ubuntu0.2`; earlier libc, Expat and OpenSSL versions remain
+unchanged. The retained receipt inventories actual module/library hashes and
+owning packages, empty `dpkg -V` results, non-set-id interpreter, `AT_SECURE=0`
+and absent loader/crypto injection. CPython retains PSF terms, bzip2 its BSD
+variant and the selected liblzma library public-domain terms. Installed package
+copyright files are authoritative. These host libraries are not distributed
+with the no-cgo Go artifacts.
+
+Primary sources accessed on the review date: Python security releases
+[3.12.13](https://www.python.org/downloads/release/python-31213/),
+[3.12.14](https://www.python.org/downloads/release/python-31214/),
+[3.12.15](https://www.python.org/downloads/release/python-31215/) and
+[3.12.16](https://www.python.org/downloads/release/python-31216/).
+The branch receives security fixes through October2028; the older installed
+patch is not claimed fully fixed. Exact-use admission is limited as follows:
+
+| Affected path | Required exclusion or native condition |
+|---|---|
+| ZIP memory exhaustion [CVE-2026-15310](https://github.com/python/cpython/issues/156002) and decompressor lifetime [CVE-2026-6100](https://github.com/python/cpython/issues/148395) | All QA readers check every member method/encryption flag before opening payloads. Only unencrypted STORED/DEFLATE is admitted; other methods refuse even with a matching pin. Actual DEFLATE uses `zlib.decompressobj`, not the affected internal `_ZlibDecompressor`. Bzip2/LZMA modules may be imported but their decompressors receive no input. Native controls prove refusal before decompressor selection |
+| Temporary-directory cleanup race [gh-157579](https://github.com/python/cpython/issues/157579) | Restore copies use original root-owned 0700 private temporary directories, no lent descriptors or concurrent untrusted writers, and actual descriptor-based symlink-resistant `rmtree`. Lower-privilege actors cannot replace their children. Qualified QA cases have joined before archival. Root compromise is excluded by this local-integrity condition, not repaired by these tools |
+| zlib [CVE-2026-85091](https://security-tracker.debian.org/tracker/CVE-2026-85091), [CVE-2026-27171](https://security-tracker.debian.org/tracker/CVE-2026-27171), MiniZip and `untgz` | Raw DEFLATE and ordinary `crc32` only; no gz/nonblocking writes, CRC-combine, MiniZip or `untgz`. Version disputes and severity supply no exemption |
+| [bzip2recover](https://security-tracker.debian.org/tracker/source-package/bzip2) and [XZ decoder/utility findings](https://security-tracker.debian.org/tracker/source-package/xz-utils) | No recovery utility, XZ command, decoder or reset-after-allocation-failure path is used. [Ubuntu's CVE-2024-3094 record](https://ubuntu.com/security/CVE-2024-3094) excludes the released Noble package; import safety and decoder-input exclusion remain separate checks |
+| SSL/TLS, HTTP/cookies/email, XML/Expat/plist, tar extraction, Windows mimetypes and StringPrep | No such parser/protocol receives input. Python performs no network exchange. Base64 is output encoding only. Prior SHA256-only OpenSSL and excluded libc/Expat call conditions remain; mapped libraries grant no additional API use |
+
+Payload names are generated SHA256 names. Bytes come from exact private inputs
+and complete known-ended QA under verified archive/manifest pins. Restoration
+uses explicit owned paths, never `extract`, `extractall` or `zipfile.Path`.
+Required private-directory, package, source and input conditions must be checked
+anew; missing evidence retains the case instead of admitting disposition.
+Reproduce with the native conformance fixture and full module/package/library
+inventory, including copyright hashes and actual filesystem/private-directory
+facts. Inspect complete call surfaces too: sampled imports and passing fixtures
+alone do not establish general security or platform qualification.
 
 ### Native development runner interpreter
 

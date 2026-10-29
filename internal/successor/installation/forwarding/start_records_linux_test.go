@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -46,6 +47,71 @@ func startRecordVector() ([]byte, []string) {
 		raw = fmt.Appendf(raw, "{\"schema\":\"ardents-forwarding-start-journal-v1\",\"sequence\":%d,\"phase\":%q,\"path\":%q,\"device\":%d,\"inode\":%d,\"sha256\":%q,\"mode\":%d,\"uid\":0,\"gid\":%d}\n", i, item.phase, item.path, device, inode, item.hash, item.mode, item.gid)
 	}
 	return raw, hashes
+}
+
+func TestForwardingStartContextDoesNotMakeLegacyOrPartialHistoryContinuable(t *testing.T) {
+	legacy, hashes := startRecordVector()
+	lines := bytes.Split(legacy[:len(legacy)-1], []byte{'\n'})
+	native := fmt.Appendf(nil, "{\"schema\":\"ardents-forwarding-start-journal-v1\",\"sequence\":1,\"phase\":\"native-context\",\"path\":\"/opt/forwarding\",\"device\":0,\"inode\":0,\"sha256\":%q,\"mode\":0,\"uid\":0,\"gid\":0}", strings.Repeat("f", 64))
+	current := [][]byte{bytes.Clone(lines[0]), native}
+	for n, line := range lines[1:] {
+		current = append(current, bytes.Replace(line, fmt.Appendf(nil, "\"sequence\":%d,", n+1), fmt.Appendf(nil, "\"sequence\":%d,", n+2), 1))
+	}
+	encode := func(lines [][]byte) []byte { return append(bytes.Join(lines, []byte{'\n'}), '\n') }
+	decode := func(raw []byte) error {
+		_, err := decodeStartRecords(raw, 0, "/opt/forwarding.forwarding-first-start-journal", "/opt/forwarding/forwarding-startup", hashes[0], hashes[1], hashes[2], hashes[3], hashes[4], 988)
+		return err
+	}
+	if err := decode(legacy); err != nil {
+		t.Fatal("complete historical25-record grammar", err)
+	}
+	if err := decode(encode(current)); err != nil {
+		t.Fatal("complete26-record context grammar", err)
+	}
+	for n := 0; n < len(current); n++ {
+		if decode(encode(current[:n])) == nil {
+			t.Fatal("new prefix became complete historical start", n)
+		}
+	}
+	for _, fault := range []string{"path", "phase", "device", "inode", "mode", "uid", "gid", "hash", "schema", "sequence"} {
+		var changed startEntry
+		if err := json.Unmarshal(native, &changed); err != nil {
+			t.Fatal(err)
+		}
+		switch fault {
+		case "path":
+			changed.Path += "-foreign"
+		case "phase":
+			changed.Phase = "context-ready"
+		case "device":
+			changed.Device = 1
+		case "inode":
+			changed.Inode = 1
+		case "mode":
+			changed.Mode = 0600
+		case "uid":
+			changed.UID = 988
+		case "gid":
+			changed.GID = 988
+		case "hash":
+			changed.SHA256 = "unknown"
+		case "schema":
+			changed.Schema = "ardents-source-start-journal-v1"
+		case "sequence":
+			changed.Sequence = 2
+		}
+		raw, err := json.Marshal(changed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		bad := append([][]byte(nil), current...)
+		bad[1] = raw
+		if decode(encode(bad)) == nil {
+			t.Fatal("foreign native context record", fault)
+		}
+	}
+	// Neither grammar decoder supplies an original-cut proof, native readback,
+	// completed Sync/Close, Release authority or a recovery continuation right.
 }
 
 func TestForwardingStartRecordsRequireWholeOriginalOrderedTranscript(t *testing.T) {
@@ -91,5 +157,30 @@ func TestForwardingStartRecordsRequireWholeOriginalOrderedTranscript(t *testing.
 		if decode(changed) == nil {
 			t.Fatal("ambiguous/foreign transcript admitted")
 		}
+	}
+}
+
+func TestForwardingStartRecordsKeepRequestAndNewACKCommitmentsDistinct(t *testing.T) {
+	raw, hashes := startRecordVector()
+	lines := bytes.Split(bytes.TrimSuffix(raw, []byte{'\n'}), []byte{'\n'})
+	ack := digest([]byte("independent new full 161-byte ACK commitment"))
+	for _, index := range []int{len(lines) - 2, len(lines) - 1} {
+		var record startEntry
+		if json.Unmarshal(lines[index], &record) != nil || record.Phase != "ack-attempt" && record.Phase != "ack-written" {
+			t.Fatal("independent literal's ACK positions changed")
+		}
+		record.SHA256 = ack
+		lines[index], _ = json.Marshal(record)
+	}
+	body := append(bytes.Join(lines, []byte{'\n'}), '\n')
+	decode := func(request, response string) error {
+		_, err := decodeStartRecordsFrames(body, 0, "/opt/forwarding.forwarding-first-start-journal", "/opt/forwarding/forwarding-startup", hashes[0], hashes[1], hashes[2], hashes[3], request, response, 988)
+		return err
+	}
+	if err := decode(hashes[4], ack); err != nil {
+		t.Fatal("new full ACK commitment unavailable", err)
+	}
+	if decode(hashes[4], hashes[4]) == nil || decode(ack, ack) == nil {
+		t.Fatal("request and full ACK became interchangeable")
 	}
 }

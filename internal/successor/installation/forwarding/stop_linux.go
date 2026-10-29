@@ -109,7 +109,7 @@ func Stop(ctx context.Context, v *release.Verifier, bindingPath, history string)
 	if err != nil {
 		return err
 	}
-	if s.started.original.latestRetirement != nil {
+	if head := s.started.original.head(); head == nil || head.start == nil || head.retirement != nil {
 		return ErrBinding
 	}
 	c := s.started.original.completed.original
@@ -158,6 +158,16 @@ func Stop(ctx context.Context, v *release.Verifier, bindingPath, history string)
 		return err
 	}
 	s.phase = stopRetirement
+	nativeContext, err := captureNativeContext(s.identity, manager, s.namespace, nil, c.files)
+	if err != nil {
+		return err
+	}
+	if err := s.observeOriginal(); err != nil {
+		return err
+	}
+	if err := bindTransition(ctx, "retirement", s.started.original.snapshot.number.retirementJournal(b.Request.InstallationRoot), b.Generation, c.files.files[filepath.Join(b.Request.InstallationRoot, "binding.json")].body, nativeContext, manager); err != nil {
+		return err
+	}
 	s.storage, err = createRetirementStorage(ctx, b.Request.InstallationRoot, s.started.original.snapshot.number, s.started.original.snapshot.sha256)
 	if err != nil {
 		return err
@@ -239,6 +249,9 @@ func Stop(ctx context.Context, v *release.Verifier, bindingPath, history string)
 		return err
 	}
 	if err := s.close(); err != nil {
+		return err
+	}
+	if err := errors.Join(v.Close(), finishTransition(ctx)); err != nil {
 		return err
 	}
 	return s.storage.publish()

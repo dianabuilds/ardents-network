@@ -11,15 +11,6 @@ import (
 	"time"
 )
 
-// ManagerIdentity is a native-test projection. Production stopped preparation
-// retains its own CheckAbsent/CheckOriginal observation and physical lifetime.
-func (s *ForwardingStopped) ManagerIdentity() (string, error) {
-	if s == nil || s.original == nil || s.original.reference == nil {
-		return "", ErrInput
-	}
-	return s.original.reference.managerIdentity()
-}
-
 func forwardingManagerStand(t *testing.T) {
 	t.Helper()
 	marker, err := os.ReadFile("/etc/ardents-forwarding-preparation-native-stand")

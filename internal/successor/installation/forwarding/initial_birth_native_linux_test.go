@@ -15,7 +15,7 @@ import (
 func TestForwardingBirthsNativeOriginalJournalExcludesFreshRetry(t *testing.T) {
 	f := prepareInputFixture(t)
 	path := filepath.Join(filepath.Dir(f.path), "initial-journal")
-	j, err := openInitialBirths(t.Context(), path, map[string]bool{path: true})
+	j, err := openForwardingBirths(t.Context(), path, map[string]bool{path: true}, "forwarding-initial-v1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestForwardingBirthsNativeOriginalJournalExcludesFreshRetry(t *testing.T) {
 		t.Fatal(err)
 	}
 	for range 8 {
-		retry, err := openInitialBirths(t.Context(), path, map[string]bool{path: true})
+		retry, err := openForwardingBirths(t.Context(), path, map[string]bool{path: true}, "forwarding-initial-v1")
 		if err == nil {
 			t.Fatal("retained original journal reopened as a fresh transaction")
 		}
@@ -58,7 +58,7 @@ func TestForwardingBirthsNativeWritesAndClosesOriginalResources(t *testing.T) {
 	f := prepareInputFixture(t)
 	parent := filepath.Dir(f.path)
 	journal, dir, leaf := filepath.Join(parent, "journal"), filepath.Join(parent, "generation"), filepath.Join(parent, "generation", "artifact")
-	j, err := openInitialBirths(t.Context(), journal, map[string]bool{journal: true, dir: true, leaf: true})
+	j, err := openForwardingBirths(t.Context(), journal, map[string]bool{journal: true, dir: true, leaf: true}, "forwarding-initial-v1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestForwardingBirthsNativeUncertainSyncRetainsOriginalFailure(t *testing.T)
 	journal, leaf := filepath.Join(parent, "journal"), filepath.Join(parent, "artifact")
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	j, err := openInitialBirths(ctx, journal, map[string]bool{journal: true, leaf: true})
+	j, err := openForwardingBirths(ctx, journal, map[string]bool{journal: true, leaf: true}, "forwarding-initial-v1")
 	if err != nil {
 		t.Fatal(err)
 	}

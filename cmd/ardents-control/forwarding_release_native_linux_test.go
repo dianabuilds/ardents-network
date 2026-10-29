@@ -191,7 +191,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 			metadataPath := filepath.Join(parent, "failed-"+cut)
 			verificationPath := metadataPath + "-verification"
 			fired := false
-			root, err := signForwardingRelease(ctx, []string{planPath, keyRoot, metadataPath, verificationPath}, func(stage string, file *os.File) {
+			root, err := signForwardingReleasePurpose(ctx, []string{planPath, keyRoot, metadataPath, verificationPath}, forwardingReleaseInitial, func(stage string, file *os.File) {
 				if stage != cut || fired {
 					return
 				}
@@ -214,7 +214,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 			if err != nil {
 				t.Fatal("partial output provenance lost", err)
 			}
-			if root, err := signForwardingRelease(t.Context(), []string{planPath, keyRoot, metadataPath, verificationPath}, nil); err == nil || len(root) != 0 {
+			if root, err := signForwardingReleasePurpose(t.Context(), []string{planPath, keyRoot, metadataPath, verificationPath}, forwardingReleaseInitial, nil); err == nil || len(root) != 0 {
 				t.Fatal("partial output adopted as fresh signing")
 			}
 			after, err := os.Stat(metadataPath)
@@ -229,7 +229,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 		plan.Schema = bad
 		writePlan()
 		output := filepath.Join(parent, bad)
-		if _, err := signForwardingRelease(t.Context(), []string{planPath, keyRoot, output, output + "-verification"}, nil); err == nil {
+		if _, err := signForwardingReleasePurpose(t.Context(), []string{planPath, keyRoot, output, output + "-verification"}, forwardingReleaseInitial, nil); err == nil {
 			t.Fatal("foreign purpose reached initial signing", bad)
 		}
 		if _, err := os.Lstat(output); !os.IsNotExist(err) {
@@ -249,7 +249,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 	}
 	plan.ProgramCustom, plan.GenerationCustom = custom(controlBytes), custom(badDescriptor)
 	writePlan()
-	if _, err := signForwardingRelease(t.Context(), []string{planPath, keyRoot, filepath.Join(parent, "bad-program"), filepath.Join(parent, "bad-program-history")}, nil); err == nil {
+	if _, err := signForwardingReleasePurpose(t.Context(), []string{planPath, keyRoot, filepath.Join(parent, "bad-program"), filepath.Join(parent, "bad-program-history")}, forwardingReleaseInitial, nil); err == nil {
 		t.Fatal("Control executable signed as Node")
 	}
 }
@@ -304,7 +304,7 @@ func TestForwardingPreparationNativeActualBuildRecordsAndPublicPlan(t *testing.T
 	}
 	planPath := filepath.Join(output, "forwarding-release-plan.json")
 	planBytes := read(planPath)
-	plan, err := decodeForwardingReleasePlan(planBytes, time.Now().UTC())
+	plan, err := decodeForwardingReleasePurpose(planBytes, time.Now().UTC(), forwardingReleaseInitial)
 	if err != nil || plan.Program != filepath.Join(buildRoot, "build-1", "ardents-node") || plan.Descriptor != descriptor || plan.Template != template {
 		t.Fatal("public plan changed exact canonical resources", err)
 	}

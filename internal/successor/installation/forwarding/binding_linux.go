@@ -34,12 +34,18 @@ type binding struct {
 }
 
 func decodeBinding(raw []byte) (binding, error) {
+	return decodeConfiguration(raw, "ardents-forwarding-binding-v1")
+}
+
+// Both closed configuration grammars use identical declarations. Their caller
+// selects a fixed schema; this parser grants no lineage or native effect right.
+func decodeConfiguration(raw []byte, schema string) (binding, error) {
 	var b binding
 	if len(raw) == 0 || len(raw) > 32<<10 || json.Unmarshal(raw, &b) != nil {
 		return b, ErrInput
 	}
 	encoded, err := json.Marshal(b)
-	if err != nil || !bytes.Equal(raw, append(encoded, '\n')) || b.Schema != "ardents-forwarding-binding-v1" || b.Invocation != "forwarding" || b.ProgramTarget != infrastructure.ProgramTarget || b.GenerationTarget != infrastructure.ForwardingGenerationTarget || b.Account != "ardents-node" || b.UID < 100 || b.UID > 999 || b.GID != b.UID || !validPath(b.History) {
+	if err != nil || !bytes.Equal(raw, append(encoded, '\n')) || b.Schema != schema || b.Invocation != "forwarding" || b.ProgramTarget != infrastructure.ProgramTarget || b.GenerationTarget != infrastructure.ForwardingGenerationTarget || b.Account != "ardents-node" || b.UID < 100 || b.UID > 999 || b.GID != b.UID || !validPath(b.History) {
 		return binding{}, ErrBinding
 	}
 	for _, sha := range []string{b.Generation, b.ProgramSHA256, b.TemplateSHA256, b.InventorySHA256, b.TargetsSHA256, b.RequestSHA256, b.PlanSHA256, b.UnitSHA256, b.CertificateSHA256} {

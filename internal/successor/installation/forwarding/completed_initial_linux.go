@@ -14,15 +14,21 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
-// Completed retains an independently reopened initial history and native files.
+// Completed retains independently reopened initial and selected-generation
+// lineage histories and native files.
 // It supplies no creator custody, current duty, Start, retirement or Startup
 // permission. Fresh artifact authorization is a separate checked operation.
 type Completed struct{ original *completedInitial }
 
 type completedInitial struct {
-	files   *completedFiles
-	binding binding
-	plan    Plan
+	files          *completedFiles
+	binding        binding
+	plan           Plan
+	initial        generationSelection
+	selections     map[string]generationSelection
+	selectionOrder []generationSelection
+	hostingPolicy  string
+	reloads        map[string]*replacementNativeProof
 }
 
 // ReadCompleted is root-only and noncreating. It requires the exact completed
@@ -34,13 +40,47 @@ func ReadCompleted(ctx context.Context, path string) (Completed, error) {
 }
 
 func readCompleted(ctx context.Context, path string, observe func(string, *os.File)) (result Completed, returned error) {
+	return readCompletedObservation(ctx, path, observe, nil)
+}
+
+// A replacement reader obtains every descriptor and exclusive lease anew after
+// the writer and predecessor readers close. The expected pending inode restricts
+// this private readback; it grants no ordinary completion or continuation.
+func readCompletedPending(ctx context.Context, path string, pending *initialFile) (Completed, error) {
+	if pending == nil {
+		return Completed{}, ErrInput
+	}
+	return readCompletedObservation(ctx, path, nil, pending)
+}
+
+func readCompletedObservation(ctx context.Context, path string, observe func(string, *os.File), pending *initialFile) (result Completed, returned error) {
+	return readCompletedWithRecovery(ctx, path, observe, pending, nil)
+}
+
+// Actual recovery readback takes new leases only after the original and suffix
+// writers close. The closed publication identifies its own two present guards.
+func readCompletedWithRecovery(ctx context.Context, path string, observe func(string, *os.File), pending *initialFile, recovery *recoveryPublication) (result Completed, returned error) {
+	return readCompletedInputs(ctx, path, observe, pending, recovery, nil)
+}
+
+// Only the actual recovery operation supplies its own freshly opened original
+// lease. All file observations are independent; this view is never public
+// completed custody and cannot be returned as permission to another operation.
+func readCompletedInterrupted(ctx context.Context, path string, original *recoveryOriginal) (Completed, error) {
+	if original == nil {
+		return Completed{}, ErrInput
+	}
+	return readCompletedInputs(ctx, path, nil, nil, nil, original)
+}
+
+func readCompletedInputs(ctx context.Context, path string, observe func(string, *os.File), pending *initialFile, recovery *recoveryPublication, interrupted *recoveryOriginal) (result Completed, returned error) {
 	if ctx == nil || os.Geteuid() != 0 || !validPath(path) {
 		return result, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
 		return result, err
 	}
-	s := &completedFiles{ctx: ctx, files: map[string]*initialFile{}, dirs: map[string]*inputDirectory{}, observe: observe}
+	s := &completedFiles{ctx: ctx, files: map[string]*initialFile{}, dirs: map[string]*inputDirectory{}, observe: observe, interrupted: interrupted, recoveryReadback: recovery}
 	c := &completedInitial{files: s}
 	defer func() {
 		if returned != nil {
@@ -52,19 +92,63 @@ func readCompleted(ctx context.Context, path string, observe func(string, *os.Fi
 	if err != nil {
 		return result, err
 	}
-	b, err := decodeBinding(bound)
+	selected, err := decodeSelection(bound)
+	b := selected.binding
 	if err != nil || path != filepath.Join(b.Request.InstallationRoot, "binding.json") {
 		return result, errors.Join(ErrBinding, err)
 	}
 	c.binding = b
+	if interrupted != nil {
+		matched := interrupted.cut.Boundary.Operation == "replacement" && interrupted.cut.Boundary.Journal == replacementJournal(b.Request.InstallationRoot, b.Generation)
+		if interrupted.cut.Boundary.Operation == "retirement" || interrupted.cut.Boundary.Operation == "start" {
+			for n := attemptNumber(0); n < attemptLimit; n++ {
+				journal := n.retirementJournal(b.Request.InstallationRoot)
+				if interrupted.cut.Boundary.Operation == "start" {
+					journal = n.journal(b.Request.InstallationRoot)
+				}
+				if interrupted.cut.Boundary.Journal == journal {
+					matched = true
+					break
+				}
+			}
+		}
+		if !matched || !bytes.Equal(interrupted.cut.Boundary.Binding, selected.raw) {
+			return result, ErrBinding
+		}
+		if err := interrupted.check(); err != nil {
+			return result, err
+		}
+	}
 	s.clock, s.pending = b.Request.Clock, b.Request.InstallationRoot+".forwarding-initial-pending"
 	s.sealed = filepath.Join(b.Request.InstallationRoot, "generations", b.Generation)
 	s.credential = b.Request.CredentialDirectory
 	if _, err := s.parents(s.pending); err != nil {
 		return result, err
 	}
-	if err := s.absent(s.pending); err != nil {
-		return result, err
+	if recovery == nil || recovery.completion.Operation != "initial" {
+		if err := s.absent(s.pending); err != nil {
+			return result, err
+		}
+	}
+	otherPending := replacementPending(b.Request.InstallationRoot)
+	if interrupted != nil && interrupted.cut.Boundary.Operation == "replacement" {
+		raw, err := s.read(otherPending, 128, 0600, 0, 0)
+		if err != nil || !bytes.Equal(raw, replacementPendingBytes(selected.raw)) {
+			return result, errors.Join(ErrBinding, err)
+		}
+	} else if pending == nil {
+		if err := s.absent(otherPending); err != nil {
+			return result, err
+		}
+		s.absentPaths = append(s.absentPaths, otherPending)
+	} else {
+		if selected.replacement == nil || pending.path != otherPending || pending.info == nil {
+			return result, ErrBinding
+		}
+		raw, err := s.read(otherPending, 128, 0600, 0, 0)
+		if err != nil || !bytes.Equal(raw, replacementPendingBytes(selected.raw)) || !sameInputFile(pending.info, s.files[otherPending].info) {
+			return result, errors.Join(ErrBinding, err)
+		}
 	}
 	journal := b.Request.InstallationRoot + ".forwarding-initial-journal"
 	s.journal, err = s.retain(journal, 4<<20, 0600, 0, 0)
@@ -91,26 +175,10 @@ func readCompleted(ctx context.Context, path string, observe func(string, *os.Fi
 			return result, err
 		}
 	}
-	public := make(map[string][]byte, 12)
-	for _, name := range forwardingGenerationNames() {
-		limit, mode := int64(1<<20), os.FileMode(0444)
-		if name == programName {
-			limit, mode = 64<<20, 0555
-		} else if name == "binding.json" {
-			limit = 32 << 10
-		} else if name != "root.json" && name != "timestamp.json" && name != "snapshot.json" && name != "targets.json" {
-			limit = 16 << 10
-		}
-		public[name], err = s.read(filepath.Join(s.sealed, name), limit, mode, 0, 0)
-		if err != nil {
-			return result, err
-		}
-	}
-	get := func(name string) []byte { return s.files[filepath.Join(s.sealed, name)].body }
-	c.plan, err = validateSelectedGeneration(b, bound, public)
-	if err != nil {
+	if err := c.readSelections(selected); err != nil {
 		return result, err
 	}
+	get := func(name string) []byte { return s.files[filepath.Join(s.sealed, name)].body }
 	certificate, err := s.read(filepath.Join(b.Request.CredentialDirectory, "certificate.pem"), 64<<10, 0444, 0, 0)
 	if err != nil {
 		return result, err
@@ -136,19 +204,27 @@ func readCompleted(ctx context.Context, path string, observe func(string, *os.Fi
 	if _, err := s.parents(s.clock); err != nil {
 		return result, err
 	}
-	hashes := make(map[string]string, len(s.files))
-	for path, file := range s.files {
-		if path != journal {
-			hashes[path] = digest(file.body)
-		}
+	hashes := c.initialHashes(path)
+	var initialRecovery *recoveryPublication
+	if recovery != nil && recovery.completion.Operation == "initial" {
+		initialRecovery = recovery
 	}
-	hashes[s.pending] = digest([]byte("ardents-forwarding-initial-pending-v1\n" + digest(bound) + "\n"))
-	records, err := decodeInitialRecords(s.journal.body, b, hashes)
+	initialRaw, err := c.readRecoveredInitial(initialRecovery)
+	if err != nil {
+		return result, err
+	}
+	records, err := decodeInitialRecords(initialRaw, c.initial.binding, hashes)
 	if err != nil {
 		return result, err
 	}
 	for path, record := range records {
 		if path == s.pending {
+			if s.recovered != nil && s.recovered.originalPending != nil {
+				native, ok := infoSys(s.recovered.originalPending.info)
+				if !ok || uint64(native.Dev) != record.Device || native.Ino != record.Inode {
+					return result, ErrBinding
+				}
+			}
 			continue
 		}
 		var info os.FileInfo
@@ -164,6 +240,16 @@ func readCompleted(ctx context.Context, path string, observe func(string, *os.Fi
 		if uint64(native.Dev) != record.Device || native.Ino != record.Inode {
 			return result, ErrBinding
 		}
+	}
+	if err := c.readReplacementHistory(); err != nil {
+		return result, err
+	}
+	s.invocations = &invocationChain{ctx: ctx, owner: c}
+	if err := s.invocations.readChain(path); err != nil {
+		return result, err
+	}
+	if err := c.openRecoveredContext(); err != nil {
+		return result, err
 	}
 	result = Completed{original: c}
 	return result, result.Check()

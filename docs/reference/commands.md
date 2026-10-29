@@ -623,6 +623,53 @@ runtime State/duty and role authority remain separately owned. This command
 selects no generation replacement, recovery continuation, automatic boot or
 restart, and supplies no installed qualification by itself.
 
+`forwarding replace DISTRIBUTION HISTORY ENVIRONMENT NETWORK REQUEST BINDING`
+selects one strictly forward stopped generation after fresh coherent Release
+authorization and independent complete predecessor retirement. The separate
+`forwarding start-selected DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
+admits its first runtime invocation; later `restart` stays within that selected
+generation. Credentials, semantic roots, provider allowance and the entire
+original history remain bound. Installed qualification requires its own exact
+accepted bootstrap receipt.
+
+`forwarding supervise-transition --stop-after-record N --timeout-ms MS -- ACTION ...`
+retains an original canonical coordinator from native birth through physical
+join. ACTION is exactly `install-initial-stopped`, `replace`, `start-initial`,
+`start-selected`, `restart` or `stop`, with that command's usual arguments.
+MS is1..120000; N is zero for ordinary completion or a positive original journal
+record count, bounded by120 initial,62 replacement,26 start or18 retirement.
+A controlled cut reports `forwarding-original-cut-completed` with
+`recovered:false`, and retains the original interrupted operation's blockers.
+Its separate root-only guarded proof supplies historical physical observations;
+recovery still requires independent fresh admission and operation-specific proof.
+An arbitrary executable, non-root runtime start, unknown action, late Close
+failure or uncertain acknowledgement cannot supply this result.
+
+`forwarding recover DISTRIBUTION HISTORY ENVIRONMENT NETWORK REQUEST JOURNAL`
+uses an existing Release trust root and fresh coherent candidate authorization.
+Its current safe classifier accepts an original initial-v2 cut after the
+`stopped-verified` or `completed` record, or a selected replacement-v2 cut
+after its complete after-snapshot-ready or `replacement-verified` record.
+It also accepts an original retirement cut after its complete result-ready
+or `retired` record, retaining the exact original joined-domain/native result
+and complete invocation chain. It cannot reconstruct an earlier missing result.
+Replacement recovery independently retains the complete retired predecessor,
+original Hosting preparation and existing semantic histories. Fresh permission
+for the same payloads may advance metadata floors; the original sealed metadata
+stays unchanged. Every other prefix returns
+repair-required with blockers preserved. It never rewrites the original journal,
+replays account creation/reload/Start/ACK, initializes semantic roots or invents
+domain completion. Its separate guarded suffix and independently reopened
+completed readback precede removal of the original blocker; the recovery guard
+is removed last, after all required physical closes. The result is
+`forwarding-recovery-stopped`, with `started:false`.
+Ordinary readers independently validate the original cut, complete suffix,
+original resources and fresh manager/search-path/kernel context. A subsequent
+generation requires the complete v2 replacement before/after snapshot lineage;
+all original non-generator observations remain exact. Missing or v1-only
+reload evidence cannot supply a context refresh. Installed qualification remains
+separately admitted.
+
 The isolated development consumer `ardents-next node forwarding --config <file>`
 starts one original authenticated Forwarding duty on Linux. Its closed input
 contains `network`, `node_id`, `process_profile`, `participation_root`,

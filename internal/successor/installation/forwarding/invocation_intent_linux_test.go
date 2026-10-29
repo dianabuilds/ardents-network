@@ -7,6 +7,11 @@ import (
 	"testing"
 )
 
+func checkStartIntent(raw []byte, b binding, bindingSHA, initialSHA string, number attemptNumber, predecessor string) error {
+	_, _, err := readStartHistoryIntent(raw, b, bindingSHA, initialSHA, number, predecessor)
+	return err
+}
+
 func TestForwardingInvocationIntentPreservesFirstBytesAndBindsEveryPredecessor(t *testing.T) {
 	b := binding{UID: 988, GID: 988}
 	bh, ih, th, ph := strings.Repeat("a", 64), strings.Repeat("b", 64), strings.Repeat("c", 64), strings.Repeat("d", 64)

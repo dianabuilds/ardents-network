@@ -11,11 +11,101 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
 )
+
+// Actual child and parent flock/Close ordering only. The fixture archive is
+// detached and supplies no original process, domain, Release or recovery right.
+func TestForwardingStartSnapshotNativeParentOwnsChildLease(t *testing.T) {
+	for _, mode := range []string{"complete", "cancel", "late-close"} {
+		t.Run(mode, func(t *testing.T) {
+			b, bind, initial := nativeStartSnapshotFixture(t)
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			h, err := readStartSnapshot(ctx, b, bind, initial)
+			if err != nil {
+				_ = h.close()
+				t.Fatal(err)
+			}
+			path := b.Request.InstallationRoot + ".parent-lease-fixture"
+			file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+			if err != nil {
+				_ = h.close()
+				t.Fatal(err)
+			}
+			if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+				_ = file.Close()
+				_ = h.close()
+				t.Fatal(err)
+			}
+			journal := &initialFile{path: path, file: file}
+			parent := &completedFiles{ctx: ctx, journal: journal, fileOrder: []*initialFile{journal}, invocations: &invocationChain{ctx: ctx, starts: []*startSnapshot{h}}}
+			defer parent.close()
+			held, resume := make(chan struct{}), make(chan struct{})
+			var once sync.Once
+			release := func() { once.Do(func() { close(resume) }) }
+			defer release()
+			h.observe = func(phase string, f *os.File) {
+				if phase == "before-close" && f == h.journal.file {
+					close(held)
+					<-resume
+					if mode == "late-close" {
+						_ = f.Close()
+					}
+				}
+			}
+			done := make(chan error, 1)
+			go func() { done <- parent.close() }()
+			select {
+			case <-held:
+			case err := <-done:
+				t.Fatal("child Close not retained", err)
+			}
+			var probeError error
+			for _, name := range []string{path, h.journal.path} {
+				probe, err := os.Open(name)
+				if err != nil {
+					probeError = errors.Join(probeError, err)
+					continue
+				}
+				err = syscall.Flock(int(probe.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+				if !errors.Is(err, syscall.EWOULDBLOCK) {
+					probeError = errors.Join(probeError, errors.New("original lease released before child Close"), err)
+				}
+				probeError = errors.Join(probeError, probe.Close())
+			}
+			if mode == "cancel" {
+				cancel()
+			}
+			release()
+			closed := <-done
+			if probeError != nil {
+				t.Fatal(probeError)
+			}
+			if mode == "complete" && closed != nil || mode == "cancel" && !errors.Is(closed, context.Canceled) || mode == "late-close" && !errors.Is(closed, os.ErrClosed) {
+				t.Fatal("child terminal result lost", closed)
+			}
+			if err := parent.close(); (err == nil) != (closed == nil) {
+				t.Fatal("repeated parent close changed result", err, closed)
+			}
+			for _, name := range []string{path, h.journal.path} {
+				probe, err := os.Open(name)
+				if err != nil {
+					t.Fatal(err)
+				}
+				err = syscall.Flock(int(probe.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+				closeErr := probe.Close()
+				if err != nil || closeErr != nil {
+					t.Fatal("joined lease unavailable", err, closeErr)
+				}
+			}
+		})
+	}
+}
 
 // readStartSnapshot selects the first attempt for native physical custody tests.
 func readStartSnapshot(ctx context.Context, b binding, bindingSHA, initialSHA string) (h *startSnapshot, returned error) {

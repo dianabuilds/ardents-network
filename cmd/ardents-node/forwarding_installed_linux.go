@@ -121,7 +121,7 @@ func runInstalledForwarding(parent context.Context, binding string, out io.Write
 		return err
 	}
 	openState := state.Open
-	if material.Invocation != 0 {
+	if material.ExistingHistory {
 		openState = state.OpenRetained
 	}
 	opened, err := openState(config)
@@ -153,7 +153,7 @@ func runInstalledForwarding(parent context.Context, binding string, out io.Write
 		return err
 	}
 	listen := node.ListenForwarding
-	if material.Invocation != 0 {
+	if material.ExistingHistory {
 		listen = node.ListenForwardingRetained
 	}
 	original, err = listen(startup.Context(), node.ForwardingConfig{

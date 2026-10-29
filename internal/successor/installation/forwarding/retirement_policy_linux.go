@@ -59,6 +59,29 @@ func verifyForwardingRestartStopped(unit, service systemd.Properties, r Request,
 	return nil
 }
 
+// A replacement changes loaded configuration, never the archived execution.
+// Only the complete original predecessor chain supplies retirement. This pure
+// comparison additionally requires an exact newly loaded zero-execution unit;
+// it cannot reinterpret old execution clocks as a run of the new generation.
+func verifyForwardingReplacementStopped(unit, service systemd.Properties, selected generationSelection, previous startArchive, number attemptNumber, id [16]byte, retired retirementResult, retirementSHA string) error {
+	r := selected.replacement
+	if r == nil || selected.binding.Generation == previous.Generation || r.PredecessorGeneration != previous.Generation ||
+		r.PredecessorBindingSHA256 != previous.BindingSHA256 || r.PredecessorAttempt != uint32(number) || r.RetirementSHA256 != retirementSHA ||
+		retired.Generation != previous.Generation || retired.BindingSHA256 != previous.BindingSHA256 || retired.Attempt != uint32(number) ||
+		retired.InvocationID != previous.InvocationID || retired.Manager != previous.Manager ||
+		id == [16]byte{} || previous.InvocationID != hex.EncodeToString(id[:]) || !forwardingCleanExit(retired.execution(), previous) {
+		return ErrBinding
+	}
+	if err := verifyForwardingStopped(unit, service, selected.binding.Request, selected.binding.Generation); err != nil {
+		return err
+	}
+	if !systemd.Matches(unit, "TriggeredBy", "as", []string{}) || !systemd.Matches(service, "ControlPID", "u", uint32(0)) ||
+		!systemd.Matches(service, "NRestarts", "u", uint32(0)) || !systemd.Matches(service, "DynamicUser", "b", false) || !systemd.Matches(service, "StandardInput", "s", "null") {
+		return ErrBinding
+	}
+	return nil
+}
+
 // Decode only canonical detached result bytes. Even an exact result still needs
 // the full independent native transcript, original inodes and absent blocker.
 func decodeRetirementResult(raw []byte, number attemptNumber, b binding, bindingSHA, startSHA string, original startArchive, id [16]byte) (retirementResult, error) {

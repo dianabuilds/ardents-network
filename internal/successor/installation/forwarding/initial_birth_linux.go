@@ -49,6 +49,9 @@ type initialBirths struct {
 	closed     bool
 	// Failure-only observer after actual sync, never an accepting fact.
 	afterSync func(*os.File) error
+	// Negative native control before actual Close. Every actual Close still
+	// runs, and its independent error joins the original refusal.
+	beforeClose func(*os.File) error
 }
 
 func digest(raw []byte) string {
@@ -88,15 +91,11 @@ func syncInitialParent(path string) (returned error) {
 	return nil
 }
 
-func openInitialBirths(ctx context.Context, path string, allowed map[string]bool) (*initialBirths, error) {
-	return openForwardingBirths(ctx, path, allowed, "forwarding-initial-v1")
-}
-
-// Only the two fixed Forwarding creators share physical births. Their distinct
+// Only the fixed Forwarding creators share physical births. Their distinct
 // first records and independent readers never exchange initialization rights.
 func openForwardingBirths(ctx context.Context, path string, allowed map[string]bool, first string) (*initialBirths, error) {
 	j := &initialBirths{ctx: ctx, allowed: allowed, dirs: map[string]*os.File{}, identities: map[string]os.FileInfo{}}
-	if ctx == nil || !validPath(path) || os.Geteuid() != 0 || first != "forwarding-initial-v1" && first != "forwarding-hosting-v1" {
+	if ctx == nil || !validPath(path) || os.Geteuid() != 0 || first != "forwarding-initial-v1" && first != "forwarding-initial-v2" && first != "forwarding-hosting-v1" && first != "forwarding-replacement-v1" && first != "forwarding-replacement-v2" && first != "forwarding-cut-v1" && first != "forwarding-recovery-v1" && first != "forwarding-recovery-reload-v1" && first != "forwarding-recovery-unit-v1" && first != "forwarding-recovery-unit-create-v1" && first != "forwarding-recovery-selection-v1" && first != "forwarding-recovery-selection-create-v1" && first != "forwarding-recovery-seal-v1" && first != "forwarding-recovery-artifact-v1" && first != "forwarding-recovery-artifact-create-v1" {
 		return j, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
@@ -142,7 +141,16 @@ func (j *initialBirths) record(phase, path string, info os.FileInfo, sha string,
 	if path != j.journal.path && !j.allowed[path] {
 		return ErrBinding
 	}
-	valid := phase == "forwarding-hosting-v1"
+	valid := phase == "forwarding-hosting-v1" || phase == "forwarding-initial-v2" || phase == "forwarding-cut-v1" || phase == "forwarding-recovery-v1" || phase == "forwarding-replacement-v2" || phase == "forwarding-recovery-reload-v1" || phase == "recovery-reload-intent" || phase == "forwarding-recovery-unit-v1" || phase == "continued-file-retained" || phase == "continued-file-written" || phase == "forwarding-recovery-unit-create-v1" || phase == "continued-file-intent" || phase == "continued-file-born" || phase == "forwarding-recovery-selection-v1" || phase == "forwarding-recovery-selection-create-v1" || phase == "forwarding-recovery-seal-v1" || phase == "candidate-retained" || phase == "continued-directory-seal-intent" || phase == "continued-directory-sealed" || phase == "forwarding-recovery-artifact-v1" || phase == "forwarding-recovery-artifact-create-v1" || phase == "continued-artifact-intent" || phase == "continued-artifact-born" || phase == "continued-artifact-retained" || phase == "continued-artifact-written"
+	for _, p := range []string{"original-verified", "candidate-verified", "recovery-completed"} {
+		valid = valid || phase == p
+	}
+	for _, p := range []string{"coordinator-born-observed", "boundary-held", "next-effect-denied", "native-joined", "physical-closed", "original-cut-completed"} {
+		valid = valid || phase == p
+	}
+	for _, p := range []string{"forwarding-replacement-v1", "replacement-admitted", "native-context", "predecessor-binding", "predecessor-unit", "predecessor-retired", "selection-intent", "selection-written", "unit-intent", "unit-written", "replacement-verified"} {
+		valid = valid || phase == p
+	}
 	for _, p := range []string{"forwarding-initial-v1", "admitted", "account-preimage", "account-auxiliary-preimage", "account-intent", "account-born", "account-auxiliary-result", "account-auxiliary-cleared", "account-ready", "directory-intent", "directory-born", "directory-ready", "file-intent", "file-born", "file-ready", "seal-intent", "sealed", "selected", "reload-intent", "stopped-verified", "completed"} {
 		valid = valid || phase == p
 	}
@@ -180,7 +188,10 @@ func (j *initialBirths) record(phase, path string, info os.FileInfo, sha string,
 		return err
 	}
 	j.sequence++
-	return j.check()
+	if err := j.check(); err != nil {
+		return err
+	}
+	return reportTransition(j.ctx, j.journal, uint32(j.sequence))
 }
 
 func observeInitialFile(original *initialFile) error {
@@ -245,7 +256,7 @@ func infoSys(info os.FileInfo) (*syscall.Stat_t, bool) {
 
 func (j *initialBirths) directory(path string, mode os.FileMode, uid, gid uint32, admit func() error) (returned error) {
 	defer func() { j.fail(returned) }()
-	if !j.allowed[path] || !validPath(path) || mode != 0700 && mode != 0755 {
+	if !j.allowed[path] || !validPath(path) || mode != 0700 && mode != 0755 && mode != 0750 {
 		return ErrBinding
 	}
 	if err := admit(); err != nil {
@@ -361,15 +372,21 @@ func (j *initialBirths) close() error {
 	}
 	if !j.closed {
 		j.closed = true
+		closeFile := func(file *os.File) {
+			if j.beforeClose != nil {
+				j.terminal = errors.Join(j.terminal, j.beforeClose(file))
+			}
+			j.terminal = errors.Join(j.terminal, file.Close())
+		}
 		for i := len(j.files) - 1; i >= 0; i-- {
-			j.terminal = errors.Join(j.terminal, j.files[i].file.Close())
+			closeFile(j.files[i].file)
 			clear(j.files[i].body)
 		}
 		for _, f := range j.dirs {
-			j.terminal = errors.Join(j.terminal, f.Close())
+			closeFile(f)
 		}
 		if j.journal != nil {
-			j.terminal = errors.Join(j.terminal, j.journal.file.Close())
+			closeFile(j.journal.file)
 		}
 		if j.ctx != nil {
 			j.terminal = errors.Join(j.terminal, j.ctx.Err())

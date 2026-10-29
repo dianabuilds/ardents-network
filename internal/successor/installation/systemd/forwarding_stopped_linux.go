@@ -49,13 +49,138 @@ func OpenForwardingStopped(ctx context.Context) (*ForwardingStopped, error) {
 	return s, err
 }
 
+// OpenForwardingRecoveryInitial observes the fixed installed-but-unloaded
+// Initial boundary under the same expected manager. Installation must prove
+// the actual original pre-Reload cut before using this native mechanism.
+// It exposes the same one-attempt Reload and fixed post-Reload observation,
+// never a Start, Stop, arbitrary selector or reconnect.
+func OpenForwardingRecoveryInitial(ctx context.Context, expected string) (*ForwardingStopped, error) {
+	s, err := openForwardingRecoveryManager(ctx, expected)
+	if err != nil {
+		return s, err
+	}
+	_, err = s.CheckPreReload()
+	return s, err
+}
+
+// OpenForwardingRecoveryUnit observes the unloaded fixed slot before completing
+// an independently proved empty unit birth. It makes no file-state assertion;
+// Installation retains original bytes/inode, write admission and readiness.
+func OpenForwardingRecoveryUnit(ctx context.Context, expected string) (*ForwardingStopped, error) {
+	s, err := openForwardingRecoveryManager(ctx, expected)
+	if err != nil {
+		return s, err
+	}
+	_, err = s.CheckUnitUnloaded()
+	return s, err
+}
+
+func openForwardingRecoveryManager(ctx context.Context, expected string) (*ForwardingStopped, error) {
+	if ctx == nil || os.Geteuid() != 0 || expected == "" || len(expected) > 288 {
+		return nil, ErrInput
+	}
+	r, err := openManagerReference(ctx, forwardingUnitReply)
+	if r == nil {
+		return nil, err
+	}
+	s := &ForwardingStopped{original: &forwardingStopped{reference: r}}
+	if err != nil {
+		return s, err
+	}
+	actual, err := r.managerIdentity()
+	if err != nil {
+		return s, err
+	}
+	if actual != expected {
+		return s, r.managerResult(ErrObservation, ctx)
+	}
+	if err := r.initializeManagerDeclaration(); err != nil {
+		return s, err
+	}
+	return s, nil
+}
+
+// CheckUnitUnloaded loads or references nothing and requires all other fixed
+// Node slots absent. It grants no file readiness, write or Reload admission.
+func (s *ForwardingStopped) CheckUnitUnloaded() ([]string, error) {
+	err := s.operation(func(ctx context.Context, r *managerReference) error {
+		if s.original.reloaded {
+			return ErrObservation
+		}
+		for _, name := range nodeUnitNames[1:] {
+			if err := nodeSlotAbsent(ctx, r, name); err != nil {
+				return err
+			}
+		}
+		if err := nodeNameAbsent(ctx, r, "ardents-forwarding.socket"); err != nil {
+			return err
+		}
+		return forwardingUnloaded(ctx, r)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return append([]string(nil), s.original.reference.paths...), nil
+}
+
+// CheckPreReload loads or references nothing. The installed fixed Forwarding
+// service must remain unloaded and static; all other Node slots are absent.
+// These native facts are not an original cut or authority to attempt an effect.
+func (s *ForwardingStopped) CheckPreReload() ([]string, error) {
+	err := s.operation(func(ctx context.Context, r *managerReference) error {
+		if s.original.reloaded {
+			return ErrObservation
+		}
+		for _, name := range nodeUnitNames[1:] {
+			if err := nodeSlotAbsent(ctx, r, name); err != nil {
+				return err
+			}
+		}
+		if err := nodeNameAbsent(ctx, r, "ardents-forwarding.socket"); err != nil {
+			return err
+		}
+		if err := forwardingUnloaded(ctx, r); err != nil {
+			return err
+		}
+		call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.GetUnitFileState", "ardents-forwarding.service")
+		if err != nil {
+			return err
+		}
+		if len(call.Body) != 1 || call.Body[0] != "static" {
+			return ErrObservation
+		}
+		return forwardingUnloaded(ctx, r)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return append([]string(nil), s.original.reference.paths...), nil
+}
+
+func forwardingUnloaded(ctx context.Context, r *managerReference) error {
+	_, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.GetUnit", "ardents-forwarding.service")
+	var absent dbus.Error
+	if !errors.As(err, &absent) || absent.Name != "org.freedesktop.systemd1.NoSuchUnit" {
+		if nodeAbsenceContextOnly(ctx, err) {
+			return err
+		}
+		return errors.Join(ErrObservation, err)
+	}
+	return ctx.Err()
+}
+
 // operation serializes only this owner's physical manager I/O. Its private
 // callers supply fixed native operations, never an Installation policy callback.
 func (s *ForwardingStopped) operation(effect func(context.Context, *managerReference) error) (err error) {
 	if s == nil || s.original == nil || s.original.reference == nil {
 		return ErrInput
 	}
-	r := s.original.reference
+	return s.original.reference.forwardingOperation(effect)
+}
+
+// Private fixed-purpose callers share original physical I/O, never another
+// owner's policy, connection or accepting lifetime.
+func (r *managerReference) forwardingOperation(effect func(context.Context, *managerReference) error) (err error) {
 	if err = r.begin(); err != nil {
 		return err
 	}
@@ -173,20 +298,53 @@ func (s *ForwardingStopped) CheckOriginal() error {
 	return s.operation(func(_ context.Context, _ *managerReference) error { return nil })
 }
 
+// ManagerIdentity observes the original broker and unique manager; it grants no
+// Installation or recovery right and never reconnects or borrows another client.
+func (s *ForwardingStopped) ManagerIdentity() (string, error) {
+	if s == nil || s.original == nil || s.original.reference == nil {
+		return "", ErrInput
+	}
+	return s.original.reference.managerIdentity()
+}
+
 // Reload attempts exactly one fixed manager effect. An uncertain reply remains
 // failed and cannot be retried on this connection or reported as completion.
 func (s *ForwardingStopped) Reload() error {
-	return s.operation(func(ctx context.Context, r *managerReference) error {
-		r.mu.Lock()
-		if r.closed.Load() || r.terminal != nil || r.original.Err() != nil || s.original.reloaded {
-			r.mu.Unlock()
-			return ErrUnavailable
+	if s == nil || s.original == nil || s.original.reference == nil {
+		return ErrInput
+	}
+	return s.original.reference.reloadForwarding(&s.original.reloaded)
+}
+
+func (r *managerReference) reloadForwarding(attempted *bool) error {
+	return r.forwardingOperation(func(ctx context.Context, r *managerReference) error {
+		if err := r.admitForwardingReload(attempted); err != nil {
+			return err
 		}
-		s.original.reloaded = true
-		r.mu.Unlock()
 		_, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.Reload")
 		return err
 	})
+}
+
+// Physical I/O is serialized by the caller. This short local gate orders an
+// attempted reload against Close and retains uncertainty before sending bytes.
+func (r *managerReference) admitForwardingReload(attempted *bool) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.closed.Load() {
+		return ErrUnavailable
+	}
+	if r.terminal != nil {
+		return r.terminal
+	}
+	if err := r.original.Err(); err != nil {
+		return err
+	}
+	if *attempted {
+		return ErrObservation
+	}
+	*attempted = true
+	return nil
 }
 
 // ObserveLoaded returns complete fixed Forwarding Unit/Service facts, surrounded

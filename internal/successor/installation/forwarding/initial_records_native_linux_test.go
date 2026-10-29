@@ -64,6 +64,29 @@ func TestForwardingInitialNativeCompleteRecordsAndCausalRefusals(t *testing.T) {
 		t.Fatal("complete genuine ordered initial inventory", len(owned), err)
 	}
 	lines := bytes.Split(raw[:len(raw)-1], []byte{'\n'})
+	if len(lines) == 120 {
+		// Byte compatibility only, derived from the genuine complete inventory.
+		// These transformed bytes never enter native installation or recovery.
+		var legacy []byte
+		for n, line := range append(append([][]byte(nil), lines[:1]...), lines[2:]...) {
+			var record initialRecord
+			if err := json.Unmarshal(line, &record); err != nil {
+				t.Fatal(err)
+			}
+			record.Sequence = n
+			if n == 0 {
+				record.Phase = "forwarding-initial-v1"
+			}
+			encoded, err := json.Marshal(record)
+			if err != nil {
+				t.Fatal(err)
+			}
+			legacy = append(append(legacy, encoded...), '\n')
+		}
+		if historical, err := decodeInitialRecords(legacy, b, hashes); err != nil || len(historical) != 27 {
+			t.Fatal("complete historical119-record byte grammar", err)
+		}
+	}
 	for index := range lines {
 		var record initialRecord
 		if err := json.Unmarshal(lines[index], &record); err != nil {

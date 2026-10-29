@@ -17,22 +17,20 @@ var errStartedClosed = errors.New("forwarding installation: original start obser
 type Started struct{ original *started }
 
 type started struct {
-	ctx              context.Context
-	verifier         *release.Verifier
-	completed        Completed
-	snapshot         *startSnapshot
-	starts           []*startSnapshot
-	retirements      []*retirementSnapshot
-	latestRetirement *retirementSnapshot
-	mu, ioMu         sync.Mutex
-	uses             sync.WaitGroup
-	once             sync.Once
-	closed           bool
-	failure          error
+	*invocationChain
+	ctx       context.Context
+	verifier  *release.Verifier
+	completed Completed
+	mu        sync.Mutex
+	uses      sync.WaitGroup
+	once      sync.Once
+	closed    bool
+	failure   error
 }
 
-// ReadStarted is root-only and noncreating. It requires fully published starts,
-// every predecessor retirement and independently held initial/start/retirement
+// ReadStarted is root-only and noncreating. It requires a complete ordered
+// chain of published starts or never-started terminal entries, every runtime
+// predecessor retirement and independently held initial/child
 // journal leases. Expiry of a Release
 // cannot prevent shutdown: this observation matches retained history identity,
 // without granting fresh artifact admission. Restart separately requires that.
@@ -53,13 +51,14 @@ func ReadStarted(ctx context.Context, v *release.Verifier, bindingPath, history 
 	if err != nil {
 		return result, err
 	}
+	s.invocationChain = s.completed.original.files.invocations
+	if s.invocationChain == nil || s.head() == nil {
+		return result, os.ErrNotExist
+	}
 	if err := s.completed.CheckHistoryPath(history); err != nil {
 		return result, err
 	}
 	if err := v.CheckHistoryPath(ctx, history); err != nil {
-		return result, err
-	}
-	if err := s.readChain(bindingPath); err != nil {
 		return result, err
 	}
 	result = Started{original: s}
@@ -120,6 +119,9 @@ func (h Started) checkWithEffects(start *startStorage, retirement *retirementSto
 	}
 	defer s.uses.Done()
 	defer func() { s.record(returned) }()
+	if s.invocationChain == nil || s.verifier == nil {
+		return ErrInput
+	}
 	if err := s.verifier.CheckHistoryPath(s.ctx, s.completed.original.binding.History); err != nil {
 		return err
 	}
@@ -150,16 +152,8 @@ func (s *started) close() error {
 		s.closed = true
 		s.mu.Unlock()
 		s.uses.Wait()
-		// Every retained start/retirement descriptor/journal closes before the independent
-		// initial observation returns its own original exclusive lease.
-		var physical error
-		for i := len(s.retirements) - 1; i >= 0; i-- {
-			physical = errors.Join(physical, s.retirements[i].close())
-		}
-		for i := len(s.starts) - 1; i >= 0; i-- {
-			physical = errors.Join(physical, s.starts[i].close())
-		}
-		physical = errors.Join(physical, s.completed.Close(), s.ctx.Err())
+		// Completed owns and joins every child before its original initial lease.
+		physical := errors.Join(s.completed.Close(), s.ctx.Err())
 		s.mu.Lock()
 		s.failure = errors.Join(s.failure, physical)
 		s.mu.Unlock()

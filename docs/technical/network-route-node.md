@@ -2165,16 +2165,6 @@ cases, exact source/artifacts/inputs and observed results before installed use.
 | Explicit stop | Deny synchronously, interrupt Receiver/Route, join original users, then purpose roots/Hosting/producer/Guard/key, with State last | Held borrower/native Close, cancellation and late failure retain resources and every original cleanup cause; unavailable completion notice, PID absence or inactive unit is insufficient | Independently proved original domain result and native scope join precede retirement commitment |
 | Explicit restart | Reopen retained State/participation/spend/Hosting/Release histories; fresh independently admitted invocation of the same immutable generation; real contact and final stop | Concurrent restart while predecessor held, unknown join, missing/damaged history or stale Release/time/credential/protection: refuse without initialization or transferred live handles | Preserve account/keys and all histories; new invocation has its own producer/native/startup custody |
 
-Canonical Control has distinct initial and forward Release preparation/signing
-purposes. Forward signing retains the original protected complete eight-file
-predecessor, matches its five Root keys and three-signature roles, and obtains
-genuine coherent Node/Forwarding Release decisions before signing the next pair.
-It preserves original Root bytes and advances Targets/Snapshot/Timestamp versions
-and exact version references by one. Its freshly born diagnostic history is
-separate from the installation's retained trust and floors. Public build-plan
-preparation supports the separate forward schema without JSON editing; it grants
-no signature, initial pin, installed replacement or bootstrap acceptance.
-
 Compatibility with the next lifecycle is deliberately bounded. Resource/program
 replacement requires a strictly forward generation, fresh coherent Release pair
 and proven predecessor retirement; the first-lifetime path does not implement or
@@ -2186,10 +2176,648 @@ treat the first-lifetime binding check as a migration mechanism.
 Interruption before complete stopped installation or during uncertain
 start/retirement retains its original journal/births and refuses ordinary retry
 as a fresh installation or restart. Crash recovery requires a separately admitted
-original-prefix/completion contract; this slice supplies no continuation, replay
+original-prefix/completion contract; first-lifetime operations supply no continuation, replay
 of Start/ACK, history repair or capacity reset. Complete same-generation explicit
 stop/restart must preserve enough immutable generation and original retirement
 evidence for that later contract, without preauthorizing it.
+
+#### Explicit Forwarding generation transitions
+
+The manual transition has separate stopped replacement, explicit start and
+original-prefix recovery admissions under ADR-0123. Replacement consumes a
+fresh coherent Node/Forwarding Release pair and the complete latest original
+retirement before its first native effect. Enrollment remains initial provenance.
+One `ardents-node` account, all five fixed Node slots, the original credentials,
+State/participation/spend roots, Release root and provider-period Hosting root
+remain exact. State, participation, Receiving spending and Hosting each supply
+their own noncreating read-only inspection; Installation cannot parse their
+private histories or borrow their runtime handles. Unknown original producers,
+reservations or domain/native completion block replacement even after process
+exit. Inspection supplies no accepting runtime, reservation, refund or root reset.
+
+A resource-only forward generation changes actual finite `work` or
+`termination` declarations in the immutable installed plan. It preserves the
+program, signed protection template, Network pins/Node identity, credential and
+semantic-root declarations. A descriptor/version-only or formatting change is
+not a resource update. Changed program bytes still require fresh exact program
+authorization. The descriptor release version must strictly increase; neither
+case lowers metadata or security floors or creates capacity. Node and Hosting
+retain class coverage, pressure, actual accounting and reservation policy.
+
+Canonical Control has distinct initial and forward Release preparation/signing
+purposes. Forward signing retains the original protected complete eight-file
+predecessor, matches its five Root keys and three-signature roles, and obtains
+genuine coherent Node/Forwarding Release decisions before signing the next pair.
+It preserves original Root bytes and advances Targets/Snapshot/Timestamp versions
+and exact version references by one. Its freshly born diagnostic history is
+separate from the installation's retained trust and floors. Public build-plan
+preparation supports the separate forward schema without JSON editing; it grants
+no signature, initial pin, installed replacement or bootstrap acceptance.
+
+The selected replacement is canonical compact JSON plus LF, at most32KiB:
+`schema`, `configuration`, `initial_generation`, `predecessor_generation`, `predecessor_binding_sha256`,
+`retirement_sha256`, `predecessor_attempt`. Its schema is
+`ardents-forwarding-replacement-binding-v1`; configuration retains the existing
+binding field order with distinct schema
+`ardents-forwarding-replacement-configuration-v1`. Initial binding remains
+`ardents-forwarding-binding-v1` and is never silently converted. The exact
+initial generation, exact predecessor generation/binding and final retirement
+bind one lineage. The explicit predecessor generation names its sealed directory;
+no directory scan or nearest matching generation supplies a predecessor.
+Every sealed generation and original start/retirement remains. Attempt numbers
+are global, contiguous and bounded by64 across generations; replacement does
+not recycle a pathname, deadline, token or allowance. Root history readers
+verify each attempt under its own generation and predecessor, not under the
+newest configuration. Non-root startup reads only its independently selected
+files and receives a separately admitted root-peer exchange for that selection.
+
+The replacement journal is the root-only0600 exclusive sibling
+`<installation_root>.forwarding-replacement-<generation>-journal`. Its closed
+record fields are the existing `initialRecord` fields. Ordered phases are
+`forwarding-replacement-v1`, `replacement-admitted`, `native-context`,
+`predecessor-binding`, `predecessor-unit`, `predecessor-retired`; original pending
+`file-intent/born/ready`; candidate `directory-intent/born/ready`; the twelve
+lexically ordered generation files' `file-intent/born/ready`; `seal-intent`,
+`sealed`; `selection-intent`, `selection-written`; `unit-intent`, `unit-written`;
+`reload-intent`, `replacement-verified`. Each native record binds the original
+device/inode/access; hashes bind exact preimages, candidate bytes and the whole
+selection commitment. Selected binding and fixed unit are separate same-inode
+recorded publications. The pending file
+`<installation_root>/forwarding-replacement-pending` contains
+`ardents-forwarding-replacement-pending-v1`, LF, selection SHA256, LF. The
+original writer retains all independent predecessors/inspections and rechecks
+fresh authority/native policy around effects. Its own fixed manager owner may
+reload once and cannot Start, Stop, Enable, select another unit or reconnect.
+All required readbacks, resyncs and original physical closes precede final
+blocker unlink. Partial or uncertain results remain blocking; no rollback runs.
+
+New replacement writers use `forwarding-replacement-v2`, exactly62 records.
+The complete56-record v1 transcript remains readable without conversion. V2
+adds two root-only0600 sibling files, `<journal>.native-before` and
+`<journal>.native-after`, each at most64KiB of the canonical native-context
+bytes. A `file-intent/born/ready` triple for the before file follows the original
+pending triple; its hash must equal the original `native-context` commitment.
+The after file's triple follows the original `reload-intent`, after the actual
+one-use reload, stopped policy rounds and checked generator observation, and
+precedes `replacement-verified`. Its bytes may differ from the before snapshot
+only in the three generator directories. Both files retain their original
+birth identities, Sync/readback/Close ordering and the replacement blocker.
+They are outside the sealed twelve-file generation; an empty or partial sibling
+blocks ordinary completion and never supplies a retry or context refresh right.
+
+A recovered initial selection followed by replacements retains every original
+non-generator ancestor, absence, manager/boot/process/namespace and search path.
+Each later before snapshot contains those exact observations; additional
+independently retained ancestors are permitted but cannot replace an original.
+Its generator identities and absences also match the previous proved current
+snapshot: an intervening unproved change cannot be hidden in the next before
+file even when that next before/after pair is internally coherent.
+Only a complete ordered v2 before/after proof admits that reload's generator
+change. Ordinary readers validate the entire selection and native proof lineage
+before opening their own fresh current context. A v1 gap or missing snapshot
+cannot be replaced by a current-looking directory or caller-supplied waiver.
+During the actual replacement, the original recovered observer may change only
+its three generator observations after its own successful one-use reload and
+checked fresh namespace; old descriptors close before the new observation is
+accepted. A failed close leaves the operation blocking.
+Controlled v2 cuts may bind this checked current context at the after-file
+intent/born/ready boundaries as well as `replacement-verified`. The exact after
+path and intent hash must bind that same context after the original reload
+intent. This does not permit context changes at any other file group, Start or
+retirement, or repeat an attempted original reload.
+
+New initial journals use opening phase `forwarding-initial-v2` and add
+`native-context` immediately after it. New start journals likewise add
+`native-context` after the opening record; first/invocation intent and archive
+bindings remain distinct. The context hash commits canonical
+`ardents-forwarding-native-context-v1` observations: full broker/unique manager
+identity, original manager proc/start clock and boot commitment, original root
+namespaces, fixed unit-search paths and retained input/destination ancestors.
+These are native observations, not authority. Recovery must independently match
+them. Complete historical119-record initial and25-record start transcripts stay
+readable; they grant no recovery of a prefix whose original context cannot be
+proved. The retirement18-record and Hosting16-record grammars remain separately
+owned. Hosting preparation always commits the initial binding, original allowance
+directory and original pin/lock births, even while a later generation is selected.
+No new binding can renew preparation or initialize the allowance again.
+
+The replacement context's exact ordered fields are `schema`, `manager`,
+`process`, `started`, `boot_sha256`, `namespaces`, `unit_paths`, `ancestors`,
+`absent`, encoded as compact JSON plus LF, at most64KiB. Each native object is
+ordered `path`, `device`, `inode`, `mode`, `uid`, `gid`. The original root namespace
+order is `mnt`, `pid`, `cgroup`, `uts`, `user`; manager-namespace equality and
+original kernel descriptors are independently rechecked. Unit search paths keep
+the manager's order; ancestors and absent paths are sorted and unique. Hashing
+these observations cannot prove original Sync, Close or a genuine cut.
+Ordinary root history inspection also bounds the installation parent's name
+inventory to4096 entries and rejects every unrecognized replacement sibling.
+This includes an empty journal born before its pending file. The replacement
+writer admits only its own retained journal and newborn candidate/pending
+objects; no caller-supplied waiver enters ordinary completed readers.
+
+Canonical Node uses `forwarding replace DISTRIBUTION HISTORY ENVIRONMENT NETWORK
+REQUEST BINDING` for the stopped transition and a separate `forwarding
+start-selected DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING` for its first
+runtime invocation. `restart` requires the already selected generation's own
+completed start and retirement. Neither operation substitutes new configuration
+for the predecessor's archived execution clocks, process or domain completion.
+
+Canonical `forwarding supervise-transition --stop-after-record N --timeout-ms MS
+-- ACTION ...` owns only an exact original coordinator from birth. ACTION is one
+of the closed existing initial/replacement/start/stop root operations, never
+`start-installed`, another command, role or arbitrary executable. Zero means
+ordinary completion; positive N selects one bounded original record boundary.
+The controller and coordinator use their own root-peer packet channel, original
+program/process/pidfd, finite caller, fresh nonce and contiguous sequence. After
+successful original record Sync/readback and before the next effect, the
+coordinator reports exact journal native identity/hash/count and self-stops.
+Only the original controller's checked ACK/resume permits another effect.
+Attempted ACK is outstanding even after uncertain send. Denial is synchronous
+before native interruption/join; no competing deadline callback can begin actor
+cleanup while frozen. Unknown packets, foreign peers, received descriptors,
+unjoined descendants and physical Close errors refuse. Descriptor-bearing
+packets close every received descriptor before refusal. This is an original
+native coordinator mechanism, not a Source permission or accepting test bridge.
+
+Positive recovery additionally requires its own genuine completed
+`ardents-forwarding-original-cut-v1` result, not a raw process-kill receipt.
+Its root-only `<journal>.original-cut-journal`, `.original-cut-result` and
+`.original-cut-pending` bind the frozen original boundary, actor from-birth
+program/process, manager/context, denied next effect and actual original-scope
+join. They have independent custody and a guard retained through every required
+publisher Sync/readback/Close. Kernel/process join proves no Node domain join.
+Recovery and every ordinary recovered consumer independently validate both
+files, original journal identities/bytes, absent cut guard and fresh native
+context. Without that proof, identical visible bytes may represent a previously
+failed Sync/Close and must remain repair-required, including a complete-looking
+original transcript. Source cut results/permissions cannot substitute.
+
+The cut result's exact ordered fields are `schema`, `boundary`, `origin`,
+`control_device`, `control_inode`, `acknowledged`, `code`, `status`, `reaped`,
+compact JSON plus LF, at most256KiB. Its boundary retains the exact canonical
+binding and raw original native-context bytes; the private channel transports
+those as JSON byte strings without stripping their committed trailing LF.
+The original snapshot remains separately retained as `original_context` after
+an owned reload; `native_context` then binds the checked current snapshot.
+Only the three generator directory observations may differ, and only at the
+original `stopped-verified`/`completed` initial or `replacement-verified`
+boundary after the original context commitment and reload intent. Start and
+retirement cannot refresh this context. The packet has a256KiB limit and the
+original socket pair must supply finite capacity for one entire packet; neither
+snapshot nor binding may be truncated to fit an unsuitable environment.
+Origin binds actual from-birth PID, parent, proc device/inode/start clock and
+the original executable's device/inode/SHA256. `acknowledged` is exactly one
+less than the frozen boundary sequence; kernel termination is SIGKILL and the
+dedicated original scope must reap exactly one actor. These are physical
+historical facts, never a Node domain-joined report.
+Its independent control journal uses `initialRecord` fields and exactly13
+records: `forwarding-cut-v1`; pending `file-intent/born/ready`;
+`coordinator-born-observed`, `boundary-held`, `next-effect-denied`,
+`native-joined`, `physical-closed`; result `file-intent/born/ready`;
+`original-cut-completed`. Empty births have no content hash; ready records
+bind complete bytes and the same native inode. This distinct journal and its
+pending file do not replace or remove the interrupted operation's blockers.
+
+New Forwarding start intents also bind whether genuine semantic roots have
+ever had an admitted runtime start. Root computes this only from the complete
+original chain; missing history cannot select fresh opening. A new local root
+ACK is the original160-byte completion frame plus one exact history byte:
+zero for proven first runtime opening, one for existing-only retained opening.
+The entire161-byte ACK must complete before transfer. Its root journal records
+the distinct request/ACK hashes and its intent binds that same history choice.
+The new intent schemas are `ardents-forwarding-start-intent-v2` and
+`ardents-forwarding-invocation-intent-v2`; their existing ordered fields append
+the numeric `history` byte. The latter retains its exact predecessor commitment.
+Complete-chain inspection independently checks the new byte against genuine
+earlier runtime completions. Non-root composition selects existing-only semantic
+opening from the fully verified ACK rather than its attempt pathname or number.
+Legacy completed160-byte transcripts retain their old initial-versus-subsequent
+meaning; they do not authorize an interrupted new exchange. The non-root Startup
+independently checks the original peer/frame/native resources before consuming
+the history byte. No plan flag, missing root or cached observation selects it.
+This permits an explicit later start after a proved never-started cut without
+recycling its attempt namespace or pretending that nonexistent spend/producer
+history is retained. It changes no protection mode, token, State floor or budget.
+
+`forwarding recover DISTRIBUTION HISTORY ENVIRONMENT NETWORK REQUEST JOURNAL`
+admits exactly one named original initial/replacement/start/retirement prefix.
+It requires an existing complete Release trust root and fresh coherent candidate
+authorization, exact original request/selection/predecessor commitments, a fresh
+exclusive original-journal lease and independent original native resources.
+The original journal is immutable. A separate root-only exclusive completion
+suffix binds operation, original path/native identity/raw-prefix hash, generation,
+selection and its own ordered continuation transcript. It is not an original
+writer result. The suffix has a separate pending guard and one finite original
+lifetime; an existing partial or uncertain suffix refuses adoption or another
+effect attempt. Canonical consumers require both original and recovery blockers
+to be absent and independently validate the complete suffix. Recovery's actual
+users and closes precede final publication; a copied phase, receipt or expired
+wait cannot publish completion.
+The canonical `ardents-forwarding-recovery-completion-v1` envelope is compact
+JSON plus LF, at most4MiB, ordered `schema`, `operation`, `journal`, `device`,
+`inode`, `prefix_sha256`, `prefix_records`, `generation`, `binding_sha256`,
+`original_cut_sha256`, `outcome`, `records`, `transcript_sha256`. Operation is
+exactly `initial`, `replacement`, `start` or `retirement`; outcome is exactly
+`selected-stopped`, `stopped-before-start` or `retired-stopped` as appropriate.
+Records are only the bounded canonical continuation records of that operation;
+their sequence follows the immutable original prefix, whose complete transcript
+hash is retained. Start/retirement continuation cannot add Start, ACK, archive,
+domain-joined or native-joined evidence. A proved never-started attempt becomes
+a retained terminal chain entry with this completion commitment as predecessor;
+a separately admitted later start uses the next global attempt. Any recovery
+sidecar forces full recovered validation, even if an older pending marker is
+absent. A partial envelope or uncertain recovery Close is never reopened for
+append or treated as an invitation to try the same effect again.
+
+The recovery suffix has separate root-only0600 exclusive
+`<journal>.recovery-journal`, `<journal>.recovery-completion` and
+`<journal>.recovery-pending` files. For an already stopped complete generation,
+the control journal has eleven ordered `initialRecord` rows:
+`forwarding-recovery-v1`; pending `file-intent/born/ready`;
+`original-verified`, `candidate-verified`, `stopped-verified`;
+completion `file-intent/born/ready`; `recovery-completed`.
+It binds the actual original inode and cut hash, exact sealed candidate and
+fixed-unit identities, binding and unit hashes, and complete envelope bytes.
+The pending body is `ardents-forwarding-recovery-pending-v1`, LF, original-cut
+SHA256, LF. Required independent readback and every original/recovery close
+precede original blocker removal; recovery's own guard is removed last.
+An existing suffix, including an empty control journal born before its pending
+file, refuses another recovery attempt. The prefix journal is never rewritten.
+
+An already selected replacement-v2 original prefix may finish stopped
+publication after its complete after-snapshot-ready record (61 records), or
+after `replacement-verified` (62 records). The immutable prefix, original cut,
+before/after snapshots, exact candidate, predecessor and complete original
+retirement must all independently agree. The only logical continuation at61 is
+the final `replacement-verified` row in the separate completion envelope; at62
+the continuation is empty. Neither case reloads or starts anything.
+Fresh coherent authority may have newer metadata versions for the same exact
+program/descriptor/template. Recovery retains the already sealed original
+metadata bytes and their original hashes; it never replaces them with that
+fresh metadata or lowers the retained Release floors to reuse old permission.
+Fresh semantic inspections still belong to State, participation, Spending and
+Hosting, including the original one-use Hosting preparation and zero returned
+reservations. Fresh stopped-policy observations match the original predecessor
+execution and all five slots, not merely an inactive flag or absent PID.
+
+The active recovery owns its freshly acquired exclusive original lease and
+independently opens the full initial/selection/invocation resource observation.
+An operation-private interrupted observation may retain that same recovery
+owner's actual original lease; it is never creator custody or a public completed
+opener. It verifies that original's exact bytes/inode/cut and admits only its
+own concrete suffix births during publication. Ordinary readers require the
+complete suffix and absent blockers. Independent readback acquires every lease
+anew after original observers and writers close. The original replacement
+blocker has its own retained installation-root parent; the suffix guard retains
+the original journal's parent. All physical and semantic users close before
+removing the original blocker under the suffix guard, then removing the suffix
+guard last. No path list, caller boolean or copied receipt grants this view.
+
+Root completed-generation observation owns the independently opened invocation
+chain together with its original initial lease. A started-history handle retains
+that same operation's chain; it does not acquire a second exclusive lease on
+already observed child journals. Child readers own their separate file/socket
+and journal descriptors, never the parent observation's Close. The parent joins
+all child observations before returning its original initial lease. Current
+start/stop writers remain separate actual owners; checking their own new storage
+cannot authorize a copied path or waive an unrelated partial child history.
+
+An original retirement prefix may finish publication at17 records (complete
+result-ready) or18 records (`retired`). Both require the genuine original cut,
+original domain-joined/native-joined/native-closed rows, exact retained result,
+start archive, challenge/frame commitments, directory/socket/file identities and
+the complete preceding invocation chain. At17 the separate completion contains
+only the final `retired` row; at18 it is empty. Earlier result-intent/born hashes
+cannot reconstruct the original random challenge or execution result and remain
+repair-required. Recovery never repeats Stop, domain reporting or native join.
+Fresh coherent candidate and existing-only semantic inspections, original
+Hosting preparation and two exact stopped-policy rounds under the original
+manager remain mandatory. Independent readback uses new child and parent leases
+after all old observations and writers close. The original retirement blocker
+retains its retirement-directory parent; the recovery guard retains the original
+journal's parent. Both publication ordering and the common recovery control
+grammar remain exact. The retained retirement-result digest continues to bind
+later start/replacement history; the recovery suffix cannot replace that result.
+Independent readback retains a new fixed Forwarding manager reference under its
+freshly verified manager identity. It repeats both complete five-slot stopped
+policy/quiescence rounds against the independently read original history and
+fresh authority, then joins that reference and every fresh reader before either
+blocker is removed. Original pre-close observations cannot substitute for those
+readback rounds. This supplies no repeated reload, Stop or Start.
+
+New controlled start boundaries use the distinct private schema
+`ardents-forwarding-transition-boundary-v2`, appending `start_intent` after
+`binding`. It is a byte string retaining the exact canonical intent plus LF,
+at most8KiB; all other operations retain boundary-v1 and omit this field.
+The actual start producer computes that same intent before its first journal
+birth from its retained fresh Release decision, initial-history commitment,
+global attempt, predecessor and proven runtime-history choice. The guard writer
+uses those same bytes. The from-birth controller retains the intent unchanged
+through every boundary and checks any original guard intent/birth/readiness or
+start-attempt commitment against it. No file, Start or ACK is replayed by this
+native proof. Recovery must still independently match the complete original
+chain and obtain fresh authority; the copied intent is not permission.
+The private256KiB packet bound and original scope/peer/sequence/join rules remain.
+Boundary-v1 cuts remain readable without synthesizing a missing early intent;
+an original complete guard can supply its own separately verified preimage.
+The original25/26-record start grammars and completed160/161-byte ACKs do not
+change. In particular, a later fresh metadata digest cannot be substituted for
+the original decision committed by a cut before its guard was written.
+
+A proved never-started cut retains a distinct terminal invocation entry, not a
+start archive or retirement. For the new26-record grammar it is bounded by the
+first record through the original `start-attempt` record (counts1..18): the
+original coordinator is held before its next observation and manager Start,
+then denied and actually joined. A raw marker cannot supply this proof. Every
+original file/socket/directory intent, born or ready state must match its exact
+recorded inode/access and empty-born or complete-ready bytes; unrecorded births
+and uncertain I/O remain repair-required. Original resources are not rewritten.
+An already born directory retains its original0700root or0750root:Node state.
+If no directory was born, recovery alone may create that canonical attempt
+directory as root:Node0750, retaining a separate recovery-owned birth proof.
+The original pending file is unlinked only when its actual recorded birth exists;
+otherwise its absence must remain independently proved through publication.
+
+The separate start completion retains `stopped-before-start` outcome. Its
+continuation has exactly one final `stopped-before-start` startEntry, preceded
+only when needed by three `terminal-directory-intent/born/ready` startEntry rows.
+The final row names that attempt directory and its exact current native identity,
+mode and owner, with SHA256 of the original canonical intent. The optional
+directory rows record recovery's own empty0700root birth and same-inode
+promotion to0750root:Node; they never assert an original directory birth.
+Recovery control keeps the existing eleven rows when the directory already
+exists. Otherwise it inserts that actual directory-intent/born/ready triple
+after `candidate-verified`, before `stopped-verified`, giving fourteen rows.
+The complete envelope, native records and independently opened directory must
+agree. Both old and recovery guards and all original/fresh closes retain the
+same publication ordering. An existing partial suffix is never adopted.
+
+The ordered invocation chain stores either a genuine runtime start or this
+terminal proof at every global ordinal. A terminal neither creates an archive,
+InvocationID, ACK or domain join nor sets the ever-runtime history choice.
+Its exact completion digest becomes the next separate Start's predecessor;
+that Start uses the next ordinal. Ordinary readers retain every child proof
+under their own initial lease. A fresh first runtime after only terminal entries
+may observe its known-born empty spend directory without creating it; actual
+prior runtime requires the genuine existing-only spending inspection. State,
+participation, original Hosting preparation/counters and zero reservations
+remain independently checked through their genuine owners. Unknown joins or
+roots never authorize a fresh opening. Stop cannot target a terminal entry.
+
+Recovery's historical artifact reconstruction independently reads all four
+original Release metadata files and the original infrastructure Enrollment
+inventory. That inventory commits their seven public file hashes and remains
+bound by the original configuration's Inventory SHA256. It must not be replaced
+by the fresh candidate's inventory when current Release metadata advances for
+the same payloads. The complete original generation grammar independently
+rebuilds the canonical inventory through Enrollment; missing, substituted or
+uncertain historical files refuse without fallback or writes. Fresh opaque
+Release authorization separately establishes current admission and floors;
+historical metadata/inventory bytes grant no renewed authority.
+
+The pure original-inventory decoder describes72..104-record generation-file
+prefixes as well as105/106/107. Account, directory and credential groups must
+already be complete. It retains only the complete ordered artifact prefix and,
+when recorded, the next original empty root0600 birth; an intent supplies no
+file. Original directory-ready50/root0755 remains unchanged, and all later
+artifact, seal, selection and unit records remain absent. This byte inventory
+does not extend concrete native continuation admission below105.
+
+At105/106/107 the decoder distinguishes timestamp intent absent, intent without birth, or original empty
+root0600 timestamp birth106. It retains only the eleven completed generation
+files and original directory-ready50/root0755; it never supplies timestamp
+readiness, sealing, selection or unit births. This byte classification grants
+no native continuation. For an exact original72..107 boundary chosen before
+historical reads, candidate reconstruction reads only original file-ready
+metadata: Enrollment inventory from90 records, root from99, snapshot from102,
+Targets from105 and timestamp from108. Any not-yet-ready metadata remains a
+detached byte proposal, including an originally recorded empty file. Enrollment's
+complete canonical original inventory and the original binding must commit
+every proposed byte exactly. Advanced/substituted proposals, missing original
+ready metadata or canceled reads refuse without file creation or read-error
+fallback. Outside this exact initial generation-file range, reconstruction
+still requires all five original historical files. This byte reconstruction
+does not extend concrete native continuation admission below105.
+Matching proposal bytes alone grant no continuation. The concrete105..107
+continuation additionally requires the original cut, physical custody and the
+complete guarded proof below.
+
+An Initial v2 cut at105 records (before timestamp intent),106 records (intent
+without timestamp birth),107 records (original empty timestamp birth106),108
+records (complete artifacts, before seal intent),109
+records (seal intent durable, before access promotion),110 records (before selection intent),111 records (intent
+without selection birth),112 records (selection born empty),113 records (complete selection file, before its selected
+acknowledgement),114 records (before fixed-unit intent),115 records (intent
+without birth),116 records (fixed unit born empty),117 records (fixed unit ready) or118 records (original
+reload-intent durable) can prove a not-yet-attempted Reload only through its
+genuine from-birth controller held at that exact boundary, next effect denied
+and original scope joined. The original native context must still equal its
+before context. The105..118 prefix must independently pass the complete original
+account, directory, credential and phase-appropriate generation, selection and
+fixed-unit inventory; it is not a completed initial transaction or startup proof. A marker
+without that stopped source-ordering proof grants no first attempt or retry.
+Fresh initial recovery requires the fixed Forwarding service still unloaded,
+its installed file state static, the other four Node service/socket slots and
+Forwarding socket absent, all four semantic roots empty, fresh coherent Release,
+original principal/ancestors and exact native observations. No account operation or already completed effect is replayed by this boundary. At110..115 the unit must still be
+absent; installed-file state is required only after actual unit delivery.
+
+At105/106/107, the timestamp proposal must first match the complete original
+Enrollment inventory and binding. The original generation directory remains
+root0755 with ready50 provenance, eleven complete artifacts and either no
+timestamp or its recorded root0600 empty birth106. All exact names, retained
+native identities, bytes and access are checked; an unknown entry refuses.
+After its own guard,105/106 records a timestamp intent and exclusively creates
+a new root0600 empty file, recording its actual birth before byte delivery.
+At107, fixedfile's `ContinueBirth` retains the original same inode. Independent
+named/retained readback requires root0444 and exact original committed bytes
+before sealing, selection, unit creation or Reload. Cancellation and uncertain
+write/sync/Close remain blocking without repeated effects or file adoption.
+
+The artifact controls extend the26-row seal grammar immediately after retained
+candidate row5. At107, `forwarding-recovery-artifact-v1` inserts
+`continued-artifact-retained` and `continued-artifact-written` (28 rows).
+At105/106, `forwarding-recovery-artifact-create-v1` inserts intent/born/written
+artifact rows (29 rows). Intent commits original timestamp bytes/root0444;
+born/retained binds the exact empty root0600 inode; written binds that same
+inode, original bytes and root0444. The separate logical v2 continuation adds
+only missing timestamp intent105, actual creation106 if needed and ready107,
+then seal108/109 and subsequent actual selection/unit births through120 rows.
+Fresh independent readers match original/new timestamp provenance, current
+file and canonical inventory, the logical transcript and the complete control.
+No proposed bytes or synthesized historical FileInfo grants this custody.
+
+At108/109, all twelve original artifact files and credentials are complete;
+the original generation-directory-ready50 record still owns the root0755
+directory. Selection and unit remain absent. After independent original/native
+inventory, fresh authority and stopped admission, recovery creates its own
+guarded control and records the candidate as retained0755. Its separate seal
+intent precedes one same-inode Chmod0555 and directory Sync; independent named
+and retained native checks and complete artifact reads precede the sealed row
+and any selection/unit creation. No directory is recreated or adopted.
+The26-row control is headed `forwarding-recovery-seal-v1`. In the24-row
+selection-creation grammar, row5 becomes `candidate-retained` root0755; insert
+`continued-directory-seal-intent` and `continued-directory-sealed` immediately
+after it. Both bind the original directory device/inode, Generation SHA256 and
+target root0555. The original ready50 record and retained row bind the before
+state; current root0555 and the sealed row bind the actual result. The separate
+v2 continuation adds seal-intent108 only if missing and sealed109, then actual
+selection/unit births and the final stopped rows. Fresh readers verify original
+directory provenance, control, logical transcript and current native inventory.
+Unknown/torn inventory or uncertain mutation/sync/Close remains blocking; there
+is no retry, rollback, fabricated historical FileInfo or accepting0755 waiver.
+
+At110/111, every credential and sealed artifact is already complete, while the
+selection must still be absent. The recovery actor retains its parent, repeats
+absence and records its own guard/selection intent before exclusive creation.
+It records the actual synchronized root0600 empty birth before writing the
+original binding bytes. Current root0644 selection is independently read back
+before unit creation. No pre-existing leaf is adopted. Its24-row control uses
+`forwarding-recovery-selection-create-v1`: insert selection intent/born/written
+before the unit-creation triple in the21-row grammar. Intent binds binding
+SHA256/root0644, born binds the actual new device/inode and empty root0600,
+written binds that same inode and original binding. The v2 continuation adds
+intent110 only if missing, actual born111, ready112 and selected113, then the
+unit continuation. Independent readers match that new birth in control,
+continuation and current physical selection. Partial/uncertain effects block.
+
+At112, the selection's original file-born111 must match the actual root0600,
+single-link empty inode under its retained parent. Recovery independently opens
+that exact birth through fixedfile ContinueBirth, records retained custody only
+after its own recovery guard, then delivers only the original binding bytes and
+promotes access on the same inode. Independent read-only byte/native checks
+precede the guarded unit creation and single Reload. No missing, replaced or
+nonempty selection is created, truncated or adopted. The23-row control is headed
+`forwarding-recovery-selection-v1`: insert selection `continued-file-retained`
+and `continued-file-written` before the unit-creation triple of the21-row
+grammar. Both selection rows bind the original device/inode, empty root0600 then
+exact binding SHA256/root0644. The separate v2 continuation adds file-ready112
+on that original birth, selected113, then the unit continuation. Fresh readers
+must match original selection birth, current selection, complete control and
+logical transcript; writer/reader closes precede either blocker publication.
+
+At113, the original selection file-ready row must independently match the
+complete current selection on its recorded inode. Recovery never rewrites that
+file: its separate logical continuation first records selected113, then follows
+the exact unit-creation path below. The original prefix remains immutable; a
+missing or changed selection cannot supply this acknowledgement.
+
+At112/113/114/115, recovery retains the original unit parent and repeatedly proves the
+canonical leaf absent. After its separate guard and `continued-file-intent`,
+fixedfile creates that one leaf exclusively, synchronizes it and its parent,
+and records its actual root0600 empty birth before delivering bytes. No existing
+leaf is adopted. Independent same-inode root0644 byte readback precedes static
+policy and the one Reload. Its21-row control is headed
+`forwarding-recovery-unit-create-v1`: insert `continued-file-intent`,
+`continued-file-born` and `continued-file-written` after candidate-verified in
+the18-row grammar. Intent binds Unit SHA256 and final access; birth binds actual
+new device/inode and empty SHA256; written binds that same inode and Unit SHA256.
+The v2 continuation supplies selected113 and file-intent114 only if missing, actual file-born115,
+file-ready116 and the final reload/stopped/completed rows. The separate control,
+continuation and independently reopened physical unit must agree on the new
+birth; it is never represented as an original recorded birth. Partial or
+uncertain creation remains blocking with both histories preserved.
+
+At116, the exact original fixed-unit inode must still be root0600, single-link
+and empty. Only its original bytes may be delivered and access promoted to
+root0644 on that same inode. No missing/replaced/nonempty leaf is created,
+truncated, adopted or repaired. Before delivery, the separate native observation
+requires Forwarding unloaded and every other Node service/socket slot absent;
+it grants no installed-file-state or Release right. After actual same-inode
+delivery and independent byte/read-access checks, the existing static/unloaded
+pre-Reload checks apply. Any uncertain write/close remains blocking.
+The116 control uses20 rows headed `forwarding-recovery-unit-v1`: insert
+`continued-file-retained` and `continued-file-written` after candidate-verified,
+before the native-before triple of the18-row grammar below. Retained binds the
+original file-born device/inode, root0600 and SHA256 of empty bytes; written
+binds that same inode, root0644 and the exact Unit SHA256. The separate v2
+continuation adds only file-ready116, reload-intent117, stopped-verified118 and
+completed119. The original birth stays in the immutable prefix. An independent
+reader verifies that original birth, both continuation records, complete current
+unit and the full native/reload proof before publication.
+
+Such recovery uses the distinct completion schema
+`ardents-forwarding-recovery-completion-v2`, appending
+`native_context_sha256` after `transcript_sha256`. This is the SHA256 of its
+actual complete after-Reload native context. V1 omits that field and remains
+byte-compatible. V2 is admitted only for this proved Initial pre-Reload cut or
+the Replacement57/58 boundary below; it cannot reinterpret an uncertain
+original Reload or any Start/retirement.
+Its separate control grammar has18 records: `forwarding-recovery-reload-v1`,
+the pending file intent/born/ready triple, `original-verified`,
+`candidate-verified`, the `recovery-native-before` file intent/born/ready triple,
+`recovery-reload-intent`, the `recovery-native-after` file intent/born/ready
+triple, `stopped-verified`, the completion file intent/born/ready triple and
+`recovery-completed`. Both native files are canonical root0600 bounded64KiB
+siblings `<original-journal>.recovery-native-before/after`; before equals the
+original cut context, and after may change only the three owned generator
+observations. Every native birth and complete hash remains independently
+verified. The original journal is immutable. The continuation contains only its
+missing reload-intent (at117), stopped-verified and completed rows, produced
+after the one actual successful recovery Reload and stopped policy rounds.
+Uncertain Reload or any partial recovery suffix remains blocking, with no
+retry/adoption. Independent readback verifies the new completion commitment,
+both original native snapshot births and complete stopped current context under
+new leases before either guard is removed. Guard ordering and every required
+physical join remain unchanged.
+
+A Replacement v2 cut at57 records (unit-written) or58 records (reload-intent)
+requires the same actual held/denied/joined before-effect proof, unchanged
+original native context and complete original candidate/selection/unit
+inventory. Its exact original `.native-before` must remain present and match
+the cut. Original `.native-after` is independently proved absent. An active
+operation-private observation may retain only that original prefix plus the
+complete original predecessor/retirement/Hosting and semantic histories. It
+supplies no current stopped-generation verification, completed replacement or
+Start permission; ordinary readers still require a complete separate suffix.
+The original loaded predecessor policy, execution and manager must remain
+independently matched before the one admitted recovery Reload. Unknown or lost
+native provenance cannot be replaced by an inactive flag or copied retirement.
+
+Replacement uses the same v2 completion and18-record control, with its own
+`recovery-native-before` birth and the after birth at the exclusively created
+canonical `<original-journal>.native-after` path. That file is recovery-owned:
+the immutable original57/58 prefix has no after birth. Both the recovery control
+and separate continuation record its actual new inode; no original birth is
+invented or an existing file adopted. The continuation contains only a missing
+reload-intent at57, that actual after intent/born/ready triple and the final
+replacement-verified row. The unused `.recovery-native-after` alternative must
+remain absent. Only the actual operation's exclusive newborn file may appear
+in its private partial view. Independent complete readers bind the native
+before/after pair, v2 completion digest and original/recovery birth provenance
+before admitting current native context. All prior generations, ancestors,
+generator proofs, domain joins, allowance and close/publication ordering remain
+mandatory; no current history, account, selection or unit is rewritten here.
+
+Recovered native contexts are checked in actual generation/invocation order.
+After each generation's own proved reload, its terminal and recovered retirement contexts
+may add retained ancestors but cannot change any earlier object or absence,
+including generator observations. A later replacement may then change only its
+own three generators through its complete before/after proof. Only after this
+entire graph is verified may a reader open fresh current context. Processing
+old retirement context after a later reload would not prove that lineage.
+
+| Original boundary and owner | Safe stopped continuation and retained proof | Blocking/refusal and join obligation |
+|---|---|---|
+| Initial journal/account / Installation and fixed native account helper | Complete original account birth and exact current principal precede any continued generation write; all original account/auxiliary provenance remains | Empty/torn/foreign journal, ambiguous helper/account birth, unrecorded inode or incomplete directory permission birth: repair-required; no useradd replay, account adoption or directory recreation |
+| Initial directories and semantic roots / Installation | Every originally recorded complete directory keeps its inode/access; initial semantic roots remain empty; an original-cut proof at a file-born boundary requires the exact empty0600 inode, and file-ready requires exact complete candidate bytes/access | Missing/unrecorded birth, foreign or partial bytes, changed ancestor/credential/root, nonempty initial semantic root or unknown preparation: preserve blockers; no truncating foreign bytes, root initialization or history repair |
+| Candidate files/seal / Installation and original file mechanisms | Intent precedes exclusive empty birth; recorded birth precedes bytes; the exact empty recorded inode may receive its admitted complete candidate, while ready bytes are only independently checked/resynced; complete twelve-file inventory precedes same-inode seal | Once the controller attempts ACK, the next effect is outstanding until a new proven successful boundary. Cuts during writes, between actual birth and durable birth record, uncertain Sync/Close or noncanonical inventory refuse, even when visible bytes match. Hold actual readers/writers/Close and retain original descriptors until join; timeouts do not release custody |
+| Selection/fixed unit / Installation and fixedfile | Independently match the exact original inode and complete preimage at an intent boundary, or exact complete candidate at a written boundary; preserve both sealed generations and complete predecessor chain | Mixed/partial bytes, foreign inode, changed root or overlapping writer refuses without rollback/adoption. A physical write cut after ACK has no safe boundary proof; lower file mechanisms grant no authority |
+| Reload / Installation and fixed Forwarding manager | At an exactly proved pre-Reload cut, separately record and attempt the one admitted reload; Initial117/118 requires the additional v2 proof above. After an original attempt, finish only an independently proved exact stopped result under the original manager/context, with fresh namespace/policy rounds | An unknown original reload result is not permission to replay the effect. Changed manager/context, competing slot, live/unknown process or native observation/Close uncertainty gives repair-required |
+| Start / original root Startup producer | Independently classify the original prefix and any complete subsequent genuine retirement; a proved never-started prefix may only retire into stopped state, retaining its attempt and explicit future history-opening choice | Never repeat Start, archive, ACK or domain completion. A start-attempt marker, archive, ACK-looking bytes, inactive unit or PID absence cannot prove original domain join; unknown join stays unavailable |
+| Retirement / original domain and native owners | Only exact original domain-joined/native-joined/native-closed provenance plus canonical result and independent original history/native checks may finish stopped publication | Never manufacture or repeat a joined-domain report. Missing result/join, substituted invocation/challenge/clocks, late close failure or uncertain publication preserves the original blocker |
+| Hosting preparation and all retained domain histories / their genuine owners | Match initial allowance directory/pin/lock provenance and existing semantic floors through independent read-only inspections; reservations must have actually returned after their physical users joined | A new generation/path/unit cannot reset counters, refund burn, reinitialize preparation or clear an unknown producer/reservation. Partial Hosting preparation remains blocking, not another initializer |
+
+Each repeated directory/file group includes before-intent, intent, actual birth,
+durable birth, partial bytes, sync/readback, readiness and original-close cuts.
+The same matrix applies to every reachable group; a claimed unsupported prefix
+needs its exact missing proof and original source boundary, not a test waiver.
+Finite source-backed byte/native controls precede the separately accepted exact
+installed campaign. Only actual first contact/refill, joined stop, resource-only
+replacement, fresh start, contact/refill, joined stop and same-generation restart
+can qualify that installed journey. This contract selects no other Node role,
+automatic restart/update/rollback, arbitrary repair, public/platform/availability
+or independent-security/privacy qualification.
 
 #### Initial stopped Source persistence
 

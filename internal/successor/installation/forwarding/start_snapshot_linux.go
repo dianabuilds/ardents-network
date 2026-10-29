@@ -33,6 +33,8 @@ type startSnapshot struct {
 	bindingSHA, initialSHA string
 	number                 attemptNumber
 	predecessor            string
+	historyOpening         uint8
+	extendedACK            bool
 	archive                startArchive
 	id                     [16]byte
 	sha256                 string
@@ -149,7 +151,9 @@ func canonicalStartRecord(raw []byte, target any) bool {
 func (h *startSnapshot) validate() error {
 	get := func(name string) []byte { return h.files[filepath.Join(h.path, name)].body }
 	guard, socketRaw, archiveRaw := get("start-guard.json"), get("start-socket.json"), get("start-archived.json")
-	if err := checkStartIntent(guard, h.binding, h.bindingSHA, h.initialSHA, h.number, h.predecessor); err != nil {
+	var err error
+	h.historyOpening, h.extendedACK, err = readStartHistoryIntent(guard, h.binding, h.bindingSHA, h.initialSHA, h.number, h.predecessor)
+	if err != nil {
 		return err
 	}
 	var socket startSocketRecord
@@ -172,7 +176,16 @@ func (h *startSnapshot) validate() error {
 	if err != nil {
 		return err
 	}
-	recorded, err := decodeStartRecords(h.journal.body, h.number, h.journal.path, h.path, h.bindingSHA, digest(guard), digest(socketRaw), digest(archiveRaw), digest(frame[:]), h.binding.GID)
+	var recorded map[string]startEntry
+	if h.extendedACK {
+		ack, encodeErr := completion.EncodeForwardingACK(frame, h.historyOpening)
+		if encodeErr != nil {
+			return encodeErr
+		}
+		recorded, err = decodeStartRecordsFrames(h.journal.body, h.number, h.journal.path, h.path, h.bindingSHA, digest(guard), digest(socketRaw), digest(archiveRaw), digest(frame[:]), digest(ack[:]), h.binding.GID)
+	} else {
+		recorded, err = decodeStartRecords(h.journal.body, h.number, h.journal.path, h.path, h.bindingSHA, digest(guard), digest(socketRaw), digest(archiveRaw), digest(frame[:]), h.binding.GID)
+	}
 	if err != nil {
 		return err
 	}

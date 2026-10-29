@@ -57,11 +57,51 @@ func Create(ctx context.Context, filename string, parent os.FileInfo, body []byt
 	return owned, nil
 }
 
+// ContinueBirth independently reopens one recorded empty root0600 birth on its
+// original parent/inode. It never creates, truncates or adopts a nonempty leaf.
+// Installation must prove the original safe boundary, record this retained
+// custody and recheck admission before Commit. Identity is native metadata,
+// not recovery permission. Every nonnil result requires Close, including errors.
+func ContinueBirth(ctx context.Context, filename string, parent, original os.FileInfo, body []byte, mode os.FileMode, gid uint32) (*Mutation, error) {
+	if original == nil || original.Size() != 0 || !inodeMatches(original, original, 0600, 0) {
+		return nil, ErrInput
+	}
+	owned, err := openParent(ctx, filename, parent, body, mode, gid)
+	if err != nil {
+		return owned, err
+	}
+	owned.creation = true
+	owned.original = original
+	owned.file, err = owned.parent.OpenFile(filepath.Base(filename), os.O_RDWR|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return owned, owned.fail(err)
+	}
+	opened, err := owned.file.Stat()
+	named, nameErr := owned.parent.Lstat(filepath.Base(filename))
+	if err != nil || nameErr != nil || !sameFile(original, opened) || !sameFile(opened, named) || !inodeMatches(original, opened, 0600, 0) {
+		return owned, owned.fail(errors.Join(ErrBinding, err, nameErr))
+	}
+	var probe [1]byte
+	read, readErr := owned.file.ReadAt(probe[:], 0)
+	if read != 0 || readErr != io.EOF {
+		return owned, owned.fail(errors.Join(ErrBinding, readErr))
+	}
+	owned.before = opened
+	if err := errors.Join(owned.file.Sync(), syncParent(owned.parent), owned.observeParent(), owned.ctx.Err()); err != nil {
+		return owned, owned.fail(err)
+	}
+	after, err := owned.file.Stat()
+	if err != nil || !sameFile(opened, after) {
+		return owned, owned.fail(errors.Join(ErrBinding, err))
+	}
+	return owned, nil
+}
+
 // Replace pins the recorded original inode and accepts only a complete old or
 // candidate image, or a torn prefix of either. The caller must resynchronize
 // its exact replacement record and recheck transaction admission before Commit.
 func Replace(ctx context.Context, filename string, parent, original os.FileInfo, previous, candidate []byte, mode os.FileMode, gid uint32) (*Mutation, error) {
-	if original == nil || len(previous) == 0 || len(previous) > 64<<20 {
+	if original == nil || len(previous) == 0 || len(previous) > 64<<20 || (mode != 0644 && mode != 0555 && mode != 0640) {
 		return nil, ErrInput
 	}
 	owned, err := openParent(ctx, filename, parent, candidate, mode, gid)
@@ -91,7 +131,7 @@ func Replace(ctx context.Context, filename string, parent, original os.FileInfo,
 }
 
 func openParent(ctx context.Context, filename string, parent os.FileInfo, body []byte, mode os.FileMode, gid uint32) (*Mutation, error) {
-	if ctx == nil || filename == "/" || !filepath.IsAbs(filename) || filepath.Clean(filename) != filename || parent == nil || len(body) == 0 || len(body) > 64<<20 || (mode != 0644 && mode != 0555 && mode != 0640) {
+	if ctx == nil || filename == "/" || !filepath.IsAbs(filename) || filepath.Clean(filename) != filename || parent == nil || len(body) == 0 || len(body) > 64<<20 || (mode != 0644 && mode != 0555 && mode != 0640 && mode != 0444) || mode == 0444 && gid != 0 {
 		return nil, ErrInput
 	}
 	if err := ctx.Err(); err != nil {

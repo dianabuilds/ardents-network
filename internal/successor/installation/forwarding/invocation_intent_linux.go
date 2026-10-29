@@ -2,8 +2,8 @@ package forwarding
 
 import "encoding/json"
 
-// Subsequent invocation bytes have their own closed grammar. First-start bytes
-// remain unchanged; a copied first intent cannot omit predecessor retirement.
+// Historical subsequent invocation bytes keep their own closed grammar. Legacy
+// first-start bytes remain readable; copied intent cannot omit retirement.
 type invocationIntent struct {
 	Schema               string `json:"schema"`
 	BindingSHA256        string `json:"binding_sha256"`
@@ -38,7 +38,7 @@ func encodeStartIntent(b binding, bindingSHA, initialSHA, targetsSHA string, num
 	return append(raw, '\n'), nil
 }
 
-func checkStartIntent(raw []byte, b binding, bindingSHA, initialSHA string, number attemptNumber, predecessor string) error {
+func checkLegacyStartIntent(raw []byte, b binding, bindingSHA, initialSHA string, number attemptNumber, predecessor string) error {
 	if number >= attemptLimit {
 		return ErrBinding
 	}

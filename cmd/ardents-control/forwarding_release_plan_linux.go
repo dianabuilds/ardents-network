@@ -31,10 +31,6 @@ const (
 	forwardingReleaseForward
 )
 
-func decodeForwardingReleasePlan(raw []byte, now time.Time) (forwardingReleasePlan, error) {
-	return decodeForwardingReleasePurpose(raw, now, forwardingReleaseInitial)
-}
-
 func decodeForwardingReleasePurpose(raw []byte, now time.Time, purpose forwardingReleasePurpose) (forwardingReleasePlan, error) {
 	var p forwardingReleasePlan
 	schema := "ardents-forwarding-initial-release-plan-v1"

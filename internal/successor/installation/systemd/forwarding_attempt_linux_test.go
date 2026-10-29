@@ -3,6 +3,8 @@ package systemd
 import (
 	"context"
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -21,6 +23,56 @@ func TestForwardingControlLocalAttemptCannotFollowOriginalDenialOrClose(t *testi
 	r.closed.Store(true)
 	if err := s.admitForwardingStart(); !errors.Is(err, ErrUnavailable) || s.startAttempted {
 		t.Fatal("closed original admitted native Start attempt", err)
+	}
+}
+
+func TestForwardingReplacementCopiesShareOneReloadAttemptAndDenial(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	r := &managerReference{original: ctx}
+	s := ForwardingReplacement{original: &forwardingReplacement{reference: r}}
+	copy := s
+	var admitted atomic.Int32
+	var uses sync.WaitGroup
+	for n := 0; n < 32; n++ {
+		uses.Add(1)
+		go func() {
+			defer uses.Done()
+			if err := copy.original.reference.admitForwardingReload(&copy.original.reloaded); err == nil {
+				admitted.Add(1)
+			}
+		}()
+	}
+	uses.Wait()
+	if admitted.Load() != 1 || !s.original.reloaded {
+		t.Fatal("copies split the one native attempt", admitted.Load())
+	}
+	cancel()
+	if err := r.admitForwardingReload(&s.original.reloaded); err != context.Canceled {
+		t.Fatal("lost original denial", err)
+	}
+	for _, state := range []string{"closed", "failed", "cancelled"} {
+		t.Run(state, func(t *testing.T) {
+			original, deny := context.WithCancel(t.Context())
+			defer deny()
+			r := &managerReference{original: original}
+			failure := errors.New("original native failure")
+			switch state {
+			case "closed":
+				r.closed.Store(true)
+			case "failed":
+				r.terminal = failure
+			case "cancelled":
+				deny()
+			}
+			attempted := false
+			err := r.admitForwardingReload(&attempted)
+			if err == nil || attempted {
+				t.Fatal("denied owner admitted native attempt", err)
+			}
+			if state == "failed" && !errors.Is(err, failure) {
+				t.Fatal("native failure replaced", err)
+			}
+		})
 	}
 }
 

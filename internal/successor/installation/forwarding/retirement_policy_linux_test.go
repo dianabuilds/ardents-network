@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -25,6 +26,85 @@ func TestForwardingStopFailureKeepsCausesPrivate(t *testing.T) {
 	}
 	if (&stopFailure{phase: stopExecutionClock, cause: private}).Error() != "forwarding stop: execution-clock refused" {
 		t.Fatal("execution clock failure was not distinguishable")
+	}
+}
+
+func TestForwardingReplacementStoppedDoesNotRebindPredecessorExecution(t *testing.T) {
+	previous, selected := replacementSelectionVector(t)
+	id := [16]byte{9}
+	a := startArchive{Generation: previous.binding.Generation, BindingSHA256: digest(previous.raw), InvocationID: hex.EncodeToString(id[:]), Manager: ":1.17", PID: 7317, StartedRealtime: 30, StartedMonotonic: 40}
+	r := retirementResult{Generation: a.Generation, BindingSHA256: a.BindingSHA256, Attempt: 0, InvocationID: a.InvocationID, Manager: a.Manager, PID: a.PID, StartedRealtime: 30, StartedMonotonic: 40, ExitedRealtime: 50, ExitedMonotonic: 60, Code: 1}
+	u, s := forwardingLoadedVector(t)
+	set := func(p systemd.Properties, name, signature string, value any) {
+		raw, err := json.Marshal(value)
+		if err != nil {
+			t.Fatal(err)
+		}
+		p[name] = systemd.Value{Type: signature, Data: raw}
+	}
+	set(u, "TriggeredBy", "as", []string{})
+	set(s, "ControlPID", "u", uint32(0))
+	set(s, "NRestarts", "u", uint32(0))
+	set(s, "DynamicUser", "b", false)
+	set(s, "StandardInput", "s", "null")
+	request := selected.binding.Request
+	set(s, "ReadWritePaths", "as", []string{request.StateRoot, request.ParticipationRoot, request.SpendRoot, request.HostingRoot})
+	program := filepath.Join(request.InstallationRoot, "generations", selected.binding.Generation, "ardents-node-linux-amd64")
+	set(s, "ExecStartEx", "a(sasasttttuii)", []any{[]any{program, []string{program, "forwarding", "start-installed", filepath.Join(request.InstallationRoot, "binding.json")}, []string{"no-env-expand"}, uint64(0), uint64(0), uint64(0), uint64(0), uint32(0), int32(0), int32(0)}})
+	retirementSHA := selected.replacement.RetirementSHA256
+	check := func() error { return verifyForwardingReplacementStopped(u, s, selected, a, 0, id, r, retirementSHA) }
+	if err := check(); err != nil {
+		t.Fatal("new zero-execution configuration with separate predecessor exit", err)
+	}
+	if verifyForwardingRestartStopped(u, s, request, selected.binding.Generation, a, id, r.execution()) == nil {
+		t.Fatal("old execution rebound by same-generation policy")
+	}
+	for _, fault := range []string{"generation", "binding", "attempt", "retirement", "manager", "invocation", "exit", "signal", "missing-retirement"} {
+		t.Run(fault, func(t *testing.T) {
+			badArchive, badResult, badNumber, badSHA := a, r, attemptNumber(0), retirementSHA
+			switch fault {
+			case "generation":
+				badArchive.Generation = selected.binding.Generation
+			case "binding":
+				badArchive.BindingSHA256 = digest([]byte("foreign"))
+			case "attempt":
+				badNumber = 1
+			case "retirement":
+				badSHA = digest([]byte("foreign"))
+			case "manager":
+				badResult.Manager = ":1.18"
+			case "invocation":
+				badResult.InvocationID = strings.Repeat("0", 32)
+			case "exit":
+				badResult.PID++
+			case "signal":
+				badResult.Code = 2
+			case "missing-retirement":
+				badResult = retirementResult{}
+			}
+			if verifyForwardingReplacementStopped(u, s, selected, badArchive, badNumber, id, badResult, badSHA) == nil {
+				t.Fatal("foreign predecessor comparison accepted")
+			}
+		})
+	}
+	for _, change := range []struct {
+		p               systemd.Properties
+		name, signature string
+		value           any
+	}{
+		{u, "InvocationID", "ay", id}, {u, "TriggeredBy", "as", []string{"foreign.socket"}},
+		{s, "ControlPID", "u", uint32(1)}, {s, "NRestarts", "u", uint32(1)}, {s, "DynamicUser", "b", true},
+		{s, "ExecMainPID", "u", a.PID}, {s, "ExecMainStartTimestamp", "t", a.StartedRealtime}, {s, "StandardInput", "s", "socket"},
+	} {
+		original := change.p[change.name]
+		set(change.p, change.name, change.signature, change.value)
+		if check() == nil {
+			t.Fatal("loaded candidate hid nonzero/foreign native state", change.name)
+		}
+		change.p[change.name] = original
+	}
+	if a.Generation != previous.binding.Generation || r.Generation != a.Generation {
+		t.Fatal("comparison changed original execution")
 	}
 }
 

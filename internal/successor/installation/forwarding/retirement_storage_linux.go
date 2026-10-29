@@ -158,7 +158,10 @@ func (s *retirementStorage) record(phase, path string, info os.FileInfo, sha str
 		return err
 	}
 	s.sequence++
-	return s.check()
+	if err := s.check(); err != nil {
+		return err
+	}
+	return reportTransition(s.ctx, s.journal, s.sequence)
 }
 
 func (s *retirementStorage) recordPath(path string) bool {

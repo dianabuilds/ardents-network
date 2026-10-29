@@ -3,6 +3,7 @@
 package forwarding
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -15,6 +16,69 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
 )
+
+// Only physical historical-reader refusal and lease custody. This fixture
+// supplies no real domain report, process cut, manager or Release authority.
+func TestForwardingRetirementSnapshotNativeRecoverySidecarsRequireCompleteProof(t *testing.T) {
+	for _, suffix := range []string{".original-cut-journal", ".original-cut-result", ".original-cut-pending", ".recovery-journal", ".recovery-completion", ".recovery-pending"} {
+		t.Run(suffix, func(t *testing.T) {
+			s, b, bh, sh, a, id := nativeRetirementSnapshotFixture(t)
+			if err := s.close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Remove(filepath.Join(s.path, "retirement-pending")); err != nil {
+				t.Fatal(err)
+			}
+			original, err := os.ReadFile(s.journal.path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resultPath := filepath.Join(s.path, "retirement-result.json")
+			result, err := os.ReadFile(resultPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			owner := &completedInitial{files: &completedFiles{}}
+			baseline, err := readRetirementSnapshotContext(t.Context(), b, 0, bh, sh, a, id, retirementCommitted, owner)
+			if err != nil {
+				_ = baseline.close()
+				t.Fatal("mechanical baseline invalid", err)
+			}
+			if err := baseline.close(); err != nil {
+				t.Fatal(err)
+			}
+			sidecar := s.journal.path + suffix
+			if err := os.WriteFile(sidecar, nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+			h, err := readRetirementSnapshotContext(t.Context(), b, 0, bh, sh, a, id, retirementCommitted, owner)
+			defer h.close()
+			if err == nil {
+				t.Fatal("incomplete recovery sidecar supplied ordinary history", suffix)
+			}
+			probe, openErr := os.Open(s.journal.path)
+			if openErr != nil {
+				t.Fatal(openErr)
+			}
+			defer probe.Close()
+			if held := syscall.Flock(int(probe.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); !errors.Is(held, syscall.EWOULDBLOCK) {
+				t.Fatal("failed reader released lease before Close", held)
+			}
+			if closed := h.close(); !errors.Is(closed, err) {
+				t.Fatal("original refusal lost on Close", closed, err)
+			}
+			if joined := syscall.Flock(int(probe.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); joined != nil {
+				t.Fatal("joined failed reader retained lease", joined)
+			}
+			for path, wanted := range map[string][]byte{s.journal.path: original, resultPath: result, sidecar: {}} {
+				raw, readErr := os.ReadFile(path)
+				if readErr != nil || !bytes.Equal(raw, wanted) {
+					t.Fatal("refusal changed original/history/blocker", path, readErr)
+				}
+			}
+		})
+	}
+}
 
 // Actual native files only. All process/manager/exit/frame values below are
 // detached grammar fixtures, NEVER supplied to a live Stop, Startup or native

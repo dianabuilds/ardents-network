@@ -115,10 +115,15 @@ func (s *startStorage) record(phase, path string, info os.FileInfo, sha string) 
 	if err := s.check(); err != nil {
 		return err
 	}
-	if !s.recordPath(path) || sha != "" && !validStartDigest(sha) {
+	contextRecord := phase == "native-context" && s.sequence == 1 && path == filepath.Dir(s.path) && info == nil && validStartDigest(sha)
+	if !s.recordPath(path) && !contextRecord || sha != "" && !validStartDigest(sha) {
 		return ErrBinding
 	}
 	switch phase {
+	case "native-context":
+		if !contextRecord {
+			return ErrBinding
+		}
 	case "first-start":
 		if s.number != 0 || s.sequence != 0 || path != s.journal.path {
 			return ErrBinding
@@ -169,7 +174,10 @@ func (s *startStorage) record(phase, path string, info os.FileInfo, sha string) 
 		return err
 	}
 	s.sequence++
-	return s.check()
+	if err := s.check(); err != nil {
+		return err
+	}
+	return reportTransition(s.ctx, s.journal, s.sequence)
 }
 
 func (s *startStorage) recordPath(path string) bool {

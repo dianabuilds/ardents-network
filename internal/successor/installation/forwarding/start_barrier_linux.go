@@ -58,17 +58,11 @@ func prepareStartBarrier(owner *startAttempt) (barrier *startBarrier, err error)
 	if _, err = s.write("forwarding-start-pending", []byte("ardents-forwarding-start-pending-v1\n"+digest(binding)+"\n"), admit); err != nil {
 		return barrier, err
 	}
-	history := digest(owner.completed.original.files.journal.body)
-	program, _ := owner.authorization.Targets()
-	decision, ok := program.AcceptedDecision()
-	if !ok || len(decision.Floors.TargetsDigest) != 32 {
-		return barrier, ErrBinding
+	guard, err := owner.startIntentBytes()
+	if err != nil || len(owner.intent) == 0 || !bytes.Equal(guard, owner.intent) {
+		return barrier, errors.Join(ErrBinding, err)
 	}
-	guard, err := encodeStartIntent(b, digest(binding), history, hex.EncodeToString(decision.Floors.TargetsDigest), s.number, owner.predecessor)
-	if err != nil {
-		return barrier, err
-	}
-	barrier.guard, err = s.write("start-guard.json", guard, admit)
+	barrier.guard, err = s.write("start-guard.json", owner.intent, admit)
 	if err != nil {
 		return barrier, err
 	}
@@ -136,6 +130,19 @@ func prepareStartBarrier(owner *startAttempt) (barrier *startBarrier, err error)
 		return barrier, err
 	}
 	return barrier, barrier.observe()
+}
+
+// The actual root start owns the fresh decision and complete initial/prior
+// history. These bytes are fixed before any start journal effect and reused by
+// the guard writer and original cut; recomputation may only detect refusal.
+func (s *startAttempt) startIntentBytes() ([]byte, error) {
+	c := s.completed.original
+	program, _ := s.authorization.Targets()
+	decision, ok := program.AcceptedDecision()
+	if c == nil || !ok || len(decision.Floors.TargetsDigest) != 32 {
+		return nil, ErrBinding
+	}
+	return encodeHistoryStartIntent(c.binding, digest(s.bindingBytes()), c.initialHistorySHA(), hex.EncodeToString(decision.Floors.TargetsDigest), s.nextNumber, s.predecessor, s.historyOpening)
 }
 
 func sameStartSocket(original, current os.FileInfo, mode os.FileMode, gid uint32) bool {
@@ -363,7 +370,7 @@ func (b *startBarrier) acknowledge() (err error) {
 	if err = b.peer(); err != nil {
 		return err
 	}
-	frame, err := b.frame()
+	frame, err := b.ackFrame()
 	if err != nil {
 		return err
 	}
@@ -393,6 +400,17 @@ func (b *startBarrier) acknowledge() (err error) {
 		return err
 	}
 	return s.ctx.Err()
+}
+
+func (b *startBarrier) ackFrame() ([161]byte, error) {
+	if b == nil || b.owner == nil {
+		return [161]byte{}, ErrInput
+	}
+	request, err := b.frame()
+	if err != nil {
+		return [161]byte{}, err
+	}
+	return completion.EncodeForwardingACK(request, b.owner.historyOpening)
 }
 
 func (b *startBarrier) close() error {

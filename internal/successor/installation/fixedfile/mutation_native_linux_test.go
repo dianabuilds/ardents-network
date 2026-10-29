@@ -101,6 +101,201 @@ func TestInstallationNativeFixedFileCreationPinsBirthAndClosesDescriptors(t *tes
 	}
 }
 
+// Root0444 is an immutable public-file birth, not permission to replace an
+// existing complete read-only file or assign a foreign public-file group.
+func TestInstallationNativeFixedFileReadOnlyBirths(t *testing.T) {
+	for _, kind := range []string{"create", "continue"} {
+		t.Run(kind, func(t *testing.T) {
+			directory, parent := mutationDirectory(t)
+			filename := filepath.Join(directory, "public-metadata")
+			body := []byte("original public metadata\n")
+			before := matchingDescriptors(t, parent)
+			var owned *Mutation
+			var birth os.FileInfo
+			var err error
+			if kind == "create" {
+				owned, err = Create(t.Context(), filename, parent, body, 0444, 0)
+			} else {
+				f, openErr := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+				if openErr != nil {
+					t.Fatal(openErr)
+				}
+				birth, err = f.Stat()
+				if err := errors.Join(err, f.Sync(), f.Close()); err != nil {
+					t.Fatal(err)
+				}
+				owned, err = ContinueBirth(t.Context(), filename, parent, birth, body, 0444, 0)
+			}
+			if owned != nil {
+				defer owned.Close()
+			}
+			if err != nil {
+				t.Fatal("root0444 birth refused", err)
+			}
+			if birth == nil {
+				birth = owned.Identity()
+			}
+			if owned.Identity().Mode() != 0600 || owned.Identity().Size() != 0 || !os.SameFile(birth, owned.Identity()) {
+				t.Fatal("original empty birth lost")
+			}
+			committed, err := owned.Commit()
+			if err != nil || committed == nil || !os.SameFile(birth, committed) || committed.Mode() != 0444 || committed.Sys().(*syscall.Stat_t).Gid != 0 {
+				t.Fatal("root0444 same-inode commit", err)
+			}
+			raw, err := os.ReadFile(filename)
+			if err != nil || !bytes.Equal(raw, body) {
+				t.Fatal("read-only birth bytes", err)
+			}
+			if err := owned.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if matchingDescriptors(t, birth) != 0 || matchingDescriptors(t, parent) != before {
+				t.Fatal("read-only birth descriptors survived Close")
+			}
+			replacement, err := Replace(t.Context(), filename, parent, committed, body, []byte("replacement"), 0444, 0)
+			if replacement != nil {
+				defer replacement.Close()
+			}
+			if replacement != nil || !errors.Is(err, ErrInput) {
+				t.Fatal("birth extension granted read-only replacement", err)
+			}
+			foreign, err := Create(t.Context(), filepath.Join(directory, "foreign-group"), parent, body, 0444, 65534)
+			if foreign != nil {
+				defer foreign.Close()
+			}
+			if foreign != nil || !errors.Is(err, ErrInput) {
+				t.Fatal("public read-only foreign group accepted", err)
+			}
+			if _, err := os.Lstat(filepath.Join(directory, "foreign-group")); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("refusal created a foreign-group file", err)
+			}
+			raw, err = os.ReadFile(filename)
+			after, statErr := os.Lstat(filename)
+			if err != nil || statErr != nil || !bytes.Equal(raw, body) || !sameFile(committed, after) {
+				t.Fatal("refusals changed original read-only file", err, statErr)
+			}
+		})
+	}
+}
+
+// Only physical recorded-birth custody is exercised; the fixture supplies no
+// original process cut, transaction journal, Release or recovery admission.
+func TestInstallationNativeFixedFileContinuesRecordedEmptyBirth(t *testing.T) {
+	for _, change := range []string{"complete", "bytes-before", "inode-before", "mode-before", "link-before", "bytes-after", "cancel-after"} {
+		t.Run(change, func(t *testing.T) {
+			directory, parent := mutationDirectory(t)
+			filename := filepath.Join(directory, "recorded-empty")
+			file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := file.Sync(); err != nil {
+				file.Close()
+				t.Fatal(err)
+			}
+			birth, err := file.Stat()
+			closeErr := file.Close()
+			if err != nil || closeErr != nil {
+				t.Fatal(err, closeErr)
+			}
+			baseline := matchingDescriptors(t, parent)
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			switch change {
+			case "bytes-before":
+				if err := os.WriteFile(filename, []byte("unknown"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			case "inode-before":
+				if err := os.Rename(filename, filename+"-original"); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filename, nil, 0600); err != nil {
+					t.Fatal(err)
+				}
+			case "mode-before":
+				if err := os.Chmod(filename, 0644); err != nil {
+					t.Fatal(err)
+				}
+			case "link-before":
+				if err := os.Link(filename, filename+"-alias"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			body := []byte("exact continued fixed unit\n")
+			frozen := bytes.Clone(body)
+			owned, err := ContinueBirth(ctx, filename, parent, birth, body, 0644, 0)
+			if owned != nil {
+				defer owned.Close()
+			}
+			if change == "bytes-before" || change == "inode-before" || change == "mode-before" || change == "link-before" {
+				if err == nil {
+					t.Fatal("changed original birth adopted")
+				}
+				if owned != nil {
+					_ = owned.Close()
+				}
+				if matchingDescriptors(t, parent) != baseline {
+					t.Fatal("partial parent custody leaked")
+				}
+				actual, readErr := os.ReadFile(filename)
+				if readErr != nil {
+					t.Fatal(readErr)
+				}
+				if change == "bytes-before" && string(actual) != "unknown" || change != "bytes-before" && len(actual) != 0 {
+					t.Fatal("unknown birth changed")
+				}
+				return
+			}
+			if err != nil || owned == nil || !os.SameFile(birth, owned.Identity()) || matchingDescriptors(t, birth) != 1 {
+				t.Fatal("independent recorded birth custody", err)
+			}
+			body[0] = '!'
+			if change == "bytes-after" {
+				if err := os.WriteFile(filename, []byte("preserve after journal I/O"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if change == "cancel-after" {
+				cancel()
+			}
+			committed, err := owned.Commit()
+			if change != "complete" {
+				if err == nil || change == "cancel-after" && !errors.Is(err, context.Canceled) {
+					t.Fatal("post-opening change/cancel accepted", err)
+				}
+				actual, readErr := os.ReadFile(filename)
+				if readErr != nil {
+					t.Fatal(readErr)
+				}
+				if change == "bytes-after" && string(actual) != "preserve after journal I/O" || change == "cancel-after" && len(actual) != 0 {
+					t.Fatal("refusal overwrote original")
+				}
+				if matchingDescriptors(t, birth) != 1 {
+					t.Fatal("refusal released original before Close")
+				}
+				if closed := owned.Close(); closed == nil {
+					t.Fatal("original failure lost through Close")
+				}
+			} else {
+				if err != nil || committed == nil || !os.SameFile(birth, committed) || committed.Mode() != 0644 {
+					t.Fatal("same-inode promotion", err)
+				}
+				actual, readErr := os.ReadFile(filename)
+				if readErr != nil || !bytes.Equal(actual, frozen) {
+					t.Fatal("candidate alias/bytes changed", readErr)
+				}
+				if err := owned.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if matchingDescriptors(t, birth) != 0 || matchingDescriptors(t, parent) != baseline {
+				t.Fatal("joined descriptors leaked")
+			}
+		})
+	}
+}
+
 func TestInstallationNativeFixedFileCreationRefusesChangeAfterBirth(t *testing.T) {
 	for _, change := range []string{"bytes", "inode", "mode", "link", "parent"} {
 		t.Run(change, func(t *testing.T) {
@@ -198,8 +393,16 @@ func TestInstallationNativeFixedFileReplacementRechecksAfterJournalIO(t *testing
 			if err := os.WriteFile(filename, previous, 0644); err != nil {
 				t.Fatal(err)
 			}
-			original, err := os.Lstat(filename)
+			created, err := os.Lstat(filename)
 			if err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("fixture created with mode %04o; establishing required 0644 preimage", created.Mode().Perm())
+			if err := os.Chmod(filename, 0644); err != nil {
+				t.Fatal(err)
+			}
+			original, err := os.Lstat(filename)
+			if err != nil || original.Mode() != 0644 {
 				t.Fatal(err)
 			}
 			ctx, cancel := context.WithCancel(t.Context())
@@ -218,6 +421,9 @@ func TestInstallationNativeFixedFileReplacementRechecksAfterJournalIO(t *testing
 				err = os.Rename(filename, filename+"-original")
 				if err == nil {
 					err = os.WriteFile(filename, previous, 0644)
+					if err == nil {
+						err = os.Chmod(filename, 0644)
+					}
 				}
 			case "link":
 				err = os.Link(filename, filename+"-link")

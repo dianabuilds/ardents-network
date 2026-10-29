@@ -11,7 +11,7 @@
 // The initial stopped creator independently reads its entire canonical birth
 // transcript and matches native resources before releasing original writer/
 // pending custody. Its readback supplies no standalone Startup or recovery right.
-// Completed independently reopens only published initial history and original
+// Completed independently reopens published initial/selection lineage and original
 // native resources under its own lease; current Release matching is separate.
 // It grants no manager/process/State, Start, retirement or runtime authority.
 // Startup separately acquires actual non-root Forwarding files, process, scope,
@@ -33,6 +33,28 @@
 // then fresh Release/native/independent startup admission for the next bounded
 // invocation. The new intent binds its predecessor; no live runtime transfers.
 // These component implementations remain distinct from installed qualification.
+// Replace independently retains the exact retired predecessor, fresh Release
+// pair, existing-only State/participation, spend and Hosting inspections, original
+// native context and distinct one-reload manager connection. Original birth/seal,
+// same-inode selection/unit writes, independent readback and required physical
+// closes precede pending publication. Every predecessor and original allowance
+// remains. StartSelected is a separate admission; replacement never starts a
+// runtime. These operations grant no original-prefix recovery or installed claim.
+// New replacements retain exact before/after native snapshot births around
+// their own one-use reload. Recovered completed readers require that entire
+// ordered lineage before freshly observing the current generator directories;
+// no original non-generator observation may be dropped or substituted.
+// RunTransition retains only its own canonical coordinator from birth, exact
+// root-peer journal boundaries and actual physical scope join. Its separate
+// guarded original-cut proof preserves original blockers and grants no Release,
+// manager currentness, domain join, recovery continuation or installed claim.
+// Recover separately consumes a fresh coherent candidate and genuine original
+// cut under a fresh exclusive original lease. Its bounded initial stopped
+// classifier preserves the prefix, records a separate guarded completion and
+// independently reopens completed custody before original/recovery publication.
+// Ordinary readers retain their own cut/suffix/native proofs; start intents bind
+// the separate completion commitment. Other prefixes stay repair-required, with
+// no replay, root adoption, semantic initialization or invented domain join.
 // PrepareHosting separately consumes the completed initial birth of the empty
 // allowance directory while all Node invocations remain stopped. Its one-use
 // root-only journal, intent, completion and blocker stay outside that writable

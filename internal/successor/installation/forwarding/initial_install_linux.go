@@ -26,6 +26,9 @@ func InstallInitialStopped(v *release.Verifier, a infrastructure.ForwardingAutho
 	if p == nil || v == nil || os.Geteuid() != 0 {
 		return ErrInput
 	}
+	if _, finite := p.ctx.Deadline(); !finite {
+		return ErrInput
+	}
 	if err := p.begin(); err != nil {
 		return err
 	}
@@ -40,18 +43,21 @@ func InstallInitialStopped(v *release.Verifier, a infrastructure.ForwardingAutho
 	var births *initialBirths
 	var account *nodeAccount
 	var manager *systemd.ForwardingStopped
+	var identity *runtimeIdentity
+	var namespace *startNamespace
 	var pending *initialFile
 	var pendingParent os.FileInfo
 	complete := false
 	ctx := p.ctx
 	defer func() {
-		returned = errors.Join(returned, manager.Close(), account.close(), births.close())
+		returned = errors.Join(returned, manager.Close(), namespace.close(), identity.close(), account.close(), births.close())
 		p.uses.Done()
 		returned = errors.Join(returned, input.Close())
 		if returned == nil && complete {
 			returned = errors.Join(a.Check(ctx, v), v.CheckHistoryPath(ctx, history), ctx.Err())
 		}
 		returned = errors.Join(returned, v.Close())
+		returned = errors.Join(returned, finishTransition(ctx))
 		if returned == nil && complete {
 			returned = publishInitialPending(births, pending, pendingParent)
 		}
@@ -74,6 +80,18 @@ func InstallInitialStopped(v *release.Verifier, a infrastructure.ForwardingAutho
 		return returned
 	}
 	paths, err := manager.CheckAbsent()
+	if err != nil {
+		return err
+	}
+	identity, err = openRootIdentity(ctx)
+	if err != nil {
+		return err
+	}
+	namespace, err = openStartNamespace(ctx, paths)
+	if err != nil {
+		return err
+	}
+	managerIdentity, err := manager.ManagerIdentity()
 	if err != nil {
 		return err
 	}
@@ -174,14 +192,31 @@ func InstallInitialStopped(v *release.Verifier, a infrastructure.ForwardingAutho
 	if err = initialNamespace(paths, nil); err != nil {
 		return err
 	}
-	births, err = openInitialBirths(ctx, journalPath, allowed)
+	nativeContext, err := captureNativeContext(identity, managerIdentity, namespace, p, nil)
 	if err != nil {
+		return err
+	}
+	if err := errors.Join(input.Check(), a.Check(ctx, v), v.CheckHistoryPath(ctx, history), identity.check(), namespace.check()); err != nil {
+		return err
+	}
+	if err := bindTransition(ctx, "initial", journalPath, generation, bound, nativeContext, managerIdentity); err != nil {
+		return err
+	}
+	births, err = openForwardingBirths(ctx, journalPath, allowed, "forwarding-initial-v2")
+	if err != nil {
+		return err
+	}
+	if err := births.record("native-context", r.InstallationRoot, nil, digest(nativeContext), 0, 0, 0); err != nil {
 		return err
 	}
 	accountCreated := false
 	check := func() error {
-		if err := errors.Join(input.Check(), a.Check(ctx, v), v.CheckHistoryPath(ctx, history), manager.CheckOriginal(), births.check()); err != nil {
+		if err := errors.Join(input.Check(), a.Check(ctx, v), v.CheckHistoryPath(ctx, history), manager.CheckOriginal(), identity.check(), namespace.check(), births.check()); err != nil {
 			return err
+		}
+		actual, err := manager.ManagerIdentity()
+		if err != nil || actual != managerIdentity {
+			return errors.Join(ErrBinding, err)
 		}
 		if accountCreated {
 			if err := account.check(); err != nil {
@@ -287,6 +322,9 @@ func InstallInitialStopped(v *release.Verifier, a infrastructure.ForwardingAutho
 	if err = manager.Reload(); err != nil {
 		return err
 	}
+	if err := namespace.reobserveAfterReload(); err != nil {
+		return err
+	}
 	for round := 0; round < 2; round++ {
 		u, s, err := manager.ObserveLoaded()
 		if err != nil {
@@ -301,6 +339,12 @@ func InstallInitialStopped(v *release.Verifier, a infrastructure.ForwardingAutho
 		if err = check(); err != nil {
 			return err
 		}
+	}
+	if err := observeTransitionReload(ctx, namespace); err != nil {
+		return err
+	}
+	if err := check(); err != nil {
+		return err
 	}
 	if err = births.record("stopped-verified", filepath.Join(r.InstallationRoot, "binding.json"), nil, digest(bound), 0644, 0, 0); err != nil {
 		return err

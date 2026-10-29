@@ -64,10 +64,6 @@ func runForwardingReleasePurpose(args []string, out io.Writer, purpose forwardin
 	}
 	return writeSourceControlBytes(ctx, out, append(raw, '\n'))
 }
-func signForwardingRelease(ctx context.Context, args []string, observe func(string, *os.File)) (result []byte, returned error) {
-	return signForwardingReleasePurpose(ctx, args, forwardingReleaseInitial, observe)
-}
-
 func signForwardingReleasePurpose(ctx context.Context, args []string, purpose forwardingReleasePurpose, observe func(string, *os.File)) (result []byte, returned error) {
 	wantedArguments := 4
 	if purpose == forwardingReleaseForward {

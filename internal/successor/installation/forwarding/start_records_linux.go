@@ -10,16 +10,20 @@ import (
 // or ACK searched out of a partial journal. The returned native identities are
 // evidence for independent descriptor comparison; they confer no live rights.
 func decodeStartRecords(raw []byte, number attemptNumber, journal, directory, binding, guard, socketRecord, archive, frame string, gid uint32) (map[string]startEntry, error) {
+	return decodeStartRecordsFrames(raw, number, journal, directory, binding, guard, socketRecord, archive, frame, frame, gid)
+}
+
+func decodeStartRecordsFrames(raw []byte, number attemptNumber, journal, directory, binding, guard, socketRecord, archive, frame, acknowledgement string, gid uint32) (map[string]startEntry, error) {
 	if len(raw) == 0 || len(raw) > 128<<10 || raw[len(raw)-1] != '\n' || gid < 100 || gid > 999 || number >= attemptLimit {
 		return nil, ErrBinding
 	}
-	for _, hash := range []string{binding, guard, socketRecord, archive, frame} {
+	for _, hash := range []string{binding, guard, socketRecord, archive, frame, acknowledgement} {
 		if !validStartDigest(hash) {
 			return nil, ErrBinding
 		}
 	}
 	lines := bytes.Split(raw[:len(raw)-1], []byte{'\n'})
-	if len(lines) != 25 {
+	if len(lines) != 25 && len(lines) != 26 {
 		return nil, ErrBinding
 	}
 	position := 0
@@ -59,8 +63,19 @@ func decodeStartRecords(raw []byte, number attemptNumber, journal, directory, bi
 		position++
 		return nil
 	}
-	if next(firstPhase, journal, binding, 0600, 0, true) != nil ||
-		next("directory-intent", directory, "", 0, 0, false) != nil ||
+	if next(firstPhase, journal, binding, 0600, 0, true) != nil {
+		return nil, ErrBinding
+	}
+	if len(lines) == 26 {
+		var context startEntry
+		if json.Unmarshal(lines[position], &context) != nil || !validStartDigest(context.SHA256) {
+			return nil, ErrBinding
+		}
+		if next("native-context", filepath.Dir(directory), context.SHA256, 0, 0, false) != nil {
+			return nil, ErrBinding
+		}
+	}
+	if next("directory-intent", directory, "", 0, 0, false) != nil ||
 		next("directory-born", directory, "", 0700, 0, true) != nil ||
 		next("directory-ready", directory, "", 0750, gid, true) != nil {
 		return nil, ErrBinding
@@ -94,8 +109,8 @@ func decodeStartRecords(raw []byte, number attemptNumber, journal, directory, bi
 		next("completion-received", directory, frame, 0, 0, false) != nil ||
 		file("start-archived.json", archive) != nil ||
 		next("archived", filepath.Join(directory, "start-archived.json"), archive, 0600, 0, true) != nil ||
-		next("ack-attempt", directory, frame, 0, 0, false) != nil ||
-		next("ack-written", directory, frame, 0, 0, false) != nil || position != len(lines) {
+		next("ack-attempt", directory, acknowledgement, 0, 0, false) != nil ||
+		next("ack-written", directory, acknowledgement, 0, 0, false) != nil || position != len(lines) {
 		return nil, ErrBinding
 	}
 	return owned, nil

@@ -34,10 +34,11 @@ type startup struct {
 	invocation            process.ForwardingInvocation
 	scope                 *cgroup.ForwardingScope
 	manager               *systemd.ForwardingRuntime
-	exchange              *completion.Exchange
+	exchange              *completion.ForwardingExchange
 	absent                []string
 	id                    [16]byte
 	attempt               attemptNumber
+	historyOpening        uint8
 	frame                 [160]byte
 	directory             string
 	directoryInfo         os.FileInfo
@@ -50,8 +51,9 @@ type startup struct {
 // RuntimeInputs are detached copies. The direct canonical consumer clears every
 // private copy after its real users join. No field may enter a public receipt.
 type RuntimeInputs struct {
-	Invocation uint32 `json:"-"`
-	Plan       []byte `json:"-"`
+	Invocation      uint32 `json:"-"`
+	ExistingHistory bool   `json:"-"`
+	Plan            []byte `json:"-"`
 }
 
 // OpenStartup cannot accept a root observation, caller-provided process/manager
@@ -131,14 +133,14 @@ func OpenStartup(parent context.Context, bindingPath string) (result *Startup, r
 	}
 	setup, finish := context.WithTimeout(ctx, 2*time.Minute)
 	defer finish()
-	s.exchange, err = completion.Connect(setup, s.directory, s.directoryInfo, b.GID, s.frame)
+	s.exchange, err = completion.ConnectForwarding(setup, s.directory, s.directoryInfo, b.GID, s.frame)
 	if err != nil {
 		return nil, err
 	}
 	if err = s.observe(); err != nil {
 		return nil, err
 	}
-	if err = s.exchange.Wait(); err != nil {
+	if s.historyOpening, err = s.exchange.Wait(); err != nil {
 		return nil, err
 	}
 	if err = s.exchange.Close(); err != nil {
@@ -317,7 +319,7 @@ func (h *Startup) Inputs() (result RuntimeInputs, returned error) {
 	}
 	f := s.selection.files
 	get := func(path string) []byte { return bytes.Clone(f.files[path].body) }
-	result = RuntimeInputs{Invocation: uint32(s.attempt), Plan: get(filepath.Join(f.sealed, "forwarding-plan.json"))}
+	result = RuntimeInputs{Invocation: uint32(s.attempt), ExistingHistory: s.historyOpening == 1, Plan: get(filepath.Join(f.sealed, "forwarding-plan.json"))}
 	if err := s.local(); err != nil {
 		clear(result.Plan)
 		return RuntimeInputs{}, err

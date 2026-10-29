@@ -12,6 +12,7 @@ import (
 type startNamespace struct {
 	parents  *inputs
 	absent   []string
+	paths    []string
 	closed   bool
 	terminal error
 }
@@ -21,6 +22,7 @@ func openStartNamespace(ctx context.Context, paths []string) (n *startNamespace,
 	if ctx == nil || os.Geteuid() != 0 || len(paths) == 0 || len(paths) > 32 {
 		return n, ErrInput
 	}
+	n.paths = append([]string(nil), paths...)
 	defer func() {
 		if returned != nil {
 			n.terminal = returned

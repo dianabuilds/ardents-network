@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -20,23 +21,33 @@ var errCompletedClosed = errors.New("forwarding installation: completed observat
 // it through all other closes. Runtime constructs its own fresh instance without
 // any journal; this physical read machinery grants neither caller a live right.
 type completedFiles struct {
-	ctx              context.Context
-	mu, ioMu         sync.Mutex
-	uses             sync.WaitGroup
-	once             sync.Once
-	closed           bool
-	failure          error
-	files            map[string]*initialFile
-	fileOrder        []*initialFile
-	dirs             map[string]*inputDirectory
-	dirOrder         []*inputDirectory
-	journal          *initialFile
-	clock            string
-	pending          string
-	sealed           string
-	credential       string
-	absentPaths      []string
-	extraInventories map[string]int
+	ctx                   context.Context
+	mu, ioMu              sync.Mutex
+	uses                  sync.WaitGroup
+	once                  sync.Once
+	closed                bool
+	failure               error
+	files                 map[string]*initialFile
+	fileOrder             []*initialFile
+	dirs                  map[string]*inputDirectory
+	dirOrder              []*inputDirectory
+	journal               *initialFile
+	clock                 string
+	pending               string
+	sealed                string
+	credential            string
+	absentPaths           []string
+	extraInventories      map[string]int
+	generationRoot        string
+	generationNames       []string
+	replacementJournals   []string
+	recovered             *recoveredInitial
+	recoveryContext       *recoveryContext
+	recoveredReplacements []*recoveredReplacement
+	interrupted           *recoveryOriginal
+	recoveryPublishing    *recoveryPublication
+	recoveryReadback      *recoveryPublication
+	invocations           *invocationChain
 	// Negative native controls only, after actual I/O or before actual Close.
 	observe func(string, *os.File)
 }
@@ -218,7 +229,7 @@ func (s *completedFiles) absent(path string) error {
 	return s.local()
 }
 
-func (s *completedFiles) paths() error {
+func (s *completedFiles) links() error {
 	for _, original := range s.dirOrder {
 		current, err := original.file.Stat()
 		named, nameErr := os.Lstat(original.path)
@@ -256,8 +267,17 @@ func (s *completedFiles) paths() error {
 			return errors.Join(ErrBinding, err)
 		}
 	}
-	if err := s.absent(s.pending); err != nil {
+	return s.local()
+}
+
+func (s *completedFiles) paths() error {
+	if err := s.links(); err != nil {
 		return err
+	}
+	if s.recovered == nil || s.recovered.originalPending == nil {
+		if err := s.absent(s.pending); err != nil {
+			return err
+		}
 	}
 	for _, path := range s.absentPaths {
 		if err := s.absent(path); err != nil {
@@ -279,6 +299,37 @@ func (s *completedFiles) paths() error {
 }
 
 func (s *completedFiles) inventory() error {
+	if s.generationRoot != "" {
+		root := filepath.Dir(s.generationRoot)
+		parent := s.dirs[filepath.Dir(root)]
+		if err := checkCompletedJournalInventory(root, parent, s.replacementJournals, s); err != nil {
+			return err
+		}
+	}
+	if s.generationRoot != "" {
+		dir := s.dirs[s.generationRoot]
+		if dir == nil {
+			return ErrBinding
+		}
+		if _, err := dir.file.Seek(0, io.SeekStart); err != nil {
+			return err
+		}
+		entries, err := dir.file.ReadDir(len(s.generationNames) + 1)
+		if err != nil && err != io.EOF || len(entries) != len(s.generationNames) {
+			return errors.Join(ErrBinding, err)
+		}
+		names := make([]string, len(entries))
+		for n, entry := range entries {
+			if !entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
+				return ErrBinding
+			}
+			names[n] = entry.Name()
+		}
+		slices.Sort(names)
+		if !slices.Equal(names, s.generationNames) {
+			return ErrBinding
+		}
+	}
 	inventories := map[string]int{s.sealed: 12, s.credential: 2}
 	for path, count := range s.extraInventories {
 		inventories[path] = count
@@ -304,9 +355,164 @@ func (s *completedFiles) inventory() error {
 	return nil
 }
 
+// A journal's exclusive birth precedes its pending file. Every ordinary reader
+// must refuse an unknown sibling, including an empty/torn journal at that cut.
+// Enumerating names supplies no contents, original inode or completion proof.
+func checkCompletedJournalInventory(root string, parent *inputDirectory, journals []string, files *completedFiles) error {
+	if parent == nil || parent.file == nil || parent.path != filepath.Dir(root) {
+		return ErrBinding
+	}
+	if _, err := parent.file.Seek(0, io.SeekStart); err != nil {
+		return err
+	}
+	entries, err := parent.file.ReadDir(4097)
+	if err != nil && err != io.EOF || len(entries) > 4096 {
+		return errors.Join(ErrBinding, err)
+	}
+	expected := map[string]bool{}
+	for _, path := range journals {
+		if filepath.Dir(path) != parent.path || expected[filepath.Base(path)] {
+			return ErrBinding
+		}
+		expected[filepath.Base(path)] = true
+	}
+	prefix := filepath.Base(root) + ".forwarding-replacement-"
+	recoveryNames := map[string]bool{}
+	addRecovery := func(paths []string) error {
+		for _, path := range paths {
+			if filepath.Dir(path) != parent.path || recoveryNames[filepath.Base(path)] {
+				return ErrBinding
+			}
+			recoveryNames[filepath.Base(path)] = true
+		}
+		return nil
+	}
+	if files != nil && files.recovered != nil {
+		if err := files.recovered.check(); err != nil {
+			return err
+		}
+		if err := addRecovery(files.recovered.paths); err != nil {
+			return err
+		}
+	}
+	if files != nil {
+		if chain := files.invocations; chain != nil {
+			for _, terminal := range chain.terminals {
+				if err := terminal.check(); err != nil {
+					return err
+				}
+				if err := addRecovery(terminal.paths); err != nil {
+					return err
+				}
+			}
+			for _, retirement := range chain.retirements {
+				if proof := retirement.recovery; proof != nil {
+					if err := proof.check(retirement); err != nil {
+						return err
+					}
+					if err := addRecovery(proof.paths); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		for _, proof := range files.recoveredReplacements {
+			if err := proof.check(); err != nil {
+				return err
+			}
+			if err := addRecovery(proof.paths); err != nil {
+				return err
+			}
+		}
+		publication := files.recoveryPublishing
+		if publication != nil && publication.births != nil {
+			original := files.interrupted
+			if original == nil || original.cut.Boundary.Journal != publication.completion.Journal || publication.births.journal == nil {
+				return ErrBinding
+			}
+			if err := errors.Join(original.check(), publication.births.check()); err != nil {
+				return err
+			}
+			control, result, pending := recoveryPaths(publication.completion.Journal)
+			if publication.births.journal.path != control {
+				return ErrBinding
+			}
+			paths := []string{control}
+			var reloadBefore, reloadAfter string
+			if reload := publication.replacementReload; reload != nil {
+				if reload.history == nil || reload.history.completed.original == nil || reload.history.completed.original.files != files || reload.original != original || reload.beforeReload == nil || reload.beforeReload.owner != files || reload.beforeReload.original != original {
+					return ErrBinding
+				}
+				var err error
+				reloadBefore, reloadAfter, err = recoveryReloadProofPaths(publication.completion.Journal, "replacement")
+				if err != nil {
+					return err
+				}
+			}
+			for _, file := range publication.births.files {
+				if reloadAfter != "" && file.path == reloadAfter {
+					name := filepath.Base(file.path)
+					if filepath.Dir(file.path) != parent.path || expected[name] || !publication.births.allowed[file.path] {
+						return ErrBinding
+					}
+					expected[name] = true
+					continue
+				}
+				if file.path != result && file.path != pending && (reloadBefore == "" || file.path != reloadBefore) {
+					return ErrBinding
+				}
+				paths = append(paths, file.path)
+			}
+			if err := addRecovery(paths); err != nil {
+				return err
+			}
+		}
+	}
+	for _, entry := range entries {
+		family := strings.TrimPrefix(entry.Name(), filepath.Base(root)+".forwarding-")
+		if family != entry.Name() && (strings.Contains(family, ".original-cut-") || strings.Contains(family, ".recovery-")) {
+			// Any cut/recovery sidecar forces its independent complete recovered
+			// validation, even when the original operation's blocker is absent.
+			// An expected replacement name cannot waive this admission boundary.
+			if !recoveryNames[entry.Name()] || !entry.Type().IsRegular() {
+				return ErrBinding
+			}
+			delete(recoveryNames, entry.Name())
+			continue
+		}
+		if !strings.HasPrefix(entry.Name(), prefix) {
+			continue
+		}
+		if !expected[entry.Name()] || !entry.Type().IsRegular() {
+			return ErrBinding
+		}
+		delete(expected, entry.Name())
+	}
+	if len(expected) != 0 || len(recoveryNames) != 0 {
+		return ErrBinding
+	}
+	return nil
+}
+
 func (s *completedFiles) check() error {
 	if err := s.local(); err != nil {
 		return err
+	}
+	if err := s.invocations.checkFiles(); err != nil {
+		return err
+	}
+	if s.recovered != nil {
+		if err := s.recovered.check(); err != nil {
+			return err
+		}
+	}
+	if err := checkRecoveryManager(s.recoveryContext); err != nil {
+		return err
+	}
+	for _, proof := range s.recoveredReplacements {
+		if err := proof.check(); err != nil {
+			return err
+		}
 	}
 	if err := s.paths(); err != nil {
 		return err
@@ -351,7 +557,10 @@ func (s *completedFiles) close() error {
 			s.observe("denied", nil)
 		}
 		s.uses.Wait()
-		var physical error
+		physical := errors.Join(s.invocations.close(), s.recovered.close(), s.recoveryContext.close())
+		for _, proof := range s.recoveredReplacements {
+			proof.clear()
+		}
 		closeFile := func(original *initialFile) {
 			if s.observe != nil {
 				s.observe("before-close", original.file)

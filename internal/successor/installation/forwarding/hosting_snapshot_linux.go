@@ -14,7 +14,10 @@ import (
 // budget.json is borrowed. Native pin/lock identities and the one-use transcript
 // remain retained through the original root attempt; Node opens its own budget.
 func (c *completedInitial) readHostingPreparation(bindingPath string) error {
-	b, f := c.binding, c.files
+	b, f := c.initial.binding, c.files
+	if len(c.initial.raw) == 0 || bindingPath != filepath.Join(c.binding.Request.InstallationRoot, "binding.json") {
+		return ErrBinding
+	}
 	directory, journal, pending := hostingPreparationPaths(b.Request.InstallationRoot)
 	if _, err := f.parents(pending); err != nil {
 		return err
@@ -49,7 +52,7 @@ func (c *completedInitial) readHostingPreparation(bindingPath string) error {
 	}
 	i, _ := json.Marshal(intent)
 	r, _ := json.Marshal(result)
-	if !bytes.Equal(intentRaw, append(i, '\n')) || !bytes.Equal(resultRaw, append(r, '\n')) || intent.Schema != "ardents-forwarding-hosting-intent-v1" || result.Schema != "ardents-forwarding-hosting-completed-v1" || intent.Binding != digest(f.files[bindingPath].body) || result.Intent != digest(intentRaw) || !initialSHA(intent.Policy) {
+	if !bytes.Equal(intentRaw, append(i, '\n')) || !bytes.Equal(resultRaw, append(r, '\n')) || intent.Schema != "ardents-forwarding-hosting-intent-v1" || result.Schema != "ardents-forwarding-hosting-completed-v1" || intent.Binding != digest(c.initial.raw) || result.Intent != digest(intentRaw) || !initialSHA(intent.Policy) {
 		return ErrBinding
 	}
 	rootNative := f.dirs[b.Request.HostingRoot].info.Sys().(*syscall.Stat_t)
@@ -100,6 +103,7 @@ func (c *completedInitial) readHostingPreparation(bindingPath string) error {
 		f.extraInventories = map[string]int{}
 	}
 	f.extraInventories[directory] = 2
+	c.hostingPolicy = intent.Policy
 	return f.check()
 }
 
