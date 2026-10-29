@@ -173,6 +173,31 @@ func (s *recoveryPublication) begin(ctx context.Context, original *recoveryOrigi
 		}
 		allowed[path] = true
 	}
+	if reload := s.reload; reload != nil && reload.generation != nil {
+		g := reload.generation
+		if !initialGenerationCut(original.cut.Boundary.Records) || g.records != original.cut.Boundary.Records || reload.seal == nil || reload.files == nil || reload.files.generation != g || reload.artifact != nil || len(reload.proof.artifacts) != len(g.artifacts) {
+			return selected, ErrBinding
+		}
+		if err := g.check(reload.candidate, reload.files.files); err != nil {
+			return selected, err
+		}
+		for i, u := range g.artifacts {
+			path := filepath.Join(sealed, u.name)
+			proof := reload.proof.artifacts[i]
+			if u.ready || proof.retained != u.retained || proof.file != u.original || proof.birth != u.birth {
+				return selected, ErrBinding
+			}
+			if u.retained {
+				if u.original == nil || u.mutation == nil || !validInitialArtifactBirth(&u.birth, path, u.birthSequence) {
+					return selected, ErrBinding
+				}
+			} else if u.original != nil || u.mutation != nil || u.birth != (initialRecord{}) {
+				return selected, ErrBinding
+			}
+			allowed[path] = true
+		}
+		first = "forwarding-recovery-generation-v1"
+	}
 	if reload := s.replacementReload; reload != nil {
 		if terminal != nil || reload.original != original || reload.publication != s || reload.beforeReload == nil || reload.beforeReload.original != original || s.completion.Schema != "ardents-forwarding-recovery-completion-v2" || s.completion.Operation != "replacement" {
 			return selected, ErrBinding
@@ -267,6 +292,7 @@ func decodeRecoveryControlProof(raw, completionRaw []byte, completion recoveryCo
 	}
 	lines := bytes.Split(raw[:len(raw)-1], []byte{'\n'})
 	count := 11
+	var generationRows []initialRecord
 	if completion.Schema == "ardents-forwarding-recovery-completion-v2" {
 		if completion.Operation != "initial" && completion.Operation != "replacement" || terminalInfo != nil || reload == nil || reload.before == nil || reload.after == nil {
 			return ErrBinding
@@ -327,6 +353,19 @@ func decodeRecoveryControlProof(raw, completionRaw []byte, completion recoveryCo
 				count = 29
 			}
 		} else if reload.artifactBirth != nil || reload.artifactCreation != nil || reload.artifactFile != nil {
+			return ErrBinding
+		}
+		if completion.Operation == "initial" && initialGenerationCut(completion.PrefixRecords) {
+			if count != 26 {
+				return ErrBinding
+			}
+			var err error
+			generationRows, err = initialGenerationControl(completion, selected, reload.artifacts)
+			if err != nil {
+				return err
+			}
+			count += len(generationRows)
+		} else if len(reload.artifacts) != 0 {
 			return ErrBinding
 		}
 	} else if reload != nil {
@@ -392,7 +431,7 @@ func decodeRecoveryControlProof(raw, completionRaw []byte, completion recoveryCo
 		prefix = append(prefix, triple...)
 		wanted = append(prefix, wanted[6:]...)
 	}
-	if count == 18 || count == 20 || count == 21 || count == 23 || count == 24 || count == 26 || count == 28 || count == 29 {
+	if completion.Schema == "ardents-forwarding-recovery-completion-v2" {
 		before, after, err := recoveryReloadProofPaths(completion.Journal, completion.Operation)
 		if err != nil {
 			return err
@@ -436,7 +475,7 @@ func decodeRecoveryControlProof(raw, completionRaw []byte, completion recoveryCo
 			prefix = append(prefix, continued...)
 			wanted = append(prefix, wanted[6:]...)
 		}
-		if count == 21 || count == 23 || count == 24 || count == 26 || count == 28 || count == 29 {
+		if reload.unitCreation != nil {
 			birth := reload.unitCreation
 			if birth.Device != uint64(u.Dev) || birth.Inode != u.Ino {
 				return ErrBinding
@@ -454,9 +493,9 @@ func decodeRecoveryControlProof(raw, completionRaw []byte, completion recoveryCo
 			prefix = append(prefix, continued...)
 			wanted = append(prefix, wanted[6:]...)
 		}
-		if count == 23 || count == 24 || count == 26 || count == 28 || count == 29 {
+		if reload.selectionFile != nil {
 			file, birth := reload.selectionFile, reload.selectionBirth
-			if count == 24 || count == 26 || count == 28 || count == 29 {
+			if reload.selectionCreation != nil {
 				birth = reload.selectionCreation
 			}
 			path := filepath.Join(selected.binding.Request.InstallationRoot, "binding.json")
@@ -469,7 +508,7 @@ func decodeRecoveryControlProof(raw, completionRaw []byte, completion recoveryCo
 			}
 			wanted[0].Phase = "forwarding-recovery-selection-v1"
 			continued := []initialRecord{{Phase: "continued-file-retained", Path: path, Device: birth.Device, Inode: birth.Inode, SHA256: digest(nil), Mode: 0600}, {Phase: "continued-file-written", Path: path, Device: birth.Device, Inode: birth.Inode, SHA256: digest(selected.raw), Mode: 0644}}
-			if count == 24 || count == 26 || count == 28 || count == 29 {
+			if reload.selectionCreation != nil {
 				index := int(111 - completion.PrefixRecords)
 				var committed initialRecord
 				if len(completion.Records) <= index || json.Unmarshal(completion.Records[index], &committed) != nil || committed != *birth {
@@ -482,7 +521,7 @@ func decodeRecoveryControlProof(raw, completionRaw []byte, completion recoveryCo
 			prefix = append(prefix, continued...)
 			wanted = append(prefix, wanted[6:]...)
 		}
-		if count == 26 || count == 28 || count == 29 {
+		if reload.generationDirectory != nil {
 			dir := reload.generationDirectory
 			if !validInitialSealDirectory(dir, sealed) || dir.Device != uint64(d.Dev) || dir.Inode != d.Ino {
 				return ErrBinding
@@ -493,7 +532,7 @@ func decodeRecoveryControlProof(raw, completionRaw []byte, completion recoveryCo
 			prefix = append(prefix, initialRecord{Phase: "continued-directory-seal-intent", Path: sealed, Device: dir.Device, Inode: dir.Inode, SHA256: selected.binding.Generation, Mode: 0555}, initialRecord{Phase: "continued-directory-sealed", Path: sealed, Device: dir.Device, Inode: dir.Inode, SHA256: selected.binding.Generation, Mode: 0555})
 			wanted = append(prefix, wanted[6:]...)
 		}
-		if count == 28 || count == 29 {
+		if completion.Operation == "initial" && initialArtifactCut(completion.PrefixRecords) {
 			file := reload.artifactFile
 			birth := reload.artifactBirth
 			if count == 29 {
@@ -522,6 +561,12 @@ func decodeRecoveryControlProof(raw, completionRaw []byte, completion recoveryCo
 			}
 			prefix := append([]initialRecord(nil), wanted[:6]...)
 			prefix = append(prefix, continued...)
+			wanted = append(prefix, wanted[6:]...)
+		}
+		if len(generationRows) != 0 {
+			wanted[0].Phase = "forwarding-recovery-generation-v1"
+			prefix := append([]initialRecord(nil), wanted[:6]...)
+			prefix = append(prefix, generationRows...)
 			wanted = append(prefix, wanted[6:]...)
 		}
 	}

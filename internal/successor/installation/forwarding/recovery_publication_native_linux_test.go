@@ -744,13 +744,47 @@ func TestForwardingRecoveryPublicationNativeControlBindsActualGuard(t *testing.T
 			native, _ := infoSys(unitInfo)
 			birth := initialRecord{Sequence: 115, Phase: "file-born", Path: "/etc/systemd/system/ardents-forwarding.service", Device: uint64(native.Dev), Inode: native.Ino, Mode: 0600}
 			createdProof := &recoveryReloadProof{before: proof.before, after: proof.after, unitCreation: &birth}
-			for _, count := range []uint32{105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115} {
+			for count := uint32(72); count <= 115; count++ {
 				created := reloaded
 				ownProof := *createdProof
 				created.PrefixRecords = count
 				created.Records = []json.RawMessage{}
+				var generationRows []initialRecord
+				if count <= 104 {
+					for i, name := range []string{"ardents-forwarding.service", "ardents-node-linux-amd64", "binding.json", "forwarding-plan.json", "forwarding-request.json", "infrastructure-enrollment.json", "infrastructure-forwarding.json", "rendered-forwarding.service", "root.json", "snapshot.json", "targets.json", "timestamp.json"} {
+						sequence := 73 + 3*i
+						if int(count) >= sequence+2 {
+							continue
+						}
+						body := []byte(name + " original artifact byte fixture\n")
+						mode := os.FileMode(0444)
+						if name == "ardents-node-linux-amd64" {
+							mode = 0555
+						}
+						info := fileInfo("generation-"+name, body, mode)
+						native, _ := infoSys(info)
+						path := filepath.Join(sealed, name)
+						born := initialRecord{Sequence: sequence, Phase: "file-born", Path: path, Device: uint64(native.Dev), Inode: native.Ino, Mode: 0600}
+						retained := int(count) == sequence+1
+						ownProof.artifacts = append(ownProof.artifacts, initialArtifactProof{birth: born, file: &initialFile{path: path, info: info, body: body}, retained: retained})
+						if !retained {
+							if int(count) <= sequence-1 {
+								intent, _ := json.Marshal(initialRecord{Sequence: sequence - 1, Phase: "file-intent", Path: path, SHA256: digest(body), Mode: uint32(mode)})
+								created.Records = append(created.Records, intent)
+							}
+							raw, _ := json.Marshal(born)
+							created.Records = append(created.Records, raw)
+							generationRows = append(generationRows, initialRecord{Phase: "continued-artifact-intent", Path: path, SHA256: digest(body), Mode: uint32(mode)}, initialRecord{Phase: "continued-artifact-born", Path: path, Device: born.Device, Inode: born.Inode, SHA256: digest(nil), Mode: 0600})
+						} else {
+							generationRows = append(generationRows, initialRecord{Phase: "continued-artifact-retained", Path: path, Device: born.Device, Inode: born.Inode, SHA256: digest(nil), Mode: 0600})
+						}
+						ready, _ := json.Marshal(initialRecord{Sequence: sequence + 1, Phase: "file-ready", Path: path, Device: born.Device, Inode: born.Inode, SHA256: digest(body), Mode: uint32(mode)})
+						created.Records = append(created.Records, ready)
+						generationRows = append(generationRows, initialRecord{Phase: "continued-artifact-written", Path: path, Device: born.Device, Inode: born.Inode, SHA256: digest(body), Mode: uint32(mode)})
+					}
+				}
 				var artifactBirth initialRecord
-				if count <= 107 {
+				if count >= 105 && count <= 107 {
 					path := filepath.Join(sealed, "timestamp.json")
 					body := []byte("original timestamp public byte fixture\n")
 					info := fileInfo("timestamp107", body, 0444)
@@ -841,7 +875,7 @@ func TestForwardingRecoveryPublicationNativeControlBindsActualGuard(t *testing.T
 					prefix = append(prefix, initialRecord{Phase: "continued-directory-seal-intent", Path: sealed, Device: originalDirectory.Device, Inode: originalDirectory.Inode, SHA256: selected.binding.Generation, Mode: 0555}, initialRecord{Phase: "continued-directory-sealed", Path: sealed, Device: originalDirectory.Device, Inode: originalDirectory.Inode, SHA256: selected.binding.Generation, Mode: 0555})
 					createdRows = append(prefix, createdRows[6:]...)
 				}
-				if count <= 107 {
+				if count >= 105 && count <= 107 {
 					file := ownProof.artifactFile
 					prefix := append([]initialRecord(nil), createdRows[:6]...)
 					prefix[0].Phase = "forwarding-recovery-artifact-v1"
@@ -856,13 +890,43 @@ func TestForwardingRecoveryPublicationNativeControlBindsActualGuard(t *testing.T
 					prefix = append(prefix, initialRecord{Phase: "continued-artifact-written", Path: file.path, Device: artifactBirth.Device, Inode: artifactBirth.Inode, SHA256: digest(file.body), Mode: 0444})
 					createdRows = append(prefix, createdRows[6:]...)
 				}
+				if count <= 104 {
+					prefix := append([]initialRecord(nil), createdRows[:6]...)
+					prefix[0].Phase = "forwarding-recovery-generation-v1"
+					prefix = append(prefix, generationRows...)
+					createdRows = append(prefix, createdRows[6:]...)
+					wantedCount += len(generationRows)
+				}
 				if len(createdRows) != wantedCount {
 					t.Fatal("independent created-unit grammar count")
 				}
 				if err := checkReload(createdRows, created, &ownProof); err != nil {
 					t.Fatal("separate actual unit birth", count, err)
 				}
-				if count <= 107 {
+				if count <= 104 {
+					for i := range ownProof.artifacts {
+						for _, fault := range []string{"missing-file", "inode", "origin", "bytes"} {
+							bad := ownProof
+							bad.artifacts = append([]initialArtifactProof(nil), ownProof.artifacts...)
+							switch fault {
+							case "missing-file":
+								bad.artifacts[i].file = nil
+							case "inode":
+								bad.artifacts[i].birth.Inode++
+							case "origin":
+								bad.artifacts[i].retained = !bad.artifacts[i].retained
+							case "bytes":
+								file := *bad.artifacts[i].file
+								file.body = append(bytes.Clone(file.body), '!')
+								bad.artifacts[i].file = &file
+							}
+							if err := checkReload(createdRows, created, &bad); err == nil {
+								t.Fatal("unbound generation artifact accepted", count, i, fault)
+							}
+						}
+					}
+				}
+				if count >= 105 && count <= 107 {
 					for _, fault := range []string{"missing-timestamp", "timestamp-inode", "timestamp-bytes", "timestamp-mode", "missing-timestamp-birth"} {
 						badProof := ownProof
 						changedFile := *ownProof.artifactFile

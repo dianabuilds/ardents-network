@@ -394,7 +394,12 @@ snapshot from102, Targets from105 and timestamp from108 records. Enrollment's
 complete canonical producer and the original binding must commit all proposed
 bytes exactly. Read failure never selects a proposal, and matching bytes grant
 no native creation permission. Other original boundaries retain their full
-five-file historical requirement; concrete native continuation still starts105.
+five-file historical requirement. The distinct72..104 physical suffix retains
+all ready originals, at most one empty recorded birth and every future absence;
+it owns each exclusive new artifact birth through readback and writer Close.
+Its separate finite generation control and logical completion bind each original
+or recovery-owned inode before seal/selection/unit/Reload. Independent readers
+rederive the ordered proofs; byte reconstruction alone grants no continuation.
 Initial105/106/107 physical continuation then belongs to the same Installation
 operation: exact eleven-file inventory and original ready50 directory, an absent
 exclusive timestamp birth or the original empty birth106, independent root0444

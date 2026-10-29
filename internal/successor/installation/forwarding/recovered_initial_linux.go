@@ -138,6 +138,32 @@ func (c *completedInitial) readRecoveredInitial(known *recoveryPublication) (raw
 				r.reload.selectionBirth = &birth
 			}
 		}
+		if initialGenerationCut(cut.Boundary.Records) {
+			owned, err := decodeInitialPreReloadRecords(f.journal.body, selected.binding, c.initialHashes(filepath.Join(selected.binding.Request.InstallationRoot, "binding.json")))
+			if err != nil {
+				return nil, err
+			}
+			complete := int(cut.Boundary.Records-72) / 3
+			for i, name := range initialGenerationNames() {
+				if i < complete {
+					continue
+				}
+				path := filepath.Join(selected.binding.Request.InstallationRoot, "generations", selected.binding.Generation, name)
+				sequence := 73 + 3*i
+				retained := int(cut.Boundary.Records) == sequence+1
+				birth := owned[path]
+				if !retained {
+					index := sequence - int(cut.Boundary.Records)
+					if index < 0 || len(envelope.Records) <= index || json.Unmarshal(envelope.Records[index], &birth) != nil {
+						return nil, ErrBinding
+					}
+				}
+				if !validInitialArtifactBirth(&birth, path, sequence) || f.files[path] == nil {
+					return nil, ErrBinding
+				}
+				r.reload.artifacts = append(r.reload.artifacts, initialArtifactProof{birth: birth, file: f.files[path], retained: retained})
+			}
+		}
 		if initialArtifactCut(cut.Boundary.Records) {
 			path := filepath.Join(selected.binding.Request.InstallationRoot, "generations", selected.binding.Generation, "timestamp.json")
 			var birth initialRecord

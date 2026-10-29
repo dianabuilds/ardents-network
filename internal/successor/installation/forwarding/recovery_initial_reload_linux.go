@@ -25,22 +25,23 @@ type recoveryReloadProof struct {
 	generationDirectory             *initialRecord
 	artifactBirth, artifactCreation *initialRecord
 	artifactFile                    *initialFile
+	artifacts                       []initialArtifactProof
 }
 
 func initialPreReloadCut(records uint32) bool {
-	return records >= 105 && records <= 118
+	return records >= 72 && records <= 118
 }
 
 func initialUnitCreationCut(records uint32) bool {
-	return records >= 105 && records <= 115
+	return records >= 72 && records <= 115
 }
 
 func initialSelectionCreationCut(records uint32) bool {
-	return records >= 105 && records <= 111
+	return records >= 72 && records <= 111
 }
 
 func initialSealCut(records uint32) bool {
-	return records >= 105 && records <= 109
+	return records >= 72 && records <= 109
 }
 
 func initialArtifactCut(records uint32) bool {
@@ -83,6 +84,7 @@ type recoveryInitialReloadAttempt struct {
 	selection   *initialFileContinuation
 	seal        *initialSealContinuation
 	artifact    *initialFileContinuation
+	generation  *initialGenerationContinuation
 }
 
 // The original coordinator was frozen before its next effect, then denied and
@@ -104,7 +106,7 @@ func initialPreReloadInventory(prefix []byte, cut transitionCutResult, candidate
 	return decodeInitialPreReloadRecords(prefix, selected.binding, candidate.hashes)
 }
 
-func initialReloadCompletion(original *recoveryOriginal, candidate *recoveryCandidate, after []byte, creation, selectionCreation, artifactCreation *initialRecord) ([]byte, error) {
+func initialReloadCompletion(original *recoveryOriginal, candidate *recoveryCandidate, after []byte, creation, selectionCreation, artifactCreation *initialRecord, artifacts []initialArtifactProof) ([]byte, error) {
 	if original == nil || original.prefix == nil {
 		return nil, ErrInput
 	}
@@ -118,6 +120,18 @@ func initialReloadCompletion(original *recoveryOriginal, candidate *recoveryCand
 	delta := []json.RawMessage{}
 	full := bytes.Clone(original.prefix.journal.body)
 	rows := []initialRecord{}
+	if initialGenerationCut(original.cut.Boundary.Records) {
+		if artifactCreation != nil {
+			return nil, ErrBinding
+		}
+		generated, err := initialGenerationCompletion(original, candidate, artifacts)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, generated...)
+	} else if len(artifacts) != 0 {
+		return nil, ErrBinding
+	}
 	if initialArtifactCut(original.cut.Boundary.Records) {
 		path := filepath.Join(b.Request.InstallationRoot, "generations", b.Generation, "timestamp.json")
 		var birth initialRecord
@@ -243,6 +257,15 @@ func (s *recoveryInitialReloadAttempt) run(history string) error {
 		return err
 	}
 	s.artifact = s.files.artifact
+	s.generation = s.files.generation
+	if initialGenerationCut(s.original.cut.Boundary.Records) {
+		if s.generation == nil {
+			return ErrBinding
+		}
+		for _, u := range s.generation.artifacts {
+			s.proof.artifacts = append(s.proof.artifacts, initialArtifactProof{birth: u.birth, file: u.original, retained: u.retained})
+		}
+	}
 	if initialArtifactCut(s.original.cut.Boundary.Records) {
 		if s.artifact == nil {
 			return ErrBinding
@@ -308,6 +331,11 @@ func (s *recoveryInitialReloadAttempt) run(history string) error {
 			return err
 		}
 	}
+	if s.generation != nil {
+		if err := s.openGenerationContinuations(); err != nil {
+			return err
+		}
+	}
 	if s.selection != nil && s.original.cut.Boundary.Records == 112 {
 		if err := s.openSelectionContinuation(); err != nil {
 			return err
@@ -336,6 +364,11 @@ func (s *recoveryInitialReloadAttempt) run(history string) error {
 	}
 	if s.artifact != nil {
 		if err := s.continueTimestamp(); err != nil {
+			return err
+		}
+	}
+	if s.generation != nil {
+		if err := s.continueGeneration(); err != nil {
 			return err
 		}
 	}
@@ -409,7 +442,7 @@ func (s *recoveryInitialReloadAttempt) finishReload(selected generationSelection
 		return err
 	}
 	s.proof.after = s.publication.births.files[len(s.publication.births.files)-1]
-	raw, err := initialReloadCompletion(s.original, s.candidate, after, s.proof.unitCreation, s.proof.selectionCreation, s.proof.artifactCreation)
+	raw, err := initialReloadCompletion(s.original, s.candidate, after, s.proof.unitCreation, s.proof.selectionCreation, s.proof.artifactCreation, s.proof.artifacts)
 	if err != nil {
 		return err
 	}
@@ -423,7 +456,7 @@ func (s *recoveryInitialReloadAttempt) finishReload(selected generationSelection
 	if err := s.publication.finish(s.original, selected, s.files.files.dirs[sealed].info, unit.info, nil, s.observe); err != nil {
 		return err
 	}
-	if err := errors.Join(s.observe(), s.publication.close(), s.manager.Close(), s.native.close(), s.unit.close(), s.selection.close(), s.artifact.close(), s.files.files.close(), s.original.close()); err != nil {
+	if err := errors.Join(s.observe(), s.publication.close(), s.manager.Close(), s.native.close(), s.unit.close(), s.selection.close(), s.artifact.close(), s.generation.close(), s.files.files.close(), s.original.close()); err != nil {
 		return err
 	}
 	if err := readbackRecoveryStopped(s.ctx, s.v, s.a, s.input, s.publication, filepath.Join(b.Request.InstallationRoot, "binding.json")); err != nil {
@@ -482,7 +515,7 @@ func (s *recoveryInitialReloadAttempt) close() error {
 	if s == nil {
 		return nil
 	}
-	s.terminal = errors.Join(s.terminal, s.publication.close(), s.manager.Close(), s.native.close(), s.unit.close(), s.selection.close(), s.artifact.close())
+	s.terminal = errors.Join(s.terminal, s.publication.close(), s.manager.Close(), s.native.close(), s.unit.close(), s.selection.close(), s.artifact.close(), s.generation.close())
 	if s.files != nil {
 		s.terminal = errors.Join(s.terminal, s.files.files.close())
 	}

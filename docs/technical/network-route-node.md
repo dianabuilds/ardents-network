@@ -2581,7 +2581,7 @@ already be complete. It retains only the complete ordered artifact prefix and,
 when recorded, the next original empty root0600 birth; an intent supplies no
 file. Original directory-ready50/root0755 remains unchanged, and all later
 artifact, seal, selection and unit records remain absent. This byte inventory
-does not extend concrete native continuation admission below105.
+alone supplies no concrete native continuation permission.
 
 At105/106/107 the decoder distinguishes timestamp intent absent, intent without birth, or original empty
 root0600 timestamp birth106. It retains only the eleven completed generation
@@ -2597,7 +2597,7 @@ every proposed byte exactly. Advanced/substituted proposals, missing original
 ready metadata or canceled reads refuse without file creation or read-error
 fallback. Outside this exact initial generation-file range, reconstruction
 still requires all five original historical files. This byte reconstruction
-does not extend concrete native continuation admission below105.
+alone supplies no concrete native continuation permission.
 Matching proposal bytes alone grant no continuation. The concrete105..107
 continuation additionally requires the original cut, physical custody and the
 complete guarded proof below.
@@ -2818,6 +2818,28 @@ replacement, fresh start, contact/refill, joined stop and same-generation restar
 can qualify that installed journey. This contract selects no other Node role,
 automatic restart/update/rollback, arbitrary repair, public/platform/availability
 or independent-security/privacy qualification.
+
+For Initial72..104, the finite continuation contract is the ordered unfinished
+suffix of the twelve generation-file groups. Already-ready files are only read;
+at most one original empty root0600 birth can be continued on its exact inode.
+Every later file must be absent, then exclusively born after the recovery guard
+and its own intent. Record the actual empty inode before delivering bytes,
+promote the program to root0555 and other artifacts to root0444, and independently
+read back each before proceeding. Full exact inventory precedes the existing
+same-inode directory seal, selection, unit and one separately admitted Reload.
+Every artifact writer must close before independent stopped readback acquires
+fresh leases. Partial bytes, unknown entries or uncertain writes/joins block.
+
+Its separate `forwarding-recovery-generation-v1` control inserts each unfinished
+artifact's ordered intent/born/written triple immediately after candidate row5,
+or retained/written for the one original recorded empty birth. The total is
+26 plus three rows per unfinished artifact, minus one for an original retained
+birth. The independent reader rederives the closed names, original positions,
+native identities and ready bytes; the logical v2 completion fills only missing
+original rows through the complete120-record transcript. Existing105..118
+controls remain unchanged. These finite rules require source-matched native
+and interruption evidence; this format alone supplies no successful recovery,
+Release permission or installed qualification.
 
 #### Initial stopped Source persistence
 

@@ -8,8 +8,17 @@ distinguish exact proposals from advanced metadata/inventory, missing or changed
 original ready metadata and canceled reads. Original bytes, inodes, access and
 the directory inventory remain unchanged. This is byte reconstruction and
 physical historical-read evidence, not original-cut, Release, native
-continuation or installed qualification; actual admission below105 remains
-unimplemented.
+continuation or installed qualification.
+
+Initial72..104 physical generation-suffix controls exercise every prefix with
+real ext4 files, original empty births, exclusive later births, program0555 and
+other artifact0444 access, exact finite inventories and fresh same-inode byte
+readback after writer/reader Close. Cancellation after birth, substituted inode
+and unknown entry refuse. Independent complete logical transcript vectors and
+native-metadata control vectors bind each original/new artifact and reject
+missing/foreign/misclassified births. These component fixtures do not provide
+fresh Release authority, an original process cut, actual manager recovery or
+installed qualification; those remain separate evidence obligations.
 
 The earlier Initial72..104 pure-byte control uses literal positions for all
 twelve generation artifacts. Every prefix retains only completed files or one

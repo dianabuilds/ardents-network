@@ -126,8 +126,8 @@ func TestForwardingInitialGenerationPrefixesRetainOnlyOriginalArtifacts(t *testi
 		}
 		cut.Boundary.Records = uint32(count)
 		cut.Boundary.PrefixSHA256 = digest(prefix)
-		if _, err := initialPreReloadInventory(prefix, cut, candidate); err == nil {
-			t.Fatal("byte classification granted unfinished native continuation", count)
+		if _, err := initialPreReloadInventory(prefix, cut, candidate); err != nil {
+			t.Fatal("original inventory classification rejected before physical admission", count, err)
 		}
 	}
 }
@@ -139,7 +139,7 @@ func TestForwardingInitialPreReloadInventoryDoesNotInventCompletion(t *testing.T
 		cut.Boundary.Records = uint32(count)
 		cut.Boundary.PrefixSHA256 = digest(prefix)
 		owned, err := initialPreReloadInventory(prefix, cut, candidate)
-		if count < 105 || count > 118 {
+		if count < 72 || count > 118 {
 			if err == nil {
 				t.Fatal("unproved pre-Reload boundary", count)
 			}
@@ -158,8 +158,11 @@ func TestForwardingInitialPreReloadInventoryDoesNotInventCompletion(t *testing.T
 				t.Fatal("absent selection received invented original custody", count)
 			}
 		}
-		if count <= 106 {
-			wanted = 24
+		if count <= 107 {
+			wanted = 13 + (count-72)/3
+			if (count-72)%3 == 2 {
+				wanted++
+			}
 		}
 		if err != nil || len(owned) != wanted {
 			t.Fatal("complete original inventory unavailable", count, len(owned), err)
@@ -279,12 +282,22 @@ func TestForwardingInitialReloadCompletionCommitsOwnAfterContext(t *testing.T) {
 	if bytes.Equal(after, cut.Boundary.NativeContext) {
 		t.Fatal("missing generator mutation")
 	}
-	for _, count := range []int{105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118} {
+	for count := 72; count <= 118; count++ {
 		prefix := encodeReplacementVector(t, rows[:count])
 		cut.Boundary.Records = uint32(count)
 		cut.Boundary.PrefixSHA256 = digest(prefix)
 		original := &recoveryOriginal{cut: cut, prefix: &transitionPrefix{journal: &initialFile{body: bytes.Clone(prefix)}}, result: &initialFile{body: []byte("detached original-cut vector\n")}}
 		var creation, selectionCreation, artifactCreation *initialRecord
+		var artifacts []initialArtifactProof
+		if count <= 104 {
+			// Literal birth positions from the independent full transcript.
+			for sequence := 73; sequence <= 106; sequence += 3 {
+				if count >= sequence+2 {
+					continue
+				}
+				artifacts = append(artifacts, initialArtifactProof{birth: rows[sequence], retained: count == sequence+1})
+			}
+		}
 		if count <= 115 {
 			birth := rows[115]
 			creation = &birth
@@ -293,26 +306,47 @@ func TestForwardingInitialReloadCompletionCommitsOwnAfterContext(t *testing.T) {
 			birth := rows[111]
 			selectionCreation = &birth
 		}
-		if count <= 106 {
+		if count >= 105 && count <= 106 {
 			birth := rows[106]
 			artifactCreation = &birth
 		}
 		if creation != nil {
-			if _, err := initialReloadCompletion(original, candidate, after, nil, selectionCreation, artifactCreation); err == nil {
+			if _, err := initialReloadCompletion(original, candidate, after, nil, selectionCreation, artifactCreation, artifacts); err == nil {
 				t.Fatal("missing actual new unit birth accepted", count)
 			}
 		}
 		if selectionCreation != nil {
-			if _, err := initialReloadCompletion(original, candidate, after, creation, nil, artifactCreation); err == nil {
+			if _, err := initialReloadCompletion(original, candidate, after, creation, nil, artifactCreation, artifacts); err == nil {
 				t.Fatal("missing actual selection creation accepted", count)
 			}
 		}
 		if artifactCreation != nil {
-			if _, err := initialReloadCompletion(original, candidate, after, creation, selectionCreation, nil); err == nil {
+			if _, err := initialReloadCompletion(original, candidate, after, creation, selectionCreation, nil, artifacts); err == nil {
 				t.Fatal("missing actual timestamp creation accepted", count)
 			}
 		}
-		raw, err := initialReloadCompletion(original, candidate, after, creation, selectionCreation, artifactCreation)
+		if len(artifacts) != 0 {
+			if _, err := initialReloadCompletion(original, candidate, after, creation, selectionCreation, nil, artifacts[:len(artifacts)-1]); err == nil {
+				t.Fatal("missing actual artifact birth accepted", count)
+			}
+			for i := range artifacts {
+				for _, fault := range []string{"inode", "path", "origin"} {
+					bad := append([]initialArtifactProof(nil), artifacts...)
+					switch fault {
+					case "inode":
+						bad[i].birth.Inode = 0
+					case "path":
+						bad[i].birth.Path += "-foreign"
+					case "origin":
+						bad[i].retained = !bad[i].retained
+					}
+					if _, err := initialReloadCompletion(original, candidate, after, creation, selectionCreation, nil, bad); err == nil {
+						t.Fatal("unbound artifact birth accepted", count, i, fault)
+					}
+				}
+			}
+		}
+		raw, err := initialReloadCompletion(original, candidate, after, creation, selectionCreation, artifactCreation, artifacts)
 		if err != nil {
 			t.Fatal(count, err)
 		}
@@ -341,7 +375,7 @@ func TestForwardingInitialReloadCompletionCommitsOwnAfterContext(t *testing.T) {
 		if bytes.Equal(changed, after) {
 			t.Fatal("missing context control")
 		}
-		if _, err := initialReloadCompletion(original, candidate, changed, creation, selectionCreation, artifactCreation); err == nil {
+		if _, err := initialReloadCompletion(original, candidate, changed, creation, selectionCreation, artifactCreation, artifacts); err == nil {
 			t.Fatal("unrelated native identity changed through Reload")
 		}
 	}

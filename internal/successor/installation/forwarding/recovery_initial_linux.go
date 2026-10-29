@@ -20,10 +20,11 @@ import (
 // observation retains fresh native files while the independently opened original
 // exclusive lease remains held by this same Installation operation.
 type recoveryInitialFiles struct {
-	files     *completedFiles
-	owned     map[string]initialRecord
-	selection *initialFileContinuation
-	artifact  *initialFileContinuation
+	files      *completedFiles
+	owned      map[string]initialRecord
+	selection  *initialFileContinuation
+	artifact   *initialFileContinuation
+	generation *initialGenerationContinuation
 }
 
 func stoppedInitialCompletion(original *recoveryOriginal, candidate *recoveryCandidate) ([]byte, []byte, error) {
@@ -110,6 +111,13 @@ func readRecoveryInitialInventory(original *recoveryOriginal, candidate *recover
 			unit := path == "/etc/systemd/system/ardents-forwarding.service" && original.cut.Boundary.Records == 116
 			selection := path == filepath.Join(candidate.selection.binding.Request.InstallationRoot, "binding.json") && original.cut.Boundary.Records == 112
 			artifact := path == filepath.Join(candidate.selection.binding.Request.InstallationRoot, "generations", candidate.selection.binding.Generation, "timestamp.json") && original.cut.Boundary.Records == 107
+			if initialGenerationCut(original.cut.Boundary.Records) {
+				for i, name := range initialGenerationNames() {
+					if path == filepath.Join(candidate.selection.binding.Request.InstallationRoot, "generations", candidate.selection.binding.Generation, name) && int(original.cut.Boundary.Records) == 74+3*i && validInitialArtifactBirth(&record, path, 73+3*i) {
+						artifact = true
+					}
+				}
+			}
 			if !unit && !selection && !artifact {
 				return nil, ErrBinding
 			}
@@ -136,6 +144,27 @@ func readRecoveryInitialInventory(original *recoveryOriginal, candidate *recover
 			}
 		} else if err := f.directory(path, os.FileMode(record.Mode), record.UID, record.GID); err != nil {
 			return nil, err
+		}
+	}
+	if original.cut.Boundary.Operation == "initial" && initialGenerationCut(original.cut.Boundary.Records) {
+		s.generation = &initialGenerationContinuation{records: original.cut.Boundary.Records}
+		complete := int(original.cut.Boundary.Records-72) / 3
+		for i, name := range initialGenerationNames() {
+			if i < complete {
+				continue
+			}
+			path := filepath.Join(candidate.selection.binding.Request.InstallationRoot, "generations", candidate.selection.binding.Generation, name)
+			birth, exists := owned[path]
+			file := f.files[path]
+			retained := int(original.cut.Boundary.Records) == 74+3*i
+			if retained {
+				if !exists || file == nil || !validInitialArtifactBirth(&birth, path, 73+3*i) {
+					return nil, ErrBinding
+				}
+			} else if exists || file != nil {
+				return nil, ErrBinding
+			}
+			s.generation.artifacts = append(s.generation.artifacts, &initialArtifactContinuation{name: name, birthSequence: 73 + 3*i, retained: retained, initialFileContinuation: initialFileContinuation{original: file, birth: birth}})
 		}
 	}
 	if original.cut.Boundary.Operation == "initial" && initialArtifactCut(original.cut.Boundary.Records) {
