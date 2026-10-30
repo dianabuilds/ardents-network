@@ -6,6 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -82,9 +83,10 @@ func readCompletedInputs(ctx context.Context, path string, observe func(string, 
 	}
 	s := &completedFiles{ctx: ctx, files: map[string]*initialFile{}, dirs: map[string]*inputDirectory{}, observe: observe, interrupted: interrupted, recoveryReadback: recovery}
 	c := &completedInitial{files: s}
+	stage := "selected binding"
 	defer func() {
 		if returned != nil {
-			returned = errors.Join(returned, s.close())
+			returned = errors.Join(fmt.Errorf("forwarding completed read %s: %w", stage, returned), s.close())
 			result = Completed{}
 		}
 	}()
@@ -125,12 +127,14 @@ func readCompletedInputs(ctx context.Context, path string, observe func(string, 
 	if _, err := s.parents(s.pending); err != nil {
 		return result, err
 	}
+	stage = "initial pending publication"
 	if recovery == nil || recovery.completion.Operation != "initial" {
 		if err := s.absent(s.pending); err != nil {
 			return result, err
 		}
 	}
 	otherPending := replacementPending(b.Request.InstallationRoot)
+	stage = "replacement pending custody"
 	if interrupted != nil && interrupted.cut.Boundary.Operation == "replacement" {
 		raw, err := s.read(otherPending, 128, 0600, 0, 0)
 		if err != nil || !bytes.Equal(raw, replacementPendingBytes(selected.raw)) {
@@ -151,6 +155,7 @@ func readCompletedInputs(ctx context.Context, path string, observe func(string, 
 		}
 	}
 	journal := b.Request.InstallationRoot + ".forwarding-initial-journal"
+	stage = "initial journal custody"
 	s.journal, err = s.retain(journal, 4<<20, 0600, 0, 0)
 	if err != nil {
 		return result, err
@@ -161,6 +166,7 @@ func readCompletedInputs(ctx context.Context, path string, observe func(string, 
 	if _, err := s.fill(s.journal, 4<<20); err != nil {
 		return result, err
 	}
+	stage = "original directory custody"
 	for _, d := range []struct {
 		path     string
 		mode     os.FileMode
@@ -175,10 +181,12 @@ func readCompletedInputs(ctx context.Context, path string, observe func(string, 
 			return result, err
 		}
 	}
+	stage = "sealed generation lineage"
 	if err := c.readSelections(selected); err != nil {
 		return result, err
 	}
 	get := func(name string) []byte { return s.files[filepath.Join(s.sealed, name)].body }
+	stage = "credential pair"
 	certificate, err := s.read(filepath.Join(b.Request.CredentialDirectory, "certificate.pem"), 64<<10, 0444, 0, 0)
 	if err != nil {
 		return result, err
@@ -197,6 +205,7 @@ func readCompletedInputs(ctx context.Context, path string, observe func(string, 
 	}
 	clear(private)
 	pair.PrivateKey = nil
+	stage = "selected fixed unit and clock"
 	unit, err := s.read("/etc/systemd/system/ardents-forwarding.service", 16<<10, 0644, 0, 0)
 	if err != nil || !bytes.Equal(unit, get("rendered-forwarding.service")) {
 		return result, errors.Join(ErrBinding, err)
@@ -204,6 +213,7 @@ func readCompletedInputs(ctx context.Context, path string, observe func(string, 
 	if _, err := s.parents(s.clock); err != nil {
 		return result, err
 	}
+	stage = "original initial history"
 	hashes := c.initialHashes(path)
 	var initialRecovery *recoveryPublication
 	if recovery != nil && recovery.completion.Operation == "initial" {
@@ -217,6 +227,7 @@ func readCompletedInputs(ctx context.Context, path string, observe func(string, 
 	if err != nil {
 		return result, err
 	}
+	stage = "original initial native inventory"
 	for path, record := range records {
 		if path == s.pending {
 			if s.recovered != nil && s.recovered.originalPending != nil {
@@ -241,17 +252,21 @@ func readCompletedInputs(ctx context.Context, path string, observe func(string, 
 			return result, ErrBinding
 		}
 	}
+	stage = "replacement native history"
 	if err := c.readReplacementHistory(); err != nil {
 		return result, err
 	}
+	stage = "invocation history"
 	s.invocations = &invocationChain{ctx: ctx, owner: c}
 	if err := s.invocations.readChain(path); err != nil {
 		return result, err
 	}
+	stage = "retained native context"
 	if err := c.openRecoveredContext(); err != nil {
 		return result, err
 	}
 	result = Completed{original: c}
+	stage = "final retained observation"
 	return result, result.Check()
 }
 

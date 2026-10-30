@@ -647,22 +647,32 @@ failure or uncertain acknowledgement cannot supply this result.
 
 `forwarding recover DISTRIBUTION HISTORY ENVIRONMENT NETWORK REQUEST JOURNAL`
 uses an existing Release trust root and fresh coherent candidate authorization.
-Its current safe classifier accepts an original initial-v2 cut after the
-`stopped-verified` or `completed` record, or a selected replacement-v2 cut
-after its complete after-snapshot-ready or `replacement-verified` record.
-It also accepts an original retirement cut after its complete result-ready
-or `retired` record, retaining the exact original joined-domain/native result
-and complete invocation chain. It cannot reconstruct an earlier missing result.
+Its classifier independently admits only an exactly proven original boundary:
+initial generation-file delivery, sealing, selection/unit creation and pre-Reload
+continuation; already stopped initial publication; replacement pre-Reload or
+stopped publication; a proved never-started attempt; or retirement publication
+with the complete original joined-domain/native result. Each continuation has
+its own exact original inventory, native preimages and separate guarded proof.
+The [Forwarding recovery contract](../technical/network-route-node.md)
+owns the finite boundary and refusal matrix; a matching record count or visible
+file alone grants no continuation.
+
 Replacement recovery independently retains the complete retired predecessor,
 original Hosting preparation and existing semantic histories. Fresh permission
-for the same payloads may advance metadata floors; the original sealed metadata
-stays unchanged. Every other prefix returns
-repair-required with blockers preserved. It never rewrites the original journal,
-replays account creation/reload/Start/ACK, initializes semantic roots or invents
-domain completion. Its separate guarded suffix and independently reopened
-completed readback precede removal of the original blocker; the recovery guard
-is removed last, after all required physical closes. The result is
-`forwarding-recovery-stopped`, with `started:false`.
+for the same payloads may advance metadata floors; original historical metadata
+and Enrollment inventory remain bound. A proven pre-Reload continuation may
+perform its one separately admitted first Reload after recording its own intent;
+an uncertain or already attempted Reload is never replayed. Generation-file and
+fixed-file continuation use only proven original births or separately recorded
+exclusive new births, never adoption or recreation of unknown resources.
+Ambiguous account/directory provenance, partial or foreign bytes, missing history,
+changed manager, uncertain effects or unknown joins return repair-required with
+blockers preserved. Recovery never rewrites the original journal, replays account
+creation/Start/ACK, initializes semantic roots or invents domain completion.
+Its separate guarded suffix and independently reopened completed readback precede
+removal of the original blocker; the recovery guard is removed last, after all
+required physical closes. The result is `forwarding-recovery-stopped`, with
+`started:false`; any later start requires independent fresh admission.
 Ordinary readers independently validate the original cut, complete suffix,
 original resources and fresh manager/search-path/kernel context. A subsequent
 generation requires the complete v2 replacement before/after snapshot lineage;

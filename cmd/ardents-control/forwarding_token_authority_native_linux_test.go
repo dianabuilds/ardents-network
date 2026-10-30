@@ -133,11 +133,11 @@ type forwardingPreparedStock struct {
 
 func prepareForwardingIssuedStock(t *testing.T, parent string, vault *custody.Vault, created custody.Receipt, secrets forwardingTokenTestSecrets, bundleRaw, profileRaw []byte, statePublic [32]byte, count uint32, peers ...[32]byte) forwardingPreparedStock {
 	t.Helper()
-	if count < 1 || count > 8 {
+	if count < 1 || count > 8 && !(count == 16 && len(peers) == 1) {
 		t.Fatal("finite test Forward presentation count required")
 	}
-	if len(peers) > 1 || len(peers) == 1 && count != 8 {
-		t.Fatal("one explicit peer requires the fixed eight-credential cohort")
+	if len(peers) > 1 || len(peers) == 1 && count != 8 && count != 16 {
+		t.Fatal("one explicit peer requires a fixed eight- or sixteen-credential cohort")
 	}
 	if statePublic == created.AdmissionAuthority.Public {
 		t.Fatal("State and Permission keys collapsed")
@@ -256,7 +256,7 @@ func prepareForwardingIssuedStock(t *testing.T, parent string, vault *custody.Va
 	challenges := make([]token.ClosedTokenContext, count)
 	for index := range challenges {
 		challenges[index] = challenge
-		if peer.NodeID != [32]byte{} && index >= 4 {
+		if peer.NodeID != [32]byte{} && index >= int(count/2) {
 			challenges[index].ReceiverNodeID = peer.NodeID
 			challenges[index].ReceiverDutyGeneration = peer.DutyGeneration
 		}
@@ -306,28 +306,39 @@ func prepareForwardingIssuedStock(t *testing.T, parent string, vault *custody.Va
 // bindings, not extra cryptographic token scope. No saved Stock owner, private
 // signer or permission to start the installed process crosses this boundary.
 type forwardingPreparedChannels struct {
-	Schema          string    `json:"schema"`
-	NetworkID       [32]byte  `json:"network_id"`
-	StateGeneration [32]byte  `json:"state_generation"`
-	StateDigest     [32]byte  `json:"state_digest"`
-	ProfileDigest   [32]byte  `json:"profile_digest"`
-	NodeID          [32]byte  `json:"node_id"`
-	DutyGeneration  uint64    `json:"duty_generation"`
-	Endpoint        string    `json:"endpoint"`
-	PublicKey       [32]byte  `json:"public_key"`
-	Deadline        time.Time `json:"deadline"`
-	Channels        [2]struct {
-		Nonce  [32]byte  `json:"nonce"`
-		Tokens [2][]byte `json:"tokens"`
-	} `json:"channels"`
+	Schema          string                      `json:"schema"`
+	NetworkID       [32]byte                    `json:"network_id"`
+	StateGeneration [32]byte                    `json:"state_generation"`
+	StateDigest     [32]byte                    `json:"state_digest"`
+	ProfileDigest   [32]byte                    `json:"profile_digest"`
+	NodeID          [32]byte                    `json:"node_id"`
+	DutyGeneration  uint64                      `json:"duty_generation"`
+	Endpoint        string                      `json:"endpoint"`
+	PublicKey       [32]byte                    `json:"public_key"`
+	Deadline        time.Time                   `json:"deadline"`
+	Channels        []forwardingPreparedChannel `json:"channels"`
+}
+
+type forwardingPreparedChannel struct {
+	Nonce  [32]byte  `json:"nonce"`
+	Tokens [2][]byte `json:"tokens"`
 }
 
 func prepareForwardingChannelPresentations(t *testing.T, parent string, vault *custody.Vault, created custody.Receipt, secrets forwardingTokenTestSecrets, bundleRaw, profileRaw []byte, statePublic [32]byte, peers ...[32]byte) string {
 	t.Helper()
-	count := uint32(4)
-	if len(peers) != 0 {
-		count = 8
+	return prepareForwardingChannelCohort(t, parent, vault, created, secrets, bundleRaw, profileRaw, statePublic, false, peers...)
+}
+
+func prepareForwardingChannelCohort(t *testing.T, parent string, vault *custody.Vault, created custody.Receipt, secrets forwardingTokenTestSecrets, bundleRaw, profileRaw []byte, statePublic [32]byte, replacementJourney bool, peers ...[32]byte) string {
+	t.Helper()
+	lifetimes, schema := 2, "ardents-forwarding-test-presentations-v1"
+	if replacementJourney {
+		if len(peers) != 1 {
+			t.Fatal("replacement preparation requires one original Interior peer")
+		}
+		lifetimes, schema = 4, "ardents-forwarding-test-presentations-v2"
 	}
+	count := uint32(lifetimes * 2 * (1 + len(peers)))
 	prepared := prepareForwardingIssuedStock(t, parent, vault, created, secrets, bundleRaw, profileRaw, statePublic, count, peers...)
 	facts, now, err := prepared.observe()
 	if err != nil {
@@ -342,10 +353,11 @@ func prepareForwardingChannelPresentations(t *testing.T, parent string, vault *c
 	if !deadline.After(now.Add(time.Minute)) {
 		t.Fatal("invalid environment: insufficient current token window for finite installed preparation")
 	}
-	result := forwardingPreparedChannels{Schema: "ardents-forwarding-test-presentations-v1", NetworkID: facts.NetworkID, StateGeneration: facts.StateGeneration, StateDigest: facts.StateDigest, ProfileDigest: facts.Digest, NodeID: prepared.receiver.NodeID, DutyGeneration: prepared.receiver.DutyGeneration, Endpoint: prepared.endpoint, PublicKey: prepared.publicKey, Deadline: deadline}
+	result := forwardingPreparedChannels{Channels: make([]forwardingPreparedChannel, lifetimes), Schema: schema, NetworkID: facts.NetworkID, StateGeneration: facts.StateGeneration, StateDigest: facts.StateDigest, ProfileDigest: facts.Digest, NodeID: prepared.receiver.NodeID, DutyGeneration: prepared.receiver.DutyGeneration, Endpoint: prepared.endpoint, PublicKey: prepared.publicKey, Deadline: deadline}
 	results := []forwardingPreparedChannels{result}
 	if prepared.peer.NodeID != [32]byte{} {
 		peer := result
+		peer.Channels = make([]forwardingPreparedChannel, lifetimes)
 		peer.NodeID, peer.DutyGeneration = prepared.peer.NodeID, prepared.peer.DutyGeneration
 		peer.Endpoint, peer.PublicKey = prepared.peer.Endpoint, prepared.peer.PublicKey
 		results = append(results, peer)

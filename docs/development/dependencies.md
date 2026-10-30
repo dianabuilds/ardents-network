@@ -244,6 +244,59 @@ May2029. Actual package versions/security updates must be recorded with each
 native stand; release support alone does not prove patch currency. The getent/libc mechanism
 retains its GNU LGPL-2.1-or-later license.
 
+### Native Forwarding principal verification tool
+
+Reviewed 2026-10-29 for two isolated component verification profiles. Ubuntu's
+root-controlled `/usr/bin/setpriv` reduces the helper to the genuine stopped
+Forwarding binding's numeric system UID/GID before the same process executes
+its fixed ordinary Go test. It creates no account, installed invocation,
+Startup permission or runtime Node role. The original private namespace,
+supervisor and helper users must join through their existing owners.
+
+The finite argv is `--reuid=<uid> --regid=<gid> --clear-groups
+--inh-caps=-all --ambient-caps=-all --bounding-set=-all --no-new-privs --`,
+followed only by the pinned Python interpreter/helper and selected test artifact.
+The [upstream implementation](https://raw.githubusercontent.com/util-linux/util-linux/v2.39.3/sys-utils/setpriv.c)
+sets real/effective/saved IDs, clears supplementary groups and applies the
+requested capability and no-new-privileges changes before exec. The independent
+child verifies all three IDs, no groups, all five capability sets zero,
+`NoNewPrivs=1`, its original mount namespace and the exact artifact before Go exec.
+Those measured conditions are mandatory; successful helper exit alone is not
+principal or installed-process evidence. Name-based group initialization,
+environment reset, PAM/login, LSM/securebits selection and arbitrary executables
+are outside this use.
+
+The observed tool is util-linux `2.39.3-9ubuntu6.5`, root0755 without set-id,
+SHA256 `96b083b79c32fd2f0c29657e88e20c7495839349fc64ad5d0503f32d26bf8733`.
+Its ELF closure is `libcap-ng.so.0`, libc and the original loader, not libmount
+or libblkid. Observed libcap-ng is `0.8.4-2build2`; libc remains the separately
+registered `2.39-0ubuntu8.7`. Preserve actual library/file hashes, package owners,
+copyrights, package-integrity checks and private native configuration with each
+receipt. Setpriv is GPL-2.0-or-later; the installed libcap-ng library copyright
+declares LGPL-2.1-or-later. These are existing OS tools, not distributed Go
+runtime additions. Ubuntu distribution maintenance does not imply this patch
+contains every security fix.
+
+| Primary finding, accessed 2026-10-29 | Exact bounded applicability |
+|---|---|
+| [USN-8091-1](https://ubuntu.com/security/notices/USN-8091-1) | Installed `.6.5` meets Noble's listed fix. The selected tool is setpriv, not the affected su/pty path |
+| [USN-8702-1](https://raw.githubusercontent.com/canonical/ubuntu-security-notices/main/osv/usn/USN-8702-1.json), CVE-2026-13595 and -53615 | Installed `.6.5` predates `.6.6`; no blanket patched claim. Neither setpriv nor the fixed bind/remount recipe probes partition tables or crafted block images |
+| Same notice, CVE-2026-27456 | No loop device setup or block-image input is selected |
+| Same notice, CVE-2026-3184 | No login `-h` input is selected; the notice identifies the affected newer Ubuntu release separately |
+| Same notice, CVE-2026-53612 and -53613 | Root-only private bind/remount uses fixed original root-controlled paths, without ownership/mode hooks or an unprivileged source/ancestor writer |
+| Same notice, CVE-2026-53614 | No restricted SUID mount invocation or unprivileged mount environment is admitted |
+| [GHSA-m25x-3hj9-m26f](https://github.com/util-linux/util-linux/security/advisories/GHSA-m25x-3hj9-m26f) | No external mount helper, X-mount idmap or ownership post-hook is selected; helper failure still stops the profile |
+| [GHSA-rh77-686x-2f2m](https://github.com/util-linux/util-linux/security/advisories/GHSA-rh77-686x-2f2m) | No restricted-user fstab route or X-mount ownership hook; private source/ancestors remain original and root-controlled |
+
+The [Ubuntu libcap-ng query](https://ubuntu.com/security/cves?package=libcap-ng)
+returned no matching CVE at access; that is not proof of absence or continued
+support. Existing libc/interpreter/manager dispositions remain independently
+required. Renew this exact-use assessment on changed sources, flags, inputs,
+privileges, package/library bytes or advisories. The Product Owner and Codex own
+renewal; unsupported or applicable unresolved findings block changed use.
+This registration supplies no full-host, installed, independent-security or
+anonymity qualification.
+
 ## Go X.509 security renewal
 
 Reviewed 2026-10-21 after the normal vulnerability gate reported

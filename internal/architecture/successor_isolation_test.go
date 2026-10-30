@@ -610,6 +610,11 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/forwarding_release_native_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
+		// Canonical forward-delivery QA uses the same public request/plan codecs
+		// as Control's existing preparation consumers, without a runtime owner.
+		if source == "cmd/ardents-control/forwarding_forward_release_native_linux_test.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
+			return true
+		}
 		if source == "cmd/ardents-control/forwarding_request_linux.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
 			return true
 		}
@@ -846,7 +851,7 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if zoneDependency {
 		// Existing new-zone QA registration, not another old-command R01 exception.
-		if source == "cmd/ardents-next/forwarding_installed_native_linux_test.go" && (dependency == modulePath+"/internal/successor/installation/forwarding" || dependency == modulePath+"/internal/successor/route/transport") {
+		if source == "cmd/ardents-next/forwarding_installed_native_linux_test.go" && (dependency == modulePath+"/internal/successor/installation/forwarding" || dependency == modulePath+"/internal/successor/route/transport" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
 		if source == "cmd/ardents-next/source_state_linux_test.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/duty") {

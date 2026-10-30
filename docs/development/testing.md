@@ -410,6 +410,218 @@ independent State/lock identities, principal and public trust pins, and returned
 flock custody. Peer participation, spend, credentials and installation remain
 absent. This prepares no listener, live duty, producer or installed startup.
 
+`TestForwardingInstallInputsNativeReplacementChannelsAndInitialStopped` uses
+that same private root/ext4/manager profile and genuine authority chain, with
+four distinct channels per recipient and sixteen total already-presented Forward
+credentials. Its private v2 presentation schema remains separate from the existing
+two-channel v1 input. One finite issuance splits its actual receiver challenges
+into eight original Forwarding and eight Interior credentials; every presentation
+is independently verified for its recipient and refused for the other one.
+No runtime quota, token grammar, class allowance or accepting role is changed.
+The original token-hour/profile/deadline and joined secret lifetime still apply.
+
+This preparation additionally requires the successor Node and Control binaries
+and both actual matching build executions, pinned through
+`ARDENTS_FORWARDING_SUCCESSOR_NODE_PROGRAM`,
+`ARDENTS_FORWARDING_SUCCESSOR_CONTROL_PROGRAM`, their `_SHA256` values,
+`ARDENTS_FORWARDING_SUCCESSOR_BUILD_ROOT` and
+`ARDENTS_FORWARDING_SUCCESSOR_BUILD_READY_SHA256`. The successor Node must differ
+from the initial program. The existing build-bound public preparer with `--forward`
+and canonical `sign-forward-release` produce versions 2 and 3 under the same
+original Root. Version 2 preserves the original runtime plan; version 3 retains
+the same program and changes actual work Tx by 1 MiB and termination Tx by
+64 KiB, preserving all other declarations. These are finite fixture values,
+not a new resource policy. The private `successor-deliveries.json` binds both
+actual distributions, canonical requests/plans and public input commitments.
+The successor's canonical template preparation is byte-compared with the initial
+template and retained outside the predecessor distribution. The signer's
+independent predecessor custody and candidate-resource namespace remain separate.
+Preparing these deliveries performs no replacement, reload, Stop or Start;
+all lifecycle admission and separate bootstrap acceptance remain required.
+
+`TestForwardingInstallInputsNativeOriginalInitialCutDelivery` instead ends
+before the first installation effect. It produces the real initial signed
+artifact/inventory and canonical request/plan, invokes canonical read-only
+`forwarding inspect-inputs`, and checks all future owned resources and the
+installation Release history remain absent with unchanged private account
+bytes. Its exclusive synchronized `initial-cut-inputs.json` records actual
+command arguments and public input commitments. The outside controller still
+pins and preserves the complete private input/body pack separately, checks the
+original root/manager/namespaces, and joins the fixture before consuming results.
+Original-process initial-cut cases must use this delivery boundary, never reuse
+an already installed preparation root. Neither new preparation scenario starts
+an installed runtime or supplies bootstrap, recovery or installed acceptance.
+
+The installed Forwarding runner retains the exact four-case v1 receipt profile
+and the all-inputs-at-once v2 transition receipt. The transition profiles bind
+the fixture source plus two distinct
+actual committed runtime source manifests, distinct initial/successor Node
+artifacts, and a closed 312-case catalog: the four original cases, one genuine
+four-lifetime replacement journey, one direct replacement refusal after an
+unknown domain join, one changed-native-account refusal, one stale-authority refusal, eight competing-slot
+refusals, and 296 original record boundaries across
+initial, replacement, first/selected/restarted start and initial/selected
+retirement. Receipt consistency grants no bootstrap acceptance. Every required
+entrypoint must be discovered in the exact test artifact before any transition case
+runs; missing implementation or prerequisites are invalid, never passing skips.
+The replacement journey also invokes canonical `replace` with each already
+selected generation after its genuine joined retirement, and with the original
+generation after the first forward replacement. Before the first forward
+replacement it also supplies a copy of the genuine successor delivery with
+only its descriptor replaced by the genuine predecessor descriptor. Signed
+metadata is not edited and no private key or test signer is used. An intact
+successor copy made by the same file/access recipe must then admit the real
+forward replacement; the rejected copy stays unchanged in the case evidence.
+Both copies retain root0700 for the executable and root0600 for all other
+files, satisfying Enrollment's closed native file-custody rule. Independent
+Enrollment reader tests causally distinguish admitted0700 from refused0755
+without executing a Node or granting Release or installed authority.
+These requests must refuse
+without changing the original selection/unit, sealed generations, semantic and
+Release histories, account files or transaction-parent identities and times.
+The following genuine forward transition remains the positive control. These
+same/backward/mixed-generation checks are implemented fixture assertions; their native
+execution requires a new source-matched receipt and its separate acceptance.
+The replacement journey also refuses a genuine forward candidate while the
+original invocation and both Route reservations remain active. Its distinct
+live oracle retains PID/InvocationID, protected bytes, spends and transaction
+namespace, without requiring stopped state or free capacity. Separately prepared
+changed-root and credential requests must first pass the real input owner's
+ReadInputs/Check/Close before canonical refusal. Their request/plan bytes come
+from the pinned public Control producers; no signed metadata or key bytes are
+edited. An alternate installation root must also preserve the admitted whole-
+lifetime Unix completion-socket path bound. The offline canonical-producer
+control admits the original and same-length sibling roots but refuses an
+overlong suffix before output creation; that early request refusal cannot count
+as evidence about retained replacement bindings. A genuine forward Release pair may commit its exact metadata floors
+before Installation refuses these requests. The oracle retains and independently
+matches those exact candidate floors and digests rather than refunding them;
+installation and semantic histories remain unchanged.
+The separate `replacement-unknown-domain-join` case prepares genuine successor
+deliveries and four bounded channel cohorts. After the original pidfd SIGKILL
+and physical joins, its direct canonical replacement must refuse without a
+domain report, retirement history, restored capacity or another invocation.
+It requires complete original initial/start file custody, unchanged semantic
+histories and native transaction namespace, and the original killed-unit result.
+The original four-case profile and its eight-input unknown-join case remain
+unchanged; only the distinct new transition case requires successor input pins.
+The distinct `replacement-changed-account` case also prepares genuine successor
+inputs. After the first actual contact/refill and joined retirement, independent
+completed-history and input readers must succeed. It preserves the original
+public passwd bytes, then changes only the private stand's Node numeric UID to
+an unused equal-width value on the original file. Actual NSS must observe the
+changed row. Independent completed custody and canonical replacement must refuse;
+the installation, semantic histories, spent rights and original Release floors
+remain unchanged. The changed account is retained in evidence without repair,
+restoration or another runtime invocation. This is a hostile local configuration
+control, not account adoption or an accepting replacement principal.
+Eight separate `replacement-competing-ROLE-KIND` cases cover the four other
+fixed Node roles (`issuer`, `descriptor`, `introduction`, `join`) and both
+`service` and `socket`. Each fresh case first completes the genuine first
+Forwarding lifetime and joined stop, verifies completed/input custody, then
+exclusively creates one static foreign unit file in the private stand. That
+file is a namespace conflict, not an installed or accepted neighboring role;
+no other-role installation consumer is selected or available in this slice.
+The case never loads, starts, repairs or removes that unit. Independent history
+custody must remain readable. Genuine B2 Release authentication may advance its
+exact floors, but canonical replacement must refuse without installation or
+semantic changes, another invocation or an activation socket. The original
+foreign file and fixed unit-directory metadata remain unchanged by refusal.
+All eight cases require separately pinned successor inputs and terminate with
+the conflict retained. Passing them supplies no accepting other-role scenario.
+The distinct `replacement-stale-authority` case requires the separate native
+preparation entrypoint
+`TestForwardingInstallInputsNativeStaleReplacementChannelsAndInitialStopped`.
+Only that preparation uses the canonical public producer and signer to give B2
+a genuine90-second signed no-new-work bound while current. Its original A1 and
+B3 retain ordinary bounds. No signed JSON, private key or runtime clock is edited.
+After the genuine first lifetime and joined stop, the independent negative oracle
+matches both signed target bounds and waits for the actual wall clock, at most
+90 seconds and within the original input/test deadlines with30 seconds retained
+for refusal. These copied fields supply no authority; the canonical command
+must independently authenticate the signed pair and refuse specifically with
+`program: update-required`. Release classifies the elapsed no-new-work bound
+before metadata floor commitment; the same initial Root and all old floors must
+remain exact. Installation/semantic/spend histories stay unchanged. The expired
+delivery is retained; the case neither renews it nor runs B2. An ordinary
+replacement preparation is invalid input for this negative case.
+The pure architecture tests check both receipt shapes and causal refusals for
+missing cases/inputs, changed source/artifact commitments and identical program
+pairs. They execute no installed code and establish no native qualification.
+
+The v3 serial receipt binds that same complete catalog and implementation but
+contains prepared-input hashes for exactly one `selected_case`. It also matches
+the original `installedN` stand and reservation-receipt hash, plus the exact
+outside controller, worker and input-preparer hashes, to the controller's pinned
+declarations. Its `campaign_sha256` is SHA-256 of the ASCII JSON object containing
+`source_manifest_sha256`, `runtime_source_manifests`, `artifacts`, `cases` and
+`controllers`, with sorted keys and compact separators. Fresh stand/input facts
+do not change this grouping commitment; changed implementation or catalog does.
+The runner still discovers every required entrypoint before executing the one
+selected case and compares that case's actual prepared bytes before and after it.
+Another case, stand or controller cannot borrow the receipt's declarations.
+
+This permits fresh finite credentials on one original stand at a time under the
+disposable-stand lifecycle below, without preallocating other managers, extending
+authority windows or reusing finalized roots. A completed public receipt and
+separate direct Product Owner acceptance remain required before each installed
+execution under ADR-0123 Decision 6. The digest and controller pins grant no
+acceptance or native provenance; the outside controller must independently retain
+the original reservation, manager, users and actual joins. One prepared or passed
+case establishes nothing about the other 311. Full acceptance still requires
+actual source-applicable results for the complete catalog and the selected
+uncertainty/refusal matrix. Pure serial-profile controls check every finite case,
+cross-case/stand/controller substitutions, missing inputs and campaign mutations;
+they start no installed code. `forwarding_bootstrap_receipt_test.go` holds the
+same portable public-consistency reader actually called by each native installed
+entrypoint, together with the closed case/input inventory. Its runner-to-consumer
+test supplies independent Python-produced v1/v2 receipts and all 312 serial
+cases, including changed bytes, case/stand substitutions and incomplete scopes.
+Both readers must agree before this preparation check passes. Printable ASCII
+artifact names keep their campaign JSON encodings identical. Native provenance,
+original joins and direct acceptance remain outside this pure parser.
+The root driver's reader requires every actual case input. The distinct
+non-root Interior reader instead compares exactly its own public peer plan or
+certificate after independently validating the complete public receipt scope.
+It cannot read the root driver's private presentation files. Neither partial
+root checks nor other input names are admitted through this narrow peer path;
+the shared receipt-byte pin and artifact checks remain mandatory. Portable
+controls reproduce both actual peer call shapes, retain full-root refusal for
+incomplete input, reject changed/foreign peer bytes and require the full public
+scope for v1/v2 and every applicable serial case.
+
+`TestForwardingInstalledNativeReplacementLifetimeAndRefill` uses the v2 private
+six-namespace systemd/ext4 profile and exact four-channel input per recipient.
+Its ordered operations are initial A1 contact/refill and joined stop, canonical
+B2 replacement and separate selected start/contact/refill/stop, B3 resource-only
+replacement and separate selected start/contact/refill/stop, then explicit B3
+same-generation restart/contact/refill/stop. The driver checks the actual process
+executable inode/bytes, independent retained Release floors and metadata hashes,
+unchanged semantic histories and sealed predecessors through replacement,
+original selection/unit inodes, actual rendered unit/plan and retained lineage.
+The prepared initial selection/plan are pinned from their immutable sealed
+generation across later mutable selection changes. Input commitments include
+the two exact successor deliveries. All original State, spend, Hosting,
+participation, authority, token deadline and physical-join checks remain required.
+
+The original-prefix entrypoints are
+`TestForwardingInstalledNativeOriginalInitialPrefix`,
+`TestForwardingInstalledNativeOriginalReplacementPrefix`,
+`TestForwardingInstalledNativeOriginalStartPrefix` and
+`TestForwardingInstalledNativeOriginalRetirementPrefix`. Their fixed case names
+select an exact original record, not a supplied success result. Initial cases
+use the genuine B program with its own coherent initial Release/pin delivery;
+A does not implement the new early-generation suffix. Replacement cases first
+perform genuine A contact/refill and original joined stop. The canonical
+`supervise-transition` retains its original pidfd/process group and actual
+manager namespaces through SIGKILL/Wait, denying the next effect before
+publishing a separate native proof. Fresh independent recovery must preserve
+the original raw prefix, input/native provenance and all historical results,
+complete only the owned safe stopped suffix, or refuse with blockers unchanged.
+No Start, ACK or domain completion may be synthesized. The full native/crash
+and uncertainty controls remain distinct from pure grammar or physical-file
+component checks and from the separate Product Owner bootstrap decision.
+
 `TestForwardingTokenAuthorityNativeGenuineCustodyStateAndStock` is bounded
 root/ext4 `network-signing-linux` preparation, with no installed Issuer.
 Actual new Custody creates a distinct encrypted Permission authority. Its
@@ -594,6 +806,12 @@ and actual descriptor-close failures survive together. Restoring bytes cannot
 revive the failed owner. The actual canonical initial-history command additionally
 consumes a genuine fresh Release candidate and joins before its public output.
 These verification scenarios grant no manager invocation or Startup authority.
+The root missing-start-history and ordinary-executable refusal controls also
+require `ARDENTS_FORWARDING_INITIAL_DISTRIBUTION` and the independently declared
+`ARDENTS_FORWARDING_INITIAL_NETWORK` from the original canonical producer's
+installation command. They do not assume one historical fixture's Network name.
+Fresh Release authentication still matches that expected Network to the signed
+candidate before the ordinary executable must reach its specific refusal.
 The same cohort substitutes new State/Release directory inodes and a new
 byte-identical matching private-key inode with the original modes/IDs. Independent
 opening must refuse before returning a usable observation and return its original
@@ -604,7 +822,8 @@ credentials remain in retained non-automatic backups if restoration fails.
 `network-signing-linux` control run only inside a fresh private initial-stopped
 stand after the actual pinned canonical installer and independent controller
 readback complete. Set `ARDENTS_FORWARDING_INITIAL_BINDING` to that actual
-selected binding. It consumes the genuine complete 119-record transcript,
+selected binding. It consumes the genuine complete current initial transcript
+and checks its historical 119-record grammar,
 refuses substitution and omission of every phase, swaps every adjacent pair
 after repairing sequence numbers, and refuses incomplete/extra framing. Its
 27 native records grant no authority until separately matched. The creator-only
@@ -707,6 +926,14 @@ actual FD inventories without GC. Held real reads retain private bytes/FDs until
 original cancellation and Close join; independent native Close failure remains
 in the original result. `network-signing-compile-check` compiles this separate
 tagged package, and `network-signing-check` executes its exact native group.
+The same file-only native group exercises the actual replacement-history reader
+through the exact root:Node0750 predecessor retirement directory and root-only
+result. A failure-only cancellation after the real leaf read prevents detached
+byte fixtures from supplying successful history or authority. Wrong owner/group,
+writable parent, foreign leaf and symlink refuse; the original journal flock
+remains held through physical Close, and ordinary ancestors remain root:root.
+These component controls supply no installed replacement acceptance.
+
 
 The canonical physical observer additionally has two initial-only early effect
 windows. `account-before-complete-birth` holds the next real `/etc/group`
@@ -3128,6 +3355,34 @@ checks the case/history bijection, original native identities, referenced proof
 hashes and fresh physical references before another allocation. Unknown or
 orphan cases never become idle by choosing another name. It creates no per-case
 Docker mount or compiler cache and performs no global deletion or process stop.
+
+After a native environment changes its device numbering, finalized QA history
+may acquire separate current evidence custody with
+`python3 -I -S scripts/node/reobserve-native-history.py EXTERNAL_EVIDENCE`, under
+the same exclusive development wrapper. This is an explicit read-only acquisition
+over finalized case trees, with new root-only observations outside those trees;
+it never rewrites original reservations, terminal results, native numbers,
+archives or case-history records. Active or unknown cases cannot use this path.
+The observer verifies original full QA and input payload commitments, the exact
+original joined terminal and disposable-binary set, disposition, complete retained
+entry set, every remaining byte, inode, link, access, owner, timestamp and xattr.
+Only the device number may differ; the already recorded unlink parents retain
+their original narrow size/mtime/ctime exception during acquisition. The new
+snapshot captures those parents' actual complete metadata too. A separate
+immutable per-case requirement prevents a missing snapshot or a later boot
+from selecting the earlier directory-only check, even if the old device number
+recurs. Snapshots are named by case, kernel boot and observer-source hash;
+an observer upgrade acquires a fresh successor while preserving all earlier
+snapshots and requirements. Subsequent
+allocation rechecks this exact current snapshot and its original archive
+commitments, current kernel boot, original history hash and observer bytes.
+Unknown entries, changed evidence or stale observations refuse allocation.
+This supplies current custody of forensic evidence, never original runtime inode
+continuity, an active lease, join, recovery, fixture qualification, bootstrap
+acceptance or retry. A previous fixture whose native stand identity changed
+must be freshly built and qualified; its old identity cannot be rebound through
+this observation. New installed execution requires its own completed receipt
+and separate Product Owner acceptance as usual.
 
 `scripts/node/check-qa-retention.py EXTERNAL_EVIDENCE` checks this tooling on a
 fresh ext4 fixture under root Python3.12 `-I -S` and the existing exclusive

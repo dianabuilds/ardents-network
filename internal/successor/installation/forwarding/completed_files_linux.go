@@ -175,6 +175,16 @@ func (s *completedFiles) retain(path string, maximum int64, mode os.FileMode, ui
 	if err != nil {
 		return nil, err
 	}
+	return s.retainAt(path, parent, maximum, mode, uid, gid)
+}
+
+// retainAt opens only beneath this reader's already retained exact directory.
+// The caller must independently admit that directory's specific access policy;
+// ordinary retain keeps its stricter root:root ancestor walk.
+func (s *completedFiles) retainAt(path string, parent *inputDirectory, maximum int64, mode os.FileMode, uid, gid uint32) (*initialFile, error) {
+	if !validPath(path) || s.files[path] != nil || parent == nil || parent.file == nil || parent.info == nil || parent.path != filepath.Dir(path) || s.dirs[parent.path] != parent {
+		return nil, ErrInput
+	}
 	file, err := openInputAt(parent, filepath.Base(path), false)
 	if err != nil {
 		return nil, err

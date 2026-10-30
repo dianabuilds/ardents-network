@@ -140,7 +140,7 @@ def prepare_root():
     marker = WORK_ROOT / 'owner'
     if marker.is_symlink() or native(marker)[2:] != (stat.S_IFREG | 0o600, 0, 0) or marker.read_text(encoding='utf8') != 'ardents-development-work-v1\n':
         raise RuntimeError('unowned native development work root')
-    if not {p.name for p in WORK_ROOT.iterdir()} <= {'owner', 'active', 'cases', 'case-history', 'case-active.json'}:
+    if not {p.name for p in WORK_ROOT.iterdir()} <= {'owner', 'active', 'cases', 'case-history', 'case-active.json', 'history-observations'}:
         raise RuntimeError('unknown native development work entry')
     if subprocess.check_output(['findmnt', '-T', str(WORK_ROOT), '-n', '-o', 'FSTYPE'], text=True).strip() != 'ext4':
         raise RuntimeError('native ext4 native development work root required')
@@ -164,17 +164,28 @@ def check_idle():
     records = {p.name for p in history.iterdir()}
     if records != {name + '.json' for name in names}:
         raise RuntimeError('unrecorded native case or missing finalized history')
+    import qa_history
+    required_history = qa_history.requirements(WORK_ROOT)
+    if not set(required_history) <= names:
+        raise RuntimeError('observation requirement without original finalized case')
+    history_cache = {}
     for name in sorted(names):
         if not re.fullmatch(r'(preparation|installed)[1-9][0-9]*', name):
             raise RuntimeError('unknown native case name')
         record = read_control(history / (name + '.json'))
         case = cases / name
-        if record.get('schema') != 'ardents-native-case-finalized-v1' or record.get('case') != name or record.get('state') != 'retained' or list(native(case)) != record.get('native') or case.is_symlink() or not case.is_dir():
+        if record.get('schema') != 'ardents-native-case-finalized-v1' or record.get('case') != name or record.get('state') != 'retained' or case.is_symlink() or not case.is_dir():
             raise RuntimeError('changed finalized native case')
         for key in ['reservation_sha256', 'qa_verified_sha256', 'input_verified_sha256', 'disposition_sha256']:
             if not re.fullmatch(r'[0-9a-f]{64}', record.get(key, '')):
                 raise RuntimeError('incomplete finalized native case proof')
         check_case_proofs(record)
+        if list(native(case)) != record.get('native') or name in required_history:
+            # This is finalized evidence only. Original runtime/reservation
+            # custody still requires exact native equality in retained_case.
+            # Acquisition is explicit and separate; allocation never repairs
+            # or creates a history observation.
+            qa_history.checked_observation(WORK_ROOT, case, record, history_cache)
         references(case)
 
 

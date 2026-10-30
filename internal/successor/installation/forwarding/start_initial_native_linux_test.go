@@ -18,9 +18,19 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
+func nativeInitialReleaseNetwork(t *testing.T) string {
+	t.Helper()
+	network := os.Getenv("ARDENTS_FORWARDING_INITIAL_NETWORK")
+	if network == "" || strings.TrimSpace(network) != network {
+		t.Fatal("invalid environment: original producer's expected Release network required")
+	}
+	return network
+}
+
 func TestForwardingStartedNativeRefusesMissingStartHistory(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
+	network := nativeInitialReleaseNetwork(t)
 	path := nativeCompletedBinding(t)
 	completed := nativeCompleted(t, ctx)
 	b := completed.original.binding
@@ -81,7 +91,7 @@ func TestForwardingStartedNativeRefusesMissingStartHistory(t *testing.T) {
 	if err == nil || strings.Contains(string(output), "forwarding-original-stop-completed") {
 		t.Fatal("canonical stop accepted missing start history", err, string(output))
 	}
-	command = exec.CommandContext(ctx, filepath.Join(distribution, programName), "forwarding", "restart", distribution, b.History, "alpha", "controlled-initial-component", path)
+	command = exec.CommandContext(ctx, filepath.Join(distribution, programName), "forwarding", "restart", distribution, b.History, "alpha", network, path)
 	output, err = command.CombinedOutput()
 	if err == nil || strings.Contains(string(output), "forwarding-same-generation-restart-completed") {
 		t.Fatal("canonical restart accepted missing start history", err, string(output))
@@ -97,6 +107,7 @@ func TestForwardingStartedNativeRefusesMissingStartHistory(t *testing.T) {
 func TestForwardingStartInitialNativeRefusesOrdinaryRootExecutable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
+	network := nativeInitialReleaseNetwork(t)
 	path := nativeCompletedBinding(t)
 	distribution := os.Getenv("ARDENTS_FORWARDING_INITIAL_DISTRIBUTION")
 	if !validPath(distribution) {
@@ -127,7 +138,7 @@ func TestForwardingStartInitialNativeRefusesOrdinaryRootExecutable(t *testing.T)
 	defer v.Close()
 	a, err := infrastructure.AuthenticateForwardingCandidate(ctx, v, candidate, release.Inputs{
 		RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata,
-		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: "controlled-initial-component", RefTime: time.Now().UTC()},
+		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: network, RefTime: time.Now().UTC()},
 	})
 	if err != nil {
 		t.Fatal("genuine fresh coherent Release pair prerequisite", err)

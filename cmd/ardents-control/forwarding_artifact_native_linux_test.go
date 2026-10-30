@@ -148,6 +148,63 @@ func TestForwardingPreparationNativeRequestAndFixedTemplate(t *testing.T) {
 	}
 }
 
+// A changed-root replacement control needs a producer-admitted declaration.
+// The original installed fixture has 104-byte lifetime socket paths: adding
+// "-changed" makes them 112 bytes and tests the request limit instead of the
+// retained installation binding. Exercise the actual canonical producer on
+// both sides of that distinction, without opening any declared runtime root.
+func TestForwardingPreparationNativeRequestLifetimeSocketBounds(t *testing.T) {
+	parent := sourceArtifactNativeParent(t)
+	command, _ := sourceNativePinnedProgram(t, "ARDENTS_SOURCE_CONTROL_PROGRAM")
+	const prefix = "/var/lib/forwarding-coherent-initial"
+	for _, scenario := range []struct {
+		name string
+		root string
+		want bool
+	}{
+		{"original", prefix + "/runtime/node", true},
+		{"overlong-alternative", prefix + "/runtime/node-changed", false},
+		{"bounded-alternative", prefix + "/runtime/next", true},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			if _, err := os.Lstat(scenario.root); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("invalid environment: declared installation root must be unborn", err)
+			}
+			destination := filepath.Join(parent, scenario.name)
+			args := []string{"forwarding", "prepare-request", "--installation-root", scenario.root,
+				"--state-root", prefix + "/runtime/state", "--participation-root", prefix + "/runtime/participation",
+				"--spend-root", prefix + "/runtime/spend", "--hosting-root", prefix + "/runtime/hosting",
+				"--credential-directory", prefix + "/runtime/credentials", "--plan", prefix + "/delivery/alternate-plan/forwarding-plan.json",
+				"--certificate", prefix + "/delivery/node-certificate/node-certificate.pem", "--private-key", prefix + "/delivery/node-key/node-key.pem",
+				"--clock", prefix + "/clock", "--output", destination}
+			output, err := exec.CommandContext(t.Context(), command, args...).CombinedOutput()
+			if !scenario.want {
+				if err == nil {
+					t.Fatal("overlong lifetime socket declaration was admitted")
+				}
+				if _, err := os.Lstat(destination); !errors.Is(err, os.ErrNotExist) {
+					t.Fatal("refused request created an output", err)
+				}
+			} else {
+				if err != nil || !bytes.Contains(output, []byte(`"operation":"forwarding.prepare-request"`)) {
+					t.Fatal("canonical bounded request preparation", string(output), err)
+				}
+				raw, err := os.ReadFile(filepath.Join(destination, "forwarding-request.json"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				request, err := forwarding.DecodeRequest(raw)
+				if err != nil || request.InstallationRoot != scenario.root {
+					t.Fatal("actual prepared root differs", err)
+				}
+			}
+			if _, err := os.Lstat(scenario.root); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("public request preparation opened the runtime root", err)
+			}
+		})
+	}
+}
+
 // These offline controls prepare public bytes, not a signed/accepted candidate
 // or installed execution. The existing checked native profile supplies root and
 // original protected ext4 custody; absent prerequisites fail.

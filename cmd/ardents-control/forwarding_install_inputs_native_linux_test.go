@@ -38,6 +38,9 @@ func TestForwardingInstallInputsNativeCanonicalNodeCredentialAndPlan(t *testing.
 
 type forwardingPreparationOptions struct {
 	presentations, interior bool
+	replacementJourney      bool
+	staleSuccessor          bool
+	deliveryOnly            bool
 }
 
 type forwardingCanonicalInstallInputs struct {
@@ -47,6 +50,12 @@ type forwardingCanonicalInstallInputs struct {
 
 func prepareForwardingCanonicalInstallInputs(t *testing.T, parent, runtime string, options forwardingPreparationOptions) forwardingCanonicalInstallInputs {
 	t.Helper()
+	if options.replacementJourney && (!options.presentations || !options.interior) {
+		t.Fatal("replacement cohort requires genuine parent and Interior presentations")
+	}
+	if options.staleSuccessor && !options.replacementJourney {
+		t.Fatal("short successor lease requires the separate replacement preparation")
+	}
 	command, _ := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_CONTROL_PROGRAM")
 	password := make([]byte, 64)
 	secret := make([]byte, 32)
@@ -219,7 +228,11 @@ func prepareForwardingCanonicalInstallInputs(t *testing.T, parent, runtime strin
 			copy(identity[:], raw)
 			peers = append(peers, identity)
 		}
-		presentationPath = prepareForwardingChannelPresentations(t, parent, vault, created, forwardingTokenTestSecrets{password}, bundleRaw, profileRaw, statePublic, peers...)
+		if options.replacementJourney {
+			presentationPath = prepareForwardingChannelCohort(t, parent, vault, created, forwardingTokenTestSecrets{password}, bundleRaw, profileRaw, statePublic, true, peers...)
+		} else {
+			presentationPath = prepareForwardingChannelPresentations(t, parent, vault, created, forwardingTokenTestSecrets{password}, bundleRaw, profileRaw, statePublic, peers...)
+		}
 	}
 	return forwardingCanonicalInstallInputs{
 		request: filepath.Join(requestOutput, "forwarding-request.json"),
@@ -311,6 +324,20 @@ func TestForwardingInstallInputsNativePreparedPeerAndInitialStopped(t *testing.T
 	prepareForwardingCoherentInitialStopped(t, forwardingPreparationOptions{presentations: true, interior: true})
 }
 
+func TestForwardingInstallInputsNativeReplacementChannelsAndInitialStopped(t *testing.T) {
+	prepareForwardingCoherentInitialStopped(t, forwardingPreparationOptions{presentations: true, interior: true, replacementJourney: true})
+}
+
+func TestForwardingInstallInputsNativeStaleReplacementChannelsAndInitialStopped(t *testing.T) {
+	prepareForwardingCoherentInitialStopped(t, forwardingPreparationOptions{presentations: true, interior: true, replacementJourney: true, staleSuccessor: true})
+}
+
+// This finite preparation ends before the first installation effect.
+// Original initial-prefix cases consume its actual signed public delivery.
+func TestForwardingInstallInputsNativeOriginalInitialCutDelivery(t *testing.T) {
+	prepareForwardingCoherentInitialStopped(t, forwardingPreparationOptions{deliveryOnly: true})
+}
+
 func prepareForwardingCoherentInitialStopped(t *testing.T, options forwardingPreparationOptions) {
 	t.Helper()
 	const parent = "/var/lib/forwarding-coherent-initial"
@@ -393,11 +420,20 @@ func prepareForwardingCoherentInitialStopped(t *testing.T, options forwardingPre
 		raw := read(inputs.presentations)
 		defer clear(raw)
 		var prepared forwardingPreparedChannels
-		if json.Unmarshal(raw, &prepared) != nil || prepared.Schema != "ardents-forwarding-test-presentations-v1" || prepared.NodeID != [32]byte{3} || prepared.PublicKey == [32]byte{} || prepared.Endpoint != "127.0.0.1:4402" || !prepared.Deadline.After(time.Now()) || prepared.Channels[0].Nonce == prepared.Channels[1].Nonce {
+		schema, lifetimes := "ardents-forwarding-test-presentations-v1", 2
+		if options.replacementJourney {
+			schema, lifetimes = "ardents-forwarding-test-presentations-v2", 4
+		}
+		if json.Unmarshal(raw, &prepared) != nil || prepared.Schema != schema || len(prepared.Channels) != lifetimes || prepared.NodeID != [32]byte{3} || prepared.PublicKey == [32]byte{} || prepared.Endpoint != "127.0.0.1:4402" || !prepared.Deadline.After(time.Now()) || prepared.Channels[0].Nonce == prepared.Channels[1].Nonce {
 			t.Fatal("finite public channel binding differs from canonical cohort")
 		}
 		var prior [][]byte
+		nonces := make(map[[32]byte]bool)
 		for _, channel := range prepared.Channels {
+			if channel.Nonce == [32]byte{} || nonces[channel.Nonce] {
+				t.Fatal("missing or repeated original channel nonce")
+			}
+			nonces[channel.Nonce] = true
 			for _, token := range channel.Tokens {
 				if len(token) == 0 {
 					t.Fatal("missing genuine pre-presented credential")
@@ -462,9 +498,70 @@ func prepareForwardingCoherentInitialStopped(t *testing.T, options forwardingPre
 	if err := os.WriteFile(filepath.Join(distribution, "infrastructure-enrollment.json"), inventory, 0600); err != nil {
 		t.Fatal(err)
 	}
+	if options.replacementJourney {
+		prepareForwardingSuccessorDeliveries(t, delivery, distribution, keys, inputs.request, inputs.plan, options.staleSuccessor)
+	}
 	history := filepath.Join(parent, "release-history")
 	node := filepath.Join(distribution, "ardents-node-linux-amd64")
 	install := []string{"forwarding", "install-initial-stopped", distribution, digest(inventory), history, "alpha", "coherent-private-forwarding", inputs.request}
+	if options.deliveryOnly {
+		request, err := forwarding.DecodeRequest(read(inputs.request))
+		if err != nil {
+			t.Fatal("original initial-cut request", err)
+		}
+		if options.presentations || options.interior || options.replacementJourney {
+			t.Fatal("initial-cut delivery must not prepare installed lifecycle state")
+		}
+		before := make(map[string][]byte)
+		for _, name := range []string{"passwd", "group", "shadow", "gshadow"} {
+			before[name] = read(filepath.Join("/etc", name))
+		}
+		observed, err := exec.CommandContext(t.Context(), node, "forwarding", "inspect-inputs", inputs.request).CombinedOutput()
+		if err != nil || !bytes.Equal(observed, []byte("{\"outcome\":\"forwarding-inputs-preflight-completed\",\"installed\":false}\n")) {
+			t.Fatal("independent delivery-only native preflight", err, string(observed))
+		}
+		for _, path := range []string{request.InstallationRoot, request.StateRoot, request.ParticipationRoot, request.SpendRoot, request.HostingRoot, request.CredentialDirectory, history} {
+			if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("delivery-only preparation created an installation resource", path, err)
+			}
+		}
+		for name, original := range before {
+			if !bytes.Equal(original, read(filepath.Join("/etc", name))) {
+				t.Fatal("delivery-only preflight changed a private account database", name)
+			}
+		}
+		inputs := map[string]string{}
+		for _, path := range []string{node, filepath.Join(distribution, "infrastructure-enrollment.json"), filepath.Join(distribution, "infrastructure-forwarding.json"), filepath.Join(distribution, "ardents-forwarding.service"), filepath.Join(distribution, "root.json"), filepath.Join(distribution, "timestamp.json"), filepath.Join(distribution, "snapshot.json"), filepath.Join(distribution, "targets.json"), request.Plan, request.Certificate, install[len(install)-1]} {
+			inputs[path] = digest(read(path))
+		}
+		report, err := json.Marshal(struct {
+			Schema              string            `json:"schema"`
+			Command             []string          `json:"command"`
+			PublicInputs        map[string]string `json:"public_inputs"`
+			InstallationStarted bool              `json:"installation_started"`
+			RuntimeStarted      bool              `json:"runtime_started"`
+		}{Schema: "ardents-forwarding-initial-cut-inputs-v1", Command: append([]string{node}, install...), PublicInputs: inputs})
+		if err != nil {
+			t.Fatal(err)
+		}
+		file, err := os.OpenFile(filepath.Join(parent, "initial-cut-inputs.json"), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, written := file.Write(append(report, '\n'))
+		if err := errors.Join(written, file.Sync(), file.Close()); err != nil {
+			t.Fatal(err)
+		}
+		directory, err := os.Open(parent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := errors.Join(directory.Sync(), directory.Close()); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+
 	if raw, err := exec.CommandContext(t.Context(), node, install...).CombinedOutput(); err != nil || !bytes.Equal(raw, []byte("{\"outcome\":\"forwarding-initial-stopped-completed\",\"started\":false}\n")) {
 		t.Fatal("actual coherent initial stopped installation", err, string(raw))
 	}

@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"os"
 	"os/exec"
@@ -33,6 +34,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
@@ -49,6 +51,10 @@ func TestForwardingInstalledNativeLifetimeAndRefill(t *testing.T) {
 	runForwardingInstalledLifetime(t, "lifetime-refill")
 }
 
+func TestForwardingInstalledNativeReplacementLifetimeAndRefill(t *testing.T) {
+	runForwardingInstalledLifetime(t, "replacement-lifetime-refill")
+}
+
 func TestForwardingInstalledNativeRetirementHistoryMissing(t *testing.T) {
 	runForwardingInstalledLifetime(t, "retirement-history-missing")
 }
@@ -61,9 +67,54 @@ func TestForwardingInstalledNativeUnknownDomainJoin(t *testing.T) {
 	runForwardingInstalledLifetime(t, "unknown-domain-join")
 }
 
+func TestForwardingInstalledNativeReplacementUnknownDomainJoin(t *testing.T) {
+	runForwardingInstalledLifetime(t, "replacement-unknown-domain-join")
+}
+
+func TestForwardingInstalledNativeReplacementChangedAccount(t *testing.T) {
+	runForwardingInstalledLifetime(t, "replacement-changed-account")
+}
+
+func TestForwardingInstalledNativeReplacementStaleAuthority(t *testing.T) {
+	runForwardingInstalledLifetime(t, "replacement-stale-authority")
+}
+
+func TestForwardingInstalledNativeReplacementCompetingSlot(t *testing.T) {
+	selected := os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE")
+	if forwardingInstalledCompetingUnit(selected) == "" {
+		t.Fatal("exact separately prepared competing-slot case required")
+	}
+	runForwardingInstalledLifetime(t, selected)
+}
+
+func forwardingInstalledCompetingUnit(selected string) string {
+	parts := strings.Split(strings.TrimPrefix(selected, "replacement-competing-"), "-")
+	if !strings.HasPrefix(selected, "replacement-competing-") || len(parts) != 2 {
+		return ""
+	}
+	switch parts[0] {
+	case "issuer", "descriptor", "introduction", "join":
+	default:
+		return ""
+	}
+	if parts[1] != "service" && parts[1] != "socket" {
+		return ""
+	}
+	return "ardents-" + parts[0] + "." + parts[1]
+}
+
+func forwardingInstalledUnknownJoinCase(selected string) bool {
+	return selected == "unknown-domain-join" || selected == "replacement-unknown-domain-join"
+}
+
 func runForwardingInstalledLifetime(t *testing.T, selected string) {
 	t.Helper()
 	const base = "/var/lib/forwarding-coherent-initial"
+	replacementJourney := selected == "replacement-lifetime-refill" || selected == "replacement-unknown-domain-join" || selected == "replacement-changed-account" || selected == "replacement-stale-authority" || forwardingInstalledCompetingUnit(selected) != "" || strings.HasPrefix(selected, "replacement-cut-") || strings.HasPrefix(selected, "start-selected-cut-") || strings.HasPrefix(selected, "restart-cut-") || strings.HasPrefix(selected, "retirement-selected-cut-")
+	lifetimes, presentationSchema := 2, "ardents-forwarding-test-presentations-v1"
+	if replacementJourney {
+		lifetimes, presentationSchema = 4, "ardents-forwarding-test-presentations-v2"
+	}
 	if os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE") != selected {
 		t.Fatal("explicit case differs from the original prepared stand")
 	}
@@ -96,7 +147,7 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 	if err := decode.Decode(&input); err != nil {
 		t.Fatal(err)
 	}
-	if err := decode.Decode(new(any)); err != io.EOF || input.Schema != "ardents-forwarding-test-presentations-v1" || !input.Deadline.After(time.Now().Add(time.Minute)) || input.Channels[0].Nonce == input.Channels[1].Nonce {
+	if err := decode.Decode(new(any)); err != io.EOF || input.Schema != presentationSchema || len(input.Channels) != lifetimes || !input.Deadline.After(time.Now().Add(time.Minute)) || input.Channels[0].Nonce == input.Channels[1].Nonce {
 		t.Fatal("invalid environment: exact finite current channel inputs required", err)
 	}
 	canonical, err := json.Marshal(input)
@@ -106,10 +157,12 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 		t.Fatal("noncanonical or nonfinite private channel input", err)
 	}
 	digests := make(map[[32]byte]bool)
+	nonces := make(map[[32]byte]bool)
 	for _, channel := range input.Channels {
-		if channel.Nonce == [32]byte{} {
-			t.Fatal("missing original local channel nonce")
+		if channel.Nonce == [32]byte{} || nonces[channel.Nonce] {
+			t.Fatal("missing or repeated original local channel nonce")
 		}
+		nonces[channel.Nonce] = true
 		for _, token := range channel.Tokens {
 			sum := sha256.Sum256(token)
 			if len(token) != 354 || digests[sum] {
@@ -140,7 +193,7 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 	peerRaw := read(peerPath)
 	defer clear(peerRaw)
 	var peer forwardingInstalledChannels
-	if json.Unmarshal(peerRaw, &peer) != nil || peer.Schema != input.Schema || peer.NetworkID != input.NetworkID || peer.StateGeneration != input.StateGeneration || peer.StateDigest != input.StateDigest || peer.ProfileDigest != input.ProfileDigest || peer.Deadline != input.Deadline || peer.NodeID == input.NodeID || peer.PublicKey == input.PublicKey {
+	if json.Unmarshal(peerRaw, &peer) != nil || peer.Schema != input.Schema || len(peer.Channels) != lifetimes || peer.NetworkID != input.NetworkID || peer.StateGeneration != input.StateGeneration || peer.StateDigest != input.StateDigest || peer.ProfileDigest != input.ProfileDigest || peer.Deadline != input.Deadline || peer.NodeID == input.NodeID || peer.PublicKey == input.PublicKey {
 		t.Fatal("Interior input scope differs from canonical cohort")
 	}
 	peerCanonical, err := json.Marshal(peer)
@@ -156,7 +209,6 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 			}
 		}
 	}()
-	nonces := map[[32]byte]bool{input.Channels[0].Nonce: true, input.Channels[1].Nonce: true}
 	for _, c := range peer.Channels {
 		if c.Nonce == [32]byte{} || nonces[c.Nonce] {
 			t.Fatal("Interior channel nonce aliases another original channel")
@@ -175,11 +227,18 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 	if err != nil || peerPlan.NodeID != peer.NodeID || peerPlan.HostingRoot != plan.HostingRoot || peerPlan.Network.Root == plan.Network.Root || peerPlan.Network.NetworkID != plan.Network.NetworkID {
 		t.Fatal("separate Interior State/shared provider plan differs", err)
 	}
-	forwardingInstalledBootstrapInputs(t, map[string][]byte{
+	bootstrapInputs := map[string][]byte{
 		"presentations": presentedRaw, "binding": read(bindingPath), "plan": read(planPath),
 		"bundle": read(filepath.Join(base, "bundle.bin")), "profile": read(filepath.Join(base, "profile.bin")),
 		"peer_presentations": peerRaw, "peer_plan": peerPlanRaw, "peer_certificate": read(filepath.Join(base, "delivery/peer-certificate/node-certificate.pem")),
-	})
+	}
+	var successors []forwardingInstalledSuccessor
+	if replacementJourney {
+		raw := read(filepath.Join(base, "delivery/successor-deliveries.json"))
+		bootstrapInputs["successors"] = raw
+		successors = forwardingInstalledSuccessors(t, base, raw)
+	}
+	forwardingInstalledBootstrapInputs(t, bootstrapInputs)
 	program := filepath.Join(base, "delivery/distribution/ardents-node-linux-amd64")
 	distribution, history := filepath.Dir(program), filepath.Join(base, "release-history")
 	forwardingInstalledArtifact(t, program, "ardents-node")
@@ -279,9 +338,57 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 	var previousUsed uint64
 	historyFiles := make(map[string][]byte)
 	var previousChallenge string
-	for invocation := range 2 {
+	initialGeneration := binding.Generation
+	var copiedForwardDistribution string
+	for invocation := range lifetimes {
+		if strings.HasPrefix(selected, "replacement-cut-") && invocation == 1 {
+			_, number := forwardingInstalledCaseNumber(t, "replacement", 62)
+			forwardingInstalledReplacementCut(t, base, bindingPath, history, initialGeneration, binding.UID, number, successors[0], plan)
+			return
+		}
+		if replacementJourney && (invocation == 1 || invocation == 2) {
+			entry := successors[invocation-1]
+			if invocation == 1 && copiedForwardDistribution != "" {
+				entry.Distribution = copiedForwardDistribution
+			}
+			retirement := filepath.Join(installation, fmt.Sprintf("forwarding-retirement-%08d", invocation-1), "retirement-result.json")
+			binding.Generation, plan = forwardingInstalledReplace(t, bindingPath, history, retirement, initialGeneration, binding.Generation, binding.UID, invocation-1, entry, plan)
+			program, distribution = filepath.Join(entry.Distribution, "ardents-node-linux-amd64"), entry.Distribution
+			planPath = filepath.Join(installation, "generations", binding.Generation, "forwarding-plan.json")
+			for _, path := range []string{bindingPath, "/etc/systemd/system/ardents-forwarding.service", planPath} {
+				info, err := os.Lstat(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if old, existed := originals[path]; existed && (!os.SameFile(old, info) || old.Mode() != info.Mode()) {
+					t.Fatal("replacement changed original selection/unit inode or mode", path)
+				}
+				originals[path], fixed[path] = info, read(path)
+			}
+		}
+		wantedVersion := 1
+		if replacementJourney && invocation > 0 {
+			wantedVersion = min(invocation+1, 3)
+		}
+		forwardingInstalledReleaseFloors(t, history, distribution, int64(wantedVersion))
 		current()
 		reference := forwardingInstalledRetainUnit(t)
+		for _, target := range []struct {
+			prefix  string
+			attempt int
+		}{{"start-initial", 0}, {"start-selected", 1}, {"restart", 3}} {
+			if strings.HasPrefix(selected, target.prefix+"-cut-") && invocation == target.attempt {
+				_, number := forwardingInstalledCaseNumber(t, target.prefix, 26)
+				request := filepath.Join(base, "delivery/request/forwarding-request.json")
+				if invocation > 0 {
+					request = successors[min(invocation-1, 1)].Request
+				}
+				// No Interior or holder is started for this cut: recovery must
+				// independently observe the genuinely quiescent shared allowance.
+				forwardingInstalledStartCut(t, program, distribution, history, request, bindingPath, plan, target.prefix, invocation, number, int64(wantedVersion))
+				return
+			}
+		}
 		peerProcess := forwardingInstalledStartInterior(t, base, binding.UID, peer, peerPlan, invocation != 0)
 		peerSpendPath := filepath.Join(peerPlan.SpendRoot, "closed-token-spends")
 		peerBefore := read(peerSpendPath)
@@ -292,6 +399,9 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 		operation, outcome := "start-initial", "forwarding-initial-start-completed"
 		if invocation != 0 {
 			operation, outcome = "restart", "forwarding-same-generation-restart-completed"
+		}
+		if replacementJourney && (invocation == 1 || invocation == 2) {
+			operation, outcome = "start-selected", "forwarding-selected-generation-start-completed"
 		}
 		command(fmt.Sprintf("{\"outcome\":%q,\"runtime_authority\":false}\n", outcome), operation, distribution, history, "alpha", "coherent-private-forwarding", bindingPath)
 		manager := forwardingInstalledManager(t)
@@ -304,6 +414,12 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 			t.Fatal("actual fixed Node process missing", err)
 		}
 		forwardingInstalledWaitListening(t, manager["InvocationID"], pid)
+		selectedProgram := filepath.Join(installation, "generations", binding.Generation, "ardents-node-linux-amd64")
+		actualExecutable, err := os.Stat(fmt.Sprintf("/proc/%d/exe", pid))
+		selectedExecutable, selectedErr := os.Stat(selectedProgram)
+		if err != nil || selectedErr != nil || !os.SameFile(actualExecutable, selectedExecutable) || !bytes.Equal(read(fmt.Sprintf("/proc/%d/exe", pid)), read(program)) {
+			t.Fatal("actual installed executable differs from selected canonical program", err, selectedErr)
+		}
 		pin := forwardingInstalledPinProcess(t, pid, manager["ControlGroup"], binding.UID)
 		defer pin.close(t)
 		defer func(invocation string, pid int) {
@@ -347,7 +463,7 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 		if json.Unmarshal(archiveRaw, &archive) != nil || archive.Schema != "ardents-forwarding-start-archive-v1" || archive.BindingSHA256 != hex.EncodeToString(bindingHash[:]) || archive.Generation != binding.Generation || archive.PID != uint32(pid) || archive.InvocationID != previousInvocation || archive.ProcessDevice != uint64(processNative.Dev) || archive.ProcessInode != processNative.Ino || archive.CgroupDevice != uint64(groupNative.Dev) || archive.CgroupInode != groupNative.Ino || archive.Manager != forwardingInstalledManagerIdentity(t) || archive.StartedRealtime == 0 || archive.StartedMonotonic == 0 {
 			t.Fatal("start archive differs from independently retained actual invocation")
 		}
-		forwardingInstalledJournal(t, startJournal, invocation, false)
+		forwardingInstalledJournal(t, startJournal, installation, invocation, false)
 		current()
 		conn, err := routeTestOpenEndpoint(t.Context(), transport.ClosedRoleCarrierRequest{CarrierProfile: transport.ClosedCarrierTCP, Endpoint: input.Endpoint, ExpectedServer: input.PublicKey, Deadline: input.Deadline})
 		if err != nil {
@@ -524,10 +640,34 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 		if stillOriginal["InvocationID"] != previousInvocation || stillOriginal["MainPID"] != manager["MainPID"] || stillOriginal["ActiveState"] != "active" || retainedReserved != wantReserved || !bytes.Equal(read(startJournal), startBefore) || !bytes.Equal(read(spendPath), previousSpend) || !bytes.Equal(read(peerSpendPath), previousPeerSpend) {
 			t.Fatal("refused concurrent restart altered the held original, spends or reservations")
 		}
+		if selected == "replacement-lifetime-refill" && invocation == 0 {
+			forwardingInstalledRefuseRetainedReplacement(t, bindingPath, history, startJournal, archivePath, successors[0], plan, peerPlan, wantReserved, historyFiles, false)
+		}
 		// Retain the real peer and its original native scope through root Stop.
 		// Closing the client first would manufacture a peer-reset failure.
-		unknownJoin := selected == "unknown-domain-join"
-		if unknownJoin {
+		unknownJoin := forwardingInstalledUnknownJoinCase(selected)
+		retirementCut := 0
+		var retirementPrefix, retirementProof []byte
+		for _, target := range []struct {
+			prefix  string
+			attempt int
+		}{{"retirement-initial", 0}, {"retirement-selected", 1}} {
+			if strings.HasPrefix(selected, target.prefix+"-cut-") && invocation == target.attempt {
+				_, retirementCut = forwardingInstalledCaseNumber(t, target.prefix, 18)
+			}
+		}
+		if retirementCut != 0 {
+			journal := installation + fmt.Sprintf(".forwarding-retirement-%08d-journal", invocation)
+			retirementPrefix, retirementProof = forwardingInstalledOriginalCut(t, program, "retirement", retirementCut, journal, []string{"stop", history, bindingPath})
+			if retirementCut < 17 {
+				request := filepath.Join(base, "delivery/request/forwarding-request.json")
+				if invocation > 0 {
+					request = successors[invocation-1].Request
+				}
+				forwardingInstalledRetirementCut(t, program, distribution, history, request, bindingPath, plan, invocation, retirementCut, retirementPrefix, retirementProof, int64(wantedVersion))
+				return
+			}
+		} else if unknownJoin {
 			// A real crash removes native users without manufacturing the missing
 			// domain report. Signal the retained original pidfd, never an auxiliary
 			// process set or a PID that could have been reused. Native join follows.
@@ -588,6 +728,18 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 			if reserved != wantRetained || reserved == 0 || !bytes.Equal(read(spendPath), previousSpend) || !bytes.Equal(read(peerSpendPath), previousPeerSpend) || !bytes.Equal(read(startJournal), startBefore) {
 				t.Fatal("unknown join reset original capacity, spends or startup history", reserved, wantRetained)
 			}
+			if selected == "replacement-unknown-domain-join" {
+				// Require complete original initial/start custody before testing
+				// the missing domain retirement; a broken delivery is no control.
+				completed, err := forwarding.ReadCompleted(t.Context(), bindingPath)
+				if err == nil {
+					err = completed.CheckHistoryPath(history)
+				}
+				if err := errors.Join(err, completed.Close()); err != nil {
+					t.Fatal("unknown-join replacement lacks complete original file custody", err)
+				}
+				forwardingInstalledRefuseRetainedReplacement(t, bindingPath, history, startJournal, archivePath, successors[0], plan, peerPlan, wantRetained, historyFiles, true)
+			}
 			pin.close(t)
 			reference.close(t)
 			return
@@ -595,6 +747,15 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 		manager = forwardingInstalledManager(t)
 		if manager["ActiveState"] != "inactive" || manager["MainPID"] != "0" || manager["ExecMainCode"] != "1" || manager["ExecMainStatus"] != "0" {
 			t.Fatal("original fixed unit lacks matching clean exit", manager)
+		}
+		if retirementCut != 0 {
+			request := filepath.Join(base, "delivery/request/forwarding-request.json")
+			if invocation > 0 {
+				request = successors[invocation-1].Request
+			}
+			// Holder, Interior and original runtime users have now actually
+			// joined. Recovery must still authenticate the original domain report.
+			forwardingInstalledRetirementCut(t, program, distribution, history, request, bindingPath, plan, invocation, retirementCut, retirementPrefix, retirementProof, int64(wantedVersion))
 		}
 		command("{\"outcome\":\"forwarding-start-history-verified\",\"runtime_authority\":false,\"retirement_proved\":false}\n", "inspect-start-history", history, bindingPath)
 		retirementDirectory := filepath.Join(installation, fmt.Sprintf("forwarding-retirement-%08d", invocation))
@@ -623,7 +784,9 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 			t.Fatal("retirement bytes differ from the original joined invocation")
 		}
 		previousChallenge = retired.Challenge
-		forwardingInstalledJournal(t, retirementJournal, invocation, true)
+		if retirementCut == 0 {
+			forwardingInstalledJournal(t, retirementJournal, installation, invocation, true)
+		} // A cut retains its physical prefix; its full logical transcript was checked above.
 		for _, pending := range []string{filepath.Join(installation, startDirectory, "forwarding-start-pending"), filepath.Join(retirementDirectory, "retirement-pending")} {
 			if _, err := os.Lstat(pending); !errors.Is(err, os.ErrNotExist) {
 				t.Fatal("original completion remains unpublished", pending, err)
@@ -662,6 +825,44 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 		}
 		reference.close(t)
 		pin.close(t)
+		if retirementCut != 0 {
+			return
+		}
+		if selected == "replacement-changed-account" {
+			forwardingInstalledRefuseChangedAccount(t, base, bindingPath, history, distribution, successors[0], plan, historyFiles, binding.UID, binding.GID)
+			return
+		}
+		if selected == "replacement-stale-authority" {
+			forwardingInstalledRefuseStaleAuthority(t, bindingPath, history, distribution, successors[0], plan, historyFiles, input.Deadline)
+			return
+		}
+		if unit := forwardingInstalledCompetingUnit(selected); unit != "" {
+			forwardingInstalledRefuseCompetingSlot(t, unit, bindingPath, history, distribution, successors[0], plan, historyFiles)
+			return
+		}
+		if selected == "replacement-lifetime-refill" && invocation < 3 {
+			request := filepath.Join(base, "delivery/request/forwarding-request.json")
+			if invocation > 0 {
+				request = successors[invocation-1].Request
+			}
+			forwardingInstalledRefuseReplacement(t, "same-generation", program, distribution, history, request, bindingPath, plan, historyFiles)
+			if invocation == 0 {
+				entry := successors[0]
+				forwardingInstalledRefuseChangedDeclarations(t, base, entry, bindingPath, history, plan, peerPlan, historyFiles)
+				mixed := filepath.Join(base, "delivery/mixed-generation-candidate")
+				forwardingInstalledCandidateCopy(t, mixed, entry.Distribution, filepath.Join(distribution, "infrastructure-forwarding.json"))
+				forwardingInstalledRefuseReplacement(t, "mixed-artifact-generations", filepath.Join(entry.Distribution, "ardents-node-linux-amd64"), mixed, history, entry.Request, bindingPath, plan, historyFiles)
+				// The same copy recipe and access, with every original successor
+				// byte intact, must admit the following real replacement. Keep
+				// the rejected copy unchanged; it is never repaired or adopted.
+				copiedForwardDistribution = filepath.Join(base, "delivery/intact-forward-candidate")
+				forwardingInstalledCandidateCopy(t, copiedForwardDistribution, entry.Distribution, "")
+			}
+			if invocation == 1 {
+				initial := filepath.Join(base, "delivery/distribution")
+				forwardingInstalledRefuseReplacement(t, "backward-generation", filepath.Join(initial, "ardents-node-linux-amd64"), initial, history, filepath.Join(base, "delivery/request/forwarding-request.json"), bindingPath, plan, historyFiles)
+			}
+		}
 	}
 	if selected == "retirement-history-missing" || selected == "retirement-history-damaged" {
 		path := filepath.Join(installation, "forwarding-retirement-00000001/retirement-result.json")
@@ -703,21 +904,562 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 	}
 }
 
+// Public deadline extraction is an independent negative-case oracle, never
+// authentication. The canonical command still verifies the complete signed
+// target pair itself. Only the separate preparer produces this short lease.
+func forwardingInstalledRefuseStaleAuthority(t *testing.T, bindingPath, history, initialDistribution string, entry forwardingInstalledSuccessor, plan forwarding.Plan, histories map[string][]byte, inputDeadline time.Time) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	completed, err := forwarding.ReadCompleted(ctx, bindingPath)
+	if err == nil {
+		err = completed.CheckHistoryPath(history)
+	}
+	err = errors.Join(err, completed.Close())
+	inputs, openErr := forwarding.ReadInputs(ctx, entry.Request)
+	if openErr == nil {
+		openErr = inputs.Check()
+	}
+	err = errors.Join(err, openErr, inputs.Close())
+	cancel()
+	if err != nil {
+		t.Fatal("stale-authority control lacks genuine completed/input custody", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(entry.Distribution, "targets.json"))
+	var metadata struct {
+		Signed struct {
+			Version int64 `json:"version"`
+			Targets map[string]struct {
+				Custom struct {
+					Version   int64     `json:"release_version"`
+					NoNewWork time.Time `json:"build_safety_no_new_work_after"`
+					Terminate time.Time `json:"build_safety_terminate_after"`
+				} `json:"custom"`
+			} `json:"targets"`
+		} `json:"signed"`
+	}
+	if err != nil || len(raw) > 1<<20 || json.Unmarshal(raw, &metadata) != nil || metadata.Signed.Version != 2 || len(metadata.Signed.Targets) != 2 {
+		t.Fatal("stale-authority control lacks the exact genuine B2 target inventory", err)
+	}
+	var bound time.Time
+	for _, name := range []string{"ardents/linux-amd64/node", "ardents/linux-amd64/infrastructure/forwarding"} {
+		target, ok := metadata.Signed.Targets[name]
+		if !ok || target.Custom.Version != 2 || target.Custom.NoNewWork.IsZero() || !target.Custom.NoNewWork.Add(45*time.Minute-90*time.Second).Equal(target.Custom.Terminate) || !time.Now().Before(target.Custom.Terminate) {
+			t.Fatal("stale-authority control lacks finite coherent build safety bounds")
+		}
+		if bound.IsZero() {
+			bound = target.Custom.NoNewWork
+		} else if !bound.Equal(target.Custom.NoNewWork) {
+			t.Fatal("stale-authority control has mixed target deadlines")
+		}
+	}
+	now := time.Now()
+	finishedWait := now
+	if bound.After(finishedWait) {
+		finishedWait = bound
+	}
+	if bound.After(now.Add(90*time.Second)) || !inputDeadline.After(finishedWait.Add(30*time.Second)) {
+		t.Fatal("invalid environment: stale-authority wait exceeds original finite input window")
+	}
+	if deadline, ok := t.Deadline(); ok && !deadline.After(finishedWait.Add(30*time.Second)) {
+		t.Fatal("invalid environment: stale-authority wait exceeds original test deadline")
+	}
+	if bound.After(now) {
+		timer := time.NewTimer(time.Until(bound))
+		defer timer.Stop()
+		select {
+		case <-timer.C:
+		case <-t.Context().Done():
+			t.Fatal("original stale-authority wait interrupted", t.Context().Err())
+		}
+	}
+	if time.Now().Before(bound) {
+		t.Fatal("actual wall clock has not reached the signed no-new-work bound")
+	}
+	forwardingInstalledReleaseFloors(t, history, initialDistribution, 1)
+	program := filepath.Join(entry.Distribution, "ardents-node-linux-amd64")
+	forwardingInstalledArtifact(t, program, "ardents-node-successor")
+	output := forwardingInstalledRefuseReplacement(t, "stale-signed-authority", program, entry.Distribution, history, entry.Request, bindingPath, plan, histories)
+	if !bytes.Contains(output, []byte("program: update-required")) {
+		t.Fatal("stale candidate refused for a reason other than its signed no-new-work bound")
+	}
+	forwardingInstalledReleaseFloors(t, history, initialDistribution, 1)
+}
+
+// Change only the real private stand's public account row after genuine joined
+// retirement. Never restore it or admit another invocation on this faulted stand.
+// The canonical command checks the current principal before opening Release, so
+// even a genuine forward candidate must leave the original floors unchanged.
+func forwardingInstalledRefuseChangedAccount(t *testing.T, base, bindingPath, history, initialDistribution string, entry forwardingInstalledSuccessor, plan forwarding.Plan, histories map[string][]byte, uid, gid uint32) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	defer cancel()
+	completed, err := forwarding.ReadCompleted(ctx, bindingPath)
+	if err == nil {
+		err = completed.CheckHistoryPath(history)
+	}
+	if err := errors.Join(err, completed.Close()); err != nil {
+		t.Fatal("account refusal lacks intact original completed custody", err)
+	}
+	inputs, err := forwarding.ReadInputs(ctx, entry.Request)
+	if err == nil {
+		err = inputs.Check()
+	}
+	if err := errors.Join(err, inputs.Close()); err != nil {
+		t.Fatal("account refusal lacks genuine successor input custody", err)
+	}
+	forwardingInstalledReleaseFloors(t, history, initialDistribution, 1)
+	raw, err := os.ReadFile("/etc/passwd")
+	if err != nil {
+		t.Fatal("original private account bytes", err)
+	}
+	oldRow := fmt.Sprintf("ardents-node:x:%d:%d::/nonexistent:/usr/sbin/nologin", uid, gid)
+	lines := strings.Split(string(raw), "\n")
+	index, used := -1, map[string]bool{}
+	for n, line := range lines {
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		parts := strings.Split(line, ":")
+		if len(parts) != 7 {
+			t.Fatal("account fault requires intact passwd grammar")
+		}
+		used[parts[2]], used[parts[3]] = true, true
+		if parts[0] == "ardents-node" {
+			if index != -1 || line != oldRow {
+				t.Fatal("account fault lacks the exact original principal")
+			}
+			index = n
+		}
+	}
+	if index == -1 {
+		t.Fatal("account fault lacks original Node row")
+	}
+	var changedUID string
+	for candidate := 999; candidate >= 100; candidate-- {
+		value := strconv.Itoa(candidate)
+		if !used[value] {
+			changedUID = value
+			break
+		}
+	}
+	if changedUID == "" {
+		t.Fatal("invalid environment: no unused numeric account fault control")
+	}
+	getent := func(want string) {
+		t.Helper()
+		output, err := exec.CommandContext(ctx, "/usr/bin/getent", "passwd", "ardents-node").CombinedOutput()
+		if err != nil || string(output) != want+"\n" {
+			t.Fatal("actual NSS account control differs", err)
+		}
+	}
+	getent(oldRow)
+	saved, err := os.OpenFile(filepath.Join(base, "delivery/original-account-passwd"), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		t.Fatal("exclusive original public account evidence", err)
+	}
+	written, writeErr := saved.Write(raw)
+	if err := errors.Join(writeErr, saved.Sync(), saved.Close()); err != nil || written != len(raw) {
+		t.Fatal("original public account evidence did not join", err)
+	}
+	newRow := "ardents-node:x:" + changedUID + fmt.Sprintf(":%d::/nonexistent:/usr/sbin/nologin", gid)
+	lines[index] = newRow
+	changed := []byte(strings.Join(lines, "\n"))
+	if len(changed) != len(raw) || bytes.Equal(changed, raw) {
+		t.Fatal("account control must change only the equal-width numeric UID")
+	}
+	fd, err := unix.Open("/etc/passwd", unix.O_RDWR|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	if err != nil {
+		t.Fatal("original private account fault descriptor", err)
+	}
+	file := os.NewFile(uintptr(fd), "original-private-account")
+	info, statErr := file.Stat()
+	observed, readErr := io.ReadAll(file)
+	if statErr != nil || readErr != nil || info.Mode() != 0644 || info.Sys().(*syscall.Stat_t).Uid != 0 || info.Sys().(*syscall.Stat_t).Nlink != 1 || !bytes.Equal(observed, raw) {
+		t.Fatal("private account changed before controlled fault", errors.Join(statErr, readErr, file.Close()))
+	}
+	written, writeErr = file.WriteAt(changed, 0)
+	if err := errors.Join(writeErr, file.Sync(), file.Close()); err != nil || written != len(changed) {
+		t.Fatal("original private account fault did not join", err)
+	}
+	getent(newRow)
+	// This independent reader succeeded immediately before the single fault.
+	// Require its exact binding refusal, rather than counting a missing delivery
+	// or failed subprocess as evidence about the changed numeric principal.
+	denied, err := forwarding.ReadCompleted(ctx, bindingPath)
+	if closeErr := denied.Close(); !errors.Is(err, forwarding.ErrBinding) || closeErr != nil {
+		t.Fatal("changed native principal supplied completed custody", errors.Join(err, closeErr))
+	}
+	program := filepath.Join(entry.Distribution, "ardents-node-linux-amd64")
+	forwardingInstalledArtifact(t, program, "ardents-node-successor")
+	forwardingInstalledRefuseReplacement(t, "changed-native-account", program, entry.Distribution, history, entry.Request, bindingPath, plan, histories)
+	forwardingInstalledReleaseFloors(t, history, initialDistribution, 1)
+	getent(newRow)
+}
+
+// A foreign fixed-slot file is a namespace conflict, not a valid installation
+// of another role. Create only one on a fresh retired stand and never load,
+// start, remove or replace it. No neighboring role is admitted by this control.
+func forwardingInstalledRefuseCompetingSlot(t *testing.T, unit, bindingPath, history, initialDistribution string, entry forwardingInstalledSuccessor, plan forwarding.Plan, histories map[string][]byte) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	defer cancel()
+	checkCompleted := func() {
+		t.Helper()
+		completed, err := forwarding.ReadCompleted(ctx, bindingPath)
+		if err == nil {
+			err = completed.CheckHistoryPath(history)
+		}
+		if err := errors.Join(err, completed.Close()); err != nil {
+			t.Fatal("competing-slot control lacks intact completed custody", err)
+		}
+	}
+	checkCompleted()
+	inputs, err := forwarding.ReadInputs(ctx, entry.Request)
+	if err == nil {
+		err = inputs.Check()
+	}
+	if err := errors.Join(err, inputs.Close()); err != nil {
+		t.Fatal("competing-slot control lacks genuine successor inputs", err)
+	}
+	forwardingInstalledReleaseFloors(t, history, initialDistribution, 1)
+	path := filepath.Join("/etc/systemd/system", unit)
+	body := "[Unit]\nDescription=Untrusted competing Node slot\n[Service]\nType=oneshot\nExecStart=/bin/false\n"
+	if strings.HasSuffix(unit, ".socket") {
+		body = "[Unit]\nDescription=Untrusted competing Node slot\n[Socket]\nListenStream=/run/ardents-competing-slot.sock\n"
+	}
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		t.Fatal("exclusive private competing-slot fault", err)
+	}
+	written, writeErr := file.WriteString(body)
+	if err := errors.Join(writeErr, file.Sync(), file.Close()); err != nil || written != len(body) {
+		t.Fatal("competing-slot fault did not join", err)
+	}
+	parent, err := os.Open(filepath.Dir(path))
+	if err != nil {
+		t.Fatal("original competing-slot parent", err)
+	}
+	if err := errors.Join(parent.Sync(), parent.Close()); err != nil {
+		t.Fatal("competing-slot directory synchronization", err)
+	}
+	before := forwardingInstalledHistorySnapshot(t, path)
+	info, err := os.Lstat(filepath.Dir(path))
+	if err != nil {
+		t.Fatal("retained competing-slot parent", err)
+	}
+	original := *info.Sys().(*syscall.Stat_t)
+	// A slot conflict does not corrupt the independently readable initial/start
+	// history. Canonical Release may authenticate B2 before native admission
+	// rejects the foreign slot; its legitimate floors must not be refunded.
+	checkCompleted()
+	program := filepath.Join(entry.Distribution, "ardents-node-linux-amd64")
+	forwardingInstalledArtifact(t, program, "ardents-node-successor")
+	forwardingInstalledRefuseReplacement(t, unit, program, entry.Distribution, history, entry.Request, bindingPath, plan, histories, int64(entry.Version))
+	if !bytes.Equal(before, forwardingInstalledHistorySnapshot(t, path)) {
+		t.Fatal("refused replacement repaired or removed the competing slot")
+	}
+	info, err = os.Lstat(filepath.Dir(path))
+	if err != nil {
+		t.Fatal("competing-slot parent lost", err)
+	}
+	current := info.Sys().(*syscall.Stat_t)
+	if current.Dev != original.Dev || current.Ino != original.Ino || current.Mode != original.Mode || current.Uid != original.Uid || current.Gid != original.Gid || current.Nlink != original.Nlink || current.Mtim != original.Mtim || current.Ctim != original.Ctim {
+		t.Fatal("refused replacement changed the fixed unit namespace")
+	}
+	if _, err := os.Lstat("/run/ardents-competing-slot.sock"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("competing-slot refusal unexpectedly created an activation socket", err)
+	}
+}
+
+// A genuine forward candidate cannot replace a live or unknown-join original.
+// Release may authenticate and retain its forward floors, but Installation must
+// leave the actual invocation, protected files, spends and physical borrows intact.
+// unknownJoin selects an asserted negative scenario; it grants no join or authority.
+func forwardingInstalledRefuseRetainedReplacement(t *testing.T, bindingPath, history, startJournal, archivePath string, entry forwardingInstalledSuccessor, plan, peer forwarding.Plan, wantReserved uint64, histories map[string][]byte, unknownJoin bool) {
+	t.Helper()
+	root := filepath.Dir(bindingPath)
+	manager := forwardingInstalledManager(t)
+	if unknownJoin {
+		if manager["MainPID"] != "0" || manager["ActiveState"] == "active" || manager["ExecMainCode"] != "2" || manager["ExecMainStatus"] != "9" {
+			t.Fatal("unknown-join refusal requires the original SIGKILL/native-join outcome")
+		}
+	} else if manager["ActiveState"] != "active" || manager["MainPID"] == "0" || manager["InvocationID"] == "" {
+		t.Fatal("live replacement refusal requires the actual active predecessor")
+	}
+	paths := []string{filepath.Join(root, "generations"), bindingPath, startJournal, archivePath, "/etc/systemd/system/ardents-forwarding.service", plan.Certificate, plan.PrivateKey, "/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow", filepath.Join(plan.SpendRoot, "closed-token-spends"), filepath.Join(peer.SpendRoot, "closed-token-spends")}
+	if unknownJoin {
+		paths = append(paths, plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot)
+	}
+	for path := range histories {
+		paths = append(paths, path)
+	}
+	before := forwardingInstalledHistorySnapshot(t, paths...)
+	parents := map[string]syscall.Stat_t{}
+	for _, path := range []string{root, filepath.Dir(root)} {
+		info, err := os.Lstat(path)
+		if err != nil {
+			t.Fatal("original predecessor refusal parent", err)
+		}
+		parents[path] = *info.Sys().(*syscall.Stat_t)
+	}
+	used, reserved := forwardingInstalledBudget(t, plan.HostingRoot)
+	if reserved != wantReserved || reserved == 0 {
+		t.Fatal("replacement refusal lost original retained reservations")
+	}
+	program := filepath.Join(entry.Distribution, "ardents-node-linux-amd64")
+	forwardingInstalledArtifact(t, program, "ardents-node-successor")
+	output, err := exec.Command(program, "forwarding", "replace", entry.Distribution, history, "alpha", "coherent-private-forwarding", entry.Request, bindingPath).CombinedOutput()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 2 || len(output) > 4096 || bytes.Contains(output, []byte(`"outcome"`)) {
+		t.Fatal("retained original did not refuse canonical forward replacement", err)
+	}
+	if !bytes.Equal(before, forwardingInstalledHistorySnapshot(t, paths...)) {
+		t.Fatal("refused replacement changed installed history, credentials or spends")
+	}
+	for path, original := range parents {
+		info, err := os.Lstat(path)
+		if err != nil {
+			t.Fatal("original predecessor refusal parent lost", err)
+		}
+		current := info.Sys().(*syscall.Stat_t)
+		if current.Dev != original.Dev || current.Ino != original.Ino || current.Mode != original.Mode || current.Uid != original.Uid || current.Gid != original.Gid || current.Nlink != original.Nlink || current.Mtim != original.Mtim || current.Ctim != original.Ctim {
+			t.Fatal("refused replacement changed transaction namespace")
+		}
+	}
+	after := forwardingInstalledManager(t)
+	afterUsed, afterReserved := forwardingInstalledBudget(t, plan.HostingRoot)
+	if after["ActiveState"] != manager["ActiveState"] || after["MainPID"] != manager["MainPID"] || after["InvocationID"] != manager["InvocationID"] || after["ExecMainCode"] != manager["ExecMainCode"] || after["ExecMainStatus"] != manager["ExecMainStatus"] || afterReserved != wantReserved || afterUsed < used {
+		t.Fatal("refused replacement changed original invocation outcome or released/refunded its allowance")
+	}
+	forwardingInstalledReleaseFloors(t, history, entry.Distribution, int64(entry.Version))
+	t.Log("canonical forward replacement refused with original invocation outcome and retained reservations unchanged; unknown join:", unknownJoin)
+}
+
+// Produce coherent changed declarations through the real public Control commands.
+// No signed metadata or private key bytes are edited. The retained successor
+// delivery stays unchanged and supplies the following forward positive control.
+func forwardingInstalledRefuseChangedDeclarations(t *testing.T, base string, entry forwardingInstalledSuccessor, bindingPath, history string, plan, peer forwarding.Plan, histories map[string][]byte) {
+	t.Helper()
+	control := "/artifacts/ardents-control-successor"
+	forwardingInstalledArtifact(t, control, "ardents-control-successor")
+	raw, err := os.ReadFile(entry.Request)
+	if err != nil {
+		t.Fatal("original successor declaration", err)
+	}
+	original, err := forwarding.DecodeRequest(raw)
+	if err != nil {
+		t.Fatal("original successor request grammar", err)
+	}
+	call := func(fault string, args ...string) {
+		t.Helper()
+		output, err := exec.Command(control, append([]string{"forwarding"}, args...)...).CombinedOutput()
+		if len(output) > 4096 {
+			t.Fatal("canonical changed declaration preparation diagnostic exceeds bound", fault, args[0])
+		}
+		if err != nil {
+			t.Fatal("canonical changed declaration preparation", fault, args[0], string(output), err)
+		}
+	}
+	for _, fault := range []string{"installation-root", "state-root", "participation-root", "spend-root", "hosting-root", "credential-directory", "delivered-credentials"} {
+		root := filepath.Join(base, "delivery", "replacement-refusal-"+fault)
+		if err := os.Mkdir(root, 0700); err != nil {
+			t.Fatal("exclusive refusal declaration directory", fault, err)
+		}
+		request := original
+		var absent string
+		switch fault {
+		case "installation-root":
+			// Keep the admitted lifetime socket-path envelope. Appending a
+			// suffix to the original root can make request preparation itself
+			// refuse, before replacement ever observes a changed binding.
+			request.InstallationRoot = filepath.Join(filepath.Dir(original.InstallationRoot), "next")
+			if request.InstallationRoot == original.InstallationRoot || len(request.InstallationRoot) > len(original.InstallationRoot) {
+				t.Fatal("alternate installation root must differ without expanding lifetime socket paths")
+			}
+			absent = request.InstallationRoot
+		case "state-root":
+			request.StateRoot += "-changed"
+			absent = request.StateRoot
+		case "participation-root":
+			request.ParticipationRoot += "-changed"
+			absent = request.ParticipationRoot
+		case "spend-root":
+			request.SpendRoot += "-changed"
+			absent = request.SpendRoot
+		case "hosting-root":
+			request.HostingRoot += "-changed"
+			absent = request.HostingRoot
+		case "credential-directory":
+			request.CredentialDirectory += "-changed"
+			absent = request.CredentialDirectory
+		case "delivered-credentials":
+			// These are genuine separately prepared peer credentials. Only their
+			// protected delivery paths cross into this refused request.
+			peerRaw, err := os.ReadFile(filepath.Join(base, "delivery/peer-request/forwarding-request.json"))
+			if err != nil {
+				t.Fatal("original genuine peer delivery request", err)
+			}
+			peerRequest, err := forwarding.DecodeRequest(peerRaw)
+			if err != nil || peerRequest.MatchPlan(peer) != nil {
+				t.Fatal("genuine peer delivery differs from independent peer plan", err)
+			}
+			request.Certificate, request.PrivateKey = peerRequest.Certificate, peerRequest.PrivateKey
+			certificate, err := os.ReadFile(request.Certificate)
+			originalCertificate, originalErr := os.ReadFile(plan.Certificate)
+			if err != nil || originalErr != nil || bytes.Equal(certificate, originalCertificate) {
+				t.Fatal("changed credential control lacks two genuine certificates", err, originalErr)
+			}
+		}
+		if absent != "" {
+			if _, err := os.Lstat(absent); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("changed declaration root must remain unborn", fault, err)
+			}
+		}
+		requestRoot, planRoot := filepath.Join(root, "request"), filepath.Join(root, "plan")
+		request.Plan = filepath.Join(planRoot, "forwarding-plan.json")
+		call(fault, "prepare-request", "--installation-root", request.InstallationRoot, "--state-root", request.StateRoot, "--participation-root", request.ParticipationRoot, "--spend-root", request.SpendRoot, "--hosting-root", request.HostingRoot, "--credential-directory", request.CredentialDirectory, "--plan", request.Plan, "--certificate", request.Certificate, "--private-key", request.PrivateKey, "--clock", request.Clock, "--output", requestRoot)
+		requestPath := filepath.Join(requestRoot, "forwarding-request.json")
+		network := plan.Network
+		args := []string{"prepare-plan", "--request", requestPath, "--output", planRoot, "--network-id", hex.EncodeToString(network.NetworkID[:]), "--node-id", hex.EncodeToString(plan.NodeID[:]), "--profile-authority", hex.EncodeToString(network.ProfileAuthority[:]), "--threshold", strconv.Itoa(network.Threshold), "--work-tx", strconv.FormatUint(plan.Work.Tx, 10), "--work-rx", strconv.FormatUint(plan.Work.Rx, 10), "--termination-tx", strconv.FormatUint(plan.Termination.Tx, 10), "--termination-rx", strconv.FormatUint(plan.Termination.Rx, 10), "--retirement-wait-ms", strconv.FormatUint(uint64(plan.RetirementWaitMS), 10)}
+		for _, authority := range network.Authorities {
+			args = append(args, "--authority", hex.EncodeToString(authority[:]))
+		}
+		call(fault, args...)
+		// Require the real owner to accept every delivery before the negative
+		// operation, so missing files or a mismatched key pair cannot count as
+		// a retained-root or changed-credential replacement refusal.
+		inputContext, cancelInputs := context.WithTimeout(t.Context(), 15*time.Second)
+		inputs, openErr := forwarding.ReadInputs(inputContext, requestPath)
+		var checkErr error
+		if openErr == nil {
+			checkErr = inputs.Check()
+		}
+		inputErr := errors.Join(openErr, checkErr, inputs.Close())
+		cancelInputs()
+		if inputErr != nil {
+			t.Fatal("negative replacement input lacks genuine accepting custody", fault, inputErr)
+		}
+		forwardingInstalledRefuseReplacement(t, fault, filepath.Join(entry.Distribution, "ardents-node-linux-amd64"), entry.Distribution, history, requestPath, bindingPath, plan, histories, int64(entry.Version))
+		if absent != "" {
+			if _, err := os.Lstat(absent); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("refused replacement created alternate root or allowance", fault, err)
+			}
+		}
+	}
+}
+
+// Mix only the bytes of two genuine public deliveries. No metadata is edited,
+// no key is extracted and no test signer supplies replacement authority.
+func forwardingInstalledCandidateCopy(t *testing.T, root, distribution, previousDescriptor string) {
+	t.Helper()
+	if err := os.Mkdir(root, 0700); err != nil {
+		t.Fatal("exclusive public candidate directory", err)
+	}
+	for _, name := range []string{"ardents-node-linux-amd64", "ardents-forwarding.service", "infrastructure-forwarding.json", "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
+		raw, err := os.ReadFile(filepath.Join(distribution, name))
+		if err != nil {
+			t.Fatal("original public candidate input", err)
+		}
+		if name == "infrastructure-forwarding.json" && previousDescriptor != "" {
+			previous, err := os.ReadFile(previousDescriptor)
+			if err != nil || bytes.Equal(previous, raw) {
+				t.Fatal("mixed candidate lacks two actual generations", err)
+			}
+			raw = previous
+		}
+		mode := fs.FileMode(0600)
+		if name == "ardents-node-linux-amd64" {
+			// Enrollment requires private delivery files; root execution also
+			// needs the owner execute bit. Match the canonical delivery mode.
+			mode = 0700
+		}
+		file, err := os.OpenFile(filepath.Join(root, name), os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+		if err != nil {
+			t.Fatal("exclusive mixed public input", err)
+		}
+		written, writeErr := file.Write(raw)
+		if err := errors.Join(writeErr, file.Sync(), file.Close()); err != nil || written != len(raw) {
+			t.Fatal("mixed public input did not join", err)
+		}
+	}
+}
+
+// These refusals use the actual canonical candidate and completed stopped
+// predecessor. A later genuine forward replacement remains the positive control.
+func forwardingInstalledRefuseReplacement(t *testing.T, label, program, distribution, history, request, bindingPath string, plan forwarding.Plan, histories map[string][]byte, authorizedFloor ...int64) []byte {
+	t.Helper()
+	if len(authorizedFloor) > 1 || len(authorizedFloor) == 1 && authorizedFloor[0] < 1 {
+		t.Fatal("exact optional authenticated Release floor required")
+	}
+	root := filepath.Dir(bindingPath)
+	paths := []string{filepath.Join(root, "generations"), bindingPath, "/etc/systemd/system/ardents-forwarding.service", plan.Certificate, plan.PrivateKey, plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, "/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow"}
+	if len(authorizedFloor) == 0 {
+		paths = append(paths, history)
+	}
+	for path := range histories {
+		paths = append(paths, path)
+	}
+	before := forwardingInstalledHistorySnapshot(t, paths...)
+	// A forbidden birth and removal still changes the original parent metadata;
+	// retained bytes alone cannot hide an attempted transaction or pending guard.
+	parents := map[string]syscall.Stat_t{}
+	for _, path := range []string{root, filepath.Dir(root)} {
+		info, err := os.Lstat(path)
+		if err != nil {
+			t.Fatal("original refusal parent", label, err)
+		}
+		parents[path] = *info.Sys().(*syscall.Stat_t)
+	}
+	raw, err := exec.Command(program, "forwarding", "replace", distribution, history, "alpha", "coherent-private-forwarding", request, bindingPath).CombinedOutput()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 2 || len(raw) > 4096 || bytes.Contains(raw, []byte(`"outcome"`)) {
+		t.Fatal("canonical replacement refusal unavailable", label, err)
+	}
+	if !bytes.Equal(before, forwardingInstalledHistorySnapshot(t, paths...)) {
+		t.Fatal("replacement refusal changed original owners or histories", label)
+	}
+	for path, original := range parents {
+		info, err := os.Lstat(path)
+		if err != nil {
+			t.Fatal("original refusal parent lost", label, err)
+		}
+		current := info.Sys().(*syscall.Stat_t)
+		if current.Dev != original.Dev || current.Ino != original.Ino || current.Mode != original.Mode || current.Uid != original.Uid || current.Gid != original.Gid || current.Nlink != original.Nlink || current.Mtim != original.Mtim || current.Ctim != original.Ctim {
+			t.Fatal("replacement refusal changed original transaction namespace", label)
+		}
+	}
+	manager := forwardingInstalledManager(t)
+	_, reserved := forwardingInstalledBudget(t, plan.HostingRoot)
+	if manager["MainPID"] != "0" || manager["ActiveState"] != "inactive" || manager["InvocationID"] != "" || reserved != 0 {
+		t.Fatal("replacement refusal started work or changed physical allowance", label)
+	}
+	if len(authorizedFloor) == 1 {
+		// Authenticating a genuine forward pair commits Release floors before
+		// Installation checks its predecessor/request. Never refund that floor
+		// or mistake its authorized advancement for a native installation effect.
+		forwardingInstalledReleaseFloors(t, history, distribution, authorizedFloor[0])
+	}
+	t.Log("canonical replacement refused without original effects:", label)
+	return raw
+}
+
 type forwardingInstalledChannels struct {
-	Schema          string    `json:"schema"`
-	NetworkID       [32]byte  `json:"network_id"`
-	StateGeneration [32]byte  `json:"state_generation"`
-	StateDigest     [32]byte  `json:"state_digest"`
-	ProfileDigest   [32]byte  `json:"profile_digest"`
-	NodeID          [32]byte  `json:"node_id"`
-	DutyGeneration  uint64    `json:"duty_generation"`
-	Endpoint        string    `json:"endpoint"`
-	PublicKey       [32]byte  `json:"public_key"`
-	Deadline        time.Time `json:"deadline"`
-	Channels        [2]struct {
-		Nonce  [32]byte  `json:"nonce"`
-		Tokens [2][]byte `json:"tokens"`
-	} `json:"channels"`
+	Schema          string                       `json:"schema"`
+	NetworkID       [32]byte                     `json:"network_id"`
+	StateGeneration [32]byte                     `json:"state_generation"`
+	StateDigest     [32]byte                     `json:"state_digest"`
+	ProfileDigest   [32]byte                     `json:"profile_digest"`
+	NodeID          [32]byte                     `json:"node_id"`
+	DutyGeneration  uint64                       `json:"duty_generation"`
+	Endpoint        string                       `json:"endpoint"`
+	PublicKey       [32]byte                     `json:"public_key"`
+	Deadline        time.Time                    `json:"deadline"`
+	Channels        []forwardingInstalledChannel `json:"channels"`
+}
+
+type forwardingInstalledChannel struct {
+	Nonce  [32]byte  `json:"nonce"`
+	Tokens [2][]byte `json:"tokens"`
 }
 
 func forwardingInstalledPrivateStand(t *testing.T) {
@@ -773,6 +1515,22 @@ func forwardingInstalledArtifact(t *testing.T, path, name string) {
 
 func forwardingInstalledBootstrapInputs(t *testing.T, inputs map[string][]byte) {
 	t.Helper()
+	raw, pinnedRaw := forwardingInstalledBootstrapBytes(t)
+	if err := forwardingInstalledValidateBootstrap(raw, pinnedRaw, os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE"), inputs); err != nil {
+		t.Fatal("actual prepared scope differs from reviewed bootstrap", err)
+	}
+}
+
+func forwardingInstalledBootstrapPeerInput(t *testing.T, name string, body []byte) {
+	t.Helper()
+	raw, pinnedRaw := forwardingInstalledBootstrapBytes(t)
+	if err := forwardingInstalledValidatePeerBootstrap(raw, pinnedRaw, os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE"), name, body); err != nil {
+		t.Fatal("original peer public input differs from reviewed bootstrap", err)
+	}
+}
+
+func forwardingInstalledBootstrapBytes(t *testing.T) ([]byte, []byte) {
+	t.Helper()
 	raw, err := os.ReadFile("/artifacts/forwarding-bootstrap-receipt.json")
 	if err != nil {
 		t.Fatal("invalid environment: new exact completed bootstrap receipt absent", err)
@@ -781,51 +1539,11 @@ func forwardingInstalledBootstrapInputs(t *testing.T, inputs map[string][]byte) 
 	if os.Getenv("ARDENTS_FORWARDING_INSTALLED_BOOTSTRAP_SHA256") != hex.EncodeToString(sum[:]) {
 		t.Fatal("invalid environment: outside independently reviewed bootstrap pin differs")
 	}
-	var receipt struct {
-		Schema         string                       `json:"schema"`
-		CaseInputs     map[string]map[string]string `json:"case_inputs"`
-		SourceManifest string                       `json:"source_manifest_sha256"`
-		Artifacts      map[string]string            `json:"artifacts"`
-		Cases          []string                     `json:"cases"`
-	}
-	if json.Unmarshal(raw, &receipt) != nil || receipt.Schema != "ardents-forwarding-bootstrap-receipt-v1" {
-		t.Fatal("invalid environment: Forwarding bootstrap scope differs")
-	}
-	var pins struct {
-		SourceManifest string            `json:"source_manifest"`
-		Artifacts      map[string]string `json:"artifacts"`
-	}
 	pinnedRaw, err := os.ReadFile("/artifacts/pins.json")
-	wantCases := []string{"lifetime-refill", "retirement-history-missing", "retirement-history-damaged", "unknown-domain-join"}
-	if err != nil || json.Unmarshal(pinnedRaw, &pins) != nil || receipt.SourceManifest != pins.SourceManifest || len(receipt.Artifacts) != len(pins.Artifacts) || strings.Join(receipt.Cases, "\x00") != strings.Join(wantCases, "\x00") || len(receipt.CaseInputs) != len(wantCases) {
-		t.Fatal("actual source/artifact/case scope differs from reviewed receipt", err)
+	if err != nil {
+		t.Fatal("original transition pins unavailable", err)
 	}
-	for _, name := range wantCases {
-		if len(receipt.CaseInputs[name]) != 8 {
-			t.Fatal("incomplete case-specific bootstrap inputs", name)
-		}
-		for _, input := range []string{"binding", "plan", "bundle", "profile", "presentations", "peer_plan", "peer_presentations", "peer_certificate"} {
-			sum := receipt.CaseInputs[name][input]
-			if len(sum) != 64 || strings.Trim(sum, "0123456789abcdef") != "" {
-				t.Fatal("case-specific bootstrap input pin differs", name, input)
-			}
-		}
-	}
-	caseInputs, exists := receipt.CaseInputs[os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE")]
-	if !exists {
-		t.Fatal("original case absent from reviewed bootstrap scope")
-	}
-	for name, sum := range pins.Artifacts {
-		if receipt.Artifacts[name] != sum {
-			t.Fatal("actual artifact differs from reviewed receipt", name)
-		}
-	}
-	for name, raw := range inputs {
-		sum := sha256.Sum256(raw)
-		if caseInputs[name] != hex.EncodeToString(sum[:]) {
-			t.Fatal("actual prepared input differs from reviewed receipt", name)
-		}
-	}
+	return raw, pinnedRaw
 }
 
 func forwardingInstalledManager(t *testing.T) map[string]string {
@@ -1166,7 +1884,7 @@ func (pin *forwardingInstalledProcessPin) close(t *testing.T) {
 	}
 }
 
-func forwardingInstalledJournal(t *testing.T, path string, invocation int, retirement bool) {
+func forwardingInstalledJournal(t *testing.T, path, installation string, invocation int, retirement bool) {
 	t.Helper()
 	raw, err := os.ReadFile(path)
 	if err != nil || len(raw) == 0 || len(raw) > 128<<10 || raw[len(raw)-1] != '\n' {
@@ -1177,7 +1895,7 @@ func forwardingInstalledJournal(t *testing.T, path string, invocation int, retir
 		first = "invocation"
 	}
 	schema := "ardents-forwarding-start-journal-v1"
-	phases := []string{first, "directory-intent", "directory-born", "directory-ready", "file-intent", "file-born", "file-ready", "file-intent", "file-born", "file-ready", "socket-intent", "socket-born", "socket-ready", "file-intent", "file-born", "file-ready", "start-attempt", "invocation-observed", "completion-received", "file-intent", "file-born", "file-ready", "archived", "ack-attempt", "ack-written"}
+	phases := []string{first, "native-context", "directory-intent", "directory-born", "directory-ready", "file-intent", "file-born", "file-ready", "file-intent", "file-born", "file-ready", "socket-intent", "socket-born", "socket-ready", "file-intent", "file-born", "file-ready", "start-attempt", "invocation-observed", "completion-received", "file-intent", "file-born", "file-ready", "archived", "ack-attempt", "ack-written"}
 	if retirement {
 		schema = "ardents-forwarding-retirement-journal-v1"
 		phases = []string{"stop", "directory-intent", "directory-born", "directory-ready", "file-intent", "file-born", "file-ready", "socket-intent", "socket-born", "socket-ready", "interrupt-attempt", "domain-joined", "native-joined", "native-closed", "file-intent", "file-born", "file-ready", "retired"}
@@ -1205,6 +1923,9 @@ func forwardingInstalledJournal(t *testing.T, path string, invocation int, retir
 		canonical, err := json.Marshal(entry)
 		if err != nil || !bytes.Equal(canonical, line) {
 			t.Fatal("journal canonical bytes differ", index, err)
+		}
+		if entry.Phase == "native-context" && (entry.Path != installation || entry.Device != 0 || entry.Inode != 0 || entry.Mode != 0 || entry.GID != 0 || len(entry.SHA256) != 64 || strings.Trim(entry.SHA256, "0123456789abcdef") != "") {
+			t.Fatal("original start context commitment differs", index)
 		}
 		if entry.Device == 0 && entry.Inode == 0 {
 			continue
@@ -1325,7 +2046,7 @@ func forwardingInstalledStartInterior(t *testing.T, base string, uid uint32, inp
 	defer certificate.Close()
 	key := open(filepath.Join(base, "delivery/canonical-preparation", fmt.Sprintf("node-key-%02x", input.NodeID[0]), "node-key.pem"))
 	defer key.Close()
-	process := &forwardingInstalledInterior{pidfd: -1, allowRouteFailure: os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE") == "unknown-domain-join",
+	process := &forwardingInstalledInterior{pidfd: -1, allowRouteFailure: forwardingInstalledUnknownJoinCase(os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE")),
 		started: make(chan struct{}), wait: make(chan struct{}), done: make(chan struct{})}
 	process.command = exec.Command(os.Args[0], "-test.run=^TestForwardingInstalledNativeInteriorPeer$", "-test.count=1", "-test.timeout=3m")
 	process.command.Env = append(os.Environ(), "ARDENTS_FORWARDING_INTERIOR_COMPONENT=original-readonly-credentials", "ARDENTS_FORWARDING_INTERIOR_RETAINED=0")
@@ -1449,7 +2170,7 @@ func TestForwardingInstalledNativeInteriorPeer(t *testing.T) {
 		t.Fatal("Interior principal differs from original Node binding")
 	}
 	forwardingInstalledArtifact(t, os.Args[0], "forwarding-installed.test")
-	forwardingInstalledBootstrapInputs(t, map[string][]byte{"peer_plan": planRaw})
+	forwardingInstalledBootstrapPeerInput(t, "peer_plan", planRaw)
 	credential := func(fd uintptr, private bool) (*os.File, []byte) {
 		t.Helper()
 		file := os.NewFile(fd, "original-interior-credential")
@@ -1473,7 +2194,7 @@ func TestForwardingInstalledNativeInteriorPeer(t *testing.T) {
 			t.Fatal("original credential read failed", err)
 		}
 		if !private {
-			forwardingInstalledBootstrapInputs(t, map[string][]byte{"peer_certificate": raw})
+			forwardingInstalledBootstrapPeerInput(t, "peer_certificate", raw)
 		}
 		return file, raw
 	}
@@ -1624,7 +2345,7 @@ func TestForwardingInstalledNativeInteriorPeer(t *testing.T) {
 	// Every actual remote borrower joins before purpose/Hosting/State roots and
 	// the transferred original credential descriptors return to their owner.
 	routeErr := remote.Close()
-	if routeErr != nil && os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE") != "unknown-domain-join" {
+	if routeErr != nil && !forwardingInstalledUnknownJoinCase(os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE")) {
 		t.Error("Interior Receiver join", routeErr)
 	}
 	if err := spend.Close(); err != nil {
@@ -1650,5 +2371,782 @@ func TestForwardingInstalledNativeInteriorPeer(t *testing.T) {
 		} else {
 			fmt.Fprintln(os.Stdout, "forwarding-interior-component-joined")
 		}
+	}
+}
+
+type forwardingInstalledSuccessor struct {
+	Version      int               `json:"version"`
+	Distribution string            `json:"distribution"`
+	Request      string            `json:"request"`
+	Plan         string            `json:"plan"`
+	PublicInputs map[string]string `json:"public_inputs"`
+}
+
+func forwardingInstalledSuccessors(t *testing.T, base string, raw []byte) []forwardingInstalledSuccessor {
+	t.Helper()
+	var input struct {
+		Schema     string                         `json:"schema"`
+		Deliveries []forwardingInstalledSuccessor `json:"deliveries"`
+		Installed  bool                           `json:"installed"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&input); err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := json.Marshal(input)
+	if err != nil || !bytes.Equal(append(canonical, '\n'), raw) || input.Schema != "ardents-forwarding-successor-deliveries-v1" || input.Installed || len(input.Deliveries) != 2 {
+		t.Fatal("exact finite public successor deliveries required", err)
+	}
+	for index, entry := range input.Deliveries {
+		root := filepath.Join(base, "delivery", fmt.Sprintf("successor-%d", index+2))
+		if entry.Version != index+2 || entry.Distribution != filepath.Join(root, "distribution") || entry.Request != filepath.Join(root, "request/forwarding-request.json") || entry.Plan != filepath.Join(root, "plan/forwarding-plan.json") || len(entry.PublicInputs) != 10 {
+			t.Fatal("successor delivery scope differs")
+		}
+		paths := []string{entry.Request, entry.Plan}
+		for _, name := range []string{"ardents-node-linux-amd64", "ardents-forwarding.service", "infrastructure-forwarding.json", "infrastructure-enrollment.json", "root.json", "targets.json", "snapshot.json", "timestamp.json"} {
+			paths = append(paths, filepath.Join(entry.Distribution, name))
+		}
+		for _, path := range paths {
+			info, err := os.Lstat(path)
+			if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0022 != 0 {
+				t.Fatal("original protected successor input unavailable", path, err)
+			}
+			native := info.Sys().(*syscall.Stat_t)
+			if native.Uid != 0 || native.Gid != 0 || native.Nlink != 1 {
+				t.Fatal("successor input native custody differs", path)
+			}
+			for parent := filepath.Dir(path); ; parent = filepath.Dir(parent) {
+				s, err := os.Lstat(parent)
+				if err != nil || !s.IsDir() || s.Mode().Perm()&0022 != 0 || s.Sys().(*syscall.Stat_t).Uid != 0 {
+					t.Fatal("successor input ancestor differs", parent, err)
+				}
+				if parent == "/" {
+					break
+				}
+			}
+			body, err := os.ReadFile(path)
+			sum := sha256.Sum256(body)
+			if err != nil || entry.PublicInputs[path] != hex.EncodeToString(sum[:]) {
+				t.Fatal("actual successor input differs from its prepared commitment", path, err)
+			}
+		}
+		forwardingInstalledArtifact(t, filepath.Join(entry.Distribution, "ardents-node-linux-amd64"), "ardents-node-successor")
+	}
+	return input.Deliveries
+}
+
+// These independent byte/native observations grant no domain permission.
+// Replacement still acquires each genuine semantic inspection itself.
+func forwardingInstalledHistorySnapshot(t *testing.T, roots ...string) []byte {
+	t.Helper()
+	facts := map[string]string{}
+	for _, root := range roots {
+		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			info, err := os.Lstat(path)
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && !info.Mode().IsRegular() {
+				return fmt.Errorf("unexpected retained history object %s", path)
+			}
+			native := info.Sys().(*syscall.Stat_t)
+			content := ""
+			if info.Mode().IsRegular() {
+				raw, err := os.ReadFile(path)
+				if err != nil {
+					return err
+				}
+				sum := sha256.Sum256(raw)
+				content = hex.EncodeToString(sum[:])
+			}
+			facts[path] = fmt.Sprintf("%d/%d/%d/%d/%d/%d/%d/%d/%d/%d/%s", native.Dev, native.Ino, native.Mode, native.Uid, native.Gid, native.Nlink, info.Size(), native.Mtim.Sec, native.Mtim.Nsec, native.Ctim.Sec, content)
+			facts[path+"\x00ctime-nsec"] = fmt.Sprint(native.Ctim.Nsec)
+			return nil
+		})
+		if err != nil {
+			t.Fatal("independent retained-history observation", err)
+		}
+	}
+	raw, err := json.Marshal(facts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
+func forwardingInstalledReleaseFloors(t *testing.T, history, distribution string, version int64) {
+	t.Helper()
+	verifier, err := release.OpenRetained(history)
+	if err != nil {
+		t.Fatal("independent retained Release opening", err)
+	}
+	floors, observed := verifier.CurrentFloors(t.Context())
+	if err := errors.Join(observed, verifier.Close()); err != nil {
+		t.Fatal(err)
+	}
+	if !floors.Complete() || floors.RootVersion != 1 || floors.TimestampVersion != version || floors.SnapshotVersion != version || floors.TargetsVersion != version {
+		t.Fatal("independent Release floors reset or differ", floors.RootVersion, floors.TimestampVersion, floors.SnapshotVersion, floors.TargetsVersion, version)
+	}
+	for name, retained := range map[string][]byte{"root.json": floors.RootDigest, "timestamp.json": floors.TimestampDigest, "snapshot.json": floors.SnapshotDigest, "targets.json": floors.TargetsDigest} {
+		raw, err := os.ReadFile(filepath.Join(distribution, name))
+		sum := sha256.Sum256(raw)
+		if err != nil || !bytes.Equal(retained, sum[:]) {
+			t.Fatal("retained Release digest differs from actual selected metadata", name, err)
+		}
+	}
+}
+
+func forwardingInstalledReplace(t *testing.T, bindingPath, history, retirementPath, initialGeneration, previousGeneration string, uid uint32, attempt int, entry forwardingInstalledSuccessor, previous forwarding.Plan) (string, forwarding.Plan) {
+	t.Helper()
+	read := func(path string) []byte {
+		t.Helper()
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	digest := func(raw []byte) string { sum := sha256.Sum256(raw); return hex.EncodeToString(sum[:]) }
+	root := filepath.Dir(bindingPath)
+	oldBinding, oldRetirement := read(bindingPath), read(retirementPath)
+	oldProgram := read(filepath.Join(root, "generations", previousGeneration, "ardents-node-linux-amd64"))
+	newProgram := filepath.Join(entry.Distribution, "ardents-node-linux-amd64")
+	forwardingInstalledArtifact(t, newProgram, "ardents-node-successor")
+	changedProgram := !bytes.Equal(oldProgram, read(newProgram))
+	if entry.Version == 2 && !changedProgram || entry.Version == 3 && changedProgram {
+		t.Fatal("actual program/resource replacement order differs")
+	}
+	requestRaw, planRaw := read(entry.Request), read(entry.Plan)
+	request, err := forwarding.DecodeRequest(requestRaw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := forwarding.DecodePlan(planRaw)
+	if err != nil || request.MatchPlan(plan) != nil {
+		t.Fatal("actual successor request/plan differs", err)
+	}
+	normalized := plan
+	normalized.Work, normalized.Termination = previous.Work, previous.Termination
+	oldPlan, _ := json.Marshal(previous)
+	normalizedRaw, _ := json.Marshal(normalized)
+	if !bytes.Equal(oldPlan, normalizedRaw) || entry.Version == 2 && (plan.Work != previous.Work || plan.Termination != previous.Termination) || entry.Version == 3 && (plan.Work == previous.Work || plan.Termination == previous.Termination) {
+		t.Fatal("successor changed identity or lacks its actual resource transition")
+	}
+	semantic := forwardingInstalledHistorySnapshot(t, previous.Network.Root, previous.ParticipationRoot, previous.SpendRoot, previous.HostingRoot)
+	predecessor := forwardingInstalledHistorySnapshot(t, filepath.Join(root, "generations", previousGeneration))
+	before := map[string]os.FileInfo{}
+	for _, path := range []string{bindingPath, "/etc/systemd/system/ardents-forwarding.service"} {
+		before[path], err = os.Lstat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	output, err := exec.Command(newProgram, "forwarding", "replace", entry.Distribution, history, "alpha", "coherent-private-forwarding", entry.Request, bindingPath).CombinedOutput()
+	if err != nil || !bytes.Equal(output, []byte("{\"outcome\":\"forwarding-replacement-selected-stopped\",\"started\":false}\n")) {
+		t.Fatal("canonical explicit replacement", err, string(output))
+	}
+	completed, err := forwarding.ReadCompleted(t.Context(), bindingPath)
+	if err != nil {
+		t.Fatal("independent completed replacement", err)
+	}
+	if err := completed.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for path, old := range before {
+		info, err := os.Lstat(path)
+		if err != nil || !os.SameFile(old, info) || old.Mode() != info.Mode() {
+			t.Fatal("replacement substituted original selection/unit", path, err)
+		}
+		a, b := old.Sys().(*syscall.Stat_t), info.Sys().(*syscall.Stat_t)
+		if a.Uid != b.Uid || a.Gid != b.Gid || a.Nlink != b.Nlink {
+			t.Fatal("replacement changed original selection/unit ownership", path)
+		}
+	}
+	if !bytes.Equal(semantic, forwardingInstalledHistorySnapshot(t, previous.Network.Root, previous.ParticipationRoot, previous.SpendRoot, previous.HostingRoot)) || !bytes.Equal(predecessor, forwardingInstalledHistorySnapshot(t, filepath.Join(root, "generations", previousGeneration))) {
+		t.Fatal("replacement changed original semantic histories or sealed predecessor")
+	}
+	var selected struct {
+		Schema        string `json:"schema"`
+		Configuration struct {
+			Schema        string `json:"schema"`
+			Generation    string `json:"generation"`
+			ProgramSHA256 string `json:"program_sha256"`
+			PlanSHA256    string `json:"plan_sha256"`
+			UnitSHA256    string `json:"unit_sha256"`
+			UID           uint32 `json:"uid"`
+			GID           uint32 `json:"gid"`
+		} `json:"configuration"`
+		Initial     string `json:"initial_generation"`
+		Predecessor string `json:"predecessor_generation"`
+		Binding     string `json:"predecessor_binding_sha256"`
+		Retirement  string `json:"retirement_sha256"`
+		Attempt     uint32 `json:"predecessor_attempt"`
+	}
+	if json.Unmarshal(read(bindingPath), &selected) != nil || selected.Schema != "ardents-forwarding-replacement-binding-v1" || selected.Configuration.Schema != "ardents-forwarding-replacement-configuration-v1" || selected.Initial != initialGeneration || selected.Predecessor != previousGeneration || selected.Binding != digest(oldBinding) || selected.Retirement != digest(oldRetirement) || selected.Attempt != uint32(attempt) || selected.Configuration.UID != uid || selected.Configuration.GID != uid || selected.Configuration.ProgramSHA256 != digest(read(newProgram)) || selected.Configuration.PlanSHA256 != digest(planRaw) {
+		t.Fatal("actual replacement selection lost original lineage or candidate")
+	}
+	generation := digest(read(filepath.Join(entry.Distribution, "infrastructure-forwarding.json")))
+	unit, err := forwarding.RenderUnit(read(filepath.Join(entry.Distribution, "ardents-forwarding.service")), request, generation)
+	if err != nil || selected.Configuration.Generation != generation || selected.Configuration.UnitSHA256 != digest(unit) || !bytes.Equal(unit, read("/etc/systemd/system/ardents-forwarding.service")) || !bytes.Equal(planRaw, read(filepath.Join(root, "generations", generation, "forwarding-plan.json"))) {
+		t.Fatal("actual selected plan/unit differs from prepared resources", err)
+	}
+	manager := forwardingInstalledManager(t)
+	_, reserved := forwardingInstalledBudget(t, previous.HostingRoot)
+	if manager["MainPID"] != "0" || manager["ActiveState"] != "inactive" || reserved != 0 {
+		t.Fatal("replacement started work or recreated physical allowance")
+	}
+	forwardingInstalledReleaseFloors(t, history, entry.Distribution, int64(entry.Version))
+	return generation, plan
+}
+
+// The exact transition campaign and outside PO decision must precede this driver too.
+// The only effects here are the real original stopped installation and recovery.
+func TestForwardingInstalledNativeOriginalInitialPrefix(t *testing.T) {
+	const base = "/var/lib/forwarding-coherent-initial"
+	caseName := os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE")
+	numberRaw := strings.TrimPrefix(caseName, "initial-cut-")
+	number, err := strconv.Atoi(numberRaw)
+	if err != nil || number < 1 || number > 120 || caseName != fmt.Sprintf("initial-cut-%03d", number) {
+		t.Fatal("exact finite original initial case required")
+	}
+	forwardingInstalledPrivateStand(t)
+	read := func(path string) []byte {
+		t.Helper()
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	digest := func(raw []byte) string { sum := sha256.Sum256(raw); return hex.EncodeToString(sum[:]) }
+	raw := read(filepath.Join(base, "initial-cut-inputs.json"))
+	forwardingInstalledBootstrapInputs(t, map[string][]byte{"initial_cut_inputs": raw})
+	var input struct {
+		Schema              string            `json:"schema"`
+		Command             []string          `json:"command"`
+		PublicInputs        map[string]string `json:"public_inputs"`
+		InstallationStarted bool              `json:"installation_started"`
+		RuntimeStarted      bool              `json:"runtime_started"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&input); err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := json.Marshal(input)
+	distribution, history := filepath.Join(base, "delivery/distribution"), filepath.Join(base, "release-history")
+	program, requestPath := filepath.Join(distribution, "ardents-node-linux-amd64"), filepath.Join(base, "delivery/request/forwarding-request.json")
+	inventory := read(filepath.Join(distribution, "infrastructure-enrollment.json"))
+	wanted := []string{program, "forwarding", "install-initial-stopped", distribution, digest(inventory), history, "alpha", "coherent-private-forwarding", requestPath}
+	if err != nil || !bytes.Equal(append(canonical, '\n'), raw) || input.Schema != "ardents-forwarding-initial-cut-inputs-v1" || input.InstallationStarted || input.RuntimeStarted || strings.Join(input.Command, "\x00") != strings.Join(wanted, "\x00") || len(input.PublicInputs) != 11 {
+		t.Fatal("original delivery-only recipe differs", err)
+	}
+	forwardingInstalledArtifact(t, program, "ardents-node-successor")
+	request, err := forwarding.DecodeRequest(read(requestPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	required := []string{program, requestPath, request.Plan, request.Certificate}
+	for _, name := range []string{"infrastructure-enrollment.json", "infrastructure-forwarding.json", "ardents-forwarding.service", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
+		required = append(required, filepath.Join(distribution, name))
+	}
+	for _, path := range required {
+		pin, present := input.PublicInputs[path]
+		if !present || !filepath.IsAbs(path) || filepath.Clean(path) != path || !strings.HasPrefix(path, base+"/") || pin != digest(read(path)) {
+			t.Fatal("complete original initial-cut input commitment differs", path)
+		}
+	}
+	if request.InstallationRoot != filepath.Join(base, "runtime/node") {
+		t.Fatal("original fixed installation root differs")
+	}
+	journal := request.InstallationRoot + ".forwarding-initial-journal"
+	prefix, cut := forwardingInstalledOriginalCut(t, program, "initial", number, journal, input.Command[2:])
+	before := forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"), "/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow")
+	// Ordinary initial invocation must not adopt even a complete-looking prefix.
+	refused, refusal := exec.Command(program, input.Command[1:]...).CombinedOutput()
+	var exit *exec.ExitError
+	if !errors.As(refusal, &exit) || exit.ExitCode() != 2 || len(refused) > 4096 || bytes.Contains(refused, []byte(`"outcome"`)) {
+		t.Fatal("original interrupted installation allowed ordinary retry", refusal)
+	}
+	if !bytes.Equal(before, forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"), "/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow")) {
+		t.Fatal("ordinary refused retry changed the original prefix environment")
+	}
+	output, recovered := exec.Command(program, "forwarding", "recover", distribution, history, "alpha", "coherent-private-forwarding", requestPath, journal).CombinedOutput()
+	if !bytes.Equal(prefix, read(journal)) || !bytes.Equal(cut, read(journal+".original-cut-result")) {
+		t.Fatal("recovery rewrote original prefix or native-cut proof")
+	}
+	if number < 72 {
+		if !errors.As(recovered, &exit) || exit.ExitCode() != 2 || len(output) > 4096 || bytes.Contains(output, []byte(`"outcome"`)) {
+			t.Fatal("unsafe original initial prefix was not refused", number, recovered)
+		}
+		if !bytes.Equal(before, forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"), "/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow")) {
+			t.Fatal("unsafe-prefix refusal changed original resources or blockers")
+		}
+		return
+	}
+	if recovered != nil || !bytes.Equal(output, []byte("{\"outcome\":\"forwarding-recovery-stopped\",\"started\":false}\n")) {
+		t.Fatal("safe original initial stopped continuation", number, recovered, string(output))
+	}
+	bindingPath := filepath.Join(request.InstallationRoot, "binding.json")
+	completed, err := forwarding.ReadCompleted(t.Context(), bindingPath)
+	if err != nil {
+		t.Fatal("independent recovered completed reader", err)
+	}
+	if err := completed.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var completion struct {
+		Schema        string            `json:"schema"`
+		Operation     string            `json:"operation"`
+		Journal       string            `json:"journal"`
+		PrefixSHA     string            `json:"prefix_sha256"`
+		PrefixRecords uint32            `json:"prefix_records"`
+		CutSHA        string            `json:"original_cut_sha256"`
+		Outcome       string            `json:"outcome"`
+		Records       []json.RawMessage `json:"records"`
+		TranscriptSHA string            `json:"transcript_sha256"`
+	}
+	body := read(journal + ".recovery-completion")
+	schema := "ardents-forwarding-recovery-completion-v1"
+	if number <= 118 {
+		schema = "ardents-forwarding-recovery-completion-v2"
+	}
+	if json.Unmarshal(body, &completion) != nil || completion.Schema != schema || completion.Operation != "initial" || completion.Journal != journal || completion.PrefixSHA != digest(prefix) || completion.PrefixRecords != uint32(number) || completion.CutSHA != digest(cut) || completion.Outcome != "selected-stopped" || len(completion.Records) != 120-number {
+		t.Fatal("separate completion lost original prefix or actual suffix", number)
+	}
+	logical := bytes.Clone(prefix)
+	for _, record := range completion.Records {
+		logical = append(logical, record...)
+		logical = append(logical, '\n')
+	}
+	if bytes.Count(logical, []byte{'\n'}) != 120 || digest(logical) != completion.TranscriptSHA {
+		t.Fatal("recovered full transcript commitment differs")
+	}
+	for _, path := range []string{request.StateRoot, request.ParticipationRoot, request.SpendRoot, request.HostingRoot} {
+		entries, err := os.ReadDir(path)
+		if err != nil || len(entries) != 0 {
+			t.Fatal("initial recovery initialized a semantic history", path, err)
+		}
+	}
+	for _, path := range []string{request.InstallationRoot + ".forwarding-initial-pending", journal + ".recovery-pending"} {
+		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("completed recovery kept an unpublished blocker", path, err)
+		}
+	}
+	manager := forwardingInstalledManager(t)
+	if manager["MainPID"] != "0" || manager["ActiveState"] != "inactive" || manager["InvocationID"] != "" {
+		t.Fatal("initial stopped recovery replayed runtime startup")
+	}
+	forwardingInstalledReleaseFloors(t, history, distribution, 1)
+	after := forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"))
+	repeated, repeatedErr := exec.Command(program, "forwarding", "recover", distribution, history, "alpha", "coherent-private-forwarding", requestPath, journal).CombinedOutput()
+	if !errors.As(repeatedErr, &exit) || exit.ExitCode() != 2 || len(repeated) > 4096 || bytes.Contains(repeated, []byte(`"outcome"`)) || !bytes.Equal(after, forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"))) {
+		t.Fatal("completed original recovery was replayed or adopted", repeatedErr)
+	}
+}
+
+func forwardingInstalledOriginalCut(t *testing.T, program, operation string, number int, journal string, action []string) ([]byte, []byte) {
+	t.Helper()
+	args := []string{"forwarding", "supervise-transition", "--stop-after-record", fmt.Sprint(number), "--timeout-ms", "120000", "--"}
+	args = append(args, action...)
+	output, err := exec.Command(program, args...).CombinedOutput()
+	if err != nil || !bytes.Equal(output, []byte("{\"outcome\":\"forwarding-original-cut-completed\",\"recovered\":false}\n")) {
+		t.Fatal("actual original coordinator cut/join", operation, number, err, string(output))
+	}
+	prefix, err := os.ReadFile(journal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cut, err := os.ReadFile(journal + ".original-cut-result")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var proof struct {
+		Schema   string `json:"schema"`
+		Boundary struct {
+			Operation string `json:"operation"`
+			Journal   string `json:"journal"`
+			Records   uint32 `json:"records"`
+			PrefixSHA string `json:"prefix_sha256"`
+			Device    uint64 `json:"device"`
+			Inode     uint64 `json:"inode"`
+		} `json:"boundary"`
+		Origin struct {
+			Process struct {
+				PID     uint32 `json:"pid"`
+				Parent  uint32 `json:"parent"`
+				Device  uint64 `json:"device"`
+				Inode   uint64 `json:"inode"`
+				Started uint64 `json:"started"`
+			} `json:"process"`
+			ProgramSHA    string `json:"program_sha256"`
+			ProgramDevice uint64 `json:"program_device"`
+			ProgramInode  uint64 `json:"program_inode"`
+		} `json:"origin"`
+		Acknowledged uint32 `json:"acknowledged"`
+		Code         int    `json:"code"`
+		Status       int    `json:"status"`
+		Reaped       int    `json:"reaped"`
+	}
+	programRaw, err := os.ReadFile(program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	programSHA := sha256.Sum256(programRaw)
+	prefixSHA := sha256.Sum256(prefix)
+	info, err := os.Lstat(journal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	native := info.Sys().(*syscall.Stat_t)
+	executable, err := os.Lstat(program)
+	if err != nil {
+		t.Fatal(err)
+	}
+	executableNative := executable.Sys().(*syscall.Stat_t)
+	if json.Unmarshal(cut, &proof) != nil || proof.Schema != "ardents-forwarding-original-cut-v1" || proof.Boundary.Operation != operation || proof.Boundary.Journal != journal || proof.Boundary.Records != uint32(number) || proof.Acknowledged != uint32(number-1) || proof.Code != 2 || proof.Status != int(syscall.SIGKILL) || proof.Reaped != 1 || proof.Origin.Process.PID <= 1 || proof.Origin.Process.Parent <= 1 || proof.Origin.Process.Started == 0 || proof.Origin.ProgramDevice != uint64(executableNative.Dev) || proof.Origin.ProgramInode != executableNative.Ino || proof.Origin.Process.Device == 0 || proof.Origin.Process.Inode == 0 || proof.Origin.ProgramSHA != hex.EncodeToString(programSHA[:]) || proof.Boundary.PrefixSHA != hex.EncodeToString(prefixSHA[:]) || proof.Boundary.Device != uint64(native.Dev) || proof.Boundary.Inode != native.Ino || bytes.Count(prefix, []byte{'\n'}) != number {
+		t.Fatal("actual original native cut or immutable prefix differs", operation, number)
+	}
+	// This is the canonical controller's real SIGKILL/Wait result. Recovery
+	// independently reopens and verifies its complete thirteen-row native proof.
+	return prefix, cut
+}
+
+func forwardingInstalledCaseNumber(t *testing.T, prefix string, maximum int) (string, int) {
+	t.Helper()
+	name := os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE")
+	value := strings.TrimPrefix(name, prefix+"-cut-")
+	number, err := strconv.Atoi(value)
+	if err != nil || number < 1 || number > maximum || name != fmt.Sprintf("%s-cut-%03d", prefix, number) {
+		t.Fatal("exact finite original process case required", prefix)
+	}
+	return name, number
+}
+
+func TestForwardingInstalledNativeOriginalReplacementPrefix(t *testing.T) {
+	name, _ := forwardingInstalledCaseNumber(t, "replacement", 62)
+	runForwardingInstalledLifetime(t, name)
+}
+
+func TestForwardingInstalledNativeOriginalStartPrefix(t *testing.T) {
+	name := os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE")
+	for _, prefix := range []string{"start-initial", "start-selected", "restart"} {
+		if strings.HasPrefix(name, prefix+"-cut-") {
+			forwardingInstalledCaseNumber(t, prefix, 26)
+			runForwardingInstalledLifetime(t, name)
+			return
+		}
+	}
+	t.Fatal("exact finite original start case required")
+}
+
+func TestForwardingInstalledNativeOriginalRetirementPrefix(t *testing.T) {
+	name := os.Getenv("ARDENTS_FORWARDING_INSTALLED_CASE")
+	for _, prefix := range []string{"retirement-initial", "retirement-selected"} {
+		if strings.HasPrefix(name, prefix+"-cut-") {
+			forwardingInstalledCaseNumber(t, prefix, 18)
+			runForwardingInstalledLifetime(t, name)
+			return
+		}
+	}
+	t.Fatal("exact finite original retirement case required")
+}
+
+func forwardingInstalledRetirementCut(t *testing.T, program, distribution, history, request, bindingPath string, plan forwarding.Plan, attempt, number int, prefix, cut []byte, version int64) {
+	t.Helper()
+	read := func(path string) []byte {
+		t.Helper()
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	digest := func(raw []byte) string { sum := sha256.Sum256(raw); return hex.EncodeToString(sum[:]) }
+	root := filepath.Dir(bindingPath)
+	journal := root + fmt.Sprintf(".forwarding-retirement-%08d-journal", attempt)
+	directory := filepath.Join(root, fmt.Sprintf("forwarding-retirement-%08d", attempt))
+	selected := read(bindingPath)
+	var semantic, originalResult []byte
+	if number >= 17 {
+		semantic = forwardingInstalledHistorySnapshot(t, plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot)
+		originalResult = read(filepath.Join(directory, "retirement-result.json"))
+	}
+	output, recovered := exec.Command(program, "forwarding", "recover", distribution, history, "alpha", "coherent-private-forwarding", request, journal).CombinedOutput()
+	if !bytes.Equal(prefix, read(journal)) || !bytes.Equal(cut, read(journal+".original-cut-result")) || !bytes.Equal(selected, read(bindingPath)) {
+		t.Fatal("retirement recovery changed original cut, prefix or selection")
+	}
+	if number < 17 {
+		var exit *exec.ExitError
+		if !errors.As(recovered, &exit) || exit.ExitCode() != 2 || len(output) > 4096 || bytes.Contains(output, []byte(`"outcome"`)) {
+			t.Fatal("unproved original retirement was adopted", number, recovered)
+		}
+		if _, err := os.Lstat(journal + ".recovery-completion"); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("unknown original domain/native join acquired a completion", err)
+		}
+		return
+	}
+	if recovered != nil || !bytes.Equal(output, []byte("{\"outcome\":\"forwarding-recovery-stopped\",\"started\":false}\n")) || !bytes.Equal(originalResult, read(filepath.Join(directory, "retirement-result.json"))) || !bytes.Equal(semantic, forwardingInstalledHistorySnapshot(t, plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot)) {
+		t.Fatal("original retired-stopped continuation changed result or semantic history", number, recovered, string(output))
+	}
+	var completion struct {
+		Schema        string            `json:"schema"`
+		Operation     string            `json:"operation"`
+		Journal       string            `json:"journal"`
+		PrefixSHA     string            `json:"prefix_sha256"`
+		PrefixRecords uint32            `json:"prefix_records"`
+		CutSHA        string            `json:"original_cut_sha256"`
+		Outcome       string            `json:"outcome"`
+		Records       []json.RawMessage `json:"records"`
+		TranscriptSHA string            `json:"transcript_sha256"`
+	}
+	if json.Unmarshal(read(journal+".recovery-completion"), &completion) != nil || completion.Schema != "ardents-forwarding-recovery-completion-v1" || completion.Operation != "retirement" || completion.Journal != journal || completion.PrefixSHA != digest(prefix) || completion.PrefixRecords != uint32(number) || completion.CutSHA != digest(cut) || completion.Outcome != "retired-stopped" || len(completion.Records) != 18-number {
+		t.Fatal("retirement completion lost the actual original boundary")
+	}
+	logical := bytes.Clone(prefix)
+	for _, row := range completion.Records {
+		logical = append(logical, row...)
+		logical = append(logical, '\n')
+	}
+	if bytes.Count(logical, []byte{'\n'}) != 18 || digest(logical) != completion.TranscriptSHA {
+		t.Fatal("retirement logical transcript commitment differs")
+	}
+	for _, path := range []string{filepath.Join(directory, "retirement-pending"), journal + ".recovery-pending"} {
+		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("retirement completion publication blocked", path, err)
+		}
+	}
+	verifier, err := release.OpenRetained(history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, observed := forwarding.ReadStarted(t.Context(), verifier, bindingPath, history)
+	if err := errors.Join(observed, started.Close(), verifier.Close()); err != nil {
+		t.Fatal("independent recovered retirement-chain reader", err)
+	}
+	manager := forwardingInstalledManager(t)
+	_, reserved := forwardingInstalledBudget(t, plan.HostingRoot)
+	if manager["MainPID"] != "0" || manager["ActiveState"] != "inactive" || reserved != 0 {
+		t.Fatal("retirement recovery started work or lost reservation return")
+	}
+	forwardingInstalledReleaseFloors(t, history, distribution, version)
+	after := forwardingInstalledHistorySnapshot(t, filepath.Dir(root))
+	repeated, repeatedErr := exec.Command(program, "forwarding", "recover", distribution, history, "alpha", "coherent-private-forwarding", request, journal).CombinedOutput()
+	var exit *exec.ExitError
+	if !errors.As(repeatedErr, &exit) || exit.ExitCode() != 2 || len(repeated) > 4096 || bytes.Contains(repeated, []byte(`"outcome"`)) || !bytes.Equal(after, forwardingInstalledHistorySnapshot(t, filepath.Dir(root))) {
+		t.Fatal("completed retirement recovery was replayed", repeatedErr)
+	}
+}
+
+func forwardingInstalledStartCut(t *testing.T, program, distribution, history, request, bindingPath string, plan forwarding.Plan, operation string, attempt, number int, version int64) {
+	t.Helper()
+	read := func(path string) []byte {
+		t.Helper()
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	digest := func(raw []byte) string { sum := sha256.Sum256(raw); return hex.EncodeToString(sum[:]) }
+	root := filepath.Dir(bindingPath)
+	journal, directory := root+".forwarding-first-start-journal", filepath.Join(root, "forwarding-startup")
+	if attempt != 0 {
+		journal = root + fmt.Sprintf(".forwarding-invocation-%08d-journal", attempt)
+		directory = filepath.Join(root, fmt.Sprintf("forwarding-invocation-%08d", attempt))
+	}
+	selected := read(bindingPath)
+	managerBefore := forwardingInstalledManager(t)
+	semantic := forwardingInstalledHistorySnapshot(t, plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot)
+	prefix, cut := forwardingInstalledOriginalCut(t, program, "start", number, journal, []string{operation, distribution, history, "alpha", "coherent-private-forwarding", bindingPath})
+	// For later prefixes the original runtime may still own live semantic
+	// users. Their eventual join belongs to the outside original controller;
+	// neither PID absence nor a stable-looking history supplies that join here.
+	output, recovered := exec.Command(program, "forwarding", "recover", distribution, history, "alpha", "coherent-private-forwarding", request, journal).CombinedOutput()
+	if !bytes.Equal(prefix, read(journal)) || !bytes.Equal(cut, read(journal+".original-cut-result")) || !bytes.Equal(selected, read(bindingPath)) {
+		t.Fatal("start recovery changed original cut, prefix or selected generation")
+	}
+	if number > 18 {
+		var exit *exec.ExitError
+		if !errors.As(recovered, &exit) || exit.ExitCode() != 2 || len(output) > 4096 || bytes.Contains(output, []byte(`"outcome"`)) {
+			t.Fatal("possibly started original was adopted or replayed", number, recovered)
+		}
+		if _, err := os.Lstat(journal + ".recovery-completion"); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("uncertain original start acquired a fabricated completion", err)
+		}
+		return
+	}
+	if recovered != nil || !bytes.Equal(output, []byte("{\"outcome\":\"forwarding-recovery-stopped\",\"started\":false}\n")) {
+		t.Fatal("original never-started continuation", number, recovered, string(output))
+	}
+	if !bytes.Equal(semantic, forwardingInstalledHistorySnapshot(t, plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot)) {
+		t.Fatal("never-started continuation changed genuine semantic histories")
+	}
+	var completion struct {
+		Schema        string            `json:"schema"`
+		Operation     string            `json:"operation"`
+		Journal       string            `json:"journal"`
+		PrefixSHA     string            `json:"prefix_sha256"`
+		PrefixRecords uint32            `json:"prefix_records"`
+		CutSHA        string            `json:"original_cut_sha256"`
+		Outcome       string            `json:"outcome"`
+		Records       []json.RawMessage `json:"records"`
+		TranscriptSHA string            `json:"transcript_sha256"`
+	}
+	if json.Unmarshal(read(journal+".recovery-completion"), &completion) != nil || completion.Schema != "ardents-forwarding-recovery-completion-v1" || completion.Operation != "start" || completion.Journal != journal || completion.PrefixSHA != digest(prefix) || completion.PrefixRecords != uint32(number) || completion.CutSHA != digest(cut) || completion.Outcome != "stopped-before-start" || len(completion.Records) != 1 && len(completion.Records) != 4 {
+		t.Fatal("never-started completion lost original provenance")
+	}
+	logical := bytes.Clone(prefix)
+	for index, raw := range completion.Records {
+		var row struct {
+			Phase string `json:"phase"`
+		}
+		if json.Unmarshal(raw, &row) != nil || index == len(completion.Records)-1 && row.Phase != "stopped-before-start" || index < len(completion.Records)-1 && row.Phase != []string{"terminal-directory-intent", "terminal-directory-born", "terminal-directory-ready"}[index] {
+			t.Fatal("never-started suffix replayed a runtime effect")
+		}
+		logical = append(logical, raw...)
+		logical = append(logical, '\n')
+	}
+	if digest(logical) != completion.TranscriptSHA {
+		t.Fatal("never-started logical transcript commitment differs")
+	}
+	for _, path := range []string{filepath.Join(directory, "forwarding-start-pending"), journal + ".recovery-pending", filepath.Join(directory, "start-archived.json")} {
+		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("never-started recovery retained a blocker or created a runtime archive", path, err)
+		}
+	}
+	managerAfter := forwardingInstalledManager(t)
+	_, reserved := forwardingInstalledBudget(t, plan.HostingRoot)
+	if managerAfter["MainPID"] != "0" || managerAfter["ActiveState"] != "inactive" || managerAfter["InvocationID"] != managerBefore["InvocationID"] || reserved != 0 {
+		t.Fatal("never-started recovery started work or changed the stopped invocation")
+	}
+	verifier, err := release.OpenRetained(history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, observed := forwarding.ReadStarted(t.Context(), verifier, bindingPath, history)
+	if err := errors.Join(observed, started.Close(), verifier.Close()); err != nil {
+		t.Fatal("independent recovered terminal-chain reader", err)
+	}
+	forwardingInstalledReleaseFloors(t, history, distribution, version)
+	after := forwardingInstalledHistorySnapshot(t, filepath.Join(root, ".."))
+	repeated, repeatedErr := exec.Command(program, "forwarding", "recover", distribution, history, "alpha", "coherent-private-forwarding", request, journal).CombinedOutput()
+	var exit *exec.ExitError
+	if !errors.As(repeatedErr, &exit) || exit.ExitCode() != 2 || len(repeated) > 4096 || bytes.Contains(repeated, []byte(`"outcome"`)) || !bytes.Equal(after, forwardingInstalledHistorySnapshot(t, filepath.Join(root, ".."))) {
+		t.Fatal("completed never-started recovery was replayed", repeatedErr)
+	}
+}
+
+func forwardingInstalledReplacementCut(t *testing.T, base, bindingPath, history, initialGeneration string, uid uint32, number int, entry forwardingInstalledSuccessor, plan forwarding.Plan) {
+	t.Helper()
+	read := func(path string) []byte {
+		t.Helper()
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	digest := func(raw []byte) string { sum := sha256.Sum256(raw); return hex.EncodeToString(sum[:]) }
+	program := filepath.Join(entry.Distribution, "ardents-node-linux-amd64")
+	forwardingInstalledArtifact(t, program, "ardents-node-successor")
+	root := filepath.Dir(bindingPath)
+	generation := digest(read(filepath.Join(entry.Distribution, "infrastructure-forwarding.json")))
+	journal := root + ".forwarding-replacement-" + generation + "-journal"
+	oldBinding := read(bindingPath)
+	oldRetirement := read(filepath.Join(root, "forwarding-retirement-00000000/retirement-result.json"))
+	semantic := forwardingInstalledHistorySnapshot(t, plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot)
+	predecessor := forwardingInstalledHistorySnapshot(t, filepath.Join(root, "generations", initialGeneration))
+	prefix, cut := forwardingInstalledOriginalCut(t, program, "replacement", number, journal, []string{"replace", entry.Distribution, history, "alpha", "coherent-private-forwarding", entry.Request, bindingPath})
+	before := forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"), "/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow")
+	output, recovered := exec.Command(program, "forwarding", "recover", entry.Distribution, history, "alpha", "coherent-private-forwarding", entry.Request, journal).CombinedOutput()
+	if !bytes.Equal(prefix, read(journal)) || !bytes.Equal(cut, read(journal+".original-cut-result")) {
+		t.Fatal("replacement recovery changed original prefix or actual cut proof")
+	}
+	safe := number == 57 || number == 58 || number == 61 || number == 62
+	if !safe {
+		var exit *exec.ExitError
+		if !errors.As(recovered, &exit) || exit.ExitCode() != 2 || len(output) > 4096 || bytes.Contains(output, []byte(`"outcome"`)) || !bytes.Equal(before, forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"), "/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow")) {
+			t.Fatal("unsafe original replacement prefix was adopted or changed", number, recovered)
+		}
+		return
+	}
+	if recovered != nil || !bytes.Equal(output, []byte("{\"outcome\":\"forwarding-recovery-stopped\",\"started\":false}\n")) {
+		t.Fatal("safe original replacement stopped continuation", number, recovered, string(output))
+	}
+	completed, err := forwarding.ReadCompleted(t.Context(), bindingPath)
+	if err != nil {
+		t.Fatal("independent recovered replacement owner", err)
+	}
+	if err := completed.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(semantic, forwardingInstalledHistorySnapshot(t, plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot)) || !bytes.Equal(predecessor, forwardingInstalledHistorySnapshot(t, filepath.Join(root, "generations", initialGeneration))) {
+		t.Fatal("replacement continuation changed genuine original histories or predecessor")
+	}
+	var selected struct {
+		Schema        string `json:"schema"`
+		Initial       string `json:"initial_generation"`
+		Predecessor   string `json:"predecessor_generation"`
+		Binding       string `json:"predecessor_binding_sha256"`
+		Retirement    string `json:"retirement_sha256"`
+		Attempt       uint32 `json:"predecessor_attempt"`
+		Configuration struct {
+			Generation string `json:"generation"`
+			UID        uint32 `json:"uid"`
+			GID        uint32 `json:"gid"`
+			PlanSHA    string `json:"plan_sha256"`
+			ProgramSHA string `json:"program_sha256"`
+		} `json:"configuration"`
+	}
+	if json.Unmarshal(read(bindingPath), &selected) != nil || selected.Schema != "ardents-forwarding-replacement-binding-v1" || selected.Initial != initialGeneration || selected.Predecessor != initialGeneration || selected.Binding != digest(oldBinding) || selected.Retirement != digest(oldRetirement) || selected.Attempt != 0 || selected.Configuration.Generation != generation || selected.Configuration.UID != uid || selected.Configuration.GID != uid || selected.Configuration.PlanSHA != digest(read(entry.Plan)) || selected.Configuration.ProgramSHA != digest(read(program)) {
+		t.Fatal("recovered replacement lost original retirement or exact candidate")
+	}
+	var completion struct {
+		Schema        string            `json:"schema"`
+		Operation     string            `json:"operation"`
+		Journal       string            `json:"journal"`
+		PrefixSHA     string            `json:"prefix_sha256"`
+		PrefixRecords uint32            `json:"prefix_records"`
+		CutSHA        string            `json:"original_cut_sha256"`
+		Outcome       string            `json:"outcome"`
+		Records       []json.RawMessage `json:"records"`
+		TranscriptSHA string            `json:"transcript_sha256"`
+	}
+	schema := "ardents-forwarding-recovery-completion-v1"
+	if number == 57 || number == 58 {
+		schema = "ardents-forwarding-recovery-completion-v2"
+	}
+	if json.Unmarshal(read(journal+".recovery-completion"), &completion) != nil || completion.Schema != schema || completion.Operation != "replacement" || completion.Journal != journal || completion.PrefixSHA != digest(prefix) || completion.PrefixRecords != uint32(number) || completion.CutSHA != digest(cut) || completion.Outcome != "selected-stopped" || len(completion.Records) != 62-number {
+		t.Fatal("replacement completion does not retain its exact original boundary")
+	}
+	logical := bytes.Clone(prefix)
+	for _, row := range completion.Records {
+		logical = append(logical, row...)
+		logical = append(logical, '\n')
+	}
+	if bytes.Count(logical, []byte{'\n'}) != 62 || digest(logical) != completion.TranscriptSHA {
+		t.Fatal("replacement continued transcript commitment differs")
+	}
+	for _, path := range []string{filepath.Join(root, "forwarding-replacement-pending"), journal + ".recovery-pending"} {
+		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("recovered replacement blocker publication incomplete", path, err)
+		}
+	}
+	manager := forwardingInstalledManager(t)
+	_, reserved := forwardingInstalledBudget(t, plan.HostingRoot)
+	if manager["MainPID"] != "0" || manager["ActiveState"] != "inactive" || reserved != 0 {
+		t.Fatal("replacement recovery started work or reset original physical reservations")
+	}
+	forwardingInstalledReleaseFloors(t, history, entry.Distribution, 2)
+	after := forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"))
+	repeated, repeatedErr := exec.Command(program, "forwarding", "recover", entry.Distribution, history, "alpha", "coherent-private-forwarding", entry.Request, journal).CombinedOutput()
+	var exit *exec.ExitError
+	if !errors.As(repeatedErr, &exit) || exit.ExitCode() != 2 || len(repeated) > 4096 || bytes.Contains(repeated, []byte(`"outcome"`)) || !bytes.Equal(after, forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"))) {
+		t.Fatal("completed replacement recovery was replayed", repeatedErr)
 	}
 }

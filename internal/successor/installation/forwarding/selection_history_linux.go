@@ -190,9 +190,19 @@ func (c *completedInitial) readReplacementHistory() error {
 		if err != nil {
 			return err
 		}
-		retirement := filepath.Join(attemptNumber(r.PredecessorAttempt).retirement(b.Request.InstallationRoot), "retirement-result.json")
+		retirementDirectory := attemptNumber(r.PredecessorAttempt).retirement(b.Request.InstallationRoot)
+		retirement := filepath.Join(retirementDirectory, "retirement-result.json")
 		if f.files[retirement] == nil {
-			if _, err := f.read(retirement, 64<<10, 0600, 0, 0); err != nil {
+			// Only this exact predecessor directory has the established root:Node
+			// policy. Its ancestors and root-private result keep their own checks.
+			if err := f.directory(retirementDirectory, 0750, 0, b.GID); err != nil {
+				return err
+			}
+			file, err := f.retainAt(retirement, f.dirs[retirementDirectory], 64<<10, 0600, 0, 0)
+			if err != nil {
+				return err
+			}
+			if _, err := f.fill(file, 64<<10); err != nil {
 				return err
 			}
 		}

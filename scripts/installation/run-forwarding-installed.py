@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import subprocess
 import sys
 
@@ -24,28 +25,122 @@ CASES = {
 INPUTS = {"binding", "plan", "bundle", "profile", "presentations",
           "peer_plan", "peer_presentations", "peer_certificate"}
 
+TRANSITION_SCHEMAS = ("ardents-forwarding-bootstrap-receipt-v2",
+                      "ardents-forwarding-bootstrap-receipt-v3")
+
+V1_CASES = CASES.copy()
+CASES = {**V1_CASES,
+         "replacement-lifetime-refill": "TestForwardingInstalledNativeReplacementLifetimeAndRefill",
+         "replacement-unknown-domain-join": "TestForwardingInstalledNativeReplacementUnknownDomainJoin",
+         "replacement-changed-account": "TestForwardingInstalledNativeReplacementChangedAccount",
+         "replacement-stale-authority": "TestForwardingInstalledNativeReplacementStaleAuthority"}
+for role in ("issuer", "descriptor", "introduction", "join"):
+    for kind in ("service", "socket"):
+        CASES[f"replacement-competing-{role}-{kind}"] = "TestForwardingInstalledNativeReplacementCompetingSlot"
+for prefix, count, test in [
+    ("initial", 120, "TestForwardingInstalledNativeOriginalInitialPrefix"),
+    ("replacement", 62, "TestForwardingInstalledNativeOriginalReplacementPrefix"),
+    ("start-initial", 26, "TestForwardingInstalledNativeOriginalStartPrefix"),
+    ("start-selected", 26, "TestForwardingInstalledNativeOriginalStartPrefix"),
+    ("restart", 26, "TestForwardingInstalledNativeOriginalStartPrefix"),
+    ("retirement-initial", 18, "TestForwardingInstalledNativeOriginalRetirementPrefix"),
+    ("retirement-selected", 18, "TestForwardingInstalledNativeOriginalRetirementPrefix"),
+]:
+    for number in range(1, count + 1):
+        CASES[f"{prefix}-cut-{number:03d}"] = test
+
+
+def input_names(case):
+    if case.startswith("initial-cut-"):
+        return {"initial_cut_inputs"}
+    if (case in ("replacement-lifetime-refill", "replacement-unknown-domain-join", "replacement-changed-account", "replacement-stale-authority") or case.startswith((
+            "replacement-competing-", "replacement-cut-", "start-selected-cut-", "restart-cut-", "retirement-selected-cut-"))):
+        return INPUTS | {"successors"}
+    return INPUTS
+
+
+def profile_cases(receipt):
+    if not isinstance(receipt, dict):
+        return {}
+    if receipt.get("schema") == "ardents-forwarding-bootstrap-receipt-v1":
+        return V1_CASES
+    if receipt.get("schema") in TRANSITION_SCHEMAS:
+        return CASES
+    return {}
+
+
+def hash_string(value):
+    return isinstance(value, str) and len(value) == 64 and all(c in "0123456789abcdef" for c in value)
+
+
+def campaign_digest(receipt):
+    """Commit the whole implementation/catalog, independently of fresh cases.
+
+    This is a grouping commitment, never evidence that another case has prepared
+    inputs, executed successfully, or received the separate bootstrap decision.
+    """
+    scope = {name: receipt.get(name) for name in (
+        "source_manifest_sha256", "runtime_source_manifests", "artifacts", "cases", "controllers")}
+    return hashlib.sha256(json.dumps(scope, sort_keys=True, separators=(",", ":"),
+                                     ensure_ascii=True).encode("ascii")).hexdigest()
+
+
+def serial_scope(receipt, pins):
+    """One actual original stand, with no placeholders for future case inputs."""
+    case = receipt.get("selected_case")
+    stand = receipt.get("native_stand")
+    controllers = receipt.get("controllers")
+    return (isinstance(case, str) and case in CASES and pins.get("selected_case") == case
+            and isinstance(stand, dict) and set(stand) == {"case", "reservation_sha256"}
+            and isinstance(stand["case"], str)
+            and re.fullmatch(r"installed[1-9][0-9]*", stand["case"], flags=re.ASCII) is not None
+            and hash_string(stand["reservation_sha256"]) and pins.get("native_stand") == stand
+            and isinstance(controllers, dict)
+            and set(controllers) == {"controller", "worker", "input_preparer"}
+            and all(hash_string(value) for value in controllers.values())
+            and pins.get("controllers") == controllers
+            and all(isinstance(name, str) and all(32 <= ord(char) <= 126 for char in name)
+                    for name in receipt.get("artifacts", {}))
+            and receipt.get("campaign_sha256") == campaign_digest(receipt)
+            and pins.get("campaign_sha256") == receipt.get("campaign_sha256"))
+
 
 def matches_scope(receipt, pins, source_digest):
     """Check public consistency only; no value here supplies PO acceptance."""
+    if not isinstance(receipt, dict) or not isinstance(pins, dict):
+        return False
     artifacts = pins.get("artifacts", {})
+    if not isinstance(artifacts, dict):
+        return False
     required = {"ardents-node", "ardents-control", "forwarding-installed.test"}
+    selected = profile_cases(receipt)
+    if receipt.get("schema") in TRANSITION_SCHEMAS:
+        required |= {"ardents-node-successor", "ardents-control-successor", "forwarding-control.test"}
+        sources = pins.get("runtime_source_manifests", {})
+        if (not isinstance(sources, dict) or set(sources) != {"initial", "successor"}
+                or not all(hash_string(value) for value in sources.values())
+                or sources["initial"] == sources["successor"]
+                or receipt.get("runtime_source_manifests") != sources
+                or pins.get("source_manifest") != source_digest
+                or artifacts.get("ardents-node") == artifacts.get("ardents-node-successor")):
+            return False
     cases = receipt.get("case_inputs", {})
-    return (receipt.get("schema") == "ardents-forwarding-bootstrap-receipt-v1"
-            and len(source_digest) == 64
-            and all(c in "0123456789abcdef" for c in source_digest)
+    if receipt.get("schema") == "ardents-forwarding-bootstrap-receipt-v3":
+        if not serial_scope(receipt, pins):
+            return False
+        prepared = {receipt["selected_case"]}
+    else:
+        prepared = set(selected)
+    return (bool(selected) and hash_string(source_digest)
             and receipt.get("source_manifest_sha256") == source_digest
             and isinstance(artifacts, dict) and required <= set(artifacts)
-            and all(isinstance(value, str) and len(value) == 64
-                    and all(c in "0123456789abcdef" for c in value)
-                    for value in artifacts.values())
+            and all(hash_string(value) for value in artifacts.values())
             and receipt.get("artifacts") == artifacts
-            and receipt.get("cases") == list(CASES)
-            and isinstance(cases, dict) and set(cases) == set(CASES)
-            and all(isinstance(inputs, dict) and set(inputs) == INPUTS
-                    and all(isinstance(value, str) and len(value) == 64
-                            and all(c in "0123456789abcdef" for c in value)
-                            for value in inputs.values())
-                    for inputs in cases.values()))
+            and receipt.get("cases") == list(selected)
+            and isinstance(cases, dict) and set(cases) == prepared
+            and all(isinstance(inputs, dict) and set(inputs) == input_names(case)
+                    and all(hash_string(value) for value in inputs.values())
+                    for case, inputs in cases.items()))
 
 
 def digest(path):
@@ -55,28 +150,38 @@ def digest(path):
 
 def matches_inputs(receipt, case, actual):
     """Bind this stand's observed input bytes, without granting runtime rights."""
-    return (case in CASES and isinstance(actual, dict) and set(actual) == INPUTS
+    if not isinstance(receipt, dict) or not isinstance(case, str):
+        return False
+    if (receipt.get("schema") == "ardents-forwarding-bootstrap-receipt-v3"
+            and receipt.get("selected_case") != case):
+        return False
+    return (case in profile_cases(receipt) and isinstance(actual, dict) and set(actual) == input_names(case)
             and receipt.get("case_inputs", {}).get(case) == actual)
 
 
 def prepared_inputs():
     base = Path("/var/lib/forwarding-coherent-initial")
-    binding = base / "runtime/node/binding.json"
-    if any(item.is_symlink() for item in (binding, *binding.parents)) or not binding.is_file():
-        raise RuntimeError("original prepared binding required")
-    generation = json.loads(binding.read_bytes())["generation"]
-    if (not isinstance(generation, str) or len(generation) != 64
-            or any(c not in "0123456789abcdef" for c in generation)):
-        raise RuntimeError("canonical prepared generation required")
-    paths = {
-        "binding": binding,
-        "plan": binding.parent / "generations" / generation / "forwarding-plan.json",
-        "bundle": base / "bundle.bin", "profile": base / "profile.bin",
-        "presentations": base / "delivery/forwarding-presentations.json",
-        "peer_plan": base / "component-peer/forwarding-plan.json",
-        "peer_presentations": base / "delivery/forwarding-peer-presentations.json",
-        "peer_certificate": base / "delivery/peer-certificate/node-certificate.pem",
-    }
+    case = os.environ.get("ARDENTS_FORWARDING_INSTALLED_CASE", "")
+    if case.startswith("initial-cut-"):
+        paths = {"initial_cut_inputs": base / "initial-cut-inputs.json"}
+    else:
+        # The initial sealed selection remains immutable across replacement.
+        # A mutable current selection is an output, not a prepared-input pin.
+        descriptor = base / "delivery/distribution/infrastructure-forwarding.json"
+        if not descriptor.is_file() or any(item.is_symlink() for item in (descriptor, *descriptor.parents)):
+            raise RuntimeError("original initial public descriptor required")
+        generation = digest(descriptor)
+        sealed = base / "runtime/node/generations" / generation
+        paths = {
+            "binding": sealed / "binding.json", "plan": sealed / "forwarding-plan.json",
+            "bundle": base / "bundle.bin", "profile": base / "profile.bin",
+            "presentations": base / "delivery/forwarding-presentations.json",
+            "peer_plan": base / "component-peer/forwarding-plan.json",
+            "peer_presentations": base / "delivery/forwarding-peer-presentations.json",
+            "peer_certificate": base / "delivery/peer-certificate/node-certificate.pem",
+        }
+        if "successors" in input_names(case):
+            paths["successors"] = base / "delivery/successor-deliveries.json"
     for path in paths.values():
         if not path.is_file() or any(item.is_symlink() for item in (path, *path.parents)):
             raise RuntimeError("original prepared input required")
@@ -146,6 +251,14 @@ def main():
     receipt = bootstrap(root)
     binary = pinned("TEST")
     selected = CASES[case]
+    # A transition campaign cannot begin with only its easy lifecycle test present.
+    # Every required original-prefix entry must exist in this exact artifact.
+    required = set(profile_cases(json.loads(receipt.read_text())).values())
+    expression = "^(" + "|".join(sorted(required)) + ")$"
+    discovered = subprocess.check_output([str(binary), "-test.list=" + expression],
+                                         text=True, timeout=15).splitlines()
+    if len(discovered) != len(required) or set(discovered) != required:
+        raise RuntimeError("complete checked campaign implementation is unavailable")
     names = subprocess.check_output([str(binary), "-test.list=^" + selected + "$"],
                                     text=True, timeout=15).splitlines()
     if names != [selected]:

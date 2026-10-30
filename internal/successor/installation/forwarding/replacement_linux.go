@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -296,14 +297,20 @@ func Replace(v *release.Verifier, a infrastructure.ForwardingAuthorization, inpu
 	}
 	readback, err := readCompletedPending(s.ctx, bindingPath, s.pending)
 	if err != nil {
-		return err
+		return fmt.Errorf("forwarding replacement completed readback: %w", err)
 	}
 	checked := &started{invocationChain: readback.original.files.invocations, ctx: s.ctx, verifier: v, completed: readback}
 	if err == nil {
 		err = (Started{original: checked}).Check()
+		if err != nil {
+			err = fmt.Errorf("forwarding replacement invocation readback: %w", err)
+		}
 	}
 	if err == nil {
 		err = readback.CheckAuthorization(v, a)
+		if err != nil {
+			err = fmt.Errorf("forwarding replacement target readback: %w", err)
+		}
 	}
 	err = errors.Join(err, checked.close())
 	if err != nil {

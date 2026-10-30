@@ -20,10 +20,15 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import native_stand
 import qa_archive
+import qa_history
 
 spec = importlib.util.spec_from_file_location('qa_case_finalizer', Path(__file__).with_name('finalize-native-stand.py'))
 finalizer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(finalizer)
+
+history_spec = importlib.util.spec_from_file_location('qa_history_observer', Path(__file__).with_name('reobserve-native-history.py'))
+history_observer = importlib.util.module_from_spec(history_spec)
+history_spec.loader.exec_module(history_observer)
 
 CONTROLLER = '''import hashlib,json,os,shutil,socket,sys
 from pathlib import Path
@@ -295,6 +300,76 @@ def main():
         failed_observations.append({'case': case, 'actual_test_exit': code, 'original_result_preserved': True,
                                     'product_acceptance': False, 'duplicate_files_removed': 3,
                                     'state_retained_in_place': True, 'next_case_requires_fresh_reservation': True})
+    # Fresh custody of finalized forensic evidence has no active-root path.
+    # These are real archived failed cases, not synthetic successful domains.
+    history_observer.observe(output)
+    root = native_stand.WORK_ROOT / 'cases' / 'installed900105'
+    history = native_stand.WORK_ROOT / 'case-history' / 'installed900105.json'
+    record = native_stand.read_control(history)
+    observation = qa_history.observation_path(native_stand.WORK_ROOT, root.name)
+    raw = observation.read_bytes()
+    def check_observation():
+        return qa_history.checked_observation(native_stand.WORK_ROOT, root, record, {})
+    check_observation()
+    for field, value in [('boot_id', '00000000-0000-0000-0000-000000000000'),
+                         ('history_sha256', '0' * 64), ('observer_sha256', '0' * 64),
+                         ('current_native', [0, 0, 0, 0, 0]), ('original_native', [0, 0, 0, 0, 0])]:
+        changed = json.loads(raw)
+        changed[field] = value
+        observation.write_text(json.dumps(changed))
+        require_refusal(check_observation, 'changed historical observation ' + field)
+        observation.write_bytes(raw)
+    link = base / 'linked-observation'
+    os.link(observation, link)
+    require_refusal(check_observation, 'linked historical observation')
+    link.unlink()
+    check_observation()
+    original_boot = qa_history.boot_id
+    qa_history.boot_id = lambda: '00000000-0000-0000-0000-000000000000'
+    try:
+        require_refusal(native_stand.check_idle, 'stale observation cannot select original-device legacy checks')
+    finally:
+        qa_history.boot_id = original_boot
+    # A controlled observer-version change exercises append-only renewal in
+    # the same actual boot; it is not a claim that the kernel was remounted.
+    original_pin = qa_history.observer_pin
+    qa_history.observer_pin = lambda: 'e' * 64
+    upgrade_output = output / 'observer-upgrade'
+    qa_archive.make_directory(upgrade_output)
+    try:
+        require_refusal(native_stand.check_idle, 'changed observer requires fresh acquisition')
+        history_observer.observe(upgrade_output)
+        native_stand.check_idle()
+        assert observation.read_bytes() == raw
+    finally:
+        qa_history.observer_pin = original_pin
+    check_observation()
+    blocked_output = output / 'active-history-refusal'
+    qa_archive.make_directory(blocked_output)
+    active_root, active_terminal = produce('preparation900106')
+    require_refusal(lambda: history_observer.observe(blocked_output), 'active native history cannot be reobserved')
+    complete('preparation900106', active_terminal)
+    native_stand.check_idle()
+    # A changed retained payload must refuse even if the case directory and
+    # its old finalized receipt have exactly the same native identity.
+    state = root / 'state'
+    original_body = state.read_bytes()
+    state.write_bytes(b'changed retained evidence')
+    require_refusal(check_observation, 'changed retained state after observation')
+    require_refusal(native_stand.check_idle, 'allocation cannot ignore changed observed retained state')
+    moved = base / 'moved-observation.json'
+    observation.rename(moved)
+    require_refusal(native_stand.check_idle, 'missing observation cannot select legacy checks after payload change')
+    moved.rename(observation)
+    qa_archive.save_json(output / 'history-observation-controls.json', {
+        'fresh_failed_history_observed': True, 'stale_boot_refused': True,
+        'changed_history_and_observer_pins_refused': True, 'changed_native_binding_refused': True,
+        'linked_observation_refused': True, 'active_case_refused': True,
+        'changed_actual_retained_state_refused': True, 'original_failed_state_hex': original_body.hex(),
+        'missing_snapshot_legacy_fallback_refused': True, 'observer_version_renewal_preserves_old_snapshot': True,
+        'controlled_boot_and_observer_projections': True,
+        'changed_fixture_state_hex': state.read_bytes().hex(), 'original_receipts_unchanged': True,
+        'actual_device_remount_exercised': False, 'no_runtime_or_installed_authority': True})
     native_stand.references(base)
     assert native_stand.native(base) == original_base
     # Only this exact original disposable test tree is retired; all successful
