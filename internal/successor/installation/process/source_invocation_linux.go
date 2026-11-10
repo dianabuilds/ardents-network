@@ -61,9 +61,7 @@ func retainSource(ctx context.Context, expected SourceExpected) (*Invocation, er
 	if expected.UID < 100 || expected.UID > 999 || expected.GID != expected.UID {
 		return nil, errInput
 	}
-	facts := Expected{PID: expected.PID, UID: expected.UID, GID: expected.GID,
-		Invocation: expected.Invocation, InstallationRoot: expected.InstallationRoot,
-		Generation: expected.Generation, ProgramIdentity: expected.ProgramIdentity}
+	facts := Expected(expected)
 	pin, err := retainFixed(ctx, facts, sourceInvocationPolicy(expected))
 	if err != nil {
 		return nil, err

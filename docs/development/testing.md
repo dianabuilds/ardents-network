@@ -3447,6 +3447,17 @@ substitute for independent review.
 
 ## Ordinary checks
 
+The Endpoint's in-process `roleNetworkFixture` declares accepted State,
+qualified workers, placement and owner use as component models. Up to sixteen
+Node lifetimes share one test process and the runner's cgroup with independent
+workers and compilation processes; that cgroup cannot attest an isolated Node's
+resident memory. The existing Node `ResourceMeasure` seam supplies the same
+bounded owner-use model as the separate role-observation component. Actual
+Custody, Admission, TLS/Route operations and durable Hosting traffic/reservations
+remain real. These tests establish no native placement, pressure or owner-use
+qualification. Native profiles retain real measurements, including refusal when
+a process disappears during a sample; runtime guards and limits are unchanged.
+
 `TestNodeInspectionNative*` in `network/duty` and `network/state` belongs to the
 existing root/ext4 `network-signing-linux` profile. Its explicit owner selection
 is `go test -race -tags network_signing_native ./internal/successor/network/duty ./internal/successor/network/state -run '^Test(Node|Source)InspectionNative' -count=1 -timeout=3m`

@@ -25,7 +25,7 @@ func OpenSourceInspection(ctx context.Context, path string, uid, gid uint32) (*S
 func sourceInspectionRecords(records []dutyRecord) error {
 	for _, record := range records {
 		if record.Class != "direct-source" || record.State != "exposed" {
-			return errors.New("Source participation has an unresolved original producer")
+			return errors.New("unresolved original producer retained in Source participation")
 		}
 	}
 	return nil

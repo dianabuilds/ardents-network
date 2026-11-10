@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 func TestMonitorFollowsSourceAndRestartsRetention(t *testing.T) {
@@ -426,12 +428,25 @@ func TestMonitorPublishesSourceExitBeforeSinkCleanup(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer consoleR.Close()
-	if err := consoleW.SetWriteDeadline(time.Now().Add(5 * time.Millisecond)); err != nil {
+	defer consoleW.Close()
+	// Fill the empty pipe to its actual capacity before starting the monitor.
+	// A short deadline can expire before the first write is scheduled.
+	raw, err := consoleW.SyscallConn()
+	if err != nil {
 		t.Fatal(err)
 	}
-	n, err := consoleW.Write(make([]byte, 1<<20))
-	if n == 0 || err == nil {
-		t.Fatalf("blocked pipe fixture invalid: n=%d err=%v", n, err)
+	var capacity int
+	var capacityErr error
+	if err := raw.Control(func(fd uintptr) {
+		capacity, capacityErr = unix.FcntlInt(fd, unix.F_GETPIPE_SZ, 0)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if capacityErr != nil || capacity <= 0 || capacity > 1<<20 {
+		t.Fatalf("blocked pipe fixture capacity invalid: %d, %v", capacity, capacityErr)
+	}
+	if n, err := consoleW.Write(make([]byte, capacity)); err != nil || n != capacity {
+		t.Fatalf("blocked pipe fixture fill: n=%d want=%d err=%v", n, capacity, err)
 	}
 	delivery := newMonitorDelivery(store, consoleW, false, at)
 	done := make(chan error, 1)

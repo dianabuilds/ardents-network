@@ -67,14 +67,14 @@ func openNodeInspection(parent context.Context, input Config, node [32]byte, uid
 		return result, err
 	}
 	if _, finite := parent.Deadline(); !finite {
-		return result, errors.New("Node inspection requires finite original caller")
+		return result, errors.New("inspection of Node requires finite original caller")
 	}
 	cfg, err := validateConfig(input)
 	if err != nil {
 		return result, err
 	}
 	if cfg.sourceInfo.Configured || cfg.sourceInfo.Serving || cfg.automatic != 0 {
-		return result, errors.New("Node inspection is retained-history only")
+		return result, errors.New("inspection of Node is retained-history only")
 	}
 	ctx, cancel := context.WithCancel(parent)
 	s := &nodeInspection{parent: parent, ctx: ctx, cancel: cancel, config: cfg, node: node, uid: uid, gid: gid}

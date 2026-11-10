@@ -212,7 +212,7 @@ func executeObservedNetworkSigning(ctx context.Context, args []string, observe f
 func persistNetworkSigning(ctx context.Context, path string, artifacts []networkSignedArtifact, check func() error, observe func(string, *os.File)) error {
 	files := make([]networkOutputFile, 0, len(artifacts))
 	for _, a := range artifacts {
-		files = append(files, networkOutputFile{a.name, a.raw})
+		files = append(files, networkOutputFile(a))
 	}
 	return persistNetworkFiles(ctx, path, files, false, check, observe)
 }

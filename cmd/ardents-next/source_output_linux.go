@@ -41,7 +41,7 @@ func writeSourceReportContext(parent context.Context, out io.Writer, raw []byte)
 		return err
 	}
 	if info.Mode()&(os.ModeNamedPipe|os.ModeCharDevice|os.ModeSocket) == 0 {
-		return errors.New("Source report requires interruptible output")
+		return errors.New("report for Source requires interruptible output")
 	}
 	fd := int(file.Fd())
 	defer runtime.KeepAlive(file)

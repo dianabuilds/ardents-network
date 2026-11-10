@@ -59,7 +59,7 @@ func openInspection(ctx context.Context, path, policy string, uid, gid uint32, o
 		return result, err
 	}
 	if _, finite := ctx.Deadline(); !finite {
-		return result, errors.New("Hosting inspection requires finite caller")
+		return result, errors.New("inspection of Hosting requires finite caller")
 	}
 	s := &periodInspection{ctx: ctx, uid: uid, gid: gid, policy: policy, observe: observe}
 	defer func() {

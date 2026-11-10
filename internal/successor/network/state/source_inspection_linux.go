@@ -42,14 +42,14 @@ func OpenSourceInspection(parent context.Context, input Config) (result SourceIn
 		return result, errors.New("invalid retained Source inspection caller")
 	}
 	if _, bounded := parent.Deadline(); !bounded {
-		return result, errors.New("Source inspection requires a finite original caller")
+		return result, errors.New("inspection of Source requires a finite original caller")
 	}
 	resolved, err := validateConfig(input)
 	if err != nil {
 		return result, err
 	}
 	if resolved.sourceInfo.Configured || resolved.sourceInfo.Serving || resolved.automatic != 0 || resolved.localRoles == "" || input.ClockObservationFile == "" || input.ObserveClock != nil {
-		return result, errors.New("Source inspection is retained-history only")
+		return result, errors.New("inspection of Source is retained-history only")
 	}
 	ctx, cancel := context.WithCancel(parent)
 	s := &sourceInspection{parent: parent, ctx: ctx, cancel: cancel, config: resolved, clockPath: input.ClockObservationFile}

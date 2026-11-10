@@ -27,10 +27,10 @@ func InspectUnopenedNode(ctx context.Context, path string, uid, gid uint32, orig
 
 func openNodeInspection(ctx context.Context, path string, uid, gid uint32, unopened os.FileInfo) (NodeInspection, error) {
 	if ctx == nil {
-		return NodeInspection{}, errors.New("Node participation inspection requires caller")
+		return NodeInspection{}, errors.New("inspection of Node participation requires caller")
 	}
 	if _, finite := ctx.Deadline(); !finite {
-		return NodeInspection{}, errors.New("Node participation inspection requires finite caller")
+		return NodeInspection{}, errors.New("inspection of Node participation requires finite caller")
 	}
 	original, err := openParticipationInspection(ctx, path, uid, gid, unopened)
 	if err != nil {
@@ -45,7 +45,7 @@ func openNodeInspection(ctx context.Context, path string, uid, gid uint32, unope
 
 func nodeInspectionRecords(records []dutyRecord) error {
 	if len(records) != 0 {
-		return errors.New("Node participation retains an unresolved original producer")
+		return errors.New("unresolved original producer retained in Node participation")
 	}
 	return nil
 }
