@@ -143,68 +143,71 @@ func (r *managerReference) forwardingLoadedObservation() (result ForwardingObser
 	if !r.client.bus.Connected() {
 		return result, r.unavailable()
 	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return result, err
-	}
-	if err = r.matchManagerDeclaration(ctx); err != nil {
-		return result, err
-	}
-	for round := 0; round < 2; round++ {
-		for _, unit := range nodeUnitNames[1:] {
-			if err = nodeSlotAbsent(ctx, r, unit); err != nil {
-				return result, err
+	err = r.client.observeRequests(ctx, func(ctx context.Context) error {
+		if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
+			return err
+		}
+		if err = r.matchManagerDeclaration(ctx); err != nil {
+			return err
+		}
+		for round := 0; round < 2; round++ {
+			for _, unit := range nodeUnitNames[1:] {
+				if err = nodeSlotAbsent(ctx, r, unit); err != nil {
+					return err
+				}
 			}
-		}
-		if err = nodeNameAbsent(ctx, r, "ardents-forwarding.socket"); err != nil {
-			return result, err
-		}
-		if round != 0 {
-			break
-		}
-		call, e := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.GetUnit", "ardents-forwarding.service")
-		if e != nil {
-			return result, e
-		}
-		if len(call.Body) != 1 {
-			return result, ErrObservation
-		}
-		object, ok := call.Body[0].(dbus.ObjectPath)
-		if !ok || object != "/org/freedesktop/systemd1/unit/ardents_2dforwarding_2eservice" {
-			return result, ErrObservation
-		}
-		for i, iface := range []string{"Unit", "Service"} {
-			call, e = r.client.call(ctx, string(object), "org.freedesktop.DBus.Properties.GetAll", "org.freedesktop.systemd1."+iface)
+			if err = nodeNameAbsent(ctx, r, "ardents-forwarding.socket"); err != nil {
+				return err
+			}
+			if round != 0 {
+				break
+			}
+			call, e := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.GetUnit", "ardents-forwarding.service")
 			if e != nil {
-				return result, e
+				return e
 			}
-			properties, e := startupProperties(call)
-			if e != nil {
-				return result, e
+			if len(call.Body) != 1 {
+				return ErrObservation
 			}
-			if i == 0 {
-				result.Unit = properties
-			} else {
-				result.Service = properties
+			object, ok := call.Body[0].(dbus.ObjectPath)
+			if !ok || object != "/org/freedesktop/systemd1/unit/ardents_2dforwarding_2eservice" {
+				return ErrObservation
+			}
+			for i, iface := range []string{"Unit", "Service"} {
+				call, e = r.client.call(ctx, string(object), "org.freedesktop.DBus.Properties.GetAll", "org.freedesktop.systemd1."+iface)
+				if e != nil {
+					return e
+				}
+				properties, e := startupProperties(call)
+				if e != nil {
+					return e
+				}
+				if i == 0 {
+					result.Unit = properties
+				} else {
+					result.Service = properties
+				}
 			}
 		}
-	}
-	if r.observe != nil {
-		r.observe()
-	}
-	if err = r.matchManagerDeclaration(ctx); err != nil {
-		return result, err
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return result, err
-	}
-	if err = r.local(); err != nil {
-		return result, err
-	}
-	if err = r.client.transport.socket.SetDeadline(time.Time{}); err != nil {
-		return result, err
-	}
-	result.Manager, result.Version, result.UnitPaths = r.client.manager, r.version, append([]string(nil), r.paths...)
-	return result, nil
+		if r.observe != nil {
+			r.observe()
+		}
+		if err = r.matchManagerDeclaration(ctx); err != nil {
+			return err
+		}
+		if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
+			return err
+		}
+		if err = r.local(); err != nil {
+			return err
+		}
+		if err = r.client.transport.socket.SetDeadline(time.Time{}); err != nil {
+			return err
+		}
+		result.Manager, result.Version, result.UnitPaths = r.client.manager, r.version, append([]string(nil), r.paths...)
+		return nil
+	})
+	return result, err
 }
 
 func (s *ForwardingRuntime) Observe() (ForwardingObservation, error) {

@@ -53,15 +53,10 @@ func pinStartupNamespace(selection *runtimeSelection, paths []string) ([]string,
 }
 
 func checkStartupNamespace(selection *runtimeSelection, absent []string) error {
-	if err := selection.check(); err != nil {
-		return err
+	if absent == nil {
+		absent = []string{}
 	}
-	for _, path := range absent {
-		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
-			return errors.Join(ErrBinding, err)
-		}
-	}
-	return selection.check()
+	return selection.checkNamespace(absent)
 }
 
 func (s *runtimeSelection) pinStartupDirectory(path string) error {

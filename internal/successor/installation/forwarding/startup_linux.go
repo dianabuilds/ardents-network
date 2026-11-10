@@ -26,6 +26,8 @@ type Startup struct{ original *startup }
 type startup struct {
 	mu, ioMu              sync.Mutex
 	uses                  sync.WaitGroup
+	checks                []*startupCheck
+	checking              bool
 	once                  sync.Once
 	ctx, parent           context.Context
 	cancel                context.CancelFunc
@@ -235,8 +237,14 @@ func (s *startup) observe() error {
 	if err := s.local(); err != nil {
 		return err
 	}
+	return s.selection.observeStartupFiles(s.observeNative)
+}
+
+// All three native observation points and both complete manager rounds remain
+// inside the original full file bracket. These reads grant no cached authority.
+func (s *startup) observeNative() error {
 	base := func() error {
-		if err := checkStartupNamespace(s.selection, s.absent); err != nil {
+		if err := s.selection.observeStartupPaths(s.absent); err != nil {
 			return err
 		}
 		if err := s.identity.check(); err != nil {
@@ -271,16 +279,7 @@ func (h *Startup) Check() error {
 		return ErrInput
 	}
 	s := h.original
-	if err := s.begin(); err != nil {
-		return err
-	}
-	defer s.uses.Done()
-	s.ioMu.Lock()
-	defer s.ioMu.Unlock()
-	if err := s.observe(); err != nil {
-		return s.record(err)
-	}
-	return s.local()
+	return s.checkObservation(s.observe)
 }
 
 func (h *Startup) Context() context.Context {

@@ -31,6 +31,27 @@ func TestForwardingInventoryIndependentCanonicalOracle(t *testing.T) {
 	if _, err := parseInfrastructureInventory(want); err != nil {
 		t.Fatal(err)
 	}
+	observed, hashes, err := ValidateInfrastructureInventory(want, files)
+	if err != nil || observed != facts || len(hashes) != 7 {
+		t.Fatal("bounded public byte inventory", observed, hashes, err)
+	}
+	for name, body := range files {
+		sum := sha256.Sum256(body)
+		if hashes[name] != hex.EncodeToString(sum[:]) {
+			t.Fatal("returned digest did not match original bytes", name)
+		}
+	}
+	hashes["ardents-node-linux-amd64"] = strings.Repeat("0", 64)
+	_, fresh, err := ValidateInfrastructureInventory(want, files)
+	if err != nil || fresh["ardents-node-linux-amd64"] == hashes["ardents-node-linux-amd64"] {
+		t.Fatal("caller digest mutation changed a later validation", err)
+	}
+	originalProgram := files["ardents-node-linux-amd64"]
+	files["ardents-node-linux-amd64"] = []byte("substituted original image")
+	if got, sums, err := ValidateInfrastructureInventory(want, files); !errors.Is(err, ErrBinding) || got != (InfrastructureFacts{}) || sums != nil {
+		t.Fatal("changed actual bytes supplied declarations", got, sums, err)
+	}
+	files["ardents-node-linux-amd64"] = originalProgram
 	for _, mutation := range []struct{ before, after string }{
 		{"\"forwarding\"", "\"source\""}, {"\"forwarding\"", "\"issuer\""},
 		{"ardents-forwarding.service", "ardents-source.service"},
@@ -39,6 +60,9 @@ func TestForwardingInventoryIndependentCanonicalOracle(t *testing.T) {
 	} {
 		if _, err := parseInfrastructureInventory([]byte(strings.Replace(string(want), mutation.before, mutation.after, 1))); err == nil {
 			t.Fatal("foreign inventory accepted", mutation)
+		}
+		if got, sums, err := ValidateInfrastructureInventory([]byte(strings.Replace(string(want), mutation.before, mutation.after, 1)), files); err == nil || got != (InfrastructureFacts{}) || sums != nil {
+			t.Fatal("foreign inventory supplied declarations", mutation, err)
 		}
 	}
 	delete(files, "ardents-forwarding.service")
@@ -54,6 +78,9 @@ func TestForwardingInventoryIndependentCanonicalOracle(t *testing.T) {
 	files["infrastructure-forwarding.json"] = bytes.Repeat([]byte("x"), (16<<10)+1)
 	if _, err := PrepareInfrastructureInventory(facts, files); err == nil {
 		t.Fatal("descriptor bound widened")
+	}
+	if got, sums, err := ValidateInfrastructureInventory(want, files); !errors.Is(err, ErrInventory) || got != (InfrastructureFacts{}) || sums != nil {
+		t.Fatal("oversized descriptor supplied declarations", got, sums, err)
 	}
 }
 

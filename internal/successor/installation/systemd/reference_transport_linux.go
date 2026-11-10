@@ -1,6 +1,7 @@
 package systemd
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"io"
@@ -26,6 +27,7 @@ type referenceTransport struct {
 	owner          atomic.Value // original manager unique bus name, never rebound
 	line           int
 	pending        []byte
+	reader         *bufio.Reader    // binary input only; unverified read-ahead never drains after Close
 	properties     bool             // closed read-only Startup replies; references keep scalar admission
 	unitReply      managerUnitReply // immutable before the decoder starts
 	sourceJobs     atomic.Bool      // only fixed root Source control admits canonical job replies
@@ -78,8 +80,25 @@ func (t *referenceTransport) Read(p []byte) (int, error) {
 		return n, err
 	}
 	if len(t.pending) == 0 {
+		if t.reader == nil {
+			// AUTH reads stay bytewise through BEGIN. Binary reads may collect a
+			// whole reply in one syscall, but every frame is independently bounded
+			// and verified before any of its bytes reach the client decoder.
+			t.reader = bufio.NewReaderSize(t.socket, 65536)
+		}
+		if t.reader.Buffered() != 0 {
+			// Buffered, unverified bytes cannot hide loss of the original socket.
+			// Control only pins/checks the Go descriptor; it performs no raw I/O.
+			raw, err := t.socket.SyscallConn()
+			if err != nil {
+				return 0, err
+			}
+			if err := raw.Control(func(uintptr) {}); err != nil {
+				return 0, err
+			}
+		}
 		header := make([]byte, 16)
-		if _, err := io.ReadFull(t.socket, header); err != nil {
+		if _, err := io.ReadFull(t.reader, header); err != nil {
 			return 0, err
 		}
 		order, ok := referenceByteOrder(header[0])
@@ -93,7 +112,7 @@ func (t *referenceTransport) Read(p []byte) (int, error) {
 		}
 		frame := make([]byte, int(total))
 		copy(frame, header)
-		if _, err := io.ReadFull(t.socket, frame[16:]); err != nil {
+		if _, err := io.ReadFull(t.reader, frame[16:]); err != nil {
 			return 0, err
 		}
 		owner, _ := t.owner.Load().(string)

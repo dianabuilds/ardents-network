@@ -3,6 +3,7 @@ package duty
 import (
 	"context"
 	"errors"
+	"os"
 )
 
 // NodeInspection retains complete existing participation without opening a
@@ -12,13 +13,26 @@ import (
 type NodeInspection struct{ original *participationInspection }
 
 func OpenNodeInspection(ctx context.Context, path string, uid, gid uint32) (NodeInspection, error) {
+	return openNodeInspection(ctx, path, uid, gid, nil)
+}
+
+// InspectUnopenedNode retains the exact original empty participation directory.
+// The caller owns proof that the installation never admitted a runtime start.
+func InspectUnopenedNode(ctx context.Context, path string, uid, gid uint32, original os.FileInfo) (NodeInspection, error) {
+	if original == nil {
+		return NodeInspection{}, errors.New("unopened Node participation requires original directory")
+	}
+	return openNodeInspection(ctx, path, uid, gid, original)
+}
+
+func openNodeInspection(ctx context.Context, path string, uid, gid uint32, unopened os.FileInfo) (NodeInspection, error) {
 	if ctx == nil {
 		return NodeInspection{}, errors.New("Node participation inspection requires caller")
 	}
 	if _, finite := ctx.Deadline(); !finite {
 		return NodeInspection{}, errors.New("Node participation inspection requires finite caller")
 	}
-	original, err := openParticipationInspection(ctx, path, uid, gid)
+	original, err := openParticipationInspection(ctx, path, uid, gid, unopened)
 	if err != nil {
 		return NodeInspection{}, err
 	}

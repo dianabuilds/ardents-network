@@ -76,7 +76,15 @@ func inspectStoppedHistories(ctx context.Context, c *completedInitial, neverStar
 		ClosedProfileAuthority: append(ed25519.PublicKey(nil), n.ProfileAuthority[:]...), AcceptedProfile: "ardents-route-v3",
 		Clock: time.Now, ClockObservationFile: n.ClockObservationFile, LocalRoleStateRoot: p.ParticipationRoot}
 	var err error
-	s.state, err = state.OpenNodeInspection(ctx, cfg, p.NodeID, b.UID, b.GID)
+	if neverStarted == nil {
+		s.state, err = state.OpenNodeInspection(ctx, cfg, p.NodeID, b.UID, b.GID)
+	} else {
+		original := c.files.dirs[p.ParticipationRoot]
+		if original == nil || original.file == nil {
+			return nil, ErrBinding
+		}
+		s.state, err = state.InspectUnstartedNode(ctx, cfg, p.NodeID, b.UID, b.GID, original.info)
+	}
 	if err != nil {
 		return nil, err
 	}

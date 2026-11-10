@@ -127,6 +127,10 @@ func readRuntimeSelection(ctx context.Context, path string) (result *runtimeSele
 	if _, err := f.parents(f.clock); err != nil {
 		return nil, err
 	}
+	f.executable, err = openCompletedExecutableView(f.files[filepath.Join(f.sealed, programName)])
+	if err != nil {
+		return nil, err
+	}
 	return s, s.check()
 }
 
@@ -169,20 +173,50 @@ func runtimeDirectoryMount(d *inputDirectory, readOnly bool) (returned error) {
 	}
 	// A new bind mount can name the same inode with different access flags.
 	// The retained fd's old mount alone cannot attest the current pathname.
-	named, err := os.OpenFile(d.path, os.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW, 0)
-	if err != nil {
-		return err
+	// This temporary named directory supplies metadata only. Retain its raw
+	// descriptor through both native observations and join Close without
+	// registering a regular directory with Go's network poller.
+	var fd int
+	for {
+		fd, err = syscall.Open(d.path, syscall.O_RDONLY|syscall.O_DIRECTORY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+		if err != syscall.EINTR {
+			break
+		}
 	}
-	defer func() { returned = errors.Join(returned, named.Close()) }()
-	info, err := named.Stat()
-	fsErr := syscall.Fstatfs(int(named.Fd()), &fs)
-	if err != nil || fsErr != nil || d.info == nil || !os.SameFile(d.info, info) || fs.Type != 0xef53 || (fs.Flags&1 != 0) != readOnly {
+	if err != nil {
+		return &os.PathError{Op: "open", Path: d.path, Err: err}
+	}
+	defer func() {
+		if err := syscall.Close(fd); err != nil {
+			returned = errors.Join(returned, &os.PathError{Op: "close", Path: d.path, Err: err})
+		}
+	}()
+	var info syscall.Stat_t
+	for {
+		err = syscall.Fstat(fd, &info)
+		if err != syscall.EINTR {
+			break
+		}
+	}
+	if err != nil {
+		err = &os.PathError{Op: "stat", Path: d.path, Err: err}
+	}
+	fsErr := syscall.Fstatfs(fd, &fs)
+	if err != nil || fsErr != nil || !sameCompletedDirectory(d.info, info) || fs.Type != 0xef53 || (fs.Flags&1 != 0) != readOnly {
 		return errors.Join(ErrBinding, err, fsErr)
 	}
 	return nil
 }
 
-func (s *runtimeSelection) check() (returned error) {
+func (s *runtimeSelection) check() error {
+	return s.checkNamespace(nil)
+}
+
+// checkNamespace observes one compound selection/search-path boundary. Full
+// original-byte and metadata checks surround both mount/principal observations
+// and the absence scan under the same physical-use lock. No prior verdict is
+// reused. In-place change-and-restore still changes the retained ctime binding.
+func (s *runtimeSelection) checkNamespace(absent []string) (returned error) {
 	if s == nil || s.files == nil {
 		return ErrInput
 	}
@@ -197,6 +231,23 @@ func (s *runtimeSelection) check() (returned error) {
 	if err := f.check(); err != nil {
 		return err
 	}
+	if err := s.checkAccess(); err != nil {
+		return err
+	}
+	if absent != nil {
+		if err := observeStartupAbsences(absent); err != nil {
+			return err
+		}
+		if err := s.checkAccess(); err != nil {
+			return err
+		}
+	}
+	return errors.Join(f.check(), f.local())
+}
+
+// The caller retains original physical custody across these foreign reads.
+func (s *runtimeSelection) checkAccess() error {
+	f := s.files
 	for _, path := range s.immutable {
 		if err := runtimeDirectoryMount(f.dirs[path], true); err != nil {
 			return err
@@ -210,7 +261,7 @@ func (s *runtimeSelection) check() (returned error) {
 	if err := observeNodePrincipal(f.ctx, s.binding.UID, s.binding.GID); err != nil {
 		return err
 	}
-	return errors.Join(f.check(), f.local())
+	return f.local()
 }
 
 func (s *runtimeSelection) close() error {

@@ -795,6 +795,39 @@ manager, root completion, Guard, Startup or domain authority. Its component
 PASS cannot qualify installed Forwarding execution. Deterministic byte vectors
 separately mutate or omit every selected generation file and refuse extra files.
 
+`TestForwardingRuntimeNamedMountNativeMetadata` runs as the root actor of that
+profile in a separate private mount namespace. It checks actual writable
+directory content changes and a read-only original descriptor against a freshly
+writable bind of the same inode. Symlink and lost-descriptor controls refuse.
+This exercises physical mount observations without supplying Startup authority.
+
+`TestForwardingStartupPathsNativeInterruptedObservation` uses the protected
+non-root file fixture in that same profile. Real original-file descriptor loss
+or caller cancellation after either access observation or after the absence
+scan must deny the complete compound observation permanently, retain the first
+failure, refuse late work and preserve the joined Close result. Its physical
+read boundaries supply no Startup, manager or domain authority.
+
+`TestForwardingStartupQueuedObservationFreshness` and
+`TestForwardingStartupQueuedObservationClose` use deterministic in-memory
+concurrency controls for the original Startup observation queue. Requests made
+during a held round require a subsequent fresh round; queued callers cannot
+borrow the earlier image. Cancellation and late physical failure must deny all
+waiters, and copied Close must retain actual completion and the original causes.
+The callback supplies no native Startup authority. Actual file/process/manager
+controls and installed execution remain separate required profiles.
+
+`TestForwardingStartupQueuedFileObservationNative` runs under that protected
+non-root file fixture. It holds actual access I/O while later requests queue,
+cancels the original caller and requires Close to retain the file custody until
+the observer and waiters join. A real lost original program descriptor must
+also survive as a physical Close failure. Its private queue observer supplies
+no actual Startup/process/manager or State authority.
+`BenchmarkForwardingStartupQueuedFilesNative` measures the same complete file
+observation under serial requests and a finite burst of three concurrent
+requests, reporting actual physical rounds. This models queue costs only;
+installed timers, pressure, throughput and Node acceptance remain unqualified.
+
 `TestForwardingCompletedNative*` belongs to the existing `network-signing-linux`
 private initial-stopped profile after actual canonical installation. It uses the
 same explicit `ARDENTS_FORWARDING_INITIAL_BINDING` input and checks independent
@@ -4329,7 +4362,10 @@ The maintained local profiles are:
   The profile selects the `installation_native` Linux tests in new Installation. It requires
   a root driver and `ARDENTS_INSTALLATION_NATIVE_ROOT` naming an existing direct
   root:root temporary parent with trusted non-writable ancestors outside the
-  repository. It tests real file ownership, links, inode/content/ancestor changes
+  repository. `TestInstallationNativeCompletedClock*` checks a real mutable root
+  clock writer, exact access/type/link refusal, parent substitution, lost parent
+  descriptor and descriptor return. It supplies no completed history or Startup
+  authority. The profile tests real file ownership, links, inode/content/ancestor changes
   during request reading and original cancellation. Its preparation-journal
   mechanisms check durable ordered phases, refusal of retained/foreign residue
   and preservation of an actually written phase after cancellation. These
@@ -4787,6 +4823,14 @@ is explicit setup; `make diagnostics-check` exercises the Linux collector.
 The Linux architecture deterministic profile runs that collector's meaningful
 negative/terminal evidence tests without Docker. Process diagnostic behavior
 belongs to `internal/diagnostics/process` in the deterministic/race profile.
+
+Forwarding's fresh named metadata controls exercise actual no-follow parent
+opens, inode substitution, a writerless FIFO, wrong directory kind and lost
+parent descriptors. Independent metadata vectors retain every immutable-file
+field and permit ordinary access-time changes; directory-content changes remain
+permitted without changing its identity or access. The actual byte/mtime
+restoration control also checks the newly opened named descriptor's ctime.
+These physical/metadata checks supply no accepting Startup or domain authority.
 The live Unix Interface is explicitly enabled by `ARDENTS_DEBUG_SOCKET` only
 for Endpoint/Node commands; it supplies no worker-confinement or Network
 readiness qualification. Product runtime dependencies are unchanged.
@@ -5042,3 +5086,39 @@ latches an original process error during failed output and requires both causes
 through physical State Close. After joined State users, composition reads only
 Guard's retained refusal under its already-denied original context, then closes
 process pins; its own exact retirement notice is not an independent failure.
+
+### Forwarding local protection during held authority
+
+`internal/successor/node`'s `node_process_native` component test
+`TestForwardingNativeLocalProtectionDuringHeldAuthority` requires its own actual
+sole-process cgroup-v2 leaf under the unchanged Forwarding process envelope,
+including GOMAXPROCS=1 and the exact CPU/RAM/PID/FD limits. Build with `-race` and
+run through the common development lock. It opens genuine Guard and participation
+owners, holds a foreign refusal, and introduces an actual Go placement violation.
+Local denial must cancel the original owner while the foreign borrower remains
+held; restoring placement cannot revive it. Original readers and native owners
+join before disposal. This is a component proof, not authenticated State, Route
+success, Node domain completion or installed qualification. Missing native
+prerequisites fail the selected profile; they never skip it.
+
+The `network_signing_native` Forwarding file component also selects
+`TestForwardingStartupFilesNativeOriginalObservation` with the same genuine
+protected non-root selection fixture. Complete file observation, retained foreign
+refusal, real descriptor loss after native work, caller cancellation and joined
+close remain distinct. Its callback supplies no successful manager, process or
+Startup authority. `BenchmarkForwardingStartupFilesNative` compares the original
+three separate content brackets with one complete bracket and three metadata/
+access/path observations; it measures this file component only, excluding actual
+manager/process observations and installed throughput.
+
+`TestForwardingStartupFilesNativeRestoredBytesRemainDenied` is the final negative
+control on that fixture. The root actor opens the exact stopped-generation
+program before protecting the mount and passes its original writable descriptor
+only to this non-root test process. The test independently matches that inode,
+changes and restores one real byte, and requires the original metadata-bound
+observation to remain denied through Close. No Node is running; the fixture is
+archived and never reused after that physical mutation. The ordinary Linux
+`TestStartupOriginalFileCannotReviveAfterBytesAndMtimeRestoration` additionally
+restores actual bytes and mtime and verifies that changed kernel ctime still
+refuses the original binding. These controls supply no permission to replace
+required complete byte comparisons with metadata-only runtime admission.

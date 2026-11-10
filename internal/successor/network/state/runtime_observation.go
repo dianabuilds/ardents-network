@@ -3,6 +3,7 @@ package state
 import networkdomain "github.com/dianabuilds/ardents-network/internal/successor/network"
 
 // CurrentRuntime returns one authenticated, bounded Network observation.
+// The configured PermitWork runs before State locks and durable authority I/O.
 // Profile, generation, membership and trusted time share the same read lock;
 // trusted time is sampled after the durable profile read. It grants no lease
 // on future State, no token authority and no reservation. The caller reobserves

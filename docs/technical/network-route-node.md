@@ -1655,8 +1655,15 @@ its presence alone qualifies no installed invocation.
 
 The closed installed Forwarding plan opens genuine retained State without a
 Source server or automatic refresh worker. Its composition supervises the
-original Node and Startup; Node rechecks State `CurrentRuntime`, signed duty and
-time at effects and in its own original supervisor. `State.Wait` observes
+original Node and Startup. Node rechecks State `CurrentRuntime`, signed duty
+and time synchronously at effects and through Route's original 100-ms authority
+watcher, which calls the same full Node observation. Node's independent 100-ms
+supervisor reobserves its actual Guard and participation producer without
+borrowing State. This preserves process protection while a foreign authority
+read is held and avoids a second periodic full State/Startup read. No local
+observation supplies a RuntimeView. Route joins its original watcher before Node
+releases any purpose, producer or process owner; command Startup supervision and
+all full before/after native and effect observations remain mandatory. `State.Wait` observes
 configured background work and reports its absence in this configuration; that
 absence is not an operational failure of the accepted State. Command composition
 keeps State owned until Node/Route and purpose/resource users have joined, then
@@ -2145,6 +2152,145 @@ inode cannot borrow the old descriptor's read-only flags. It opens no semantic
 history contents. Cancellation, lost bytes/descriptors, access or mount mismatch
 deny permanently through original physical Close. These file observations grant
 no manager/process, root completion, Guard, Startup or domain admission.
+
+Selected-generation validation checks one immutable byte image against its
+binding, Forwarding descriptor and canonical enrollment inventory. Enrollment's
+public byte validator owns the exact seven-file inventory grammar and bounds;
+its fresh digests are compared with the descriptor's declarations and binding
+commitments without hashing that same program image again. The digest map is
+local to this validation and carries no accepting lifetime or initial provenance.
+No digest is reused across physical observations; full byte/EOF and native
+custody checks remain mandatory at their original boundaries.
+
+The first retained file read allocates the already bounded original native size
+once, fills it with locally checked reads of at most 64 KiB and independently
+probes EOF. Acquisition yields after each filled chunk, as subsequent byte
+comparisons do. A shorter
+file or any appended byte refuses; an error retains the original buffer for
+joined erasure. Subsequent observations still reread every byte and exact EOF.
+No geometric read buffer, file-content cache or prior accepting verdict is used.
+
+After each checked byte chunk, the reader yields to other runnable Go
+goroutines before its next filesystem call. The next chunk still checks the
+original local lifetime, and complete bytes, exact EOF, native brackets and
+absolute deadlines remain required before any successful observation.
+
+The non-root runtime reader may retain one read-only file-backed view only
+when the program's original native inode is the actual `/proc/self/exe`
+inode. Linux excludes writable opens of an executing image, including a
+privileged writer ([open(2)](https://man7.org/linux/man-pages/man2/open.2.html),
+[execve(2)](https://man7.org/linux/man-pages/man2/execve.2.html)). A byte-identical
+different inode receives no view: mutable files keep original descriptor reads,
+since a truncated generic file mapping can fault instead of returning an I/O
+error. Every observation still compares every program byte in locally checked
+chunks against the independently retained image, probes exact EOF through the
+original descriptor, and performs all original before/after native checks.
+Neither the mapping nor an earlier comparison supplies an accepting verdict or
+process/manager authority. The additional file-backed memory remains subject to
+the unchanged process resource checks. The original file owner denies new uses,
+joins actual readers, unmaps the view and then closes descriptors and erases the
+retained image; native cleanup failures remain in its retained result.
+
+Fresh named metadata checks still open a separate descriptor beneath the
+retained parent with read-only, no-follow, nonblocking and close-on-exec flags.
+They perform native `Fstat` and join the actual descriptor close without an
+`os.File`/netpoll lifetime. File device/inode, mode/type, owner/group, size,
+link count and ctime/mtime must match the original. Directory identity, type,
+access and owner/group remain fixed while its owning domain may change contents;
+directory timestamps, size and link count do not become immutable-file rules.
+Retained-descriptor checks, named mount checks and full byte/EOF comparisons
+remain separate and unchanged. No stat result or accepting verdict is cached.
+
+One Startup search-path observation holds that independent file observer's
+original physical-use lock across a complete byte/metadata check, a fresh
+mount/principal observation, the absent-entry scan, a second fresh
+mount/principal observation and a final complete byte/metadata check. It does
+not nest two separately bracketed file observations around the absence scan.
+Both retained/named inode and access checks, exact content and EOF comparisons,
+and original ctime/mtime bindings remain mandatory; changing bytes and restoring
+them cannot restore the original ctime. This is one compound physical
+observation, not a cached accepting verdict.
+
+Within each running native point, original/named metadata brackets that same
+compound access/absence/access sequence once. It does not add nested complete
+metadata rounds between those read-only operations. Both mount/principal
+observations and the fresh absence scan remain; no domain effect or accepting
+handoff occurs inside. All three native points, both complete manager rounds
+and the full original byte/EOF checks surrounding Startup remain mandatory.
+
+The absence scan groups contiguous expected names beneath one directory. Each
+observation freshly opens that named directory read-only, no-follow,
+nonblocking and close-on-exec, checks every name relative to that descriptor
+with a no-follow effective-credential presence query, and joins its actual
+close. A fresh missing parent proves all its descendants absent at that point;
+a present inode, including a dangling symlink or FIFO, refuses. No directory
+inventory, stat result or absence verdict is retained. Original/named metadata,
+mount/principal and file byte/EOF brackets remain before and after the scan.
+
+Fresh named mount observations hold a raw directory descriptor through both
+`Fstat` and `Fstatfs`, comparing its original identity and required mount flags
+before joining Close. The current-clock observer holds its separately opened
+descriptor through the pathname comparison and checks root ownership, exact
+access, regular-file type and one link on both observations. Clock contents,
+size and timestamps may advance under their writer. These metadata descriptors
+do not acquire an `os.File` or network-poller lifetime; each observation still
+opens, checks and closes its own native resource.
+
+A complete Forwarding manager observation installs one physical socket deadline
+and one joined cancellation hook for its synchronous read-only requests. All 45
+fresh queries remain in their original order: original manager identity and
+declaration before and after, both complete absent-slot rounds, and current
+Forwarding Unit/Service properties. A private original-client context marker
+shares only that installed deadline/hook; it contains no accepting facts and
+expires when the observation joins. Foreign clients and late requests cannot
+borrow it. The original three-second absolute bound, transport interruption,
+failure retention and physical Close remain mandatory. No domain effect occurs
+inside this request observation and no result escapes a failed final check.
+
+The original manager transport reads AUTH one byte at a time through the
+completed BEGIN write. Only binary input then uses a bounded 64 KiB reader to
+collect reply bytes. Each frame still has its own finite length and complete
+grammar/owner checks before reaching the client decoder; read-ahead supplies
+no accepting observation. Buffered unverified input cannot hide original socket
+loss and cannot drain after transport Close. Only the remainder of an already
+verified frame retains the decoder-padding exception. The original absolute
+observation deadline, cancellation interruption, final currentness checks and
+joined socket lifetime remain mandatory; buffering does not cache query results.
+
+Each complete running Startup observation retains one physical file use and I/O
+lock across its read-only native observation. Full original bytes and exact EOF
+are compared before and after that complete observation. All three original
+native observation points and both fresh complete manager rounds remain;
+retained/named metadata, mount/principal and search-path checks are freshly
+reobserved at every native point. Immutable file ctime/mtime and original inode bindings remain
+mandatory at those intermediate checks, so an in-place change-and-restore
+cannot revive the observation. No State/domain effect is admitted between these
+rounds. A failed native read still performs the final file observation where the
+original caller permits it, retaining independent physical failures without
+rewrapping an unchanged original error or bare caller cancellation. This is one
+complete Startup observation, not three nested full content brackets or an
+accepting cache. State admission, resource thresholds, freshness and joined
+physical Close remain separate and unchanged.
+
+Concurrent `Startup.Check` requests on that same original owner may share one
+complete observation only when all were admitted before its physical reads
+begin. A request arriving during an observation waits for a subsequent complete
+round; neither an in-progress nor a completed accepting result is reused.
+Thus checks requested before and after a State/domain effect still require
+distinct fresh observations on their respective sides. There is no timed batch
+window, altered supervisor frequency or shared foreign authority. Each waiter
+retains its original Startup use, the finite observer retains its own use, and
+Close denies admission and joins the observer and every waiter before releasing
+native custody. Cancellation and late physical failure deny queued work and
+remain in the original terminal result.
+
+Canonical Forwarding passes the original `Startup.Check` as State's
+`PermitWork`. Both State openers check it before durable root I/O;
+`CurrentRuntime` checks it before taking the State lock or reading authority.
+Composition retains a full Startup check after that observation. This supplies
+the actual before/after bracket without another identical check immediately
+before State invokes the same borrowed owner. No accepting verdict is cached,
+and refusal invalidates State's original runtime handoff witness.
 
 Original Check/Close copies share denial and first/physical failures. Close denies
 new checks, joins actual reads, closes other descriptors and only then returns

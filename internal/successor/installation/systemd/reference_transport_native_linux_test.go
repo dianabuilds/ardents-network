@@ -46,6 +46,94 @@ func TestInstallationNativeReferenceDecoderCloseAtHeaderPadding(t *testing.T) {
 	}
 }
 
+// Coalesced replies exercise actual Unix read-ahead, not manager authority.
+// Only a fully checked frame may reach the decoder or drain after owner Close.
+func TestInstallationNativeReferenceBinaryReadAhead(t *testing.T) {
+	for _, action := range []string{"next-frame", "owner-close", "socket-loss", "invalid-frame", "partial-frame"} {
+		t.Run(action, func(t *testing.T) {
+			transport, peer := referenceSocketPair(t)
+			transport.binary.Store(true)
+			first := referenceReplyFixture()
+			second := append([]byte(nil), first...)
+			switch action {
+			case "invalid-frame":
+				second[0] = 'x'
+			case "partial-frame":
+				second = second[:10]
+			}
+			wire := append(append([]byte(nil), first...), second...)
+			if n, err := peer.Write(wire); err != nil || n != len(wire) {
+				t.Fatal("original coalesced write", n, err)
+			}
+			got := make([]byte, len(first))
+			if n, err := io.ReadFull(transport, got); err != nil || n != len(first) || !bytes.Equal(got, first) {
+				t.Fatal("first checked frame changed", n, err)
+			}
+			if transport.reader == nil || transport.reader.Buffered() != len(second) {
+				t.Fatal("actual Unix read-ahead not exercised")
+			}
+			var want error
+			switch action {
+			case "owner-close":
+				if err := transport.Close(); err != nil {
+					t.Fatal(err)
+				}
+				want = net.ErrClosed
+			case "socket-loss":
+				if err := transport.socket.Close(); err != nil {
+					t.Fatal(err)
+				}
+				want = net.ErrClosed
+			case "invalid-frame":
+				want = ErrObservation
+			case "partial-frame":
+				if err := peer.Close(); err != nil {
+					t.Fatal(err)
+				}
+				want = io.ErrUnexpectedEOF
+			}
+			clear(got)
+			n, err := transport.Read(got)
+			if want == nil {
+				if err != nil || n != len(first) || !bytes.Equal(got, first) {
+					t.Fatal("second independently checked frame changed", n, err)
+				}
+			} else if n != 0 || !errors.Is(err, want) || !bytes.Equal(got, make([]byte, len(got))) {
+				t.Fatal("unverified read-ahead escaped original refusal", n, err, want)
+			}
+		})
+	}
+}
+
+func TestInstallationNativeReferenceReadAheadStartsAfterBegin(t *testing.T) {
+	transport, peer := referenceSocketPair(t)
+	line := []byte("OK original-guid\r\n")
+	frame := referenceReplyFixture()
+	wire := append(append([]byte(nil), line...), frame...)
+	if n, err := peer.Write(wire); err != nil || n != len(wire) {
+		t.Fatal("original AUTH and binary delivery", n, err)
+	}
+	got := make([]byte, len(line)+len(frame))
+	for _, expected := range line {
+		if n, err := transport.Read(got); err != nil || n != 1 || got[0] != expected {
+			t.Fatal("AUTH read crossed its original byte boundary", n, err)
+		}
+		if transport.reader != nil || transport.binary.Load() {
+			t.Fatal("binary read-ahead began during AUTH")
+		}
+	}
+	begin := []byte("BEGIN\r\n")
+	if n, err := transport.Write(begin); err != nil || n != len(begin) {
+		t.Fatal("original BEGIN write", n, err)
+	}
+	if _, err := io.ReadFull(peer, got[:len(begin)]); err != nil || !bytes.Equal(got[:len(begin)], begin) {
+		t.Fatal("BEGIN bytes changed", err)
+	}
+	if n, err := transport.Read(got); err != nil || n != len(frame) || !bytes.Equal(got[:n], frame) {
+		t.Fatal("first checked binary frame changed after BEGIN", n, err)
+	}
+}
+
 // Only physical Unix I/O is supplied, never successful manager or Ref facts.
 func referenceSocketPair(t *testing.T) (*referenceTransport, *net.UnixConn) {
 	t.Helper()

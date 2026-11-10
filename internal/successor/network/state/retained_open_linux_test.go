@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,6 +9,24 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 )
+
+func TestRetainedStateWorkRefusalPrecedesRootIO(t *testing.T) {
+	genesis := newFixture(t)
+	root := filepath.Join(t.TempDir(), "absent-state")
+	cfg := fixtureConfig(genesis, root, time.Unix(genesis.now, 0))
+	refusal := errors.New("original application admission denied")
+	cfg.PermitWork = func() error { return refusal }
+	owner, err := state.OpenRetained(cfg)
+	if owner != nil || !errors.Is(err, refusal) {
+		if owner != nil {
+			_ = owner.Close()
+		}
+		t.Fatal("retained opener bypassed original work refusal", err)
+	}
+	if _, err := os.Lstat(root); !os.IsNotExist(err) {
+		t.Fatal("refused retained opener touched root", err)
+	}
+}
 
 func TestRetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor(t *testing.T) {
 	genesis := newFixture(t)

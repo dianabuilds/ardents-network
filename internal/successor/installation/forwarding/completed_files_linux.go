@@ -1,12 +1,12 @@
 package forwarding
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -29,6 +29,7 @@ type completedFiles struct {
 	failure               error
 	files                 map[string]*initialFile
 	fileOrder             []*initialFile
+	executable            *completedExecutableView
 	dirs                  map[string]*inputDirectory
 	dirOrder              []*inputDirectory
 	journal               *initialFile
@@ -50,51 +51,6 @@ type completedFiles struct {
 	invocations           *invocationChain
 	// Negative native controls only, after actual I/O or before actual Close.
 	observe func(string, *os.File)
-}
-
-func (s *completedFiles) begin() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.failure != nil {
-		return s.failure
-	}
-	if err := s.ctx.Err(); err != nil {
-		if !s.closed {
-			s.failure = err
-		}
-		return err
-	}
-	if s.closed {
-		return errCompletedClosed
-	}
-	s.uses.Add(1)
-	return nil
-}
-
-func (s *completedFiles) local() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.failure != nil {
-		return s.failure
-	}
-	if err := s.ctx.Err(); err != nil {
-		return err
-	}
-	if s.closed {
-		return errCompletedClosed
-	}
-	return nil
-}
-
-func (s *completedFiles) record(err error) {
-	if err == nil || err == errCompletedClosed {
-		return
-	}
-	s.mu.Lock()
-	if s.failure == nil {
-		s.failure = err
-	}
-	s.mu.Unlock()
 }
 
 func (s *completedFiles) parents(path string) (*inputDirectory, error) {
@@ -213,9 +169,36 @@ func (s *completedFiles) fill(original *initialFile, maximum int64) ([]byte, err
 	if err := s.local(); err != nil {
 		return nil, err
 	}
-	raw, err := io.ReadAll(io.LimitReader(original.file, maximum+1))
+	if original == nil || original.file == nil || original.info == nil || original.info.Size() < 0 || original.info.Size() > maximum {
+		return nil, ErrBinding
+	}
+	// Native custody already bounded this exact original size. Allocate once
+	// rather than geometrically growing and copying the complete program image.
+	// A separate read still proves exact EOF, including a file grown after Stat.
+	raw := make([]byte, original.info.Size())
 	original.body = raw
-	if err != nil || int64(len(raw)) != original.info.Size() {
+	for offset := 0; offset < len(raw); {
+		if err := s.local(); err != nil {
+			return nil, err
+		}
+		end := offset + min(64<<10, len(raw)-offset)
+		if _, err := io.ReadFull(original.file, raw[offset:end]); err != nil {
+			return nil, errors.Join(ErrBinding, err)
+		}
+		offset = end
+		if s.observe != nil {
+			s.observe("fill-chunk", original.file)
+		}
+		// Initial acquisition needs the same bounded physical reads as later
+		// comparisons, without growing or copying the retained byte image.
+		runtime.Gosched()
+	}
+	if err := s.local(); err != nil {
+		return nil, err
+	}
+	var extra [1]byte
+	n, err := original.file.Read(extra[:])
+	if n != 0 || err != io.EOF {
 		return nil, errors.Join(ErrBinding, err)
 	}
 	if s.observe != nil {
@@ -252,13 +235,12 @@ func (s *completedFiles) links() error {
 			return errors.Join(ErrBinding, err, nameErr)
 		}
 		if original.parent != nil {
-			linked, err := openInputAt(original.parent, original.name, true)
+			named, err := statCompletedName(original.parent, original.name, true)
 			if err != nil {
 				return err
 			}
-			info, statErr := linked.Stat()
-			if err := errors.Join(statErr, linked.Close()); err != nil || !os.SameFile(before, info) || !nodeAccess(info, before.Mode().Perm(), native.Uid, native.Gid, true) {
-				return errors.Join(ErrBinding, err)
+			if !sameCompletedDirectory(before, named) {
+				return ErrBinding
 			}
 		}
 	}
@@ -268,13 +250,12 @@ func (s *completedFiles) links() error {
 			return errors.Join(ErrBinding, err)
 		}
 		parent := s.dirs[filepath.Dir(original.path)]
-		linked, err := openInputAt(parent, filepath.Base(original.path), false)
+		named, err := statCompletedName(parent, filepath.Base(original.path), false)
 		if err != nil {
 			return err
 		}
-		named, statErr := linked.Stat()
-		if err := errors.Join(statErr, linked.Close()); err != nil || !sameInputFile(original.info, named) {
-			return errors.Join(ErrBinding, err)
+		if !sameCompletedFile(original.info, named) {
+			return ErrBinding
 		}
 	}
 	return s.local()
@@ -294,16 +275,8 @@ func (s *completedFiles) paths() error {
 			return err
 		}
 	}
-	parent := s.dirs[filepath.Dir(s.clock)]
-	clock, err := openInputAt(parent, filepath.Base(s.clock), false)
-	if err != nil {
+	if err := checkCompletedClock(s.dirs[filepath.Dir(s.clock)], s.clock); err != nil {
 		return err
-	}
-	info, statErr := clock.Stat()
-	named, nameErr := os.Lstat(s.clock)
-	err = errors.Join(statErr, nameErr, clock.Close())
-	if err != nil || !os.SameFile(info, named) || !nodeAccess(info, 0644, 0, 0, false) || !nodeAccess(named, 0644, 0, 0, false) {
-		return errors.Join(ErrBinding, err)
 	}
 	return s.inventory()
 }
@@ -502,98 +475,4 @@ func checkCompletedJournalInventory(root string, parent *inputDirectory, journal
 		return ErrBinding
 	}
 	return nil
-}
-
-func (s *completedFiles) check() error {
-	if err := s.local(); err != nil {
-		return err
-	}
-	if err := s.invocations.checkFiles(); err != nil {
-		return err
-	}
-	if s.recovered != nil {
-		if err := s.recovered.check(); err != nil {
-			return err
-		}
-	}
-	if err := checkRecoveryManager(s.recoveryContext); err != nil {
-		return err
-	}
-	for _, proof := range s.recoveredReplacements {
-		if err := proof.check(); err != nil {
-			return err
-		}
-	}
-	if err := s.paths(); err != nil {
-		return err
-	}
-	var scratch [32 << 10]byte
-	defer clear(scratch[:])
-	for _, original := range s.fileOrder {
-		for offset := 0; offset < len(original.body); {
-			if err := s.local(); err != nil {
-				return err
-			}
-			end := offset + min(len(scratch), len(original.body)-offset)
-			n, err := original.file.ReadAt(scratch[:end-offset], int64(offset))
-			if err != nil || n != end-offset || !bytes.Equal(scratch[:n], original.body[offset:end]) {
-				return errors.Join(ErrBinding, err)
-			}
-			offset = end
-		}
-		n, err := original.file.ReadAt(scratch[:1], int64(len(original.body)))
-		if n != 0 || err != io.EOF {
-			return errors.Join(ErrBinding, err)
-		}
-		if s.observe != nil {
-			s.observe("read", original.file)
-		}
-		if err := s.local(); err != nil {
-			return err
-		}
-	}
-	return errors.Join(s.paths(), s.local())
-}
-
-func (s *completedFiles) close() error {
-	if s == nil {
-		return nil
-	}
-	s.once.Do(func() {
-		s.mu.Lock()
-		s.closed = true
-		s.mu.Unlock()
-		if s.observe != nil {
-			s.observe("denied", nil)
-		}
-		s.uses.Wait()
-		physical := errors.Join(s.invocations.close(), s.recovered.close(), s.recoveryContext.close())
-		for _, proof := range s.recoveredReplacements {
-			proof.clear()
-		}
-		closeFile := func(original *initialFile) {
-			if s.observe != nil {
-				s.observe("before-close", original.file)
-			}
-			physical = errors.Join(physical, original.file.Close())
-			clear(original.body)
-		}
-		for i := len(s.fileOrder) - 1; i >= 0; i-- {
-			if s.fileOrder[i] != s.journal {
-				closeFile(s.fileOrder[i])
-			}
-		}
-		for i := len(s.dirOrder) - 1; i >= 0; i-- {
-			physical = errors.Join(physical, s.dirOrder[i].file.Close())
-		}
-		if s.journal != nil {
-			closeFile(s.journal)
-		}
-		s.mu.Lock()
-		s.failure = errors.Join(s.failure, physical, s.ctx.Err())
-		s.mu.Unlock()
-	})
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.failure
 }
