@@ -11,11 +11,12 @@ stopped creator and canonical Node consumer retain their own account/birth/
 selection lifetimes. Its separate root first-start producer and independently
 opened non-root Startup retain distinct original custody and root archival/ACK;
 explicit joined retirement and separately admitted same-generation restart
-retain the complete original invocation chain. The bounded installed first
-lifetime/restart has its own qualification evidence; forward replacement,
-original-prefix recovery and wider qualification remain separate. The other
-four Node roles have no accepting installed
-transaction here. Separate canonical Control consumers can
+retain the complete original invocation chain. Canonical Forwarding also
+implements explicit forward replacement of a proven stopped generation and
+recovery of proven original prefixes to a stopped state. A replacement does
+not start the selected generation. Installed acceptance applies to the
+artifacts and scope recorded in the corresponding receipt. The other four
+Node roles have no accepting installed transaction here. Canonical Control consumers can
 prepare Forwarding descriptor and initial-inventory bytes through Infrastructure
 and Enrollment; public preparation supplies no Release or installed authority.
 The [accepted infrastructure contract](../../../docs/technical/network-route-node.md#proposed-installed-infrastructure)
@@ -30,7 +31,7 @@ reused as infrastructure permission.
 | `installation` | Две свежие coherent Release authorizations для exact program/generation; независимая initial-pin provenance; private immutable inventory | `cmd/ardents-next/installation.go`, `installation/endpoint` |
 | [`endpoint`](endpoint/README.md) | Request composition, bound generation, original lease/journal/resources, predecessor join, selection/reload, guarded startup и explicit recovery | `cmd/ardents-next/installation.go`, `cmd/ardents-next/installed_endpoint_linux.go` |
 | [`infrastructure`](infrastructure/README.md) | Source artifact admission, closed request/template, native preflight, initial/replacement/recovery transactions, guarded startup and explicit stop/restart | Canonical `cmd/ardents-node/source_installation_linux.go`, `source_installed_linux.go`; public preparation in Control; temporary Next component consumers |
-| `forwarding` | Separate fixed Forwarding request/plan/template policy, original input custody, complete initial stopped transaction, guarded root/non-root startup and joined explicit stop/same-generation restart; replacement/recovery remain separate | Canonical Control Forwarding public and Hosting preparation and distinct initial Release signing; canonical Node preflight, initial installation, start/stop and installed runtime consumers; Infrastructure retains the distinct artifact pair |
+| `forwarding` | Fixed Forwarding request/plan/template, original input custody, initial stopped installation, guarded startup, joined stop, same-generation restart, explicit forward replacement and stopped-prefix recovery | Canonical Control preparation and Release signing; canonical Node preflight, installation, start/stop, replacement and recovery; Infrastructure retains the distinct artifact pair |
 
 `Authorization` остаётся opaque: соседний пакет не может заполнить private proofs,
 pin или frozen bytes. `Targets` передаёт genuine Release proofs; `Descriptor`,
