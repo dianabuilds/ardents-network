@@ -152,6 +152,12 @@ cleanup; an uncertain refund remains unavailable. Expiry does not automatically
 release admitted work. Its consumer must stop and join children before Release.
 Used traffic remains spent after release, cancel, reopen or exhausted periods.
 
+Ordinary admitted Issuer work can transfer the existing termination share to
+a separate release callback before admission, with no change to the durable
+total or original bounds. The remaining work handle cannot lend termination
+coverage to additional work. The owner returns the work share after joined
+payload I/O and the termination share after the final physical CLOSE joins.
+
 ### Additional work under original termination coverage
 
 Additional physical reservation operations are Linux-only, matching the current

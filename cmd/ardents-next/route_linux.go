@@ -33,9 +33,28 @@ import (
 )
 
 func releaseRouteReservation(reservation *hosting.Reservation) error {
+	return releaseRouteCapacity(reservation.Release)
+}
+
+func releaseRouteCapacity(release func(context.Context) error) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	return reservation.Release(ctx)
+	return release(ctx)
+}
+
+func holdRouteIssuerReservation(c routereceiver.Channel, held *hosting.Reservation, work, afterTerminal func() error) (func() error, error) {
+	terminal, err := held.DetachTermination()
+	if err != nil {
+		release, holdErr := c.HoldReservation(work)
+		return release, errors.Join(err, holdErr)
+	}
+	return c.HoldIssuerReservation(work, func() error {
+		err := releaseRouteCapacity(terminal)
+		if afterTerminal != nil {
+			err = errors.Join(err, afterTerminal())
+		}
+		return err
+	})
 }
 
 // Native composition retains the genuine original channel alongside console
@@ -351,6 +370,9 @@ func runRoute(ctx context.Context, args []string, out, diagnostic io.Writer) (co
 				reservation, err := budget.Reserve(ctx, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: c.Hello.Deadline, HoldUntil: c.Hello.Deadline.Add(5 * time.Second)})
 				if err != nil {
 					return nil, err
+				}
+				if c.Hello.Purpose == ardp.PurposeIssuer {
+					return holdRouteIssuerReservation(c, reservation, func() error { return releaseRouteReservation(reservation) }, nil)
 				}
 				reservationMu.Lock()
 				reservations[c] = reservation

@@ -177,9 +177,25 @@ func (p *Prefix) Issue(caller context.Context, end time.Time, begin func(IssuerB
 	if err != nil {
 		return err
 	}
+	// The relay must be able to join the holder-to-Issuer copy independently
+	// of the Issuer-to-holder terminal. TLS CloseWrite has already completed
+	// and shortened its lower write deadline; restore only the original end.
+	if !p.bootstrap {
+		if err := lane.SetWriteDeadline(end); err != nil {
+			return err
+		}
+		if err := lane.CloseWrite(); err != nil {
+			return err
+		}
+	}
 	var extra [1]byte
 	if n, err := lane.Read(extra[:]); n != 0 || !errors.Is(err, io.EOF) {
 		return errors.Join(errors.New("route issuer lower peer terminal required"), err)
+	}
+	if !p.bootstrap {
+		if err := lane.WaitPeerRetirement(ctx); err != nil {
+			return err
+		}
 	}
 	return check()
 }

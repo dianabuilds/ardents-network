@@ -38,6 +38,44 @@ func TestCopiedReservationCannotRefundAnotherHandle(t *testing.T) {
 	}
 }
 
+func TestDetachedTerminationRetainsOriginalCapacityUntilItsOwnReturn(t *testing.T) {
+	root, reading, now := hostingFixture(t)
+	b := openHostingFixture(t, root, reading, now)
+	ctx := t.Context()
+	end := now.Add(time.Minute)
+	held, err := b.Reserve(ctx, ReservationRequest{Work: Traffic{Tx: 100}, Termination: Traffic{Rx: 20}, WorkUntil: end, HoldUntil: end})
+	if err != nil {
+		t.Fatal(err)
+	}
+	terminal, err := held.DetachTermination()
+	if err != nil {
+		t.Fatal(err)
+	}
+	check := func(want uint64) {
+		t.Helper()
+		view, err := b.Observe(ctx)
+		if err != nil || view.ReservedBytes != want {
+			t.Fatalf("reserved %d, want %d: %v", view.ReservedBytes, want, err)
+		}
+	}
+	check(120)
+	if _, err := held.DetachTermination(); !errors.Is(err, ErrUnavailable) {
+		t.Fatal("original share detached twice", err)
+	}
+	if _, err := b.ReserveAdditionalJoint(ctx, held, JointTraffic{Tx: 1, Total: 1}); !errors.Is(err, ErrUnavailable) {
+		t.Fatal("detached work lent termination coverage", err)
+	}
+	copyOfWork := *held
+	if err := errors.Join(held.Release(ctx), copyOfWork.Release(ctx)); err != nil {
+		t.Fatal(err)
+	}
+	check(20)
+	if err := errors.Join(terminal(ctx), terminal(ctx)); err != nil {
+		t.Fatal(err)
+	}
+	check(0)
+}
+
 func TestReserveBoundaries(t *testing.T) {
 	for _, tc := range []struct {
 		name           string

@@ -32,6 +32,7 @@ type reservationState struct {
 	mu          sync.Mutex
 	owner       *Budget
 	bytes       uint64
+	workBytes   uint64
 	released    bool
 	err         error
 	request     ReservationRequest
@@ -107,7 +108,7 @@ func (owner *Budget) Reserve(ctx context.Context, request ReservationRequest) (*
 	if request.WorkUntil.IsZero() || request.HoldUntil.Before(request.WorkUntil) {
 		return nil, ErrInvalid
 	}
-	var reserved uint64
+	var reserved, workBytes uint64
 	state, _, err := owner.transact(ctx, 0, func(state *hostingState, now time.Time) error {
 		view := state.observation(now)
 		if view.Protect || view.Drain || !now.Before(request.WorkUntil) || request.HoldUntil.After(state.Policy.End) {
@@ -122,6 +123,7 @@ func (owner *Budget) Reserve(ctx context.Context, request ReservationRequest) (*
 			return ErrInvalid
 		}
 		reserved = workCost + terminalCost
+		workBytes = workCost
 		if reserved > view.RemainingBytes || view.RemainingBytes-reserved < state.Policy.LowWatermarkBytes {
 			return ErrCapacity
 		}
@@ -131,7 +133,7 @@ func (owner *Budget) Reserve(ctx context.Context, request ReservationRequest) (*
 	if err != nil {
 		return nil, err
 	}
-	held := &Reservation{reservationState: &reservationState{owner: owner, bytes: reserved, request: request}}
+	held := &Reservation{reservationState: &reservationState{owner: owner, bytes: reserved, workBytes: workBytes, request: request}}
 	transferredAt := owner.now()
 	if ctx.Err() != nil || transferredAt.Before(state.Observed) || !transferredAt.Before(request.WorkUntil) {
 		cleanup, cancel := context.WithTimeout(context.Background(), time.Second)

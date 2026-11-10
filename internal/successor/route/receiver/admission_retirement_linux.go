@@ -17,14 +17,44 @@ import (
 // after reservation or spend. Admission can request rollback synchronously;
 // the Route owner completes it only after its physical borrowers have joined.
 type admissionRetirement struct {
-	mu           sync.Mutex
-	joined       bool
-	returns      []*reservationReturn
-	registry     *introduction.Registry
-	registration *introduction.Capacity
-	joinQueues   *framing.Budget
-	join         *join.Capacity
+	mu             sync.Mutex
+	joined         bool
+	returns        []*reservationReturn
+	registry       *introduction.Registry
+	registration   *introduction.Capacity
+	joinQueues     *framing.Budget
+	join           *join.Capacity
+	issuerTerminal func() error
 }
+
+// HoldIssuerReservation keeps the separately owned, original termination
+// share until CLOSE joins. Work returns once payload I/O is joined, while
+// Admission still receives only its original one-shot release callback.
+func (c Channel) HoldIssuerReservation(work, terminal func() error) (func() error, error) {
+	returnBoth := func() (err error) {
+		if work != nil {
+			err = work()
+		}
+		if terminal != nil {
+			err = errors.Join(err, terminal())
+		}
+		return err
+	}
+	if c.Hello.Purpose != ardp.PurposeIssuer || c.capacity == nil || work == nil || terminal == nil {
+		release, err := c.HoldReservation(returnBoth)
+		return release, errors.Join(err, errors.New("route Issuer termination capacity unavailable"))
+	}
+	c.capacity.mu.Lock()
+	if c.capacity.issuerTerminal != nil {
+		c.capacity.mu.Unlock()
+		release, err := c.HoldReservation(returnBoth)
+		return release, errors.Join(err, errors.New("route Issuer termination capacity already held"))
+	}
+	c.capacity.issuerTerminal = terminal
+	c.capacity.mu.Unlock()
+	return c.HoldReservation(work)
+}
+
 type reservationReturn struct {
 	owner     *admissionRetirement
 	release   func() error
@@ -44,6 +74,9 @@ func (c Channel) HoldReservation(release func() error) (func() error, error) {
 	c.capacity.mu.Lock()
 	defer c.capacity.mu.Unlock()
 	c.capacity.returns = append(c.capacity.returns, r)
+	if c.Hello.Purpose == ardp.PurposeIssuer && c.capacity.issuerTerminal == nil {
+		return r.request, errors.New("route Issuer termination capacity unavailable")
+	}
 	if c.Hello.Purpose == ardp.PurposeDataJoin {
 		if c.capacity.join != nil {
 			return r.request, errors.New("route JOIN capacity already held")

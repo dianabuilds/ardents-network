@@ -526,13 +526,23 @@ the writer joins. This mechanical control issues only Unavailable; it does not
 establish successful blocked RESULT output through a complete admitted Carrier.
 
 Receiving issuer work is exclusive before private Admission and is retained
-through physical retirement and reservation return. A busy peer cannot spend
+through joined payload retirement and work reservation return. For ordinary
+admitted issuance, Route joins the original TLS exchange and all selected
+lower writes, then returns the Hosting work share and releases the exclusive
+slot before sending the existing clean lower CLOSE. The original Hosting
+termination share stays reserved until that write joins. No new allowance or
+deadline is acquired. The relay must see the exact downstream clean CLOSE
+before ending its reverse direction; the holder ends its lower sending
+direction and waits for the relay's clean CLOSE under its original deadline.
+Directional EOF alone is insufficient. Restricted bootstrap keeps its separate
+existing claim and retirement contract. A busy peer cannot spend
 another Control token at the receiver or start another signing operation.
 Its holder presentation and pending allocation are nevertheless irreversible;
 an explicit same-prefix retry retains the original batch and delivery binding.
-Local Hosting return failure belongs to the receiving owner's retained terminal
-result. It occurs after physical joining and cannot be sent through an already
-closed peer channel or revoke an earlier verified token signature.
+If the work share cannot be returned, the receiving owner retains that failure
+and must not send a clean completion. The later Hosting termination return
+failure remains with the receiving owner; it cannot be sent through the closed
+peer channel or revoke an earlier verified token signature.
 
 The actual holder and compiled-process scenarios exercise both bootstrap batches,
 refusal of a third, fresh admitted channels, ordinary issuance and joined Hosting

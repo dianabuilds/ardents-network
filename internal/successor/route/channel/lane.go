@@ -227,6 +227,18 @@ func (l *Lane) Write(p []byte) (int, error) {
 }
 
 func (l *Lane) closeStatus(status byte) error {
+	return l.closeAfterJoin(status, nil)
+}
+
+// CloseAfterJoin publishes the existing clean CLOSE after the receiving work
+// owner has returned its reservation. The lane seals and joins its original
+// output before calling returned; only terminal output can follow. The owning
+// handler must still return its reservation if another close won first.
+func (l *Lane) CloseAfterJoin(returned func() error) error {
+	return l.closeAfterJoin(0, returned)
+}
+
+func (l *Lane) closeAfterJoin(status byte, returned func() error) error {
 	l.closeOnce.Do(func() {
 		defer func() {
 			l.deadlines.Wait()
@@ -255,6 +267,9 @@ func (l *Lane) closeStatus(status byte) error {
 		// including queued credit, must relinquish its turn before close returns.
 		l.writes.Wait()
 		l.deadlines.Wait()
+		if returned != nil && returned() != nil {
+			status = 1
+		}
 		callerExpired := l.caller != nil && (l.caller.Err() == context.DeadlineExceeded || context.Cause(l.caller) == os.ErrDeadlineExceeded)
 		sessionExpired := l.s.ctx.Err() == context.DeadlineExceeded
 		l.s.mu.Lock()
