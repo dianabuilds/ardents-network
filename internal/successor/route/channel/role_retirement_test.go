@@ -136,7 +136,7 @@ func TestRolePeerRetirementJoinsStartedCREDITAndRetainsLateFailure(t *testing.T)
 				}
 				f.readCredit(t)
 				joined := make(chan error, 1)
-				go func() { joined <- f.l.waitPeerRetirement(t.Context()) }()
+				go func() { joined <- f.l.WaitPeerRetirement(t.Context()) }()
 				synctest.Wait()
 				select {
 				case err := <-joined:

@@ -71,6 +71,7 @@ func runInstalledForwarding(parent context.Context, binding string, out io.Write
 	var owner installedForwardingState
 	var original *node.Forwarding
 	var privatePlan []byte
+	stage, startupComplete := "installation", false
 	defer func() {
 		if startup != nil {
 			startup.Stop()
@@ -95,6 +96,9 @@ func runInstalledForwarding(parent context.Context, binding string, out io.Write
 			}
 		}
 		if returned != nil {
+			if !startupComplete {
+				returned = errors.Join(returned, writeForwardingStartupRefusal(context.WithoutCancel(parent), out, stage, node.StartupFailure(returned), returned))
+			}
 			returned = &forwardingCommandFailure{returned}
 		}
 	}()
@@ -103,11 +107,13 @@ func runInstalledForwarding(parent context.Context, binding string, out io.Write
 	if err != nil {
 		return err
 	}
+	stage = "runtime-inputs"
 	material, err := startup.Inputs()
 	if err != nil {
 		return err
 	}
 	privatePlan = material.Plan
+	stage = "plan"
 	plan, err := forwarding.DecodePlan(material.Plan)
 	if err != nil {
 		return err
@@ -117,24 +123,21 @@ func runInstalledForwarding(parent context.Context, binding string, out io.Write
 		return err
 	}
 	config.PermitWork = startup.Check
-	if err := startup.Check(); err != nil {
-		return err
-	}
+	// Both State openers invoke this original Startup admission before root I/O.
 	openState := state.Open
 	if material.ExistingHistory {
 		openState = state.OpenRetained
 	}
+	stage = "state"
 	opened, err := openState(config)
 	if err != nil {
 		return err
 	}
 	owner = opened
 	// The returned view remains the genuine State owner's opaque observation.
-	// Installation checks bracket it outside Node's local admission mutex.
+	// State invokes PermitWork before its lock and authority read; the explicit
+	// after-check completes the Installation bracket outside Node's mutex.
 	current := func() (network.RuntimeView, error) {
-		if err := startup.Check(); err != nil {
-			return network.RuntimeView{}, err
-		}
 		view, err := owner.CurrentRuntime()
 		if err != nil {
 			return network.RuntimeView{}, err
@@ -148,6 +151,7 @@ func runInstalledForwarding(parent context.Context, binding string, out io.Write
 	if err != nil {
 		return err
 	}
+	stage = "duty"
 	duty, err := view.RetainDuty(plan.NodeID, view.ObservedAt())
 	if err != nil {
 		return err
@@ -156,6 +160,7 @@ func runInstalledForwarding(parent context.Context, binding string, out io.Write
 	if material.ExistingHistory {
 		listen = node.ListenForwardingRetained
 	}
+	stage = "node"
 	original, err = listen(startup.Context(), node.ForwardingConfig{
 		Authority:         role.Authority{Current: current, Duty: duty, Profile: view.Profile().ProfileBinding},
 		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot,
@@ -164,16 +169,41 @@ func runInstalledForwarding(parent context.Context, binding string, out io.Write
 	if err != nil {
 		return err
 	}
+	stage = "listening-check"
 	if err := startup.Check(); err != nil {
 		return err
 	}
+	stage = "listening-output"
 	if err := writeForwardingRuntimeEvent(startup.Context(), out, []byte("{\"operation\":\"forwarding.start-installed\",\"phase\":\"listening\"}\n")); err != nil {
 		return err
 	}
+	stage = "listening-check"
 	if err := startup.Check(); err != nil {
 		return err
 	}
+	startupComplete = true
 	return superviseInstalledForwarding(startup, owner, original, time.Duration(plan.RetirementWaitMS)*time.Millisecond, out)
+}
+
+// Only joined rejection facts leave startup. Neither a private error string nor
+// an arbitrary stage value may enter this bounded public diagnostic.
+func writeForwardingStartupRefusal(ctx context.Context, out io.Writer, stage string, fact *node.FailureDiagnostic, cause error) error {
+	switch stage {
+	case "installation", "runtime-inputs", "plan", "state", "duty", "node", "listening-check", "listening-output":
+	default:
+		stage = "unavailable"
+	}
+	raw, err := json.Marshal(struct {
+		Operation string                      `json:"operation"`
+		Phase     string                      `json:"phase"`
+		Stage     string                      `json:"stage"`
+		Failure   *node.FailureDiagnostic     `json:"first_failure,omitempty"`
+		Errors    []forwardingErrorDiagnostic `json:"error_shape"`
+	}{"forwarding.start-installed", "startup-refused", stage, fact, forwardingErrorShape(cause)})
+	if err != nil {
+		return err
+	}
+	return writeForwardingRuntimeEvent(ctx, out, append(raw, '\n'))
 }
 
 func installedForwardingStateConfig(plan forwarding.Plan) (state.Config, error) {

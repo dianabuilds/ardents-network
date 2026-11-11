@@ -31,6 +31,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 	"github.com/dianabuilds/ardents-network/internal/successor/publication/instance"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/capsule"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
@@ -634,6 +635,13 @@ func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixtur
 				return receiving.Grant{}, err
 			}
 			return owner.Accept(ctx, class, raw, channel.Hello.Deadline, func() (func() error, error) {
+				if channel.Hello.Purpose == ardp.PurposeIssuer {
+					held, err := networkTestHold(t, budget, channel.Hello.Deadline)
+					if err != nil {
+						return nil, err
+					}
+					return holdRouteIssuerReservation(channel, held, func() error { return releaseRouteReservation(held) }, nil)
+				}
 				release, err := networkTestReservation(t, budget, channel.Hello.Deadline)
 				if err != nil {
 					return nil, err

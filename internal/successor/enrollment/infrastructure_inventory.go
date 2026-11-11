@@ -121,6 +121,26 @@ func PrepareInfrastructureInventory(f InfrastructureFacts, files map[string][]by
 	return append(raw, '\n'), nil
 }
 
+// ValidateInfrastructureInventory checks the canonical inventory against all
+// seven bounded, immutable byte images supplied by the caller. The caller owns
+// the returned declarations and digest map. They supply no initial pin, native
+// custody, running-program proof, Candidate, Bundle or installation permission.
+func ValidateInfrastructureInventory(raw []byte, files map[string][]byte) (InfrastructureFacts, map[string]string, error) {
+	d, err := parseInfrastructureInventory(raw)
+	if err != nil {
+		return InfrastructureFacts{}, nil, err
+	}
+	facts := InfrastructureFacts{d.Platform, d.ReleaseIdentity, d.ReleaseVersion, d.Invocation}
+	expected, err := PrepareInfrastructureInventory(facts, files)
+	if err != nil {
+		return InfrastructureFacts{}, nil, err
+	}
+	if !bytes.Equal(raw, expected) {
+		return InfrastructureFacts{}, nil, ErrBinding
+	}
+	return facts, d.Files, nil
+}
+
 func parseInfrastructureInventory(raw []byte) (infrastructureInventory, error) {
 	var d infrastructureInventory
 	if len(raw) == 0 || len(raw) > 16<<10 || json.Unmarshal(raw, &d) != nil {

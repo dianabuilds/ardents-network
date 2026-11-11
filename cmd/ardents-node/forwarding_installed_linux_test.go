@@ -46,6 +46,31 @@ func TestForwardingWorkRefusalOutputNeverPrintsPrivateCause(t *testing.T) {
 	}
 }
 
+func TestForwardingStartupRefusalKeepsStageAndCausePrivate(t *testing.T) {
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	defer writer.Close()
+	printed := false
+	cause := errors.Join(forwardingPrivateDiagnosticError{&printed}, io.ErrUnexpectedEOF, syscall.EPIPE)
+	if err := writeForwardingStartupRefusal(t.Context(), writer, "/private/startup/path", nil, cause); err != nil {
+		t.Fatal("bounded startup diagnostic", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := io.ReadAll(reader)
+	if err != nil || printed || bytes.Contains(raw, []byte("private")) ||
+		!bytes.Contains(raw, []byte(`"phase":"startup-refused"`)) ||
+		!bytes.Contains(raw, []byte(`"stage":"unavailable"`)) ||
+		!bytes.Contains(raw, []byte(`"kind":"unexpected-eof"`)) ||
+		!bytes.Contains(raw, []byte(`"errno":32`)) {
+		t.Fatal("startup diagnostic leaked text or lost bounded failure facts", string(raw), err)
+	}
+}
+
 func TestForwardingErrorShapeNeverPrintsOrClassifiesPrivateCauses(t *testing.T) {
 	printed := false
 	private := forwardingPrivateDiagnosticError{&printed}

@@ -114,3 +114,44 @@ func TestRuntimeWitnessCannotReviveAfterObservedRefusal(t *testing.T) {
 		t.Fatal("new independent observation refused", err)
 	}
 }
+
+func TestRuntimeAdmissionPrecedesAuthorityIOOutsideStateLock(t *testing.T) {
+	for _, operation := range []string{"view", "witness"} {
+		t.Run(operation, func(t *testing.T) {
+			owner, raw := closedProfileStoreFixture(t)
+			if _, err := owner.AcceptClosedProfile(raw); err != nil {
+				t.Fatal(err)
+			}
+			original, err := owner.CurrentRuntimeWitness()
+			if err != nil {
+				t.Fatal(err)
+			}
+			// A closed real durable reader would independently refuse. The
+			// borrowed admission must run before that I/O, without State's lock.
+			if err := owner.storage.Close(); err != nil {
+				t.Fatal(err)
+			}
+			refusal := errors.New("original application admission denied")
+			called, unlocked := false, false
+			owner.config.permitWork = func() error {
+				called = true
+				unlocked = owner.mu.TryLock()
+				if unlocked {
+					owner.mu.Unlock()
+				}
+				return refusal
+			}
+			if operation == "view" {
+				_, err = owner.CurrentRuntime()
+			} else {
+				_, err = owner.CurrentRuntimeWitness()
+			}
+			if !called || !unlocked || !errors.Is(err, refusal) {
+				t.Fatal("admission did not precede locked authority I/O", called, unlocked, err)
+			}
+			if err := original.CheckCommit(original.View().Profile().ProfileBinding); err == nil {
+				t.Fatal("refused observation retained original accepting handoff")
+			}
+		})
+	}
+}

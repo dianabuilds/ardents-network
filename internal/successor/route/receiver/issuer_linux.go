@@ -3,10 +3,50 @@
 package receiver
 
 import (
+	"context"
 	"errors"
+	"io"
+
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 )
+
+// relayIssuer keeps the reverse terminal behind the exact Issuer peer CLOSE.
+// The original handler owns the upstream CLOSE after both copies have joined.
+func relayIssuer(ctx context.Context, source, target *framing.Lane) error {
+	interrupt := func() { _ = target.CloseRefused(); _ = source.CloseRefused() }
+	interrupted := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() { defer close(interrupted); interrupt() })
+	defer func() {
+		if !stop() {
+			<-interrupted
+		}
+	}()
+	results := make(chan error, 2)
+	go func() {
+		_, err := io.Copy(target, source)
+		if err == nil {
+			err = target.CloseWrite()
+		}
+		results <- err
+	}()
+	go func() {
+		_, err := io.Copy(source, target)
+		if err == nil {
+			err = target.WaitPeerRetirement(ctx)
+		}
+		if err == nil {
+			err = source.CloseWrite()
+		}
+		results <- err
+	}()
+	first := <-results
+	if first != nil {
+		interrupt()
+	}
+	return errors.Join(first, <-results, target.Close(), ctx.Err())
+}
 
 // holdIssuer admits one operation against the issuer's already exclusive durable
 // owners. It neither waits on a root nor creates an unbounded signing queue.

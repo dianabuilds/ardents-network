@@ -23,8 +23,8 @@ func certificateDeclaration(t *testing.T, record any, reference time.Time) []byt
 }
 
 func TestNetworkSigningNodeCertificateSemantics(t *testing.T) {
-	p, key, message, now := signingRecordFixture(t)
-	now = time.Now().UTC().Truncate(time.Second)
+	p, key, _, _ := signingRecordFixture(t)
+	now := time.Now().UTC().Truncate(time.Second)
 	p["valid_from"], p["valid_until"] = now.Add(-time.Minute).Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339)
 	_, message, err := prepareNetworkPublic("prepare-initial-node-record", preparationJSON(t, p))
 	if err != nil {

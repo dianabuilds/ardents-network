@@ -29,6 +29,7 @@ type participationInspection struct {
 	parentInfo         map[string]os.FileInfo
 	names              []string
 	uid, gid           uint32
+	unopened           bool
 	closed             bool
 	terminal, closeErr error
 	observe            func(string, *os.File) // failure/hold only, after actual I/O
@@ -39,7 +40,7 @@ type inspectionLeaf struct {
 	digest [32]byte
 }
 
-func openParticipationInspection(ctx context.Context, path string, uid, gid uint32) (result *participationInspection, err error) {
+func openParticipationInspection(ctx context.Context, path string, uid, gid uint32, unopened os.FileInfo) (result *participationInspection, err error) {
 	if ctx == nil || ctx.Err() != nil || !filepath.IsAbs(path) || filepath.Clean(path) != path || os.Geteuid() != 0 {
 		return nil, errors.New("invalid retained participation inspection")
 	}
@@ -73,6 +74,13 @@ func openParticipationInspection(ctx context.Context, path string, uid, gid uint
 	s.info, err = s.directory.Stat()
 	if err != nil || s.info.Mode() != os.ModeDir|0700 || s.info.Sys().(*syscall.Stat_t).Uid != uid || s.info.Sys().(*syscall.Stat_t).Gid != gid {
 		return nil, errors.Join(errors.New("retained participation root differs"), err)
+	}
+	if unopened != nil {
+		if !sameInspectionFile(unopened, s.info) {
+			return nil, errors.New("unopened participation original root differs")
+		}
+		s.unopened = true
+		return s, nil
 	}
 	fd, err := syscall.Openat(int(s.directory.Fd()), rootLockName, syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_CLOEXEC|syscall.O_NONBLOCK, 0)
 	if err != nil {
@@ -217,20 +225,10 @@ func (s *participationInspection) read(policy func([]dutyRecord) error) error {
 			return errors.Join(errors.New("retained participation bytes changed"), e)
 		}
 	}
-	watermark, name, exists, err := loadWatermark(s.path)
-	if err != nil || !exists {
-		return errors.Join(errors.New("retained participation watermark absent"), err)
-	}
-	pointer, err := readBounded(filepath.Join(s.path, "current"), 65)
-	if err != nil || string(pointer) != name+"\n" {
-		return errors.Join(errors.New("retained participation requires explicit recovery"), err)
-	}
-	state, err := loadGeneration(s.path, name)
-	if err != nil || state.Generation != watermark {
-		return errors.Join(errors.New("retained participation floor differs"), err)
-	}
-	if err := policy(state.Duties); err != nil {
-		return err
+	if !s.unopened {
+		if err := s.readRecords(policy); err != nil {
+			return err
+		}
 	}
 	if s.observe != nil {
 		s.observe("read", s.directory)
@@ -253,6 +251,22 @@ func (s *participationInspection) read(policy func([]dutyRecord) error) error {
 		return errors.Join(errors.New("retained participation late root changed"), e, ne)
 	}
 	return s.nativeRoot()
+}
+
+func (s *participationInspection) readRecords(policy func([]dutyRecord) error) error {
+	watermark, name, exists, err := loadWatermark(s.path)
+	if err != nil || !exists {
+		return errors.Join(errors.New("retained participation watermark absent"), err)
+	}
+	pointer, err := readBounded(filepath.Join(s.path, "current"), 65)
+	if err != nil || string(pointer) != name+"\n" {
+		return errors.Join(errors.New("retained participation requires explicit recovery"), err)
+	}
+	state, err := loadGeneration(s.path, name)
+	if err != nil || state.Generation != watermark {
+		return errors.Join(errors.New("retained participation floor differs"), err)
+	}
+	return policy(state.Duties)
 }
 
 func (s *participationInspection) nativeRoot() (returned error) {

@@ -497,11 +497,35 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 	var additions []receiving.Grant
 	var releaseIssuer func()
 	var releaseDescriptor func()
+	var issuerComplete bool
 	defer func() {
+		defer func() {
+			if capacity.issuerTerminal != nil {
+				err := capacity.issuerTerminal()
+				r.record(err)
+				result = errors.Join(result, err)
+			}
+		}()
+		if issuerComplete && outer != nil {
+			// Serve joined the TLS directions and its cancellation callback.
+			// Join lower payload output before returning work. The separately
+			// held Hosting termination share still covers the final CLOSE.
+			returned := sync.OnceValue(func() error {
+				releaseErr := errors.Join(capacity.finish(), grant.Release())
+				r.record(releaseErr)
+				releaseIssuer()
+				return releaseErr
+			})
+			closeErr := outer.CloseAfterJoin(returned)
+			result = errors.Join(result, returned(), closeErr)
+			return
+		}
 		// Interrupt nested physical work, join every borrower, then return the
 		// finite reservation. A retained token spend is never refunded here.
 		if s != nil {
 			result = errors.Join(result, r.finishSession(s))
+		} else if outer != nil && h.Purpose == ardp.PurposeIssuer && bootstrapClaim == nil {
+			result = errors.Join(result, outer.CloseRefused())
 		} else {
 			result = errors.Join(result, conn.Close())
 		}
@@ -551,6 +575,9 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 	if err != nil {
 		return err
 	}
+	if h.Purpose == ardp.PurposeIssuer && capacity.issuerTerminal == nil {
+		return errors.New("route Issuer termination reservation absent")
+	}
 	if opened != nil && (h.RecipientNodeID != opened.RecipientNodeID || h.RecipientDutyGeneration != opened.RecipientDutyGeneration || uint8(h.Purpose) != opened.Purpose || h.Deadline.After(opened.Deadline)) {
 		return errors.New("route inner HELLO differs from OPEN")
 	}
@@ -570,7 +597,9 @@ func (r *Receiver) serveRole(ctx context.Context, conn net.Conn, outer *framing.
 		return err
 	}
 	if h.Purpose == ardp.PurposeIssuer {
-		return issuertransport.Serve(ctx, conn, h, grant.Allowance().Bytes()-role.AdmissionWireBytes, check, func(ctx context.Context, request []byte) ([]byte, error) { return r.config.Issue(ctx, request, false) })
+		err := issuertransport.Serve(ctx, conn, h, grant.Allowance().Bytes()-role.AdmissionWireBytes, check, func(ctx context.Context, request []byte) ([]byte, error) { return r.config.Issue(ctx, request, false) })
+		issuerComplete = err == nil
+		return err
 	}
 	if h.Purpose == ardp.PurposeReachability {
 		return r.serveDescriptor(ctx, conn, h, grant.Allowance().Bytes()-role.AdmissionWireBytes, check)
@@ -716,6 +745,9 @@ func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ard
 		return err
 	}
 	defer target.Finish()
+	if issuance && restriction == ardp.OrdinaryChild {
+		return relayIssuer(ctx, source, target)
+	}
 	// Cancellation retires only this child, while healthy sibling borrowers
 	// retain the same authenticated Carrier and their physical reservation.
 	interrupted := make(chan struct{})

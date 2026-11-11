@@ -465,6 +465,14 @@ prunes that record nor substitutes process exit for its original release.
 Source retains its distinct exposure policy; only independently instantiated
 native custody and signed-history validation are shared as code.
 
+`InspectUnstartedNode` supports the separate Forwarding recovery path after
+Installation has proved the original start was never admitted and matched the
+participation directory to the initial installation journal. It authenticates
+the same signed State under its existing lease. Participation has no history
+lease yet. Its owner rechecks that the original pinned directory stays empty
+and unchanged, without creating files. Ordinary stopped inspection still
+requires complete retained participation history.
+
 `NodeInspection.Check` returns only copied `NodeHistory` binding facts: Network,
 profile digest, Node/public key and duty generation. It returns no RuntimeView,
 producer, fresh-root fact, mutable root or operation right. The owning consumer

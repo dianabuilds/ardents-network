@@ -396,7 +396,7 @@ func testClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 			return
 		}
 		raw, available := transport.NetConn().(*net.TCPConn)
-		if !available || raw.SetReadBuffer(1) != nil {
+		if !available {
 			peerDone <- errors.New("A TCP read bound is unavailable")
 			return
 		}
@@ -424,6 +424,10 @@ func testClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 		frame, readErr := ardp.ReadFrame(accepted.Connection)
 		if readErr != nil || frame.Kind != 6 || len(frame.Body) != 16<<10 {
 			peerDone <- errors.New("A first forwarded bytes missing")
+			return
+		}
+		if err := raw.SetReadBuffer(1); err != nil {
+			peerDone <- err
 			return
 		}
 		close(aWriteStarted)
@@ -504,10 +508,8 @@ func testClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 	case <-time.After(5 * time.Second):
 		t.Fatal("A OPEN did not complete")
 	}
-	for range 4 {
-		if err = ardp.WriteFrame(client, ardp.Frame{Kind: 6, Lane: 1, Body: make([]byte, 16<<10)}); err != nil {
-			t.Fatal(err)
-		}
+	if err = ardp.WriteFrame(client, ardp.Frame{Kind: 6, Lane: 1, Body: make([]byte, 16<<10)}); err != nil {
+		t.Fatal(err)
 	}
 	select {
 	case <-aWriteStarted:
@@ -515,6 +517,11 @@ func testClosedForwardingParentReaderServesIndependentChildWhileWriteBlocks(t *t
 		t.Fatal(err)
 	case <-time.After(2 * time.Second):
 		t.Fatal("A downstream write did not start")
+	}
+	for range 3 {
+		if err = ardp.WriteFrame(client, ardp.Frame{Kind: 6, Lane: 1, Body: make([]byte, 16<<10)}); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if busyLanes > 1 {
 		// The A Carrier has stopped reading. Give every other live A lane a

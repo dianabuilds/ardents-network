@@ -6,10 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-func selectedGenerationVector(t *testing.T) (binding, []byte, map[string][]byte) {
+func selectedGenerationVector(t testing.TB) (binding, []byte, map[string][]byte) {
+	t.Helper()
+	return selectedGenerationProgramVector(t, []byte("pure Node byte fixture"))
+}
+
+func selectedGenerationProgramVector(t testing.TB, program []byte) (binding, []byte, map[string][]byte) {
 	t.Helper()
 	b, err := decodeBinding(forwardingBindingVector())
 	if err != nil {
@@ -32,7 +38,7 @@ func selectedGenerationVector(t *testing.T) (binding, []byte, map[string][]byte)
 	// Pure codec fixture only: these bytes supply no executable, signature,
 	// Enrollment provenance, Release decision or accepting installed observation.
 	files := map[string][]byte{
-		programName: []byte("pure Node byte fixture"), "ardents-forwarding.service": []byte(Template),
+		programName: program, "ardents-forwarding.service": []byte(Template),
 		"root.json": []byte("root fixture"), "timestamp.json": []byte("timestamp fixture"),
 		"snapshot.json": []byte("snapshot fixture"), "targets.json": []byte("targets fixture"),
 		"forwarding-request.json": []byte(forwardingRequestVector), "forwarding-plan.json": encode(p),
@@ -57,6 +63,56 @@ func selectedGenerationVector(t *testing.T) (binding, []byte, map[string][]byte)
 	selected := encode(b)
 	files["binding.json"] = bytes.Clone(selected)
 	return b, selected, files
+}
+
+func TestSelectedGenerationKeepsIndependentProgramCommitments(t *testing.T) {
+	for _, fault := range []string{"binding", "descriptor", "inventory", "inventory-facts"} {
+		t.Run(fault, func(t *testing.T) {
+			b, _, files := selectedGenerationVector(t)
+			foreign := digest([]byte("different pure program fixture"))
+			switch fault {
+			case "binding":
+				b.ProgramSHA256 = foreign
+			case "descriptor":
+				oldGeneration := b.Generation
+				files["infrastructure-forwarding.json"] = []byte(strings.Replace(string(files["infrastructure-forwarding.json"]), b.ProgramSHA256, foreign, 1))
+				b.Generation = digest(files["infrastructure-forwarding.json"])
+				files["infrastructure-enrollment.json"] = []byte(strings.Replace(string(files["infrastructure-enrollment.json"]), oldGeneration, b.Generation, 1))
+				var err error
+				files["rendered-forwarding.service"], err = RenderUnit(files["ardents-forwarding.service"], b.Request, b.Generation)
+				if err != nil {
+					t.Fatal(err)
+				}
+				b.UnitSHA256 = digest(files["rendered-forwarding.service"])
+			case "inventory":
+				files["infrastructure-enrollment.json"] = []byte(strings.Replace(string(files["infrastructure-enrollment.json"]), b.ProgramSHA256, foreign, 1))
+			case "inventory-facts":
+				files["infrastructure-enrollment.json"] = []byte(strings.Replace(string(files["infrastructure-enrollment.json"]), `"release_identity":"one"`, `"release_identity":"other"`, 1))
+			}
+			b.InventorySHA256 = digest(files["infrastructure-enrollment.json"])
+			selected, err := json.Marshal(b)
+			if err != nil {
+				t.Fatal(err)
+			}
+			selected = append(selected, '\n')
+			files["binding.json"] = bytes.Clone(selected)
+			if _, err := validateSelectedGeneration(b, selected, files); !errors.Is(err, ErrBinding) {
+				t.Fatal("one contradictory commitment accepted", fault, err)
+			}
+		})
+	}
+}
+
+// Pure byte grammar benchmark; it supplies no executable or installed authority.
+func BenchmarkSelectedGenerationValidation(b *testing.B) {
+	bound, selected, files := selectedGenerationProgramVector(b, bytes.Repeat([]byte{0x67}, 32<<20))
+	b.SetBytes(int64(len(files[programName])))
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := validateSelectedGeneration(bound, selected, files); err != nil {
+			b.Fatal(err)
+		}
+	}
 }
 
 func TestSelectedForwardingGenerationRequiresEveryOriginalCommittedByte(t *testing.T) {

@@ -160,7 +160,7 @@ func networkTestBudgetAt(t *testing.T, root string) *hosting.Budget {
 
 func networkTestReservation(t *testing.T, budget *hosting.Budget, deadline time.Time) (func() error, error) {
 	t.Helper()
-	held, err := budget.Reserve(t.Context(), hosting.ReservationRequest{Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, WorkUntil: deadline, HoldUntil: deadline.Add(time.Second)})
+	held, err := networkTestHold(t, budget, deadline)
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +169,11 @@ func networkTestReservation(t *testing.T, budget *hosting.Budget, deadline time.
 		defer cancel()
 		return held.Release(ctx)
 	}, nil
+}
+
+func networkTestHold(t *testing.T, budget *hosting.Budget, deadline time.Time) (*hosting.Reservation, error) {
+	t.Helper()
+	return budget.Reserve(t.Context(), hosting.ReservationRequest{Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}, WorkUntil: deadline, HoldUntil: deadline.Add(time.Second)})
 }
 
 func TestNetworkAdmissionRefillRetainsDeadlineAndHostingUntilReplacement(t *testing.T) {

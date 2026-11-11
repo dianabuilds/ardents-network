@@ -318,23 +318,24 @@ func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, after
 					admissionPoint("before-accept")
 				}
 				grant, err := owner.Accept(ctx, class, raw, c.Hello.Deadline, func() (func() error, error) {
-					release, err := networkTestReservation(t, budget, c.Hello.Deadline)
+					held, err := networkTestHold(t, budget, c.Hello.Deadline)
 					if err != nil {
 						return nil, err
 					}
 					if isIssuer && admissionPoint != nil {
 						admissionPoint("after-reservation")
 					}
-					return c.HoldReservation(func() error {
-						err := release()
-						if isIssuer {
-							x.issuerReturns.Add(1)
-							if afterIssuerReturn != nil {
-								err = errors.Join(err, afterIssuerReturn())
-							}
+					if !isIssuer {
+						return c.HoldReservation(func() error { return releaseRouteReservation(held) })
+					}
+					return holdRouteIssuerReservation(c, held, func() error {
+						if admissionPoint != nil {
+							admissionPoint("before-return")
 						}
+						err := releaseRouteReservation(held)
+						x.issuerReturns.Add(1)
 						return err
-					})
+					}, afterIssuerReturn)
 				})
 				if err == nil {
 					spent.mu.Lock()
@@ -432,6 +433,74 @@ func newRouteIssuerFixture(t *testing.T, profile transport.CarrierProfile, after
 		t.Cleanup(func() { _ = server.Close() })
 	}
 	return x
+}
+
+func TestRouteIssuerSequentialWaitsForReservationReturnTCP(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 25*time.Second)
+	defer cancel()
+	returning, resume := make(chan struct{}), make(chan struct{})
+	unblock := sync.OnceFunc(func() { close(resume) })
+	defer unblock()
+	var held atomic.Bool
+	x := newRouteIssuerFixture(t, transport.ClosedCarrierTCP, nil, nil, func(point string) {
+		if point == "before-return" && held.CompareAndSwap(false, true) {
+			close(returning)
+			<-resume
+		}
+	}, nil)
+	f := x.network
+	holder := routePermissionStock(t, f, admission.AllocationUser, [3]uint32{4, 8, 0})
+	root := t.TempDir()
+	end, _ := ctx.Deadline()
+	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"), HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: end.UTC().Truncate(time.Second), Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
+	boot, err := startRouteBootstrap(ctx, plan, f.authority, holder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer boot.close()
+	if err := boot.issue(ctx, uint8(admission.ForwardClass), nil); err != nil {
+		t.Fatal("bootstrap Forward", err)
+	}
+	id := f.profile.IssuerNodeID
+	if err := boot.issue(ctx, uint8(admission.ControlClass), [][32]byte{id, id, id}); err != nil {
+		t.Fatal("bootstrap Control", err)
+	}
+	if err := boot.close(); err != nil {
+		t.Fatal(err)
+	}
+	p, err := startRoutePrefix(ctx, plan, f.authority, holder)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { unblock(); _ = p.close() }()
+	first := make(chan error, 1)
+	go func() { first <- p.issue(ctx, uint8(admission.ControlClass), nil) }()
+	select {
+	case <-returning:
+	case <-ctx.Done():
+		t.Fatal("first exchange did not enter Grant return", ctx.Err())
+	}
+	observation, err := x.issuerBudget.Observe(ctx)
+	if err != nil || observation.ReservedBytes == 0 || x.issuerReturns.Load() != 0 {
+		t.Fatal("actual reservation not held at return barrier", observation.ReservedBytes, err)
+	}
+	// The real peer has already finished its TLS exchange. Give the relay
+	// an opportunity to publish an early terminal while the return is gated.
+	select {
+	case err := <-first:
+		t.Fatal("exchange finished while its receiving reservation was held", err)
+	case <-time.After(120 * time.Millisecond):
+	}
+	unblock()
+	if err := <-first; err != nil {
+		t.Fatal("first exchange after reservation return", err)
+	}
+	if err := p.issue(ctx, uint8(admission.ForwardClass), nil); err != nil {
+		t.Fatal("next sequential exchange on the same Prefix", err)
+	}
+	if got := holder.Status(); got.Pending || x.issuerAdmissions.Load() != 2 || x.ordinaryIssues.Load() != 2 || x.issuerReturns.Load() != 2 {
+		t.Fatal("sequential exchanges did not complete exactly once", got, x.issuerAdmissions.Load(), x.ordinaryIssues.Load(), x.issuerReturns.Load())
+	}
 }
 
 // The maintained holder composition obtains its own Stock, joins bootstrap,

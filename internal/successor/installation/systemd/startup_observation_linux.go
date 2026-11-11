@@ -212,6 +212,14 @@ func (client *startupBus) request(ctx context.Context, destination, object, meth
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
+	if frame, ok := ctx.Value(requestObservationKey{}).(*requestObservation); ok && frame.client == client && frame.active.Load() {
+		answer := client.bus.Object(destination, dbus.ObjectPath(object)).CallWithContext(ctx, method, 0, arguments...)
+		if err := errors.Join(client.callFailure(ctx, answer.Err), ctx.Err(), ctx.Err()); err != nil {
+			return nil, err
+		}
+		return answer, nil
+	}
+
 	bounded, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	end, _ := bounded.Deadline()

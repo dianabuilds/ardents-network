@@ -97,6 +97,18 @@ remain proposed until their current contracts and real consumers are verified.
 | **Software acceptance:** which exact generation may be installed or run? | Enrollment pin, Release authorization/monotonic floors, installation/replacement/recovery transaction are separate authority and state owners | Network membership, admission permissions, Service authority, generic signing and automatic rollback | New `enrollment`, `release` and `installation` have genuine new command consumers. Portable byte authentication, native transactions/recovery and bounded Source/permission startup have separate boundaries. Two independently admitted installed participants consume those startup owners for a bounded authenticated text exchange; the full Installation interruption/replacement matrix remains separate. [Enrollment](../technical/enrollment-verification.md), [Release/Custody](../technical/release-update-custody.md), [Installation](../../internal/successor/installation/README.md) |
 | **Authority Custody** (supporting boundary) | Purpose-specific encrypted authority storage, approved signing commitments and recovery floors; authority kinds never become one signing right | Generic `Sign`, exported private authority, Network/Service/Admission decisions assigned to their own domains; runtime Instance/Node keys | New `internal/successor/custody` owns encrypted records and purpose-specific Admission through new Allocation and real `ardents-custody`; Service Authority issuance consumes the one pure Publication request/response contract; predecessor records remain evidence, never signing adoption; [Custody contract](../technical/release-update-custody.md) |
 
+Forwarding retains distinct supervision responsibilities within one original
+Node invocation: the independent Node timer checks Guard and participation;
+Route's joined authority watcher calls Node's full State/duty observation.
+Canonical installed composition separately supervises Startup. Every effect
+still requires fresh original observations; none of these timers caches authority
+or substitutes another owner's physical completion.
+Concurrent requests to the same original Startup may share a complete physical
+round only if each request was admitted before that round began. An in-progress
+or completed round cannot admit a later request; checks on opposite sides of a
+domain effect still require separate fresh rounds. Startup retains and joins
+both physical observation and waiter uses without changing any supervisor timer.
+
 ## Supporting mechanisms and composition
 
 Local Node certificate provisioning is one offline supporting composition,

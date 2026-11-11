@@ -378,7 +378,16 @@ func (f *issuerInvocation) admit(ctx context.Context, c receiver.Channel, raw []
 		if err != nil {
 			return nil, err
 		}
-		return c.HoldReservation(func() error { return releaseReservation(held) })
+		terminal, err := held.DetachTermination()
+		if err != nil {
+			release, holdErr := c.HoldReservation(func() error { return releaseReservation(held) })
+			return release, errors.Join(err, holdErr)
+		}
+		return c.HoldIssuerReservation(func() error { return releaseReservation(held) }, func() error {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			return terminal(ctx)
+		})
 	})
 }
 func (f *issuerInvocation) reserve(ctx context.Context, end time.Time, work hosting.Traffic, limit uint64) (*hosting.Reservation, error) {

@@ -32,7 +32,7 @@ import (
 // public Epoch verifier and State intake. The public profile preparer plus an
 // isolated test State signer then supplies ordinary closed-profile intake.
 // No fake authenticated Header, mutable runtime owner or installed role appears.
-func nodeInspectionNativeFixture(t *testing.T) (state.Config, state.NodeHistory) {
+func nodeInspectionNativeFixture(t *testing.T, opened bool) (state.Config, state.NodeHistory) {
 	t.Helper()
 	if os.Geteuid() != 0 {
 		t.Fatal("invalid environment: root Node inspection driver required")
@@ -116,12 +116,14 @@ func nodeInspectionNativeFixture(t *testing.T) (state.Config, state.NodeHistory)
 	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
-	participation, err := duty.Open(duty.Config{Root: roles, Clock: func() time.Time { return now }, Create: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := participation.Close(); err != nil {
-		t.Fatal(err)
+	if opened {
+		participation, err := duty.Open(duty.Config{Root: roles, Clock: func() time.Time { return now }, Create: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := participation.Close(); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, path := range []string{root, roles} {
 		if err := filepath.WalkDir(path, func(path string, _ os.DirEntry, err error) error {
@@ -176,7 +178,7 @@ func nodeInspectionNativeSPKI(t *testing.T) []byte {
 }
 
 func TestNodeInspectionNativeSignedOriginalLifetime(t *testing.T) {
-	cfg, expected := nodeInspectionNativeFixture(t)
+	cfg, expected := nodeInspectionNativeFixture(t, true)
 	before := sourceInspectionNativeImages(t, cfg) // physical image helper only
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
@@ -228,7 +230,7 @@ func TestNodeInspectionNativeSignedOriginalLifetime(t *testing.T) {
 func TestNodeInspectionNativeSignedAndMissingHistoryRefuse(t *testing.T) {
 	for _, fault := range []string{"State-marker", "participation-pointer", "profile-authority", "expired", "principal", "foreign-Node"} {
 		t.Run(fault, func(t *testing.T) {
-			cfg, expected := nodeInspectionNativeFixture(t)
+			cfg, expected := nodeInspectionNativeFixture(t, true)
 			uid := uint32(61100)
 			switch fault {
 			case "State-marker":
@@ -280,8 +282,59 @@ func TestNodeInspectionNativeSignedAndMissingHistoryRefuse(t *testing.T) {
 	}
 }
 
+func TestNodeInspectionNativeUnstartedParticipation(t *testing.T) {
+	cfg, expected := nodeInspectionNativeFixture(t, false)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	const principal = 61100
+	original, err := os.Lstat(cfg.LocalRoleStateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opened, err := state.OpenNodeInspection(ctx, cfg, expected.NodeID, principal, principal); err == nil {
+		_ = opened.Close()
+		t.Fatal("ordinary retained inspection admitted missing participation history")
+	}
+	foreign, err := os.Lstat(cfg.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opened, err := state.InspectUnstartedNode(ctx, cfg, expected.NodeID, principal, principal, foreign); err == nil {
+		_ = opened.Close()
+		t.Fatal("unstarted inspection admitted a different original directory")
+	}
+	inspection, err := state.InspectUnstartedNode(ctx, cfg, expected.NodeID, principal, principal, original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = inspection.Close() })
+	if got, err := inspection.Check(); err != nil || got != expected {
+		t.Fatal("original empty participation did not retain signed State binding", got, err)
+	}
+	if entries, err := os.ReadDir(cfg.LocalRoleStateRoot); err != nil || len(entries) != 0 {
+		t.Fatal("inspection created participation history", entries, err)
+	}
+	if err := os.WriteFile(filepath.Join(cfg.LocalRoleStateRoot, "unexpected"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := inspection.Check(); err == nil || got != (state.NodeHistory{}) {
+		t.Fatal("changed original participation did not deny binding facts", got, err)
+	}
+	if err := inspection.Close(); err == nil {
+		t.Fatal("Close lost the first refusal")
+	}
+	nonempty, err := os.Lstat(cfg.LocalRoleStateRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if opened, err := state.InspectUnstartedNode(ctx, cfg, expected.NodeID, principal, principal, nonempty); err == nil {
+		_ = opened.Close()
+		t.Fatal("unstarted inspection admitted nonempty participation at acquisition")
+	}
+}
+
 func TestNodeInspectionNativeCancellationRetainsOriginalClockReader(t *testing.T) {
-	cfg, expected := nodeInspectionNativeFixture(t)
+	cfg, expected := nodeInspectionNativeFixture(t, true)
 	now := cfg.Now
 	cfg.Now = time.Time{}
 	entered, resume := make(chan struct{}), make(chan struct{})
@@ -357,7 +410,7 @@ func TestNodeInspectionNativeCancellationRetainsOriginalClockReader(t *testing.T
 }
 
 func TestNodeInspectionNativeCopiedChecksJoinBeforeClose(t *testing.T) {
-	cfg, expected := nodeInspectionNativeFixture(t)
+	cfg, expected := nodeInspectionNativeFixture(t, true)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	inspection, err := state.OpenNodeInspection(ctx, cfg, expected.NodeID, 61100, 61100)

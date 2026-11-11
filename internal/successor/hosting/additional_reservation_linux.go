@@ -9,6 +9,25 @@ import (
 	"time"
 )
 
+// DetachTermination transfers the original, already reserved termination
+// share to a separate release owner. It creates no durable debit, new traffic
+// or time. The work handle can no longer lend termination to additional work.
+func (reservation *Reservation) DetachTermination() (func(context.Context) error, error) {
+	if reservation == nil || reservation.reservationState == nil {
+		return nil, ErrInvalid
+	}
+	p := reservation.reservationState
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.parent != nil || p.released || p.sealed || p.borrowers != 0 || p.workBytes == 0 || p.workBytes >= p.bytes {
+		return nil, ErrUnavailable
+	}
+	terminal := &Reservation{reservationState: &reservationState{owner: p.owner, bytes: p.bytes - p.workBytes}}
+	p.bytes = p.workBytes
+	p.request.Termination = Traffic{}
+	return terminal.Release, nil
+}
+
 // CoversJoint checks the original work's provider-counted capacity. It does not
 // attribute interface counters or certify component bounds or Carrier overhead.
 func (owner *Budget) CoversJoint(ctx context.Context, original *Reservation, work JointTraffic) error {
@@ -53,7 +72,7 @@ func (owner *Budget) reserveAdditional(ctx context.Context, original *Reservatio
 	}
 	p := original.reservationState
 	p.mu.Lock()
-	if p.owner != owner || p.parent != nil || p.released || p.sealed || p.additionErr != nil || p.borrowers == math.MaxUint64 {
+	if p.owner != owner || p.parent != nil || p.released || p.sealed || p.request.Termination == (Traffic{}) || p.additionErr != nil || p.borrowers == math.MaxUint64 {
 		p.mu.Unlock()
 		return nil, ErrUnavailable
 	}

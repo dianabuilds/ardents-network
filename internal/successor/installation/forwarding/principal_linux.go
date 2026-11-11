@@ -23,11 +23,23 @@ func observeNodePrincipal(ctx context.Context, uid, gid uint32) (err error) {
 	}
 	files := map[string]*accountFile{}
 	defer func() {
+		var physical error
 		for _, file := range files {
-			err = errors.Join(err, file.file.Close())
+			if closed := file.file.Close(); closed != nil {
+				physical = errors.Join(physical, closed)
+			}
 			clear(file.raw)
 		}
-		err = errors.Join(err, ctx.Err())
+		if physical != nil {
+			err = errors.Join(err, physical)
+		}
+		if caller := ctx.Err(); caller != nil && caller != err {
+			if err == nil {
+				err = caller
+			} else {
+				err = errors.Join(err, caller)
+			}
+		}
 	}()
 	paths := []string{"/etc/passwd", "/etc/group", "/etc/nsswitch.conf"}
 	if os.Geteuid() == 0 {

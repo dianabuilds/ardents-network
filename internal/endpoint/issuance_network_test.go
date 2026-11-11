@@ -19,6 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/resource"
 	routecarrier "github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
 
@@ -67,9 +68,11 @@ type roleNetworkFixture struct {
 	configure      []func(int, *node.Config)
 }
 
-// The qualified-worker and accepted-State seams are explicit fixtures. The
-// selected Node runtimes, Custody allocation, issuer keys, Endpoint stock and
+// The qualified-worker, accepted-State, placement and owner-use seams are
+// explicit fixtures. The selected Node runtimes, Custody allocation, issuer keys, Endpoint stock and
 // journal, Source selection, forwarding, and nested role TLS remain real.
+// In-process Nodes share the test runner's cgroup with independent workers and
+// compiler processes; it cannot supply an isolated Node owner-use observation.
 func startRoleNetwork(t *testing.T, fixture roleNetworkFixture) (*endpoint, *dutyContext, *sourceStateFixture) {
 	t.Helper()
 	if fixture.publisher && !fixture.resolution || fixture.join && !fixture.publisher {
@@ -179,10 +182,13 @@ func startRoleNetwork(t *testing.T, fixture roleNetworkFixture) (*endpoint, *dut
 			CurrentClosedRoute: func() (state.ClosedRouteView, error) {
 				return source.CurrentClosedRoute()
 			},
-			// The fixture starts up to sixteen full Nodes in one process. Use the
-			// lifecycle's maximum accepted cadence so those Nodes share at most one
-			// process/cgroup pressure-sampling wave per second. Admission remains
-			// fail-closed and startup does not wait for this READY-state ticker.
+			// The fixture starts up to sixteen Nodes in one process and models
+			// their owner use through the existing behavior-test seam. Durable
+			// Hosting traffic/reservations still use their genuine ledger; this
+			// component supplies no OS placement or resource qualification.
+			ResourceMeasure: func() (resource.Sample, error) {
+				return resource.Sample{RSSBytes: 32 << 20, MemoryBytes: 32 << 20}, nil
+			},
 			LocalRoleStateRoot: root, PollInterval: time.Second, CheckPlacement: func() error { return nil }, Emit: runtime.emit,
 		}
 		if index == 15 {

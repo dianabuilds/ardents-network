@@ -260,12 +260,13 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 		}
 	}()
 	stopClock, clockDone := make(chan struct{}), make(chan error, 1)
+	clockPath := plan.Network.ClockObservationFile
 	go func() {
 		ticker := time.NewTicker(100 * time.Millisecond)
 		defer ticker.Stop()
 		for {
 			now := time.Now()
-			if err := os.Chtimes(plan.Network.ClockObservationFile, now, now); err != nil {
+			if err := os.Chtimes(clockPath, now, now); err != nil {
 				clockDone <- err
 				return
 			}
@@ -340,6 +341,9 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 	var previousChallenge string
 	initialGeneration := binding.Generation
 	var copiedForwardDistribution string
+	// These pre-Reload recovery cases require the stopped predecessor to
+	// stay loaded from before the candidate unit is written through recovery.
+	holdPreReloadUnit := selected == "replacement-cut-057" || selected == "replacement-cut-058"
 	for invocation := range lifetimes {
 		if strings.HasPrefix(selected, "replacement-cut-") && invocation == 1 {
 			_, number := forwardingInstalledCaseNumber(t, "replacement", 62)
@@ -385,7 +389,7 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 				}
 				// No Interior or holder is started for this cut: recovery must
 				// independently observe the genuinely quiescent shared allowance.
-				forwardingInstalledStartCut(t, program, distribution, history, request, bindingPath, plan, target.prefix, invocation, number, int64(wantedVersion))
+				forwardingInstalledStartCut(t, program, distribution, history, request, bindingPath, plan, binding.GID, target.prefix, invocation, number, int64(wantedVersion))
 				return
 			}
 		}
@@ -664,7 +668,7 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 				if invocation > 0 {
 					request = successors[invocation-1].Request
 				}
-				forwardingInstalledRetirementCut(t, program, distribution, history, request, bindingPath, plan, invocation, retirementCut, retirementPrefix, retirementProof, int64(wantedVersion))
+				forwardingInstalledRetirementCut(t, program, distribution, history, request, bindingPath, plan, binding.GID, invocation, retirementCut, retirementPrefix, retirementProof, int64(wantedVersion))
 				return
 			}
 		} else if unknownJoin {
@@ -755,7 +759,7 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 			}
 			// Holder, Interior and original runtime users have now actually
 			// joined. Recovery must still authenticate the original domain report.
-			forwardingInstalledRetirementCut(t, program, distribution, history, request, bindingPath, plan, invocation, retirementCut, retirementPrefix, retirementProof, int64(wantedVersion))
+			forwardingInstalledRetirementCut(t, program, distribution, history, request, bindingPath, plan, binding.GID, invocation, retirementCut, retirementPrefix, retirementProof, int64(wantedVersion))
 		}
 		command("{\"outcome\":\"forwarding-start-history-verified\",\"runtime_authority\":false,\"retirement_proved\":false}\n", "inspect-start-history", history, bindingPath)
 		retirementDirectory := filepath.Join(installation, fmt.Sprintf("forwarding-retirement-%08d", invocation))
@@ -825,6 +829,9 @@ func runForwardingInstalledLifetime(t *testing.T, selected string) {
 		}
 		reference.close(t)
 		pin.close(t)
+		if holdPreReloadUnit {
+			forwardingInstalledRetainStoppedPredecessor(t, selectedProgram)
+		}
 		if retirementCut != 0 {
 			return
 		}
@@ -1736,6 +1743,40 @@ func forwardingInstalledRetainUnit(t *testing.T) *forwardingInstalledUnitReferen
 	return nil
 }
 
+func forwardingInstalledRetainStoppedPredecessor(t *testing.T, program string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer cancel()
+	// Let systemd collect the completed invocation before pinning the old
+	// on-disk configuration again. Keeping the executed unit pinned through
+	// Reload can carry its execution fields into the selected configuration.
+	for {
+		raw, err := exec.CommandContext(ctx, "systemctl", "list-units", "--all", "--output=json", "--no-pager", "ardents-forwarding.service").Output()
+		var loaded []struct {
+			Unit string `json:"unit"`
+		}
+		if err != nil || json.Unmarshal(raw, &loaded) != nil || len(loaded) > 1 {
+			t.Fatal("original stopped unit collection observation", err)
+		}
+		if len(loaded) == 0 {
+			break
+		}
+		if loaded[0].Unit != "ardents-forwarding.service" {
+			t.Fatal("unexpected loaded unit in stopped observation", loaded[0].Unit)
+		}
+		time.Sleep(25 * time.Millisecond)
+	}
+	// The original test-owned D-Bus reference is joined by t.Cleanup. The
+	// recovery command still opens and checks its own manager reference.
+	forwardingInstalledRetainUnit(t)
+	manager := forwardingInstalledManager(t)
+	raw, err := exec.Command("systemctl", "show", "ardents-forwarding.service", "--property=ExecStartEx,ExecMainPID").Output()
+	if err != nil || !bytes.Contains(raw, []byte("ExecStartEx={ path="+program+" ;")) || !bytes.Contains(raw, []byte("ExecMainPID=0\n")) ||
+		manager["ActiveState"] != "inactive" || manager["MainPID"] != "0" || manager["InvocationID"] != "" || manager["ExecMainCode"] != "0" || manager["ExecMainStatus"] != "0" {
+		t.Fatal("stopped predecessor policy or zero execution unavailable", err, string(raw), manager)
+	}
+}
+
 func (reference *forwardingInstalledUnitReference) close(t *testing.T) {
 	t.Helper()
 	reference.once.Do(func() {
@@ -2165,8 +2206,33 @@ func TestForwardingInstalledNativeInteriorPeer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var binding struct{ UID, GID uint32 }
-	if json.Unmarshal(read(filepath.Join(base, "runtime/node/binding.json")), &binding) != nil || int(binding.UID) != os.Geteuid() || binding.GID != binding.UID {
+	type principal struct {
+		Schema string `json:"schema"`
+		UID    uint32 `json:"uid"`
+		GID    uint32 `json:"gid"`
+	}
+	var binding struct {
+		principal
+		Configuration *principal `json:"configuration"`
+	}
+	if err := json.Unmarshal(read(filepath.Join(base, "runtime/node/binding.json")), &binding); err != nil {
+		t.Fatal("decode original Node binding", err)
+	}
+	selected := binding.principal
+	switch binding.Schema {
+	case "ardents-forwarding-binding-v1":
+		if binding.Configuration != nil {
+			t.Fatal("initial Node binding contains replacement configuration")
+		}
+	case "ardents-forwarding-replacement-binding-v1":
+		if binding.Configuration == nil || binding.Configuration.Schema != "ardents-forwarding-replacement-configuration-v1" || binding.UID != 0 || binding.GID != 0 {
+			t.Fatal("replacement Node binding has ambiguous principal")
+		}
+		selected = *binding.Configuration
+	default:
+		t.Fatal("unexpected original Node binding schema", binding.Schema)
+	}
+	if int(selected.UID) != os.Geteuid() || selected.GID != selected.UID {
 		t.Fatal("Interior principal differs from original Node binding")
 	}
 	forwardingInstalledArtifact(t, os.Args[0], "forwarding-installed.test")
@@ -2440,7 +2506,35 @@ func forwardingInstalledSuccessors(t *testing.T, base string, raw []byte) []forw
 // Replacement still acquires each genuine semantic inspection itself.
 func forwardingInstalledHistorySnapshot(t *testing.T, roots ...string) []byte {
 	t.Helper()
+	return forwardingInstalledHistorySnapshotWithSockets(t, nil, roots...)
+}
+
+type forwardingInstalledSocket struct {
+	mode os.FileMode
+	gid  uint32
+}
+
+func forwardingInstalledCompletionSockets(root string, starts, stops int, gid uint32) map[string]forwardingInstalledSocket {
+	sockets := make(map[string]forwardingInstalledSocket, starts+stops)
+	ready := forwardingInstalledSocket{mode: 0660, gid: gid}
+	for attempt := range starts {
+		directory := "forwarding-startup"
+		if attempt != 0 {
+			directory = fmt.Sprintf("forwarding-invocation-%08d", attempt)
+		}
+		sockets[filepath.Join(root, directory, "start-completion.socket")] = ready
+	}
+	for attempt := range stops {
+		directory := fmt.Sprintf("forwarding-retirement-%08d", attempt)
+		sockets[filepath.Join(root, directory, "stop-completion.socket")] = ready
+	}
+	return sockets
+}
+
+func forwardingInstalledHistorySnapshotWithSockets(t *testing.T, sockets map[string]forwardingInstalledSocket, roots ...string) []byte {
+	t.Helper()
 	facts := map[string]string{}
+	observedSockets := make(map[string]bool, len(sockets))
 	for _, root := range roots {
 		err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
@@ -2450,10 +2544,15 @@ func forwardingInstalledHistorySnapshot(t *testing.T, roots ...string) []byte {
 			if err != nil {
 				return err
 			}
-			if !info.IsDir() && !info.Mode().IsRegular() {
+			native := info.Sys().(*syscall.Stat_t)
+			if socket, expected := sockets[path]; expected {
+				if info.Mode() != os.ModeSocket|socket.mode || native.Uid != 0 || native.Gid != socket.gid || native.Nlink != 1 {
+					return fmt.Errorf("unexpected retained completion socket metadata %s", path)
+				}
+				observedSockets[path] = true
+			} else if !info.IsDir() && !info.Mode().IsRegular() {
 				return fmt.Errorf("unexpected retained history object %s", path)
 			}
-			native := info.Sys().(*syscall.Stat_t)
 			content := ""
 			if info.Mode().IsRegular() {
 				raw, err := os.ReadFile(path)
@@ -2470,6 +2569,9 @@ func forwardingInstalledHistorySnapshot(t *testing.T, roots ...string) []byte {
 		if err != nil {
 			t.Fatal("independent retained-history observation", err)
 		}
+	}
+	if len(observedSockets) != len(sockets) {
+		t.Fatal("missing retained completion socket")
 	}
 	raw, err := json.Marshal(facts)
 	if err != nil {
@@ -2856,7 +2958,7 @@ func TestForwardingInstalledNativeOriginalRetirementPrefix(t *testing.T) {
 	t.Fatal("exact finite original retirement case required")
 }
 
-func forwardingInstalledRetirementCut(t *testing.T, program, distribution, history, request, bindingPath string, plan forwarding.Plan, attempt, number int, prefix, cut []byte, version int64) {
+func forwardingInstalledRetirementCut(t *testing.T, program, distribution, history, request, bindingPath string, plan forwarding.Plan, gid uint32, attempt, number int, prefix, cut []byte, version int64) {
 	t.Helper()
 	read := func(path string) []byte {
 		t.Helper()
@@ -2934,15 +3036,16 @@ func forwardingInstalledRetirementCut(t *testing.T, program, distribution, histo
 		t.Fatal("retirement recovery started work or lost reservation return")
 	}
 	forwardingInstalledReleaseFloors(t, history, distribution, version)
-	after := forwardingInstalledHistorySnapshot(t, filepath.Dir(root))
+	sockets := forwardingInstalledCompletionSockets(root, attempt+1, attempt+1, gid)
+	after := forwardingInstalledHistorySnapshotWithSockets(t, sockets, filepath.Dir(root))
 	repeated, repeatedErr := exec.Command(program, "forwarding", "recover", distribution, history, "alpha", "coherent-private-forwarding", request, journal).CombinedOutput()
 	var exit *exec.ExitError
-	if !errors.As(repeatedErr, &exit) || exit.ExitCode() != 2 || len(repeated) > 4096 || bytes.Contains(repeated, []byte(`"outcome"`)) || !bytes.Equal(after, forwardingInstalledHistorySnapshot(t, filepath.Dir(root))) {
+	if !errors.As(repeatedErr, &exit) || exit.ExitCode() != 2 || len(repeated) > 4096 || bytes.Contains(repeated, []byte(`"outcome"`)) || !bytes.Equal(after, forwardingInstalledHistorySnapshotWithSockets(t, sockets, filepath.Dir(root))) {
 		t.Fatal("completed retirement recovery was replayed", repeatedErr)
 	}
 }
 
-func forwardingInstalledStartCut(t *testing.T, program, distribution, history, request, bindingPath string, plan forwarding.Plan, operation string, attempt, number int, version int64) {
+func forwardingInstalledStartCut(t *testing.T, program, distribution, history, request, bindingPath string, plan forwarding.Plan, gid uint32, operation string, attempt, number int, version int64) {
 	t.Helper()
 	read := func(path string) []byte {
 		t.Helper()
@@ -2963,6 +3066,22 @@ func forwardingInstalledStartCut(t *testing.T, program, distribution, history, r
 	managerBefore := forwardingInstalledManager(t)
 	semantic := forwardingInstalledHistorySnapshot(t, plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot)
 	prefix, cut := forwardingInstalledOriginalCut(t, program, "start", number, journal, []string{operation, distribution, history, "alpha", "coherent-private-forwarding", bindingPath})
+	// The original coordinator leaves its socket inode in the retained
+	// history. Only the exact socket born at this cut may be present.
+	sockets := forwardingInstalledCompletionSockets(root, attempt, attempt, gid)
+	var originalSocket []byte
+	var currentSocket map[string]forwardingInstalledSocket
+	socketPath := filepath.Join(directory, "start-completion.socket")
+	if number >= 13 && number <= 18 {
+		expected := forwardingInstalledSocket{mode: 0660, gid: gid}
+		if number == 13 {
+			// ListenUnix creates mode 0777 masked by the controller's umask.
+			expected = forwardingInstalledSocket{mode: 0755}
+		}
+		sockets[socketPath] = expected
+		currentSocket = map[string]forwardingInstalledSocket{socketPath: expected}
+		originalSocket = forwardingInstalledHistorySnapshotWithSockets(t, currentSocket, socketPath)
+	}
 	// For later prefixes the original runtime may still own live semantic
 	// users. Their eventual join belongs to the outside original controller;
 	// neither PID absence nor a stable-looking history supplies that join here.
@@ -2982,6 +3101,9 @@ func forwardingInstalledStartCut(t *testing.T, program, distribution, history, r
 	}
 	if recovered != nil || !bytes.Equal(output, []byte("{\"outcome\":\"forwarding-recovery-stopped\",\"started\":false}\n")) {
 		t.Fatal("original never-started continuation", number, recovered, string(output))
+	}
+	if originalSocket != nil && !bytes.Equal(originalSocket, forwardingInstalledHistorySnapshotWithSockets(t, currentSocket, socketPath)) {
+		t.Fatal("never-started continuation changed the original completion socket")
 	}
 	if !bytes.Equal(semantic, forwardingInstalledHistorySnapshot(t, plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot)) {
 		t.Fatal("never-started continuation changed genuine semantic histories")
@@ -3033,10 +3155,10 @@ func forwardingInstalledStartCut(t *testing.T, program, distribution, history, r
 		t.Fatal("independent recovered terminal-chain reader", err)
 	}
 	forwardingInstalledReleaseFloors(t, history, distribution, version)
-	after := forwardingInstalledHistorySnapshot(t, filepath.Join(root, ".."))
+	after := forwardingInstalledHistorySnapshotWithSockets(t, sockets, filepath.Dir(root))
 	repeated, repeatedErr := exec.Command(program, "forwarding", "recover", distribution, history, "alpha", "coherent-private-forwarding", request, journal).CombinedOutput()
 	var exit *exec.ExitError
-	if !errors.As(repeatedErr, &exit) || exit.ExitCode() != 2 || len(repeated) > 4096 || bytes.Contains(repeated, []byte(`"outcome"`)) || !bytes.Equal(after, forwardingInstalledHistorySnapshot(t, filepath.Join(root, ".."))) {
+	if !errors.As(repeatedErr, &exit) || exit.ExitCode() != 2 || len(repeated) > 4096 || bytes.Contains(repeated, []byte(`"outcome"`)) || !bytes.Equal(after, forwardingInstalledHistorySnapshotWithSockets(t, sockets, filepath.Dir(root))) {
 		t.Fatal("completed never-started recovery was replayed", repeatedErr)
 	}
 }
@@ -3055,6 +3177,10 @@ func forwardingInstalledReplacementCut(t *testing.T, base, bindingPath, history,
 	program := filepath.Join(entry.Distribution, "ardents-node-linux-amd64")
 	forwardingInstalledArtifact(t, program, "ardents-node-successor")
 	root := filepath.Dir(bindingPath)
+	// Completed Start and Stop keep their socket inodes as history. Their
+	// listeners have joined. Compare the original names and metadata without
+	// allowing other special objects or following the sockets.
+	sockets := forwardingInstalledCompletionSockets(root, 1, 1, uid)
 	generation := digest(read(filepath.Join(entry.Distribution, "infrastructure-forwarding.json")))
 	journal := root + ".forwarding-replacement-" + generation + "-journal"
 	oldBinding := read(bindingPath)
@@ -3062,7 +3188,7 @@ func forwardingInstalledReplacementCut(t *testing.T, base, bindingPath, history,
 	semantic := forwardingInstalledHistorySnapshot(t, plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot)
 	predecessor := forwardingInstalledHistorySnapshot(t, filepath.Join(root, "generations", initialGeneration))
 	prefix, cut := forwardingInstalledOriginalCut(t, program, "replacement", number, journal, []string{"replace", entry.Distribution, history, "alpha", "coherent-private-forwarding", entry.Request, bindingPath})
-	before := forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"), "/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow")
+	before := forwardingInstalledHistorySnapshotWithSockets(t, sockets, filepath.Join(base, "runtime"), "/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow")
 	output, recovered := exec.Command(program, "forwarding", "recover", entry.Distribution, history, "alpha", "coherent-private-forwarding", entry.Request, journal).CombinedOutput()
 	if !bytes.Equal(prefix, read(journal)) || !bytes.Equal(cut, read(journal+".original-cut-result")) {
 		t.Fatal("replacement recovery changed original prefix or actual cut proof")
@@ -3070,12 +3196,16 @@ func forwardingInstalledReplacementCut(t *testing.T, base, bindingPath, history,
 	safe := number == 57 || number == 58 || number == 61 || number == 62
 	if !safe {
 		var exit *exec.ExitError
-		if !errors.As(recovered, &exit) || exit.ExitCode() != 2 || len(output) > 4096 || bytes.Contains(output, []byte(`"outcome"`)) || !bytes.Equal(before, forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"), "/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow")) {
+		if !errors.As(recovered, &exit) || exit.ExitCode() != 2 || len(output) > 4096 || bytes.Contains(output, []byte(`"outcome"`)) || !bytes.Equal(before, forwardingInstalledHistorySnapshotWithSockets(t, sockets, filepath.Join(base, "runtime"), "/etc/passwd", "/etc/group", "/etc/shadow", "/etc/gshadow")) {
 			t.Fatal("unsafe original replacement prefix was adopted or changed", number, recovered)
 		}
 		return
 	}
 	if recovered != nil || !bytes.Equal(output, []byte("{\"outcome\":\"forwarding-recovery-stopped\",\"started\":false}\n")) {
+		if number == 57 || number == 58 {
+			facts, err := exec.Command("systemctl", "show", "ardents-forwarding.service", "--property=ExecStartEx,ExecMainPID,ExecMainCode,ExecMainStatus,InvocationID,ActiveState,NeedDaemonReload").CombinedOutput()
+			t.Log("loaded unit before releasing test reference", err, string(facts))
+		}
 		t.Fatal("safe original replacement stopped continuation", number, recovered, string(output))
 	}
 	completed, err := forwarding.ReadCompleted(t.Context(), bindingPath)
@@ -3143,10 +3273,10 @@ func forwardingInstalledReplacementCut(t *testing.T, base, bindingPath, history,
 		t.Fatal("replacement recovery started work or reset original physical reservations")
 	}
 	forwardingInstalledReleaseFloors(t, history, entry.Distribution, 2)
-	after := forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"))
+	after := forwardingInstalledHistorySnapshotWithSockets(t, sockets, filepath.Join(base, "runtime"))
 	repeated, repeatedErr := exec.Command(program, "forwarding", "recover", entry.Distribution, history, "alpha", "coherent-private-forwarding", entry.Request, journal).CombinedOutput()
 	var exit *exec.ExitError
-	if !errors.As(repeatedErr, &exit) || exit.ExitCode() != 2 || len(repeated) > 4096 || bytes.Contains(repeated, []byte(`"outcome"`)) || !bytes.Equal(after, forwardingInstalledHistorySnapshot(t, filepath.Join(base, "runtime"))) {
+	if !errors.As(repeatedErr, &exit) || exit.ExitCode() != 2 || len(repeated) > 4096 || bytes.Contains(repeated, []byte(`"outcome"`)) || !bytes.Equal(after, forwardingInstalledHistorySnapshotWithSockets(t, sockets, filepath.Join(base, "runtime"))) {
 		t.Fatal("completed replacement recovery was replayed", repeatedErr)
 	}
 }

@@ -76,7 +76,7 @@ func (s *Session) FinishRole() (result error) {
 	if input != io.EOF || stopped {
 		return errors.Join(errors.New("route role reverse termination required"), input, s.ctx.Err())
 	}
-	if err := lower.waitPeerRetirement(s.ctx); err != nil {
+	if err := lower.WaitPeerRetirement(s.ctx); err != nil {
 		return err
 	}
 	if s.check != nil {
@@ -96,7 +96,9 @@ func (s *Session) FinishRole() (result error) {
 	return nil
 }
 
-func (l *Lane) waitPeerRetirement(ctx context.Context) error {
+// WaitPeerRetirement requires this lane's clean peer CLOSE and joins its
+// selected output. Directional EOF alone does not establish peer retirement.
+func (l *Lane) WaitPeerRetirement(ctx context.Context) error {
 	for {
 		l.s.mu.Lock()
 		peer := l.peerClosed

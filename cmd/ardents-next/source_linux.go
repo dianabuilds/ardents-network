@@ -223,7 +223,7 @@ func superviseSource(ctx context.Context, owner sourceLifetime, check func() err
 			}
 			first = waitErr
 			if first == nil {
-				first = errors.New("Source background work ended")
+				first = errors.New("background work for Source ended")
 			}
 		case <-ticker.C:
 			if observing == nil {
@@ -247,7 +247,7 @@ retire:
 	notice := time.NewTimer(5 * time.Second)
 	defer notice.Stop()
 	unavailable := func() {
-		first = errors.Join(first, errors.New("Source completion unavailable"), sourceReport(diagnostic, "retiring", "completion-unavailable"))
+		first = errors.Join(first, errors.New("completion unavailable for Source"), sourceReport(diagnostic, "retiring", "completion-unavailable"))
 		if firstOwner == "caller" {
 			firstOwner = "completion"
 		}

@@ -610,6 +610,13 @@ optional `first_failure` uses Node's existing numeric/category projection, with
 no identities, paths or private error text. This event preserves diagnosis only:
 it grants no domain retirement proof or restart right, and failure to write it
 remains part of the original failed result.
+An original rejection before startup completes emits `startup-refused` after
+the acquired Startup, State and Node owners have joined. Its `stage` is one of
+the fixed installation/runtime-input/plan/State/duty/Node/listening categories;
+`first_failure`, when available, uses the same Node projection. `error_shape`
+records bounded wrapper and native-error categories without calling private
+error strings. This diagnostic changes neither refusal nor retirement/restart
+authority; a failed diagnostic write is joined with the original failure.
 All installed Forwarding lifecycle events use one original nonblocking native
 descriptor. The listening event has a one-second write bound, shortened by the
 startup caller's deadline or cancellation. Retirement notices and failed joined
