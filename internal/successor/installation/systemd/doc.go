@@ -30,6 +30,12 @@
 // starts/stops a Node or chooses writable roots. Its complete typed observations
 // leave expected policy, artifact admission and native completion to Forwarding
 // Installation. Each Source/Forwarding owner has its own original connection.
+// NodeSlots is a separate root read-only connection for absence of all five
+// fixed Node service/socket slots. Forwarding input preflight consumes it
+// without acquiring ForwardingStopped's reload/load vocabulary. It returns
+// copied search paths and rejoins its own original observations through Close;
+// its closed reply grammar accepts no unit or job object. Native namespace,
+// account, Release and transition decisions stay with each Installation owner.
 // Its fixed LoadUnit reply vocabulary is bound before decoder startup. A Source
 // connection refuses Forwarding objects; a Forwarding connection refuses Source,
 // other units and Source job replies. This is native frame validation, not role

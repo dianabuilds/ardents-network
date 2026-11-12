@@ -1412,3 +1412,9 @@ be copied unchanged; separate initial trust and exact bootstrap acceptance
 remain required before isolated installed execution. No JOIN runtime is started
 by any of these operations. Original private input/output users join before
 acknowledgement; partial outputs remain retained and cannot be adopted.
+
+Canonical Node's separate `ardents-node join inspect-inputs REQUEST` performs
+only root-controlled original JOIN delivery and fresh read-only initial namespace
+observation. It joins original input/manager users before reporting
+`join-inputs-preflight-completed` with `installed:false`. It creates no account,
+unit, runtime root or history and supplies no later installation/Start permission.

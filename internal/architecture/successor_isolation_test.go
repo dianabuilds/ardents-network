@@ -193,6 +193,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/process/source_invocation_linux_test.go",
 			"internal/successor/installation/cgroup/source_scope_linux.go",
 			"internal/successor/installation/cgroup/source_scope_linux_test.go",
+			"internal/successor/installation/systemd/node_slots_linux.go",
+			"internal/successor/installation/systemd/node_slots_linux_test.go",
 			"internal/successor/installation/systemd/source_stopped_linux.go",
 			"internal/successor/installation/systemd/source_object_linux_test.go",
 			"internal/successor/installation/systemd/source_manager_linux.go",
@@ -222,6 +224,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			}
 			for _, name := range []string{
 				"internal/successor/network/state/source_inspection_native_linux_test.go",
+				"internal/successor/installation/systemd/node_slots_native_linux_test.go",
 				"cmd/ardents-control/join_release_native_linux_test.go",
 				"cmd/ardents-control/join_forward_release_native_linux_test.go",
 				"internal/successor/network/state/node_inspection_native_linux_test.go",
@@ -687,6 +690,9 @@ func successorImportAllowed(source, dependency string) bool {
 				}
 			}
 		}
+		if source == "cmd/ardents-node/join_installation_linux.go" && dependency == modulePath+"/internal/successor/installation/join" {
+			return true
+		}
 		if source == "cmd/ardents-node/forwarding_installation_linux.go" && (dependency == modulePath+"/internal/successor/installation/forwarding" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
@@ -800,6 +806,12 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
+		return true
+	}
+	if source == "internal/successor/installation/join/inputs_linux.go" && dependency == modulePath+"/internal/successor/installation/request" {
+		return true
+	}
+	if source == "internal/successor/installation/join/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
 	if source == "internal/successor/installation/join/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
@@ -1271,7 +1283,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
-	if (source == "internal/successor/installation/systemd/manager_reference_linux.go" || source == "internal/successor/installation/systemd/forwarding_stopped_linux.go" || source == "internal/successor/installation/systemd/forwarding_manager_linux.go" || source == "internal/successor/installation/systemd/forwarding_control_linux.go" || source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go" || source == "internal/successor/installation/systemd/source_preflight_linux.go" || source == "internal/successor/installation/systemd/source_stopped_linux.go" || source == "internal/successor/installation/systemd/source_manager_linux.go" || source == "internal/successor/installation/systemd/source_control_linux.go" || source == "internal/successor/installation/systemd/source_reference_native_linux_test.go") && dependency == "github.com/godbus/dbus/v5" {
+	if (source == "internal/successor/installation/systemd/manager_reference_linux.go" || source == "internal/successor/installation/systemd/node_slots_linux.go" || source == "internal/successor/installation/systemd/forwarding_stopped_linux.go" || source == "internal/successor/installation/systemd/forwarding_manager_linux.go" || source == "internal/successor/installation/systemd/forwarding_control_linux.go" || source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go" || source == "internal/successor/installation/systemd/source_preflight_linux.go" || source == "internal/successor/installation/systemd/source_stopped_linux.go" || source == "internal/successor/installation/systemd/source_manager_linux.go" || source == "internal/successor/installation/systemd/source_control_linux.go" || source == "internal/successor/installation/systemd/source_reference_native_linux_test.go") && dependency == "github.com/godbus/dbus/v5" {
 		return true
 	}
 	if (owner == "internal/successor/admission/spending" || owner == "internal/successor/network/duty" || owner == "internal/successor/network/state/durable") && dependency == "golang.org/x/sys/windows" {
@@ -1362,6 +1374,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"JOIN input custody uses only physical request files", "internal/successor/installation/join/inputs_linux.go", modulePath + "/internal/successor/installation/request", true},
+		{"JOIN input custody has no Forwarding policy", "internal/successor/installation/join/inputs_linux.go", modulePath + "/internal/successor/installation/forwarding", false},
+		{"JOIN preflight independently observes fixed slots", "internal/successor/installation/join/preflight_linux.go", modulePath + "/internal/successor/installation/systemd", true},
+		{"canonical JOIN preflight uses its own owner", "cmd/ardents-node/join_installation_linux.go", modulePath + "/internal/successor/installation/join", true},
+		{"canonical JOIN preflight grants no Route exception", "cmd/ardents-node/join_installation_linux.go", modulePath + "/internal/successor/route/role", false},
 		{"JOIN public signing uses its own artifact resources", "cmd/ardents-control/join_release_linux.go", modulePath + "/internal/successor/installation/infrastructure", true},
 		{"JOIN public predecessor verifies genuine Release", "cmd/ardents-control/join_release_predecessor_linux.go", modulePath + "/internal/successor/release", true},
 		{"JOIN key birth grants no Release observation", "cmd/ardents-control/join_release_keys_linux.go", modulePath + "/internal/successor/release", false},
@@ -1449,6 +1466,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"old Endpoint cannot consume new Execution", "internal/endpoint/worker_grant_linux.go", modulePath + "/internal/successor/execution", false},
 		{"native original manager reference owns bus client", "internal/successor/installation/systemd/endpoint_reference_linux.go", "github.com/godbus/dbus/v5", true},
 		{"fresh Startup manager observation owns bus client", "internal/successor/installation/systemd/startup_observation_linux.go", "github.com/godbus/dbus/v5", true},
+		{"read-only Node slot observer consumes physical D-Bus", "internal/successor/installation/systemd/node_slots_linux.go", "github.com/godbus/dbus/v5", true},
+		{"read-only Node slot observer cannot authorize Release", "internal/successor/installation/systemd/node_slots_linux.go", modulePath + "/internal/successor/release", false},
 		{"native Source reference regression checks genuine bus refusal", "internal/successor/installation/systemd/source_reference_native_linux_test.go", "github.com/godbus/dbus/v5", true},
 		{"manager value validation excludes bus client", "internal/successor/installation/systemd/manager_values_linux.go", "github.com/godbus/dbus/v5", false},
 		{"manager transport excludes bus client", "internal/successor/installation/systemd/reference_transport_linux.go", "github.com/godbus/dbus/v5", false},

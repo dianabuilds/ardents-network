@@ -23,7 +23,7 @@ func InspectInitialInputs(input Inputs) (returned error) {
 	}
 	defer p.uses.Done()
 	defer func() { p.record(returned) }()
-	manager, err := systemd.OpenForwardingStopped(p.ctx)
+	manager, err := systemd.OpenNodeSlots(p.ctx)
 	if manager != nil {
 		defer func() { returned = errors.Join(returned, manager.Close()) }()
 	}

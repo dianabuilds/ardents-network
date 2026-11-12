@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/godbus/dbus/v5"
 )
@@ -22,11 +21,6 @@ type forwardingStopped struct {
 	reloaded  bool // serialized by reference.ioMu
 	closeOnce sync.Once
 	closeErr  error
-}
-
-var nodeUnitNames = [...]string{
-	"ardents-forwarding.service", "ardents-issuer.service",
-	"ardents-descriptor.service", "ardents-introduction.service", "ardents-join.service",
 }
 
 // OpenForwardingStopped returns partial connection custody on error. The
@@ -175,46 +169,7 @@ func (s *ForwardingStopped) operation(effect func(context.Context, *managerRefer
 	if s == nil || s.original == nil || s.original.reference == nil {
 		return ErrInput
 	}
-	return s.original.reference.forwardingOperation(effect)
-}
-
-// Private fixed-purpose callers share original physical I/O, never another
-// owner's policy, connection or accepting lifetime.
-func (r *managerReference) forwardingOperation(effect func(context.Context, *managerReference) error) (err error) {
-	if err = r.begin(); err != nil {
-		return err
-	}
-	defer r.uses.Done()
-	r.ioMu.Lock()
-	defer r.ioMu.Unlock()
-	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
-	defer cancel()
-	defer func() { err = r.managerResult(err, ctx) }()
-	if err = r.local(); err != nil {
-		return err
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return err
-	}
-	if err = r.matchManagerDeclaration(ctx); err != nil {
-		return err
-	}
-	if err = effect(ctx, r); err != nil {
-		return err
-	}
-	if err = r.matchManagerDeclaration(ctx); err != nil {
-		return err
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return err
-	}
-	if r.observe != nil {
-		r.observe()
-	}
-	if err = r.local(); err != nil {
-		return err
-	}
-	return r.client.transport.socket.SetDeadline(time.Time{})
+	return s.original.reference.performOriginal(effect)
 }
 
 // CheckAbsent refuses every loaded or installed Node slot and every associated
@@ -225,71 +180,12 @@ func (s *ForwardingStopped) CheckAbsent() ([]string, error) {
 		if s.original.reloaded {
 			return ErrObservation
 		}
-		for _, unit := range nodeUnitNames {
-			if err := nodeSlotAbsent(ctx, r, unit); err != nil {
-				return err
-			}
-		}
-		return nil
+		return observeNodeSlotsAbsent(ctx, r)
 	})
 	if err != nil {
 		return nil, err
 	}
 	return append([]string(nil), s.original.reference.paths...), nil
-}
-
-func nodeSlotAbsent(ctx context.Context, r *managerReference, unit string) error {
-	for _, name := range []string{unit, unit[:len(unit)-len("service")] + "socket"} {
-		if err := nodeNameAbsent(ctx, r, name); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func nodeNameAbsent(ctx context.Context, r *managerReference, name string) error {
-	for _, method := range []struct{ name, absent string }{
-		{"GetUnit", "org.freedesktop.systemd1.NoSuchUnit"},
-		{"GetUnitFileState", "org.freedesktop.DBus.Error.FileNotFound"},
-	} {
-		_, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager."+method.name, name)
-		var refusal dbus.Error
-		if !errors.As(err, &refusal) || refusal.Name != method.absent {
-			// An interrupted request supplied no absence observation. Preserve
-			// only its exact original context leaves without inventing a changed
-			// unit identity; foreign replies and physical wrappers still fail.
-			if nodeAbsenceContextOnly(ctx, err) {
-				return err
-			}
-			return errors.Join(ErrObservation, err)
-		}
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func nodeAbsenceContextOnly(ctx context.Context, err error) bool {
-	if ctx.Err() == nil || err == nil {
-		return false
-	}
-	if err == ctx.Err() {
-		return true
-	}
-	if group, ok := err.(interface{ Unwrap() []error }); ok {
-		children := group.Unwrap()
-		if len(children) == 0 {
-			return false
-		}
-		for _, child := range children {
-			if !nodeAbsenceContextOnly(ctx, child) {
-				return false
-			}
-		}
-		return true
-	}
-	return false
 }
 
 // CheckOriginal reobserves original manager identity/configuration without a
@@ -317,7 +213,7 @@ func (s *ForwardingStopped) Reload() error {
 }
 
 func (r *managerReference) reloadForwarding(attempted *bool) error {
-	return r.forwardingOperation(func(ctx context.Context, r *managerReference) error {
+	return r.performOriginal(func(ctx context.Context, r *managerReference) error {
 		if err := r.admitForwardingReload(attempted); err != nil {
 			return err
 		}

@@ -5172,6 +5172,36 @@ and file operations remain unchanged. The same test explicitly advances to the
 next hour and requires refusal, no success receipt and the unchanged original
 allocation generation. Native/installed qualification retains its real clock.
 
+### Read-only fixed Node slot observation
+
+The existing `network_signing_native` manager profile additionally selects
+`TestNodeSlotsNativeIndependentReadOnlyCustodyAndDescriptorReturn` and
+`TestNodeSlotsNativeCloseRetainsOriginalObserverAndCancellation` under the same
+root private-preparation marker, actual system bus and all five absent fixed
+Node slots. Every invocation owns a fresh connection. Actual repeated closes
+return original descriptors without GC; copies deny later observations. A causal
+barrier after genuine manager I/O retains a held observer across cancellation
+and Close until its real release. The ordinary independent frame vectors refuse
+every Node/Source unit and job object on this absence-only reply vocabulary.
+These are native read-only observations, not Installation or startup admission.
+
+### JOIN original delivery and read-only preflight
+
+The checked `network_signing_native` profile selects `TestJoinInputsNative*`,
+`TestJoinPreflightNativeDoesNotCreateResources` and `TestDeliveryFilesNative*`.
+Use a separate root/ext4 private manager stand with
+`/etc/ardents-join-preparation-native-stand` containing exactly
+`ardents-join-preparation-native-v1` plus LF, actual systemd255, absent fixed
+Node account and all five absent role slots. Pin actual canonical Node through
+`ARDENTS_JOIN_NODE_PROGRAM` and `ARDENTS_JOIN_NODE_PROGRAM_SHA256`.
+These controls exercise the real `join inspect-inputs`, exact request/plan/pair,
+foreign access/link/ancestor and unknown future-journal refusals, live clock
+updates/replacement, repeated actual FD return without GC, and canceled held
+physical reads/Close retaining independent late native failure and private bytes
+until original join. Detached byte copies cannot mutate original custody;
+same-byte replacement cannot substitute a new inode. Missing prerequisites fail.
+No installation, runtime, first-pin, State/time, spend or pair authority is supplied.
+
 ### JOIN offline Release production
 
 The existing root/ext4 `network_signing_native` profile additionally selects

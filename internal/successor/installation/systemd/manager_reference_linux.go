@@ -35,15 +35,20 @@ type managerReference struct {
 	observe func()
 }
 
-// managerUnitReply binds only the physical LoadUnit reply grammar of this
-// connection. Fixed-purpose owners still select their own methods and compare
-// their own complete policy. Neither vocabulary grants Start or other rights.
+// managerUnitReply binds the physical unit/job object reply grammar of this
+// connection; the absence-only vocabulary admits no such object. Fixed-purpose
+// owners retain their own methods and complete policy. A reply grants no Start.
 type managerUnitReply uint8
 
 const (
 	sourceUnitReply managerUnitReply = iota
 	forwardingUnitReply
+	nodeSlotsReply // Absence-only connection: no unit or job object replies.
 )
+
+func (reply managerUnitReply) valid() bool {
+	return reply == sourceUnitReply || reply == forwardingUnitReply || reply == nodeSlotsReply
+}
 
 func (reply managerUnitReply) object() string {
 	switch reply {
@@ -59,7 +64,7 @@ func (reply managerUnitReply) object() string {
 // Each fixed-purpose opener owns a new physical connection. This helper
 // authenticates only the actual caller; it accepts no supplied UID, unit or bus path.
 func openManagerReference(ctx context.Context, reply managerUnitReply) (result *managerReference, returnedErr error) {
-	if ctx == nil || reply.object() == "" {
+	if ctx == nil || !reply.valid() {
 		return nil, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
@@ -356,4 +361,43 @@ func (r *managerReference) managerIdentity() (identity string, err error) {
 	// comparison; it identifies the broker instance, not the machine.
 	// https://dbus.freedesktop.org/doc/dbus-specification.html#bus-messages-get-id
 	return strings.ToLower(broker) + "/" + r.client.manager, nil
+}
+
+// Private fixed-purpose callers share original physical I/O, never another
+// owner's policy, connection or accepting lifetime.
+func (r *managerReference) performOriginal(effect func(context.Context, *managerReference) error) (err error) {
+	if err = r.begin(); err != nil {
+		return err
+	}
+	defer r.uses.Done()
+	r.ioMu.Lock()
+	defer r.ioMu.Unlock()
+	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
+	defer cancel()
+	defer func() { err = r.managerResult(err, ctx) }()
+	if err = r.local(); err != nil {
+		return err
+	}
+	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
+		return err
+	}
+	if err = r.matchManagerDeclaration(ctx); err != nil {
+		return err
+	}
+	if err = effect(ctx, r); err != nil {
+		return err
+	}
+	if err = r.matchManagerDeclaration(ctx); err != nil {
+		return err
+	}
+	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
+		return err
+	}
+	if r.observe != nil {
+		r.observe()
+	}
+	if err = r.local(); err != nil {
+		return err
+	}
+	return r.client.transport.socket.SetDeadline(time.Time{})
 }

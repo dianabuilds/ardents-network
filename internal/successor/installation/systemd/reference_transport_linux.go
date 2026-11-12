@@ -182,7 +182,7 @@ func verifyForwardingManagerFrame(frame []byte, owner string, properties, forwar
 }
 
 func verifyClosedManagerFrame(frame []byte, owner string, properties, sourceJobs, forwardingJobs bool, reply managerUnitReply) error {
-	if len(frame) < 16 || len(frame) > 65536 || reply.object() == "" {
+	if len(frame) < 16 || len(frame) > 65536 || !reply.valid() {
 		return ErrObservation
 	}
 	order, ok := referenceByteOrder(frame[0])
@@ -258,7 +258,11 @@ func verifyClosedManagerFrame(frame []byte, owner string, properties, sourceJobs
 	// Each connection admits only its fixed unit's native LoadUnit reply. Job
 	// replies belong only to that purpose's original root control. This grammar
 	// grants no method selector, loaded policy or accepting startup fact.
+	// An absence-only connection refuses all unit and job objects before decode.
 	if properties && frame[1] == 2 && owner != "" && sender == owner && sig == "o" {
+		if reply == nodeSlotsReply {
+			return ErrObservation
+		}
 		object, pos, err := referenceScalar(frame, int(bodyStart), len(frame), 'o', order)
 		allowJob := reply == sourceUnitReply && sourceJobs || reply == forwardingUnitReply && forwardingJobs
 		if err != nil || pos != len(frame) || (object != reply.object() && (!allowJob || !managerJobPath(object))) {

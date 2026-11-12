@@ -2069,6 +2069,16 @@ Initial preflight and creation require that entire future journal namespace to
 be absent; an unknown future-attempt prefix is preserved and refuses initial
 effects, even if the installation directory has not yet been born.
 
+The read-only initial input preflight opens its own `systemd.NodeSlots`
+connection for all five fixed Node service/socket absences and original manager
+search paths. Its reply vocabulary admits no unit or job object, and its public
+surface has no LoadUnit, reference, reload or start operation. Every round
+reobserves the same manager before and after I/O; Close interrupts and joins
+original users through retained physical completion. Forwarding initial creation
+still opens its separate fixed-purpose mutation owner. Filesystem namespace,
+absent account/destinations and artifact/transition admission remain independent
+Installation checks; copied slot facts cannot authorize a later effect.
+
 The installed plan has its own `ardents-forwarding-runtime-v1` schema; it does
 not reinterpret Source serving or the development command's unversioned plan.
 Its canonical compact JSON plus LF is at most 16 KiB, ordered `schema`, `network`,
@@ -3546,6 +3556,19 @@ This changes no expired-Epoch serving or CurrentRuntime authority rule. No old
 State object, root lease, guard, key borrow or accepting lifetime crosses to
 the new invocation. An incomplete start, unknown process exit or retained failed
 stop remains repair-required; these consumers implement no recovery continuation.
+
+JOIN's distinct `ardents-node join inspect-inputs` is a root-only read-only
+consumer of its original request, exact plan, matching Ed25519 delivery pair and
+retained ancestors. The shared request Files mechanism owns original physical
+bytes, finite protected-file inventory and joined erasure/Close; JOIN retains
+all role and declaration policy. The live root-written clock permits updates
+and same-parent replacement without freezing its time, bytes or inode. Changed
+original input or ancestor permanently refuses that input lifetime. An independent
+read-only NodeSlots connection checks all five service/socket slots, manager and
+search paths; all future roots/credential directories/journals and fixed Node
+account remain absent. Every original reader/native user joins before output.
+This observation creates no account, unit, semantic history or installation,
+and supplies no later mutation, first pin, Release or startup admission.
 
 ### Component order and the command/artifact boundary
 

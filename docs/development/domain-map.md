@@ -129,6 +129,15 @@ predecessor verification. Forward public metadata cannot supply native
 replacement, first-pin provenance, domain retirement or runtime duty. Enrollment
 and each eventual native Installation lifetime retain their independent gates.
 
+Canonical Node's separate `join inspect-inputs` retains original JOIN delivery
+through `installation/request.Files`, which owns only protected file/ancestor
+custody, independent byte/inode/access reobservation and joined secret erasure.
+JOIN alone decodes its request/plan, compares future paths and Ed25519 pair,
+and retains live root-clock access without time acceptance. Its independent
+NodeSlots connection checks all five absent roles; fresh future resources,
+journals and account remain absent. Neither read-only preflight nor shared
+physical source grants creation, Release, Startup or runtime permission.
+
 Installation's separate `installation/join` declaration owner fixes the JOIN
 request/plan, four writable semantic roots, retained journal/completion namespace and
 closed non-root unit template. Canonical Control consumes it for public request
@@ -278,6 +287,12 @@ and absent shared account, then joins its own native input/manager users. The
 physical manager connection is shared as source code only: every fixed-purpose
 Source or Forwarding owner opens and closes its own original connection. No
 preflight observation grants native mutation, Start or runtime permission.
+The read-only Forwarding input preflight uses a distinct `systemd.NodeSlots`
+owner rather than acquiring a mutation-capable Forwarding handle. It owns only
+one original connection and all five fixed service/socket absence observations,
+with no unit/job object reply or load/reload/start surface. Shared native I/O and
+absence codecs transfer no connection or admission right. Each Installation
+operation retains its own filesystem/account policy and actual joined Close.
 The distinct Forwarding initial creator consumes genuine initial Enrollment and
 fresh coherent Release proofs, original input and verifier lifetimes, a fixed
 shared Node account, finite original births and its own stopped unit/selection.
