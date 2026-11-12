@@ -14,7 +14,11 @@ func TestJoinPublicPreparationDoesNotAdmitRuntimeOrIncompleteInputs(t *testing.T
 			parent := t.TempDir()
 			outputPath := filepath.Join(parent, "output")
 			var output bytes.Buffer
-			err := run([]string{"join", operation, outputPath}, &output)
+			args := []string{"join", operation, outputPath}
+			if operation == "prepare-template" {
+				args = append(args, "unexpected")
+			}
+			err := run(args, &output)
 			if err == nil || !strings.Contains(strings.ToLower(err.Error()), "join") || output.Len() != 0 {
 				t.Fatal("unavailable JOIN operation published a result", err, output.String())
 			}

@@ -1348,3 +1348,32 @@ Neither operation signs metadata, supplies an independently delivered initial
 pin, authenticates a Release, or admits installed JOIN execution. Source and
 Forwarding inventories cannot be substituted. Other platforms refuse before
 input/output effects.
+
+### JOIN fixed request and template preparation
+
+```text
+ardents-control join prepare-template OUTPUT
+ardents-control join prepare-request --installation-root PATH --state-root PATH --participation-root PATH --spend-root PATH --hosting-root PATH --credential-directory PATH --plan PATH --certificate PATH --private-key PATH --clock PATH --output OUTPUT
+ardents-control join prepare-plan --request REQUEST --output OUTPUT --network-id HEX --node-id HEX --profile-authority HEX --authority HEX --threshold N --work-tx N --work-rx N --termination-tx N --termination-rx N --retirement-wait-ms N
+```
+
+All eleven request options are mandatory and unique. The request producer opens
+none of the declared runtime or credential paths; it exclusively writes
+`OUTPUT/join-request.json` after checking canonical independent paths, every
+retained journal sibling and the complete bounded completion-socket namespace.
+The output directory cannot overlap any of those paths. The template producer
+exclusively writes `OUTPUT/ardents-join.service`, the fixed unsigned release
+resource. Its declared future JOIN entrypoint is not a startup permission or
+proof that an installed Node supports it. Both commands retain the existing
+root-controlled native output/Close rules and public-only digest receipts.
+
+Plan preparation reads only the original protected public request. All twelve
+plan options are explicit and unique except `--authority`, which may be repeated
+for up to sixteen distinct State keys; threshold must fit that set. The output
+must be the request's exact future `join-plan.json` location, outside all other
+inputs, roots and retained journals. The producer binds declared installed
+credential names, retains original request/output custody through Close, and
+opens no private key, clock or semantic root. Its explicit traffic declarations
+and notice interval grant neither an allowance nor a completed join or runtime
+permission. Native installation and all live owners independently admit those
+facts before effects.

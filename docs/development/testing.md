@@ -5171,3 +5171,18 @@ expiry refusal for its intended output-failure boundary. Genuine crypto, journal
 and file operations remain unchanged. The same test explicitly advances to the
 next hour and requires refusal, no success receipt and the unchanged original
 allocation generation. Native/installed qualification retains its real clock.
+
+### JOIN public declaration preparation
+
+The same root/ext4 `network_signing_native` profile additionally selects
+`TestJoinPreparationNativeTemplateAndRequestLeaveRuntimeAbsent` with the
+independently pinned actual canonical Control. It checks fixed unsigned unit
+properties and independent request bytes, explicit plan trust/path/traffic
+declarations, duplicate/foreign flags and completed-output adoption refusal.
+Declared runtime inputs stay absent throughout public preparation; only the
+exact declared public plan output may be born. The new Installation declaration
+package's deterministic Linux profile independently verifies canonical plan
+bytes, bounded trust/notice grammar, complete retained-path collisions and fixed
+protection. These are public declaration and native output-custody controls;
+they do not authenticate a signed Epoch, Release, duty, spend, allowance or
+installed startup.

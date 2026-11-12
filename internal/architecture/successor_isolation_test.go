@@ -164,6 +164,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"cmd/ardents-control/source_inspection_linux_test.go",
 			"cmd/ardents-control/source_artifact_linux.go",
 			"cmd/ardents-control/join_artifact_linux.go",
+			"cmd/ardents-control/join_request_linux.go",
+			"cmd/ardents-control/join_plan_linux.go",
 			"cmd/ardents-control/forwarding_artifact_linux.go",
 			"cmd/ardents-control/forwarding_request_linux.go",
 			"cmd/ardents-control/forwarding_plan_linux.go",
@@ -536,7 +538,10 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/source_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
 			return true
 		}
-		if source == "cmd/ardents-control/join_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
+		if source == "cmd/ardents-control/join_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/join") {
+			return true
+		}
+		if (source == "cmd/ardents-control/join_request_linux.go" || source == "cmd/ardents-control/join_plan_linux.go") && dependency == modulePath+"/internal/successor/installation/join" {
 			return true
 		}
 		if source == "cmd/ardents-control/forwarding_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/forwarding") {
@@ -772,6 +777,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/forwarding/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
+	if source == "internal/successor/installation/join/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
+		return true
+	}
 	if source == "internal/successor/installation/forwarding/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}
@@ -824,6 +832,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/execution/worker":                {"installation/systemd", "installation/unit"},
 		"internal/successor/installation":                    {"enrollment", "release", "installation/request"},
 		"internal/successor/installation/infrastructure":     {"enrollment", "release"},
+		"internal/successor/installation/join":               {},
 		"internal/successor/installation/forwarding":         {},
 		"internal/successor/installation/endpoint":           {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "installation/request", "installation/directory"},
 		"internal/successor/installation/cgroup":             {},
@@ -1328,6 +1337,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"JOIN public plan uses detached traffic declaration", "internal/successor/installation/join/plan_linux.go", modulePath + "/internal/successor/hosting", true},
+		{"JOIN request has no Hosting import", "internal/successor/installation/join/request_linux.go", modulePath + "/internal/successor/hosting", false},
+		{"JOIN public plan has no State owner", "internal/successor/installation/join/plan_linux.go", modulePath + "/internal/successor/network/state", false},
+		{"canonical JOIN plan uses exact declaration owner", "cmd/ardents-control/join_plan_linux.go", modulePath + "/internal/successor/installation/join", true},
+		{"canonical JOIN preparation grants no Route exception", "cmd/ardents-control/join_plan_linux.go", modulePath + "/internal/successor/route/role", false},
 		{"Forwarding replacement inspects signed retained State", "internal/successor/installation/forwarding/replacement_inspections_linux.go", modulePath + "/internal/successor/network/state", true},
 		{"Forwarding replacement inspects original spend", "internal/successor/installation/forwarding/replacement_inspections_linux.go", modulePath + "/internal/successor/admission/spending", true},
 		{"Forwarding replacement inspects original Hosting", "internal/successor/installation/forwarding/replacement_inspections_linux.go", modulePath + "/internal/successor/hosting", true},

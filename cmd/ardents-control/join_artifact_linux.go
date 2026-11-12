@@ -18,6 +18,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	joininstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/join"
 )
 
 type joinControlFailure struct{ cause error }
@@ -61,6 +62,18 @@ func prepareJoinArtifact(ctx context.Context, args []string, observe func(string
 	var name, destination string
 	check := inputs.checkProtected
 	switch args[0] {
+	case "prepare-template":
+		if len(args) != 2 {
+			return nil, errSourceControlInput
+		}
+		result = []byte(joininstallation.Template)
+		name, destination = infrastructure.JoinTemplateName, args[1]
+	case "prepare-request":
+		result, destination, returned = joinRequestArguments(args[1:])
+		name = "join-request.json"
+	case "prepare-plan":
+		result, destination, returned = joinPlanArguments(args[1:], inputs)
+		name = "join-plan.json"
 	case "prepare-descriptor":
 		if len(args) != 6 {
 			return nil, errSourceControlInput
