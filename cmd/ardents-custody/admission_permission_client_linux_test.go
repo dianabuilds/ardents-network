@@ -12,10 +12,17 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
 func TestAdmissionAuthorityCommandsKeepPermissionOutOfPublicReceipt(t *testing.T) {
+	// Only this unit test's clock is controlled. The genuine command, crypto,
+	// encrypted journal and private output custody retain their original rules.
+	synctest.Test(t, admissionAuthorityCommandsKeepPermissionOutOfPublicReceipt)
+}
+
+func admissionAuthorityCommandsKeepPermissionOutOfPublicReceipt(t *testing.T) {
 	vaultRoot := t.TempDir()
 	environment, network, authorityRoot := [32]byte{21}, [32]byte{22}, [32]byte{23}
 	password := []byte("admission custody command password")
@@ -98,11 +105,12 @@ func TestAdmissionAuthorityCommandsKeepPermissionOutOfPublicReceipt(t *testing.T
 	if err := os.WriteFile(permissionPath, make([]byte, 228), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := run(t.Context(), issueArguments, &failedOutput, &sequenceCommandSecrets{values: [][]byte{password}, commitments: [][32]byte{sha256.Sum256(requestRaw)}}); err == nil {
+	issueErr := run(t.Context(), issueArguments, &failedOutput, &sequenceCommandSecrets{values: [][]byte{password}, commitments: [][32]byte{sha256.Sum256(requestRaw)}})
+	if issueErr == nil {
 		t.Fatal("conflicting output accepted")
 	}
-	if currentGeneration() != 2 {
-		t.Fatal("output failure lost or duplicated durable allocation")
+	if generation := currentGeneration(); generation != 2 {
+		t.Fatalf("output failure lost or duplicated durable allocation: generation=%d hour=%s now=%s cause=%v", generation, now, time.Now(), issueErr)
 	}
 	if failedOutput.Len() != 0 {
 		t.Fatal("failed issuance leaked a public success receipt")
@@ -148,4 +156,12 @@ func TestAdmissionAuthorityCommandsKeepPermissionOutOfPublicReceipt(t *testing.T
 	if err := run(t.Context(), issueArguments, &repeatedOutput, &sequenceCommandSecrets{values: [][]byte{password}, commitments: [][32]byte{sha256.Sum256(requestRaw)}}); err != nil {
 		t.Fatalf("protected exact output retry: %v", err)
 	}
+	// Crossing the real policy boundary must still refuse, never renew or
+	// refund the original allocation. Fake time prevents a long wall-clock wait.
+	time.Sleep(time.Until(now.Add(time.Hour)))
+	var expiredOutput bytes.Buffer
+	if err := run(t.Context(), issueArguments, &expiredOutput, &sequenceCommandSecrets{values: [][]byte{password}, commitments: [][32]byte{sha256.Sum256(requestRaw)}}); err == nil || expiredOutput.Len() != 0 || currentGeneration() != 2 {
+		t.Fatalf("expired request published output or changed allocation: %v", err)
+	}
+
 }

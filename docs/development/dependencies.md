@@ -297,6 +297,50 @@ renewal; unsupported or applicable unresolved findings block changed use.
 This registration supplies no full-host, installed, independent-security or
 anonymity qualification.
 
+## Go standard-library security renewal
+
+Reviewed 2026-11-12 after the normal vulnerability gate reported
+[GO-2026-6859](https://pkg.go.dev/vuln/GO-2026-6859) in the selected Go1.27.3
+standard library. Select **Go1.27.4**, released 2026-11-10, rather than waive the
+finding. This supersedes the compiler and container patch selections below;
+no runtime module, protocol, permission, resource bound or platform is added.
+
+Primary sources accessed 2026-11-12: the [official release history](https://go.dev/doc/devel/release#go1.27.4),
+[download inventory](https://go.dev/dl/?mode=json),
+[security policy](https://go.dev/security/policy),
+[release support policy](https://go.dev/doc/devel/release#policy),
+[BSD license](https://github.com/golang/go/blob/go1.27.4/LICENSE),
+and [official container index](https://registry-1.docker.io/v2/library/golang/manifests/1.27.4-bookworm).
+The release includes security fixes in cgo, the go command, compiler, linker and
+net/http, as well as other compiler/runtime/TLS fixes. The existing Go1.27 branch
+remains within upstream's two-current-major support policy; the Product Owner
+and Codex retain responsibility for subsequent advisories and patch renewal.
+The inherited BSD license and upstream private reporting/fix path remain.
+No passing scanner is a continuing-support or independent-security claim.
+
+The official Linux-amd64 SDK archive SHA256 is
+`7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840`.
+The official `golang:1.27.4-bookworm` OCI index digest is
+`sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea`;
+its Linux-amd64 manifest is
+`sha256:fb7cceb528b47141eccd9b60bf3cbd27d5ef5f8cf5b7d338bec866da495b50dc`.
+The index binds the Bookworm Dockerfile to docker-library/golang commit
+`6aa5c5f09346fb65fdefa941a23eb3cb25ba7b1a`. Image contents and installed OS packages
+still require their applicable integrity/support review; a new digest alone
+supplies no full image or installed qualification.
+
+Update the root module, CI, exact tool-build checks, public build recipes,
+active profile prerequisites and diagnostic image together. Rebuild tools only
+through explicit `make tools-install`; normal gates retain `GOTOOLCHAIN=local`
+and install nothing. Tool source selections and reviewed overrides are unchanged.
+Native observers still require an exact compiler check and derive actual
+os.File/poll offsets from that compiler; review the selected SDK's ABI, file and
+cgroup sources before renewing those controls. Compiler changes invalidate
+applicable executable receipts: repeat affected native/race and normal gates.
+Earlier source/compiler/artifact receipts and failures remain historical evidence,
+not qualification of the rebuilt candidate or permission to replay a whole
+installed campaign without a corresponding requirement.
+
 ## Go X.509 security renewal
 
 Reviewed 2026-10-21 after the normal vulnerability gate reported
@@ -815,7 +859,7 @@ opaque blinding State is never serialized and no other CIRCL scheme or private
 cryptographic fork is admitted. Route capsule uses the selected standard-library
 HPKE mechanism; it does not restore the removed OHTTP/Naming importer.
 
-The current compiler is Go 1.27.3, with the selected x/net v0.60.0 closure and
+The current compiler is Go 1.27.4, with the selected x/net v0.60.0 closure and
 exact compatibility tool builds specified above. Sigstore v1.11.0 and
 go-containerregistry v0.22.1 replace their earlier selections. `go.mod` and
 `go.sum` pin the full present closure; table entries below identify the same
@@ -1212,7 +1256,7 @@ artifact qualification runner. Any version or runtime use repeats this review.
 
 | Tool | Version | Purpose |
 |---|---:|---|
-| Go | 1.27.3 | compiler, formatter, tests, vet |
+| Go | 1.27.4 | compiler, formatter, tests, vet |
 | Staticcheck | v0.8.1 with exact PR1834 compatibility source above | additional correctness analysis; temporary reviewed build candidate |
 | govulncheck | v1.8.0 | reachable Go vulnerability analysis |
 | deadcode | v0.50.0 (`golang.org/x/tools`) | reachability analysis for reviewed production code and test-only code |
@@ -1346,8 +1390,8 @@ before accepting its run. The continuing native preflight retains the original
 interpreter identity; it does not claim an ongoing host vulnerability scan.
 
 The engineering diagnostics owner is [local-diagnostics.md](local-diagnostics.md).
-The image uses Go 1.27.2 and the digest-pinned official Debian Bookworm Go image
-`sha256:5cf287a799e6b94384bad13d16b14904c531f51ba65792237e122ce42b392f61`.
+The image uses Go 1.27.4 and the digest-pinned official Debian Bookworm Go image
+`sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea`.
 The existing accepted quality tools retain their reviewed pins; normal gates do
 not install additional tools. Explicit `make tools-install DIAGNOSTIC_TOOLS=1`
 adds **Delve v1.27.2**, module `github.com/go-delve/delve/cmd/dlv`, MIT, solely
@@ -1432,7 +1476,7 @@ Rebuild on upstream/security fixes; validate the actual required scripts.
 
 ### Prebuilt standard Go diagnostic parsers
 
-The local diagnostics owner uses the selected Go 1.27.2 source packages
+The local diagnostics owner uses the selected Go 1.27.4 source packages
 `cmd/pprof` and `cmd/trace`, with the Go distribution license, to parse explicitly
 selected private profiles offline. Explicit `make tools-install` builds them into
 `GOBIN` or `GOPATH/bin`; `DIAGNOSTIC_PARSERS_ONLY=1` installs only this pair. They

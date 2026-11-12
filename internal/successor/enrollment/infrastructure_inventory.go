@@ -88,13 +88,15 @@ func infrastructureNames(invocation string) []string {
 		return []string{"ardents-node-linux-amd64", "ardents-source.service", "infrastructure-source.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"}
 	case "forwarding":
 		return []string{"ardents-forwarding.service", "ardents-node-linux-amd64", "infrastructure-forwarding.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"}
+	case "join":
+		return []string{"ardents-join.service", "ardents-node-linux-amd64", "infrastructure-join.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"}
 	default:
 		return nil
 	}
 }
 
 func validInfrastructureFacts(f InfrastructureFacts) bool {
-	// Only these two exact immutable inventories have current consumers. This
+	// Only these exact immutable inventories have current consumers. This
 	// selection grants no role dispatch, native installation or startup right.
 	return f.Platform == "linux-amd64" && len(infrastructureNames(f.Invocation)) == 7 && f.ReleaseVersion > 0 && len(f.ReleaseIdentity) <= 16<<10 && strings.TrimSpace(f.ReleaseIdentity) != ""
 }
@@ -164,7 +166,7 @@ func parseInfrastructureInventory(raw []byte) (infrastructureInventory, error) {
 
 func infrastructureLimit(name string) int64 {
 	switch name {
-	case "infrastructure-source.json", "infrastructure-forwarding.json":
+	case "infrastructure-source.json", "infrastructure-forwarding.json", "infrastructure-join.json":
 		return 16 << 10
 	case "root.json", "snapshot.json", "targets.json", "timestamp.json":
 		return 1 << 20

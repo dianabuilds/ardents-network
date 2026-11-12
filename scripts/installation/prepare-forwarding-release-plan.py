@@ -122,7 +122,7 @@ def main():
         raise RuntimeError("build input/module/SBOM commitments differ")
     recipe, sbom = document(p.build_root / "build-inputs.json"), document(p.build_root / "sbom.json")
     exact(sbom, ("schema", "source_revision", "toolchain", "commands", "modules", "package_imports"))
-    if sbom["schema"] != "ardents-forwarding-build-sbom-v1" or sbom["toolchain"] != "go1.27.3 linux/amd64" or not isinstance(sbom["package_imports"], list) or not sbom["package_imports"]:
+    if sbom["schema"] != "ardents-forwarding-build-sbom-v1" or sbom["toolchain"] != "go1.27.4 linux/amd64" or not isinstance(sbom["package_imports"], list) or not sbom["package_imports"]:
         raise RuntimeError("actual Forwarding compiled inventory required")
     if common["build_identity"] != common["build_input_commitment"] or recipe.get("source_manifest_sha256") != common["source_manifest_sha256"] or sbom.get("source_revision") != common["source_revision"] or sbom.get("commands") != list(COMMANDS) or sbom.get("modules") != document(p.build_root / "modules.json"):
         raise RuntimeError("source-bound build and SBOM facts disagree")

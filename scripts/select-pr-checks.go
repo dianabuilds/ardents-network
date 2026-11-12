@@ -431,7 +431,7 @@ func parseDeclarations(name string, body []byte) ([]declaration, bool, error) {
 }
 
 func writeMatrix(path string, checks []check) error {
-	const maxChecksPerJob = 16
+	const maxTestsPerGroup = 16
 
 	type entry struct {
 		ID      int    `json:"id"`
@@ -452,8 +452,8 @@ func writeMatrix(path string, checks []check) error {
 		if len(names) == 0 {
 			entries = append(entries, entry{len(entries), selected.pkg, "^$", false})
 		}
-		group := make([]string, 0, maxChecksPerJob)
-		groupLimit := maxChecksPerJob
+		group := make([]string, 0, maxTestsPerGroup)
+		groupLimit := maxTestsPerGroup
 		flush := func() {
 			if len(group) == 0 {
 				return
@@ -467,7 +467,7 @@ func writeMatrix(path string, checks []check) error {
 				appendEntry(selected, []string{name})
 				continue
 			}
-			limit := maxChecksPerJob
+			limit := maxTestsPerGroup
 			if expensiveEndpointPRCheck(selected.pkg, name) {
 				limit = 2
 			}
@@ -482,12 +482,31 @@ func writeMatrix(path string, checks []check) error {
 		}
 		flush()
 	}
-	if len(entries) > 256 {
-		return errors.New("affected test groups exceed GitHub matrix capacity")
+	// Preserve every independently bounded group. Only the job envelope grows:
+	// GitHub admits at most256 jobs, each still runs its original groups in order.
+	const maxJobs = 256
+	groupsPerJob := max(1, (len(entries)+maxJobs-1)/maxJobs)
+	if groupsPerJob > 60 {
+		return errors.New("affected test groups exceed GitHub six-hour job envelope")
+	}
+	type job struct {
+		ID                int     `json:"id"`
+		Checks            []entry `json:"checks"`
+		TimeoutMinutes    int     `json:"timeout_minutes"`
+		DiagnosticParsers bool    `json:"diagnostic_parsers"`
+	}
+	jobs := make([]job, 0)
+	for first := 0; first < len(entries); first += groupsPerJob {
+		group := entries[first:min(first+groupsPerJob, len(entries))]
+		parsers := false
+		for _, selected := range group {
+			parsers = parsers || strings.HasSuffix(selected.Package, "/internal/architecture")
+		}
+		jobs = append(jobs, job{len(jobs), group, 6 * len(group), parsers})
 	}
 	body, err := json.Marshal(struct {
-		Include []entry `json:"include"`
-	}{entries})
+		Include []job `json:"include"`
+	}{jobs})
 	if err != nil {
 		return err
 	}

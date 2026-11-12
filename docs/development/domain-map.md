@@ -111,6 +111,24 @@ both physical observation and waiter uses without changing any supervisor timer.
 
 ## Supporting mechanisms and composition
 
+JOIN public artifact preparation is a separate offline Control composition.
+Infrastructure owns only its exact descriptor/program/template byte binding;
+Enrollment owns the seven-file inventory. The real canonical Control consumers
+retain original native public inputs and exclusive output until physical Close.
+These detached bytes supply neither initial trust nor coherent Release authority,
+native unit-policy acceptance, Installation startup or a Node duty. Existing
+Source and Forwarding proofs remain purpose-bound; no live owner or permission
+crosses between invocations through this shared byte-preparation mechanism.
+
+Installation's separate `installation/join` declaration owner fixes the JOIN
+request/plan, four writable semantic roots, retained journal/completion namespace and
+closed non-root unit template. Canonical Control consumes it for public request
+and template preparation from explicit public flags. Hosting contributes only its
+Traffic value shape, never a budget, allowance or live borrow. The fixed template
+declares argv/protection only; it observes no
+native unit or process and grants no account adoption, original join, Start or
+runtime authority. This boundary shares no live Source or Forwarding owner.
+
 Local Node certificate provisioning is one offline supporting composition,
 `ardents-next network prepare-node-certificate` and the separate canonical
 `ardents-control forwarding prepare-node-certificate`. Canonical Control's fixed

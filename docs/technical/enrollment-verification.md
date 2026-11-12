@@ -22,8 +22,8 @@ This Source extension and its canonical byte oracles compile only on the selecte
 Linux profile with their real consumer. Existing Endpoint/v3 grammar and tests
 remain portable; unsupported commands refuse before opening any artifact/history.
 
-The new owner's `ValidateInfrastructureInventory` checks a canonical Source or
-Forwarding inventory against all seven bounded supplied byte images. Its copied
+The new owner's `ValidateInfrastructureInventory` checks a canonical Source,
+Forwarding or JOIN inventory against all seven bounded supplied byte images. Its copied
 declarations and fresh digest map supply no initial pin, native file custody,
 running-program proof, Candidate, Bundle or installation permission. A caller
 may compare the same image's digests with other public commitments within that

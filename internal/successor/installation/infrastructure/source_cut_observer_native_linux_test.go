@@ -490,7 +490,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	}
 	if principalLoad != "" {
 		build, err := buildinfo.Read(file)
-		if err != nil || build.GoVersion != "go1.27.3" || runtime.Version() != "go1.27.3" {
+		if err != nil || build.GoVersion != "go1.27.4" || runtime.Version() != "go1.27.4" {
 			return result, errors.Join(errors.New("native principal inventory requires exact inspected Go runtime"), err)
 		}
 	}
@@ -572,7 +572,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	admissionSymbol := sourceRefusalNativeAdmissionSymbol
 	if returnProbe {
 		build, err := buildinfo.Read(file)
-		if err != nil || build.GoVersion != "go1.27.3" || runtime.Version() != "go1.27.3" {
+		if err != nil || build.GoVersion != "go1.27.4" || runtime.Version() != "go1.27.4" {
 			return result, errors.Join(errors.New("refusal observer requires exact inspected Go runtime"), err)
 		}
 		selectedSymbol = sourceRefusalNativeReturnSymbol
@@ -586,7 +586,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	}
 	if physical != nil {
 		build, err := buildinfo.Read(file)
-		if err != nil || build.GoVersion != "go1.27.3" || runtime.Version() != "go1.27.3" {
+		if err != nil || build.GoVersion != "go1.27.4" || runtime.Version() != "go1.27.4" {
 			return result, errors.Join(errors.New("physical observer requires exact inspected Go ABI"), err)
 		}
 		selectedSymbol, result.PhysicalWindow = physical.symbol, physical.window
@@ -1743,7 +1743,7 @@ func observeSourceProcess(program, root, output, nativeCase string, profile *sou
 	if principalLoad != "" {
 		// This distinct native fixture performs 64 or 112 real observations, each
 		// with separately joined passwd/group helpers, before the original
-		// two-process file/control exchange. Go1.27.3's first os/exec call also
+		// two-process file/control exchange. Go1.27.4's first os/exec call also
 		// performs the real os.checkPidfd -> syscall.checkClonePidfd child probe.
 		// Retain every group, including that independently reaped runtime child;
 		// the existing 256-TID and 32-live-process limits remain unchanged.

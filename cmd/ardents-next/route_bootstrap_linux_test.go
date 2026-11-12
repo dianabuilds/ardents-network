@@ -1069,12 +1069,19 @@ func TestRouteIssuerLostResultHolderReopenRefusesReconstructionTCP(t *testing.T)
 			caller, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			var request, response []byte
+			receivingCanceled := make(chan error, 1)
 			defer func() { clear(request); clear(response) }()
 			x := newRouteIssuerFixture(t, profile, func(ctx context.Context, bootstrap bool, raw, signed []byte) error {
 				if !bootstrap {
 					request = bytes.Clone(raw)
 					response = bytes.Clone(signed)
 					cancel()
+					// Observe the real receiving lane's cancellation before
+					// returning from this post-commit fault. Returning success
+					// races a new RESULT write against the deliberate loss.
+					<-ctx.Done()
+					receivingCanceled <- ctx.Err()
+					return ctx.Err()
 				}
 				return nil
 			}, nil, nil, nil)
@@ -1118,6 +1125,14 @@ func TestRouteIssuerLostResultHolderReopenRefusesReconstructionTCP(t *testing.T)
 			receivingJoin, cancelJoin := context.WithDeadline(t.Context(), plan.Deadline)
 			defer cancelJoin()
 			waitRouteIssuerReceivingBorrowers(t, receivingJoin, x)
+			select {
+			case cause := <-receivingCanceled:
+				if !errors.Is(cause, context.Canceled) {
+					t.Fatal("lost result reached expiry instead of original lane cancellation", cause)
+				}
+			default:
+				t.Fatal("receiving borrower returned before its original cancellation")
+			}
 			for _, server := range x.servers {
 				joinedErr := server.Close()
 				select {

@@ -1323,3 +1323,57 @@ READY output is bounded by the earlier of its one-second write bound and the
 original caller context. Terminal reporting keeps its own finite write bound
 after caller retirement. Ordinary cancellation cannot become an invented
 background/output failure; real retained process and cleanup errors remain failed.
+
+## JOIN public artifact preparation
+
+On Linux, root may run these separate bounded offline producers:
+
+```text
+ardents-control join prepare-descriptor IDENTITY VERSION PROGRAM TEMPLATE OUTPUT
+ardents-control join prepare-inventory DISTRIBUTION OUTPUT
+```
+
+The first operation exclusively creates `OUTPUT/infrastructure-join.json`,
+binding exact public program and template bytes. It does not validate the native
+unit policy. The second requires exactly `ardents-node-linux-amd64`,
+`ardents-join.service`, `infrastructure-join.json`, `root.json`, `timestamp.json`,
+`snapshot.json` and `targets.json`, checks descriptor/resource agreement and
+exclusively creates `OUTPUT/infrastructure-enrollment.json`. OUTPUT is a fresh
+protected directory outside the distribution; existing or partial output is
+refused. Original root-controlled regular inputs and ancestors remain checked
+through durable output and physical Close. Public receipts report the operation
+and output digest only.
+
+Neither operation signs metadata, supplies an independently delivered initial
+pin, authenticates a Release, or admits installed JOIN execution. Source and
+Forwarding inventories cannot be substituted. Other platforms refuse before
+input/output effects.
+
+### JOIN fixed request and template preparation
+
+```text
+ardents-control join prepare-template OUTPUT
+ardents-control join prepare-request --installation-root PATH --state-root PATH --participation-root PATH --spend-root PATH --hosting-root PATH --credential-directory PATH --plan PATH --certificate PATH --private-key PATH --clock PATH --output OUTPUT
+ardents-control join prepare-plan --request REQUEST --output OUTPUT --network-id HEX --node-id HEX --profile-authority HEX --authority HEX --threshold N --work-tx N --work-rx N --termination-tx N --termination-rx N --retirement-wait-ms N
+```
+
+All eleven request options are mandatory and unique. The request producer opens
+none of the declared runtime or credential paths; it exclusively writes
+`OUTPUT/join-request.json` after checking canonical independent paths, every
+retained journal sibling and the complete bounded completion-socket namespace.
+The output directory cannot overlap any of those paths. The template producer
+exclusively writes `OUTPUT/ardents-join.service`, the fixed unsigned release
+resource. Its declared future JOIN entrypoint is not a startup permission or
+proof that an installed Node supports it. Both commands retain the existing
+root-controlled native output/Close rules and public-only digest receipts.
+
+Plan preparation reads only the original protected public request. All twelve
+plan options are explicit and unique except `--authority`, which may be repeated
+for up to sixteen distinct State keys; threshold must fit that set. The output
+must be the request's exact future `join-plan.json` location, outside all other
+inputs, roots and retained journals. The producer binds declared installed
+credential names, retains original request/output custody through Close, and
+opens no private key, clock or semantic root. Its explicit traffic declarations
+and notice interval grant neither an allowance nor a completed join or runtime
+permission. Native installation and all live owners independently admit those
+facts before effects.

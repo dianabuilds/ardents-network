@@ -1,7 +1,7 @@
 //go:build linux
 
-// Package infrastructure prepares separate Source and Forwarding public artifact
-// descriptors, with exact invocation-specific inventories. Forwarding preparation
+// Package infrastructure prepares separate Source, Forwarding and JOIN public artifact
+// descriptors, with exact invocation-specific inventories. Public preparation
 // grants no installed transaction, startup or runtime permission.
 // It binds exact Source artifact bytes to two fresh coherent
 // Release authorizations and separate Enrollment initial provenance. It owns

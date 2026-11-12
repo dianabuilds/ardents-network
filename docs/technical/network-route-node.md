@@ -1949,6 +1949,49 @@ copies are handed out only after original checks and must remain private through
 their actual users' joined cleanup. Complete domain retirement and the real
 root start/archive/ACK producer remain separate obligations of their owners.
 
+JOIN public artifact preparation has its own exact descriptor
+`infrastructure-join.json`, template name `ardents-join.service` and resource
+target `ardents/linux-amd64/infrastructure/join`, alongside the Node program
+target. Its closed seven-file Enrollment inventory uses these JOIN names and
+the four unchanged Release metadata files. Canonical Control's separate
+`join prepare-descriptor` and `join prepare-inventory` consumers retain original
+root-controlled native inputs and exclusive bounded output, using shared physical
+read/write mechanisms only. They sign nothing and grant no initial-pin proof,
+Release authority, native unit-policy acceptance, Installation transaction or
+runtime startup. Source and Forwarding readers still refuse JOIN declarations;
+JOIN refuses their descriptors and inventories. Future protected lifecycle
+composition must independently supply every installed admission and join proof.
+
+JOIN's separate closed declaration owner, `installation/join`, accepts only
+`ardents-join-installation-v1`, invocation `join` and process profile
+`ardents-join-process-v1`. Its canonical request declares installation, State,
+participation, spend, Hosting and credential paths plus original delivery
+plan/certificate/key and the live clock path. These ten paths are independent;
+no path may occupy a retained journal sibling. Runtime paths hidden by fixed
+`PrivateTmp`/`ProtectHome` policy are refused. The finite namespace retains64
+attempts without recycling: initial, Hosting, first-start, numbered invocation
+and retirement journals are purpose-specific JOIN names. Every original and
+later completion pathname must fit Linux's107-byte pathname socket bound before
+effects. Public preparation output must stay outside all declared inputs,
+semantic roots and journal siblings.
+
+The exact JOIN template retains the common `ardents-node` account, four write
+roots and unchanged Node CPU/RAM/PID/FD/capability envelope. Its fixed `join start-installed` argv and unresolved generation/binding/write-path
+placeholders supply no rendered unit, loaded policy, process proof or implemented
+runtime entrypoint. Native generation rendering remains a separate admission.
+Native initial admission must independently require all five Node slots and the
+account/destinations absent, as the first-role installation boundary does. This
+declaration cannot adopt a preceding Forwarding account/allowance or invent
+cross-role retirement. Canonical public producers open none of these runtime
+paths; the live clock remains Network's separate observation.
+
+JOIN public plan preparation binds the exact declared State, participation,
+spend, Hosting, clock and installed credential locations, explicit Node/Network
+identifiers and independently supplied State/profile pins. Its bounded canonical
+bytes are declarations, not currentness, assignment, class coverage or admission.
+It creates neither State nor keys and grants no installed invocation; each
+corresponding runtime owner must freshly verify its own facts before effects.
+
 The bounded first installed Forwarding contract admits only `forwarding`, not
 another Node duty or Source. Its artifact pair uses the exact Node program target
 and `ardents/linux-amd64/infrastructure/forwarding`; its descriptor and initial
@@ -3612,6 +3655,8 @@ custody; measured by the causal native substitutions and effect/cleanup oracles
 above. Compromised root/kernel, dishonest trust delivery, common effective
 control, whole-host privacy, anonymity, capacity and power-loss guarantees remain
 outside that bounded evidence. No new claim is qualified by this design.
+
+
 
 ## Hosting domain boundary
 

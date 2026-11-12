@@ -1374,7 +1374,7 @@ that distinction without starting Source.
 
 At `file-born-before-journal-sync`, the actual `sourceBirths.sync` argument must
 be the original journal's live descriptor. The observer reads its real
-`os.File`/`poll.FD.Sysfd` representation using offsets from the same Go1.27.3
+`os.File`/`poll.FD.Sysfd` representation using offsets from the same Go1.27.4
 Linux amd64 types, without `unsafe` or tracee writes. Native pre-Sync controls
 also require that this argument rejects a different real native inode. The
 visible canonical born record has not yet completed Sync; its original program
@@ -1525,7 +1525,7 @@ fresh observations or `112` for112. It requires the dedicated root fixture
 marker `/etc/ardents-source-principal-native-stand` containing exactly
 `ardents-source-principal-native-v1` plus LF and a native-only fixed
 `ardents-source` account with UID/GID900 and the normal locked rows. The pinned
-Go1.27.3 `.test` executable must have its normal root-owned0555 custody. Four
+Go1.27.4 `.test` executable must have its normal root-owned0555 custody. Four
 joined native workers call the real principal owner; no successful NSS mock,
 Source installation, Release, manager, State or runtime authority is supplied.
 Both current name and numeric-ID lookups remain mandatory for passwd/group.
@@ -1533,7 +1533,7 @@ The native-only completion file records all64 or112 original observations only
 after those callers and their helpers have joined. The ordinary native
 two-process Sync/STOP/ACK/cancellation and original-cut proof then remain required.
 The observer retains all131 or227 historical groups: two file/control owners,
-two helpers per observation and Go1.27.3's independently reaped one-time
+two helpers per observation and Go1.27.4's independently reaped one-time
 `os.checkPidfd`/`syscall.checkClonePidfd` child. No historical group is discarded;
 the256-TID,32-live-process and25-second outside bounds are unchanged. The load
 cannot accompany any installed or physical-cut profile, and other values refuse.
@@ -1858,7 +1858,7 @@ closed file/process windows through `ARDENTS_SOURCE_PHYSICAL_OBSERVER_WINDOW`:
 `journal-before-sync`, `file-born-before-record`, `file-ready-before-record`
 and `file-complete-before-close`.
 It uses only the actual native test executable and no installed profile. Exact
-Go1.27.3 amd64 ABI inspection and hardware entry breakpoints identify the
+Go1.27.4 amd64 ABI inspection and hardware entry breakpoints identify the
 coordinator's actual Sync, record or Close call, prefix and original file image before
 signalling the original root. The held coordinator is never resumed to finish
 the effect: that root must kill and reap it under the unchanged original bound.
@@ -1900,7 +1900,7 @@ entry without invoking the Node command. At that entry, after the operation
 and its deferred owners return, the observer holds every original root thread
 and compares the complete `/proc/PID/task` inventory. A separate one-use entry
 probe at `main.runSourceInstallation` first freezes all original threads and
-binds Go1.27.3's retained read-only cgroup-v2 `cpu.max` descriptor, if present,
+binds Go1.27.4's retained read-only cgroup-v2 `cpu.max` descriptor, if present,
 by number, kernel filesystem, inode and flags before product effects. With
 `GOGC=off` and `GOMEMLIMIT=off`, only that same original runtime CPU handle, original
 stdin/stdout/stderr and at most one runtime eventpoll/eventfd pair may remain.
@@ -2226,7 +2226,7 @@ independence, power-loss or privacy qualification.
 `source-stopped-linux` / `make source-stopped-check` is the separate initial
 stopped Source component profile. Its outside controller holds the same original
 development exclusive lock, builds an immutable full source snapshot with
-Go1.27.3 and canonical command flags, and supplies race-enabled owner/command
+Go1.27.4 and canonical command flags, and supplies race-enabled owner/command
 test binaries built with `network_signing_native`, `-trimpath -buildvcs=false`.
 Set `ARDENTS_SOURCE_STOPPED_{COMMAND,OWNER_TEST,MANAGER_TEST,COMMAND_TEST,SOURCE_MANIFEST}` and
 each `_SHA256` to independently pinned absolute original files; set
@@ -2362,7 +2362,7 @@ the canonical flags, owner test from `installation/infrastructure`, manager test
 from `installation/systemd` and command test from `cmd/ardents-next`; use
 `-race -trimpath -buildvcs=false -tags network_signing_native` for all test
 binaries. The manifest contains every exact source input. Mount the immutable
-snapshot read-only as the runner's repository and retain actual Go1.27.3,
+snapshot read-only as the runner's repository and retain actual Go1.27.4,
 source/binary/mount/manager/namespace/account/unit observations outside Git.
 `TMPDIR` is private root-owned 0700 ext4; the separate
 `ARDENTS_SOURCE_PREFLIGHT_FUTURE_PARENT` is root-controlled 0755 with traversable
@@ -4336,7 +4336,7 @@ execution requires no second Go installation on that driver host.
 `hosting-budget-linux` runs `make hosting-check`: isolated durable Hosting and
 test-only Admission/Hosting I/O composition and compiled command lifecycle with race checks on Linux amd64.
 It covers shared persisted samples, deadline/cancellation handoff, independent
-concurrent owners, join-before-release, genuine token spending and replay refusal. The pinned Go 1.27.3
+concurrent owners, join-before-release, genuine token spending and replay refusal. The pinned Go 1.27.4
 bookworm image already selected for diagnostics can provide this component
 environment with read-only sources and caches outside Git. It requires actual
 proc/sys counters, loopback, flock, rename, fsync and a race-capable C compiler;
@@ -4858,7 +4858,7 @@ no build-error-based filtering or passing platform skip supplies that membership
 The separate `issuer-key-material-linux` profile runs `make issuance-check`:
 real RSA keys, owner-only files, exclusive lifetime leases, fault/crash/reopen,
 compiled initialize/inspect/export commands, Admission SPKI compatibility and
-actual OTLP. It uses the same pinned Go 1.27.3 bookworm image and shares the
+actual OTLP. It uses the same pinned Go 1.27.4 bookworm image and shares the
 immutable command build. It requires proc/sys/loopback for the existing command
 tests. Windows cannot replace Linux acceptance; filesystem tests do not qualify
 power loss, full storage rollback or network security.
@@ -4870,7 +4870,7 @@ crash/reopen and concurrency tests. Compiled `ardents-next` commands exercise
 holder/allocation/current-issuer/receiver operations, SIGINT with inherited stdin,
 exact replay and refill, plus actual Hosting budget and OTLP checks. The checked
 profile is `admission-ledger-linux`; the Docker acceptance image is
-`golang:1.27.3-bookworm@sha256:21ade014faf952365b9ecbd8dbdb87176fbacb82fac9fb132d9f2a7b8cc3f132`.
+`golang:1.27.4-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea`.
 Command tests share one immutable compiled executable while keeping separate
 mutable roots. Linux prerequisites cannot be replaced by a Windows passing
 result. These tests provide no live issuer/State, power-loss storage or whole
@@ -4886,7 +4886,7 @@ confirmation, quota retention, journal pairs/floors, faults, crash/replay and OT
 CIRCL uses the populated reviewed module cache. No power-loss/rollback claim.
 
 The active `issuer-profile-linux` profile uses `make issuer-profile-check` on the
-pinned Go 1.27.3 Linux image. It exercises Admission, its Issuerprofile/Issuance/Issuer children,
+pinned Go 1.27.4 Linux image. It exercises Admission, its Issuerprofile/Issuance/Issuer children,
 Issuerprofile/Signing and compiled ardents-next with real files, lease/crash processes,
 race detection, actual OTLP and the prior durable token cycle. It also mutation-
 fuzzes FuzzIssuerProfile and FuzzNodeIdentityPEM for 30 seconds each, two workers
@@ -5034,7 +5034,7 @@ journal, predecessor join, manager start or installed/privacy qualification.
 
 ## Bounded Authority Custody native lane
 
-`make custody-check` requires Linux, Go 1.27.3, a race-capable compiler,
+`make custody-check` requires Linux, Go 1.27.4, a race-capable compiler,
 private actual filesystem with flock/hardlinks/rename/directory fsync, a PTY
 and the fixed 256 MiB Argon2 workspace. It exercises the new encrypted Custody
 owner and real Allocation, original Close/cancel/join, canonical envelope vector,
@@ -5133,3 +5133,56 @@ archived and never reused after that physical mutation. The ordinary Linux
 restores actual bytes and mtime and verifies that changed kernel ctime still
 refuses the original binding. These controls supply no permission to replace
 required complete byte comparisons with metadata-only runtime admission.
+
+### JOIN offline public artifact custody
+
+The checked Linux `network_signing_native` profile selects
+`TestJoinPreparationNativeCanonicalBytesAndInventory` and
+`TestJoinPreparationNativeRetainsFailureAndRejectsAdoption` in canonical Control.
+Run as root on protected ext4 with the shared development lock. Supply the exact
+compiled Control path and SHA-256 as `ARDENTS_JOIN_CONTROL_PROGRAM` and
+`ARDENTS_JOIN_CONTROL_PROGRAM_SHA256`. The compiled command must produce the
+independently stated JOIN descriptor and seven-file inventory; extra/foreign
+resources, changed program bytes and role substitution refuse before output.
+Held-output mutation, cancellation plus real descriptor Close, partial-output
+adoption refusal and fresh positive counterparts retain original errors.
+Ordinary infrastructure/Enrollment tests cover canonical byte/role separation.
+These are offline public-input/output controls, not Release signature, initial
+pin, unit-policy, protected startup, pair operation or installed qualification.
+
+PR matrix delivery preserves each selected package/pattern/race group, its
+existing16-test ordinary bound, two-test expensive Endpoint bound and dedicated
+observation cell. The [GitHub matrix limit](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstrategymatrix)
+is256 jobs. Larger selections place consecutive unchanged groups into at most256
+jobs, with six minutes of outer envelope per group and no more than60 groups
+per job. Each original group still has Go's five-minute timeout plus the original
+330-second external bound and ten-second final kill interval; the job envelope
+is their aggregate, not extra time for an individual group. Parallelism remains16.
+Every selected group executes once in a successful run, including compilation
+entries, fuzz seeds, race flags and diagnostic-parser prerequisites in any batch
+position. A failed/interrupted group fails its job before another group starts
+on that runner; other jobs retain independent completion. Each group's raw log
+and failure classification remain distinct. This changes CI delivery geometry,
+not product authority, protection, test selection or the pre-integration gate.
+
+The in-process Admission Custody command receipt/debit test uses a private
+`testing/synctest` clock so a wall-clock hour transition cannot substitute an
+expiry refusal for its intended output-failure boundary. Genuine crypto, journal
+and file operations remain unchanged. The same test explicitly advances to the
+next hour and requires refusal, no success receipt and the unchanged original
+allocation generation. Native/installed qualification retains its real clock.
+
+### JOIN public declaration preparation
+
+The same root/ext4 `network_signing_native` profile additionally selects
+`TestJoinPreparationNativeTemplateAndRequestLeaveRuntimeAbsent` with the
+independently pinned actual canonical Control. It checks fixed unsigned unit
+properties and independent request bytes, explicit plan trust/path/traffic
+declarations, duplicate/foreign flags and completed-output adoption refusal.
+Declared runtime inputs stay absent throughout public preparation; only the
+exact declared public plan output may be born. The new Installation declaration
+package's deterministic Linux profile independently verifies canonical plan
+bytes, bounded trust/notice grammar, complete retained-path collisions and fixed
+protection. These are public declaration and native output-custody controls;
+they do not authenticate a signed Epoch, Release, duty, spend, allowance or
+installed startup.
