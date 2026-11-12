@@ -5133,3 +5133,19 @@ archived and never reused after that physical mutation. The ordinary Linux
 restores actual bytes and mtime and verifies that changed kernel ctime still
 refuses the original binding. These controls supply no permission to replace
 required complete byte comparisons with metadata-only runtime admission.
+
+### JOIN offline public artifact custody
+
+The checked Linux `network_signing_native` profile selects
+`TestJoinPreparationNativeCanonicalBytesAndInventory` and
+`TestJoinPreparationNativeRetainsFailureAndRejectsAdoption` in canonical Control.
+Run as root on protected ext4 with the shared development lock. Supply the exact
+compiled Control path and SHA-256 as `ARDENTS_JOIN_CONTROL_PROGRAM` and
+`ARDENTS_JOIN_CONTROL_PROGRAM_SHA256`. The compiled command must produce the
+independently stated JOIN descriptor and seven-file inventory; extra/foreign
+resources, changed program bytes and role substitution refuse before output.
+Held-output mutation, cancellation plus real descriptor Close, partial-output
+adoption refusal and fresh positive counterparts retain original errors.
+Ordinary infrastructure/Enrollment tests cover canonical byte/role separation.
+These are offline public-input/output controls, not Release signature, initial
+pin, unit-policy, protected startup, pair operation or installed qualification.

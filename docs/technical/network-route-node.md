@@ -1949,6 +1949,19 @@ copies are handed out only after original checks and must remain private through
 their actual users' joined cleanup. Complete domain retirement and the real
 root start/archive/ACK producer remain separate obligations of their owners.
 
+JOIN public artifact preparation has its own exact descriptor
+`infrastructure-join.json`, template name `ardents-join.service` and resource
+target `ardents/linux-amd64/infrastructure/join`, alongside the Node program
+target. Its closed seven-file Enrollment inventory uses these JOIN names and
+the four unchanged Release metadata files. Canonical Control's separate
+`join prepare-descriptor` and `join prepare-inventory` consumers retain original
+root-controlled native inputs and exclusive bounded output, using shared physical
+read/write mechanisms only. They sign nothing and grant no initial-pin proof,
+Release authority, native unit-policy acceptance, Installation transaction or
+runtime startup. Source and Forwarding readers still refuse JOIN declarations;
+JOIN refuses their descriptors and inventories. Future protected lifecycle
+composition must independently supply every installed admission and join proof.
+
 The bounded first installed Forwarding contract admits only `forwarding`, not
 another Node duty or Source. Its artifact pair uses the exact Node program target
 and `ardents/linux-amd64/infrastructure/forwarding`; its descriptor and initial

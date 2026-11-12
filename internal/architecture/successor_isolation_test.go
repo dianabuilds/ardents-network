@@ -163,6 +163,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"cmd/ardents-control/source_inspection_linux.go",
 			"cmd/ardents-control/source_inspection_linux_test.go",
 			"cmd/ardents-control/source_artifact_linux.go",
+			"cmd/ardents-control/join_artifact_linux.go",
 			"cmd/ardents-control/forwarding_artifact_linux.go",
 			"cmd/ardents-control/forwarding_request_linux.go",
 			"cmd/ardents-control/forwarding_plan_linux.go",
@@ -533,6 +534,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-control/source_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
+			return true
+		}
+		if source == "cmd/ardents-control/join_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
 			return true
 		}
 		if source == "cmd/ardents-control/forwarding_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/forwarding") {

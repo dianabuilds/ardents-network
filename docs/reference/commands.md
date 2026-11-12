@@ -1323,3 +1323,28 @@ READY output is bounded by the earlier of its one-second write bound and the
 original caller context. Terminal reporting keeps its own finite write bound
 after caller retirement. Ordinary cancellation cannot become an invented
 background/output failure; real retained process and cleanup errors remain failed.
+
+## JOIN public artifact preparation
+
+On Linux, root may run these separate bounded offline producers:
+
+```text
+ardents-control join prepare-descriptor IDENTITY VERSION PROGRAM TEMPLATE OUTPUT
+ardents-control join prepare-inventory DISTRIBUTION OUTPUT
+```
+
+The first operation exclusively creates `OUTPUT/infrastructure-join.json`,
+binding exact public program and template bytes. It does not validate the native
+unit policy. The second requires exactly `ardents-node-linux-amd64`,
+`ardents-join.service`, `infrastructure-join.json`, `root.json`, `timestamp.json`,
+`snapshot.json` and `targets.json`, checks descriptor/resource agreement and
+exclusively creates `OUTPUT/infrastructure-enrollment.json`. OUTPUT is a fresh
+protected directory outside the distribution; existing or partial output is
+refused. Original root-controlled regular inputs and ancestors remain checked
+through durable output and physical Close. Public receipts report the operation
+and output digest only.
+
+Neither operation signs metadata, supplies an independently delivered initial
+pin, authenticates a Release, or admits installed JOIN execution. Source and
+Forwarding inventories cannot be substituted. Other platforms refuse before
+input/output effects.

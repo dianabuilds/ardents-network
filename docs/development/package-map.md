@@ -219,6 +219,21 @@ verifier use only the standard library. Release's `CheckAuthorizations` checks
 its own opaque results/original callers and current native floors at handoff.
 Neither changes Endpoint/v3 or adds runtime dependencies.
 
+Canonical Control's separate `join prepare-descriptor` and `join prepare-inventory`
+commands are owned by `cmd/ardents-control/join_artifact_linux.go`. Its exact
+project imports are `internal/successor/enrollment` and
+`internal/successor/installation/infrastructure`, plus the standard library.
+It uses the command's existing native physical readers/output writer without
+borrowing Source or Forwarding permissions. Infrastructure's `join_artifact.go`
+owns only the closed JOIN public descriptor/byte comparison; Enrollment owns its
+separate exact seven-file inventory. The public operations do not validate native
+unit policy, sign, authenticate an initial pin or admit installed startup. Their
+independent canonical oracles use the standard library; the checked
+`network_signing_native` profile exercises actual root/ext4 original input/output
+custody and a pinned compiled Control. Unsupported platforms refuse before input
+or output effects. No Route runtime import or R01 exception is added by these
+public preparation consumers.
+
 `source_start_records_linux.go` independently validates the complete canonical
 first-start transcript: all twenty-two ordered records, native birth continuity
 and archive-before-ACK. The real first-start producer consumes this grammar
