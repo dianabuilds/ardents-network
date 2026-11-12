@@ -433,7 +433,7 @@ func fixtureConfig(value fixture, root string, now time.Time) state.Config {
 		Root: root, LocalRoleStateRoot: root + "-local-roles", NetworkID: value.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
 		ClosedProfileAuthority: value.authorityPublic,
-		Threshold:              1, Now: now,
+		Threshold:              1, Now: now, ClockObservation: now,
 	}
 }
 

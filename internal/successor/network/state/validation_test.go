@@ -34,7 +34,7 @@ func TestOfflineValidationFailsClosed(t *testing.T) {
 				Root: root, NetworkID: value.networkID,
 				Authorities:            map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
 				ClosedProfileAuthority: value.authorityPublic,
-				Threshold:              1, Now: time.Unix(value.now, 0),
+				Threshold:              1, Now: time.Unix(value.now, 0), ClockObservation: time.Unix(value.now, 0),
 			}
 			test.change(&value, &config)
 			store, err := state2.Open(config)
@@ -60,7 +60,7 @@ func TestOpenFailsOnCorruptCurrentGeneration(t *testing.T) {
 		Root: root, NetworkID: value.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
 		ClosedProfileAuthority: value.authorityPublic,
-		Threshold:              1, Now: time.Unix(value.now, 0),
+		Threshold:              1, Now: time.Unix(value.now, 0), ClockObservation: time.Unix(value.now, 0),
 	}
 	store, err := state2.Open(config)
 	if err != nil {
@@ -92,7 +92,7 @@ func TestConfigRejectsUnboundedAutomaticAcquisition(t *testing.T) {
 	value := newFixture(t)
 	base := state2.Config{Root: t.TempDir(), NetworkID: value.networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic}, ClosedProfileAuthority: value.authorityPublic, Threshold: 1,
-		Now: time.Unix(value.now, 0)}
+		Now: time.Unix(value.now, 0), ClockObservation: time.Unix(value.now, 0)}
 	tests := []struct {
 		name string
 		edit func(*state2.Config)
@@ -119,7 +119,7 @@ func TestClosedRouteProfileRequiresPinnedProfileAuthority(t *testing.T) {
 	value := newFixture(t)
 	base := state2.Config{Root: t.TempDir(), NetworkID: value.networkID,
 		Authorities: map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic}, ClosedProfileAuthority: value.authorityPublic, Threshold: 1,
-		Now: time.Unix(value.now, 0), AcceptedProfile: "ardents-route-v3"}
+		Now: time.Unix(value.now, 0), ClockObservation: time.Unix(value.now, 0), AcceptedProfile: "ardents-route-v3"}
 	base.ClosedProfileAuthority = nil
 	if store, err := state2.Open(base); err == nil {
 		_ = store.Close()
@@ -148,7 +148,7 @@ func TestStateOwnsSourceTLSVerificationClock(t *testing.T) {
 	config := state2.Config{Root: root, NetworkID: value.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
 		ClosedProfileAuthority: value.authorityPublic,
-		Threshold:              1, Now: now}
+		Threshold:              1, Now: now, ClockObservation: now}
 	config.Source.VerificationClock = func() time.Time { return now.Add(-time.Hour) }
 	store, err := state2.Open(config)
 	if store != nil {

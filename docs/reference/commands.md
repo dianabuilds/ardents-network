@@ -118,7 +118,9 @@ supplied signed public Network inputs. State verifies both and checks the declar
 Node before the command closes its State/input owners and prints
 `state_accepted:true` with `runtime_authority:false`. The State directory must
 already be empty and owned 0700 by that account. Existing/partial directories
-refuse another initialization. This command opens no private key, participation,
+refuse another initialization. The plan's independent clock observation must
+be fresh and agree with State's clock evidence before Epoch acceptance.
+This command opens no private key, participation,
 spend or Hosting root and supplies no installed Startup or role authority.
 
 `forwarding prepare-template <fresh-output>` writes the fixed
@@ -836,7 +838,8 @@ groups. It consumes the public serving declaration and bounded signed Epoch /
 materialization bundle with original file/ancestor custody, and requires the
 already created runtime-owned 0700 State directory to be empty. New State
 authenticates and durably accepts the bundle under its independently selected
-pins and actual time. The command joins State before releasing inputs and emits
+pins and confirmed time, including the serving declaration's fresh independent
+clock observation. The command joins State before releasing inputs and emits
 only a bounded outcome. It opens no serving/acquisition transport, process Guard,
 Installation Startup or runtime TLS key. Partial failure preserves the resulting
 State files; it supplies no reset, adoption, retry or rollback operation.

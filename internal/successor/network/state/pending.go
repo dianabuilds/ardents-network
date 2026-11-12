@@ -3,7 +3,28 @@ package state
 import (
 	"errors"
 	"fmt"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/network/epoch"
 )
+
+// commitPendingDecision writes the authenticated generation before the
+// control journal can name it. History reconciliation precedes this operation.
+func (s *networkState) commitPendingDecision(decision epoch.Decision, next distributionState) error {
+	newPending := s.pendingDecision == nil
+	if newPending {
+		if err := stageGeneration(s.storage, decision); err != nil {
+			return err
+		}
+	}
+	next.pendingDigest, next.pendingValidFrom = decision.Header.Digest, decision.Header.ValidFrom.Unix()
+	if err := s.commitDistribution(next); err != nil {
+		return err
+	}
+	if newPending {
+		s.pendingDecision = &decision
+	}
+	return nil
+}
 
 func (s *networkState) recoverPendingState() error {
 	state := s.distribution

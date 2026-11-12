@@ -23,7 +23,7 @@ func TestAcceptOfflineGenesisAndRecoverCurrent(t *testing.T) {
 		Authorities:            map[[32]byte]ed25519.PublicKey{fixture.authorityID: fixture.authorityPublic},
 		ClosedProfileAuthority: fixture.authorityPublic,
 		Threshold:              1,
-		Now:                    time.Unix(fixture.now, 0),
+		Now:                    time.Unix(fixture.now, 0), ClockObservation: time.Unix(fixture.now, 0),
 	})
 	if err != nil {
 		t.Fatalf("open empty state: %v", err)
@@ -63,7 +63,7 @@ func TestAcceptOfflineGenesisAndRecoverCurrent(t *testing.T) {
 		Authorities:            map[[32]byte]ed25519.PublicKey{fixture.authorityID: fixture.authorityPublic},
 		ClosedProfileAuthority: fixture.authorityPublic,
 		Threshold:              1,
-		Now:                    time.Unix(fixture.now, 0),
+		Now:                    time.Unix(fixture.now, 0), ClockObservation: time.Unix(fixture.now, 0),
 	})
 	if err != nil {
 		t.Fatalf("reopen state: %v", err)
@@ -89,7 +89,7 @@ func TestAcceptRejectsWrongMaterializationWithoutWriting(t *testing.T) {
 		Authorities:            map[[32]byte]ed25519.PublicKey{fixture.authorityID: fixture.authorityPublic},
 		ClosedProfileAuthority: fixture.authorityPublic,
 		Threshold:              1,
-		Now:                    time.Unix(fixture.now, 0),
+		Now:                    time.Unix(fixture.now, 0), ClockObservation: time.Unix(fixture.now, 0),
 	})
 	if err != nil {
 		t.Fatalf("open state: %v", err)
@@ -111,7 +111,7 @@ func TestOpenRemovesInterruptedStagingAndKeepsNoCurrent(t *testing.T) {
 		Root: root, NetworkID: fixture.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{fixture.authorityID: fixture.authorityPublic},
 		ClosedProfileAuthority: fixture.authorityPublic,
-		Threshold:              1, Now: time.Unix(fixtureNow, 0),
+		Threshold:              1, Now: time.Unix(fixtureNow, 0), ClockObservation: time.Unix(fixtureNow, 0),
 	})
 	if err != nil {
 		t.Fatalf("claim empty owned root: %v", err)
@@ -131,7 +131,7 @@ func TestOpenRemovesInterruptedStagingAndKeepsNoCurrent(t *testing.T) {
 		Authorities:            map[[32]byte]ed25519.PublicKey{fixture.authorityID: fixture.authorityPublic},
 		ClosedProfileAuthority: fixture.authorityPublic,
 		Threshold:              1,
-		Now:                    time.Unix(fixture.now, 0),
+		Now:                    time.Unix(fixture.now, 0), ClockObservation: time.Unix(fixture.now, 0),
 	})
 	if err != nil {
 		t.Fatalf("recover interrupted staging: %v", err)
@@ -162,7 +162,7 @@ func TestOpenRefusesNonEmptyUnownedRootWithoutCleanup(t *testing.T) {
 		Root: root, NetworkID: value.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{value.authorityID: value.authorityPublic},
 		ClosedProfileAuthority: value.authorityPublic,
-		Threshold:              1, Now: time.Unix(value.now, 0),
+		Threshold:              1, Now: time.Unix(value.now, 0), ClockObservation: time.Unix(value.now, 0),
 	})
 	if err == nil {
 		t.Fatal("non-empty unowned root was claimed")
@@ -181,7 +181,7 @@ func TestOpenFailsClosedWhenNonEmptyRootLacksCurrentPointer(t *testing.T) {
 		Root: root, NetworkID: fixture.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{fixture.authorityID: fixture.authorityPublic},
 		ClosedProfileAuthority: fixture.authorityPublic,
-		Threshold:              1, Now: time.Unix(fixture.now, 0),
+		Threshold:              1, Now: time.Unix(fixture.now, 0), ClockObservation: time.Unix(fixture.now, 0),
 	}
 	store, err := state.Open(config)
 	if err != nil {
@@ -222,7 +222,7 @@ func TestOpenRejectsMismatchedAuthorityIdentifier(t *testing.T) {
 		Root: t.TempDir(), NetworkID: fixture.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{wrongID: fixture.authorityPublic},
 		ClosedProfileAuthority: fixture.authorityPublic,
-		Threshold:              1, Now: time.Unix(fixture.now, 0),
+		Threshold:              1, Now: time.Unix(fixture.now, 0), ClockObservation: time.Unix(fixture.now, 0),
 	})
 	if err == nil {
 		t.Fatal("mismatched authority identifier was accepted")
@@ -237,7 +237,7 @@ func TestSuccessorChainSurvivesRestart(t *testing.T) {
 		Root: t.TempDir(), NetworkID: genesis.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{genesis.authorityID: genesis.authorityPublic},
 		ClosedProfileAuthority: genesis.authorityPublic,
-		Threshold:              1, Now: time.Unix(genesis.now, 0),
+		Threshold:              1, Now: time.Unix(genesis.now, 0), ClockObservation: time.Unix(genesis.now, 0),
 	}
 	store, err := state.Open(config)
 	if err != nil {
@@ -286,7 +286,7 @@ func TestStateRootLeaseExcludesSecondStore(t *testing.T) {
 		Root: t.TempDir(), NetworkID: fixture.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{fixture.authorityID: fixture.authorityPublic},
 		ClosedProfileAuthority: fixture.authorityPublic,
-		Threshold:              1, Now: time.Unix(fixture.now, 0),
+		Threshold:              1, Now: time.Unix(fixture.now, 0), ClockObservation: time.Unix(fixture.now, 0),
 	}
 	first, err := state.Open(config)
 	if err != nil {
@@ -312,7 +312,7 @@ func TestDistributionStateRepairsStaleCurrentMirror(t *testing.T) {
 		Root: t.TempDir(), NetworkID: genesis.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{genesis.authorityID: genesis.authorityPublic},
 		ClosedProfileAuthority: genesis.authorityPublic,
-		Threshold:              1, Now: time.Unix(genesis.now, 0),
+		Threshold:              1, Now: time.Unix(genesis.now, 0), ClockObservation: time.Unix(genesis.now, 0),
 	}
 	store, err := state.Open(config)
 	if err != nil {
@@ -351,7 +351,7 @@ func TestOpenRequiresDistributionJournalForActiveEpoch(t *testing.T) {
 		Root: root, NetworkID: fixture.networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{fixture.authorityID: fixture.authorityPublic},
 		ClosedProfileAuthority: fixture.authorityPublic,
-		Threshold:              1, Now: time.Unix(fixture.now, 0),
+		Threshold:              1, Now: time.Unix(fixture.now, 0), ClockObservation: time.Unix(fixture.now, 0),
 	}
 	store, err := state.Open(config)
 	if err != nil {

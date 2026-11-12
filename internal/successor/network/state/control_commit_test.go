@@ -277,7 +277,7 @@ func newVerifiedConflictFixture(t *testing.T, pending bool) (*networkState, netw
 	s, err := Open(Config{Root: t.TempDir(), NetworkID: networkID,
 		Authorities:            map[[32]byte]ed25519.PublicKey{sha256.Sum256(public): public},
 		ClosedProfileAuthority: public,
-		Threshold:              1, Now: now})
+		Threshold:              1, Now: now, ClockObservation: now})
 	if err != nil {
 		t.Fatal(err)
 	}

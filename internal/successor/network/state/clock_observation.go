@@ -26,7 +26,14 @@ func trustedObservation(config config, state distributionState) (networkdomain.T
 	if config.clock == nil || config.observe == nil {
 		return networkdomain.TrustedTime{}, errClockUncertain
 	}
-	evidence := networkdomain.ClockEvidence{Wall: config.clock(), Monotonic: config.anchorWall.Add(time.Since(config.anchorMono)), Independent: config.observe()}
+	return confirmClockEvidence(sampleClockEvidence(config), state)
+}
+
+func sampleClockEvidence(config config) networkdomain.ClockEvidence {
+	return networkdomain.ClockEvidence{Wall: config.clock(), Monotonic: config.anchorWall.Add(time.Since(config.anchorMono)), Independent: config.observe()}
+}
+
+func confirmClockEvidence(evidence networkdomain.ClockEvidence, state distributionState) (networkdomain.TrustedTime, error) {
 	observation, err := networkdomain.ConfirmTime(evidence, state.trustedTimeFloor)
 	if err != nil {
 		return networkdomain.TrustedTime{}, errClockUncertain

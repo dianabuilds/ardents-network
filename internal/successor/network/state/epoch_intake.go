@@ -49,8 +49,3 @@ var (
 	errPersistentStateConflict = errors.New("network state has a persistent conflict")
 	errPendingEpochConflict    = errors.New("candidate Epoch conflicts with the durable pending Epoch")
 )
-
-func (s *networkState) allowCandidateTransition(candidate epoch2.Decision) error {
-	_, _, err := s.selectEpochHistory([]epoch2.Decision{candidate})
-	return err
-}
