@@ -5149,3 +5149,25 @@ adoption refusal and fresh positive counterparts retain original errors.
 Ordinary infrastructure/Enrollment tests cover canonical byte/role separation.
 These are offline public-input/output controls, not Release signature, initial
 pin, unit-policy, protected startup, pair operation or installed qualification.
+
+PR matrix delivery preserves each selected package/pattern/race group, its
+existing16-test ordinary bound, two-test expensive Endpoint bound and dedicated
+observation cell. The [GitHub matrix limit](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_idstrategymatrix)
+is256 jobs. Larger selections place consecutive unchanged groups into at most256
+jobs, with six minutes of outer envelope per group and no more than60 groups
+per job. Each original group still has Go's five-minute timeout plus the original
+330-second external bound and ten-second final kill interval; the job envelope
+is their aggregate, not extra time for an individual group. Parallelism remains16.
+Every selected group executes once in a successful run, including compilation
+entries, fuzz seeds, race flags and diagnostic-parser prerequisites in any batch
+position. A failed/interrupted group fails its job before another group starts
+on that runner; other jobs retain independent completion. Each group's raw log
+and failure classification remain distinct. This changes CI delivery geometry,
+not product authority, protection, test selection or the pre-integration gate.
+
+The in-process Admission Custody command receipt/debit test uses a private
+`testing/synctest` clock so a wall-clock hour transition cannot substitute an
+expiry refusal for its intended output-failure boundary. Genuine crypto, journal
+and file operations remain unchanged. The same test explicitly advances to the
+next hour and requires refusal, no success receipt and the unchanged original
+allocation generation. Native/installed qualification retains its real clock.

@@ -90,12 +90,7 @@ func TestPRSelectionFollowsConsumersAndKeepsUnrelatedTestsOut(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var matrix struct {
-		Include []struct{ Package, Run string }
-	}
-	if err := json.Unmarshal(body, &matrix); err != nil {
-		t.Fatal(err)
-	}
+	matrix := decodedPRMatrixGroups(t, body)
 	selected := make(map[string]int)
 	consumerGroups := 0
 	endpointSelected := make(map[string]int)
@@ -213,12 +208,7 @@ func TestPRSelectionMapsQualificationFixturesToBoundedOwners(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var matrix struct {
-		Include []struct{ Package, Run string }
-	}
-	if err := json.Unmarshal(body, &matrix); err != nil {
-		t.Fatal(err)
-	}
+	matrix := decodedPRMatrixGroups(t, body)
 	joined := ""
 	for _, selected := range matrix.Include {
 		joined += selected.Package + " " + selected.Run + "\n"
@@ -382,12 +372,7 @@ func TestPRSelectionDeletedPackageAndDependencyErrors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var matrix struct {
-				Include []struct{ Package, Run string }
-			}
-			if err := json.Unmarshal(body, &matrix); err != nil {
-				t.Fatal(err)
-			}
+			matrix := decodedPRMatrixGroups(t, body)
 			architecture, consumer := false, false
 			for _, entry := range matrix.Include {
 				if strings.Contains(entry.Run, "TestUnrelated") || strings.Contains(entry.Package, "/source") {
@@ -468,12 +453,7 @@ func TestPRSelectionExecutesAffectedFuzzSeeds(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			var matrix struct {
-				Include []struct{ Package, Run string }
-			}
-			if err := json.Unmarshal(body, &matrix); err != nil {
-				t.Fatal(err)
-			}
+			matrix := decodedPRMatrixGroups(t, body)
 			selected := map[string]int{}
 			groups := 0
 			for _, entry := range matrix.Include {
@@ -512,3 +492,123 @@ func TestPRSelectionExecutesAffectedFuzzSeeds(t *testing.T) {
 		})
 	}
 }
+
+// Project only after checking the actual job envelope. Existing behavioral
+// oracles still examine the same exact groups, including dedicated/expensive
+// grouping and fuzz seeds; batching cannot hide missing or duplicated groups.
+func decodedPRMatrixGroups(t *testing.T, raw []byte) struct {
+	Include []struct{ Package, Run string }
+} {
+	t.Helper()
+	var matrix struct {
+		Include []struct {
+			ID                int `json:"id"`
+			Checks            []struct{ Package, Run string }
+			TimeoutMinutes    int  `json:"timeout_minutes"`
+			DiagnosticParsers bool `json:"diagnostic_parsers"`
+		}
+	}
+	if err := json.Unmarshal(raw, &matrix); err != nil {
+		t.Fatal(err)
+	}
+	var projected struct {
+		Include []struct{ Package, Run string }
+	}
+	if len(matrix.Include) > 256 {
+		t.Fatal("job matrix exceeds platform bound")
+	}
+	for i, job := range matrix.Include {
+		if job.ID != i || len(job.Checks) == 0 || len(job.Checks) > 60 || job.TimeoutMinutes != 6*len(job.Checks) {
+			t.Fatalf("invalid group envelope: %+v", job)
+		}
+		parsers := false
+		for _, group := range job.Checks {
+			parsers = parsers || strings.HasSuffix(group.Package, "/internal/architecture")
+		}
+		if parsers != job.DiagnosticParsers {
+			t.Fatal("batch omitted required diagnostic parsers")
+		}
+		projected.Include = append(projected.Include, job.Checks...)
+	}
+	return projected
+}
+
+func TestPRSelectionMatrixPreservesGroupsAcrossPlatformCapacity(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := t.TempDir()
+	var files []string
+	for _, name := range []string{"select-pr-checks.go", "select-pr-check-registry.go"} {
+		raw, err := os.ReadFile(filepath.Join(root, "scripts", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(fixture, name)
+		if err := os.WriteFile(path, raw, 0600); err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, path)
+	}
+	harness := filepath.Join(fixture, "matrix_test.go")
+	if err := os.WriteFile(harness, []byte(prMatrixCapacityHarness), 0600); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command("go", append([]string{"test", "-count=1"}, append(files, harness)...)...)
+	command.Env = isolatedFixtureEnvironment()
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("matrix capacity regression: %v\n%s", err, output)
+	}
+}
+
+const prMatrixCapacityHarness = `
+package main
+
+import (
+ "encoding/json"
+ "fmt"
+ "os"
+ "path/filepath"
+ "testing"
+)
+
+func TestExactOriginalGroupsWithinJobEnvelope(t *testing.T) {
+ for _, count:=range []int{0,1,255,256,257,297,512,1000} {
+  t.Run(fmt.Sprint(count),func(t *testing.T){
+   checks:=make([]check,0,count)
+   for i:=0;i<count;i++ {
+    pkg:=fmt.Sprintf("example.com/check/pkg%04d",i)
+    if i==count-1 {pkg="example.com/check/internal/architecture"}
+    run:=fmt.Sprintf("^(TestExact%04d)$",i)
+    checks=append(checks,check{pkg:pkg,run:run,race:i%2==0})
+   }
+   path:=filepath.Join(t.TempDir(),"matrix.json")
+   if err:=writeMatrix(path,checks);err!=nil {t.Fatal(err)}
+   raw,err:=os.ReadFile(path);if err!=nil {t.Fatal(err)}
+   var matrix struct {Include []struct {
+    ID int
+    Checks []struct {ID int;Package,Run string;Race bool}
+    Minutes int ` + "`json:\"timeout_minutes\"`" + `
+    Parsers bool ` + "`json:\"diagnostic_parsers\"`" + `
+   }}
+   if err:=json.Unmarshal(raw,&matrix);err!=nil {t.Fatal(err)}
+   if len(matrix.Include)>256 {t.Fatal("platform capacity exceeded")}
+   next:=0
+   for i,job:=range matrix.Include {
+    if job.ID!=i || len(job.Checks)==0 || len(job.Checks)>60 || job.Minutes!=6*len(job.Checks) {t.Fatalf("invalid envelope: %+v",job)}
+    parsers:=false
+    for _,group:=range job.Checks {
+     if next>=count {t.Fatal("duplicated group")}
+     original:=checks[next]
+     if group.ID!=next || group.Package!=original.pkg || group.Run!=original.run || group.Race!=original.race {t.Fatalf("original group changed or omitted: %+v vs %+v",group,original)}
+     parsers=parsers||group.Package=="example.com/check/internal/architecture"
+     next++
+    }
+    if job.Parsers!=parsers {t.Fatal("required parser omitted in second batch position")}
+   }
+   if next!=count {t.Fatalf("lost groups: %d/%d",next,count)}
+  })
+ }
+}
+`

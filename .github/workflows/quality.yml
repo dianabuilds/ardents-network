@@ -79,7 +79,7 @@ jobs:
       matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
     name: affected-${{ matrix.id }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 6
+    timeout-minutes: ${{ matrix.timeout_minutes }}
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -89,54 +89,74 @@ jobs:
           go-version: 1.27.4
           cache: true
       - name: Install standard Go diagnostic parsers
-        if: matrix.package == 'github.com/dianabuilds/ardents-network/internal/architecture'
+        if: matrix.diagnostic_parsers
         run: make tools-install DIAGNOSTIC_PARSERS_ONLY=1
-      - name: Run selected group with bounded timeout
+      - name: Run original bounded check groups
         env:
-          TEST_PACKAGE: ${{ matrix.package }}
-          TEST_RUN: ${{ matrix.run }}
-          TEST_RACE: ${{ matrix.race }}
+          SELECTED_CHECKS: ${{ toJSON(matrix.checks) }}
         run: |
-          test_command=(go)
-          if [[ "$TEST_PACKAGE" == "github.com/dianabuilds/ardents-network/tests/e2e/node" ]]; then
-            export ARDENTS_E2E_COMMAND_ROOT="$RUNNER_TEMP/e2e-commands"
-            mkdir -p "$ARDENTS_E2E_COMMAND_ROOT"
-            go build -trimpath -buildvcs=false -o "$ARDENTS_E2E_COMMAND_ROOT/" ./cmd/ardents ./cmd/ardents-node ./cmd/ardents-control ./cmd/ardents-custody
-            export ARDENTS_NODE_SCOPE_PROFILE=system
-            export GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)"
-            test_command=(sudo --preserve-env=ARDENTS_E2E_COMMAND_ROOT,ARDENTS_NODE_SCOPE_PROFILE,GOCACHE,GOMODCACHE,GOTOOLCHAIN,GOFLAGS "$(command -v go)")
-          fi
-          args=(-json -count=1 -timeout=5m -run "$TEST_RUN")
-          if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
-          test_log="$RUNNER_TEMP/selected-test.json"
-          set +e
-          timeout --signal=QUIT --kill-after=10s 330s "${test_command[@]}" test "${args[@]}" "$TEST_PACKAGE" | tee "$test_log"
-          status=${PIPESTATUS[0]}
-          set -e
-          if (( status != 0 )); then
-            failure=unclassified
-            if grep -q 'panic: test timed out' "$test_log"; then failure=go-test-timeout
-            elif grep -q 'race detected' "$test_log"; then failure=race-detected
-            elif grep -q '"FailedBuild"' "$test_log" && grep -q 'proxy.golang.org' "$test_log"; then failure=dependency-fetch
-            elif grep -q '"FailedBuild"' "$test_log"; then failure=go-build
-            elif grep -q '\.CloseInput:' "$test_log"; then failure=retained-close-input
-            elif grep -q '\.Done:.*run=.*context deadline exceeded' "$test_log"; then failure=retained-done-timeout
-            elif grep -q '\.Done:.*run=.*context canceled' "$test_log"; then failure=retained-done-canceled
-            elif grep -q '\.Done:.*run=.*integrity violation' "$test_log"; then failure=retained-done-integrity
-            elif grep -q '\.Done:.*run=.*invalid request' "$test_log"; then failure=retained-done-invalid-request
-            elif grep -q '\.Done:.*run=.*recovery' "$test_log"; then failure=retained-done-recovery
-            elif grep -q '\.Done:.*run=.*text Service job retired' "$test_log"; then failure=retained-done-job-retired
-            elif grep -q '\.Done:.*run=<nil>' "$test_log"; then failure=retained-done-cleanup
-            elif grep -q '\.Done:' "$test_log"; then failure=retained-done-other
-            elif grep -q '\.Close:' "$test_log"; then failure=retained-close
-            elif grep -q ' setup refill ' "$test_log"; then failure=qualification-refill
-            elif grep -q ' JOIN ' "$test_log"; then failure=qualification-join
-            elif grep -q ' Introduction ' "$test_log"; then failure=qualification-introduction
-            elif grep -q 'retained setup reached' "$test_log"; then failure=retained-setup-other
-            fi
-            echo "::error title=${{ matrix.name }} failed::selected test failure category: $failure"
-          fi
-          exit "$status"
+          set -euo pipefail
+          python3 - > "$RUNNER_TEMP/check-groups" <<'PYTHON'
+          import json, os, sys
+          checks = json.loads(os.environ["SELECTED_CHECKS"])
+          if not isinstance(checks, list) or not 1 <= len(checks) <= 60:
+              raise RuntimeError("finite selected check groups required")
+          for check in checks:
+              if type(check["id"]) is not int or check["id"] < 0 or type(check["race"]) is not bool:
+                  raise RuntimeError("exact typed check declaration required")
+              fields = [str(check["id"]), check["package"], check["run"], str(check["race"]).lower()]
+              if any(not isinstance(field, str) or "\0" in field for field in fields):
+                  raise RuntimeError("closed check fields required")
+              sys.stdout.buffer.write(("\0".join(fields) + "\0").encode("utf-8"))
+          PYTHON
+          while IFS= read -r -d '' TEST_ID && IFS= read -r -d '' TEST_PACKAGE && IFS= read -r -d '' TEST_RUN && IFS= read -r -d '' TEST_RACE; do
+            # A failed group exits before another group can use this runner.
+            # Its environment and root Node scope stay local to this subshell.
+            (
+              echo "::group::Selected check group $TEST_ID $TEST_PACKAGE"
+              test_command=(go)
+              if [[ "$TEST_PACKAGE" == "github.com/dianabuilds/ardents-network/tests/e2e/node" ]]; then
+                export ARDENTS_E2E_COMMAND_ROOT="$RUNNER_TEMP/e2e-commands"
+                mkdir -p "$ARDENTS_E2E_COMMAND_ROOT"
+                go build -trimpath -buildvcs=false -o "$ARDENTS_E2E_COMMAND_ROOT/" ./cmd/ardents ./cmd/ardents-node ./cmd/ardents-control ./cmd/ardents-custody
+                export ARDENTS_NODE_SCOPE_PROFILE=system
+                export GOCACHE="$(go env GOCACHE)" GOMODCACHE="$(go env GOMODCACHE)"
+                test_command=(sudo --preserve-env=ARDENTS_E2E_COMMAND_ROOT,ARDENTS_NODE_SCOPE_PROFILE,GOCACHE,GOMODCACHE,GOTOOLCHAIN,GOFLAGS "$(command -v go)")
+              fi
+              args=(-json -count=1 -timeout=5m -run "$TEST_RUN")
+              if [[ "$TEST_RACE" == true ]]; then args+=(-race); fi
+              test_log="$RUNNER_TEMP/selected-test-$TEST_ID.json"
+              set +e
+              timeout --signal=QUIT --kill-after=10s 330s "${test_command[@]}" test "${args[@]}" "$TEST_PACKAGE" | tee "$test_log"
+              status=${PIPESTATUS[0]}
+              set -e
+              if (( status != 0 )); then
+                failure=unclassified
+                if grep -q 'panic: test timed out' "$test_log"; then failure=go-test-timeout
+                elif grep -q 'race detected' "$test_log"; then failure=race-detected
+                elif grep -q '"FailedBuild"' "$test_log" && grep -q 'proxy.golang.org' "$test_log"; then failure=dependency-fetch
+                elif grep -q '"FailedBuild"' "$test_log"; then failure=go-build
+                elif grep -q '\.CloseInput:' "$test_log"; then failure=retained-close-input
+                elif grep -q '\.Done:.*run=.*context deadline exceeded' "$test_log"; then failure=retained-done-timeout
+                elif grep -q '\.Done:.*run=.*context canceled' "$test_log"; then failure=retained-done-canceled
+                elif grep -q '\.Done:.*run=.*integrity violation' "$test_log"; then failure=retained-done-integrity
+                elif grep -q '\.Done:.*run=.*invalid request' "$test_log"; then failure=retained-done-invalid-request
+                elif grep -q '\.Done:.*run=.*recovery' "$test_log"; then failure=retained-done-recovery
+                elif grep -q '\.Done:.*run=.*text Service job retired' "$test_log"; then failure=retained-done-job-retired
+                elif grep -q '\.Done:.*run=<nil>' "$test_log"; then failure=retained-done-cleanup
+                elif grep -q '\.Done:' "$test_log"; then failure=retained-done-other
+                elif grep -q '\.Close:' "$test_log"; then failure=retained-close
+                elif grep -q ' setup refill ' "$test_log"; then failure=qualification-refill
+                elif grep -q ' JOIN ' "$test_log"; then failure=qualification-join
+                elif grep -q ' Introduction ' "$test_log"; then failure=qualification-introduction
+                elif grep -q 'retained setup reached' "$test_log"; then failure=retained-setup-other
+                fi
+                echo "::error title=Selected check group failed::selected test failure category: $failure"
+              fi
+              echo "::endgroup::"
+              exit "$status"
+            )
+          done < "$RUNNER_TEMP/check-groups"
   full:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
