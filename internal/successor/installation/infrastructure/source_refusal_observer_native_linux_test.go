@@ -146,7 +146,7 @@ func readSourceRefusalFDFlags(pid int, fd string) (uint64, error) {
 	return 0, errors.New("original descriptor flags missing")
 }
 
-// Go1.27.3 src/runtime/cgroup_linux.go defaultGOMAXPROCSInit and
+// Go1.27.4 src/runtime/cgroup_linux.go defaultGOMAXPROCSInit and
 // src/internal/runtime/cgroup/cgroup_linux.go OpenCPU retain the read-only
 // cpu.max descriptor for process lifetime, even with explicit GOMAXPROCS.
 // Capture its actual descriptor/inode/flags before Source operation entry;

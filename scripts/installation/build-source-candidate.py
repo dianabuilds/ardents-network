@@ -129,16 +129,16 @@ def main():
     p.output.mkdir(mode=0o700)  # No existing directory, reset or prefix adoption.
     env = os.environ.copy()
     env.update(GOENV="off", GOTOOLCHAIN="local", GOFLAGS="-mod=readonly", CGO_ENABLED="0", GOTELEMETRY="off", GOPROXY="off", GOSUMDB="off", GOOS="linux", GOARCH="amd64", GOAMD64="v1", GOEXPERIMENT="", GOWORK="off")
-    if command(["go", "version"], root, env) != b"go version go1.27.3 linux/amd64\n":
-        raise RuntimeError("selected Go1.27.3 Linux-amd64 toolchain required")
+    if command(["go", "version"], root, env) != b"go version go1.27.4 linux/amd64\n":
+        raise RuntimeError("selected Go1.27.4 Linux-amd64 toolchain required")
     command(["go", "mod", "verify"], root, env)
     used_modules, used_packages = compiled_dependencies(command(["go", "list", "-deps", "-json", *["./cmd/" + name for name in COMMANDS]], root, env))
     dependency = canonical(used_modules)
     write_new(p.output / "modules.json", dependency)
     sbom = canonical({"schema": "ardents-source-build-sbom-v1", "source_revision": p.source_revision,
-                      "toolchain": "go1.27.3 linux/amd64", "commands": list(COMMANDS), "modules": used_modules, "package_imports": used_packages})
+                      "toolchain": "go1.27.4 linux/amd64", "commands": list(COMMANDS), "modules": used_modules, "package_imports": used_packages})
     write_new(p.output / "sbom.json", sbom)
-    recipe = {"source_manifest_sha256": p.source_manifest_sha256, "toolchain": "go1.27.3 linux/amd64",
+    recipe = {"source_manifest_sha256": p.source_manifest_sha256, "toolchain": "go1.27.4 linux/amd64",
               "python_version": platform.python_version(), "python_executable_sha256": file_digest(Path(sys.executable).resolve()),
               "flags": FLAGS, "cgo_enabled": False, "module_mode": "readonly", "modules_sha256": digest(dependency),
               "go_mod_sha256": file_digest(root / "go.mod"), "go_sum_sha256": file_digest(root / "go.sum")}

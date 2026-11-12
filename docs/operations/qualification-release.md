@@ -20,7 +20,7 @@ unchanged. Never use diagnostic keys as the operational release authority.
 under the outside controller's original development lock and joined build scope.
 The complete read-only source manifest records each file's `sha256` and Git
 `mode` (`100644` or `100755`). The tool checks both bytes and modes, the selected
-Go1.27.3 Linux-amd64 toolchain, module integrity and actual compiled dependency
+Go1.27.4 Linux-amd64 toolchain, module integrity and actual compiled dependency
 closure. It retains both executions, canonical build inputs and a scoped SBOM;
 matching output grants no independent-builder or installed qualification claim.
 An unfinished output is preserved and cannot be adopted. A dirty preliminary
@@ -68,7 +68,7 @@ receipt and separate direct acceptance before execution.
 `python3 -I -S scripts/installation/build-source-candidate.py
 --source-manifest PATH --source-manifest-sha256 SHA256 --source-revision REVISION
 --output FRESH_OUTPUT` builds the fixed five-command inventory twice with the
-selected Go1.27.3 Linux-amd64 toolchain, no cgo and canonical flags. The outside
+selected Go1.27.4 Linux-amd64 toolchain, no cgo and canonical flags. The outside
 controller retains the common development lock and whole build-scope join,
 supplies a read-only complete source snapshot, independently pinned manifest
 and checked module cache, and keeps output outside the repository. No network

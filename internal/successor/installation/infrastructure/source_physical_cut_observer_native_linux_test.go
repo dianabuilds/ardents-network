@@ -103,7 +103,7 @@ func sourcePhysicalSameProgram(group int, original os.FileInfo) (bool, error) {
 	return err == nil && os.SameFile(original, actual), err
 }
 
-// The selected Go1.27.3 toolchain's src/cmd/compile/abi-internal.md assigns the
+// The selected Go1.27.4 toolchain's src/cmd/compile/abi-internal.md assigns the
 // receiver to RAX and string arguments to RBX/RCX and RDI/RSI on amd64. The
 // observer separately checks that exact build version before using these reads.
 func sourcePhysicalString(tid int, address, size uint64, maximum int) (string, error) {
@@ -131,7 +131,7 @@ func sourcePhysicalWord(tid int, base uint64, offset uintptr) (uint64, error) {
 	return binary.LittleEndian.Uint64(raw[:]), nil
 }
 
-// The exact Go1.27.3 linux/amd64 os.File argument contains *os.file and its
+// The exact Go1.27.4 linux/amd64 os.File argument contains *os.file and its
 // poll.FD.Sysfd. Derive offsets from the same toolchain's real types, without
 // unsafe or writes to the tracee. Bind that live descriptor to the independently
 // opened journal, rather than infer the Sync target from visible bytes alone.
