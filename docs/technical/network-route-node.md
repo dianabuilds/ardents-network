@@ -107,6 +107,14 @@ The shared successor listener gives each arriving connection its own bounded
 handshake/first-stream interval. Waiting without a peer does not consume that
 interval or make the next valid peer inherit an expired deadline. Issuer, forwarding and resolution consumers use this interface; current State classification and
 subsequent HELLO/admission deadlines remain separate checks.
+The TCP shared listener retains finite concurrent authentication and each actual
+arrival's original bound. A canceled/closed Accept cannot dispatch or latch that
+bound. Queued successful authentication is still listener-owned until the exact
+original waiter passes handoff admission. Listener Close denies first, interrupts
+and joins accepting/authenticating/waiting users, then closes queued carriers;
+late native Close failures remain in the retained result. Composition still
+joins every returned connection before releasing domain resources. This neither
+raises handshake capacity nor renews Route/Admission setup deadlines.
 For a retained forwarding Carrier, one exact-key creator owns outer HELLO/ACCEPT
 I/O; same-key callers wait for that terminal result and receive the same live
 session only when their leases name the same incarnation. A blocked creator

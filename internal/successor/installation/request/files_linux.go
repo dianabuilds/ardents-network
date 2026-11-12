@@ -153,7 +153,10 @@ func (h Files) CheckClock(path string) (returned error) {
 	p.ioMu.Lock()
 	defer p.ioMu.Unlock()
 	defer func() { p.record(returned) }()
-	if err := errors.Join(p.local(), p.links()); err != nil {
+	if err := p.local(); err != nil {
+		return err
+	}
+	if err := p.links(); err != nil {
 		return err
 	}
 	parent := p.byPath[filepath.Dir(path)]
@@ -164,7 +167,11 @@ func (h Files) CheckClock(path string) (returned error) {
 	if err != nil {
 		return err
 	}
-	defer func() { returned = errors.Join(returned, file.Close()) }()
+	defer func() {
+		if err := file.Close(); err != nil {
+			returned = errors.Join(returned, err)
+		}
+	}()
 	info, err := file.Stat()
 	if err != nil {
 		return err
@@ -176,6 +183,9 @@ func (h Files) CheckClock(path string) (returned error) {
 	named, err := os.Lstat(path)
 	if err != nil || !os.SameFile(info, named) || info.Mode() != named.Mode() {
 		return errors.Join(ErrChanged, err)
+	}
+	if p.observe != nil {
+		p.observe("clock", file)
 	}
 	if err := p.links(); err != nil {
 		return err

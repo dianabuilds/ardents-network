@@ -263,6 +263,13 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Disclosure and diagnostics | Bounded public catalog verification, process/timeline measurements, inspection and command projections; current `alphacontrol`, `diagnostics` | Catalog verification never authorizes State, Release or runtime work; observations never decide admission or create a global cross-role trace. These are supporting mechanisms, not a generic Control authority |
 | Qualification | Selected Run/workload composition, observers, measurements, completion barriers and retained reports; current `qualification` and `application/streamqualification` | Qualification is a proof producer with its own selected environment, not an ordinary Job, a permission issuer or a runtime domain substitute. A passing module test cannot qualify an installed product |
 
+Route's shared TLS listener owns original socket admission, finite concurrent
+authentication, queued authenticated carriers and their actual joined Close.
+Cancellation before admission cannot dispatch work or latch the original bound;
+queued transfer rechecks its original waiter and owner. No new authority or
+capacity follows. Composition joins returned carriers before semantic roots;
+listener Close retains and joins all untransferred users and physical errors.
+
 ## Node composition: original lifetime boundary
 
 The directly authorized installed Forwarding composition is confined to

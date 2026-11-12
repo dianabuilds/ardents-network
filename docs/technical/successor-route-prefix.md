@@ -29,6 +29,15 @@ from the already selected profile, without fallback. The former `carrier`
 package is removed; shared actual-adapter behavior tests belong to the actual opening/composition
 owner and exercise TCP/TLS plus deferred-QUIC refusal of the lower contract. Lower transport
 imports neither adapter, including in tests.
+The shared TCP listener retains one original accepting lifetime and finite
+concurrent authentication capacity. Each native arrival keeps its original
+at-most-ten-second bound; scheduling cannot renew it. Already canceled or closed
+Accept callers neither dispatch nor latch a timeout. An authenticated queued
+carrier remains listener-owned until the original waiter passes its handoff
+check. Close seals admission, interrupts original acceptance/authentication,
+joins all waiters and closes untransferred carriers before publishing its
+retained native result. A late physical Close error remains distinct from a
+peer refusal; cancellation or a completed handshake cannot erase it.
 `channel` owns portable parent/child framing, finite credit/queues, serialized
 physical output and joined retirement. `prefix` owns its exact generations and
 terminal openings; `join` and `introduction` own their holder operations.

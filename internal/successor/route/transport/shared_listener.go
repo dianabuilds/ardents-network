@@ -31,8 +31,10 @@ type ClosedSharedCarrier struct {
 type ClosedSharedPeerVerifier func([32]byte) bool
 
 // ClosedSharedCarrierListener owns one socket and finite handshake capacity.
-// Accept bounds authentication from arrival, not listener idle time, by at most
-// ten seconds and its caller's context. Close interrupts idle acceptance;
+// Authentication stays bounded from arrival, not listener idle time, by at most
+// ten seconds within that finite capacity, so one stalled peer consumes only
+// its own slot; the caller's context bounds its wait for the next classified
+// arrival. Close interrupts idle acceptance and in-flight handshakes;
 // composition joins returned connections before releasing domain resources.
 type ClosedSharedCarrierListener interface {
 	Accept(context.Context, time.Duration) (ClosedSharedCarrier, error)
