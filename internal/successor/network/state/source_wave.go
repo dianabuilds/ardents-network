@@ -165,23 +165,13 @@ func (s *networkState) commitDeferredSourceWave(now time.Time, selected epoch.De
 }
 
 func (s *networkState) commitPendingSourceWave(now time.Time, selected epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
-	newPending := s.pendingDecision == nil
-	if newPending {
-		if err := stageGeneration(s.storage, selected); err != nil {
-			return Snapshot{}, err
-		}
-	}
 	state := s.distribution
 	state.observedEpochs, state.observedDigests = summary.observedEpochs, summary.observedDigests
 	if err := finishWaveState(&state, now, summary.outcomes); err != nil {
 		return Snapshot{}, err
 	}
-	state.pendingDigest, state.pendingValidFrom = selected.Header.Digest, selected.Header.ValidFrom.Unix()
-	if err := s.commitDistribution(state); err != nil {
+	if err := s.commitPendingDecision(selected, state); err != nil {
 		return Snapshot{}, err
-	}
-	if newPending {
-		s.pendingDecision = &selected
 	}
 	return s.snapshotWithDistribution(now), nil
 }

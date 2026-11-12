@@ -87,6 +87,12 @@ signed Epoch/profile/Records and owns all runtime currentness and floors.
   continuity and independent clock evidence. Network owns the two-second
   confidence bound and persisted whole-second floor. It never lowers that
   floor to accommodate a clock correction. The application owns sampling.
+  Honest limitation: the default file-mtime clock observer is stamped by the
+  same local kernel realtime clock as the wall sample, so its two-second
+  agreement check detects rollback and staleness but is liveness-only against
+  a same-machine forward clock corruption; a composition requiring forward
+  independence supplies an `ObserveClock` fed from a genuinely external time
+  source.
 - `AcceptedState` binds the authenticated Epoch, accepted generation, profile
   identity/window, copied public issuer inventory and profile-bound membership.
   Its `ProfileFacts` requires the selected issuer's exact signed Node/duty
@@ -343,6 +349,15 @@ committed View before history reconciliation. Successor checks must not discard
 a signed second identity at a retained number before the domain sees it. Live
 schema, requested object/index and time checks still precede acceptance; invalid
 signatures or a different Network cannot create an authenticated conflict.
+
+Offline intake requires confirmed time before verification and rechecks it
+before publishing. A signed validity start may be used to authenticate future
+bytes, but cannot serve as clock evidence. Offline activation requires both
+the monotonic estimate and independent observation to have reached that start;
+expiry uses confirmed time. A future genesis leaves no accepted generation.
+A future successor is retained as pending; only a complete Source wave can
+promote that exact pending digest. Offline intake never changes the retained
+time floor, including on replay, pending publication, or authenticated conflict.
 
 A discovered conflict must be committed or the live owner must retire. The
 application retains the original failure and joins its work during Close.

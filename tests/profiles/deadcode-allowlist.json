@@ -77,6 +77,15 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/successor/network/state.networkState.Accept"
+        ],
+        "classification": "Linux offline State preparation with portable acceptance tests",
+        "rationale": "Canonical Control Source and Forwarding offline State preparation genuinely call Accept on Linux. The portable network accept-epoch command now uses AcceptEpoch to report whether the supplied Epoch is pending. Windows has no native Source or Forwarding preparer, so only this convenience method is production-unreachable there. Its accepted clock, history and floor behavior remains exercised in both platform test analyses. No Linux production allowance or Windows native/runtime support is granted.",
+        "owner": "Product Owner and Codex; Network State and canonical offline preparation",
+        "retirement": "Remove this exact Windows entry when a separately selected genuine Windows production caller reaches Accept, or when the convenience API is retired. Lost Linux production reachability requires repair; both platform test analyses must remain empty."
+      },
+      {
+        "symbols": [
           "internal/successor/admission/receiving.OpenRetained",
           "internal/successor/admission/spending.OpenRetained"
         ],

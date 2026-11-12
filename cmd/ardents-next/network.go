@@ -54,9 +54,13 @@ func runNetwork(ctx context.Context, args []string, out io.Writer) int {
 	var observed time.Time
 	switch args[0] {
 	case "accept-epoch":
-		_, err = owner.Accept(ctx, input.Epoch, input.Inputs, input.Materials)
+		var accepted state.OfflineAcceptance
+		accepted, err = owner.AcceptEpoch(ctx, input.Epoch, input.Inputs, input.Materials)
 		if err == nil {
 			outcome, code = "accepted-epoch", 0
+			if accepted.Pending {
+				outcome = "pending-epoch"
+			}
 		}
 	case "accept-profile":
 		if ctx.Err() == nil {

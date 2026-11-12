@@ -115,55 +115,45 @@ func TestReopenRefusesSignedPendingGenerationUnderWrongName(t *testing.T) {
 	}
 }
 
-func TestOfflineAcceptActivatesExactPendingEpoch(t *testing.T) {
+func TestOfflineAcceptStagesFutureSuccessorAndOnlySourceWavePromotesIt(t *testing.T) {
 	genesis := newFixture(t)
 	pending := futureFixture(t, genesis, genesis.now+20)
 	config, closeSources := sourceEnvironment(t, genesis, pending, pending)
 	defer closeSources()
 
-	// Pending consistency needs current observations during source work.
-	anchor := time.Now()
-	clock := func() time.Time { return time.Unix(genesis.now, 0).UTC().Add(time.Since(anchor)) }
-	config.Clock, config.ObserveClock = clock, clock
-
-	endpoint, err := state.Open(config)
+	owner, err := state.Open(config)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = endpoint.Close() })
-	if _, err := endpoint.Refresh(context.Background()); err != nil {
-		t.Fatalf("stage pending Epoch: %v", err)
+	receipt, err := owner.AcceptEpoch(t.Context(), pending.epoch, pending.inputs, pending.materializations)
+	staged := receipt.Snapshot
+	if err != nil || !receipt.Pending || staged.Digest != genesis.epochDigest || staged.PendingDigest != pending.epochDigest ||
+		staged.PendingEpoch != pendingEpoch || !staged.TrustedTime.IsZero() || staged.SourceAttempts != 0 {
+		t.Fatalf("offline staging: %+v, %v", staged, err)
 	}
-	if err := endpoint.Close(); err != nil {
+	if err := owner.Close(); err != nil {
 		t.Fatal(err)
 	}
 
 	later := time.Unix(genesis.now+21, 0).UTC()
-	offline := fixtureConfig(genesis, config.Root, later)
-	opened, err := state.Open(offline)
+	config.Clock = advancingVerificationClock(later)
+	config.ObserveClock = config.Clock
+	reopened, err := state.Open(config)
 	if err != nil {
-		t.Fatalf("open pending root offline: %v", err)
-	}
-	t.Cleanup(func() { _ = opened.Close() })
-	accepted, err := opened.Accept(context.Background(), pending.epoch, pending.inputs, pending.materializations)
-	if err != nil {
-		t.Fatalf("accept exact pending Epoch: %v", err)
-	}
-	if accepted.Epoch != pendingEpoch || accepted.Digest != pending.epochDigest || accepted.PendingEpoch != 0 {
-		t.Fatalf("accepted snapshot=%+v", accepted)
-	}
-	if err := opened.Close(); err != nil {
 		t.Fatal(err)
 	}
-
-	restarted, err := state.Open(offline)
-	if err != nil {
-		t.Fatalf("reopen activated pending root: %v", err)
+	defer reopened.Close()
+	repeated, err := reopened.Accept(t.Context(), pending.epoch, pending.inputs, pending.materializations)
+	if err != nil || repeated.Digest != genesis.epochDigest || repeated.PendingDigest != pending.epochDigest || !repeated.TrustedTime.IsZero() {
+		t.Fatalf("offline replay promoted or lost the pending Epoch: %+v, %v", repeated, err)
 	}
-	defer restarted.Close()
-	current, err := restarted.Current()
-	if err != nil || current.Epoch != pendingEpoch || current.Digest != pending.epochDigest || current.PendingEpoch != 0 {
-		t.Fatalf("reopened snapshot=%+v err=%v", current, err)
+	activated, err := reopened.Refresh(t.Context())
+	if err != nil || activated.Digest != pending.epochDigest || activated.PendingEpoch != 0 || activated.SourceAttempts != 2 {
+		t.Fatalf("complete Source wave did not activate the retained Epoch: %+v, %v", activated, err)
+	}
+	replayed, err := reopened.Accept(t.Context(), pending.epoch, pending.inputs, pending.materializations)
+	if err != nil || activated.TrustedTime.IsZero() || !replayed.TrustedTime.Equal(activated.TrustedTime) {
+		t.Fatalf("offline replay changed the Source's trusted floor: before=%v after=%v err=%v", activated.TrustedTime, replayed.TrustedTime, err)
 	}
 }
 

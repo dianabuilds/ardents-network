@@ -44,6 +44,19 @@ func isEpochHistoryConflict(err error) bool {
 	return errors.Is(err, networkdomain.ErrEpochConflict) || errors.Is(err, errPendingEpochConflict) || errors.Is(err, errPersistentStateConflict)
 }
 
+// Offline activation uses the corroborated lower bound for the opening and
+// the confirmed observation for expiry.
+func offlineEpochPending(selection networkdomain.EpochSelection, opening, confirmed, until time.Time) (bool, error) {
+	if !confirmed.Before(until) {
+		return false, networkdomain.ErrEpochExpired
+	}
+	disposition, err := selection.DispositionAt(opening)
+	if disposition == networkdomain.EpochDeferred {
+		return false, errOfflineEpochNotCurrent
+	}
+	return disposition == networkdomain.EpochPending, err
+}
+
 func (s *networkState) publishSelectedEpoch(selection networkdomain.EpochSelection, now time.Time, selected epoch.Decision, summary sourceWaveSummary) (Snapshot, error) {
 	disposition, err := selection.DispositionAt(now)
 	if err != nil {
