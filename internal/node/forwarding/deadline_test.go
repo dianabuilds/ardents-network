@@ -2,6 +2,7 @@ package forwarding
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"testing"
@@ -141,5 +142,45 @@ func TestClosedForwardingBlockedWriteRetiresPhysicalCarrier(t *testing.T) {
 	}
 	if _, err := peer.Read(make([]byte, 1)); err != io.EOF {
 		t.Fatalf("partial-frame Carrier remained open: %v", err)
+	}
+}
+
+func TestClosedForwardingExpiredWriteNeverEmits(t *testing.T) {
+	local, peer := net.Pipe()
+	defer local.Close()
+	defer peer.Close()
+	session := &session{carrier: local}
+	written, err := session.writeChildFrame(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte("expired")}, time.Now().Add(-time.Second), newFrameQueue(64))
+	if written || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expired writer: %t %v", written, err)
+	}
+	if err := peer.SetReadDeadline(time.Now().Add(20 * time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	_, err = peer.Read(make([]byte, 1))
+	var timeout net.Error
+	if !errors.As(err, &timeout) || !timeout.Timeout() {
+		t.Fatalf("expired request emitted bytes or retired shared Carrier: %v", err)
+	}
+}
+
+func TestClosedForwardingWriterReleaseAtDeadlineNeverEmits(t *testing.T) {
+	for range 8 {
+		local, peer := net.Pipe()
+		session := &session{carrier: local}
+		end := time.Now().Add(10 * time.Millisecond)
+		acquired, err := session.acquireWriter(t.Context(), time.Now().Add(time.Second), nil, false)
+		if !acquired || err != nil {
+			t.Fatalf("active writer: %t %v", acquired, err)
+		}
+		released := make(chan struct{})
+		time.AfterFunc(time.Until(end), func() { session.releaseWriter(); close(released) })
+		written, err := session.writeChildFrame(ardp.Frame{Kind: ardp.KindBytes, Lane: 1, Body: []byte("expired")}, end, newFrameQueue(64))
+		<-released
+		_ = local.Close()
+		_ = peer.Close()
+		if written || !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("writer release/deadline race emitted expired work: %t %v", written, err)
+		}
 	}
 }
