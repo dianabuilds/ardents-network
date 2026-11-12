@@ -2,16 +2,11 @@ package main
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/rand"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io"
-	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -27,7 +22,7 @@ func runSourceReleaseKeys(args []string, out io.Writer) error {
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	public, err := prepareSourceReleaseKeys(ctx, args[0], nil)
+	public, err := prepareInfrastructureReleaseKeys(ctx, args[0], nil)
 	if err != nil {
 		return &sourceControlFailure{err}
 	}
@@ -51,48 +46,4 @@ func runSourceReleaseKeys(args []string, out io.Writer) error {
 		return err
 	}
 	return writeSourceControlBytes(ctx, out, append(raw, '\n'))
-}
-
-func prepareSourceReleaseKeys(ctx context.Context, path string, observe func(string, *os.File)) (public [5][32]byte, result error) {
-	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || !sourceControlPath(path) {
-		return public, errSourceControlInput
-	}
-	var files []sourceArtifactFile
-	defer func() {
-		for _, file := range files {
-			clear(file.raw)
-		}
-		if result != nil {
-			public = [5][32]byte{}
-		}
-	}()
-	seen := map[[32]byte]bool{}
-	for i := range public {
-		pub, key, err := ed25519.GenerateKey(rand.Reader)
-		if err != nil {
-			return public, err
-		}
-		copy(public[i][:], pub)
-		if seen[public[i]] {
-			clear(key)
-			return public, errSourceControlInput
-		}
-		seen[public[i]] = true
-		der, err := x509.MarshalPKCS8PrivateKey(key)
-		clear(key)
-		if err != nil {
-			return public, err
-		}
-		raw := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der})
-		clear(der)
-		files = append(files, sourceArtifactFile{fmt.Sprintf("release-key-%d.pem", i+1), raw})
-	}
-	check := func() error {
-		if os.Geteuid() != 0 {
-			return errSourceControlInput
-		}
-		return ctx.Err()
-	}
-	result = persistSourceOutput(ctx, path, files, true, check, observe)
-	return public, result
 }

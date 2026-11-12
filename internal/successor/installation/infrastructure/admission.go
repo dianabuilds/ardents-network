@@ -116,7 +116,7 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 }
 
 // This common immutable-byte/Release operation admits no native role policy.
-// Its two callers independently validate their closed invocation/resources;
+// Its fixed-purpose callers independently validate their closed invocation/resources;
 // only their distinct public authorization types can reach native consumers.
 func authenticateBoundPair(ctx context.Context, v *release.Verifier, files inventory, f enrollment.InfrastructureFacts, in release.Inputs, d Declaration, program, template, descriptor, root []byte, target string) (Authorization, error) {
 	if d.Invocation != f.Invocation || d.ReleaseIdentity != f.ReleaseIdentity || d.ReleaseVersion != f.ReleaseVersion || !bytes.Equal(root, in.RootBytes) || !bytes.Equal(program, in.Artifact) {

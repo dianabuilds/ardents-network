@@ -111,12 +111,12 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 			t.Fatal("independent private/public receipt mismatch")
 		}
 	}
-	if _, err := prepareSourceReleaseKeys(t.Context(), keyRoot, nil); err == nil {
+	if _, err := prepareInfrastructureReleaseKeys(t.Context(), keyRoot, nil); err == nil {
 		t.Fatal("Release key prefix adopted")
 	}
 	keyCtx, keyCancel := context.WithCancel(t.Context())
 	defer keyCancel()
-	failedPublic, keyErr := prepareSourceReleaseKeys(keyCtx, filepath.Join(parent, "failed-keys"), func(stage string, file *os.File) {
+	failedPublic, keyErr := prepareInfrastructureReleaseKeys(keyCtx, filepath.Join(parent, "failed-keys"), func(stage string, file *os.File) {
 		if stage == "before-directory" {
 			keyCancel()
 			if err := file.Close(); err != nil {

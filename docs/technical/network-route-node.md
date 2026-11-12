@@ -1985,6 +1985,31 @@ declaration cannot adopt a preceding Forwarding account/allowance or invent
 cross-role retirement. Canonical public producers open none of these runtime
 paths; the live clock remains Network's separate observation.
 
+JOIN initial/forward Release preparation is a separate offline canonical
+Control purpose. Its fresh key ceremony uses the same five-key physical birth
+mechanism as Source and Forwarding, with separate purpose-specific commands
+and receipts. The signer accepts only Node/JOIN targets, exact JOIN template
+and descriptor/program commitments, one current finite reference and coherent
+reviewed build/policy claims. It keeps original protected inputs, five distinct
+private files and both exclusive future output parents through all signing,
+verification and physical Close. Failed or uncertain custody retains its first
+and cleanup causes and supplies no public success or reusable output prefix.
+
+The initial Root fixes the existing ordinary three-of-five policy. Forward
+signing independently reads a complete original public JOIN distribution and
+verifies its genuine pair under the same keys before signatures. It preserves
+Root bytes and strictly advances the three linked metadata versions. The
+separate opaque `infrastructure.JoinAuthorization` is candidate verification,
+not first-pin provenance, account/native mutation, Startup or domain retirement.
+Initial installation still needs its separately admitted genuine initial
+Enrollment and Release lifetimes; these producers create no such permission.
+The public build-bound plan tool consumes the existing actual two-execution
+Node/Control record grammar without renaming historical evidence. Its proposed
+qualification is prestart-components-only, with no installed or independent
+builder/operator claim. No Source/Forwarding signing purpose or live owner is
+borrowed. Source/Forwarding behavior and original histories remain with those
+existing owners.
+
 JOIN public plan preparation binds the exact declared State, participation,
 spend, Hosting, clock and installed credential locations, explicit Node/Network
 identifiers and independently supplied State/profile pins. Its bounded canonical

@@ -166,6 +166,14 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"cmd/ardents-control/join_artifact_linux.go",
 			"cmd/ardents-control/join_request_linux.go",
 			"cmd/ardents-control/join_plan_linux.go",
+			"cmd/ardents-control/join_release_keys_linux.go",
+			"cmd/ardents-control/infrastructure_release_keys_linux.go",
+			"cmd/ardents-control/join_release_plan_linux.go",
+			"cmd/ardents-control/join_release_arguments_linux.go",
+			"cmd/ardents-control/join_release_linux.go",
+			"cmd/ardents-control/join_release_predecessor_linux.go",
+			"cmd/ardents-control/join_release_plan_linux_test.go",
+			"internal/successor/installation/infrastructure/join_admission.go",
 			"cmd/ardents-control/forwarding_artifact_linux.go",
 			"cmd/ardents-control/forwarding_request_linux.go",
 			"cmd/ardents-control/forwarding_plan_linux.go",
@@ -214,6 +222,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			}
 			for _, name := range []string{
 				"internal/successor/network/state/source_inspection_native_linux_test.go",
+				"cmd/ardents-control/join_release_native_linux_test.go",
+				"cmd/ardents-control/join_forward_release_native_linux_test.go",
 				"internal/successor/network/state/node_inspection_native_linux_test.go",
 				"internal/successor/network/duty/inspection_native_linux_test.go",
 				"internal/successor/admission/spending/inspection_native_linux_test.go",
@@ -543,6 +553,21 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		if (source == "cmd/ardents-control/join_request_linux.go" || source == "cmd/ardents-control/join_plan_linux.go") && dependency == modulePath+"/internal/successor/installation/join" {
 			return true
+		}
+		if (source == "cmd/ardents-control/join_release_plan_linux.go" || source == "cmd/ardents-control/join_release_native_linux_test.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/join") {
+			return true
+		}
+		if source == "cmd/ardents-control/join_release_native_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
+			return true
+		}
+		if source == "cmd/ardents-control/join_release_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+			return true
+		}
+		if source == "cmd/ardents-control/join_release_predecessor_linux.go" {
+			switch dependency {
+			case modulePath + "/internal/successor/enrollment", modulePath + "/internal/successor/installation/infrastructure", modulePath + "/internal/successor/release", "github.com/theupdateframework/go-tuf/v2/metadata":
+				return true
+			}
 		}
 		if source == "cmd/ardents-control/forwarding_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/forwarding") {
 			return true
@@ -1337,6 +1362,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"JOIN public signing uses its own artifact resources", "cmd/ardents-control/join_release_linux.go", modulePath + "/internal/successor/installation/infrastructure", true},
+		{"JOIN public predecessor verifies genuine Release", "cmd/ardents-control/join_release_predecessor_linux.go", modulePath + "/internal/successor/release", true},
+		{"JOIN key birth grants no Release observation", "cmd/ardents-control/join_release_keys_linux.go", modulePath + "/internal/successor/release", false},
+		{"JOIN public signing grants no Route consumer", "cmd/ardents-control/join_release_linux.go", modulePath + "/internal/successor/route/role", false},
+		{"JOIN public plan grants no State owner", "cmd/ardents-control/join_release_plan_linux.go", modulePath + "/internal/successor/network/state", false},
 		{"JOIN public plan uses detached traffic declaration", "internal/successor/installation/join/plan_linux.go", modulePath + "/internal/successor/hosting", true},
 		{"JOIN request has no Hosting import", "internal/successor/installation/join/request_linux.go", modulePath + "/internal/successor/hosting", false},
 		{"JOIN public plan has no State owner", "internal/successor/installation/join/plan_linux.go", modulePath + "/internal/successor/network/state", false},

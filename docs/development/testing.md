@@ -5172,6 +5172,38 @@ and file operations remain unchanged. The same test explicitly advances to the
 next hour and requires refusal, no success receipt and the unchanged original
 allocation generation. Native/installed qualification retains its real clock.
 
+### JOIN offline Release production
+
+The existing root/ext4 `network_signing_native` profile additionally selects
+`TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody`,
+`TestJoinPreparationNativeActualBuildRecordsAndPublicPlan`, and
+`TestJoinPreparationNativeForwardReleasePreservesRootAndRaisesFloors`.
+Supply independently pinned actual canonical Node/Control programs through
+`ARDENTS_JOIN_NODE_PROGRAM`, `ARDENTS_JOIN_CONTROL_PROGRAM` and their `_SHA256`
+values. The actual-build case also requires `ARDENTS_JOIN_BUILD_ROOT`,
+`ARDENTS_JOIN_BUILD_READY_SHA256`, `ARDENTS_JOIN_RELEASE_PREPARER`,
+`ARDENTS_JOIN_BUILD_EVIDENCE` and independent SHA-256 values for the last two.
+Both real build executions must match the actual command bytes. The public
+preparer is `scripts/installation/prepare-join-release-plan.py`; no record is
+relabeled as an independent build or installed qualification.
+
+The controls verify genuine fixed-purpose Root/Targets signatures, exact Node
+and JOIN commitments, five original private keys, unchanged Root through two
+strict forward successors and linked increasing metadata versions. Foreign
+purpose/descriptor/program, changed keys, non-forward predecessor, malformed
+build/SBOM/independence evidence and existing/partial outputs refuse. Actual
+cancellation plus descriptor Close after signing, file birth and commit retain
+both causes and no successful result. Source/Forwarding key-birth regressions
+exercise the same extracted physical factory. No Role, first pin, native
+Startup, domain retirement or installed replacement is supplied by these tests.
+
+The Source key-factory regression retains its separately pinned expiry observer
+and genuine private native-preparation stand. Its signed fixture Timestamp has
+one minute of validity to cover canonical signing, retained verification and
+inventory I/O before the first outside observation. Both actual pre-expiry and
+post-expiry decisions, both wrong-phase refusals and unchanged floors remain
+required; no supplied reference time or product timeout replaces that crossing.
+
 ### JOIN public declaration preparation
 
 The same root/ext4 `network_signing_native` profile additionally selects

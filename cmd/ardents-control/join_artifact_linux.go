@@ -29,6 +29,15 @@ func (e *joinControlFailure) Unwrap() error { return e.cause }
 // JOIN has its own closed public producers. Shared native readers/writers own
 // only physical input/output custody; no Source or Forwarding right is reused.
 func runJoinControl(args []string, out io.Writer) error {
+	if len(args) > 0 && args[0] == "prepare-release-keys" {
+		return runJoinReleaseKeys(args[1:], out)
+	}
+	if len(args) > 0 && args[0] == "sign-initial-release" {
+		return runJoinReleaseSigning(args[1:], out)
+	}
+	if len(args) > 0 && args[0] == "sign-forward-release" {
+		return runJoinReleasePurpose(args[1:], out, joinReleaseForward)
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -62,6 +71,12 @@ func prepareJoinArtifact(ctx context.Context, args []string, observe func(string
 	var name, destination string
 	check := inputs.checkProtected
 	switch args[0] {
+	case "prepare-release-plan":
+		result, destination, returned = joinReleasePlanArguments(args[1:], inputs)
+		name = "join-release-plan.json"
+	case "prepare-forward-release-plan":
+		result, destination, returned = joinReleasePurposeArguments(args[1:], inputs, joinReleaseForward)
+		name = "join-release-plan.json"
 	case "prepare-template":
 		if len(args) != 2 {
 			return nil, errSourceControlInput

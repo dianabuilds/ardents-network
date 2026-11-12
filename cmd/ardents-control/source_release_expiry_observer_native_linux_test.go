@@ -22,7 +22,12 @@ func exerciseSourceReleaseExpiryObserver(t *testing.T, input sourceTimestampNati
 	helper, _ := sourceNativePinnedProgram(t, "ARDENTS_SOURCE_EXPIRY_OBSERVER_PROGRAM")
 	plan := input.plan
 	plan.Schema = "ardents-source-timestamp-release-plan-v1"
-	plan.Expires = time.Now().UTC().Add(15 * time.Second).Truncate(time.Second)
+	// Canonical signing, retained Release verification and inventory production
+	// precede the first outside observation. Their real native I/O must fit
+	// inside this fixture's validity interval. The observer still checks both
+	// wrong phases and waits for this exact signed Timestamp to really expire;
+	// no product deadline or expiry decision is changed.
+	plan.Expires = time.Now().UTC().Add(time.Minute).Truncate(time.Second)
 	raw, err := json.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)

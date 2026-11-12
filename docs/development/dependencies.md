@@ -18,6 +18,16 @@ this release only; unverified exclusion is not release admission.
 
 ### Source build and qualification interpreters
 
+The separate JOIN public-plan tool has the same isolated standard-library call
+surface and no private signing or runtime use. It consumes the unchanged fixed
+Node/Control builder records, including their original
+`ardents-forwarding-build-execution-v1` and `ardents-forwarding-build-sbom-v1`
+evidence identities. Those records grant no Forwarding or JOIN duty. The JOIN
+descriptor, plan and signed pair retain their separate exact purpose. Capture
+actual interpreter/package/library integrity with its component receipt under
+the same scoped-use rules below; no new module or technology is selected.
+
+
 The separate Forwarding controlled-build and public initial-plan tools use the
 same isolated standard-library interpreter surfaces reviewed here. They build
 only the actual Node and Control inventory and retain Forwarding-specific

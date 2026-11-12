@@ -1380,3 +1380,35 @@ opens no private key, clock or semantic root. Its explicit traffic declarations
 and notice interval grant neither an allowance nor a completed join or runtime
 permission. Native installation and all live owners independently admit those
 facts before effects.
+
+The separate JOIN Release commands are:
+
+- `join prepare-release-keys FRESH_PRIVATE_OUTPUT`: five fresh distinct Ed25519
+  files, with public-only facts and the fixed three-of-five ordinary threshold.
+  It creates no signature, initial pin or independent-custody claim.
+- `join prepare-release-plan` and `prepare-forward-release-plan`: the same nine
+  explicit public flags `--network`, `--reference`, `--expires`, `--program`,
+  `--descriptor`, `--template`, `--program-custom`, `--generation-custom`,
+  `--output`. They bind the canonical static Linux-amd64 Node executable,
+  exact JOIN descriptor and fixed template to reviewed common public claims.
+  Initial version is 1; forward version is strictly above 1. Output is the fresh
+  `join-release-plan.json`, without opening private keys or runtime roots.
+- `join sign-initial-release PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION`
+  and `join sign-forward-release PLAN PRIVATE_KEYS FRESH_METADATA
+  FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION`: fixed Node/JOIN targets only.
+  The forward operation verifies the original complete JOIN predecessor and
+  matching five-key/three-threshold Root, preserves its exact Root bytes and
+  strictly raises Targets/Snapshot/Timestamp versions. It cannot supply
+  predecessor runtime retirement or permission for an installed replacement.
+
+`python3 -I -S scripts/installation/prepare-join-release-plan.py` prepares the
+same public plan from two actual matching canonical Node/Control build records,
+exact JOIN resources and separately pinned prestart evidence. Its flags match
+the existing Forwarding public tool, including the distinct `--forward` purpose.
+The shared builder's original evidence schemas remain unchanged; the JOIN plan
+and signed targets are separate. Two controlled executions do not establish
+independent builders. Signed metadata and independently produced inventory must
+be copied unchanged; separate initial trust and exact bootstrap acceptance
+remain required before isolated installed execution. No JOIN runtime is started
+by any of these operations. Original private input/output users join before
+acknowledgement; partial outputs remain retained and cannot be adopted.

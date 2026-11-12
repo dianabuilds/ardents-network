@@ -3,6 +3,9 @@
 // Package infrastructure prepares separate Source, Forwarding and JOIN public artifact
 // descriptors, with exact invocation-specific inventories. Public preparation
 // grants no installed transaction, startup or runtime permission.
+// A separate opaque JOIN candidate pair is consumed by canonical Control's
+// fixed forward-Release predecessor verification. It supplies no initial
+// provenance, native transition or Source/Forwarding right.
 // It binds exact Source artifact bytes to two fresh coherent
 // Release authorizations and separate Enrollment initial provenance. It owns
 // Source-specific read-only preflight policy, original input custody and closed

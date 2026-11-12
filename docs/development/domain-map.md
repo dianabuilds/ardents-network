@@ -120,6 +120,15 @@ native unit-policy acceptance, Installation startup or a Node duty. Existing
 Source and Forwarding proofs remain purpose-bound; no live owner or permission
 crosses between invocations through this shared byte-preparation mechanism.
 
+JOIN Release preparation remains separate offline command composition. Its
+fixed initial/forward signers consume exact Node/JOIN public claims and original
+private key/input/output custody; shared five-key birth is a physical mechanism,
+not shared signing purpose or trust. Release verifies signatures/floors and
+Infrastructure retains a distinct opaque JOIN candidate pair for original
+predecessor verification. Forward public metadata cannot supply native
+replacement, first-pin provenance, domain retirement or runtime duty. Enrollment
+and each eventual native Installation lifetime retain their independent gates.
+
 Installation's separate `installation/join` declaration owner fixes the JOIN
 request/plan, four writable semantic roots, retained journal/completion namespace and
 closed non-root unit template. Canonical Control consumes it for public request
