@@ -23,6 +23,14 @@ import (
 // Only original joined command results can later participate in the separate
 // root retirement protocol. Public output never serializes private causes.
 type joinCommandFailure struct{ cause error }
+type joinExplicitStop struct{ cause error }
+
+func (e *joinExplicitStop) Error() string { return "join explicitly stopped" }
+func (e *joinExplicitStop) Unwrap() error { return e.cause }
+func completedJoinExplicitStop(err error) bool {
+	e, ok := err.(*joinExplicitStop)
+	return ok && e != nil && joinCancellationOnly(e.cause)
+}
 
 func (e *joinCommandFailure) Error() string { return "join command failed" }
 func (e *joinCommandFailure) Unwrap() error { return e.cause }
@@ -86,6 +94,16 @@ func runInstalledJoin(parent context.Context, binding string, out io.Writer) (re
 			}
 		}
 		clear(privatePlan)
+		if startup != nil && joinCancellationOnly(returned) {
+			completion, cancel := context.WithTimeout(context.WithoutCancel(parent), 3*time.Second)
+			reported, err := startup.ReportRetirement(completion, returned)
+			cancel()
+			returned = errors.Join(returned, err)
+			if reported && err == nil {
+				returned = &joinExplicitStop{returned}
+				return
+			}
+		}
 		if returned != nil {
 			if !startupComplete {
 				returned = errors.Join(returned, writeJoinStartupRefusal(context.WithoutCancel(parent), out, stage, node.StartupFailure(returned), returned))
@@ -117,7 +135,7 @@ func runInstalledJoin(parent context.Context, binding string, out io.Writer) (re
 	// Both State openers invoke this original Startup admission before root I/O.
 	openState := state.Open
 	if material.ExistingHistory {
-		return join.ErrBinding
+		openState = state.OpenRetained
 	}
 	stage = "state"
 	opened, err := openState(config)
@@ -149,7 +167,7 @@ func runInstalledJoin(parent context.Context, binding string, out io.Writer) (re
 	}
 	listen := node.ListenJoin
 	if material.ExistingHistory {
-		return join.ErrBinding
+		listen = node.ListenJoinRetained
 	}
 	stage = "node"
 	original, err = listen(startup.Context(), node.JoinConfig{

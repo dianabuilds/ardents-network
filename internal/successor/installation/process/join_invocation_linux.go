@@ -47,6 +47,21 @@ func RetainJoin(ctx context.Context, expected JoinExpected) (JoinInvocation, err
 	return retainJoin(ctx, expected)
 }
 
+func RetainJoinStop(ctx context.Context, expected JoinExpected, device, inode uint64) (JoinInvocation, error) {
+	if device == 0 || inode == 0 {
+		return JoinInvocation{}, errInput
+	}
+	p, err := RetainJoin(ctx, expected)
+	if err != nil {
+		return JoinInvocation{}, err
+	}
+	native, ok := p.original.pin.identity.Sys().(*syscall.Stat_t)
+	if !ok || uint64(native.Dev) != device || native.Ino != inode {
+		return JoinInvocation{}, errors.Join(errBinding, p.Close())
+	}
+	return p, nil
+}
+
 // RetainJoinSelf observes only this actual non-root calling process.
 // Root's observation cannot be passed in as a substitute for this acquisition.
 func RetainJoinSelf(ctx context.Context, expected JoinExpected) (JoinInvocation, error) {
@@ -147,6 +162,44 @@ func (p JoinInvocation) Observe(ctx context.Context) error {
 		return errors.Join(os.ErrClosed, o.failure)
 	}
 	return ctx.Err()
+}
+
+// InterruptJoin performs at most one SIGTERM through root's own original
+// pidfd after fresh physical observations. The bool records a syscall attempt,
+// including an uncertain failed attempt. Installation supplies stop permission;
+// neither this signal nor process exit proves the original domains have joined.
+func (p JoinInvocation) InterruptJoin(ctx context.Context) (bool, error) {
+	o := p.original
+	if o == nil || os.Geteuid() != 0 || runtime.GOARCH != "amd64" {
+		return false, errInput
+	}
+	if err := o.begin(ctx); err != nil {
+		return false, err
+	}
+	defer o.uses.Done()
+	o.ioMu.Lock()
+	defer o.ioMu.Unlock()
+	if o.pidfd == nil || o.interrupted {
+		return false, errInput
+	}
+	if err := o.pin.Observe(ctx); err != nil {
+		return false, o.retainFailure(err)
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.closing || o.failure != nil || ctx.Err() != nil {
+		return false, errors.Join(os.ErrClosed, o.failure, ctx.Err())
+	}
+	o.interrupted = true
+	const pidfdSendSignalAMD64 = 424
+	_, _, failure := syscall.Syscall6(pidfdSendSignalAMD64, o.pidfd.Fd(), uintptr(syscall.SIGTERM), 0, 0, 0, 0)
+	if failure != 0 {
+		if o.failure == nil {
+			o.failure = failure
+		}
+		return true, errors.Join(o.failure, failure)
+	}
+	return true, ctx.Err()
 }
 
 // Close denies new uses synchronously, joins admitted physical observations and

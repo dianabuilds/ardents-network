@@ -5302,6 +5302,21 @@ component evidence, without installed Startup, paired JOIN or runtime authority.
 
 The separate `join-installed-linux` profile (`make join-installed-check`,
 `join_installed_native`, three-minute finite driver) exercises only the genuine
-canonical first Start, independent non-root Startup and receiving JOIN pair.
+canonical first Start, independent non-root Startup and receiving JOIN pair,
+explicit original domain/native Stop, retained same-generation Restart, a second
+real pair and its own Stop. It also requires pre-retirement and torn-blocker
+restart refusals, original root/key identity retention and distinct invocations.
 It requires the exact isolated manager/artifact/bootstrap prerequisites in the
 profile registry; it supplies no replacement/recovery or whole Service claim.
+
+
+Finalized native development QA may retire duplicate raw cases and archived ELF
+payloads only after original scope/resource joins, a fresh zero-reference scan,
+and complete non-executable evidence preservation. The separate root-private
+`history-dispositions` registry pins the immutable original case-history record,
+actual cleanup receipt and old/new archive disposition receipts. Historical
+verification stays historical; the disposed archive is not relabeled original.
+Missing disposition, changed proof, reappearing raw path, unfinalized case and
+recycled case name refuse allocation. Every allocation still runs the same fresh
+batched equivalent-path/native reference scan, including disposed path names.
+Retained cases still require all original proofs and current native observations.

@@ -30,5 +30,10 @@
 // and the original root-peer exchange before returning private RuntimeInputs.
 // Network State, duty, Node Guard and semantic owners still admit runtime effects.
 // Neither first-start success nor kernel exit proves domain retirement, restart,
-// replacement or recovery; retained invocation histories remain blocked here.
+// replacement or recovery. Stop independently retains original process/scope,
+// obtains the post-join domain challenge report and commits clean native exit
+// after actual observers close. Restart requires the complete original history,
+// fresh Release and a new independent Startup, opening semantic histories only
+// through their existing-only owners. Unknown completion remains blocking;
+// replacement and recovery admission remain separate.
 package join

@@ -1454,4 +1454,12 @@ The separate canonical `ardents-control join` offline producers are
 Each retains fixed-purpose input/output custody; signatures and accepted State
 are distinct from installed duty or bootstrap acceptance. State preparation runs
 only as the actual numeric system Node principal, on its known-born empty root.
-No first-start command grants explicit stop/retirement, restart or replacement.
+No first-start command grants retirement or replacement permission.
+`ardents-node join stop HISTORY BINDING` independently retains the original
+invocation and accepts its fresh completion report only after original domain
+and Startup users join. Clean original native exit and independent retirement
+readback precede publication. Missing reports and uncertain completion refuse.
+`ardents-node join restart DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
+requires every preceding committed retirement and fresh Release/native admission.
+It preserves the same generation, account, credentials and semantic histories;
+no automatic restart or missing-history initialization is admitted.

@@ -30,7 +30,17 @@ def native(path):
 
 def references(active):
     """Check native objects and equivalent paths in every visible namespace."""
-    failures = []
+    result, failures = references_many((active,))[active]
+    if failures:
+        raise RuntimeError('native stand remains referenced: ' + repr(failures))
+    return result
+
+
+def references_many(stands):
+    """Check the same paths and identities against one fresh host observation."""
+    if not stands:
+        return {}
+    failures = {stand: set() for stand in stands}
     mount_namespaces = {}
     net_namespaces = {}
     processes = [p for p in Path('/proc').iterdir() if p.name.isdecimal()]
@@ -45,7 +55,7 @@ def references(active):
         except (FileNotFoundError, ProcessLookupError):
             pass
     device = WORK_ROOT.stat().st_dev
-    aliases = {str(active)}
+    aliases = {stand: {str(stand)} for stand in stands}
     mounts = []
     def unescape(value):
         return re.sub(r'\\([0-7]{3})', lambda match: chr(int(match[1], 8)), value)
@@ -57,29 +67,44 @@ def references(active):
             same_device = os.makedev(major, minor) == device
             mounts.append((ns, root, target, same_device))
             if same_device:
-                try:
-                    aliases.add(str(target / active.relative_to(root)))
-                except ValueError:
-                    pass
+                for stand in stands:
+                    try:
+                        aliases[stand].add(str(target / stand.relative_to(root)))
+                    except ValueError:
+                        pass
+
     def inspect(value, owner):
-        if any(alias in value for alias in aliases):
-            failures.append(owner)
+        for stand, paths in aliases.items():
+            if any(alias in value for alias in paths):
+                failures[stand].add(owner)
     for ns, root, target, same_device in mounts:
         # A stable-parent integration bind is allowed; a mounted active child
         # or a mount placed inside any equivalent active path remains blocking.
-        if same_device and (root == active or active in root.parents):
-            failures.append('mounted-child:' + ns)
+        if same_device:
+            for stand in stands:
+                if root == stand or stand in root.parents:
+                    failures[stand].add('mounted-child:' + ns)
         inspect(str(target), 'mount-target:' + ns)
-    identities = set()
-    if active.exists():
-        for directory, dirs, files in os.walk(active, followlinks=False):
-            for path in [Path(directory), *(Path(directory) / n for n in files + dirs)]:
-                st = path.lstat()
-                identities.add((st.st_dev, st.st_ino))
+    identities = {}
+    counts = {}
+    for stand in stands:
+        owned = set()
+        if stand.exists():
+            for directory, dirs, files in os.walk(stand, followlinks=False):
+                for path in [Path(directory), *(Path(directory) / n for n in files + dirs)]:
+                    st = path.lstat()
+                    owned.add((st.st_dev, st.st_ino))
+        for identity in owned:
+            identities.setdefault(identity, []).append(stand)
+        counts[stand] = len(owned)
+
+    def inspect_identity(identity, owner):
+        for stand in identities.get(identity, ()):
+            failures[stand].add(owner)
+
     def inspect_native(path, owner):
         st = path.stat()
-        if (st.st_dev, st.st_ino) in identities:
-            failures.append(owner)
+        inspect_identity((st.st_dev, st.st_ino), owner)
     for proc in processes:
         try:
             for key in ['cwd', 'root', 'exe']:
@@ -94,8 +119,7 @@ def references(active):
             for line in maps.splitlines():
                 fields = line.split(None, 5)
                 major, minor = (int(part, 16) for part in fields[3].split(':'))
-                if (os.makedev(major, minor), int(fields[4])) in identities:
-                    failures.append('maps-native:' + proc.name)
+                inspect_identity((os.makedev(major, minor), int(fields[4])), 'maps-native:' + proc.name)
             for fd in (proc / 'fd').iterdir():
                 try:
                     inspect(os.readlink(fd), 'fd-path:' + proc.name)
@@ -111,15 +135,19 @@ def references(active):
         containers = subprocess.check_output(['docker', 'inspect', *ids], text=True)
         # Even a stopped container configured for the stable root prevents reuse.
         if str(WORK_ROOT) in containers:
-            failures.append('docker-container')
+            for found in failures.values():
+                found.add('docker-container')
         inspect(containers, 'docker-alias')
     units = json.loads(subprocess.check_output(['systemctl', 'list-units', '--all', '--output=json', '--no-pager'], text=True))
     names = [u['unit'] for u in units]
     for offset in range(0, len(names), 64):
         inspect(subprocess.check_output(['systemctl', 'show', '--', *names[offset:offset + 64]], text=True), 'loaded-unit')
-    if failures:
-        raise RuntimeError('native stand remains referenced: ' + repr(sorted(set(failures))))
-    return {'mount_namespaces': len(mount_namespaces), 'net_namespaces': len(net_namespaces), 'native_objects': len(identities), 'containers': len(ids), 'loaded_units': len(names), 'references': 0}
+    return {
+        stand: ({'mount_namespaces': len(mount_namespaces), 'net_namespaces': len(net_namespaces),
+                 'native_objects': counts[stand], 'containers': len(ids), 'loaded_units': len(names),
+                 'references': 0}, sorted(failures[stand]))
+        for stand in stands
+    }
 
 
 def prepare_root():
@@ -140,7 +168,7 @@ def prepare_root():
     marker = WORK_ROOT / 'owner'
     if marker.is_symlink() or native(marker)[2:] != (stat.S_IFREG | 0o600, 0, 0) or marker.read_text(encoding='utf8') != 'ardents-development-work-v1\n':
         raise RuntimeError('unowned native development work root')
-    if not {p.name for p in WORK_ROOT.iterdir()} <= {'owner', 'active', 'cases', 'case-history', 'case-active.json', 'history-observations'}:
+    if not {p.name for p in WORK_ROOT.iterdir()} <= {'owner', 'active', 'cases', 'case-history', 'case-active.json', 'history-observations', 'history-dispositions'}:
         raise RuntimeError('unknown native development work entry')
     if subprocess.check_output(['findmnt', '-T', str(WORK_ROOT), '-n', '-o', 'FSTYPE'], text=True).strip() != 'ext4':
         raise RuntimeError('native ext4 native development work root required')
@@ -162,13 +190,16 @@ def check_idle():
             raise RuntimeError('unsafe native case ledger directory')
     names = {p.name for p in cases.iterdir()}
     records = {p.name for p in history.iterdir()}
-    if records != {name + '.json' for name in names}:
+    import qa_history
+    disposed = qa_history.disposed_cases(WORK_ROOT)
+    if names.intersection(disposed) or records != {name + '.json' for name in names | set(disposed)}:
         raise RuntimeError('unrecorded native case or missing finalized history')
     import qa_history
     required_history = qa_history.requirements(WORK_ROOT)
-    if not set(required_history) <= names:
+    if not set(required_history) <= names | set(disposed):
         raise RuntimeError('observation requirement without original finalized case')
     history_cache = {}
+    retained = [cases / name for name in disposed]
     for name in sorted(names):
         if not re.fullmatch(r'(preparation|installed)[1-9][0-9]*', name):
             raise RuntimeError('unknown native case name')
@@ -186,7 +217,12 @@ def check_idle():
             # Acquisition is explicit and separate; allocation never repairs
             # or creates a history observation.
             qa_history.checked_observation(WORK_ROOT, case, record, history_cache)
-        references(case)
+        retained.append(case)
+    observed = references_many(retained)
+    for case in retained:
+        _, failures = observed[case]
+        if failures:
+            raise RuntimeError('native stand remains referenced: ' + repr(failures))
 
 
 def read_control(path):
@@ -225,6 +261,8 @@ def reserve_case(case, evidence):
         sync_directory(cases)
         sync_directory(history)
         sync_directory(WORK_ROOT)
+    if (history / (case + '.json')).exists():
+        raise RuntimeError('finalized/disposed case name cannot be recycled')
     active = cases / case
     before = references(active)
     active.mkdir(mode=0o711)

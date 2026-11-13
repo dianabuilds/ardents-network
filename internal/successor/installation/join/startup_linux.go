@@ -45,6 +45,7 @@ type startup struct {
 	directory             string
 	directoryInfo         os.FileInfo
 	ready, denied, closed bool
+	reportAttempted       bool
 	terminal, closeErr    error
 	observations          ObservationSummary
 	activeTimes           *observationTimes
@@ -121,7 +122,12 @@ func OpenStartup(parent context.Context, bindingPath string) (result *Startup, r
 	if err = s.observe(); err != nil {
 		return nil, err
 	}
-	s.directory = filepath.Join(b.Request.InstallationRoot, "join-startup")
+	number, err := latestAttempt(s.selection)
+	if err != nil {
+		return nil, err
+	}
+	s.attempt = uint32(number)
+	s.directory = number.directory(b.Request.InstallationRoot)
 	if err := s.selection.pinStartupDirectory(s.directory); err != nil {
 		return nil, err
 	}

@@ -1724,6 +1724,36 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 // Fixed JOIN first-start and its separate native regression consumers.
 func joinFirstStartImportAllowed(source, dependency string) bool {
 	switch source {
+	case "internal/successor/installation/join/stop_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/completion", "github.com/dianabuilds/ardents-network/internal/successor/installation/process", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
+			return true
+		}
+
+	case "internal/successor/installation/join/restart_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/release":
+			return true
+		}
+
+	case "internal/successor/installation/join/invocation_history_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/release":
+			return true
+		}
+
+	case "internal/successor/installation/join/start_snapshot_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/completion":
+			return true
+		}
+
+	case "internal/successor/installation/join/retirement_policy_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/completion", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd":
+			return true
+		}
+
 	case "internal/successor/installation/join/installed_cohort_native_linux_test.go":
 		switch dependency {
 		case modulePath + "/internal/successor/network/epoch", modulePath + "/internal/successor/network/source":
@@ -1779,7 +1809,7 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/join/installed_start_native_linux_test.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/custody", "github.com/dianabuilds/ardents-network/internal/successor/installation/join":
+		case "github.com/dianabuilds/ardents-network/internal/successor/custody", "github.com/dianabuilds/ardents-network/internal/successor/installation/join", "github.com/dianabuilds/ardents-network/internal/successor/release":
 			return true
 		}
 	case "internal/successor/installation/join/inputs_linux.go":

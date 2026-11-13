@@ -19,9 +19,15 @@ func runJoinInstallation(parent context.Context, args []string, output io.Writer
 		return runInstalledJoin(parent, args[1], output)
 	}
 	if parent != nil && output != nil && len(args) == 6 && args[0] == "start-initial" {
-		return startInitialJoin(parent, args[1:], output)
+		return startJoinGeneration(parent, args[1:], output, false)
 	}
 
+	if parent != nil && output != nil && len(args) == 6 && args[0] == "restart" {
+		return startJoinGeneration(parent, args[1:], output, true)
+	}
+	if parent != nil && output != nil && len(args) == 3 && args[0] == "stop" {
+		return stopJoin(parent, args[1:], output)
+	}
 	if parent != nil && output != nil && len(args) == 6 && args[0] == "inspect-initial-history" {
 		return inspectInitialJoin(parent, args[1:], output)
 	}
@@ -126,7 +132,7 @@ func inspectInitialJoin(parent context.Context, args []string, output io.Writer)
 	return errors.Join(err, ctx.Err())
 }
 
-func startInitialJoin(parent context.Context, args []string, output io.Writer) (returned error) {
+func startJoinGeneration(parent context.Context, args []string, output io.Writer, restart bool) (returned error) {
 	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
 	defer cancel()
 	preflight, err := join.ReadCompleted(ctx, args[4])
@@ -158,9 +164,49 @@ func startInitialJoin(parent context.Context, args []string, output io.Writer) (
 	if err != nil {
 		return err
 	}
-	if err := join.StartInitial(ctx, v, a, args[4], args[0], args[1]); err != nil {
+	start := join.StartInitial
+	if restart {
+		start = join.Restart
+	}
+	if err := start(ctx, v, a, args[4], args[0], args[1]); err != nil {
 		return err
 	}
-	_, err = io.WriteString(output, "{\"outcome\":\"join-first-start-completed\",\"runtime_authority\":false}\n")
+	outcome := "join-first-start-completed"
+	if restart {
+		outcome = "join-restart-completed"
+	}
+	_, err = io.WriteString(output, "{\"outcome\":\""+outcome+"\",\"runtime_authority\":false}\n")
 	return errors.Join(err, ctx.Err())
+}
+
+func stopJoin(parent context.Context, args []string, out io.Writer) (returned error) {
+	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
+	defer cancel()
+	completed, err := join.ReadCompleted(ctx, args[1])
+	if err == nil {
+		err = completed.CheckHistoryPath(args[0])
+	}
+	if err = errors.Join(err, completed.Close()); err != nil {
+		return err
+	}
+	v, err := release.OpenRetained(args[0])
+	if err != nil {
+		return err
+	}
+	defer func() { returned = errors.Join(returned, v.Close()) }()
+	done := make(chan error, 1)
+	go func() { done <- join.Stop(ctx, v, args[1], args[0]) }()
+	timer := time.NewTimer(2*time.Minute + 5*time.Second)
+	defer timer.Stop()
+	select {
+	case err = <-done:
+	case <-timer.C:
+		_, notice := io.WriteString(out, "{\"outcome\":\"join-stop-completion-unavailable\"}\n")
+		err = errors.Join(<-done, notice)
+	}
+	if err = errors.Join(err, v.Close(), ctx.Err()); err != nil {
+		return err
+	}
+	_, err = io.WriteString(out, "{\"outcome\":\"join-original-stop-completed\",\"restart_admitted\":false}\n")
+	return err
 }

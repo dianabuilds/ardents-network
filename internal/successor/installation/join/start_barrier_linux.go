@@ -142,11 +142,8 @@ func (s *startAttempt) startIntentBytes() ([]byte, error) {
 	if c == nil || !ok || len(decision.Floors.TargetsDigest) != 32 {
 		return nil, ErrBinding
 	}
-	raw, err := json.Marshal(startIntent{"ardents-join-start-intent-v1", digest(s.bindingBytes()), digest(c.journal.body), hex.EncodeToString(decision.Floors.TargetsDigest), c.binding.UID, c.binding.GID, 0})
-	if err != nil {
-		return nil, err
-	}
-	return append(raw, '\n'), nil
+	return encodeStartIntent(c.binding, digest(s.bindingBytes()), digest(c.journal.body), hex.EncodeToString(decision.Floors.TargetsDigest), s.nextNumber, s.predecessor)
+
 }
 
 func sameStartSocket(original, current os.FileInfo, mode os.FileMode, gid uint32) bool {

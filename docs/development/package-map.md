@@ -781,6 +781,17 @@ no job/Start/Stop vocabulary. `installation/cgroup/join_quiescent_linux.go`
 checks that fixed scope without granting original domain join. Neither operation
 supplies Startup, State, Route or Node runtime authority.
 
+
+JOIN explicit Stop and same-generation Restart retain distinct original invocation
+and retirement journals. `invocation_history_linux.go` imports only new `release`;
+`restart_linux.go` imports new `installation/infrastructure` and `release`;
+`stop_linux.go` imports new `installation/cgroup`, `completion`, `process`,
+`systemd` and `release`; `start_snapshot_linux.go` imports new `installation/completion`;
+`retirement_policy_linux.go` imports new `installation/completion` and `systemd`.
+The other retirement/intent/attempt files use only the standard library. None
+imports Forwarding or Source; native fixed JOIN stop adapters retain their own
+original pidfd and cgroup. Canonical installed Node keeps R01's exact five imports.
+
 ### JOIN fixed first-start import inventory
 
 Root Start retains fresh Release/native/journal/process custody; independently
@@ -799,7 +810,7 @@ new owners externally and do not add a production regression coordinator.
 - `internal/successor/installation/join/start_barrier_linux.go`: `internal/successor/installation/completion`.
 - `internal/successor/installation/join/startup_linux.go`: `internal/successor/installation/cgroup`, `internal/successor/installation/completion`, `internal/successor/installation/process`, `internal/successor/installation/systemd`.
 - `internal/successor/installation/join/binding_linux.go`: `internal/successor/installation/infrastructure`.
-- `internal/successor/installation/join/installed_start_native_linux_test.go`: `internal/successor/custody`, `internal/successor/installation/join`.
+- `internal/successor/installation/join/installed_start_native_linux_test.go`: `internal/successor/custody`, `internal/successor/installation/join`, `internal/successor/release` (actual original-lease substitution refusal).
 - `internal/successor/installation/join/inputs_linux.go`: `internal/successor/installation/request`.
 - `internal/successor/installation/join/loaded_policy_linux.go`: `internal/successor/installation/systemd`.
 - `internal/successor/installation/join/completed_initial_linux.go`: `internal/successor/installation/infrastructure`, `internal/successor/release`.

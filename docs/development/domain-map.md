@@ -172,6 +172,13 @@ passive diagnostics, emitted after observation users join; they grant no
 accepting authority. No live
 root, Startup or role permission crosses from Source/Forwarding. First start
 supplies no domain-retirement, restart, replacement or recovery proof.
+JOIN explicit Stop separately retains original start-chain leases, process/pidfd,
+scope and manager. The original non-root command reports only after every domain,
+Startup/key/output user joins. Root independently joins original native resources
+and reads back committed retirement before publication. Same-generation Restart
+requires every predecessor retirement and fresh Release/native/independent Startup;
+existing-only State, participation and spend preserve their histories. No live
+owner transfers. Replacement/recovery remain separate boundaries.
 
 Installation's separate `installation/join` declaration owner fixes the JOIN
 request/plan, four writable semantic roots, retained journal/completion namespace and

@@ -3663,6 +3663,32 @@ account remain absent. Every original reader/native user joins before output.
 This observation creates no account, unit, semantic history or installation,
 and supplies no later mutation, first pin, Release or startup admission.
 
+JOIN explicit Stop independently reopens the full initial/Hosting/start chain
+under original exclusive journals, freshly brackets each observation with the
+original Release verifier's native history/lease checks, matches original proc inode, invocation,
+manager and kernel scope, and creates its distinct retirement endpoint before
+one original pidfd SIGTERM. Canonical non-root Node sends the exact start-bound
+`ardents-join-domain-joined-v1` challenge frame only after its complete joined
+Node/State/Startup/key/output outcome is ordinary cancellation alone. Wrapped,
+late or physical failures never become successful domain completion. Root then
+joins the original scope, compares two clean exit observations, joins all native
+observers and independently reads the synced result before removing its blocker.
+The distinct `ardents-join-retirement-journal-v1` has the same fixed18-phase
+birth/interrupt/domain-joined/native-joined/native-closed/result/retired ordering,
+with exact original native identities. Any pending/torn/unknown history refuses.
+
+Explicit same-generation JOIN restart retains every original start/retirement,
+uses the existing64-attempt finite nonrecycled namespace and binds the immediate
+predecessor retirement digest in `ardents-join-invocation-intent-v1`. First-start
+bytes remain unchanged. The original root's161-byte ACK supplies history0 for
+the first invocation and history1 only after complete predecessor retirement;
+all other bytes refuse. Independent non-root Startup still observes itself and
+completes a fresh root-peer exchange. State, participation and receiving spend
+open through existing-only owners; keys/account, Hosting allowance and all
+security/conflict/spend floors remain. No inactive flag, process exit, copied
+frame or diagnostic supplies this permission. Replacement and recovery remain
+separate independently admitted transitions.
+
 ### Component order and the command/artifact boundary
 
 Source is the smallest real infrastructure consumer: State + Source + Guard.

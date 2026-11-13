@@ -54,7 +54,16 @@ type joinInvocation struct {
 
 // ListenJoin joins every rejected original startup. It cannot adopt a
 // predecessor, rebind a successor duty, or supply accepting pairing authority.
-func ListenJoin(ctx context.Context, config JoinConfig) (_ *Join, result error) {
+func ListenJoin(ctx context.Context, config JoinConfig) (*Join, error) {
+	return listenJoin(ctx, config, false)
+}
+
+// ListenJoinRetained requires complete existing participation and receiving
+// histories; Installation separately proves original retirement and Startup.
+func ListenJoinRetained(ctx context.Context, config JoinConfig) (*Join, error) {
+	return listenJoin(ctx, config, true)
+}
+func listenJoin(ctx context.Context, config JoinConfig, retained bool) (_ *Join, result error) {
 	if ctx == nil || config.Authority.Current == nil || !separateRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot) {
 		return nil, errors.New("original Join configuration invalid")
 	}
@@ -98,7 +107,7 @@ func ListenJoin(ctx context.Context, config JoinConfig) (_ *Join, result error) 
 	if err := f.admission(); err != nil {
 		return nil, err
 	}
-	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: true}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
+	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: !retained}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +124,11 @@ func ListenJoin(ctx context.Context, config JoinConfig) (_ *Join, result error) 
 	}
 	p := view.Profile()
 	binding := receiving.Receiver{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, ProfileDigest: p.Digest, NodeID: m.NodeID, DutyGeneration: m.DutyGeneration}
-	f.receiving, err = receiving.Open(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) })
+	openReceiving := receiving.Open
+	if retained {
+		openReceiving = receiving.OpenRetained
+	}
+	f.receiving, err = openReceiving(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) })
 	if err != nil {
 		return nil, err
 	}

@@ -27,6 +27,23 @@ func RetainJoinSelf(ctx context.Context) (*JoinScope, error) {
 	return retainJoinScope(ctx, uint32(os.Getpid()), false)
 }
 
+// RetainJoinStop separately reobserves archived original native identity.
+// Copied identity values grant no accepting observation or interruption right.
+func RetainJoinStop(ctx context.Context, pid uint32, device, inode uint64) (*JoinScope, error) {
+	if os.Geteuid() != 0 || device == 0 || inode == 0 {
+		return nil, errInput
+	}
+	s, err := retainJoinScope(ctx, pid, true)
+	if err != nil {
+		return s, err
+	}
+	native, ok := scopeNative(s.original.kernel.directory)
+	if !ok || uint64(native.Dev) != device || native.Ino != inode {
+		return s, errBinding
+	}
+	return s, nil
+}
+
 func retainJoinScope(ctx context.Context, pid uint32, partial bool) (*JoinScope, error) {
 	s, err := retainProcessScope(ctx, pid, partial, "ardents-join.service")
 	if s == nil {

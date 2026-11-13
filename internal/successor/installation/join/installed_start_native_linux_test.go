@@ -14,6 +14,7 @@ import (
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 	joininstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/join"
+	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -259,7 +260,7 @@ func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) {
 	} else {
 		t.Log(string(raw))
 	}
-	stock := prepareJoinIssuedStock(t, parent, vault, created, secrets, bundle, profile, authority, 2, peer)
+	stock := prepareJoinIssuedStock(t, parent, vault, created, secrets, bundle, profile, authority, 4, peer)
 	// The external retained supervisor commits exact source/build/artifact/input
 	// hashes under the Product Owner's bounded campaign delegation before Start.
 	inputHashes := map[string]string{}
@@ -296,7 +297,7 @@ func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) {
 				PreparedSHA256 string `json:"prepared_sha256"`
 				Delegation     string `json:"delegation"`
 			}
-			if json.Unmarshal(receipt, &grant) != nil || grant.Schema != "ardents-join-installed-bootstrap-v1" || grant.PreparedSHA256 != digest(prepared) || grant.Delegation != "selected-545-startup-pair" {
+			if json.Unmarshal(receipt, &grant) != nil || grant.Schema != "ardents-join-installed-bootstrap-v1" || grant.PreparedSHA256 != digest(prepared) || grant.Delegation != "selected-545-stop-restart" {
 				t.Fatal("exact bootstrap scope mismatch")
 			}
 			break
@@ -343,8 +344,169 @@ func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
+
 	runJoinInstalledPair(t, stock, peerCertificate)
-	t.Log("actual installed pair: two admissions, both RESULTs, duplex bytes, directional EOF and CLOSE0")
+	t.Log("first installed pair joined including both lower clean peer terminals")
+	// Actual independently opened reader must retain the original Release lease
+	// at every observation, even if equivalent bytes appear on a foreign inode.
+	verifier, err := release.OpenRetained(history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	observed, err := joininstallation.ReadStarted(t.Context(), verifier, binding, history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock := filepath.Join(history, ".ardents-release-decision-lock")
+	savedLock := filepath.Join(delivery, "original-release-lease")
+	if err := os.Rename(lock, savedLock); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(lock, read(savedLock), 0600); err != nil {
+		t.Fatal(err)
+	}
+	observedErr := observed.Check()
+	if err := os.Remove(lock); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(savedLock, lock); err != nil {
+		t.Fatal(err)
+	}
+	closeErr := errors.Join(observed.Close(), verifier.Close())
+	// The verifier retains this exact induced observation failure through Close.
+	// Admit only that original instance and multi-error joins of it; an additional
+	// physical release error or wrapper must still fail this negative control.
+	var onlyOriginalObservation func(error) bool
+	onlyOriginalObservation = func(cause error) bool {
+		if cause == nil || cause == observedErr {
+			return true
+		}
+		if multi, ok := cause.(interface{ Unwrap() []error }); ok {
+			children := multi.Unwrap()
+			if len(children) == 0 {
+				return false
+			}
+			for _, child := range children {
+				if child == nil || !onlyOriginalObservation(child) {
+					return false
+				}
+			}
+			return true
+		}
+		return false
+	}
+	if !onlyOriginalObservation(closeErr) {
+		t.Fatal("independent negative-control physical Close failed", closeErr)
+	}
+	if observedErr == nil {
+		t.Fatal("started reader accepted a replaced original Release lease")
+	}
+	t.Log("original Release lease substitution after reader opening refused")
+
+	identities := map[string]os.FileInfo{}
+	for _, path := range []string{request.StateRoot, request.ParticipationRoot, request.SpendRoot, request.HostingRoot, request.CredentialDirectory, filepath.Join(request.CredentialDirectory, "private-key.pem"), filepath.Join(request.CredentialDirectory, "certificate.pem")} {
+		info, err := os.Lstat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		identities[path] = info
+	}
+	checkIdentities := func() {
+		t.Helper()
+		for path, original := range identities {
+			current, err := os.Lstat(path)
+			if err != nil || !os.SameFile(original, current) || original.Mode() != current.Mode() {
+				t.Fatal("retained semantic root/key identity changed", err)
+			}
+		}
+	}
+	if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-join", binding); err == nil {
+		t.Fatal("restart accepted without original retirement", string(raw))
+	}
+	if raw, err := invoke("stop", history, binding); err != nil || !bytes.Contains(raw, []byte("join-original-stop-completed")) {
+		t.Fatal("original explicit Stop/domain/native join", err, string(raw))
+	}
+	checkIdentities()
+	if raw, err := invoke("stop", history, binding); err == nil {
+		t.Fatal("repeated Stop accepted", string(raw))
+	}
+	retiredPath := filepath.Join(request.InstallationRoot, "join-retirement-00000000", "retirement-result.json")
+	orphan := request.InstallationRoot + ".join-retirement-00000063-journal"
+	if err := os.WriteFile(orphan, []byte("unknown original prefix\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-join", binding); err == nil {
+		t.Fatal("orphan original journal accepted", string(raw))
+	}
+	if err := os.Remove(orphan); err != nil {
+		t.Fatal(err)
+	}
+	saved := filepath.Join(parent, "saved-original-retirement")
+	if err := os.Rename(retiredPath, saved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(retiredPath, read(saved), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-join", binding); err == nil {
+		t.Fatal("same-byte foreign retirement inode accepted", string(raw))
+	}
+	if err := os.Remove(retiredPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(saved, retiredPath); err != nil {
+		t.Fatal(err)
+	}
+	retired := read(retiredPath)
+	pending := filepath.Join(filepath.Dir(retiredPath), "retirement-pending")
+	if err := os.WriteFile(pending, []byte("torn"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-join", binding); err == nil {
+		t.Fatal("retirement blocker permitted restart", string(raw))
+	}
+	if !bytes.Equal(read(retiredPath), retired) {
+		t.Fatal("refusal rewrote retirement")
+	}
+	if err := os.Remove(pending); err != nil {
+		t.Fatal(err)
+	}
+	if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-join", binding); err != nil || !bytes.Contains(raw, []byte("join-restart-completed")) {
+		t.Fatal("same-generation retained restart", err, string(raw))
+	}
+	checkIdentities()
+	until = time.Now().Add(10 * time.Second)
+	for {
+		listening := false
+		for _, line := range strings.Split(string(read("/proc/net/tcp")), "\n") {
+			fields := strings.Fields(line)
+			if len(fields) > 3 && fields[1] == "0100007F:1132" && fields[3] == "0A" {
+				listening = true
+				break
+			}
+		}
+		if listening {
+			break
+		}
+		if time.Now().After(until) {
+			t.Fatal("restarted installed listener absent")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	runJoinInstalledPair(t, stock, peerCertificate)
+	if raw, err := invoke("stop", history, binding); err != nil || !bytes.Contains(raw, []byte("join-original-stop-completed")) {
+		t.Fatal("restarted explicit Stop/domain/native join", err, string(raw))
+	}
+	checkIdentities()
+	var firstArchive, secondArchive struct {
+		InvocationID string `json:"invocation_id"`
+		Generation   string `json:"generation"`
+	}
+	if json.Unmarshal(read(filepath.Join(request.InstallationRoot, "join-startup", "start-archived.json")), &firstArchive) != nil || json.Unmarshal(read(filepath.Join(request.InstallationRoot, "join-invocation-00000001", "start-archived.json")), &secondArchive) != nil || firstArchive.InvocationID == secondArchive.InvocationID || firstArchive.Generation != secondArchive.Generation {
+		t.Fatal("restart did not retain generation with independent invocation")
+	}
+	t.Log("two actual installed pairs, both original domain/native retirements and retained restart completed; all root/key identities retained")
+
 }
 
 func joinNativePinnedProgram(t *testing.T, variable string) (string, []byte) {

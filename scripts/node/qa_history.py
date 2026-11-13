@@ -164,3 +164,102 @@ def checked_observation(work_root, root, record, cache):
     if observed['entries'] != inspect(root, record, cache) or qa_archive.facts(path) != before:
         raise RuntimeError('retained evidence changed after observation')
     return observed
+
+
+def disposed_cases(work_root):
+    """A separately pinned terminal disposition never creates runtime completion.
+
+    Original finalized records remain immutable, and names remain reserved.
+    A missing directory without this exact archived joined proof stays blocking.
+    """
+    base = Path(work_root) / 'history-dispositions'
+    if not base.exists() and not base.is_symlink():
+        return {}
+    private(base, 0o700, True)
+    result = {}
+    for path in base.iterdir():
+        if not re.fullmatch(r'(preparation|installed)[1-9][0-9]*\.json', path.name):
+            raise RuntimeError('unknown disposed native case')
+        private(path, 0o600)
+        row = json.loads(path.read_bytes())
+        case = path.stem
+        history = Path(work_root) / 'case-history' / path.name
+        if set(row) != {'schema','case','history_sha256','cleanup','cleanup_sha256','archive_dispositions'} or row['schema'] != 'ardents-qa-history-disposed-v1' or row['case'] != case:
+            raise RuntimeError('exact disposed case record required')
+        cache = {}
+        pinned(history, row['history_sha256'], cache)
+        record = json.loads(history.read_bytes())
+        if record.get('schema') != 'ardents-native-case-finalized-v1' or record.get('state') != 'retained' or record.get('case') != case:
+            raise RuntimeError('original finalized case required before disposal')
+        receipts = {k:pinned(record[k],record[k+'_sha256'],cache) for k in ('qa_verified','input_verified','disposition')}
+        proof = json.loads(receipts['qa_verified'].read_bytes())
+        if not all(proof.get(k) is True for k in ('verified','physical_full_package_restore','source_unchanged')):
+            raise RuntimeError('original fully verified QA required')
+        manifest_path = pinned(receipts['qa_verified'].parent/'manifest.private.json',proof['manifest_sha256'],cache)
+        manifest = json.loads(manifest_path.read_bytes())
+        root = Path(work_root)/'cases'/case
+        qualification = manifest['qualification']
+        if manifest['roots'] != [str(root)] or qualification.get('roots') != [str(root)] or qualification.get('qualified_terminal_qa') is not True or len(qualification['receipts']) != 1:
+            raise RuntimeError('exact finalized terminal QA required')
+        terminal = qualification['receipts'][0]
+        raw = base64.b64decode(terminal['terminal_base64'],validate=True)
+        if hashlib.sha256(raw).hexdigest()!=terminal['terminal_sha256']:
+            raise RuntimeError('original terminal bytes changed')
+        terminal = json.loads(raw)
+        if terminal.get('schema')!='ardents-native-case-terminal-v1' or terminal.get('case')!=case or terminal.get('reservation_sha256')!=record['reservation_sha256'] or terminal.get('original_scope_joined') is not True or terminal.get('original_resources_joined') is not True:
+            raise RuntimeError('original physical joins required before disposal')
+        cleanup = json.loads(pinned(row['cleanup'],row['cleanup_sha256'],cache).read_bytes())
+        if cleanup.get('case')!=case or cleanup.get('raw_duplicate_removed')!=str(root) or cleanup.get('original_resources_joined') is not True or cleanup.get('fresh_references',{}).get('references')!=0:
+            raise RuntimeError('actual joined zero-reference raw disposition required')
+        if root.exists() or root.is_symlink():
+            raise RuntimeError('disposed original case path reappeared')
+        for item in cleanup['non_ELF_post_finalization_preserved'].values():
+            pinned(item['retained'],item['sha256'],cache)
+        for archive_path,pin in row['archive_dispositions'].items():
+            pinned(archive_path,pin,cache)
+        check_disposed_pack(receipts['qa_verified'].parent,proof['archive_sha256'],'qa-payloads.zip',cache,row['archive_dispositions'])
+        inputs = json.loads(receipts['input_verified'].read_bytes())
+        if not all(inputs.get(k) is True for k in ('verified','physical_input_restore','source_unchanged')):
+            raise RuntimeError('original verified input closure required')
+        pinned(receipts['input_verified'].parent/'manifest.private.json',inputs['manifest_sha256'],cache)
+        check_disposed_pack(receipts['input_verified'].parent,inputs['archive_sha256'],inputs['archive_name'],cache,row['archive_dispositions'])
+        result[case]=row
+    return result
+
+
+def check_disposed_pack(directory, original_sha, name, cache, dispositions):
+    # The original verification remains historical. A separate explicit
+    # disposal receipt binds old/new ZIP bytes and only ELF removal.
+    import zipfile
+    if name not in ('qa-payloads.zip','original-inputs.zip'):
+        raise RuntimeError('closed disposed archive name required')
+    path = Path(directory)/name
+    if qa_archive.sha(path)==original_sha:
+        pinned(path,original_sha,cache)
+        return
+    receipt=path.with_suffix('.executable-disposition.json')
+    if receipt.resolve()!=receipt or not receipt.is_file():
+        raise RuntimeError('separate original/new archive disposition required')
+    if str(receipt) not in dispositions:
+        raise RuntimeError('archive disposition pin missing')
+    pinned(receipt,dispositions[str(receipt)],cache)
+    before=qa_archive.facts(receipt)
+    row=json.loads(receipt.read_bytes())
+    if row.get('archive')!=str(path) or row.get('historical_original_sha256')!=original_sha or not row.get('removed_ELF_payloads'):
+        raise RuntimeError('original archive disposition differs')
+    pinned(path,row['retained_evidence_sha256'],cache)
+    removed=set()
+    for item in row['removed_ELF_payloads']:
+        if item['entry']!='sha256/'+item['sha256'] or not re.fullmatch('[0-9a-f]{64}',item['sha256']) or item['bytes']<4 or item['entry'] in removed:
+            raise RuntimeError('exact disposed ELF inventory required')
+        removed.add(item['entry'])
+    with zipfile.ZipFile(path) as archive:
+        names=archive.namelist()
+        if len(names)!=len(set(names)) or len(names)!=row['retained_entries'] or removed.intersection(names):
+            raise RuntimeError('disposed archive entry set differs')
+        for name in names:
+            raw=archive.read(name)
+            if name!='sha256/'+hashlib.sha256(raw).hexdigest() or raw.startswith(b'\x7fELF'):
+                raise RuntimeError('retained archive bytes differ or executable remains')
+    if qa_archive.facts(receipt)!=before:
+        raise RuntimeError('archive disposition changed during read')
