@@ -84,7 +84,7 @@ func (s *ForwardingReplacement) Reload() error {
 	if s == nil || s.original == nil || s.original.reference == nil {
 		return ErrInput
 	}
-	return s.original.reference.reloadForwarding(&s.original.reloaded)
+	return s.original.reference.reloadOriginal(&s.original.reloaded)
 }
 
 func (s *ForwardingReplacement) Close() error {

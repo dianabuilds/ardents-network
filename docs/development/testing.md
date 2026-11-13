@@ -5255,3 +5255,32 @@ bytes, bounded trust/notice grammar, complete retained-path collisions and fixed
 protection. These are public declaration and native output-custody controls;
 they do not authenticate a signed Epoch, Release, duty, spend, allowance or
 installed startup.
+
+### Initial stopped JOIN native boundary
+
+`network-signing-linux` additionally selects `TestJoinBirthsNative*` for original
+journal exclusion, actual directory/file births and same-inode delivery, retained
+sync/cancellation/Close failures and descriptor return. These physical fixtures
+grant no Release or installed authority. The ordinary fixed manager grammar
+admits only the JOIN object and rejects every other Node/Source object and all
+jobs, even when another role's job flags are supplied.
+
+`TestJoinPreparationNativeInitialStoppedAndIndependentHistory` requires a fresh
+private Ubuntu24.04/systemd255/ext4 stand with all five Node slots/account absent
+and `/etc/ardents-join-initial-native-stand` containing exactly
+`ardents-join-initial-native-v1` plus LF. Its externally pinned actual Node and
+Control, both matching controlled build records, public plan preparer and evidence
+are supplied through the existing `ARDENTS_JOIN_*` native environment. Genuine
+canonical Release, request/plan, inventory/pin and Node commands perform initial
+stopped installation and repeat independent history verification. A wrong pin
+refuses before any history/root effect, a fresh retry cannot adopt the completed
+prefix, four semantic roots stay empty and the actual manager reports PID0 /
+inactive/dead. TLS keys and unsigned runtime declarations are explicit prestart
+fixtures; no signed State, duty, installed runtime or bootstrap acceptance is
+provided. Missing prerequisites fail, never skip. The profile retains its3m bound.
+
+`installation-native-linux` additionally exercises RootBirth's actual same-inode
+delivery/seal, cancellation, substituted inode, nonempty birth and retained data
+through physical Close. Fixedfile's root0600 birth controls verify same-inode
+private delivery, copied input and secret erasure only after native joins;
+complete-file replacement and foreign-group private births remain refused.

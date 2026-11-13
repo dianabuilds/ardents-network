@@ -1418,3 +1418,12 @@ only root-controlled original JOIN delivery and fresh read-only initial namespac
 observation. It joins original input/manager users before reporting
 `join-inputs-preflight-completed` with `installed:false`. It creates no account,
 unit, runtime root or history and supplies no later installation/Start permission.
+
+### JOIN initial stopped installation
+
+- `ardents-node join install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST` verifies the initial running program/pin and coherent Release pair, creates one protected stopped JOIN generation, and joins all original users before publishing completion. It never starts the role or initializes semantic histories.
+- `ardents-node join inspect-initial-history DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING` independently verifies complete original native history and fresh permission for the same payloads. It closes original readers/verifier before output; no startup right is returned.
+
+An existing account, root or retained partial journal refuses fresh initial
+installation. Preserve that prefix and its error evidence; these commands supply
+no adoption, rollback or recovery operation.

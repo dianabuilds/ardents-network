@@ -114,3 +114,33 @@ func TestFixedJoinTemplateHasOnePurposeAndUnchangedProtection(t *testing.T) {
 		t.Fatal("foreign or additional command in fixed JOIN template")
 	}
 }
+
+func TestJoinRenderingBindsExactCommandAndFourRoots(t *testing.T) {
+	r, err := DecodeRequest([]byte(requestVector))
+	if err != nil {
+		t.Fatal(err)
+	}
+	generation := strings.Repeat("1", 64)
+	actual, err := renderUnit([]byte(Template), r, generation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unit := string(actual)
+	wanted := "ExecStart=:\"/opt/ardents-join/generations/" + generation + "/ardents-node-linux-amd64\" join start-installed \"/opt/ardents-join/binding.json\"\n"
+	writes := "ReadWritePaths=\"/var/lib/ardents-node-state\" \"/var/lib/ardents-node-participation\" \"/var/lib/ardents-node-spend\" \"/var/lib/ardents-node-hosting\"\n"
+	if !strings.Contains(unit, wanted) || !strings.Contains(unit, writes) || strings.Contains(unit, "@ARDENTS_") {
+		t.Fatal("rendered fixed JOIN command/root binding differs", unit)
+	}
+	for _, bad := range []string{"", strings.Repeat("1", 63), strings.Repeat("G", 64)} {
+		if _, err := renderUnit([]byte(Template), r, bad); err == nil {
+			t.Fatal("invalid generation accepted")
+		}
+	}
+	if _, err := renderUnit([]byte(Template+"ExecStartPre=/bin/true\n"), r, generation); err == nil {
+		t.Fatal("unaccepted template gained a command")
+	}
+	r.InstallationRoot = "/opt/%n"
+	if _, err := renderUnit([]byte(Template), r, generation); err == nil {
+		t.Fatal("unit expansion in path admitted")
+	}
+}

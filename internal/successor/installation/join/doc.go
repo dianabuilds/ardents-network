@@ -13,4 +13,8 @@
 // request physical mechanism. InspectInitialInputs and canonical Node's JOIN
 // consumer read all five absent Node slots and future namespaces without effects.
 // Every original observer joins before return; preflight grants no later effect.
+// InstallInitialStopped independently admits genuine initial Enrollment/Release,
+// its own fixed manager/account/birth journals and protected stopped generation.
+// ReadCompleted retains its own original journal/native custody and fresh pair
+// matching; neither operation starts a role or initializes semantic histories.
 package join

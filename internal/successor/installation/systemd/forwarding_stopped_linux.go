@@ -209,38 +209,7 @@ func (s *ForwardingStopped) Reload() error {
 	if s == nil || s.original == nil || s.original.reference == nil {
 		return ErrInput
 	}
-	return s.original.reference.reloadForwarding(&s.original.reloaded)
-}
-
-func (r *managerReference) reloadForwarding(attempted *bool) error {
-	return r.performOriginal(func(ctx context.Context, r *managerReference) error {
-		if err := r.admitForwardingReload(attempted); err != nil {
-			return err
-		}
-		_, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.Reload")
-		return err
-	})
-}
-
-// Physical I/O is serialized by the caller. This short local gate orders an
-// attempted reload against Close and retains uncertainty before sending bytes.
-func (r *managerReference) admitForwardingReload(attempted *bool) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if r.closed.Load() {
-		return ErrUnavailable
-	}
-	if r.terminal != nil {
-		return r.terminal
-	}
-	if err := r.original.Err(); err != nil {
-		return err
-	}
-	if *attempted {
-		return ErrObservation
-	}
-	*attempted = true
-	return nil
+	return s.original.reference.reloadOriginal(&s.original.reloaded)
 }
 
 // ObserveLoaded returns complete fixed Forwarding Unit/Service facts, surrounded

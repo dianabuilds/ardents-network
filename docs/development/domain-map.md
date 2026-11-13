@@ -138,6 +138,15 @@ NodeSlots connection checks all five absent roles; fresh future resources,
 journals and account remain absent. Neither read-only preflight nor shared
 physical source grants creation, Release, Startup or runtime permission.
 
+JOIN initial stopped Installation separately retains genuine Enrollment/Release
+admission, one fixed JOIN-only stopped manager, original account and native
+births, exact generation and pending publication after all original joins.
+The independent complete reader opens its own exclusive initial journal and
+native files; fresh artifact permission stays with Release. Shared RootBirth,
+fixed-file mutation and reload source transfer no role permission or live owner.
+Four semantic histories remain empty and unopened. No Start, runtime duty,
+replacement, recovery or installed qualification follows from initial completion.
+
 Installation's separate `installation/join` declaration owner fixes the JOIN
 request/plan, four writable semantic roots, retained journal/completion namespace and
 closed non-root unit template. Canonical Control consumes it for public request

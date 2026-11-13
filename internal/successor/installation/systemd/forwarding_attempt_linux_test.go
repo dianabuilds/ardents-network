@@ -37,7 +37,7 @@ func TestForwardingReplacementCopiesShareOneReloadAttemptAndDenial(t *testing.T)
 		uses.Add(1)
 		go func() {
 			defer uses.Done()
-			if err := copy.original.reference.admitForwardingReload(&copy.original.reloaded); err == nil {
+			if err := copy.original.reference.admitOriginalReload(&copy.original.reloaded); err == nil {
 				admitted.Add(1)
 			}
 		}()
@@ -47,7 +47,7 @@ func TestForwardingReplacementCopiesShareOneReloadAttemptAndDenial(t *testing.T)
 		t.Fatal("copies split the one native attempt", admitted.Load())
 	}
 	cancel()
-	if err := r.admitForwardingReload(&s.original.reloaded); err != context.Canceled {
+	if err := r.admitOriginalReload(&s.original.reloaded); err != context.Canceled {
 		t.Fatal("lost original denial", err)
 	}
 	for _, state := range []string{"closed", "failed", "cancelled"} {
@@ -65,7 +65,7 @@ func TestForwardingReplacementCopiesShareOneReloadAttemptAndDenial(t *testing.T)
 				deny()
 			}
 			attempted := false
-			err := r.admitForwardingReload(&attempted)
+			err := r.admitOriginalReload(&attempted)
 			if err == nil || attempted {
 				t.Fatal("denied owner admitted native attempt", err)
 			}

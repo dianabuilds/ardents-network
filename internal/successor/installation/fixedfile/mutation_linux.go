@@ -119,6 +119,7 @@ func Replace(ctx context.Context, filename string, parent, original os.FileInfo,
 		return owned, owned.fail(errors.Join(ErrBinding, err, pathErr))
 	}
 	current, err := io.ReadAll(io.LimitReader(owned.file, int64(max(len(previous), len(candidate)))+1))
+	defer clear(current)
 	if err != nil || !ReplacementPrefixAllowed(current, previous, owned.body) {
 		return owned, owned.fail(errors.Join(ErrBinding, err))
 	}
@@ -131,7 +132,7 @@ func Replace(ctx context.Context, filename string, parent, original os.FileInfo,
 }
 
 func openParent(ctx context.Context, filename string, parent os.FileInfo, body []byte, mode os.FileMode, gid uint32) (*Mutation, error) {
-	if ctx == nil || filename == "/" || !filepath.IsAbs(filename) || filepath.Clean(filename) != filename || parent == nil || len(body) == 0 || len(body) > 64<<20 || (mode != 0644 && mode != 0555 && mode != 0640 && mode != 0444) || mode == 0444 && gid != 0 {
+	if ctx == nil || filename == "/" || !filepath.IsAbs(filename) || filepath.Clean(filename) != filename || parent == nil || len(body) == 0 || len(body) > 64<<20 || (mode != 0600 && mode != 0644 && mode != 0555 && mode != 0640 && mode != 0444) || (mode == 0444 || mode == 0600) && gid != 0 {
 		return nil, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
@@ -189,6 +190,7 @@ func (owned *Mutation) Commit() (result os.FileInfo, returnedErr error) {
 		return nil, err
 	}
 	preimage, err := io.ReadAll(io.LimitReader(owned.file, int64(len(owned.preimage))+1))
+	defer clear(preimage)
 	if err != nil || !bytes.Equal(preimage, owned.preimage) {
 		return nil, errors.Join(ErrBinding, err)
 	}
@@ -233,6 +235,7 @@ func (owned *Mutation) Commit() (result os.FileInfo, returnedErr error) {
 		return nil, err
 	}
 	actual, err := io.ReadAll(io.LimitReader(owned.file, int64(len(owned.body))+1))
+	defer clear(actual)
 	if err != nil || !bytes.Equal(actual, owned.body) {
 		return nil, errors.Join(ErrBinding, err)
 	}
@@ -283,6 +286,8 @@ func (owned *Mutation) Close() error {
 			owned.terminal = errors.Join(owned.terminal, owned.parent.Close())
 			owned.parent = nil
 		}
+		clear(owned.body)
+		clear(owned.preimage)
 		if owned.ctx == nil {
 			owned.terminal = errors.Join(owned.terminal, ErrBinding)
 		} else {

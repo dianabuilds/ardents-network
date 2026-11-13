@@ -4,13 +4,13 @@
 
 | Path | Package | Responsibility and real consumer | Permitted imports |
 |---|---|---|---|
-| `internal/successor/installation/join` | `package join` | Closed JOIN installation request/plan, independent paths and complete finite journal/completion namespace, fixed protection template. Canonical Control's `join prepare-request`, `join prepare-plan` and `join prepare-template` are real consumers. Its separate original input/preflight lifetime and canonical Node read-only consumer retain protected files, all five absent slots and future paths without creation. No Release, account adoption, startup or runtime permission is supplied. | Standard library; `plan_linux.go` alone may use `internal/successor/hosting` for public Traffic; `inputs_linux.go` alone may use `internal/successor/installation/request` for original protected file custody; `preflight_linux.go` alone may use `internal/successor/installation/systemd` for independently owned read-only NodeSlots |
+| `internal/successor/installation/join` | `package join` | Closed JOIN installation request/plan, independent paths and complete finite journal/completion namespace, fixed protection template. Canonical Control's `join prepare-request`, `join prepare-plan` and `join prepare-template` are real consumers. Its separate original input/preflight lifetime and canonical Node read-only consumer retain protected files, all five absent slots and future paths without creation. Its separately admitted canonical initial stopped creator owns genuine Enrollment/Release admission, original births and native readback; independent completed inspection retains its own journal lease. No account adoption, Start or runtime permission is supplied. | Standard library; `plan_linux.go` alone may use `internal/successor/hosting` for public Traffic; `inputs_linux.go` alone may use `internal/successor/installation/request` for original protected file custody; `preflight_linux.go` alone may use `internal/successor/installation/systemd` for independently owned read-only NodeSlots; `binding_linux.go` may use `internal/successor/installation/infrastructure`; `generation_bytes_linux.go` may use `internal/successor/enrollment` and `internal/successor/installation/infrastructure`; `initial_install_linux.go` may use `internal/successor/installation/infrastructure`, `internal/successor/installation/systemd` and `internal/successor/release`; `initial_birth_linux.go` may use `internal/successor/installation/directory` and `internal/successor/installation/fixedfile`; `loaded_policy_linux.go` may use `internal/successor/installation/systemd`; `completed_initial_linux.go` may use `internal/successor/installation/infrastructure` and `internal/successor/release`. Every listed import is file-specific; no parent facade or role-wide permission is supplied |
 
 The package's behavior tests belong to `deterministic-linux-packages.txt`.
 `cmd/ardents-control/join_request_linux.go` and `join_plan_linux.go` may import only the standard library
 and `internal/successor/installation/join`. The existing public JOIN artifact
 producer additionally imports that exact policy owner for its fixed template and
-request producer. `cmd/ardents-node/join_installation_linux.go` may import only the standard library and `internal/successor/installation/join` for actual read-only `join inspect-inputs`. No Node/Route runtime consumer or R01 exception is introduced.
+request producer. `cmd/ardents-node/join_installation_linux.go` may import only the standard library, `internal/successor/installation/join`, `internal/successor/installation/infrastructure`, `internal/successor/enrollment` and `internal/successor/release` for actual `join inspect-inputs`, `install-initial-stopped` and `inspect-initial-history`. No Node/Route runtime consumer or R01 exception is introduced.
 Each role's semantic authority and original resource completion remain with its
 existing owner; shared byte preparation does not supply a universal role policy.
 
@@ -18,7 +18,7 @@ JOIN's fixed initial/forward Release producers are separate command composition.
 `installation/infrastructure/join_admission.go` uses only the standard library,
 Enrollment and Release to retain a distinct exact JOIN candidate pair; its real
 consumer is canonical Control's fixed forward-Release predecessor verification.
-It grants no initial provenance, native effect, Source/Forwarding right or Startup.
+Its distinct initial constructor retains genuine initial provenance only after empty Release floors and independently verified running-program Enrollment. JOIN Installation separately admits native effects; no Source/Forwarding right or Startup is supplied.
 `join_release_plan_linux.go` and `join_release_native_linux_test.go` may import
 only the standard library, `internal/successor/installation/infrastructure`,
 `internal/successor/installation/join`, and the latter test alone may also use
@@ -766,3 +766,8 @@ input observation is held.
 `network/source` for actual serving/guard retirement on failed readiness output.
 `source_fixture_linux_test.go` contains independent public TLS fixture preparation
 and standard-library imports only; it grants no native process proof.
+
+`installation/directory/root_birth_linux.go` uses only the standard library for original root-owned directory birth/delivery/seal, consumed by JOIN initial installation. `installation/systemd/join_stopped_linux.go` uses the existing registered `github.com/godbus/dbus/v5` and standard library for a separate fixed JOIN-only stopped connection. `manager_reload_linux.go` shares only physical one-attempt reload ordering between independently owned connections; it grants no unit selector or role policy.
+
+`cmd/ardents-control/join_initial_stopped_native_linux_test.go` imports only standard library and `internal/successor/installation/join`, driving real canonical build-bound Release preparation and stopped installation without runtime duty authority.
+

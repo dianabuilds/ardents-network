@@ -2018,6 +2018,47 @@ builder/operator claim. No Source/Forwarding signing purpose or live owner is
 borrowed. Source/Forwarding behavior and original histories remain with those
 existing owners.
 
+#### Initial stopped JOIN persistence
+
+`ardents-node join install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT
+NETWORK REQUEST` independently verifies its running program and exact initial
+Enrollment inventory, requires empty Release floors and retains two coherent
+Node/JOIN authorizations. Its own original request/plan/Ed25519 input lifetime
+cannot reuse an earlier preflight's account observations. All five Node units
+and sockets, future roots, complete retained journal namespace and shared
+`ardents-node` account must be absent before effects. Existing accounts and
+semantic roots are never adopted.
+
+The distinct fixed `systemd.JoinStopped` connection admits one Reload and only
+the JOIN unit object; it has no job, Start, Stop, Enable, reconnect or arbitrary
+unit selector. Independent original manager/kernel/namespace/ancestor custody
+surrounds effects. Only the three actual generator output directories may be
+refreshed after this operation's Reload; every other original remains pinned.
+
+| Initial effect | Required admission and retained result |
+|---|---|
+| Initial journal and pending | Fresh original inputs, exact initial pair and fixed absent namespace; exclusive root0600 journal/flock, original synced root0600 pending birth before subsequent effects |
+| Account | Exact original four database/auxiliary preimages, reviewed fixed native helper and independently checked absent NSS identity; original helper/descendants join, exact database delta, native postimages and current principal before subsequent effects |
+| Six roots plus generation containers | Original absent paths and writable ext4/traversable native parents; exclusive root0700 birth recorded before same-inode account/mode delivery; four semantic roots stay empty |
+| Credential and generation files | Exact finite inventory; exclusive empty root0600 birth recorded before physical bytes, same-inode access promotion and independent readback. Program0555, public artifacts0444, private key root:Node0640 |
+| Seal, selection, unit and Reload | Complete original twelve-file generation, seal intent before same-inode0555, exact root0644 selection/unit births, recorded one-use reload intent and two genuine stopped-policy rounds |
+| Publication | Complete canonical120-record initial transcript and independent native birth/byte readback; join original manager, account, namespace, identities, physical writers/readers, inputs and Release before unlinking the same original pending guard |
+
+The transcript is `join-initial-v1`, distinct from Source/Forwarding history.
+Failure retains the original prefix/blocker and cleanup errors. No successful
+looking row, caller timeout or actual process exit supplies a missing join.
+There is no implicit rollback, continuation, Start or semantic initialization.
+
+`join inspect-initial-history DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
+opens its own exclusive original journal lease and every native descriptor after
+publication, checks the complete historical inventory and born identities, and
+matches fresh independently retained Node/JOIN permission to the same payloads.
+Advancing metadata cannot substitute the historical Enrollment inventory.
+Host account databases remain current principal facts rather than frozen
+postimages. Semantic contents are unopened; every independent observer and
+verifier closes before output. This boundary grants no manager/process/State,
+first-start, non-root Startup, replacement, recovery or installed qualification.
+
 JOIN public plan preparation binds the exact declared State, participation,
 spend, Hosting, clock and installed credential locations, explicit Node/Network
 identifiers and independently supplied State/profile pins. Its bounded canonical

@@ -44,10 +44,11 @@ const (
 	sourceUnitReply managerUnitReply = iota
 	forwardingUnitReply
 	nodeSlotsReply // Absence-only connection: no unit or job object replies.
+	joinUnitReply  // Fixed JOIN unit only; no job replies for stopped installation.
 )
 
 func (reply managerUnitReply) valid() bool {
-	return reply == sourceUnitReply || reply == forwardingUnitReply || reply == nodeSlotsReply
+	return reply == sourceUnitReply || reply == forwardingUnitReply || reply == nodeSlotsReply || reply == joinUnitReply
 }
 
 func (reply managerUnitReply) object() string {
@@ -56,6 +57,8 @@ func (reply managerUnitReply) object() string {
 		return "/org/freedesktop/systemd1/unit/ardents_2dsource_2eservice"
 	case forwardingUnitReply:
 		return "/org/freedesktop/systemd1/unit/ardents_2dforwarding_2eservice"
+	case joinUnitReply:
+		return "/org/freedesktop/systemd1/unit/ardents_2djoin_2eservice"
 	default:
 		return ""
 	}
