@@ -553,6 +553,8 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-inputs.test" ./internal/successor/installation/join
 
 .PHONY: join-installed-check
+JOIN_INSTALLED_TEST ?= TestJoinInstalledNativeProtectedStartupAndPair
 join-installed-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "join-installed-check requires the selected isolated Ubuntu/systemd stand"; exit 2)
-	go test -race -trimpath -buildvcs=false -tags join_installed_native ./internal/successor/installation/join -run '^TestJoinInstalledNativeProtectedStartupAndPair$$' -count=1 -v -timeout=3m
+	@case "$(JOIN_INSTALLED_TEST)" in TestJoinInstalledNativeProtectedStartupAndPair|TestJoinInstalledNativeForwardReplacement) ;; *) echo 'select one registered JOIN installed scenario on a fresh stand' >&2; exit 2;; esac
+	go test -race -trimpath -buildvcs=false -tags join_installed_native ./internal/successor/installation/join -run '^$(JOIN_INSTALLED_TEST)$$' -count=1 -v -timeout=3m

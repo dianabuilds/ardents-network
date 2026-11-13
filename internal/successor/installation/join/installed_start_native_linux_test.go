@@ -26,7 +26,15 @@ import (
 
 // Original installed first-start composition; no development Node, fixture
 // authority, foreign role runtime or fabricated successful State observation.
-func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) {
+func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) { runJoinInstalledLifetime(t, false) }
+
+func TestJoinInstalledNativeForwardReplacement(t *testing.T) { runJoinInstalledLifetime(t, true) }
+
+// Each selected journey uses a fresh manager and the unchanged three-minute
+// profile. The baseline keeps every same-generation restart assertion; the
+// replacement journey uses initial/resource/program invocations without
+// duplicating that baseline invocation inside its own finite time budget.
+func runJoinInstalledLifetime(t *testing.T, replacement bool) {
 	marker, err := os.ReadFile("/etc/ardents-join-initial-native-stand")
 	if err != nil || string(marker) != "ardents-join-initial-native-v1\n" || os.Geteuid() != 0 {
 		t.Fatal("invalid environment: isolated initial JOIN stand required", err)
@@ -260,7 +268,76 @@ func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) {
 	} else {
 		t.Log(string(raw))
 	}
-	stock := prepareJoinIssuedStock(t, parent, vault, created, secrets, bundle, profile, authority, 4, peer)
+	rights := uint32(4)
+	if replacement {
+		rights = 6
+	}
+	stock := prepareJoinIssuedStock(t, parent, vault, created, secrets, bundle, profile, authority, rights, peer)
+	var resourceDistribution, resourceRequest, programDistribution, programRequest string
+	if replacement {
+
+		// Two actually rebuilt canonical versions differ only in the corrected public
+		// JOIN usage text. This exercises exact executable replacement, not behavior
+		// migration or compatibility with an independently developed version.
+		finalBuild := os.Getenv("ARDENTS_JOIN_FINAL_BUILD_ROOT")
+		if !filepath.IsAbs(finalBuild) || digest(read(filepath.Join(finalBuild, "READY"))) != os.Getenv("ARDENTS_JOIN_FINAL_BUILD_READY_SHA256") {
+			t.Fatal("invalid environment: final matching builds required")
+		}
+		finalProgram, finalBytes := joinNativePinnedProgram(t, "ARDENTS_JOIN_FINAL_NODE_PROGRAM")
+		if bytes.Equal(finalBytes, nodeBytes) {
+			t.Fatal("program replacement needs actual different executable bytes")
+		}
+		for _, number := range []string{"build-1", "build-2"} {
+			if !bytes.Equal(read(filepath.Join(finalBuild, number, "ardents-node")), finalBytes) {
+				t.Fatal("successor commands differ from actual builds")
+			}
+		}
+		prepareReplacement := func(version, build, program, previous string) (string, string) {
+			t.Helper()
+			stage := filepath.Join(delivery, "replacement-"+version)
+			if err := os.Mkdir(stage, 0700); err != nil {
+				t.Fatal(err)
+			}
+			descRoot := filepath.Join(stage, "descriptor")
+			call("prepare-descriptor", "initial-stopped-join", version, program, template, descRoot)
+			publicPlan := filepath.Join(stage, "public-plan")
+			forwardArgs := []string{"-I", "-S", preparer, "--forward", "--build-root", build, "--descriptor", filepath.Join(descRoot, "infrastructure-join.json"), "--template", template, "--network", "initial-stopped-join", "--expires", now.Add(time.Hour).Format(time.RFC3339), "--no-new-work-after", now.Add(30 * time.Minute).Format(time.RFC3339), "--terminate-after", now.Add(45 * time.Minute).Format(time.RFC3339), "--qualification-evidence", evidence, "--qualification-evidence-sha256", os.Getenv("ARDENTS_JOIN_BUILD_EVIDENCE_SHA256"), "--output", publicPlan}
+			if raw, err := exec.CommandContext(t.Context(), "python3", forwardArgs...).CombinedOutput(); err != nil {
+				t.Fatal("actual forward build-bound plan", err, string(raw))
+			}
+			metadata := filepath.Join(stage, "metadata")
+			call("sign-forward-release", filepath.Join(publicPlan, "join-release-plan.json"), keys, metadata, filepath.Join(stage, "verification"), previous)
+			dist := filepath.Join(stage, "distribution")
+			if err := os.Mkdir(dist, 0700); err != nil {
+				t.Fatal(err)
+			}
+			contents := map[string][]byte{"ardents-node-linux-amd64": read(program), "ardents-join.service": read(template), "infrastructure-join.json": read(filepath.Join(descRoot, "infrastructure-join.json"))}
+			for _, name := range []string{"root.json", "timestamp.json", "snapshot.json", "targets.json"} {
+				contents[name] = read(filepath.Join(metadata, name))
+			}
+			for name, raw := range contents {
+				mode := os.FileMode(0600)
+				if name == "ardents-node-linux-amd64" {
+					mode = 0700
+				}
+				if err := os.WriteFile(filepath.Join(dist, name), raw, mode); err != nil {
+					t.Fatal(err)
+				}
+			}
+			inv := filepath.Join(stage, "inventory")
+			call("prepare-inventory", dist, inv)
+			if err := os.WriteFile(filepath.Join(dist, "infrastructure-enrollment.json"), read(filepath.Join(inv, "infrastructure-enrollment.json")), 0600); err != nil {
+				t.Fatal(err)
+			}
+			requestOut, planOut := filepath.Join(stage, "request"), filepath.Join(stage, "runtime-plan")
+			call("prepare-request", "--installation-root", request.InstallationRoot, "--state-root", request.StateRoot, "--participation-root", request.ParticipationRoot, "--spend-root", request.SpendRoot, "--hosting-root", request.HostingRoot, "--credential-directory", request.CredentialDirectory, "--plan", filepath.Join(planOut, "join-plan.json"), "--certificate", certPath, "--private-key", keyPath, "--clock", clock, "--output", requestOut)
+			rp := filepath.Join(requestOut, "join-request.json")
+			call("prepare-plan", "--request", rp, "--output", planOut, "--network-id", hex.EncodeToString(network[:]), "--node-id", hex.EncodeToString(nodeID[:]), "--profile-authority", hex.EncodeToString(authority[:]), "--authority", hex.EncodeToString(authority[:]), "--threshold", "1", "--work-tx", "134217729", "--work-rx", "134217728", "--termination-tx", "1048576", "--termination-rx", "1048576", "--retirement-wait-ms", "5000")
+			return dist, rp
+		}
+		resourceDistribution, resourceRequest = prepareReplacement("2", buildRoot, node, distribution)
+		programDistribution, programRequest = prepareReplacement("3", finalBuild, finalProgram, resourceDistribution)
+	}
 	// The external retained supervisor commits exact source/build/artifact/input
 	// hashes under the Product Owner's bounded campaign delegation before Start.
 	inputHashes := map[string]string{}
@@ -288,6 +365,10 @@ func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(parent, "prepared.json"), prepared, 0600); err != nil {
 		t.Fatal(err)
 	}
+	delegation := "selected-545-stop-restart"
+	if replacement {
+		delegation = "selected-545-replacement"
+	}
 	until := time.Now().Add(30 * time.Second)
 	for {
 		receipt, err := os.ReadFile(filepath.Join(parent, "bootstrap-scope.json"))
@@ -297,7 +378,7 @@ func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) {
 				PreparedSHA256 string `json:"prepared_sha256"`
 				Delegation     string `json:"delegation"`
 			}
-			if json.Unmarshal(receipt, &grant) != nil || grant.Schema != "ardents-join-installed-bootstrap-v1" || grant.PreparedSHA256 != digest(prepared) || grant.Delegation != "selected-545-stop-restart" {
+			if json.Unmarshal(receipt, &grant) != nil || grant.Schema != "ardents-join-installed-bootstrap-v1" || grant.PreparedSHA256 != digest(prepared) || grant.Delegation != delegation {
 				t.Fatal("exact bootstrap scope mismatch")
 			}
 			break
@@ -423,6 +504,11 @@ func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) {
 	if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-join", binding); err == nil {
 		t.Fatal("restart accepted without original retirement", string(raw))
 	}
+	if replacement {
+		if raw, err := invoke("replace", resourceDistribution, history, "alpha", "initial-stopped-join", binding, resourceRequest); err == nil {
+			t.Fatal("replacement accepted live unretired producer", string(raw))
+		}
+	}
 	if raw, err := invoke("stop", history, binding); err != nil || !bytes.Contains(raw, []byte("join-original-stop-completed")) {
 		t.Fatal("original explicit Stop/domain/native join", err, string(raw))
 	}
@@ -471,41 +557,119 @@ func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) {
 	if err := os.Remove(pending); err != nil {
 		t.Fatal(err)
 	}
-	if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-join", binding); err != nil || !bytes.Contains(raw, []byte("join-restart-completed")) {
-		t.Fatal("same-generation retained restart", err, string(raw))
-	}
-	checkIdentities()
-	until = time.Now().Add(10 * time.Second)
-	for {
-		listening := false
-		for _, line := range strings.Split(string(read("/proc/net/tcp")), "\n") {
-			fields := strings.Fields(line)
-			if len(fields) > 3 && fields[1] == "0100007F:1132" && fields[3] == "0A" {
-				listening = true
+	if !replacement {
+		if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-join", binding); err != nil || !bytes.Contains(raw, []byte("join-restart-completed")) {
+			t.Fatal("same-generation retained restart", err, string(raw))
+		}
+		checkIdentities()
+		until = time.Now().Add(10 * time.Second)
+		for {
+			listening := false
+			for _, line := range strings.Split(string(read("/proc/net/tcp")), "\n") {
+				fields := strings.Fields(line)
+				if len(fields) > 3 && fields[1] == "0100007F:1132" && fields[3] == "0A" {
+					listening = true
+					break
+				}
+			}
+			if listening {
 				break
 			}
+			if time.Now().After(until) {
+				t.Fatal("restarted installed listener absent")
+			}
+			time.Sleep(20 * time.Millisecond)
 		}
-		if listening {
-			break
+		runJoinInstalledPair(t, stock, peerCertificate)
+		if raw, err := invoke("stop", history, binding); err != nil || !bytes.Contains(raw, []byte("join-original-stop-completed")) {
+			t.Fatal("restarted explicit Stop/domain/native join", err, string(raw))
 		}
-		if time.Now().After(until) {
-			t.Fatal("restarted installed listener absent")
+		checkIdentities()
+		var firstArchive, secondArchive struct {
+			InvocationID string `json:"invocation_id"`
+			Generation   string `json:"generation"`
 		}
-		time.Sleep(20 * time.Millisecond)
+		if json.Unmarshal(read(filepath.Join(request.InstallationRoot, "join-startup", "start-archived.json")), &firstArchive) != nil || json.Unmarshal(read(filepath.Join(request.InstallationRoot, "join-invocation-00000001", "start-archived.json")), &secondArchive) != nil || firstArchive.InvocationID == secondArchive.InvocationID || firstArchive.Generation != secondArchive.Generation {
+			t.Fatal("restart did not retain generation with independent invocation")
+		}
+		t.Log("two actual installed pairs, both original domain/native retirements and retained restart completed; all root/key identities retained")
+		return
 	}
-	runJoinInstalledPair(t, stock, peerCertificate)
-	if raw, err := invoke("stop", history, binding); err != nil || !bytes.Contains(raw, []byte("join-original-stop-completed")) {
-		t.Fatal("restarted explicit Stop/domain/native join", err, string(raw))
+	var firstArchive struct {
+		Generation string `json:"generation"`
 	}
-	checkIdentities()
-	var firstArchive, secondArchive struct {
-		InvocationID string `json:"invocation_id"`
-		Generation   string `json:"generation"`
+	if json.Unmarshal(read(filepath.Join(request.InstallationRoot, "join-startup", "start-archived.json")), &firstArchive) != nil || firstArchive.Generation == "" {
+		t.Fatal("original generation absent")
 	}
-	if json.Unmarshal(read(filepath.Join(request.InstallationRoot, "join-startup", "start-archived.json")), &firstArchive) != nil || json.Unmarshal(read(filepath.Join(request.InstallationRoot, "join-invocation-00000001", "start-archived.json")), &secondArchive) != nil || firstArchive.InvocationID == secondArchive.InvocationID || firstArchive.Generation != secondArchive.Generation {
-		t.Fatal("restart did not retain generation with independent invocation")
+	orphanReplacement := request.InstallationRoot + ".join-replacement-" + strings.Repeat("f", 64) + "-journal"
+	if err := os.WriteFile(orphanReplacement, nil, 0600); err != nil {
+		t.Fatal(err)
 	}
-	t.Log("two actual installed pairs, both original domain/native retirements and retained restart completed; all root/key identities retained")
+	if raw, err := invoke("replace", resourceDistribution, history, "alpha", "initial-stopped-join", binding, resourceRequest); err == nil {
+		t.Fatal("empty orphan replacement journal accepted", string(raw))
+	}
+	if err := os.Rename(orphanReplacement, filepath.Join(delivery, "refused-orphan-replacement-journal")); err != nil {
+		t.Fatal(err)
+	}
+	immutableInitial := filepath.Join(request.InstallationRoot, "generations", firstArchive.Generation, "binding.json")
+	savedInitial := filepath.Join(delivery, "retained-original-initial-binding")
+	if err := os.Rename(immutableInitial, savedInitial); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(immutableInitial, read(savedInitial), 0444); err != nil {
+		t.Fatal(err)
+	}
+	if raw, err := invoke("replace", resourceDistribution, history, "alpha", "initial-stopped-join", binding, resourceRequest); err == nil {
+		t.Fatal("same-byte foreign initial binding accepted", string(raw))
+	}
+	if err := os.Remove(immutableInitial); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(savedInitial, immutableInitial); err != nil {
+		t.Fatal(err)
+	}
+	for i, successor := range []struct{ distribution, request string }{{resourceDistribution, resourceRequest}, {programDistribution, programRequest}} {
+		if i == 1 {
+			node = filepath.Join(programDistribution, "ardents-node-linux-amd64")
+		}
+		if raw, err := invoke("replace", successor.distribution, history, "alpha", "initial-stopped-join", binding, successor.request); err != nil || !bytes.Contains(raw, []byte("join-replacement-stopped-completed")) {
+			t.Fatal("explicit stopped replacement", i, err, string(raw))
+		}
+		checkIdentities()
+		if raw, err := invoke("replace", successor.distribution, history, "alpha", "initial-stopped-join", binding, successor.request); err == nil {
+			t.Fatal("successor stacked without its own retirement", i, string(raw))
+		}
+		if raw, err := invoke("restart", successor.distribution, history, "alpha", "initial-stopped-join", binding); err != nil {
+			t.Fatal("replacement retained start", i, err, string(raw))
+		}
+		// Root archival/ACK does not claim that Node has completed construction
+		// or opened its listener. Observe the actual socket before the single pair
+		// attempt; no TLS probe, protocol retry or deadline extension is introduced.
+		listenerBound := time.Now().Add(10 * time.Second)
+		for {
+			listening := false
+			for _, line := range strings.Split(string(read("/proc/net/tcp")), "\n") {
+				fields := strings.Fields(line)
+				if len(fields) > 3 && fields[1] == "0100007F:1132" && fields[3] == "0A" {
+					listening = true
+					break
+				}
+			}
+			if listening {
+				break
+			}
+			if time.Now().After(listenerBound) {
+				t.Fatal("replacement installed listener absent", i)
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		runJoinInstalledPair(t, stock, peerCertificate)
+		if raw, err := invoke("stop", history, binding); err != nil {
+			t.Fatal("replacement original domain/native Stop", i, err, string(raw))
+		}
+		checkIdentities()
+	}
+	t.Log("resource and actual program successors: immutable lineage, retained independent Startup, real duplex/EOF/clean-terminal pair and original Stop; roots/keys retained")
 
 }
 

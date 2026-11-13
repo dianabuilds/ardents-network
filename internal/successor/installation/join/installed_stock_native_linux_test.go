@@ -65,10 +65,10 @@ type joinPreparedStock struct {
 
 func prepareJoinIssuedStock(t *testing.T, parent string, vault *custody.Vault, created custody.Receipt, secrets joinTokenTestSecrets, bundleRaw, profileRaw []byte, statePublic [32]byte, count uint32, peerID [32]byte) joinPreparedStock {
 	t.Helper()
-	// One pair consumes two genuine rights; the restart journey has two pairs.
+	// One pair consumes two genuine rights; the replacement journey has three.
 	// Actual Allocation, issuer quota and receiving limits remain authoritative.
-	if count != 2 && count != 4 {
-		t.Fatal("one or two finite JOIN pairs required")
+	if count != 2 && count != 4 && count != 6 {
+		t.Fatal("one, two or three finite JOIN pairs required")
 	}
 	if statePublic == created.AdmissionAuthority.Public {
 		t.Fatal("State and Permission keys collapsed")

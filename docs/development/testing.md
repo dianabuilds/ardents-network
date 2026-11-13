@@ -5301,13 +5301,21 @@ initial journal and other semantic roots remain unchanged. This is prestart
 component evidence, without installed Startup, paired JOIN or runtime authority.
 
 The separate `join-installed-linux` profile (`make join-installed-check`,
-`join_installed_native`, three-minute finite driver) exercises only the genuine
-canonical first Start, independent non-root Startup and receiving JOIN pair,
-explicit original domain/native Stop, retained same-generation Restart, a second
-real pair and its own Stop. It also requires pre-retirement and torn-blocker
-restart refusals, original root/key identity retention and distinct invocations.
-It requires the exact isolated manager/artifact/bootstrap prerequisites in the
-profile registry; it supplies no replacement/recovery or whole Service claim.
+`join_installed_native`, three-minute finite driver per fresh stand) selects
+exactly one journey through `JOIN_INSTALLED_TEST`:
+
+- `TestJoinInstalledNativeProtectedStartupAndPair` retains the original two-pair
+  explicit Stop/same-generation Restart assertions and causal refusals.
+- `TestJoinInstalledNativeForwardReplacement` runs initial → resource replacement
+  → distinct program replacement, with a real pair and original domain/native
+  Stop at each generation, preserved roots/keys and causal transition refusals.
+
+Both require canonical first Start, independent non-root Startup and the same
+exact isolated manager/artifact/bootstrap prerequisites. No timer or safety bound
+is extended. Three genuinely issued pairs use the unchanged Admission/Hosting
+limits. Two actual matching-build source snapshots differ only in corrected JOIN
+usage text; this proves exact executable selection, not cross-version behavior
+migration. Full Service and original-prefix recovery remain separate boundaries.
 
 
 Finalized native development QA may retire duplicate raw cases and archived ELF

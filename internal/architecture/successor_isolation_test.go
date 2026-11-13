@@ -1724,6 +1724,30 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 // Fixed JOIN first-start and its separate native regression consumers.
 func joinFirstStartImportAllowed(source, dependency string) bool {
 	switch source {
+	case "internal/successor/installation/join/replacement_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
+			return true
+		}
+
+	case "internal/successor/installation/join/replacement_candidate_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
+			return true
+		}
+
+	case "internal/successor/installation/join/replacement_inspections_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/admission/spending", "github.com/dianabuilds/ardents-network/internal/successor/hosting", "github.com/dianabuilds/ardents-network/internal/successor/network/state":
+			return true
+		}
+
+	case "internal/successor/installation/join/replacement_stopped_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd":
+			return true
+		}
+
 	case "internal/successor/installation/join/stop_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/completion", "github.com/dianabuilds/ardents-network/internal/successor/installation/process", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":

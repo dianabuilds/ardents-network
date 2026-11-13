@@ -43,7 +43,7 @@ func (c *completedInitial) readHostingPreparation() error {
 	}
 	iraw, _ := json.Marshal(intent)
 	rraw, _ := json.Marshal(result)
-	if !bytes.Equal(i.body, append(iraw, '\n')) || !bytes.Equal(r.body, append(rraw, '\n')) || intent.Schema != "ardents-join-hosting-intent-v1" || result.Schema != "ardents-join-hosting-completed-v1" || intent.Binding != digest(c.files[filepath.Join(b.Request.InstallationRoot, "binding.json")].body) || result.Intent != digest(i.body) || !initialSHA(intent.Policy) {
+	if !bytes.Equal(i.body, append(iraw, '\n')) || !bytes.Equal(r.body, append(rraw, '\n')) || intent.Schema != "ardents-join-hosting-intent-v1" || result.Schema != "ardents-join-hosting-completed-v1" || intent.Binding != digest(c.initialBindingBytes()) || result.Intent != digest(i.body) || !initialSHA(intent.Policy) {
 		return ErrBinding
 	}
 	native, ok := infoSys(c.directoryAt(b.Request.HostingRoot).info)

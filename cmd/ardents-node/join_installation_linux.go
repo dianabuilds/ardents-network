@@ -22,6 +22,9 @@ func runJoinInstallation(parent context.Context, args []string, output io.Writer
 		return startJoinGeneration(parent, args[1:], output, false)
 	}
 
+	if parent != nil && output != nil && len(args) == 7 && args[0] == "replace" {
+		return replaceJoinGeneration(parent, args[1:], output)
+	}
 	if parent != nil && output != nil && len(args) == 6 && args[0] == "restart" {
 		return startJoinGeneration(parent, args[1:], output, true)
 	}
@@ -35,7 +38,7 @@ func runJoinInstallation(parent context.Context, args []string, output io.Writer
 		return installInitialJoin(parent, args[1:], output)
 	}
 	if parent == nil || output == nil || len(args) != 2 || args[0] != "inspect-inputs" {
-		return errors.New("usage: ardents-node join inspect-inputs REQUEST | install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST | inspect-initial-history DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING")
+		return errors.New("usage: ardents-node join inspect-inputs REQUEST | install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST | inspect-initial-history DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING | replace DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST")
 	}
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()
@@ -209,4 +212,50 @@ func stopJoin(parent context.Context, args []string, out io.Writer) (returned er
 	}
 	_, err = io.WriteString(out, "{\"outcome\":\"join-original-stop-completed\",\"restart_admitted\":false}\n")
 	return err
+}
+
+func replaceJoinGeneration(parent context.Context, args []string, output io.Writer) (returned error) {
+	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
+	defer cancel()
+	preflight, err := join.ReadCompleted(ctx, args[4])
+	defer func() { returned = errors.Join(returned, preflight.Close()) }()
+	if err != nil {
+		return err
+	}
+	if err := preflight.IndependentPaths(args[0], args[1]); err != nil {
+		return err
+	}
+	if err := preflight.Close(); err != nil {
+		return err
+	}
+	candidate, err := enrollment.ReadInfrastructureCandidate(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
+	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	if err != nil {
+		return err
+	}
+	v, err := release.OpenRetained(args[1])
+	if err != nil {
+		return err
+	}
+	defer func() { returned = errors.Join(returned, v.Close()) }()
+	a, err := infrastructure.AuthenticateJoinCandidate(ctx, v, candidate, release.Inputs{RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}})
+	if err != nil {
+		return err
+	}
+	input, err := join.ReadInputs(ctx, args[5])
+	if err != nil {
+		return err
+	}
+	defer func() { returned = errors.Join(returned, input.Close()) }()
+	if err = join.Replace(v, a, input, args[4], args[0], args[1]); err != nil {
+		return err
+	}
+	outcome := "join-replacement-stopped-completed"
+
+	_, err = io.WriteString(output, "{\"outcome\":\""+outcome+"\",\"runtime_authority\":false}\n")
+	return errors.Join(err, ctx.Err())
 }

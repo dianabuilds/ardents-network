@@ -94,7 +94,7 @@ func (r Request) paths() []string {
 }
 
 func (r Request) reservedSiblingPaths() []string {
-	paths := []string{r.InstallationRoot + ".join-initial-journal", r.InstallationRoot + ".join-initial-pending", r.InstallationRoot + ".join-hosting-journal", r.InstallationRoot + ".join-hosting-pending", r.InstallationRoot + ".join-hosting", r.InstallationRoot + ".join-first-start-journal"}
+	paths := []string{r.InstallationRoot + ".join-initial-journal", r.InstallationRoot + ".join-initial-pending", r.InstallationRoot + ".join-hosting-journal", r.InstallationRoot + ".join-hosting-pending", r.InstallationRoot + ".join-hosting", r.InstallationRoot + ".join-first-start-journal", r.InstallationRoot + ".join-replacement-pending"}
 	for n := 0; n < attemptLimit; n++ {
 		if n != 0 {
 			paths = append(paths, r.InstallationRoot+fmt.Sprintf(".join-invocation-%08d-journal", n))

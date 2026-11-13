@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -96,7 +95,8 @@ func (c *completedInitial) readInvocations() error {
 	previous := ""
 	seen := map[[16]byte]bool{}
 	for n := attemptNumber(0); n <= latest; n++ {
-		snap, err := readStartSnapshotAt(c.ctx, c.binding, n, digest(c.files[filepath.Join(root, "binding.json")].body), digest(c.journal.body), previous)
+		selected := c.selectionForAttempt(n)
+		snap, err := readStartSnapshotAt(c.ctx, selected.binding, n, digest(selected.raw), digest(c.journal.body), previous)
 		h.starts = append(h.starts, snap)
 		if err != nil {
 			return err
@@ -115,7 +115,7 @@ func (c *completedInitial) readInvocations() error {
 		if err != nil {
 			return err
 		}
-		retired, err := readRetirementSnapshot(c.ctx, c.binding, n, snap.bindingSHA, snap.sha256, snap.archive, snap.id, retirementCommitted)
+		retired, err := readRetirementSnapshot(c.ctx, selected.binding, n, snap.bindingSHA, snap.sha256, snap.archive, snap.id, retirementCommitted)
 		h.retirements = append(h.retirements, retired)
 		if err != nil {
 			return err

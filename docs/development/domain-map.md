@@ -178,7 +178,14 @@ Startup/key/output user joins. Root independently joins original native resource
 and reads back committed retirement before publication. Same-generation Restart
 requires every predecessor retirement and fresh Release/native/independent Startup;
 existing-only State, participation and spend preserve their histories. No live
-owner transfers. Replacement/recovery remain separate boundaries.
+owner transfers. Explicit JOIN stopped replacement independently retains fresh
+Release and original input/native custody, complete predecessor retirement and
+existing-only State/participation, Spending and Hosting inspections. The distinct
+selection envelope preserves immutable initial and predecessor images; original
+same-inode selection/unit mutation and one Reload precede independent readback,
+original observer/writer joins and final blocker publication. A new Startup is
+separately admitted; no live domain owner crosses generations. Original-prefix
+recovery and complete installed qualification remain separate boundaries.
 
 Installation's separate `installation/join` declaration owner fixes the JOIN
 request/plan, four writable semantic roots, retained journal/completion namespace and

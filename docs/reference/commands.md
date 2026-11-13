@@ -1463,3 +1463,11 @@ readback precede publication. Missing reports and uncertain completion refuse.
 requires every preceding committed retirement and fresh Release/native admission.
 It preserves the same generation, account, credentials and semantic histories;
 no automatic restart or missing-history initialization is admitted.
+
+### Explicit JOIN generation replacement
+
+`ardents-node join replace DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST`
+selects one strictly forward stopped JOIN generation after confirmed original
+domain/native retirement. It retains the account, keys and semantic histories;
+partial or unknown completion refuses. `join restart` separately admits the next
+protected invocation. Replacement grants no automatic restart or recovery.

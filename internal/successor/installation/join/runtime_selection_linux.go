@@ -46,7 +46,8 @@ func readRuntimeSelection(ctx context.Context, path string) (result *runtimeSele
 	if err != nil {
 		return nil, err
 	}
-	b, err := decodeBinding(bound)
+	selection, err := decodeSelection(bound)
+	b := selection.binding
 	if err != nil || path != filepath.Join(b.Request.InstallationRoot, "binding.json") || b.UID != uint32(os.Geteuid()) || b.GID != uint32(os.Getegid()) {
 		return nil, errors.Join(ErrBinding, err)
 	}
@@ -59,6 +60,14 @@ func readRuntimeSelection(ctx context.Context, path string) (result *runtimeSele
 	if err := f.absent(f.pending); err != nil {
 		return nil, err
 	}
+	replacementGuard := replacementPending(b.Request.InstallationRoot)
+	if _, err := f.parents(replacementGuard); err != nil {
+		return nil, err
+	}
+	if err := f.absent(replacementGuard); err != nil {
+		return nil, err
+	}
+	f.absentPaths = append(f.absentPaths, replacementGuard)
 	hostingPending := b.Request.InstallationRoot + ".join-hosting-pending"
 	if _, err := f.parents(hostingPending); err != nil {
 		return nil, err

@@ -2089,7 +2089,8 @@ fixed non-root principal. It retains its own read-only generation/credential
 mounts, all-five-slot namespace, process, cgroup and read-only manager connection;
 it borrows no root journal, verifier, live root or another role's permission.
 Its original root-peer ACK and fresh before/after observations precede State
-and Node construction. Only first-start history-opening0 is admitted.
+and Node construction. First start uses history-opening0; separately admitted retained
+Restart uses history-opening1 and existing-only semantic owners.
 Queued checks may share a full observation round only when all were admitted
 before that round began; later effects require a new physical round.
 
@@ -2109,6 +2110,56 @@ identifiers and independently supplied State/profile pins. Its bounded canonical
 bytes are declarations, not currentness, assignment, class coverage or admission.
 It creates neither State nor keys and grants no installed invocation; each
 corresponding runtime owner must freshly verify its own facts before effects.
+
+#### Explicit stopped JOIN replacement
+
+`ardents-node join replace DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING
+REQUEST` independently retains the complete initial, Hosting, selection,
+invocation and committed retirement chain. It obtains fresh coherent Node/JOIN
+Release permission and verifies the actual running candidate program. The new
+JOIN descriptor version strictly increases. Existing account, numeric principal,
+credentials, semantic roots, Network identity/pins, process profile and lifecycle
+bounds stay fixed. Delivery paths may change. Only Work/Termination declarations
+may differ for resource-only replacement; unchanged program and resources refuse.
+Neither operation increases the provider allowance or modifies protocol limits.
+
+The initial binding remains `ardents-join-binding-v1`. A successor is canonical
+compact JSON plus LF, at most32KiB, schema
+`ardents-join-replacement-binding-v1`, with ordered fields `schema`,
+`configuration`, `initial_generation`, `predecessor_generation`,
+`predecessor_binding_sha256`, `retirement_sha256`, `predecessor_attempt`.
+Its configuration has the initial binding's ordered fields with distinct schema
+`ardents-join-replacement-configuration-v1`. Every predecessor and immutable
+initial image stays retained; attempt numbers remain global, contiguous and
+bounded by64 across all generations. Each replacement follows a new actual
+committed retirement; it cannot stack successors over an unstarted selection.
+
+The root0600 exclusive journal is the sibling
+`<installation_root>.join-replacement-<generation>-journal`. Its closed62-row
+`join-replacement-v1` grammar is: initial journal birth; replacement-admitted;
+native-context; predecessor-binding/unit/retired; three file birth rows for the
+pending guard and native-before snapshot; three directory birth rows; three
+file birth rows for each of the twelve sorted generation files; seal-intent,
+sealed; selection-intent/written; unit-intent/written; reload-intent; three
+native-after file birth rows; replacement-verified. Each native row binds its
+actual device/inode/access. Selection/unit mutation preserves original inodes.
+Before/after snapshots use `.native-before` and `.native-after` journal suffixes;
+only the three actual systemd generator outputs may differ across the one Reload.
+The root0600 sibling `<installation_root>.join-replacement-pending` contains
+`ardents-join-replacement-pending-v1`, LF, selection SHA256, LF.
+
+Independent existing-only State/participation, Spending and Hosting inspections
+remain held through original joins. Unresolved participation, unknown domain
+completion, reservation, incomplete history or foreign inode refuses before
+replacement effects. The fixed JOIN manager permits one Reload and no Start,
+Stop, selector or reconnect. Ordinary readers and non-root Startup refuse a
+pending transition. Independent readback rederives all original initial and
+successor provenance, preserved native births and each retirement relationship;
+original writers/observers and fresh Release close before pending publication.
+Unknown replacement siblings, partial writes, uncertain effects or late Close
+errors remain blocked, without rollback, adoption or reset. Explicit retained
+Restart separately admits a new invocation and independent non-root Startup;
+replacement itself starts nothing. Original-prefix recovery is a separate gate.
 
 The bounded first installed Forwarding contract admits only `forwarding`, not
 another Node duty or Source. Its artifact pair uses the exact Node program target

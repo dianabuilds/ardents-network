@@ -34,12 +34,16 @@ type binding struct {
 }
 
 func decodeBinding(raw []byte) (binding, error) {
+	return decodeConfiguration(raw, "ardents-join-binding-v1")
+}
+
+func decodeConfiguration(raw []byte, schema string) (binding, error) {
 	var b binding
 	if len(raw) == 0 || len(raw) > 32<<10 || json.Unmarshal(raw, &b) != nil {
 		return b, ErrInput
 	}
 	encoded, err := json.Marshal(b)
-	if err != nil || !bytes.Equal(raw, append(encoded, '\n')) || b.Schema != "ardents-join-binding-v1" || b.Invocation != "join" || b.ProgramTarget != infrastructure.ProgramTarget || b.GenerationTarget != infrastructure.JoinGenerationTarget || b.Account != "ardents-node" || b.UID < 100 || b.UID > 999 || b.GID != b.UID || !validPath(b.History) {
+	if err != nil || !bytes.Equal(raw, append(encoded, '\n')) || b.Schema != schema || b.Invocation != "join" || b.ProgramTarget != infrastructure.ProgramTarget || b.GenerationTarget != infrastructure.JoinGenerationTarget || b.Account != "ardents-node" || b.UID < 100 || b.UID > 999 || b.GID != b.UID || !validPath(b.History) {
 		return binding{}, ErrBinding
 	}
 	for _, sha := range []string{b.Generation, b.ProgramSHA256, b.TemplateSHA256, b.InventorySHA256, b.TargetsSHA256, b.RequestSHA256, b.PlanSHA256, b.UnitSHA256, b.CertificateSHA256} {
