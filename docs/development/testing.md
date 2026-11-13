@@ -565,7 +565,15 @@ This permits fresh finite credentials on one original stand at a time under the
 disposable-stand lifecycle below, without preallocating other managers, extending
 authority windows or reusing finalized roots. A completed public receipt and
 separate direct Product Owner acceptance remain required before each installed
-execution under ADR-0123 Decision 6. The digest and controller pins grant no
+execution under ADR-0123 Decision 6. This is an authorization condition, not a
+requirement to ask again for each engineering attempt: an explicit campaign
+delegation may carry the already accepted identical source/artifact/target/limit
+envelope across fresh stands of the same selected scenario, as defined by
+[agent execution](agent-execution.md#delegated-project-wide-domain-transition).
+Each stand still publishes its own exact receipt and records its actual
+authorization basis; a delegated case is not described as individually accepted
+by the Product Owner. Changed envelopes require their own acceptance.
+The digest and controller pins grant no
 acceptance or native provenance; the outside controller must independently retain
 the original reservation, manager, users and actual joins. One prepared or passed
 case establishes nothing about the other 311. Full acceptance still requires
@@ -5291,3 +5299,9 @@ It exercises actual allowance initialization, independent complete journal/nativ
 readback, repeat refusal and a same-byte foreign-inode pin refusal. The original
 initial journal and other semantic roots remain unchanged. This is prestart
 component evidence, without installed Startup, paired JOIN or runtime authority.
+
+The separate `join-installed-linux` profile (`make join-installed-check`,
+`join_installed_native`, three-minute finite driver) exercises only the genuine
+canonical first Start, independent non-root Startup and receiving JOIN pair.
+It requires the exact isolated manager/artifact/bootstrap prerequisites in the
+profile registry; it supplies no replacement/recovery or whole Service claim.

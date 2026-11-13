@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -108,5 +109,36 @@ func TestJoinCredentialRetainsOriginalCustodyAndFailure(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Detached access-grammar control, never successful startup or file authority.
+func TestJoinCredentialPinPreservesProtectedDeliveryAndRefusesForeignAccess(t *testing.T) {
+	good := credentialMetadata{mode: 0640, native: syscall.Stat_t{Uid: 0, Gid: 988, Nlink: 1}}
+	if !joinPrivateCredentialAccess(good, 988, 988) {
+		t.Fatal("JOIN pin rejects the reader's exact protected delivery")
+	}
+	for _, principal := range [][2]uint32{{0, 988}, {988, 989}, {989, 989}, {99, 99}, {1000, 1000}} {
+		if joinPrivateCredentialAccess(good, principal[0], principal[1]) {
+			t.Fatal("foreign principal admitted", principal)
+		}
+	}
+	for _, mode := range []os.FileMode{0644, 0660, 0440, 0640 | os.ModeSetuid, 0640 | os.ModeSymlink} {
+		other := good
+		other.mode = mode
+		if joinPrivateCredentialAccess(other, 988, 988) {
+			t.Fatal("weaker delivery admitted", mode)
+		}
+	}
+	for _, change := range []func(*syscall.Stat_t){func(s *syscall.Stat_t) { s.Gid = 989 }, func(s *syscall.Stat_t) { s.Nlink = 2 }} {
+		other := good
+		change(&other.native)
+		if joinPrivateCredentialAccess(other, 988, 988) {
+			t.Fatal("foreign group or alias admitted")
+		}
+	}
+	owned := credentialMetadata{mode: 0600, native: syscall.Stat_t{Uid: 988, Gid: 988, Nlink: 1}}
+	if !joinPrivateCredentialAccess(owned, 988, 988) {
+		t.Fatal("existing runtime-owned policy lost")
 	}
 }

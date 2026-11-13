@@ -20,6 +20,11 @@ func (a JoinAuthorization) Check(ctx context.Context, v *release.Verifier) error
 	return a.pair.Check(ctx, v)
 }
 
+// Targets returns the retained exact pair for the original start decision.
+func (a JoinAuthorization) Targets() (release.Authorization, release.Authorization) {
+	return a.pair.Targets()
+}
+
 func (a JoinAuthorization) Descriptor() []byte { return a.pair.Descriptor() }
 func (a JoinAuthorization) Program() []byte    { return a.pair.Program() }
 func (a JoinAuthorization) Template() []byte   { return a.pair.Template() }

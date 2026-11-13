@@ -336,15 +336,15 @@ func startupProperties(answer *dbus.Call) (Properties, error) {
 			return nil, errors.Join(ErrObservation, err)
 		}
 		signature := value.Signature().String()
-		encodedKey, keyErr := json.Marshal(key)
-		encodedSignature, signatureErr := json.Marshal(signature)
+		encodedKey, keyErr := managerJSONQuotedSize(key)
+		encodedSignature, signatureErr := managerJSONQuotedSize(signature)
 		if keyErr != nil || signatureErr != nil {
 			return nil, ErrObservation
 		}
 		if len(properties) != 0 {
 			encodedSize++
 		}
-		encodedSize += len(encodedKey) + 1 + len(`{"type":`) + len(encodedSignature) + len(`,"data":`) + len(raw) + 1
+		encodedSize += encodedKey + 1 + len(`{"type":`) + encodedSignature + len(`,"data":`) + len(raw) + 1
 		if encodedSize > 64<<10 {
 			return nil, ErrObservation
 		}
@@ -362,6 +362,41 @@ func managerJSONValue(value any, depth int) (any, error) {
 		return nil, ErrObservation
 	}
 	switch typed := value.(type) {
+	case []string:
+		if len(typed) != 0 && depth == 16 {
+			return nil, ErrObservation
+		}
+		if typed == nil {
+			return []string{}, nil
+		}
+		return typed, nil
+	case []uint32:
+		if len(typed) != 0 && depth == 16 {
+			return nil, ErrObservation
+		}
+		if typed == nil {
+			return []uint32{}, nil
+		}
+		return typed, nil
+	case []uint64:
+		if len(typed) != 0 && depth == 16 {
+			return nil, ErrObservation
+		}
+		if typed == nil {
+			return []uint64{}, nil
+		}
+		return typed, nil
+	case []byte:
+		if len(typed) != 0 && depth == 16 {
+			return nil, ErrObservation
+		}
+		// Preserve the original numeric JSON array, never encoding/json's
+		// base64 byte-slice convention. Exact native depth/size rules remain.
+		numbers := make([]uint16, len(typed))
+		for i, value := range typed {
+			numbers[i] = uint16(value)
+		}
+		return numbers, nil
 	case dbus.Signature:
 		return typed.String(), nil
 	case dbus.Variant:
@@ -406,4 +441,18 @@ func managerJSONValue(value any, depth int) (any, error) {
 	default:
 		return value, nil
 	}
+}
+
+// Only the length is needed for the original complete typed-dictionary bound.
+// Safe ASCII needs no JSON allocation; every escaping/UTF-8 case retains the
+// standard encoder. This caches neither input bytes nor an accepting verdict.
+func managerJSONQuotedSize(value string) (int, error) {
+	for i := range len(value) {
+		c := value[i]
+		if c < 0x20 || c > 0x7e || c == '"' || c == '\\' || c == '<' || c == '>' || c == '&' {
+			raw, err := json.Marshal(value)
+			return len(raw), err
+		}
+	}
+	return len(value) + 2, nil
 }

@@ -12,6 +12,10 @@
 // root separately authorizes, observes and durably archives the transition.
 // Calls are serialized by that owning operation; cancellation callbacks join
 // before Wait returns and Close physically closes all retained descriptors.
+// JoinExchange owns a separate original root-peer exchange and exact161-byte
+// JOIN ACK. Only history-opening0 is supported: an old ACK cannot reopen State,
+// prove retirement or authorize another invocation. No live foreign exchange or
+// root journal is borrowed.
 package completion
 
 import "errors"

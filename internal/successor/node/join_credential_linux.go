@@ -24,6 +24,7 @@ type joinCredential struct {
 	contents       [2][]byte
 	failed, result error
 	closed         bool
+	protectedKey   bool
 }
 
 func loadJoinCredential(certPath, keyPath string) (_ *joinCredential, result error) {
@@ -53,11 +54,11 @@ func loadJoinCredential(certPath, keyPath string) (_ *joinCredential, result err
 			return nil, err
 		}
 		info := c.identity[i]
-		stat, native := info.Sys().(*syscall.Stat_t)
-		if !info.Mode().IsRegular() || info.Size() > 8192 || i == 1 && (!native || stat.Uid != uint32(os.Geteuid()) || info.Mode().Perm()&0077 != 0) {
+		if !info.Mode().IsRegular() || info.Size() > 8192 || i == 1 && !joinPrivateCredentialAccess(info, uint32(os.Geteuid()), uint32(os.Getegid())) {
 			return nil, errors.New("original JOIN credential pin unavailable")
 		}
 	}
+	c.protectedKey = protectedCredentialAccess(c.identity[1], uint32(os.Geteuid()), uint32(os.Getegid()))
 	pair, err := tls.X509KeyPair(c.contents[0], c.contents[1])
 	if err != nil {
 		return nil, err
@@ -85,12 +86,18 @@ func (c *joinCredential) check() error {
 	if c.closed {
 		return errors.New("original JOIN credential closed")
 	}
+	if c.protectedKey {
+		if err := protectedCredentialAncestors(c.files[1].Name()); err != nil {
+			c.failed = err
+			return err
+		}
+	}
 	for i, f := range c.files {
 		info, err := f.Stat()
 		if err == nil {
 			var pathInfo os.FileInfo
 			pathInfo, err = os.Lstat(f.Name())
-			if err == nil && (!info.Mode().IsRegular() || !os.SameFile(c.identity[i], info) || !os.SameFile(info, pathInfo) || info.Mode() != c.identity[i].Mode() || info.Size() != int64(len(c.contents[i]))) {
+			if err == nil && (!info.Mode().IsRegular() || !sameProtectedCredential(c.identity[i], info) || !sameProtectedCredential(info, pathInfo) || info.Size() != int64(len(c.contents[i]))) {
 				err = errors.New("original JOIN credential custody changed")
 			}
 		}
@@ -137,4 +144,18 @@ func (c *joinCredential) close() error {
 		c.result = errors.Join(c.result, c.material.close())
 	}
 	return c.result
+}
+
+// The original reader already admits this exact protected root:system-group
+// delivery. Retaining JOIN file custody must preserve that same policy rather
+// than reject it using the separate runtime-owned development-file policy.
+func joinPrivateCredentialAccess(info os.FileInfo, uid, gid uint32) bool {
+	if protectedCredentialAccess(info, uid, gid) {
+		return true
+	}
+	if info == nil || !info.Mode().IsRegular() {
+		return false
+	}
+	native, ok := info.Sys().(*syscall.Stat_t)
+	return ok && native.Uid == uid && info.Mode().Perm()&0077 == 0
 }

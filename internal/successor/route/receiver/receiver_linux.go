@@ -147,6 +147,12 @@ func (r *Receiver) peer(key [32]byte) (network.Member, error) {
 	if err != nil {
 		return network.Member{}, err
 	}
+	return adjacentPeer(v, m, key)
+}
+
+// One pure adjacency policy consumes the exact local and peer facts from its
+// caller's fresh observation. It grants no observation or lifetime itself.
+func adjacentPeer(v network.RuntimeView, m network.Member, key [32]byte) (network.Member, error) {
 	peer, err := v.MemberByKey(key, time.Now())
 	expectedSubrole := uint8(1)
 	allowedDomain := peer.RoleDomain == m.RoleDomain
@@ -322,10 +328,26 @@ func (r *Receiver) serveOuter(ctx context.Context, accepted transport.ClosedShar
 		return err
 	}
 	check := func() error {
-		if _, err := r.config.Authority.Hello(h, true); err != nil {
-			return err
+		var current network.Member
+		var err error
+		if member.RoleDomain == 2 && member.Subrole == 4 && r.registrations == nil {
+			// JOIN has no Registry/Store observation between these local/peer checks.
+			// Match HELLO, local duty and the same original peer in ONE genuinely fresh
+			// owner view, then repeat this entire check at the next framing boundary.
+			var view network.RuntimeView
+			var local network.Member
+			view, local, err = r.config.Authority.ObserveHello(h, true)
+			if err == nil {
+				current, err = adjacentPeer(view, local, accepted.NodeKey)
+			}
+		} else {
+			// Introduction's separate native Registry bracket and other existing role
+			// paths keep their independently owned observations unchanged.
+			if _, err = r.config.Authority.Hello(h, true); err != nil {
+				return err
+			}
+			current, err = r.peer(accepted.NodeKey)
 		}
-		current, err := r.peer(accepted.NodeKey)
 		if err != nil || current.RecordDigest != peer.RecordDigest || current.DutyGeneration != peer.DutyGeneration {
 			return errors.Join(errors.New("route Node peer changed"), err)
 		}

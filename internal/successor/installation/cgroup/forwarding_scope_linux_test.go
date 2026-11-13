@@ -19,7 +19,7 @@ func TestForwardingScopeCancellationAcquiresNoKernelCustody(t *testing.T) {
 }
 
 func TestFixedProcessScopeDoesNotAdmitAnotherRole(t *testing.T) {
-	for _, unit := range []string{"", "ardents-issuer.service", "ardents-join.service", "ardents-endpoint.service", "../ardents-forwarding.service"} {
+	for _, unit := range []string{"", "ardents-issuer.service", "ardents-endpoint.service", "../ardents-forwarding.service"} {
 		s, err := retainProcessScope(t.Context(), uint32(os.Getpid()), true, unit)
 		if s != nil || !errors.Is(err, errInput) {
 			if s != nil {

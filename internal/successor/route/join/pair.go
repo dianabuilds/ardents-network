@@ -244,11 +244,17 @@ func (p *joinPair) stop(cause error) {
 				}
 			}
 		}
+		// Both original sides are already interrupted. Their independent lower
+		// closes must progress together within their existing cleanup bounds;
+		// a held first Close cannot consume the opposite owner's horizon.
+		// The pair retains all resources and errors until BOTH actually join.
+		var joins sync.WaitGroup
 		for _, s := range sides {
 			if s != nil {
-				s.interrupt()
+				joins.Go(s.interrupt)
 			}
 		}
+		joins.Wait()
 	})
 }
 

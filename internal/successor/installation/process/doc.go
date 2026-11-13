@@ -19,6 +19,9 @@
 // Installation must separately establish stop admission and original domain join.
 // RetainForwardingStop additionally compares the archived original proc inode
 // after fresh fixed-purpose admission; copied archive facts grant no signal right.
+// JoinExpected, RetainJoin and RetainJoinSelf independently fix only JOIN argv,
+// unit and original native identity. They share physical source, not Source or
+// Forwarding process custody, root signal rights or startup authority.
 package process
 
 import "errors"

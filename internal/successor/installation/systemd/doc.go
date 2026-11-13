@@ -62,6 +62,15 @@
 // never process identity or join. Copies share original attempt/Close state;
 // cleanup cannot restore denied admission or reconnect. Native control and
 // observations grant no Release, Startup or Source serving authority.
+// JoinControl independently retains one fixed JOIN reference and one original
+// explicit Start; its Stop surface only cleans up that same attempted Start.
+// JoinRuntime is independently opened by the actual non-root caller and cannot
+// load/reference units or issue jobs. Neither purpose borrows another role's
+// mutation capability; all five Node slots retain their fixed absence policy.
+// Native typed JSON projection preserves complete property bytes, original
+// depth/size limits and numeric byte arrays. Primitive arrays and safe-ASCII
+// quoted lengths avoid redundant reflection/allocation without omitting facts
+// or caching any observation.
 package systemd
 
 import "errors"

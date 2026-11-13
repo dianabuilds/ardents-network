@@ -4,7 +4,7 @@
 
 | Path | Package | Responsibility and real consumer | Permitted imports |
 |---|---|---|---|
-| `internal/successor/installation/join` | `package join` | Closed JOIN installation request/plan, independent paths and complete finite journal/completion namespace, fixed protection template. Canonical Control's `join prepare-request`, `join prepare-plan` and `join prepare-template` are real consumers. Its separate original input/preflight lifetime and canonical Node read-only consumer retain protected files, all five absent slots and future paths without creation. Its separately admitted canonical initial stopped creator owns genuine Enrollment/Release admission, original births and native readback; independent completed inspection retains its own journal lease. No account adoption, Start or runtime permission is supplied. | Standard library; `plan_linux.go` alone may use `internal/successor/hosting` for public Traffic; `inputs_linux.go` alone may use `internal/successor/installation/request` for original protected file custody; `preflight_linux.go` alone may use `internal/successor/installation/systemd` for independently owned read-only NodeSlots; `binding_linux.go` may use `internal/successor/installation/infrastructure`; `generation_bytes_linux.go` may use `internal/successor/enrollment` and `internal/successor/installation/infrastructure`; `initial_install_linux.go` may use `internal/successor/installation/infrastructure`, `internal/successor/installation/systemd` and `internal/successor/release`; `initial_birth_linux.go` may use `internal/successor/installation/directory` and `internal/successor/installation/fixedfile`; `loaded_policy_linux.go` may use `internal/successor/installation/systemd`; `completed_initial_linux.go` may use `internal/successor/installation/infrastructure` and `internal/successor/release`. `hosting_prepare_linux.go` may use `internal/successor/hosting`, `internal/successor/installation/cgroup` and `internal/successor/installation/systemd` for original stopped allowance preparation. Every listed import is file-specific; no parent facade or role-wide permission is supplied |
+| `internal/successor/installation/join` | `package join` | Closed JOIN installation request/plan, independent paths and complete finite journal/completion namespace, fixed protection template. Canonical Control's `join prepare-request`, `join prepare-plan` and `join prepare-template` are real consumers. Its separate original input/preflight lifetime and canonical Node read-only consumer retain protected files, all five absent slots and future paths without creation. Its separately admitted canonical initial stopped creator owns genuine Enrollment/Release admission, original births and native readback; independent completed inspection retains its own journal lease. No account adoption or permission follows from declarations or stopped history; distinct root Start and independent non-root Startup separately admit the first original runtime. | Standard library; `plan_linux.go` alone may use `internal/successor/hosting` for public Traffic; `inputs_linux.go` alone may use `internal/successor/installation/request` for original protected file custody; `preflight_linux.go` alone may use `internal/successor/installation/systemd` for independently owned read-only NodeSlots; `binding_linux.go` may use `internal/successor/installation/infrastructure`; `generation_bytes_linux.go` may use `internal/successor/enrollment` and `internal/successor/installation/infrastructure`; `initial_install_linux.go` may use `internal/successor/installation/infrastructure`, `internal/successor/installation/systemd` and `internal/successor/release`; `initial_birth_linux.go` may use `internal/successor/installation/directory` and `internal/successor/installation/fixedfile`; `loaded_policy_linux.go` may use `internal/successor/installation/systemd`; `completed_initial_linux.go` may use `internal/successor/installation/infrastructure` and `internal/successor/release`. `hosting_prepare_linux.go` may use `internal/successor/hosting`, `internal/successor/installation/cgroup` and `internal/successor/installation/systemd` for original stopped allowance preparation. Every listed import is file-specific; no parent facade or role-wide permission is supplied  First-start exact-file inventory below additionally admits `internal/successor/admission`, `internal/successor/admission/issuance`, `internal/successor/admission/issuer`, `internal/successor/admission/quota`, `internal/successor/admission/receiving`, `internal/successor/admission/stock`, `internal/successor/admission/token`, `internal/successor/custody`, `internal/successor/installation/completion`, `internal/successor/installation/process`, `internal/successor/network`, `internal/successor/network/source`, `internal/successor/network/state`, `internal/successor/route/ardp`, `internal/successor/route/transport`, `internal/successor/route/transport/tls`.  External `installed_cohort_native_linux_test.go` additionally admits `internal/successor/network/epoch`, `internal/successor/network/source`; `installed_pair_native_linux_test.go` admits `internal/successor/route/role`, `internal/successor/route/channel` for real authenticated adjacent-Node/nested-role protocol. |
 
 The package's behavior tests belong to `deterministic-linux-packages.txt`.
 `cmd/ardents-control/join_request_linux.go` and `join_plan_linux.go` may import only the standard library
@@ -771,5 +771,56 @@ and standard-library imports only; it grants no native process proof.
 
 `cmd/ardents-control/join_initial_stopped_native_linux_test.go` imports only standard library and `internal/successor/installation/join`, driving real canonical build-bound Release preparation and stopped installation without runtime duty authority.
 
+JOIN allowance preparation uses `internal/successor/hosting`,
+`internal/successor/installation/cgroup` and `internal/successor/installation/systemd`
+only in `installation/join/hosting_prepare_linux.go`; canonical
+`cmd/ardents-control/join_hosting_linux.go` imports only `internal/successor/hosting`,
+`internal/successor/installation/join` and standard library. The fixed
+`OpenJoinInstalledStopped` connection retains only the installed JOIN unit with
+no job/Start/Stop vocabulary. `installation/cgroup/join_quiescent_linux.go`
+checks that fixed scope without granting original domain join. Neither operation
+supplies Startup, State, Route or Node runtime authority.
 
-JOIN allowance preparation uses `internal/successor/hosting`, `internal/successor/installation/cgroup` and `internal/successor/installation/systemd` only in `installation/join/hosting_prepare_linux.go`; canonical `cmd/ardents-control/join_hosting_linux.go` imports only `internal/successor/hosting`, `internal/successor/installation/join` and standard library. No Startup or runtime authority.
+### JOIN fixed first-start import inventory
+
+Root Start retains fresh Release/native/journal/process custody; independently
+opened non-root Startup retains its own files, namespace, manager, process and
+completion exchange. Canonical installed composition uses only the separately
+admitted R01 file and five imports. Offline JOIN producers have their own fixed
+purpose and original input/output custody. Native integration tests compose genuine
+new owners externally and do not add a production regression coordinator.
+
+- `internal/successor/installation/join/initial_install_linux.go`: `internal/successor/installation/infrastructure`, `internal/successor/installation/systemd`, `internal/successor/release`.
+- `internal/successor/installation/join/start_initial_linux.go`: `internal/successor/installation/cgroup`, `internal/successor/installation/infrastructure`, `internal/successor/installation/process`, `internal/successor/installation/systemd`, `internal/successor/release`.
+- `internal/successor/installation/join/preflight_linux.go`: `internal/successor/installation/systemd`.
+- `internal/successor/installation/join/hosting_prepare_linux.go`: `internal/successor/hosting`, `internal/successor/installation/cgroup`, `internal/successor/installation/systemd`.
+- `internal/successor/installation/join/installed_pair_native_linux_test.go`: `internal/successor/admission`, `internal/successor/admission/stock`, `internal/successor/route/ardp`, `internal/successor/route/transport`, `internal/successor/route/transport/tls`.
+- `internal/successor/installation/join/generation_bytes_linux.go`: `internal/successor/enrollment`, `internal/successor/installation/infrastructure`.
+- `internal/successor/installation/join/start_barrier_linux.go`: `internal/successor/installation/completion`.
+- `internal/successor/installation/join/startup_linux.go`: `internal/successor/installation/cgroup`, `internal/successor/installation/completion`, `internal/successor/installation/process`, `internal/successor/installation/systemd`.
+- `internal/successor/installation/join/binding_linux.go`: `internal/successor/installation/infrastructure`.
+- `internal/successor/installation/join/installed_start_native_linux_test.go`: `internal/successor/custody`, `internal/successor/installation/join`.
+- `internal/successor/installation/join/inputs_linux.go`: `internal/successor/installation/request`.
+- `internal/successor/installation/join/loaded_policy_linux.go`: `internal/successor/installation/systemd`.
+- `internal/successor/installation/join/completed_initial_linux.go`: `internal/successor/installation/infrastructure`, `internal/successor/release`.
+- `internal/successor/installation/join/initial_birth_linux.go`: `internal/successor/installation/directory`, `internal/successor/installation/fixedfile`.
+- `internal/successor/installation/join/plan_linux.go`: `internal/successor/hosting`.
+- `internal/successor/installation/join/installed_stock_native_linux_test.go`: `internal/successor/admission`, `internal/successor/admission/issuance`, `internal/successor/admission/issuer`, `internal/successor/admission/quota`, `internal/successor/admission/receiving`, `internal/successor/admission/stock`, `internal/successor/admission/token`, `internal/successor/custody`, `internal/successor/network`, `internal/successor/network/source`, `internal/successor/network/state`.
+- `cmd/ardents-control/join_release_linux.go`: `internal/successor/installation/infrastructure`, `internal/successor/release`, `github.com/sigstore/sigstore/pkg/signature`, `github.com/theupdateframework/go-tuf/v2/metadata`.
+- `cmd/ardents-control/join_state_linux.go`: `internal/successor/installation/join`, `internal/successor/network/source`, `internal/successor/network/state`.
+- `cmd/ardents-control/join_hosting_linux.go`: `internal/successor/hosting`, `internal/successor/installation/join`.
+- `cmd/ardents-control/join_token_material_linux.go`: `internal/successor/admission/issuance`.
+- `cmd/ardents-control/join_epoch_signing_linux.go`: `internal/successor/network/epoch`, `internal/successor/network/source`.
+- `cmd/ardents-control/join_release_plan_linux.go`: `internal/successor/installation/infrastructure`, `internal/successor/installation/join`.
+- `cmd/ardents-control/join_profile_plan_linux.go`: `internal/successor/admission/issuerprofile`, `internal/successor/network`, `internal/successor/network/closedprofile`, `internal/successor/network/epoch`, `internal/successor/network/source`.
+- `cmd/ardents-control/join_artifact_linux.go`: `internal/successor/enrollment`, `internal/successor/installation/infrastructure`, `internal/successor/installation/join`.
+- `cmd/ardents-control/join_node_certificate_linux.go`: `internal/successor/network/epoch`.
+- `cmd/ardents-control/join_epoch_plan_linux.go`: `internal/successor/network/epoch`.
+- `cmd/ardents-control/join_profile_signing_linux.go`: `internal/successor/network/closedprofile`.
+- `cmd/ardents-control/join_plan_linux.go`: `internal/successor/installation/join`.
+- `cmd/ardents-control/join_node_record_linux.go`: `internal/successor/network/epoch`.
+- `cmd/ardents-control/join_request_linux.go`: `internal/successor/installation/join`.
+- `cmd/ardents-control/join_release_predecessor_linux.go`: `internal/successor/enrollment`, `internal/successor/installation/infrastructure`, `internal/successor/release`, `github.com/theupdateframework/go-tuf/v2/metadata`.
+- `cmd/ardents-control/join_node_provision_linux.go`: `internal/successor/network/epoch`.
+- `internal/successor/installation/systemd/join_manager_linux.go`: `github.com/godbus/dbus/v5`.
+- `internal/successor/installation/systemd/join_control_linux.go`: `github.com/godbus/dbus/v5`.

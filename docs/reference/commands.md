@@ -1381,6 +1381,8 @@ and notice interval grant neither an allowance nor a completed join or runtime
 permission. Native installation and all live owners independently admit those
 facts before effects.
 
+### JOIN fixed Release preparation
+
 The separate JOIN Release commands are:
 
 - `join prepare-release-keys FRESH_PRIVATE_OUTPUT`: five fresh distinct Ed25519
@@ -1413,6 +1415,7 @@ remain required before isolated installed execution. No JOIN runtime is started
 by any of these operations. Original private input/output users join before
 acknowledgement; partial outputs remain retained and cannot be adopted.
 
+
 Canonical Node's separate `ardents-node join inspect-inputs REQUEST` performs
 only root-controlled original JOIN delivery and fresh read-only initial namespace
 observation. It joins original input/manager users before reporting
@@ -1434,3 +1437,21 @@ no adoption, rollback or recovery operation.
 prepares the single known-born allowance after completed stopped JOIN installation.
 It requires root and all explicit flags; repeated or partial preparation refuses.
 This operation starts no Node and supplies no runtime authority.
+
+### JOIN protected first start
+
+`ardents-node join start-initial DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
+performs one explicitly admitted root first Start, original archival/ACK and joined
+observer publication. It refuses retained/partial first-start storage. The fixed
+unit alone invokes `ardents-node join start-installed BINDING` under the actual
+non-root Node account; independent Startup completes before genuine State/duty,
+Guard, Admission/Hosting and receiving JOIN construction.
+
+The separate canonical `ardents-control join` offline producers are
+`prepare-state-key`, `prepare-node-key`, `prepare-node-record`, `sign-node-record`,
+`prepare-node-certificate`, `prepare-epoch`, `sign-epoch`, `prepare-token-keys`,
+`prepare-profile`, `sign-profile` and `prepare-state PLAN BUNDLE SIGNED_PROFILE`.
+Each retains fixed-purpose input/output custody; signatures and accepted State
+are distinct from installed duty or bootstrap acceptance. State preparation runs
+only as the actual numeric system Node principal, on its known-born empty root.
+No first-start command grants explicit stop/retirement, restart or replacement.

@@ -22,4 +22,13 @@
 // ReadCompleted independently admits only that complete typed preparation and
 // original pin/lock inodes; partial results and repeated initialization refuse.
 // This grants no Startup, State, Node duty or original domain retirement.
+// StartInitial separately admits the first protected native Start under fresh
+// coherent Release and independent complete initial/Hosting history. Its original
+// process/scope and exclusive attempt journal remain retained through archival,
+// ACK, physical observer joins and pending publication. Uncertainty blocks reuse.
+// OpenStartup independently retains actual non-root files/mounts/process/manager
+// and the original root-peer exchange before returning private RuntimeInputs.
+// Network State, duty, Node Guard and semantic owners still admit runtime effects.
+// Neither first-start success nor kernel exit proves domain retirement, restart,
+// replacement or recovery; retained invocation histories remain blocked here.
 package join

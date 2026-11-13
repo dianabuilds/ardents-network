@@ -6,5 +6,7 @@
 // Admission owns the supplied presentation operation; receiving operations own
 // Grant transfer and joined physical reservation retirement. This package owns
 // no Admission spending, Hosting reservation or durable mutation.
+// ObserveHello returns the matching view and member from the same fresh check;
+// callers retain their required independent framing/effect observations.
 // Prefix, JOIN and receiving operations invoke them at their own effect points.
 package role

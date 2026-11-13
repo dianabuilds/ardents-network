@@ -541,6 +541,8 @@ network-signing-compile-check: export GOARCH := amd64
 network-signing-compile-check: export CGO_ENABLED := 0
 network-signing-compile-check:
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
+	go test -c -tags join_installed_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-installed.test" ./internal/successor/installation/join
+	@$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-signing.test" ./cmd/ardents-next
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-control-preparation.test" ./cmd/ardents-control
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/successor/installation/systemd
@@ -549,3 +551,8 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/forwarding-inputs.test" ./internal/successor/installation/forwarding
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/successor/installation/request
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-inputs.test" ./internal/successor/installation/join
+
+.PHONY: join-installed-check
+join-installed-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "join-installed-check requires the selected isolated Ubuntu/systemd stand"; exit 2)
+	go test -race -trimpath -buildvcs=false -tags join_installed_native ./internal/successor/installation/join -run '^TestJoinInstalledNativeProtectedStartupAndPair$$' -count=1 -v -timeout=3m

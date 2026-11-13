@@ -108,6 +108,9 @@ round only if each request was admitted before that round began. An in-progress
 or completed round cannot admit a later request; checks on opposite sides of a
 domain effect still require separate fresh rounds. Startup retains and joins
 both physical observation and waiter uses without changing any supervisor timer.
+Before sealing the next batch, the one-processor observer yields to resumed
+consumers; this permits their fresh post-I/O requests to be admitted before
+that next physical round, never during or after it.
 
 ## Supporting mechanisms and composition
 
@@ -156,7 +159,19 @@ borrowing a live budget or freezing its mutable accounting. Neither creation nor
 an empty native scope grants Startup or original domain completion. Canonical
 installed JOIN composition is separately admitted by R01 only for
 `cmd/ardents-node/join_installed_linux.go` and its exact five imports; that boundary
-is permission to implement, not a realized runtime or bootstrap receipt.
+admits only that direct composition and grants no bootstrap receipt. Its separate
+root first-start owner retains fresh Release, original completed history and
+manager/process/scope through synced archive/ACK and observer joins. Non-root
+Startup independently owns immutable mount/file, process, namespace and read-only
+manager observations before constructing genuine State and Node JOIN. Fixed
+other-slot absence requests may run concurrently on that same original bounded
+connection, submitting independent read-only calls before awaiting replies;
+every exact name still requires both fresh absence results in each
+round, and all requests join before return. Bounded Startup phase counters are
+passive diagnostics, emitted after observation users join; they grant no
+accepting authority. No live
+root, Startup or role permission crosses from Source/Forwarding. First start
+supplies no domain-retirement, restart, replacement or recovery proof.
 
 Installation's separate `installation/join` declaration owner fixes the JOIN
 request/plan, four writable semantic roots, retained journal/completion namespace and

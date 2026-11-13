@@ -167,6 +167,13 @@ composition; its concrete Admission/root dependencies still select Linux.
 Holder acquisitions and Context now belong directly to `join`;
 their real Prefix borrowing interface and consumer cutover are complete.
 
+The receiving JOIN outer channel verifies HELLO, its original local duty and
+its authenticated adjacent peer from one genuinely fresh Network observation
+through `role.Authority.ObserveHello`. No foreign Registry/Store effect lies
+between these checks. Framing still repeats the full check at each required
+boundary on both sides of I/O; a completed observation cannot authorize a later
+effect. Introduction and other role observation brackets remain separate.
+
 Each side authenticates fresh exact-recipient terminal TLS through its original
 prefix and presents genuine class-2 stock. Admission durably marks holder
 presentation and receiving spend; Hosting capacity and Route frame/child
@@ -193,7 +200,13 @@ control classification propagates through nested TLS/lower framing, without
 starting a new EOF after seal. Partial/stalled/late physical failures remain
 failed; this supplies no additional JOIN or payload authority.
 EOF closes one direction. Verified CLOSE stops new effects and joins both
-directions. A receiving CLOSE interrupts payload and input immediately; a
+directions. After both original directions are interrupted, their independent
+physical closes progress concurrently under their existing cleanup bounds. A held
+Close cannot delay the opposite Close; the pair retains both reservations and
+every physical failure until all closes actually join. Canonical diagnostics
+may distinguish original pre-output deadline refusal from a started physical
+write failure; this copied diagnostic changes neither retained errors nor outcome.
+A receiving CLOSE interrupts payload and input immediately; a
 first peer CLOSE received during local lane retirement also cancels any local
 CLOSE that has not entered physical output. Its original status is retained;
 later terminals cannot overwrite it or make local retirement a clean EOF.

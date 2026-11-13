@@ -63,3 +63,12 @@ explicit recovery acquire their own fresh Release/native/journal admission.
 Recovery may finish only proven original prefixes; it never replays startup,
 ACK or retirement, adopts foreign resources or resets semantic histories.
 Unknown or uncertain original completion remains repair-required.
+
+JOIN first start and non-root Startup are separate lifetimes in `join`. Root
+admits current Release, completed initial/Hosting provenance, exact native
+resources and one original Start/archive/ACK journal. Non-root Startup opens its
+own immutable file/mount, process, namespace, read-only manager and original
+root-peer exchange before genuine runtime construction. Unknown/retained attempts
+stay blocking; kernel exit is no domain retirement. Source/Forwarding live owners
+and permission never cross. Explicit JOIN retirement/restart/replacement/recovery
+require their own independent contracts and verified consumers.

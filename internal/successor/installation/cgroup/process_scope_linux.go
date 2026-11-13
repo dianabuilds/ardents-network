@@ -24,7 +24,7 @@ type processScope struct {
 }
 
 func retainProcessScope(ctx context.Context, pid uint32, partial bool, unit string) (result *processScope, err error) {
-	if ctx == nil || unit != "ardents-source.service" && unit != "ardents-forwarding.service" {
+	if ctx == nil || unit != "ardents-source.service" && unit != "ardents-forwarding.service" && unit != "ardents-join.service" {
 		return nil, errInput
 	}
 	s := &processScope{ctx: ctx, pid: pid, path: "/sys/fs/cgroup/system.slice/" + unit}

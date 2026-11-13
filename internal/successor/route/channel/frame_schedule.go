@@ -27,6 +27,10 @@ type frameExpiry struct{ end time.Time }
 func (e *frameExpiry) Error() string { return os.ErrDeadlineExceeded.Error() }
 func (e *frameExpiry) Unwrap() error { return os.ErrDeadlineExceeded }
 
+// PreOutputDeadline is a detached diagnostic of this original refusal. It
+// grants no authority, physical-output witness or successful retirement.
+func (e *frameExpiry) PreOutputDeadline() time.Time { return e.end }
+
 // frameRetirement records refusal before physical output by this exact lane's
 // scheduler. An equal Carrier error or a started write cannot mint it.
 type frameRetirement struct {

@@ -233,3 +233,46 @@ func authorityCarrierObservation(t *testing.T, now time.Time, generation uint64,
 	}
 	return view
 }
+
+// Supplied-fact rule control only; the native installed driver supplies genuine
+// signed owners. One compound channel observation is fresh on EVERY call and
+// cannot leak a partial/cached projection after original authority changes.
+func TestObserveHelloCoherentFreshProjectionAndNoPartialHandoff(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	original := authorityObservation(t, now, 1, [32]byte{104})
+	duty, err := original.RetainDuty([32]byte{1}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current := original
+	calls := 0
+	var refusal error
+	authority := Authority{Duty: duty, Profile: original.Profile().ProfileBinding, Current: func() (network.RuntimeView, error) { calls++; return current, refusal }}
+	h := ardp.Hello{NetworkID: authority.Profile.Network, StateGeneration: authority.Profile.Generation, StateDigest: authority.Profile.EpochDigest, ProfileDigest: authority.Profile.Digest, RecipientNodeID: duty.NodeID, RecipientDutyGeneration: duty.RecordGeneration, Purpose: ardp.PurposeForwarding, Deadline: now.Add(time.Minute)}
+	for i := range 2 {
+		view, member, err := authority.ObserveHello(h, true)
+		if err != nil || member.NodeID != duty.NodeID || view.Profile().ProfileBinding != authority.Profile || calls != i+1 {
+			t.Fatal("compound observation cached, inconsistent or duplicated", calls, err)
+		}
+	}
+	lost := errors.New("original fresh observer lost")
+	for _, damage := range []string{"profile", "duty", "observer", "hello"} {
+		current, refusal = original, nil
+		changed := h
+		switch damage {
+		case "profile":
+			current = authorityObservation(t, now, 1, [32]byte{105})
+		case "duty":
+			current = authorityObservation(t, now, 2, [32]byte{104})
+		case "observer":
+			refusal = lost
+		case "hello":
+			changed.RecipientDutyGeneration++
+		}
+		before := calls
+		view, member, err := authority.ObserveHello(changed, true)
+		if err == nil || calls != before+1 || member != (network.Member{}) || view.Profile().ProfileBinding != (network.ProfileBinding{}) || refusal != nil && !errors.Is(err, lost) {
+			t.Fatal("partial or stale channel handoff", damage, calls, err)
+		}
+	}
+}

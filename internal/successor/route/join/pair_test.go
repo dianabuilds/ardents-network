@@ -524,6 +524,56 @@ func TestJoinPairInterruptsBothSidesBeforeJoiningEitherClose(t *testing.T) {
 	})
 }
 
+// This pure physical control supplies no Network, Startup or Admission authority.
+// A retained first Close must not prevent the independent opposite Close from
+// entering. Actual pipe interruption and both physical joins remain required.
+func TestJoinPairIndependentClosesProgressBeforeEitherJoin(t *testing.T) {
+	owner := &Pairing{}
+	pair := &joinPair{owner: owner, stopped: make(chan struct{})}
+	firstInterrupted, secondInterrupted := make(chan struct{}), make(chan struct{})
+	firstEntered, secondEntered := make(chan bool, 1), make(chan bool, 1)
+	release, rescue := make(chan struct{}), make(chan struct{})
+	secondRelease := make(chan struct{})
+	close(secondRelease)
+	var peers [2]net.Conn
+	for i := range pair.sides {
+		local, remote := net.Pipe()
+		peers[i] = remote
+		observed, opposite, entered, returned := firstInterrupted, secondInterrupted, firstEntered, release
+		if i == 1 {
+			observed, opposite, entered, returned = secondInterrupted, firstInterrupted, secondEntered, secondRelease
+		}
+		pair.sides[i] = &joinSide{conn: &joinBoundsCloseGate{Conn: &joinBoundsDeadlineObservation{Conn: local, interrupted: observed}, peerInterrupted: opposite, entered: entered, release: returned, rescue: rescue}}
+	}
+	joined := make(chan struct{})
+	go func() { defer close(joined); pair.stop(nil) }()
+	defer func() {
+		close(rescue)
+		close(release)
+		<-joined
+		for _, peer := range peers {
+			if err := peer.Close(); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+	for _, entered := range []<-chan bool{firstEntered, secondEntered} {
+		select {
+		case interrupted := <-entered:
+			if !interrupted {
+				t.Fatal("Close preceded opposite original interruption")
+			}
+		case <-time.After(time.Second):
+			t.Fatal("held first Close prevented the opposite original Close from progressing")
+		}
+	}
+	select {
+	case <-joined:
+		t.Fatal("pair returned before held original Close joined")
+	default:
+	}
+}
+
 // These are mechanical post-admission controls. Genuine Network, token spend
 // and Hosting acceptance are exercised by the separate command integration.
 func TestJoinPairWaitsForBothActualResultsBeforeReadingData(t *testing.T) {

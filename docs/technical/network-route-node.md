@@ -2073,6 +2073,36 @@ preparation, root-only intent/result and original immutable pin/lock inodes.
 It never freezes mutable budget bytes or treats empty cgroup observations as
 original domain completion. This supplies neither Start nor non-root Startup.
 
+#### Protected first JOIN start and independent Startup
+
+Canonical `ardents-node join start-initial` separately reopens complete initial
+and Hosting provenance, obtains fresh coherent Node/JOIN Release proofs and
+matches the actual running controller. Root retains its own fixed manager,
+namespace, exact generation, original process/cgroup and exclusive first-attempt
+journal. One explicit Start precedes actual process admission, original peer
+completion, synced archival and ACK. Original observer/writer joins precede
+pending publication. An uncertain attempt remains blocking; this is no restart,
+replacement, recovery or domain-retirement permission.
+
+The actual `join start-installed` process independently opens Startup under the
+fixed non-root principal. It retains its own read-only generation/credential
+mounts, all-five-slot namespace, process, cgroup and read-only manager connection;
+it borrows no root journal, verifier, live root or another role's permission.
+Its original root-peer ACK and fresh before/after observations precede State
+and Node construction. Only first-start history-opening0 is admitted.
+Queued checks may share a full observation round only when all were admitted
+before that round began; later effects require a new physical round.
+
+Separate canonical JOIN offline producers prepare keys, signed Records/Epoch/
+profile, immutable Admission key material and the initially empty State under
+its actual numeric Node principal. These purpose-bound operations open no
+runtime duty, receiving spend, participation producer or Source listener. Node
+retains genuine State, duty, protected original TLS file custody, Guard and the
+single prepared Hosting budget through Route's paired users and actual joins.
+The protected root:Node0640 key layout remains exact and independently checked;
+it is not a generic group-readable-key permission. Bootstrap scope acceptance
+and installed qualification stay separately required by ADR-0123.
+
 JOIN public plan preparation binds the exact declared State, participation,
 spend, Hosting, clock and installed credential locations, explicit Node/Network
 identifiers and independently supplied State/profile pins. Its bounded canonical

@@ -44,6 +44,13 @@ func openRootIdentity(ctx context.Context) (*runtimeIdentity, error) {
 	return i, nil
 }
 
+func openRuntimeIdentity(ctx context.Context) (*runtimeIdentity, error) {
+	if ctx == nil || os.Geteuid() < 100 || os.Geteuid() > 999 || os.Getegid() != os.Geteuid() {
+		return nil, ErrInput
+	}
+	return openKernelIdentity(ctx)
+}
+
 func openKernelIdentity(ctx context.Context) (result *runtimeIdentity, err error) {
 	i := &runtimeIdentity{ctx: ctx, namespaces: map[string]*os.File{}, identities: map[string]os.FileInfo{}}
 	defer func() {

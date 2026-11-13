@@ -77,6 +77,16 @@
     "windows-amd64": [
       {
         "symbols": [
+          "internal/successor/route/role.Authority.ObserveHello",
+          "internal/successor/route/role.Authority.observeMember"
+        ],
+        "classification": "Linux receiving JOIN coherent fresh authority observation",
+        "rationale": "The genuine Linux receiving JOIN outer channel uses ObserveHello and its shared fresh member observation at framing boundaries. Windows has no native receiving Node composition; its existing Hello and Member contracts remain exercised by portable tests. No Linux production allowance or test-only reachability is admitted.",
+        "owner": "Product Owner and Codex; Route role authority and receiving composition",
+        "retirement": "Remove these exact Windows entries when a selected genuine Windows caller reaches them or the owning API is retired. Linux production reachability and both empty test deadcode results remain mandatory."
+      },
+      {
+        "symbols": [
           "internal/successor/network/state.networkState.Accept"
         ],
         "classification": "Linux offline State preparation with portable acceptance tests",
