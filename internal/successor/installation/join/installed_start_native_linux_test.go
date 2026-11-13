@@ -26,15 +26,23 @@ import (
 
 // Original installed first-start composition; no development Node, fixture
 // authority, foreign role runtime or fabricated successful State observation.
-func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) { runJoinInstalledLifetime(t, false) }
+func TestJoinInstalledNativeProtectedStartupAndPair(t *testing.T) {
+	runJoinInstalledLifetime(t, false, false)
+}
 
-func TestJoinInstalledNativeForwardReplacement(t *testing.T) { runJoinInstalledLifetime(t, true) }
+func TestJoinInstalledNativeForwardReplacement(t *testing.T) {
+	runJoinInstalledLifetime(t, true, false)
+}
+
+func TestJoinInstalledNativeReplacementRecovery(t *testing.T) {
+	runJoinInstalledLifetime(t, true, true)
+}
 
 // Each selected journey uses a fresh manager and the unchanged three-minute
 // profile. The baseline keeps every same-generation restart assertion; the
 // replacement journey uses initial/resource/program invocations without
 // duplicating that baseline invocation inside its own finite time budget.
-func runJoinInstalledLifetime(t *testing.T, replacement bool) {
+func runJoinInstalledLifetime(t *testing.T, replacement, recovery bool) {
 	marker, err := os.ReadFile("/etc/ardents-join-initial-native-stand")
 	if err != nil || string(marker) != "ardents-join-initial-native-v1\n" || os.Geteuid() != 0 {
 		t.Fatal("invalid environment: isolated initial JOIN stand required", err)
@@ -369,6 +377,9 @@ func runJoinInstalledLifetime(t *testing.T, replacement bool) {
 	if replacement {
 		delegation = "selected-545-replacement"
 	}
+	if recovery {
+		delegation = "selected-545-recovery"
+	}
 	until := time.Now().Add(30 * time.Second)
 	for {
 		receipt, err := os.ReadFile(filepath.Join(parent, "bootstrap-scope.json"))
@@ -628,11 +639,104 @@ func runJoinInstalledLifetime(t *testing.T, replacement bool) {
 	if err := os.Rename(savedInitial, immutableInitial); err != nil {
 		t.Fatal(err)
 	}
-	for i, successor := range []struct{ distribution, request string }{{resourceDistribution, resourceRequest}, {programDistribution, programRequest}} {
+	successors := []struct{ distribution, request string }{{resourceDistribution, resourceRequest}, {programDistribution, programRequest}}
+	if recovery {
+		successors = successors[:1]
+	}
+	for i, successor := range successors {
 		if i == 1 {
 			node = filepath.Join(programDistribution, "ardents-node-linux-amd64")
 		}
-		if raw, err := invoke("replace", successor.distribution, history, "alpha", "initial-stopped-join", binding, successor.request); err != nil || !bytes.Contains(raw, []byte("join-replacement-stopped-completed")) {
+		if recovery {
+			raw, err := invoke("supervise-transition", "--stop-after-record", "62", "--timeout-ms", "120000", "--", "replace", successor.distribution, history, "alpha", "initial-stopped-join", binding, successor.request)
+			if err != nil || !bytes.Contains(raw, []byte("join-original-cut-completed")) {
+				t.Fatal("original stopped replacement cut", err, string(raw))
+			}
+			var current struct {
+				Configuration struct {
+					Generation string `json:"generation"`
+				} `json:"configuration"`
+			}
+			if err = json.Unmarshal(read(binding), &current); err != nil || current.Configuration.Generation == "" {
+				t.Fatal("replacement generation", err)
+			}
+			journal := request.InstallationRoot + ".join-replacement-" + current.Configuration.Generation + "-journal"
+			originalPrefix := digest(read(journal))
+			if raw, err := invoke("restart", successor.distribution, history, "alpha", "initial-stopped-join", binding); err == nil {
+				t.Fatal("pending cut admitted restart", string(raw))
+			}
+			cut := journal + ".original-cut-result"
+			saved := filepath.Join(delivery, "saved-cut-result")
+			if err = os.Rename(cut, saved); err != nil {
+				t.Fatal(err)
+			}
+			if raw, err := invoke("recover", successor.distribution, history, "alpha", "initial-stopped-join", binding, successor.request); err == nil {
+				t.Fatal("missing cut proof accepted", string(raw))
+			}
+			if err = os.WriteFile(cut, read(saved), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if raw, err := invoke("recover", successor.distribution, history, "alpha", "initial-stopped-join", binding, successor.request); err == nil {
+				t.Fatal("same-byte foreign cut inode accepted", string(raw))
+			}
+			if err = os.Remove(cut); err != nil {
+				t.Fatal(err)
+			}
+			if err = os.Rename(saved, cut); err != nil {
+				t.Fatal(err)
+			}
+			// The genuine initial signer's independent diagnostic Release
+			// history is still at version1. Wrong recovery declarations must
+			// refuse before advancing that unrelated history to candidate2.
+			foreignHistory := filepath.Join(delivery, "verification")
+			beforeForeign := map[string]string{}
+			if err := filepath.WalkDir(foreignHistory, func(path string, entry os.DirEntry, e error) error {
+				if e != nil {
+					return e
+				}
+				if entry.Type().IsRegular() {
+					beforeForeign[path] = digest(read(path))
+				}
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if len(beforeForeign) == 0 {
+				t.Fatal("genuine independent initial verification history missing")
+			}
+			if raw, err := invoke("recover", successor.distribution, foreignHistory, "alpha", "initial-stopped-join", binding, successor.request); err == nil {
+				t.Fatal("foreign Release history declaration accepted", string(raw))
+			}
+			afterForeign := map[string]string{}
+			if err := filepath.WalkDir(foreignHistory, func(path string, entry os.DirEntry, e error) error {
+				if e != nil {
+					return e
+				}
+				if entry.Type().IsRegular() {
+					afterForeign[path] = digest(read(path))
+				}
+				return nil
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if len(beforeForeign) != len(afterForeign) {
+				t.Fatal("wrong recovery inputs changed foreign Release inventory")
+			}
+			for path, sha := range beforeForeign {
+				if afterForeign[path] != sha {
+					t.Fatal("wrong recovery inputs advanced foreign Release floors", path)
+				}
+			}
+			if raw, err := invoke("recover", successor.distribution, history, "alpha", "initial-stopped-join", binding, successor.request); err != nil || !bytes.Contains(raw, []byte("join-recovery-stopped-completed")) {
+				t.Fatal("independent stopped recovery", err, string(raw))
+			}
+			if digest(read(journal)) != originalPrefix {
+				t.Fatal("recovery rewrote original prefix")
+			}
+			if raw, err := invoke("recover", successor.distribution, history, "alpha", "initial-stopped-join", binding, successor.request); err == nil {
+				t.Fatal("completed recovery replay accepted", string(raw))
+			}
+		} else if raw, err := invoke("replace", successor.distribution, history, "alpha", "initial-stopped-join", binding, successor.request); err != nil || !bytes.Contains(raw, []byte("join-replacement-stopped-completed")) {
 			t.Fatal("explicit stopped replacement", i, err, string(raw))
 		}
 		checkIdentities()
@@ -669,7 +773,11 @@ func runJoinInstalledLifetime(t *testing.T, replacement bool) {
 		}
 		checkIdentities()
 	}
-	t.Log("resource and actual program successors: immutable lineage, retained independent Startup, real duplex/EOF/clean-terminal pair and original Stop; roots/keys retained")
+	if recovery {
+		t.Log("original62-record stopped replacement cut, missing/foreign cut refusals, independent recovery, retained successor Startup, real duplex/EOF/clean terminals and original Stop; prefix/account/keys/roots retained")
+	} else {
+		t.Log("resource and actual program successors: immutable lineage, retained independent Startup, real duplex/EOF/clean-terminal pair and original Stop; roots/keys retained")
+	}
 
 }
 

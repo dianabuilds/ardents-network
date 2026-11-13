@@ -21,10 +21,10 @@ type joinReplacement struct {
 }
 
 func OpenJoinReplacement(ctx context.Context) (*JoinReplacement, error) {
-	return openJoinReplacement(ctx)
+	return openJoinReplacement(ctx, "")
 }
 
-func openJoinReplacement(ctx context.Context) (*JoinReplacement, error) {
+func openJoinReplacement(ctx context.Context, expected string) (*JoinReplacement, error) {
 	if ctx == nil || os.Geteuid() != 0 {
 		return nil, ErrInput
 	}
@@ -35,6 +35,15 @@ func openJoinReplacement(ctx context.Context) (*JoinReplacement, error) {
 	s := &JoinReplacement{original: &joinReplacement{reference: r}}
 	if err != nil {
 		return s, err
+	}
+	if expected != "" {
+		actual, e := r.managerIdentity()
+		if e != nil {
+			return s, e
+		}
+		if actual != expected {
+			return s, r.managerResult(ErrObservation, ctx)
+		}
 	}
 	if err := r.initializeManagerDeclaration(); err != nil {
 		return s, err
@@ -76,4 +85,34 @@ func (s *JoinReplacement) Close() error {
 	o := s.original
 	o.once.Do(func() { o.closeErr = errors.Join(o.reference.close(), o.reference.original.Err()) })
 	return o.closeErr
+}
+
+// JoinRecoveryReplacement observes one fixed original manager and stopped JOIN
+// unit. It exposes no Reload, Start, Stop, selector or reconnect operation.
+type JoinRecoveryReplacement struct{ original *JoinReplacement }
+
+func OpenJoinRecoveryReplacement(ctx context.Context, expected string) (*JoinRecoveryReplacement, error) {
+	if expected == "" || len(expected) > 288 {
+		return nil, ErrInput
+	}
+	original, err := openJoinReplacement(ctx, expected)
+	return &JoinRecoveryReplacement{original}, err
+}
+func (s *JoinRecoveryReplacement) Observe() (JoinObservation, error) {
+	if s == nil {
+		return JoinObservation{}, ErrInput
+	}
+	return s.original.Observe()
+}
+func (s *JoinRecoveryReplacement) ManagerIdentity() (string, error) {
+	if s == nil {
+		return "", ErrInput
+	}
+	return s.original.ManagerIdentity()
+}
+func (s *JoinRecoveryReplacement) Close() error {
+	if s == nil {
+		return nil
+	}
+	return s.original.Close()
 }

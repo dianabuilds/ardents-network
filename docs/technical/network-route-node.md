@@ -2161,6 +2161,61 @@ errors remain blocked, without rollback, adoption or reset. Explicit retained
 Restart separately admits a new invocation and independent non-root Startup;
 replacement itself starts nothing. Original-prefix recovery is a separate gate.
 
+#### JOIN stopped original-prefix recovery
+
+The separate canonical `join supervise-transition --stop-after-record 62
+--timeout-ms N -- replace ...` controller admits only the fixed JOIN replacement
+operation, with its existing two-minute maximum. It retains its exact executable,
+one root-peer credentialled sequence-packet channel, original child proc/start
+clock and from-birth pidfd. Each synced record boundary self-stops before the
+next effect; independent native observation must verify that actual stop and
+original journal inode/bytes before acknowledgement. Denial seals the next effect
+before SIGKILL and joins the original leader and every adopted descendant under
+the dedicated subreaper. Cancellation, an outstanding ACK, a late close failure,
+missing original scope or uncertain join cannot produce a successful cut.
+Physical controller code is adapted from the existing separately owned native
+transition mechanism; no Forwarding live handle, policy or permission is imported.
+
+A separate thirteen-row `join-cut-v1` journal and root0600 original-cut result
+commit the frozen canonical boundary, original executable/process, exact original
+prefix and native context, next-effect denial and joined physical result. The
+original62-record replacement remains immutable and its blocker remains present.
+Only completed original-cut publication after independent readback supplies
+historical provenance. It grants no Release, domain completion or runtime right.
+
+`join recover DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST` admits
+only the complete62-record stopped replacement cut. Original input/selection
+declarations and exact bound history are retained before opening the mutable
+Release verifier, so a rejected request cannot advance an unrelated history.
+It independently retains the
+initial/cut/replacement/Hosting/invocation/retirement journals and exact inodes,
+fresh coherent candidate Release, actual matching controller, original delivery,
+existing-only State/participation, Spending and Hosting inspections and exact
+original manager/boot/namespaces/search paths. Two fresh quiescent stopped-policy
+rounds precede effects and readback. Its fixed manager observer exposes no Reload,
+Start, Stop, selector or reconnect. The original native-before/after proof must
+match the cut exactly; kernel exit never supplies predecessor domain completion.
+
+Completion is a distinct nine-row `join-recovery-v1` journal at
+`<original_journal>.recovery-journal`, with a root0600
+`.recovery-result` and `.recovery-pending`. The canonical result fields are
+`schema`, `journal`, `device`, `inode`, `prefix_sha256`, `original_cut_sha256`,
+`binding_sha256`, `outcome`; the schema is
+`ardents-join-recovery-completion-v1` and the sole outcome is `selected-stopped`.
+Separate independent readback reacquires original/cut/suffix exclusions and
+repeats Release/native/semantic admission after all recovery writers and observers
+close. Original input and verifier join before original blocker publication;
+the recovery guard is removed last with its actual retained sibling parent.
+Each publication synchronizes that parent. Ordinary consumers independently
+validate cut and suffix; pending/torn/foreign histories remain blocked.
+
+Earlier initial, Hosting, start, retirement and incomplete replacement prefixes,
+and interrupted recovery publication, remain explicitly repair-required: none
+is silently continued, adopted, reset or reclassified from a complete-looking row.
+This finite recovery boundary supplies no Start, ACK or domain-report replay,
+original prefix rewrite, allowance renewal or weaker protection/deadline. Broader
+interruption acceptance and installed qualification require their own evidence.
+
 The bounded first installed Forwarding contract admits only `forwarding`, not
 another Node duty or Source. Its artifact pair uses the exact Node program target
 and `ardents/linux-amd64/infrastructure/forwarding`; its descriptor and initial

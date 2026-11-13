@@ -161,6 +161,9 @@ func Replace(v *release.Verifier, a infrastructure.JoinAuthorization, input Inpu
 	if err = s.observe(); err != nil {
 		return err
 	}
+	if err = bindTransition(s.ctx, "replacement", journal, b.Generation, s.candidate.selection.raw, nativeBefore, s.managerIdentity); err != nil {
+		return err
+	}
 	s.births, err = openJoinBirths(s.ctx, journal, allowed, "join-replacement-v1")
 	c.replacing = s
 	if err != nil {
@@ -254,6 +257,15 @@ func Replace(v *release.Verifier, a infrastructure.JoinAuthorization, input Inpu
 	if err = s.namespace.reobserveAfterReload(); err != nil {
 		return err
 	}
+	if c.recoveryNative != nil {
+		fresh, e := captureNativeContext(s.identity, s.managerIdentity, s.namespace, p)
+		if e != nil {
+			return e
+		}
+		if e = c.advanceRecoveryReload(s, nativeBefore, fresh); e != nil {
+			return e
+		}
+	}
 	if err = s.observe(); err != nil {
 		return err
 	}
@@ -262,6 +274,9 @@ func Replace(v *release.Verifier, a infrastructure.JoinAuthorization, input Inpu
 		return err
 	}
 	if err = compareReloadContexts(nativeBefore, nativeAfter); err != nil {
+		return err
+	}
+	if err = observeTransitionReload(s.ctx, s.namespace); err != nil {
 		return err
 	}
 	if err = s.births.write(afterPath, nativeAfter, 0600, 0, 0, s.observe); err != nil {

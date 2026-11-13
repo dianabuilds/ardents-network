@@ -5328,3 +5328,20 @@ Missing disposition, changed proof, reappearing raw path, unfinalized case and
 recycled case name refuse allocation. Every allocation still runs the same fresh
 batched equivalent-path/native reference scan, including disposed path names.
 Retained cases still require all original proofs and current native observations.
+
+### JOIN stopped replacement recovery
+
+`JOIN_INSTALLED_TEST=TestJoinInstalledNativeReplacementRecovery make
+join-installed-check` selects one fresh isolated manager under the unchanged
+three-minute profile. It creates genuine initial JOIN authority, pair and original
+Stop, then runs the canonical from-birth replacement controller and freezes its
+actual62-record stopped boundary before SIGKILL/native join. Independent recovery
+requires fresh Release/native/semantic histories and separate suffix publication;
+retained Restart must complete independent non-root Startup, a second actual
+paired exchange/EOF/clean lower terminals and its own original Stop. Missing and
+same-byte foreign cut results, pending restart and completed-recovery replay must
+refuse; the original prefix hash and original account/keys/roots remain unchanged.
+Pure completion/coordinator tests exercise exact binding, finite earlier-prefix
+refusal, canonical bytes and parent-only deadlines; fixtures grant no real cut,
+manager, Release, domain join or installed acceptance. Broader interruption and
+whole-role acceptance remain with the selected issue and actual evidence.

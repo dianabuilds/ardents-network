@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
+	"path/filepath"
 	"sync"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/request"
@@ -234,4 +235,32 @@ func (p *inputs) readDelivery() (files []deliveredInput, returned error) {
 		files = append(files, deliveredInput{raw})
 	}
 	return files, nil
+}
+
+// CheckRecoveryPaths retains the original public selection declaration before
+// canonical composition opens a mutable Release verifier. It supplies no cut,
+// completed history or mutation right; recovery independently reopens them.
+func (h Inputs) CheckRecoveryPaths(bindingPath, distribution, history string) (returned error) {
+	p := h.original
+	if p == nil || bindingPath != filepath.Join(p.request.InstallationRoot, "binding.json") {
+		return ErrInput
+	}
+	if err := h.IndependentPaths(distribution, history); err != nil {
+		return err
+	}
+	if err := p.begin(); err != nil {
+		return err
+	}
+	defer p.uses.Done()
+	defer func() { p.record(returned) }()
+	raw, err := p.files.Read(bindingPath, 32<<10, false)
+	if err != nil {
+		return err
+	}
+	defer clear(raw)
+	selected, err := decodeSelection(raw)
+	if err != nil || selected.replacement == nil || selected.binding.History != history || selected.binding.Request != p.request {
+		return errors.Join(ErrBinding, err)
+	}
+	return errors.Join(p.files.Check(), p.local())
 }

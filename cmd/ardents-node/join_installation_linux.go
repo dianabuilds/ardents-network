@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
@@ -14,7 +15,24 @@ import (
 
 // JOIN uses its separate declaration and original input lifetime. It never
 // enters the legacy Node dispatcher or borrows Forwarding/Source permission.
-func runJoinInstallation(parent context.Context, args []string, output io.Writer) error {
+func runJoinInstallation(parent context.Context, args []string, output io.Writer) (returned error) {
+	if parent == nil || output == nil || len(args) == 0 {
+		return join.ErrInput
+	}
+	if args[0] == "supervise-transition" {
+		return superviseJoinTransition(parent, args[1:], output)
+	}
+	coordinator, managed, err := join.OpenTransitionCoordinator(args[0])
+	if err != nil {
+		return err
+	}
+	if managed {
+		parent = coordinator.Context()
+		defer func() { returned = errors.Join(returned, coordinator.Close()) }()
+	}
+	if len(args) == 7 && args[0] == "recover" {
+		return recoverJoinGeneration(parent, args[1:], output)
+	}
 	if parent != nil && output != nil && len(args) == 2 && args[0] == "start-installed" {
 		return runInstalledJoin(parent, args[1], output)
 	}
@@ -215,7 +233,7 @@ func stopJoin(parent context.Context, args []string, out io.Writer) (returned er
 }
 
 func replaceJoinGeneration(parent context.Context, args []string, output io.Writer) (returned error) {
-	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
+	ctx, cancel := join.TransitionContext(parent, 2*time.Minute)
 	defer cancel()
 	preflight, err := join.ReadCompleted(ctx, args[4])
 	defer func() { returned = errors.Join(returned, preflight.Close()) }()
@@ -255,6 +273,63 @@ func replaceJoinGeneration(parent context.Context, args []string, output io.Writ
 		return err
 	}
 	outcome := "join-replacement-stopped-completed"
+
+	_, err = io.WriteString(output, "{\"outcome\":\""+outcome+"\",\"runtime_authority\":false}\n")
+	return errors.Join(err, ctx.Err())
+}
+
+func superviseJoinTransition(parent context.Context, args []string, output io.Writer) error {
+	if len(args) < 6 || args[0] != "--stop-after-record" || args[2] != "--timeout-ms" || args[4] != "--" {
+		return join.ErrInput
+	}
+	boundary, boundaryErr := strconv.ParseUint(args[1], 10, 32)
+	milliseconds, timeoutErr := strconv.ParseUint(args[3], 10, 32)
+	if boundaryErr != nil || timeoutErr != nil || strconv.FormatUint(boundary, 10) != args[1] || strconv.FormatUint(milliseconds, 10) != args[3] || milliseconds == 0 || milliseconds > 120000 {
+		return join.ErrInput
+	}
+	ctx, cancel := context.WithTimeout(parent, time.Duration(milliseconds)*time.Millisecond)
+	defer cancel()
+	cut, err := join.RunTransition(ctx, args[5:], uint32(boundary))
+	if err != nil || !cut {
+		return err
+	}
+	_, err = io.WriteString(output, "{\"outcome\":\"join-original-cut-completed\",\"recovered\":false}\n")
+	return err
+}
+
+func recoverJoinGeneration(parent context.Context, args []string, output io.Writer) (returned error) {
+	ctx, cancel := join.TransitionContext(parent, 2*time.Minute)
+	defer cancel()
+	input, err := join.ReadInputs(ctx, args[5])
+	if err != nil {
+		return err
+	}
+	defer func() { returned = errors.Join(returned, input.Close()) }()
+	if err := input.CheckRecoveryPaths(args[4], args[0], args[1]); err != nil {
+		return err
+	}
+	candidate, err := enrollment.ReadInfrastructureCandidate(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
+	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	if err != nil {
+		return err
+	}
+	v, err := release.OpenRetained(args[1])
+	if err != nil {
+		return err
+	}
+	defer func() { returned = errors.Join(returned, v.Close()) }()
+	a, err := infrastructure.AuthenticateJoinCandidate(ctx, v, candidate, release.Inputs{RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}})
+	if err != nil {
+		return err
+	}
+	if err = join.RecoverReplacement(v, a, input, args[4], args[0], args[1]); err != nil {
+		return err
+	}
+	outcome := "join-recovery-stopped-completed"
 
 	_, err = io.WriteString(output, "{\"outcome\":\""+outcome+"\",\"runtime_authority\":false}\n")
 	return errors.Join(err, ctx.Err())

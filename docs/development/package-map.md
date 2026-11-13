@@ -846,3 +846,16 @@ The fixed stopped replacement retains its own original Release, input, semantic 
 - `internal/successor/installation/join/replacement_stopped_linux.go`: `internal/successor/installation/systemd`.
 
 `installation/systemd/join_replacement_linux.go` uses only the standard library and existing fixed JOIN manager mechanisms. It exposes no Start, Stop, unit selector or reconnect. Other replacement/selection/history files use only the standard library.
+
+JOIN original-cut physical coordination has no parent/sibling runtime imports.
+`installation/join/transition_scope_linux.go` imports only the already maintained
+`golang.org/x/sys/unix` and standard library for from-birth pidfd/subreaper joins.
+The other `transition_*` files and independent `recovery_context_linux.go`,
+`recovery_original_linux.go`, `recovery_history_linux.go` use only standard library.
+`installation/join/recovery_replacement_linux.go` imports exactly
+`installation/cgroup`, `installation/infrastructure`, `installation/systemd` and
+`release`; the existing semantic inspections retain their original separate owners.
+`systemd.JoinRecoveryReplacement` shares only independently opened fixed JOIN
+physical observations and exposes no Reload/Start/Stop or selector. Canonical
+Node consumes these owners through its existing JOIN installation adapter;
+R01's installed runtime composition and exact five imports remain unchanged.

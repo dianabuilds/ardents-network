@@ -1471,3 +1471,12 @@ selects one strictly forward stopped JOIN generation after confirmed original
 domain/native retirement. It retains the account, keys and semantic histories;
 partial or unknown completion refuses. `join restart` separately admits the next
 protected invocation. Replacement grants no automatic restart or recovery.
+
+JOIN's explicit stopped recovery uses `ardents-node join recover DISTRIBUTION
+HISTORY ENVIRONMENT NETWORK BINDING REQUEST`. It requires a separately completed
+original cut at the complete stopped replacement boundary and never starts or
+reloads a unit. The bounded original controller is `ardents-node join
+supervise-transition --stop-after-record 62 --timeout-ms N -- replace
+DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST` (N at most120000).
+Its result reports original physical cut completion only, never recovered or
+runtime-ready state. Unsupported/uncertain prefixes remain blocked.

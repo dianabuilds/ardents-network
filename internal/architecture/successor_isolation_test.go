@@ -1724,6 +1724,14 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 // Fixed JOIN first-start and its separate native regression consumers.
 func joinFirstStartImportAllowed(source, dependency string) bool {
 	switch source {
+	case "internal/successor/installation/join/transition_scope_linux.go":
+		return dependency == "golang.org/x/sys/unix"
+	case "internal/successor/installation/join/recovery_replacement_linux.go":
+		switch dependency {
+		case modulePath + "/internal/successor/installation/cgroup", modulePath + "/internal/successor/installation/infrastructure", modulePath + "/internal/successor/installation/systemd", modulePath + "/internal/successor/release":
+			return true
+		}
+
 	case "internal/successor/installation/join/replacement_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":

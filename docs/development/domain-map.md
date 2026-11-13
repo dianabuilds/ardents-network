@@ -185,7 +185,13 @@ selection envelope preserves immutable initial and predecessor images; original
 same-inode selection/unit mutation and one Reload precede independent readback,
 original observer/writer joins and final blocker publication. A new Startup is
 separately admitted; no live domain owner crosses generations. Original-prefix
-recovery and complete installed qualification remain separate boundaries.
+recovery separately admits only a proven complete stopped replacement prefix.
+Its original controller owns from-birth process denial/join and a separate cut;
+Installation owns fresh Release/native/semantic admission, immutable-prefix
+validation and guarded independent completion/readback. No physical cut grants
+original Node domain completion, Reload/Start replay or a mutable semantic root.
+Earlier/uncertain prefixes remain blocked; complete installed qualification is
+separate.
 
 Installation's separate `installation/join` declaration owner fixes the JOIN
 request/plan, four writable semantic roots, retained journal/completion namespace and

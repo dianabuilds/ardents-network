@@ -556,5 +556,5 @@ network-signing-compile-check:
 JOIN_INSTALLED_TEST ?= TestJoinInstalledNativeProtectedStartupAndPair
 join-installed-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "join-installed-check requires the selected isolated Ubuntu/systemd stand"; exit 2)
-	@case "$(JOIN_INSTALLED_TEST)" in TestJoinInstalledNativeProtectedStartupAndPair|TestJoinInstalledNativeForwardReplacement) ;; *) echo 'select one registered JOIN installed scenario on a fresh stand' >&2; exit 2;; esac
+	@case "$(JOIN_INSTALLED_TEST)" in TestJoinInstalledNativeProtectedStartupAndPair|TestJoinInstalledNativeForwardReplacement|TestJoinInstalledNativeReplacementRecovery) ;; *) echo 'select one registered JOIN installed scenario on a fresh stand' >&2; exit 2;; esac
 	go test -race -trimpath -buildvcs=false -tags join_installed_native ./internal/successor/installation/join -run '^$(JOIN_INSTALLED_TEST)$$' -count=1 -v -timeout=3m

@@ -49,6 +49,12 @@ type completedInitial struct {
 	replacementPaths       []string
 	replacementRetirements map[string]initialRecord
 	replacing              *replacementAttempt
+	recoveryCut            *transitionCutResult
+	recoveryOriginal       *initialFile
+	recoveryPublishing     *recoveryPublication
+	recoveryReadback       *recoveryPublication
+	recoveryNativeBytes    []byte
+	recoveryNative         *recoveryContext
 	// Failure-only causal control after genuine original file observation.
 	observe func(*os.File)
 }
@@ -69,14 +75,23 @@ func readCompletedReplacementPending(ctx context.Context, path string, pending *
 	return readCompleted(ctx, path, pending)
 }
 
-func readCompleted(ctx context.Context, path string, pending *initialFile) (result Completed, returned error) {
+func readCompleted(ctx context.Context, path string, pending *initialFile) (Completed, error) {
+	return readCompletedWithRecovery(ctx, path, pending, nil)
+}
+func readCompletedRecoveryPending(ctx context.Context, path string, pending *initialFile, publication *recoveryPublication) (Completed, error) {
+	if publication == nil || publication.pending == nil {
+		return Completed{}, ErrInput
+	}
+	return readCompletedWithRecovery(ctx, path, pending, publication)
+}
+func readCompletedWithRecovery(ctx context.Context, path string, pending *initialFile, publication *recoveryPublication) (result Completed, returned error) {
 	if ctx == nil || os.Geteuid() != 0 || !validPath(path) {
 		return result, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
 		return result, err
 	}
-	c := &completedInitial{ctx: ctx, parents: &nativeDirectories{ctx: ctx, byPath: map[string]*inputDirectory{}}, files: map[string]*initialFile{}}
+	c := &completedInitial{ctx: ctx, recoveryReadback: publication, parents: &nativeDirectories{ctx: ctx, byPath: map[string]*inputDirectory{}}, files: map[string]*initialFile{}}
 	defer func() {
 		if returned != nil {
 			c.failure = returned
@@ -237,7 +252,7 @@ func readCompleted(ctx context.Context, path string, pending *initialFile) (resu
 			return result, err
 		}
 	}
-	if err := c.readReplacements(); err != nil {
+	if err := c.readReplacementsPending(pending); err != nil {
 		return result, err
 	}
 	c.binding = current.binding
@@ -260,6 +275,12 @@ func readCompleted(ctx context.Context, path string, pending *initialFile) (resu
 	for _, p := range siblings {
 		if !(pending != nil && p == pending.path) && !slices.Contains(c.replacementPaths, p) {
 			return result, ErrBinding
+		}
+	}
+	if len(c.recoveryNativeBytes) != 0 {
+		c.recoveryNative, err = openRecoveryContext(ctx, c.recoveryNativeBytes)
+		if err != nil {
+			return result, err
 		}
 	}
 	result = Completed{c}
@@ -407,9 +428,12 @@ func (c *completedInitial) check() error {
 		return siblingErr
 	}
 	for _, path := range siblings {
-		if !slices.Contains(c.replacementPaths, path) && c.files[path] == nil && !(c.replacing != nil && c.replacing.owns(path)) {
+		if !slices.Contains(c.replacementPaths, path) && c.files[path] == nil && !(c.replacing != nil && c.replacing.owns(path)) && !(c.recoveryPublishing != nil && c.recoveryPublishing.owns(path)) {
 			return ErrBinding
 		}
+	}
+	if err := c.checkRecoveryNative(); err != nil {
+		return err
 	}
 	if err := c.parents.links(); err != nil {
 		return err
@@ -572,7 +596,7 @@ func (h Completed) Close() error {
 		c.closed = true
 		c.mu.Unlock()
 		c.uses.Wait()
-		physical := c.invocations.close()
+		physical := errors.Join(c.invocations.close(), c.recoveryNative.close())
 		for i := len(c.fileOrder) - 1; i >= 0; i-- {
 			f := c.fileOrder[i]
 			if f == c.journal {

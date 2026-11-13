@@ -102,7 +102,7 @@ func replacementPendingBytes(raw []byte) []byte {
 	return []byte("ardents-join-replacement-pending-v1\n" + digest(raw) + "\n")
 }
 
-func (c *completedInitial) readReplacements() error {
+func (c *completedInitial) readReplacementsPending(pending *initialFile) error {
 	c.replacementRetirements = map[string]initialRecord{}
 	for i, selected := range c.selectionOrder {
 		if i == 0 {
@@ -144,12 +144,25 @@ func (c *completedInitial) readReplacements() error {
 		if err != nil {
 			return err
 		}
+		if len(c.recoveryNativeBytes) != 0 {
+			if string(c.recoveryNativeBytes) != string(before.body) {
+				return ErrBinding
+			}
+			c.recoveryNativeBytes = append([]byte(nil), after.body...)
+		}
 		for path, r := range records {
 			if path == filepath.Join(attemptNumber(selected.replacement.PredecessorAttempt).retirement(b.Request.InstallationRoot), "retirement-result.json") {
 				c.replacementRetirements[path] = r
 				continue
 			}
 			if path == replacementPending(b.Request.InstallationRoot) {
+				if pending != nil {
+					held := c.files[path]
+					st, ok := infoSys(held.info)
+					if !ok || uint64(st.Dev) != r.Device || st.Ino != r.Inode || !nodeAccess(held.info, 0600, 0, 0, false) {
+						return ErrBinding
+					}
+				}
 				continue
 			}
 			var info os.FileInfo
@@ -162,6 +175,9 @@ func (c *completedInitial) readReplacements() error {
 			if !ok || uint64(st.Dev) != r.Device || st.Ino != r.Inode || !nodeAccess(info, os.FileMode(r.Mode), r.UID, r.GID, info.IsDir()) {
 				return ErrBinding
 			}
+		}
+		if err = c.readReplacementRecovery(j, selected, pending); err != nil {
+			return err
 		}
 		c.replacementPaths = append(c.replacementPaths, journal, beforePath, afterPath)
 	}
