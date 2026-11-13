@@ -551,6 +551,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/source_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
 			return true
 		}
+		if source == "cmd/ardents-control/join_hosting_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/join") {
+			return true
+		}
 		if source == "cmd/ardents-control/join_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/join") {
 			return true
 		}
@@ -674,6 +677,12 @@ func successorImportAllowed(source, dependency string) bool {
 				}
 			}
 			if source == "cmd/ardents-control/source_state_linux.go" && dependency == modulePath+"/internal/successor/network/state" {
+				return true
+			}
+		}
+		if source == "cmd/ardents-node/join_installed_linux.go" {
+			switch dependency {
+			case modulePath + "/internal/successor/installation/join", modulePath + "/internal/successor/network", modulePath + "/internal/successor/network/state", modulePath + "/internal/successor/node", modulePath + "/internal/successor/route/role":
 				return true
 			}
 		}
@@ -809,6 +818,9 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
+		return true
+	}
+	if source == "internal/successor/installation/join/hosting_prepare_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
 		return true
 	}
 	if (source == "internal/successor/installation/join/binding_linux.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure") {

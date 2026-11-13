@@ -17,4 +17,9 @@
 // its own fixed manager/account/birth journals and protected stopped generation.
 // ReadCompleted retains its own original journal/native custody and fresh pair
 // matching; neither operation starts a role or initializes semantic histories.
+// PrepareHosting separately initializes only the known-born empty allowance,
+// retaining its exclusive root-only journal/blocker until original users join.
+// ReadCompleted independently admits only that complete typed preparation and
+// original pin/lock inodes; partial results and repeated initialization refuse.
+// This grants no Startup, State, Node duty or original domain retirement.
 package join

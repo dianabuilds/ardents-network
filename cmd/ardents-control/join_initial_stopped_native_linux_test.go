@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
@@ -198,4 +199,75 @@ func TestJoinPreparationNativeInitialStoppedAndIndependentHistory(t *testing.T) 
 	if err != nil || !bytes.Contains(unit, []byte("MainPID=0\n")) || !bytes.Contains(unit, []byte("ActiveState=inactive\n")) || !bytes.Contains(unit, []byte("SubState=dead\n")) {
 		t.Fatal("initial installation started a runtime", err, string(unit))
 	}
+	// This original known-born allowance is prepared while the actual JOIN
+	// unit remains stopped. No signed State or runtime duty is supplied here.
+	hostingArgs := []string{"prepare-hosting", "--binding", binding, "--provider", "join-native-provider", "--start", now.Add(-time.Minute).Format(time.RFC3339), "--end", now.Add(time.Hour).Format(time.RFC3339), "--unit", "GiB", "--quantity", "1", "--directions", "tx+rx", "--interfaces", "lo", "--initial-used-bytes", "0", "--low-watermark-bytes", "1024"}
+	if raw := call(hostingArgs...); !bytes.Contains(raw, []byte("join.prepare-hosting")) {
+		t.Fatal("missing hosting preparation result")
+	}
+	for _, name := range []string{"budget.pin", "budget.lock", "budget.json"} {
+		if _, err := os.Stat(filepath.Join(request.HostingRoot, name)); err != nil {
+			t.Fatal("missing actual Hosting file", name, err)
+		}
+	}
+	if _, err := os.Lstat(request.InstallationRoot + ".join-hosting-pending"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("Hosting original users did not publish completion", err)
+	}
+	if raw, err := exec.CommandContext(t.Context(), command, append([]string{"join"}, hostingArgs...)...).CombinedOutput(); err == nil {
+		t.Fatal("repeat Hosting preparation adopted a retained budget", string(raw))
+	}
+	if !bytes.Equal(before, read(journal)) {
+		t.Fatal("Hosting preparation rewrote initial journal")
+	}
+	for range 2 {
+		if raw, err := invoke("inspect-initial-history", distribution, history, "alpha", "initial-stopped-join", binding); err != nil || !bytes.Contains(raw, []byte("join-initial-history-verified")) {
+			t.Fatal("independent completed Hosting history", err, string(raw))
+		}
+	}
+	// Same public pin bytes on another inode cannot impersonate original birth.
+	pin := filepath.Join(request.HostingRoot, "budget.pin")
+	originalPin := filepath.Join(delivery, "original-budget-pin")
+	pinInfo, err := os.Stat(pin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pinBytes := read(pin)
+	if err := os.Rename(pin, originalPin); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pin, pinBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chown(pin, int(requestHostingUID(t, pinInfo)), int(requestHostingUID(t, pinInfo))); err != nil {
+		t.Fatal(err)
+	}
+	if raw, err := invoke("inspect-initial-history", distribution, history, "alpha", "initial-stopped-join", binding); err == nil {
+		t.Fatal("copied allowance pin accepted", string(raw))
+	}
+	if err := os.Remove(pin); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(originalPin, pin); err != nil {
+		t.Fatal(err)
+	}
+	if raw, err := invoke("inspect-initial-history", distribution, history, "alpha", "initial-stopped-join", binding); err != nil {
+		t.Fatal("original allowance history unavailable", err, string(raw))
+	}
+
+	for _, root := range []string{request.StateRoot, request.ParticipationRoot, request.SpendRoot} {
+		entries, err := os.ReadDir(root)
+		if err != nil || len(entries) != 0 {
+			t.Fatal("Hosting preparation touched another semantic owner", root, err)
+		}
+	}
+
+}
+
+func requestHostingUID(t *testing.T, info os.FileInfo) uint32 {
+	t.Helper()
+	native, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || native.Uid < 100 || native.Uid > 999 || native.Uid != native.Gid {
+		t.Fatal("actual Node principal missing")
+	}
+	return native.Uid
 }

@@ -122,11 +122,21 @@ wrapper, callback, process bridge or shared live root is admitted. All other
 R01 restrictions remain. Bootstrap acceptance remains separately required by
 ADR-0123 Decision 6. Exact packages require normal complete registration.
 
+The Product Owner separately authorized the canonical installed JOIN composition
+through the approved JOIN implementation plan and the direct 2026-11-13 startup
+request, recorded in [#545](https://github.com/dianabuilds/ardents-network/issues/545).
+Only `cmd/ardents-node/join_installed_linux.go` may directly compose
+`internal/successor/installation/join`, `internal/successor/network`,
+`internal/successor/network/state`, `internal/successor/node` and
+`internal/successor/route/role`. This distinct fixed JOIN boundary admits no
+additional command/test file, role selector, old-runtime bridge or shared live
+root. It grants no bootstrap acceptance; ADR-0123 Decision 6 remains separate.
+
 New Route must not import or execute old `internal/route`, `internal/entry`,
 `internal/endpoint`, `internal/node`, `internal/admission`, `internal/hosting`,
 `internal/service` or another old runtime owner. Old packages, commands and
 tests must not consume new Route, apart from the exact canonical installed
-Forwarding file explicitly admitted above. The prohibition includes subpackages,
+Forwarding and JOIN files explicitly admitted above. The prohibition includes subpackages,
 build-tagged code, external-package tests, transitive imports, alias imports,
 wrappers, callback adapters, plugins and local protocol bridges to old runtime.
 Renaming or moving an old bridge to another directory does not make it new.

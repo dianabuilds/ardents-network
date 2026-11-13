@@ -5284,3 +5284,10 @@ delivery/seal, cancellation, substituted inode, nonempty birth and retained data
 through physical Close. Fixedfile's root0600 birth controls verify same-inode
 private delivery, copied input and secret erasure only after native joins;
 complete-file replacement and foreign-group private births remain refused.
+
+JOIN known-born Hosting preparation is checked by the genuine canonical stopped
+installation native scenario under the existing network-signing Linux profile.
+It exercises actual allowance initialization, independent complete journal/native
+readback, repeat refusal and a same-byte foreign-inode pin refusal. The original
+initial journal and other semantic roots remain unchanged. This is prestart
+component evidence, without installed Startup, paired JOIN or runtime authority.

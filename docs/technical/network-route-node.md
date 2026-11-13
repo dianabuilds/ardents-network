@@ -2059,6 +2059,20 @@ postimages. Semantic contents are unopened; every independent observer and
 verifier closes before output. This boundary grants no manager/process/State,
 first-start, non-root Startup, replacement, recovery or installed qualification.
 
+JOIN's separate `ardents-control join prepare-hosting` consumes the genuine
+complete stopped history and one original known-born empty Hosting directory.
+Its fixed installed-stopped manager has no job, Start or Stop vocabulary. Fresh
+manager/namespace/principal and quiescent JOIN-scope observations surround the
+one-use root-only journal/blocker and actual Hosting initialization. Installation
+promotes only the original three born files to the bound numeric Node principal;
+Hosting owns policy, counters and runtime reservations. Every original user joins
+before the pending guard is unlinked. Partial creation and late Close failures
+preserve the prefix; another initialization refuses rather than adopting/resetting
+it. `ReadCompleted` independently leases and decodes the complete sixteen-row
+preparation, root-only intent/result and original immutable pin/lock inodes.
+It never freezes mutable budget bytes or treats empty cgroup observations as
+original domain completion. This supplies neither Start nor non-root Startup.
+
 JOIN public plan preparation binds the exact declared State, participation,
 spend, Hosting, clock and installed credential locations, explicit Node/Network
 identifiers and independently supplied State/profile pins. Its bounded canonical

@@ -147,6 +147,17 @@ fixed-file mutation and reload source transfer no role permission or live owner.
 Four semantic histories remain empty and unopened. No Start, runtime duty,
 replacement, recovery or installed qualification follows from initial completion.
 
+JOIN allowance preparation is a distinct Installation effect on its proven empty
+born root. Hosting initializes policy/counters; Installation retains the original
+root, exact numeric principal, stopped manager/namespace/cgroup observations and
+root-only journal/blocker until actual join. Independent completed inspection
+verifies the complete typed journal and original immutable pin/lock files without
+borrowing a live budget or freezing its mutable accounting. Neither creation nor
+an empty native scope grants Startup or original domain completion. Canonical
+installed JOIN composition is separately admitted by R01 only for
+`cmd/ardents-node/join_installed_linux.go` and its exact five imports; that boundary
+is permission to implement, not a realized runtime or bootstrap receipt.
+
 Installation's separate `installation/join` declaration owner fixes the JOIN
 request/plan, four writable semantic roots, retained journal/completion namespace and
 closed non-root unit template. Canonical Control consumes it for public request
@@ -254,7 +265,7 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | `admission/issuerprofile/signing` | Independently pinned imported Ed25519 material, original lease/failure/Close and validated issuer-profile signing within Admission | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
-| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Forwarding file admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
+| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Forwarding and JOIN files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
 | State/Hosting/Route physical adapters | Byte verification, durable transactions, counters, sockets and Carrier mechanisms under their declared owners | Mechanisms cannot mint authority, reset floors or copy a second domain decision implementation |
 | Installation mutable-directory birth | `installation/directory` retains one original creation caller and private born inode state, exclusively creates caller-admitted paths and synchronizes same-inode account/mode promotion; checked Identity facts are detached, and Matches serves independent installed inspection | Root Installation selects paths/account, admits Release/journal/lease/effects and projects binding facts. Directory creation grants no adoption/recovery, selection, manager or startup authority; shared trusted-root predicates remain with Root lease/fixed/recovery lifetimes |
 | Installation request declarations and original input | `installation/request` owns canonical bounded declarations, detached copies, native direct root-owned input and opaque original byte/inode/access reobservation; the root Request facade is consumed by actual command and transaction composition | No Release authorization, writer lease, journal, account/root creation, generation selection, manager or startup authority. General trusted-path observations remain with root Installation lease/staging/inspection, independently of request provenance |

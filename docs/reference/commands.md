@@ -1427,3 +1427,10 @@ unit, runtime root or history and supplies no later installation/Start permissio
 An existing account, root or retained partial journal refuses fresh initial
 installation. Preserve that prefix and its error evidence; these commands supply
 no adoption, rollback or recovery operation.
+
+`ardents-control join prepare-hosting --binding BINDING --provider PROVIDER
+--start RFC3339 --end RFC3339 --unit UNIT --quantity QUANTITY --directions DIRECTIONS
+--interfaces NAMES --initial-used-bytes FLOOR --low-watermark-bytes FLOOR`
+prepares the single known-born allowance after completed stopped JOIN installation.
+It requires root and all explicit flags; repeated or partial preparation refuses.
+This operation starts no Node and supplies no runtime authority.

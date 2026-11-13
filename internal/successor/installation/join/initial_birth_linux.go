@@ -101,7 +101,7 @@ func syncInitialParent(path string) (returned error) {
 // first records and independent readers never exchange initialization rights.
 func openJoinBirths(ctx context.Context, path string, allowed map[string]bool, first string) (*initialBirths, error) {
 	j := &initialBirths{ctx: ctx, allowed: allowed, dirs: map[string]*os.File{}, identities: map[string]os.FileInfo{}, directoryBirths: map[string]*directory.RootBirth{}}
-	if ctx == nil || !validPath(path) || os.Geteuid() != 0 || first != "join-initial-v1" {
+	if ctx == nil || !validPath(path) || os.Geteuid() != 0 || (first != "join-initial-v1" && first != "join-hosting-v1") {
 		return j, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
@@ -148,7 +148,7 @@ func (j *initialBirths) record(phase, path string, info os.FileInfo, sha string,
 		return ErrBinding
 	}
 	valid := false
-	for _, admitted := range []string{"join-initial-v1", "native-context", "admitted", "account-preimage", "account-auxiliary-preimage", "account-intent", "account-born", "account-auxiliary-result", "account-auxiliary-cleared", "account-ready", "directory-intent", "directory-born", "directory-ready", "file-intent", "file-born", "file-ready", "seal-intent", "sealed", "selected", "reload-intent", "stopped-verified", "completed"} {
+	for _, admitted := range []string{"join-initial-v1", "join-hosting-v1", "native-context", "admitted", "account-preimage", "account-auxiliary-preimage", "account-intent", "account-born", "account-auxiliary-result", "account-auxiliary-cleared", "account-ready", "directory-intent", "directory-born", "directory-ready", "file-intent", "file-born", "file-ready", "seal-intent", "sealed", "selected", "reload-intent", "stopped-verified", "completed"} {
 		valid = valid || phase == admitted
 	}
 	if !valid || len(sha) != 0 && (len(sha) != 64 || len(bytes.Trim([]byte(sha), "0123456789abcdef")) != 0) {

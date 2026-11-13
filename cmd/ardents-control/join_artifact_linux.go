@@ -29,6 +29,9 @@ func (e *joinControlFailure) Unwrap() error { return e.cause }
 // JOIN has its own closed public producers. Shared native readers/writers own
 // only physical input/output custody; no Source or Forwarding right is reused.
 func runJoinControl(args []string, out io.Writer) error {
+	if len(args) > 0 && args[0] == "prepare-hosting" {
+		return runJoinHostingPreparation(args[1:], out)
+	}
 	if len(args) > 0 && args[0] == "prepare-release-keys" {
 		return runJoinReleaseKeys(args[1:], out)
 	}
