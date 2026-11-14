@@ -25,12 +25,7 @@ func (s *networkState) CurrentRuntimeWitness() (RuntimeWitness, error) {
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	bound, observed, err := s.currentMembershipLocked(s.storage.LoadClosedProfile)
-	if err != nil {
-		s.invalidateRuntime()
-		return RuntimeWitness{}, err
-	}
-	view, err := bound.accepted.Observe(observed)
+	_, _, view, err := s.currentMembershipLocked(s.storage.LoadClosedProfile)
 	if err != nil {
 		s.invalidateRuntime()
 		return RuntimeWitness{}, err
