@@ -59,6 +59,28 @@ func TestProtocolStatusesKeepDistinctTerminalOutcomes(t *testing.T) {
 	}
 }
 
+func TestUnknownSourceStatusIsRefused(t *testing.T) {
+	t.Parallel()
+	for status, want := range map[string]error{
+		"not-found":   sourceStatusErrors[1],
+		"busy":        sourceStatusErrors[2],
+		"bad-request": sourceStatusErrors[3],
+		"internal":    sourceStatusErrors[4],
+	} {
+		if got := sourceStatusError(status); !errors.Is(got, want) {
+			t.Fatalf("status %q error=%v want=%v", status, got, want)
+		}
+	}
+	// An unrecognized non-ok status must refuse, not return a nil success.
+	err := sourceStatusError("unexpected-status")
+	if err == nil {
+		t.Fatal("unknown source status returned nil (fail-open)")
+	}
+	if got := classifySourceOutcome(err); got != sourceOutcomeInvalidState {
+		t.Fatalf("unknown status outcome=%s want=invalid-state", sourceOutcomeName(got))
+	}
+}
+
 func TestSourceOutcomeUsesCauseNotDiagnosticText(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
