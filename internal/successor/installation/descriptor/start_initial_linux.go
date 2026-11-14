@@ -40,6 +40,7 @@ type startAttempt struct {
 	id                [16]byte
 	job               string
 	historyOpening    uint8
+	predecessor       string
 	intent            []byte
 	attempted, handed bool
 	terminal          error
@@ -81,6 +82,9 @@ func StartInitial(ctx context.Context, v *release.Verifier, authorization infras
 		return err
 	}
 	c := s.completed.original
+	if c.invocations != nil {
+		return ErrBinding
+	}
 	if c.binding.History != history {
 		return ErrBinding
 	}
@@ -116,6 +120,12 @@ func (s *startAttempt) launch() error {
 	s.managerIdentity, err = s.manager.ManagerIdentity()
 	if err != nil {
 		return err
+	}
+	if s.nextNumber != 0 {
+		h := c.invocations
+		if h == nil || len(h.starts) == 0 || h.starts[len(h.starts)-1].archive.Manager != s.managerIdentity {
+			return ErrBinding
+		}
 	}
 	facts, err := s.manager.Observe()
 	if err != nil {
@@ -286,7 +296,17 @@ func (s *startAttempt) observeStopped() error {
 		if err != nil {
 			return err
 		}
-		if err := verifyDescriptorStopped(facts.Unit, facts.Service, b.Request, b.Generation); err != nil {
+		checkStopped := verifyDescriptorStopped(facts.Unit, facts.Service, b.Request, b.Generation)
+		if s.nextNumber != 0 {
+			h := s.completed.original.invocations
+			if h == nil || len(h.retirements) != len(h.starts) {
+				return ErrBinding
+			}
+			old := h.starts[len(h.starts)-1]
+			ret := h.retirements[len(h.retirements)-1]
+			checkStopped = verifyDescriptorRestartStopped(facts.Unit, facts.Service, b.Request, b.Generation, old.archive, old.id, ret.result.execution())
+		}
+		if err := checkStopped; err != nil {
 			return err
 		}
 		if err := s.base(); err != nil {

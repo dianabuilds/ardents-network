@@ -39,6 +39,9 @@ type completedInitial struct {
 	hostingBirths   *initialBirths
 	hostingPrepared bool
 	start           *startStorage
+	retirement      *retirementStorage
+	invocations     *invocationHistory
+	historyJournals []string
 	// Failure-only causal control after genuine original file observation.
 	observe func(*os.File)
 }
@@ -97,6 +100,10 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 			return result, err
 		}
 		if _, err := os.Lstat(reserved); !errors.Is(err, os.ErrNotExist) {
+			if err == nil && invocationJournal(r.InstallationRoot, reserved) {
+				c.historyJournals = append(c.historyJournals, reserved)
+				continue
+			}
 			if err == nil && (reserved == hostingDirectory || reserved == hostingJournal) {
 				hostingPresent = true
 				continue // Independent typed transcript admission below, never presence authority.
@@ -193,6 +200,14 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 			return result, err
 		}
 	}
+	if err := c.readInvocations(); err != nil {
+		return result, err
+	}
+	for _, path := range c.historyJournals {
+		if !c.invocations.owns(path) {
+			return result, ErrBinding
+		}
+	}
 	result = Completed{c}
 	return result, result.Check()
 }
@@ -266,7 +281,14 @@ func (c *completedInitial) local() error {
 	return c.ctx.Err()
 }
 
-func (h Completed) operation(effect func(*completedInitial) error) (returned error) {
+func (h Completed) operation(effect func(*completedInitial) error) error {
+	return h.operationObserved(nil, effect)
+}
+
+// The original physical-use borrow includes both independent Release history
+// observations. Close cannot return its initial lease or publish while either
+// observer remains active; final local admission denies late results.
+func (h Completed) operationObserved(observe func() error, effect func(*completedInitial) error) (returned error) {
 	c := h.original
 	if c == nil {
 		return ErrInput
@@ -295,6 +317,11 @@ func (h Completed) operation(effect func(*completedInitial) error) (returned err
 			c.mu.Unlock()
 		}
 	}()
+	if observe != nil {
+		if err := observe(); err != nil {
+			return err
+		}
+	}
 	if err := c.check(); err != nil {
 		return err
 	}
@@ -303,7 +330,15 @@ func (h Completed) operation(effect func(*completedInitial) error) (returned err
 			return err
 		}
 	}
-	return c.check()
+	if err := c.check(); err != nil {
+		return err
+	}
+	if observe != nil {
+		if err := observe(); err != nil {
+			return err
+		}
+	}
+	return c.local()
 }
 
 func (c *completedInitial) check() error {
@@ -332,6 +367,14 @@ func (c *completedInitial) check() error {
 			return errors.Join(ErrBinding, err, nameErr)
 		}
 	}
+	if err := c.invocations.check(); err != nil {
+		return err
+	}
+	if c.retirement != nil {
+		if err := c.retirement.check(); err != nil {
+			return err
+		}
+	}
 	if c.start != nil {
 		if err := c.start.check(); err != nil {
 			return err
@@ -343,6 +386,9 @@ func (c *completedInitial) check() error {
 		}
 	}
 	for _, path := range c.absent {
+		if c.invocations.owns(path) || c.retirement != nil && c.retirement.journal != nil && path == c.retirement.journal.path {
+			continue
+		}
 		if c.start != nil && c.start.journal != nil && path == c.start.journal.path {
 			continue
 		}
@@ -361,7 +407,18 @@ func (c *completedInitial) check() error {
 		c.binding.Request.CredentialDirectory: {"certificate.pem": true, "private-key.pem": true},
 	}
 	if c.start != nil && c.start.dir != nil {
-		inventories[c.binding.Request.InstallationRoot]["descriptor-startup"] = true
+		inventories[c.binding.Request.InstallationRoot][filepath.Base(c.start.path)] = true
+	}
+	if c.invocations != nil {
+		for _, v := range c.invocations.starts {
+			inventories[c.binding.Request.InstallationRoot][filepath.Base(v.path)] = true
+		}
+		for _, v := range c.invocations.retirements {
+			inventories[c.binding.Request.InstallationRoot][filepath.Base(v.path)] = true
+		}
+	}
+	if c.retirement != nil && c.retirement.dir != nil {
+		inventories[c.binding.Request.InstallationRoot][filepath.Base(c.retirement.path)] = true
 	}
 	for directory, wanted := range inventories {
 		entries, err := os.ReadDir(directory)
@@ -435,7 +492,7 @@ func (h Completed) Close() error {
 		c.closed = true
 		c.mu.Unlock()
 		c.uses.Wait()
-		var physical error
+		physical := c.invocations.close()
 		for i := len(c.fileOrder) - 1; i >= 0; i-- {
 			f := c.fileOrder[i]
 			if f == c.journal {
@@ -493,4 +550,15 @@ func (c *completedInitial) hostingOwns(path string) bool {
 		}
 	}
 	return false
+}
+
+// CheckHistoryPath matches the admitted initial declaration before an external
+// Release root is opened. It grants no history repair or artifact permission.
+func (h Completed) CheckHistoryPath(path string) error {
+	return h.operation(func(c *completedInitial) error {
+		if !validPath(path) || path != c.binding.History {
+			return ErrBinding
+		}
+		return nil
+	})
 }

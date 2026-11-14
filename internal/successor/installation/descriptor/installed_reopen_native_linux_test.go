@@ -93,7 +93,7 @@ func TestDescriptorInstalledNativeStoreReopen(t *testing.T) {
 			t.Fatal("required existing Store object absent", name)
 		}
 	}
-	store, err := reachability.OpenStore(reachability.StoreConfig{Root: root, Network: [32]byte{1}})
+	store, err := reachability.OpenRetainedStore(reachability.StoreConfig{Root: root, Network: [32]byte{1}})
 	if err != nil {
 		t.Fatal(err)
 	}

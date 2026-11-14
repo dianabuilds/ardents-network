@@ -20,7 +20,7 @@ const (
 	storeStage = ".record-stage"
 )
 
-func (store *Store) restore() error {
+func (store *Store) restore(retained bool) error {
 	root := store.custody.records
 	directory, err := root.Open(".")
 	if err != nil {
@@ -74,6 +74,9 @@ func (store *Store) restore() error {
 	// Never rename/promote unacknowledged staging, reset the root or delete foreign
 	// entries. Sync its removal under the same exclusive lease before reopening.
 	if stage {
+		if retained {
+			return errors.New("reachability retained history has uncertain stage")
+		}
 		if err := root.Remove(storeStage); err != nil {
 			return err
 		}
@@ -411,6 +414,51 @@ func ensureStoreFile(path string, expected []byte) error {
 	}
 	if !bytes.Equal(raw, expected) {
 		return errors.New("reachability root format unsupported")
+	}
+	return nil
+}
+
+// Validate only existing original-relative entries under the already retained
+// root and exclusive existing lease. Missing history never selects creation.
+func checkRetainedStoreRoot(root *os.Root) (result error) {
+	directory, err := root.Open(".")
+	if err != nil {
+		return err
+	}
+	entries, readErr := directory.ReadDir(4)
+	if errors.Is(readErr, io.EOF) {
+		readErr = nil
+	}
+	if result = errors.Join(readErr, directory.Close()); result != nil {
+		return result
+	}
+	if len(entries) != 3 {
+		return errors.New("reachability retained root inventory incomplete")
+	}
+	for _, entry := range entries {
+		info, err := root.Lstat(entry.Name())
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return errors.New("reachability retained entry invalid")
+		}
+		switch entry.Name() {
+		case storeMarkerName, storeLockName:
+			if !info.Mode().IsRegular() {
+				return errors.New("reachability retained file invalid")
+			}
+		case storeRecords:
+			if !info.IsDir() {
+				return errors.New("reachability retained records invalid")
+			}
+		default:
+			return errors.New("reachability retained root contains foreign entry")
+		}
+	}
+	raw, err := readOriginalStoreFile(root, storeMarkerName, len(storeMarker))
+	if err != nil || !bytes.Equal(raw, []byte(storeMarker)) {
+		return errors.Join(errors.New("reachability retained marker invalid"), err)
 	}
 	return nil
 }

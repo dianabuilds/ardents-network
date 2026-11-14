@@ -575,3 +575,7 @@ descriptor-startup-check:
 .PHONY: descriptor-publish-check
 descriptor-publish-check:
 	go test -race -trimpath -buildvcs=false -tags descriptor_installed_native ./internal/successor/installation/descriptor -run '^TestDescriptorInstalledNativePublishLookup$$' -count=1 -v -timeout=3m
+
+.PHONY: descriptor-restart-check
+descriptor-restart-check:
+	go test -race -trimpath -buildvcs=false -tags descriptor_installed_native ./internal/successor/installation/descriptor -run '^TestDescriptorInstalledNativeStopAndRestart$$' -count=1 -v -timeout=3m

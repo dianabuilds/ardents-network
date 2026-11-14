@@ -23,6 +23,14 @@ import (
 // Only original joined command results can later participate in the separate
 // root retirement protocol. Public output never serializes private causes.
 type descriptorCommandFailure struct{ cause error }
+type descriptorExplicitStop struct{ cause error }
+
+func (e *descriptorExplicitStop) Error() string { return "descriptor explicitly stopped" }
+func (e *descriptorExplicitStop) Unwrap() error { return e.cause }
+func completedDescriptorExplicitStop(err error) bool {
+	e, ok := err.(*descriptorExplicitStop)
+	return ok && e != nil && descriptorCancellationOnly(e.cause)
+}
 
 func (e *descriptorCommandFailure) Error() string { return "descriptor command failed" }
 func (e *descriptorCommandFailure) Unwrap() error { return e.cause }
@@ -86,6 +94,16 @@ func runInstalledDescriptor(parent context.Context, binding string, out io.Write
 			}
 		}
 		clear(privatePlan)
+		if startup != nil && descriptorCancellationOnly(returned) {
+			completion, cancel := context.WithTimeout(context.WithoutCancel(parent), 3*time.Second)
+			reported, err := startup.ReportRetirement(completion, returned)
+			cancel()
+			returned = errors.Join(returned, err)
+			if reported && err == nil {
+				returned = &descriptorExplicitStop{returned}
+				return
+			}
+		}
 		if returned != nil {
 			if !startupComplete {
 				returned = errors.Join(returned, writeDescriptorStartupRefusal(context.WithoutCancel(parent), out, stage, node.StartupFailure(returned), returned))
@@ -117,7 +135,7 @@ func runInstalledDescriptor(parent context.Context, binding string, out io.Write
 	// Both State openers invoke this original Startup admission before root I/O.
 	openState := state.Open
 	if material.ExistingHistory {
-		return descriptor.ErrBinding
+		openState = state.OpenRetained
 	}
 	stage = "state"
 	opened, err := openState(config)
@@ -149,7 +167,7 @@ func runInstalledDescriptor(parent context.Context, binding string, out io.Write
 	}
 	listen := node.ListenDescriptor
 	if material.ExistingHistory {
-		return descriptor.ErrBinding
+		listen = node.ListenDescriptorRetained
 	}
 	stage = "node"
 	original, err = listen(startup.Context(), node.DescriptorConfig{

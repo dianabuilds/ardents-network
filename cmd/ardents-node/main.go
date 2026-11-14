@@ -16,7 +16,7 @@ func main() {
 	defer stop()
 	arguments := os.Args[1:]
 	if err := runCommand(ctx, arguments, os.Stdout); err != nil {
-		if completedExplicitSourceStop(err) || completedExplicitForwardingStop(err) || completedJoinExplicitStop(err) {
+		if completedExplicitSourceStop(err) || completedExplicitForwardingStop(err) || completedJoinExplicitStop(err) || completedDescriptorExplicitStop(err) {
 			return
 		}
 		fmt.Fprintln(os.Stderr, err)

@@ -153,6 +153,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
+		"descriptor-restart-linux":          false,
 		"descriptor-publish-linux":          false,
 		"descriptor-startup-linux":          false,
 		"descriptor-initial-stopped-linux":  false,

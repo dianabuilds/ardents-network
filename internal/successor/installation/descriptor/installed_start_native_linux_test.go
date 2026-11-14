@@ -26,6 +26,13 @@ import (
 // protected non-root Descriptor startup. Public declarations are not authority;
 // runtime owners independently verify all supplied material and native custody.
 func TestDescriptorInstalledNativePublishLookup(t *testing.T) {
+	runDescriptorInstalledJourney(t, false)
+}
+func TestDescriptorInstalledNativeStopAndRestart(t *testing.T) {
+	runDescriptorInstalledJourney(t, true)
+}
+
+func runDescriptorInstalledJourney(t *testing.T, lifecycle bool) {
 	const exchange = true
 	marker, err := os.ReadFile("/etc/ardents-descriptor-initial-native-stand")
 	if err != nil || string(marker) != "ardents-descriptor-initial-native-v1\n" || os.Geteuid() != 0 {
@@ -317,6 +324,7 @@ func TestDescriptorInstalledNativePublishLookup(t *testing.T) {
 			return
 		}
 		exchangeCancel()
+
 		err := exchangeCmd.Wait()
 		exchangeJoined = true
 		closeErr := exchangeLog.Close()
@@ -325,7 +333,10 @@ func TestDescriptorInstalledNativePublishLookup(t *testing.T) {
 		}
 	}
 	if exchange {
-		raw, _ := json.Marshal(struct{ Authority, Peer [32]byte }{authority, peer})
+		raw, _ := json.Marshal(struct {
+			Authority, Peer [32]byte
+			Lifecycle       bool
+		}{authority, peer, lifecycle})
 		if err := os.WriteFile(filepath.Join(parent, "exchange-inputs.json"), append(raw, '\n'), 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -378,6 +389,9 @@ func TestDescriptorInstalledNativePublishLookup(t *testing.T) {
 		scope.Programs["exchange-harness"] = digest(read(harness))
 		scope.Inputs["exchange"] = digest(read(filepath.Join(parent, "exchange-prepared.json")))
 		scope.Limits = "one controlled VPS/cohort; TCP/TLS only; actual Descriptor Store publish/ACK/lookup and conflict floors; public signed input is not registered Introduction, live Publisher or Service readiness; four independent refusal requests, at most two concurrent, join before dependent operations; unchanged runtime guards and per-channel absolute deadlines; no retained lifecycle, independent operator/builder, public/load/privacy/platform qualification"
+	}
+	if lifecycle {
+		scope.Limits = "one controlled VPS/cohort; TCP/TLS only; genuine Descriptor exchange, explicit joined Stop and same-generation retained restart; actual preserved histories and fresh original Startup; unchanged protections and deadlines; no replacement/recovery/Service/public/load/privacy qualification"
 	}
 	prepared, err := json.Marshal(scope)
 	if err != nil {
@@ -463,6 +477,77 @@ func TestDescriptorInstalledNativePublishLookup(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(parent, "exchange-start"), []byte("original installed Descriptor ready\n"), 0600); err != nil {
 			t.Fatal(err)
 		}
+		if lifecycle {
+			until := time.Now().Add(time.Minute)
+			for {
+				if _, err := os.Stat(filepath.Join(parent, "exchange-phase-one")); err == nil {
+					break
+				}
+				if time.Now().After(until) {
+					t.Fatal("initial exchange unavailable", string(read(filepath.Join(parent, "exchange-diagnostic.log"))))
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+			if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-descriptor", binding); err == nil {
+				t.Fatal("restart before original domain/native retirement accepted", string(raw))
+			}
+			if _, err := os.Lstat(request.InstallationRoot + ".descriptor-invocation-00000001-journal"); !errors.Is(err, os.ErrNotExist) {
+				t.Fatal("refused restart created an invocation", err)
+			}
+			storePath := filepath.Join(request.DescriptorRoot, "records")
+			entries, err := os.ReadDir(storePath)
+			if err != nil || len(entries) != 1 {
+				t.Fatal("one actual stored floor required", err)
+			}
+			stored := filepath.Join(storePath, entries[0].Name())
+			before := read(stored)
+			firstUID := actualUID
+			credential := read(request.PrivateKey)
+			if raw, err := invoke("stop", history, binding); err != nil || !bytes.Contains(raw, []byte("descriptor-original-stop-completed")) {
+				t.Fatal("explicit original joined Stop", err, string(raw))
+			}
+			if !bytes.Equal(before, read(stored)) {
+				t.Fatal("Stop altered original Store bytes")
+			}
+			if raw, err := invoke("stop", history, binding); err == nil {
+				t.Fatal("retirement report replay accepted", string(raw))
+			}
+			for range 2 {
+				if raw, err := invoke("inspect-started-history", history, binding); err != nil {
+					t.Fatal("independent retirement readback", err, string(raw))
+				}
+			}
+			if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-descriptor", binding); err != nil {
+				t.Fatal("fresh same-generation restart", err, string(raw))
+			}
+			if !bytes.Equal(before, read(stored)) || !bytes.Equal(credential, read(request.PrivateKey)) {
+				t.Fatal("restart rewrote Store or private Node key")
+			}
+			clear(credential)
+			info, err := os.Stat(request.StateRoot)
+			if err != nil || info.Sys().(*syscall.Stat_t).Uid != firstUID {
+				t.Fatal("restart replaced original account", err)
+			}
+			newIDRaw, err := exec.CommandContext(t.Context(), "systemctl", "show", "ardents-descriptor.service", "-p", "InvocationID", "--value").CombinedOutput()
+			newID := strings.TrimSpace(string(newIDRaw))
+			if err != nil || len(newID) != 32 || newID == invocation {
+				t.Fatal("independent new invocation absent", err)
+			}
+			restarted := time.Now().Add(15 * time.Second)
+			for {
+				raw, err := exec.CommandContext(t.Context(), "journalctl", "_SYSTEMD_INVOCATION_ID="+newID, "-o", "cat", "--no-pager").CombinedOutput()
+				if err == nil && bytes.Contains(raw, []byte(`"phase":"listening"`)) {
+					break
+				}
+				if time.Now().After(restarted) {
+					t.Fatal("retained invocation not ready", err, string(raw))
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+			if err := os.WriteFile(filepath.Join(parent, "exchange-restarted"), []byte("original retained Descriptor ready\n"), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
 		err := exchangeCmd.Wait()
 		exchangeJoined = true
 		closeErr := exchangeLog.Close()
@@ -476,6 +561,14 @@ func TestDescriptorInstalledNativePublishLookup(t *testing.T) {
 	if exchange {
 		// This is native test teardown only; it cannot supply a product Stop or
 		// retirement transcript. The independent Store reader needs actual exit.
+		if lifecycle {
+			if raw, err := invoke("stop", history, binding); err != nil {
+				t.Fatal("retained invocation original Stop", err, string(raw))
+			}
+			if raw, err := invoke("inspect-started-history", history, binding); err != nil {
+				t.Fatal("retained invocation readback", err, string(raw))
+			}
+		}
 		if raw, err := exec.CommandContext(t.Context(), "systemctl", "stop", "ardents-descriptor.service").CombinedOutput(); err != nil {
 			t.Fatal("native teardown before independent Store reopen", err, string(raw))
 		}

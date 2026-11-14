@@ -9,7 +9,7 @@ import (
 // history-opening byte. The caller must independently prove that choice; this
 // codec supplies no semantic root, original history or runtime authority.
 func EncodeDescriptorACK(request [160]byte, history uint8) (reply [161]byte, err error) {
-	if !canonicalFrame(request) || history != 0 {
+	if !canonicalFrame(request) || history > 1 {
 		return reply, ErrInput
 	}
 	copy(reply[:160], request[:])
@@ -40,7 +40,7 @@ func (e *DescriptorExchange) Wait() (uint8, error) {
 	if err := e.original.exchange(reply[:]); err != nil {
 		return 0, err
 	}
-	if reply[160] != 0 {
+	if reply[160] > 1 {
 		e.original.terminal = ErrBinding
 		return 0, ErrBinding
 	}

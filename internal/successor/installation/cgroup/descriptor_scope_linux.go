@@ -60,3 +60,20 @@ func (s *DescriptorScope) Close() error {
 	}
 	return s.original.close()
 }
+
+// RetainDescriptorStop separately reobserves archived original native identity.
+// Copied identity values grant no accepting observation or interruption right.
+func RetainDescriptorStop(ctx context.Context, pid uint32, device, inode uint64) (*DescriptorScope, error) {
+	if os.Geteuid() != 0 || device == 0 || inode == 0 {
+		return nil, errInput
+	}
+	s, err := retainDescriptorScope(ctx, pid, true)
+	if err != nil {
+		return s, err
+	}
+	native, ok := scopeNative(s.original.kernel.directory)
+	if !ok || uint64(native.Dev) != device || native.Ino != inode {
+		return s, errBinding
+	}
+	return s, nil
+}

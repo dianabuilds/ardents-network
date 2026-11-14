@@ -34,7 +34,14 @@ type Store struct {
 	denial            error
 }
 
-func OpenStore(config StoreConfig) (*Store, error) {
+func OpenStore(config StoreConfig) (*Store, error) { return openStore(config, false) }
+
+// OpenRetainedStore requires complete existing history. It cannot initialize a
+// missing root, marker, lock or records directory, nor repair an uncertain stage.
+// Installation independently proves predecessor completion before this opening.
+func OpenRetainedStore(config StoreConfig) (*Store, error) { return openStore(config, true) }
+
+func openStore(config StoreConfig, retained bool) (*Store, error) {
 	if !storePlatformSupported || config.Root == "" || config.Network == [32]byte{} {
 		return nil, errors.New("reachability Store configuration or platform unavailable")
 	}
@@ -42,8 +49,15 @@ func OpenStore(config StoreConfig) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = prepareStoreRoot(root); err != nil {
-		return nil, err
+	if !retained {
+		if err = prepareStoreRoot(root); err != nil {
+			return nil, err
+		}
+	} else {
+		info, err := os.Lstat(root)
+		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return nil, errors.Join(errors.New("reachability retained root missing or invalid"), err)
+		}
 	}
 	originalRoot, err := os.OpenRoot(root)
 	if err != nil {
@@ -58,7 +72,11 @@ func OpenStore(config StoreConfig) (*Store, error) {
 		err = lease.check(lockInfo)
 	}
 	if err == nil {
-		err = initializeStoreRoot(originalRoot)
+		if retained {
+			err = checkRetainedStoreRoot(originalRoot)
+		} else {
+			err = initializeStoreRoot(originalRoot)
+		}
 	}
 	if err != nil {
 		return nil, errors.Join(err, originalRoot.Close(), lease.release())
@@ -68,7 +86,7 @@ func OpenStore(config StoreConfig) (*Store, error) {
 	if err != nil {
 		return nil, errors.Join(err, store.lease.release())
 	}
-	if err = store.restore(); err != nil {
+	if err = store.restore(retained); err != nil {
 		return nil, errors.Join(err, store.custody.close(), store.lease.release())
 	}
 	if err = store.checkCustody(); err != nil {

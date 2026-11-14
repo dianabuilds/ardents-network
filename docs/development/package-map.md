@@ -941,3 +941,16 @@ Descriptor installed receiving-exchange native test imports (no production permi
 | File `internal/successor/installation/descriptor/installed_reopen_native_linux_test.go` | `internal/successor/reachability` |
 | File `internal/successor/installation/descriptor/installed_start_native_linux_test.go` | `internal/successor/installation/descriptor` |
 | File `internal/successor/installation/descriptor/installed_cohort_native_linux_test.go` | `internal/successor/network/epoch`; `internal/successor/network/source` |
+
+### Descriptor original retirement and retained restart
+
+Original domain/native joins and independent history readers belong to Descriptor Installation. Stop needs no fresh Release permission to shut down; restart independently obtains a fresh exact-artifact pair and original non-root Startup. New State/Node owners require existing participation/spend/Store history. No live sibling owner or reset is admitted. Exact new native test and implementation imports:
+
+| File | Permitted imports |
+|---|---|
+| File `internal/successor/installation/descriptor/installed_restart_native_linux_test.go` | `internal/successor/route/ardp` |
+| File `internal/successor/installation/descriptor/invocation_history_linux.go` | `internal/successor/release` |
+| File `internal/successor/installation/descriptor/restart_linux.go` | `internal/successor/installation/infrastructure`; `internal/successor/release` |
+| File `internal/successor/installation/descriptor/retirement_policy_linux.go` | `internal/successor/installation/completion`; `internal/successor/installation/systemd` |
+| File `internal/successor/installation/descriptor/start_snapshot_linux.go` | `internal/successor/installation/completion` |
+| File `internal/successor/installation/descriptor/stop_linux.go` | `internal/successor/installation/cgroup`; `internal/successor/installation/completion`; `internal/successor/installation/process`; `internal/successor/installation/systemd`; `internal/successor/release` |

@@ -91,7 +91,10 @@ func descriptorNativeWrite(t *testing.T, name string, raw []byte, mode os.FileMo
 
 func TestDescriptorInstalledNativeExchange(t *testing.T) {
 	descriptorNativeStand(t)
-	var input struct{ Authority, Peer [32]byte }
+	var input struct {
+		Authority, Peer [32]byte
+		Lifecycle       bool
+	}
 	if err := json.Unmarshal(descriptorNativeRead(t, "exchange-inputs.json"), &input); err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +126,10 @@ func TestDescriptorInstalledNativeExchange(t *testing.T) {
 		}
 		certificate.PrivateKey = nil
 	}()
-	public, err := json.Marshal(struct{ Target, First, Conflict, Second, Foreign, Future [32]byte }{proofs.target, sha256.Sum256(proofs.first), sha256.Sum256(proofs.conflict), sha256.Sum256(proofs.second), sha256.Sum256(proofs.foreign), sha256.Sum256(proofs.future)})
+	public, err := json.Marshal(struct {
+		Target, First, Conflict, Second, Foreign, Future [32]byte
+		Lifecycle                                        bool
+	}{proofs.target, sha256.Sum256(proofs.first), sha256.Sum256(proofs.conflict), sha256.Sum256(proofs.second), sha256.Sum256(proofs.foreign), sha256.Sum256(proofs.future), input.Lifecycle})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +159,11 @@ func TestDescriptorInstalledNativeExchange(t *testing.T) {
 		case <-ticker.C:
 		}
 	}
-	runDescriptorNativeOperations(t, prepared, certificate, proofs)
+	if input.Lifecycle {
+		runDescriptorNativeRestartExchange(t, prepared, certificate, proofs)
+	} else {
+		runDescriptorNativeOperations(t, prepared, certificate, proofs)
+	}
 }
 
 func descriptorNativePinnedProgram(t *testing.T, variable string) (string, []byte) {

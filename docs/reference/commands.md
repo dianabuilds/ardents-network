@@ -1550,3 +1550,16 @@ Release floors. The fixed unit alone invokes `descriptor start-installed BINDING
 as `ardents-node`; ordinary execution cannot supply its original native Startup
 or root-peer exchange. Listening is not Store ACK, Service readiness or lifecycle
 acceptance. No automatic restart, key reload, adoption or rollback is provided.
+
+
+Descriptor original lifecycle commands:
+
+- `ardents-node descriptor stop RELEASE-HISTORY BINDING`: explicitly retire the
+  original invocation through actual domain/native completion. Missing completion
+  stays blocking; this command does not admit restart.
+- `ardents-node descriptor inspect-started-history RELEASE-HISTORY BINDING`:
+  independently verify the complete retained invocation/retirement chain without
+  runtime permission or history repair.
+- `ardents-node descriptor restart DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING`:
+  fresh exact-artifact/native admission and independent non-root startup for the
+  same generation after committed original retirement. Missing histories refuse.

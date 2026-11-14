@@ -1283,3 +1283,13 @@ command composition closes State and Startup. Reachability alone initializes
 Store and retains proof/conflict/durability policy. Five original semantic roots
 remain distinct; no sibling role lease, legacy backend or generic role owner
 participates. Full publication/lookup and retained lifecycle remain separate.
+
+
+Descriptor original retirement now has separate Installation report/native owners.
+Canonical composition joins genuine Node/Store/State and all original Startup
+observers before its one-use challenge-bound report. Root independently retains
+and joins original process/scope/manager custody and publishes complete retirement
+only after observer closes. Restart consumes that history plus fresh Release and
+independent Startup; Reachability's existing-only Store opening cannot create or
+repair missing/uncertain history. No sibling role lifetime or generic role owner
+participates; account, keys, original allowance and all five histories persist.

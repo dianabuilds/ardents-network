@@ -5444,3 +5444,21 @@ concurrently; all join before the next dependent Store operation. The three-minu
 native orchestration bound includes real Custody/issuance and setup. Every role
 channel retains its unchanged absolute limit (at most 30 seconds), with no token
 refund, guard change or additional protocol retry.
+
+
+`descriptor-restart-linux` (`make descriptor-restart-check`) uses a fresh native
+stand and the exact artifact/input prerequisites of the Descriptor publish
+profile. Five actual Control operations publish/read revision2, then independently
+read it after explicit Stop and retained restart, refuse revision1 and confirm
+revision2 again. The client retains its genuine original Stock and independent
+State; all physical channels join before server retirement. Each operation
+appends one irreversible spend to the same original journal. Native controls
+refuse restart before original retirement and repeated Stop, independently read
+completed history, preserve original Store bytes/Node key/account and require a
+new actual manager InvocationID. Both server invocations end through their own
+original report/native join. A separately launched original-UID existing-only
+Store readback follows. Pure storage controls refuse missing roots/marker/lock/
+records or uncertain staging without initialization or repair; typed frame and
+transcript controls reject partial, replayed or foreign completion. The unchanged
+three-minute orchestration includes real preparation; wire/runtime bounds remain
+unchanged. This profile supplies no forward replacement or recovery evidence.

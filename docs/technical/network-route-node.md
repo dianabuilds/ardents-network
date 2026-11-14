@@ -4023,3 +4023,26 @@ Store; startup/listening is distinct from signed publication, Store ACK, lookup,
 retained restart, replacement and recovery. Denial interrupts dependents, joins
 Node (including Receiver and Store) before State and Startup release. A bounded
 completion-unavailable notice retains every original owner until actual join.
+
+
+### Descriptor original Stop and retained restart
+
+Canonical `descriptor stop` retains the exact archived process/pidfd, cgroup,
+manager, native namespace and entire original start chain. The original command
+reports through its one-use Startup only after Node (including Store and every
+transport/Admission/Hosting/producer/Guard/key user), State and all Startup inputs
+and observations physically join. The report binds the actual original startup
+frame to a fresh root challenge. Cancellation, process exit, path absence and a
+copied ACK or result cannot replace it. A retained physical error blocks the
+report even when its chain includes cancellation.
+
+Root joins the actual original kernel scope, verifies matching clean exit rounds
+and closes all original observers before publishing the separate retirement
+transcript. The present blocker or a partial transcript refuses restart. Shutdown
+does not need renewed Release authority. Same-generation `descriptor restart`
+requires independent complete history, fresh Release/native admission and a new
+original Startup; its intent commits the immediate predecessor retirement. All
+older history leases remain held through handoff. Existing-only State,
+participation, spends and Reachability Store preserve floors without creation,
+repair or stage promotion. The original Hosting allowance, numeric account and
+keys remain unchanged. Forward replacement and recovery retain separate gates.

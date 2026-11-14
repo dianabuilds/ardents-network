@@ -19,7 +19,16 @@ func runDescriptorInstallation(parent context.Context, args []string, output io.
 		return runInstalledDescriptor(parent, args[1], output)
 	}
 	if parent != nil && output != nil && len(args) == 6 && args[0] == "start-initial" {
-		return startDescriptorGeneration(parent, args[1:], output)
+		return startDescriptorGeneration(parent, args[1:], output, false)
+	}
+	if parent != nil && output != nil && len(args) == 6 && args[0] == "restart" {
+		return startDescriptorGeneration(parent, args[1:], output, true)
+	}
+	if parent != nil && output != nil && len(args) == 3 && args[0] == "stop" {
+		return stopDescriptor(parent, args[1:], output)
+	}
+	if parent != nil && output != nil && len(args) == 3 && args[0] == "inspect-started-history" {
+		return inspectStartedDescriptor(parent, args[1:], output)
 	}
 	if parent != nil && output != nil && len(args) == 7 && args[0] == "install-initial-stopped" {
 		return installInitialDescriptor(parent, args[1:], output)
@@ -125,7 +134,7 @@ func inspectInitialDescriptor(parent context.Context, args []string, output io.W
 	return errors.Join(err, ctx.Err())
 }
 
-func startDescriptorGeneration(parent context.Context, args []string, output io.Writer) (returned error) {
+func startDescriptorGeneration(parent context.Context, args []string, output io.Writer, restart bool) (returned error) {
 	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
 	defer cancel()
 	preflight, err := descriptor.ReadCompleted(ctx, args[4])
@@ -158,10 +167,74 @@ func startDescriptorGeneration(parent context.Context, args []string, output io.
 		return err
 	}
 	start := descriptor.StartInitial
+	if restart {
+		start = descriptor.Restart
+	}
 	if err := start(ctx, v, a, args[4], args[0], args[1]); err != nil {
 		return err
 	}
 	outcome := "descriptor-first-start-completed"
+	if restart {
+		outcome = "descriptor-restart-completed"
+	}
 	_, err = io.WriteString(output, "{\"outcome\":\""+outcome+"\",\"runtime_authority\":false}\n")
 	return errors.Join(err, ctx.Err())
+}
+
+func stopDescriptor(parent context.Context, args []string, out io.Writer) (returned error) {
+	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
+	defer cancel()
+	completed, err := descriptor.ReadCompleted(ctx, args[1])
+	if err == nil {
+		err = completed.CheckHistoryPath(args[0])
+	}
+	if err = errors.Join(err, completed.Close()); err != nil {
+		return err
+	}
+	v, err := release.OpenRetained(args[0])
+	if err != nil {
+		return err
+	}
+	defer func() { returned = errors.Join(returned, v.Close()) }()
+	done := make(chan error, 1)
+	go func() { done <- descriptor.Stop(ctx, v, args[1], args[0]) }()
+	timer := time.NewTimer(2*time.Minute + 5*time.Second)
+	defer timer.Stop()
+	select {
+	case err = <-done:
+	case <-timer.C:
+		_, notice := io.WriteString(out, "{\"outcome\":\"descriptor-stop-completion-unavailable\"}\n")
+		err = errors.Join(<-done, notice)
+	}
+	if err = errors.Join(err, v.Close(), ctx.Err()); err != nil {
+		return err
+	}
+	_, err = io.WriteString(out, "{\"outcome\":\"descriptor-original-stop-completed\",\"restart_admitted\":false}\n")
+	return err
+}
+
+func inspectStartedDescriptor(parent context.Context, args []string, out io.Writer) (returned error) {
+	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
+	defer cancel()
+	c, err := descriptor.ReadCompleted(ctx, args[1])
+	if err == nil {
+		err = c.CheckHistoryPath(args[0])
+	}
+	if err = errors.Join(err, c.Close()); err != nil {
+		return err
+	}
+	v, err := release.OpenRetained(args[0])
+	if err != nil {
+		return err
+	}
+	defer func() { returned = errors.Join(returned, v.Close()) }()
+	h, err := descriptor.ReadStarted(ctx, v, args[1], args[0])
+	if err == nil {
+		err = h.Check()
+	}
+	if err = errors.Join(err, h.Close(), v.Close(), ctx.Err()); err != nil {
+		return err
+	}
+	_, err = io.WriteString(out, "{\"outcome\":\"descriptor-started-history-verified\",\"runtime_authority\":false}\n")
+	return err
 }

@@ -4,6 +4,38 @@ package architecture
 // Route root, legacy backend, callback bridge or sibling live Installation owner.
 func descriptorStartupImportAllowed(source, dependency string) bool {
 	switch source {
+	case "internal/successor/installation/descriptor/invocation_history_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/release":
+			return true
+		}
+	case "internal/successor/installation/descriptor/restart_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/release":
+			return true
+		}
+	case "internal/successor/installation/descriptor/retirement_policy_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/completion", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd":
+			return true
+		}
+	case "internal/successor/installation/descriptor/start_snapshot_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/completion":
+			return true
+		}
+	case "internal/successor/installation/descriptor/stop_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/completion", "github.com/dianabuilds/ardents-network/internal/successor/installation/process", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
+			return true
+		}
+
+	case "internal/successor/installation/descriptor/installed_restart_native_linux_test.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/route/ardp":
+			return true
+		}
+
 	case "internal/successor/installation/descriptor/installed_start_native_linux_test.go":
 		return dependency == modulePath+"/internal/successor/installation/descriptor"
 	case "internal/successor/installation/descriptor/installed_cohort_native_linux_test.go":
