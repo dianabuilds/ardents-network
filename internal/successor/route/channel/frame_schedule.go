@@ -15,7 +15,6 @@ import (
 type frameTurn struct {
 	lane              *Lane
 	control, selected bool
-	bytes             uint64
 	bounded           bool
 	ready             chan struct{}
 }
@@ -84,7 +83,7 @@ func (s *Session) scheduleLocked() {
 }
 
 func (s *Session) turn(l *Lane, f ardp.Frame, terminal bool, bytes uint64) (func(), error) {
-	t := &frameTurn{lane: l, control: f.Kind != ardp.KindBytes, bytes: bytes, ready: make(chan struct{})}
+	t := &frameTurn{lane: l, control: f.Kind != ardp.KindBytes, ready: make(chan struct{})}
 	s.mu.Lock()
 	if s.stopped || s.finishingRole || l.peerClosed || (!terminal && l.closed) {
 		s.mu.Unlock()
