@@ -3,6 +3,7 @@ package epoch
 import "crypto/sha256"
 
 func attachCandidates(decision *Decision, accepted []nodeRecord, epoch epochEnvelope) error {
+	materials := decision.materializations()
 	for index, record := range accepted {
 		domain, err := assignedDomain(epoch, record.family)
 		if err != nil {
@@ -10,14 +11,10 @@ func attachCandidates(decision *Decision, accepted []nodeRecord, epoch epochEnve
 		}
 		var public [32]byte
 		copy(public[:], record.publicKey)
-		proof, err := decision.Materialization(uint32(index))
-		if err != nil {
-			return err
-		}
 		decision.Candidates = append(decision.Candidates, Candidate{
 			NodeID: record.nodeID, KeyID: record.keyID, PublicKey: public,
 			FamilyID: sha256.Sum256([]byte(record.family)), RecordDigest: sha256.Sum256(record.raw),
-			DomainProof: proof, Family: record.family, Endpoint: record.endpoint,
+			DomainProof: materials[index], Family: record.family, Endpoint: record.endpoint,
 			CarrierProfile: record.carrier, Domain: domain, Capacity: record.capacity,
 			RecordGeneration: record.generation,
 			ValidFrom:        record.notBefore, ValidUntil: record.notAfter,

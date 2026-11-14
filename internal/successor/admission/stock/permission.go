@@ -10,6 +10,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/allocation"
+	admissiontoken "github.com/dianabuilds/ardents-network/internal/successor/admission/token"
 )
 
 // permission keeps exactly one holder/hour until its Owner revokes it.
@@ -18,7 +19,7 @@ type permission struct {
 	batches  uint8
 	reserved [3]uint32
 	pending  *batch
-	stock    []stockEntry
+	stock    map[admissiontoken.ClosedTokenContext]*stockEntry
 	profile  admission.AuthorityFacts
 	request  admission.PermissionRequest
 	public   []byte

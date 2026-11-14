@@ -197,3 +197,61 @@ func TestLedgerPrunesOnlyAfterWindowMargin(t *testing.T) {
 		t.Fatal("retained a spend after its safety margin")
 	}
 }
+
+// The earliest-expiry fence must retain exactly what a full scan retains at
+// every boundary, and keep earliestWindow equal to the minimum retained window
+// (audit AD-4).
+func TestLedgerPruneFenceMatchesFullScan(t *testing.T) {
+	binding := Binding{NetworkID: [32]byte{1}, ProfileDigest: [32]byte{2}, ReceiverNodeID: [32]byte{3}, ReceiverDutyGeneration: 4}
+	base := time.Unix(1_800_000_000, 0).UTC().Truncate(time.Hour)
+	ledger, err := Open(t.TempDir(), binding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = ledger.Close() }()
+	// Two consecutive hourly windows coexist only within the one-minute safety
+	// margin overlap; spend the second window inside that overlap.
+	windows := []time.Time{base, base.Add(time.Hour)}
+	first, second := make([]byte, 354), make([]byte, 354)
+	first[0], second[0] = 1, 2
+	if err := ledger.Spend(first, windows[0], base.Add(30*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if err := ledger.Spend(second, windows[1], base.Add(time.Hour+30*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if !ledger.earliestWindow.Equal(base) {
+		t.Fatalf("earliestWindow=%s want=%s", ledger.earliestWindow, base)
+	}
+	retainedAt := func(now time.Time) int {
+		count := 0
+		for _, window := range windows {
+			if now.Before(window.Add(time.Hour + time.Minute)) {
+				count++
+			}
+		}
+		return count
+	}
+	for _, now := range []time.Time{
+		base.Add(time.Hour + 30*time.Second),
+		base.Add(time.Hour + 59*time.Second),
+		base.Add(time.Hour + time.Minute),
+		base.Add(2*time.Hour + time.Minute),
+	} {
+		if err := ledger.prune(now); err != nil {
+			t.Fatal(err)
+		}
+		if len(ledger.spent) != retainedAt(now) {
+			t.Fatalf("now=%s retained=%d want=%d", now, len(ledger.spent), retainedAt(now))
+		}
+		var earliest time.Time
+		for _, window := range ledger.spent {
+			if earliest.IsZero() || window.Before(earliest) {
+				earliest = window
+			}
+		}
+		if !ledger.earliestWindow.Equal(earliest) {
+			t.Fatalf("now=%s earliestWindow=%s want=%s", now, ledger.earliestWindow, earliest)
+		}
+	}
+}
