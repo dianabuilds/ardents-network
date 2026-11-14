@@ -10,6 +10,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
 )
 
+// maximumInitialDeliveries bounds retained initial deliveries and the ready
+// candidate queue rebuilt from them.
+const maximumInitialDeliveries = 2640
+
 // initialDelivery retains the exact initial binding/private opening through
 // real wire completion, then until its original capsule deadline. It grants no
 // Service TLS or Application stream. Replacement delivery retains the same
@@ -84,7 +88,7 @@ func (state *initialDelivery) retain() error {
 		if err := state.checkLocal(checkOriginal); err != nil {
 			return err
 		}
-		if nonce == [32]byte{} || p.initialDeliveries[nonce] != nil || len(p.initialDeliveries) >= 2640 {
+		if nonce == [32]byte{} || p.initialDeliveries[nonce] != nil || len(p.initialDeliveries) >= maximumInitialDeliveries {
 			return errors.New("Publisher initial delivery already retained or full")
 		}
 		state.nonce = nonce
@@ -112,12 +116,28 @@ func (state *initialDelivery) publishJoined() error {
 			return err
 		}
 		state.wireJoined = true
+		p.readyInitial = append(p.readyInitial, state)
+		if len(p.readyInitial) > 2*maximumInitialDeliveries {
+			p.compactReadyInitial()
+		}
 		select {
 		case p.initialWake <- struct{}{}:
 		default:
 		}
 		return nil
 	})
+}
+
+// compactReadyInitial rebuilds the candidate queue from the retained map so
+// stale (closed/claimed) entries cannot grow it without bound. Caller owns mu.
+func (p *Publisher) compactReadyInitial() {
+	ready := make([]*initialDelivery, 0, len(p.initialDeliveries))
+	for _, state := range p.initialDeliveries {
+		if state.wireJoined && !state.serviceClaimed {
+			ready = append(ready, state)
+		}
+	}
+	p.readyInitial = ready
 }
 
 func (state *initialDelivery) commitResponder(action func(func() error) error) error {
