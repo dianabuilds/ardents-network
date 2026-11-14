@@ -2,6 +2,7 @@ package systemd
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"testing"
 )
@@ -15,8 +16,13 @@ func TestNodeSlotsEmptyCustodyGrantsNoObservation(t *testing.T) {
 			t.Fatal("unacquired custody supplied manager provenance")
 		}
 	}
-	if h, err := OpenNodeSlots(nil); h != nil || !errors.Is(err, ErrInput) {
-		t.Fatal("missing original caller opened custody", h, err)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	for _, caller := range []context.Context{nil, ctx} {
+		if h, err := OpenNodeSlots(caller); h != nil || err == nil || caller == nil && !errors.Is(err, ErrInput) {
+			_ = h.Close()
+			t.Fatal("unavailable original caller opened custody", h, err)
+		}
 	}
 	var h *NodeSlots
 	if h.Close() != nil || new(NodeSlots).Close() != nil {

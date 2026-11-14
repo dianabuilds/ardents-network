@@ -108,6 +108,12 @@ func (c *completedInitial) readReplacementsPending(pending *initialFile) error {
 		if i == 0 {
 			continue
 		}
+		// The shared pending path belongs only to the selected transition.
+		// Earlier replacements retain their own recorded births, not this inode.
+		var selectedPending *initialFile
+		if i == len(c.selectionOrder)-1 {
+			selectedPending = pending
+		}
 		old := c.selectionOrder[i-1]
 		b := selected.binding
 		oldDir := filepath.Join(old.binding.Request.InstallationRoot, "generations", old.binding.Generation)
@@ -156,7 +162,7 @@ func (c *completedInitial) readReplacementsPending(pending *initialFile) error {
 				continue
 			}
 			if path == replacementPending(b.Request.InstallationRoot) {
-				if pending != nil {
+				if selectedPending != nil {
 					held := c.files[path]
 					st, ok := infoSys(held.info)
 					if !ok || uint64(st.Dev) != r.Device || st.Ino != r.Inode || !nodeAccess(held.info, 0600, 0, 0, false) {
@@ -176,7 +182,7 @@ func (c *completedInitial) readReplacementsPending(pending *initialFile) error {
 				return ErrBinding
 			}
 		}
-		if err = c.readReplacementRecovery(j, selected, pending); err != nil {
+		if err = c.readReplacementRecovery(j, selected, selectedPending); err != nil {
 			return err
 		}
 		c.replacementPaths = append(c.replacementPaths, journal, beforePath, afterPath)

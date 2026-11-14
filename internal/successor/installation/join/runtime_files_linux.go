@@ -20,26 +20,23 @@ var errRuntimeFilesClosed = errors.New("JOIN installation: runtime files closed"
 // it through all other closes. Runtime constructs its own fresh instance without
 // any journal; this physical read machinery grants neither caller a live right.
 type runtimeFiles struct {
-	ctx              context.Context
-	mu, ioMu         sync.Mutex
-	uses             sync.WaitGroup
-	once             sync.Once
-	closed           bool
-	failure          error
-	files            map[string]*initialFile
-	fileOrder        []*initialFile
-	executable       *runtimeExecutableView
-	dirs             map[string]*inputDirectory
-	dirOrder         []*inputDirectory
-	journal          *initialFile
-	clock            string
-	pending          string
-	sealed           string
-	credential       string
-	absentPaths      []string
-	extraInventories map[string]int
-	generationRoot   string
-	generationNames  []string
+	ctx         context.Context
+	mu, ioMu    sync.Mutex
+	uses        sync.WaitGroup
+	once        sync.Once
+	closed      bool
+	failure     error
+	files       map[string]*initialFile
+	fileOrder   []*initialFile
+	executable  *runtimeExecutableView
+	dirs        map[string]*inputDirectory
+	dirOrder    []*inputDirectory
+	journal     *initialFile
+	clock       string
+	pending     string
+	sealed      string
+	credential  string
+	absentPaths []string
 	// Negative native controls only, after actual I/O or before actual Close.
 	observe func(string, *os.File)
 }

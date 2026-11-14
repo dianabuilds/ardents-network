@@ -18,10 +18,11 @@ func TestDeliveryFilesZeroAndUnavailableCallerGrantNoCustody(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := OpenFiles(ctx); err == nil {
-		t.Fatal("canceled caller acquired original custody")
-	}
-	if _, err := OpenFiles(nil); err == nil {
-		t.Fatal("missing caller acquired original custody")
+	// Both deliberately invalid callers must refuse before native custody.
+	for _, caller := range []context.Context{nil, ctx} {
+		if h, err := OpenFiles(caller); err == nil || h.original != nil {
+			_ = h.Close()
+			t.Fatal("unavailable caller acquired original custody", err)
+		}
 	}
 }

@@ -230,18 +230,21 @@ func (listener *sharedListener) classify(raw net.Conn, deadline time.Time) hands
 	defer cancel()
 	socket := &nativeSocket{Conn: raw}
 	secured := tls.Server(socket, transport.SharedServerTLS(listener.certificate))
+	// HandshakeContext may already be closing this socket on cancellation.
+	// Reuse its original once-only owner to join that Close and retain its
+	// physical result instead of closing the raw connection a second time.
 	if err := secured.SetDeadline(deadline); err != nil {
-		return handshakeResult{err: errors.Join(transport.MarkSharedPeerFailure(err), listener.closeOwned(raw))}
+		return handshakeResult{err: errors.Join(transport.MarkSharedPeerFailure(err), listener.closeOwned(socket))}
 	}
 	if err := secured.HandshakeContext(ctx); err != nil {
-		return handshakeResult{err: errors.Join(transport.MarkSharedPeerFailure(err), listener.closeOwned(raw))}
+		return handshakeResult{err: errors.Join(transport.MarkSharedPeerFailure(err), listener.closeOwned(socket))}
 	}
 	classified, err := transport.ClassifySharedTLS(secured.ConnectionState(), listener.verify)
 	if err != nil {
-		return handshakeResult{err: errors.Join(transport.MarkSharedPeerFailure(err), listener.closeOwned(raw))}
+		return handshakeResult{err: errors.Join(transport.MarkSharedPeerFailure(err), listener.closeOwned(socket))}
 	}
 	if err := secured.SetDeadline(time.Time{}); err != nil {
-		return handshakeResult{err: errors.Join(transport.MarkSharedPeerFailure(err), listener.closeOwned(raw))}
+		return handshakeResult{err: errors.Join(transport.MarkSharedPeerFailure(err), listener.closeOwned(socket))}
 	}
 	classified.Connection = secured
 	if classified.Kind == transport.ClosedSharedNode {

@@ -1,6 +1,7 @@
 package systemd
 
 import (
+	"context"
 	"errors"
 	"testing"
 )
@@ -23,8 +24,13 @@ func TestJoinStoppedEmptyCustodyRefusesEveryOperation(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if h, err := OpenJoinStopped(nil); h != nil || !errors.Is(err, ErrInput) {
-		t.Fatal(h, err)
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	for _, caller := range []context.Context{nil, ctx} {
+		if h, err := OpenJoinStopped(caller); h != nil || err == nil || caller == nil && !errors.Is(err, ErrInput) {
+			_ = h.Close()
+			t.Fatal("unavailable caller acquired manager custody", h, err)
+		}
 	}
 	if (*JoinStopped)(nil).Close() != nil || new(JoinStopped).Close() != nil {
 		t.Fatal("empty completion failed")
