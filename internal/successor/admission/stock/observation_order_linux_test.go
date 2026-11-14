@@ -60,3 +60,46 @@ func TestHolderConcurrentObservationsPreserveTimeOrder(t *testing.T) {
 		}
 	})
 }
+
+// RefillPlan must order its observation through observationMu like every other
+// Owner path. Observing outside it lets a newer concurrent observation advance
+// floor first and manufacture a clock-rollback refusal (audit AD-8).
+func TestHolderRefillPlanPreservesTimeOrder(t *testing.T) {
+	o, host, _ := issuedStockFixture(t)
+	entered, release := make(chan struct{}), make(chan struct{})
+	var observations atomic.Int32
+	o.observe = func() (admission.AuthorityFacts, time.Time, error) {
+		n := observations.Add(1)
+		at := host.now.Add(time.Duration(n) * time.Millisecond)
+		if n == 1 {
+			close(entered)
+			<-release
+		}
+		return host.profile, at, nil
+	}
+	results := make(chan error, 2)
+	refill := func() {
+		_, err := o.RefillPlan(nil, 2, false)
+		results <- err
+	}
+	go refill()
+	<-entered
+	go refill()
+	remaining := 2
+	select {
+	case err := <-results:
+		// Pre-fix RefillPlan lets this observation overtake the held one.
+		remaining--
+		if err != nil {
+			t.Error("newer fresh RefillPlan observation refused", err)
+		}
+	case <-time.After(50 * time.Millisecond):
+		// Serialized observation waits without retaining the state mutex.
+	}
+	close(release)
+	for range remaining {
+		if err := <-results; err != nil {
+			t.Error("concurrent fresh RefillPlan observation refused", err)
+		}
+	}
+}
