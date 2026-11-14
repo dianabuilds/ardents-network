@@ -23,8 +23,11 @@ type descriptorNativeProofs struct {
 // This is external signed public input to a receiving Descriptor. The genuine
 // Custody authority issues a Credential; a separate fixture Instance signs the
 // public proof. No live Publisher, registration, slot or readiness is claimed.
-func prepareDescriptorNativeProofs(t *testing.T, prepared descriptorPreparedStock) descriptorNativeProofs {
+func prepareDescriptorNativeProofs(t *testing.T, prepared descriptorPreparedStock, window time.Duration) descriptorNativeProofs {
 	t.Helper()
+	if window != 5*time.Minute && window != 10*time.Minute {
+		t.Fatal("fixed native proof input interval required")
+	}
 	password := make([]byte, 32)
 	if _, err := rand.Read(password); err != nil {
 		t.Fatal(err)
@@ -54,7 +57,7 @@ func prepareDescriptorNativeProofs(t *testing.T, prepared descriptorPreparedStoc
 		t.Fatal(err)
 	}
 	now := view.ObservedAt().UTC().Truncate(time.Second)
-	end := now.Add(5 * time.Minute)
+	end := now.Add(window)
 	if end.After(view.Profile().NotAfter) {
 		end = view.Profile().NotAfter
 	}

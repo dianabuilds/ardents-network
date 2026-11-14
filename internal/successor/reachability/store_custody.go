@@ -117,21 +117,25 @@ func (store *Store) checkCustody() error {
 
 // Called only under the native custody mutex, never the state mutex.
 func (store *Store) inspectCustody() error {
-	c := store.custody
+	return inspectStoreCustody(store.custody, &store.lease, store.root)
+}
+
+// Pure native readback shared by independently owned live and stopped leases.
+func inspectStoreCustody(c *storeCustody, lease *storeLease, root string) error {
 	for _, object := range []struct {
 		path string
 		info os.FileInfo
 	}{
-		{store.root, c.rootInfo},
-		{filepath.Join(store.root, storeRecords), c.recordsInfo},
-		{filepath.Join(store.root, storeMarkerName), c.markerInfo},
-		{filepath.Join(store.root, storeLockName), c.lockInfo},
+		{root, c.rootInfo},
+		{filepath.Join(root, storeRecords), c.recordsInfo},
+		{filepath.Join(root, storeMarkerName), c.markerInfo},
+		{filepath.Join(root, storeLockName), c.lockInfo},
 	} {
 		if err := sameStoreObject(object.path, object.info); err != nil {
 			return err
 		}
 	}
-	if err := store.lease.check(c.lockInfo); err != nil {
+	if err := lease.check(c.lockInfo); err != nil {
 		return err
 	}
 	marker := make([]byte, len(storeMarker)+1)

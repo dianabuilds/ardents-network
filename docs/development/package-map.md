@@ -9,7 +9,7 @@ offline preparation supply no accepting runtime authority.
 
 | Path | Package | Responsibility and real consumer | Permitted imports |
 |---|---|---|---|
-| `internal/successor/installation/descriptor` | `package descriptor` | Fixed Descriptor-role request/plan with five independent semantic roots, finite original journal/completion namespace and fixed non-root protection template. Real consumers: canonical Control public request/plan/template producers and canonical Node read-only original-input preflight. Input custody retains only original protected delivery/clock ancestors; its independent manager observation admits no native creation, Start, Release or Store ACK. The separate initial creator, independently completed reader and canonical consumers below own genuine Release admission and stopped birth without semantic initialization or runtime authority. | standard library; `internal/successor/hosting` only in `plan_linux.go` for detached Traffic values; `internal/successor/installation/request` only in `inputs_linux.go`; `internal/successor/installation/systemd` only in `preflight_linux.go`  Additional imports are restricted to the exact initial-admission file list below.  `internal/successor/installation/infrastructure`, `internal/successor/release`, `internal/successor/enrollment`, `internal/successor/installation/directory`, `internal/successor/installation/fixedfile` are additionally admitted only in the exact initial-admission files listed below.  `internal/successor/installation/cgroup`, `internal/successor/installation/completion` and `internal/successor/installation/process` additionally only in the exact first-start files below; Hosting additionally only in `hosting_prepare_linux.go`.; native tests only: `internal/successor/admission`, `internal/successor/admission/issuance`, `internal/successor/admission/issuer`, `internal/successor/admission/quota`, `internal/successor/admission/receiving`, `internal/successor/admission/stock`, `internal/successor/admission/token`, `internal/successor/custody`, `internal/successor/network`, `internal/successor/network/source`, `internal/successor/network/state`, `internal/successor/publication`, `internal/successor/reachability`, `internal/successor/route/ardp`, `internal/successor/route/channel`, `internal/successor/route/role`, `internal/successor/route/transport`, `internal/successor/route/transport/tls` (exact files below); native tests only: `internal/successor/network/epoch` |
+| `internal/successor/installation/descriptor` | `package descriptor` | Fixed Descriptor-role request/plan with five independent semantic roots, finite original journal/completion namespace and fixed non-root protection template. Real consumers: canonical Control public request/plan/template producers and canonical Node read-only original-input preflight. Input custody retains only original protected delivery/clock ancestors; its independent manager observation admits no native creation, Start, Release or Store ACK. The separate initial creator, independently completed reader and canonical consumers below own genuine Release admission and stopped birth without semantic initialization or runtime authority. | standard library; `internal/successor/hosting` only in `plan_linux.go` for detached Traffic values; `internal/successor/installation/request` only in `inputs_linux.go`; `internal/successor/installation/systemd` only in `preflight_linux.go`  Additional imports are restricted to the exact initial-admission file list below.  `internal/successor/installation/infrastructure`, `internal/successor/release`, `internal/successor/enrollment`, `internal/successor/installation/directory`, `internal/successor/installation/fixedfile` are additionally admitted only in the exact initial-admission files listed below.  `internal/successor/installation/cgroup`, `internal/successor/installation/completion` and `internal/successor/installation/process` additionally only in the exact first-start files below; Hosting additionally only in `hosting_prepare_linux.go`.; native tests only: `internal/successor/admission`, `internal/successor/admission/issuance`, `internal/successor/admission/issuer`, `internal/successor/admission/quota`, `internal/successor/admission/receiving`, `internal/successor/admission/stock`, `internal/successor/admission/token`, `internal/successor/custody`, `internal/successor/network`, `internal/successor/network/source`, `internal/successor/network/state`, `internal/successor/publication`, `internal/successor/reachability`, `internal/successor/route/ardp`, `internal/successor/route/channel`, `internal/successor/route/role`, `internal/successor/route/transport`, `internal/successor/route/transport/tls` (exact files below); native tests only: `internal/successor/network/epoch`  Additionally only `replacement_inspections_linux.go`: `internal/successor/admission/spending`, `internal/successor/network/state`, `internal/successor/reachability` and `internal/successor/hosting`; the exact file-specific gate below remains mandatory. |
 | `internal/successor/installation/join` | `package join` | Closed JOIN installation request/plan, independent paths and complete finite journal/completion namespace, fixed protection template. Canonical Control's `join prepare-request`, `join prepare-plan` and `join prepare-template` are real consumers. Its separate original input/preflight lifetime and canonical Node read-only consumer retain protected files, all five absent slots and future paths without creation. Its separately admitted canonical initial stopped creator owns genuine Enrollment/Release admission, original births and native readback; independent completed inspection retains its own journal lease. No account adoption or permission follows from declarations or stopped history; distinct root Start and independent non-root Startup separately admit the first original runtime. | Standard library; `plan_linux.go` alone may use `internal/successor/hosting` for public Traffic; `inputs_linux.go` alone may use `internal/successor/installation/request` for original protected file custody; `preflight_linux.go` alone may use `internal/successor/installation/systemd` for independently owned read-only NodeSlots; `binding_linux.go` may use `internal/successor/installation/infrastructure`; `generation_bytes_linux.go` may use `internal/successor/enrollment` and `internal/successor/installation/infrastructure`; `initial_install_linux.go` may use `internal/successor/installation/infrastructure`, `internal/successor/installation/systemd` and `internal/successor/release`; `initial_birth_linux.go` may use `internal/successor/installation/directory` and `internal/successor/installation/fixedfile`; `loaded_policy_linux.go` may use `internal/successor/installation/systemd`; `completed_initial_linux.go` may use `internal/successor/installation/infrastructure` and `internal/successor/release`. `hosting_prepare_linux.go` may use `internal/successor/hosting`, `internal/successor/installation/cgroup` and `internal/successor/installation/systemd` for original stopped allowance preparation. Every listed import is file-specific; no parent facade or role-wide permission is supplied  First-start and replacement exact-file inventories below additionally admit `internal/successor/admission/spending`, `internal/successor/admission`, `internal/successor/admission/issuance`, `internal/successor/admission/issuer`, `internal/successor/admission/quota`, `internal/successor/admission/receiving`, `internal/successor/admission/stock`, `internal/successor/admission/token`, `internal/successor/custody`, `internal/successor/installation/completion`, `internal/successor/installation/process`, `internal/successor/network`, `internal/successor/network/source`, `internal/successor/network/state`, `internal/successor/route/ardp`, `internal/successor/route/transport`, `internal/successor/route/transport/tls`.  External `installed_cohort_native_linux_test.go` additionally admits `internal/successor/network/epoch`, `internal/successor/network/source`; `installed_pair_native_linux_test.go` admits `internal/successor/route/role`, `internal/successor/route/channel` for real authenticated adjacent-Node/nested-role protocol. |
 
 The package's behavior tests belong to `deterministic-linux-packages.txt`.
@@ -954,3 +954,53 @@ Original domain/native joins and independent history readers belong to Descripto
 | File `internal/successor/installation/descriptor/retirement_policy_linux.go` | `internal/successor/installation/completion`; `internal/successor/installation/systemd` |
 | File `internal/successor/installation/descriptor/start_snapshot_linux.go` | `internal/successor/installation/completion` |
 | File `internal/successor/installation/descriptor/stop_linux.go` | `internal/successor/installation/cgroup`; `internal/successor/installation/completion`; `internal/successor/installation/process`; `internal/successor/installation/systemd`; `internal/successor/release` |
+
+
+### Descriptor stopped replacement ownership
+
+`installation/descriptor` admits forward stopped replacement only after complete
+original retirement, fresh exact Release and independently leased semantic
+inspections. No live sibling role owner is imported. Exact additional imports:
+
+- `internal/successor/installation/descriptor/replacement_candidate_linux.go`: `internal/successor/installation/infrastructure`.
+- `internal/successor/installation/descriptor/replacement_inspections_linux.go`: `internal/successor/admission/spending`, `internal/successor/hosting`, `internal/successor/network/state`, `internal/successor/reachability`.
+- `internal/successor/installation/descriptor/replacement_linux.go`: `internal/successor/installation/cgroup`, `internal/successor/installation/fixedfile`, `internal/successor/installation/infrastructure`, `internal/successor/installation/systemd`, `internal/successor/release`.
+- `internal/successor/installation/descriptor/replacement_stopped_linux.go`: `internal/successor/installation/systemd`.
+
+Reachability's `store_inspection_linux.go` uses only the standard library and
+its own existing floor/native mechanisms. The distinct original read-only
+inspection grants no Store, proof export, ACK or runtime right. Its real consumer
+is `installation/descriptor/replacement_inspections_linux.go`; the two
+`store_inspection_*native_linux_test.go` files exercise the checked root/ext4
+profile. `installation/systemd/descriptor_replacement_linux.go` uses only the
+standard library and its own fixed Descriptor manager mechanisms, with one
+Reload and no Start/Stop/Enable or arbitrary selector.
+
+Descriptor forward Release preparation is the distinct fixed purpose
+`prepare-forward-release-plan` / `sign-forward-release`. Its
+`cmd/ardents-control/descriptor_release_predecessor_linux.go` alone additionally
+imports `internal/successor/enrollment`, `internal/successor/release`,
+`internal/successor/installation/infrastructure` and
+`github.com/theupdateframework/go-tuf/v2/metadata`. It independently retains the
+original public inventory, verifies the coherent predecessor and original root,
+then raises Targets/Snapshot/Timestamp versions without initial-pin or installed
+admission. Standard-library native controls are in
+`descriptor_forward_release_native_linux_test.go`.
+
+The installed replacement test composition additionally admits only
+`installed_replacement_native_linux_test.go` →
+`internal/successor/installation/descriptor`, and
+`installed_replacement_exchange_native_linux_test.go` →
+`internal/successor/custody`, `internal/successor/route/ardp`.
+These native tests retain genuine independent holder and original server owners;
+no production coordinator or sibling lifetime is introduced.
+
+`route/receiver/outer_authority_linux.go` owns fresh parent HELLO and original
+adjacent-peer reobservation for JOIN and Descriptor. Its exact imports are
+`internal/successor/network`, `internal/successor/route/ardp` and the standard
+library. Its real caller is `receiver_linux.go` at every existing parent frame
+boundary. `outer_authority_linux_test.go` additionally imports the existing
+`internal/successor/route/role` contract for supplied-fact refusal controls;
+actual signed intake and installed consumers retain their native evidence.
+No parent observation performs Store or Registry effects or replaces their
+separate role checks.

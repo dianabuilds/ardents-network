@@ -16,8 +16,8 @@ func descriptorGenerationNames() []string {
 
 func validateInitialGeneration(b binding, selected []byte, files map[string][]byte) (Plan, error) {
 	var plan Plan
-	selection, selectionErr := decodeBinding(selected)
-	if selectionErr != nil || selection != b {
+	selection, selectionErr := decodeSelection(selected)
+	if selectionErr != nil || selection.binding != b {
 		return plan, ErrBinding
 	}
 	if len(files) != len(descriptorGenerationNames()) || !bytes.Equal(selected, files["binding.json"]) {
@@ -83,4 +83,18 @@ func validateInitialGeneration(b binding, selected []byte, files map[string][]by
 		return Plan{}, errors.Join(ErrBinding, err)
 	}
 	return plan, nil
+}
+
+// The independent history reader rederives forwardness; signed or complete
+// replacement bytes cannot substitute this policy or current Release admission.
+func validateForwardImage(oldDescriptor, nextDescriptor, oldPlan, nextPlan []byte, programChanged bool) error {
+	old, err := infrastructure.DecodeDescriptorArtifact(oldDescriptor)
+	if err != nil {
+		return err
+	}
+	next, err := infrastructure.DecodeDescriptorArtifact(nextDescriptor)
+	if err != nil || next.ReleaseVersion <= old.ReleaseVersion {
+		return errors.Join(ErrBinding, err)
+	}
+	return checkReplacementPlan(oldPlan, nextPlan, programChanged)
 }

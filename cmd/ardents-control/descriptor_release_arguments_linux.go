@@ -20,7 +20,9 @@ func descriptorReleasePurposeArguments(args []string, inputs *sourceControlInput
 	set := flag.NewFlagSet("descriptor prepare-release-plan", flag.ContinueOnError)
 	set.SetOutput(io.Discard)
 	p := descriptorReleasePlan{Schema: "ardents-descriptor-initial-release-plan-v1"}
-	if purpose != descriptorReleaseInitial {
+	if purpose == descriptorReleaseForward {
+		p.Schema = "ardents-descriptor-forward-release-plan-v1"
+	} else if purpose != descriptorReleaseInitial {
 		return nil, "", errSourceControlInput
 	}
 	var reference, expires, programCustom, generationCustom, destination string
@@ -28,7 +30,7 @@ func descriptorReleasePurposeArguments(args []string, inputs *sourceControlInput
 	set.StringVar(&reference, "reference", "", "current UTC RFC3339 time")
 	set.StringVar(&expires, "expires", "", "UTC RFC3339 expiry")
 	set.StringVar(&p.Program, "program", "", "exact canonical Node program")
-	set.StringVar(&p.Descriptor, "descriptor", "", "exact Descriptor descriptor")
+	set.StringVar(&p.Descriptor, "descriptor", "", "exact Descriptor artifact")
 	set.StringVar(&p.Template, "template", "", "fixed Descriptor template")
 	set.StringVar(&programCustom, "program-custom", "", "reviewed public program claims")
 	set.StringVar(&generationCustom, "generation-custom", "", "reviewed public generation claims")

@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"syscall"
 
@@ -22,26 +23,32 @@ import (
 type Completed struct{ original *completedInitial }
 
 type completedInitial struct {
-	ctx             context.Context
-	mu, ioMu        sync.Mutex
-	uses            sync.WaitGroup
-	once            sync.Once
-	closed          bool
-	failure         error
-	binding         binding
-	parents         *nativeDirectories
-	files           map[string]*initialFile
-	fileOrder       []*initialFile
-	dirs            []*inputDirectory
-	journal         *initialFile
-	absent          []string
-	sealed          string
-	hostingBirths   *initialBirths
-	hostingPrepared bool
-	start           *startStorage
-	retirement      *retirementStorage
-	invocations     *invocationHistory
-	historyJournals []string
+	ctx                    context.Context
+	mu, ioMu               sync.Mutex
+	uses                   sync.WaitGroup
+	once                   sync.Once
+	closed                 bool
+	failure                error
+	binding                binding
+	parents                *nativeDirectories
+	files                  map[string]*initialFile
+	fileOrder              []*initialFile
+	dirs                   []*inputDirectory
+	journal                *initialFile
+	absent                 []string
+	sealed                 string
+	hostingBirths          *initialBirths
+	hostingPrepared        bool
+	start                  *startStorage
+	retirement             *retirementStorage
+	invocations            *invocationHistory
+	historyJournals        []string
+	initialSelection       generationSelection
+	selections             map[string]generationSelection
+	selectionOrder         []generationSelection
+	replacementPaths       []string
+	replacementRetirements map[string]initialRecord
+	replacing              *replacementAttempt
 	// Failure-only causal control after genuine original file observation.
 	observe func(*os.File)
 }
@@ -51,7 +58,18 @@ var errCompletedClosed = errors.New("descriptor installation: completed observat
 // ReadCompleted opens the whole initial history after pending publication. Its
 // own exclusive lease precedes transcript use. Account databases are checked as
 // current principal facts, not frozen postimages; semantic contents are unopened.
-func ReadCompleted(ctx context.Context, path string) (result Completed, returned error) {
+func ReadCompleted(ctx context.Context, path string) (Completed, error) {
+	return readCompleted(ctx, path, nil)
+}
+
+func readCompletedReplacementPending(ctx context.Context, path string, pending *initialFile) (Completed, error) {
+	if pending == nil {
+		return Completed{}, ErrInput
+	}
+	return readCompleted(ctx, path, pending)
+}
+
+func readCompleted(ctx context.Context, path string, pending *initialFile) (result Completed, returned error) {
 	if ctx == nil || os.Geteuid() != 0 || !validPath(path) {
 		return result, ErrInput
 	}
@@ -70,13 +88,13 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 	if err != nil {
 		return result, err
 	}
-	b, err := decodeBinding(selected.body)
+	current, err := decodeSelection(selected.body)
+	b := current.binding
 	if err != nil || path != filepath.Join(b.Request.InstallationRoot, "binding.json") {
 		return result, errors.Join(ErrBinding, err)
 	}
 	c.binding = b
 	r := b.Request
-	c.sealed = filepath.Join(r.InstallationRoot, "generations", b.Generation)
 	journal, err := c.read(r.InstallationRoot+".descriptor-initial-journal", 4<<20, 0600, 0, 0)
 	if err != nil {
 		return result, err
@@ -88,11 +106,28 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 	if err := observeInitialFile(journal); err != nil {
 		return result, err
 	}
+	if err := c.readSelections(current); err != nil {
+		return result, err
+	}
+	b = c.initialSelection.binding
+	c.binding = b
+	r = b.Request
+	c.sealed = filepath.Join(r.InstallationRoot, "generations", b.Generation)
 	// No other operation exists in this completed-initial boundary. Retained
 	// future journal names are checked, never interpreted as successful history.
 	hostingDirectory, hostingJournal, _ := hostingPreparationPaths(r.InstallationRoot)
 	hostingPresent := false
 	for _, reserved := range r.reservedSiblingPaths() {
+		if pending != nil && reserved == replacementPending(r.InstallationRoot) {
+			f, e := c.read(reserved, 4096, 0600, 0, 0)
+			if e != nil {
+				return result, e
+			}
+			if !sameInputFile(pending.info, f.info) || !bytes.Equal(f.body, replacementPendingBytes(current.raw)) {
+				return result, ErrBinding
+			}
+			continue
+		}
 		if reserved == journal.path {
 			continue
 		}
@@ -117,7 +152,7 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 		mode     os.FileMode
 		uid, gid uint32
 	}{
-		{r.InstallationRoot, 0755, 0, 0}, {filepath.Dir(c.sealed), 0755, 0, 0}, {c.sealed, 0555, 0, 0},
+		{r.InstallationRoot, 0755, 0, 0}, {filepath.Dir(c.sealed), 0755, 0, 0},
 		{r.CredentialDirectory, 0755, 0, 0}, {b.History, 0700, 0, 0},
 		{r.StateRoot, 0700, b.UID, b.GID}, {r.ParticipationRoot, 0700, b.UID, b.GID},
 		{r.SpendRoot, 0700, b.UID, b.GID}, {r.HostingRoot, 0700, b.UID, b.GID}, {r.DescriptorRoot, 0700, b.UID, b.GID},
@@ -128,19 +163,13 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 	}
 	artifacts := map[string][]byte{}
 	for _, name := range []string{programName, infrastructure.DescriptorTemplateName, infrastructure.DescriptorArtifactName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json", "descriptor-request.json", "descriptor-plan.json", "rendered-descriptor.service", "binding.json"} {
-		mode := os.FileMode(0444)
-		maximum := int64(1 << 20)
-		if name == programName {
-			mode = 0555
-			maximum = 64 << 20
-		}
-		file, err := c.read(filepath.Join(c.sealed, name), maximum, mode, 0, 0)
-		if err != nil {
-			return result, err
+		file := c.files[filepath.Join(c.sealed, name)]
+		if file == nil {
+			return result, ErrBinding
 		}
 		artifacts[name] = file.body
 	}
-	if _, err := validateInitialGeneration(b, selected.body, artifacts); err != nil {
+	if _, err := validateInitialGeneration(b, c.initialSelection.raw, artifacts); err != nil {
 		return result, err
 	}
 	cert, err := c.read(filepath.Join(r.CredentialDirectory, "certificate.pem"), 8192, 0444, 0, 0)
@@ -164,15 +193,23 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 		return result, ErrBinding
 	}
 	unit, err := c.read("/etc/systemd/system/ardents-descriptor.service", 16<<10, 0644, 0, 0)
-	if err != nil || !bytes.Equal(unit.body, artifacts["rendered-descriptor.service"]) {
+	if err != nil || !bytes.Equal(unit.body, c.files[filepath.Join(r.InstallationRoot, "generations", current.binding.Generation, "rendered-descriptor.service")].body) {
 		return result, errors.Join(ErrBinding, err)
 	}
+	// The immutable initial decoder retains its exact seventeen-input closure.
+	// New generations, Hosting and pending replacement files are independently
+	// checked by their own readers; none becomes part of the original transcript.
 	hashes := map[string]string{}
-	for path, file := range c.files {
-		hashes[path] = digest(file.body)
+	for name, raw := range artifacts {
+		hashes[filepath.Join(c.sealed, name)] = digest(raw)
 	}
-	delete(hashes, journal.path)
-	hashes[r.InstallationRoot+".descriptor-initial-pending"] = digest([]byte("ardents-descriptor-initial-pending-v1\n" + digest(selected.body) + "\n"))
+	for _, name := range []string{"certificate.pem", "private-key.pem"} {
+		p := filepath.Join(r.CredentialDirectory, name)
+		hashes[p] = digest(c.files[p].body)
+	}
+	hashes[path] = digest(c.initialSelection.raw)
+	hashes["/etc/systemd/system/ardents-descriptor.service"] = b.UnitSHA256
+	hashes[r.InstallationRoot+".descriptor-initial-pending"] = digest([]byte("ardents-descriptor-initial-pending-v1\n" + digest(c.initialSelection.raw) + "\n"))
 	records, err := decodeInitialRecords(journal.body, b, hashes)
 	if err != nil {
 		return result, err
@@ -200,11 +237,28 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 			return result, err
 		}
 	}
+	if err := c.readReplacements(); err != nil {
+		return result, err
+	}
+	c.binding = current.binding
+	c.sealed = filepath.Join(r.InstallationRoot, "generations", current.binding.Generation)
 	if err := c.readInvocations(); err != nil {
 		return result, err
 	}
 	for _, path := range c.historyJournals {
 		if !c.invocations.owns(path) {
+			return result, ErrBinding
+		}
+	}
+	if err := c.checkReplacementLineage(); err != nil {
+		return result, err
+	}
+	siblings, err := replacementSiblings(r.InstallationRoot)
+	if err != nil {
+		return result, err
+	}
+	for _, p := range siblings {
+		if !(pending != nil && p == pending.path) && !slices.Contains(c.replacementPaths, p) {
 			return result, ErrBinding
 		}
 	}
@@ -348,6 +402,15 @@ func (c *completedInitial) check() error {
 	if err := c.checkHostingInventory(); err != nil {
 		return err
 	}
+	siblings, siblingErr := replacementSiblings(c.binding.Request.InstallationRoot)
+	if siblingErr != nil {
+		return siblingErr
+	}
+	for _, path := range siblings {
+		if !slices.Contains(c.replacementPaths, path) && c.files[path] == nil && !(c.replacing != nil && c.replacing.owns(path)) {
+			return ErrBinding
+		}
+	}
 	if err := c.parents.links(); err != nil {
 		return err
 	}
@@ -385,7 +448,15 @@ func (c *completedInitial) check() error {
 			return err
 		}
 	}
+	if c.replacing != nil {
+		if err := c.replacing.checkBirths(); err != nil {
+			return err
+		}
+	}
 	for _, path := range c.absent {
+		if c.replacing != nil && c.replacing.owns(path) {
+			continue
+		}
 		if c.invocations.owns(path) || c.retirement != nil && c.retirement.journal != nil && path == c.retirement.journal.path {
 			continue
 		}
@@ -403,8 +474,14 @@ func (c *completedInitial) check() error {
 	// need their own typed journals and reader extension, never unknown files.
 	inventories := map[string]map[string]bool{
 		c.binding.Request.InstallationRoot:    {"binding.json": true, "generations": true},
-		filepath.Dir(c.sealed):                {c.binding.Generation: true},
+		filepath.Dir(c.sealed):                {},
 		c.binding.Request.CredentialDirectory: {"certificate.pem": true, "private-key.pem": true},
+	}
+	for _, sel := range c.selectionOrder {
+		inventories[filepath.Dir(c.sealed)][sel.binding.Generation] = true
+	}
+	if c.replacing != nil {
+		c.replacing.extendInventory(inventories)
 	}
 	if c.start != nil && c.start.dir != nil {
 		inventories[c.binding.Request.InstallationRoot][filepath.Base(c.start.path)] = true
@@ -431,13 +508,16 @@ func (c *completedInitial) check() error {
 			}
 		}
 	}
-	entries, err := os.ReadDir(c.sealed)
-	if err != nil || len(entries) != 12 {
-		return errors.Join(ErrBinding, err)
-	}
-	for _, entry := range entries {
-		if c.files[filepath.Join(c.sealed, entry.Name())] == nil {
-			return ErrBinding
+	for _, selected := range c.selectionOrder {
+		sealed := filepath.Join(c.binding.Request.InstallationRoot, "generations", selected.binding.Generation)
+		entries, err := os.ReadDir(sealed)
+		if err != nil || len(entries) != 12 {
+			return errors.Join(ErrBinding, err)
+		}
+		for _, entry := range entries {
+			if c.files[filepath.Join(sealed, entry.Name())] == nil {
+				return ErrBinding
+			}
 		}
 	}
 	if err := observeNodePrincipal(c.ctx, c.binding.UID, c.binding.GID); err != nil {

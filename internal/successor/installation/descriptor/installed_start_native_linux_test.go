@@ -32,7 +32,17 @@ func TestDescriptorInstalledNativeStopAndRestart(t *testing.T) {
 	runDescriptorInstalledJourney(t, true)
 }
 
+func TestDescriptorInstalledNativeReplacementPrerequisite(t *testing.T) {
+	runDescriptorInstalledPreparation(t, true, true)
+}
+
 func runDescriptorInstalledJourney(t *testing.T, lifecycle bool) {
+	runDescriptorInstalledPreparation(t, lifecycle, false)
+}
+
+// Replacement starts from one genuine retired invocation. The separate retained
+// restart profile owns its own complete two-invocation acceptance chain.
+func runDescriptorInstalledPreparation(t *testing.T, lifecycle, replacement bool) {
 	const exchange = true
 	marker, err := os.ReadFile("/etc/ardents-descriptor-initial-native-stand")
 	if err != nil || string(marker) != "ardents-descriptor-initial-native-v1\n" || os.Geteuid() != 0 {
@@ -334,9 +344,9 @@ func runDescriptorInstalledJourney(t *testing.T, lifecycle bool) {
 	}
 	if exchange {
 		raw, _ := json.Marshal(struct {
-			Authority, Peer [32]byte
-			Lifecycle       bool
-		}{authority, peer, lifecycle})
+			Authority, Peer        [32]byte
+			Lifecycle, Replacement bool
+		}{authority, peer, lifecycle, replacement})
 		if err := os.WriteFile(filepath.Join(parent, "exchange-inputs.json"), append(raw, '\n'), 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -392,6 +402,9 @@ func runDescriptorInstalledJourney(t *testing.T, lifecycle bool) {
 	}
 	if lifecycle {
 		scope.Limits = "one controlled VPS/cohort; TCP/TLS only; genuine Descriptor exchange, explicit joined Stop and same-generation retained restart; actual preserved histories and fresh original Startup; unchanged protections and deadlines; no replacement/recovery/Service/public/load/privacy qualification"
+	}
+	if replacement {
+		scope.Limits = "one controlled VPS/cohort; TCP/TLS only; genuine Descriptor replacement prerequisite with fresh signed proof inputs bounded to 600 seconds and explicit joined Stop; actual preserved histories and original Startup; unchanged protections and operation deadlines; no replacement/recovery/Service/public/load/privacy qualification"
 	}
 	prepared, err := json.Marshal(scope)
 	if err != nil {
@@ -477,7 +490,7 @@ func runDescriptorInstalledJourney(t *testing.T, lifecycle bool) {
 		if err := os.WriteFile(filepath.Join(parent, "exchange-start"), []byte("original installed Descriptor ready\n"), 0600); err != nil {
 			t.Fatal(err)
 		}
-		if lifecycle {
+		if lifecycle && !replacement {
 			until := time.Now().Add(time.Minute)
 			for {
 				if _, err := os.Stat(filepath.Join(parent, "exchange-phase-one")); err == nil {

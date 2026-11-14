@@ -53,6 +53,7 @@ def check_release_version(version, forward):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--forward", action="store_true", help="prepare the separate strictly forward purpose; signer verifies original predecessor")
     for name in ("build-root", "descriptor", "template", "qualification-evidence", "output"):
         parser.add_argument("--" + name, required=True, type=Path)
     for name in ("network", "expires", "no-new-work-after", "terminate-after", "qualification-evidence-sha256"):
@@ -135,7 +136,7 @@ def main():
     template = read(p.template, 64 << 10)
     program = p.build_root / "build-1" / "ardents-node"
     version = descriptor.get("release_version")
-    check_release_version(version, False)
+    check_release_version(version, p.forward)
     exact(descriptor, ("schema", "platform", "release_identity", "release_version", "invocation", "files"))
     if (descriptor["schema"] != "ardents-infrastructure-artifact-v1" or descriptor["platform"] != "linux-amd64"
             or descriptor["invocation"] != "descriptor" or not isinstance(descriptor["release_identity"], str)
@@ -168,7 +169,7 @@ def main():
                                            "target_sha256": target_pin} for receipt in receipts]
         return result
 
-    schema = "ardents-descriptor-initial-release-plan-v1"
+    schema = "ardents-descriptor-forward-release-plan-v1" if p.forward else "ardents-descriptor-initial-release-plan-v1"
     plan = {"schema": schema, "network": p.network, "reference_time": utc(now), "expires": utc(expires),
             "program": str(program), "descriptor": str(p.descriptor), "template": str(p.template),
             "program_custom": custom(common["files"]["ardents-node"]), "generation_custom": custom(observed[p.descriptor])}

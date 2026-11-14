@@ -21,7 +21,13 @@ const (
 )
 
 func (store *Store) restore(retained bool) error {
-	root := store.custody.records
+	return restoreStoreFloors(store.custody, store.network, store.floors, retained)
+}
+
+// Read the same closed grammar for a live owner or independently leased stopped
+// inspection. Only the live opener may select existing stage removal.
+func restoreStoreFloors(custody *storeCustody, network [32]byte, floors map[[32]byte]retainedFloor, retained bool) error {
+	root := custody.records
 	directory, err := root.Open(".")
 	if err != nil {
 		return err
@@ -47,14 +53,14 @@ func (store *Store) restore(retained bool) error {
 			stage = true
 			continue
 		}
-		if len(store.floors) >= MaximumTargets || len(entry.Name()) != 64 {
+		if len(floors) >= MaximumTargets || len(entry.Name()) != 64 {
 			return errors.New("reachability record population or name invalid")
 		}
 		raw, err := readOriginalStoreFile(root, entry.Name(), MaximumDescriptorSize+2)
 		if err != nil {
 			return err
 		}
-		floor, err := decodeStoredFloor(raw, store.network)
+		floor, err := decodeStoredFloor(raw, network)
 		if err != nil {
 			return err
 		}
@@ -62,11 +68,11 @@ func (store *Store) restore(retained bool) error {
 		if entry.Name() != storeTargetName(target) {
 			return errors.New("reachability retained Target name differs")
 		}
-		if _, exists := store.floors[target]; exists {
+		if _, exists := floors[target]; exists {
 			return errors.New("reachability duplicate Target")
 		}
-		store.floors[target] = floor
-		if err := store.custody.remember(entry.Name(), raw); err != nil {
+		floors[target] = floor
+		if err := custody.remember(entry.Name(), raw); err != nil {
 			return err
 		}
 	}
@@ -80,7 +86,7 @@ func (store *Store) restore(retained bool) error {
 		if err := root.Remove(storeStage); err != nil {
 			return err
 		}
-		if err := store.custody.syncDirectory.Sync(); err != nil {
+		if err := custody.syncDirectory.Sync(); err != nil {
 			return err
 		}
 	}

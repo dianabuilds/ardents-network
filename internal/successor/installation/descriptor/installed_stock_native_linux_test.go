@@ -63,7 +63,10 @@ type descriptorPreparedStock struct {
 	current      func() (networkdomain.RuntimeView, error)
 }
 
-func prepareDescriptorIssuedStock(t *testing.T, parent string, vault *custody.Vault, created custody.Receipt, secrets descriptorTokenTestSecrets, bundleRaw, profileRaw []byte, statePublic [32]byte, count uint32, peerID [32]byte) descriptorPreparedStock {
+// A new independent holder context uses genuine issuance under the original
+// retained issuer quota/material/results. It cannot restore volatile unused
+// rights or reinitialize the shared quota/results history.
+func prepareDescriptorStock(t *testing.T, parent, materialParent string, initialize, repeatPermission bool, vault *custody.Vault, created custody.Receipt, secrets descriptorTokenTestSecrets, bundleRaw, profileRaw []byte, statePublic [32]byte, count uint32, peerID [32]byte) descriptorPreparedStock {
 	t.Helper()
 	// Every operation consumes one genuine Control right, including refusals.
 	// Actual Allocation, issuer quota and receiving limits remain authoritative.
@@ -94,18 +97,7 @@ func prepareDescriptorIssuedStock(t *testing.T, parent string, vault *custody.Va
 	}
 	// Each call gets one real fresh State observation. There is no supplied
 	// accepting profile callback or cached current-authority flag.
-	project := func(view networkdomain.RuntimeView) (admission.AuthorityFacts, time.Time, error) {
-		profile := view.Profile()
-		facts := admission.AuthorityFacts{NetworkID: profile.Network, StateGeneration: profile.Generation, StateDigest: profile.EpochDigest, Digest: profile.Digest, IssuanceAuthorityKey: profile.IssuanceAuthorityKey, IssuerNodeID: profile.IssuerNodeID, IssuerDutyGeneration: profile.IssuerDutyGeneration, Epoch: profile.Epoch, NotBefore: profile.NotBefore, NotAfter: profile.NotAfter, TokenKeyCount: uint8(len(profile.TokenKeys))}
-		if len(profile.TokenKeys) > len(facts.TokenKeys) {
-			return facts, time.Time{}, errors.New("token key inventory exceeds bound")
-		}
-		for index, key := range profile.TokenKeys {
-			facts.TokenKeys[index] = admission.TokenKey{WindowStart: key.WindowStart, Class: key.Class, SPKI: key.SPKI}
-		}
-		now := view.ObservedAt()
-		return facts, now, facts.ValidateAt(now)
-	}
+	project := descriptorStockFacts
 	observe := func() (admission.AuthorityFacts, time.Time, error) {
 		view, err := owner.CurrentRuntime()
 		if err != nil {
@@ -118,18 +110,21 @@ func prepareDescriptorIssuedStock(t *testing.T, parent string, vault *custody.Va
 		t.Fatal("actual State-bound Permission authority", err)
 	}
 	var inventory descriptorTokenInventory
-	raw, err := os.ReadFile(filepath.Join(parent, "canonical-preparation", "token-material", "public", "token-inventory.json"))
+	raw, err := os.ReadFile(filepath.Join(materialParent, "canonical-preparation", "token-material", "public", "token-inventory.json"))
 	if err != nil || json.Unmarshal(raw, &inventory) != nil {
 		t.Fatal("actual canonical public key inventory", err)
 	}
-	plan := issuer.Plan{AdmissionRoot: filepath.Join(parent, "issuance-quota"), KeyRoot: filepath.Join(parent, "canonical-preparation", "token-material", "material"), KeyBinding: inventory.Inventory.Binding, ResultRoot: filepath.Join(parent, "issuance-results"), AdmissionBinding: quota.LedgerBinding{Network: facts.NetworkID, Issuer: facts.IssuerNodeID, Authority: facts.IssuanceAuthorityKey, Profile: facts.Digest, Duty: facts.IssuerDutyGeneration, Start: facts.NotBefore, End: facts.NotAfter, Keys: inventory.Inventory.Keys}}
-	if err := quota.Initialize(plan.AdmissionRoot, plan.AdmissionBinding); err != nil {
-		t.Fatal(err)
+	plan := issuer.Plan{AdmissionRoot: filepath.Join(materialParent, "issuance-quota"), KeyRoot: filepath.Join(materialParent, "canonical-preparation", "token-material", "material"), KeyBinding: inventory.Inventory.Binding, ResultRoot: filepath.Join(materialParent, "issuance-results"), AdmissionBinding: quota.LedgerBinding{Network: facts.NetworkID, Issuer: facts.IssuerNodeID, Authority: facts.IssuanceAuthorityKey, Profile: facts.Digest, Duty: facts.IssuerDutyGeneration, Start: facts.NotBefore, End: facts.NotAfter, Keys: inventory.Inventory.Keys}}
+	if initialize {
+		if err := quota.Initialize(plan.AdmissionRoot, plan.AdmissionBinding); err != nil {
+			t.Fatal(err)
+		}
+		initialized := issuer.Initialize(t.Context(), plan)
+		if _, outcome := initialized.Status(); outcome != "initialized-results" {
+			t.Fatal("actual finite result initialization", initialized.Phase, outcome)
+		}
 	}
-	initialized := issuer.Initialize(t.Context(), plan)
-	if _, outcome := initialized.Status(); outcome != "initialized-results" {
-		t.Fatal("actual finite result initialization", initialized.Phase, outcome)
-	}
+
 	holderRoot := filepath.Join(parent, "holder")
 	if err := os.Mkdir(holderRoot, 0700); err != nil {
 		t.Fatal(err)
@@ -152,9 +147,11 @@ func prepareDescriptorIssuedStock(t *testing.T, parent string, vault *custody.Va
 	if err != nil || len(permission.AdmissionPermission) != 228 {
 		t.Fatal("actual Custody/Allocation permission", err)
 	}
-	repeatedPermission, err := vault.Execute(t.Context(), operation, secrets)
-	if err != nil || !bytes.Equal(permission.AdmissionPermission, repeatedPermission.AdmissionPermission) || permission.Authority.Generation != repeatedPermission.Authority.Generation || permission.Authority.Generation <= created.Authority.Generation {
-		t.Fatal("encrypted exact permission repeat/floor", err)
+	if repeatPermission {
+		repeatedPermission, err := vault.Execute(t.Context(), operation, secrets)
+		if err != nil || !bytes.Equal(permission.AdmissionPermission, repeatedPermission.AdmissionPermission) || permission.Authority.Generation != repeatedPermission.Authority.Generation || permission.Authority.Generation <= created.Authority.Generation {
+			t.Fatal("encrypted exact permission repeat/floor", err)
+		}
 	}
 	if err := holder.Import(commitment, permission.AdmissionPermission); err != nil {
 		t.Fatal(err)
@@ -228,4 +225,17 @@ func prepareDescriptorIssuedStock(t *testing.T, parent string, vault *custody.Va
 
 type descriptorTokenInventory struct {
 	Inventory issuance.Inventory `json:"inventory"`
+}
+
+func descriptorStockFacts(view networkdomain.RuntimeView) (admission.AuthorityFacts, time.Time, error) {
+	profile := view.Profile()
+	facts := admission.AuthorityFacts{NetworkID: profile.Network, StateGeneration: profile.Generation, StateDigest: profile.EpochDigest, Digest: profile.Digest, IssuanceAuthorityKey: profile.IssuanceAuthorityKey, IssuerNodeID: profile.IssuerNodeID, IssuerDutyGeneration: profile.IssuerDutyGeneration, Epoch: profile.Epoch, NotBefore: profile.NotBefore, NotAfter: profile.NotAfter, TokenKeyCount: uint8(len(profile.TokenKeys))}
+	if len(profile.TokenKeys) > len(facts.TokenKeys) {
+		return facts, time.Time{}, errors.New("token key inventory exceeds bound")
+	}
+	for index, key := range profile.TokenKeys {
+		facts.TokenKeys[index] = admission.TokenKey{WindowStart: key.WindowStart, Class: key.Class, SPKI: key.SPKI}
+	}
+	now := view.ObservedAt()
+	return facts, now, facts.ValidateAt(now)
 }

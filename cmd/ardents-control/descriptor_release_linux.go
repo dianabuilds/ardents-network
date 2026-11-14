@@ -24,7 +24,7 @@ import (
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
-// Descriptor's fixed initial purpose never enter Source signing policy
+// Descriptor's fixed initial/forward purposes never enter Source signing policy
 // or turn a public plan into installed permission.
 func runDescriptorReleaseSigning(args []string, out io.Writer) error {
 	return runDescriptorReleasePurpose(args, out, descriptorReleaseInitial)
@@ -32,10 +32,15 @@ func runDescriptorReleaseSigning(args []string, out io.Writer) error {
 
 func runDescriptorReleasePurpose(args []string, out io.Writer, purpose descriptorReleasePurpose) error {
 	wanted, operation := 4, "sign-initial-release"
-	if purpose != descriptorReleaseInitial {
+	if purpose == descriptorReleaseForward {
+		wanted, operation = 5, "sign-forward-release"
+	} else if purpose != descriptorReleaseInitial {
 		return errSourceControlInput
 	}
 	if len(args) != wanted {
+		if purpose == descriptorReleaseForward {
+			return errors.New("usage: ardents-control descriptor sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION")
+		}
 		return errors.New("usage: ardents-control descriptor sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION")
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -61,7 +66,9 @@ func runDescriptorReleasePurpose(args []string, out io.Writer, purpose descripto
 }
 func signDescriptorReleasePurpose(ctx context.Context, args []string, purpose descriptorReleasePurpose, observe func(string, *os.File)) (result []byte, returned error) {
 	wantedArguments := 4
-	if purpose != descriptorReleaseInitial {
+	if purpose == descriptorReleaseForward {
+		wantedArguments = 5
+	} else if purpose != descriptorReleaseInitial {
 		return nil, errSourceControlInput
 	}
 	if ctx == nil || ctx.Err() != nil || os.Geteuid() != 0 || len(args) != wantedArguments {
@@ -113,6 +120,13 @@ func signDescriptorReleasePurpose(ctx context.Context, args []string, purpose de
 	if err := validateDescriptorReleaseResources(plan, artifacts[0], artifacts[1], artifacts[2]); err != nil {
 		return nil, err
 	}
+	var predecessor *descriptorReleasePredecessor
+	if purpose == descriptorReleaseForward {
+		predecessor, err = readDescriptorReleasePredecessor(inputs, args[4], plan, artifacts[1])
+		if err != nil {
+			return nil, err
+		}
+	}
 	keyDirectory, err := inputs.directory(args[1])
 	if err != nil {
 		return nil, err
@@ -160,6 +174,14 @@ func signDescriptorReleasePurpose(ctx context.Context, args []string, purpose de
 		now := time.Now().UTC()
 		if plan.Reference.Before(now.Add(-5*time.Minute)) || plan.Reference.After(now.Add(time.Minute)) || !now.Before(plan.Expires) {
 			return errSourceControlInput
+		}
+		if predecessor != nil {
+			if err := predecessor.check(); err != nil {
+				return err
+			}
+			if err := predecessor.candidate.Check(); err != nil {
+				return err
+			}
 		}
 		if _, err := keyDirectory.file.Seek(0, io.SeekStart); err != nil {
 			return err
@@ -224,6 +246,26 @@ func signDescriptorReleasePurpose(ctx context.Context, args []string, purpose de
 	for _, role := range metadata.TOP_LEVEL_ROLE_NAMES {
 		root.Signed.Roles[role] = &metadata.Role{KeyIDs: append([]string(nil), keyIDs...), Threshold: 3}
 	}
+	var diagnostic *release.Verifier
+	defer func() {
+		if diagnostic != nil {
+			returned = errors.Join(returned, diagnostic.Close())
+		}
+	}()
+	if predecessor != nil {
+		if err := predecessor.matchKeys(keyIDs); err != nil {
+			return nil, err
+		}
+		diagnostic, err = openSourceReleaseDiagnostic(inputs, outputParents[1], args[3], check)
+		if err != nil {
+			return nil, err
+		}
+		if err := predecessor.authenticate(ctx, diagnostic, plan); err != nil {
+			return nil, err
+		}
+		root = predecessor.root
+	}
+
 	paths := []string{infrastructure.ProgramTarget, infrastructure.DescriptorGenerationTarget}
 	sign := func(value sourceSignableMetadata) ([]byte, error) {
 		for _, signer := range signers[:3] {
@@ -237,11 +279,19 @@ func signDescriptorReleasePurpose(ctx context.Context, args []string, purpose de
 		raw, err := value.ToBytes(false)
 		return raw, errors.Join(err, check())
 	}
-	rootBytes, err := sign(root)
-	if err != nil {
-		return nil, err
+	var rootBytes []byte
+	if predecessor == nil {
+		rootBytes, err = sign(root)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		rootBytes = bytes.Clone(predecessor.files["root.json"])
 	}
 	targets := metadata.Targets(plan.Expires)
+	if predecessor != nil {
+		targets.Signed.Version = predecessor.targetsVersion + 1
+	}
 	for i, path := range paths {
 		custom := []json.RawMessage{plan.ProgramCustom, plan.GenerationCustom}[i]
 		sum := sha256.Sum256(artifacts[i])
@@ -255,6 +305,9 @@ func signDescriptorReleasePurpose(ctx context.Context, args []string, purpose de
 	snapshot := metadata.Snapshot(plan.Expires)
 	snapshot.Signed.Meta["targets.json"] = sourceMetadataReference(targetBytes)
 	snapshot.Signed.Meta["targets.json"].Version = targets.Signed.Version
+	if predecessor != nil {
+		snapshot.Signed.Version = predecessor.snapshotVersion + 1
+	}
 	snapshotBytes, err := sign(snapshot)
 	if err != nil {
 		return nil, err
@@ -262,6 +315,9 @@ func signDescriptorReleasePurpose(ctx context.Context, args []string, purpose de
 	timestamp := metadata.Timestamp(plan.Expires)
 	timestamp.Signed.Meta["snapshot.json"] = sourceMetadataReference(snapshotBytes)
 	timestamp.Signed.Meta["snapshot.json"].Version = snapshot.Signed.Version
+	if predecessor != nil {
+		timestamp.Signed.Version = predecessor.timestampVersion + 1
+	}
 	timestampBytes, err := sign(timestamp)
 	if err != nil {
 		return nil, err
@@ -273,9 +329,12 @@ func signDescriptorReleasePurpose(ctx context.Context, args []string, purpose de
 		return nil, err
 	}
 	// The diagnostic history is exclusively born and never reused on failure.
-	v, err := openSourceReleaseDiagnostic(inputs, outputParents[1], args[3], check)
-	if err != nil {
-		return nil, err
+	v := diagnostic
+	if v == nil {
+		v, err = openSourceReleaseDiagnostic(inputs, outputParents[1], args[3], check)
+		if err != nil {
+			return nil, err
+		}
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
 	metadataFiles, err := release.StaticMetadataFiles(rootBytes, timestampBytes, snapshotBytes, targetBytes)
@@ -288,7 +347,7 @@ func signDescriptorReleasePurpose(ctx context.Context, args []string, purpose de
 			decision := v.Evaluate(ctx, release.Inputs{RootBytes: rootBytes, Files: metadataFiles, TargetPath: path, Artifact: artifacts[i], Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: plan.Network, RefTime: plan.Reference.UTC()}})
 			proof, ok := decision.Authorization()
 			if !ok {
-				err = fmt.Errorf("descriptor metadata self-verification refused: %s: %s", decision.Outcome, decision.Notice)
+				err = fmt.Errorf("join metadata self-verification refused: %s: %s", decision.Outcome, decision.Notice)
 				break
 			}
 			proofs = append(proofs, proof)

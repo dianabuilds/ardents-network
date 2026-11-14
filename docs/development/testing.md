@@ -5462,3 +5462,33 @@ records or uncertain staging without initialization or repair; typed frame and
 transcript controls reject partial, replayed or foreign completion. The unchanged
 three-minute orchestration includes real preparation; wire/runtime bounds remain
 unchanged. This profile supplies no forward replacement or recovery evidence.
+
+
+`make descriptor-store-inspection-check` selects root/ext4 mechanism controls
+with `ARDENTS_DESCRIPTOR_STORE_INSPECTION_NATIVE=1`: signed existing history and
+exclusive read-only lease, missing/uncertain history with no repair, same-byte
+inode substitution/restoration, held reader/Close and actual late descriptor
+failure. The checked three-minute profile fails missing prerequisites and grants
+no installed/runtime/Release or original-retirement evidence. Its compilation is
+included in `network-signing-compile-check`.
+
+
+`make descriptor-replacement-check` selects exactly one of
+`TestDescriptorInstalledNativeReplacementPrerequisite`,
+`TestDescriptorInstalledNativeResourceReplacement` and
+`TestDescriptorInstalledNativeProgramReplacement`. Each has its unchanged
+three-minute bound and independently verifies the preceding committed original
+retirement through the canonical owner. The prerequisite performs two genuine
+Store operations and one joined Stop. Its fresh signed proof inputs use the
+existing 600-second maximum within their Credential/profile, leaving the
+separate five-minute Stop/restart fixture unchanged. No active operation,
+protocol limit or retained floor is renewed. The separate original profile
+retains permission-repeat controls; replacement holders each obtain a genuine
+new permission against the same retained quota without repeating that unchanged
+component control on every stage. Resource follows the installed baseline;
+program follows the accepted resource generation. Each new private holder uses
+genuine Custody/issuer issuance against the original retained quota/results;
+volatile unused tokens are neither reconstructed nor refunded. The actual
+receiving Store proof, floors, roots/account/keys and spends remain original.
+A new exact prepared artifact/input scope precedes every replacement and Start;
+no active protocol deadline is reset between stages.

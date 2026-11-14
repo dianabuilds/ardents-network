@@ -4,6 +4,7 @@ package descriptor_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/tls"
@@ -33,6 +34,11 @@ import (
 // live Publisher or full Service chain is represented by this adjacent peer.
 func descriptorNativeOperation(t *testing.T, prepared descriptorPreparedStock, certificate tls.Certificate, request ardp.DescriptorRequest) (uint8, []byte) {
 	t.Helper()
+	began := time.Now()
+	phase := func(name string) {
+		t.Helper()
+		t.Logf("Descriptor physical %s at %.3fs", name, time.Since(began).Seconds())
+	}
 	deadline := time.Now().UTC().Add(30 * time.Second).Truncate(time.Second)
 	hourEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
 	if deadline.After(hourEnd) {
@@ -107,7 +113,7 @@ func descriptorNativeOperation(t *testing.T, prepared descriptorPreparedStock, c
 	transferred = true
 	defer func() {
 		if err := parent.Close(); err != nil {
-			t.Error("original outer join", err)
+			t.Error("original outer join", err, "physical failure", parent.PhysicalFailure(), "elapsed", time.Since(began))
 		}
 	}()
 	opened, err := ardp.EncodeNodeOpen(ardp.NodeOpen{Recipient: ardp.Open{RecipientNodeID: prepared.receiver.NodeID, RecipientDutyGeneration: prepared.receiver.DutyGeneration, Purpose: uint8(ardp.PurposeReachability), Deadline: deadline}, Restriction: ardp.OrdinaryChild})
@@ -172,6 +178,7 @@ func descriptorNativeOperation(t *testing.T, prepared descriptorPreparedStock, c
 		t.Fatal(err)
 	}
 	result := bytes.Clone(payload)
+	phase("RESULT verified")
 	writer, ok := conn.(interface{ CloseWrite() error })
 	if !ok {
 		t.Fatal("TLS half-close unavailable")
@@ -186,6 +193,26 @@ func descriptorNativeOperation(t *testing.T, prepared descriptorPreparedStock, c
 	if n, err := lane.Read(extra[:]); n != 0 || !errors.Is(err, io.EOF) {
 		t.Fatal("original lower termination", n, err)
 	}
+	// A directional EOF does not prove the receiving handler's clean terminal
+	// or join its outstanding output. Retain the actual parent until this exact
+	// lower lane has observed CLOSE(0) and joined its original CREDIT writers.
+	// Use the existing one-second cleanup horizon, never extend the operation.
+	cleanup, cancelCleanup := context.WithTimeout(t.Context(), time.Second)
+	interrupted := make(chan struct{})
+	var interruptErr error
+	stopCleanup := context.AfterFunc(cleanup, func() {
+		defer close(interrupted)
+		interruptErr = lane.InterruptIO()
+	})
+	terminalErr := lane.WaitPeerRetirement(cleanup)
+	if !stopCleanup() {
+		<-interrupted
+	}
+	cancelCleanup()
+	if err := errors.Join(terminalErr, interruptErr); err != nil {
+		t.Fatal("original lower peer terminal/join", err, "elapsed", time.Since(began))
+	}
+	phase("exact lower terminal and output joined")
 	if err := check(); err != nil {
 		t.Fatal(err)
 	}

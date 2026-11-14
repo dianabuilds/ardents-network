@@ -92,8 +92,8 @@ func descriptorNativeWrite(t *testing.T, name string, raw []byte, mode os.FileMo
 func TestDescriptorInstalledNativeExchange(t *testing.T) {
 	descriptorNativeStand(t)
 	var input struct {
-		Authority, Peer [32]byte
-		Lifecycle       bool
+		Authority, Peer        [32]byte
+		Lifecycle, Replacement bool
 	}
 	if err := json.Unmarshal(descriptorNativeRead(t, "exchange-inputs.json"), &input); err != nil {
 		t.Fatal(err)
@@ -113,8 +113,12 @@ func TestDescriptorInstalledNativeExchange(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	prepared := prepareDescriptorIssuedStock(t, descriptorNativeParent, vault, created, descriptorTokenTestSecrets{password}, descriptorNativeRead(t, "bundle.bin"), descriptorNativeRead(t, "profile.bin"), input.Authority, 16, input.Peer)
-	proofs := prepareDescriptorNativeProofs(t, prepared)
+	prepared := prepareDescriptorStock(t, descriptorNativeParent, descriptorNativeParent, true, !input.Replacement, vault, created, descriptorTokenTestSecrets{password}, descriptorNativeRead(t, "bundle.bin"), descriptorNativeRead(t, "profile.bin"), input.Authority, 16, input.Peer)
+	window := 5 * time.Minute
+	if input.Replacement {
+		window = 10 * time.Minute
+	}
+	proofs := prepareDescriptorNativeProofs(t, prepared, window)
 	peerText := hex.EncodeToString(input.Peer[:])[:2]
 	certificate, err := tls.LoadX509KeyPair(filepath.Join(descriptorNativeParent, "delivery/peer-certificate/node-certificate.pem"), filepath.Join(descriptorNativeParent, "canonical-preparation/node-key-"+peerText, "node-key.pem"))
 	if err != nil {
@@ -160,7 +164,7 @@ func TestDescriptorInstalledNativeExchange(t *testing.T) {
 		}
 	}
 	if input.Lifecycle {
-		runDescriptorNativeRestartExchange(t, prepared, certificate, proofs)
+		runDescriptorNativeRestartExchange(t, prepared, certificate, proofs, input.Replacement)
 	} else {
 		runDescriptorNativeOperations(t, prepared, certificate, proofs)
 	}

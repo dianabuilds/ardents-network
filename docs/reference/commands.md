@@ -1563,3 +1563,21 @@ Descriptor original lifecycle commands:
 - `ardents-node descriptor restart DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING`:
   fresh exact-artifact/native admission and independent non-root startup for the
   same generation after committed original retirement. Missing histories refuse.
+
+
+`ardents-node descriptor replace DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK
+BINDING REQUEST` selects an explicit strictly forward stopped Descriptor resource
+or program generation after complete original retirement. It preserves account,
+credentials and all five semantic histories; fresh Release, independent existing
+history checks and joined native readback precede completion. It does not Start
+the candidate. Partial/uncertain transitions retain their blockers.
+
+
+`ardents-control descriptor prepare-forward-release-plan` uses the same explicit
+public flags as `prepare-release-plan`, with a separate forward schema.
+`ardents-control descriptor sign-forward-release PUBLIC_PLAN PRIVATE_KEYS
+FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION` independently verifies
+the exact original signed predecessor and unchanged root/key purposes before
+raising Targets/Snapshot/Timestamp versions. Its output grants no installation
+or runtime permission. The root-only actual-build preparer accepts `--forward`
+for this distinct reviewed purpose; the initial default still requires version1.

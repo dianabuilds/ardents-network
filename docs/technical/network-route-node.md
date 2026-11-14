@@ -4046,3 +4046,40 @@ older history leases remain held through handoff. Existing-only State,
 participation, spends and Reachability Store preserve floors without creation,
 repair or stage promotion. The original Hosting allowance, numeric account and
 keys remain unchanged. Forward replacement and recovery retain separate gates.
+
+
+### Descriptor explicit stopped replacement
+
+Canonical `descriptor replace` independently retains the full original
+initial/Hosting/selection/invocation/retirement chain and a fresh coherent forward
+Node/Descriptor Release pair. Same-version metadata, changed trust/identity,
+credentials, semantic roots, protection or lifecycle bounds refuse; a resource
+update changes declared work/termination, and a program update changes actual
+program bytes. All five original histories and the one Hosting allowance persist.
+
+State/participation, spending, Hosting and Reachability Store supply separate
+existing-only inspectors with independently held original leases. Installation
+receives no mutable root or runtime owner. Store inspection cannot initialize,
+repair or promote an uncertain stage. Unknown predecessor producer/domain/native
+completion remains blocking.
+
+A distinct guarded journal retains immutable initial/predecessor images, original
+native before/after context, same-inode selection/unit mutation and one Reload.
+Independent complete readback, fresh Release and every physical reader/writer
+join precede blocker publication. A new protected Startup is a separate operation;
+no live owner crosses generations. Partial or uncertain prefixes remain blocked;
+interrupted recovery is separately admitted.
+
+Descriptor forward public preparation uses a purpose-distinct plan and signer.
+Original signed predecessor inventory, five original keys/root and current
+coherent metadata are verified before forward signatures; bounded arithmetic
+raises metadata versions without rotating trust or resetting floors. Initial
+and forward schemas remain mutually refusing. Detached public preparation
+supplies no initial pin, native mutation, predecessor join or runtime authority.
+
+Descriptor parent framing matches HELLO, local duty and the exact original
+adjacent peer against one genuinely fresh coherent State view on each frame
+boundary. The pure peer lookup shares that observation, never a previous
+frame's permission. Its separate receiving Store/currentness guards still
+bracket role effects and acknowledgement; Admission, native Startup and all
+original cleanup deadlines retain their own checks and physical joins.

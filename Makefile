@@ -555,6 +555,7 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/forwarding-inputs.test" ./internal/successor/installation/forwarding
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/successor/installation/request
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-inputs.test" ./internal/successor/installation/join
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/successor/reachability
 
 .PHONY: join-installed-check
 JOIN_INSTALLED_TEST ?= TestJoinInstalledNativeProtectedStartupAndPair
@@ -579,3 +580,20 @@ descriptor-publish-check:
 .PHONY: descriptor-restart-check
 descriptor-restart-check:
 	go test -race -trimpath -buildvcs=false -tags descriptor_installed_native ./internal/successor/installation/descriptor -run '^TestDescriptorInstalledNativeStopAndRestart$$' -count=1 -v -timeout=3m
+
+.PHONY: descriptor-store-inspection-check
+descriptor-store-inspection-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-store-inspection-check requires explicit Linux root/ext4 stand"; exit 2)
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/reachability -run '^TestDescriptorStoreInspectionNative' -count=1 -v -timeout=3m
+
+.PHONY: descriptor-forward-release-check
+descriptor-forward-release-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-forward-release-check requires explicit root/ext4 canonical artifact stand"; exit 2)
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors$$' -count=1 -v -timeout=3m
+
+.PHONY: descriptor-replacement-check
+DESCRIPTOR_REPLACEMENT_TEST ?= TestDescriptorInstalledNativeResourceReplacement
+descriptor-replacement-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-replacement-check requires the selected isolated Ubuntu/systemd stand"; exit 2)
+	@case "$(DESCRIPTOR_REPLACEMENT_TEST)" in TestDescriptorInstalledNativeReplacementPrerequisite|TestDescriptorInstalledNativeResourceReplacement|TestDescriptorInstalledNativeProgramReplacement) ;; *) echo 'select one registered Descriptor replacement stage' >&2; exit 2;; esac
+	go test -race -trimpath -buildvcs=false -tags descriptor_installed_native ./internal/successor/installation/descriptor -run '^$(DESCRIPTOR_REPLACEMENT_TEST)$$' -count=1 -v -timeout=3m

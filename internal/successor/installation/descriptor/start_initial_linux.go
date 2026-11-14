@@ -127,6 +127,12 @@ func (s *startAttempt) launch() error {
 			return ErrBinding
 		}
 	}
+	if s.nextNumber != 0 {
+		h := c.invocations
+		if h == nil || len(h.starts) == 0 || h.starts[len(h.starts)-1].archive.Manager != s.managerIdentity {
+			return ErrBinding
+		}
+	}
 	facts, err := s.manager.Observe()
 	if err != nil {
 		return err
@@ -305,6 +311,9 @@ func (s *startAttempt) observeStopped() error {
 			old := h.starts[len(h.starts)-1]
 			ret := h.retirements[len(h.retirements)-1]
 			checkStopped = verifyDescriptorRestartStopped(facts.Unit, facts.Service, b.Request, b.Generation, old.archive, old.id, ret.result.execution())
+			if old.binding.Generation != b.Generation {
+				checkStopped = verifyDescriptorReplacementStopped(facts.Unit, facts.Service, b, old, ret)
+			}
 		}
 		if err := checkStopped; err != nil {
 			return err

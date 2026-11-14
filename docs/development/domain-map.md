@@ -1293,3 +1293,17 @@ only after observer closes. Restart consumes that history plus fresh Release and
 independent Startup; Reachability's existing-only Store opening cannot create or
 repair missing/uncertain history. No sibling role lifetime or generic role owner
 participates; account, keys, original allowance and all five histories persist.
+
+
+Descriptor stopped replacement keeps Installation's transition admission and
+selection/native history separate from Reachability's read-only Store inspection.
+Each semantic owner holds its own existing-only lease through physical join;
+Inspection exports no mutable Store or proof. Fresh forward Release, original
+retirement and same-inode selection/unit mutation remain Installation rules.
+No account, credential, semantic floor or provider allowance is reset.
+
+Descriptor's parent Carrier rechecks local HELLO and original adjacent-peer facts
+from one coherent fresh State observation per frame boundary. The view is not
+retained as later authority. Store custody and effect/ACK checks remain with the
+separate Reachability/receiving role; their observations are not collapsed into
+parent framing. No durable floor, native guard or cleanup horizon changes.

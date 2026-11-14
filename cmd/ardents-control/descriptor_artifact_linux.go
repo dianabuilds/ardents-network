@@ -45,6 +45,8 @@ func runDescriptorControl(args []string, out io.Writer) error {
 			return runDescriptorHostingPreparation(args[1:], out)
 		case "prepare-release-keys":
 			return runDescriptorReleaseKeys(args[1:], out)
+		case "sign-forward-release":
+			return runDescriptorReleasePurpose(args[1:], out, descriptorReleaseForward)
 		case "sign-initial-release":
 			return runDescriptorReleaseSigning(args[1:], out)
 		}
@@ -82,6 +84,9 @@ func prepareDescriptorArtifact(ctx context.Context, args []string, observe func(
 	var name, destination string
 	check := inputs.checkProtected
 	switch args[0] {
+	case "prepare-forward-release-plan":
+		result, destination, returned = descriptorReleasePurposeArguments(args[1:], inputs, descriptorReleaseForward)
+		name = "descriptor-release-plan.json"
 	case "prepare-release-plan":
 		result, destination, returned = descriptorReleasePlanArguments(args[1:], inputs)
 		name = "descriptor-release-plan.json"

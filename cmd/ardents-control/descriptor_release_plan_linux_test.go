@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -26,5 +27,20 @@ func TestDescriptorReleasePlanRefusesForeignPurposeBeforeKeys(t *testing.T) {
 		if _, err := decodeDescriptorReleasePurpose([]byte(bad), now, descriptorReleaseInitial); err == nil {
 			t.Fatal("ambiguous public declaration accepted")
 		}
+	}
+}
+
+func TestDescriptorForwardReleasePlanHasSeparatePurpose(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	raw, _ := json.Marshal(descriptorReleasePlan{Schema: "ardents-descriptor-forward-release-plan-v1", Network: "closed", Reference: now, Expires: now.Add(time.Hour), Program: "/root/public/node", Descriptor: "/root/public/descriptor", Template: "/root/public/template", ProgramCustom: json.RawMessage(`{}`), GenerationCustom: json.RawMessage(`{}`)})
+	if _, err := decodeDescriptorReleasePurpose(raw, now, descriptorReleaseForward); err != nil {
+		t.Fatal("exact forward purpose refused", err)
+	}
+	if _, err := decodeDescriptorReleasePurpose(raw, now, descriptorReleaseInitial); err == nil {
+		t.Fatal("forward purpose accepted as initial")
+	}
+	initial := bytes.Replace(raw, []byte("ardents-descriptor-forward-release-plan-v1"), []byte("ardents-descriptor-initial-release-plan-v1"), 1)
+	if _, err := decodeDescriptorReleasePurpose(initial, now, descriptorReleaseForward); err == nil {
+		t.Fatal("initial purpose accepted as forward")
 	}
 }

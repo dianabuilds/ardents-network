@@ -16,7 +16,7 @@ import (
 // One original holder survives server retirement without lending its client
 // State, Stock or keys to the server. Each physical operation still consumes a
 // fresh genuine Control right and joins before the original peer stops.
-func runDescriptorNativeRestartExchange(t *testing.T, p descriptorPreparedStock, certificate tls.Certificate, proof descriptorNativeProofs) {
+func runDescriptorNativeRestartExchange(t *testing.T, p descriptorPreparedStock, certificate tls.Certificate, proof descriptorNativeProofs, replacement bool) {
 	t.Helper()
 	perform := func(name string, r ardp.DescriptorRequest, want uint8, expected []byte) {
 		t.Helper()
@@ -34,6 +34,9 @@ func runDescriptorNativeRestartExchange(t *testing.T, p descriptorPreparedStock,
 	perform("original revision2 Store ACK", ardp.DescriptorRequest{Operation: ardp.DescriptorPublish, Proof: proof.second}, 0, nil)
 	perform("original exact lookup", ardp.DescriptorRequest{Operation: ardp.DescriptorLookup, Target: proof.target}, 0, proof.second)
 	descriptorNativeWrite(t, "exchange-phase-one", []byte("original operations joined\n"), 0600)
+	if replacement {
+		return
+	}
 	timer := time.NewTimer(time.Minute)
 	defer timer.Stop()
 	tick := time.NewTicker(20 * time.Millisecond)

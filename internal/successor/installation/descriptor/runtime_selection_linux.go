@@ -46,7 +46,8 @@ func readRuntimeSelection(ctx context.Context, path string) (result *runtimeSele
 	if err != nil {
 		return nil, err
 	}
-	b, err := decodeBinding(bound)
+	selection, err := decodeSelection(bound)
+	b := selection.binding
 	if err != nil || path != filepath.Join(b.Request.InstallationRoot, "binding.json") || b.UID != uint32(os.Geteuid()) || b.GID != uint32(os.Getegid()) {
 		return nil, errors.Join(ErrBinding, err)
 	}

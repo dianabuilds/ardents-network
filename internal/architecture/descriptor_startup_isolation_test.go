@@ -4,6 +4,41 @@ package architecture
 // Route root, legacy backend, callback bridge or sibling live Installation owner.
 func descriptorStartupImportAllowed(source, dependency string) bool {
 	switch source {
+	case "internal/successor/installation/descriptor/installed_replacement_native_linux_test.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor":
+			return true
+		}
+	case "internal/successor/installation/descriptor/installed_replacement_exchange_native_linux_test.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/custody", "github.com/dianabuilds/ardents-network/internal/successor/route/ardp":
+			return true
+		}
+	case "cmd/ardents-control/descriptor_release_predecessor_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment", "github.com/dianabuilds/ardents-network/internal/successor/release", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
+			return true
+		}
+	case "internal/successor/installation/descriptor/replacement_candidate_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
+			return true
+		}
+	case "internal/successor/installation/descriptor/replacement_inspections_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/admission/spending", "github.com/dianabuilds/ardents-network/internal/successor/hosting", "github.com/dianabuilds/ardents-network/internal/successor/network/state", "github.com/dianabuilds/ardents-network/internal/successor/reachability":
+			return true
+		}
+	case "internal/successor/installation/descriptor/replacement_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
+			return true
+		}
+	case "internal/successor/installation/descriptor/replacement_stopped_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd":
+			return true
+		}
 	case "internal/successor/installation/descriptor/invocation_history_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/release":

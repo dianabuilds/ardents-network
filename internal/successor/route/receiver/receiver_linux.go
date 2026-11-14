@@ -327,32 +327,7 @@ func (r *Receiver) serveOuter(ctx context.Context, accepted transport.ClosedShar
 	if err := conn.SetDeadline(h.Deadline); err != nil {
 		return err
 	}
-	check := func() error {
-		var current network.Member
-		var err error
-		if member.RoleDomain == 2 && member.Subrole == 4 && r.registrations == nil {
-			// JOIN has no Registry/Store observation between these local/peer checks.
-			// Match HELLO, local duty and the same original peer in ONE genuinely fresh
-			// owner view, then repeat this entire check at the next framing boundary.
-			var view network.RuntimeView
-			var local network.Member
-			view, local, err = r.config.Authority.ObserveHello(h, true)
-			if err == nil {
-				current, err = adjacentPeer(view, local, accepted.NodeKey)
-			}
-		} else {
-			// Introduction's separate native Registry bracket and other existing role
-			// paths keep their independently owned observations unchanged.
-			if _, err = r.config.Authority.Hello(h, true); err != nil {
-				return err
-			}
-			current, err = r.peer(accepted.NodeKey)
-		}
-		if err != nil || current.RecordDigest != peer.RecordDigest || current.DutyGeneration != peer.DutyGeneration {
-			return errors.Join(errors.New("route Node peer changed"), err)
-		}
-		return nil
-	}
+	check := func() error { return r.checkOuterPeer(h, member, peer, accepted.NodeKey) }
 	adjacency := r.bootstrap.Adjacency()
 	defer adjacency.Seal()
 	// Preparation is synchronous; Open owns the later physical work. A

@@ -28,12 +28,15 @@ type descriptorReleasePurpose uint8
 
 const (
 	descriptorReleaseInitial descriptorReleasePurpose = iota
+	descriptorReleaseForward
 )
 
 func decodeDescriptorReleasePurpose(raw []byte, now time.Time, purpose descriptorReleasePurpose) (descriptorReleasePlan, error) {
 	var p descriptorReleasePlan
 	schema := "ardents-descriptor-initial-release-plan-v1"
-	if purpose != descriptorReleaseInitial {
+	if purpose == descriptorReleaseForward {
+		schema = "ardents-descriptor-forward-release-plan-v1"
+	} else if purpose != descriptorReleaseInitial {
 		return p, errSourceControlInput
 	}
 	if len(raw) == 0 || len(raw) > 1<<20 || sourceDeclarationObject(raw, &p, "schema", "network", "reference_time", "expires", "program", "descriptor", "template", "program_custom", "generation_custom") != nil || p.Schema != schema || p.Network == "" || p.Reference.IsZero() || !p.Expires.After(now) || !p.Expires.After(p.Reference) || p.Expires.Sub(p.Reference) > 7*24*time.Hour || p.Reference.Before(now.Add(-5*time.Minute)) || p.Reference.After(now.Add(time.Minute)) {
@@ -49,7 +52,8 @@ func decodeDescriptorReleasePurpose(raw []byte, now time.Time, purpose descripto
 func validateDescriptorReleaseResources(plan descriptorReleasePlan, program, descriptor, template []byte) error {
 	d, err := infrastructure.ValidateDescriptorResources(descriptor, program, template)
 	initial := plan.Schema == "ardents-descriptor-initial-release-plan-v1"
-	if err != nil || !initial || d.ReleaseVersion != 1 || !bytes.Equal(template, []byte(descriptorinstallation.Template)) {
+	forward := plan.Schema == "ardents-descriptor-forward-release-plan-v1"
+	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(descriptorinstallation.Template)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))
