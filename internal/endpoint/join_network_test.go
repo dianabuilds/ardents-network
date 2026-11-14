@@ -115,14 +115,22 @@ func exchangeRouteData(t *testing.T, reader, publisher *dutyContext, receiver [3
 		}
 		streams = append(streams, result.stream)
 	}
-	t.Cleanup(func() {
-		cancel()
+	// This is a successful exchange, not cancellation coverage. Join the
+	// streams while their original caller and acquisitions are still live;
+	// test Cleanup runs after both the helper's defers and t.Context cancel.
+	defer func() {
+		if err := ctx.Err(); err != nil {
+			t.Errorf("normal JOIN exchange canceled before stream retirement: %v", err)
+		}
+		if _, _, _, err := readerJoin.DataJoinRecipient(); err != nil {
+			t.Errorf("Source acquisition released before stream retirement: %v", err)
+		}
 		for _, stream := range streams {
 			if err := stream.Close(); err != nil {
 				t.Error(err)
 			}
 		}
-	})
+	}()
 	if ready != nil {
 		ready()
 	}
