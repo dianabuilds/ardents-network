@@ -31,22 +31,23 @@ type savedResult struct {
 	checked       time.Time
 }
 type resultState struct {
-	mu                sync.Mutex
-	root              *os.Root
-	path              string
-	identity          os.FileInfo
-	files             map[string]os.FileInfo
-	lock              *os.File
-	store             Store
-	binding           quota.LedgerBinding
-	header, tail      [32]byte
-	floor             uint64
-	size              int64
-	signatures        int
-	records           map[[32]byte]savedResult
-	closed            bool
-	failure, closeErr error
-	fault             func(string) error
+	mu                  sync.Mutex
+	root                *os.Root
+	path                string
+	identity            os.FileInfo
+	files               map[string]os.FileInfo
+	lock                *os.File
+	store               Store
+	binding             quota.LedgerBinding
+	pinnedBindingDigest [32]byte // immutable binding digest, computed once at open (audit AD-3)
+	header, tail        [32]byte
+	floor               uint64
+	size                int64
+	signatures          int
+	records             map[[32]byte]savedResult
+	closed              bool
+	failure, closeErr   error
+	fault               func(string) error
 }
 
 // ResultStore copies share one transaction owner, lease and terminal lifecycle.
@@ -176,7 +177,7 @@ func (r ResultStore) Issue(ctx context.Context, c quota.DebitConfirmation, now t
 	}
 	return append([]byte(nil), response...), exists, nil
 }
-func (s *resultState) bindingDigest() [32]byte { d, _ := quota.BindingDigest(s.binding); return d }
+func (s *resultState) bindingDigest() [32]byte { return s.pinnedBindingDigest }
 
 // Check observes original result-root custody before a new debit; no result
 // or quota authority is minted, and observed storage loss remains terminal.
