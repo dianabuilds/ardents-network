@@ -61,6 +61,9 @@ func TestBoundedInput(t *testing.T) {
 	if _, err := readBounded(filename, 228); err == nil {
 		t.Fatal("oversize accepted")
 	}
+	if raw, err := readBounded(filename, 229); err != nil || string(raw) != strings.Repeat("x", 229) {
+		t.Fatal("exact bound refused or bytes changed", err)
+	}
 	if _, err := readBounded(t.TempDir(), 228); err == nil {
 		t.Fatal("directory accepted")
 	}

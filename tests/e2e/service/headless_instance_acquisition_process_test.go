@@ -1,3 +1,5 @@
+//go:build linux || windows
+
 package service_test
 
 import (

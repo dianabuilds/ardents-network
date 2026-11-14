@@ -42,7 +42,7 @@ func OpenStore(config StoreConfig) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = prepareStoreRoot(root); err != nil {
+	if err = prepareStoreRoot(root, syncStoreDirectory); err != nil {
 		return nil, err
 	}
 	originalRoot, err := os.OpenRoot(root)

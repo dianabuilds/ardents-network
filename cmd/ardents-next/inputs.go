@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"os"
 	"strconv"
 	"time"
 
@@ -14,13 +13,10 @@ import (
 )
 
 func readBounded(filename string, maximum int64) ([]byte, error) {
-	// Refuse a named pipe or device before Open, which can otherwise block.
-	// Recheck the opened object as well; this is not filesystem custody.
-	selected, err := os.Stat(filename)
-	if err != nil || !selected.Mode().IsRegular() {
-		return nil, errors.New("input unavailable")
-	}
-	f, err := os.Open(filename)
+	// Opening must itself be nonblocking for a substituted FIFO. A path Stat
+	// cannot protect the later Open. Only the opened object's type is used;
+	// this remains bounded input reading, not filesystem custody.
+	f, err := openInputFile(filename)
 	if err != nil {
 		return nil, err
 	}

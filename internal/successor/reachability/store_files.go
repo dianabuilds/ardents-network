@@ -210,8 +210,8 @@ func boundedStoreEntries(path string, maximum int) ([]os.DirEntry, error) {
 	return entries, nil
 }
 
-func prepareStoreRoot(root string) error {
-	if err := createStoreDirectory(root); err != nil {
+func prepareStoreRoot(root string, flush func(string) error) error {
+	if err := createStoreDirectory(root, flush); err != nil {
 		return err
 	}
 	entries, err := boundedStoreEntries(root, 3)
@@ -250,17 +250,17 @@ func prepareStoreRoot(root string) error {
 			return err
 		}
 	}
-	return syncStoreDirectory(root)
+	return flush(root)
 }
 
-func createStoreDirectory(path string) error {
+func createStoreDirectory(path string, flush func(string) error) error {
 	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
 		parent := filepath.Dir(path)
 		if parent == path {
 			return errors.New("reachability root has no parent")
 		}
-		if err := createStoreDirectory(parent); err != nil {
+		if err := createStoreDirectory(parent, flush); err != nil {
 			return err
 		}
 		if err := os.Mkdir(path, 0700); err != nil {
@@ -271,7 +271,7 @@ func createStoreDirectory(path string) error {
 	} else if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return errors.New("reachability directory invalid")
 	}
-	return syncStoreDirectory(filepath.Dir(path))
+	return flush(filepath.Dir(path))
 }
 
 func initializeStoreRoot(root *os.Root) error {
