@@ -103,6 +103,9 @@ github.com/dianabuilds/ardents-network/internal/successor/route/transport/tls
 github.com/dianabuilds/ardents-network/internal/successor/route/introduction
 github.com/dianabuilds/ardents-network/internal/successor/route/capsule
 github.com/dianabuilds/ardents-network/internal/successor/route/join
+github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding
+github.com/dianabuilds/ardents-network/internal/successor/endpoint/reader
+github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher
 github.com/dianabuilds/ardents-network/internal/successor/route/prefix
 github.com/dianabuilds/ardents-network/internal/successor/release
 github.com/dianabuilds/ardents-network/internal/successor/installation

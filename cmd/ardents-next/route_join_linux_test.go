@@ -10,7 +10,6 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 	"io"
 	"net"
 	"path/filepath"
@@ -19,16 +18,18 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	routejoin "github.com/dianabuilds/ardents-network/internal/successor/route/join"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
 
 // Physical Source fixtures use the genuine selected leg and reservation. The
 // maintained Publisher instead retains its logical SourceScope across gaps.
 func openPublicationPrefix(ctx context.Context, plan routePrefixPlan, selected *selection.Owner, budget *hosting.Budget, authority admissionAuthority, holder *stock.Owner) (*prefix.Prefix, selection.Leg, error) {
-	config, err := preparePublicationPrefix(ctx, plan, selected, budget, authority, holder)
+	config, err := funding.PreparePrefix(ctx, fundingPlan(plan), selected, budget, fundingAuthority(authority), holder)
 	if err != nil {
 		return nil, selection.Leg{}, err
 	}
@@ -129,7 +130,7 @@ func TestPublicationPreparedResponderOpensWithOriginalSourceTCP(t *testing.T) {
 					t.Fatal("foreign or extended Source scope accepted")
 				}
 			}
-			prepared, err := preparePublicationPrefix(t.Context(), plan, responderSelection, budget, f.authority, holder)
+			prepared, err := funding.PreparePrefix(t.Context(), fundingPlan(plan), responderSelection, budget, fundingAuthority(f.authority), holder)
 			if err != nil {
 				t.Fatal(err)
 			}

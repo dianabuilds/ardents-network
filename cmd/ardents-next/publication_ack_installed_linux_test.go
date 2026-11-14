@@ -17,6 +17,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	endpointpublisher "github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher"
 	"github.com/dianabuilds/ardents-network/internal/successor/execution"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
@@ -374,17 +375,17 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 	// An equal-lived outer caller is not the original operation identity. It
 	// must refuse before acquiring roots or spending this genuine Stock.
 	before := holder.Status()
-	wrong, wrongErr := startPublicationHolder(publisherCaller, plan, routePlan, networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.witness), holder, operation)
-	if wrongErr == nil || wrong.owner != nil || holder.Status() != before {
+	wrong, wrongErr := endpointpublisher.Open(publisherCaller, publisherPlan(plan), fundingPlan(routePlan), fundingAuthority(networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.witness)), holder, operation)
+	if wrongErr == nil || wrong.Owner() != nil || holder.Status() != before {
 		t.Fatal("foreign Publication caller acquired resources or changed Stock", wrongErr)
 	}
-	owner, err := startPublicationHolder(operation.Context(), plan, routePlan, networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.witness), holder, operation)
+	owner, err := endpointpublisher.Open(operation.Context(), publisherPlan(plan), fundingPlan(routePlan), fundingAuthority(networkAdmissionAuthority(f.current, func() error { return nil }, f.authority.witness)), holder, operation)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
 		gate.release()
-		if err := owner.close(); !checkCleanup(err) {
+		if err := owner.Close(); !checkCleanup(err) {
 			t.Error(err)
 		}
 	})
@@ -394,10 +395,10 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 	}
 	if retirement == "elapsed" {
 		runInstalledPublisherElapsedPairs(t, ctx, f, owner, gate, store, target, expected)
-		if err := owner.withdraw(ctx); err != nil {
+		if err := owner.Owner().Withdraw(ctx); err != nil {
 			t.Fatal("elapsed Publisher withdrawal", err)
 		}
-		if err := owner.close(); err != nil {
+		if err := owner.Close(); err != nil {
 			t.Fatal("elapsed Publisher physical join", err)
 		}
 		operation.Close()
@@ -424,9 +425,9 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 			defer gate.release()
 			finished := make(chan error, 1)
 			go func() {
-				call := owner.publish
+				call := owner.Owner().Publish
 				if phase == "replacement" {
-					call = owner.refresh
+					call = owner.Owner().Refresh
 				}
 				// Publication retains its original worker lifetime after this
 				// individual setup request completes, for both initial and refresh.
@@ -461,7 +462,7 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 			if err != nil {
 				t.Fatal("actual committed Descriptor invalid", err)
 			}
-			link, err := owner.link(ctx)
+			link, err := owner.Owner().Link(ctx)
 			if phase == "initial" {
 				if err == nil || link != "" {
 					t.Fatal("unacknowledged initial pair supplied Link")
@@ -521,10 +522,10 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 					if _, completed := invocation.CleanupResult(); completed {
 						t.Fatal("worker loss bypassed original operation join")
 					}
-				} else if err := owner.withdraw(ctx); err != nil {
+				} else if err := owner.Owner().Withdraw(ctx); err != nil {
 					t.Fatal("actual pending withdrawal did not join", err)
 				}
-				if link, err := owner.link(ctx); err == nil || link != "" {
+				if link, err := owner.Owner().Link(ctx); err == nil || link != "" {
 					t.Fatal("retirement left accepting Link before held response release")
 				}
 			}
@@ -553,7 +554,7 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 					t.Fatal("receiving authority ended before original exchange join", err)
 				}
 			}
-			link, linkErr := owner.link(ctx)
+			link, linkErr := owner.Owner().Link(ctx)
 			if retiring {
 				if linkErr == nil || link != "" {
 					t.Fatal("late held response revived retired Publisher")
@@ -574,11 +575,11 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 		t.Run("retained-replay", func(t *testing.T) {
 			installedPublisherFailedDelivery(t, f, predecessor, previous, deliveryGate)
 		})
-		if link, err := owner.link(ctx); err != nil || link != expected {
+		if link, err := owner.Owner().Link(ctx); err != nil || link != expected {
 			t.Fatal("predecessor delivery failure retired current accepting pair", err)
 		}
 	}
-	withdrawErr := owner.withdraw(ctx)
+	withdrawErr := owner.Owner().Withdraw(ctx)
 	if networkLost {
 		observedNetwork.mu.Lock()
 		t.Log("actual retained State refusal count", len(observedNetwork.causes))
@@ -608,11 +609,11 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 			t.Fatal("owning join lacks original successful Publisher RESULT before failed CLOSE", withdrawErr)
 		}
 	}
-	closeErr := owner.close()
+	closeErr := owner.Close()
 	if !checkCleanup(closeErr) || (retirement == "caller" || workerLost || networkLost || resultLost) && closeErr == nil {
 		t.Fatal("owning close lost or changed original retirement result", closeErr)
 	}
-	if repeated := owner.close(); !checkCleanup(repeated) || (repeated == nil) != (closeErr == nil) || repeated != nil && repeated.Error() != closeErr.Error() {
+	if repeated := owner.Close(); !checkCleanup(repeated) || (repeated == nil) != (closeErr == nil) || repeated != nil && repeated.Error() != closeErr.Error() {
 		t.Fatal("repeated close changed original terminal result", repeated)
 	}
 	operation.Close()
@@ -666,7 +667,7 @@ func runInstalledPublisherACK(t *testing.T, carrier transport.CarrierProfile, re
 			// Neither allows its watcher to clear entries. Read-only reflection
 			// observes that private owner
 			// without a production diagnostic API or a fabricated acceptance.
-			publisher := reflect.ValueOf(owner.owner).Elem()
+			publisher := reflect.ValueOf(owner.Owner()).Elem()
 			if publisher.FieldByName("initialDeliveries").Len() != 0 {
 				t.Fatal("original delivery users remain after Publisher physical join")
 			}
@@ -718,7 +719,7 @@ func TestInstalledPublicationElapsedTCP(t *testing.T) {
 	}
 }
 
-func runInstalledPublisherElapsedPairs(t *testing.T, ctx context.Context, f *networkAdmissionFixture, owner publicationHandle, gate *publicationACKGate, store *reachability.Store, target [32]byte, expected string) {
+func runInstalledPublisherElapsedPairs(t *testing.T, ctx context.Context, f *networkAdmissionFixture, owner endpointpublisher.Publication, gate *publicationACKGate, store *reachability.Store, target [32]byte, expected string) {
 	var first, replacement reachability.Descriptor
 	var started, initialCommit, initialACKLower, switchLower, switchUpper time.Time
 	waitUntil := func(test *testing.T, end time.Time) {
@@ -749,7 +750,7 @@ func runInstalledPublisherElapsedPairs(t *testing.T, ctx context.Context, f *net
 		finished := make(chan error, 1)
 		started = time.Now()
 		go func() {
-			link, err := owner.publish(ctx)
+			link, err := owner.Owner().Publish(ctx)
 			if err == nil && link != expected {
 				err = errors.New("elapsed initial ACK returned foreign Link")
 			}
@@ -764,7 +765,7 @@ func runInstalledPublisherElapsedPairs(t *testing.T, ctx context.Context, f *net
 			t.Fatal("elapsed initial commit absent", ctx.Err())
 		}
 		first = readHeldProof(t)
-		if link, err := owner.link(ctx); err == nil || link != "" {
+		if link, err := owner.Owner().Link(ctx); err == nil || link != "" {
 			t.Fatal("elapsed pending initial supplied Link")
 		}
 		waitUntil(t, initialCommit.Add(12*time.Second))
@@ -806,7 +807,7 @@ func runInstalledPublisherElapsedPairs(t *testing.T, ctx context.Context, f *net
 		if replacement.Introduction.Revision != first.Introduction.Revision+1 || replacement.Introduction.Slot == first.Introduction.Slot || replacement.Introduction.RecipientKey == first.Introduction.RecipientKey || replacement.PublicationDigest != first.PublicationDigest {
 			t.Fatal("elapsed automatic replacement changed identity or reused recipient")
 		}
-		if link, err := owner.link(ctx); err != nil || link != expected {
+		if link, err := owner.Owner().Link(ctx); err != nil || link != expected {
 			t.Fatal("elapsed pending replacement lost original Link", err)
 		}
 		installedPublisherSubmitNonce(t, f, replacement, false)
@@ -817,14 +818,14 @@ func runInstalledPublisherElapsedPairs(t *testing.T, ctx context.Context, f *net
 		// using the replacement. Its success bounds the actual pair switch.
 		installedPublisherAcceptedNonce(t, f, replacement)
 		switchUpper = time.Now()
-		if _, err := owner.owner.Refresh(ctx); err == nil || err.Error() != "Publisher predecessor still retained" {
+		if _, err := owner.Owner().Refresh(ctx); err == nil || err.Error() != "Publisher predecessor still retained" {
 			t.Fatal("elapsed overlap acquired a third recipient", err)
 		}
 		raw, outcome, err := store.Lookup(target, f.profile.Digest, time.Now())
 		if err != nil || outcome != reachability.Accepted {
 			t.Fatal("elapsed replacement lacks real Store proof", err)
 		}
-		if link, err := owner.publish(ctx); err != nil || link != expected {
+		if link, err := owner.Owner().Publish(ctx); err != nil || link != expected {
 			t.Fatal("elapsed exact current retry failed", err)
 		}
 		again, outcome, err := store.Lookup(target, f.profile.Digest, time.Now())

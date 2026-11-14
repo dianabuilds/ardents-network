@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package reader
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 // provide no qualified Job, Source, authentication or installed readiness.
 func TestInstalledReaderProjectionRejectsMalformedRequestBeforeWorkerTransfer(t *testing.T) {
 	var transfers, retirements atomic.Int32
-	stream := newInstalledReaderResult(t.Context(), func() error { return nil }, func() ([]byte, error) {
+	stream := newResultStream(t.Context(), func() error { return nil }, func() ([]byte, error) {
 		transfers.Add(1)
 		return nil, errors.New("unexpected worker transfer")
 	}, func() error { retirements.Add(1); return nil })
@@ -37,7 +37,7 @@ func TestInstalledReaderProjectionCloseInterruptsPendingOriginalCompletion(t *te
 	entered, released := make(chan struct{}), make(chan struct{})
 	var releaseOnce sync.Once
 	var retirements atomic.Int32
-	stream := newInstalledReaderResult(t.Context(), func() error { return nil }, func() ([]byte, error) {
+	stream := newResultStream(t.Context(), func() error { return nil }, func() ([]byte, error) {
 		close(entered)
 		<-released
 		return []byte("late private result"), nil

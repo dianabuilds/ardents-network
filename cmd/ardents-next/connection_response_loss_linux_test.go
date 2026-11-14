@@ -15,6 +15,7 @@ import (
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/successor/connection"
+	endpointpublisher "github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	publicationruntime "github.com/dianabuilds/ardents-network/internal/successor/publication/runtime"
@@ -101,7 +102,7 @@ func assertInstalledConnectionPublicationWithdrawal(t *testing.T, ctx context.Co
 	if n, err := peer.Write([]byte("late")); n != 0 || err == nil {
 		t.Fatal("withdrawn Publisher accepted Application bytes", n, err)
 	}
-	contract, err := publisherTextContract(publisherOperation)
+	contract, err := endpointpublisher.TextContract(publisherOperation)
 	if err != nil {
 		t.Fatal(err)
 	}

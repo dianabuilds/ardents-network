@@ -14,9 +14,11 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
+	endpointpublisher "github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher"
+	endpointreader "github.com/dianabuilds/ardents-network/internal/successor/endpoint/reader"
 	"github.com/dianabuilds/ardents-network/internal/successor/execution"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
@@ -252,7 +254,7 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 			HostingRoot: filepath.Join(plan.EntryStateRoot, "hosting"), Domain: 1,
 			Work:        hosting.Traffic{Tx: admission.ForwardClass.ByteLimit(), Rx: admission.ForwardClass.ByteLimit()},
 			Termination: hosting.Traffic{Tx: admission.ControlClass.ByteLimit(), Rx: admission.ControlClass.ByteLimit()}}
-		routes, err := openInstalledRouteOwners(readerPlan, serviceAuthority)
+		routes, err := funding.OpenParents(fundingPlan(readerPlan), fundingAuthority(serviceAuthority))
 		if err != nil {
 			return 1
 		}
@@ -262,8 +264,8 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 				code = 1
 			}
 		}()
-		readerOwner := &installedReader{local: owner, principal: local.Grants[0].Principal,
-			authority: serviceAuthority, holder: holders["reader"], check: current, plan: readerPlan, route: routes}
+		readerOwner := endpointreader.New(endpointreader.Config{Local: owner, Principal: local.Grants[0].Principal,
+			Authority: fundingAuthority(serviceAuthority), Holder: holders["reader"], Check: current, Plan: fundingPlan(readerPlan), Parents: routes})
 		if plan.Role == "" {
 			phase = "administration-listener"
 			publisherPlan := readerPlan
@@ -271,12 +273,11 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 			publisherPlan.InteriorRoot = filepath.Join(plan.EntryStateRoot, "introduction-interior")
 			publisherPlan.SourceInteriorRoot = filepath.Join(plan.EntryStateRoot, "publisher-source-interior")
 			publisherPlan.ResponderInteriorRoot = filepath.Join(plan.EntryStateRoot, "responder-interior")
-			publisherContext, publisherCancel := context.WithCancel(ctx)
-			publisherOwner := &installedPublisher{ctx: publisherContext, cancel: publisherCancel,
-				local: owner, principal: local.Grants[1].Principal,
-				plan:      publicationPlan{InstanceRoot: plan.ServiceInstanceRoot, Root: plan.PublicationRoot},
-				routePlan: publisherPlan, routes: routes, authority: serviceAuthority,
-				holder: holders["publisher"], check: current, failed: cancel}
+			publisherOwner := endpointpublisher.New(endpointpublisher.Config{Context: ctx,
+				Local: owner, Principal: local.Grants[1].Principal,
+				Plan:  endpointpublisher.Plan{InstanceRoot: plan.ServiceInstanceRoot, Root: plan.PublicationRoot},
+				Route: fundingPlan(publisherPlan), Parents: routes, Authority: fundingAuthority(serviceAuthority),
+				Holder: holders["publisher"], Check: current, Failed: cancel})
 			defer func() {
 				cancel()
 				if installedEndpointFailure(ctx, publisherOwner.Close()) != 0 {

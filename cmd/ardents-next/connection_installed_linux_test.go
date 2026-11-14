@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	publicationruntime "github.com/dianabuilds/ardents-network/internal/successor/publication/runtime"
 	"io"
 	"net"
 	"path/filepath"
@@ -22,11 +23,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
 	"github.com/dianabuilds/ardents-network/internal/successor/connection"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
+	endpointpublisher "github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher"
 	"github.com/dianabuilds/ardents-network/internal/successor/execution"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
-	publicationruntime "github.com/dianabuilds/ardents-network/internal/successor/publication/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
@@ -231,22 +233,22 @@ func runInstalledConnectionAuthenticationFailure(t *testing.T, carrier transport
 		SourceInteriorRoot: filepath.Join(root, "source"), ResponderInteriorRoot: filepath.Join(root, "responder"),
 		HostingRoot: routeProcessBudget(t), Domain: 4, Deadline: end,
 		Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: 64 << 10, Rx: 64 << 10}}
-	published, err := startPublicationHolder(publisherOperation.Context(), plan, routePlan, f.authority, holder, publisherOperation)
+	published, err := endpointpublisher.Open(publisherOperation.Context(), publisherPlan(plan), fundingPlan(routePlan), fundingAuthority(f.authority), holder, publisherOperation)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := published.close(); err != nil && !(boundary == "result" && nonceResultInterruptionOnly(err)) {
+		if err := published.Close(); err != nil && !(boundary == "result" && nonceResultInterruptionOnly(err)) {
 			t.Error(err)
 		}
 	})
 	request, finishRequest := context.WithCancel(ctx)
-	link, err := published.publish(request)
+	link, err := published.Owner().Publish(request)
 	finishRequest() // The accepted Publication outlives this individual request.
 	if err != nil {
 		t.Fatal(err)
 	}
-	publisher, ok := published.owner.(*publicationruntime.Publisher)
+	publisher, ok := published.Owner().(*publicationruntime.Publisher)
 	if !ok {
 		t.Fatal("production composition did not retain its genuine Publisher")
 	}
@@ -342,7 +344,7 @@ func runInstalledConnectionAuthenticationFailure(t *testing.T, carrier transport
 		if closeErr == nil || source.Close() != closeErr {
 			t.Fatal("failed setup lost original retained Source result", boundary, closeErr)
 		}
-		if err := published.close(); err != nil && !(boundary == "result" && nonceResultInterruptionOnly(err)) {
+		if err := published.Close(); err != nil && !(boundary == "result" && nonceResultInterruptionOnly(err)) {
 			t.Fatal("Publisher physical retirement", err)
 		}
 		if boundary == "result" {
@@ -350,7 +352,7 @@ func runInstalledConnectionAuthenticationFailure(t *testing.T, carrier transport
 			if !joined || physical != nil && !nonceResultInterruptionOnly(physical) {
 				t.Fatal("RESULT interrupted Publisher not joined with exact failure", physical, joined)
 			}
-			if physical != nil && !errors.Is(published.close(), physical) {
+			if physical != nil && !errors.Is(published.Close(), physical) {
 				t.Fatal("Publisher Close lost its original physical failure")
 			}
 			t.Log("original RESULT Publisher physical failure retained", physical != nil)
@@ -417,7 +419,7 @@ func runInstalledConnectionAuthenticationFailure(t *testing.T, carrier transport
 		if err := errors.Join(initiator.Close(), result.owner.Close(), source.Close()); err != nil {
 			t.Fatal("original authenticated physical joins", err)
 		}
-		if err := published.close(); err != nil && !(boundary == "result" && nonceResultInterruptionOnly(err)) {
+		if err := published.Close(); err != nil && !(boundary == "result" && nonceResultInterruptionOnly(err)) {
 			t.Fatal("original Publisher withdrawal and physical join", err)
 		}
 
@@ -703,22 +705,22 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			return view, err
 		}
 	}
-	published, err := startPublicationHolder(publisherOperation.Context(), plan, routePlan, publisherAuthority, installedConnectionPublisherStock(t, publisherNetwork, parentLoss, publisherSourceLoss, recoveryStock), publisherOperation)
+	published, err := endpointpublisher.Open(publisherOperation.Context(), publisherPlan(plan), fundingPlan(routePlan), fundingAuthority(publisherAuthority), installedConnectionPublisherStock(t, publisherNetwork, parentLoss, publisherSourceLoss, recoveryStock), publisherOperation)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := published.close(); err != nil && !onlyInstalledConnectionExpectedFailure(err, expectedPublicationClose) && !onlyInstalledConnectionExpectedFailure(err, expectedPublisherClose) && !retainInstalledConnectionCancellation(t, err, expectedCancellation) {
+		if err := published.Close(); err != nil && !onlyInstalledConnectionExpectedFailure(err, expectedPublicationClose) && !onlyInstalledConnectionExpectedFailure(err, expectedPublisherClose) && !retainInstalledConnectionCancellation(t, err, expectedCancellation) {
 			t.Error(err)
 		}
 	})
 	request, finishRequest := context.WithCancel(ctx)
-	link, err := published.publish(request)
+	link, err := published.Owner().Publish(request)
 	finishRequest() // The accepted Publication outlives this individual request.
 	if err != nil {
 		t.Fatal(err)
 	}
-	publisher, ok := published.owner.(*publicationruntime.Publisher)
+	publisher, ok := published.Owner().(*publicationruntime.Publisher)
 	if !ok {
 		t.Fatal("genuine Publisher is absent")
 	}
@@ -781,7 +783,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	source := installedConnectionInitiatorObserved(t, readerNetwork, readerOperation, link, readerEnd, readerObservation, installedReaderRecoveryStock{
 		expectCancellation: expectedCancellation, loseSource: sourceLoss, separateSource: sourceLoss || publisherSourceLoss,
 		reserveSource: recoveryStock, exhausted: stockLoss, expectedClose: sourceExpectedClose})
-	publisherContract, err := publisherTextContract(publisherOperation)
+	publisherContract, err := endpointpublisher.TextContract(publisherOperation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -923,7 +925,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			t.Fatal("authority loss retained physical cleanup failure", err)
 		}
 		expectedSourceClose = source.Close()
-		expectedPublicationClose = published.close()
+		expectedPublicationClose = published.Close()
 		if physical, joined := publisher.CleanupResult(); !joined || physical != nil {
 			t.Fatal("original Publication physical join", physical, joined)
 		}
@@ -947,7 +949,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 			t.Fatal("delayed observation retained physical Stream cleanup failure", err)
 		}
 		expectedSourceClose = source.Close()
-		expectedPublicationClose = published.close()
+		expectedPublicationClose = published.Close()
 		if physical, joined := publisher.CleanupResult(); !joined || physical != nil {
 			t.Fatal("delayed observation original Publication physical join", physical, joined)
 		}
@@ -1265,7 +1267,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		t.Fatal("original joined Text result differs", err)
 	}
 	clear(body)
-	if err := published.close(); err != nil {
+	if err := published.Close(); err != nil {
 		t.Fatal("original Publisher Connection/private retirement", err)
 	}
 	publisherOperation.Close()
@@ -1475,7 +1477,7 @@ func installedConnectionInitiatorObserved(t *testing.T, f *networkAdmissionFixtu
 	})
 	source, err := connection.NewInitiatorSource(connection.InitiatorSourceConfig{Operation: operation, Source: physical,
 		PrepareSource: func(caller context.Context) (prefix.Config, error) {
-			config, err := prepareSelectedPublicationPrefix(caller, routePlan, leg, budget, authority, holder)
+			config, err := funding.PrepareSelectedPrefix(caller, fundingPlan(routePlan), leg, budget, fundingAuthority(authority), holder)
 			if err == nil {
 				physicalPreparations.Add(1)
 			}

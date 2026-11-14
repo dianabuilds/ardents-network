@@ -24,6 +24,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/bootstrap"
@@ -1006,7 +1007,7 @@ func TestRouteIssuerOriginalCallerAtVerifiedDepositTCP(t *testing.T) {
 			defer opened.Close()
 			caller, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			prepare := routeIssuerPreparation(caller, f.authority, holder, leg, 2, nil)
+			prepare := funding.IssuerPreparation(caller, fundingAuthority(f.authority), holder, leg, 2, nil)
 			var verified atomic.Bool
 			err = opened.Issue(caller, plan.Deadline, func(binding routeprefix.IssuerBinding) (routeprefix.IssuerBatch, error) {
 				batch, err := prepare(binding)

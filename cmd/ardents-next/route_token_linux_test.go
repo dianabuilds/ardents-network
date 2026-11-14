@@ -6,11 +6,14 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
@@ -43,7 +46,7 @@ func TestRegistrationStockRetainsIssuerControlForNextForwardTCP(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer budget.Close()
-			source, leg, funding, err := openFundedSource(ctx, plan, selected, budget, f.authority, holder, 3, true, func(err error) {
+			source, leg, flow, err := funding.OpenSource(ctx, fundingPlan(plan), selected, budget, fundingAuthority(f.authority), holder, 3, true, func(err error) {
 				if err != nil {
 					t.Error(err)
 				}
@@ -62,7 +65,7 @@ func TestRegistrationStockRetainsIssuerControlForNextForwardTCP(t *testing.T) {
 			// Two actual admitted exchanges leave one original issuer Control,
 			// matching the stock entering a later Publication refresh.
 			for range 2 {
-				if err := source.Issue(ctx, plan.Deadline, routeIssuerPreparation(ctx, f.authority, holder, leg, uint8(admission.ForwardClass), nil)); err != nil {
+				if err := source.Issue(ctx, plan.Deadline, funding.IssuerPreparation(ctx, fundingAuthority(f.authority), holder, leg, uint8(admission.ForwardClass), nil)); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -71,7 +74,7 @@ func TestRegistrationStockRetainsIssuerControlForNextForwardTCP(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer preparation.Close()
-			controls, err := funding.challenges(uint8(admission.ControlClass), [][32]byte{funding.issuer, funding.issuer})
+			controls, err := fundingChallenges(t, f, uint8(admission.ControlClass), [][32]byte{f.profile.IssuerNodeID, f.profile.IssuerNodeID})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -82,23 +85,38 @@ func TestRegistrationStockRetainsIssuerControlForNextForwardTCP(t *testing.T) {
 			beforeRights := holder.Status().Remaining
 			// Signed recipient stock isolates issuance, not an accepted physical
 			// Registration or JOIN. Those remain genuine Service scenarios.
-			registration, err := funding.challenges(uint8(admission.RegistrationClass), [][32]byte{leg.Entry.NodeID})
-			if err != nil {
+			if err := preparation.Close(); err != nil {
 				t.Fatal(err)
 			}
-			if err := funding.fundMissing(ctx, preparation, source, admission.RegistrationClass, registration, plan.Deadline); err != nil {
+			present := func(id [32]byte, purpose ardp.Purpose) {
+				view, err := f.current()
+				if err != nil {
+					t.Fatal(err)
+				}
+				member, err := view.Member(id, view.ObservedAt())
+				if err != nil {
+					t.Fatal(err)
+				}
+				hello := ardp.Hello{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration,
+					StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, RecipientNodeID: id,
+					RecipientDutyGeneration: member.DutyGeneration, ChannelNonce: [32]byte{1},
+					Deadline: plan.Deadline, Purpose: purpose}
+				if raw, err := flow.Present(ctx, hello); err != nil || len(raw) == 0 {
+					t.Fatal("genuine funded presentation", err)
+				}
+			}
+			present(leg.Entry.NodeID, ardp.PurposeIntroduction)
+			preparation, err = holder.Prepare(ctx)
+			if err != nil {
 				t.Fatal(err)
 			}
 			if missing, err := preparation.Missing(controls); err != nil || len(missing) != 0 {
 				t.Fatal("Registration failed to retain issuer Control for next Forward", len(missing), err)
 			}
-			forward, err := funding.challenges(uint8(admission.ForwardClass), [][32]byte{{77}})
-			if err != nil {
+			if err := preparation.Close(); err != nil {
 				t.Fatal(err)
 			}
-			if err := funding.fundMissing(ctx, preparation, source, admission.ForwardClass, forward, plan.Deadline); err != nil {
-				t.Fatal(err)
-			}
+			present([32]byte{77}, ardp.PurposeDataJoin)
 			if x.ordinaryIssues.Load() != before+3 || x.bootstrapIssues.Load() != 2 || holder.Status().BootstrapRemaining != 0 {
 				t.Fatal("Registration and next Forward required another Control refill or reset bootstrap", x.ordinaryIssues.Load(), before, holder.Status())
 			}
@@ -138,7 +156,7 @@ func TestReaderRoutePreparationFundsNextSourceWithoutBootstrapReset(t *testing.T
 			defer budget.Close()
 			var physicalFailure error
 			retain := func(err error) { physicalFailure = errors.Join(physicalFailure, err) }
-			source, leg, funding, err := openFundedSource(ctx, plan, selected, budget, f.authority, holder, 3, true, retain)
+			source, leg, flow, err := funding.OpenSource(ctx, fundingPlan(plan), selected, budget, fundingAuthority(f.authority), holder, 3, true, retain)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -151,7 +169,7 @@ func TestReaderRoutePreparationFundsNextSourceWithoutBootstrapReset(t *testing.T
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := funding.prepareRoute(ctx, handle, leg.Interior, leg.Entry); err != nil {
+			if err := flow.PrepareRoute(ctx, handle, leg.Interior, leg.Entry); err != nil {
 				t.Fatal(err)
 			}
 			handle.Close()
@@ -165,7 +183,7 @@ func TestReaderRoutePreparationFundsNextSourceWithoutBootstrapReset(t *testing.T
 			// A distinct caller opens from retained genuine unpresented Stock.
 			nextCaller, stop := context.WithCancel(ctx)
 			defer stop()
-			next, _, _, err := openFundedSource(nextCaller, plan, selected, budget, f.authority, holder, 1, true, retain)
+			next, _, _, err := funding.OpenSource(nextCaller, fundingPlan(plan), selected, budget, fundingAuthority(f.authority), holder, 1, true, retain)
 			if err != nil {
 				t.Fatal("next Source attempted exhausted cold bootstrap", err)
 			}
@@ -211,13 +229,13 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceTCP(t *testing.T) {
 			}
 			defer budget.Close()
 			var bootstrapCleanup error
-			source, leg, funding, err := openFundedSource(ctx, plan, selected, budget, f.authority, holder, 3, true,
+			source, leg, flow, err := funding.OpenSource(ctx, fundingPlan(plan), selected, budget, fundingAuthority(f.authority), holder, 3, true,
 				func(err error) { bootstrapCleanup = errors.Join(bootstrapCleanup, err) })
 			if err != nil {
 				t.Fatal("cold genuine Source", err)
 			}
 			defer source.Close()
-			storeChallenge, err := funding.challenges(uint8(admission.ControlClass), [][32]byte{{77}})
+			storeChallenge, err := fundingChallenges(t, f, uint8(admission.ControlClass), [][32]byte{{77}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -236,17 +254,17 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceTCP(t *testing.T) {
 			// Two later openings share selected recipients but each needs its own
 			// Forward presentations. One batch must preserve that multiplicity
 			// without opening either leg or refilling issuer Control.
-			config, err := preparePublicationPrefix(ctx, plan, selected, budget, f.authority, holder)
+			config, err := funding.PreparePrefix(ctx, fundingPlan(plan), selected, budget, fundingAuthority(f.authority), holder)
 			if err != nil {
 				t.Fatal(err)
 			}
-			second, err := preparePublicationPrefix(ctx, plan, selected, budget, f.authority, holder)
+			second, err := funding.PreparePrefix(ctx, fundingPlan(plan), selected, budget, fundingAuthority(f.authority), holder)
 			if err != nil {
 				t.Fatal(err)
 			}
-			second.Present = funding.openingPresentation(second.Leg)
-			config.Present = funding.openingPresentation(config.Leg)
-			if err := funding.prepareInitialOpening(ctx, config.Leg, second.Leg); err != nil {
+			second.Present = flow.OpeningPresentation(second.Leg)
+			config.Present = flow.OpeningPresentation(config.Leg)
+			if err := flow.PrepareInitialOpening(ctx, config.Leg, second.Leg); err != nil {
 				t.Fatal("prepare Forward before physical opening", err)
 			}
 			if x.ordinaryIssues.Load() != 1 {
@@ -255,11 +273,6 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceTCP(t *testing.T) {
 			// A separate preparation may hold the issuance gate. Already funded
 			// real openings must consume their own tokens without waiting for it.
 			func() {
-				release, err := funding.beginPresentation(ctx)
-				if err != nil {
-					t.Fatal(err)
-				}
-				defer release()
 				preparation, err := holder.Prepare(ctx)
 				if err != nil {
 					t.Fatal(err)
@@ -282,7 +295,7 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceTCP(t *testing.T) {
 				t.Fatal("two prepared openings repeated issuance or changed finite allowance", x.ordinaryIssues.Load(), holder.Status())
 			}
 			// Replenish the consumed rights through a separate genuine exchange.
-			if err := source.Issue(ctx, plan.Deadline, routeIssuerPreparation(ctx, f.authority, holder, leg, uint8(admission.ForwardClass), nil)); err != nil {
+			if err := source.Issue(ctx, plan.Deadline, funding.IssuerPreparation(ctx, fundingAuthority(f.authority), holder, leg, uint8(admission.ForwardClass), nil)); err != nil {
 				t.Fatal("actual admitted issuer exchange", err)
 			}
 			if x.ordinaryIssues.Load() != 2 || x.bootstrapIssues.Load() != 2 || holder.Status().Remaining[1] != 2 {
@@ -303,14 +316,14 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceTCP(t *testing.T) {
 			// Entry has one token, but it appears both as this fixture's requested
 			// recipient and as the next Source recipient. Fund the genuine deficit
 			// without presenting that next opening or renewing bootstrap.
-			if err := funding.prepareRoute(ctx, handle, leg.Interior, leg.Entry); err != nil {
+			if err := flow.PrepareRoute(ctx, handle, leg.Interior, leg.Entry); err != nil {
 				t.Fatal("prepare existing Forward", err)
 			}
 			if x.ordinaryIssues.Load() != 4 || holder.Status().Remaining != [3]uint32{2, 1, 0} {
 				t.Fatal("prepared current recipient and next Source changed exact finite debit", x.ordinaryIssues.Load(), holder.Status())
 			}
 			before := holder.Status()
-			if err := funding.prepareRoute(ctx, handle, leg.Interior, leg.Entry); err != nil {
+			if err := flow.PrepareRoute(ctx, handle, leg.Interior, leg.Entry); err != nil {
 				t.Fatal("reuse unpresented prepared Stock", err)
 			}
 			if x.ordinaryIssues.Load() != 4 || holder.Status().Remaining != before.Remaining {
@@ -318,13 +331,13 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceTCP(t *testing.T) {
 			}
 			canceled, stop := context.WithCancel(ctx)
 			stop()
-			if err := funding.prepareRoute(canceled, handle, leg.Interior, leg.Entry); !errors.Is(err, context.Canceled) {
+			if err := flow.PrepareRoute(canceled, handle, leg.Interior, leg.Entry); !errors.Is(err, context.Canceled) {
 				t.Fatal("canceled preparation accepted", err)
 			}
 			if x.ordinaryIssues.Load() != 4 || holder.Status().Remaining != before.Remaining || holder.Status().BootstrapRemaining != 0 {
 				t.Fatal("canceled preparation changed finite allowance", holder.Status())
 			}
-			if err := funding.prepareJoin(canceled, handle, leg.Entry); !errors.Is(err, context.Canceled) {
+			if err := flow.PrepareJoin(canceled, handle, leg.Entry); !errors.Is(err, context.Canceled) {
 				t.Fatal("canceled JOIN Stock preparation accepted", err)
 			}
 			// A recipient outside the opened leg has no Forward yet. Funding
@@ -341,7 +354,7 @@ func TestFundedSourceBootstrapAndAdmittedIssuanceTCP(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := funding.prepareJoin(ctx, handle, duty); err != nil {
+				if err := flow.PrepareJoin(ctx, handle, duty); err != nil {
 					t.Fatal("prepare missing Forward", err)
 				}
 				if x.ordinaryIssues.Load() != 6 || holder.Status().Remaining != [3]uint32{0, 0, 0} || x.bootstrapIssues.Load() != 2 {
@@ -371,7 +384,7 @@ func TestRouteIssuerDraftCannotBypassFreshStockObservation(t *testing.T) {
 	holder := routePermissionStock(t, f, admission.AllocationUser, [3]uint32{8, 8, 0})
 	before := holder.Status()
 	authority := f.authorityLosingClockAfterDraft(t)
-	prepare := routeIssuerPreparation(t.Context(), authority, holder, selection.Leg{}, uint8(admission.ForwardClass), [][32]byte{f.receiver.NodeID})
+	prepare := funding.IssuerPreparation(t.Context(), fundingAuthority(authority), holder, selection.Leg{}, uint8(admission.ForwardClass), [][32]byte{f.receiver.NodeID})
 	batch, err := prepare(prefix.IssuerBinding{ID: [32]byte{1}, ProfileDigest: f.profile.Digest,
 		Deadline: time.Now().Add(5 * time.Second).UTC().Truncate(time.Second), Bootstrap: true})
 	if err == nil || len(batch.Request) != 0 || batch.Complete != nil {
@@ -387,29 +400,58 @@ func TestRouteIssuerDraftCannotBypassFreshStockObservation(t *testing.T) {
 // retain that failure, without falling through to the deliberately occupied
 // preparation or trying to obtain replacement rights.
 func TestFundedPresentationDoesNotPrepareAfterAuthorityFailure(t *testing.T) {
-	f := newNetworkAdmissionFixture(t)
+	x := newRouteIssuerFixture(t, transport.ClosedCarrierTCP, nil, nil, nil, nil, true)
+	f := x.network
 	holder := routePermissionStock(t, f, admission.AllocationUser, [3]uint32{8, 8, 0})
-	preparation, err := holder.Prepare(t.Context())
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	root := t.TempDir()
+	plan := routePrefixPlan{EntryRoot: filepath.Join(root, "entry"), InteriorRoot: filepath.Join(root, "interior"),
+		HostingRoot: routeProcessBudget(t), Domain: 1, Deadline: time.Now().Add(25 * time.Second).UTC().Truncate(time.Second),
+		Work: hosting.Traffic{Tx: 2 << 20, Rx: 2 << 20}, Termination: hosting.Traffic{Tx: admission.ControlClass.ByteLimit(), Rx: admission.ControlClass.ByteLimit()}}
+	selected, err := selection.Open(selection.Config{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot, Domain: 1, Current: f.current})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer selected.Close()
+	budget, err := hosting.Open(plan.HostingRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer budget.Close()
+	authority := f.authority
+	var loseClock atomic.Bool
+	authority.presentation = func(presentation stock.Presentation) error {
+		if err := f.authority.presentation(presentation); err != nil {
+			return err
+		}
+		if loseClock.Load() {
+			f.clockUnavailable.Store(true)
+		}
+		return nil
+	}
+	defer f.clockUnavailable.Store(false)
+	source, _, flow, err := funding.OpenSource(ctx, fundingPlan(plan), selected, budget, fundingAuthority(authority), holder, 3, true, func(err error) {
+		if err != nil {
+			t.Error(err)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer source.Close()
+	preparation, err := holder.Prepare(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer preparation.Close()
 	before := holder.Status()
-	authority := f.authority
-	authority.presentation = func(presentation stock.Presentation) error {
-		if err := f.authority.presentation(presentation); err != nil {
-			return err
-		}
-		f.clockUnavailable.Store(true)
-		return nil
-	}
-	defer f.clockUnavailable.Store(false)
-	flow := &routeTokenFlow{holder: holder, authority: authority, issuer: f.profile.IssuerNodeID}
+	loseClock.Store(true)
 	hello := ardp.Hello{NetworkID: f.profile.NetworkID, StateGeneration: f.profile.StateGeneration,
 		StateDigest: f.profile.StateDigest, ProfileDigest: f.profile.Digest, RecipientNodeID: f.receiver.NodeID,
 		RecipientDutyGeneration: f.receiver.DutyGeneration, ChannelNonce: [32]byte{1},
 		Deadline: time.Now().Add(5 * time.Second).UTC().Truncate(time.Second), Purpose: ardp.PurposeDataJoin}
-	raw, err := flow.present(t.Context(), hello)
+	raw, err := flow.Present(ctx, hello)
 	if !f.clockUnavailable.Load() || len(raw) != 0 || err == nil || err.Error() == "stock preparation unavailable" {
 		t.Fatal("fresh Stock authority failure reached preparation or returned bytes", err)
 	}
@@ -417,4 +459,24 @@ func TestFundedPresentationDoesNotPrepareAfterAuthorityFailure(t *testing.T) {
 	if after.Pending || after.Remaining != before.Remaining || after.BootstrapRemaining != before.BootstrapRemaining {
 		t.Fatal("authority failure changed the original finite allocation", before, after)
 	}
+}
+
+// Inspect genuine holder inventory independently of funding's private challenge builder.
+func fundingChallenges(t *testing.T, f *networkAdmissionFixture, class uint8, receivers [][32]byte) ([]token.ClosedTokenContext, error) {
+	t.Helper()
+	view, err := f.current()
+	if err != nil {
+		return nil, err
+	}
+	var challenges []token.ClosedTokenContext
+	for _, id := range receivers {
+		member, err := view.Member(id, view.ObservedAt())
+		if err != nil {
+			return nil, err
+		}
+		challenges = append(challenges, token.ClosedTokenContext{NetworkID: f.profile.NetworkID,
+			ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: id,
+			ReceiverDutyGeneration: member.DutyGeneration, Class: class, WindowStart: view.ObservedAt().UTC().Truncate(time.Hour)})
+	}
+	return challenges, nil
 }

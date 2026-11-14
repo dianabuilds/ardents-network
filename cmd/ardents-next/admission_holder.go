@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	endpointpublisher "github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
@@ -114,15 +115,15 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 	var prefix routeHandle
 	var routeContext routeJoinContext
 	var registration routeRegistration
-	var publisher publicationHandle
+	var publisher endpointpublisher.Publication
 	var joined net.Conn
 	// This console session is the exact local context. Prefix/worker retirement
 	// does not clear its private lookup facts; final context closure does.
 	lookupHistory := &reachability.History{}
 	closeRoute := func() error {
 		var result error
-		if publisher.close != nil {
-			result = retainCleanup(publisher.close())
+		if publisher.Owner() != nil {
+			result = retainCleanup(publisher.Close())
 		}
 		if joined != nil {
 			result = retainCleanup(joined.Close())
@@ -167,7 +168,7 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 		result := map[string]any{"outcome": "completed"}
 		switch c.Operation {
 		case "publication-open":
-			if publisher.close != nil || prefix.close != nil || routeContext.close != nil || config.Publication == nil {
+			if publisher.Owner() != nil || prefix.close != nil || routeContext.close != nil || config.Publication == nil {
 				err = errors.New("live Publisher original context unavailable")
 				break
 			}
@@ -176,37 +177,37 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 				err = errors.New("qualified snapshot Publisher operation absent")
 				break
 			}
-			publisher, err = startPublicationHolder(operation.Context(), *config.Publication, *config.Route, authority, o, operation)
+			publisher, err = endpointpublisher.Open(operation.Context(), publisherPlan(*config.Publication), fundingPlan(*config.Route), fundingAuthority(authority), o, operation)
 		case "publication-publish":
-			if publisher.owner == nil {
+			if publisher.Owner() == nil {
 				err = errors.New("live Publisher absent")
 				break
 			}
-			result["link"], err = publisher.publish(ctx)
+			result["link"], err = publisher.Owner().Publish(ctx)
 		case "publication-refresh":
-			if publisher.owner == nil {
+			if publisher.Owner() == nil {
 				err = errors.New("live Publisher absent")
 				break
 			}
-			result["link"], err = publisher.refresh(ctx)
+			result["link"], err = publisher.Owner().Refresh(ctx)
 		case "publication-link":
-			if publisher.owner == nil {
+			if publisher.Owner() == nil {
 				err = errors.New("live Publisher absent")
 				break
 			}
-			result["link"], err = publisher.link(ctx)
+			result["link"], err = publisher.Owner().Link(ctx)
 		case "publication-withdraw":
-			if publisher.owner == nil {
+			if publisher.Owner() == nil {
 				err = errors.New("live Publisher absent")
 				break
 			}
-			err = retainCleanup(publisher.withdraw(ctx))
+			err = retainCleanup(publisher.Owner().Withdraw(ctx))
 		case "publication-serve":
-			if publisher.owner == nil || publisher.serve == nil {
+			if publisher.Owner() == nil {
 				err = errors.New("qualified Text Publisher is unavailable")
 				break
 			}
-			err = publisher.serve(ctx)
+			err = publisher.Serve(ctx)
 		case "descriptor-publish":
 			if prefix.publishDescriptor == nil {
 				err = errors.New("route Descriptor publication unavailable")
@@ -302,7 +303,7 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 				registration = routeRegistration{}
 			}
 		case "prefix-open", "join-prefix-open", "bootstrap-open":
-			if publisher.close != nil {
+			if publisher.Owner() != nil {
 				err = errors.New("live Publisher retains its original Route context")
 				break
 			}

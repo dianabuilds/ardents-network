@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package funding
 
 import (
 	"context"
@@ -19,12 +19,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 )
 
-// routeTokenFlow obtains stock only for this original operation's requested
+// Flow obtains stock only for this original operation's requested
 // channels. Source, selection, authority and provider budget remain real owners.
-type routeTokenFlow struct {
-	authority     admissionAuthority
+type Flow struct {
+	authority     Authority
 	holder        *stock.Owner
-	plan          routePrefixPlan
+	plan          Plan
 	leg           selection.Leg
 	issuer        [32]byte
 	mu            sync.Mutex
@@ -35,7 +35,7 @@ type routeTokenFlow struct {
 	retain        func(error)
 }
 
-func (flow *routeTokenFlow) challenges(class uint8, receivers [][32]byte) ([]token.ClosedTokenContext, error) {
+func (flow *Flow) challenges(class uint8, receivers [][32]byte) ([]token.ClosedTokenContext, error) {
 	view, err := flow.authority.current()
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (flow *routeTokenFlow) challenges(class uint8, receivers [][32]byte) ([]tok
 	return result, nil
 }
 
-func (flow *routeTokenFlow) bootstrap(ctx context.Context, budget *hosting.Budget, preparation *stock.Preparation, controlReceivers [][32]byte) (result error) {
+func (flow *Flow) bootstrap(ctx context.Context, budget *hosting.Budget, preparation *stock.Preparation, controlReceivers [][32]byte) (result error) {
 	if len(controlReceivers) < 1 || len(controlReceivers) > admission.MaximumBatchTokens {
 		return errors.New("initial issuer Control stock count invalid")
 	}
@@ -98,31 +98,31 @@ func (flow *routeTokenFlow) bootstrap(ctx context.Context, budget *hosting.Budge
 	for _, challenge := range missing {
 		receivers = append(receivers, challenge.ReceiverNodeID)
 	}
-	if err := physical.Issue(ctx, end, routeIssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
+	if err := physical.Issue(ctx, end, IssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
 		uint8(admission.ForwardClass), receivers, preparation)); err != nil {
 		return err
 	}
 	// The second finite batch funds only the requested Control stock. It
 	// reaches the issuer, never the private recipients or an upgraded child.
-	return physical.Issue(ctx, end, routeIssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
+	return physical.Issue(ctx, end, IssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
 		uint8(admission.ControlClass), controlReceivers, preparation))
 }
 
-func (flow *routeTokenFlow) present(ctx context.Context, hello ardp.Hello) (_ []byte, result error) {
+func (flow *Flow) Present(ctx context.Context, hello ardp.Hello) (_ []byte, result error) {
 	return flow.presentRequested(ctx, hello, [][32]byte{hello.RecipientNodeID})
 }
 
-// openingPresentation funds the two already selected forwarding recipients in
+// OpeningPresentation funds the two already selected forwarding recipients in
 // one class-specific batch at the first actual presentation. Later refills and
 // terminal roles retain their ordinary on-demand presentation. Only the missing
 // stock is issued; each token is still durably presented at its own HELLO.
-func (flow *routeTokenFlow) openingPresentation(leg selection.Leg) role.Presentation {
+func (flow *Flow) OpeningPresentation(leg selection.Leg) role.Presentation {
 	var first sync.Once
 	return func(ctx context.Context, hello ardp.Hello) ([]byte, error) {
 		opening := false
 		first.Do(func() { opening = true })
 		if !opening || hello.Purpose != ardp.PurposeForwarding || hello.RecipientNodeID != leg.Entry.NodeID {
-			return flow.present(ctx, hello)
+			return flow.Present(ctx, hello)
 		}
 		// The second recipient has not sent its HELLO yet. Reobserve its exact
 		// retained duty before requesting stock; a changed member cannot renew
@@ -135,7 +135,7 @@ func (flow *routeTokenFlow) openingPresentation(leg selection.Leg) role.Presenta
 	}
 }
 
-func (flow *routeTokenFlow) presentRequested(ctx context.Context, hello ardp.Hello, requestedReceivers [][32]byte) (_ []byte, result error) {
+func (flow *Flow) presentRequested(ctx context.Context, hello ardp.Hello, requestedReceivers [][32]byte) (_ []byte, result error) {
 	presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration,
 		StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID,
 		RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
@@ -208,7 +208,7 @@ func (flow *routeTokenFlow) presentRequested(ctx context.Context, hello ardp.Hel
 // preparation through the joined issuance and final Take, retaining each
 // original caller's cancellation. The issuer's already funded Control path
 // above must bypass this coordination: it is borrowed by the active issuance.
-func (flow *routeTokenFlow) beginPresentation(ctx context.Context) (func(), error) {
+func (flow *Flow) beginPresentation(ctx context.Context) (func(), error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -230,8 +230,8 @@ func (flow *routeTokenFlow) beginPresentation(ctx context.Context) (func(), erro
 	return func() { <-presenting }, nil
 }
 
-func openFundedSource(ctx context.Context, plan routePrefixPlan, selected *selection.Owner, budget *hosting.Budget,
-	authority admissionAuthority, holder *stock.Owner, controls int, resolution bool, retain func(error)) (_ *prefix.Prefix, _ selection.Leg, _ *routeTokenFlow, result error) {
+func OpenSource(ctx context.Context, plan Plan, selected *selection.Owner, budget *hosting.Budget,
+	authority Authority, holder *stock.Owner, controls int, resolution bool, retain func(error)) (_ *prefix.Prefix, _ selection.Leg, _ *Flow, result error) {
 	if retain == nil {
 		return nil, selection.Leg{}, nil, errors.New("original Source cleanup owner absent")
 	}
@@ -240,11 +240,11 @@ func openFundedSource(ctx context.Context, plan routePrefixPlan, selected *selec
 		return nil, selection.Leg{}, nil, err
 	}
 	defer func() { result = errors.Join(result, preparation.Close()) }()
-	config, err := preparePublicationPrefix(ctx, plan, selected, budget, authority, holder)
+	config, err := PreparePrefix(ctx, plan, selected, budget, authority, holder)
 	if err != nil {
 		return nil, selection.Leg{}, nil, err
 	}
-	flow := &routeTokenFlow{authority: authority, holder: holder, plan: plan, leg: config.Leg, initial: preparation, retain: retain}
+	flow := &Flow{authority: authority, holder: holder, plan: plan, leg: config.Leg, initial: preparation, retain: retain}
 	view, err := authority.current()
 	if err != nil {
 		return nil, selection.Leg{}, nil, errors.Join(err, config.Release())
@@ -273,7 +273,7 @@ func openFundedSource(ctx context.Context, plan routePrefixPlan, selected *selec
 	if err := flow.bootstrap(ctx, budget, preparation, controlReceivers); err != nil {
 		return nil, selection.Leg{}, nil, errors.Join(err, config.Release())
 	}
-	config.Present = flow.present
+	config.Present = flow.Present
 	physical, err := prefix.Open(ctx, config)
 	if err != nil {
 		return nil, selection.Leg{}, nil, errors.Join(err, config.Release())
@@ -282,4 +282,13 @@ func openFundedSource(ctx context.Context, plan routePrefixPlan, selected *selec
 	flow.source, flow.initial = physical, nil
 	flow.mu.Unlock()
 	return physical, config.Leg, flow, nil
+}
+
+// FollowSource binds the live Publisher's retained Source acquisition after
+// original construction transfers it. Funding never resolves another Source
+// while preparing an already acquired generation.
+func (flow *Flow) FollowSource(current func(context.Context) (*prefix.SourceHandle, error)) {
+	flow.mu.Lock()
+	flow.currentSource = current
+	flow.mu.Unlock()
 }

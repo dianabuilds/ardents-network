@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package publisher
 
 import (
 	"context"
@@ -11,22 +11,23 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 )
 
-// installedPublisher serializes local Administration handoffs. Publication
+// Publisher serializes local Administration handoffs. Publication
 // still owns readiness/refresh/withdrawal and Instance authority; Execution
 // owns the original snapshot worker, and Route owns its shared resources.
-type installedPublisher struct {
+type Publisher struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
 	local         *executionruntime.Owner
 	principal     [32]byte
-	plan          publicationPlan
-	routePlan     routePrefixPlan
-	routes        *installedRouteOwners
-	authority     admissionAuthority
+	plan          Plan
+	routePlan     funding.Plan
+	routes        *funding.Parents
+	authority     funding.Authority
 	holder        *stock.Owner
 	check         func() error
 	failed        context.CancelFunc
@@ -36,14 +37,14 @@ type installedPublisher struct {
 	withdrawing   bool
 	pendingCancel context.CancelFunc
 	pendingDone   chan struct{}
-	active        *installedPublished
+	active        *published
 	flights       sync.WaitGroup
 	once          sync.Once
 	result        error
 }
 
-type installedPublished struct {
-	handle    publicationHandle
+type published struct {
+	handle    Publication
 	operation *executionruntime.Operation
 	worker    *executionruntime.Invocation
 	cancel    context.CancelFunc
@@ -55,12 +56,12 @@ type installedPublished struct {
 	result    error
 }
 
-func (owner *installedPublisher) Publish(context.Context) error {
+func (owner *Publisher) Publish(context.Context) error {
 	return errors.New("text publication requires an authorized snapshot")
 }
 
-func (owner *installedPublisher) PublishSnapshot(caller context.Context, snapshot []byte) (result error) {
-	if owner == nil || caller == nil || owner.ctx == nil || owner.local == nil || owner.holder == nil || owner.check == nil || owner.authority.current == nil || !owner.routes.matches(owner.routePlan) {
+func (owner *Publisher) PublishSnapshot(caller context.Context, snapshot []byte) (result error) {
+	if owner == nil || caller == nil || owner.ctx == nil || owner.local == nil || owner.holder == nil || owner.check == nil || !owner.authority.Available() || !owner.routes.Matches(owner.routePlan) {
 		return errors.New("installed Publisher is unavailable")
 	}
 	if err := errors.Join(caller.Err(), owner.ctx.Err(), owner.check()); err != nil {
@@ -87,7 +88,7 @@ func (owner *installedPublisher) PublishSnapshot(caller context.Context, snapsho
 		owner.mu.Unlock()
 		owner.flights.Done()
 	}()
-	candidate := &installedPublished{cancel: setupCancel, served: make(chan struct{})}
+	candidate := &published{cancel: setupCancel, served: make(chan struct{})}
 	callbackDone := make(chan struct{})
 	stopCaller := context.AfterFunc(caller, func() { defer close(callbackDone); setupCancel() })
 	var callerOnce sync.Once
@@ -104,7 +105,7 @@ func (owner *installedPublisher) PublishSnapshot(caller context.Context, snapsho
 			result = errors.Join(result, candidate.Close())
 		}
 	}()
-	view, err := owner.authority.current()
+	view, err := owner.authority.Current()
 	if err := errors.Join(err, ctx.Err(), owner.check()); err != nil {
 		return err
 	}
@@ -127,8 +128,8 @@ func (owner *installedPublisher) PublishSnapshot(caller context.Context, snapsho
 		return err
 	}
 	authority := owner.authority
-	originalCurrent := authority.current
-	authority.current = func() (network.RuntimeView, error) {
+	originalCurrent := authority.Current
+	current := func() (network.RuntimeView, error) {
 		// The installed authority already reobserves the original Startup on
 		// both sides of CurrentRuntime. Add only this operation's live rights;
 		// repeating the same full installed observation here doubles native I/O
@@ -139,11 +140,12 @@ func (owner *installedPublisher) PublishSnapshot(caller context.Context, snapsho
 		view, err := originalCurrent()
 		return view, errors.Join(err, ctx.Err(), candidate.operation.CheckPublisher())
 	}
-	candidate.handle, err = startPublicationHolder(candidate.operation.Context(), owner.plan, plan, authority, owner.holder, candidate.operation, owner.routes)
+	authority = funding.Observe(current, authority.Witness, authority.Presentation)
+	candidate.handle, err = Open(candidate.operation.Context(), owner.plan, plan, authority, owner.holder, candidate.operation, owner.routes)
 	if err != nil {
 		return err
 	}
-	if _, err := candidate.handle.publish(caller); err != nil {
+	if _, err := candidate.handle.owner.Publish(caller); err != nil {
 		return err
 	}
 	if err := errors.Join(caller.Err(), ctx.Err(), owner.check(), candidate.operation.CheckPublisher()); err != nil {
@@ -164,7 +166,7 @@ func (owner *installedPublisher) PublishSnapshot(caller context.Context, snapsho
 	owner.pendingCancel, owner.pendingDone = nil, nil
 	candidate.started = true
 	go func() {
-		candidate.serveErr = candidate.handle.serve(ctx)
+		candidate.serveErr = candidate.handle.Serve(ctx)
 		unexpected := ctx.Err() == nil && !candidate.retiring.Load()
 		close(candidate.served)
 		// Join a failed/expired consumer without requiring another local IPC
@@ -180,7 +182,7 @@ func (owner *installedPublisher) PublishSnapshot(caller context.Context, snapsho
 	return nil
 }
 
-func (owner *installedPublisher) PublishedLink(caller context.Context) (_ string, result error) {
+func (owner *Publisher) PublishedLink(caller context.Context) (_ string, result error) {
 	if caller == nil || owner == nil || owner.ctx == nil || owner.local == nil || owner.check == nil {
 		return "", errors.New("installed Publication is unavailable")
 	}
@@ -199,14 +201,14 @@ func (owner *installedPublisher) PublishedLink(caller context.Context) (_ string
 	if closed || active == nil {
 		return "", errors.New("installed Publication is unavailable")
 	}
-	link, err := active.handle.link(request.Context())
+	link, err := active.handle.owner.Link(request.Context())
 	if checked := errors.Join(err, request.Check(), caller.Err(), owner.ctx.Err(), owner.check()); checked != nil {
 		return "", checked
 	}
 	return link, nil
 }
 
-func (owner *installedPublisher) Withdraw(caller context.Context) (result error) {
+func (owner *Publisher) Withdraw(caller context.Context) (result error) {
 	if owner == nil || caller == nil || owner.ctx == nil || owner.local == nil || owner.check == nil {
 		return errors.New("installed Publication is unavailable")
 	}
@@ -247,15 +249,15 @@ func (owner *installedPublisher) Withdraw(caller context.Context) (result error)
 		return errors.Join(request.Check(), caller.Err(), owner.ctx.Err(), owner.check())
 	}
 	active.retiring.Store(true)
-	return errors.Join(active.handle.withdraw(request.Context()), active.Close(), request.Check(), caller.Err(), owner.ctx.Err(), owner.check())
+	return errors.Join(active.handle.owner.Withdraw(request.Context()), active.Close(), request.Check(), caller.Err(), owner.ctx.Err(), owner.check())
 }
 
-func (publication *installedPublished) Close() error {
+func (publication *published) Close() error {
 	publication.retiring.Store(true)
 	publication.once.Do(func() {
 		publication.cancel()
-		if publication.handle.close != nil {
-			publication.result = publication.handle.close()
+		if publication.handle.owner != nil {
+			publication.result = publication.handle.Close()
 		}
 		if publication.operation != nil {
 			publication.operation.Close()
@@ -273,7 +275,7 @@ func (publication *installedPublished) Close() error {
 	return publication.result
 }
 
-func (owner *installedPublisher) Close() error {
+func (owner *Publisher) Close() error {
 	if owner == nil {
 		return nil
 	}
@@ -294,4 +296,27 @@ func (owner *installedPublisher) Close() error {
 		}
 	})
 	return owner.result
+}
+
+// Config binds the original installed participant. This coordinator borrows
+// its Execution, Network, Stock and Parents; Close joins only its Publications.
+type Config struct {
+	Context   context.Context
+	Local     *executionruntime.Owner
+	Principal [32]byte
+	Plan      Plan
+	Route     funding.Plan
+	Parents   *funding.Parents
+	Authority funding.Authority
+	Holder    *stock.Owner
+	Check     func() error
+	Failed    context.CancelFunc
+}
+
+// New retains one participant lifetime. Snapshot authority is checked afresh
+// through Execution and Publication for every actual PublishSnapshot.
+func New(c Config) *Publisher {
+	ctx, cancel := context.WithCancel(c.Context)
+	return &Publisher{ctx: ctx, cancel: cancel, local: c.Local, principal: c.Principal, plan: c.Plan,
+		routePlan: c.Route, routes: c.Parents, authority: c.Authority, holder: c.Holder, check: c.Check, failed: c.Failed}
 }

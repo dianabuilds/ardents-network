@@ -952,6 +952,25 @@ bounds and terminal result; no late completion can act on a replacement.
 | Software acceptance | Enrollment first-pin/inventory; Release authentication and monotonic floors; installation/replacement journal and generation ownership | Enrollment cannot sign or install; Release authorizes exact bytes but cannot download/activate. Installation authenticates fixed resources, joins its predecessor and completes its own transaction before runtime admission; ordinary Job cleanup does not own replacement |
 | Authority Custody | Purpose-specific encrypted vault/recovery record, approved signing commitment and retained authority floors; separate authority kinds | Custody owns unlock, secret erasure and durable successor-before-response. Service Credential issuance retains its own purpose-specific approval/generation policy; Admission supplies allocation rules. No generic Sign or shared right across Service, Admission, State, Name and Release. Runtime Instance/Node keys stay outside the vault authority owner |
 
+### Endpoint application composition
+
+`internal/successor/endpoint/funding` coordinates original Source Stock
+preparation/issuance/presentation and retains shared Entry/Hosting parents.
+`endpoint/reader` owns the qualified request's Source, lookup history, selected
+roles, stream handoff and joined local result. `endpoint/publisher` owns snapshot
+launch, pending/active handoff, Source/Introduction/Responder composition,
+Instance/history borrows, serving and joined withdrawal. These are application
+scenario boundaries, not new semantic domains. Their sole command consumer
+remains `cmd/ardents-next`, including its installed participant invocation.
+
+Admission retains finite allocation and irreversible presentation/debit; Network
+retains live authority; Route retains selection and physical join; Execution
+retains worker admission/results; Publication retains readiness/refresh/replay;
+Connection retains logical bytes and recovery. The original participant joins
+all requests/publications before closing shared parents, Stock and authority.
+CLI schemas, output and startup stay in the command. Splitting these lifetimes
+changes neither accepted persisted/wire bytes nor installed qualification.
+
 ## Responsibilities outside the selected transition
 
 **Naming is an explicit future separate model:** Service Name to authenticated

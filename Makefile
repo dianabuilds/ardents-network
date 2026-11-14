@@ -449,7 +449,7 @@ installation-native-compile-check:
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/successor/network/... ./internal/successor/admission/... ./internal/successor/hosting ./internal/successor/publication/... ./internal/successor/connection/... ./internal/successor/reachability/... ./internal/successor/enrollment/... ./internal/successor/release/... ./internal/successor/installation/... ./internal/successor/execution/... ./internal/successor/route/... ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/successor/network/... ./internal/successor/admission/... ./internal/successor/hosting ./internal/successor/publication/... ./internal/successor/connection/... ./internal/successor/reachability/... ./internal/successor/enrollment/... ./internal/successor/release/... ./internal/successor/installation/... ./internal/successor/execution/... ./internal/successor/route/... ./internal/successor/endpoint/funding ./internal/successor/endpoint/reader ./internal/successor/endpoint/publisher ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired)$$' -count=1
 
 hosting-check:

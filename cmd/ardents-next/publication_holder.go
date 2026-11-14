@@ -1,35 +1,12 @@
 package main
 
-import "context"
+import endpointpublisher "github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher"
 
 type publicationPlan struct {
 	InstanceRoot string `json:"instance_root"`
 	Root         string `json:"root"`
 }
 
-type publicationHandle struct {
-	owner interface {
-		Publish(context.Context) (string, error)
-		Refresh(context.Context) (string, error)
-		Link(context.Context) (string, error)
-		Withdraw(context.Context) error
-	}
-	close func() error
-	serve func(context.Context) error
-}
-
-func (holder publicationHandle) publish(ctx context.Context) (string, error) {
-	return holder.owner.Publish(ctx)
-}
-
-func (holder publicationHandle) refresh(ctx context.Context) (string, error) {
-	return holder.owner.Refresh(ctx)
-}
-
-func (holder publicationHandle) link(ctx context.Context) (string, error) {
-	return holder.owner.Link(ctx)
-}
-
-func (holder publicationHandle) withdraw(ctx context.Context) error {
-	return holder.owner.Withdraw(ctx)
+func publisherPlan(plan publicationPlan) endpointpublisher.Plan {
+	return endpointpublisher.Plan{InstanceRoot: plan.InstanceRoot, Root: plan.Root}
 }

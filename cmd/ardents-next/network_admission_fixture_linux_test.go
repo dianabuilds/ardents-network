@@ -21,6 +21,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/epoch"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
@@ -71,7 +72,7 @@ func TestNetworkIssuanceDraftRetainsExactBindingsAndHorizons(t *testing.T) {
 		ProfileDigest: f.profile.Digest, IssuerNodeID: f.profile.IssuerNodeID, ReceiverNodeID: f.receiver.NodeID,
 		ReceiverDutyGeneration: f.receiver.DutyGeneration, Class: 2, WindowStart: view.ObservedAt().UTC().Truncate(time.Hour)}},
 		Selection: stock.ExchangeBinding{ID: [32]byte{1}, ProfileDigest: f.profile.Digest}, Bootstrap: true, Deadline: deadline}
-	if err := validateNetworkIssuanceIntent(view, intent); err != nil {
+	if err := funding.ValidateIntent(view, intent); err != nil {
 		t.Fatal("valid same-observation draft refused", err)
 	}
 	for _, boundary := range []string{"profile", "network", "issuer", "receiver", "duty", "expired", "horizon"} {
@@ -94,7 +95,7 @@ func TestNetworkIssuanceDraftRetainsExactBindingsAndHorizons(t *testing.T) {
 			case "horizon":
 				changed.Deadline = f.profile.NotAfter.Add(time.Second)
 			}
-			if err := validateNetworkIssuanceIntent(view, changed); err == nil {
+			if err := funding.ValidateIntent(view, changed); err == nil {
 				t.Fatal("changed observed issuance binding accepted")
 			}
 		})

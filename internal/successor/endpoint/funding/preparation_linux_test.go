@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package funding
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 // issuance or transport. The installed pair exercises the actual presentations.
 func TestRouteTokenConcurrentPreparationWaitsAndRetainsCancellation(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		flow := &routeTokenFlow{holder: &stock.Owner{}}
+		flow := &Flow{holder: &stock.Owner{}}
 		release, err := flow.beginPresentation(t.Context())
 		if err != nil {
 			t.Fatal(err)

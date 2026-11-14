@@ -7,8 +7,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
-	routeprefix "github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
-	routereceiver "github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
 	"io"
 	"os"
 	"sync"
@@ -20,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
@@ -27,7 +26,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/capsule"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
-
+	routeprefix "github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 )
@@ -175,7 +175,7 @@ func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admis
 			return proof.Bytes(), nil
 		}, issue: func(ctx context.Context, class uint8, receivers [][32]byte) error {
 			end := minRouteDeadline(plan.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
-			return prefix.Issue(ctx, end, routeIssuerPreparation(ctx, authority, holder, leg, class, receivers))
+			return prefix.Issue(ctx, end, funding.IssuerPreparation(ctx, fundingAuthority(authority), holder, leg, class, receivers))
 		}, register: func(ctx context.Context, revision uint64) (routeRegistration, error) {
 			view, err := authority.current()
 			if err != nil {

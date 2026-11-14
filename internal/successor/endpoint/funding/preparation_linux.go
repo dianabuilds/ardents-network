@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package funding
 
 import (
 	"context"
@@ -22,10 +22,10 @@ type routeStockIssuer interface {
 	Issue(context.Context, time.Time, func(prefix.IssuerBinding) (prefix.IssuerBatch, error)) error
 }
 
-// prepareInitialOpening funds the retained Publication legs in one batch
-// before any of their role channels open. The initial Source is still owned by command construction;
+// PrepareInitialOpening funds the retained Publication legs in one batch
+// before any of their role channels open. The initial Source is still owned by Publisher construction;
 // live Publication replacement must acquire its own retained Source instead.
-func (flow *routeTokenFlow) prepareInitialOpening(ctx context.Context, legs ...selection.Leg) (result error) {
+func (flow *Flow) PrepareInitialOpening(ctx context.Context, legs ...selection.Leg) (result error) {
 	flow.mu.Lock()
 	source, transferred := flow.source, flow.currentSource != nil
 	flow.mu.Unlock()
@@ -80,7 +80,7 @@ func (flow *routeTokenFlow) prepareInitialOpening(ctx context.Context, legs ...s
 	return errors.Join(source.Current(), ctx.Err())
 }
 
-func (flow *routeTokenFlow) fundMissing(ctx context.Context, preparation *stock.Preparation, source routeStockIssuer, class admission.Class, missing []token.ClosedTokenContext, end time.Time) error {
+func (flow *Flow) fundMissing(ctx context.Context, preparation *stock.Preparation, source routeStockIssuer, class admission.Class, missing []token.ClosedTokenContext, end time.Time) error {
 	if len(missing) == 0 {
 		return nil
 	}
@@ -114,19 +114,19 @@ func (flow *routeTokenFlow) fundMissing(ctx context.Context, preparation *stock.
 			for index := range controls {
 				controls[index] = flow.issuer
 			}
-			if err := source.Issue(ctx, end, routeIssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
+			if err := source.Issue(ctx, end, IssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
 				uint8(admission.ControlClass), controls, preparation)); err != nil {
 				return err
 			}
 		}
 	}
-	return source.Issue(ctx, end, routeIssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
+	return source.Issue(ctx, end, IssuerPreparation(ctx, flow.authority, flow.holder, flow.leg,
 		uint8(class), receivers, preparation))
 }
 
-// prepareJoin funds the accepted incoming Rendezvous on one exact existing
+// PrepareJoin funds the accepted incoming Rendezvous on one exact existing
 // Source. It creates no channel or HELLO, and returns only after issuance joins.
-func (flow *routeTokenFlow) prepareJoin(ctx context.Context, source *prefix.SourceHandle, rendezvous network.RetainedDuty) (result error) {
+func (flow *Flow) PrepareJoin(ctx context.Context, source *prefix.SourceHandle, rendezvous network.RetainedDuty) (result error) {
 	if source == nil {
 		return errors.New("JOIN preparation original Source absent")
 	}
@@ -169,10 +169,10 @@ func (flow *routeTokenFlow) prepareJoin(ctx context.Context, source *prefix.Sour
 	return errors.Join(view.MatchDuty(rendezvous, time.Now()), ctx.Err(), source.Check())
 }
 
-// prepareRoute obtains only missing Stock before Connection starts its capsule
+// PrepareRoute obtains only missing Stock before Connection starts its capsule
 // deadline. No HELLO nonce is generated and no recipient token is presented here.
 // Each actual HELLO later performs its own durable Take and authority checks.
-func (flow *routeTokenFlow) prepareRoute(ctx context.Context, source *prefix.SourceHandle, introduction, rendezvous network.RetainedDuty) (result error) {
+func (flow *Flow) PrepareRoute(ctx context.Context, source *prefix.SourceHandle, introduction, rendezvous network.RetainedDuty) (result error) {
 	if source == nil {
 		return errors.New("original Connection preparation Source absent")
 	}
