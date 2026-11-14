@@ -3,6 +3,8 @@
 // bounds. Each local role has a separate persisted Interior pair and original
 // thirty-minute horizon. A fresh Network RuntimeView supplies every live check;
 // roots, receipts and copied participant values never grant current authority.
+// Retained Interior opening checks its format before acquiring a non-creating
+// lease and rechecks under that lease; missing history is never a fresh draw.
 // Context-local Rendezvous choices retain their original set and bound across
 // physical leg replacement; failures and new exclusions cannot redraw them.
 // Entry-pair eligibility/draw/bounds, retained Leg checks and recipient selection

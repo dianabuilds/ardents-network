@@ -50,7 +50,17 @@ func openInteriorStore(root string, network [32]byte, domain uint8) (_ *interior
 		return nil, err
 	}
 	fresh := len(entries) == 0
-	lease, err := acquireRootLease(root)
+	acquire := acquireRootLease
+	if !fresh {
+		// Refuse foreign formats before a creating open. A retained root also
+		// requires its original lease file; inspection alone cannot make a
+		// later O_CREATE safe after that file disappears.
+		if err := inspectInteriorRoot(root); err != nil {
+			return nil, err
+		}
+		acquire = acquireRetainedRootLease
+	}
+	lease, err := acquire(root)
 	if err != nil {
 		return nil, err
 	}

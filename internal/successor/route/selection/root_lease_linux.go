@@ -12,7 +12,16 @@ import (
 type rootLease struct{ file *os.File }
 
 func acquireRootLease(root string) (rootLease, error) {
-	file, err := os.OpenFile(filepath.Join(root, rootLockName), os.O_RDWR|os.O_CREATE|syscall.O_NOFOLLOW, 0o600)
+	return openRootLease(root, os.O_RDWR|os.O_CREATE)
+}
+
+// Retained Interior history must never regain a missing lease file by opening.
+func acquireRetainedRootLease(root string) (rootLease, error) {
+	return openRootLease(root, os.O_RDWR)
+}
+
+func openRootLease(root string, flags int) (rootLease, error) {
+	file, err := os.OpenFile(filepath.Join(root, rootLockName), flags|syscall.O_NOFOLLOW, 0o600)
 	if err != nil {
 		return rootLease{}, err
 	}
