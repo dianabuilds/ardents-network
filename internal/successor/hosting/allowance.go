@@ -47,8 +47,7 @@ type Observation struct {
 }
 
 func (policy Policy) limit() (uint64, error) {
-	units := map[string]uint64{"B": 1, "MB": 1000000, "MiB": 1 << 20, "GB": 1000000000, "GiB": 1 << 30, "TB": 1000000000000, "TiB": 1 << 40}
-	unit, found := units[policy.Unit]
+	unit, found := hostingUnitBytes(policy.Unit)
 	if !found || policy.Quantity == 0 || policy.Quantity > math.MaxUint64/unit {
 		return 0, errors.New("hosting allowance denomination is invalid")
 	}
@@ -74,6 +73,28 @@ func (policy Policy) limit() (uint64, error) {
 		seen[name] = true
 	}
 	return limit, nil
+}
+
+// hostingUnitBytes resolves a denomination without a per-call map allocation
+// (audit DD-8).
+func hostingUnitBytes(unit string) (uint64, bool) {
+	switch unit {
+	case "B":
+		return 1, true
+	case "MB":
+		return 1000000, true
+	case "MiB":
+		return 1 << 20, true
+	case "GB":
+		return 1000000000, true
+	case "GiB":
+		return 1 << 30, true
+	case "TB":
+		return 1000000000000, true
+	case "TiB":
+		return 1 << 40, true
+	}
+	return 0, false
 }
 
 func (policy Policy) cost(traffic Traffic) (uint64, error) {

@@ -27,8 +27,6 @@ const metadataBaseURL = "https://release.invalid/metadata/"
 
 type verifiedSet struct {
 	set            trustedmetadata.TrustedMetadata
-	envelope       envelopeState
-	rootBytes      []byte
 	rootChain      []rootPublication
 	timestampBytes []byte
 	snapshotBytes  []byte
@@ -154,7 +152,7 @@ func buildVerifiedSet(ctx context.Context, in Inputs, refTime time.Time, store f
 		return nil, reject(outcomeReleaseInvalid, "offline import contains unreferenced metadata", nil)
 	}
 	return &verifiedSet{
-		set: *trusted, envelope: fetcher.envelopeUsed(), rootBytes: append([]byte(nil), in.RootBytes...),
+		set:       *trusted,
 		rootChain: chain, timestampBytes: timestampBytes, snapshotBytes: snapshotBytes, targetsBytes: targetsBytes,
 	}, Decision{}
 }
@@ -319,12 +317,6 @@ func (f *fetcherAdapter) allFilesUsed() bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.used) == len(f.files)
-}
-
-func (f *fetcherAdapter) envelopeUsed() envelopeState {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return envelopeState{fetches: f.envelope.fetches, bytes: f.envelope.bytes}
 }
 
 type releaseError struct {
@@ -681,10 +673,12 @@ func successorFloors(set *verifiedSet, rotation rootRotationResult) (FloorSet, e
 	if set == nil {
 		return FloorSet{}, errors.New("trusted set is missing")
 	}
-	rootDigest := sha256.Sum256(set.rootBytes)
-	if len(rotation.root.Digest) == 32 {
-		rootDigest = [32]byte(rotation.root.Digest)
+	// The rotation already carries the authenticated final root digest; the
+	// per-Evaluate re-hash of the root bytes was always discarded (audit SD-3).
+	if len(rotation.root.Digest) != 32 {
+		return FloorSet{}, errors.New("verified root digest is unavailable")
 	}
+	rootDigest := [32]byte(rotation.root.Digest)
 	if len(set.timestampBytes) == 0 || len(set.snapshotBytes) == 0 || len(set.targetsBytes) == 0 {
 		return FloorSet{}, errors.New("verified raw metadata is incomplete")
 	}
