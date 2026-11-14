@@ -5,14 +5,11 @@ package reader
 import (
 	"context"
 	"errors"
-	"sync"
 	"time"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/successor/connection"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
@@ -50,13 +47,9 @@ func (owner *Reader) Open(ctx context.Context, request application.Request) (_ a
 	if end, bounded := ctx.Deadline(); bounded && end.Before(plan.Deadline) {
 		plan.Deadline = end.UTC().Truncate(time.Second)
 	}
-	worker, err := owner.local.LaunchReader(ctx, owner.principal)
+	read, err := Begin(ctx, owner.local, owner.principal)
 	if err != nil {
 		return nil, err
-	}
-	operation, err := worker.BeginOperation(ctx)
-	if err != nil {
-		return nil, errors.Join(err, worker.Close())
 	}
 	authority := owner.authority
 	originalCurrent := authority.Current
@@ -64,69 +57,25 @@ func (owner *Reader) Open(ctx context.Context, request application.Request) (_ a
 		// The installed authority reobserves the original Startup before and
 		// after CurrentRuntime. Retain this operation's rights around that
 		// observation without repeating the same full native file/manager I/O.
-		if err := errors.Join(ctx.Err(), operation.CheckReader()); err != nil {
+		if err := errors.Join(ctx.Err(), read.Check()); err != nil {
 			return network.RuntimeView{}, err
 		}
 		view, err := originalCurrent()
-		return view, errors.Join(err, ctx.Err(), operation.CheckReader())
+		return view, errors.Join(err, ctx.Err(), read.Check())
 	}
 	authority = funding.Observe(current, authority.Witness, authority.Presentation)
-	var service *connection.Stream
-	var closeSource func() error
-	var retireOnce sync.Once
-	var retired error
-	retire := func() error {
-		retireOnce.Do(func() {
-			if closeSource != nil {
-				retired = closeSource()
-			} else if service != nil {
-				retired = service.Close()
-				operation.RetainCleanup(service.JoinedCleanup())
-			}
-			operation.Close()
-			retired = errors.Join(retired, worker.Close())
-		})
-		return retired
-	}
-	defer func() {
-		if result != nil {
-			result = errors.Join(result, retire())
-		}
-	}()
-	contract, err := operation.BindStreamContract(512, uint64(textdocument.MaximumBytes+13))
+	pending, err := read.prepare(plan, authority, owner.holder, request.Value, owner.route)
 	if err != nil {
 		return nil, err
 	}
-	var source *connection.InitiatorSource
-	source, closeSource, err = OpenSource(operation, plan, authority, owner.holder, request.Value, owner.route)
-	if err != nil {
-		return nil, err
+	if err := errors.Join(ctx.Err(), owner.check(), read.Check()); err != nil {
+		return nil, errors.Join(err, pending.close())
 	}
-	service, err = source.OpenStream(contract)
-	if err != nil {
-		return nil, err
-	}
-	if err := errors.Join(ctx.Err(), owner.check(), operation.CheckReader()); err != nil {
-		return nil, err
-	}
-	complete := func() ([]byte, error) {
-		transferred, response, err := operation.DeliverReaderStream(contract, service)
-		if !transferred {
-			_ = service.Close()
-			operation.RetainCleanup(service.JoinedCleanup())
-		}
-		if err != nil || response == nil {
-			return nil, errors.Join(err, errors.New("original Reader result is unavailable"), retire())
-		}
-		defer response.Close()
-		if err := errors.Join(retire(), ctx.Err(), owner.check()); err != nil {
-			return nil, err
-		}
-		return response.TakeBytes()
-	}
-	// The local parser admits the fixed request before the sole confined
-	// worker transfer. The caller receives no raw Service transport.
-	return newResultStream(ctx, owner.check, complete, retire), nil
+	// The fixed local request precedes the same sole worker transfer used by
+	// the console adapter. The caller receives no raw Service transport.
+	return newResultStream(ctx, owner.check, func() ([]byte, error) {
+		return pending.complete(owner.check)
+	}, pending.close), nil
 }
 
 // Config binds one original participant's retained owners. Reader borrows them;

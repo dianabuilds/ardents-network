@@ -957,7 +957,9 @@ bounds and terminal result; no late completion can act on a replacement.
 `internal/successor/endpoint/funding` coordinates original Source Stock
 preparation/issuance/presentation and retains shared Entry/Hosting parents.
 `endpoint/reader` owns the qualified request's Source, lookup history, selected
-roles, stream handoff and joined local result. `endpoint/publisher` owns snapshot
+roles, stream handoff and joined local result. Its one qualified Operation
+is consumed by both installed IPC and the console Reader; root construction
+retains its original ordering around that operation. `endpoint/publisher` owns snapshot
 launch, pending/active handoff, Source/Introduction/Responder composition,
 Instance/history borrows, serving and joined withdrawal. These are application
 scenario boundaries, not new semantic domains. Their sole command consumer

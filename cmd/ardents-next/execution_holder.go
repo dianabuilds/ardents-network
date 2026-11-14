@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	endpointpublisher "github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher"
 	"io"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
@@ -64,7 +65,7 @@ func runExecutionHolder(ctx context.Context, args []string, input io.ReadCloser,
 	if live {
 		var invocation *executionruntime.Invocation
 		if config.Snapshot != "" {
-			invocation, err = launchSelectedPublisher(ctx, owner, config.Principal, config.Snapshot)
+			invocation, err = endpointpublisher.LaunchSnapshotFile(ctx, owner, config.Principal, config.Snapshot)
 		} else {
 			invocation, err = owner.Launch(ctx, config.Principal, surface)
 		}

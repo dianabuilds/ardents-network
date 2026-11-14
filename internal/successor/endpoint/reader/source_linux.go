@@ -20,7 +20,7 @@ import (
 
 // Histories, selection and shared Hosting remain Reader-owned through the
 // original Connection's joined retirement. No failed opening redraws a set.
-func OpenSource(operation *executionruntime.Operation, plan funding.Plan, authority funding.Authority, holder *stock.Owner, target string, shared ...*funding.Parents) (_ *connection.InitiatorSource, closeSource func() error, result error) {
+func openSource(operation *executionruntime.Operation, plan funding.Plan, authority funding.Authority, holder *stock.Owner, target string, shared ...*funding.Parents) (_ *connection.InitiatorSource, closeSource func() error, result error) {
 	if operation == nil || operation.CheckReader() != nil || plan.Domain != 1 || !authority.Available() || holder == nil {
 		return nil, nil, errors.New("original Text Reader composition is unavailable")
 	}

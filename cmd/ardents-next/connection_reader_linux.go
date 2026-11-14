@@ -8,7 +8,6 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/reader"
@@ -34,24 +33,15 @@ func runExecutionTextRead(ctx context.Context, plan holderPlan, generation, prin
 			code = 1
 		}
 	}()
-	worker, err := local.LaunchReader(ctx, principal)
+	read, err := reader.Begin(ctx, local, principal)
 	if err != nil {
 		return 1
 	}
 	defer func() {
-		if worker.Close() != nil {
+		if read.Close() != nil {
 			code = 1
 		}
 	}()
-	operation, err := worker.BeginOperation(ctx)
-	if err != nil {
-		return 1
-	}
-	defer operation.Close()
-	contract, err := operation.BindStreamContract(512, uint64(textdocument.MaximumBytes+13))
-	if err != nil {
-		return 1
-	}
 	authority, err := openAdmissionAuthority("", plan.Network)
 	if err != nil {
 		return 1
@@ -66,11 +56,11 @@ func runExecutionTextRead(ctx context.Context, plan holderPlan, generation, prin
 		return 1
 	}
 	authority = networkAdmissionAuthority(func() (network.RuntimeView, error) {
-		if err := operation.CheckReader(); err != nil {
+		if err := read.Check(); err != nil {
 			return network.RuntimeView{}, err
 		}
 		view, err := original()
-		return view, errors.Join(err, operation.CheckReader())
+		return view, errors.Join(err, read.Check())
 	}, authority.close, authority.witness)
 	holder, err := stock.Open(plan.Root, plan.Role, authority.observe)
 	if err != nil {
@@ -81,36 +71,7 @@ func runExecutionTextRead(ctx context.Context, plan holderPlan, generation, prin
 			code = 1
 		}
 	}()
-	source, closeSource, err := reader.OpenSource(operation, fundingPlan(*plan.Route), fundingAuthority(authority), holder, target)
-	if err != nil {
-		return 1
-	}
-	defer func() {
-		if closeSource() != nil {
-			code = 1
-		}
-	}()
-	stream, err := source.OpenStream(contract)
-	if err != nil {
-		return 1
-	}
-	transferred, result, err := operation.DeliverReaderStream(contract, stream)
-	if !transferred {
-		_ = stream.Close()
-		operation.RetainCleanup(stream.JoinedCleanup())
-	}
-	if err != nil || result == nil {
-		return 1
-	}
-	defer result.Close()
-	if err := closeSource(); err != nil {
-		return 1
-	}
-	operation.Close()
-	if worker.Close() != nil || !worker.CompletedCurrent() || ctx.Err() != nil {
-		return 1
-	}
-	body, err := result.TakeBytes()
+	body, err := read.Read(fundingPlan(*plan.Route), fundingAuthority(authority), holder, target)
 	if err != nil {
 		return 1
 	}
