@@ -301,10 +301,12 @@ func (s *sourceBirths) write(path string, body []byte, mode os.FileMode, uid, gi
 	if !s.allowed[path] || len(body) == 0 || len(body) > 64<<20 {
 		return ErrBinding
 	}
+	// The body is immutable across the birth records; hash it once (audit IE-5).
+	bodyDigest := digest(body)
 	if err := admit(); err != nil {
 		return err
 	}
-	if err := s.record("file-intent", path, nil, digest(body), mode, uid, gid); err != nil {
+	if err := s.record("file-intent", path, nil, bodyDigest, mode, uid, gid); err != nil {
 		return err
 	}
 	if err := admit(); err != nil {
@@ -324,7 +326,7 @@ func (s *sourceBirths) write(path string, body []byte, mode os.FileMode, uid, gi
 	if err = errors.Join(f.Sync(), syncSourceParent(path)); err != nil {
 		return err
 	}
-	if err = s.record("file-born", path, b.info, digest(body), mode, uid, gid); err != nil {
+	if err = s.record("file-born", path, b.info, bodyDigest, mode, uid, gid); err != nil {
 		return err
 	}
 	if err = admit(); err != nil {
@@ -358,7 +360,7 @@ func (s *sourceBirths) write(path string, body []byte, mode os.FileMode, uid, gi
 	if err = b.check(); err != nil {
 		return err
 	}
-	if err = s.record("file-ready", path, b.info, digest(body), mode, uid, gid); err != nil {
+	if err = s.record("file-ready", path, b.info, bodyDigest, mode, uid, gid); err != nil {
 		return err
 	}
 	return admit()
