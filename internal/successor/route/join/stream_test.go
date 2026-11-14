@@ -67,6 +67,23 @@ func TestJoinedCanceledOriginalCannotReadWriteOrCloseWrite(t *testing.T) {
 	}
 }
 
+// A zero or nil Joined must refuse I/O with the documented error, not panic
+// (audit RD-8). The sibling check methods guard nil; Read/Write/CloseWrite
+// dereference acquisition/lane directly and must refuse a copied/zero value.
+func TestZeroJoinedRefusesIO(t *testing.T) {
+	for _, j := range []*Joined{nil, {}} {
+		if _, err := j.Read(make([]byte, 1)); err == nil {
+			t.Error("zero Joined Read accepted")
+		}
+		if _, err := j.Write([]byte{1}); err == nil {
+			t.Error("zero Joined Write accepted")
+		}
+		if err := j.CloseWrite(); err == nil {
+			t.Error("zero Joined CloseWrite accepted")
+		}
+	}
+}
+
 func TestJoinedPhysicalCloseWaitsForInnerPeerBeforeLowerRetirement(t *testing.T) {
 	for _, terminal := range []string{"accepted", "raw-EOF", "cleanup-timeout", "original-deadline"} {
 		t.Run(terminal, func(t *testing.T) {

@@ -150,6 +150,9 @@ func (j *Joined) CheckLifetime(end time.Time) error {
 }
 
 func (j *Joined) Read(body []byte) (int, error) {
+	if j == nil || j.acquisition == nil || j.lane == nil {
+		return 0, errors.New("route JOIN original stream unavailable")
+	}
 	if err := j.acquisition.current(); err != nil {
 		return 0, err
 	}
@@ -161,6 +164,9 @@ func (j *Joined) Read(body []byte) (int, error) {
 }
 
 func (j *Joined) Write(body []byte) (int, error) {
+	if j == nil || j.acquisition == nil || j.lane == nil {
+		return 0, errors.New("route JOIN original stream unavailable")
+	}
 	if err := j.acquisition.current(); err != nil {
 		return 0, err
 	}
@@ -169,6 +175,9 @@ func (j *Joined) Write(body []byte) (int, error) {
 }
 
 func (j *Joined) CloseWrite() error {
+	if j == nil || j.acquisition == nil || j.lane == nil {
+		return errors.New("route JOIN original stream unavailable")
+	}
 	if err := j.acquisition.current(); err != nil {
 		return err
 	}
