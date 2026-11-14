@@ -712,6 +712,9 @@ func successorImportAllowed(source, dependency string) bool {
 				}
 			}
 		}
+		if source == "cmd/ardents-node/descriptor_installation_linux.go" && dependency == modulePath+"/internal/successor/installation/descriptor" {
+			return true
+		}
 		if source == "cmd/ardents-node/join_installation_linux.go" && (dependency == modulePath+"/internal/successor/installation/join" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
@@ -855,6 +858,12 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if source == "internal/successor/installation/join/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
+		return true
+	}
+	if source == "internal/successor/installation/descriptor/inputs_linux.go" && dependency == modulePath+"/internal/successor/installation/request" {
+		return true
+	}
+	if source == "internal/successor/installation/descriptor/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
 	if source == "internal/successor/installation/descriptor/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {

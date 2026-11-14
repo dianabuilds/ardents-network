@@ -1,7 +1,9 @@
 //go:build linux
 
 // Package descriptor owns the fixed installed Descriptor-role declarations and
-// protection template. Canonical Control prepares public request/plan/resources
+// protection template and original protected read-only input/preflight lifetime.
+// Canonical Node consumes preflight, joining its own delivery and manager; no
+// destination, account or semantic root is created. Canonical Control prepares public request/plan/resources
 // while retaining its own original input/output custody. These bytes grant no
 // initial trust, Release permission, native installation, Start or Store ACK.
 // Installation separately admits native effects. Network owns signed current

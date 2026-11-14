@@ -3955,3 +3955,17 @@ Source/Forwarding/JOIN authority. It does not open declared semantic roots, cloc
 or private key, validate actual native manager policy, sign a Release or admit
 Startup/Store/Node work. Reachability alone owns signed Descriptor acceptance,
 Store ACK and durable conflicts. Installed lifetimes retain their separate gates.
+
+
+### Read-only Descriptor installation inputs
+
+`installation/descriptor.ReadInputs` retains original protected request, plan
+and matching Ed25519 TLS delivery plus live root-clock access. Its copied handles
+retain one caller/first failure and physical completion; clock bytes remain
+State input, not accepted time. `InspectInitialInputs` independently retains a
+read-only NodeSlots manager and checks every fixed Node slot twice, original
+unit search namespaces, absent shared account, all future journal namespaces
+and five independent future roots including Store. No resource is created or
+semantic owner initialized. Canonical `ardents-node descriptor inspect-inputs`
+reports only after manager/input users join. Inspection supplies no Release
+right, initial provenance, native mutation, Startup, runtime duty or Store ACK.

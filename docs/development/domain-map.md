@@ -1249,3 +1249,14 @@ GitHub, and assigns a real acceptance boundary only within current selection und
 [execution workflow](agent-execution.md#delegated-project-wide-domain-transition).
 Completion of one slice does not complete a domain; completion of one domain
 continues the program until every maintained scenario has transferred.
+
+
+Descriptor original-input preflight is a distinct read-only Installation
+lifetime consumed by canonical Node. It decodes its own request/plan/TLS binding
+and retains original delivery through `installation/request.Files`; the private
+`systemd.NodeSlots` owner supplies only its own five-slot/search-path observation.
+Installation checks the independent Store future root alongside the other four,
+all future journals and account absence. No mutable history or Release opens,
+and no creation, Startup, runtime duty or Store ACK follows from inspection.
+Original manager and input users join before public output; restored files cannot
+revive a failed original lifetime. No live JOIN or Source owner is borrowed.

@@ -5362,3 +5362,26 @@ Infrastructure/Enrollment/Installation tests check exact canonical bytes and
 the independent fifth Store root plus the complete Unix completion namespace.
 This is offline byte/custody evidence, not Release signing, first-pin, actual
 manager/Start, Store ACK or installed qualification. Missing prerequisites fail.
+
+
+### Descriptor original-input preflight
+
+The canonical root-only `ardents-node descriptor inspect-inputs REQUEST` opens
+its own original protected request/plan/TLS delivery and live root-clock ancestors.
+It independently checks all five fixed Node slots, unit search namespaces,
+account absence and every future resource, including the fifth Store root.
+No semantic history, Release verifier, account, unit or diagnostic socket is
+created. Every observation and reader joins before its public non-installed
+result; an original failure is retained across copied handles and restoration.
+The shared request.Files and NodeSlots mechanisms supply no role permission.
+
+The existing `network-signing-linux` profile includes three
+`TestDescriptorInputsNative` controls in `installation/descriptor`: original
+mutation/live clock, actual manager/independently pinned real Node command and
+retained Store refusal, and private-input/plan binding. Set
+`ARDENTS_DESCRIPTOR_PREFLIGHT_NATIVE=1`, `ARDENTS_DESCRIPTOR_NODE_PROGRAM` and
+its independently approved `ARDENTS_DESCRIPTOR_NODE_PROGRAM_SHA256`. These
+require root, protected ext4 and the actual systemd255 manager with all five
+Node slots and the shared Node account absent. Missing prerequisites fail.
+Generated TLS/public inputs prove original custody only, never Network duty,
+Release/bootstrap acceptance, installed startup or Store ACK.

@@ -1504,3 +1504,11 @@ finite bound, other duplicate options refuse. Declared runtime inputs/roots are
 not opened or created. Input/output users join before the public hash receipt.
 These operations supply no initial trust, Release permission, installed startup,
 Store ACK, publication readiness or live Node duty. Other platforms refuse.
+
+
+The distinct root-only `ardents-node descriptor inspect-inputs REQUEST` retains
+original delivery and independently observes the actual manager/all five absent
+Node slots, future resource namespaces and account. The result
+`descriptor-inputs-preflight-completed` follows original native/input joins and
+explicitly reports `installed:false`. It opens no Release verifier or semantic
+root, creates no account/unit and grants no future creation/Startup permission.
