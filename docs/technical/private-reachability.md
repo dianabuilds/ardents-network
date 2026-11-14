@@ -54,6 +54,24 @@ It connects only new owners and does not adopt predecessor runtime roots.
 The Endpoint producer/readiness and Connection obligations described below
 remain distinct; signed-input Store acceptance cannot stand in for them.
 
+### Stopped installed Store inspection
+
+`OpenStoreInspection` is a separate Linux/ext4 root observation for an exact
+numeric Node principal and network. Its original read-only exclusive lease,
+root/record/marker/lock/file and ancestor custody remain retained through every
+reader and physical Close. It authenticates complete stored signed floors without
+exporting proofs or changing bytes. Missing or uncertain staging refuses; no
+creation, stage repair/promotion, prune or synchronization occurs. A failed
+original identity/access/byte observation remains failed even if paths are
+restored. Close seals new checks, joins original readers and releases the lease
+last. Copies share the retained result.
+
+Installation consumes only Check/Close while independently proving complete
+predecessor retirement and fresh Release/native admission. No runtime Store,
+lookup currentness, Node duty, Store ACK or replacement permission follows from
+this read-only history. The live receiving owner and stopped inspector share
+closed floor decoding and physical readback as source, never a live owner/lease.
+
 ## Private Descriptor recipient
 
 The generation-3 codec binds the complete existing Publication to the current

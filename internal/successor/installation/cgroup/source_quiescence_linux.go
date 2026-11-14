@@ -18,7 +18,7 @@ func CheckSourceQuiescent(ctx context.Context) (err error) {
 
 // Only fixed-purpose public openers choose these literal physical scopes.
 func checkFixedQuiescent(ctx context.Context, unit string) (err error) {
-	if unit != "ardents-source.service" && unit != "ardents-forwarding.service" && unit != "ardents-join.service" {
+	if unit != "ardents-source.service" && unit != "ardents-forwarding.service" && unit != "ardents-join.service" && unit != "ardents-descriptor.service" {
 		return errInput
 	}
 	if ctx == nil || os.Geteuid() != 0 {

@@ -71,6 +71,10 @@
 // depth/size limits and numeric byte arrays. Primitive arrays and safe-ASCII
 // quoted lengths avoid redundant reflection/allocation without omitting facts
 // or caching any observation.
+// DescriptorStopped, DescriptorControl and DescriptorRuntime are distinct fixed
+// Descriptor connections: stopped preparation, one root Start/cleanup attempt,
+// and independently acquired non-root read-only observations respectively.
+// Their literal unit and reply vocabulary grant no sibling role capability.
 package systemd
 
 import "errors"

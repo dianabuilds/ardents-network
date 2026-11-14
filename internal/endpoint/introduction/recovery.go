@@ -95,6 +95,7 @@ func (recovery *RecoveryOwner) HandoffLocked(want DeliveryKey,
 				expiryDone = recovery.expiryDone
 				recovery.expiryStop, recovery.expiryDone = nil, nil
 			}
+			waiter.assigned = true
 			waiter.Delivery <- routed
 			return expiryDone
 		}
