@@ -216,7 +216,10 @@ func (s *sourceStartStorage) write(name string, body []byte, admit func() error)
 		return nil, ErrInput
 	}
 	path := filepath.Join(s.path, name)
-	if err = s.record("file-intent", path, nil, digest(body)); err != nil {
+	// The body is immutable across the birth records; hash it once (audit IE-5,
+	// matching source_stop_storage.writeResult).
+	bodyDigest := digest(body)
+	if err = s.record("file-intent", path, nil, bodyDigest); err != nil {
 		return nil, err
 	}
 	if err = admit(); err != nil {
@@ -235,7 +238,7 @@ func (s *sourceStartStorage) write(name string, body []byte, admit func() error)
 	if err = errors.Join(file.Sync(), s.directory.Sync()); err != nil {
 		return nil, err
 	}
-	if err = s.record("file-born", path, born.info, digest(body)); err != nil {
+	if err = s.record("file-born", path, born.info, bodyDigest); err != nil {
 		return nil, err
 	}
 	if err = admit(); err != nil {
@@ -259,7 +262,7 @@ func (s *sourceStartStorage) write(name string, body []byte, admit func() error)
 	if err = born.check(); err != nil {
 		return nil, err
 	}
-	if err = s.record("file-ready", path, born.info, digest(body)); err != nil {
+	if err = s.record("file-ready", path, born.info, bodyDigest); err != nil {
 		return nil, err
 	}
 	return born, admit()
