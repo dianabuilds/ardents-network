@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -98,7 +99,7 @@ func (journal *Journal) header(floor time.Time) []byte {
 }
 
 func (journal *Journal) load() error {
-	file, err := os.Open(filepath.Join(journal.root, "attempts"))
+	file, err := os.OpenFile(filepath.Join(journal.root, "attempts"), os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return err
 	}
@@ -189,7 +190,7 @@ func writeJournalFile(path string, raw []byte) error {
 // Pin the opened file's identity; later appends check their actual descriptor
 // against this retained identity before changing the journal.
 func pinJournalFile(root string) (os.FileInfo, error) {
-	file, err := os.Open(filepath.Join(root, "attempts"))
+	file, err := os.OpenFile(filepath.Join(root, "attempts"), os.O_RDONLY|syscall.O_NOFOLLOW, 0)
 	if err != nil {
 		return nil, err
 	}

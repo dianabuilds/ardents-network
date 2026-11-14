@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -74,7 +75,7 @@ func (journal *Journal) Mark(token []byte, record Attempt) error {
 	}
 	// An ambiguous write poisons this owner. The caller burns its stock item
 	// before calling Mark and cannot present it until this flush succeeds.
-	file, err := os.OpenFile(filepath.Join(journal.root, "attempts"), os.O_WRONLY|os.O_APPEND, 0)
+	file, err := os.OpenFile(filepath.Join(journal.root, "attempts"), os.O_WRONLY|os.O_APPEND|syscall.O_NOFOLLOW, 0)
 	if err == nil {
 		info, inspectErr := file.Stat()
 		if inspectErr != nil || journal.identity == nil || !os.SameFile(info, journal.identity) || info.Size() != int64(journalHeader+len(journal.records)*attemptSize) {
