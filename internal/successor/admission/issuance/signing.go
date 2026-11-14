@@ -5,6 +5,7 @@ import "github.com/dianabuilds/ardents-network/internal/successor/admission/quot
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/binary"
 	"errors"
@@ -55,15 +56,18 @@ func (store Store) sign(ctx context.Context, batch []byte) ([]byte, error) {
 		return nil, err
 	}
 	defer clear(raw)
-	v, err := decodeMaterial(raw, s.inventory.Binding)
-	if err != nil || v.Digest != s.inventory.Digest {
+	// Open fully validated these exact material bytes and their inventory.
+	// Equality to the retained material digest preserves that proof without
+	// reparsing every immutable private key (the same argument checkRetained
+	// makes); only the target key is parsed below.
+	if sha256.Sum256(raw) != s.material {
 		s.failure = ErrUnavailable
 		return nil, ErrUnavailable
 	}
 	target := -1
 	window := uint64(request.WindowStart.Unix())
 	class := request.Class
-	for i, k := range v.Keys {
+	for i, k := range s.inventory.Keys {
 		if k.Window == window && k.Class == class && bytes.Equal(k.SPKI, request.SPKI[:]) {
 			target = i
 		}
