@@ -22,12 +22,12 @@ func (vault *Vault) exportBundle(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(vaultPassword)
+	defer clear(vaultPassword)
 	purpose, plaintext, _, err := openEnvelope(raw, vaultPassword)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(plaintext)
+	defer clear(plaintext)
 	if purpose != PurposeVault {
 		return Receipt{}, ErrInvalid
 	}
@@ -35,14 +35,14 @@ func (vault *Vault) exportBundle(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer func() { zero(state.RootMaterial); zero(state.AdmissionJournal); zero(state.ServiceJournal) }()
+	defer func() { clear(state.RootMaterial); clear(state.AdmissionJournal); clear(state.ServiceJournal) }()
 	if state.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
 	}
 	if state.Binding.Kind == AuthorityAdmission && sourceState == RecordActive {
-		zero(state.RootMaterial)
-		zero(state.AdmissionJournal)
-		zero(state.ServiceJournal)
+		clear(state.RootMaterial)
+		clear(state.AdmissionJournal)
+		clear(state.ServiceJournal)
 		state, _, err = vault.openCurrentAdmissionAuthority(operation.RecordID, vaultPassword, operation.Expected)
 		if err != nil {
 			return Receipt{}, err
@@ -57,12 +57,12 @@ func (vault *Vault) exportBundle(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(bundlePassword)
+	defer clear(bundlePassword)
 	confirmation, err := readPassword(ctx, secrets, SecretPromptBundleExportConfirm)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(confirmation)
+	defer clear(confirmation)
 	if subtle.ConstantTimeCompare(bundlePassword, confirmation) != 1 || subtle.ConstantTimeCompare(bundlePassword, vaultPassword) == 1 {
 		return Receipt{}, ErrInvalid
 	}
@@ -70,12 +70,12 @@ func (vault *Vault) exportBundle(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(bundleState)
+	defer clear(bundleState)
 	bundle, err := sealEnvelope(PurposeBundle, bundleState, bundlePassword)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(bundle)
+	defer clear(bundle)
 	if err := vault.check(); err != nil {
 		return Receipt{}, err
 	}
@@ -279,7 +279,7 @@ func testRestoreBundle(path string, password []byte, expected AuthorityBinding) 
 	if err != nil {
 		return EnvelopeInfo{}, err
 	}
-	defer zero(plaintext)
+	defer clear(plaintext)
 	if purpose != PurposeBundle {
 		return EnvelopeInfo{}, ErrInvalid
 	}
@@ -287,7 +287,7 @@ func testRestoreBundle(path string, password []byte, expected AuthorityBinding) 
 	if err != nil {
 		return EnvelopeInfo{}, err
 	}
-	defer func() { zero(state.RootMaterial); zero(state.AdmissionJournal); zero(state.ServiceJournal) }()
+	defer func() { clear(state.RootMaterial); clear(state.AdmissionJournal); clear(state.ServiceJournal) }()
 	if state.Binding != expected {
 		return EnvelopeInfo{}, ErrInvalid
 	}

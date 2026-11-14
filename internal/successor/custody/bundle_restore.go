@@ -25,12 +25,12 @@ func (vault *Vault) restoreBundle(ctx context.Context, operation Operation, secr
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(bundlePassword)
+	defer clear(bundlePassword)
 	purpose, plaintext, _, err := openEnvelope(raw, bundlePassword)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(plaintext)
+	defer clear(plaintext)
 	if purpose != PurposeBundle {
 		return Receipt{}, ErrInvalid
 	}
@@ -38,7 +38,7 @@ func (vault *Vault) restoreBundle(ctx context.Context, operation Operation, secr
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer func() { zero(state.RootMaterial); zero(state.AdmissionJournal); zero(state.ServiceJournal) }()
+	defer func() { clear(state.RootMaterial); clear(state.AdmissionJournal); clear(state.ServiceJournal) }()
 	if state.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
 	}
@@ -54,12 +54,12 @@ func (vault *Vault) restoreBundle(ctx context.Context, operation Operation, secr
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(vaultPassword)
+	defer clear(vaultPassword)
 	confirmation, err := readPassword(ctx, secrets, SecretPromptVaultCreateConfirm)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(confirmation)
+	defer clear(confirmation)
 	if subtle.ConstantTimeCompare(vaultPassword, confirmation) != 1 {
 		return Receipt{}, ErrInvalid
 	}
@@ -67,12 +67,12 @@ func (vault *Vault) restoreBundle(ctx context.Context, operation Operation, secr
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(sealed)
+	defer clear(sealed)
 	envelopeBytes, err := sealEnvelope(PurposeVault, sealed, vaultPassword)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(envelopeBytes)
+	defer clear(envelopeBytes)
 	recordID, err := freshRecordID()
 	if err != nil {
 		return Receipt{}, err
