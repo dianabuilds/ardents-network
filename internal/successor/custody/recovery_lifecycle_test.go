@@ -143,7 +143,7 @@ func TestRetainedNameAndServiceBundlesRemainEvidenceOnly(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer zero(plain)
+			defer clear(plain)
 			raw, err := sealEnvelope(PurposeBundle, plain, password)
 			if err != nil {
 				t.Fatal(err)

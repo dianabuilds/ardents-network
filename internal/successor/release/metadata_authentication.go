@@ -340,15 +340,6 @@ func classifyReleaseError(err error) Outcome {
 	if errors.As(err, &expired) {
 		return outcomeReleaseExpired
 	}
-	if strings.Contains(err.Error(), "exceeds the bound") {
-		return outcomeReleaseInvalid
-	}
-	if strings.Contains(err.Error(), "URL") || strings.Contains(err.Error(), "offline envelope") {
-		return outcomeReleaseInvalid
-	}
-	if strings.Contains(err.Error(), "exceeds") {
-		return outcomeReleaseInvalid
-	}
 	return outcomeReleaseInvalid
 }
 

@@ -3,7 +3,6 @@ package connection
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
@@ -37,7 +36,6 @@ func TestTerminalFlagsCannotPublishSuccessWithoutOriginalOperation(t *testing.T)
 	defer cancel()
 	stream := &Stream{ctx: ctx, cancel: cancel, owner: &AuthenticatedAttachment{},
 		send: &sendLedger{}, receive: &receiveLedger{}, outcome: make(chan application.Outcome, 1), settledDone: make(chan struct{})}
-	stream.cond = sync.NewCond(&stream.mu)
 	stream.terminal = &terminalExchange{localClosed: true, remoteClosed: true, remoteTerminalCurrent: true,
 		terminalWritten: true, receiptWritten: true, receiptReceived: true, receiptConfirmed: true, confirmationWritten: true}
 	stream.mu.Lock()

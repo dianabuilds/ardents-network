@@ -15,10 +15,8 @@ func (s *floorStore) confirmDurability() error {
 	if err != nil {
 		return err
 	}
-	for _, name := range []string{floorStoreMarkerName} {
-		if err = syncRetainedFile(filepath.Join(s.path, name), maximumMetadataFileBytes); err != nil {
-			return err
-		}
+	if err = syncRetainedFile(filepath.Join(s.path, floorStoreMarkerName), maximumMetadataFileBytes); err != nil {
+		return err
 	}
 	genRoot := filepath.Join(s.path, "generations")
 	if before.RootVersion > 0 {

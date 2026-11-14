@@ -83,12 +83,12 @@ func (vault *Vault) createRecord(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(password)
+	defer clear(password)
 	confirmation, err := readPassword(ctx, secrets, SecretPromptVaultCreateConfirm)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(confirmation)
+	defer clear(confirmation)
 	if subtle.ConstantTimeCompare(password, confirmation) != 1 {
 		return Receipt{}, ErrInvalid
 	}
@@ -96,12 +96,12 @@ func (vault *Vault) createRecord(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(plaintext)
+	defer clear(plaintext)
 	envelopeBytes, err := sealEnvelope(PurposeVault, plaintext, password)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(envelopeBytes)
+	defer clear(envelopeBytes)
 	recordID, err := freshRecordID()
 	if err != nil {
 		return Receipt{}, err
@@ -131,12 +131,12 @@ func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(password)
+	defer clear(password)
 	purpose, plaintext, info, err := openEnvelope(raw, password)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(plaintext)
+	defer clear(plaintext)
 	if purpose != PurposeVault {
 		return Receipt{}, ErrInvalid
 	}
@@ -144,14 +144,14 @@ func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secre
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer func() { zero(state.RootMaterial); zero(state.AdmissionJournal); zero(state.ServiceJournal) }()
+	defer func() { clear(state.RootMaterial); clear(state.AdmissionJournal); clear(state.ServiceJournal) }()
 	if state.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
 	}
 	if state.Binding.Kind == AuthorityAdmission && recordState == RecordActive {
-		zero(state.RootMaterial)
-		zero(state.AdmissionJournal)
-		zero(state.ServiceJournal)
+		clear(state.RootMaterial)
+		clear(state.AdmissionJournal)
+		clear(state.ServiceJournal)
 		state, info, err = vault.openCurrentAdmissionAuthority(operation.RecordID, password, operation.Expected)
 		if err != nil {
 			return Receipt{}, err
@@ -169,15 +169,15 @@ func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secre
 func readPassword(ctx context.Context, input SecretInput, prompt SecretPrompt) ([]byte, error) {
 	password, err := input.ReadSecret(ctx, prompt)
 	if err != nil {
-		zero(password)
+		clear(password)
 		return nil, fmt.Errorf("read custody secret: %w", err)
 	}
 	if err := ctx.Err(); err != nil {
-		zero(password)
+		clear(password)
 		return nil, err
 	}
 	if err := validatePassword(password); err != nil {
-		zero(password)
+		clear(password)
 		return nil, err
 	}
 	return password, nil
@@ -252,7 +252,7 @@ func verifyPersistedEnvelope(path string, expected []byte) error {
 	if err != nil {
 		return fmt.Errorf("reopen encrypted vault record: %w", err)
 	}
-	defer zero(persisted)
+	defer clear(persisted)
 	if !bytes.Equal(persisted, expected) {
 		return ErrInvalid
 	}
@@ -347,7 +347,7 @@ func readRegularFile(path string, maximum uint64) ([]byte, error) {
 		return nil, err
 	}
 	if uint64(len(body)) > maximum {
-		zero(body)
+		clear(body)
 		return nil, ErrInvalid
 	}
 	return body, nil
@@ -358,7 +358,7 @@ func freshRecordID() (string, error) {
 	if _, err := io.ReadFull(rand.Reader, bytes); err != nil {
 		return "", fmt.Errorf("record identifier: %w", err)
 	}
-	defer zero(bytes)
+	defer clear(bytes)
 	return hex.EncodeToString(bytes), nil
 }
 
