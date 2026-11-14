@@ -38,9 +38,11 @@ type RoutedDelivery struct {
 
 // Waiter is one registered local consumer slot. Delivery has capacity one;
 // the single consumer gate assigns at most one routed capsule per waiter.
+// Assignment remains consumed after the channel is drained and until removal.
 type Waiter struct {
 	Want     DeliveryKey
 	Delivery chan RoutedDelivery
+	assigned bool
 }
 
 // Dispatch owns the context-local waiter and recovery slots,
@@ -83,7 +85,8 @@ func (dispatch *Dispatch) RemoveWaiterLocked(waiter *Waiter) {
 // claimed key exactly.
 func (dispatch *Dispatch) SelectWaiterLocked(key DeliveryKey) *Waiter {
 	for waiter := range dispatch.waiters {
-		if len(waiter.Delivery) == 0 && key.Matches(waiter.Want) {
+		if !waiter.assigned && key.Matches(waiter.Want) {
+			waiter.assigned = true
 			return waiter
 		}
 	}

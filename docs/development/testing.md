@@ -5399,3 +5399,129 @@ require root, protected ext4 and the actual systemd255 manager with all five
 Node slots and the shared Node account absent. Missing prerequisites fail.
 Generated TLS/public inputs prove original custody only, never Network duty,
 Release/bootstrap acceptance, installed startup or Store ACK.
+
+
+### Descriptor initial stopped native profile
+
+`make descriptor-initial-stopped-check` selects fixed initial Release-purpose/key
+custody controls, genuine existing two-execution build-record public preparation,
+and actual canonical initial stopped installation/independent history on a fresh
+Ubuntu24.04/systemd255/cgroup-v2/ext4 stand. `descriptor-initial-stopped-linux` in
+`tests/profiles/profiles.json` owns exact pinned-command/preparer/evidence and marker
+prerequisites. All five slots and account must initially be absent. TLS/public
+runtime declarations are physical prestart fixtures, never signed duty, Store ACK
+or installed runtime evidence. Five semantic roots must remain empty. Foreign pin,
+wrong purpose/resource/build record, repeated installation and native identity
+substitution refuse. Original failures/logs/source identities are retained. No
+Start or recovery campaign is selected by this profile.
+
+### Descriptor first-start native profile
+
+`descriptor-startup-linux` runs `make descriptor-startup-check` on a fresh
+isolated initial Descriptor stand using the initial profile's actual two-build
+artifact/preparer/evidence pins, plus `ARDENTS_DESCRIPTOR_BOOTSTRAP_DIRECTORY`
+for original public commitments and delegated exact-scope acceptance. Missing
+prerequisites fail. The unchanged three-minute case checks wrong pin, original
+Store birth substitution, duplicate Hosting initialization, non-root offline State,
+direct-process startup refusal, actual protected Start/non-root Startup, genuine
+semantic owners/listener and duplicate first Start refusal. It claims no Store
+ACK, publication/lookup, restart or replacement qualification. Failure evidence
+and original prefixes remain; native stop and original users precede cleanup.
+Queued-observation race controls check that late effects cannot reuse an earlier
+round and that Close retains held observations and late physical failures. Fixed
+manager vocabulary vectors reject foreign units/jobs/managers and unadmitted jobs.
+
+The separate `descriptor-publish-linux` profile (`make descriptor-publish-check`)
+uses a fresh installed stand with the same native prerequisites as startup. Its
+SHA-pinned `descriptor_installed_native` test binary first creates a genuine
+Custody Permission authority, then retains actual finite Allocation, issuance
+and Stock owners while canonical Control prepares signed State and the installed
+Node starts. Each operation durably presents a separate Control right before
+network bytes. Thirteen actual receiving operations verify signed publication and
+Store ACK, exact independent-Target lookup, invalid signature and foreign-profile
+and future-interval refusal, absent Target without fallback, same-revision conflict, higher-revision
+repair and stale-revision refusal. Results retain actual TLS and lower-channel
+termination. A separate genuine Service Credential authorizes the signed public
+fixture; it supplies no live Publisher, registered Introduction slot, Source
+prefix or Service readiness. Native teardown is not accepted Installation Stop,
+retirement, restart or replacement. Missing prerequisites fail, never skip.
+
+The same profile checks that every operation appends exactly one irreversible
+receiving spend without altering prior spends. After actual native test teardown,
+a separately launched original-UID reader requires the complete existing Store
+inventory and independently reopens the retained revision2. Exact proof bytes,
+native objects and complete Store contents must remain unchanged through Close;
+that readback grants no Installation retirement or restart permission.
+
+The four nonmutating refusals have independent rights/channels and run in pairs
+concurrently; all join before the next dependent Store operation. The three-minute
+native orchestration bound includes real Custody/issuance and setup. Every role
+channel retains its unchanged absolute limit (at most 30 seconds), with no token
+refund, guard change or additional protocol retry.
+
+
+`descriptor-restart-linux` (`make descriptor-restart-check`) uses a fresh native
+stand and the exact artifact/input prerequisites of the Descriptor publish
+profile. Five actual Control operations publish/read revision2, then independently
+read it after explicit Stop and retained restart, refuse revision1 and confirm
+revision2 again. The client retains its genuine original Stock and independent
+State; all physical channels join before server retirement. Each operation
+appends one irreversible spend to the same original journal. Native controls
+refuse restart before original retirement and repeated Stop, independently read
+completed history, preserve original Store bytes/Node key/account and require a
+new actual manager InvocationID. Both server invocations end through their own
+original report/native join. A separately launched original-UID existing-only
+Store readback follows. Pure storage controls refuse missing roots/marker/lock/
+records or uncertain staging without initialization or repair; typed frame and
+transcript controls reject partial, replayed or foreign completion. The unchanged
+three-minute orchestration includes real preparation; wire/runtime bounds remain
+unchanged. This profile supplies no forward replacement or recovery evidence.
+
+
+`make descriptor-store-inspection-check` selects root/ext4 mechanism controls
+with `ARDENTS_DESCRIPTOR_STORE_INSPECTION_NATIVE=1`: signed existing history and
+exclusive read-only lease, missing/uncertain history with no repair, same-byte
+inode substitution/restoration, held reader/Close and actual late descriptor
+failure. The checked three-minute profile fails missing prerequisites and grants
+no installed/runtime/Release or original-retirement evidence. Its compilation is
+included in `network-signing-compile-check`.
+
+
+`make descriptor-replacement-check` selects exactly one of
+`TestDescriptorInstalledNativeReplacementPrerequisite`,
+`TestDescriptorInstalledNativeResourceReplacement` and
+`TestDescriptorInstalledNativeProgramReplacement`. Each has its unchanged
+three-minute bound and independently verifies the preceding committed original
+retirement through the canonical owner. The prerequisite performs two genuine
+Store operations and one joined Stop. Its fresh signed proof inputs use the
+existing 600-second maximum within their Credential/profile, leaving the
+separate five-minute Stop/restart fixture unchanged. No active operation,
+protocol limit or retained floor is renewed. The separate original profile
+retains permission-repeat controls; replacement holders each obtain a genuine
+new permission against the same retained quota without repeating that unchanged
+component control on every stage. Resource follows the installed baseline;
+program follows the accepted resource generation. Each new private holder uses
+genuine Custody/issuer issuance against the original retained quota/results;
+volatile unused tokens are neither reconstructed nor refunded. The actual
+receiving Store proof, floors, roots/account/keys and spends remain original.
+A new exact prepared artifact/input scope precedes every replacement and Start;
+no active protocol deadline is reset between stages.
+
+
+`make descriptor-recovery-physical-check` runs seven finite actual native
+process/channel/history controls under `network_signing_native`: ordinary
+progress, frozen cut, cancellation frozen or with outstanding ACK, held proof
+Close and independent original-reader/late-Close custody. Explicit root/ext4
+preparation marker and root-owned executable are mandatory. Detached declarations
+isolate physical mechanisms and cannot qualify installed recovery, Release,
+manager policy or original domain completion. Actual canonical stopped recovery
+must separately exercise genuine signed installed artifacts and original history.
+
+
+`make descriptor-recovery-check` separately exercises the actual complete stopped
+replacement cut, independent recovery admission and fresh protected invocation
+on exact signed installed artifacts. Original pending restart/replace, wrong
+history, absent/copied original-cut inode, partial recovery and replay must
+refuse while preserving original prefix and Store bytes. A subsequent actual
+program replacement checks recovered lineage with a new immutable program.
+Neither profile accepts earlier-prefix continuation or unknown domain completion.

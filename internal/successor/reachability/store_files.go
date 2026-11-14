@@ -20,8 +20,14 @@ const (
 	storeStage = ".record-stage"
 )
 
-func (store *Store) restore() error {
-	root := store.custody.records
+func (store *Store) restore(retained bool) error {
+	return restoreStoreFloors(store.custody, store.network, store.floors, retained)
+}
+
+// Read the same closed grammar for a live owner or independently leased stopped
+// inspection. Only the live opener may select existing stage removal.
+func restoreStoreFloors(custody *storeCustody, network [32]byte, floors map[[32]byte]retainedFloor, retained bool) error {
+	root := custody.records
 	directory, err := root.Open(".")
 	if err != nil {
 		return err
@@ -47,14 +53,14 @@ func (store *Store) restore() error {
 			stage = true
 			continue
 		}
-		if len(store.floors) >= MaximumTargets || len(entry.Name()) != 64 {
+		if len(floors) >= MaximumTargets || len(entry.Name()) != 64 {
 			return errors.New("reachability record population or name invalid")
 		}
 		raw, err := readOriginalStoreFile(root, entry.Name(), MaximumDescriptorSize+2)
 		if err != nil {
 			return err
 		}
-		floor, err := decodeStoredFloor(raw, store.network)
+		floor, err := decodeStoredFloor(raw, network)
 		if err != nil {
 			return err
 		}
@@ -62,11 +68,11 @@ func (store *Store) restore() error {
 		if entry.Name() != storeTargetName(target) {
 			return errors.New("reachability retained Target name differs")
 		}
-		if _, exists := store.floors[target]; exists {
+		if _, exists := floors[target]; exists {
 			return errors.New("reachability duplicate Target")
 		}
-		store.floors[target] = floor
-		if err := store.custody.remember(entry.Name(), raw); err != nil {
+		floors[target] = floor
+		if err := custody.remember(entry.Name(), raw); err != nil {
 			return err
 		}
 	}
@@ -74,10 +80,13 @@ func (store *Store) restore() error {
 	// Never rename/promote unacknowledged staging, reset the root or delete foreign
 	// entries. Sync its removal under the same exclusive lease before reopening.
 	if stage {
+		if retained {
+			return errors.New("reachability retained history has uncertain stage")
+		}
 		if err := root.Remove(storeStage); err != nil {
 			return err
 		}
-		if err := store.custody.syncDirectory.Sync(); err != nil {
+		if err := custody.syncDirectory.Sync(); err != nil {
 			return err
 		}
 	}
@@ -411,6 +420,51 @@ func ensureStoreFile(path string, expected []byte) error {
 	}
 	if !bytes.Equal(raw, expected) {
 		return errors.New("reachability root format unsupported")
+	}
+	return nil
+}
+
+// Validate only existing original-relative entries under the already retained
+// root and exclusive existing lease. Missing history never selects creation.
+func checkRetainedStoreRoot(root *os.Root) (result error) {
+	directory, err := root.Open(".")
+	if err != nil {
+		return err
+	}
+	entries, readErr := directory.ReadDir(4)
+	if errors.Is(readErr, io.EOF) {
+		readErr = nil
+	}
+	if result = errors.Join(readErr, directory.Close()); result != nil {
+		return result
+	}
+	if len(entries) != 3 {
+		return errors.New("reachability retained root inventory incomplete")
+	}
+	for _, entry := range entries {
+		info, err := root.Lstat(entry.Name())
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return errors.New("reachability retained entry invalid")
+		}
+		switch entry.Name() {
+		case storeMarkerName, storeLockName:
+			if !info.Mode().IsRegular() {
+				return errors.New("reachability retained file invalid")
+			}
+		case storeRecords:
+			if !info.IsDir() {
+				return errors.New("reachability retained records invalid")
+			}
+		default:
+			return errors.New("reachability retained root contains foreign entry")
+		}
+	}
+	raw, err := readOriginalStoreFile(root, storeMarkerName, len(storeMarker))
+	if err != nil || !bytes.Equal(raw, []byte(storeMarker)) {
+		return errors.Join(errors.New("reachability retained marker invalid"), err)
 	}
 	return nil
 }

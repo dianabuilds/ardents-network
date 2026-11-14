@@ -16,6 +16,9 @@
 // JOIN ACK. Only history-opening0 is supported: an old ACK cannot reopen State,
 // prove retirement or authorize another invocation. No live foreign exchange or
 // root journal is borrowed.
+// DescriptorExchange owns its separate original root-peer exchange and complete
+// 161-byte ACK. The canonical first-start consumer accepts only initial history;
+// no sibling exchange, copied ACK or detached identity supplies Startup rights.
 package completion
 
 import "errors"

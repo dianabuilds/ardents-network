@@ -2,13 +2,14 @@
 
 ## Installed role declaration and protection policy
 
-Only `cmd/ardents-node/descriptor_installation_linux.go` may import
-`internal/successor/installation/descriptor` for its fixed read-only preflight.
-This command has no Route/Node runtime imports or installation mutation surface.
+Canonical Descriptor installation and runtime files have separate exact imports
+below. Only `cmd/ardents-node/descriptor_installed_linux.go` composes its new
+Network/Node/Route runtime under the distinct R01 exception; installation and
+offline preparation supply no accepting runtime authority.
 
 | Path | Package | Responsibility and real consumer | Permitted imports |
 |---|---|---|---|
-| `internal/successor/installation/descriptor` | `package descriptor` | Fixed Descriptor-role request/plan with five independent semantic roots, finite original journal/completion namespace and fixed non-root protection template. Real consumers: canonical Control public request/plan/template producers and canonical Node read-only original-input preflight. Input custody retains only original protected delivery/clock ancestors; its independent manager observation admits no native creation, Start, Release or Store ACK. | standard library; `internal/successor/hosting` only in `plan_linux.go` for detached Traffic values; `internal/successor/installation/request` only in `inputs_linux.go`; `internal/successor/installation/systemd` only in `preflight_linux.go` |
+| `internal/successor/installation/descriptor` | `package descriptor` | Fixed Descriptor-role request/plan with five independent semantic roots, finite original journal/completion namespace and fixed non-root protection template. Real consumers: canonical Control public request/plan/template producers and canonical Node read-only original-input preflight. Input custody retains only original protected delivery/clock ancestors; its independent manager observation admits no native creation, Start, Release or Store ACK. The separate initial creator, independently completed reader and canonical consumers below own genuine Release admission and stopped birth without semantic initialization or runtime authority. | standard library; `internal/successor/hosting` only in `plan_linux.go` for detached Traffic values; `internal/successor/installation/request` only in `inputs_linux.go`; `internal/successor/installation/systemd` only in `preflight_linux.go`  Additional imports are restricted to the exact initial-admission file list below.  `internal/successor/installation/infrastructure`, `internal/successor/release`, `internal/successor/enrollment`, `internal/successor/installation/directory`, `internal/successor/installation/fixedfile` are additionally admitted only in the exact initial-admission files listed below.  `internal/successor/installation/cgroup`, `internal/successor/installation/completion` and `internal/successor/installation/process` additionally only in the exact first-start files below; Hosting additionally only in `hosting_prepare_linux.go`.; native tests only: `internal/successor/admission`, `internal/successor/admission/issuance`, `internal/successor/admission/issuer`, `internal/successor/admission/quota`, `internal/successor/admission/receiving`, `internal/successor/admission/stock`, `internal/successor/admission/token`, `internal/successor/custody`, `internal/successor/network`, `internal/successor/network/source`, `internal/successor/network/state`, `internal/successor/publication`, `internal/successor/reachability`, `internal/successor/route/ardp`, `internal/successor/route/channel`, `internal/successor/route/role`, `internal/successor/route/transport`, `internal/successor/route/transport/tls` (exact files below); native tests only: `internal/successor/network/epoch`  Additionally only `replacement_inspections_linux.go`: `internal/successor/admission/spending`, `internal/successor/network/state`, `internal/successor/reachability` and `internal/successor/hosting`; the exact file-specific gate below remains mandatory.  `golang.org/x/sys/unix` only in `transition_scope_linux.go`; recovery imports only in the exact files below. |
 | `internal/successor/installation/join` | `package join` | Closed JOIN installation request/plan, independent paths and complete finite journal/completion namespace, fixed protection template. Canonical Control's `join prepare-request`, `join prepare-plan` and `join prepare-template` are real consumers. Its separate original input/preflight lifetime and canonical Node read-only consumer retain protected files, all five absent slots and future paths without creation. Its separately admitted canonical initial stopped creator owns genuine Enrollment/Release admission, original births and native readback; independent completed inspection retains its own journal lease. No account adoption or permission follows from declarations or stopped history; distinct root Start and independent non-root Startup separately admit the first original runtime. | Standard library; `plan_linux.go` alone may use `internal/successor/hosting` for public Traffic; `inputs_linux.go` alone may use `internal/successor/installation/request` for original protected file custody; `preflight_linux.go` alone may use `internal/successor/installation/systemd` for independently owned read-only NodeSlots; `binding_linux.go` may use `internal/successor/installation/infrastructure`; `generation_bytes_linux.go` may use `internal/successor/enrollment` and `internal/successor/installation/infrastructure`; `initial_install_linux.go` may use `internal/successor/installation/infrastructure`, `internal/successor/installation/systemd` and `internal/successor/release`; `initial_birth_linux.go` may use `internal/successor/installation/directory` and `internal/successor/installation/fixedfile`; `loaded_policy_linux.go` may use `internal/successor/installation/systemd`; `completed_initial_linux.go` may use `internal/successor/installation/infrastructure` and `internal/successor/release`. `hosting_prepare_linux.go` may use `internal/successor/hosting`, `internal/successor/installation/cgroup` and `internal/successor/installation/systemd` for original stopped allowance preparation. Every listed import is file-specific; no parent facade or role-wide permission is supplied  First-start and replacement exact-file inventories below additionally admit `internal/successor/admission/spending`, `internal/successor/admission`, `internal/successor/admission/issuance`, `internal/successor/admission/issuer`, `internal/successor/admission/quota`, `internal/successor/admission/receiving`, `internal/successor/admission/stock`, `internal/successor/admission/token`, `internal/successor/custody`, `internal/successor/installation/completion`, `internal/successor/installation/process`, `internal/successor/network`, `internal/successor/network/source`, `internal/successor/network/state`, `internal/successor/route/ardp`, `internal/successor/route/transport`, `internal/successor/route/transport/tls`.  External `installed_cohort_native_linux_test.go` additionally admits `internal/successor/network/epoch`, `internal/successor/network/source`; `installed_pair_native_linux_test.go` admits `internal/successor/route/role`, `internal/successor/route/channel` for real authenticated adjacent-Node/nested-role protocol. |
 
 The package's behavior tests belong to `deterministic-linux-packages.txt`.
@@ -864,3 +865,147 @@ The other `transition_*` files and independent `recovery_context_linux.go`,
 physical observations and exposes no Reload/Start/Stop or selector. Canonical
 Node consumes these owners through its existing JOIN installation adapter;
 R01's installed runtime composition and exact five imports remain unchanged.
+
+
+## Descriptor initial admission and stopped installation
+
+The distinct Descriptor initial creator consumes genuine independently pinned running-program Enrollment and fresh coherent Node/Descriptor Release proofs. Its independent completed reader retains its own journal lease, immutable generation, current account facts and five semantic directory identities. It never opens semantic contents, starts the role, initializes the Store or grants runtime authority. Canonical Node directly consumes these operations; no Route/runtime composition exception is added.
+
+Physical directory and private-file births use the existing independent `installation/directory` and `installation/fixedfile` mechanisms. Descriptor owns the finite transcript, paths/account policy and completion ordering. Its root-only fixed `systemd.DescriptorStopped` connection may perform one Reload and observe only its own service object, refusing all job replies and every other unit. It borrows no JOIN/Source live connection or proof.
+
+Exact additional file imports (all other initial native files use the standard library):
+
+- `cmd/ardents-control/descriptor_initial_stopped_native_linux_test.go`: `internal/successor/installation/descriptor`.
+- `cmd/ardents-control/descriptor_release_linux.go`: `internal/successor/installation/infrastructure`, `internal/successor/release`, `github.com/sigstore/sigstore/pkg/signature`, `github.com/theupdateframework/go-tuf/v2/metadata`.
+- `cmd/ardents-control/descriptor_release_native_linux_test.go`: `internal/successor/installation/descriptor`, `internal/successor/installation/infrastructure`, `github.com/theupdateframework/go-tuf/v2/metadata`.
+- `cmd/ardents-control/descriptor_release_plan_linux.go`: `internal/successor/installation/descriptor`, `internal/successor/installation/infrastructure`.
+- `cmd/ardents-node/descriptor_installation_linux.go`: `internal/successor/enrollment`, `internal/successor/installation/descriptor`, `internal/successor/installation/infrastructure`, `internal/successor/release`.
+- `internal/successor/installation/descriptor/binding_linux.go`: `internal/successor/installation/infrastructure`.
+- `internal/successor/installation/descriptor/completed_initial_linux.go`: `internal/successor/installation/infrastructure`, `internal/successor/release`.
+- `internal/successor/installation/descriptor/generation_bytes_linux.go`: `internal/successor/enrollment`, `internal/successor/installation/infrastructure`.
+- `internal/successor/installation/descriptor/initial_birth_linux.go`: `internal/successor/installation/directory`, `internal/successor/installation/fixedfile`.
+- `internal/successor/installation/descriptor/initial_install_linux.go`: `internal/successor/installation/infrastructure`, `internal/successor/installation/systemd`, `internal/successor/release`.
+- `internal/successor/installation/descriptor/inputs_linux.go`: `internal/successor/installation/request`.
+- `internal/successor/installation/descriptor/loaded_policy_linux.go`: `internal/successor/installation/systemd`.
+- `internal/successor/installation/descriptor/plan_linux.go`: `internal/successor/hosting`.
+- `internal/successor/installation/descriptor/preflight_linux.go`: `internal/successor/installation/systemd`.
+- `internal/successor/installation/infrastructure/descriptor_admission.go`: `internal/successor/enrollment`, `internal/successor/release`.
+
+`cmd/ardents-control/descriptor_release_keys_linux.go` and `descriptor_release_arguments_linux.go` use only the standard library. Fixed initial key/plan/signing commands share native key/input/output codecs, never Source/JOIN signing purposes. The public `scripts/installation/prepare-descriptor-release-plan.py` validates the existing two-execution build-record format without renaming its persisted identity. It signs nothing and makes no independent-builder or installed-runtime claim. `systemd/descriptor_stopped_linux.go` uses only the standard library and existing `github.com/godbus/dbus/v5`.
+
+## Fixed Descriptor startup imports
+
+The following exact files extend the stopped owner with independently acquired
+Hosting, first Start and non-root Startup. Each listed import is file-local;
+no sibling Installation runtime or generic role selector is admitted. The fixed
+canonical runtime file alone has the R01 exception. Physical observers grant no
+authority, semantic-root borrow or completion. No new package is introduced.
+
+| File | Permitted imports in addition to the standard library |
+|---|---|
+| File `cmd/ardents-control/descriptor_artifact_linux.go` | File `internal/successor/enrollment`; `internal/successor/installation/descriptor`; `internal/successor/installation/infrastructure` |
+| File `cmd/ardents-control/descriptor_cohort_native_linux_test.go` | File `internal/successor/network/epoch`; `internal/successor/network/source` |
+| File `cmd/ardents-control/descriptor_epoch_plan_linux.go` | File `internal/successor/network/epoch` |
+| File `cmd/ardents-control/descriptor_epoch_signing_linux.go` | File `internal/successor/network/epoch`; `internal/successor/network/source` |
+| File `cmd/ardents-control/descriptor_hosting_linux.go` | File `internal/successor/hosting`; `internal/successor/installation/descriptor` |
+| File `cmd/ardents-control/descriptor_node_certificate_linux.go` | File `internal/successor/network/epoch` |
+| File `cmd/ardents-control/descriptor_node_provision_linux.go` | File `internal/successor/network/epoch` |
+| File `cmd/ardents-control/descriptor_node_record_linux.go` | File `internal/successor/network/epoch` |
+| File `cmd/ardents-control/descriptor_profile_plan_linux.go` | File `internal/successor/admission/issuerprofile`; `internal/successor/network`; `internal/successor/network/closedprofile`; `internal/successor/network/epoch`; `internal/successor/network/source` |
+| File `cmd/ardents-control/descriptor_profile_signing_linux.go` | File `internal/successor/network/closedprofile` |
+| File `cmd/ardents-control/descriptor_start_native_linux_test.go` | File `internal/successor/installation/descriptor` |
+| File `cmd/ardents-control/descriptor_state_linux.go` | File `internal/successor/installation/descriptor`; `internal/successor/network/source`; `internal/successor/network/state` |
+| File `cmd/ardents-control/descriptor_token_material_linux.go` | File `internal/successor/admission/issuance` |
+| File `cmd/ardents-node/descriptor_installation_linux.go` | File `internal/successor/enrollment`; `internal/successor/installation/descriptor`; `internal/successor/installation/infrastructure`; `internal/successor/release` |
+| File `cmd/ardents-node/descriptor_installed_linux.go` | File `internal/successor/installation/descriptor`; `internal/successor/network`; `internal/successor/network/state`; `internal/successor/node`; `internal/successor/route/role` |
+| File `internal/successor/installation/descriptor/completed_initial_linux.go` | File `internal/successor/installation/infrastructure`; `internal/successor/release` |
+| File `internal/successor/installation/descriptor/hosting_prepare_linux.go` | File `internal/successor/hosting`; `internal/successor/installation/cgroup`; `internal/successor/installation/systemd` |
+| File `internal/successor/installation/descriptor/loaded_policy_linux.go` | File `internal/successor/installation/systemd` |
+| File `internal/successor/installation/descriptor/start_barrier_linux.go` | File `internal/successor/installation/completion` |
+| File `internal/successor/installation/descriptor/start_initial_linux.go` | File `internal/successor/installation/cgroup`; `internal/successor/installation/infrastructure`; `internal/successor/installation/process`; `internal/successor/installation/systemd`; `internal/successor/release` |
+| File `internal/successor/installation/descriptor/startup_linux.go` | File `internal/successor/installation/cgroup`; `internal/successor/installation/completion`; `internal/successor/installation/process`; `internal/successor/installation/systemd` |
+| File `internal/successor/installation/infrastructure/descriptor_admission.go` | File `internal/successor/enrollment`; `internal/successor/release` |
+| File `internal/successor/installation/systemd/descriptor_control_linux.go` | `github.com/godbus/dbus/v5` |
+| File `internal/successor/installation/systemd/descriptor_manager_linux.go` | `github.com/godbus/dbus/v5` |
+| File `internal/successor/installation/systemd/descriptor_stopped_linux.go` | `github.com/godbus/dbus/v5` |
+| File `internal/successor/installation/systemd/manager_reference_linux.go` | `github.com/godbus/dbus/v5` |
+
+Descriptor installed receiving-exchange native test imports (no production permission):
+
+| File | Exact permitted imports |
+|---|---|
+| File `internal/successor/installation/descriptor/installed_exchange_native_linux_test.go` | `internal/successor/custody` |
+| File `internal/successor/installation/descriptor/installed_proof_native_linux_test.go` | `internal/successor/custody`; `internal/successor/publication`; `internal/successor/reachability` |
+| File `internal/successor/installation/descriptor/installed_stock_native_linux_test.go` | `internal/successor/admission`; `internal/successor/admission/issuance`; `internal/successor/admission/issuer`; `internal/successor/admission/quota`; `internal/successor/admission/receiving`; `internal/successor/admission/stock`; `internal/successor/admission/token`; `internal/successor/custody`; `internal/successor/network`; `internal/successor/network/source`; `internal/successor/network/state` |
+| File `internal/successor/installation/descriptor/installed_transport_native_linux_test.go` | `internal/successor/admission`; `internal/successor/admission/stock`; `internal/successor/reachability`; `internal/successor/route/ardp`; `internal/successor/route/channel`; `internal/successor/route/role`; `internal/successor/route/transport`; `internal/successor/route/transport/tls` |
+| File `internal/successor/installation/descriptor/installed_reopen_native_linux_test.go` | `internal/successor/reachability` |
+| File `internal/successor/installation/descriptor/installed_start_native_linux_test.go` | `internal/successor/installation/descriptor` |
+| File `internal/successor/installation/descriptor/installed_cohort_native_linux_test.go` | `internal/successor/network/epoch`; `internal/successor/network/source` |
+
+### Descriptor original retirement and retained restart
+
+Original domain/native joins and independent history readers belong to Descriptor Installation. Stop needs no fresh Release permission to shut down; restart independently obtains a fresh exact-artifact pair and original non-root Startup. New State/Node owners require existing participation/spend/Store history. No live sibling owner or reset is admitted. Exact new native test and implementation imports:
+
+| File | Permitted imports |
+|---|---|
+| File `internal/successor/installation/descriptor/installed_restart_native_linux_test.go` | `internal/successor/route/ardp` |
+| File `internal/successor/installation/descriptor/invocation_history_linux.go` | `internal/successor/release` |
+| File `internal/successor/installation/descriptor/restart_linux.go` | `internal/successor/installation/infrastructure`; `internal/successor/release` |
+| File `internal/successor/installation/descriptor/retirement_policy_linux.go` | `internal/successor/installation/completion`; `internal/successor/installation/systemd` |
+| File `internal/successor/installation/descriptor/start_snapshot_linux.go` | `internal/successor/installation/completion` |
+| File `internal/successor/installation/descriptor/stop_linux.go` | `internal/successor/installation/cgroup`; `internal/successor/installation/completion`; `internal/successor/installation/process`; `internal/successor/installation/systemd`; `internal/successor/release` |
+
+
+### Descriptor stopped replacement ownership
+
+`installation/descriptor` admits forward stopped replacement only after complete
+original retirement, fresh exact Release and independently leased semantic
+inspections. No live sibling role owner is imported. Exact additional imports:
+
+- `internal/successor/installation/descriptor/replacement_candidate_linux.go`: `internal/successor/installation/infrastructure`.
+- `internal/successor/installation/descriptor/replacement_inspections_linux.go`: `internal/successor/admission/spending`, `internal/successor/hosting`, `internal/successor/network/state`, `internal/successor/reachability`.
+- `internal/successor/installation/descriptor/replacement_linux.go`: `internal/successor/installation/cgroup`, `internal/successor/installation/fixedfile`, `internal/successor/installation/infrastructure`, `internal/successor/installation/systemd`, `internal/successor/release`.
+- `internal/successor/installation/descriptor/replacement_stopped_linux.go`: `internal/successor/installation/systemd`.
+
+Reachability's `store_inspection_linux.go` uses only the standard library and
+its own existing floor/native mechanisms. The distinct original read-only
+inspection grants no Store, proof export, ACK or runtime right. Its real consumer
+is `installation/descriptor/replacement_inspections_linux.go`; the two
+`store_inspection_*native_linux_test.go` files exercise the checked root/ext4
+profile. `installation/systemd/descriptor_replacement_linux.go` uses only the
+standard library and its own fixed Descriptor manager mechanisms, with one
+Reload and no Start/Stop/Enable or arbitrary selector.
+
+Descriptor forward Release preparation is the distinct fixed purpose
+`prepare-forward-release-plan` / `sign-forward-release`. Its
+`cmd/ardents-control/descriptor_release_predecessor_linux.go` alone additionally
+imports `internal/successor/enrollment`, `internal/successor/release`,
+`internal/successor/installation/infrastructure` and
+`github.com/theupdateframework/go-tuf/v2/metadata`. It independently retains the
+original public inventory, verifies the coherent predecessor and original root,
+then raises Targets/Snapshot/Timestamp versions without initial-pin or installed
+admission. Standard-library native controls are in
+`descriptor_forward_release_native_linux_test.go`.
+
+The installed replacement test composition additionally admits only
+`installed_replacement_native_linux_test.go` →
+`internal/successor/installation/descriptor`, and
+`installed_replacement_exchange_native_linux_test.go` →
+`internal/successor/custody`, `internal/successor/route/ardp`.
+These native tests retain genuine independent holder and original server owners;
+no production coordinator or sibling lifetime is introduced.
+
+`route/receiver/outer_authority_linux.go` owns fresh parent HELLO and original
+adjacent-peer reobservation for JOIN and Descriptor. Its exact imports are
+`internal/successor/network`, `internal/successor/route/ardp` and the standard
+library. Its real caller is `receiver_linux.go` at every existing parent frame
+boundary. `outer_authority_linux_test.go` additionally imports the existing
+`internal/successor/route/role` contract for supplied-fact refusal controls;
+actual signed intake and installed consumers retain their native evidence.
+No parent observation performs Store or Registry effects or replaces their
+separate role checks.
+
+Descriptor complete stopped replacement recovery keeps original cut and fresh admission separate.
+- `internal/successor/installation/descriptor/recovery_replacement_linux.go`: `internal/successor/installation/cgroup`, `internal/successor/installation/infrastructure`, `internal/successor/installation/systemd`, `internal/successor/release`.
+- `internal/successor/installation/descriptor/transition_scope_linux.go`: `golang.org/x/sys/unix`, solely original pidfd/subreaper mechanisms.
+- Other Descriptor recovery/transition files use only the standard library. The distinct read-only `systemd.DescriptorRecoveryReplacement` has no Reload, Start or Stop method. No sibling role lifetime or permission is borrowed.

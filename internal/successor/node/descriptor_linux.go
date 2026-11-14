@@ -56,7 +56,17 @@ type descriptorInvocation struct {
 
 // ListenDescriptor joins every rejected original startup. It cannot adopt a
 // predecessor, rebind a successor duty, or supply an accepting Store callback.
-func ListenDescriptor(ctx context.Context, config DescriptorConfig) (_ *Descriptor, result error) {
+func ListenDescriptor(ctx context.Context, config DescriptorConfig) (*Descriptor, error) {
+	return listenDescriptor(ctx, config, false)
+}
+
+// ListenDescriptorRetained consumes complete existing histories after separately
+// admitted original retirement. Missing participation, spends or Store refuses.
+func ListenDescriptorRetained(ctx context.Context, config DescriptorConfig) (*Descriptor, error) {
+	return listenDescriptor(ctx, config, true)
+}
+
+func listenDescriptor(ctx context.Context, config DescriptorConfig, retained bool) (_ *Descriptor, result error) {
 	if ctx == nil || config.Authority.Current == nil || !separateRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, config.DescriptorRoot) {
 		return nil, errors.New("original Descriptor configuration invalid")
 	}
@@ -100,7 +110,7 @@ func ListenDescriptor(ctx context.Context, config DescriptorConfig) (_ *Descript
 	if err := f.admission(); err != nil {
 		return nil, err
 	}
-	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: true}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
+	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: !retained}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +125,11 @@ func ListenDescriptor(ctx context.Context, config DescriptorConfig) (_ *Descript
 	if _, err := f.currentBase(); err != nil {
 		return nil, err
 	}
-	f.store, err = reachability.OpenStore(reachability.StoreConfig{Root: config.DescriptorRoot, Network: view.Profile().Network})
+	openStore := reachability.OpenStore
+	if retained {
+		openStore = reachability.OpenRetainedStore
+	}
+	f.store, err = openStore(reachability.StoreConfig{Root: config.DescriptorRoot, Network: view.Profile().Network})
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +138,11 @@ func ListenDescriptor(ctx context.Context, config DescriptorConfig) (_ *Descript
 	}
 	p := view.Profile()
 	binding := receiving.Receiver{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, ProfileDigest: p.Digest, NodeID: m.NodeID, DutyGeneration: m.DutyGeneration}
-	f.receiving, err = receiving.Open(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) })
+	openReceiving := receiving.Open
+	if retained {
+		openReceiving = receiving.OpenRetained
+	}
+	f.receiving, err = openReceiving(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) })
 	if err != nil {
 		return nil, err
 	}

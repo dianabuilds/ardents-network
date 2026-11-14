@@ -310,7 +310,7 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | `admission/issuerprofile/signing` | Independently pinned imported Ed25519 material, original lease/failure/Close and validated issuer-profile signing within Admission | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
-| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Forwarding and JOIN files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
+| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Forwarding, JOIN and Descriptor files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
 | State/Hosting/Route physical adapters | Byte verification, durable transactions, counters, sockets and Carrier mechanisms under their declared owners | Mechanisms cannot mint authority, reset floors or copy a second domain decision implementation |
 | Installation mutable-directory birth | `installation/directory` retains one original creation caller and private born inode state, exclusively creates caller-admitted paths and synchronizes same-inode account/mode promotion; checked Identity facts are detached, and Matches serves independent installed inspection | Root Installation selects paths/account, admits Release/journal/lease/effects and projects binding facts. Directory creation grants no adoption/recovery, selection, manager or startup authority; shared trusted-root predicates remain with Root lease/fixed/recovery lifetimes |
 | Installation request declarations and original input | `installation/request` owns canonical bounded declarations, detached copies, native direct root-owned input and opaque original byte/inode/access reobservation; the root Request facade is consumed by actual command and transaction composition | No Release authorization, writer lease, journal, account/root creation, generation selection, manager or startup authority. General trusted-path observations remain with root Installation lease/staging/inspection, independently of request provenance |
@@ -1260,3 +1260,59 @@ all future journals and account absence. No mutable history or Release opens,
 and no creation, Startup, runtime duty or Store ACK follows from inspection.
 Original manager and input users join before public output; restored files cannot
 revive a failed original lifetime. No live JOIN or Source owner is borrowed.
+
+
+Descriptor initial installation is a separate supporting lifetime. Infrastructure
+retains its typed initial/candidate Release pair; Enrollment supplies genuine first
+pin and actual running-program custody, Release its fresh coherent permission and
+floors. Canonical Node consumes Descriptor's own root transaction and independent
+completed reader. Fixed native births use existing directory/fixed-file mechanisms;
+no live JOIN/Source owner or authority is borrowed. The creator alone owns the
+123-record history and five empty semantic roots, original fixed manager Reload
+and post-join pending publication. Reachability alone may initialize and operate
+Store history. No first Start, role duty, Store ACK or runtime composition follows
+from stopped installation or copied history.
+
+Descriptor first-start composition consumes its own known-born Hosting and fresh
+Release pair. Installation owns exclusive attempt admission, original manager/
+process/scope custody, archival-before-root-peer-ACK and independently acquired
+non-root Startup. It grants no State, duty, token, Store ACK or replacement right.
+Canonical Node directly constructs genuine new State/Descriptor owners; Node
+retains Receiving, Hosting, producer and Reachability through actual joins, then
+command composition closes State and Startup. Reachability alone initializes
+Store and retains proof/conflict/durability policy. Five original semantic roots
+remain distinct; no sibling role lease, legacy backend or generic role owner
+participates. Full publication/lookup and retained lifecycle remain separate.
+
+
+Descriptor original retirement now has separate Installation report/native owners.
+Canonical composition joins genuine Node/Store/State and all original Startup
+observers before its one-use challenge-bound report. Root independently retains
+and joins original process/scope/manager custody and publishes complete retirement
+only after observer closes. Restart consumes that history plus fresh Release and
+independent Startup; Reachability's existing-only Store opening cannot create or
+repair missing/uncertain history. No sibling role lifetime or generic role owner
+participates; account, keys, original allowance and all five histories persist.
+
+
+Descriptor stopped replacement keeps Installation's transition admission and
+selection/native history separate from Reachability's read-only Store inspection.
+Each semantic owner holds its own existing-only lease through physical join;
+Inspection exports no mutable Store or proof. Fresh forward Release, original
+retirement and same-inode selection/unit mutation remain Installation rules.
+No account, credential, semantic floor or provider allowance is reset.
+
+Descriptor's parent Carrier rechecks local HELLO and original adjacent-peer facts
+from one coherent fresh State observation per frame boundary. The view is not
+retained as later authority. Store custody and effect/ACK checks remain with the
+separate Reachability/receiving role; their observations are not collapsed into
+parent framing. No durable floor, native guard or cleanup horizon changes.
+
+Descriptor recovery separates original physical cut, fresh Installation admission
+and semantic/native completion. The private same-program controller owns only
+from-birth denial/join and immutable cut publication. Installation independently
+admits the complete stopped replacement prefix and writes a separate guarded
+completion under fresh Release and five original semantic inspections. Its
+read-only manager cannot replay Reload/Start; no physical cut grants original
+Node domain completion. Original prefixes, histories, principals and floors
+remain retained across recovery and later forward replacement.

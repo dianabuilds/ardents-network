@@ -3969,3 +3969,146 @@ and five independent future roots including Store. No resource is created or
 semantic owner initialized. Canonical `ardents-node descriptor inspect-inputs`
 reports only after manager/input users join. Inspection supplies no Release
 right, initial provenance, native mutation, Startup, runtime duty or Store ACK.
+
+
+### Initial stopped Descriptor installation
+
+Canonical Node admits the exact frozen Node/Descriptor inventory through independent
+Enrollment and a fresh coherent Release pair. `installation/descriptor` owns its
+original request, journal and root-only transaction. Initial history must be unborn;
+existing account/resources, cross-role inputs and unknown prefixes refuse. The
+fixed `ardents-node` account, immutable twelve-file generation, selected binding
+and `ardents-descriptor.service` are born with original per-object provenance.
+State, participation, spend, Hosting and Descriptor Store are five independently
+owned empty 0700 semantic roots. Initial installation creates none of their data.
+
+The closed initial transcript has 123 canonical records and 28 independently
+matched native identities. Descriptor Store adds one directory birth triple to
+the four-root native mechanism; it adds no artifact or semantic history hash.
+One fixed no-job systemd connection performs one Reload and full stopped policy
+observations. Only three original generator directories may refresh; original
+manager/kernel/search-path and all other ancestors remain pinned. No Start,
+activation, automatic restart, Store ACK, adoption or rollback is performed.
+
+Original native observers, birth writers, input users and Release verifier all
+join before final original pending publication. Every error retains its original
+prefix/blocker. An independent completed reader acquires its own journal lease,
+retains the exact initial inventory and current account facts, and leaves semantic
+contents unopened. A separate fresh retained Release pair must match the installed
+payloads before canonical history output. Complete bytes grant no runtime duty,
+Store initialization, replacement/recovery or later startup authority.
+
+### Protected first Descriptor start
+
+The canonical Descriptor consumer prepares its own known-born Hosting allowance
+under a distinct root-only one-use transcript. Hosting creates period files in
+the original empty directory; immutable pin/lock birth identities and all original
+closes precede pending publication. Unknown or partial preparation refuses.
+Canonical offline producers create original keys, signed Records/Epoch/profile
+and initialize State under the actual numeric Node principal without runtime duty.
+State owns authenticated intake and time floors; Store remains unopened.
+
+`descriptor start-initial` retains a fresh exact Release pair, original completed
+installation/Hosting, fixed manager, five-slot namespace and native process/scope.
+It attempts one Start and archives its exact original invocation before root-peer
+ACK. Any uncertain attempt retains its blocker; no retry or rollback is inferred.
+The non-root `descriptor start-installed` independently acquires read-only
+generation/credential mounts, five writable semantic roots, original process,
+manager and cgroup. Root observations and copied ACKs cannot replace these checks.
+Fresh before/after observations bracket genuine State and Node effects.
+
+Only the exact canonical runtime file composes new Network/Node/Route owners
+under R01. Node opens genuine Receiving, Hosting, participation and Reachability
+Store; startup/listening is distinct from signed publication, Store ACK, lookup,
+retained restart, replacement and recovery. Denial interrupts dependents, joins
+Node (including Receiver and Store) before State and Startup release. A bounded
+completion-unavailable notice retains every original owner until actual join.
+
+
+### Descriptor original Stop and retained restart
+
+Canonical `descriptor stop` retains the exact archived process/pidfd, cgroup,
+manager, native namespace and entire original start chain. The original command
+reports through its one-use Startup only after Node (including Store and every
+transport/Admission/Hosting/producer/Guard/key user), State and all Startup inputs
+and observations physically join. The report binds the actual original startup
+frame to a fresh root challenge. Cancellation, process exit, path absence and a
+copied ACK or result cannot replace it. A retained physical error blocks the
+report even when its chain includes cancellation.
+
+Root joins the actual original kernel scope, verifies matching clean exit rounds
+and closes all original observers before publishing the separate retirement
+transcript. The present blocker or a partial transcript refuses restart. Shutdown
+does not need renewed Release authority. Same-generation `descriptor restart`
+requires independent complete history, fresh Release/native admission and a new
+original Startup; its intent commits the immediate predecessor retirement. All
+older history leases remain held through handoff. Existing-only State,
+participation, spends and Reachability Store preserve floors without creation,
+repair or stage promotion. The original Hosting allowance, numeric account and
+keys remain unchanged. Forward replacement and recovery retain separate gates.
+
+
+### Descriptor explicit stopped replacement
+
+Canonical `descriptor replace` independently retains the full original
+initial/Hosting/selection/invocation/retirement chain and a fresh coherent forward
+Node/Descriptor Release pair. Same-version metadata, changed trust/identity,
+credentials, semantic roots, protection or lifecycle bounds refuse; a resource
+update changes declared work/termination, and a program update changes actual
+program bytes. All five original histories and the one Hosting allowance persist.
+
+State/participation, spending, Hosting and Reachability Store supply separate
+existing-only inspectors with independently held original leases. Installation
+receives no mutable root or runtime owner. Store inspection cannot initialize,
+repair or promote an uncertain stage. Unknown predecessor producer/domain/native
+completion remains blocking.
+
+A distinct guarded journal retains immutable initial/predecessor images, original
+native before/after context, same-inode selection/unit mutation and one Reload.
+Independent complete readback, fresh Release and every physical reader/writer
+join precede blocker publication. A new protected Startup is a separate operation;
+no live owner crosses generations. Partial or uncertain prefixes remain blocked;
+interrupted recovery is separately admitted.
+
+Descriptor forward public preparation uses a purpose-distinct plan and signer.
+Original signed predecessor inventory, five original keys/root and current
+coherent metadata are verified before forward signatures; bounded arithmetic
+raises metadata versions without rotating trust or resetting floors. Initial
+and forward schemas remain mutually refusing. Detached public preparation
+supplies no initial pin, native mutation, predecessor join or runtime authority.
+
+Descriptor parent framing matches HELLO, local duty and the exact original
+adjacent peer against one genuinely fresh coherent State view on each frame
+boundary. The pure peer lookup shares that observation, never a previous
+frame's permission. Its separate receiving Store/currentness guards still
+bracket role effects and acknowledgement; Admission, native Startup and all
+original cleanup deadlines retain their own checks and physical joins.
+
+
+### Descriptor complete stopped replacement recovery
+
+Canonical `descriptor supervise-transition` retains the same root-owned executable,
+original from-birth process/pidfd and inherited credentialled seqpacket channel.
+Its closed action is `replace`; the supported stopped cut is exactly record62.
+The actual writer reports only after Sync and native readback, then self-stops.
+The controller denies the next effect and joins the original scope and all of its
+observers before publishing a separate guarded original-cut transcript. An
+outstanding ACK, cancellation, packet, copied cut or process exit grants no
+original domain completion, Release permission or recovery authority.
+
+Canonical `descriptor recover` independently matches original request and Release
+history paths before mutable Release admission. Only the complete62-record
+selected-stopped replacement, original native before/after context, real original
+cut and complete predecessor domain/native retirement can continue. Fresh Release,
+all five independently inspected existing-only semantic histories, exact account,
+keys, namespace and a separate read-only manager remain mandatory. Recovery
+performs no Reload, Start, domain-report or ACK replay and never rewrites the
+original prefix. A separate guarded nine-record completion is independently read
+back; every original reader/writer/verifier/input joins before both blockers are
+published in order. Earlier, uncertain, copied, partially recovered and unknown
+completion histories remain repair-required, without adoption, reset or rollback.
+
+Later replacement retains recovered predecessors and their original cuts/suffixes.
+Only the actual next replacement's successful one-use Reload can advance its own
+three generator-directory observations, joining old descriptors before fresh
+custody. All other original native observations and semantic floors persist.
