@@ -121,6 +121,9 @@ func (journal *Journal) load() error {
 			return errors.New("text token journal duplicate")
 		}
 		journal.records[record.digest] = record
+		if journal.earliestWindow.IsZero() || record.Window.Before(journal.earliestWindow) {
+			journal.earliestWindow = record.Window
+		}
 		if record.observed.After(journal.floor) {
 			journal.floor = record.observed
 		}
