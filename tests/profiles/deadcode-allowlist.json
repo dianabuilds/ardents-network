@@ -179,6 +179,7 @@
           "internal/successor/publication/runtime.Publisher.Withdraw",
           "internal/successor/publication/runtime.Publisher.acceptingPair",
           "internal/successor/publication/runtime.Publisher.check",
+          "internal/successor/publication/runtime.Publisher.compactReadyInitial",
           "internal/successor/publication/runtime.Publisher.drain",
           "internal/successor/publication/runtime.Publisher.inspectIntroduction",
           "internal/successor/publication/runtime.Publisher.newInitialDelivery",
