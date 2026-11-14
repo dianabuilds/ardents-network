@@ -376,6 +376,9 @@ func (dir *transitionDirectory) observe() error {
 	if len(names) != len(dir.records)+len(dir.children) {
 		return ErrBinding
 	}
+	// names covers every record and child exactly once (inventory check above);
+	// a second record pass would re-observe the same immutable records with no
+	// effect between (audit IE-2).
 	for _, name := range names {
 		if record, own := dir.records[name]; own {
 			if err := dir.observeRecord(name, record); err != nil {
@@ -387,11 +390,6 @@ func (dir *transitionDirectory) observe() error {
 			}
 		} else {
 			return ErrBinding
-		}
-	}
-	for name, record := range dir.records {
-		if err := dir.observeRecord(name, record); err != nil {
-			return err
 		}
 	}
 	return nil
