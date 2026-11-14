@@ -78,7 +78,7 @@ func TestClosedTokenIssuerLedgerPromotesLegacyWithoutRefund(t *testing.T) {
 				t.Fatal(err)
 			}
 			if interrupted {
-				if err := owner.retainBinding(); err != nil {
+				if err := owner.retainBinding(nativeIssuerLedgerPersistence()); err != nil {
 					t.Fatal(err)
 				}
 				if err := os.WriteFile(filepath.Join(root, closedIssuerLedgerStageName), []byte("partial stage"), 0o600); err != nil {

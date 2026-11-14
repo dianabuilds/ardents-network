@@ -412,6 +412,34 @@ binding does not detect replacement by an older complete journal of the same
 duty; restart/migration acceptance still requires retained monotonic authority
 floors. It is not rollback qualification.
 
+### Retained issuer journal recovery
+
+The owner reconciles only its original Network/Node/profile binding under its
+exclusive issuer lease. The journal is authoritative; a staging file is never
+an alternative source of committed reservations.
+
+| Retained state | Owning-reader outcome |
+|---|---|
+| Complete ARDILG01 without a binding | Validate every retained record, retain the ARDILG02 binding, then promote all debits as bootstrap |
+| Complete ARDILG01 with its matching binding and absent, empty, partial or complete regular staging file | Rebuild the successor from the validated journal; never adopt staging bytes as missing history |
+| Complete ARDILG02 with its matching binding | Resynchronize the retained files and directory before exposing the owner; discard only the known regular uncommitted stage |
+| Partial/conflicting binding, missing bound journal, missing ARDILG02 binding, malformed committed record or non-regular stage | Refuse and retain evidence; do not delete the binding, reconstruct an empty journal or regenerate key material |
+
+A failed binding/stage write or pre-replacement failure leaves the original
+complete journal authoritative. After an actual replacement, the whole promoted
+journal remains authoritative even if directory flush or the final reopen
+barrier reports failure. No failed opening returns usable issuance authority.
+A healthy later open must preserve exact responses, issuance kind and exhausted
+permission/bootstrap quotas, while retaining the same private material and
+exclusive ownership. A damaged binding can remain repair-required; a later
+attempt is not permission to remove it.
+
+Tests use independent historical bytes, real temporary files, per-open storage
+boundary failures and the actual public Issuer opener/terminal operation.
+These controls establish observed failure/reopen behavior, not power-loss or
+whole-root rollback qualification. ARDILG01-to-02 recovery is local to this
+owner; it supplies no transfer into the distinct successor quota/result roots.
+
 An ordinary issuer child requires a genuine class-1 ADMIT before ACCEPT and
 one fixed OPERATION/RESULT exchange. The receiver burns the token in its
 separate spend root and binds the sealed admission to the actual inner TLS

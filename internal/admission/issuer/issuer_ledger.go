@@ -48,6 +48,10 @@ func openClosedTokenIssuerLedger(root string, network, node, profileDigest [32]b
 // The internal barrier seam keeps reopen failure causal in persistence tests.
 // No caller may obtain a usable journal from readable but unconfirmed bytes.
 func openClosedTokenIssuerLedgerWithBarrier(root string, network, node, profileDigest [32]byte, barrier func(string) error) (*closedTokenIssuerLedger, error) {
+	return openClosedTokenIssuerLedgerWithPersistence(root, network, node, profileDigest, barrier, nativeIssuerLedgerPersistence())
+}
+
+func openClosedTokenIssuerLedgerWithPersistence(root string, network, node, profileDigest [32]byte, barrier func(string) error, storage issuerLedgerPersistence) (*closedTokenIssuerLedger, error) {
 	if network == [32]byte{} || node == [32]byte{} || profileDigest == [32]byte{} {
 		return nil, errors.New("closed token issuer ledger binding is invalid")
 	}
@@ -65,13 +69,13 @@ func openClosedTokenIssuerLedgerWithBarrier(root string, network, node, profileD
 		if boundErr == nil {
 			return nil, errors.New("closed token issuer retained ledger missing")
 		}
-		if err := ledger.retainBinding(); err != nil {
+		if err := ledger.retainBinding(storage); err != nil {
 			return nil, err
 		}
-		if err := writeIssuerExclusive(path, ledger.header()); err != nil {
+		if err := storage.writeExclusive(path, ledger.header()); err != nil {
 			return nil, err
 		}
-		return ledger, syncIssuerDirectory(root)
+		return ledger, storage.syncDirectory(root)
 	}
 	if err != nil {
 		return nil, err
@@ -86,11 +90,11 @@ func openClosedTokenIssuerLedgerWithBarrier(root string, network, node, profileD
 	}
 	if legacy {
 		if boundErr != nil {
-			if err := ledger.retainBinding(); err != nil {
+			if err := ledger.retainBinding(storage); err != nil {
 				return nil, err
 			}
 		}
-		if err := ledger.promote(); err != nil {
+		if err := ledger.promote(storage); err != nil {
 			return nil, err
 		}
 	}

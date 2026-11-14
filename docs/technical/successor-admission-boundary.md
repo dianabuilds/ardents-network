@@ -71,6 +71,26 @@ inputs. SPKI parsing is shared by token and issuer profile. The remaining
 issuance path is issuer.Issue -> Ledger.DebitVerified -> ResultStore.Issue.
 There is no second live issuer implementation in this tree.
 
+### Predecessor retained issuance history
+
+The predecessor's ARDILG01-to-ARDILG02 promotion is an owner-local recovery
+obligation, described by the [private admission contract](private-admission.md#retained-issuer-journal-recovery).
+It does not initialize or authorize this owner's quota, key or result roots.
+Matching request IDs and debited counts are insufficient for a lossless transfer:
+the predecessor journal lacks the canonical Permission commitment, its maxima
+and the debit's observed time stored by `quota.verifiedBatch`/`debitRecord`.
+The new binding additionally retains Authority, duty bounds and the exact key
+inventory; its time floor and hash chain cannot be manufactured from a directory
+name or an old profile digest alone. Complete signed inputs may supply some
+missing facts, but the old journal alone does not.
+
+Normal initialization creates a genuinely independent root. It is not recovery
+for an existing duty and cannot replace retained debit/result history with an
+empty ledger. Until an explicit transfer contract verifies all required facts,
+old history and its owning reader remain together; new owners refuse foreign
+roots. No automatic converter, replay-through-Debit shortcut, key import or
+shared live lease is provided by these interfaces.
+
 ## Review of rules outside the old Admission directory
 
 | Source | Admission-owned part | What remains outside |
