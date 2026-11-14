@@ -123,6 +123,28 @@ func (decision Decision) Materialization(index uint32) ([]byte, error) {
 	return encodeMaterialization(material), nil
 }
 
+// materializations returns the canonical encoded materialization for every
+// accepted record in order, building the commitment tree once. Each entry is
+// identical to Materialization(uint32(index)) without re-hashing the tree per
+// record (audit NW-1).
+func (decision Decision) materializations() [][]byte {
+	values := make([][]byte, len(decision.accepted))
+	for position := range decision.accepted {
+		values[position] = decision.accepted[position].raw
+	}
+	proofs := epochCommitmentProofs(values, emptyViewTag)
+	materials := make([][]byte, len(values))
+	for index, raw := range values {
+		materials[index] = encodeMaterialization(materialization{
+			epochDigest: decision.epoch.digest,
+			index:       uint32(index),
+			record:      append([]byte(nil), raw...),
+			siblings:    proofs[index],
+		})
+	}
+	return materials
+}
+
 // VerifyMaterials checks proofs for an already verified decision without
 // accepting a second or successor Epoch.
 func (decision Decision) VerifyMaterials(encoded [][]byte) error {
