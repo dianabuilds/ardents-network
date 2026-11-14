@@ -5345,3 +5345,20 @@ Pure completion/coordinator tests exercise exact binding, finite earlier-prefix
 refusal, canonical bytes and parent-only deadlines; fixtures grant no real cut,
 manager, Release, domain join or installed acceptance. Broader interruption and
 whole-role acceptance remain with the selected issue and actual evidence.
+
+### Descriptor-role offline public preparation
+
+The checked `network_signing_native` profile selects the three
+`TestDescriptorPreparationNative` controls in canonical Control through
+`make network-signing-check`. Supply the same-source compiled command and SHA-256
+as `ARDENTS_DESCRIPTOR_CONTROL_PROGRAM` and
+`ARDENTS_DESCRIPTOR_CONTROL_PROGRAM_SHA256`, run as root with protected original
+ancestors and private0700 TMPDIR on actual ext4, under the shared own-job lock.
+These controls execute the actual command for independent artifact/inventory and
+request bytes, fixed template and public plan, wrong-role/extra/substituted input
+refusal, cancellation/late physical Close, partial-output adoption refusal and
+fresh positive counterparts. Runtime declarations remain absent. Ordinary
+Infrastructure/Enrollment/Installation tests check exact canonical bytes and
+the independent fifth Store root plus the complete Unix completion namespace.
+This is offline byte/custody evidence, not Release signing, first-pin, actual
+manager/Start, Store ACK or installed qualification. Missing prerequisites fail.

@@ -3941,3 +3941,17 @@ Reservation and shared-handle copies retain one private lifecycle state. Returne
 observations own their slice data; closing a shared handle refuses further observations
 even while another handle retains a cached observation for the same installed root.
 The existing period storage schema and conservative release-cache policy are unchanged.
+
+### Descriptor-role public installation declarations
+
+Canonical Control has fixed `descriptor prepare-artifact`, `prepare-inventory`,
+`prepare-request`, `prepare-plan` and `prepare-template` producers. Infrastructure
+binds the exact `ardents/linux-amd64/infrastructure/descriptor` resources;
+Enrollment owns its separate seven-file inventory. `installation/descriptor`
+keeps independent State, participation, spending, Hosting and Descriptor Store
+roots, its own bounded journal/completion namespace and fixed non-root template.
+Public preparation shares only original native read/write mechanisms, never
+Source/Forwarding/JOIN authority. It does not open declared semantic roots, clock
+or private key, validate actual native manager policy, sign a Release or admit
+Startup/Store/Node work. Reachability alone owns signed Descriptor acceptance,
+Store ACK and durable conflicts. Installed lifetimes retain their separate gates.

@@ -762,3 +762,12 @@ same-operator trust boundary honestly; this does not prove independent initial
 delivery. Two installed Endpoint roots, public Custody/permission operations,
 both Carrier journeys and actual containment/empty-scope observations remain
 separate acceptance evidence.
+
+### Descriptor-role public resource preparation
+
+Use the canonical Descriptor public commands in the [command reference](../reference/commands.md#descriptor-role-public-preparation).
+Keep the actual Node program, fixed template, infrastructure descriptor and four
+Release metadata files as the exact seven-file inventory input; public preparation
+cannot supply signatures, independently delivered first trust or operational build
+qualification. Record original input/output hashes and retain failures. No live
+Store, State, credential, allowance or process is opened by these public commands.

@@ -28,7 +28,7 @@ func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
 		switch name {
 		case "file_unix.go", "file_unix_test.go", "file_windows.go", "file_unsupported.go":
 			continue
-		case "infrastructure_inventory.go", "infrastructure_inventory_test.go", "infrastructure_process_linux.go":
+		case "infrastructure_inventory.go", "infrastructure_inventory_test.go", "descriptor_inventory_linux_test.go", "infrastructure_process_linux.go":
 			// This distinct inventory has no Windows accepting product path.
 			continue
 		}
@@ -54,6 +54,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 		for _, name := range []string{
 			"internal/successor/enrollment/infrastructure_inventory.go",
 			"internal/successor/enrollment/infrastructure_inventory_test.go",
+			"internal/successor/enrollment/descriptor_inventory_linux_test.go",
 			"internal/successor/enrollment/infrastructure_process_linux.go",
 			"internal/successor/installation/infrastructure/doc.go",
 			"internal/successor/installation/infrastructure/artifact.go",
@@ -557,6 +558,12 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/join_hosting_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/join") {
 			return true
 		}
+		if source == "cmd/ardents-control/descriptor_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/descriptor") {
+			return true
+		}
+		if (source == "cmd/ardents-control/descriptor_request_linux.go" || source == "cmd/ardents-control/descriptor_plan_linux.go") && dependency == modulePath+"/internal/successor/installation/descriptor" {
+			return true
+		}
 		if source == "cmd/ardents-control/join_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/join") {
 			return true
 		}
@@ -850,6 +857,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/join/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
+	if source == "internal/successor/installation/descriptor/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
+		return true
+	}
 	if source == "internal/successor/installation/join/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}
@@ -905,6 +915,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/execution/worker":                {"installation/systemd", "installation/unit"},
 		"internal/successor/installation":                    {"enrollment", "release", "installation/request"},
 		"internal/successor/installation/infrastructure":     {"enrollment", "release"},
+		"internal/successor/installation/descriptor":         {},
 		"internal/successor/installation/join":               {},
 		"internal/successor/installation/forwarding":         {},
 		"internal/successor/installation/endpoint":           {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "installation/request", "installation/directory"},

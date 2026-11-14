@@ -1480,3 +1480,27 @@ supervise-transition --stop-after-record 62 --timeout-ms N -- replace
 DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST` (N at most120000).
 Its result reports original physical cut completion only, never recovered or
 runtime-ready state. Unsupported/uncertain prefixes remain blocked.
+
+## Descriptor-role public preparation
+
+Linux canonical Control provides these fixed offline commands (fresh OUTPUT
+directories; original inputs must have protected root-owned ancestors):
+
+```text
+ardents-control descriptor prepare-template OUTPUT
+ardents-control descriptor prepare-artifact ID VERSION PROGRAM TEMPLATE OUTPUT
+ardents-control descriptor prepare-inventory DISTRIBUTION OUTPUT
+ardents-control descriptor prepare-request --installation-root PATH --state-root PATH --participation-root PATH --spend-root PATH --hosting-root PATH --descriptor-root PATH --credential-directory PATH --plan PATH --certificate PATH --private-key PATH --clock PATH --output OUTPUT
+ardents-control descriptor prepare-plan --request REQUEST --output OUTPUT --network-id HEX --node-id HEX --profile-authority HEX --authority HEX --threshold N --work-tx N --work-rx N --termination-tx N --termination-rx N --retirement-wait-ms N
+```
+
+The exact immutable resources are `infrastructure-descriptor.json` and
+`ardents-descriptor.service` alongside the Node program and four Release metadata
+files. `prepare-artifact` binds supplied program/template bytes; it neither
+validates loaded unit policy nor signs metadata. The request keeps Store separate
+from State, participation, spending and the one Hosting root. The plan retains
+explicit public trust declarations; repeated `--authority` is allowed within its
+finite bound, other duplicate options refuse. Declared runtime inputs/roots are
+not opened or created. Input/output users join before the public hash receipt.
+These operations supply no initial trust, Release permission, installed startup,
+Store ACK, publication readiness or live Node duty. Other platforms refuse.

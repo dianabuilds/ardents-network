@@ -114,6 +114,16 @@ that next physical round, never during or after it.
 
 ## Supporting mechanisms and composition
 
+Descriptor-role public preparation is fixed offline command composition.
+Infrastructure binds only its exact descriptor/program/template bytes; Enrollment
+owns the distinct seven-file inventory. Installation's separate `descriptor`
+declaration owner binds five independent State/participation/spend/Hosting/Store
+roots and the fixed non-root template. Canonical Control retains original public
+input and exclusive output custody through physical joins. These bytes confer
+neither native policy acceptance nor Release, Startup, Store ACK or runtime duty.
+Reachability remains the sole Store/proof/history owner. No live owner or role
+permission crosses from Source, Forwarding or JOIN through shared physical I/O.
+
 JOIN public artifact preparation is a separate offline Control composition.
 Infrastructure owns only its exact descriptor/program/template byte binding;
 Enrollment owns the seven-file inventory. The real canonical Control consumers
