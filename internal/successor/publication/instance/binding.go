@@ -14,22 +14,23 @@ import (
 // Binding retains the original Instance and independently owned Publication
 // reservation. It exports neither private material nor a general signing API.
 type Binding struct {
-	root         *Root
-	generation   *durable.Generation
-	credential   publication.Credential
-	private      ed25519.PrivateKey
-	consumed     bool
-	consumption  chan struct{} // One original floor/write operation and its result.
-	consumeErr   error
-	closed       bool
-	closing      chan struct{}
-	closeErr     error
-	receipt      introduction.Receipt
-	record       []byte
-	recipients   [2]*Recipient
-	revision     uint64
-	lifetime     *PublicationLifetime
-	observations sync.WaitGroup // Admission and retirement share root.mu.
+	root           *Root
+	generation     *durable.Generation
+	credential     publication.Credential
+	private        ed25519.PrivateKey
+	certificateDER []byte // immutable PureEd25519 Service certificate; cached under root.mu (audit DD-7)
+	consumed       bool
+	consumption    chan struct{} // One original floor/write operation and its result.
+	consumeErr     error
+	closed         bool
+	closing        chan struct{}
+	closeErr       error
+	receipt        introduction.Receipt
+	record         []byte
+	recipients     [2]*Recipient
+	revision       uint64
+	lifetime       *PublicationLifetime
+	observations   sync.WaitGroup // Admission and retirement share root.mu.
 }
 
 // Bind reconciles through the actual durable owner, never a supplied scalar

@@ -162,18 +162,25 @@ func (service *ServiceAttachment) certificateLocked() (tls.Certificate, error) {
 	if err := service.lease.operation.CheckPublisher(); err != nil {
 		return tls.Certificate{}, err
 	}
-	value := service.lifetime.binding.credential.Delegation()
-	template := &x509.Certificate{SerialNumber: new(big.Int).SetUint64(value.Generation), NotBefore: value.NotBefore, NotAfter: value.NotAfter,
-		KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, SignatureAlgorithm: x509.PureEd25519}
-	public := append(ed25519.PublicKey(nil), value.Instance[:]...)
-	der, err := x509.CreateCertificate(rand.Reader, template, template, public, service.lifetime.binding.private)
-	if err != nil {
-		return tls.Certificate{}, err
+	binding := service.lifetime.binding
+	// The credential is immutable and PureEd25519 signing is deterministic, so
+	// the DER is identical for every attachment of this binding; build it once
+	// under root.mu instead of per connection (audit DD-7).
+	if binding.certificateDER == nil {
+		value := binding.credential.Delegation()
+		template := &x509.Certificate{SerialNumber: new(big.Int).SetUint64(value.Generation), NotBefore: value.NotBefore, NotAfter: value.NotAfter,
+			KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, SignatureAlgorithm: x509.PureEd25519}
+		public := append(ed25519.PublicKey(nil), value.Instance[:]...)
+		der, err := x509.CreateCertificate(rand.Reader, template, template, public, binding.private)
+		if err != nil {
+			return tls.Certificate{}, err
+		}
+		binding.certificateDER = der
 	}
 	if err := service.lease.operation.CheckPublisher(); err != nil {
 		return tls.Certificate{}, err
 	}
-	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: &serviceCertificateSigner{service: service}}, nil
+	return tls.Certificate{Certificate: [][]byte{binding.certificateDER}, PrivateKey: &serviceCertificateSigner{service: service}}, nil
 }
 
 // checkLocked is the local effect/commit gate after recheck outside root.mu.
