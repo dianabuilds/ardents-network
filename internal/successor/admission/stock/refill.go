@@ -10,8 +10,7 @@ func (owner *Owner) RefillPlan(requested [][32]byte, class uint8, requiresAdmiss
 		return nil, err
 	}
 	defer owner.users.Done()
-	observed, at, observedErr := owner.observe()
-	owner.mu.Lock()
+	observed, at, observedErr := owner.observeAndLock()
 	defer owner.mu.Unlock()
 	profile, now, err := owner.current(observed, at, observedErr)
 	permission := owner.permission
