@@ -80,14 +80,16 @@ func classifySourceOutcome(err error) byte {
 	}
 }
 
+var sourceOutcomeNames = map[byte]string{
+	0: "not-attempted", sourceOutcomeValid: "valid", sourceOutcomeUnavailable: "unavailable",
+	sourceOutcomeAuthentication: "authentication-failed", sourceOutcomeTimeout: "timeout",
+	sourceOutcomeFraming: "framing-failed", sourceOutcomeResource: "resource-failed",
+	sourceOutcomeCanceled: "canceled", sourceOutcomeInvalidState: "invalid-state",
+	sourceOutcomeInterrupted: "interrupted",
+	sourceOutcomeNotFound:    "not-found", sourceOutcomeBusy: "busy",
+	sourceOutcomeBadRequest: "bad-request", sourceOutcomeInternal: "source-internal",
+}
+
 func sourceOutcomeName(outcome byte) string {
-	return map[byte]string{
-		0: "not-attempted", sourceOutcomeValid: "valid", sourceOutcomeUnavailable: "unavailable",
-		sourceOutcomeAuthentication: "authentication-failed", sourceOutcomeTimeout: "timeout",
-		sourceOutcomeFraming: "framing-failed", sourceOutcomeResource: "resource-failed",
-		sourceOutcomeCanceled: "canceled", sourceOutcomeInvalidState: "invalid-state",
-		sourceOutcomeInterrupted: "interrupted",
-		sourceOutcomeNotFound:    "not-found", sourceOutcomeBusy: "busy",
-		sourceOutcomeBadRequest: "bad-request", sourceOutcomeInternal: "source-internal",
-	}[outcome]
+	return sourceOutcomeNames[outcome]
 }
