@@ -28,6 +28,11 @@ import (
 	roletls "github.com/dianabuilds/ardents-network/internal/successor/route/transport/tls"
 )
 
+// forwardCopyBuffers reuses one record-sized copy buffer per forwarded child
+// direction instead of allocating 32 KiB per io.Copy (audit RD-6). A record-sized
+// buffer also keeps each read within a single BYTES frame.
+var forwardCopyBuffers = sync.Pool{New: func() any { b := make([]byte, ardp.MaximumBodySize); return &b }}
+
 // ReceiverConfig binds one actual new receiving forwarding duty. Admit must
 // call receiving.Owner.Accept with its genuine Hosting capacity callback.
 type ReceiverConfig struct {
@@ -781,14 +786,18 @@ func (r *Receiver) forward(ctx context.Context, source *framing.Lane, parent ard
 	}()
 	results := make(chan error, 2)
 	go func() {
-		_, err := io.Copy(target, source)
+		buf := forwardCopyBuffers.Get().(*[]byte)
+		defer forwardCopyBuffers.Put(buf)
+		_, err := io.CopyBuffer(target, source, *buf)
 		if err == nil {
 			err = target.CloseWrite()
 		}
 		results <- err
 	}()
 	go func() {
-		_, err := io.Copy(source, target)
+		buf := forwardCopyBuffers.Get().(*[]byte)
+		defer forwardCopyBuffers.Put(buf)
+		_, err := io.CopyBuffer(source, target, *buf)
 		if err == nil {
 			err = source.CloseWrite()
 		}
