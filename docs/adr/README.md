@@ -72,6 +72,10 @@ and [protocol](../technical/protected-route-protocol.md) state the current rules
   Acceptance does not establish implementation, qualification or the separately
   required exact bootstrap acceptance; Endpoint ADR-0119/0120 scopes remain.
 
+- [ADR-0124 — Start new installations without legacy data transfer](0124-start-new-installations-without-legacy-data-transfer.md)
+  removes predecessor deployment continuity obligations; new-installation
+  history, authority and recovery remain required.
+
 ## Former editions and rationale
 
 [Archived decisions](../archive/README.md#architecture-decisions) retain

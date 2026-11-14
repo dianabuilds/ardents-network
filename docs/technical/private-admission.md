@@ -414,6 +414,12 @@ floors. It is not rollback qualification.
 
 ### Retained issuer journal recovery
 
+This describes the retained predecessor implementation, not a requirement to
+transfer it to new Admission. [ADR-0124](../adr/0124-start-new-installations-without-legacy-data-transfer.md)
+selects independent new installations without predecessor obligations. Retire
+this reader with its last actual old consumer; the new installation's own
+quota, key, result and spend recovery remains mandatory.
+
 The owner reconciles only its original Network/Node/profile binding under its
 exclusive issuer lease. The journal is authoritative; a staging file is never
 an alternative source of committed reservations.

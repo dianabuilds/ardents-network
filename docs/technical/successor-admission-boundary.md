@@ -86,10 +86,15 @@ missing facts, but the old journal alone does not.
 
 Normal initialization creates a genuinely independent root. It is not recovery
 for an existing duty and cannot replace retained debit/result history with an
-empty ledger. Until an explicit transfer contract verifies all required facts,
-old history and its owning reader remain together; new owners refuse foreign
-roots. No automatic converter, replay-through-Debit shortcut, key import or
-shared live lease is provided by these interfaces.
+empty ledger. [ADR-0124](../adr/0124-start-new-installations-without-legacy-data-transfer.md)
+selects a new installation without predecessor obligations, so no transfer
+contract or converter is required for retirement. Provision new purpose-specific
+material and authority; predecessor rights do not become new issuance permission.
+Old readers remain only for their actual remaining consumers, not for a future
+migration promise. New owners refuse foreign roots. No replay-through-Debit
+shortcut, predecessor key import or shared live lease is provided by these
+interfaces. An existing new root retains its own debit/result history and keys;
+initialization cannot replace its restart or recovery.
 
 ## Review of rules outside the old Admission directory
 
@@ -265,6 +270,9 @@ outside this evidence.
 
 | Contract | Reproducing scenario | Forbidden effect checked |
 | --- | --- | --- |
+| Fresh key creation and foreign-root refusal | cmd/ardents-next/admission_fresh_roots_linux_test.go: TestIssuanceFreshKeysAndPredecessorRootRefusal (repository-relative path) | Independent initializations have disjoint public keys; existing, partial and synthetic predecessor roots refuse without changed bytes or public export |
+| Initialization is not quota recovery | Same file: TestAdmissionFreshInitializationCannotResetSpentHistory | Repeated initialize cannot erase a debit or exact retry; predecessor journal refuses unchanged |
+| Independent new issuance authority | Same file: TestAdmissionFreshAuthorityRefusesPredecessorPermission | A genuine signature from another fixture authority cannot debit the new ledger; replacing only that signature with the new authority's admits the same request |
 | Role allocation maxima and exact retry | allocation/request_linux_test.go: TestMixedRoleLimitsExactRetryAndChangedRequest | No extra allocation or mutated journal on refusal |
 | Retained allocation time floor | allocation/request_linux_test.go: TestWindowAdvanceCannotResetPriorQuotaAfterRollback | Clock rollback cannot restore spent allocation |
 | Canonical request and result grammar | quota/batch_test.go: TestBatchContract; batch_result_test.go | No malformed or noncanonical wire acceptance |
