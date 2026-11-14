@@ -5416,3 +5416,31 @@ and original prefixes remain; native stop and original users precede cleanup.
 Queued-observation race controls check that late effects cannot reuse an earlier
 round and that Close retains held observations and late physical failures. Fixed
 manager vocabulary vectors reject foreign units/jobs/managers and unadmitted jobs.
+
+The separate `descriptor-publish-linux` profile (`make descriptor-publish-check`)
+uses a fresh installed stand with the same native prerequisites as startup. Its
+SHA-pinned `descriptor_installed_native` test binary first creates a genuine
+Custody Permission authority, then retains actual finite Allocation, issuance
+and Stock owners while canonical Control prepares signed State and the installed
+Node starts. Each operation durably presents a separate Control right before
+network bytes. Thirteen actual receiving operations verify signed publication and
+Store ACK, exact independent-Target lookup, invalid signature and foreign-profile
+and future-interval refusal, absent Target without fallback, same-revision conflict, higher-revision
+repair and stale-revision refusal. Results retain actual TLS and lower-channel
+termination. A separate genuine Service Credential authorizes the signed public
+fixture; it supplies no live Publisher, registered Introduction slot, Source
+prefix or Service readiness. Native teardown is not accepted Installation Stop,
+retirement, restart or replacement. Missing prerequisites fail, never skip.
+
+The same profile checks that every operation appends exactly one irreversible
+receiving spend without altering prior spends. After actual native test teardown,
+a separately launched original-UID reader requires the complete existing Store
+inventory and independently reopens the retained revision2. Exact proof bytes,
+native objects and complete Store contents must remain unchanged through Close;
+that readback grants no Installation retirement or restart permission.
+
+The four nonmutating refusals have independent rights/channels and run in pairs
+concurrently; all join before the next dependent Store operation. The three-minute
+native orchestration bound includes real Custody/issuance and setup. Every role
+channel retains its unchanged absolute limit (at most 30 seconds), with no token
+refund, guard change or additional protocol retry.
