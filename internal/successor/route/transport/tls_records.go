@@ -40,7 +40,12 @@ func (c *retainedConn) Write(body []byte) (int, error) {
 	}
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
-	limit := TLSWriteLimit(secured)
+	// The record capacity is fixed after the handshake; project it once instead
+	// of walking the nesting and copying ConnectionState on every write (RD-2).
+	if c.writeLimit == 0 {
+		c.writeLimit = TLSWriteLimit(secured)
+	}
+	limit := c.writeLimit
 	if limit <= 0 {
 		return 0, errors.New("nested TLS record capacity unavailable")
 	}
