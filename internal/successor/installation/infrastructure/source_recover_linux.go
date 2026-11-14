@@ -133,7 +133,7 @@ func recoverInitialSource(ctx context.Context, v *release.Verifier, a Authorizat
 		return err
 	}
 	var paths []string
-	if count >= 113 {
+	if count >= sourceInitialReloadIntentSeq {
 		// Read every completed native resource before a connection may load or
 		// reference this unit. Complete-looking selected bytes alone grant none.
 		s.selected, err = openSourceSelection(ctx, filepath.Join(r.InstallationRoot, "binding.json"))
@@ -202,11 +202,11 @@ func recoverInitialSource(ctx context.Context, v *release.Verifier, a Authorizat
 	names := sourceGenerationNames()
 	slices.Sort(names)
 	for i, name := range names {
-		ready := 68 + i*3 + 2
+		ready := sourceInitialPrefixSeq + i*3 + 2
 		if s.writer.sequence > ready {
 			continue
 		}
-		if s.writer.sequence != 68+i*3 {
+		if s.writer.sequence != sourceInitialPrefixSeq+i*3 {
 			return ErrBinding
 		}
 		mode := os.FileMode(0444)
@@ -221,12 +221,12 @@ func recoverInitialSource(ctx context.Context, v *release.Verifier, a Authorizat
 	if err = checkSourceInventory(sealed, names); err != nil {
 		return err
 	}
-	if s.writer.sequence == 104 {
+	if s.writer.sequence == sourceInitialSealIntentSeq {
 		if err = s.writer.record("seal-intent", sealed, s.writer.directories[sealed], s.binding.Generation, 0555, 0, 0); err != nil {
 			return err
 		}
 	}
-	if s.writer.sequence == 105 {
+	if s.writer.sequence == sourceInitialSealedSeq {
 		if err = sealSourceDirectory(s.writer, sealed, s.check); err != nil {
 			return err
 		}
@@ -235,23 +235,23 @@ func recoverInitialSource(ctx context.Context, v *release.Verifier, a Authorizat
 		}
 	}
 	selected := filepath.Join(r.InstallationRoot, "binding.json")
-	if s.writer.sequence == 106 {
+	if s.writer.sequence == sourceInitialBindingSeq {
 		if err = s.writer.write(selected, s.raw, 0644, 0, 0, s.check); err != nil {
 			return err
 		}
 	}
-	if s.writer.sequence == 109 {
+	if s.writer.sequence == sourceInitialSelectedSeq {
 		if err = s.writer.record("selected", selected, nil, digest(s.raw), 0644, 0, 0); err != nil {
 			return err
 		}
 	}
 	unitPath := "/etc/systemd/system/ardents-source.service"
-	if s.writer.sequence == 110 {
+	if s.writer.sequence == sourceInitialUnitSeq {
 		if err = s.writer.write(unitPath, s.unit, 0644, 0, 0, s.check); err != nil {
 			return err
 		}
 	}
-	if s.writer.sequence == 113 {
+	if s.writer.sequence == sourceInitialReloadIntentSeq {
 		if err = s.writer.record("reload-intent", unitPath, nil, digest(s.unit), 0644, 0, 0); err != nil {
 			return err
 		}
@@ -259,7 +259,7 @@ func recoverInitialSource(ctx context.Context, v *release.Verifier, a Authorizat
 	if err = s.check(); err != nil {
 		return err
 	}
-	if s.writer.sequence == 114 {
+	if s.writer.sequence == sourceInitialReloadSeq {
 		if s.published != nil {
 			err = s.published.Reload()
 		} else {
@@ -271,7 +271,7 @@ func recoverInitialSource(ctx context.Context, v *release.Verifier, a Authorizat
 		if err = s.namespace.reobserveAfterReload(); err != nil {
 			return err
 		}
-	} else if s.writer.sequence != 115 {
+	} else if s.writer.sequence != sourceRecoverableInitialRecords {
 		return ErrBinding
 	}
 	if s.selected == nil {
@@ -295,7 +295,7 @@ func recoverInitialSource(ctx context.Context, v *release.Verifier, a Authorizat
 			return err
 		}
 	}
-	if s.writer.sequence == 114 {
+	if s.writer.sequence == sourceInitialReloadSeq {
 		if err = s.writer.record("stopped-verified", selected, nil, digest(s.raw), 0644, 0, 0); err != nil {
 			return err
 		}

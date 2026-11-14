@@ -17,7 +17,7 @@ func decodeSourceReplacementRecords(raw []byte, replacement sourceReplacementBin
 		return nil, ErrBinding
 	}
 	lines := bytes.Split(raw[:len(raw)-1], []byte{'\n'})
-	if len(lines) != 55 {
+	if len(lines) != sourceReplacementCount {
 		return nil, ErrBinding
 	}
 	records := make([]sourceRecord, len(lines))
