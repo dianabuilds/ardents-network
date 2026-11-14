@@ -12,11 +12,12 @@ import (
 // and borrower cleanup. A later benign ErrClosed cannot mask the first failure.
 type retainedConn struct {
 	net.Conn
-	once     sync.Once
-	err      error
-	closed   atomic.Bool
-	peerRead atomic.Bool
-	writeMu  sync.Mutex
+	once       sync.Once
+	err        error
+	closed     atomic.Bool
+	peerRead   atomic.Bool
+	writeMu    sync.Mutex
+	writeLimit int // immutable post-handshake TLS record capacity; guarded by writeMu (audit RD-2)
 }
 
 // Read preserves the exact TLS result. Only an original, completed TLS channel

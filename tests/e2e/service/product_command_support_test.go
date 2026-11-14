@@ -1,7 +1,6 @@
 package service_test
 
 import (
-	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,17 +8,6 @@ import (
 	"strings"
 	"testing"
 )
-
-func runCommand(t *testing.T, ctx context.Context, root, binary string, arguments ...string) []byte {
-	t.Helper()
-	command := exec.CommandContext(ctx, binary, arguments...)
-	command.Dir = root
-	output, err := command.CombinedOutput()
-	if err != nil {
-		t.Fatalf("command failed: %v\n%s", err, output)
-	}
-	return output
-}
 
 func buildProductCommand(t *testing.T, name string) string {
 	t.Helper()

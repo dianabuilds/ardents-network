@@ -22,16 +22,19 @@ import (
 )
 
 func TestDescriptorInstalledNativeResourceReplacement(t *testing.T) {
-	runDescriptorReplacementStage(t, "resource", "2")
+	runDescriptorReplacementStage(t, "resource", "2", false)
 }
 func TestDescriptorInstalledNativeProgramReplacement(t *testing.T) {
-	runDescriptorReplacementStage(t, "program", "3")
+	runDescriptorReplacementStage(t, "program", "3", false)
 }
 
 // Each stage has its own unchanged checked three-minute test bound. Its
 // prerequisite is independently verified committed domain/native retirement,
 // never a QA marker or a reset deadline on a live predecessor operation.
-func runDescriptorReplacementStage(t *testing.T, stage, version string) {
+func TestDescriptorInstalledNativeRecoveredResourceReplacement(t *testing.T) {
+	runDescriptorReplacementStage(t, "resource", "2", true)
+}
+func runDescriptorReplacementStage(t *testing.T, stage, version string, recovery bool) {
 	descriptorNativeStand(t)
 	const base = descriptorNativeParent
 	read := func(path string) []byte {
@@ -252,6 +255,9 @@ func runDescriptorReplacementStage(t *testing.T, stage, version string) {
 		Inputs        map[string]string
 		Limits        string
 	}{"ardents-descriptor-replacement-bootstrap-v1", stage, map[string]string{"node": digest(programBytes), "control": digest(controlBytes), "exchange-harness": digest(read(harness))}, map[string]string{}, "one controlled VPS/cohort; explicit forward stopped replacement and fresh original startup; unchanged guards, bounds, quotas and absolute deadlines; no recovery/Service/public/load/privacy/independent-family or builder qualification"}
+	if recovery {
+		scope.Limits = "one controlled VPS/cohort; exact original stopped replacement cut at record62 and independent recovery then fresh startup; unchanged guards, bounds, quotas and absolute deadlines; no earlier-prefix continuation/Service/public/load/privacy/independent-family or builder qualification"
+	}
 	for name, path := range map[string]string{"predecessor-binding": bindingPath, "inventory": filepath.Join(distribution, "infrastructure-enrollment.json"), "request": requestFile, "plan": filepath.Join(runtimePlan, "descriptor-plan.json"), "exchange": filepath.Join(parent, "exchange-prepared.json")} {
 		scope.Inputs[name] = digest(read(path))
 	}
@@ -277,8 +283,69 @@ func runDescriptorReplacementStage(t *testing.T, stage, version string) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	if raw, err := invoke("replace", distribution, history, "alpha", "initial-stopped-descriptor", bindingPath, requestFile); err != nil || !bytes.Contains(raw, []byte("descriptor-replacement-stopped-completed")) {
-		t.Fatal("explicit stopped forward replacement", err, string(raw))
+	if recovery {
+		replacementArgs := []string{distribution, history, "alpha", "initial-stopped-descriptor", bindingPath, requestFile}
+		cutArgs := append([]string{"supervise-transition", "--stop-after-record", "62", "--timeout-ms", "120000", "--", "replace"}, replacementArgs...)
+		if raw, err := invoke(cutArgs...); err != nil || !bytes.Contains(raw, []byte("descriptor-original-cut-completed")) {
+			t.Fatal("genuine original denied/joined stopped cut", err, string(raw))
+		}
+		nextGeneration := digest(read(artifact))
+		journal := r.InstallationRoot + ".descriptor-replacement-" + nextGeneration + "-journal"
+		originalPrefix := read(journal)
+		rows := bytes.Split(bytes.TrimSuffix(originalPrefix, []byte{'\n'}), []byte{'\n'})
+		if len(rows) != 62 {
+			t.Fatal("wrong actual original cut", len(rows))
+		}
+		refused := func(label, action string, args ...string) {
+			t.Helper()
+			raw, err := invoke(append([]string{action}, args...)...)
+			if err == nil {
+				t.Fatal("unsafe recovery accepted", label, string(raw))
+			}
+			write(filepath.Join(parent, "refusal-"+label+".log"), append(append([]byte(err.Error()+"\n"), raw...), '\n'), 0600)
+			if !bytes.Equal(originalPrefix, read(journal)) || !bytes.Equal(storeBefore, read(stored)) {
+				t.Fatal("refusal changed original prefix/Store", label)
+			}
+		}
+		refused("pending-start", "restart", replacementArgs[:5]...)
+		refused("pending-replace", "replace", replacementArgs...)
+		wrong := append([]string(nil), replacementArgs...)
+		wrong[1] = history + "-foreign"
+		refused("wrong-history", "recover", wrong...)
+		if _, err := os.Lstat(wrong[1]); !errors.Is(err, os.ErrNotExist) {
+			t.Fatal("wrong history created", err)
+		}
+		cutResult := journal + ".original-cut-result"
+		held := cutResult + ".negative-held"
+		if err := os.Rename(cutResult, held); err != nil {
+			t.Fatal(err)
+		}
+		refused("missing-original-cut", "recover", replacementArgs...)
+		write(cutResult, read(held), 0600)
+		refused("copied-cut-inode", "recover", replacementArgs...)
+		if err := os.Remove(cutResult); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(held, cutResult); err != nil {
+			t.Fatal(err)
+		}
+		partial := journal + ".recovery-journal"
+		write(partial, nil, 0600)
+		refused("partial-recovery", "recover", replacementArgs...)
+		if err := os.Remove(partial); err != nil {
+			t.Fatal(err)
+		}
+		if raw, err := invoke(append([]string{"recover"}, replacementArgs...)...); err != nil || !bytes.Contains(raw, []byte("descriptor-recovery-stopped-completed")) {
+			t.Fatal("independently admitted stopped recovery", err, string(raw))
+		}
+		if !bytes.Equal(originalPrefix, read(journal)) {
+			t.Fatal("recovery rewrote original prefix")
+		}
+		refused("recovery-replay", "recover", replacementArgs...)
+	} else {
+		if raw, err := invoke("replace", distribution, history, "alpha", "initial-stopped-descriptor", bindingPath, requestFile); err != nil || !bytes.Contains(raw, []byte("descriptor-replacement-stopped-completed")) {
+			t.Fatal("explicit stopped forward replacement", err, string(raw))
+		}
 	}
 	if !bytes.Equal(storeBefore, read(stored)) || digest(read(keyPath)) != keyBefore {
 		t.Fatal("stopped replacement changed Store or original Node key")

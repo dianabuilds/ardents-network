@@ -156,6 +156,60 @@ func TestTextTokenJournalPrunesOnlyAfterWindowCleanupMargin(t *testing.T) {
 	}
 }
 
+// The earliest-expiry fence must retain exactly what a full scan retains and
+// keep earliestWindow equal to the minimum retained window (audit AD-4).
+func TestTextTokenJournalPruneFenceMatchesFullScan(t *testing.T) {
+	journal, now, record, token := tokenJournalFixture(t)
+	defer journal.Close()
+	base := record.Window
+	*now = base.Add(30 * time.Minute)
+	if err := journal.Mark(token, record); err != nil {
+		t.Fatal(err)
+	}
+	// Second window, spent inside the one-minute overlap so both coexist.
+	*now = base.Add(time.Hour + 30*time.Second)
+	record.Window = base.Add(time.Hour)
+	token[0]++
+	if err := journal.Mark(token, record); err != nil {
+		t.Fatal(err)
+	}
+	if !journal.earliestWindow.Equal(base) {
+		t.Fatalf("earliestWindow=%s want=%s", journal.earliestWindow, base)
+	}
+	windows := []time.Time{base, base.Add(time.Hour)}
+	retainedAt := func(at time.Time) int {
+		count := 0
+		for _, window := range windows {
+			if at.Before(window.Add(time.Hour + time.Minute)) {
+				count++
+			}
+		}
+		return count
+	}
+	for _, at := range []time.Time{
+		base.Add(time.Hour + 30*time.Second),
+		base.Add(time.Hour + 59*time.Second),
+		base.Add(time.Hour + time.Minute),
+		base.Add(2*time.Hour + time.Minute),
+	} {
+		if err := journal.prune(at); err != nil {
+			t.Fatal(err)
+		}
+		if len(journal.records) != retainedAt(at) {
+			t.Fatalf("at=%s retained=%d want=%d", at, len(journal.records), retainedAt(at))
+		}
+		var earliest time.Time
+		for _, rec := range journal.records {
+			if earliest.IsZero() || rec.Window.Before(earliest) {
+				earliest = rec.Window
+			}
+		}
+		if !journal.earliestWindow.Equal(earliest) {
+			t.Fatalf("at=%s earliestWindow=%s want=%s", at, journal.earliestWindow, earliest)
+		}
+	}
+}
+
 func TestTextTokenJournalPruningCrashRetainsDeletionTimeFloor(t *testing.T) {
 	journal, now, record, token := tokenJournalFixture(t)
 	if err := journal.Mark(token, record); err != nil {

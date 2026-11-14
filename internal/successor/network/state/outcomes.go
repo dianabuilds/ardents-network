@@ -32,13 +32,24 @@ var sourceStatusErrors = [...]error{
 	errors.New("source returned INTERNAL"),
 }
 
+// errUnknownSourceStatus keeps an unrecognized non-ok status fail-closed. The
+// production framing guard already rejects unknown status bytes, but the
+// injected fetch seam must not inherit a silent success default.
+var errUnknownSourceStatus = errors.New("source returned an unknown status")
+
 func sourceStatusError(status string) error {
-	return map[string]error{
-		"not-found":   sourceStatusErrors[1],
-		"busy":        sourceStatusErrors[2],
-		"bad-request": sourceStatusErrors[3],
-		"internal":    sourceStatusErrors[4],
-	}[status]
+	switch status {
+	case "not-found":
+		return sourceStatusErrors[1]
+	case "busy":
+		return sourceStatusErrors[2]
+	case "bad-request":
+		return sourceStatusErrors[3]
+	case "internal":
+		return sourceStatusErrors[4]
+	default:
+		return errUnknownSourceStatus
+	}
 }
 
 func classifySourceOutcome(err error) byte {
@@ -69,14 +80,16 @@ func classifySourceOutcome(err error) byte {
 	}
 }
 
+var sourceOutcomeNames = map[byte]string{
+	0: "not-attempted", sourceOutcomeValid: "valid", sourceOutcomeUnavailable: "unavailable",
+	sourceOutcomeAuthentication: "authentication-failed", sourceOutcomeTimeout: "timeout",
+	sourceOutcomeFraming: "framing-failed", sourceOutcomeResource: "resource-failed",
+	sourceOutcomeCanceled: "canceled", sourceOutcomeInvalidState: "invalid-state",
+	sourceOutcomeInterrupted: "interrupted",
+	sourceOutcomeNotFound:    "not-found", sourceOutcomeBusy: "busy",
+	sourceOutcomeBadRequest: "bad-request", sourceOutcomeInternal: "source-internal",
+}
+
 func sourceOutcomeName(outcome byte) string {
-	return map[byte]string{
-		0: "not-attempted", sourceOutcomeValid: "valid", sourceOutcomeUnavailable: "unavailable",
-		sourceOutcomeAuthentication: "authentication-failed", sourceOutcomeTimeout: "timeout",
-		sourceOutcomeFraming: "framing-failed", sourceOutcomeResource: "resource-failed",
-		sourceOutcomeCanceled: "canceled", sourceOutcomeInvalidState: "invalid-state",
-		sourceOutcomeInterrupted: "interrupted",
-		sourceOutcomeNotFound:    "not-found", sourceOutcomeBusy: "busy",
-		sourceOutcomeBadRequest: "bad-request", sourceOutcomeInternal: "source-internal",
-	}[outcome]
+	return sourceOutcomeNames[outcome]
 }

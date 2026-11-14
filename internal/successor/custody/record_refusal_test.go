@@ -31,7 +31,7 @@ func TestServiceRecordWrongPasswordAndAuthenticatedMutationHaveOneRefusal(t *tes
 	}
 	ciphertext[0] ^= 1
 	parsed.Ciphertext = base64.RawURLEncoding.EncodeToString(ciphertext)
-	zero(ciphertext)
+	clear(ciphertext)
 	altered, err := marshalCanonical(parsed)
 	if err != nil {
 		t.Fatal(err)

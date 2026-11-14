@@ -24,7 +24,6 @@ type Stream struct {
 	ctx               context.Context
 	cancel            context.CancelFunc
 	mu                sync.Mutex
-	cond              *sync.Cond
 	changed           chan struct{} // Stream.mu owns notification replacement.
 	writeMu           sync.Mutex
 	send              *sendLedger
@@ -109,7 +108,6 @@ func (owner *AuthenticatedAttachment) openStream(contract executionruntime.Strea
 		stream = &Stream{owner: owner, contract: contract, ctx: ctx, cancel: cancel, send: send, receive: receive, terminal: terminal, publisherRoute: publisherRoute,
 			initiatorRoute: initiatorRoute, key: owner.key, recipientRevision: owner.recipientRevision, lastProgress: time.Now(), outcome: make(chan application.Outcome, 1), joined: make(chan struct{}), settledDone: make(chan struct{}), watcherDone: make(chan struct{})}
 		stream.self = stream
-		stream.cond = sync.NewCond(&stream.mu)
 		if initiatorRoute != nil {
 			initiatorRoute.mu.Lock()
 			if err := initiatorRoute.localLocked(); err != nil || initiatorRoute.owner != owner || initiatorRoute.stream != nil || owner.role != wire.RoleInitiator || publisherRoute != nil {
@@ -241,9 +239,6 @@ func (stream *Stream) signalLocked() {
 		close(stream.changed)
 	}
 	stream.changed = make(chan struct{})
-	if stream.cond != nil {
-		stream.cond.Broadcast()
-	}
 }
 
 func (stream *Stream) waitChange(changed <-chan struct{}) {

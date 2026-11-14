@@ -87,7 +87,7 @@ func (vault *Vault) readFloors() ([]authorityFloor, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read authority floors: %w", err)
 	}
-	defer zero(raw)
+	defer clear(raw)
 	var document floorDocument
 	if err := decodeCanonical(raw, &document, maximumFloorBytes); err != nil {
 		return nil, ErrInvalid
@@ -111,7 +111,7 @@ func (vault *Vault) writeFloors(floors []authorityFloor) error {
 	if err != nil {
 		return err
 	}
-	defer zero(raw)
+	defer clear(raw)
 	if err := writeAtomicPrivate(vault.floors, raw); err != nil {
 		return err
 	}

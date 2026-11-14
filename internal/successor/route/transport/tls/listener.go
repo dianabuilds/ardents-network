@@ -229,7 +229,9 @@ func (listener *sharedListener) classify(raw net.Conn, deadline time.Time) hands
 	ctx, cancel := context.WithDeadline(listener.lifetime, deadline)
 	defer cancel()
 	socket := &nativeSocket{Conn: raw}
-	secured := tls.Server(socket, transport.SharedServerTLS(listener.certificate))
+	// Bounded ciphertext input like the inner role channels (audit RD-5); the
+	// nativeSocket still owns write admission and close ownership.
+	secured := tls.Server(newRoleInput(socket), transport.SharedServerTLS(listener.certificate))
 	// HandshakeContext may already be closing this socket on cancellation.
 	// Reuse its original once-only owner to join that Close and retain its
 	// physical result instead of closing the raw connection a second time.

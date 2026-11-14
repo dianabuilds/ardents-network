@@ -132,7 +132,7 @@ func decodeAuthorityState(raw []byte, expectedPurpose Purpose) (authorityState, 
 	if encoded.Authority.AdmissionJournal != "" {
 		journal, journalErr := decodeRawURL(encoded.Authority.AdmissionJournal)
 		if journalErr != nil || len(journal) > allocation.MaximumJournalBytes {
-			zero(root)
+			clear(root)
 			return authorityState{}, ErrInvalid
 		}
 		state.AdmissionJournal = journal
@@ -140,16 +140,16 @@ func decodeAuthorityState(raw []byte, expectedPurpose Purpose) (authorityState, 
 	if encoded.Authority.ServiceJournal != "" {
 		journal, journalErr := decodeRawURL(encoded.Authority.ServiceJournal)
 		if journalErr != nil || len(journal) > 1024 {
-			zero(root)
-			zero(state.AdmissionJournal)
+			clear(root)
+			clear(state.AdmissionJournal)
 			return authorityState{}, ErrInvalid
 		}
 		state.ServiceJournal = journal
 	}
 	if err := validateAuthorityState(state); err != nil {
-		zero(root)
-		zero(state.AdmissionJournal)
-		zero(state.ServiceJournal)
+		clear(root)
+		clear(state.AdmissionJournal)
+		clear(state.ServiceJournal)
 		return authorityState{}, err
 	}
 	return state, nil

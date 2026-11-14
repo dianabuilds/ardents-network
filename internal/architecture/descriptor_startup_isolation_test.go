@@ -4,6 +4,13 @@ package architecture
 // Route root, legacy backend, callback bridge or sibling live Installation owner.
 func descriptorStartupImportAllowed(source, dependency string) bool {
 	switch source {
+	case "internal/successor/installation/descriptor/recovery_replacement_linux.go":
+		switch dependency {
+		case modulePath + "/internal/successor/installation/cgroup", modulePath + "/internal/successor/installation/infrastructure", modulePath + "/internal/successor/installation/systemd", modulePath + "/internal/successor/release":
+			return true
+		}
+	case "internal/successor/installation/descriptor/transition_scope_linux.go":
+		return dependency == "golang.org/x/sys/unix"
 	case "internal/successor/installation/descriptor/installed_replacement_native_linux_test.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor":

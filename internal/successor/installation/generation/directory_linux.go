@@ -264,16 +264,14 @@ func (owned *Owner) Observe() (returnedErr error) {
 	if len(names) != len(owned.files) {
 		return ErrBinding
 	}
+	// The inventory check above guarantees names covers every owned file exactly
+	// once; a second pass over the map would re-observe the same immutable files
+	// with no effect between (audit IE-2, matching the single-loop Prefix.Observe).
 	for _, name := range names {
 		expected, own := owned.files[name]
 		if !own {
 			return ErrBinding
 		}
-		if err := observeFile(owned.root, name, expected); err != nil {
-			return err
-		}
-	}
-	for name, expected := range owned.files {
 		if err := observeFile(owned.root, name, expected); err != nil {
 			return err
 		}

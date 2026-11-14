@@ -11,17 +11,30 @@ const (
 	closedIssuerLedgerStageName   = ".closed-token-ledger-next"
 )
 
-func (ledger *closedTokenIssuerLedger) retainBinding() error {
-	if err := writeIssuerExclusive(filepath.Join(ledger.root, closedIssuerLedgerBindingName), ledger.header()); err != nil {
+// issuerLedgerPersistence keeps each open's physical transition operations
+// together. The normal owner uses native files; failure tests retain real files
+// while failing one write/replace/flush boundary, without shared mutable hooks.
+type issuerLedgerPersistence struct {
+	writeExclusive func(string, []byte) error
+	rename         func(string, string) error
+	syncDirectory  func(string) error
+}
+
+func nativeIssuerLedgerPersistence() issuerLedgerPersistence {
+	return issuerLedgerPersistence{writeIssuerExclusive, os.Rename, syncIssuerDirectory}
+}
+
+func (ledger *closedTokenIssuerLedger) retainBinding(storage issuerLedgerPersistence) error {
+	if err := storage.writeExclusive(filepath.Join(ledger.root, closedIssuerLedgerBindingName), ledger.header()); err != nil {
 		return err
 	}
-	return syncIssuerDirectory(ledger.root)
+	return storage.syncDirectory(ledger.root)
 }
 
 // Promote only the complete, verified old ledger under the existing issuer
 // process lease. A crash before rename leaves the old authoritative records;
 // a crash after rename leaves the complete new records, never a merged prefix.
-func (ledger *closedTokenIssuerLedger) promote() error {
+func (ledger *closedTokenIssuerLedger) promote(storage issuerLedgerPersistence) error {
 	if err := removeClosedIssuerLedgerStage(ledger.root); err != nil {
 		return err
 	}
@@ -35,13 +48,13 @@ func (ledger *closedTokenIssuerLedger) promote() error {
 		raw = append(raw, body...)
 	}
 	stage := filepath.Join(ledger.root, closedIssuerLedgerStageName)
-	if err := writeIssuerExclusive(stage, raw); err != nil {
+	if err := storage.writeExclusive(stage, raw); err != nil {
 		return err
 	}
-	if err := os.Rename(stage, filepath.Join(ledger.root, closedTokenIssuerLedgerName)); err != nil {
+	if err := storage.rename(stage, filepath.Join(ledger.root, closedTokenIssuerLedgerName)); err != nil {
 		return err
 	}
-	return syncIssuerDirectory(ledger.root)
+	return storage.syncDirectory(ledger.root)
 }
 
 func removeClosedIssuerLedgerStage(root string) error {

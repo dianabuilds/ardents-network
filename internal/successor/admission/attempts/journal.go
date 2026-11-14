@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -34,16 +35,17 @@ type Attempt struct {
 
 // Journal retains one exclusive durable attempt owner with replay and time floors.
 type Journal struct {
-	mu       sync.Mutex
-	root     string
-	identity os.FileInfo
-	network  [32]byte
-	lease    *rootLease
-	clock    func() time.Time
-	floor    time.Time
-	records  map[[32]byte]Attempt
-	closed   bool
-	failure  error
+	mu             sync.Mutex
+	root           string
+	identity       os.FileInfo
+	network        [32]byte
+	lease          *rootLease
+	clock          func() time.Time
+	floor          time.Time
+	records        map[[32]byte]Attempt
+	earliestWindow time.Time // minimum retained window; zero when records is empty
+	closed         bool
+	failure        error
 }
 
 // Mark durably records a potentially spent token before its caller may present it.
@@ -73,7 +75,7 @@ func (journal *Journal) Mark(token []byte, record Attempt) error {
 	}
 	// An ambiguous write poisons this owner. The caller burns its stock item
 	// before calling Mark and cannot present it until this flush succeeds.
-	file, err := os.OpenFile(filepath.Join(journal.root, "attempts"), os.O_WRONLY|os.O_APPEND, 0)
+	file, err := os.OpenFile(filepath.Join(journal.root, "attempts"), os.O_WRONLY|os.O_APPEND|syscall.O_NOFOLLOW, 0)
 	if err == nil {
 		info, inspectErr := file.Stat()
 		if inspectErr != nil || journal.identity == nil || !os.SameFile(info, journal.identity) || info.Size() != int64(journalHeader+len(journal.records)*attemptSize) {
@@ -97,14 +99,26 @@ func (journal *Journal) Mark(token []byte, record Attempt) error {
 		return err
 	}
 	journal.records[record.digest], journal.floor = record, now
+	if journal.earliestWindow.IsZero() || record.Window.Before(journal.earliestWindow) {
+		journal.earliestWindow = record.Window
+	}
 	return nil
 }
 
 func (journal *Journal) prune(now time.Time) error {
+	// Nothing expires before the earliest retained window lapses; skip the
+	// full-map scan (audit AD-4), equivalent to the prior len-equality early-out.
+	if len(journal.records) == 0 || now.Before(journal.earliestWindow.Add(time.Hour+time.Minute)) {
+		return nil
+	}
 	retained := make(map[[32]byte]Attempt, len(journal.records))
+	var earliest time.Time
 	for hash, record := range journal.records {
 		if now.Before(record.Window.Add(time.Hour + time.Minute)) {
 			retained[hash] = record
+			if earliest.IsZero() || record.Window.Before(earliest) {
+				earliest = record.Window
+			}
 		}
 	}
 	if len(retained) == len(journal.records) {
@@ -114,6 +128,7 @@ func (journal *Journal) prune(now time.Time) error {
 		return err
 	}
 	journal.records, journal.floor = retained, now
+	journal.earliestWindow = earliest
 	return nil
 }
 

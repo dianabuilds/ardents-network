@@ -173,7 +173,6 @@ func (authorization Authorization) AcceptedDecision() (Decision, bool) {
 }
 
 func authorize(decision Decision) Decision {
-	decision.authorization = nil
 	decision.authorization = &acceptedAuthorization{decision: cloneDecision(decision)}
 	return decision
 }

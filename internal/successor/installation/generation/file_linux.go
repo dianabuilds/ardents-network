@@ -82,8 +82,22 @@ func observeFile(root *os.Root, name string, expected fileObservation) (returned
 	if err != nil || !fileObservationMatches(expected, info) {
 		return errors.Join(ErrBinding, err)
 	}
-	body, err := io.ReadAll(io.LimitReader(file, int64(len(expected.body))+1))
-	if err != nil || !bytes.Equal(body, expected.body) {
+	// Reobserve every original byte through a private erased scratch instead of
+	// a program-sized ReadAll allocation per observation (audit IE-8, matching
+	// observeSourceSelectionBytes).
+	var scratch [32 << 10]byte
+	defer clear(scratch[:])
+	for offset := 0; offset < len(expected.body); {
+		end := offset + min(len(scratch), len(expected.body)-offset)
+		raw := scratch[:end-offset]
+		n, err := file.ReadAt(raw, int64(offset))
+		if err != nil || n != len(raw) || !bytes.Equal(raw, expected.body[offset:end]) {
+			return errors.Join(ErrBinding, err)
+		}
+		offset = end
+	}
+	// Appended bytes must fail even though the observed size matched above.
+	if n, err := file.ReadAt(scratch[:1], int64(len(expected.body))); n != 0 || err != io.EOF {
 		return errors.Join(ErrBinding, err)
 	}
 	final, err := root.Lstat(name)

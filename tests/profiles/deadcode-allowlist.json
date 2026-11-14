@@ -179,6 +179,7 @@
           "internal/successor/publication/runtime.Publisher.Withdraw",
           "internal/successor/publication/runtime.Publisher.acceptingPair",
           "internal/successor/publication/runtime.Publisher.check",
+          "internal/successor/publication/runtime.Publisher.compactReadyInitial",
           "internal/successor/publication/runtime.Publisher.drain",
           "internal/successor/publication/runtime.Publisher.inspectIntroduction",
           "internal/successor/publication/runtime.Publisher.newInitialDelivery",
@@ -950,7 +951,7 @@
       {
         "classification": "Descriptor proof and portable exchange behind native command composition",
         "retirement": "Remove exact Windows entries when an accepted native Windows command composition reaches these functions, or retire the owning contract. Linux production and both-platform test analysis must continue to require actual callers.",
-        "rationale": "Real Linux ardents-next route receive and node descriptor open Reachability Store and dispatch actual purpose-3 publication/lookup. Original Node calls Store Check and Deny, then reads OperationalFailure after joined Store closure; retained native custody, operation borrows and directory synchronization belong to that Store call chain. Prefix descriptor_exchange uses History and canonical ardp bytes through route_linux holder closures. Reachability descriptor verification calls Publication Target/Verify/VerifyPublish and copied Delegation/Digest facts. Windows command composition refuses before native Route roots; component Store tests supply no installed Windows support. Every exact entry remains required to be reachable in Linux production and both-platform test analysis; no checker changes.",
+        "rationale": "Real Linux ardents-next route receive and node descriptor open Reachability Store and dispatch actual purpose-3 publication/lookup. Original Node calls Store Check and Deny, then reads OperationalFailure after joined Store closure; retained native custody, operation borrows and directory synchronization belong to that Store call chain. Prefix descriptor_exchange uses History and canonical ardp bytes through route_linux holder closures. Reachability descriptor verification calls Publication Target/Verify/VerifyPublish and copied Delegation/Digest facts. Windows command composition refuses before native Route roots; component Store tests supply no installed Windows support. Every exact entry remains required to be reachable in Linux production and both-platform test analysis; no checker changes. The exact existing-only Store opener and shared custody/floor readers are also reached by genuine Linux installed Descriptor restart and stopped inspections. They remain behind the unavailable native Windows command composition; the existing portable Windows Store adapter is not declared unavailable. Linux/Windows component retained-Store tests exercise no-create/no-repair and signed-floor preservation. These five Windows-only symbol classifications add no Linux/common allowance, checker exemption, successful authority substitute or Windows installed qualification.",
         "symbols": [
           "internal/successor/publication.Proof.Digest",
           "internal/successor/publication.Verify",
@@ -1016,7 +1017,12 @@
           "internal/successor/route/prefix.Prefix.exchangeDescriptor",
           "internal/successor/route/prefix.Prefix.LookupDescriptor",
           "internal/successor/route/prefix.Prefix.PublishDescriptor",
-          "internal/successor/route/selection.Leg.ResolutionDuty"
+          "internal/successor/route/selection.Leg.ResolutionDuty",
+          "internal/successor/reachability.OpenRetainedStore",
+          "internal/successor/reachability.checkRetainedStoreRoot",
+          "internal/successor/reachability.inspectStoreCustody",
+          "internal/successor/reachability.openStore",
+          "internal/successor/reachability.restoreStoreFloors"
         ],
         "owner": "Publication public proof, Reachability Store/History, and Route Descriptor composition; docs/technical/private-reachability.md"
       },

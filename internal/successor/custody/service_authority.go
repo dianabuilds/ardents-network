@@ -23,7 +23,7 @@ func (vault *Vault) createServiceAuthority(ctx context.Context, operation Operat
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(private)
+	defer clear(private)
 	state := authorityState{
 		Binding:    operation.Binding,
 		Generation: 1,

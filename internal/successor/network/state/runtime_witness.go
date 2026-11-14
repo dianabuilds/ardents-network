@@ -54,7 +54,7 @@ func (s *networkState) invalidateRuntime() {
 func (s *networkState) witnessLocked(view network.RuntimeView) RuntimeWitness {
 	s.runtimeMu.Lock()
 	defer s.runtimeMu.Unlock()
-	profile := view.Profile().ProfileBinding
+	profile := view.ProfileBinding()
 	if s.runtimeAdmission != nil && s.runtimeAdmission.profile != profile {
 		s.runtimeAdmission.retired.Store(true)
 		s.runtimeAdmission = nil

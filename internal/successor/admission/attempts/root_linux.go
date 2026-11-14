@@ -14,21 +14,22 @@ import (
 type rootLease struct{ file *os.File }
 
 func secureRoot(root string) error {
-	if err := os.Chmod(root, 0o700); err != nil {
-		return err
-	}
 	var status syscall.Stat_t
 	if err := syscall.Lstat(root, &status); err != nil {
 		return err
 	}
-	if status.Mode&syscall.S_IFMT != syscall.S_IFDIR || status.Mode&0o777 != 0o700 || status.Uid != uint32(os.Geteuid()) {
+	// Refuse before any modification: os.Chmod would follow a symlink root and
+	// mutate its target. The boundary is owner-private writability (no group or
+	// other write), matching the spending family; an owner-private 0755 root is
+	// accepted (Go 1.27 t.TempDir) and never chmod-ed.
+	if status.Mode&syscall.S_IFMT != syscall.S_IFDIR || status.Mode&0o022 != 0 || status.Uid != uint32(os.Geteuid()) {
 		return errors.New("endpoint root is not private to the endpoint user")
 	}
 	return nil
 }
 
 func acquireLease(path string, fresh bool) (*rootLease, error) {
-	flags := os.O_RDWR
+	flags := os.O_RDWR | syscall.O_NOFOLLOW
 	if fresh {
 		flags |= os.O_CREATE | os.O_EXCL
 	}
@@ -51,7 +52,7 @@ func (lease *rootLease) release() error {
 }
 
 func syncDirectory(path string) error {
-	directory, err := os.Open(path)
+	directory, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_DIRECTORY, 0)
 	if err != nil {
 		return err
 	}
@@ -60,7 +61,7 @@ func syncDirectory(path string) error {
 
 func syncJournalRoot(root string) error {
 	for _, name := range []string{"owner.lock", "root.marker", "attempts"} {
-		file, err := os.OpenFile(filepath.Join(root, name), os.O_RDWR, 0)
+		file, err := os.OpenFile(filepath.Join(root, name), os.O_RDWR|syscall.O_NOFOLLOW, 0)
 		if err != nil {
 			return err
 		}

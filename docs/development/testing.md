@@ -4533,6 +4533,20 @@ Docker. Cross-process tests live under `tests/e2e/<behavior>/`; they build real
 named commands, observe public behavior, create fresh temporary fixtures, and
 clean every owned process and file.
 
+Publication durable success/reopen/failure tests execute on Linux and Windows,
+where the native lease and directory-flush adapters exist. Other developer hosts
+execute a pre-effect refusal test instead; this does not qualify native storage
+or replace those required supported-platform runs. Portable Installation byte
+authentication fixtures carry an explicit linux-amd64 target architecture,
+independent of the test host; command execution retains actual host checks.
+Custody terminal success, interruption and dependent Service Credential process
+scenarios likewise execute on Linux and Windows, matching the actual terminal
+reader implementations. Other developer hosts check the reader's refusal before
+its ready callback or any read, and a compiled Custody process in a real PTY
+must refuse without prompting or creating a record. They cannot supply
+successful terminal issuance evidence. The supported-platform process scenarios
+remain required.
+
 Every maintained Go package belongs to the deterministic inventory. Every
 maintained repository file—including source/test, command, build and CI input,
 documentation, packaging, profile, qualification, and retained evidence—plus
@@ -5492,3 +5506,22 @@ volatile unused tokens are neither reconstructed nor refunded. The actual
 receiving Store proof, floors, roots/account/keys and spends remain original.
 A new exact prepared artifact/input scope precedes every replacement and Start;
 no active protocol deadline is reset between stages.
+
+
+`make descriptor-recovery-physical-check` runs seven finite actual native
+process/channel/history controls under `network_signing_native`: ordinary
+progress, frozen cut, cancellation frozen or with outstanding ACK, held proof
+Close and independent original-reader/late-Close custody. Explicit root/ext4
+preparation marker and root-owned executable are mandatory. Detached declarations
+isolate physical mechanisms and cannot qualify installed recovery, Release,
+manager policy or original domain completion. Actual canonical stopped recovery
+must separately exercise genuine signed installed artifacts and original history.
+
+
+`make descriptor-recovery-check` separately exercises the actual complete stopped
+replacement cut, independent recovery admission and fresh protected invocation
+on exact signed installed artifacts. Original pending restart/replace, wrong
+history, absent/copied original-cut inode, partial recovery and replay must
+refuse while preserving original prefix and Store bytes. A subsequent actual
+program replacement checks recovered lineage with a new immutable program.
+Neither profile accepts earlier-prefix continuation or unknown domain completion.

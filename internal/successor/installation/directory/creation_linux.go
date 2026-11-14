@@ -64,7 +64,10 @@ func (created *Creation) Identity(name string) (Identity, error) {
 	if err != nil || !Matches(current, created.uid, created.gid) || !os.SameFile(original, current) {
 		return Identity{}, errors.Join(ErrBinding, err)
 	}
-	native := current.Sys().(*syscall.Stat_t)
+	native, ok := current.Sys().(*syscall.Stat_t)
+	if !ok {
+		return Identity{}, ErrBinding
+	}
 	return Identity{Device: uint64(native.Dev), Inode: native.Ino}, nil
 }
 

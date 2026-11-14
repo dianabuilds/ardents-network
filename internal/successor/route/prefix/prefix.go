@@ -550,8 +550,6 @@ func (p *Prefix) Close() error {
 	return p.err
 }
 
-var _ net.Conn = (*framing.Lane)(nil)
-
 // OpeningRetirement extracts only the physical retirement of a failed opening.
 // Ordinary setup refusal with clean retirement grants no terminal failure.
 func OpeningRetirement(err error) error {

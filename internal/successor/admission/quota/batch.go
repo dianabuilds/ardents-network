@@ -45,8 +45,10 @@ func verifyBatch(ctx context.Context, raw []byte, facts admission.Facts, binding
 		return b, admission.Canceled
 	}
 	b.digest = sha256.Sum256(raw)
-	permission, _ := admission.EncodePermission(request.Permission)
-	b.commitment = sha256.Sum256(permission)
+	// The permission was decoded from these exact canonical bytes (Inspect above
+	// validated them); re-encoding only to hash them again is redundant and hid
+	// an ignored error (audit AD-6).
+	b.commitment = sha256.Sum256(raw[8 : 8+admission.PermissionSize])
 	b.maxima = request.Permission.Maxima
 	return b, admission.Accepted
 }

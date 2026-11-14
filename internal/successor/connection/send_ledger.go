@@ -15,6 +15,7 @@ var errBackpressure = errors.New("service Connection send replay queue is full")
 type sendLedger struct {
 	generation, limit           uint64
 	base, end, next, exposedEnd uint64
+	head                        uint64 // index of base within data; lazy-compacted
 	data                        []byte
 	closed                      bool
 	active                      *dataWrite
@@ -51,7 +52,7 @@ func (ledger *sendLedger) checkAccept(payload []byte) error {
 		uint64(len(payload)) > ^uint64(0)-ledger.end || ledger.end+uint64(len(payload)) > ledger.limit {
 		return errIntegrity
 	}
-	if len(payload) > logicalQueueLimit-len(ledger.data) {
+	if len(payload) > logicalQueueLimit-(len(ledger.data)-int(ledger.head)) {
 		return errBackpressure
 	}
 	return nil
@@ -75,7 +76,7 @@ func (ledger *sendLedger) beginWrite() (*dataWrite, error) {
 		return nil, errIntegrity
 	}
 	size := min(uint64(wire.MaximumDataBytes), ledger.end-ledger.next)
-	start := ledger.next - ledger.base
+	start := ledger.head + (ledger.next - ledger.base)
 	ticket := &dataWrite{owner: ledger, generation: ledger.generation, record: wire.Data{
 		AttachmentGeneration: ledger.generation, Offset: ledger.next,
 		Payload: append([]byte(nil), ledger.data[start:start+size]...),
@@ -114,10 +115,16 @@ func (ledger *sendLedger) acknowledge(generation, offset uint64) error {
 	if offset <= ledger.base {
 		return nil
 	}
-	trim := offset - ledger.base
-	ledger.data = append(ledger.data[:0], ledger.data[trim:]...)
+	// Advance a head cursor instead of memmoving the whole remaining queue on
+	// every ACK (audit SW-5). The trimmed prefix is reclaimed lazily once it
+	// dominates the buffer, bounding data to twice the logical queue limit.
+	ledger.head += offset - ledger.base
 	ledger.base = offset
 	ledger.next = max(ledger.next, offset)
+	if ledger.head >= logicalQueueLimit {
+		ledger.data = append(ledger.data[:0], ledger.data[ledger.head:]...)
+		ledger.head = 0
+	}
 	return nil
 }
 

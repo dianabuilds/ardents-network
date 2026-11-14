@@ -597,3 +597,13 @@ descriptor-replacement-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-replacement-check requires the selected isolated Ubuntu/systemd stand"; exit 2)
 	@case "$(DESCRIPTOR_REPLACEMENT_TEST)" in TestDescriptorInstalledNativeReplacementPrerequisite|TestDescriptorInstalledNativeResourceReplacement|TestDescriptorInstalledNativeProgramReplacement) ;; *) echo 'select one registered Descriptor replacement stage' >&2; exit 2;; esac
 	go test -race -trimpath -buildvcs=false -tags descriptor_installed_native ./internal/successor/installation/descriptor -run '^$(DESCRIPTOR_REPLACEMENT_TEST)$$' -count=1 -v -timeout=3m
+
+.PHONY: descriptor-recovery-physical-check
+descriptor-recovery-physical-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-recovery-physical-check requires explicit root/ext4 preparation stand"; exit 2)
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/descriptor -run '^TestDescriptorTransitionScopeNativeFromBirth$$' -count=1 -v -timeout=3m
+
+.PHONY: descriptor-recovery-check
+descriptor-recovery-check:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-recovery-check requires exact accepted artifacts and original Ubuntu/systemd installed stand"; exit 2)
+	go test -race -trimpath -buildvcs=false -tags descriptor_installed_native ./internal/successor/installation/descriptor -run '^TestDescriptorInstalledNativeRecoveredResourceReplacement$$' -count=1 -v -timeout=3m

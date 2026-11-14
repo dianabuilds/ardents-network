@@ -266,8 +266,11 @@ func decodeRecord(body []byte) (Record, error) {
 			return Record{}, errors.New("native Data length is invalid")
 		}
 		value := &Data{AttachmentGeneration: binary.BigEndian.Uint64(payload[:8]), Offset: binary.BigEndian.Uint64(payload[8:16]), Payload: append([]byte(nil), payload[18:]...)}
-		if _, _, err := recordPayload(Record{Data: value}); err != nil {
-			return Record{}, err
+		// Validate the decoded fields directly rather than re-encoding the whole
+		// payload only to discard it (audit SW-1). The length bounds are checked
+		// above; this matches recordPayload's remaining Data refusal grammar.
+		if value.AttachmentGeneration == 0 || uint64(len(value.Payload)) > ^uint64(0)-value.Offset {
+			return Record{}, errors.New("native Data is invalid")
 		}
 		return Record{Data: value}, nil
 	case kindAcknowledgement:

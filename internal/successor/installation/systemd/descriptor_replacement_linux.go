@@ -21,10 +21,10 @@ type descriptorReplacement struct {
 }
 
 func OpenDescriptorReplacement(ctx context.Context) (*DescriptorReplacement, error) {
-	return openDescriptorReplacement(ctx)
+	return openDescriptorReplacement(ctx, "")
 }
 
-func openDescriptorReplacement(ctx context.Context) (*DescriptorReplacement, error) {
+func openDescriptorReplacement(ctx context.Context, expected string) (*DescriptorReplacement, error) {
 	if ctx == nil || os.Geteuid() != 0 {
 		return nil, ErrInput
 	}
@@ -35,6 +35,12 @@ func openDescriptorReplacement(ctx context.Context) (*DescriptorReplacement, err
 	s := &DescriptorReplacement{original: &descriptorReplacement{reference: r}}
 	if err != nil {
 		return s, err
+	}
+	if expected != "" {
+		actual, err := r.managerIdentity()
+		if err != nil || actual != expected {
+			return s, r.managerResult(errors.Join(ErrObservation, err), ctx)
+		}
 	}
 	if err := r.initializeManagerDeclaration(); err != nil {
 		return s, err
@@ -76,4 +82,34 @@ func (s *DescriptorReplacement) Close() error {
 	o := s.original
 	o.once.Do(func() { o.closeErr = errors.Join(o.reference.close(), o.reference.original.Err()) })
 	return o.closeErr
+}
+
+// DescriptorRecoveryReplacement observes one fixed original manager and stopped Descriptor
+// unit. It exposes no Reload, Start, Stop, selector or reconnect operation.
+type DescriptorRecoveryReplacement struct{ original *DescriptorReplacement }
+
+func OpenDescriptorRecoveryReplacement(ctx context.Context, expected string) (*DescriptorRecoveryReplacement, error) {
+	if expected == "" || len(expected) > 288 {
+		return nil, ErrInput
+	}
+	original, err := openDescriptorReplacement(ctx, expected)
+	return &DescriptorRecoveryReplacement{original}, err
+}
+func (s *DescriptorRecoveryReplacement) Observe() (DescriptorObservation, error) {
+	if s == nil {
+		return DescriptorObservation{}, ErrInput
+	}
+	return s.original.Observe()
+}
+func (s *DescriptorRecoveryReplacement) ManagerIdentity() (string, error) {
+	if s == nil {
+		return "", ErrInput
+	}
+	return s.original.ManagerIdentity()
+}
+func (s *DescriptorRecoveryReplacement) Close() error {
+	if s == nil {
+		return nil
+	}
+	return s.original.Close()
 }

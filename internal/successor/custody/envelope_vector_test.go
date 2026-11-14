@@ -18,10 +18,10 @@ func TestIndependentEnvelopeVectorAndFixedResourceProfile(t *testing.T) {
 	if err != nil || purpose != PurposeVault || !bytes.Equal(plaintext, []byte(`{"independent":"vector"}`)) {
 		t.Fatalf("independent AES-GCM vector: %v", err)
 	}
-	defer zero(plaintext)
+	defer clear(plaintext)
 	salt := []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
 	key := deriveKey(password, salt)
-	defer zero(key)
+	defer clear(key)
 	if hex.EncodeToString(key) != "9b433f849ff0e8af0729a12cd86295dcb97ddee021dd3a3a413dc2682ee7198c" || kdfMemoryKiB != 256*1024 || kdfPasses != 3 || kdfLanes != 4 {
 		t.Fatal("fixed resource derivation changed")
 	}

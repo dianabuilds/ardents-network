@@ -34,8 +34,15 @@ func (p *Publisher) NextAuthentication(ctx context.Context) (_ *connection.Authe
 			p.mu.Unlock()
 			return nil, p.stoppedAcquisition(ctx)
 		}
-		for _, candidate := range p.initialDeliveries {
-			if candidate.wireJoined && !candidate.serviceClaimed && candidate.opening.stream == nil && candidate.ctx.Err() == nil {
+		// Drain the ready candidate queue instead of scanning every retained
+		// delivery (audit DD-6). Stale entries (closed, claimed, stream-bound or
+		// cancelled) are rechecked and discarded; the map remains the source of
+		// truth and the queue is lazy-compacted from it.
+		for len(p.readyInitial) > 0 {
+			candidate := p.readyInitial[0]
+			p.readyInitial[0] = nil
+			p.readyInitial = p.readyInitial[1:]
+			if p.initialDeliveries[candidate.nonce] == candidate && candidate.wireJoined && !candidate.serviceClaimed && candidate.opening.stream == nil && candidate.ctx.Err() == nil {
 				candidate.serviceClaimed = true
 				state = candidate
 				p.flights.Add(1)

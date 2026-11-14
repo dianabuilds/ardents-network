@@ -37,6 +37,19 @@ and old formats receive only refusal without conversion or automatic deletion.
 This selection does not change unrelated Route, State, or Application identities
 and is not evidence that the v3 replacement has been integrated or qualified.
 
+## New-installation transition
+
+[ADR-0124](../adr/0124-start-new-installations-without-legacy-data-transfer.md)
+selects independent new installations: no predecessor deployment, key or issued
+right must continue across the owner transition. Cross-owner history conversion
+and key import are not required. Provision new purpose-specific material and
+independently admitted trust; a matching schema or empty directory is not
+migration authority. This narrows predecessor deployment compatibility, not the
+accepted public grammar or the new installation's own durable-state contract.
+New-installation restart, replacement and recovery must preserve its expenses,
+exact retries, keys and authority/freshness floors. Old code retirement follows
+its actual remaining consumers; it does not automatically delete stored files.
+
 ## Product core
 
 Ardents connects a local Application to an opaque Service Target through an

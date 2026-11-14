@@ -22,31 +22,37 @@ func (s *networkState) closedRuntimeAvailableLocked() error {
 
 // currentMembershipLocked requires s.mu. Loading is explicit so failure and
 // expiry at the durable read boundary can be tested without clock-call counts.
-func (s *networkState) currentMembershipLocked(load func([32]byte) (durable.ClosedProfileState, []byte, error)) (membership, networkdomain.TrustedTime, error) {
+// It returns the observed view so the caller reuses a single observation rather
+// than observing the same immutable state twice (audit NW-2).
+func (s *networkState) currentMembershipLocked(load func([32]byte) (durable.ClosedProfileState, []byte, error)) (membership, networkdomain.TrustedTime, networkdomain.RuntimeView, error) {
 	if err := s.closedRuntimeAvailableLocked(); err != nil {
-		return membership{}, networkdomain.TrustedTime{}, err
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, err
 	}
 	generation, err := closedProfileGeneration(s.current.Snapshot.Generation)
 	if err != nil {
-		return membership{}, networkdomain.TrustedTime{}, err
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, err
 	}
 	stored, raw, err := load(generation)
 	if err != nil || stored == (durable.ClosedProfileState{}) || stored.Conflict != [32]byte{} || stored.Epoch != s.current.Snapshot.Epoch {
-		return membership{}, networkdomain.TrustedTime{}, errors.New("closed profile is unavailable")
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, errors.New("closed profile is unavailable")
 	}
 	// Observe once after durable I/O, so a slow read cannot extend validity.
 	observed, err := trustedObservation(s.config, s.distribution)
 	if err != nil {
-		return membership{}, networkdomain.TrustedTime{}, err
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, err
 	}
 	now := observed.Instant()
 	profile, err := s.verifyClosedProfileLocked(raw, generation, now)
 	if err != nil || profile.Digest != stored.Accepted {
-		return membership{}, networkdomain.TrustedTime{}, errors.New("closed profile is unavailable")
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, errors.New("closed profile is unavailable")
 	}
 	bound, err := s.bindCurrentMembership(profile)
-	if err == nil {
-		_, err = bound.accepted.Observe(observed)
+	if err != nil {
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, err
 	}
-	return bound, observed, err
+	view, err := bound.accepted.Observe(observed)
+	if err != nil {
+		return membership{}, networkdomain.TrustedTime{}, networkdomain.RuntimeView{}, err
+	}
+	return bound, observed, view, nil
 }

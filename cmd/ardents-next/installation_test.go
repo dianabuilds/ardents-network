@@ -20,6 +20,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
+// These portable authentication tests model the selected linux-amd64 bundle,
+// independently of the developer host. They do not authorize local execution.
+func installationFixtureInputs(bundle enrollment.Bundle, ref time.Time) (release.Inputs, bool) {
+	in, ok := initialReleaseInputs(bundle, ref)
+	in.Local.Architecture = "amd64"
+	return in, ok
+}
+
 func TestInstallationProvisionOriginalCancellationBeforeInputOrFloors(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
@@ -54,7 +62,7 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 		t.Fatal(err)
 	}
 	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
-	in, ok := initialReleaseInputs(bundle, ref)
+	in, ok := installationFixtureInputs(bundle, ref)
 	if !ok {
 		t.Fatal("initial composition refused")
 	}
@@ -107,6 +115,7 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 		t.Fatal(err)
 	}
 	candidateInput, ok := candidateReleaseInputs(c, ref)
+	candidateInput.Local.Architecture = "amd64"
 	if !ok {
 		t.Fatal("candidate composition refused")
 	}
@@ -136,7 +145,7 @@ func TestInstallationSecondTargetRefusalRetainsRealFloors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			in, _ := initialReleaseInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
+			in, _ := installationFixtureInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
 			history := filepath.Join(t.TempDir(), "history")
 			v, err := release.Open(history)
 			if err != nil {
@@ -192,6 +201,7 @@ func TestInstallationCandidateCannotBootstrapCompleteTrust(t *testing.T) {
 		t.Fatal(err)
 	}
 	in, _ := candidateReleaseInputs(c, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
+	in.Local.Architecture = "amd64"
 	v, err := release.Open(filepath.Join(t.TempDir(), "fresh-history"))
 	if err != nil {
 		t.Fatal(err)
@@ -217,7 +227,7 @@ func TestInstallationSnapshotSubstitutionRefusesBeforeTrustFloors(t *testing.T) 
 	}
 	for _, scenario := range []string{"root", "program", "metadata", "missing-metadata", "duplicate-location"} {
 		t.Run(scenario, func(t *testing.T) {
-			in, _ := initialReleaseInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
+			in, _ := installationFixtureInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
 			switch scenario {
 			case "root":
 				in.RootBytes[0] ^= 1
@@ -272,7 +282,7 @@ func TestInstallationOriginalCancellationAtPairHandoffRetainsFloors(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	in, _ := initialReleaseInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
+	in, _ := installationFixtureInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
 	// Measure genuine Release owner calls independently of Installation. The
 	// composition owes its own pre-effect and final-handoff checks in addition.
 	observed := &installationCancelContext{Context: context.Background()}

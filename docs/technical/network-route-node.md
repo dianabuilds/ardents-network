@@ -4083,3 +4083,32 @@ boundary. The pure peer lookup shares that observation, never a previous
 frame's permission. Its separate receiving Store/currentness guards still
 bracket role effects and acknowledgement; Admission, native Startup and all
 original cleanup deadlines retain their own checks and physical joins.
+
+
+### Descriptor complete stopped replacement recovery
+
+Canonical `descriptor supervise-transition` retains the same root-owned executable,
+original from-birth process/pidfd and inherited credentialled seqpacket channel.
+Its closed action is `replace`; the supported stopped cut is exactly record62.
+The actual writer reports only after Sync and native readback, then self-stops.
+The controller denies the next effect and joins the original scope and all of its
+observers before publishing a separate guarded original-cut transcript. An
+outstanding ACK, cancellation, packet, copied cut or process exit grants no
+original domain completion, Release permission or recovery authority.
+
+Canonical `descriptor recover` independently matches original request and Release
+history paths before mutable Release admission. Only the complete62-record
+selected-stopped replacement, original native before/after context, real original
+cut and complete predecessor domain/native retirement can continue. Fresh Release,
+all five independently inspected existing-only semantic histories, exact account,
+keys, namespace and a separate read-only manager remain mandatory. Recovery
+performs no Reload, Start, domain-report or ACK replay and never rewrites the
+original prefix. A separate guarded nine-record completion is independently read
+back; every original reader/writer/verifier/input joins before both blockers are
+published in order. Earlier, uncertain, copied, partially recovered and unknown
+completion histories remain repair-required, without adoption, reset or rollback.
+
+Later replacement retains recovered predecessors and their original cuts/suffixes.
+Only the actual next replacement's successful one-use Reload can advance its own
+three generator-directory observations, joining old descriptors before fresh
+custody. All other original native observations and semantic floors persist.

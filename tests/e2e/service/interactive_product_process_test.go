@@ -36,15 +36,6 @@ func (capture *interactiveProductCapture) bytes() []byte {
 	return append([]byte(nil), capture.output.Bytes()...)
 }
 
-func runInteractiveProductCommand(t *testing.T, directory, binary string, inputs []interactiveProductInput, arguments ...string) []byte {
-	t.Helper()
-	output, err := runInteractiveProductCommandResult(t, directory, binary, inputs, arguments...)
-	if err != nil {
-		t.Fatalf("interactive product command failed: %v\n%s", err, output)
-	}
-	return output
-}
-
 func runInteractiveProductCommandResult(t *testing.T, directory, binary string, inputs []interactiveProductInput, arguments ...string) ([]byte, error) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
@@ -123,13 +114,4 @@ func waitForInteractivePrompt(ctx context.Context, capture *interactiveProductCa
 		case <-ticker.C:
 		}
 	}
-}
-
-func interactiveProductJSON(t *testing.T, terminal []byte) []byte {
-	t.Helper()
-	start, end := bytes.IndexByte(terminal, '{'), bytes.LastIndexByte(terminal, '}')
-	if start < 0 || end < start {
-		t.Fatalf("interactive product output lacks one JSON receipt: %q", terminal)
-	}
-	return append([]byte(nil), terminal[start:end+1]...)
 }

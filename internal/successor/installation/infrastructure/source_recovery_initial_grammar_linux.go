@@ -10,7 +10,7 @@ var errSourceInitialPrefixBoundary = errors.New("source initial grammar: exact p
 // an intent-only/incomplete fixed-unit birth.
 func sourceInitialRecoveryPrefixSupported(records []sourceRecord) bool {
 	count := len(records)
-	return count >= 68 && count <= 115 && (count <= 110 || count >= 113) &&
+	return count >= sourceInitialPrefixSeq && count <= sourceRecoverableInitialRecords && (count <= sourceInitialUnitSeq || count >= sourceInitialReloadIntentSeq) &&
 		records[0].Phase == sourceRecoverableInitialPhase && records[count-1].Phase != "file-intent"
 }
 
@@ -30,7 +30,7 @@ func validateSourceRecoverableInitialPrefix(raw []byte, binding sourceBinding, h
 	if err != nil {
 		return err
 	}
-	records, err := decodeSourceRecoveryPrefix(projected, 112)
+	records, err := decodeSourceRecoveryPrefix(projected, sourceInitialProjectedCount)
 	if err != nil {
 		return err
 	}

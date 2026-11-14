@@ -71,6 +71,31 @@ inputs. SPKI parsing is shared by token and issuer profile. The remaining
 issuance path is issuer.Issue -> Ledger.DebitVerified -> ResultStore.Issue.
 There is no second live issuer implementation in this tree.
 
+### Predecessor retained issuance history
+
+The predecessor's ARDILG01-to-ARDILG02 promotion is an owner-local recovery
+obligation, described by the [private admission contract](private-admission.md#retained-issuer-journal-recovery).
+It does not initialize or authorize this owner's quota, key or result roots.
+Matching request IDs and debited counts are insufficient for a lossless transfer:
+the predecessor journal lacks the canonical Permission commitment, its maxima
+and the debit's observed time stored by `quota.verifiedBatch`/`debitRecord`.
+The new binding additionally retains Authority, duty bounds and the exact key
+inventory; its time floor and hash chain cannot be manufactured from a directory
+name or an old profile digest alone. Complete signed inputs may supply some
+missing facts, but the old journal alone does not.
+
+Normal initialization creates a genuinely independent root. It is not recovery
+for an existing duty and cannot replace retained debit/result history with an
+empty ledger. [ADR-0124](../adr/0124-start-new-installations-without-legacy-data-transfer.md)
+selects a new installation without predecessor obligations, so no transfer
+contract or converter is required for retirement. Provision new purpose-specific
+material and authority; predecessor rights do not become new issuance permission.
+Old readers remain only for their actual remaining consumers, not for a future
+migration promise. New owners refuse foreign roots. No replay-through-Debit
+shortcut, predecessor key import or shared live lease is provided by these
+interfaces. An existing new root retains its own debit/result history and keys;
+initialization cannot replace its restart or recovery.
+
 ## Review of rules outside the old Admission directory
 
 | Source | Admission-owned part | What remains outside |
@@ -245,6 +270,9 @@ outside this evidence.
 
 | Contract | Reproducing scenario | Forbidden effect checked |
 | --- | --- | --- |
+| Fresh key creation and foreign-root refusal | cmd/ardents-next/admission_fresh_roots_linux_test.go: TestIssuanceFreshKeysAndPredecessorRootRefusal (repository-relative path) | Independent initializations have disjoint public keys; existing, partial and synthetic predecessor roots refuse without changed bytes or public export |
+| Initialization is not quota recovery | Same file: TestAdmissionFreshInitializationCannotResetSpentHistory | Repeated initialize cannot erase a debit or exact retry; predecessor journal refuses unchanged |
+| Independent new issuance authority | Same file: TestAdmissionFreshAuthorityRefusesPredecessorPermission | A genuine signature from another fixture authority cannot debit the new ledger; replacing only that signature with the new authority's admits the same request |
 | Role allocation maxima and exact retry | allocation/request_linux_test.go: TestMixedRoleLimitsExactRetryAndChangedRequest | No extra allocation or mutated journal on refusal |
 | Retained allocation time floor | allocation/request_linux_test.go: TestWindowAdvanceCannotResetPriorQuotaAfterRollback | Clock rollback cannot restore spent allocation |
 | Canonical request and result grammar | quota/batch_test.go: TestBatchContract; batch_result_test.go | No malformed or noncanonical wire acceptance |

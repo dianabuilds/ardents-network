@@ -34,7 +34,7 @@ func TestAdmissionRecoveryAfterPublication(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer zero(holder)
+				defer clear(holder)
 				raw, err := admission.EncodePermissionRequest(request)
 				if err != nil {
 					t.Fatal(err)
@@ -50,7 +50,7 @@ func TestAdmissionRecoveryAfterPublication(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer zero(previousFloors)
+			defer clear(previousFloors)
 			request := prepare()
 			issued, err := vault.Execute(t.Context(), request, &sequenceSecrets{values: [][]byte{password}})
 			if err != nil {

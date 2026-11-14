@@ -54,6 +54,11 @@ func (view RuntimeView) ObservedAt() time.Time { return view.observed.Instant() 
 // member's operation horizon, and issuer reachability does not grant authority.
 func (view RuntimeView) Profile() ProfileFacts { return view.accepted.profile.copied() }
 
+// ProfileBinding returns the authenticated binding without copying the full
+// token-key inventory; identity-only callers avoid the program-sized copy
+// (audit NW-2).
+func (view RuntimeView) ProfileBinding() ProfileBinding { return view.accepted.profile.ProfileBinding }
+
 func (view RuntimeView) Check(now time.Time) error {
 	observed := view.ObservedAt()
 	if observed.IsZero() || now.IsZero() || !view.accepted.epoch.valid() {

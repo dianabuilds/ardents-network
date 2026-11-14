@@ -68,7 +68,7 @@ func sealEnvelope(purpose Purpose, plaintext, password []byte) ([]byte, error) {
 	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
 		return nil, fmt.Errorf("fresh envelope salt: %w", err)
 	}
-	defer zero(salt)
+	defer clear(salt)
 	profile := fixedKDF(salt)
 	header := envelopeHeader{Profile: "ardents-authority-envelope-v1", SchemaVersion: 1, Purpose: purpose, KDF: profile, AEAD: "aes-256-gcm-random-nonce"}
 	aad, err := marshalCanonical(header)
@@ -76,7 +76,7 @@ func sealEnvelope(purpose Purpose, plaintext, password []byte) ([]byte, error) {
 		return nil, err
 	}
 	key := deriveKey(password, salt)
-	defer zero(key)
+	defer clear(key)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, fmt.Errorf("aes key: %w", err)
@@ -86,7 +86,7 @@ func sealEnvelope(purpose Purpose, plaintext, password []byte) ([]byte, error) {
 		return nil, fmt.Errorf("aead: %w", err)
 	}
 	ciphertext := aead.Seal(nil, nil, plaintext, aad)
-	defer zero(ciphertext)
+	defer clear(ciphertext)
 	encoded, err := marshalCanonical(envelope{Profile: header.Profile, SchemaVersion: header.SchemaVersion, Purpose: purpose, KDF: profile, AEAD: header.AEAD, Ciphertext: base64.RawURLEncoding.EncodeToString(ciphertext)})
 	if err != nil {
 		return nil, err
@@ -99,13 +99,13 @@ func openEnvelope(raw, password []byte) (Purpose, []byte, EnvelopeInfo, error) {
 	if err != nil {
 		return "", nil, EnvelopeInfo{}, err
 	}
-	defer zero(salt)
-	defer zero(ciphertext)
+	defer clear(salt)
+	defer clear(ciphertext)
 	if err := validatePassword(password); err != nil {
 		return "", nil, EnvelopeInfo{}, err
 	}
 	key := deriveKey(password, salt)
-	defer zero(key)
+	defer clear(key)
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", nil, EnvelopeInfo{}, ErrUnlockFailed
@@ -123,8 +123,8 @@ func openEnvelope(raw, password []byte) (Purpose, []byte, EnvelopeInfo, error) {
 
 func inspectEnvelope(raw []byte) (EnvelopeInfo, error) {
 	_, info, salt, ciphertext, _, err := parseEnvelope(raw)
-	zero(salt)
-	zero(ciphertext)
+	clear(salt)
+	clear(ciphertext)
 	return info, err
 }
 
@@ -141,19 +141,19 @@ func parseEnvelope(raw []byte) (envelope, EnvelopeInfo, []byte, []byte, []byte, 
 	}
 	salt, err := decodeRawURL(parsed.KDF.Salt)
 	if err != nil || len(salt) != kdfSaltBytes {
-		zero(salt)
+		clear(salt)
 		return envelope{}, EnvelopeInfo{}, nil, nil, nil, ErrInvalid
 	}
 	ciphertext, err := decodeRawURL(parsed.Ciphertext)
 	if err != nil || len(ciphertext) < 28 || len(ciphertext) > maximumPlaintextBytes+28 {
-		zero(salt)
-		zero(ciphertext)
+		clear(salt)
+		clear(ciphertext)
 		return envelope{}, EnvelopeInfo{}, nil, nil, nil, ErrInvalid
 	}
 	aad, err := marshalCanonical(envelopeHeader{Profile: parsed.Profile, SchemaVersion: parsed.SchemaVersion, Purpose: parsed.Purpose, KDF: parsed.KDF, AEAD: parsed.AEAD})
 	if err != nil {
-		zero(salt)
-		zero(ciphertext)
+		clear(salt)
+		clear(ciphertext)
 		return envelope{}, EnvelopeInfo{}, nil, nil, nil, err
 	}
 	return parsed, EnvelopeInfo{Purpose: parsed.Purpose, CiphertextSize: uint64(len(ciphertext)), Digest: sha256.Sum256(raw)}, salt, ciphertext, aad, nil
@@ -210,10 +210,4 @@ func decodeRawURL(value string) ([]byte, error) {
 		return nil, ErrInvalid
 	}
 	return decoded, nil
-}
-
-func zero(value []byte) {
-	for index := range value {
-		value[index] = 0
-	}
 }

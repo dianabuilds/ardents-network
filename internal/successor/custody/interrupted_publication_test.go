@@ -22,12 +22,12 @@ func TestAdmissionInterruptedPublicationStates(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer zero(previousJournal)
+			defer clear(previousJournal)
 			previousFloor, err := readSmallFile(fixture.vault.floors)
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer zero(previousFloor)
+			defer clear(previousFloor)
 			request := fixture.request(t, 1)
 			issued, err := fixture.vault.Execute(t.Context(), request, &sequenceSecrets{values: [][]byte{fixture.password}})
 			if err != nil {
@@ -48,7 +48,7 @@ func TestAdmissionInterruptedPublicationStates(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				defer zero(raw)
+				defer clear(raw)
 				if err := writeAtomicPrivate(path, raw[:len(raw)/2]); err != nil {
 					t.Fatal(err)
 				}
@@ -78,7 +78,7 @@ func TestAdmissionInterruptedPublicationStates(t *testing.T) {
 				if readErr != nil || !bytes.Equal(floor, previousFloor) {
 					t.Fatal("refusal changed committed floor")
 				}
-				zero(floor)
+				clear(floor)
 			}
 		})
 	}

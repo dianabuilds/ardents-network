@@ -28,7 +28,7 @@ func (vault *Vault) createAdmissionAuthority(ctx context.Context, operation Oper
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(private)
+	defer clear(private)
 	state := authorityState{Binding: operation.Binding, RootMaterial: private, Generation: 1,
 		Watermarks: []Watermark{{Domain: admissionAllocationWatermark, Value: 0}}}
 	state.Binding.IDCommitment = sha256.Sum256(public)
@@ -70,7 +70,7 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 		return Receipt{}, err
 	}
 	header, err := inspectEnvelope(raw)
-	zero(raw)
+	clear(raw)
 	if err != nil || header.Purpose != PurposeVault {
 		return Receipt{}, ErrInvalid
 	}
@@ -78,7 +78,7 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(password)
+	defer clear(password)
 	if !vault.now().UTC().Truncate(time.Hour).Equal(now) {
 		return Receipt{}, ErrInvalid
 	}
@@ -86,8 +86,8 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(source.RootMaterial)
-	defer zero(source.AdmissionJournal)
+	defer clear(source.RootMaterial)
+	defer clear(source.AdmissionJournal)
 	public := ed25519.PrivateKey(source.RootMaterial).Public().(ed25519.PublicKey)
 	decision, err := request.Decide(source.AdmissionJournal, [ed25519.PublicKeySize]byte(public), vault.now())
 	if err != nil {
@@ -105,13 +105,13 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 			Authority: authorityReceipt(source), AdmissionPermission: permission, State: RecordActive}, nil
 	}
 	journal := decision.Journal()
-	defer zero(journal)
+	defer clear(journal)
 	successor, err := admissionSuccessor(source, journal)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(successor.RootMaterial)
-	defer zero(successor.AdmissionJournal)
+	defer clear(successor.RootMaterial)
+	defer clear(successor.AdmissionJournal)
 	permission, err := signAdmissionPermission(ed25519.PrivateKey(source.RootMaterial), decision.Permission())
 	if err != nil {
 		return Receipt{}, err
@@ -139,32 +139,44 @@ func openAdmissionAuthority(raw, password []byte, expected AuthorityBinding) (au
 	if err != nil {
 		return authorityState{}, EnvelopeInfo{}, err
 	}
-	defer zero(plaintext)
+	defer clear(plaintext)
 	if purpose != PurposeVault {
 		return authorityState{}, EnvelopeInfo{}, ErrInvalid
 	}
-	state, err := decodeAuthorityState(plaintext, PurposeVault)
+	state, err := decodeAdmissionAuthorityState(plaintext, expected)
 	if err != nil {
 		return authorityState{}, EnvelopeInfo{}, err
 	}
+	return state, info, nil
+}
+
+// decodeAdmissionAuthorityState validates already-decrypted plaintext without a
+// KDF, so a caller that opened the envelope once can reuse it within the same
+// operation (audit DD-5). It owns the returned state's secret material and
+// clears it on every refusal; the caller's plaintext is untouched.
+func decodeAdmissionAuthorityState(plaintext []byte, expected AuthorityBinding) (authorityState, error) {
+	state, err := decodeAuthorityState(plaintext, PurposeVault)
+	if err != nil {
+		return authorityState{}, err
+	}
 	private := ed25519.PrivateKey(state.RootMaterial)
 	if state.Binding != expected || state.Binding.Kind != AuthorityAdmission || len(private) != ed25519.PrivateKeySize {
-		zero(state.RootMaterial)
-		zero(state.AdmissionJournal)
-		return authorityState{}, EnvelopeInfo{}, ErrInvalid
+		clear(state.RootMaterial)
+		clear(state.AdmissionJournal)
+		return authorityState{}, ErrInvalid
 	}
 	public, ok := private.Public().(ed25519.PublicKey)
 	if !ok || sha256.Sum256(public) != state.Binding.IDCommitment {
-		zero(state.RootMaterial)
-		zero(state.AdmissionJournal)
-		return authorityState{}, EnvelopeInfo{}, ErrInvalid
+		clear(state.RootMaterial)
+		clear(state.AdmissionJournal)
+		return authorityState{}, ErrInvalid
 	}
 	if err := validateAdmissionAuthorityState(state); err != nil {
-		zero(state.RootMaterial)
-		zero(state.AdmissionJournal)
-		return authorityState{}, EnvelopeInfo{}, err
+		clear(state.RootMaterial)
+		clear(state.AdmissionJournal)
+		return authorityState{}, err
 	}
-	return state, info, nil
+	return state, nil
 }
 
 func validateAdmissionAuthorityState(state authorityState) error {
@@ -219,73 +231,89 @@ func (vault *Vault) openCurrentAdmissionAuthority(recordID string, password []by
 	if err != nil {
 		return authorityState{}, EnvelopeInfo{}, err
 	}
-	defer zero(baseRaw)
-	base, baseInfo, err := openAdmissionAuthority(baseRaw, password, expected)
+	defer clear(baseRaw)
+	purpose, basePlaintext, baseInfo, err := openEnvelope(baseRaw, password)
+	if err != nil {
+		return authorityState{}, EnvelopeInfo{}, err
+	}
+	defer clear(basePlaintext)
+	if purpose != PurposeVault {
+		return authorityState{}, EnvelopeInfo{}, ErrInvalid
+	}
+	return vault.currentAdmissionAuthorityFromBase(basePlaintext, baseInfo, recordID, password, expected)
+}
+
+// currentAdmissionAuthorityFromBase resolves the current authority from an
+// already-decrypted base plaintext, avoiding a second base KDF within one
+// operation (audit DD-5). basePlaintext is borrowed; the caller clears it. The
+// returned state's secret material is owned by the caller.
+func (vault *Vault) currentAdmissionAuthorityFromBase(basePlaintext []byte, baseInfo EnvelopeInfo, recordID string, password []byte, expected AuthorityBinding) (authorityState, EnvelopeInfo, error) {
+	base, err := decodeAdmissionAuthorityState(basePlaintext, expected)
 	if err != nil {
 		return authorityState{}, EnvelopeInfo{}, err
 	}
 	floors, err := vault.readFloors()
 	if err != nil {
-		zero(base.RootMaterial)
-		zero(base.AdmissionJournal)
+		clear(base.RootMaterial)
+		clear(base.AdmissionJournal)
 		return authorityState{}, EnvelopeInfo{}, err
 	}
 	floor, found := floorFor(floors, expected)
 	if !found {
-		zero(base.RootMaterial)
-		zero(base.AdmissionJournal)
+		clear(base.RootMaterial)
+		clear(base.AdmissionJournal)
 		return authorityState{}, EnvelopeInfo{}, ErrInvalid
 	}
 	path, err := admissionLedgerPath(vault.root, recordID)
 	if err != nil {
-		zero(base.RootMaterial)
-		zero(base.AdmissionJournal)
+		clear(base.RootMaterial)
+		clear(base.AdmissionJournal)
 		return authorityState{}, EnvelopeInfo{}, err
 	}
 	raw, err := readEnvelopeFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		if !floorEqualsState(floor, base) {
-			zero(base.RootMaterial)
-			zero(base.AdmissionJournal)
+			clear(base.RootMaterial)
+			clear(base.AdmissionJournal)
 			return authorityState{}, EnvelopeInfo{}, ErrInvalid
 		}
 		return base, baseInfo, nil
 	}
 	if err != nil {
-		zero(base.RootMaterial)
-		zero(base.AdmissionJournal)
+		clear(base.RootMaterial)
+		clear(base.AdmissionJournal)
 		return authorityState{}, EnvelopeInfo{}, err
 	}
-	defer zero(raw)
+	defer clear(raw)
 	current, info, err := openAdmissionAuthority(raw, password, expected)
 	if err != nil {
-		zero(base.RootMaterial)
-		zero(base.AdmissionJournal)
+		clear(base.RootMaterial)
+		clear(base.AdmissionJournal)
 		return authorityState{}, EnvelopeInfo{}, err
 	}
 	if floorEqualsState(floor, current) {
-		zero(base.RootMaterial)
-		zero(base.AdmissionJournal)
+		clear(base.RootMaterial)
+		clear(base.AdmissionJournal)
 		return current, info, nil
 	}
 	// The immutable base is older after the first committed allocation. Recovery
 	// must compare the authenticated successor to the retained floor, not the base.
 	if !admissionLedgerFollowsFloor(current, floor) {
-		zero(base.RootMaterial)
-		zero(base.AdmissionJournal)
-		zero(current.RootMaterial)
-		zero(current.AdmissionJournal)
+		clear(base.RootMaterial)
+		clear(base.AdmissionJournal)
+		clear(current.RootMaterial)
+		clear(current.AdmissionJournal)
 		return authorityState{}, EnvelopeInfo{}, ErrInvalid
 	}
 	if err := vault.advanceFloor(current); err != nil {
-		zero(base.RootMaterial)
-		zero(base.AdmissionJournal)
-		zero(current.RootMaterial)
-		zero(current.AdmissionJournal)
+		clear(base.RootMaterial)
+		clear(base.AdmissionJournal)
+		clear(current.RootMaterial)
+		clear(current.AdmissionJournal)
 		return authorityState{}, EnvelopeInfo{}, err
 	}
-	zero(base.RootMaterial)
-	zero(base.AdmissionJournal)
+	clear(base.RootMaterial)
+	clear(base.AdmissionJournal)
 	return current, info, nil
 }
 
@@ -307,22 +335,22 @@ func (vault *Vault) writeAdmissionSuccessor(recordID string, source, expected au
 		return EnvelopeInfo{}, err
 	}
 	raw, err := readEnvelopeFile(path)
-	defer zero(raw)
+	defer clear(raw)
 	if err == nil {
 		state, info, openErr := openAdmissionAuthority(raw, password, expected.Binding)
 		if openErr == nil && sameAuthorityState(state, expected) {
-			zero(state.RootMaterial)
-			zero(state.AdmissionJournal)
+			clear(state.RootMaterial)
+			clear(state.AdmissionJournal)
 			return info, nil
 		}
 		if openErr != nil || !sameAuthorityState(state, source) {
-			zero(state.RootMaterial)
-			zero(state.AdmissionJournal)
-			zero(raw)
+			clear(state.RootMaterial)
+			clear(state.AdmissionJournal)
+			clear(raw)
 			return EnvelopeInfo{}, ErrInvalid
 		}
-		zero(state.RootMaterial)
-		zero(state.AdmissionJournal)
+		clear(state.RootMaterial)
+		clear(state.AdmissionJournal)
 	}
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return EnvelopeInfo{}, ErrInvalid
@@ -331,12 +359,12 @@ func (vault *Vault) writeAdmissionSuccessor(recordID string, source, expected au
 	if err != nil {
 		return EnvelopeInfo{}, err
 	}
-	defer zero(plaintext)
+	defer clear(plaintext)
 	envelope, err := sealEnvelope(PurposeVault, plaintext, password)
 	if err != nil {
 		return EnvelopeInfo{}, err
 	}
-	defer zero(envelope)
+	defer clear(envelope)
 	// Do not reserve an elapsed hour after password derivation. Once written,
 	// the existing successor recovery must still complete its durable floor.
 	if !vault.now().UTC().Truncate(time.Hour).Equal(window) {
@@ -346,7 +374,7 @@ func (vault *Vault) writeAdmissionSuccessor(recordID string, source, expected au
 		return EnvelopeInfo{}, err
 	}
 	if err := writeAtomicPrivate(path, envelope); err != nil {
-		zero(envelope)
+		clear(envelope)
 		return EnvelopeInfo{}, err
 	}
 	if err := verifyPersistedEnvelope(path, envelope); err != nil {

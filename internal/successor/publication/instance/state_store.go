@@ -7,31 +7,47 @@ import (
 	"path/filepath"
 )
 
-func (root *Root) prepareLayout(create bool) error {
-	entries, err := os.ReadDir(root.path)
+// inspectLayout classifies existing bytes without creating a lease or repairing
+// missing state. A complete retained root is rechecked under its actual lease.
+func inspectLayout(path string) (bool, error) {
+	entries, err := os.ReadDir(path)
 	if err != nil || len(entries) > 3 {
-		return ErrInvalid
+		return false, ErrInvalid
 	}
-	hasMarker := false
+	if len(entries) == 0 {
+		return true, nil
+	}
+	if len(entries) != 3 {
+		return false, ErrInvalid
+	}
 	for _, entry := range entries {
-		if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 {
-			return ErrInvalid
+		if !entry.Type().IsRegular() {
+			return false, ErrInvalid
 		}
 		switch entry.Name() {
-		case markerName:
-			hasMarker = true
-		case lockName, stateName:
+		case markerName, lockName, stateName:
 		default:
-			return ErrInvalid
+			return false, ErrInvalid
 		}
 	}
-	if !hasMarker {
-		if !create || len(entries) != 1 || entries[0].Name() != lockName {
+	raw, err := readPrivate(filepath.Join(path, markerName), int64(len(marker)))
+	if err != nil || string(raw) != marker {
+		return false, ErrInvalid
+	}
+	return false, nil
+}
+
+func (root *Root) prepareLayout(fresh bool) error {
+	if fresh {
+		entries, err := os.ReadDir(root.path)
+		if err != nil || len(entries) != 1 || entries[0].Name() != lockName {
 			return ErrInvalid
 		}
-		if err = writeExclusive(filepath.Join(root.path, markerName), []byte(marker)); err != nil {
+		if err := writeExclusive(filepath.Join(root.path, markerName), []byte(marker)); err != nil {
 			return err
 		}
+	} else if empty, err := inspectLayout(root.path); err != nil || empty {
+		return ErrInvalid
 	}
 	raw, err := readPrivate(filepath.Join(root.path, markerName), int64(len(marker)))
 	if err != nil || string(raw) != marker {

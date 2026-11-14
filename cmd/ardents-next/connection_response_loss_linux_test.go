@@ -238,10 +238,10 @@ func TestInstalledConnectionControlDeliveryTCP(t *testing.T) {
 const connectionControlFramingReadLine = 36
 const connectionProgressReadLine = 41
 const connectionProgressCommitLine = 54
-const connectionControlReadRecheckLine = 381
+const connectionControlReadRecheckLine = 388
 
-const connectionPublisherControlWriteBeforeLine = 385
-const connectionPublisherControlWriteAfterLine = 397
+const connectionPublisherControlWriteBeforeLine = 392
+const connectionPublisherControlWriteAfterLine = 404
 const connectionInitiatorControlWriteBeforeLine = 127
 const connectionInitiatorControlWriteAfterLine = 132
 

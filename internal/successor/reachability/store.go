@@ -50,7 +50,7 @@ func openStore(config StoreConfig, retained bool) (*Store, error) {
 		return nil, err
 	}
 	if !retained {
-		if err = prepareStoreRoot(root); err != nil {
+		if err = prepareStoreRoot(root, syncStoreDirectory); err != nil {
 			return nil, err
 		}
 	} else {

@@ -24,7 +24,7 @@ func newAllocationVaultFixture(t *testing.T) *allocationVaultFixture {
 		t.Fatal(err)
 	}
 	fixture.vault = vault
-	t.Cleanup(func() { _ = fixture.vault.Close(); zero(fixture.password) })
+	t.Cleanup(func() { _ = fixture.vault.Close(); clear(fixture.password) })
 	binding := AuthorityBinding{Environment: [32]byte{1}, Network: [32]byte{2}, Root: [32]byte{3}, Kind: AuthorityAdmission}
 	created, err := vault.Execute(t.Context(), Operation{Kind: OperationCreateAdmissionAuthority, Binding: binding}, &sequenceSecrets{values: [][]byte{fixture.password, fixture.password}})
 	if err != nil {
@@ -40,7 +40,7 @@ func (fixture *allocationVaultFixture) request(t *testing.T, count uint32) Opera
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer zero(holder)
+	defer clear(holder)
 	raw, err := admission.EncodePermissionRequest(request)
 	if err != nil {
 		t.Fatal(err)
@@ -90,7 +90,7 @@ func TestAdmissionRecoveryRefusesSkippedSuccessor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer zero(originalFloor)
+	defer clear(originalFloor)
 	first, second := fixture.request(t, 1), fixture.request(t, 1)
 	for _, request := range []Operation{first, second} {
 		if _, err := fixture.vault.Execute(t.Context(), request, &sequenceSecrets{values: [][]byte{fixture.password}}); err != nil {

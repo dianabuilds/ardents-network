@@ -3,7 +3,6 @@ package connection
 import (
 	"context"
 	"errors"
-	"sync"
 	"testing"
 	"testing/synctest"
 )
@@ -15,7 +14,6 @@ func TestCanceledStreamRetainsCauseBeforeLateRecordFailure(t *testing.T) {
 	for _, canceled := range []bool{false, true} {
 		ctx, cancel := context.WithCancel(context.Background())
 		stream := &Stream{ctx: ctx, cancel: cancel}
-		stream.cond = sync.NewCond(&stream.mu)
 		records := &attachmentRecords{}
 		stream.records = records
 		late := errors.New("original interrupted record result")
@@ -76,7 +74,6 @@ func TestStaleAttachmentWriterCannotChangeCurrentLedgers(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	stream := &Stream{ctx: ctx, cancel: cancel, send: &sendLedger{generation: 2, end: 7, next: 3}, terminal: &terminalExchange{generation: 2}}
-	stream.cond = sync.NewCond(&stream.mu)
 	current := &attachmentRecords{generation: 2}
 	stream.records = current
 	stale := &attachmentRecords{generation: 1, writerDone: make(chan struct{})}

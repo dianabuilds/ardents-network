@@ -45,29 +45,29 @@ func TestPackageOwnershipPredicates(t *testing.T) {
 		{
 			name:   "accepts root-owned non-writable package directory",
 			verify: verifyPackageDirectory,
-			info:   packageOwnershipInfo{mode: os.ModeDir | 0o755, uid: 0},
+			info:   packageOwnershipInfo{mode: os.ModeDir | 0o755, stat: syscall.Stat_t{Uid: 0}},
 		},
 		{
 			name:    "rejects caller-owned package directory",
 			verify:  verifyPackageDirectory,
-			info:    packageOwnershipInfo{mode: os.ModeDir | 0o755, uid: 1000},
+			info:    packageOwnershipInfo{mode: os.ModeDir | 0o755, stat: syscall.Stat_t{Uid: 1000}},
 			wantErr: true,
 		},
 		{
 			name:    "rejects group-writable package directory",
 			verify:  verifyPackageDirectory,
-			info:    packageOwnershipInfo{mode: os.ModeDir | 0o775, uid: 0},
+			info:    packageOwnershipInfo{mode: os.ModeDir | 0o775, stat: syscall.Stat_t{Uid: 0}},
 			wantErr: true,
 		},
 		{
 			name:   "accepts root-owned non-writable single-link package file",
 			verify: verifyPackageFile,
-			info:   packageOwnershipInfo{mode: 0o755, uid: 0, links: 1},
+			info:   packageOwnershipInfo{mode: 0o755, stat: syscall.Stat_t{Uid: 0, Nlink: 1}},
 		},
 		{
 			name:    "rejects multiply-linked package file",
 			verify:  verifyPackageFile,
-			info:    packageOwnershipInfo{mode: 0o755, uid: 0, links: 2},
+			info:    packageOwnershipInfo{mode: 0o755, stat: syscall.Stat_t{Uid: 0, Nlink: 2}},
 			wantErr: true,
 		},
 	}
@@ -82,9 +82,8 @@ func TestPackageOwnershipPredicates(t *testing.T) {
 }
 
 type packageOwnershipInfo struct {
-	mode  os.FileMode
-	uid   uint32
-	links uint64
+	mode os.FileMode
+	stat syscall.Stat_t
 }
 
 func (info packageOwnershipInfo) Name() string       { return "package-static-entry" }
@@ -93,5 +92,5 @@ func (info packageOwnershipInfo) Mode() os.FileMode  { return info.mode }
 func (info packageOwnershipInfo) ModTime() time.Time { return time.Time{} }
 func (info packageOwnershipInfo) IsDir() bool        { return info.mode.IsDir() }
 func (info packageOwnershipInfo) Sys() any {
-	return &syscall.Stat_t{Uid: info.uid, Nlink: info.links}
+	return &info.stat
 }

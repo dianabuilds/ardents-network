@@ -310,7 +310,7 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | `admission/issuerprofile/signing` | Independently pinned imported Ed25519 material, original lease/failure/Close and validated issuer-profile signing within Admission | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
-| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Forwarding and JOIN files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
+| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Forwarding, JOIN and Descriptor files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
 | State/Hosting/Route physical adapters | Byte verification, durable transactions, counters, sockets and Carrier mechanisms under their declared owners | Mechanisms cannot mint authority, reset floors or copy a second domain decision implementation |
 | Installation mutable-directory birth | `installation/directory` retains one original creation caller and private born inode state, exclusively creates caller-admitted paths and synchronizes same-inode account/mode promotion; checked Identity facts are detached, and Matches serves independent installed inspection | Root Installation selects paths/account, admits Release/journal/lease/effects and projects binding facts. Directory creation grants no adoption/recovery, selection, manager or startup authority; shared trusted-root predicates remain with Root lease/fixed/recovery lifetimes |
 | Installation request declarations and original input | `installation/request` owns canonical bounded declarations, detached copies, native direct root-owned input and opaque original byte/inode/access reobservation; the root Request facade is consumed by actual command and transaction composition | No Release authorization, writer lease, journal, account/root creation, generation selection, manager or startup authority. General trusted-path observations remain with root Installation lease/staging/inspection, independently of request provenance |
@@ -1307,3 +1307,12 @@ from one coherent fresh State observation per frame boundary. The view is not
 retained as later authority. Store custody and effect/ACK checks remain with the
 separate Reachability/receiving role; their observations are not collapsed into
 parent framing. No durable floor, native guard or cleanup horizon changes.
+
+Descriptor recovery separates original physical cut, fresh Installation admission
+and semantic/native completion. The private same-program controller owns only
+from-birth denial/join and immutable cut publication. Installation independently
+admits the complete stopped replacement prefix and writes a separate guarded
+completion under fresh Release and five original semantic inspections. Its
+read-only manager cannot replay Reload/Start; no physical cut grants original
+Node domain completion. Original prefixes, histories, principals and floors
+remain retained across recovery and later forward replacement.

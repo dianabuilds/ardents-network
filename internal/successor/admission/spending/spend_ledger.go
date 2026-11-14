@@ -40,6 +40,7 @@ type Ledger struct {
 	path           string
 	binding        Binding
 	spent          map[[32]byte]time.Time
+	earliestWindow time.Time // minimum retained window; zero when spent is empty
 	pruningFloor   time.Time
 	lease          closedSpendLease
 	openAppendFile func(string) (closedSpendAppendFile, error)
@@ -195,6 +196,9 @@ func (ledger *Ledger) Spend(token []byte, window, now time.Time) error {
 		return err
 	}
 	ledger.spent[digest] = window
+	if ledger.earliestWindow.IsZero() || window.Before(ledger.earliestWindow) {
+		ledger.earliestWindow = window
+	}
 	return nil
 }
 
@@ -202,10 +206,20 @@ func (ledger *Ledger) prune(now time.Time) error {
 	if now.Before(ledger.pruningFloor) {
 		return errors.New("closed spend clock below retained pruning floor")
 	}
+	// Nothing expires before the earliest retained window lapses; skip the
+	// full-map scan (audit AD-4). This is exactly the prior len-equality
+	// early-return, reached without copying the map on every Spend.
+	if len(ledger.spent) == 0 || now.Before(ledger.earliestWindow.Add(time.Hour+time.Minute)) {
+		return nil
+	}
 	retained := make(map[[32]byte]time.Time, len(ledger.spent))
+	var earliest time.Time
 	for digest, window := range ledger.spent {
 		if now.Before(window.Add(time.Hour + time.Minute)) {
 			retained[digest] = window
+			if earliest.IsZero() || window.Before(earliest) {
+				earliest = window
+			}
 		}
 	}
 	if len(retained) == len(ledger.spent) {
@@ -215,6 +229,7 @@ func (ledger *Ledger) prune(now time.Time) error {
 		return err
 	}
 	ledger.spent = retained
+	ledger.earliestWindow = earliest
 	ledger.pruningFloor = now.UTC().Truncate(time.Second)
 	return nil
 }
@@ -285,6 +300,9 @@ func decodeLedgerWithRepair(path string, binding Binding, raw []byte, repair fun
 			return nil, errors.New("closed spend ledger record is invalid")
 		}
 		ledger.spent[digest] = window
+		if ledger.earliestWindow.IsZero() || window.Before(ledger.earliestWindow) {
+			ledger.earliestWindow = window
+		}
 		offset += closedSpendRecordSize
 	}
 	if repairAt < 0 && complete != len(raw) {

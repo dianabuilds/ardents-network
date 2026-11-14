@@ -1480,6 +1480,17 @@ from the [upstream immutable release](https://github.com/PowerShell/PowerShell/r
 accessed 2026-09-30, using SHA256
 `ddbc4a2d113bbd46d283cfedcbcd117a70caefd7673f41f2b4e0000badf103bc`.
 It supplies the maintained architecture script tests, not a product dependency.
+For native macOS developer checks, the same explicit installation command accepts
+`ARDENTS_POWERSHELL_ROOT` as a fresh absolute directory outside the repository;
+add its `bin` directory to the check's PATH. It never replaces an existing tool
+or installs into a system directory. Upstream release hashes, accessed 2026-11-14,
+pin `powershell-7.6.6-osx-arm64.tar.gz` to
+`6df833d094ebac1c1a74340d7b3437f4aaf5e03ce640484a1c4359f3ce8b3db1`
+and `powershell-7.6.6-osx-x64.tar.gz` to
+`e325ed9f666894eb39a5ea52800b602da2fb4242bbe9747ceddb39cdc66de805`.
+These are the same MIT-licensed, self-contained release's native distributions;
+the actual architecture helper tests qualify the host invocation, not product
+macOS support. Tool-only XDG paths remain inside that external installation.
 The release uses .NET 10.0.401; Debian native dependencies and Python 3 come
 from signed security repositories and are included in the environment inventory.
 Rebuild on upstream/security fixes; validate the actual required scripts.

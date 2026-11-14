@@ -192,7 +192,17 @@ func linuxGoEnvironment() []string {
 }
 
 func sourceContainsIdentifier(root, directory, name, identifier string) (string, bool, error) {
-	path := filepath.Join(directory, name)
+	// go list reports physical paths, while a caller's root may retain a
+	// symlink alias (including Darwin's /var -> /private/var). Compare the
+	// same representation on both sides, including links escaping the root.
+	root, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", false, fmt.Errorf("resolve repository root: %w", err)
+	}
+	path, err := filepath.EvalSymlinks(filepath.Join(directory, name))
+	if err != nil {
+		return "", false, fmt.Errorf("resolve repository source: %w", err)
+	}
 	relative, err := filepath.Rel(root, path)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return "", false, fmt.Errorf("repository source %s is outside %s", path, root)

@@ -8,6 +8,6 @@ import (
 	"os"
 )
 
-func readTerminalLine(context.Context, *os.File, bool) ([]byte, error) {
+func readTerminalLine(context.Context, *os.File, bool, func()) ([]byte, error) {
 	return nil, errors.New("custody terminal reader requires Windows or Linux")
 }

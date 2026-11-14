@@ -16,4 +16,6 @@
 // original native attempt and archival-before-ACK. Independent non-root Startup
 // acquires its own protected files, process, scope and manager before the fixed
 // canonical consumer constructs genuine State and Descriptor owners.
+// Stopped replacement and complete-prefix recovery retain original retired
+// histories and fresh independent admission; a physical cut grants no authority.
 package descriptor

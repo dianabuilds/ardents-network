@@ -19,7 +19,9 @@ object per stdin line (maximum 64 KiB) and return one JSON result per line. EOF,
 Interrupt closes and joins command I/O. Failure diagnostics contain categories,
 not keys, file paths or received payloads.
 
-JSON byte slices use base64; fixed byte arrays use arrays of integers. Time values
+JSON byte slices use base64; fixed byte arrays use arrays of integers of exactly
+the declared length. Short or excess fixed-array inputs refuse, including nested
+arrays; omitted optional fields retain their existing zero-value contract. Time values
 use RFC3339. Embedded contracts use their exported Go field names. No private
 holder or issuer key is accepted by or emitted from these commands.
 

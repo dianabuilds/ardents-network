@@ -91,8 +91,8 @@ func TestSendQueueBoundAppliesBackpressureButAllowsReplay(t *testing.T) {
 	if err := ledger.accept(payload); err != nil {
 		t.Fatal("ACK failed to release bounded space")
 	}
-	if len(ledger.data) != 262144 || ledger.end != 278528 {
-		t.Fatal("replacement reset byte counter or expanded queue")
+	if len(ledger.data)-int(ledger.head) != 262144 || ledger.end != 278528 {
+		t.Fatal("replacement reset byte counter or expanded live queue")
 	}
 }
 
@@ -224,7 +224,7 @@ func TestSendReplacementCannotAcknowledgeUnreplayedOldExposure(t *testing.T) {
 	if err := ledger.acknowledge(2, 20000); !errors.Is(err, errIntegrity) {
 		t.Fatal("new Attachment acknowledged old exposure before replay")
 	}
-	if ledger.base != 100 || ledger.next != 100 || ledger.end != 20000 || len(ledger.data) != 19900 {
+	if ledger.base != 100 || ledger.next != 100 || ledger.end != 20000 || len(ledger.data)-int(ledger.head) != 19900 {
 		t.Fatal("refused ACK discarded original retained suffix or counters")
 	}
 	if err := ledger.acknowledge(2, 100); err != nil {
@@ -243,7 +243,49 @@ func TestSendReplacementCannotAcknowledgeUnreplayedOldExposure(t *testing.T) {
 	if _, err := ledger.finishWrite(replay, nil); err != nil {
 		t.Fatal(err)
 	}
-	if ledger.base != 16484 || ledger.end != 20000 || len(ledger.data) != 3516 {
+	if ledger.base != 16484 || ledger.end != 20000 || len(ledger.data)-int(ledger.head) != 3516 {
 		t.Fatal("current replay ACK changed original total or lost remaining suffix")
+	}
+}
+
+// Driving the head cursor past the compaction bound must reclaim the trimmed
+// prefix without losing any unacknowledged suffix (audit SW-5).
+func TestSendHeadCursorCompactionPreservesReplay(t *testing.T) {
+	ledger, _ := newSendLedger(1, 1<<20)
+	payload := bytes.Repeat([]byte{7}, 16384)
+	for range 32 {
+		if err := ledger.accept(payload); err != nil {
+			t.Fatal(err)
+		}
+		ticket, err := ledger.beginWrite()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(ticket.record.Payload, payload) {
+			t.Fatal("exposed payload differs")
+		}
+		if _, err := ledger.finishWrite(ticket, nil); err != nil {
+			t.Fatal(err)
+		}
+		if err := ledger.acknowledge(1, ledger.next); err != nil {
+			t.Fatal(err)
+		}
+		if live := uint64(len(ledger.data)) - ledger.head; live != ledger.end-ledger.base {
+			t.Fatal("live bytes diverged from counters")
+		}
+		if uint64(len(ledger.data)) > 2*logicalQueueLimit {
+			t.Fatal("head cursor exceeded its bounded allocation")
+		}
+	}
+	if ledger.base != ledger.end {
+		t.Fatal("expected fully acknowledged stream")
+	}
+	suffix := bytes.Repeat([]byte{9}, 4096)
+	if err := ledger.accept(suffix); err != nil {
+		t.Fatal(err)
+	}
+	ticket, err := ledger.beginWrite()
+	if err != nil || !bytes.Equal(ticket.record.Payload, suffix) {
+		t.Fatal("post-compaction replay differs")
 	}
 }

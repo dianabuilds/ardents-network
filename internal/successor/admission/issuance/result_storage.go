@@ -50,8 +50,15 @@ func nextResultFrame(raw []byte, previous [32]byte) ([]byte, []byte, [32]byte, e
 		return nil, nil, previous, ErrUnavailable
 	}
 	body := raw[4 : 4+n]
-	encoded, digest := resultFrame(previous, body)
-	if !bytes.Equal(encoded, raw[:n+36]) {
+	// The length prefix and body are sliced from raw itself, so re-encoding the
+	// whole frame only to compare it is redundant; verify the trailing chain
+	// digest directly without a frame-sized allocation (audit AD-1).
+	h := sha256.New()
+	_, _ = h.Write(previous[:])
+	_, _ = h.Write(body)
+	var digest [32]byte
+	copy(digest[:], h.Sum(nil))
+	if !bytes.Equal(digest[:], raw[4+n:n+36]) {
 		return nil, nil, previous, ErrUnavailable
 	}
 	return body, raw[n+36:], digest, nil
@@ -169,7 +176,13 @@ func openResults(ctx context.Context, path string, store Store, b quota.LedgerBi
 	if json.Unmarshal(pin[len(resultMarker):], &protected) != nil {
 		return ResultStore{}, errors.Join(ErrInvalid, root.Close())
 	}
-	s := &resultState{root: root, path: path, identity: identity, store: store, binding: protected.Binding, files: map[string]os.FileInfo{}, records: map[[32]byte]savedResult{}, fault: fault, header: sha256.Sum256(pin)}
+	// The binding is immutable for this owner; prove its digest once here rather
+	// than re-validating every key on each confirmation (audit AD-3).
+	bindingDigest, err := quota.BindingDigest(protected.Binding)
+	if err != nil {
+		return ResultStore{}, errors.Join(ErrInvalid, root.Close())
+	}
+	s := &resultState{root: root, path: path, identity: identity, store: store, binding: protected.Binding, pinnedBindingDigest: bindingDigest, files: map[string]os.FileInfo{}, records: map[[32]byte]savedResult{}, fault: fault, header: sha256.Sum256(pin)}
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, releaseLock(s.lock), root.Close())

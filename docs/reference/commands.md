@@ -1581,3 +1581,17 @@ the exact original signed predecessor and unchanged root/key purposes before
 raising Targets/Snapshot/Timestamp versions. Its output grants no installation
 or runtime permission. The root-only actual-build preparer accepts `--forward`
 for this distinct reviewed purpose; the initial default still requires version1.
+
+
+Descriptor stopped recovery uses two distinct canonical operations:
+
+```text
+ardents-node descriptor supervise-transition --stop-after-record 62 --timeout-ms 120000 -- replace DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING REQUEST
+ardents-node descriptor recover DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING REQUEST
+```
+
+The first owns an original interrupted replacement and its separate physical cut;
+it grants no recovery or runtime authority. The second admits only the complete
+stopped prefix with fresh proofs and original predecessor completion. It neither
+starts a Node nor repeats Reload. Partial or uncertain prefixes retain their
+blockers and require repair; files alone supply no recovery permission.

@@ -19,12 +19,12 @@ func (vault *Vault) purgeRecord(ctx context.Context, operation Operation, secret
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(password)
+	defer clear(password)
 	purpose, plaintext, info, err := openEnvelope(raw, password)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(plaintext)
+	defer clear(plaintext)
 	if purpose != PurposeVault {
 		return Receipt{}, ErrInvalid
 	}
@@ -32,14 +32,18 @@ func (vault *Vault) purgeRecord(ctx context.Context, operation Operation, secret
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer func() { zero(authority.RootMaterial); zero(authority.AdmissionJournal); zero(authority.ServiceJournal) }()
+	defer func() {
+		clear(authority.RootMaterial)
+		clear(authority.AdmissionJournal)
+		clear(authority.ServiceJournal)
+	}()
 	if authority.Binding != operation.Expected {
 		return Receipt{}, ErrInvalid
 	}
 	if authority.Binding.Kind == AuthorityAdmission && state == RecordActive {
-		zero(authority.RootMaterial)
-		zero(authority.AdmissionJournal)
-		zero(authority.ServiceJournal)
+		clear(authority.RootMaterial)
+		clear(authority.AdmissionJournal)
+		clear(authority.ServiceJournal)
 		authority, info, err = vault.openCurrentAdmissionAuthority(operation.RecordID, password, operation.Expected)
 		if err != nil {
 			return Receipt{}, err

@@ -72,7 +72,11 @@ func (l *Lane) Seal() {
 func (l *Lane) stopLocked(cause error) {
 	if !l.closed {
 		l.closed = true
-		l.cancel(cause)
+		// A borrowed control lane (AcceptParent) carries the caller context
+		// without owning a cancel; sealing it must refuse, not panic.
+		if l.cancel != nil {
+			l.cancel(cause)
+		}
 		l.cause = cause
 		l.signalLocked()
 	}

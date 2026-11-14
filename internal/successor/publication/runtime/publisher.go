@@ -67,6 +67,7 @@ type Publisher struct {
 	responderScope                *prefix.ResponderScope
 	sourceScope                   *prefix.SourceScope
 	initialDeliveries             map[[32]byte]*initialDelivery
+	readyInitial                  []*initialDelivery // wireJoined candidates; guarded by mu, lazy-compacted
 	initialUsers                  sync.WaitGroup
 	initialWake                   chan struct{}
 	connections                   map[[32]byte]*connection.Stream

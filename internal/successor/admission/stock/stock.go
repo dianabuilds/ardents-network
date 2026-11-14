@@ -105,18 +105,15 @@ func (permission *permission) acceptIssuedBatch(batch *batch, body []byte, check
 			return err
 		}
 	}
+	if permission.stock == nil {
+		permission.stock = make(map[admissiontoken.ClosedTokenContext]*stockEntry)
+	}
 	for index, token := range tokens {
 		challenge := batch.Challenges[index]
-		found := false
-		for slot := range permission.stock {
-			if permission.stock[slot].Challenge == challenge {
-				permission.stock[slot].Tokens = append(permission.stock[slot].Tokens, token)
-				found = true
-				break
-			}
-		}
-		if !found {
-			permission.stock = append(permission.stock, stockEntry{Challenge: challenge, Tokens: [][]byte{token}})
+		if entry := permission.stock[challenge]; entry != nil {
+			entry.Tokens = append(entry.Tokens, token)
+		} else {
+			permission.stock[challenge] = &stockEntry{Challenge: challenge, Tokens: [][]byte{token}}
 		}
 	}
 	return nil
@@ -143,11 +140,7 @@ func (permission *permission) consumeToken(profile admission.AuthorityFacts, now
 			spki = key.SPKI[:]
 		}
 	}
-	for index := range permission.stock {
-		stock := &permission.stock[index]
-		if stock.Challenge != challenge || len(stock.Tokens) == 0 {
-			continue
-		}
+	if stock := permission.stock[challenge]; stock != nil && len(stock.Tokens) > 0 {
 		token := stock.Tokens[0]
 		stock.Tokens[0] = nil
 		stock.Tokens = stock.Tokens[1:]

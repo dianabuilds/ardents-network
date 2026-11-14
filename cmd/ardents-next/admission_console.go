@@ -87,12 +87,24 @@ func exactAdmissionFields(raw []byte, t reflect.Type) error {
 			}
 		}
 	case reflect.Array, reflect.Slice:
-		if t.Elem().Kind() == reflect.Uint8 {
+		// A named type with its own JSON decoder owns its wire grammar. In
+		// particular, public Network preparation IDs require exact hex strings
+		// rather than encoding/json's default integer-array representation.
+		decoder := reflect.TypeFor[json.Unmarshaler]()
+		if t.Implements(decoder) || reflect.PointerTo(t).Implements(decoder) {
+			return nil
+		}
+		if t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
 			return nil
 		}
 		var values []json.RawMessage
 		if err := json.Unmarshal(raw, &values); err != nil {
 			return err
+		}
+		// encoding/json pads short arrays and discards excess elements. Refuse
+		// either change before decoding identities or fixed command bounds.
+		if t.Kind() == reflect.Array && len(values) != t.Len() {
+			return errors.New("invalid array length")
 		}
 		for _, v := range values {
 			if err := exactAdmissionFields(v, t.Elem()); err != nil {

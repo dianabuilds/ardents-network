@@ -187,7 +187,7 @@ func recoverReplacementSource(ctx context.Context, v *release.Verifier, a Author
 	names := sourceGenerationNames()
 	slices.Sort(names)
 	for i, name := range names {
-		start := 11 + i*3
+		start := sourceReplacementPrefixSeq + i*3
 		if s.births.sequence > start+2 {
 			continue
 		}
@@ -205,12 +205,12 @@ func recoverReplacementSource(ctx context.Context, v *release.Verifier, a Author
 	if err = checkSourceInventory(sealed, names); err != nil {
 		return err
 	}
-	if s.births.sequence == 47 {
+	if s.births.sequence == sourceReplacementSealIntentSeq {
 		if err = s.births.record("seal-intent", sealed, s.births.directories[sealed], b.Generation, 0555, 0, 0); err != nil {
 			return err
 		}
 	}
-	if s.births.sequence == 48 {
+	if s.births.sequence == sourceReplacementSealedSeq {
 		if err = sealSourceDirectory(s.births, sealed, s.observe); err != nil {
 			return err
 		}

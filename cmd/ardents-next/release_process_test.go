@@ -97,6 +97,10 @@ func newConsumerReleaseAuthority(t *testing.T, expires time.Time) *consumerRelea
 
 func signedConsumerRelease(t *testing.T, platform string, protected, generation bool, generationVersion int64, resources map[string][]byte, authority *consumerReleaseAuthority, metadataVersion, releaseVersion int64) (string, string, string) {
 	t.Helper()
+	_, architecture, validPlatform := strings.Cut(platform, "-")
+	if !validPlatform || architecture == "" {
+		t.Fatal("fixture requires an explicit target architecture")
+	}
 	binary, err := os.ReadFile(compiledCommand(t))
 	if err != nil {
 		t.Fatal(err)
@@ -151,7 +155,7 @@ func signedConsumerRelease(t *testing.T, platform string, protected, generation 
 	}
 	digest := sha256.Sum256(binary)
 	hexDigest := hex.EncodeToString(digest[:])
-	customFields := map[string]any{"schema_version": 1, "profile": "ardents-h3-release-v1", "platform": platform, "architecture": runtime.GOARCH, "environment": "h3-test", "network": "new-release-test", "release_identity": "new-release-fixture", "release_version": int64(1), "source_revision": "test-source", "build_input_commitment": "test-inputs", "build_identity": "test-build", "dependency_identity": "test-dependencies", "sbom_identity": "test-sbom", "attestation_policy": "two-builder", "qualification": "qualified", "build_state": "current", "protocol_phase": "announced", "build_safety_no_new_work_after": ref.Add(30 * 24 * time.Hour), "build_safety_terminate_after": ref.Add(180 * 24 * time.Hour)}
+	customFields := map[string]any{"schema_version": 1, "profile": "ardents-h3-release-v1", "platform": platform, "architecture": architecture, "environment": "h3-test", "network": "new-release-test", "release_identity": "new-release-fixture", "release_version": int64(1), "source_revision": "test-source", "build_input_commitment": "test-inputs", "build_identity": "test-build", "dependency_identity": "test-dependencies", "sbom_identity": "test-sbom", "attestation_policy": "two-builder", "qualification": "qualified", "build_state": "current", "protocol_phase": "announced", "build_safety_no_new_work_after": ref.Add(30 * 24 * time.Hour), "build_safety_terminate_after": ref.Add(180 * 24 * time.Hour)}
 	customFields["release_version"] = releaseVersion
 	var attestations []map[string]string
 	for _, id := range []string{"test-builder-one", "test-builder-two"} {
@@ -259,6 +263,9 @@ func TestReleaseInitialProtectedInventoryUsesOnlyMetadata(t *testing.T) {
 		t.Fatal("fixture lacks genuinely verified protected inventory")
 	}
 	input, ok := initialReleaseInputs(bundle, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC))
+	// This metadata-only fixture models the protected linux-amd64 artifact,
+	// not execution of that artifact on the current developer host.
+	input.Local.Architecture = "amd64"
 	if !ok {
 		t.Fatal("verified inventory projection refused")
 	}

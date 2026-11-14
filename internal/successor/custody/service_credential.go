@@ -36,7 +36,7 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	successorID := serviceSuccessorRecordID(operation.RecordID, request.Commitment)
 	if expired {
 		existing, readErr := readEnvelopeFile(filepath.Join(vault.records, "record-"+successorID+".json"))
-		zero(existing)
+		clear(existing)
 		if readErr != nil {
 			return Receipt{}, ErrInvalid
 		}
@@ -45,23 +45,23 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(sourceRaw)
+	defer clear(sourceRaw)
 	password, err := readPassword(ctx, secrets, SecretPromptVaultUnlock)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(password)
+	defer clear(password)
 	source, _, err := openServiceAuthority(sourceRaw, password, operation.Expected)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(source.RootMaterial)
-	defer zero(source.ServiceJournal)
+	defer clear(source.RootMaterial)
+	defer clear(source.ServiceJournal)
 	successor, transcript, err := serviceSuccessor(source, request)
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(successor.ServiceJournal)
+	defer clear(successor.ServiceJournal)
 	floors, err := vault.readFloors()
 	if err != nil {
 		return Receipt{}, err
@@ -82,7 +82,7 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 		// Prove the original authenticated exact successor already exists before
 		// returning its deterministic response or completing its pending floor.
 		raw, _, err := vault.ensureServiceSuccessor(successorID, successor, password, false, request)
-		zero(raw)
+		clear(raw)
 		if err != nil {
 			return Receipt{}, err
 		}
@@ -99,7 +99,7 @@ func (vault *Vault) issueServiceCredential(ctx context.Context, operation Operat
 	if err != nil {
 		return Receipt{}, err
 	}
-	defer zero(successorRaw)
+	defer clear(successorRaw)
 	if sourceCurrent {
 		if err := vault.advanceFloor(successor); err != nil {
 			return Receipt{}, err
@@ -142,7 +142,7 @@ func openServiceAuthority(raw, password []byte, expected AuthorityBinding) (auth
 	if err != nil {
 		return authorityState{}, EnvelopeInfo{}, err
 	}
-	defer zero(plaintext)
+	defer clear(plaintext)
 	if purpose != PurposeVault {
 		return authorityState{}, EnvelopeInfo{}, ErrInvalid
 	}
@@ -152,23 +152,23 @@ func openServiceAuthority(raw, password []byte, expected AuthorityBinding) (auth
 	}
 	private := ed25519.PrivateKey(state.RootMaterial)
 	if len(private) != ed25519.PrivateKeySize {
-		zero(state.RootMaterial)
-		zero(state.ServiceJournal)
+		clear(state.RootMaterial)
+		clear(state.ServiceJournal)
 		return authorityState{}, EnvelopeInfo{}, ErrInvalid
 	}
 	public, ok := private.Public().(ed25519.PublicKey)
 	if state.Binding != expected || state.Binding.Kind != AuthorityService || !ok ||
 		sha256.Sum256(public) != state.Binding.IDCommitment {
-		zero(state.RootMaterial)
-		zero(state.ServiceJournal)
+		clear(state.RootMaterial)
+		clear(state.ServiceJournal)
 		return authorityState{}, EnvelopeInfo{}, ErrInvalid
 	}
 	derived := ed25519.NewKeyFromSeed(private[:32])
 	matches := bytes.Equal(derived, private)
-	zero(derived)
+	clear(derived)
 	if !matches {
-		zero(state.RootMaterial)
-		zero(state.ServiceJournal)
+		clear(state.RootMaterial)
+		clear(state.ServiceJournal)
 		return authorityState{}, EnvelopeInfo{}, ErrInvalid
 	}
 	return state, info, nil
@@ -221,13 +221,13 @@ func (vault *Vault) ensureServiceSuccessor(recordID string, expected authoritySt
 	if err == nil {
 		state, info, openErr := openServiceAuthority(raw, password, expected.Binding)
 		if openErr != nil || !sameAuthorityState(state, expected) {
-			zero(state.RootMaterial)
-			zero(state.ServiceJournal)
-			zero(raw)
+			clear(state.RootMaterial)
+			clear(state.ServiceJournal)
+			clear(raw)
 			return nil, EnvelopeInfo{}, ErrInvalid
 		}
-		zero(state.RootMaterial)
-		zero(state.ServiceJournal)
+		clear(state.RootMaterial)
+		clear(state.ServiceJournal)
 		return raw, info, nil
 	}
 	if !errors.Is(err, os.ErrNotExist) {
@@ -240,7 +240,7 @@ func (vault *Vault) ensureServiceSuccessor(recordID string, expected authoritySt
 	if err != nil {
 		return nil, EnvelopeInfo{}, err
 	}
-	defer zero(plaintext)
+	defer clear(plaintext)
 	envelope, err := sealEnvelope(PurposeVault, plaintext, password)
 	if err != nil {
 		return nil, EnvelopeInfo{}, err
@@ -248,16 +248,16 @@ func (vault *Vault) ensureServiceSuccessor(recordID string, expected authoritySt
 	// Sealing performs expensive password derivation. Check again at the first
 	// durable effect; after it commits, floor completion must remain recoverable.
 	if expired, supported := serviceCredentialValidity(request, vault.now().UTC()); expired || !supported {
-		zero(envelope)
+		clear(envelope)
 		return nil, EnvelopeInfo{}, ErrInvalid
 	}
 	if err := vault.writeRecord(recordID, envelope); err != nil {
-		zero(envelope)
+		clear(envelope)
 		return nil, EnvelopeInfo{}, err
 	}
 	info, err := inspectEnvelope(envelope)
 	if err != nil {
-		zero(envelope)
+		clear(envelope)
 		return nil, EnvelopeInfo{}, err
 	}
 	return envelope, info, err
