@@ -152,7 +152,10 @@ func (vault *Vault) verifyRecord(ctx context.Context, operation Operation, secre
 		clear(state.RootMaterial)
 		clear(state.AdmissionJournal)
 		clear(state.ServiceJournal)
-		state, info, err = vault.openCurrentAdmissionAuthority(operation.RecordID, password, operation.Expected)
+		// RecordActive reads the same base record opened above; reuse its
+		// plaintext instead of a second base KDF (audit DD-5). plaintext is
+		// cleared by this function's defer; the returned state is owned here.
+		state, info, err = vault.currentAdmissionAuthorityFromBase(plaintext, info, operation.RecordID, password, operation.Expected)
 		if err != nil {
 			return Receipt{}, err
 		}

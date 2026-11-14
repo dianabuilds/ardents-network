@@ -126,7 +126,7 @@ func decodeSourceRecoveryCompletion(raw, prefix []byte, original os.FileInfo, jo
 // missing sequence, unknown field or alternative JSON spelling. It does not
 // recognize a phase as permission; the operation's full grammar owns ordering.
 func decodeSourceRecoveryPrefix(raw []byte, maximum int) ([]sourceRecord, error) {
-	if maximum != 55 && maximum != 112 && maximum != sourceRecoverableInitialRecords {
+	if maximum != sourceReplacementCount && maximum != sourceInitialProjectedCount && maximum != sourceRecoverableInitialRecords {
 		return nil, ErrBinding
 	}
 	return decodeSourceCanonicalPrefix(raw, maximum)

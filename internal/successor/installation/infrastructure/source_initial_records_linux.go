@@ -17,7 +17,7 @@ func decodeSourceInitialRecords(raw []byte, b sourceBinding, hashes map[string]s
 		return nil, ErrBinding
 	}
 	lines := bytes.Split(raw[:len(raw)-1], []byte{'\n'})
-	if len(lines) != 112 {
+	if len(lines) != sourceInitialProjectedCount {
 		return nil, ErrBinding
 	}
 	records := make([]sourceRecord, len(lines))

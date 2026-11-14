@@ -1,6 +1,9 @@
 package architecture
 
 import (
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"regexp"
 	"strings"
 	"testing"
@@ -102,4 +105,60 @@ func driftDice(left, right map[string]int) float64 {
 		return 1
 	}
 	return 2 * float64(intersection) / float64(total)
+}
+
+// Some deliberate twins diverge too much whole-file to guard at file level, but
+// their shared mechanisms are near-identical (audit IE-6). These pairs compare
+// individual functions instead, so the storage record/write/publish seams stay
+// guarded without forcing a whole-file baseline.
+type driftFuncPair struct {
+	name      string
+	leftFile  string
+	leftFunc  string
+	rightFile string
+	rightFunc string
+	normalize [][2]string
+	minimum   float64
+}
+
+var driftFuncPairs = []driftFuncPair{
+	{"storage record", infrastructureDir + "source_start_storage_linux.go", "record", infrastructureDir + "source_stop_storage_linux.go", "record", phaseVocabulary, 0.77},
+	{"storage publish", infrastructureDir + "source_start_storage_linux.go", "publishStart", infrastructureDir + "source_stop_storage_linux.go", "publishRetirement", phaseVocabulary, 0.75},
+}
+
+func driftFuncBody(t *testing.T, root, file, fn string) []byte {
+	t.Helper()
+	src := readProjectFile(t, root, file)
+	fset := token.NewFileSet()
+	parsed, err := parser.ParseFile(fset, file, src, 0)
+	if err != nil {
+		t.Fatalf("parse %s: %v", file, err)
+	}
+	for _, decl := range parsed.Decls {
+		fd, ok := decl.(*ast.FuncDecl)
+		if !ok || fd.Name.Name != fn {
+			continue
+		}
+		return src[fset.Position(fd.Pos()).Offset:fset.Position(fd.End()).Offset]
+	}
+	t.Fatalf("function %s not found in %s", fn, file)
+	return nil
+}
+
+func TestDeclaredFunctionTwinsDoNotDrift(t *testing.T) {
+	t.Parallel()
+	root := repositoryRoot(t)
+	for _, pair := range driftFuncPairs {
+		pair := pair
+		t.Run(pair.name, func(t *testing.T) {
+			t.Parallel()
+			left := driftLineCounts(driftFuncBody(t, root, pair.leftFile, pair.leftFunc), pair.normalize)
+			right := driftLineCounts(driftFuncBody(t, root, pair.rightFile, pair.rightFunc), pair.normalize)
+			score := driftDice(left, right)
+			if score < pair.minimum {
+				t.Errorf("function twin %q drifted: similarity %.3f below baseline %.3f\n  %s:%s\n  %s:%s\nRe-sync both sides, or record a deliberate baseline change.",
+					pair.name, score, pair.minimum, pair.leftFile, pair.leftFunc, pair.rightFile, pair.rightFunc)
+			}
+		})
+	}
 }
