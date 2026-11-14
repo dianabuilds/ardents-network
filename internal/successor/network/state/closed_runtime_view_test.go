@@ -18,10 +18,10 @@ func TestRepeatedProfileAuthenticationStillChecksLoadedBytesAndAuthority(t *test
 		t.Fatal(err)
 	}
 	owner.mu.RLock()
-	_, _, failedRead := owner.currentMembershipLocked(func([32]byte) (durable.ClosedProfileState, []byte, error) {
+	_, _, _, failedRead := owner.currentMembershipLocked(func([32]byte) (durable.ClosedProfileState, []byte, error) {
 		return durable.ClosedProfileState{}, nil, errors.New("original durable read lost")
 	})
-	_, _, changedSignature := owner.currentMembershipLocked(func(generation [32]byte) (durable.ClosedProfileState, []byte, error) {
+	_, _, _, changedSignature := owner.currentMembershipLocked(func(generation [32]byte) (durable.ClosedProfileState, []byte, error) {
 		stored, body, err := owner.storage.LoadClosedProfile(generation)
 		body[len(body)-1] ^= 1
 		return stored, body, err
@@ -66,10 +66,10 @@ func TestClosedRuntimeRejectsExpiryDuringDurableProfileRead(t *testing.T) {
 	owner.config.observe = owner.config.clock
 	owner.mu.RLock()
 	defer owner.mu.RUnlock()
-	if _, _, err := owner.currentMembershipLocked(owner.storage.LoadClosedProfile); err != nil {
+	if _, _, _, err := owner.currentMembershipLocked(owner.storage.LoadClosedProfile); err != nil {
 		t.Fatalf("positive control: %v", err)
 	}
-	_, _, err := owner.currentMembershipLocked(func(generation [32]byte) (durable.ClosedProfileState, []byte, error) {
+	_, _, _, err := owner.currentMembershipLocked(func(generation [32]byte) (durable.ClosedProfileState, []byte, error) {
 		stored, body, err := owner.storage.LoadClosedProfile(generation)
 		// The durable read completes at the expiry boundary, before State
 		// verifies the returned bytes and publishes a usable observation.
