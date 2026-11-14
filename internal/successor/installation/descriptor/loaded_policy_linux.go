@@ -141,3 +141,25 @@ func descriptorExecutionStatus(service systemd.Properties) (result descriptorExe
 	}
 	return result, nil
 }
+
+func verifyDescriptorRunning(unit, service systemd.Properties, r Request, generation string, pid uint32, invocation [16]byte) error {
+	if pid == 0 || invocation == [16]byte{} {
+		return ErrBinding
+	}
+	if err := verifyDescriptorConfiguration(unit, service, r, generation); err != nil {
+		return err
+	}
+	if !systemd.Matches(unit, "ActiveState", "s", "active") || !systemd.Matches(unit, "SubState", "s", "running") ||
+		!systemd.Matches(unit, "InvocationID", "ay", invocation) || !systemd.Matches(unit, "TriggeredBy", "as", []string{}) ||
+		!systemd.Matches(service, "MainPID", "u", pid) || !systemd.Matches(service, "ExecMainPID", "u", pid) ||
+		!systemd.Matches(service, "ControlPID", "u", uint32(0)) || !systemd.Matches(service, "NRestarts", "u", uint32(0)) ||
+		!systemd.Matches(service, "DynamicUser", "b", false) || !systemd.Matches(service, "ControlGroup", "s", "/system.slice/ardents-descriptor.service") ||
+		!systemd.Matches(service, "StandardInput", "s", "null") {
+		return ErrBinding
+	}
+	status, err := descriptorExecutionStatus(service)
+	if err != nil || status.startedRealtime == 0 || status.startedMonotonic == 0 || status.exitedRealtime != 0 || status.exitedMonotonic != 0 || status.pid != pid || status.code != 0 || status.status != 0 {
+		return ErrBinding
+	}
+	return nil
+}

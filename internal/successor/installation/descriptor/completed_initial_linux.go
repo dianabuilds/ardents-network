@@ -22,20 +22,23 @@ import (
 type Completed struct{ original *completedInitial }
 
 type completedInitial struct {
-	ctx       context.Context
-	mu, ioMu  sync.Mutex
-	uses      sync.WaitGroup
-	once      sync.Once
-	closed    bool
-	failure   error
-	binding   binding
-	parents   *nativeDirectories
-	files     map[string]*initialFile
-	fileOrder []*initialFile
-	dirs      []*inputDirectory
-	journal   *initialFile
-	absent    []string
-	sealed    string
+	ctx             context.Context
+	mu, ioMu        sync.Mutex
+	uses            sync.WaitGroup
+	once            sync.Once
+	closed          bool
+	failure         error
+	binding         binding
+	parents         *nativeDirectories
+	files           map[string]*initialFile
+	fileOrder       []*initialFile
+	dirs            []*inputDirectory
+	journal         *initialFile
+	absent          []string
+	sealed          string
+	hostingBirths   *initialBirths
+	hostingPrepared bool
+	start           *startStorage
 	// Failure-only causal control after genuine original file observation.
 	observe func(*os.File)
 }
@@ -84,6 +87,8 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 	}
 	// No other operation exists in this completed-initial boundary. Retained
 	// future journal names are checked, never interpreted as successful history.
+	hostingDirectory, hostingJournal, _ := hostingPreparationPaths(r.InstallationRoot)
+	hostingPresent := false
 	for _, reserved := range r.reservedSiblingPaths() {
 		if reserved == journal.path {
 			continue
@@ -92,6 +97,10 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 			return result, err
 		}
 		if _, err := os.Lstat(reserved); !errors.Is(err, os.ErrNotExist) {
+			if err == nil && (reserved == hostingDirectory || reserved == hostingJournal) {
+				hostingPresent = true
+				continue // Independent typed transcript admission below, never presence authority.
+			}
 			return result, errors.Join(ErrBinding, err)
 		}
 		c.absent = append(c.absent, reserved)
@@ -179,6 +188,11 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 			return result, ErrBinding
 		}
 	}
+	if hostingPresent {
+		if err := c.readHostingPreparation(); err != nil {
+			return result, err
+		}
+	}
 	result = Completed{c}
 	return result, result.Check()
 }
@@ -191,6 +205,15 @@ func (c *completedInitial) read(path string, maximum int64, mode os.FileMode, ui
 	if err != nil {
 		return nil, err
 	}
+	return c.readAt(parent, path, maximum, mode, uid, gid)
+}
+
+// A runtime-owned semantic root is retained with its recorded birth and numeric
+// principal, never treated as a trusted root-owned ancestor or adopted by name.
+func (c *completedInitial) readAt(parent *inputDirectory, path string, maximum int64, mode os.FileMode, uid, gid uint32) (*initialFile, error) {
+	if parent == nil || c.files[path] != nil || parent.path != filepath.Dir(path) {
+		return nil, ErrInput
+	}
 	f, err := openInputAt(parent, filepath.Base(path), false)
 	if err != nil {
 		return nil, err
@@ -201,7 +224,7 @@ func (c *completedInitial) read(path string, maximum int64, mode os.FileMode, ui
 	original.info, err = f.Stat()
 	var storage syscall.Statfs_t
 	fsErr := syscall.Fstatfs(int(f.Fd()), &storage)
-	if err != nil || fsErr != nil || storage.Type != 0xef53 || storage.Flags&1 != 0 || !nodeAccess(original.info, mode, uid, gid, false) || original.info.Size() < 1 || original.info.Size() > maximum {
+	if err != nil || fsErr != nil || storage.Type != 0xef53 || storage.Flags&1 != 0 || !nodeAccess(original.info, mode, uid, gid, false) || (maximum != 0 && original.info.Size() < 1) || original.info.Size() > maximum {
 		return nil, errors.Join(ErrBinding, err, fsErr)
 	}
 	original.body, err = io.ReadAll(io.LimitReader(f, maximum+1))
@@ -287,6 +310,9 @@ func (c *completedInitial) check() error {
 	if err := c.local(); err != nil {
 		return err
 	}
+	if err := c.checkHostingInventory(); err != nil {
+		return err
+	}
 	if err := c.parents.links(); err != nil {
 		return err
 	}
@@ -306,18 +332,38 @@ func (c *completedInitial) check() error {
 			return errors.Join(ErrBinding, err, nameErr)
 		}
 	}
+	if c.start != nil {
+		if err := c.start.check(); err != nil {
+			return err
+		}
+	}
+	if c.hostingBirths != nil {
+		if err := c.hostingBirths.check(); err != nil {
+			return err
+		}
+	}
 	for _, path := range c.absent {
+		if c.start != nil && c.start.journal != nil && path == c.start.journal.path {
+			continue
+		}
+		if c.hostingOwns(path) {
+			continue
+		}
 		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
 			return errors.Join(ErrBinding, err)
 		}
 	}
 	// This opener accepts only the complete initial namespace. Later operations
 	// need their own typed journals and reader extension, never unknown files.
-	for directory, wanted := range map[string]map[string]bool{
+	inventories := map[string]map[string]bool{
 		c.binding.Request.InstallationRoot:    {"binding.json": true, "generations": true},
 		filepath.Dir(c.sealed):                {c.binding.Generation: true},
 		c.binding.Request.CredentialDirectory: {"certificate.pem": true, "private-key.pem": true},
-	} {
+	}
+	if c.start != nil && c.start.dir != nil {
+		inventories[c.binding.Request.InstallationRoot]["descriptor-startup"] = true
+	}
+	for directory, wanted := range inventories {
 		entries, err := os.ReadDir(directory)
 		if err != nil || len(entries) != len(wanted) {
 			return errors.Join(ErrBinding, err)
@@ -414,4 +460,37 @@ func (h Completed) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.failure
+}
+
+func (c *completedInitial) directoryAt(path string) *inputDirectory {
+	for _, d := range c.dirs {
+		if d.path == path {
+			return d
+		}
+	}
+	return nil
+}
+
+// Only this operation's actual born originals may replace an absence check.
+// Paths, complete-looking bytes and a foreign partial preparation grant none.
+func (c *completedInitial) hostingOwns(path string) bool {
+	j := c.hostingBirths
+	if j == nil {
+		return false
+	}
+	directory, journal, pending := hostingPreparationPaths(c.binding.Request.InstallationRoot)
+	if path == journal {
+		return j.journal != nil && j.journal.path == path
+	}
+	if path == directory {
+		return j.dirs[path] != nil
+	}
+	if path == pending {
+		for _, f := range j.files {
+			if f.path == path {
+				return true
+			}
+		}
+	}
+	return false
 }

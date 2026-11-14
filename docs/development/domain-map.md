@@ -1272,3 +1272,14 @@ no live JOIN/Source owner or authority is borrowed. The creator alone owns the
 and post-join pending publication. Reachability alone may initialize and operate
 Store history. No first Start, role duty, Store ACK or runtime composition follows
 from stopped installation or copied history.
+
+Descriptor first-start composition consumes its own known-born Hosting and fresh
+Release pair. Installation owns exclusive attempt admission, original manager/
+process/scope custody, archival-before-root-peer-ACK and independently acquired
+non-root Startup. It grants no State, duty, token, Store ACK or replacement right.
+Canonical Node directly constructs genuine new State/Descriptor owners; Node
+retains Receiving, Hosting, producer and Reachability through actual joins, then
+command composition closes State and Startup. Reachability alone initializes
+Store and retains proof/conflict/durability policy. Five original semantic roots
+remain distinct; no sibling role lease, legacy backend or generic role owner
+participates. Full publication/lookup and retained lifecycle remain separate.

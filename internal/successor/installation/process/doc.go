@@ -22,6 +22,9 @@
 // JoinExpected, RetainJoin and RetainJoinSelf independently fix only JOIN argv,
 // unit and original native identity. They share physical source, not Source or
 // Forwarding process custody, root signal rights or startup authority.
+// DescriptorExpected and its root/self openers fix Descriptor argv, original
+// process and unit independently. DescriptorInvocation exposes no signal right
+// or underlying Invocation and cannot borrow a sibling process observation.
 package process
 
 import "errors"

@@ -3997,3 +3997,29 @@ retains the exact initial inventory and current account facts, and leaves semant
 contents unopened. A separate fresh retained Release pair must match the installed
 payloads before canonical history output. Complete bytes grant no runtime duty,
 Store initialization, replacement/recovery or later startup authority.
+
+### Protected first Descriptor start
+
+The canonical Descriptor consumer prepares its own known-born Hosting allowance
+under a distinct root-only one-use transcript. Hosting creates period files in
+the original empty directory; immutable pin/lock birth identities and all original
+closes precede pending publication. Unknown or partial preparation refuses.
+Canonical offline producers create original keys, signed Records/Epoch/profile
+and initialize State under the actual numeric Node principal without runtime duty.
+State owns authenticated intake and time floors; Store remains unopened.
+
+`descriptor start-initial` retains a fresh exact Release pair, original completed
+installation/Hosting, fixed manager, five-slot namespace and native process/scope.
+It attempts one Start and archives its exact original invocation before root-peer
+ACK. Any uncertain attempt retains its blocker; no retry or rollback is inferred.
+The non-root `descriptor start-installed` independently acquires read-only
+generation/credential mounts, five writable semantic roots, original process,
+manager and cgroup. Root observations and copied ACKs cannot replace these checks.
+Fresh before/after observations bracket genuine State and Node effects.
+
+Only the exact canonical runtime file composes new Network/Node/Route owners
+under R01. Node opens genuine Receiving, Hosting, participation and Reachability
+Store; startup/listening is distinct from signed publication, Store ACK, lookup,
+retained restart, replacement and recovery. Denial interrupts dependents, joins
+Node (including Receiver and Store) before State and Startup release. A bounded
+completion-unavailable notice retains every original owner until actual join.

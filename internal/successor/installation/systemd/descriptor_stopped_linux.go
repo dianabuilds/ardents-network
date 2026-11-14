@@ -43,6 +43,39 @@ func OpenDescriptorStopped(ctx context.Context) (*DescriptorStopped, error) {
 	return s, err
 }
 
+// OpenDescriptorInstalledStopped retains only the already installed fixed Descriptor
+// service. It has the same no-job vocabulary as initial stopped installation;
+// a server reference is physical custody, never Start or stopped-policy proof.
+func OpenDescriptorInstalledStopped(ctx context.Context) (*DescriptorStopped, error) {
+	if ctx == nil || os.Geteuid() != 0 {
+		return nil, ErrInput
+	}
+	r, err := openManagerReference(ctx, descriptorUnitReply)
+	if r == nil {
+		return nil, err
+	}
+	s := &DescriptorStopped{original: &descriptorStopped{reference: r, reloaded: true}}
+	if err == nil {
+		err = r.initializeManagerDeclaration()
+	}
+	if err == nil {
+		err = s.operation(func(ctx context.Context, r *managerReference) error {
+			call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.RefUnit", "ardents-descriptor.service")
+			if err != nil {
+				return err
+			}
+			if len(call.Body) != 0 {
+				return ErrObservation
+			}
+			return nil
+		})
+	}
+	if err == nil {
+		_, _, err = s.ObserveLoaded()
+	}
+	return s, err
+}
+
 func (s *DescriptorStopped) operation(effect func(context.Context, *managerReference) error) (err error) {
 	if s == nil || s.original == nil || s.original.reference == nil {
 		return ErrInput

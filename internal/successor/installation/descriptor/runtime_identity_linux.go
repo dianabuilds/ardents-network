@@ -29,6 +29,13 @@ type runtimeIdentity struct {
 	requireManagerNamespaces bool
 }
 
+func openRuntimeIdentity(ctx context.Context) (*runtimeIdentity, error) {
+	if ctx == nil || os.Geteuid() == 0 {
+		return nil, ErrInput
+	}
+	return openKernelIdentity(ctx)
+}
+
 func openRootIdentity(ctx context.Context) (*runtimeIdentity, error) {
 	if ctx == nil || os.Geteuid() != 0 {
 		return nil, ErrInput

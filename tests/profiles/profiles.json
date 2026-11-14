@@ -327,6 +327,19 @@
       ],
       "invalid_environment": "missing selected prerequisite fails; no skips or runtime qualification",
       "timeout": "3m"
+    },
+    {
+      "id": "descriptor-startup-linux",
+      "state": "active",
+      "make_target": "descriptor-startup-check",
+      "surface": "actual canonical Descriptor Hosting/offline State preparation, protected first Start and independent non-root Startup through genuine Node/Reachability owners; no publish/lookup ACK or retained restart acceptance",
+      "prerequisites": [
+        "fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2/ext4 root, all five slots/account absent, shared development lock",
+        "same-source actual two-build Node/Control, pinned public preparer/evidence and private Descriptor native stand marker as initial profile",
+        "completed exact bootstrap scope under the Product Owner startup delegation; actual root clock updates, no guard or timeout changes"
+      ],
+      "invalid_environment": "missing selected prerequisite fails; no skips",
+      "timeout": "3m"
     }
   ],
   "suite_roots": [

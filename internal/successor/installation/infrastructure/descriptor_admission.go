@@ -20,6 +20,12 @@ func (a DescriptorAuthorization) Check(ctx context.Context, v *release.Verifier)
 	return a.pair.Check(ctx, v)
 }
 
+// Targets lends only this exact pair's original Release authorizations to the
+// root start transcript; copies cannot recreate permission or initial pinning.
+func (a DescriptorAuthorization) Targets() (release.Authorization, release.Authorization) {
+	return a.pair.Targets()
+}
+
 func (a DescriptorAuthorization) Descriptor() []byte { return a.pair.Descriptor() }
 func (a DescriptorAuthorization) Program() []byte    { return a.pair.Program() }
 func (a DescriptorAuthorization) Template() []byte   { return a.pair.Template() }

@@ -12,4 +12,8 @@
 // its one allowance; Reachability Store proofs/history/conflict floors and ACK;
 // Route and Node their original physical users and joined completion.
 // No Source, Forwarding or JOIN permission, root or live owner is lent.
+// Protected first Start additionally owns its fresh Release/Hosting admission,
+// original native attempt and archival-before-ACK. Independent non-root Startup
+// acquires its own protected files, process, scope and manager before the fixed
+// canonical consumer constructs genuine State and Descriptor owners.
 package descriptor

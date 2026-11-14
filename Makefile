@@ -566,3 +566,7 @@ join-installed-check:
 descriptor-initial-stopped-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNative(InitialReleasePurposeAndKeyCustody|ActualBuildRecordsAndPublicPlan)$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNativeInitialStoppedAndIndependentHistory$$' -count=1 -v -timeout=3m
+
+.PHONY: descriptor-startup-check
+descriptor-startup-check:
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNativeProtectedStartAndIndependentStartup$$' -count=1 -v -timeout=3m

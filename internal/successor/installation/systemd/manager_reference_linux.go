@@ -43,14 +43,15 @@ type managerUnitReply uint8
 const (
 	sourceUnitReply managerUnitReply = iota
 	forwardingUnitReply
-	nodeSlotsReply      // Absence-only connection: no unit or job object replies.
-	descriptorUnitReply // Fixed Descriptor unit only; no jobs.
-	joinUnitReply       // Fixed JOIN unit only; no job replies for stopped installation.
-	joinControlReply    // Separate root start/cleanup vocabulary, never stopped/runtime permission.
+	nodeSlotsReply         // Absence-only connection: no unit or job object replies.
+	descriptorControlReply // Fixed root Descriptor Start and failed-start cleanup only.
+	descriptorUnitReply    // Fixed Descriptor unit only; no jobs.
+	joinUnitReply          // Fixed JOIN unit only; no job replies for stopped installation.
+	joinControlReply       // Separate root start/cleanup vocabulary, never stopped/runtime permission.
 )
 
 func (reply managerUnitReply) valid() bool {
-	return reply == sourceUnitReply || reply == forwardingUnitReply || reply == nodeSlotsReply || reply == joinUnitReply || reply == joinControlReply || reply == descriptorUnitReply
+	return reply == sourceUnitReply || reply == forwardingUnitReply || reply == nodeSlotsReply || reply == joinUnitReply || reply == joinControlReply || reply == descriptorUnitReply || reply == descriptorControlReply
 }
 
 func (reply managerUnitReply) object() string {
@@ -59,7 +60,7 @@ func (reply managerUnitReply) object() string {
 		return "/org/freedesktop/systemd1/unit/ardents_2dsource_2eservice"
 	case forwardingUnitReply:
 		return "/org/freedesktop/systemd1/unit/ardents_2dforwarding_2eservice"
-	case descriptorUnitReply:
+	case descriptorUnitReply, descriptorControlReply:
 		return "/org/freedesktop/systemd1/unit/ardents_2ddescriptor_2eservice"
 	case joinUnitReply, joinControlReply:
 		return "/org/freedesktop/systemd1/unit/ardents_2djoin_2eservice"

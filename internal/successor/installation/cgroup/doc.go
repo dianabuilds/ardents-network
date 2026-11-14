@@ -15,6 +15,10 @@
 // share physical source only, never another scope, unit or live custody.
 // Installation owns attempt,
 // process/manager matching, stopping and when to release these observations.
+// DescriptorScope separately retains its fixed original kernel scope and events
+// through root post-start or independent actual-self observations. Only literal
+// fixed-purpose openers reach the shared physical mechanism; ordinary files,
+// pathname absence and a replacement empty scope cannot prove original join.
 package cgroup
 
 import "errors"

@@ -5400,3 +5400,19 @@ or installed runtime evidence. Five semantic roots must remain empty. Foreign pi
 wrong purpose/resource/build record, repeated installation and native identity
 substitution refuse. Original failures/logs/source identities are retained. No
 Start or recovery campaign is selected by this profile.
+
+### Descriptor first-start native profile
+
+`descriptor-startup-linux` runs `make descriptor-startup-check` on a fresh
+isolated initial Descriptor stand using the initial profile's actual two-build
+artifact/preparer/evidence pins, plus `ARDENTS_DESCRIPTOR_BOOTSTRAP_DIRECTORY`
+for original public commitments and delegated exact-scope acceptance. Missing
+prerequisites fail. The unchanged three-minute case checks wrong pin, original
+Store birth substitution, duplicate Hosting initialization, non-root offline State,
+direct-process startup refusal, actual protected Start/non-root Startup, genuine
+semantic owners/listener and duplicate first Start refusal. It claims no Store
+ACK, publication/lookup, restart or replacement qualification. Failure evidence
+and original prefixes remain; native stop and original users precede cleanup.
+Queued-observation race controls check that late effects cannot reuse an earlier
+round and that Close retains held observations and late physical failures. Fixed
+manager vocabulary vectors reject foreign units/jobs/managers and unadmitted jobs.

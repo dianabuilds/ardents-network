@@ -1534,3 +1534,19 @@ stopped unit and five empty semantic roots, including Store, and never starts
 Node or initializes any semantic history. Independent history inspection uses
 its own native journal lease and fresh retained Release permission; output grants
 no runtime authority. Uncertain or existing native prefixes remain blocking.
+
+Descriptor first startup additionally provides fixed canonical Control operations
+`descriptor prepare-node-key`, `prepare-node-record`, `sign-node-record`,
+`prepare-node-certificate`, `prepare-state-key`, `prepare-epoch`, `sign-epoch`,
+`prepare-token-keys`, `prepare-profile`, `sign-profile`, `prepare-hosting` and
+non-root `prepare-state`. Their finite public/offline formats are separate from
+runtime duty. Hosting takes explicit binding/provider/period/unit/quantity/
+directions/interfaces/initial-used-bytes/low-watermark-bytes options and never
+reinitializes an existing allowance.
+
+`ardents-node descriptor start-initial DISTRIBUTION HISTORY ENVIRONMENT NETWORK
+BINDING` admits only the first completed stopped generation under fresh retained
+Release floors. The fixed unit alone invokes `descriptor start-installed BINDING`
+as `ardents-node`; ordinary execution cannot supply its original native Startup
+or root-peer exchange. Listening is not Store ACK, Service readiness or lifecycle
+acceptance. No automatic restart, key reload, adoption or rollback is provided.
