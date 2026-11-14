@@ -102,8 +102,17 @@ func open(ctx context.Context, path string, create bool) (*Root, error) {
 	if err = privateAccess(identity); err != nil {
 		return nil, err
 	}
-	if create {
-		if err = writeExclusive(filepath.Join(abs, lockName), nil); err != nil && !errors.Is(err, os.ErrExist) {
+	fresh, err := inspectLayout(abs)
+	if err != nil {
+		return nil, err
+	}
+	if fresh {
+		if !create {
+			return nil, ErrInvalid
+		}
+		// Only this invocation's empty-root claim may create layout members.
+		// A competing claim or a partial retained layout is never repaired.
+		if err = writeExclusive(filepath.Join(abs, lockName), nil); err != nil {
 			return nil, err
 		}
 	}
@@ -116,14 +125,14 @@ func open(ctx context.Context, path string, create bool) (*Root, error) {
 	if err = root.check(ctx); err != nil {
 		return fail(err)
 	}
-	if err = root.prepareLayout(create); err != nil {
+	if err = root.prepareLayout(fresh); err != nil {
 		return fail(err)
 	}
 	raw, err := readPrivate(filepath.Join(abs, stateName), 4096)
 	if err == nil {
 		defer clear(raw)
 		root.state, err = unmarshalState(raw)
-	} else if errors.Is(err, os.ErrNotExist) {
+	} else if fresh && errors.Is(err, os.ErrNotExist) {
 		err = nil
 	}
 	if err != nil {
