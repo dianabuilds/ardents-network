@@ -143,28 +143,40 @@ func openAdmissionAuthority(raw, password []byte, expected AuthorityBinding) (au
 	if purpose != PurposeVault {
 		return authorityState{}, EnvelopeInfo{}, ErrInvalid
 	}
-	state, err := decodeAuthorityState(plaintext, PurposeVault)
+	state, err := decodeAdmissionAuthorityState(plaintext, expected)
 	if err != nil {
 		return authorityState{}, EnvelopeInfo{}, err
+	}
+	return state, info, nil
+}
+
+// decodeAdmissionAuthorityState validates already-decrypted plaintext without a
+// KDF, so a caller that opened the envelope once can reuse it within the same
+// operation (audit DD-5). It owns the returned state's secret material and
+// clears it on every refusal; the caller's plaintext is untouched.
+func decodeAdmissionAuthorityState(plaintext []byte, expected AuthorityBinding) (authorityState, error) {
+	state, err := decodeAuthorityState(plaintext, PurposeVault)
+	if err != nil {
+		return authorityState{}, err
 	}
 	private := ed25519.PrivateKey(state.RootMaterial)
 	if state.Binding != expected || state.Binding.Kind != AuthorityAdmission || len(private) != ed25519.PrivateKeySize {
 		clear(state.RootMaterial)
 		clear(state.AdmissionJournal)
-		return authorityState{}, EnvelopeInfo{}, ErrInvalid
+		return authorityState{}, ErrInvalid
 	}
 	public, ok := private.Public().(ed25519.PublicKey)
 	if !ok || sha256.Sum256(public) != state.Binding.IDCommitment {
 		clear(state.RootMaterial)
 		clear(state.AdmissionJournal)
-		return authorityState{}, EnvelopeInfo{}, ErrInvalid
+		return authorityState{}, ErrInvalid
 	}
 	if err := validateAdmissionAuthorityState(state); err != nil {
 		clear(state.RootMaterial)
 		clear(state.AdmissionJournal)
-		return authorityState{}, EnvelopeInfo{}, err
+		return authorityState{}, err
 	}
-	return state, info, nil
+	return state, nil
 }
 
 func validateAdmissionAuthorityState(state authorityState) error {
@@ -220,7 +232,23 @@ func (vault *Vault) openCurrentAdmissionAuthority(recordID string, password []by
 		return authorityState{}, EnvelopeInfo{}, err
 	}
 	defer clear(baseRaw)
-	base, baseInfo, err := openAdmissionAuthority(baseRaw, password, expected)
+	purpose, basePlaintext, baseInfo, err := openEnvelope(baseRaw, password)
+	if err != nil {
+		return authorityState{}, EnvelopeInfo{}, err
+	}
+	defer clear(basePlaintext)
+	if purpose != PurposeVault {
+		return authorityState{}, EnvelopeInfo{}, ErrInvalid
+	}
+	return vault.currentAdmissionAuthorityFromBase(basePlaintext, baseInfo, recordID, password, expected)
+}
+
+// currentAdmissionAuthorityFromBase resolves the current authority from an
+// already-decrypted base plaintext, avoiding a second base KDF within one
+// operation (audit DD-5). basePlaintext is borrowed; the caller clears it. The
+// returned state's secret material is owned by the caller.
+func (vault *Vault) currentAdmissionAuthorityFromBase(basePlaintext []byte, baseInfo EnvelopeInfo, recordID string, password []byte, expected AuthorityBinding) (authorityState, EnvelopeInfo, error) {
+	base, err := decodeAdmissionAuthorityState(basePlaintext, expected)
 	if err != nil {
 		return authorityState{}, EnvelopeInfo{}, err
 	}
