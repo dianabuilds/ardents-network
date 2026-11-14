@@ -27,7 +27,9 @@ func OpenNode(ctx context.Context, input transport.ClosedNodeCarrierRequest) (tr
 		return nil, err
 	}
 	socket := &nativeSocket{Conn: raw}
-	secured := tls.Client(socket, transport.NodeClientTLS(input.Certificate, input.ExpectedPeerKey))
+	// Bounded ciphertext input like the inner role channels (audit RD-5); the
+	// nativeSocket still owns write admission and is retained for observation.
+	secured := tls.Client(newRoleInput(socket), transport.NodeClientTLS(input.Certificate, input.ExpectedPeerKey))
 	if err := secured.SetDeadline(input.Deadline); err != nil {
 		_ = raw.Close()
 		return nil, err
