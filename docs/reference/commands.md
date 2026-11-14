@@ -1512,3 +1512,25 @@ Node slots, future resource namespaces and account. The result
 `descriptor-inputs-preflight-completed` follows original native/input joins and
 explicitly reports `installed:false`. It opens no Release verifier or semantic
 root, creates no account/unit and grants no future creation/Startup permission.
+
+
+### Descriptor initial Release and stopped installation
+
+```sh
+ardents-control descriptor prepare-release-keys FRESH_PRIVATE_KEYS
+ardents-control descriptor prepare-release-plan --network NETWORK --reference UTC --expires UTC --program PROGRAM --descriptor ARTIFACT --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_OUTPUT
+ardents-control descriptor sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
+ardents-node descriptor install-initial-stopped DISTRIBUTION INDEPENDENT_PIN HISTORY ENVIRONMENT NETWORK REQUEST
+ardents-node descriptor inspect-initial-history DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING
+```
+
+The separate public `scripts/installation/prepare-descriptor-release-plan.py`
+consumes original actual two-execution canonical build records with explicit
+prestart evidence. Its initial purpose is fixed; it signs nothing. The key
+receipt states shared project-controlled custody and supplies no trust or
+independence. Initial installation verifies the independent inventory pin and
+actual running executable before opening Release history. It creates one fixed
+stopped unit and five empty semantic roots, including Store, and never starts
+Node or initializes any semantic history. Independent history inspection uses
+its own native journal lease and fresh retained Release permission; output grants
+no runtime authority. Uncertain or existing native prefixes remain blocking.

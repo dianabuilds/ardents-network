@@ -536,8 +536,8 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/request -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/join -run '^TestJoin(Inputs|Preflight|Births)Native' -count=1 -v -timeout=3m
 
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNative' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/descriptor -run '^TestDescriptorInputsNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNative(CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption|TemplateAndRequestLeaveRuntimeAbsent)$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/descriptor -run '^TestDescriptor(Inputs|Births)Native' -count=1 -v -timeout=3m
 
 network-signing-compile-check: export GOOS := linux
 network-signing-compile-check: export GOARCH := amd64
@@ -561,3 +561,8 @@ join-installed-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "join-installed-check requires the selected isolated Ubuntu/systemd stand"; exit 2)
 	@case "$(JOIN_INSTALLED_TEST)" in TestJoinInstalledNativeProtectedStartupAndPair|TestJoinInstalledNativeForwardReplacement|TestJoinInstalledNativeReplacementRecovery) ;; *) echo 'select one registered JOIN installed scenario on a fresh stand' >&2; exit 2;; esac
 	go test -race -trimpath -buildvcs=false -tags join_installed_native ./internal/successor/installation/join -run '^$(JOIN_INSTALLED_TEST)$$' -count=1 -v -timeout=3m
+
+.PHONY: descriptor-initial-stopped-check
+descriptor-initial-stopped-check:
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNative(InitialReleasePurposeAndKeyCustody|ActualBuildRecordsAndPublicPlan)$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNativeInitialStoppedAndIndependentHistory$$' -count=1 -v -timeout=3m

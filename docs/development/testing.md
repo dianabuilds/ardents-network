@@ -5385,3 +5385,18 @@ require root, protected ext4 and the actual systemd255 manager with all five
 Node slots and the shared Node account absent. Missing prerequisites fail.
 Generated TLS/public inputs prove original custody only, never Network duty,
 Release/bootstrap acceptance, installed startup or Store ACK.
+
+
+### Descriptor initial stopped native profile
+
+`make descriptor-initial-stopped-check` selects fixed initial Release-purpose/key
+custody controls, genuine existing two-execution build-record public preparation,
+and actual canonical initial stopped installation/independent history on a fresh
+Ubuntu24.04/systemd255/cgroup-v2/ext4 stand. `descriptor-initial-stopped-linux` in
+`tests/profiles/profiles.json` owns exact pinned-command/preparer/evidence and marker
+prerequisites. All five slots and account must initially be absent. TLS/public
+runtime declarations are physical prestart fixtures, never signed duty, Store ACK
+or installed runtime evidence. Five semantic roots must remain empty. Foreign pin,
+wrong purpose/resource/build record, repeated installation and native identity
+substitution refuse. Original failures/logs/source identities are retained. No
+Start or recovery campaign is selected by this profile.

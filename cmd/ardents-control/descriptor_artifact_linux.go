@@ -29,6 +29,14 @@ func (e *descriptorControlFailure) Unwrap() error { return e.cause }
 // Descriptor has its own closed public producers. Shared native readers/writers own
 // only physical input/output custody; no Source or Forwarding right is reused.
 func runDescriptorControl(args []string, out io.Writer) error {
+	if len(args) > 0 {
+		switch args[0] {
+		case "prepare-release-keys":
+			return runDescriptorReleaseKeys(args[1:], out)
+		case "sign-initial-release":
+			return runDescriptorReleaseSigning(args[1:], out)
+		}
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
@@ -62,6 +70,9 @@ func prepareDescriptorArtifact(ctx context.Context, args []string, observe func(
 	var name, destination string
 	check := inputs.checkProtected
 	switch args[0] {
+	case "prepare-release-plan":
+		result, destination, returned = descriptorReleasePlanArguments(args[1:], inputs)
+		name = "descriptor-release-plan.json"
 	case "prepare-template":
 		if len(args) != 2 {
 			return nil, errSourceControlInput

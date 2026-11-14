@@ -22,6 +22,13 @@ func InspectInitialInputs(input Inputs) (returned error) {
 		return err
 	}
 	defer p.uses.Done()
+	p.mu.Lock()
+	if p.installing {
+		p.mu.Unlock()
+		return ErrInput
+	}
+	p.inspected = true
+	p.mu.Unlock()
 
 	defer func() { p.record(returned) }()
 	manager, err := systemd.OpenNodeSlots(p.ctx)

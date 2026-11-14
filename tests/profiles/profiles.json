@@ -313,6 +313,20 @@
       "prerequisites": ["POSIX shell with id, mktemp, and rm", "unprivileged Docker client with a reachable daemon", "preinstalled golang:1.26.8 image", "local Go 1.26.8 toolchain and populated immutable module cache"],
       "invalid_environment": "the selected Linux/Docker Service Credential response profile is unavailable",
       "timeout": "2m"
+    },
+    {
+      "id": "descriptor-initial-stopped-linux",
+      "state": "active",
+      "make_target": "descriptor-initial-stopped-check",
+      "surface": "fixed Descriptor initial Release keys/plan/signatures, actual two-execution canonical Node/Control build records and independent running-program Enrollment, protected initial stopped birth and independently reopened five-root native history; no role Start, Store initialization or ACK",
+      "prerequisites": [
+        "fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2/ext4 root and all five Node slots/account absent; shared development lock",
+        "root-owned private TMPDIR on ext4; explicit /etc/ardents-descriptor-initial-native-stand marker containing ardents-descriptor-initial-native-v1 newline",
+        "same-source SHA-256-pinned ARDENTS_DESCRIPTOR_CONTROL_PROGRAM, ARDENTS_DESCRIPTOR_NODE_PROGRAM, ARDENTS_DESCRIPTOR_RELEASE_PREPARER and ARDENTS_DESCRIPTOR_BUILD_EVIDENCE, plus ARDENTS_DESCRIPTOR_BUILD_ROOT and independently pinned ARDENTS_DESCRIPTOR_BUILD_READY_SHA256",
+        "complete unchanged actual two-execution build records and prestart-only evidence; native race toolchain Go1.27.4"
+      ],
+      "invalid_environment": "missing selected prerequisite fails; no skips or runtime qualification",
+      "timeout": "3m"
     }
   ],
   "suite_roots": [

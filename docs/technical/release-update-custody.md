@@ -187,9 +187,15 @@ implementation defects in the current Module.
 distinct infrastructure program and invocation-generation targets. Infrastructure
 admission must consume two fresh coherent opaque authorizations from one frozen
 input; Release retains signature, policy, expiry and floor authority. This
-contract is implemented for the isolated Source artifact component in
-`installation/infrastructure`; native infrastructure installation remains
-unimplemented and existing Endpoint targets remain unchanged. Initial admission
+contract has distinct Source, Forwarding, JOIN and Descriptor pair owners in
+`installation/infrastructure`. Native installation and each role lifecycle retain
+separate owners and acceptance scopes; existing Endpoint targets remain unchanged.
+Descriptor initial admission requires its own independently pinned running Node
+program and entirely unborn Release floors. Its candidate reader requires complete
+retained floors and never reconstructs first-pin provenance. Fixed Descriptor
+initial signing consumes original protected purpose/key/resources and independently
+checks both exact targets before publishing metadata; public plan or diagnostic
+self-verification supplies no installed or independent-custody qualification. Initial admission
 requires empty floors; complete retained history admits only the candidate path.
 `StaticMetadataFiles` projects only the three referenced URLs from fixed public
 metadata files, retaining the normal narrower metadata bounds and all signature

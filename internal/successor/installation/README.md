@@ -15,8 +15,7 @@ retain the complete original invocation chain. Canonical Forwarding also
 implements explicit forward replacement of a proven stopped generation and
 recovery of proven original prefixes to a stopped state. A replacement does
 not start the selected generation. Installed acceptance applies to the
-artifacts and scope recorded in the corresponding receipt. The other four
-Node roles have no accepting installed transaction here. Canonical Control consumers can
+artifacts and scope recorded in the corresponding receipt. JOIN separately implements its canonical initial/start/stop/restart/replacement and safe-prefix recovery lifetimes. Descriptor has a distinct initial stopped creator and independent history reader, with five empty semantic roots and no Start or Store initialization. Introduction and Issuer have no accepting installed transaction here. Canonical Control consumers can
 prepare Forwarding descriptor and initial-inventory bytes through Infrastructure
 and Enrollment; public preparation supplies no Release or installed authority.
 The [accepted infrastructure contract](../../../docs/technical/network-route-node.md#proposed-installed-infrastructure)
@@ -32,6 +31,8 @@ reused as infrastructure permission.
 | [`endpoint`](endpoint/README.md) | Request composition, bound generation, original lease/journal/resources, predecessor join, selection/reload, guarded startup и explicit recovery | `cmd/ardents-next/installation.go`, `cmd/ardents-next/installed_endpoint_linux.go` |
 | [`infrastructure`](infrastructure/README.md) | Source artifact admission, closed request/template, native preflight, initial/replacement/recovery transactions, guarded startup and explicit stop/restart | Canonical `cmd/ardents-node/source_installation_linux.go`, `source_installed_linux.go`; public preparation in Control; temporary Next component consumers |
 | `forwarding` | Fixed Forwarding request/plan/template, original input custody, initial stopped installation, guarded startup, joined stop, same-generation restart, explicit forward replacement and stopped-prefix recovery | Canonical Control preparation and Release signing; canonical Node preflight, installation, start/stop, replacement and recovery; Infrastructure retains the distinct artifact pair |
+
+| `descriptor` | Fixed five-root declarations, original delivery, genuine initial pair, root stopped birth and independent history; no Start or Store initialization | Canonical Control fixed initial Release and public preparation; canonical Node install/inspect consumers |
 
 `Authorization` остаётся opaque: соседний пакет не может заполнить private proofs,
 pin или frozen bytes. `Targets` передаёт genuine Release proofs; `Descriptor`,

@@ -16,15 +16,17 @@ import (
 type Inputs struct{ original *inputs }
 
 type inputs struct {
-	mu      sync.Mutex
-	uses    sync.WaitGroup
-	once    sync.Once
-	ctx     context.Context
-	closed  bool
-	failure error
-	path    string
-	request Request
-	files   request.Files
+	mu         sync.Mutex
+	uses       sync.WaitGroup
+	once       sync.Once
+	ctx        context.Context
+	closed     bool
+	installing bool
+	inspected  bool
+	failure    error
+	path       string
+	request    Request
+	files      request.Files
 }
 
 var errInputsClosed = errors.New("descriptor installation: original inputs closed")
@@ -191,4 +193,47 @@ func (h Inputs) Close() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.failure
+}
+
+// IndependentPaths performs no Release opening: canonical root composition
+// calls it before the mutable verifier can create or advance its own history.
+func (h Inputs) IndependentPaths(distribution, history string) error {
+	p := h.original
+	if p == nil || !validPath(distribution) || !validPath(history) {
+		return ErrInput
+	}
+	if contains(distribution, history) || contains(history, distribution) {
+		return ErrBinding
+	}
+	for _, path := range append(p.request.ownedPaths(), p.path) {
+		if contains(distribution, path) || contains(path, distribution) || contains(history, path) || contains(path, history) {
+			return ErrBinding
+		}
+	}
+	return h.Check()
+}
+
+type deliveredInput struct{ raw []byte }
+
+func (p *inputs) readDelivery() (files []deliveredInput, returned error) {
+	defer func() {
+		if returned != nil {
+			for _, file := range files {
+				clear(file.raw)
+			}
+			files = nil
+		}
+	}()
+	for _, declared := range []struct {
+		path    string
+		maximum int64
+		private bool
+	}{{p.path, 16 << 10, true}, {p.request.Plan, 16 << 10, true}, {p.request.Certificate, 8192, false}, {p.request.PrivateKey, 8192, true}} {
+		raw, err := p.files.Read(declared.path, declared.maximum, declared.private)
+		if err != nil {
+			return files, err
+		}
+		files = append(files, deliveredInput{raw})
+	}
+	return files, nil
 }

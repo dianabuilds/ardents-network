@@ -480,6 +480,9 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if descriptorInitialImportAllowed(source, dependency) {
+		return true
+	}
 	if joinFirstStartImportAllowed(source, dependency) {
 		return true
 	}

@@ -3969,3 +3969,31 @@ and five independent future roots including Store. No resource is created or
 semantic owner initialized. Canonical `ardents-node descriptor inspect-inputs`
 reports only after manager/input users join. Inspection supplies no Release
 right, initial provenance, native mutation, Startup, runtime duty or Store ACK.
+
+
+### Initial stopped Descriptor installation
+
+Canonical Node admits the exact frozen Node/Descriptor inventory through independent
+Enrollment and a fresh coherent Release pair. `installation/descriptor` owns its
+original request, journal and root-only transaction. Initial history must be unborn;
+existing account/resources, cross-role inputs and unknown prefixes refuse. The
+fixed `ardents-node` account, immutable twelve-file generation, selected binding
+and `ardents-descriptor.service` are born with original per-object provenance.
+State, participation, spend, Hosting and Descriptor Store are five independently
+owned empty 0700 semantic roots. Initial installation creates none of their data.
+
+The closed initial transcript has 123 canonical records and 28 independently
+matched native identities. Descriptor Store adds one directory birth triple to
+the four-root native mechanism; it adds no artifact or semantic history hash.
+One fixed no-job systemd connection performs one Reload and full stopped policy
+observations. Only three original generator directories may refresh; original
+manager/kernel/search-path and all other ancestors remain pinned. No Start,
+activation, automatic restart, Store ACK, adoption or rollback is performed.
+
+Original native observers, birth writers, input users and Release verifier all
+join before final original pending publication. Every error retains its original
+prefix/blocker. An independent completed reader acquires its own journal lease,
+retains the exact initial inventory and current account facts, and leaves semantic
+contents unopened. A separate fresh retained Release pair must match the installed
+payloads before canonical history output. Complete bytes grant no runtime duty,
+Store initialization, replacement/recovery or later startup authority.

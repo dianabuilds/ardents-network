@@ -1,15 +1,15 @@
 //go:build linux
 
-// Package descriptor owns the fixed installed Descriptor-role declarations and
-// protection template and original protected read-only input/preflight lifetime.
-// Canonical Node consumes preflight, joining its own delivery and manager; no
-// destination, account or semantic root is created. Canonical Control prepares public request/plan/resources
-// while retaining its own original input/output custody. These bytes grant no
-// initial trust, Release permission, native installation, Start or Store ACK.
-// Installation separately admits native effects. Network owns signed current
-// duty; Admission owns irreversible spend; Hosting owns its one allowance;
-// Reachability owns Descriptor proofs, Store/history/conflict floors and ACK;
-// Route and Node own their original physical users and joined completion.
-// The additional Descriptor root is independent of State/participation/spend/
-// Hosting. No Source, Forwarding or JOIN root, permission or live owner is lent.
+// Package descriptor owns fixed Descriptor installation declarations, original
+// protected inputs, initial stopped birth and independent completed observation.
+// Canonical Control prepares public resources and fixed-purpose Release inputs;
+// canonical Node consumes genuine Enrollment/Release admission and native effects.
+// Initial installation retains its original journal, account, five empty semantic
+// roots, immutable generation and fixed stopped unit through every physical join.
+// Independent readback borrows no creator lease or live owner. Neither declarations
+// nor completed stopped history grant Start, runtime duty, Store initialization or
+// ACK. Network owns signed current duty; Admission irreversible spend; Hosting
+// its one allowance; Reachability Store proofs/history/conflict floors and ACK;
+// Route and Node their original physical users and joined completion.
+// No Source, Forwarding or JOIN permission, root or live owner is lent.
 package descriptor

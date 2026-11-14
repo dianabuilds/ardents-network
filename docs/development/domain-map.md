@@ -1260,3 +1260,15 @@ all future journals and account absence. No mutable history or Release opens,
 and no creation, Startup, runtime duty or Store ACK follows from inspection.
 Original manager and input users join before public output; restored files cannot
 revive a failed original lifetime. No live JOIN or Source owner is borrowed.
+
+
+Descriptor initial installation is a separate supporting lifetime. Infrastructure
+retains its typed initial/candidate Release pair; Enrollment supplies genuine first
+pin and actual running-program custody, Release its fresh coherent permission and
+floors. Canonical Node consumes Descriptor's own root transaction and independent
+completed reader. Fixed native births use existing directory/fixed-file mechanisms;
+no live JOIN/Source owner or authority is borrowed. The creator alone owns the
+123-record history and five empty semantic roots, original fixed manager Reload
+and post-join pending publication. Reachability alone may initialize and operate
+Store history. No first Start, role duty, Store ACK or runtime composition follows
+from stopped installation or copied history.
