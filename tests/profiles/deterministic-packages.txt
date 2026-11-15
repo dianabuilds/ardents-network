@@ -118,6 +118,7 @@ github.com/dianabuilds/ardents-network/internal/successor/execution
 github.com/dianabuilds/ardents-network/internal/successor/execution/runtime
 github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup
 github.com/dianabuilds/ardents-network/internal/successor/installation/systemd
+github.com/dianabuilds/ardents-network/internal/successor/systemdproperty
 github.com/dianabuilds/ardents-network/internal/successor/installation/journal
 github.com/dianabuilds/ardents-network/internal/successor/installation/process
 github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation
