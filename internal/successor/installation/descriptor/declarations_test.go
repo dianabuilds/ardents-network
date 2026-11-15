@@ -3,7 +3,7 @@ package descriptor
 import (
 	"bytes"
 	"encoding/json"
-	"path/filepath"
+	"path"
 	"strings"
 	"testing"
 )
@@ -16,7 +16,7 @@ func TestRequestKeepsStoreAndEveryOriginalNamespaceIndependent(t *testing.T) {
 		t.Fatal("independent Descriptor declaration refused", err)
 	}
 	for _, root := range []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.CredentialDirectory, r.Plan, r.Certificate, r.PrivateKey, r.Clock, r.InstallationRoot + ".descriptor-initial-journal", r.InstallationRoot + ".descriptor-retirement-00000063-journal"} {
-		for _, store := range []string{root, filepath.Join(root, "store")} {
+		for _, store := range []string{root, path.Join(root, "store")} {
 			changed := r
 			changed.DescriptorRoot = store
 			raw, err := json.Marshal(changed)
@@ -28,7 +28,7 @@ func TestRequestKeepsStoreAndEveryOriginalNamespaceIndependent(t *testing.T) {
 			}
 		}
 	}
-	for _, path := range []string{r.DescriptorRoot, filepath.Join(r.DescriptorRoot, "output"), filepath.Dir(r.DescriptorRoot), r.InstallationRoot + ".descriptor-hosting", r.InstallationRoot + ".descriptor-replacement-pending"} {
+	for _, path := range []string{r.DescriptorRoot, path.Join(r.DescriptorRoot, "output"), path.Dir(r.DescriptorRoot), r.InstallationRoot + ".descriptor-hosting", r.InstallationRoot + ".descriptor-replacement-pending"} {
 		if r.CheckPreparationOutput(path) == nil {
 			t.Fatal("public preparation overlapped retained resources", path)
 		}
@@ -77,7 +77,7 @@ func TestPlanBindsItsStoreAndPublicTrustWithoutOpeningThem(t *testing.T) {
 	}
 	p := Plan{Schema: "ardents-descriptor-runtime-v1", Network: NetworkInputs{Root: r.StateRoot, NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{3}, ClockObservationFile: r.Clock}, NodeID: [32]byte{4}, ProcessProfile: r.Profile,
 		ParticipationRoot: r.ParticipationRoot, SpendRoot: r.SpendRoot, HostingRoot: r.HostingRoot, DescriptorRoot: r.DescriptorRoot,
-		Certificate: filepath.Join(r.CredentialDirectory, "certificate.pem"), PrivateKey: filepath.Join(r.CredentialDirectory, "private-key.pem"), RetirementWaitMS: 5000}
+		Certificate: path.Join(r.CredentialDirectory, "certificate.pem"), PrivateKey: path.Join(r.CredentialDirectory, "private-key.pem"), RetirementWaitMS: 5000}
 	raw, err := json.Marshal(p)
 	if err != nil {
 		t.Fatal(err)

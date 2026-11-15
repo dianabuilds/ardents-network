@@ -1073,6 +1073,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/join/completed_initial_linux.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
 		return true
 	}
+	if source == "internal/successor/deployment/node_plan.go" && dependency == modulePath+"/internal/successor/hosting" {
+		return true
+	}
 	if (source == "internal/successor/installation/join/request.go" || source == "internal/successor/installation/descriptor/request.go" || source == "internal/successor/installation/introduction/request.go" || source == "internal/successor/installation/forwarding/request.go" || source == "internal/successor/installation/join/plan.go" || source == "internal/successor/installation/descriptor/plan.go" || source == "internal/successor/installation/introduction/plan.go" || source == "internal/successor/installation/forwarding/plan.go") && dependency == modulePath+"/internal/successor/deployment" {
 		return true
 	}
@@ -1091,23 +1094,11 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/introduction/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
-	if source == "internal/successor/installation/introduction/plan.go" && dependency == modulePath+"/internal/successor/hosting" {
-		return true
-	}
 
 	if source == "internal/successor/installation/descriptor/inputs_linux.go" && dependency == modulePath+"/internal/successor/protectedfiles" {
 		return true
 	}
 	if source == "internal/successor/installation/descriptor/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
-		return true
-	}
-	if source == "internal/successor/installation/descriptor/plan.go" && dependency == modulePath+"/internal/successor/hosting" {
-		return true
-	}
-	if source == "internal/successor/installation/join/plan.go" && dependency == modulePath+"/internal/successor/hosting" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/plan.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/hosting_prepare_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
@@ -1683,7 +1674,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"JOIN key birth grants no Release observation", "cmd/ardents-control/join_release_keys_linux.go", modulePath + "/internal/successor/release", false},
 		{"JOIN public signing grants no Route consumer", "cmd/ardents-control/join_release_linux.go", modulePath + "/internal/successor/route/role", false},
 		{"JOIN public plan grants no State owner", "cmd/ardents-control/join_release_plan_linux.go", modulePath + "/internal/successor/network/state", false},
-		{"JOIN public plan uses detached traffic declaration", "internal/successor/installation/join/plan.go", modulePath + "/internal/successor/hosting", true},
+		{"deployment plans use detached traffic declaration", "internal/successor/deployment/node_plan.go", modulePath + "/internal/successor/hosting", true},
+		{"JOIN plan delegates detached declarations", "internal/successor/installation/join/plan.go", modulePath + "/internal/successor/deployment", true},
 		{"JOIN request has no Hosting import", "internal/successor/installation/join/request.go", modulePath + "/internal/successor/hosting", false},
 		{"JOIN public plan has no State owner", "internal/successor/installation/join/plan.go", modulePath + "/internal/successor/network/state", false},
 		{"canonical JOIN plan uses exact declaration owner", "cmd/ardents-control/join_plan_linux.go", modulePath + "/internal/successor/installation/join", true},

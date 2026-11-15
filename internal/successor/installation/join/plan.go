@@ -1,46 +1,22 @@
 package join
 
 import (
-	"bytes"
 	"encoding/json"
 	posixpath "path"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 )
 
 // NetworkInputs is a public declaration, not authenticated State or duty.
 type NetworkInputs = deployment.NodeNetworkInputs
 
-// Plan is the closed installed JOIN input. Its immutable declaration
-// grants no State, Node, Admission or Hosting permission and selects no peer.
-type Plan struct {
-	Schema            string          `json:"schema"`
-	Network           NetworkInputs   `json:"network"`
-	NodeID            [32]byte        `json:"node_id"`
-	ProcessProfile    string          `json:"process_profile"`
-	ParticipationRoot string          `json:"participation_root"`
-	SpendRoot         string          `json:"spend_root"`
-	HostingRoot       string          `json:"hosting_root"`
-	Certificate       string          `json:"certificate"`
-	PrivateKey        string          `json:"private_key"`
-	Work              hosting.Traffic `json:"work"`
-	Termination       hosting.Traffic `json:"termination"`
-	RetirementWaitMS  uint32          `json:"retirement_wait_ms"`
-}
+// Plan is a public Join deployment declaration, not runtime authority.
+type Plan = deployment.JoinPlan
 
+// DecodePlan retains this transition's established refusal identity.
 func DecodePlan(raw []byte) (Plan, error) {
-	var p Plan
-	if len(raw) == 0 || len(raw) > 16<<10 || json.Unmarshal(raw, &p) != nil {
-		return Plan{}, ErrInput
-	}
-	canonical, err := json.Marshal(p)
-	n := p.Network
-	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) || p.Schema != "ardents-join-runtime-v1" || p.ProcessProfile != "ardents-join-process-v1" || p.NodeID == [32]byte{} ||
-		!deployment.ValidNodeTrustDeclaration(n.NetworkID, n.ProfileAuthority, n.Authorities, n.Threshold) || p.RetirementWaitMS == 0 || p.RetirementWaitMS > 5000 {
-		return Plan{}, ErrInput
-	}
-	if !deployment.IndependentNodePaths(n.Root, n.ClockObservationFile, p.ParticipationRoot, p.SpendRoot, p.HostingRoot, p.Certificate, p.PrivateKey) {
+	p, err := deployment.DecodeJoinPlan(raw)
+	if err != nil {
 		return Plan{}, ErrInput
 	}
 	return p, nil

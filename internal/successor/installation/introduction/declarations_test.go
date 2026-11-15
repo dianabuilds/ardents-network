@@ -3,7 +3,7 @@ package introduction
 import (
 	"bytes"
 	"encoding/json"
-	"path/filepath"
+	"path"
 	"strings"
 	"testing"
 )
@@ -16,7 +16,7 @@ func TestRequestKeepsSlotHistoryAndEveryOriginalNamespaceIndependent(t *testing.
 		t.Fatal("independent Introduction declaration refused", err)
 	}
 	for _, root := range []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.CredentialDirectory, r.Plan, r.Certificate, r.PrivateKey, r.Clock, r.InstallationRoot + ".introduction-initial-journal", r.InstallationRoot + ".introduction-retirement-00000063-journal"} {
-		for _, slots := range []string{root, filepath.Join(root, "slots")} {
+		for _, slots := range []string{root, path.Join(root, "slots")} {
 			changed := r
 			changed.IntroductionRoot = slots
 			raw, err := json.Marshal(changed)
@@ -28,7 +28,7 @@ func TestRequestKeepsSlotHistoryAndEveryOriginalNamespaceIndependent(t *testing.
 			}
 		}
 	}
-	for _, path := range []string{r.IntroductionRoot, filepath.Join(r.IntroductionRoot, "output"), filepath.Dir(r.IntroductionRoot), r.InstallationRoot + ".introduction-hosting", r.InstallationRoot + ".introduction-replacement-pending"} {
+	for _, path := range []string{r.IntroductionRoot, path.Join(r.IntroductionRoot, "output"), path.Dir(r.IntroductionRoot), r.InstallationRoot + ".introduction-hosting", r.InstallationRoot + ".introduction-replacement-pending"} {
 		if r.CheckPreparationOutput(path) == nil {
 			t.Fatal("public preparation overlapped retained resources", path)
 		}
@@ -77,7 +77,7 @@ func TestPlanBindsItsSlotHistoryAndPublicTrustWithoutOpeningThem(t *testing.T) {
 	}
 	p := Plan{Schema: "ardents-introduction-runtime-v1", Network: NetworkInputs{Root: r.StateRoot, NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{3}, ClockObservationFile: r.Clock}, NodeID: [32]byte{4}, ProcessProfile: r.Profile,
 		ParticipationRoot: r.ParticipationRoot, SpendRoot: r.SpendRoot, HostingRoot: r.HostingRoot, IntroductionRoot: r.IntroductionRoot,
-		Certificate: filepath.Join(r.CredentialDirectory, "certificate.pem"), PrivateKey: filepath.Join(r.CredentialDirectory, "private-key.pem"), RetirementWaitMS: 5000}
+		Certificate: path.Join(r.CredentialDirectory, "certificate.pem"), PrivateKey: path.Join(r.CredentialDirectory, "private-key.pem"), RetirementWaitMS: 5000}
 	raw, err := json.Marshal(p)
 	if err != nil {
 		t.Fatal(err)
