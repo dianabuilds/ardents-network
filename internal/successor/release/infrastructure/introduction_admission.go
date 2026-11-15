@@ -50,26 +50,10 @@ func (a IntroductionAuthorization) Artifacts() map[string][]byte {
 // AuthenticateIntroductionInitial consumes genuine running-program Enrollment and an
 // entirely unborn Release history. Candidate metadata cannot supply this pin.
 func AuthenticateIntroductionInitial(ctx context.Context, v *release.Verifier, b enrollment.InfrastructureBundle, in release.Inputs) (IntroductionAuthorization, error) {
-	f, ok := b.Facts()
-	if !ok || f.Invocation != "introduction" || ctx == nil || v == nil {
-		return IntroductionAuthorization{}, ErrInput
-	}
-	floors, err := v.CurrentFloors(ctx)
+	a, err := authenticateInitial(ctx, v, b, in, artifactProfile{"introduction", IntroductionTemplateName, IntroductionArtifactName, IntroductionGenerationTarget})
 	if err != nil {
 		return IntroductionAuthorization{}, err
 	}
-	if !emptyInitialFloors(floors) {
-		return IntroductionAuthorization{}, release.ErrTrustUnavailable
-	}
-	a, err := authenticateInventory(ctx, v, b, f, in, artifactProfile{"introduction", IntroductionTemplateName, IntroductionArtifactName, IntroductionGenerationTarget})
-	if err != nil {
-		return IntroductionAuthorization{}, err
-	}
-	decision, accepted := a.program.AcceptedDecision()
-	if !accepted || decision.Outcome != release.OutcomeReleaseAccepted {
-		return IntroductionAuthorization{}, release.ErrTrustUnavailable
-	}
-	a.initial = b
 	return IntroductionAuthorization{pair: a}, nil
 }
 

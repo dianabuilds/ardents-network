@@ -51,26 +51,10 @@ func (a DescriptorAuthorization) Artifacts() map[string][]byte {
 // AuthenticateDescriptorInitial consumes genuine running-program Enrollment and an
 // entirely unborn Release history. Candidate metadata cannot supply this pin.
 func AuthenticateDescriptorInitial(ctx context.Context, v *release.Verifier, b enrollment.InfrastructureBundle, in release.Inputs) (DescriptorAuthorization, error) {
-	f, ok := b.Facts()
-	if !ok || f.Invocation != "descriptor" || ctx == nil || v == nil {
-		return DescriptorAuthorization{}, ErrInput
-	}
-	floors, err := v.CurrentFloors(ctx)
+	a, err := authenticateInitial(ctx, v, b, in, artifactProfile{"descriptor", DescriptorTemplateName, DescriptorArtifactName, DescriptorGenerationTarget})
 	if err != nil {
 		return DescriptorAuthorization{}, err
 	}
-	if !emptyInitialFloors(floors) {
-		return DescriptorAuthorization{}, release.ErrTrustUnavailable
-	}
-	a, err := authenticateInventory(ctx, v, b, f, in, artifactProfile{"descriptor", DescriptorTemplateName, DescriptorArtifactName, DescriptorGenerationTarget})
-	if err != nil {
-		return DescriptorAuthorization{}, err
-	}
-	decision, accepted := a.program.AcceptedDecision()
-	if !accepted || decision.Outcome != release.OutcomeReleaseAccepted {
-		return DescriptorAuthorization{}, release.ErrTrustUnavailable
-	}
-	a.initial = b
 	return DescriptorAuthorization{pair: a}, nil
 }
 

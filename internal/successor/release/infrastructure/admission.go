@@ -67,8 +67,14 @@ func emptyInitialFloors(f release.FloorSet) bool {
 }
 
 func AuthenticateInitial(ctx context.Context, v *release.Verifier, b enrollment.InfrastructureBundle, input release.Inputs) (Authorization, error) {
+	return authenticateInitial(ctx, v, b, input, artifactProfile{"source", TemplateName, DescriptorName, GenerationTarget})
+}
+
+// authenticateInitial admits one fixed purpose without sharing any live role.
+// Initial pin, wholly unborn floors and a newly accepted program remain required.
+func authenticateInitial(ctx context.Context, v *release.Verifier, b enrollment.InfrastructureBundle, input release.Inputs, profile artifactProfile) (Authorization, error) {
 	f, ok := b.Facts()
-	if !ok || f.Invocation != "source" || ctx == nil || v == nil {
+	if !ok || f.Invocation != profile.invocation || ctx == nil || v == nil {
 		return Authorization{}, ErrInput
 	}
 	floors, err := v.CurrentFloors(ctx)
@@ -78,17 +84,16 @@ func AuthenticateInitial(ctx context.Context, v *release.Verifier, b enrollment.
 	if !emptyInitialFloors(floors) {
 		return Authorization{}, release.ErrTrustUnavailable
 	}
-	a, err := authenticateInventory(ctx, v, b, f, input, artifactProfile{"source", TemplateName, DescriptorName, GenerationTarget})
-	if err == nil {
-		// A concurrent first evaluation can establish history after the empty
-		// observation; no-update then supplies candidate authority only.
-		p, valid := a.program.AcceptedDecision()
-		if !valid || p.Outcome != release.OutcomeReleaseAccepted {
-			return Authorization{}, release.ErrTrustUnavailable
-		}
-		a.initial = b
+	a, err := authenticateInventory(ctx, v, b, f, input, profile)
+	if err != nil {
+		return Authorization{}, err
 	}
-	return a, err
+	decision, accepted := a.program.AcceptedDecision()
+	if !accepted || decision.Outcome != release.OutcomeReleaseAccepted {
+		return Authorization{}, release.ErrTrustUnavailable
+	}
+	a.initial = b
+	return a, nil
 }
 
 func AuthenticateCandidate(ctx context.Context, v *release.Verifier, c enrollment.InfrastructureCandidate, input release.Inputs) (Authorization, error) {

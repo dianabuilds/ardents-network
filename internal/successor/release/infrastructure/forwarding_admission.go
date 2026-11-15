@@ -43,26 +43,10 @@ func (a ForwardingAuthorization) Artifacts() map[string][]byte {
 }
 
 func AuthenticateForwardingInitial(ctx context.Context, v *release.Verifier, b enrollment.InfrastructureBundle, input release.Inputs) (ForwardingAuthorization, error) {
-	f, ok := b.Facts()
-	if !ok || f.Invocation != "forwarding" || ctx == nil || v == nil {
-		return ForwardingAuthorization{}, ErrInput
-	}
-	floors, err := v.CurrentFloors(ctx)
+	a, err := authenticateInitial(ctx, v, b, input, artifactProfile{"forwarding", ForwardingTemplateName, ForwardingDescriptorName, ForwardingGenerationTarget})
 	if err != nil {
 		return ForwardingAuthorization{}, err
 	}
-	if !emptyInitialFloors(floors) {
-		return ForwardingAuthorization{}, release.ErrTrustUnavailable
-	}
-	a, err := authenticateInventory(ctx, v, b, f, input, artifactProfile{"forwarding", ForwardingTemplateName, ForwardingDescriptorName, ForwardingGenerationTarget})
-	if err != nil {
-		return ForwardingAuthorization{}, err
-	}
-	p, valid := a.program.AcceptedDecision()
-	if !valid || p.Outcome != release.OutcomeReleaseAccepted {
-		return ForwardingAuthorization{}, release.ErrTrustUnavailable
-	}
-	a.initial = b
 	return ForwardingAuthorization{pair: a}, nil
 }
 
