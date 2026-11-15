@@ -8,12 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/platform"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/process"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 )
@@ -168,20 +168,10 @@ func sourceInstalledPlatform(ctx context.Context) (err error) {
 		return err
 	}
 	defer func() { err = errors.Join(err, file.file.Close(), ctx.Err()); clear(file.raw) }()
-	fields := map[string]string{}
-	for _, line := range strings.Split(string(file.raw), "\n") {
-		key, value, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		if _, exists := fields[key]; exists {
-			return ErrBinding
-		}
-		fields[key] = strings.Trim(value, "\"")
-	}
-	if fields["ID"] != "ubuntu" || fields["VERSION_ID"] != "24.04" {
+	if !platform.Ubuntu2404(file.raw) {
 		return ErrBinding
 	}
+
 	return checkSourceAccountFile(file)
 }
 

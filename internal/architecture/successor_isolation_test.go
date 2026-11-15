@@ -482,6 +482,9 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if (source == "internal/successor/installation/join/account_linux.go" || source == "internal/successor/installation/join/startup_linux.go" || source == "internal/successor/installation/descriptor/account_linux.go" || source == "internal/successor/installation/descriptor/startup_linux.go" || source == "internal/successor/installation/forwarding/account_linux.go" || source == "internal/successor/installation/forwarding/startup_linux.go" || source == "internal/successor/installation/introduction/account_linux.go" || source == "internal/successor/installation/introduction/startup_linux.go" || source == "internal/successor/installation/infrastructure/source_startup_linux.go" || source == "internal/successor/installation/infrastructure/source_observation_linux.go") && dependency == modulePath+"/internal/successor/installation/platform" {
+		return true
+	}
 	if (source == "internal/successor/installation/forwarding/start_records_linux.go" || source == "internal/successor/installation/forwarding/start_storage_linux.go") && dependency == modulePath+"/internal/successor/installation/journal" {
 		return true
 	}
@@ -972,6 +975,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/installation/systemd":            {},
 		"internal/successor/installation/journal":            {},
 		"internal/successor/installation/nodeprincipal":      {},
+		"internal/successor/installation/platform":           {},
 		"internal/successor/installation/process":            {},
 		"internal/successor/installation/generation":         {},
 		"internal/successor/installation/completion":         {},

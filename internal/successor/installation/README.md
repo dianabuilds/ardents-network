@@ -34,6 +34,7 @@ reused as infrastructure permission.
 | `descriptor` | Fixed five-root declarations and original delivery; genuine initial/candidate pair; stopped birth, protected startup, joined retirement/restart and forward replacement/complete-prefix recovery; no semantic authority or Store policy | Canonical Control public/initial/forward Release preparation; canonical Node install/inspect/start/stop/restart/replace/recover consumers |
 | `join` | JOIN installation, guarded startup, original retirement, restart, replacement and recovery | Canonical Control and Node JOIN consumers |
 | `introduction` | Introduction installation and original invocation lifecycle; separate slot history remains with Route | Canonical Control and Node Introduction consumers |
+| `platform` | Fixed Ubuntu infrastructure declaration validation; file custody and startup admission stay with each caller | Source, Forwarding, JOIN, Descriptor and Introduction consumers |
 | `nodeprincipal` | Fixed Node account records, NSS and free UID/GID selection; independently opened, joined host-principal observation; no account creation | Forwarding, JOIN, Descriptor and Introduction account and principal observers |
 
 `Authorization` остаётся opaque: соседний пакет не может заполнить private proofs,

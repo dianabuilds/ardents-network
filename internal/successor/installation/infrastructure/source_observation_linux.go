@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/platform"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
@@ -448,17 +449,7 @@ func (input SourceInputs) observeFresh(unitPaths []string) (err error) {
 			}
 		}
 		if f.path == "/usr/lib/os-release" {
-			fields := map[string]string{}
-			for _, line := range strings.Split(string(f.raw), "\n") {
-				k, v, ok := strings.Cut(line, "=")
-				if ok {
-					if _, duplicate := fields[k]; duplicate {
-						return ErrBinding
-					}
-					fields[k] = strings.Trim(v, "\"")
-				}
-			}
-			if fields["ID"] != "ubuntu" || fields["VERSION_ID"] != "24.04" {
+			if !platform.Ubuntu2404(f.raw) {
 				return ErrBinding
 			}
 		}

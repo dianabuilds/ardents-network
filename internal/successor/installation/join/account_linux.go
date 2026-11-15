@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/nodeprincipal"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/platform"
 )
 
 // Adapted from the maintained Source native account mechanism; this distinct
@@ -51,19 +52,10 @@ func prepareNodeAccount(ctx context.Context, inputs Inputs) (*nodeAccount, error
 	if err := nodeprincipal.ValidateNSS(a.before["/etc/nsswitch.conf"].raw); err != nil {
 		return a, ErrBinding
 	}
-	operatingSystem := map[string]string{}
-	for _, line := range strings.Split(string(a.before["/usr/lib/os-release"].raw), "\n") {
-		name, value, ok := strings.Cut(line, "=")
-		if ok {
-			if _, duplicate := operatingSystem[name]; duplicate {
-				return a, ErrBinding
-			}
-			operatingSystem[name] = strings.Trim(value, "\"")
-		}
-	}
-	if operatingSystem["ID"] != "ubuntu" || operatingSystem["VERSION_ID"] != "24.04" {
+	if !platform.Ubuntu2404(a.before["/usr/lib/os-release"].raw) {
 		return a, ErrBinding
 	}
+
 	// Fixed native argv disables home/mail/subordinate-ID/log initialization.
 	// Reject installation-specific scripts and supplementary-group defaults.
 	for _, p := range []string{"/etc/shadow-maint/useradd-pre.d", "/etc/shadow-maint/useradd-post.d"} {
