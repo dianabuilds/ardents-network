@@ -14,7 +14,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 

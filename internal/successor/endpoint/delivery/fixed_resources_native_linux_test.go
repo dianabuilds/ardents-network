@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 )
 
 func fixedCreationStage(t *testing.T) *installationTransaction {

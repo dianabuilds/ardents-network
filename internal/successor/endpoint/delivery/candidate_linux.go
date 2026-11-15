@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"syscall"
 	"time"

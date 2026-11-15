@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 )
 
 // These records describe the original generation-file births. They do not

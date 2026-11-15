@@ -1,27 +1,6 @@
-// Package journal owns closed Installation preparation record grammar/order
-// and native custody of newly born preparation and transition journals, plus
-// independent exact transition custody for explicitly admitted recovery.
-// Opaque owners retain original directory/file identities, finite inventory,
-// durability and the first failure through physical Close. Transition groups
-// hide creation/replacement record handles; Installation retains their schemas
-// and phase policy. Creation refuses retained roots; this module
-// admits one exact start-attempt and three completion-removal record names as physical provenance;
-// their contents and removal ordering remain Installation decisions. A record
-// does not attest ACK delivery. OpenTransition independently retains exactly
-// observed flat records and an optional independently observed replacement group
-// for Installation's admitted recovery. ResyncReplacements synchronizes the
-// original group and directory links, including empty groups. It creates no
-// phase admission. RetireGenerationFailure resynchronizes an exact first-error
-// copy before removing only its original failed phase slot; Installation owns
-// failure classification, fresh proofs and subsequent complete-seal admission.
-// Neither the copy nor physical retirement grants another Start. It creates no
-// original birth ownership or phase authority. The module never authorizes Release, account creation,
-// generation selection, process start or replacement.
-// Node/Source Start and retirement decoders share canonical sequence and inode
-// checks while retaining their distinct fixed-purpose phase grammars. They
-// inspect detached bytes and neither acquire a journal nor authorize effects.
-// InvocationPrefix checks a closed contiguous role-specific directory grammar;
-// it acquires no native custody and supplies no invocation or retirement proof.
+// Package journal decodes bounded Node and Source invocation and retirement
+// records. Detached records provide no native custody, Release permission,
+// process completion or authority to start or recover a runtime.
 package journal
 
 import "errors"

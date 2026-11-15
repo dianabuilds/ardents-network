@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 	"io"
 	"net"
 	"os"

@@ -9,7 +9,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 )
 
 // Fixed images are detached bytes. Their construction grants no filesystem,
