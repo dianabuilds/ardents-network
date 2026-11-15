@@ -1045,16 +1045,13 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/forwarding/attempt_linux.go" && dependency == modulePath+"/internal/successor/installation/journal" {
 		return true
 	}
-	if (source == "internal/successor/installation/forwarding/request.go" || source == "internal/successor/installation/forwarding/unit_test.go") && dependency == modulePath+"/internal/successor/installation/infrastructure" {
+	if source == "internal/successor/installation/forwarding/unit_test.go" && dependency == modulePath+"/internal/successor/installation/infrastructure" {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
 	if source == "internal/successor/installation/join/hosting_prepare_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
-		return true
-	}
-	if (source == "internal/successor/installation/join/binding.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure") {
 		return true
 	}
 	if source == "internal/successor/installation/join/generation_bytes.go" && dependency == modulePath+"/internal/successor/enrollment" {
@@ -2122,11 +2119,6 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 	case "internal/successor/installation/join/startup_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/completion", "github.com/dianabuilds/ardents-network/internal/successor/installation/process", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd":
-			return true
-		}
-	case "internal/successor/installation/join/binding.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
 			return true
 		}
 	case "internal/successor/installation/join/installed_start_native_linux_test.go":
