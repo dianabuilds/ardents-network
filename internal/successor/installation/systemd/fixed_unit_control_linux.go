@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/systemdbus"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -225,7 +226,7 @@ func (o *fixedUnitControl) job(ctx context.Context, method string) (string, erro
 		return "", ErrObservation
 	}
 	object, ok := call.Body[0].(dbus.ObjectPath)
-	if !ok || !managerJobPath(string(object)) {
+	if !ok || !systemdbus.ValidJobPath(string(object)) {
 		return "", ErrObservation
 	}
 	return string(object), nil
