@@ -76,3 +76,57 @@ func TestFailedPreparedParticipationStillExpires(t *testing.T) {
 		t.Fatalf("prepared participation should retain its original expiry: conflict=%v, error=%v", conflict, err)
 	}
 }
+
+func TestRoleCleanupRetainsOriginalParticipationOnRuntimeFailure(t *testing.T) {
+	roles := []struct {
+		name    string
+		cleanup func(*duty.NodeProducer, error) error
+	}{
+		{"forwarding", func(p *duty.NodeProducer, first error) error {
+			return (&forwarding{producer: p, first: first}).cleanup()
+		}},
+		{"join", func(p *duty.NodeProducer, first error) error {
+			return (&joinInvocation{producer: p, first: first}).cleanup()
+		}},
+		{"descriptor", func(p *duty.NodeProducer, first error) error {
+			return (&descriptorInvocation{producer: p, first: first}).cleanup()
+		}},
+		{"introduction", func(p *duty.NodeProducer, first error) error {
+			return (&introductionInvocation{producer: p, first: first}).cleanup()
+		}},
+	}
+	for _, role := range roles {
+		for _, failed := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/failed=%v", role.name, failed), func(t *testing.T) {
+				now := time.Unix(1800000000, 0).UTC()
+				config := duty.Config{Root: filepath.Join(t.TempDir(), "participation"), Clock: func() time.Time { return now }, Create: true}
+				facts := duty.NodeParticipation{Identity: [32]byte{1}, FamilyID: [32]byte{2}, Assignment: "rendezvous", EpochUntil: now.Add(time.Minute), RecordUntil: now.Add(2 * time.Minute)}
+				producer, err := duty.OpenNodeProducer(t.Context(), config, facts)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = producer.Close(context.Background()) })
+				if err := producer.Live(); err != nil {
+					t.Fatal(err)
+				}
+				var first error
+				if failed {
+					first = errors.New("original runtime failure")
+				}
+				if err := role.cleanup(producer, first); err != nil {
+					t.Fatal(err)
+				}
+				config.Create = false
+				store, err := duty.OpenOperation(t.Context(), config)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer store.Close()
+				conflict, err := store.Conflict(facts.Identity, facts.FamilyID)
+				if err != nil || conflict != failed {
+					t.Fatalf("conflict=%v, failed=%v: %v", conflict, failed, err)
+				}
+			})
+		}
+	}
+}
