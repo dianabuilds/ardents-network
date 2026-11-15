@@ -1789,7 +1789,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"read-only Node slot observer consumes physical D-Bus", "internal/successor/installation/systemd/node_slots_linux.go", "github.com/godbus/dbus/v5", true},
 		{"read-only Node slot observer cannot authorize Release", "internal/successor/installation/systemd/node_slots_linux.go", modulePath + "/internal/successor/release", false},
 		{"native Source reference regression checks genuine bus refusal", "internal/successor/installation/systemd/source_reference_native_linux_test.go", "github.com/godbus/dbus/v5", true},
-		{"manager value validation excludes bus client", "internal/successor/installation/systemd/manager_values_linux.go", "github.com/godbus/dbus/v5", false},
+		{"manager value validation excludes bus client", "internal/successor/installation/systemd/manager_values.go", "github.com/godbus/dbus/v5", false},
 		{"manager transport excludes bus client", "internal/successor/installation/systemd/reference_transport_linux.go", "github.com/godbus/dbus/v5", false},
 		{"Installation decisions exclude bus client", "internal/successor/endpoint/delivery/predecessor_linux.go", "github.com/godbus/dbus/v5", false},
 		{"portable authorization cannot own installed Endpoint", "internal/successor/endpoint/delivery/authorization/generation_authentication.go", modulePath + "/internal/successor/endpoint/delivery", false},
