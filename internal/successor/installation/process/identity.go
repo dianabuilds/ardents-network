@@ -5,23 +5,16 @@ import (
 	"encoding/hex"
 	"strconv"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
 )
 
 func startClock(body []byte, pid uint32) (uint64, error) {
-	text := string(body)
-	begin, end := strings.Index(text, " ("), strings.LastIndex(text, ") ")
-	if begin < 1 || end <= begin || text[:begin] != strconv.FormatUint(uint64(pid), 10) {
+	clock, err := processresource.ParseStartClock(body, pid)
+	if err != nil {
 		return 0, errBinding
 	}
-	fields := strings.Fields(text[end+2:])
-	if len(fields) < 20 || !strings.Contains("RSDITt", fields[0]) || len(fields[0]) != 1 {
-		return 0, errBinding
-	}
-	started, err := strconv.ParseUint(fields[19], 10, 64)
-	if err != nil || started == 0 || strconv.FormatUint(started, 10) != fields[19] {
-		return 0, errBinding
-	}
-	return started, nil
+	return clock, nil
 }
 
 func credentials(body []byte, uid, gid uint32) error {

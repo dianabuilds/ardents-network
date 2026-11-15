@@ -1075,6 +1075,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/join/completed_initial_linux.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
 		return true
 	}
+	if source == "internal/successor/installation/process/identity.go" && dependency == modulePath+"/internal/successor/processresource" {
+		return true
+	}
 	if source == "internal/successor/deployment/node_plan.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}

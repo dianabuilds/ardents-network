@@ -92,18 +92,11 @@ func (pin *nativePin) clock() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	end := strings.LastIndex(raw, ")")
-	if end < 0 {
-		return "", errors.New("original process clock unavailable")
-	}
-	fields := strings.Fields(raw[end+1:])
-	if len(fields) < 20 {
-		return "", errors.New("original process clock unavailable")
-	}
-	if _, err := strconv.ParseUint(fields[19], 10, 64); err != nil {
+	clock, err := ParseStartClock([]byte(raw), uint32(pin.pid))
+	if err != nil {
 		return "", err
 	}
-	return fields[19], nil
+	return strconv.FormatUint(clock, 10), nil
 }
 
 func (pin *nativePin) placement() error {
