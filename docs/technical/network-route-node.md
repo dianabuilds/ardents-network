@@ -1700,6 +1700,10 @@ that permits that post-start command. Neither ordering establishes original
 domain completion after an interrupted start or stop. Such a mechanism would
 also change the currently fixed no-hook unit and needs its own contract and
 evidence before replacing it; this observation grants no startup permission.
+The current scope observer requires the main PID to be the only process in the
+original cgroup and rejects child scopes. A verifier running as another process
+in that scope cannot simply be added to the current startup: its placement and
+an equivalent independent process/scope observation must first be established.
 
 A future fixed platform composition must therefore bind the exact authenticated
 artifact and configuration to its own original invocation, retain the Release
