@@ -28,7 +28,7 @@ func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
 		switch name {
 		case "file_unix.go", "file_unix_test.go", "file_windows.go", "file_unsupported.go":
 			continue
-		case "infrastructure_load_unix.go", "infrastructure_load_unix_test.go", "infrastructure_process_darwin.go", "infrastructure_process_darwin_test.go", "descriptor_inventory_linux_test.go", "introduction_inventory_linux_test.go", "infrastructure_process_linux.go":
+		case "infrastructure_load_unix.go", "infrastructure_load_unix_test.go", "infrastructure_process_darwin.go", "infrastructure_process_darwin_test.go", "infrastructure_process_linux.go":
 			// This distinct inventory has no Windows accepting product path.
 			continue
 		}
@@ -52,8 +52,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
 		for _, name := range []string{
-			"internal/successor/enrollment/descriptor_inventory_linux_test.go",
-			"internal/successor/enrollment/introduction_inventory_linux_test.go",
 			"internal/successor/enrollment/infrastructure_process_linux.go",
 			"internal/successor/installation/infrastructure/source_plan_linux.go",
 			"internal/successor/installation/infrastructure/source_observation_linux.go",
@@ -218,6 +216,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			{"internal/successor/enrollment/infrastructure_load_unix_test.go", target == "linux" || target == "darwin"},
 			{"internal/successor/enrollment/infrastructure_process_darwin.go", target == "darwin"},
 			{"internal/successor/enrollment/infrastructure_process_darwin_test.go", target == "darwin"},
+			{"internal/successor/enrollment/descriptor_inventory_test.go", true},
+			{"internal/successor/enrollment/introduction_inventory_test.go", true},
 			{"internal/successor/enrollment/infrastructure_inventory.go", true},
 			{"internal/successor/enrollment/infrastructure_inventory_portable_test.go", true},
 			{"internal/successor/release/static_metadata.go", true},
