@@ -785,13 +785,13 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/source_release_coherence_native_linux_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
-		if source == "cmd/ardents-control/source_release_timestamp_native_linux_test.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+		if source == "cmd/ardents-control/source_release_timestamp_native_linux_test.go" && (dependency == modulePath+"/internal/successor/release" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
-		if source == "cmd/ardents-control/source_release_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+		if source == "cmd/ardents-control/source_release_linux.go" && (dependency == modulePath+"/internal/successor/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
-		if source == "cmd/ardents-control/source_release_predecessor_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+		if source == "cmd/ardents-control/source_release_predecessor_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
 		if source == "cmd/ardents-control/source_artifact_linux.go" && dependency == modulePath+"/internal/successor/enrollment" {
@@ -897,12 +897,12 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/forwarding_release_native_linux_test.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
 			return true
 		}
-		if source == "cmd/ardents-control/forwarding_release_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+		if source == "cmd/ardents-control/forwarding_release_linux.go" && (dependency == modulePath+"/internal/successor/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
 		if source == "cmd/ardents-control/forwarding_release_predecessor_linux.go" {
 			switch dependency {
-			case modulePath + "/internal/successor/enrollment", modulePath + "/internal/successor/installation/infrastructure", modulePath + "/internal/successor/release", "github.com/theupdateframework/go-tuf/v2/metadata":
+			case modulePath + "/internal/successor/enrollment", modulePath + "/internal/successor/release", "github.com/theupdateframework/go-tuf/v2/metadata":
 				return true
 			}
 		}
