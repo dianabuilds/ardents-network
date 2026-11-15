@@ -1,10 +1,8 @@
-//go:build linux || darwin
-
 package introduction
 
 import (
 	"encoding/json"
-	"path/filepath"
+	posixpath "path"
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
@@ -78,8 +76,8 @@ func renderUnit(template []byte, r Request, generation string) ([]byte, error) {
 	}
 	quote := func(path string) string { return "\"" + path + "\"" }
 	return []byte(strings.NewReplacer(
-		"@ARDENTS_INTRODUCTION_PROGRAM@", quote(filepath.Join(r.InstallationRoot, "generations", generation, programName)),
-		"@ARDENTS_INTRODUCTION_BINDING@", quote(filepath.Join(r.InstallationRoot, "binding.json")),
+		"@ARDENTS_INTRODUCTION_PROGRAM@", quote(posixpath.Join(r.InstallationRoot, "generations", generation, programName)),
+		"@ARDENTS_INTRODUCTION_BINDING@", quote(posixpath.Join(r.InstallationRoot, "binding.json")),
 		"@ARDENTS_INTRODUCTION_WRITE_PATHS@", quote(r.StateRoot)+" "+quote(r.ParticipationRoot)+" "+quote(r.SpendRoot)+" "+quote(r.HostingRoot)+" "+quote(r.IntroductionRoot),
 	).Replace(Template)), nil
 }

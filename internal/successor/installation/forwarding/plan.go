@@ -1,11 +1,9 @@
-//go:build linux || darwin
-
 package forwarding
 
 import (
 	"bytes"
 	"encoding/json"
-	"path/filepath"
+	posixpath "path"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 )
@@ -68,7 +66,7 @@ func DecodePlan(raw []byte) (Plan, error) {
 // full class coverage and actual protection/authority remain runtime decisions.
 func (r Request) MatchPlan(p Plan) error {
 	if p.Network.Root != r.StateRoot || p.Network.ClockObservationFile != r.Clock || p.ProcessProfile != r.Profile || p.ParticipationRoot != r.ParticipationRoot || p.SpendRoot != r.SpendRoot || p.HostingRoot != r.HostingRoot ||
-		p.Certificate != filepath.Join(r.CredentialDirectory, "certificate.pem") || p.PrivateKey != filepath.Join(r.CredentialDirectory, "private-key.pem") {
+		p.Certificate != posixpath.Join(r.CredentialDirectory, "certificate.pem") || p.PrivateKey != posixpath.Join(r.CredentialDirectory, "private-key.pem") {
 		return ErrBinding
 	}
 	return nil

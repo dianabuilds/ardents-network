@@ -217,7 +217,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			}
 		}
 		// Public declarations are available independently of the executing OS;
-		// Source paths retain POSIX target semantics on Linux and macOS.
+		// Source and role paths retain POSIX target semantics on every host.
 		for _, item := range []struct {
 			name string
 			want bool
@@ -233,22 +233,27 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			{"internal/successor/installation/infrastructure/join_artifact_test.go", true},
 			{"internal/successor/installation/infrastructure/descriptor_artifact_test.go", true},
 			{"internal/successor/installation/infrastructure/introduction_artifact_test.go", true},
-			{"internal/successor/installation/infrastructure/source_request.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/infrastructure/source_request_test.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/forwarding/request.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/forwarding/plan.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/forwarding/plan_test.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/join/request.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/join/plan.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/join/template.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/join/request_test.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/join/plan_test.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/descriptor/request.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/descriptor/plan.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/descriptor/template.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/introduction/request.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/introduction/plan.go", target == "linux" || target == "darwin"},
-			{"internal/successor/installation/introduction/template.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/infrastructure/source_request.go", true},
+			{"internal/successor/installation/infrastructure/source_request_test.go", true},
+			{"internal/successor/installation/forwarding/request.go", true},
+			{"internal/successor/installation/forwarding/attempt_names.go", true},
+			{"internal/successor/installation/forwarding/plan.go", true},
+			{"internal/successor/installation/forwarding/plan_test.go", true},
+			{"internal/successor/installation/forwarding/request_test.go", true},
+			{"internal/successor/installation/join/request.go", true},
+			{"internal/successor/installation/join/request_portable_test.go", true},
+			{"internal/successor/installation/join/plan.go", true},
+			{"internal/successor/installation/join/template.go", true},
+			{"internal/successor/installation/join/request_test.go", true},
+			{"internal/successor/installation/join/plan_test.go", true},
+			{"internal/successor/installation/descriptor/request.go", true},
+			{"internal/successor/installation/descriptor/request_portable_test.go", true},
+			{"internal/successor/installation/descriptor/plan.go", true},
+			{"internal/successor/installation/descriptor/template.go", true},
+			{"internal/successor/installation/introduction/request.go", true},
+			{"internal/successor/installation/introduction/request_portable_test.go", true},
+			{"internal/successor/installation/introduction/plan.go", true},
+			{"internal/successor/installation/introduction/template.go", true},
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(item.name)), path.Base(item.name))
 			if err != nil {

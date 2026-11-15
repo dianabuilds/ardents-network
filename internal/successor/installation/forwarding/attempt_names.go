@@ -1,10 +1,8 @@
-//go:build linux || darwin
-
 package forwarding
 
 import (
 	"fmt"
-	"path/filepath"
+	posixpath "path"
 )
 
 // The closed initial-generation profile retains every attempt, never recycling
@@ -17,9 +15,9 @@ type attemptNumber uint32
 
 func (n attemptNumber) directory(root string) string {
 	if n == 0 {
-		return filepath.Join(root, "forwarding-startup")
+		return posixpath.Join(root, "forwarding-startup")
 	}
-	return filepath.Join(root, fmt.Sprintf("forwarding-invocation-%08d", n))
+	return posixpath.Join(root, fmt.Sprintf("forwarding-invocation-%08d", n))
 }
 
 func (n attemptNumber) journal(root string) string {
@@ -30,7 +28,7 @@ func (n attemptNumber) journal(root string) string {
 }
 
 func (n attemptNumber) retirement(root string) string {
-	return filepath.Join(root, fmt.Sprintf("forwarding-retirement-%08d", n))
+	return posixpath.Join(root, fmt.Sprintf("forwarding-retirement-%08d", n))
 }
 
 func (n attemptNumber) retirementJournal(root string) string {

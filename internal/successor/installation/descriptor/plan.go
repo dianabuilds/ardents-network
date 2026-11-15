@@ -1,11 +1,9 @@
-//go:build linux || darwin
-
 package descriptor
 
 import (
 	"bytes"
 	"encoding/json"
-	"path/filepath"
+	posixpath "path"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 )
@@ -69,7 +67,7 @@ func DecodePlan(raw []byte) (Plan, error) {
 // full class coverage and actual protection/authority remain runtime decisions.
 func (r Request) MatchPlan(p Plan) error {
 	if p.Network.Root != r.StateRoot || p.Network.ClockObservationFile != r.Clock || p.ProcessProfile != r.Profile || p.ParticipationRoot != r.ParticipationRoot || p.SpendRoot != r.SpendRoot || p.HostingRoot != r.HostingRoot || p.DescriptorRoot != r.DescriptorRoot ||
-		p.Certificate != filepath.Join(r.CredentialDirectory, "certificate.pem") || p.PrivateKey != filepath.Join(r.CredentialDirectory, "private-key.pem") {
+		p.Certificate != posixpath.Join(r.CredentialDirectory, "certificate.pem") || p.PrivateKey != posixpath.Join(r.CredentialDirectory, "private-key.pem") {
 		return ErrBinding
 	}
 	return nil
@@ -87,7 +85,7 @@ func (r Request) CheckPlanPreparationOutput(output, requestFile string) error {
 	if _, err := DecodeRequest(append(raw, '\n')); err != nil {
 		return err
 	}
-	if !validPath(output) || !validPath(requestFile) || r.Plan != filepath.Join(output, "descriptor-plan.json") {
+	if !validPath(output) || !validPath(requestFile) || r.Plan != posixpath.Join(output, "descriptor-plan.json") {
 		return ErrBinding
 	}
 	paths := append(r.paths(), r.reservedSiblingPaths()...)

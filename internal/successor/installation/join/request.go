@@ -1,5 +1,3 @@
-//go:build linux || darwin
-
 package join
 
 import (
@@ -7,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"path/filepath"
+	posixpath "path"
 
 	installationrequest "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
 )
@@ -80,11 +78,11 @@ func DecodeRequest(raw []byte) (Request, error) {
 	// Linux pathname sockets need the final NUL in their 108-byte sun_path.
 	// Check the entire retained namespace before any installation effect.
 	for n := 0; n < attemptLimit; n++ {
-		start := filepath.Join(r.InstallationRoot, fmt.Sprintf("join-invocation-%08d", n), "start-completion.socket")
+		start := posixpath.Join(r.InstallationRoot, fmt.Sprintf("join-invocation-%08d", n), "start-completion.socket")
 		if n == 0 {
-			start = filepath.Join(r.InstallationRoot, "join-startup", "start-completion.socket")
+			start = posixpath.Join(r.InstallationRoot, "join-startup", "start-completion.socket")
 		}
-		stop := filepath.Join(r.InstallationRoot, fmt.Sprintf("join-retirement-%08d", n), "stop-completion.socket")
+		stop := posixpath.Join(r.InstallationRoot, fmt.Sprintf("join-retirement-%08d", n), "stop-completion.socket")
 		if len(start) > 107 || len(stop) > 107 {
 			return Request{}, ErrInput
 		}

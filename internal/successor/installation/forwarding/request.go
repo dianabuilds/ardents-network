@@ -1,12 +1,10 @@
-//go:build linux || darwin
-
 package forwarding
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"path/filepath"
+	posixpath "path"
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
@@ -78,7 +76,7 @@ func DecodeRequest(raw []byte) (Request, error) {
 	// Admit the whole retained lifetime namespace before any installation effect;
 	// the first-start path is shorter than later restart/retirement paths.
 	for n := attemptNumber(0); n < attemptLimit; n++ {
-		if len(filepath.Join(n.directory(r.InstallationRoot), "start-completion.socket")) > 107 || len(filepath.Join(n.retirement(r.InstallationRoot), "stop-completion.socket")) > 107 {
+		if len(posixpath.Join(n.directory(r.InstallationRoot), "start-completion.socket")) > 107 || len(posixpath.Join(n.retirement(r.InstallationRoot), "stop-completion.socket")) > 107 {
 			return Request{}, ErrInput
 		}
 	}
@@ -164,8 +162,8 @@ func RenderUnit(template []byte, r Request, generation string) ([]byte, error) {
 	}
 	quote := func(path string) string { return "\"" + path + "\"" }
 	return []byte(strings.NewReplacer(
-		"@ARDENTS_FORWARDING_PROGRAM@", quote(filepath.Join(r.InstallationRoot, "generations", generation, infrastructure.ProgramName)),
-		"@ARDENTS_FORWARDING_BINDING@", quote(filepath.Join(r.InstallationRoot, "binding.json")),
+		"@ARDENTS_FORWARDING_PROGRAM@", quote(posixpath.Join(r.InstallationRoot, "generations", generation, infrastructure.ProgramName)),
+		"@ARDENTS_FORWARDING_BINDING@", quote(posixpath.Join(r.InstallationRoot, "binding.json")),
 		"@ARDENTS_FORWARDING_WRITE_PATHS@", quote(r.StateRoot)+" "+quote(r.ParticipationRoot)+" "+quote(r.SpendRoot)+" "+quote(r.HostingRoot),
 	).Replace(Template)), nil
 }

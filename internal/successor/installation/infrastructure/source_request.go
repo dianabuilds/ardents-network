@@ -1,12 +1,10 @@
-//go:build linux || darwin
-
 package infrastructure
 
 import (
 	"bytes"
 	"encoding/json"
 	"net/netip"
-	"path/filepath"
+	posixpath "path"
 	"strings"
 )
 
@@ -72,7 +70,7 @@ func (r SourceRequest) paths() []string {
 	return []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.CredentialDirectory, r.Plan, r.Certificate, r.PrivateKey, r.ClientCA, r.Clock}
 }
 func sourcePath(p string) bool {
-	if !filepath.IsAbs(p) || filepath.Clean(p) != p || p == "/" {
+	if !posixpath.IsAbs(p) || posixpath.Clean(p) != p || p == "/" {
 		return false
 	}
 	for _, c := range p {
@@ -149,8 +147,8 @@ func RenderSourceUnit(template []byte, r SourceRequest, generation string) ([]by
 	}
 	quote := func(p string) string { return "\"" + p + "\"" }
 	return []byte(strings.NewReplacer(
-		"@ARDENTS_SOURCE_PROGRAM@", quote(filepath.Join(r.InstallationRoot, "generations", generation, ProgramName)),
-		"@ARDENTS_SOURCE_BINDING@", quote(filepath.Join(r.InstallationRoot, "binding.json")),
+		"@ARDENTS_SOURCE_PROGRAM@", quote(posixpath.Join(r.InstallationRoot, "generations", generation, ProgramName)),
+		"@ARDENTS_SOURCE_BINDING@", quote(posixpath.Join(r.InstallationRoot, "binding.json")),
 		"@ARDENTS_SOURCE_WRITE_PATHS@", quote(r.StateRoot)+" "+quote(r.ParticipationRoot),
 	).Replace(SourceTemplate)), nil
 }
