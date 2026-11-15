@@ -1432,6 +1432,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/execution_holder.go" && dependency == modulePath+"/internal/successor/execution" {
 			return true
 		}
+		if source == "cmd/ardents-next/installation.go" && dependency == modulePath+"/internal/successor/endpoint/delivery/request" {
+			return true
+		}
 		if (source == "cmd/ardents-next/installation.go" || source == "cmd/ardents-next/installation_test.go") && (dependency == modulePath+"/internal/successor/release/endpoint" || dependency == modulePath+"/internal/successor/endpoint/delivery" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}

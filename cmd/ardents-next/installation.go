@@ -11,6 +11,7 @@ import (
 	"time"
 
 	installation "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
@@ -57,15 +58,19 @@ func runInstallation(ctx context.Context, args []string, out io.Writer) int {
 		if err != nil {
 			return installationFailure(ctx, out, err)
 		}
-		request, err := installation.DecodeRequest(ctx, raw, args[0] == "authenticate-initial")
+		document, err := requestinput.Decode(ctx, raw, args[0] == "authenticate-initial")
 		if err != nil {
 			return installationFailure(ctx, out, err)
 		}
-		parameters := []string{args[0], request.BundleRoot()}
-		if args[0] == "authenticate-initial" {
-			parameters = append(parameters, request.ManifestSHA256())
+		request, ok := document.Declaration()
+		if !ok {
+			return installationFailure(ctx, out, requestinput.ErrInput)
 		}
-		parameters = append(parameters, request.ReleaseHistoryRoot(), request.ReferenceTime().Format(time.RFC3339Nano))
+		parameters := []string{args[0], request.BundleRoot}
+		if args[0] == "authenticate-initial" {
+			parameters = append(parameters, request.ManifestSHA256)
+		}
+		parameters = append(parameters, request.ReleaseFloorRoot, request.ReferenceTime)
 		return runInstallation(ctx, parameters, out)
 	}
 	if len(args) < 1 || (args[0] != "authenticate-initial" && args[0] != "authenticate-candidate") ||

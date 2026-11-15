@@ -2164,9 +2164,9 @@ remain the source of readiness and typed product failure.
 Installation's `request` Module owns canonical local declarations and independent
 original root-owned request-file reobservation. Its detached `Document` data and
 opaque `Origin` do not authorize Release, filesystem transactions, generation
-selection or startup. The existing Installation request facade remains the
-command/transaction consumer; original Root effect admission checks that same
-provenance. General trusted-path observations for lease, staging and inspection
+selection or startup. Offline command authentication consumes the request owner
+directly; native delivery transactions still use their request facade and
+original Root effect admission checks the same provenance. General trusted-path observations for lease, staging and inspection
 remain distinct from request-file provenance.
 
 
