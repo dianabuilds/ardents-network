@@ -1,10 +1,9 @@
 package infrastructure
 
 import (
-	"bytes"
 	"encoding/hex"
-	"encoding/json"
-	"path/filepath"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
 // Only root's explicit-stop producer writes this original completion. The
@@ -34,73 +33,11 @@ func (r sourceRetirementResult) execution() sourceExecution {
 }
 
 func decodeSourceRetirementRecords(raw []byte, directory, start, challenge, completed, result string, gid uint32) (map[string]sourceStartEntry, error) {
-	if len(raw) == 0 || len(raw) > 128<<10 || raw[len(raw)-1] != '\n' || gid < 100 || gid > 999 {
+	records, err := journal.DecodeSourceRetirementRecords(raw, directory, start, challenge, completed, result, gid)
+	if err != nil {
 		return nil, ErrBinding
 	}
-	for _, hash := range []string{start, challenge, completed, result} {
-		if !sourceInitialSHA(hash) {
-			return nil, ErrBinding
-		}
-	}
-	lines := bytes.Split(raw[:len(raw)-1], []byte{'\n'})
-	if len(lines) != 12 {
-		return nil, ErrBinding
-	}
-	position := 0
-	owned := map[string]sourceStartEntry{}
-	next := func(phase, path, sha string, mode, group uint32, native bool) error {
-		if position >= len(lines) || len(lines[position])+1 > 32<<10 {
-			return ErrBinding
-		}
-		var actual sourceStartEntry
-		if json.Unmarshal(lines[position], &actual) != nil {
-			return ErrBinding
-		}
-		canonical, err := json.Marshal(actual)
-		if err != nil || !bytes.Equal(canonical, lines[position]) {
-			return ErrBinding
-		}
-		wanted := sourceStartEntry{Schema: "ardents-source-retirement-record-v1", Sequence: uint32(position), Phase: phase, Path: path, SHA256: sha, Mode: mode, GID: group}
-		if native {
-			if actual.Device == 0 || actual.Inode == 0 {
-				return ErrBinding
-			}
-			wanted.Device, wanted.Inode = actual.Device, actual.Inode
-			if previous, found := owned[path]; found && (previous.Device != actual.Device || previous.Inode != actual.Inode) {
-				return ErrBinding
-			}
-		}
-		if actual != wanted {
-			return ErrBinding
-		}
-		if native {
-			owned[path] = actual
-		}
-		position++
-		return nil
-	}
-	journal := filepath.Join(directory, "source-retirement-journal")
-	socket := filepath.Join(directory, "stop-completion.socket")
-	file := filepath.Join(directory, "source-retirement.json")
-	if next("stop", journal, start, 0600, 0, true) != nil || next("socket-intent", socket, "", 0, 0, false) != nil {
-		return nil, ErrBinding
-	}
-	var birth sourceStartEntry
-	if json.Unmarshal(lines[position], &birth) != nil || birth.Mode > 0777 {
-		return nil, ErrBinding
-	}
-	if next("socket-born", socket, "", birth.Mode, 0, true) != nil || next("socket-ready", socket, "", 0660, gid, true) != nil ||
-		next("interrupt-attempt", directory, challenge, 0, 0, false) != nil ||
-		next("domain-joined", directory, completed, 0, 0, false) != nil ||
-		next("native-joined", directory, result, 0, 0, false) != nil ||
-		next("native-closed", directory, result, 0, 0, false) != nil ||
-		next("file-intent", file, result, 0, 0, false) != nil ||
-		next("file-born", file, result, 0600, 0, true) != nil ||
-		next("file-ready", file, result, 0600, 0, true) != nil ||
-		next("retired", file, result, 0600, 0, true) != nil || position != len(lines) {
-		return nil, ErrBinding
-	}
-	return owned, nil
+	return records, nil
 }
 
 func sourceRetirementChallenge(text string) ([32]byte, error) {

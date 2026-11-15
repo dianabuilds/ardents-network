@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
 // sourceStartStorage is one attempt's distinct exclusive journal and original
@@ -28,18 +30,7 @@ type sourceStartStorage struct {
 	closed        bool
 }
 
-type sourceStartEntry struct {
-	Schema   string `json:"schema"`
-	Sequence uint32 `json:"sequence"`
-	Phase    string `json:"phase"`
-	Path     string `json:"path"`
-	Device   uint64 `json:"device"`
-	Inode    uint64 `json:"inode"`
-	SHA256   string `json:"sha256"`
-	Mode     uint32 `json:"mode"`
-	UID      uint32 `json:"uid"`
-	GID      uint32 `json:"gid"`
-}
+type sourceStartEntry = journal.InvocationRecord
 
 func openSourceStartStorage(ctx context.Context, selection *sourceSelection) (s *sourceStartStorage, err error) {
 	return createSourceStartStorage(ctx, selection, 0)
