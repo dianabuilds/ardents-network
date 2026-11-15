@@ -308,7 +308,7 @@ func stagedRecoveryFixture(t *testing.T) (*successorRecoveryNative, Request) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err = DecodeRequest(t.Context(), requestBody, false)
+	request, err = decodeRequest(t.Context(), requestBody, false)
 	if err != nil {
 		t.Fatal(err)
 	}

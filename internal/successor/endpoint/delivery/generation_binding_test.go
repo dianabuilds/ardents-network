@@ -17,7 +17,7 @@ func inventoryFixture(t *testing.T) (Request, map[string][]byte, generationSelec
 		t.Fatal(err)
 	}
 	files["binding.json"] = raw
-	request, err := DecodeRequest(t.Context(), files["request.json"], true)
+	request, err := decodeRequest(t.Context(), files["request.json"], true)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,6 +12,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
@@ -59,7 +60,7 @@ func openInitialRecovery(ctx context.Context, root string, reference time.Time) 
 		intent.Request.InstallationRoot != root || intent.Request.ReleaseFloorRoot != intent.CandidateBinding.ReleaseFloorRoot {
 		return nil, errors.Join(ErrBinding, err, requestErr)
 	}
-	if _, err := DecodeRequest(ctx, requestBody, true); err != nil {
+	if _, err := requestinput.Decode(ctx, requestBody, true); err != nil {
 		return nil, err
 	}
 	originalTime, err := time.Parse(time.RFC3339Nano, intent.Request.ReferenceTime)

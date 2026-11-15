@@ -18,7 +18,7 @@ import (
 // production command integration tests in cmd/ardents-next.
 func TestAssemblyCannotUseStoredObservationsAsFreshAuthority(t *testing.T) {
 	_, binding, files := installedObservationFixture(t)
-	request, err := DecodeRequest(t.Context(), files["request.json"], true)
+	request, err := decodeRequest(t.Context(), files["request.json"], true)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -346,7 +346,7 @@ func TestInstallationNativeRequestCustodyReobservation(t *testing.T) {
 	for _, name := range []string{"same", "changed-bytes", "replaced-inode", "lost-file"} {
 		t.Run(name, func(t *testing.T) {
 			filename := writeNativeRequest(t, nativeRequestDirectory(t))
-			request, err := ReadOwnedRequest(t.Context(), filename, true)
+			request, err := readOwnedRequest(t.Context(), filename, true)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -12,14 +12,15 @@ import (
 	"syscall"
 	"time"
 
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 // This recovery owns fresh independent read/process/scope observations. It does
@@ -90,7 +91,7 @@ func openSuccessorRecovery(ctx context.Context, root string, reference time.Time
 	if err != nil {
 		return nil, request, err
 	}
-	if _, err := DecodeRequest(ctx, requestBody, false); err != nil {
+	if _, err := requestinput.Decode(ctx, requestBody, false); err != nil {
 		return nil, request, err
 	}
 	original, err := time.Parse(time.RFC3339Nano, request.ReferenceTime)
@@ -541,7 +542,7 @@ func (r *successorRecoveryNative) openWritingTransition(ctx context.Context) err
 	if err != nil {
 		return err
 	}
-	request, err := DecodeRequest(ctx, requestBody, false)
+	request, err := decodeRequest(ctx, requestBody, false)
 	if err != nil {
 		return err
 	}
@@ -923,7 +924,7 @@ func (r *successorRecoveryNative) retainStagedTransition(ctx context.Context) er
 	if err != nil {
 		return err
 	}
-	request, err := DecodeRequest(ctx, requestBody, false)
+	request, err := decodeRequest(ctx, requestBody, false)
 	if err != nil {
 		return err
 	}

@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
@@ -87,7 +87,7 @@ func successorStagingFixture(t *testing.T) (*installedRoot, Request, generationS
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := DecodeRequest(t.Context(), raw, false)
+	request, err := decodeRequest(t.Context(), raw, false)
 	if err != nil {
 		t.Fatal(err)
 	}

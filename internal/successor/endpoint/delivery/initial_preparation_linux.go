@@ -440,7 +440,7 @@ func readProvisionRequest(ctx context.Context, filename string) (Request, error)
 	if err := observeInstallationPlatform(ctx); err != nil {
 		return Request{}, err
 	}
-	request, err := ReadOwnedRequest(ctx, filename, true)
+	request, err := readOwnedRequest(ctx, filename, true)
 	if err != nil {
 		return Request{}, err
 	}

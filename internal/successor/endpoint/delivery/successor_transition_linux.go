@@ -40,7 +40,7 @@ func prepareSuccessorNative(ctx context.Context, filename string) (result *succe
 	if err := observeInstallationPlatform(ctx); err != nil {
 		return nil, err
 	}
-	request, err := ReadOwnedRequest(ctx, filename, false)
+	request, err := readOwnedRequest(ctx, filename, false)
 	if err != nil {
 		return nil, err
 	}

@@ -797,7 +797,7 @@ application composition. Это не импорт Release в Enrollment. Command
 Installation не должны поддерживать разные списки исключений.
 
 Новый Installation проверяет canonical request и вложенные Headless/Source
-declarations через `DecodeRequest`, сохраняя текущие schemas, порядок полей
+declarations через `request.Decode`, сохраняя текущие schemas, порядок полей
 и ограничения байтов. Их canonical grammar и native original input custody
 принадлежат `request`; корень Installation потребляет private `Document`/`Origin`
 через свой совместимый Request и отдельно допускает транзакцию.

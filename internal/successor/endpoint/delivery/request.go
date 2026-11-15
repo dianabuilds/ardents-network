@@ -18,8 +18,8 @@ type installationRequest = requestinput.Declaration
 
 var ErrNativeUnavailable = requestinput.ErrNativeUnavailable
 
-// DecodeRequest admits canonical portable declarations without native custody.
-func DecodeRequest(ctx context.Context, raw []byte, initial bool) (Request, error) {
+// decodeRequest admits canonical portable declarations without native custody.
+func decodeRequest(ctx context.Context, raw []byte, initial bool) (Request, error) {
 	document, err := requestinput.Decode(ctx, raw, initial)
 	if err != nil {
 		return Request{}, err
@@ -27,8 +27,8 @@ func DecodeRequest(ctx context.Context, raw []byte, initial bool) (Request, erro
 	return retainRequest(document), nil
 }
 
-// ReadOwnedRequest retains checked input and opaque original native provenance.
-func ReadOwnedRequest(ctx context.Context, filename string, initial bool) (Request, error) {
+// readOwnedRequest retains checked input and opaque original native provenance.
+func readOwnedRequest(ctx context.Context, filename string, initial bool) (Request, error) {
 	document, err := requestinput.ReadOwned(ctx, filename, initial)
 	if err != nil {
 		return Request{}, err
