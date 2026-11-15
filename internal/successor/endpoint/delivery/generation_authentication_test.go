@@ -2,13 +2,14 @@ package delivery
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/authorization"
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
@@ -103,5 +104,14 @@ func TestSuccessorContinuityRetainsInstalledHistoryAndEnvironment(t *testing.T) 
 				t.Fatalf("continuity: got %v, want %v", err, test.want)
 			}
 		})
+	}
+}
+
+func TestSuccessorAuthenticationRejectsMissingVerifierAndContext(t *testing.T) {
+	for _, ctx := range []context.Context{nil, context.Background()} {
+		_, err := authenticateSuccessor(ctx, nil, enrollment.Candidate{}, release.Inputs{}, generationBinding{})
+		if !errors.Is(err, ErrInput) {
+			t.Fatalf("missing original verification owner accepted: %v", err)
+		}
 	}
 }

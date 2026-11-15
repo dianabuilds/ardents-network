@@ -1,12 +1,12 @@
-// Native successor fresh authorization under independently retained installed facts.
+// Fresh successor authorization under independently retained installed facts.
 package delivery
 
 import (
 	"context"
 	"errors"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/authorization"
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
