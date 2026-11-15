@@ -1,4 +1,6 @@
-package join
+//go:build linux || darwin
+
+package introduction
 
 import (
 	"bytes"
@@ -10,11 +12,11 @@ import (
 )
 
 var (
-	ErrInput   = errors.New("JOIN installation: invalid input")
-	ErrBinding = errors.New("JOIN installation: binding differs")
+	ErrInput   = errors.New("introduction installation: invalid input")
+	ErrBinding = errors.New("introduction installation: binding differs")
 )
 
-// Request declares original delivery inputs and four independent semantic roots.
+// Request declares original delivery inputs and five independent semantic roots.
 // It supplies no account adoption, resource creation or startup permission. The
 // provider's one Hosting root remains fixed across later admitted invocations.
 type Request struct {
@@ -26,6 +28,7 @@ type Request struct {
 	ParticipationRoot   string `json:"participation_root"`
 	SpendRoot           string `json:"spend_root"`
 	HostingRoot         string `json:"hosting_root"`
+	IntroductionRoot    string `json:"introduction_root"`
 	CredentialDirectory string `json:"credential_directory"`
 	Plan                string `json:"plan"`
 	Certificate         string `json:"certificate"`
@@ -43,7 +46,7 @@ func DecodeRequest(raw []byte) (Request, error) {
 		return Request{}, ErrInput
 	}
 	canonical, err := json.Marshal(r)
-	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) || r.Schema != "ardents-join-installation-v1" || r.Invocation != "join" || r.Profile != "ardents-join-process-v1" {
+	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) || r.Schema != "ardents-introduction-installation-v1" || r.Invocation != "introduction" || r.Profile != "ardents-introduction-process-v1" {
 		return Request{}, ErrInput
 	}
 	paths := r.paths()
@@ -67,7 +70,7 @@ func DecodeRequest(raw []byte) (Request, error) {
 			}
 		}
 	}
-	for _, path := range []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.CredentialDirectory, r.Clock} {
+	for _, path := range []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.IntroductionRoot, r.CredentialDirectory, r.Clock} {
 		for _, hidden := range []string{"/tmp", "/var/tmp", "/home", "/root", "/run/user"} {
 			if contains(hidden, path) {
 				return Request{}, ErrBinding
@@ -77,11 +80,11 @@ func DecodeRequest(raw []byte) (Request, error) {
 	// Linux pathname sockets need the final NUL in their 108-byte sun_path.
 	// Check the entire retained namespace before any installation effect.
 	for n := 0; n < attemptLimit; n++ {
-		start := filepath.Join(r.InstallationRoot, fmt.Sprintf("join-invocation-%08d", n), "start-completion.socket")
+		start := filepath.Join(r.InstallationRoot, fmt.Sprintf("introduction-invocation-%08d", n), "start-completion.socket")
 		if n == 0 {
-			start = filepath.Join(r.InstallationRoot, "join-startup", "start-completion.socket")
+			start = filepath.Join(r.InstallationRoot, "introduction-startup", "start-completion.socket")
 		}
-		stop := filepath.Join(r.InstallationRoot, fmt.Sprintf("join-retirement-%08d", n), "stop-completion.socket")
+		stop := filepath.Join(r.InstallationRoot, fmt.Sprintf("introduction-retirement-%08d", n), "stop-completion.socket")
 		if len(start) > 107 || len(stop) > 107 {
 			return Request{}, ErrInput
 		}
@@ -90,16 +93,16 @@ func DecodeRequest(raw []byte) (Request, error) {
 }
 
 func (r Request) paths() []string {
-	return []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.CredentialDirectory, r.Plan, r.Certificate, r.PrivateKey, r.Clock}
+	return []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.IntroductionRoot, r.CredentialDirectory, r.Plan, r.Certificate, r.PrivateKey, r.Clock}
 }
 
 func (r Request) reservedSiblingPaths() []string {
-	paths := []string{r.InstallationRoot + ".join-initial-journal", r.InstallationRoot + ".join-initial-pending", r.InstallationRoot + ".join-hosting-journal", r.InstallationRoot + ".join-hosting-pending", r.InstallationRoot + ".join-hosting", r.InstallationRoot + ".join-first-start-journal", r.InstallationRoot + ".join-replacement-pending"}
+	paths := []string{r.InstallationRoot + ".introduction-initial-journal", r.InstallationRoot + ".introduction-initial-pending", r.InstallationRoot + ".introduction-hosting-journal", r.InstallationRoot + ".introduction-hosting-pending", r.InstallationRoot + ".introduction-hosting", r.InstallationRoot + ".introduction-first-start-journal", r.InstallationRoot + ".introduction-replacement-pending"}
 	for n := 0; n < attemptLimit; n++ {
 		if n != 0 {
-			paths = append(paths, r.InstallationRoot+fmt.Sprintf(".join-invocation-%08d-journal", n))
+			paths = append(paths, r.InstallationRoot+fmt.Sprintf(".introduction-invocation-%08d-journal", n))
 		}
-		paths = append(paths, r.InstallationRoot+fmt.Sprintf(".join-retirement-%08d-journal", n))
+		paths = append(paths, r.InstallationRoot+fmt.Sprintf(".introduction-retirement-%08d-journal", n))
 	}
 	return paths
 }

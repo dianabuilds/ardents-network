@@ -1486,7 +1486,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"JOIN public signing grants no Route consumer", "cmd/ardents-control/join_release_linux.go", modulePath + "/internal/successor/route/role", false},
 		{"JOIN public plan grants no State owner", "cmd/ardents-control/join_release_plan_linux.go", modulePath + "/internal/successor/network/state", false},
 		{"JOIN public plan uses detached traffic declaration", "internal/successor/installation/join/plan_linux.go", modulePath + "/internal/successor/hosting", true},
-		{"JOIN request has no Hosting import", "internal/successor/installation/join/request_linux.go", modulePath + "/internal/successor/hosting", false},
+		{"JOIN request has no Hosting import", "internal/successor/installation/join/request.go", modulePath + "/internal/successor/hosting", false},
 		{"JOIN public plan has no State owner", "internal/successor/installation/join/plan_linux.go", modulePath + "/internal/successor/network/state", false},
 		{"canonical JOIN plan uses exact declaration owner", "cmd/ardents-control/join_plan_linux.go", modulePath + "/internal/successor/installation/join", true},
 		{"canonical JOIN preparation grants no Route exception", "cmd/ardents-control/join_plan_linux.go", modulePath + "/internal/successor/route/role", false},
