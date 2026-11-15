@@ -331,7 +331,10 @@ func (f *forwarding) cleanup() error {
 	}
 	retain("process", f.process.Close())
 	retain("credential", f.credential.close())
-	retain("participation", releaseParticipation(f.producer, result))
+	f.mu.Lock()
+	first := f.first
+	f.mu.Unlock()
+	retain("participation", releaseParticipation(f.producer, first, result))
 	return result
 }
 

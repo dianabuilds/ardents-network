@@ -8,11 +8,12 @@ import (
 )
 
 // releaseParticipation withdraws the original restriction only after Node's
-// physical owners have joined successfully. A failed close leaves the durable
-// restriction in place with its original Network phase and expiry. Neither its
-// absence nor its presence proves later command-owned State and startup closes.
-func releaseParticipation(producer *duty.NodeProducer, cleanup error) error {
-	if producer == nil || cleanup != nil {
+// physical owners have joined successfully and the original runtime did not
+// fail. An ordinary cancellation is a clean stop. Failure leaves the original
+// Network restriction with its existing phase and expiry; neither presence nor
+// absence proves later command-owned State and startup closes.
+func releaseParticipation(producer *duty.NodeProducer, first, cleanup error) error {
+	if producer == nil || cleanup != nil || first != nil && first != context.Canceled {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

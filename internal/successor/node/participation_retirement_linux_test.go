@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
 	"time"
@@ -11,8 +12,18 @@ import (
 )
 
 func TestParticipationRetirementKeepsConflictOnCleanupFailure(t *testing.T) {
-	for _, failed := range []bool{false, true} {
-		t.Run(map[bool]string{false: "joined", true: "failed"}[failed], func(t *testing.T) {
+	for _, scenario := range []struct {
+		name           string
+		first, cleanup error
+		conflict       bool
+	}{
+		{"joined", nil, nil, false},
+		{"canceled", context.Canceled, nil, false},
+		{"runtime failure", errors.New("runtime failure"), nil, true},
+		{"wrapped cancellation", fmt.Errorf("physical failure: %w", context.Canceled), nil, true},
+		{"cleanup failure", nil, errors.New("physical owner failed to close"), true},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
 			now := time.Unix(1800000000, 0).UTC()
 			config := duty.Config{Root: filepath.Join(t.TempDir(), "participation"), Clock: func() time.Time { return now }, Create: true}
 			facts := duty.NodeParticipation{Identity: [32]byte{1}, FamilyID: [32]byte{2}, Assignment: "rendezvous", EpochUntil: now.Add(time.Minute), RecordUntil: now.Add(2 * time.Minute)}
@@ -24,11 +35,7 @@ func TestParticipationRetirementKeepsConflictOnCleanupFailure(t *testing.T) {
 			if err := producer.Live(); err != nil {
 				t.Fatal(err)
 			}
-			var cleanup error
-			if failed {
-				cleanup = errors.New("physical owner failed to close")
-			}
-			if err := releaseParticipation(producer, cleanup); err != nil {
+			if err := releaseParticipation(producer, scenario.first, scenario.cleanup); err != nil {
 				t.Fatal(err)
 			}
 			config.Create = false
@@ -38,8 +45,8 @@ func TestParticipationRetirementKeepsConflictOnCleanupFailure(t *testing.T) {
 			}
 			defer store.Close()
 			conflict, err := store.Conflict(facts.Identity, facts.FamilyID)
-			if err != nil || conflict != failed {
-				t.Fatalf("conflict=%v, cleanup failed=%v: %v", conflict, failed, err)
+			if err != nil || conflict != scenario.conflict {
+				t.Fatalf("conflict=%v, expected=%v: %v", conflict, scenario.conflict, err)
 			}
 		})
 	}
@@ -54,7 +61,7 @@ func TestFailedPreparedParticipationStillExpires(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = producer.Close(context.Background()) })
-	if err := releaseParticipation(producer, errors.New("cleanup failed before live")); err != nil {
+	if err := releaseParticipation(producer, nil, errors.New("cleanup failed before live")); err != nil {
 		t.Fatal(err)
 	}
 	now = now.Add(3 * time.Minute)

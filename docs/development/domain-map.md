@@ -432,8 +432,9 @@ and [Route integration](route-delivery-join-boundary.md) own the complete rules:
   Service permission; live Execution admission remains separate.
 
 The installed Forwarding, JOIN, Descriptor and Introduction Nodes withdraw their
-original Network participation only after their own physical cleanup succeeds;
-a failed cleanup retains the original participation record. A live restriction
+original Network participation only after their own physical cleanup succeeds
+and their original runtime has no failure; ordinary cancellation is a clean
+stop. An operational or cleanup failure retains the participation record. A live restriction
 retains its conflict; a prepared restriction keeps its original expiry.
 Command-owned State and Startup still close later and require their own joined
 outcome.
