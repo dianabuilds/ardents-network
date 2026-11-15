@@ -2,75 +2,24 @@ package delivery
 
 import (
 	"context"
-	"time"
 
 	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 )
 
-// Request retains checked declarations and optional opaque original-file
-// provenance. It grants no Release, native effect or runtime authority.
-type Request struct {
-	declared *installationRequest
-	custody  *requestinput.Origin
-}
+// Request is the request owner's checked original document. It grants no
+// Release, native effect or runtime authority.
+type Request = requestinput.Document
 
 type installationRequest = requestinput.Declaration
 
 var ErrNativeUnavailable = requestinput.ErrNativeUnavailable
 
-// decodeRequest admits canonical portable declarations without native custody.
 func decodeRequest(ctx context.Context, raw []byte, initial bool) (Request, error) {
-	document, err := requestinput.Decode(ctx, raw, initial)
-	if err != nil {
-		return Request{}, err
-	}
-	return retainRequest(document), nil
+	return requestinput.Decode(ctx, raw, initial)
 }
 
-// readOwnedRequest retains checked input and opaque original native provenance.
 func readOwnedRequest(ctx context.Context, filename string, initial bool) (Request, error) {
-	document, err := requestinput.ReadOwned(ctx, filename, initial)
-	if err != nil {
-		return Request{}, err
-	}
-	return retainRequest(document), nil
-}
-
-func retainRequest(document requestinput.Document) Request {
-	declared, ok := document.Declaration()
-	if !ok {
-		return Request{}
-	}
-	return Request{declared: &declared, custody: document.Origin()}
-}
-
-func (r Request) BundleRoot() string {
-	if r.declared == nil {
-		return ""
-	}
-	return r.declared.BundleRoot
-}
-
-func (r Request) ManifestSHA256() string {
-	if r.declared == nil {
-		return ""
-	}
-	return r.declared.ManifestSHA256
-}
-
-func (r Request) ReleaseHistoryRoot() string {
-	if r.declared == nil {
-		return ""
-	}
-	return r.declared.ReleaseFloorRoot
-}
-
-func (r Request) ReferenceTime() time.Time {
-	if r.declared == nil {
-		return time.Time{}
-	}
-	at, _ := time.Parse(time.RFC3339Nano, r.declared.ReferenceTime)
-	return at
+	return requestinput.ReadOwned(ctx, filename, initial)
 }
 
 func decodeInstallationRequest(raw []byte) (installationRequest, error) {

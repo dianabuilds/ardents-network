@@ -2165,8 +2165,8 @@ Installation's `request` Module owns canonical local declarations and independen
 original root-owned request-file reobservation. Its detached `Document` data and
 opaque `Origin` do not authorize Release, filesystem transactions, generation
 selection or startup. Offline command authentication consumes the request owner
-directly; native delivery transactions still use their request facade and
-original Root effect admission checks the same provenance. General trusted-path observations for lease, staging and inspection
+directly; native delivery transactions retain the same original document and
+Root effect admission reobserves that document’s original provenance. General trusted-path observations for lease, staging and inspection
 remain distinct from request-file provenance.
 
 

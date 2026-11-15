@@ -376,7 +376,11 @@ func stageInitialGeneration(ctx context.Context, lease *installationLease, reque
 			returnedErr = stage.close()
 		}
 	}()
-	intentBody, err := canonicalJSON(initialTransitionIntent{Schema: "ardents-endpoint-installation-initial-v1", Candidate: selected, CandidateBinding: binding, Request: *request.declared})
+	declared, valid := request.Declaration()
+	if !valid {
+		return nil, ErrBinding
+	}
+	intentBody, err := canonicalJSON(initialTransitionIntent{Schema: "ardents-endpoint-installation-initial-v1", Candidate: selected, CandidateBinding: binding, Request: declared})
 	if err != nil || len(intentBody) > 128<<10 {
 		return nil, errors.Join(ErrBinding, err)
 	}
@@ -755,7 +759,8 @@ func (stage *installationTransaction) observeIntent() error {
 // A native byte-staging mechanism, not fresh proof admission. Its only product
 // caller is the still-leased preparation with its genuine retained fresh pair.
 func stageSuccessorGeneration(ctx context.Context, reader *installedRoot, request Request, previous generationSelection, files map[string][]byte, selected generationSelection, gid uint32) (result *installationTransaction, returnedErr error) {
-	if ctx == nil || reader == nil || reader.lease == nil || request.declared == nil || request.ManifestSHA256() != "" ||
+	declared, valid := request.Declaration()
+	if ctx == nil || reader == nil || reader.lease == nil || !valid || request.ManifestSHA256() != "" ||
 		previous.Schema != "ardents-endpoint-installation-selection-v1" || !canonicalDigest(previous.GenerationDigest) ||
 		!canonicalDigest(previous.BindingDigest) || previous.GenerationDigest == selected.GenerationDigest {
 		return nil, ErrBinding
@@ -800,7 +805,7 @@ func stageSuccessorGeneration(ctx context.Context, reader *installedRoot, reques
 			return nil, errors.Join(ErrBinding, err)
 		}
 	}
-	intent := successorTransitionIntent{Schema: "ardents-endpoint-installation-successor-v1", Previous: previous, Candidate: selected, CandidateBinding: binding, Request: *request.declared}
+	intent := successorTransitionIntent{Schema: "ardents-endpoint-installation-successor-v1", Previous: previous, Candidate: selected, CandidateBinding: binding, Request: declared}
 	intentBody, err := canonicalJSON(intent)
 	if err != nil || len(intentBody) > 128<<10 {
 		return nil, errors.Join(ErrBinding, err)

@@ -21,7 +21,7 @@ func TestProvisionRefusesOriginalCancellationBeforeNativeEffects(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			request, err := ReadProvisionRequest(test.ctx, "/not-an-admitted-request")
-			if !errors.Is(err, test.want) || request.declared != nil || request.custody != nil {
+			if !errors.Is(err, test.want) || requestHasDeclaration(request) || request.Origin() != nil {
 				t.Fatal("pre-effect request refusal lost", err)
 			}
 			result, err := ProvisionInitial(test.ctx, Request{}, generationauthorization.Authorization{})

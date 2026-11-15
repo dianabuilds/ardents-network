@@ -799,8 +799,8 @@ Installation не должны поддерживать разные списк�
 Новый Installation проверяет canonical request и вложенные Headless/Source
 declarations через `request.Decode`, сохраняя текущие schemas, порядок полей
 и ограничения байтов. Их canonical grammar и native original input custody
-принадлежат `request`; корень Installation потребляет private `Document`/`Origin`
-через свой совместимый Request и отдельно допускает транзакцию.
+принадлежат `request`; транзакция удерживает исходный `Document`/`Origin`,
+получает отдельные копии декларации и самостоятельно допускает эффекты.
 Root declarations выбранного Linux-профиля используют одну POSIX grammar
 на всех hosts; это не native filesystem проверка или Windows installation.
 Нормализованные дубликаты public keys, invalid threshold и перекрывающиеся

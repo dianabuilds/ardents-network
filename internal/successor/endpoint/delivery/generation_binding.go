@@ -72,7 +72,8 @@ type generationBinding struct {
 // Native staging owns durable intent, account/root provenance, physical writes
 // and their rechecks; it must not infer those facts from a stored binding.
 func assembleGeneration(ctx context.Context, request Request, authorization generationauthorization.Authorization, prepared preparedInstallation) (map[string][]byte, generationSelection, error) {
-	if ctx == nil || request.declared == nil || prepared.uid == 0 || prepared.gid == 0 {
+	declared, valid := request.Declaration()
+	if ctx == nil || !valid || prepared.uid == 0 || prepared.gid == 0 {
 		return nil, generationSelection{}, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
@@ -84,7 +85,6 @@ func assembleGeneration(ctx context.Context, request Request, authorization gene
 	if !programOK || !generationOK || !request.ReferenceTime().Equal(generation.ReferenceTime) {
 		return nil, generationSelection{}, ErrAuthorization
 	}
-	declared := *request.declared
 	rawRequest, err := canonicalJSON(declared)
 	if err != nil {
 		return nil, generationSelection{}, err
@@ -183,7 +183,8 @@ func digestHex(body []byte) string { return hex.EncodeToString(digestBytes(body)
 // Freeze a closed artifact inventory before native staging. These bytes and
 // public binding facts grant no fresh Release or native ownership authority.
 func freezeGenerationInventory(request Request, root string, files map[string][]byte, selected generationSelection, gid uint32) (map[string][]byte, generationBinding, error) {
-	if request.declared == nil || gid == 0 || selected.Schema != "ardents-endpoint-installation-selection-v1" ||
+	declared, valid := request.Declaration()
+	if !valid || gid == 0 || selected.Schema != "ardents-endpoint-installation-selection-v1" ||
 		!canonicalDigest(selected.GenerationDigest) || !canonicalDigest(selected.BindingDigest) ||
 		selected.BindingDigest != digestHex(files["binding.json"]) {
 		return nil, generationBinding{}, ErrBinding
@@ -194,7 +195,7 @@ func freezeGenerationInventory(request Request, root string, files map[string][]
 	}
 	body, err := canonicalJSON(binding)
 	if err != nil || !bytes.Equal(body, files["binding.json"]) || binding.InstallationRoot != root ||
-		request.declared.InstallationRoot != root || binding.GenerationDigest != selected.GenerationDigest ||
+		declared.InstallationRoot != root || binding.GenerationDigest != selected.GenerationDigest ||
 		selected.GenerationDigest != digestHex(files["protected-endpoint.json"]) || binding.UID == 0 || binding.GID != gid || len(files) != 15 || len(binding.Files) != 14 {
 		return nil, binding, ErrBinding
 	}

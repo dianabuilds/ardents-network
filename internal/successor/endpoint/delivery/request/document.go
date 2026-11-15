@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/protectedfiles"
 )
@@ -55,3 +56,36 @@ func (d Document) Declaration() (Declaration, bool) {
 
 // Origin returns opaque original-file provenance; decoded documents have none.
 func (d Document) Origin() *Origin { return d.custody }
+
+// BundleRoot is the detached declared bundle location, not custody.
+func (d Document) BundleRoot() string {
+	if d.declared == nil {
+		return ""
+	}
+	return d.declared.BundleRoot
+}
+
+// ManifestSHA256 is the independently supplied initial pin, when present.
+func (d Document) ManifestSHA256() string {
+	if d.declared == nil {
+		return ""
+	}
+	return d.declared.ManifestSHA256
+}
+
+// ReleaseHistoryRoot identifies the independently owned trust history.
+func (d Document) ReleaseHistoryRoot() string {
+	if d.declared == nil {
+		return ""
+	}
+	return d.declared.ReleaseFloorRoot
+}
+
+// ReferenceTime is the canonical time in the checked declaration.
+func (d Document) ReferenceTime() time.Time {
+	if d.declared == nil {
+		return time.Time{}
+	}
+	at, _ := time.Parse(time.RFC3339Nano, d.declared.ReferenceTime)
+	return at
+}

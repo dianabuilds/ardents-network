@@ -67,7 +67,7 @@ func TestInstallationRequestOriginalCancellationAtHandoff(t *testing.T) {
 	// A bounded CPU decode still owes its original caller a final handoff check.
 	ctx := &requestHandoffCancellation{Context: context.Background()}
 	r, err := decodeRequest(ctx, requestFixture(), true)
-	if !errors.Is(err, context.Canceled) || r.declared != nil {
+	if !errors.Is(err, context.Canceled) || requestHasDeclaration(r) {
 		t.Fatal("late cancellation published checked declarations")
 	}
 }
@@ -126,16 +126,21 @@ func TestInstallationRequestCausalRefusals(t *testing.T) {
 func TestOwnedRequestRefusesBeforeAcquiringCustody(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if request, err := readOwnedRequest(ctx, "/never-opened", true); !errors.Is(err, context.Canceled) || request.custody != nil || request.declared != nil {
+	if request, err := readOwnedRequest(ctx, "/never-opened", true); !errors.Is(err, context.Canceled) || request.Origin() != nil || requestHasDeclaration(request) {
 		t.Fatalf("original cancellation lost: %v", err)
 	}
 	for _, filename := range []string{"", "relative", "/directory/../request"} {
-		if request, err := readOwnedRequest(t.Context(), filename, true); err == nil || request.custody != nil || request.declared != nil {
+		if request, err := readOwnedRequest(t.Context(), filename, true); err == nil || request.Origin() != nil || requestHasDeclaration(request) {
 			t.Fatalf("invalid native input acquired custody: %v", err)
 		}
 	}
 	request, err := decodeRequest(t.Context(), requestFixture(), true)
-	if err != nil || request.custody != nil {
+	if err != nil || request.Origin() != nil {
 		t.Fatal("portable declarations became native provenance")
 	}
+}
+
+func requestHasDeclaration(request Request) bool {
+	_, ok := request.Declaration()
+	return ok
 }

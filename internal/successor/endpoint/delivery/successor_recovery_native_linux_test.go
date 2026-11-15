@@ -303,8 +303,12 @@ func TestInstallationNativeWritingRecoveryRetainsFirstFailurePrefixes(t *testing
 func stagedRecoveryFixture(t *testing.T) (*successorRecoveryNative, Request) {
 	t.Helper()
 	lease, request, files, selected := nativeStagingFixture(t)
-	request.declared.ManifestSHA256 = ""
-	requestBody, err := canonicalJSON(*request.declared)
+	declared, valid := request.Declaration()
+	if !valid {
+		t.Fatal("staging fixture lacks a declaration")
+	}
+	declared.ManifestSHA256 = ""
+	requestBody, err := canonicalJSON(declared)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -346,7 +350,7 @@ func stagedRecoveryFixture(t *testing.T) (*successorRecoveryNative, Request) {
 		t.Fatal(err)
 	}
 	previous := generationSelection{Schema: selected.Schema, GenerationDigest: digestHex([]byte("previous descriptor image")), BindingDigest: digestHex([]byte("previous binding image"))}
-	intent := successorTransitionIntent{Schema: "ardents-endpoint-installation-successor-v1", Previous: previous, Candidate: selected, CandidateBinding: binding, Request: *request.declared}
+	intent := successorTransitionIntent{Schema: "ardents-endpoint-installation-successor-v1", Previous: previous, Candidate: selected, CandidateBinding: binding, Request: declared}
 	intentBody, err := canonicalJSON(intent)
 	if err != nil {
 		t.Fatal(err)

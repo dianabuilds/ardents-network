@@ -44,7 +44,11 @@ func prepareSuccessorNative(ctx context.Context, filename string) (result *succe
 	if err != nil {
 		return nil, err
 	}
-	reader, err := openInstalledRoot(ctx, request.declared.InstallationRoot)
+	declared, valid := request.Declaration()
+	if !valid {
+		return nil, ErrInput
+	}
+	reader, err := openInstalledRoot(ctx, declared.InstallationRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +64,8 @@ func prepareSuccessorNative(ctx context.Context, filename string) (result *succe
 		return nil, err
 	}
 	if request.ReleaseHistoryRoot() != previous.binding.ReleaseFloorRoot ||
-		request.declared.Headless.NetworkID != previous.request.Headless.NetworkID ||
-		!slices.Equal(mutableRoots(request.declared.Headless), mutableRoots(previous.request.Headless)) {
+		declared.Headless.NetworkID != previous.request.Headless.NetworkID ||
+		!slices.Equal(mutableRoots(declared.Headless), mutableRoots(previous.request.Headless)) {
 		return nil, ErrBinding
 	}
 	owned.previous = previous
@@ -284,7 +288,11 @@ func (owned *successorPreparation) publishSuccessorSelection() error {
 }
 
 func (owned *successorPreparation) observeReloadedSuccessor() error {
-	if owned == nil || owned.ctx == nil || owned.authorization == nil || owned.stage == nil || owned.predecessor == nil || !owned.predecessor.joined || owned.request.declared == nil {
+	if owned == nil || owned.ctx == nil || owned.authorization == nil || owned.stage == nil || owned.predecessor == nil || !owned.predecessor.joined {
+		return ErrBinding
+	}
+	declared, valid := owned.request.Declaration()
+	if !valid {
 		return ErrBinding
 	}
 	if err := owned.observe(); err != nil {
@@ -302,7 +310,7 @@ func (owned *successorPreparation) observeReloadedSuccessor() error {
 		if err != nil {
 			return err
 		}
-		if err := verifyQuiescentEndpointProperties(version, unit, service, *owned.request.declared, owned.stage.selected.GenerationDigest); err != nil {
+		if err := verifyQuiescentEndpointProperties(version, unit, service, declared, owned.stage.selected.GenerationDigest); err != nil {
 			return err
 		}
 		if err := observeStoppedActivationSockets(owned.ctx); err != nil {
@@ -320,7 +328,7 @@ func (owned *successorPreparation) observeReloadedSuccessor() error {
 	}
 	// Actual candidate configuration has now been independently observed twice.
 	// Keep original process/scope custody and join; update only loaded facts.
-	owned.predecessor.loadedRequest = *owned.request.declared
+	owned.predecessor.loadedRequest = declared
 	owned.predecessor.loadedGeneration = owned.stage.selected.GenerationDigest
 	return owned.ctx.Err()
 }
@@ -356,7 +364,11 @@ func (owned *successorPreparation) prepareStartBarrier() error {
 // a process. Stored binding facts remain observations, never Release proofs.
 func (owned *successorPreparation) inspectStagedCandidate() error {
 	if owned == nil || owned.ctx == nil || owned.authorization == nil || owned.inspection == nil ||
-		owned.request.declared == nil || owned.stage == nil || owned.predecessor == nil || !owned.predecessor.joined || owned.candidate != nil {
+		owned.stage == nil || owned.predecessor == nil || !owned.predecessor.joined || owned.candidate != nil {
+		return ErrBinding
+	}
+	declared, valid := owned.request.Declaration()
+	if !valid {
 		return ErrBinding
 	}
 	if err := owned.observe(); err != nil {
@@ -386,7 +398,7 @@ func (owned *successorPreparation) inspectStagedCandidate() error {
 	if err != nil || !bytes.Equal(binding, wanted) {
 		return errors.Join(ErrBinding, err)
 	}
-	request, err := canonicalJSON(*owned.request.declared)
+	request, err := canonicalJSON(declared)
 	if err != nil || !bytes.Equal(files["request.json"], request) {
 		return errors.Join(ErrBinding, err)
 	}

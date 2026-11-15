@@ -29,7 +29,8 @@ type initialPreparation struct {
 }
 
 func prepareInitialNative(ctx context.Context, request Request, authorization generationauthorization.Authorization) (result *initialPreparation, returnedErr error) {
-	if ctx == nil || request.declared == nil {
+	declared, valid := request.Declaration()
+	if ctx == nil || !valid {
 		return nil, ErrInput
 	}
 	facts, initial := authorization.InitialFacts()
@@ -40,15 +41,15 @@ func prepareInitialNative(ctx context.Context, request Request, authorization ge
 		!g.ReferenceTime.Equal(request.ReferenceTime()) || p.Environment != facts.Environment || p.Network != facts.Network {
 		return nil, ErrAuthorization
 	}
-	directory := filepath.Join(request.declared.InstallationRoot, "generations", digestHex(authorization.Descriptor()))
+	directory := filepath.Join(declared.InstallationRoot, "generations", digestHex(authorization.Descriptor()))
 	unitBytes, _ := authorization.Resource("ardents-endpoint.service")
-	if _, err := renderEndpointUnit(unitBytes, *request.declared, directory); err != nil {
+	if _, err := renderEndpointUnit(unitBytes, declared, directory); err != nil {
 		return nil, err
 	}
 	if err := preflightInitialEffects(ctx, request); err != nil {
 		return nil, err
 	}
-	lease, err := createInitialLease(ctx, request.declared.InstallationRoot)
+	lease, err := createInitialLease(ctx, declared.InstallationRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +74,7 @@ func prepareInitialNative(ctx context.Context, request Request, authorization ge
 	if err := lease.observe(); err != nil {
 		return nil, err
 	}
-	raw, err := canonicalJSON(*request.declared)
+	raw, err := canonicalJSON(declared)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +96,7 @@ func prepareInitialNative(ctx context.Context, request Request, authorization ge
 	if err := owned.journal.Append(ctx, record); err != nil {
 		return nil, err
 	}
-	paths, err := writableDirectories(*request.declared)
+	paths, err := writableDirectories(declared)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,7 @@ func prepareInitialNative(ctx context.Context, request Request, authorization ge
 			return nil, directoryObservationError(err)
 		}
 	}
-	for _, path := range mutableRoots(request.declared.Headless) {
+	for _, path := range mutableRoots(declared.Headless) {
 		identity, err := owned.created.Identity(path)
 		if err != nil {
 			return nil, directoryObservationError(err)
@@ -234,7 +235,11 @@ func (owned *initialPreparation) observeStoppedInstallation(ctx context.Context,
 	if err != nil {
 		return err
 	}
-	if err := verifyStoppedEndpointProperties(version, unit, service, *request.declared, owned.stage.selected.GenerationDigest); err != nil {
+	declared, valid := request.Declaration()
+	if !valid {
+		return ErrInput
+	}
+	if err := verifyStoppedEndpointProperties(version, unit, service, declared, owned.stage.selected.GenerationDigest); err != nil {
 		return err
 	}
 	// Unit and Service are separate manager observations. Reobserve stopped
@@ -249,7 +254,8 @@ func (owned *initialPreparation) observeStoppedInstallation(ctx context.Context,
 // Platform/protection admission must precede it in the actual provision owner.
 // Repeat these observations under that operation's lease before native effects.
 func preflightInitialEffects(ctx context.Context, request Request) error {
-	if ctx == nil || request.declared == nil || request.ManifestSHA256() == "" {
+	declared, valid := request.Declaration()
+	if ctx == nil || !valid || request.ManifestSHA256() == "" {
 		return ErrInput
 	}
 	if err := observeRequestCustody(ctx, request); err != nil {
@@ -265,14 +271,14 @@ func preflightInitialEffects(ctx context.Context, request Request) error {
 	if err == nil || !errors.As(err, &missingGroup) {
 		return errors.Join(ErrNativeUnavailable, err)
 	}
-	paths, err := writableDirectories(*request.declared)
+	paths, err := writableDirectories(declared)
 	if err != nil {
 		return err
 	}
-	paths = append(paths, request.declared.InstallationRoot, "/usr/lib/ardents/text-worker-root",
-		"/etc/ardents/text-worker-artifact.json", "/run/ardents-text", request.declared.Headless.ApplicationSocket)
-	if request.declared.Headless.Role == "" {
-		paths = append(paths, request.declared.Headless.AdministrationSocket)
+	paths = append(paths, declared.InstallationRoot, "/usr/lib/ardents/text-worker-root",
+		"/etc/ardents/text-worker-artifact.json", "/run/ardents-text", declared.Headless.ApplicationSocket)
+	if declared.Headless.Role == "" {
+		paths = append(paths, declared.Headless.AdministrationSocket)
 	}
 	for filename := range fixedResourceNames() {
 		paths = append(paths, filename)
