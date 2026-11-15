@@ -52,6 +52,8 @@ Installation error semantics для initial и successor preparation. Повто
 staging, inspection и recovery, а также detached `fileObservation` без descriptors
 или lease. Root-owned file admission, independent read retention с ctime,
 directory identity и проверка expected staged access остаются разными правилами.
+`staging_record_linux.go` создаёт, повторно наблюдает и синхронизирует защищённые
+записи под root вызывающего владельца; он не принимает решения транзакции.
 Они не являются request provenance; I/O, admission и physical close сохраняют
 своих исходных владельцев.
 
