@@ -23,12 +23,12 @@ func OpenOperation(ctx context.Context, input Config) (*store, error) {
 	return open(input, bounded)
 }
 
-func acquireOperationLease(ctx context.Context, root string) (rootLease, error) {
+func acquireOperationLeaseMode(ctx context.Context, root string, create bool) (rootLease, error) {
 	for {
 		if err := ctx.Err(); err != nil {
 			return rootLease{}, err
 		}
-		lease, err := acquireRootLease(root)
+		lease, err := acquireRootLeaseMode(root, create)
 		if err == nil {
 			if stopped := ctx.Err(); stopped != nil {
 				if releaseErr := lease.release(); releaseErr != nil {

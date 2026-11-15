@@ -91,7 +91,7 @@ func TestNodeInspectionNativeOriginalHistoryAndLease(t *testing.T) {
 	if err := copy.Check(); err != nil {
 		t.Fatal(err)
 	}
-	foreign, err := acquireRootLease(cfg.Root)
+	foreign, err := acquireRootLeaseMode(cfg.Root, true)
 	if err == nil {
 		_ = foreign.release()
 		t.Fatal("inspection lent original producer-history lease")
@@ -259,7 +259,7 @@ func TestNodeInspectionNativeOriginalReadersAndClose(t *testing.T) {
 			if err := inspection.Check(); err == nil {
 				t.Fatal("closed inspection admitted fresh check")
 			}
-			foreign, err := acquireRootLease(cfg.Root)
+			foreign, err := acquireRootLeaseMode(cfg.Root, true)
 			if err == nil {
 				_ = foreign.release()
 				t.Fatal("held reader returned producer-history lease")

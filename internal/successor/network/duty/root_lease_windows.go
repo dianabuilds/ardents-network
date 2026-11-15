@@ -13,13 +13,17 @@ import (
 
 type rootLease struct{ handle syscall.Handle }
 
-func acquireRootLease(root string) (rootLease, error) {
+func acquireRootLeaseMode(root string, create bool) (rootLease, error) {
+	disposition := uint32(syscall.OPEN_EXISTING)
+	if create {
+		disposition = syscall.OPEN_ALWAYS
+	}
 	path, err := syscall.UTF16PtrFromString(filepath.Join(root, rootLockName))
 	if err != nil {
 		return rootLease{}, err
 	}
 	handle, err := syscall.CreateFile(path, syscall.GENERIC_READ|syscall.GENERIC_WRITE, 0, nil,
-		syscall.OPEN_ALWAYS, syscall.FILE_ATTRIBUTE_NORMAL, 0)
+		disposition, syscall.FILE_ATTRIBUTE_NORMAL, 0)
 	if err != nil {
 		return rootLease{}, fmt.Errorf("acquire exclusive local role lease: %w", err)
 	}

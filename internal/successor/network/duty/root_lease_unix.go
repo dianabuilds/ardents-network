@@ -12,8 +12,12 @@ import (
 
 type rootLease struct{ file *os.File }
 
-func acquireRootLease(root string) (rootLease, error) {
-	file, err := os.OpenFile(filepath.Join(root, rootLockName), os.O_RDWR|os.O_CREATE, 0o600)
+func acquireRootLeaseMode(root string, create bool) (rootLease, error) {
+	flags := os.O_RDWR
+	if create {
+		flags |= os.O_CREATE
+	}
+	file, err := os.OpenFile(filepath.Join(root, rootLockName), flags, 0o600)
 	if err != nil {
 		return rootLease{}, err
 	}
