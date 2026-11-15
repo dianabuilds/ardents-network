@@ -933,7 +933,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/join/completed_initial_linux.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
 		return true
 	}
-	if (source == "internal/successor/installation/join/request.go" || source == "internal/successor/installation/descriptor/request.go" || source == "internal/successor/installation/introduction/request.go" || source == "internal/successor/installation/forwarding/request.go") && dependency == modulePath+"/internal/successor/installation/request" {
+	if (source == "internal/successor/installation/join/request.go" || source == "internal/successor/installation/descriptor/request.go" || source == "internal/successor/installation/introduction/request.go" || source == "internal/successor/installation/forwarding/request.go" || source == "internal/successor/installation/join/plan.go" || source == "internal/successor/installation/descriptor/plan.go" || source == "internal/successor/installation/introduction/plan.go" || source == "internal/successor/installation/forwarding/plan.go") && dependency == modulePath+"/internal/successor/installation/request" {
 		return true
 	}
 	if source == "internal/successor/installation/join/inputs_linux.go" && dependency == modulePath+"/internal/successor/installation/request" {

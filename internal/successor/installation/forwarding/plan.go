@@ -6,6 +6,7 @@ import (
 	posixpath "path"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
+	installationrequest "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
 )
 
 // NetworkInputs declares independent State trust and paths, never a signed
@@ -44,15 +45,8 @@ func DecodePlan(raw []byte) (Plan, error) {
 	canonical, err := json.Marshal(p)
 	n := p.Network
 	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) || p.Schema != "ardents-forwarding-runtime-v1" || p.ProcessProfile != "ardents-forwarding-process-v1" || p.NodeID == [32]byte{} ||
-		n.NetworkID == [32]byte{} || n.ProfileAuthority == [32]byte{} || len(n.Authorities) == 0 || len(n.Authorities) > 16 || n.Threshold <= 0 || n.Threshold > len(n.Authorities) || p.RetirementWaitMS == 0 || p.RetirementWaitMS > 5000 {
+		!installationrequest.ValidNodeTrustDeclaration(n.NetworkID, n.ProfileAuthority, n.Authorities, n.Threshold) || p.RetirementWaitMS == 0 || p.RetirementWaitMS > 5000 {
 		return Plan{}, ErrInput
-	}
-	seen := map[[32]byte]bool{}
-	for _, key := range n.Authorities {
-		if key == [32]byte{} || seen[key] {
-			return Plan{}, ErrInput
-		}
-		seen[key] = true
 	}
 	for _, path := range []string{n.Root, n.ClockObservationFile, p.ParticipationRoot, p.SpendRoot, p.HostingRoot, p.Certificate, p.PrivateKey} {
 		if !validPath(path) {

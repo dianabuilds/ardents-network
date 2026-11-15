@@ -11,4 +11,6 @@
 // clock-file access observation grants no time acceptance or persisted floor.
 // The fixed infrastructure path grammar is portable and observes no filesystem;
 // each role retains its own path inventory and effect admission.
+// Node trust declarations check only bounded, distinct public inputs; Network
+// State owns their authentication and currentness.
 package request
