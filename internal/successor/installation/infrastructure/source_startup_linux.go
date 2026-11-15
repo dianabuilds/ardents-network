@@ -159,20 +159,8 @@ func OpenSourceStartup(parent context.Context, binding string) (result *SourceSt
 	return &SourceStartup{original: s}, nil
 }
 
-func sourceInstalledPlatform(ctx context.Context) (err error) {
-	if err = ctx.Err(); err != nil {
-		return err
-	}
-	file, err := readSourceAccountFile("/usr/lib/os-release")
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, file.file.Close(), ctx.Err()); clear(file.raw) }()
-	if !platform.Ubuntu2404(file.raw) {
-		return ErrBinding
-	}
-
-	return checkSourceAccountFile(file)
+func sourceInstalledPlatform(ctx context.Context) error {
+	return platform.MapBinding(platform.ObserveUbuntu2404(ctx), ErrBinding)
 }
 
 func (s *sourceStartup) local() error {

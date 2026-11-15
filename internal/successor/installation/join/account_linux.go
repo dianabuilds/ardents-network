@@ -1,22 +1,11 @@
 package join
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
-	"os"
-	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/nodeprincipal"
 )
-
-type accountFile struct {
-	path string
-	file *os.File
-	info os.FileInfo
-	raw  []byte
-}
 
 // nodeAccount ties a role's initial transaction to one independent native
 // creator. The creator holds its own files; this role owns admission and journal.
@@ -114,55 +103,4 @@ func (a *nodeAccount) create(j *initialBirths, inputs Inputs, admit, admitCreate
 		return err
 	}
 	return j.record("account-ready", "ardents-node", nil, "", 0, a.uid, a.gid)
-}
-func readNodeAccountFile(path string) (result *accountFile, err error) {
-	// Input paths are a closed literal inventory, never caller-selected helpers.
-	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
-	if err != nil {
-		return nil, err
-	}
-	result = &accountFile{path: path, file: f}
-	defer func() {
-		if err != nil {
-			err = errors.Join(err, f.Close())
-			clear(result.raw)
-			result = nil
-		}
-	}()
-	result.info, err = f.Stat()
-	if err != nil {
-		return result, err
-	}
-	st, ok := result.info.Sys().(*syscall.Stat_t)
-	if !ok || !result.info.Mode().IsRegular() || st.Uid != 0 || st.Nlink != 1 || result.info.Mode()&(os.ModeSetuid|os.ModeSetgid|os.ModeSticky) != 0 || result.info.Mode().Perm()&0022 != 0 || result.info.Size() > 8<<20 {
-		return result, ErrBinding
-	}
-	result.raw, err = io.ReadAll(io.LimitReader(f, 8<<20+1))
-	if err != nil || int64(len(result.raw)) != result.info.Size() {
-		return result, errors.Join(ErrBinding, err)
-	}
-	return result, checkNodeAccountFile(result)
-}
-
-func checkNodeAccountFile(f *accountFile) error {
-	info, err := f.file.Stat()
-	named, ne := os.Lstat(f.path)
-	if err != nil || ne != nil || !sameInputFile(f.info, info) || !sameInputFile(f.info, named) {
-		return errors.Join(ErrBinding, err, ne)
-	}
-	if _, err = f.file.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
-	raw, err := io.ReadAll(io.LimitReader(f.file, int64(len(f.raw))+1))
-	equal := bytes.Equal(raw, f.raw)
-	clear(raw)
-	if err != nil || !equal {
-		return errors.Join(ErrBinding, err)
-	}
-	info, err = f.file.Stat()
-	named, ne = os.Lstat(f.path)
-	if err != nil || ne != nil || !sameInputFile(f.info, info) || !sameInputFile(f.info, named) {
-		return errors.Join(ErrBinding, err, ne)
-	}
-	return nil
 }

@@ -159,20 +159,8 @@ func OpenStartup(parent context.Context, bindingPath string) (result *Startup, r
 	return &Startup{original: s}, nil
 }
 
-func installedPlatform(ctx context.Context) (returned error) {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	f, err := readNodeAccountFile("/usr/lib/os-release")
-	if err != nil {
-		return err
-	}
-	defer func() { returned = errors.Join(returned, f.file.Close(), ctx.Err()); clear(f.raw) }()
-	if !platform.Ubuntu2404(f.raw) {
-		return ErrBinding
-	}
-
-	return checkNodeAccountFile(f)
+func installedPlatform(ctx context.Context) error {
+	return platform.MapBinding(platform.ObserveUbuntu2404(ctx), ErrBinding)
 }
 
 func (s *startup) local() error {
