@@ -931,8 +931,6 @@ authority, semantic-root borrow or completion. No new package is introduced.
 | File `internal/successor/installation/descriptor/start_initial_linux.go` | `internal/successor/installation/journal`; `internal/successor/installation/cgroup`; `internal/successor/installation/infrastructure`; `internal/successor/installation/process`; `internal/successor/installation/systemd`; `internal/successor/release` |
 | File `internal/successor/installation/descriptor/startup_linux.go` | File `internal/successor/installation/cgroup`; `internal/successor/installation/completion`; `internal/successor/installation/process`; `internal/successor/installation/systemd` |
 | File `internal/successor/installation/infrastructure/descriptor_admission.go` | File `internal/successor/enrollment`; `internal/successor/release` |
-| File `internal/successor/installation/systemd/descriptor_control_linux.go` | `github.com/godbus/dbus/v5` |
-| File `internal/successor/installation/systemd/descriptor_manager_linux.go` | `github.com/godbus/dbus/v5` |
 | File `internal/successor/installation/systemd/descriptor_stopped_linux.go` | `github.com/godbus/dbus/v5` |
 | File `internal/successor/installation/systemd/manager_reference_linux.go` | `github.com/godbus/dbus/v5` |
 
@@ -1089,8 +1087,6 @@ Bootstrap acceptance remains distinct from this composition admission.
 | File `internal/successor/installation/introduction/start_initial_linux.go` | `internal/successor/installation/cgroup`; `internal/successor/installation/infrastructure`; `internal/successor/installation/process`; `internal/successor/installation/systemd`; `internal/successor/release` |
 | File `internal/successor/installation/introduction/startup_admission_linux_test.go` | `internal/successor/installation/infrastructure` |
 | File `internal/successor/installation/introduction/startup_linux.go` | `internal/successor/installation/cgroup`; `internal/successor/installation/completion`; `internal/successor/installation/process`; `internal/successor/installation/systemd` |
-| File `internal/successor/installation/systemd/introduction_control_linux.go` | `github.com/godbus/dbus/v5` |
-| File `internal/successor/installation/systemd/introduction_manager_linux.go` | `github.com/godbus/dbus/v5` |
 
 ### Introduction installed exchange tests
 

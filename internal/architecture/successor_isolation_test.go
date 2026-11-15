@@ -1372,7 +1372,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
-	if (source == "internal/successor/installation/systemd/manager_reference_linux.go" || source == "internal/successor/installation/systemd/node_slots_linux.go" || source == "internal/successor/installation/systemd/join_stopped_linux.go" || source == "internal/successor/installation/systemd/forwarding_stopped_linux.go" || source == "internal/successor/installation/systemd/forwarding_manager_linux.go" || source == "internal/successor/installation/systemd/forwarding_control_linux.go" || source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go" || source == "internal/successor/installation/systemd/source_preflight_linux.go" || source == "internal/successor/installation/systemd/source_stopped_linux.go" || source == "internal/successor/installation/systemd/source_manager_linux.go" || source == "internal/successor/installation/systemd/source_control_linux.go" || source == "internal/successor/installation/systemd/source_reference_native_linux_test.go") && dependency == "github.com/godbus/dbus/v5" {
+	if (source == "internal/successor/installation/systemd/manager_reference_linux.go" || source == "internal/successor/installation/systemd/node_slots_linux.go" || source == "internal/successor/installation/systemd/join_stopped_linux.go" || source == "internal/successor/installation/systemd/forwarding_stopped_linux.go" || source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go" || source == "internal/successor/installation/systemd/source_preflight_linux.go" || source == "internal/successor/installation/systemd/source_stopped_linux.go" || source == "internal/successor/installation/systemd/source_manager_linux.go" || source == "internal/successor/installation/systemd/source_reference_native_linux_test.go") && dependency == "github.com/godbus/dbus/v5" {
 		return true
 	}
 	if (owner == "internal/successor/admission/spending" || owner == "internal/successor/network/duty" || owner == "internal/successor/network/state/durable") && dependency == "golang.org/x/sys/windows" {
@@ -2025,16 +2025,6 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 	case "cmd/ardents-control/join_node_provision_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/network/epoch":
-			return true
-		}
-	case "internal/successor/installation/systemd/join_manager_linux.go":
-		switch dependency {
-		case "github.com/godbus/dbus/v5":
-			return true
-		}
-	case "internal/successor/installation/systemd/join_control_linux.go":
-		switch dependency {
-		case "github.com/godbus/dbus/v5":
 			return true
 		}
 	}

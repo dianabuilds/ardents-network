@@ -164,16 +164,6 @@ func introductionStartupImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/completion", "github.com/dianabuilds/ardents-network/internal/successor/installation/process", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd":
 			return true
 		}
-	case "internal/successor/installation/systemd/introduction_control_linux.go":
-		switch dependency {
-		case "github.com/godbus/dbus/v5":
-			return true
-		}
-	case "internal/successor/installation/systemd/introduction_manager_linux.go":
-		switch dependency {
-		case "github.com/godbus/dbus/v5":
-			return true
-		}
 	}
 	return false
 }

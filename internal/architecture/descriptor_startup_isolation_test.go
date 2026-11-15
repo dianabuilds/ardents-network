@@ -219,16 +219,6 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment", "github.com/dianabuilds/ardents-network/internal/successor/release":
 			return true
 		}
-	case "internal/successor/installation/systemd/descriptor_control_linux.go":
-		switch dependency {
-		case "github.com/godbus/dbus/v5":
-			return true
-		}
-	case "internal/successor/installation/systemd/descriptor_manager_linux.go":
-		switch dependency {
-		case "github.com/godbus/dbus/v5":
-			return true
-		}
 	case "internal/successor/installation/systemd/descriptor_stopped_linux.go":
 		switch dependency {
 		case "github.com/godbus/dbus/v5":
