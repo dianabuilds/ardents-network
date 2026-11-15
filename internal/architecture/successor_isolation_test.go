@@ -939,7 +939,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/join/request.go" || source == "internal/successor/installation/descriptor/request.go" || source == "internal/successor/installation/introduction/request.go" || source == "internal/successor/installation/forwarding/request.go" || source == "internal/successor/installation/join/plan.go" || source == "internal/successor/installation/descriptor/plan.go" || source == "internal/successor/installation/introduction/plan.go" || source == "internal/successor/installation/forwarding/plan.go") && dependency == modulePath+"/internal/successor/deployment" {
 		return true
 	}
-	if (source == "internal/successor/installation/request/document.go" || source == "internal/successor/installation/request/custody.go" || source == "internal/successor/installation/request/document_test.go") && dependency == modulePath+"/internal/successor/protectedfiles" {
+	if (source == "internal/successor/endpoint/delivery/request/document.go" || source == "internal/successor/endpoint/delivery/request/custody.go" || source == "internal/successor/endpoint/delivery/request/document_test.go") && dependency == modulePath+"/internal/successor/protectedfiles" {
 		return true
 	}
 	if source == "internal/successor/installation/join/inputs_linux.go" && dependency == modulePath+"/internal/successor/protectedfiles" {
@@ -1020,15 +1020,15 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/execution":                       {},
 		"internal/successor/execution/runtime":               {"execution", "execution/worker"},
 		"internal/successor/execution/worker":                {"installation/systemd", "installation/unit"},
-		"internal/successor/installation":                    {"enrollment", "release", "installation/request"},
+		"internal/successor/installation":                    {"enrollment", "release", "endpoint/delivery/request"},
 		"internal/successor/installation/infrastructure":     {"enrollment", "release"},
 		"internal/successor/installation/descriptor":         {},
 		"internal/successor/installation/introduction":       {},
 		"internal/successor/installation/join":               {},
 		"internal/successor/installation/forwarding":         {},
-		"internal/successor/endpoint/delivery":               {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "installation/request", "installation/directory"},
+		"internal/successor/endpoint/delivery":               {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "endpoint/delivery/request", "installation/directory"},
 		"internal/successor/installation/cgroup":             {},
-		"internal/successor/installation/request":            {},
+		"internal/successor/endpoint/delivery/request":       {},
 		"internal/successor/installation/directory":          {},
 		"internal/successor/installation/systemd":            {},
 		"internal/successor/installation/journal":            {},

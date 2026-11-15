@@ -11,8 +11,8 @@ import (
 	"net/url"
 	"path"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 

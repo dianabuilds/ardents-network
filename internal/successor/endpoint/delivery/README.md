@@ -38,7 +38,7 @@ facts и повторно наблюдает тот же Creation. Незави�
 trusted-root/sync helpers для fixed resources и recovery; чужой каталог не
 принимается из публичной map или похожих UID/mode.
 
-`request` отдельно владеет canonical request-v1, Headless-v2 и Source-v1
+`endpoint/delivery/request` отдельно владеет canonical request-v1, Headless-v2 и Source-v1
 декларациями, их связностью и чтением direct root-owned исходного файла.
 `Document` выдаёт detached copies; `Origin` скрывает исходные path/digest/inode
 и независимо проверяет прежние bytes/access перед эффектами. Корень сохраняет

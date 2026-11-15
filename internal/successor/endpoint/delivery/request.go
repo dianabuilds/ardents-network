@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 )
 
 // Request retains checked declarations and optional opaque original-file

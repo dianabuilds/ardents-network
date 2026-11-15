@@ -74,7 +74,7 @@ pin или frozen bytes. `Targets` передаёт genuine Release proofs; `Des
 каждый вызов сохраняет свои leases, журналы, полномочия и завершение. Разные
 Source, Endpoint и Node-переходы не сводятся к общей разрешающей машине состояний.
 
-Физические `request`, `directory`, `generation`, `fixedfile`, `journal`, `unit`,
+Физические `directory`, `generation`, `fixedfile`, `journal`, `unit`,
 `systemd`, `process`, `cgroup` и `completion` сохраняют собственные Interfaces,
 Implementation и lifetimes. Их присутствие не даёт права установки или запуска.
 Направление импортов задаётся exact package-map; nesting не разрешает обратный

@@ -1,4 +1,4 @@
-// Package request owns canonical bounded Installation declarations and original
+// Package request owns canonical bounded Endpoint delivery declarations and original
 // root-owned request-file admission. Document exposes detached schema data;
 // Origin retains private file provenance and independently reobserves it before
 // caller effects. Checked declarations and provenance grant no Release, writer

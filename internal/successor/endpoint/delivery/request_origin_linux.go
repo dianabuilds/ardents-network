@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 )
 
 // Initial and successor preparation independently reobserve their original
