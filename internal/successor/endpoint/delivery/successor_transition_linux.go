@@ -111,7 +111,7 @@ func (owned *successorPreparation) authenticate(verifier *release.Verifier, cand
 	if !input.Local.RefTime.Equal(owned.request.ReferenceTime()) {
 		return generationauthorization.Authorization{}, ErrBinding
 	}
-	authorized, err := generationauthorization.AuthenticateSuccessor(owned.ctx, verifier, candidate, input, retainedGeneration(owned.previous.binding))
+	authorized, err := generationauthorization.AuthenticateSuccessor(owned.ctx, verifier, candidate, input, retainedTarget(owned.previous.binding.Generation))
 	if err != nil {
 		return generationauthorization.Authorization{}, err
 	}

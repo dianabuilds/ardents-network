@@ -381,7 +381,7 @@ func completeSuccessorRecovery(ctx context.Context, r *successorRecoveryNative, 
 	if err := r.observe(ctx); err != nil {
 		return ProvisionResult{}, errors.Join(ErrRepairRequired, err)
 	}
-	authorization, err := generationauthorization.AuthenticateRetainedCandidate(ctx, verifier, candidate, input, retainedGeneration(r.checked.binding))
+	authorization, err := generationauthorization.AuthenticateRetainedCandidate(ctx, verifier, candidate, input, retainedTarget(r.checked.binding.Generation))
 	if err != nil {
 		return ProvisionResult{}, err
 	}
@@ -730,7 +730,7 @@ func (r *successorRecoveryNative) completeWritingTransition(ctx context.Context,
 	if err := owned.observe(); err != nil {
 		return ProvisionResult{}, err
 	}
-	authorization, err := generationauthorization.AuthenticateRetainedCandidate(ctx, verifier, candidate, input, retainedGeneration(r.intent.CandidateBinding))
+	authorization, err := generationauthorization.AuthenticateRetainedCandidate(ctx, verifier, candidate, input, retainedTarget(r.intent.CandidateBinding.Generation))
 	if err != nil {
 		return ProvisionResult{}, err
 	}
@@ -1246,7 +1246,7 @@ func (r *successorRecoveryNative) completeStagedTransition(ctx context.Context, 
 			return ProvisionResult{}, err
 		}
 	}
-	authorization, err := generationauthorization.AuthenticateRetainedCandidate(ctx, verifier, candidate, input, retainedGeneration(r.checked.binding))
+	authorization, err := generationauthorization.AuthenticateRetainedCandidate(ctx, verifier, candidate, input, retainedTarget(r.checked.binding.Generation))
 	if err != nil {
 		return ProvisionResult{}, err
 	}

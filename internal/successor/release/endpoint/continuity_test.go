@@ -14,9 +14,9 @@ import (
 )
 
 func TestAuthenticateSuccessorRequiresOriginalVerifier(t *testing.T) {
-	for _, authenticate := range []func(context.Context, *release.Verifier, enrollment.Candidate, release.Inputs, RetainedGeneration) (Authorization, error){AuthenticateSuccessor, AuthenticateRetainedCandidate} {
+	for _, authenticate := range []func(context.Context, *release.Verifier, enrollment.Candidate, release.Inputs, RetainedTarget) (Authorization, error){AuthenticateSuccessor, AuthenticateRetainedCandidate} {
 		for _, ctx := range []context.Context{nil, context.Background()} {
-			result, err := authenticate(ctx, nil, enrollment.Candidate{}, release.Inputs{}, RetainedGeneration{})
+			result, err := authenticate(ctx, nil, enrollment.Candidate{}, release.Inputs{}, RetainedTarget{})
 			if !errors.Is(err, ErrInput) || len(result.Descriptor()) != 0 {
 				t.Fatalf("missing original verifier accepted: %v", err)
 			}
@@ -30,8 +30,8 @@ func TestAuthenticateSuccessorDoesNotBootstrapIncompleteTrust(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = verifier.Close() })
-	previous := RetainedGeneration{TargetsVersion: 1, TargetsDigest: strings.Repeat("01", 32), ReleaseVersion: 1}
-	for _, authenticate := range []func(context.Context, *release.Verifier, enrollment.Candidate, release.Inputs, RetainedGeneration) (Authorization, error){AuthenticateSuccessor, AuthenticateRetainedCandidate} {
+	previous := RetainedTarget{TargetsVersion: 1, TargetsDigest: strings.Repeat("01", 32), ReleaseVersion: 1}
+	for _, authenticate := range []func(context.Context, *release.Verifier, enrollment.Candidate, release.Inputs, RetainedTarget) (Authorization, error){AuthenticateSuccessor, AuthenticateRetainedCandidate} {
 		if _, err := authenticate(t.Context(), verifier, enrollment.Candidate{}, release.Inputs{}, previous); !errors.Is(err, release.ErrTrustUnavailable) {
 			t.Fatalf("incomplete trust admitted candidate: %v", err)
 		}
@@ -44,35 +44,35 @@ func TestAuthenticateSuccessorDoesNotBootstrapIncompleteTrust(t *testing.T) {
 
 func TestRetainedContinuityRejectsRollbackConflictAndForeignEnvironment(t *testing.T) {
 	reference := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
-	previous := RetainedGeneration{Platform: "linux-amd64", Architecture: "amd64", Environment: "closed", Network: "network", ReferenceTime: reference.Format(time.RFC3339Nano), TargetsVersion: 3, TargetsDigest: strings.Repeat("09", 32)}
+	previous := RetainedTarget{Platform: "linux-amd64", Architecture: "amd64", Environment: "closed", Network: "network", ReferenceTime: reference.Format(time.RFC3339Nano), TargetsVersion: 3, TargetsDigest: strings.Repeat("09", 32)}
 	floors := release.FloorSet{RootVersion: 1, RootDigest: bytes.Repeat([]byte{1}, 32), TimestampVersion: 1, TimestampDigest: bytes.Repeat([]byte{2}, 32), SnapshotVersion: 1, SnapshotDigest: bytes.Repeat([]byte{3}, 32), TargetsVersion: 3, TargetsDigest: bytes.Repeat([]byte{9}, 32)}
 	local := release.LocalEnvironment{Platform: previous.Platform, Architecture: previous.Architecture, Environment: previous.Environment, Network: previous.Network, RefTime: reference}
 	cases := []struct {
 		name   string
-		change func(*RetainedGeneration, *release.FloorSet, *release.LocalEnvironment)
+		change func(*RetainedTarget, *release.FloorSet, *release.LocalEnvironment)
 		want   error
 	}{
-		{"retained", func(*RetainedGeneration, *release.FloorSet, *release.LocalEnvironment) {}, nil},
-		{"newer metadata", func(_ *RetainedGeneration, f *release.FloorSet, _ *release.LocalEnvironment) {
+		{"retained", func(*RetainedTarget, *release.FloorSet, *release.LocalEnvironment) {}, nil},
+		{"newer metadata", func(_ *RetainedTarget, f *release.FloorSet, _ *release.LocalEnvironment) {
 			f.TargetsVersion++
 			f.TargetsDigest = bytes.Repeat([]byte{4}, 32)
 		}, nil},
-		{"rollback", func(_ *RetainedGeneration, f *release.FloorSet, _ *release.LocalEnvironment) { f.TargetsVersion-- }, release.ErrTrustUnavailable},
-		{"conflict", func(_ *RetainedGeneration, f *release.FloorSet, _ *release.LocalEnvironment) {
+		{"rollback", func(_ *RetainedTarget, f *release.FloorSet, _ *release.LocalEnvironment) { f.TargetsVersion-- }, release.ErrTrustUnavailable},
+		{"conflict", func(_ *RetainedTarget, f *release.FloorSet, _ *release.LocalEnvironment) {
 			f.TargetsDigest = bytes.Repeat([]byte{4}, 32)
 		}, release.ErrTrustUnavailable},
-		{"torn history", func(_ *RetainedGeneration, f *release.FloorSet, _ *release.LocalEnvironment) { f.SnapshotDigest = nil }, release.ErrTrustUnavailable},
-		{"noncanonical digest", func(p *RetainedGeneration, _ *release.FloorSet, _ *release.LocalEnvironment) {
+		{"torn history", func(_ *RetainedTarget, f *release.FloorSet, _ *release.LocalEnvironment) { f.SnapshotDigest = nil }, release.ErrTrustUnavailable},
+		{"noncanonical digest", func(p *RetainedTarget, _ *release.FloorSet, _ *release.LocalEnvironment) {
 			p.TargetsDigest = strings.Repeat("AA", 32)
 		}, release.ErrTrustUnavailable},
-		{"foreign platform", func(_ *RetainedGeneration, _ *release.FloorSet, l *release.LocalEnvironment) {
+		{"foreign platform", func(_ *RetainedTarget, _ *release.FloorSet, l *release.LocalEnvironment) {
 			l.Platform = "darwin-arm64"
 		}, ErrBinding},
-		{"foreign network", func(_ *RetainedGeneration, _ *release.FloorSet, l *release.LocalEnvironment) { l.Network = "other" }, ErrBinding},
-		{"earlier clock", func(_ *RetainedGeneration, _ *release.FloorSet, l *release.LocalEnvironment) {
+		{"foreign network", func(_ *RetainedTarget, _ *release.FloorSet, l *release.LocalEnvironment) { l.Network = "other" }, ErrBinding},
+		{"earlier clock", func(_ *RetainedTarget, _ *release.FloorSet, l *release.LocalEnvironment) {
 			l.RefTime = l.RefTime.Add(-time.Nanosecond)
 		}, ErrBinding},
-		{"invalid reference", func(p *RetainedGeneration, _ *release.FloorSet, _ *release.LocalEnvironment) {
+		{"invalid reference", func(p *RetainedTarget, _ *release.FloorSet, _ *release.LocalEnvironment) {
 			p.ReferenceTime = "invalid"
 		}, ErrBinding},
 	}

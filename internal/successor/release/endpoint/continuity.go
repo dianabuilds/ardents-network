@@ -11,20 +11,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
-// RetainedGeneration is detached evidence from the independently retained
-// installed binding. It is not a Release proof or an installation right.
-type RetainedGeneration struct {
-	Platform, Architecture, Environment, Network string
-	ReferenceTime                                string
-	TargetsVersion                               int64
-	TargetsDigest                                string
-	ReleaseVersion                               int64
-}
-
 // AuthenticateSuccessor checks the retained floor before authenticating the
 // candidate, then requires a newer authorized generation. The caller must
 // retain and reobserve the original binding around this operation.
-func AuthenticateSuccessor(ctx context.Context, verifier *release.Verifier, candidate enrollment.Candidate, input release.Inputs, previous RetainedGeneration) (Authorization, error) {
+func AuthenticateSuccessor(ctx context.Context, verifier *release.Verifier, candidate enrollment.Candidate, input release.Inputs, previous RetainedTarget) (Authorization, error) {
 	authorized, err := AuthenticateRetainedCandidate(ctx, verifier, candidate, input, previous)
 	if err != nil {
 		return Authorization{}, err
@@ -43,7 +33,7 @@ func AuthenticateSuccessor(ctx context.Context, verifier *release.Verifier, cand
 // AuthenticateRetainedCandidate checks current Release floors before obtaining
 // fresh candidate proofs. Exact recovery intent and physical custody remain
 // with the caller; this operation does not grant recovery or startup authority.
-func AuthenticateRetainedCandidate(ctx context.Context, verifier *release.Verifier, candidate enrollment.Candidate, input release.Inputs, previous RetainedGeneration) (Authorization, error) {
+func AuthenticateRetainedCandidate(ctx context.Context, verifier *release.Verifier, candidate enrollment.Candidate, input release.Inputs, previous RetainedTarget) (Authorization, error) {
 	if ctx == nil || verifier == nil {
 		return Authorization{}, ErrInput
 	}
@@ -59,7 +49,7 @@ func AuthenticateRetainedCandidate(ctx context.Context, verifier *release.Verifi
 
 // CheckContinuity compares retained facts with the verifier's current floors
 // before a fresh successor is authenticated. The caller owns native provenance.
-func CheckContinuity(previous RetainedGeneration, floors release.FloorSet, local release.LocalEnvironment) error {
+func CheckContinuity(previous RetainedTarget, floors release.FloorSet, local release.LocalEnvironment) error {
 	if !floors.Complete() || previous.TargetsVersion < 1 || len(previous.TargetsDigest) != 64 ||
 		strings.Trim(previous.TargetsDigest, "0123456789abcdef") != "" ||
 		floors.TargetsVersion < previous.TargetsVersion ||
