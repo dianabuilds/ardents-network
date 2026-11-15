@@ -989,7 +989,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/forwarding/completed_initial_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
 		return true
 	}
-	if source == "internal/successor/installation/forwarding/selected_generation.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
+	if source == "internal/successor/installation/forwarding/selected_generation.go" && dependency == modulePath+"/internal/successor/enrollment" {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/startup_linux.go" {
@@ -1057,7 +1057,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/join/binding.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure") {
 		return true
 	}
-	if (source == "internal/successor/installation/join/generation_bytes.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment") {
+	if source == "internal/successor/installation/join/generation_bytes.go" && dependency == modulePath+"/internal/successor/enrollment" {
 		return true
 	}
 	if (source == "internal/successor/installation/join/initial_install_linux.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/systemd" || dependency == modulePath+"/internal/successor/release") {
@@ -2111,7 +2111,7 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/join/generation_bytes.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
+		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment":
 			return true
 		}
 	case "internal/successor/installation/join/start_barrier_linux.go":

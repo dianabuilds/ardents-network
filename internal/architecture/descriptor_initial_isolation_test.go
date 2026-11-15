@@ -43,7 +43,7 @@ func descriptorInitialImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/descriptor/generation_bytes.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
+		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment":
 			return true
 		}
 	case "internal/successor/installation/descriptor/initial_birth_linux.go":
