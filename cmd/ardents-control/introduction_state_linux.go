@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/introduction"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
@@ -91,9 +92,9 @@ func prepareIntroductionState(ctx context.Context, planPath, bundlePath, profile
 			return err
 		}
 	}
-	plan, err := introduction.DecodePlan(raw[0])
+	plan, err := deployment.DecodeIntroductionPlan(raw[0])
 	if err != nil {
-		return err
+		return introduction.ErrInput
 	}
 	config, err := introductionPreparationStateConfig(plan)
 	if err != nil {
@@ -173,7 +174,7 @@ func prepareIntroductionState(ctx context.Context, planPath, bundlePath, profile
 	return check()
 }
 
-func introductionPreparationStateConfig(plan introduction.Plan) (state.Config, error) {
+func introductionPreparationStateConfig(plan deployment.IntroductionPlan) (state.Config, error) {
 	n := plan.Network
 	if plan.Schema != "ardents-introduction-runtime-v1" || plan.ProcessProfile != "ardents-introduction-process-v1" || plan.NodeID == [32]byte{} || n.NetworkID == [32]byte{} || n.ProfileAuthority == [32]byte{} || n.Threshold < 1 || n.Threshold > len(n.Authorities) || len(n.Authorities) > 16 {
 		return state.Config{}, introduction.ErrInput

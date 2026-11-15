@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
@@ -91,9 +92,9 @@ func prepareForwardingState(ctx context.Context, planPath, bundlePath, profilePa
 			return err
 		}
 	}
-	plan, err := forwarding.DecodePlan(raw[0])
+	plan, err := deployment.DecodeForwardingPlan(raw[0])
 	if err != nil {
-		return err
+		return forwarding.ErrInput
 	}
 	config, err := forwardingPreparationStateConfig(plan)
 	if err != nil {
@@ -173,7 +174,7 @@ func prepareForwardingState(ctx context.Context, planPath, bundlePath, profilePa
 	return check()
 }
 
-func forwardingPreparationStateConfig(plan forwarding.Plan) (state.Config, error) {
+func forwardingPreparationStateConfig(plan deployment.ForwardingPlan) (state.Config, error) {
 	n := plan.Network
 	if plan.Schema != "ardents-forwarding-runtime-v1" || plan.ProcessProfile != "ardents-forwarding-process-v1" || plan.NodeID == [32]byte{} || n.NetworkID == [32]byte{} || n.ProfileAuthority == [32]byte{} || n.Threshold < 1 || n.Threshold > len(n.Authorities) || len(n.Authorities) > 16 {
 		return state.Config{}, forwarding.ErrInput

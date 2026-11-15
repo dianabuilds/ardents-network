@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
@@ -91,9 +92,9 @@ func prepareDescriptorState(ctx context.Context, planPath, bundlePath, profilePa
 			return err
 		}
 	}
-	plan, err := descriptor.DecodePlan(raw[0])
+	plan, err := deployment.DecodeDescriptorPlan(raw[0])
 	if err != nil {
-		return err
+		return descriptor.ErrInput
 	}
 	config, err := descriptorPreparationStateConfig(plan)
 	if err != nil {
@@ -173,7 +174,7 @@ func prepareDescriptorState(ctx context.Context, planPath, bundlePath, profilePa
 	return check()
 }
 
-func descriptorPreparationStateConfig(plan descriptor.Plan) (state.Config, error) {
+func descriptorPreparationStateConfig(plan deployment.DescriptorPlan) (state.Config, error) {
 	n := plan.Network
 	if plan.Schema != "ardents-descriptor-runtime-v1" || plan.ProcessProfile != "ardents-descriptor-process-v1" || plan.NodeID == [32]byte{} || n.NetworkID == [32]byte{} || n.ProfileAuthority == [32]byte{} || n.Threshold < 1 || n.Threshold > len(n.Authorities) || len(n.Authorities) > 16 {
 		return state.Config{}, descriptor.ErrInput

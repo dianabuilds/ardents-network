@@ -1076,6 +1076,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/deployment/node_plan.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}
+	if (source == "cmd/ardents-control/join_state_linux.go" || source == "cmd/ardents-control/descriptor_state_linux.go" || source == "cmd/ardents-control/introduction_state_linux.go" || source == "cmd/ardents-control/forwarding_state_linux.go") && dependency == modulePath+"/internal/successor/deployment" {
+		return true
+	}
 	if (source == "internal/successor/installation/join/request.go" || source == "internal/successor/installation/descriptor/request.go" || source == "internal/successor/installation/introduction/request.go" || source == "internal/successor/installation/forwarding/request.go" || source == "internal/successor/installation/join/plan.go" || source == "internal/successor/installation/descriptor/plan.go" || source == "internal/successor/installation/introduction/plan.go" || source == "internal/successor/installation/forwarding/plan.go") && dependency == modulePath+"/internal/successor/deployment" {
 		return true
 	}

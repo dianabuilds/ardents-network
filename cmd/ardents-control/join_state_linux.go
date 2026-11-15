@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/join"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
@@ -91,9 +92,9 @@ func prepareJoinState(ctx context.Context, planPath, bundlePath, profilePath str
 			return err
 		}
 	}
-	plan, err := join.DecodePlan(raw[0])
+	plan, err := deployment.DecodeJoinPlan(raw[0])
 	if err != nil {
-		return err
+		return join.ErrInput
 	}
 	config, err := joinPreparationStateConfig(plan)
 	if err != nil {
@@ -173,7 +174,7 @@ func prepareJoinState(ctx context.Context, planPath, bundlePath, profilePath str
 	return check()
 }
 
-func joinPreparationStateConfig(plan join.Plan) (state.Config, error) {
+func joinPreparationStateConfig(plan deployment.JoinPlan) (state.Config, error) {
 	n := plan.Network
 	if plan.Schema != "ardents-join-runtime-v1" || plan.ProcessProfile != "ardents-join-process-v1" || plan.NodeID == [32]byte{} || n.NetworkID == [32]byte{} || n.ProfileAuthority == [32]byte{} || n.Threshold < 1 || n.Threshold > len(n.Authorities) || len(n.Authorities) > 16 {
 		return state.Config{}, join.ErrInput
