@@ -481,6 +481,9 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if (source == "internal/successor/installation/systemd/fixed_unit_control_linux.go" || source == "internal/successor/installation/systemd/node_other_slots_linux.go" || source == "internal/successor/installation/systemd/node_observation_linux.go") && dependency == "github.com/godbus/dbus/v5" {
+		return true
+	}
 	if introductionStartupImportAllowed(source, dependency) || introductionInitialImportAllowed(source, dependency) || descriptorStartupImportAllowed(source, dependency) || descriptorInitialImportAllowed(source, dependency) {
 		return true
 	}

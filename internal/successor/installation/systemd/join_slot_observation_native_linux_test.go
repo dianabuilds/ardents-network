@@ -49,7 +49,7 @@ func TestJoinSlotsNativeConcurrentQueriesMatchSequential(t *testing.T) {
 				}
 				var err error
 				if parallel {
-					err = joinOtherSlotsAbsent(ctx, r)
+					err = otherNodeSlotsAbsent(ctx, r, joinControlPurpose)
 				} else {
 					err = sequential(ctx, r)
 				}

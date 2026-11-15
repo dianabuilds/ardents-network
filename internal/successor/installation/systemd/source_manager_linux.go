@@ -34,10 +34,9 @@ type sourceRuntime struct {
 type SourceControl struct{ original *sourceControl }
 
 type sourceControl struct {
-	reference                     *managerReference
-	startAttempted, stopAttempted bool // original physical I/O mutex
-	closeOnce                     sync.Once
-	closeErr                      error
+	*fixedUnitControl
+	closeOnce sync.Once
+	closeErr  error
 }
 
 func OpenSourceRuntime(ctx context.Context) (*SourceRuntime, error) {
@@ -59,7 +58,7 @@ func OpenSourceControl(ctx context.Context) (*SourceControl, error) {
 	if r == nil {
 		return nil, err
 	}
-	result := &SourceControl{original: &sourceControl{reference: r}}
+	result := &SourceControl{original: &sourceControl{fixedUnitControl: &fixedUnitControl{reference: r, purpose: sourceControlPurpose}}}
 	if err != nil {
 		return result, err
 	}

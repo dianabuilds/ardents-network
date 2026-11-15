@@ -45,7 +45,7 @@ func openDescriptorReplacement(ctx context.Context, expected string) (*Descripto
 	if err := r.initializeManagerDeclaration(); err != nil {
 		return s, err
 	}
-	if err := r.retainDescriptorControlUnit(); err != nil {
+	if err := r.retainFixedUnit(descriptorControlPurpose); err != nil {
 		return s, err
 	}
 	if _, err := r.descriptorLoadedObservation(); err != nil {

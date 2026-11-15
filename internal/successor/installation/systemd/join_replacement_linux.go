@@ -48,7 +48,7 @@ func openJoinReplacement(ctx context.Context, expected string) (*JoinReplacement
 	if err := r.initializeManagerDeclaration(); err != nil {
 		return s, err
 	}
-	if err := r.retainJoinControlUnit(); err != nil {
+	if err := r.retainFixedUnit(joinControlPurpose); err != nil {
 		return s, err
 	}
 	if _, err := r.joinLoadedObservation(); err != nil {

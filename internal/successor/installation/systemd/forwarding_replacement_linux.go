@@ -57,7 +57,7 @@ func openForwardingReplacement(ctx context.Context, expected string) (*Forwardin
 	if err := r.initializeManagerDeclaration(); err != nil {
 		return s, err
 	}
-	if err := r.retainForwardingControlUnit(); err != nil {
+	if err := r.retainFixedUnit(forwardingControlPurpose); err != nil {
 		return s, err
 	}
 	if _, err := r.forwardingLoadedObservation(); err != nil {

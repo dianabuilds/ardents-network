@@ -13,15 +13,15 @@ import (
 func TestForwardingControlLocalAttemptCannotFollowOriginalDenialOrClose(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	r := &managerReference{original: ctx}
-	s := &forwardingControl{reference: r}
+	s := &forwardingControl{fixedUnitControl: &fixedUnitControl{reference: r, purpose: forwardingControlPurpose}}
 	cancel()
-	if err := s.admitForwardingStart(); err != context.Canceled || s.startAttempted {
+	if err := s.admitStart(); err != context.Canceled || s.startAttempted {
 		t.Fatal("cancelled original admitted native Start attempt", err)
 	}
 	r = &managerReference{original: t.Context()}
-	s = &forwardingControl{reference: r}
+	s = &forwardingControl{fixedUnitControl: &fixedUnitControl{reference: r, purpose: forwardingControlPurpose}}
 	r.closed.Store(true)
-	if err := s.admitForwardingStart(); !errors.Is(err, ErrUnavailable) || s.startAttempted {
+	if err := s.admitStart(); !errors.Is(err, ErrUnavailable) || s.startAttempted {
 		t.Fatal("closed original admitted native Start attempt", err)
 	}
 }
@@ -79,21 +79,21 @@ func TestForwardingReplacementCopiesShareOneReloadAttemptAndDenial(t *testing.T)
 func TestForwardingControlCleanupAttemptNeverRestoresAdmission(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	r := &managerReference{original: ctx}
-	s := &forwardingControl{reference: r}
-	if err := s.admitForwardingStart(); err != nil {
+	s := &forwardingControl{fixedUnitControl: &fixedUnitControl{reference: r, purpose: forwardingControlPurpose}}
+	if err := s.admitStart(); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.admitForwardingStart(); err == nil {
+	if err := s.admitStart(); err == nil {
 		t.Fatal("second Start attempt admitted")
 	}
 	cancel()
-	if err := s.admitForwardingStop(context.WithoutCancel(ctx)); err != nil {
+	if err := s.admitStop(context.WithoutCancel(ctx)); err != nil {
 		t.Fatal("original cleanup denied", err)
 	}
-	if err := s.admitForwardingStop(t.Context()); err == nil {
+	if err := s.admitStop(t.Context()); err == nil {
 		t.Fatal("second Stop attempt admitted")
 	}
-	if err := s.admitForwardingStart(); err != context.Canceled {
+	if err := s.admitStart(); err != context.Canceled {
 		t.Fatal("cleanup restored original admission", err)
 	}
 	if err := r.local(); err != context.Canceled {

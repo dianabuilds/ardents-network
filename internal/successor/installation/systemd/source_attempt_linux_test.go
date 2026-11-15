@@ -11,15 +11,15 @@ import (
 func TestSourceControlLocalAttemptCannotFollowOriginalDenialOrClose(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	r := &managerReference{original: ctx}
-	s := &sourceControl{reference: r}
+	s := &sourceControl{fixedUnitControl: &fixedUnitControl{reference: r, purpose: sourceControlPurpose}}
 	cancel()
-	if err := s.admitSourceStart(); err != context.Canceled || s.startAttempted {
+	if err := s.admitStart(); err != context.Canceled || s.startAttempted {
 		t.Fatal("cancelled original admitted native Start attempt", err)
 	}
 	r = &managerReference{original: t.Context()}
-	s = &sourceControl{reference: r}
+	s = &sourceControl{fixedUnitControl: &fixedUnitControl{reference: r, purpose: sourceControlPurpose}}
 	r.closed.Store(true)
-	if err := s.admitSourceStart(); !errors.Is(err, ErrUnavailable) || s.startAttempted {
+	if err := s.admitStart(); !errors.Is(err, ErrUnavailable) || s.startAttempted {
 		t.Fatal("closed original admitted native Start attempt", err)
 	}
 }
@@ -27,21 +27,21 @@ func TestSourceControlLocalAttemptCannotFollowOriginalDenialOrClose(t *testing.T
 func TestSourceControlCleanupAttemptNeverRestoresAdmission(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	r := &managerReference{original: ctx}
-	s := &sourceControl{reference: r}
-	if err := s.admitSourceStart(); err != nil {
+	s := &sourceControl{fixedUnitControl: &fixedUnitControl{reference: r, purpose: sourceControlPurpose}}
+	if err := s.admitStart(); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.admitSourceStart(); err == nil {
+	if err := s.admitStart(); err == nil {
 		t.Fatal("second Start attempt admitted")
 	}
 	cancel()
-	if err := s.admitSourceStop(context.WithoutCancel(ctx)); err != nil {
+	if err := s.admitStop(context.WithoutCancel(ctx)); err != nil {
 		t.Fatal("original cleanup denied", err)
 	}
-	if err := s.admitSourceStop(t.Context()); err == nil {
+	if err := s.admitStop(t.Context()); err == nil {
 		t.Fatal("second Stop attempt admitted")
 	}
-	if err := s.admitSourceStart(); err != context.Canceled {
+	if err := s.admitStart(); err != context.Canceled {
 		t.Fatal("cleanup restored original admission", err)
 	}
 	if err := r.local(); err != context.Canceled {

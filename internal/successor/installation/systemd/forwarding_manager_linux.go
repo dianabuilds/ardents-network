@@ -5,9 +5,6 @@ import (
 	"errors"
 	"os"
 	"sync"
-	"time"
-
-	"github.com/godbus/dbus/v5"
 )
 
 // ForwardingObservation is detached complete fixed-unit data. Installation must
@@ -34,10 +31,9 @@ type forwardingRuntime struct {
 type ForwardingControl struct{ original *forwardingControl }
 
 type forwardingControl struct {
-	reference                     *managerReference
-	startAttempted, stopAttempted bool // original physical I/O serialization
-	once                          sync.Once
-	closeErr                      error
+	*fixedUnitControl
+	once     sync.Once
+	closeErr error
 }
 
 func OpenForwardingRuntime(ctx context.Context) (*ForwardingRuntime, error) {
@@ -66,12 +62,12 @@ func OpenForwardingControl(ctx context.Context) (*ForwardingControl, error) {
 	if r == nil {
 		return nil, err
 	}
-	s := &ForwardingControl{original: &forwardingControl{reference: r}}
+	s := &ForwardingControl{original: &forwardingControl{fixedUnitControl: &fixedUnitControl{reference: r, purpose: forwardingControlPurpose}}}
 	if err == nil {
 		err = r.initializeManagerDeclaration()
 	}
 	if err == nil {
-		err = r.retainForwardingControlUnit()
+		err = r.retainFixedUnit(forwardingControlPurpose)
 	}
 	if err == nil {
 		_, err = r.forwardingLoadedObservation()
@@ -84,130 +80,9 @@ func OpenForwardingControl(ctx context.Context) (*ForwardingControl, error) {
 	return s, err
 }
 
-func (r *managerReference) retainForwardingControlUnit() (err error) {
-	if err = r.begin(); err != nil {
-		return err
-	}
-	defer r.uses.Done()
-	r.ioMu.Lock()
-	defer r.ioMu.Unlock()
-	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
-	defer cancel()
-	defer func() { err = r.managerResult(err, ctx) }()
-	if err = r.local(); err != nil {
-		return err
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return err
-	}
-	if err = r.matchManagerDeclaration(ctx); err != nil {
-		return err
-	}
-	call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.RefUnit", "ardents-forwarding.service")
-	if err != nil {
-		return err
-	}
-	if len(call.Body) != 0 {
-		return ErrObservation
-	}
-	if err = r.matchManagerDeclaration(ctx); err != nil {
-		return err
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return err
-	}
-	if err = r.local(); err != nil {
-		return err
-	}
-	return r.client.transport.socket.SetDeadline(time.Time{})
-}
-
-func (r *managerReference) forwardingLoadedObservation() (result ForwardingObservation, err error) {
-	if err = r.begin(); err != nil {
-		return result, err
-	}
-	defer r.uses.Done()
-	r.ioMu.Lock()
-	defer r.ioMu.Unlock()
-	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
-	defer cancel()
-	defer func() {
-		err = r.managerResult(err, ctx)
-		if err != nil {
-			result = ForwardingObservation{}
-		}
-	}()
-	if err = r.local(); err != nil {
-		return result, err
-	}
-	if !r.client.bus.Connected() {
-		return result, r.unavailable()
-	}
-	err = r.client.observeRequests(ctx, func(ctx context.Context) error {
-		if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-			return err
-		}
-		if err = r.matchManagerDeclaration(ctx); err != nil {
-			return err
-		}
-		for round := 0; round < 2; round++ {
-			for _, unit := range nodeUnitNames[1:] {
-				if err = nodeSlotAbsent(ctx, r, unit); err != nil {
-					return err
-				}
-			}
-			if err = nodeNameAbsent(ctx, r, "ardents-forwarding.socket"); err != nil {
-				return err
-			}
-			if round != 0 {
-				break
-			}
-			call, e := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.GetUnit", "ardents-forwarding.service")
-			if e != nil {
-				return e
-			}
-			if len(call.Body) != 1 {
-				return ErrObservation
-			}
-			object, ok := call.Body[0].(dbus.ObjectPath)
-			if !ok || object != "/org/freedesktop/systemd1/unit/ardents_2dforwarding_2eservice" {
-				return ErrObservation
-			}
-			for i, iface := range []string{"Unit", "Service"} {
-				call, e = r.client.call(ctx, string(object), "org.freedesktop.DBus.Properties.GetAll", "org.freedesktop.systemd1."+iface)
-				if e != nil {
-					return e
-				}
-				properties, e := startupProperties(call)
-				if e != nil {
-					return e
-				}
-				if i == 0 {
-					result.Unit = properties
-				} else {
-					result.Service = properties
-				}
-			}
-		}
-		if r.observe != nil {
-			r.observe()
-		}
-		if err = r.matchManagerDeclaration(ctx); err != nil {
-			return err
-		}
-		if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-			return err
-		}
-		if err = r.local(); err != nil {
-			return err
-		}
-		if err = r.client.transport.socket.SetDeadline(time.Time{}); err != nil {
-			return err
-		}
-		result.Manager, result.Version, result.UnitPaths = r.client.manager, r.version, append([]string(nil), r.paths...)
-		return nil
-	})
-	return result, err
+func (r *managerReference) forwardingLoadedObservation() (ForwardingObservation, error) {
+	observation, err := r.fixedNodeObservation(forwardingControlPurpose)
+	return ForwardingObservation(observation), err
 }
 
 func (s *ForwardingRuntime) Observe() (ForwardingObservation, error) {
