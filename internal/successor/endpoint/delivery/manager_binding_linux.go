@@ -3,8 +3,8 @@ package delivery
 import (
 	"context"
 	"errors"
+	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/unit"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
-	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/installation/unit"
 	"strings"
 )
 

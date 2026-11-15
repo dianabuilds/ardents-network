@@ -1,4 +1,4 @@
-// Package unit validates and retains the closed Endpoint template, renders
+// Package unit owns the Endpoint fixed systemd contract. It validates and retains the closed Endpoint template, renders
 // caller-admitted write paths, and verifies the fixed installed Endpoint and activation-socket
 // contracts against typed systemd observations. Fresh never-started, retained
 // quiescent and exact running invocation checks are distinct.

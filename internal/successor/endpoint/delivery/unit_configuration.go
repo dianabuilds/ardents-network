@@ -2,7 +2,7 @@ package delivery
 
 import (
 	"errors"
-	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/installation/unit"
+	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/unit"
 	"path"
 	"sort"
 	"strings"
