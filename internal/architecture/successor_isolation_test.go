@@ -1133,6 +1133,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/forwarding/hosting_partial_native_linux_test.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}
+	if source == "internal/successor/installation/systemd/startup_observation_native_linux_test.go" && dependency == modulePath+"/internal/successor/endpoint/delivery/manager" {
+		return true
+	}
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
 	owner := path.Dir(source)
 	permitted := map[string][]string{
@@ -1178,7 +1181,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/installation/introduction":       {},
 		"internal/successor/installation/join":               {},
 		"internal/successor/installation/forwarding":         {},
-		"internal/successor/endpoint/delivery":               {"endpoint/delivery/authorization", "enrollment", "release", "installation/cgroup", "installation/systemd", "endpoint/delivery/journal", "installation/process", "endpoint/delivery/generation", "installation/completion", "installation/fixedfile", "endpoint/delivery/unit", "endpoint/delivery/request", "installation/directory"},
+		"internal/successor/endpoint/delivery":               {"endpoint/delivery/authorization", "enrollment", "release", "installation/cgroup", "installation/systemd", "endpoint/delivery/manager", "endpoint/delivery/journal", "installation/process", "endpoint/delivery/generation", "installation/completion", "installation/fixedfile", "endpoint/delivery/unit", "endpoint/delivery/request", "installation/directory"},
 		"internal/successor/installation/cgroup":             {},
 		"internal/successor/endpoint/delivery/request":       {},
 		"internal/successor/installation/directory":          {},
@@ -1192,6 +1195,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/installation/process":            {},
 		"internal/successor/endpoint/delivery/generation":    {},
 		"internal/successor/endpoint/delivery/journal":       {},
+		"internal/successor/endpoint/delivery/manager":       {"systemdproperty"},
 		"internal/successor/installation/completion":         {},
 		"internal/successor/installation/fixedfile":          {},
 		"internal/successor/endpoint/delivery/unit":          {"systemdproperty"},

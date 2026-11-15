@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"syscall"
 	"time"
@@ -72,7 +73,7 @@ func (owned *successorPreparation) startCandidate() (returnedErr error) {
 	}()
 	// Even an error may follow a real manager effect. Own the attempt BEFORE it.
 	original.startAttempted = true
-	if err := systemd.Start(owned.ctx); err != nil {
+	if err := manager.Start(owned.ctx); err != nil {
 		return err
 	}
 	if err := original.retain(owned.ctx); err != nil {
@@ -198,11 +199,11 @@ func (original *installedCandidate) retain(ctx context.Context) error {
 	if err := owned.inspection.observe(ctx); err != nil {
 		return err
 	}
-	version, err := systemd.Version(ctx)
+	version, err := manager.Version(ctx)
 	if err != nil {
 		return err
 	}
-	unit, service, err := systemd.Endpoint(ctx)
+	unit, service, err := manager.Endpoint(ctx)
 	if err != nil {
 		return err
 	}
@@ -235,11 +236,11 @@ func (original *installedCandidate) observeInvocation(ctx context.Context) error
 		original.process == nil || original.scopes == nil || ctx == nil {
 		return ErrBinding
 	}
-	version, err := systemd.Version(ctx)
+	version, err := manager.Version(ctx)
 	if err != nil {
 		return err
 	}
-	unit, service, err := systemd.Endpoint(ctx)
+	unit, service, err := manager.Endpoint(ctx)
 	if err != nil {
 		return err
 	}
@@ -274,11 +275,11 @@ func (original *installedCandidate) quiesce() error {
 	}
 	if !original.stopRequested {
 		if original.process == nil {
-			version, err := systemd.Version(cleanup)
+			version, err := manager.Version(cleanup)
 			if err != nil {
 				return errors.Join(original.terminal, err)
 			}
-			unit, service, err := systemd.Endpoint(cleanup)
+			unit, service, err := manager.Endpoint(cleanup)
 			if err != nil {
 				return errors.Join(original.terminal, err)
 			}
@@ -333,7 +334,7 @@ func (original *installedCandidate) quiesce() error {
 			}
 		}
 		original.stopRequested = true
-		stopErr := systemd.Stop(cleanup)
+		stopErr := manager.Stop(cleanup)
 		original.terminal = errors.Join(original.terminal, stopErr, owned.ctx.Err())
 		if original.scopes == nil && stopErr != nil {
 			// An unobserved queued start cannot be released after a failed stop.
@@ -380,12 +381,12 @@ func (original *installedCandidate) joinAttempt(cleanup context.Context) error {
 
 func (original *installedCandidate) observeQuiescent(ctx context.Context) error {
 	owned := original.preparation
-	version, err := systemd.Version(ctx)
+	version, err := manager.Version(ctx)
 	if err != nil {
 		return err
 	}
 	for range 2 {
-		unit, service, err := systemd.Endpoint(ctx)
+		unit, service, err := manager.Endpoint(ctx)
 		if err != nil {
 			return err
 		}

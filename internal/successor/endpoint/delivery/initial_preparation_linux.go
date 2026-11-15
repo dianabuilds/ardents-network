@@ -10,9 +10,9 @@ import (
 	"sort"
 	"strings"
 
-	manageddirectory "github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
+	manageddirectory "github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
 )
 
 // One operation retains all journal/root borrowers before returning its kernel
@@ -225,11 +225,11 @@ func (owned *initialPreparation) observeStoppedInstallation(ctx context.Context,
 	if err := observeStoppedManager(ctx); err != nil {
 		return err
 	}
-	version, err := systemd.Version(ctx)
+	version, err := manager.Version(ctx)
 	if err != nil {
 		return err
 	}
-	unit, service, err := systemd.Endpoint(ctx)
+	unit, service, err := manager.Endpoint(ctx)
 	if err != nil {
 		return err
 	}
@@ -308,7 +308,7 @@ func requireAbsentManagedPath(filename string) error {
 }
 
 func observeAbsentInstallationUnits(ctx context.Context) error {
-	body, err := systemd.Units(ctx)
+	body, err := manager.Units(ctx)
 	if err != nil || strings.TrimSpace(body) != "" {
 		return errors.Join(ErrNativeUnavailable, err)
 	}
@@ -420,7 +420,7 @@ func (owned *initialPreparation) publishInitialSelection(ctx context.Context, re
 	if err := stage.fixedPhase(ctx, "0006.json", "reloading-manager"); err != nil {
 		return err
 	}
-	if err := systemd.Reload(ctx); err != nil {
+	if err := manager.Reload(ctx); err != nil {
 		return err
 	}
 	if err := owned.observeStoppedInstallation(ctx, request); err != nil {

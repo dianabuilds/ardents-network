@@ -8,6 +8,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
 )
 
 // This selects a real system manager with the fixed Endpoint/socket resources.
@@ -33,7 +35,7 @@ func TestInstallationNativeFreshStartupProperties(t *testing.T) {
 			t.Fatal("native fixed-object round incomplete")
 		}
 	}
-	unit, service, err := Endpoint(ctx)
+	unit, service, err := manager.Endpoint(ctx)
 	if err != nil {
 		t.Fatal("independent subprocess property observation", err)
 	}

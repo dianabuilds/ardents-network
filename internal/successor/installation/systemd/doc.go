@@ -1,10 +1,5 @@
-// Package systemd owns bounded typed observations of the fixed Installation
-// Endpoint and activation socket objects on the real system bus and the fixed
-// daemon-reload/start/stop subprocess mechanisms.
-// Each subprocess retains its creating OS thread through physical Run/join
-// and receives kernel SIGKILL on that thread's death. This prevents a surviving
-// helper from submitting a later effect after fatal caller death; it does not
-// cancel or establish completion of an already accepted manager request.
+// Package systemd owns fixed Node and Source manager lifetimes, plus the
+// transitional original Endpoint reference and startup observations.
 // Its original private bus connection retains the fixed Endpoint unit through
 // replacement and reload;
 // Close interrupts and joins original transport I/O before releasing custody.
@@ -78,13 +73,11 @@
 package systemd
 
 import (
-	"errors"
-
 	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
 )
 
 var (
-	ErrInput       = errors.New("invalid Installation manager observation")
+	ErrInput       = systemdproperty.ErrInput
 	ErrObservation = systemdproperty.ErrObservation
-	ErrUnavailable = errors.New("installation manager observation unavailable")
+	ErrUnavailable = systemdproperty.ErrUnavailable
 )

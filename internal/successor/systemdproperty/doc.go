@@ -4,5 +4,9 @@ package systemdproperty
 
 import "errors"
 
-// ErrObservation indicates an invalid bounded manager observation.
-var ErrObservation = errors.New("installation manager observation differs")
+// Shared refusal identities preserve manager and observation errors across owners.
+var (
+	ErrInput       = errors.New("invalid Installation manager observation")
+	ErrObservation = errors.New("installation manager observation differs")
+	ErrUnavailable = errors.New("installation manager observation unavailable")
+)

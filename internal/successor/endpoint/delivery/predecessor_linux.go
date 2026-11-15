@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 )
@@ -44,11 +45,11 @@ func (owned *successorPreparation) retainPredecessor() (original *installedPrede
 	if err != nil {
 		return nil, err
 	}
-	version, err := systemd.Version(owned.ctx)
+	version, err := manager.Version(owned.ctx)
 	if err != nil {
 		return nil, err
 	}
-	unit, service, err := systemd.Endpoint(owned.ctx)
+	unit, service, err := manager.Endpoint(owned.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -146,11 +147,11 @@ func (original *installedPredecessor) observeOriginalInvocation(ctx context.Cont
 	if err := original.managerReference.Observe(ctx); err != nil {
 		return err
 	}
-	version, err := systemd.Version(ctx)
+	version, err := manager.Version(ctx)
 	if err != nil {
 		return err
 	}
-	unit, service, err := systemd.Endpoint(ctx)
+	unit, service, err := manager.Endpoint(ctx)
 	if err != nil {
 		return err
 	}
@@ -166,7 +167,7 @@ func (original *installedPredecessor) observeOriginalInvocation(ctx context.Cont
 	if err := original.scopes.Observe(); err != nil {
 		return err
 	}
-	unit, service, err = systemd.Endpoint(ctx)
+	unit, service, err = manager.Endpoint(ctx)
 	if err != nil {
 		return err
 	}
@@ -185,7 +186,7 @@ func (original *installedPredecessor) observeQuiescent(ctx context.Context) erro
 	if original == nil || original.preparation == nil || !original.joined || ctx == nil || (!original.alreadyStopped && !original.stopRequested) {
 		return ErrInput
 	}
-	version, err := systemd.Version(ctx)
+	version, err := manager.Version(ctx)
 	if err != nil {
 		return err
 	}
@@ -193,7 +194,7 @@ func (original *installedPredecessor) observeQuiescent(ctx context.Context) erro
 		if err := original.managerReference.Observe(ctx); err != nil {
 			return err
 		}
-		unit, service, err := systemd.Endpoint(ctx)
+		unit, service, err := manager.Endpoint(ctx)
 		if err != nil {
 			return err
 		}
@@ -261,7 +262,7 @@ func (original *installedPredecessor) stopAndJoin() error {
 	// This context serves physical quiescence only. It cannot admit a successor,
 	// renew Release authority, clear a failure or replace the original caller.
 	cleanup := context.WithoutCancel(original.preparation.ctx)
-	stopErr := systemd.Stop(cleanup)
+	stopErr := manager.Stop(cleanup)
 	original.terminal = errors.Join(stopErr, original.preparation.ctx.Err())
 	joinErr := original.joinOriginal()
 	original.terminal = errors.Join(original.terminal, joinErr,
@@ -289,7 +290,7 @@ func (original *installedPredecessor) quiesceAfterFailure() error {
 			original.terminal = errors.Join(original.terminal, err)
 		} else {
 			original.stopRequested = true
-			err := systemd.Stop(cleanup)
+			err := manager.Stop(cleanup)
 			original.terminal = errors.Join(original.terminal, err)
 		}
 	}

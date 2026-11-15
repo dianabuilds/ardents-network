@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
 	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/unit"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"strings"
@@ -95,7 +96,7 @@ func observeActivationSockets(ctx context.Context, stopped bool) error {
 		return ErrInput
 	}
 	for _, role := range []string{"reader", "publisher"} {
-		unit, socket, err := systemd.Activation(ctx, role)
+		unit, socket, err := manager.Activation(ctx, role)
 		if err != nil {
 			return err
 		}
@@ -112,7 +113,7 @@ func observeActivationSockets(ctx context.Context, stopped bool) error {
 }
 
 func observeStoppedManager(ctx context.Context) error {
-	body, err := systemd.State(ctx, "ardents-endpoint.service")
+	body, err := manager.State(ctx, "ardents-endpoint.service")
 	if err != nil {
 		return errors.Join(ErrNativeUnavailable, err)
 	}
@@ -126,7 +127,7 @@ func observeStoppedManager(ctx context.Context) error {
 // Initial/recovery admission still requires the inactive Endpoint above.
 func observeStoppedActivationManager(ctx context.Context) error {
 	for _, unit := range []string{"ardents-text-reader.socket", "ardents-text-publisher.socket"} {
-		body, err := systemd.State(ctx, unit)
+		body, err := manager.State(ctx, unit)
 		if err != nil {
 			return errors.Join(ErrNativeUnavailable, err)
 		}
@@ -134,7 +135,7 @@ func observeStoppedActivationManager(ctx context.Context) error {
 			return err
 		}
 	}
-	body, err := systemd.Instances(ctx)
+	body, err := manager.Instances(ctx)
 	if err != nil || strings.TrimSpace(body) != "" {
 		return errors.Join(ErrNativeUnavailable, err)
 	}

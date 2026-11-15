@@ -9,7 +9,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
 )
 
 // Preserve current native refusal while #359's separate capability repair is
@@ -47,7 +47,7 @@ func observeNativePlatform(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	version, err := systemd.Version(ctx)
+	version, err := manager.Version(ctx)
 	if err != nil {
 		return err
 	}

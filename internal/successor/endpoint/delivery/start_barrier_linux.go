@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
 )
 
 // A private refusal barrier, not evidence of an accepted running invocation.
@@ -634,11 +634,11 @@ func (barrier *installedStartBarrier) observeCompletionInvocation(pin *installed
 	if err != nil || wantedErr != nil || !bytes.Equal(binding, wanted) {
 		return errors.Join(ErrBinding, err, wantedErr)
 	}
-	version, err := systemd.Version(barrier.ctx)
+	version, err := manager.Version(barrier.ctx)
 	if err != nil {
 		return err
 	}
-	unit, service, err := systemd.Endpoint(barrier.ctx)
+	unit, service, err := manager.Endpoint(barrier.ctx)
 	if err != nil {
 		return err
 	}
@@ -651,7 +651,7 @@ func (barrier *installedStartBarrier) observeCompletionInvocation(pin *installed
 	if err := observeBoundActivationSockets(barrier.ctx); err != nil {
 		return err
 	}
-	unit, service, err = systemd.Endpoint(barrier.ctx)
+	unit, service, err = manager.Endpoint(barrier.ctx)
 	if err != nil {
 		return err
 	}

@@ -14,11 +14,11 @@ import (
 
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/authorization"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
@@ -340,11 +340,11 @@ func (r *successorRecoveryNative) observe(ctx context.Context) error {
 		return err
 	}
 	for range 2 {
-		version, err := systemd.Version(ctx)
+		version, err := manager.Version(ctx)
 		if err != nil {
 			return err
 		}
-		unit, service, err := systemd.Endpoint(ctx)
+		unit, service, err := manager.Endpoint(ctx)
 		if err != nil {
 			return err
 		}

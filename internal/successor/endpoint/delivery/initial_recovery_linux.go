@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"io"
 	"os"
 	"path/filepath"
@@ -462,11 +462,11 @@ func (r *recoveryNative) observe(ctx context.Context) error {
 		if err := observeStoppedManager(ctx); err != nil {
 			return err
 		}
-		version, err := systemd.Version(ctx)
+		version, err := manager.Version(ctx)
 		if err != nil {
 			return err
 		}
-		unit, service, err := systemd.Endpoint(ctx)
+		unit, service, err := manager.Endpoint(ctx)
 		if err != nil {
 			return err
 		}
@@ -596,7 +596,7 @@ func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, auth
 	if err := r.observe(ctx); err != nil {
 		return ProvisionResult{}, err
 	}
-	if err := systemd.Reload(ctx); err != nil {
+	if err := manager.Reload(ctx); err != nil {
 		return ProvisionResult{}, err
 	}
 	if err := observeStoppedManager(ctx); err != nil {

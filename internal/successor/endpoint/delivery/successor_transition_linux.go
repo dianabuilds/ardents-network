@@ -9,10 +9,10 @@ import (
 	"sort"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
@@ -265,7 +265,7 @@ func (owned *successorPreparation) publishSuccessorSelection() error {
 	if err := stage.journal.Write(owned.ctx, journal.Transitions, "0006.json", phase); err != nil {
 		return err
 	}
-	if err := systemd.Reload(owned.ctx); err != nil {
+	if err := manager.Reload(owned.ctx); err != nil {
 		return err
 	}
 	if err := owned.observeReloadedSuccessor(); err != nil {
@@ -292,12 +292,12 @@ func (owned *successorPreparation) observeReloadedSuccessor() error {
 	if err := owned.stage.verifyTransitionPhase("0006.json", "reloading-manager"); err != nil {
 		return err
 	}
-	version, err := systemd.Version(owned.ctx)
+	version, err := manager.Version(owned.ctx)
 	if err != nil {
 		return err
 	}
 	for range 2 {
-		unit, service, err := systemd.Endpoint(owned.ctx)
+		unit, service, err := manager.Endpoint(owned.ctx)
 		if err != nil {
 			return err
 		}
@@ -527,7 +527,7 @@ func (owned *successorPreparation) resumeReload() error {
 		return err
 	}
 	if !owned.recovery.inventory["0007.json"] {
-		if err := systemd.Reload(owned.ctx); err != nil {
+		if err := manager.Reload(owned.ctx); err != nil {
 			return err
 		}
 	}

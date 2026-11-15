@@ -1,4 +1,4 @@
-package systemd
+package manager
 
 import (
 	"context"
@@ -6,9 +6,11 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
 )
 
-func Endpoint(ctx context.Context) (Properties, Properties, error) {
+func Endpoint(ctx context.Context) (systemdproperty.Properties, systemdproperty.Properties, error) {
 	// A stopped unit may be collected between short-lived bus clients. GetAll
 	// on its fixed object path loads its configuration within that same method
 	// dispatch; GetUnit would require it to remain loaded from an earlier call.
@@ -19,12 +21,12 @@ func Endpoint(ctx context.Context) (Properties, Properties, error) {
 
 // No public input selects a binary, system bus, method or environment. The only
 // callers request the fixed Endpoint and its two activation socket observations.
-func call(ctx context.Context, object, iface, method, argument string) (Value, error) {
+func call(ctx context.Context, object, iface, method, argument string) (systemdproperty.Value, error) {
 	if ctx == nil {
-		return Value{}, ErrInput
+		return systemdproperty.Value{}, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
-		return Value{}, err
+		return systemdproperty.Value{}, err
 	}
 	bounded, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
@@ -34,21 +36,21 @@ func call(ctx context.Context, object, iface, method, argument string) (Value, e
 	var output, diagnostic boundedManagerOutput
 	command.Stdout, command.Stderr = &output, &diagnostic
 	if err := errors.Join(runOriginalManagerCommand(command), bounded.Err(), ctx.Err()); err != nil {
-		return Value{}, err
+		return systemdproperty.Value{}, err
 	}
 	if diagnostic.body.Len() != 0 {
-		return Value{}, ErrUnavailable
+		return systemdproperty.Value{}, ErrUnavailable
 	}
-	var value Value
-	if Decode([]byte(strings.TrimSpace(output.body.String())), &value) != nil || value.Type == "" || len(value.Data) == 0 {
-		return Value{}, ErrObservation
+	var value systemdproperty.Value
+	if systemdproperty.Decode([]byte(strings.TrimSpace(output.body.String())), &value) != nil || value.Type == "" || len(value.Data) == 0 {
+		return systemdproperty.Value{}, ErrObservation
 	}
 	return value, ctx.Err()
 }
 
 // Activation returns typed facts for one fixed socket object. It accepts no
 // bus, binary, arbitrary object, method or environment selection from a caller.
-func Activation(ctx context.Context, role string) (Properties, Properties, error) {
+func Activation(ctx context.Context, role string) (systemdproperty.Properties, systemdproperty.Properties, error) {
 	if role != "reader" && role != "publisher" {
 		return nil, nil, ErrInput
 	}
@@ -56,12 +58,12 @@ func Activation(ctx context.Context, role string) (Properties, Properties, error
 	return properties(ctx, object, "Socket")
 }
 
-func properties(ctx context.Context, object, kind string) (Properties, Properties, error) {
-	var observations [2]Properties
+func properties(ctx context.Context, object, kind string) (systemdproperty.Properties, systemdproperty.Properties, error) {
+	var observations [2]systemdproperty.Properties
 	for index, iface := range []string{"Unit", kind} {
 		answer, err := call(ctx, object, "org.freedesktop.DBus.Properties", "GetAll", "org.freedesktop.systemd1."+iface)
-		var payload []Properties
-		if err != nil || answer.Type != "a{sv}" || Decode(answer.Data, &payload) != nil || len(payload) != 1 || payload[0] == nil {
+		var payload []systemdproperty.Properties
+		if err != nil || answer.Type != "a{sv}" || systemdproperty.Decode(answer.Data, &payload) != nil || len(payload) != 1 || payload[0] == nil {
 			return nil, nil, errors.Join(ErrObservation, err)
 		}
 		observations[index] = payload[0]

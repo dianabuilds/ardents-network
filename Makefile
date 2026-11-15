@@ -427,7 +427,7 @@ installation-native-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "installation-native-check requires Linux"; exit 2)
 	@test "$$(id -u)" = 0 || (echo "installation-native-check requires root"; exit 2)
 	@test -n "$(ARDENTS_INSTALLATION_NATIVE_ROOT)" || (echo "ARDENTS_INSTALLATION_NATIVE_ROOT must name a trusted root-owned temporary parent"; exit 2)
-	go test -race -tags installation_native ./internal/successor/installation/... ./internal/successor/endpoint/delivery/journal ./internal/successor/endpoint/delivery/generation -run '^TestInstallationNative' -count=1 -timeout=1m
+	go test -race -tags installation_native ./internal/successor/installation/... ./internal/successor/endpoint/delivery/journal ./internal/successor/endpoint/delivery/generation ./internal/successor/endpoint/delivery/manager -run '^TestInstallationNative' -count=1 -timeout=1m
 
 installation-native-compile-check: export GOOS := linux
 installation-native-compile-check: export GOARCH := amd64
@@ -441,6 +441,7 @@ installation-native-compile-check:
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-cgroup-native.test" ./internal/successor/installation/cgroup
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-native.test" ./internal/successor/installation/systemd
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-journal-native.test" ./internal/successor/endpoint/delivery/journal
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-endpoint-manager-native.test" ./internal/successor/endpoint/delivery/manager
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-process-native.test" ./internal/successor/installation/process
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-generation-native.test" ./internal/successor/endpoint/delivery/generation
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-completion-native.test" ./internal/successor/installation/completion

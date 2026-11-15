@@ -1,6 +1,6 @@
 //go:build installation_native
 
-package systemd
+package manager
 
 import (
 	"bufio"

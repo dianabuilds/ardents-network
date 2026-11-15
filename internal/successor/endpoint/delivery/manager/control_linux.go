@@ -1,4 +1,4 @@
-package systemd
+package manager
 
 import (
 	"bytes"
