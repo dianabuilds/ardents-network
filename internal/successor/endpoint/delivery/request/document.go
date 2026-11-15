@@ -17,7 +17,7 @@ var ErrInput = protectedfiles.ErrInput
 // installation grammar on every host; native admission is a later operation.
 type Document struct {
 	declared *Declaration
-	custody  *Origin
+	custody  *origin
 }
 
 // Decode checks one canonical bounded request before byte authentication.
@@ -54,8 +54,14 @@ func (d Document) Declaration() (Declaration, bool) {
 	return value, true
 }
 
-// Origin returns opaque original-file provenance; decoded documents have none.
-func (d Document) Origin() *Origin { return d.custody }
+// Observe checks the original file and declaration retained by this document.
+// A decoded declaration without native custody cannot supply this observation.
+func (d Document) Observe(ctx context.Context) error {
+	if ctx == nil || d.declared == nil || d.custody == nil {
+		return ErrInput
+	}
+	return d.custody.observe(ctx, *d.declared)
+}
 
 // BundleRoot is the detached declared bundle location, not custody.
 func (d Document) BundleRoot() string {

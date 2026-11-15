@@ -13,7 +13,7 @@ import (
 
 // Only the native reader can construct this physical provenance. It is not
 // serialized, and checked declarations cannot become privileged input.
-type Origin struct {
+type origin struct {
 	path     string
 	digest   [32]byte
 	identity os.FileInfo
@@ -80,7 +80,7 @@ func readOwned(ctx context.Context, filename string, initial bool) (result Docum
 	if err := ctx.Err(); err != nil {
 		return Document{}, err
 	}
-	request.custody = &Origin{path: filename, digest: sha256.Sum256(body), identity: original}
+	request.custody = &origin{path: filename, digest: sha256.Sum256(body), identity: original}
 	return request, nil
 }
 
@@ -129,9 +129,9 @@ func rootDirectoryAncestors(directory string) (map[string]os.FileInfo, error) {
 	}
 }
 
-// Observe independently rereads the original root-owned input and checks its
+// observe independently rereads the original root-owned input and checks its
 // exact declarations, bytes and native identity. It grants no effect authority.
-func (origin *Origin) Observe(ctx context.Context, declared Declaration) error {
+func (origin *origin) observe(ctx context.Context, declared Declaration) error {
 	if ctx == nil || origin == nil {
 		return ErrInput
 	}

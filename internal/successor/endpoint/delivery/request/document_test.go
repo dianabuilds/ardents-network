@@ -13,7 +13,7 @@ func TestDocumentDetachedDeclarationsHaveNoNativeOrigin(t *testing.T) {
 		t.Fatal(err)
 	}
 	declared, ok := document.Declaration()
-	if !ok || document.Origin() != nil {
+	if !ok || !errors.Is(document.Observe(t.Context()), ErrInput) {
 		t.Fatal("decoded declarations acquired native provenance")
 	}
 	declared.Headless.NetworkAuthorities[0] = "changed"

@@ -128,16 +128,16 @@ func TestInstallationRequestCausalRefusals(t *testing.T) {
 func TestOwnedRequestRefusesBeforeAcquiringCustody(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if request, err := requestinput.ReadOwned(ctx, "/never-opened", true); !errors.Is(err, context.Canceled) || request.Origin() != nil || requestHasDeclaration(request) {
+	if request, err := requestinput.ReadOwned(ctx, "/never-opened", true); !errors.Is(err, context.Canceled) || !errors.Is(request.Observe(t.Context()), ErrInput) || requestHasDeclaration(request) {
 		t.Fatalf("original cancellation lost: %v", err)
 	}
 	for _, filename := range []string{"", "relative", "/directory/../request"} {
-		if request, err := requestinput.ReadOwned(t.Context(), filename, true); err == nil || request.Origin() != nil || requestHasDeclaration(request) {
+		if request, err := requestinput.ReadOwned(t.Context(), filename, true); err == nil || !errors.Is(request.Observe(t.Context()), ErrInput) || requestHasDeclaration(request) {
 			t.Fatalf("invalid native input acquired custody: %v", err)
 		}
 	}
 	request, err := requestinput.Decode(t.Context(), requestFixture(), true)
-	if err != nil || request.Origin() != nil {
+	if err != nil || !errors.Is(request.Observe(t.Context()), ErrInput) {
 		t.Fatal("portable declarations became native provenance")
 	}
 }

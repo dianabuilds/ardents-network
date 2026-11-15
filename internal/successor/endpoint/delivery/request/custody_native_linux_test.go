@@ -198,7 +198,7 @@ func TestInstallationNativeRequestOriginReobservation(t *testing.T) {
 				t.Fatal(err)
 			}
 			declared, ok := document.Declaration()
-			if !ok || document.Origin() == nil {
+			if !ok || document.custody == nil {
 				t.Fatal("owned read lost provenance")
 			}
 			if change == "declaration" {
@@ -212,11 +212,11 @@ func TestInstallationNativeRequestOriginReobservation(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			err = document.Origin().Observe(t.Context(), declared)
-			if change == "unchanged" && err != nil {
+			err = document.Observe(t.Context())
+			if change != "same-byte-replacement" && err != nil {
 				t.Fatal(err)
 			}
-			if change != "unchanged" && !errors.Is(err, ErrChanged) {
+			if change == "same-byte-replacement" && !errors.Is(err, ErrChanged) {
 				t.Fatalf("changed origin admitted: %v", err)
 			}
 		})

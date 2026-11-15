@@ -40,11 +40,10 @@ trusted-root/sync helpers для fixed resources и recovery; чужой кат�
 
 `endpoint/delivery/request` отдельно владеет canonical request-v1, Headless-v2 и Source-v1
 декларациями, их связностью и чтением direct root-owned исходного файла.
-`Document` выдаёт detached copies; `Origin` скрывает исходные path/digest/inode
-и независимо проверяет прежние bytes/access перед эффектами. Корень сохраняет
-совместимый `Request` consumer, Installation admission, Release proofs и
+`Document` выдаёт detached copies и сам проверяет исходные path/digest/inode,
+bytes и access перед эффектами. Корень сохраняет Installation admission, Release proofs и
 транзакции; происхождение запроса не выдаёт ни одного из этих прав.
-`request_origin_linux.go` связывает native Origin с корневым Request и сохраняет
+`request_origin_linux.go` сохраняет
 Installation error semantics для initial и successor preparation. Повторная
 проверка исходного запроса не принадлежит initial lifecycle; каждый caller
 сохраняет собственное время проверки, effect admission и original lifetime.
@@ -799,7 +798,7 @@ Installation не должны поддерживать разные списк�
 Новый Installation проверяет canonical request и вложенные Headless/Source
 declarations через `request.Decode`, сохраняя текущие schemas, порядок полей
 и ограничения байтов. Их canonical grammar и native original input custody
-принадлежат `request`; транзакция удерживает исходный `Document`/`Origin`,
+принадлежат `request`; транзакция удерживает исходный `Document`,
 получает отдельные копии декларации и самостоятельно допускает эффекты.
 Root declarations выбранного Linux-профиля используют одну POSIX grammar
 на всех hosts; это не native filesystem проверка или Windows installation.

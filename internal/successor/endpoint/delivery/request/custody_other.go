@@ -6,7 +6,9 @@ import "context"
 
 // Unsupported hosts have no physical custody representation or accepting
 // reader. Keeping the private marker permits the same portable Document grammar.
-type Origin struct{}
+type origin struct{}
+
+func (*origin) observe(context.Context, Declaration) error { return ErrNativeUnavailable }
 
 func readOwned(context.Context, string, bool) (Document, error) {
 	return Document{}, ErrNativeUnavailable
