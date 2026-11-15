@@ -584,9 +584,10 @@ It constructs no Carrier adapter or Publication runtime and grants no ACK.
 The Linux `installed_endpoint_linux.go` adapter calls `endpoint.Run` and renders
 only public progress and the final phase. The original participant owns Startup,
 Execution preparation, State, permission-file exchange, Stock, shared funding
-parents and IPC listeners. Its `declarations_linux.go` projects Installation's
-bound inputs; offline Source preparation consumes those same public schemas and
-pure Network configuration without acquiring a live participant. The native
+parents and IPC listeners. Its portable `declarations.go` decodes the bound
+public schemas; `declarations_linux.go` supplies native projections. Offline
+Source preparation consumes these schemas and Network configuration without
+acquiring a live participant. The native
 `permission_linux.go` retains write-once/exact retry and original parent checks.
 Listeners and Service borrowers join before funding parents, Stock, State,
 Execution and Startup close. Reader and Publisher retain their own operation
