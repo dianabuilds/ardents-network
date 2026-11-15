@@ -237,7 +237,9 @@ top-level roles and cannot create cold trust. `release/endpoint` compares the
 retained generation's metadata floor and local environment against the verifier's
 current floors before successor authentication. The caller must independently
 retain the original installed binding; detached facts alone grant no proof,
-installed predecessor continuity or runtime readiness. New Installation separately
+installed predecessor continuity or runtime readiness. Recovery authenticates
+the retained candidate again after the same floor check; unlike a new successor,
+it does not require a version newer than that candidate. New Installation separately
 owns initial stopped provisioning, successor replacement and bounded fresh-proof
 recovery through genuine command consumers. Bounded accepting non-root startup
 has an actual-manager Root archival/ACK and Source/permission receipt. Separate

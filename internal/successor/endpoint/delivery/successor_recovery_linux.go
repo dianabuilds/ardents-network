@@ -381,14 +381,7 @@ func completeSuccessorRecovery(ctx context.Context, r *successorRecoveryNative, 
 	if err := r.observe(ctx); err != nil {
 		return ProvisionResult{}, errors.Join(ErrRepairRequired, err)
 	}
-	floors, err := verifier.CurrentFloors(ctx)
-	if err != nil {
-		return ProvisionResult{}, err
-	}
-	if err := successorContinuity(r.checked.binding, floors, input.Local); err != nil {
-		return ProvisionResult{}, err
-	}
-	authorization, err := generationauthorization.AuthenticateCandidate(ctx, verifier, candidate, input)
+	authorization, err := generationauthorization.AuthenticateRetainedCandidate(ctx, verifier, candidate, input, retainedGeneration(r.checked.binding))
 	if err != nil {
 		return ProvisionResult{}, err
 	}
@@ -737,14 +730,7 @@ func (r *successorRecoveryNative) completeWritingTransition(ctx context.Context,
 	if err := owned.observe(); err != nil {
 		return ProvisionResult{}, err
 	}
-	floors, err := verifier.CurrentFloors(ctx)
-	if err != nil {
-		return ProvisionResult{}, err
-	}
-	if err := successorContinuity(r.intent.CandidateBinding, floors, input.Local); err != nil {
-		return ProvisionResult{}, err
-	}
-	authorization, err := generationauthorization.AuthenticateCandidate(ctx, verifier, candidate, input)
+	authorization, err := generationauthorization.AuthenticateRetainedCandidate(ctx, verifier, candidate, input, retainedGeneration(r.intent.CandidateBinding))
 	if err != nil {
 		return ProvisionResult{}, err
 	}
@@ -1260,14 +1246,7 @@ func (r *successorRecoveryNative) completeStagedTransition(ctx context.Context, 
 			return ProvisionResult{}, err
 		}
 	}
-	floors, err := verifier.CurrentFloors(ctx)
-	if err != nil {
-		return ProvisionResult{}, err
-	}
-	if err := successorContinuity(r.checked.binding, floors, input.Local); err != nil {
-		return ProvisionResult{}, err
-	}
-	authorization, err := generationauthorization.AuthenticateCandidate(ctx, verifier, candidate, input)
+	authorization, err := generationauthorization.AuthenticateRetainedCandidate(ctx, verifier, candidate, input, retainedGeneration(r.checked.binding))
 	if err != nil {
 		return ProvisionResult{}, err
 	}

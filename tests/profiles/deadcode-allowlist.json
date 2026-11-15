@@ -307,7 +307,6 @@
           "internal/successor/endpoint/delivery.recoverBoundGeneration",
           "internal/successor/endpoint/delivery.recoveryGeneration",
           "internal/successor/endpoint/delivery.renderEndpointUnit",
-          "internal/successor/endpoint/delivery.successorContinuity",
           "internal/successor/endpoint/delivery.targetObservation.observation",
           "internal/successor/endpoint/delivery.unitPath",
           "internal/successor/endpoint/delivery.writableDirectories",

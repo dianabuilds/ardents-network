@@ -14,10 +14,12 @@ import (
 )
 
 func TestAuthenticateSuccessorRequiresOriginalVerifier(t *testing.T) {
-	for _, ctx := range []context.Context{nil, context.Background()} {
-		result, err := AuthenticateSuccessor(ctx, nil, enrollment.Candidate{}, release.Inputs{}, RetainedGeneration{})
-		if !errors.Is(err, ErrInput) || len(result.Descriptor()) != 0 {
-			t.Fatalf("missing original verifier accepted: %v", err)
+	for _, authenticate := range []func(context.Context, *release.Verifier, enrollment.Candidate, release.Inputs, RetainedGeneration) (Authorization, error){AuthenticateSuccessor, AuthenticateRetainedCandidate} {
+		for _, ctx := range []context.Context{nil, context.Background()} {
+			result, err := authenticate(ctx, nil, enrollment.Candidate{}, release.Inputs{}, RetainedGeneration{})
+			if !errors.Is(err, ErrInput) || len(result.Descriptor()) != 0 {
+				t.Fatalf("missing original verifier accepted: %v", err)
+			}
 		}
 	}
 }
@@ -29,8 +31,10 @@ func TestAuthenticateSuccessorDoesNotBootstrapIncompleteTrust(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = verifier.Close() })
 	previous := RetainedGeneration{TargetsVersion: 1, TargetsDigest: strings.Repeat("01", 32), ReleaseVersion: 1}
-	if _, err := AuthenticateSuccessor(t.Context(), verifier, enrollment.Candidate{}, release.Inputs{}, previous); !errors.Is(err, release.ErrTrustUnavailable) {
-		t.Fatalf("incomplete trust admitted successor: %v", err)
+	for _, authenticate := range []func(context.Context, *release.Verifier, enrollment.Candidate, release.Inputs, RetainedGeneration) (Authorization, error){AuthenticateSuccessor, AuthenticateRetainedCandidate} {
+		if _, err := authenticate(t.Context(), verifier, enrollment.Candidate{}, release.Inputs{}, previous); !errors.Is(err, release.ErrTrustUnavailable) {
+			t.Fatalf("incomplete trust admitted candidate: %v", err)
+		}
 	}
 	floors, err := verifier.CurrentFloors(t.Context())
 	if err != nil || floors.RootVersion != 0 || floors.TargetsVersion != 0 {

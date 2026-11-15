@@ -25,17 +25,7 @@ type RetainedGeneration struct {
 // candidate, then requires a newer authorized generation. The caller must
 // retain and reobserve the original binding around this operation.
 func AuthenticateSuccessor(ctx context.Context, verifier *release.Verifier, candidate enrollment.Candidate, input release.Inputs, previous RetainedGeneration) (Authorization, error) {
-	if ctx == nil || verifier == nil {
-		return Authorization{}, ErrInput
-	}
-	floors, err := verifier.CurrentFloors(ctx)
-	if err != nil {
-		return Authorization{}, err
-	}
-	if err := CheckContinuity(previous, floors, input.Local); err != nil {
-		return Authorization{}, err
-	}
-	authorized, err := AuthenticateCandidate(ctx, verifier, candidate, input)
+	authorized, err := AuthenticateRetainedCandidate(ctx, verifier, candidate, input, previous)
 	if err != nil {
 		return Authorization{}, err
 	}
@@ -48,6 +38,23 @@ func AuthenticateSuccessor(ctx context.Context, verifier *release.Verifier, cand
 		return Authorization{}, errors.Join(ErrAuthorization, err)
 	}
 	return authorized, nil
+}
+
+// AuthenticateRetainedCandidate checks current Release floors before obtaining
+// fresh candidate proofs. Exact recovery intent and physical custody remain
+// with the caller; this operation does not grant recovery or startup authority.
+func AuthenticateRetainedCandidate(ctx context.Context, verifier *release.Verifier, candidate enrollment.Candidate, input release.Inputs, previous RetainedGeneration) (Authorization, error) {
+	if ctx == nil || verifier == nil {
+		return Authorization{}, ErrInput
+	}
+	floors, err := verifier.CurrentFloors(ctx)
+	if err != nil {
+		return Authorization{}, err
+	}
+	if err := CheckContinuity(previous, floors, input.Local); err != nil {
+		return Authorization{}, err
+	}
+	return AuthenticateCandidate(ctx, verifier, candidate, input)
 }
 
 // CheckContinuity compares retained facts with the verifier's current floors

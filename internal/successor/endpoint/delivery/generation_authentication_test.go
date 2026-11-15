@@ -100,7 +100,7 @@ func TestSuccessorContinuityRetainsInstalledHistoryAndEnvironment(t *testing.T) 
 		t.Run(test.name, func(t *testing.T) {
 			observed, environment := floors, local
 			test.change(&observed, &environment)
-			if err := successorContinuity(binding, observed, environment); !errors.Is(err, test.want) {
+			if err := generationauthorization.CheckContinuity(retainedGeneration(binding), observed, environment); !errors.Is(err, test.want) {
 				t.Fatalf("continuity: got %v, want %v", err, test.want)
 			}
 		})

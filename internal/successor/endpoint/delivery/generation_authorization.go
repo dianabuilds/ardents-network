@@ -1,7 +1,6 @@
 package delivery
 
 import (
-	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
@@ -10,12 +9,7 @@ type generationDeclaration = generationauthorization.GenerationDeclaration
 const programTarget = generationauthorization.ProgramTarget
 const generationTarget = generationauthorization.GenerationTarget
 
-// Local stored facts constrain continuity, never create fresh authorization.
-// The caller must supply these facts from its still-leased native inspection.
-func successorContinuity(previous generationBinding, floors release.FloorSet, local release.LocalEnvironment) error {
-	return generationauthorization.CheckContinuity(retainedGeneration(previous), floors, local)
-}
-
+// The caller supplies these facts from its still-leased native inspection.
 func retainedGeneration(previous generationBinding) generationauthorization.RetainedGeneration {
 	g := previous.Generation
 	return generationauthorization.RetainedGeneration{
