@@ -1011,11 +1011,8 @@ under ADR-0121. No JOIN refill, refund, renewal or retry is added.
 
 Stop seals original admission and interrupts dependents before waiting.
 Receiver joins both sides, selected writers, listener and Carrier before
-Receiving/Hosting close; Node then closes its native pins and TLS credential.
-Node withdraws its participation producer only after successful cleanup and
-without an operational failure; ordinary cancellation remains a clean stop.
-An operational or cleanup failure retains its record. A live restriction continues to conflict, while a
-prepared restriction keeps its original expiry. Command-owned State closes later. First operational and independent physical failures remain retained
+Receiving/Hosting close; producer, native pins, TLS and command-owned State
+follow. First operational and independent physical failures remain retained
 through concurrent/copied/repeated Close. A bounded unavailable report keeps
 resources until actual completion; absent PID or path never proves join.
 
@@ -1735,10 +1732,9 @@ an equivalent independent process/scope observation must first be established.
 The existing Network participation producer is removed by Node only after its
 Route receiver and purpose owners have joined, so a retained producer still
 refuses unsafe reuse. Its absence is not a successful whole-invocation result:
-The installed Forwarding, JOIN, Descriptor and Introduction Nodes now remove
-their producer only after their own process guard and credential close
-successfully and no operational failure remains. The installed command subsequently closes State and Startup,
-and those later operations may fail. The replacement must preserve their actual joined result
+Node closes its process guard and credential after removing the producer, and
+the installed command subsequently closes State and Startup. Those later
+operations may fail. The replacement must preserve their actual joined result
 and cannot treat an empty participation history as proof that every owner
 closed successfully. See `node/join_linux.go`, `node/introduction_linux.go`
 and the canonical installed command cleanup.

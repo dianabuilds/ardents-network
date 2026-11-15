@@ -327,12 +327,13 @@ func (f *introductionInvocation) cleanup() error {
 	if f.budget != nil {
 		retain("hosting", f.budget.Close())
 	}
+	if f.producer != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		retain("participation", f.producer.Close(ctx))
+		cancel()
+	}
 	retain("process", f.process.Close())
 	retain("credential", f.credential.close())
-	f.mu.Lock()
-	first := f.first
-	f.mu.Unlock()
-	retain("participation", releaseParticipation(f.producer, first, result))
 	return result
 }
 
