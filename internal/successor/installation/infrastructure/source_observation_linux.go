@@ -15,9 +15,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/platform"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	"github.com/dianabuilds/ardents-network/internal/successor/ubuntu"
 )
 
 // SourceInputs retains original request/input descriptors and direct ancestors.
@@ -449,7 +449,7 @@ func (input SourceInputs) observeFresh(unitPaths []string) (err error) {
 			}
 		}
 		if f.path == "/usr/lib/os-release" {
-			if !platform.Ubuntu2404(f.raw) {
+			if !ubuntu.Ubuntu2404(f.raw) {
 				return ErrBinding
 			}
 		}

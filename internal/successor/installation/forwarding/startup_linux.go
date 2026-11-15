@@ -13,9 +13,9 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/platform"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/process"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/ubuntu"
 )
 
 // Startup retains independently acquired observations of this actual non-root
@@ -157,7 +157,7 @@ func OpenStartup(parent context.Context, bindingPath string) (result *Startup, r
 }
 
 func installedPlatform(ctx context.Context) error {
-	return platform.MapBinding(platform.ObserveUbuntu2404(ctx), ErrBinding)
+	return ubuntu.MapBinding(ubuntu.ObserveUbuntu2404(ctx), ErrBinding)
 }
 
 func (s *startup) local() error {

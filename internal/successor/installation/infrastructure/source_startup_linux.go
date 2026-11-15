@@ -13,9 +13,9 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/platform"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/process"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/ubuntu"
 )
 
 // SourceStartup owns independent observations of one actual non-root Source
@@ -160,7 +160,7 @@ func OpenSourceStartup(parent context.Context, binding string) (result *SourceSt
 }
 
 func sourceInstalledPlatform(ctx context.Context) error {
-	return platform.MapBinding(platform.ObserveUbuntu2404(ctx), ErrBinding)
+	return ubuntu.MapBinding(ubuntu.ObserveUbuntu2404(ctx), ErrBinding)
 }
 
 func (s *sourceStartup) local() error {

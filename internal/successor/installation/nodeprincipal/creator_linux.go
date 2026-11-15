@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/platform"
+	"github.com/dianabuilds/ardents-network/internal/successor/ubuntu"
 )
 
 // Creator independently retains fixed Node account preimages, helper process
@@ -49,7 +49,7 @@ func PrepareCreator(ctx context.Context) (*Creator, error) {
 	if err := ValidateNSS(a.before["/etc/nsswitch.conf"].raw); err != nil {
 		return a, ErrBinding
 	}
-	if !platform.Ubuntu2404(a.before["/usr/lib/os-release"].raw) {
+	if !ubuntu.Ubuntu2404(a.before["/usr/lib/os-release"].raw) {
 		return a, ErrBinding
 	}
 
