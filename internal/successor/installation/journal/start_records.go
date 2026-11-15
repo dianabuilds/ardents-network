@@ -13,7 +13,7 @@ import (
 // or ACK searched out of a partial journal. The returned native identities are
 // evidence for independent descriptor comparison; they confer no live rights.
 func DecodeStartRecords(raw []byte, purpose string, number uint32, journal, directory, binding, guard, socketRecord, archive, frame, acknowledgement string, gid uint32) (map[string]InvocationRecord, error) {
-	if purpose != "join" && purpose != "descriptor" {
+	if purpose != "join" && purpose != "descriptor" && purpose != "forwarding" {
 		return nil, ErrBinding
 	}
 	if len(raw) == 0 || len(raw) > 128<<10 || raw[len(raw)-1] != '\n' || gid < 100 || gid > 999 || number >= 64 {

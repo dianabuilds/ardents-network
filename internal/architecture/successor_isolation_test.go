@@ -482,6 +482,9 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if (source == "internal/successor/installation/forwarding/start_records_linux.go" || source == "internal/successor/installation/forwarding/start_storage_linux.go") && dependency == modulePath+"/internal/successor/installation/journal" {
+		return true
+	}
 	if (source == "internal/successor/installation/infrastructure/source_retirement_records_linux.go" || source == "internal/successor/installation/infrastructure/source_start_records_linux.go" || source == "internal/successor/installation/infrastructure/source_start_storage_linux.go") && dependency == modulePath+"/internal/successor/installation/journal" {
 		return true
 	}
