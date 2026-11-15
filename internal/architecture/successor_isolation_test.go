@@ -581,7 +581,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-node/source_installation_linux.go",
 			"internal/successor/installation/descriptor/binding.go",
 			"internal/successor/installation/descriptor/completed_initial_linux.go",
-			"internal/successor/installation/descriptor/generation_bytes_linux.go",
+			"internal/successor/installation/descriptor/generation_bytes.go",
 			"internal/successor/installation/descriptor/initial_install_linux.go",
 			"internal/successor/installation/descriptor/recovery_replacement_linux.go",
 			"internal/successor/installation/descriptor/replacement_candidate_linux.go",
@@ -640,7 +640,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/successor/installation/infrastructure/source_stop_linux.go",
 			"internal/successor/installation/introduction/binding.go",
 			"internal/successor/installation/introduction/completed_initial_linux.go",
-			"internal/successor/installation/introduction/generation_bytes_linux.go",
+			"internal/successor/installation/introduction/generation_bytes.go",
 			"internal/successor/installation/introduction/initial_install_linux.go",
 			"internal/successor/installation/introduction/initial_records_linux_test.go",
 			"internal/successor/installation/introduction/restart_linux.go",
@@ -649,7 +649,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/successor/installation/introduction/template.go",
 			"internal/successor/installation/join/binding.go",
 			"internal/successor/installation/join/completed_initial_linux.go",
-			"internal/successor/installation/join/generation_bytes_linux.go",
+			"internal/successor/installation/join/generation_bytes.go",
 			"internal/successor/installation/join/initial_install_linux.go",
 			"internal/successor/installation/join/recovery_replacement_linux.go",
 			"internal/successor/installation/join/replacement_candidate_linux.go",
@@ -1060,7 +1060,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/join/binding.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure") {
 		return true
 	}
-	if (source == "internal/successor/installation/join/generation_bytes_linux.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment") {
+	if (source == "internal/successor/installation/join/generation_bytes.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment") {
 		return true
 	}
 	if (source == "internal/successor/installation/join/initial_install_linux.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/systemd" || dependency == modulePath+"/internal/successor/release") {
@@ -1686,7 +1686,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"JOIN creator cannot borrow Forwarding", "internal/successor/installation/join/initial_install_linux.go", modulePath + "/internal/successor/installation/forwarding", false},
 		{"JOIN physical births share no domain right", "internal/successor/installation/join/initial_birth_linux.go", modulePath + "/internal/successor/installation/fixedfile", true},
 		{"JOIN completed read grants no Route import", "internal/successor/installation/join/completed_initial_linux.go", modulePath + "/internal/successor/route/role", false},
-		{"JOIN generation grammar retains Enrollment", "internal/successor/installation/join/generation_bytes_linux.go", modulePath + "/internal/successor/enrollment", true},
+		{"JOIN generation grammar retains Enrollment", "internal/successor/installation/join/generation_bytes.go", modulePath + "/internal/successor/enrollment", true},
 		{"JOIN input custody uses protected input files", "internal/successor/installation/join/inputs_linux.go", modulePath + "/internal/successor/protectedfiles", true},
 		{"JOIN input custody has no Forwarding policy", "internal/successor/installation/join/inputs_linux.go", modulePath + "/internal/successor/installation/forwarding", false},
 		{"JOIN preflight independently observes fixed slots", "internal/successor/installation/join/preflight_linux.go", modulePath + "/internal/successor/installation/systemd", true},
@@ -2105,7 +2105,7 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/successor/admission", "github.com/dianabuilds/ardents-network/internal/successor/admission/stock", "github.com/dianabuilds/ardents-network/internal/successor/route/ardp", "github.com/dianabuilds/ardents-network/internal/successor/route/transport", "github.com/dianabuilds/ardents-network/internal/successor/route/transport/tls":
 			return true
 		}
-	case "internal/successor/installation/join/generation_bytes_linux.go":
+	case "internal/successor/installation/join/generation_bytes.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
 			return true
