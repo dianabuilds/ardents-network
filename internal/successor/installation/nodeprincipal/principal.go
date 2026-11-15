@@ -9,6 +9,9 @@ import (
 // ErrBinding reports a malformed or inconsistent fixed Node principal.
 var ErrBinding = errors.New("invalid fixed Node principal")
 
+// ErrInput reports invalid observation arguments.
+var ErrInput = errors.New("invalid fixed Node observation input")
+
 // Delta validates the exact account-file change for the fixed Node.
 func Delta(path string, before, after []byte, uid, gid uint32) error {
 	if len(before) == 0 || before[len(before)-1] != '\n' || len(after) == 0 || after[len(after)-1] != '\n' {

@@ -2,8 +2,11 @@ package forwarding
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/nodeprincipal"
 )
 
 func TestNodePrincipalPreservesOriginalCaller(t *testing.T) {
@@ -26,5 +29,13 @@ func TestNodePrincipalPreservesOriginalCaller(t *testing.T) {
 				t.Fatal("original caller error replaced without an opened file", err)
 			}
 		})
+	}
+}
+
+func TestPrincipalObservationRetainsRoleAndPhysicalFailures(t *testing.T) {
+	physical := errors.New("physical close")
+	err := principalObservationError(errors.Join(nodeprincipal.ErrBinding, physical))
+	if !errors.Is(err, ErrBinding) || !errors.Is(err, physical) || errors.Is(err, nodeprincipal.ErrBinding) {
+		t.Fatalf("observation failures changed: %v", err)
 	}
 }
