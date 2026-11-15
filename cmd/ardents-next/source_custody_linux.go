@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"io"
 	"os"
 	"path/filepath"
@@ -46,11 +47,11 @@ type sourceInputFile struct {
 	observe func(string, *os.File)
 }
 
-func acquireSourceInputs(ctx context.Context, path string) (_ sourceInputs, plan sourceServePlan, result error) {
+func acquireSourceInputs(ctx context.Context, path string) (_ sourceInputs, plan source.ServingDeclaration, result error) {
 	return acquireObservedSourceInputs(ctx, path, nil)
 }
 
-func acquireObservedSourceInputs(ctx context.Context, path string, observe func(string, *os.File)) (_ sourceInputs, plan sourceServePlan, result error) {
+func acquireObservedSourceInputs(ctx context.Context, path string, observe func(string, *os.File)) (_ sourceInputs, plan source.ServingDeclaration, result error) {
 	if ctx == nil || ctx.Err() != nil {
 		return sourceInputs{}, plan, errSourceInput
 	}
@@ -67,7 +68,7 @@ func acquireObservedSourceInputs(ctx context.Context, path string, observe func(
 	if err != nil {
 		return sourceInputs{}, plan, err
 	}
-	plan, err = decodeSourceServePlan(first.raw)
+	plan, err = source.DecodeServingDeclaration(first.raw)
 	if err != nil || !validSourceServePlan(plan) {
 		return sourceInputs{}, plan, errSourceInput
 	}

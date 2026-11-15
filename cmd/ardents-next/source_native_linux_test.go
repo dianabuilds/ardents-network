@@ -98,7 +98,7 @@ func nativeSourceWorkload(t *testing.T, mode string) {
 	if err := listener.Close(); err != nil {
 		t.Fatal(err)
 	}
-	plan := sourceServePlan{Network: &networkPlan, ProcessProfile: processresource.SourceProfile,
+	plan := source.ServingDeclaration{Network: (*source.ServingNetwork)(&networkPlan), ProcessProfile: processresource.SourceProfile,
 		ParticipationRoot: filepath.Join(t.TempDir(), "participation"), Address: address, Certificate: cert, PrivateKey: key, ClientRoot: rootPath, ClientPins: [][32]byte{clientPin}}
 	raw, err := json.Marshal(plan)
 	if err != nil {

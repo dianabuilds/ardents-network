@@ -275,7 +275,7 @@ func executeSourcePreparation(ctx context.Context, path, destination string, obs
 		declared.Sources = append(declared.Sources, entry)
 		network := *authority
 		network.Root = member.StateRoot
-		serving := sourceServePlan{Network: &network, ProcessProfile: processresource.SourceProfile, ParticipationRoot: member.ParticipationRoot, Address: member.Address, Certificate: filepath.Join(destination, name+"-certificate.pem"), PrivateKey: member.PrivateKey, ClientRoot: filepath.Join(destination, "client-root.pem"), ClientPins: [][32]byte{p.ClientPin}}
+		serving := source.ServingDeclaration{Network: (*source.ServingNetwork)(&network), ProcessProfile: processresource.SourceProfile, ParticipationRoot: member.ParticipationRoot, Address: member.Address, Certificate: filepath.Join(destination, name+"-certificate.pem"), PrivateKey: member.PrivateKey, ClientRoot: filepath.Join(destination, "client-root.pem"), ClientPins: [][32]byte{p.ClientPin}}
 		if !validSourceServePlan(serving) {
 			return nil, errNetworkPreparation
 		}

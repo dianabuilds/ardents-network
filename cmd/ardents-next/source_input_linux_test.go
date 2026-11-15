@@ -4,16 +4,17 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"testing"
 )
 
 func TestSourcePlanRefusesAmbiguousOrMixedDeclarations(t *testing.T) {
-	plan := sourceServePlan{Network: &networkAuthorityPlan{NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, ProfileAuthority: [32]byte{2}}, ClientPins: [][32]byte{{3}}}
+	plan := source.ServingDeclaration{Network: &source.ServingNetwork{NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, ProfileAuthority: [32]byte{2}}, ClientPins: [][32]byte{{3}}}
 	raw, err := json.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := decodeSourceServePlan(raw); err != nil {
+	if _, err := source.DecodeServingDeclaration(raw); err != nil {
 		t.Fatal("complete canonical shape refused", err)
 	}
 	for _, fault := range []string{"short-pin", "long-pin", "short-authority", "unknown", "mixed", "duplicate", "trailing"} {
@@ -44,7 +45,7 @@ func TestSourcePlanRefusesAmbiguousOrMixedDeclarations(t *testing.T) {
 			if fault == "trailing" {
 				changed = append(changed, []byte(" {}")...)
 			}
-			if _, err := decodeSourceServePlan(changed); err == nil {
+			if _, err := source.DecodeServingDeclaration(changed); err == nil {
 				t.Fatal("ambiguous Source declaration accepted")
 			}
 		})

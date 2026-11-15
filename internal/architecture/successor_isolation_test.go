@@ -1538,8 +1538,15 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "internal/successor/installation/infrastructure/source_observation_linux.go" || source == "internal/successor/installation/infrastructure/source_install_linux.go" || source == "internal/successor/installation/infrastructure/source_loaded_linux.go" || source == "internal/successor/installation/infrastructure/source_policy_linux_test.go" || source == "internal/successor/installation/infrastructure/source_running_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
 			return true
 		}
-		if source == "cmd/ardents-next/source_input_linux.go" && dependency == modulePath+"/internal/successor/network/source" {
-			return true
+		if dependency == modulePath+"/internal/successor/network/source" {
+			switch source {
+			case "cmd/ardents-next/source_custody_linux.go", "cmd/ardents-next/source_custody_linux_test.go",
+				"cmd/ardents-next/source_input_linux_test.go", "cmd/ardents-next/source_linux.go",
+				"cmd/ardents-next/source_native_linux_test.go", "cmd/ardents-next/source_preparation_linux.go",
+				"cmd/ardents-next/source_preparation_process_linux_test.go", "cmd/ardents-next/source_state_linux_test.go",
+				"cmd/ardents-next/infrastructure_preflight_native_linux_test.go":
+				return true
+			}
 		}
 		// A registered package's external behavior tests may import that package.
 		// This grants neither another package nor nested tests its imports.

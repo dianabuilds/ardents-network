@@ -7,6 +7,7 @@ import (
 	"crypto/ed25519"
 	"crypto/tls"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"io"
 	"os"
 	"sync"
@@ -57,7 +58,7 @@ func runSource(ctx context.Context, args []string, out, diagnostic io.Writer) (c
 			code = sourceReportCode(diagnostic, "joined", "canceled", 130)
 		}
 	}()
-	config, err = networkStateConfig(plan.Network)
+	config, err = networkStateConfig((*networkAuthorityPlan)(plan.Network))
 	if err != nil {
 		operation = err
 		return 2
@@ -108,16 +109,16 @@ func runSource(ctx context.Context, args []string, out, diagnostic io.Writer) (c
 	return 130
 }
 
-func validSourceServePlan(plan sourceServePlan) bool {
+func validSourceServePlan(plan source.ServingDeclaration) bool {
 	return plan.ProcessProfile == processresource.SourceProfile &&
-		validAdmissionAuthority("", plan.Network, plan.ParticipationRoot) &&
+		validAdmissionAuthority("", (*networkAuthorityPlan)(plan.Network), plan.ParticipationRoot) &&
 		independentRouteRoots(plan.Network.Root, plan.ParticipationRoot) &&
 		plan.Network.Threshold > 0 && plan.Network.Threshold <= len(plan.Network.Authorities) &&
 		absoluteAdmissionPath(plan.Certificate) && absoluteAdmissionPath(plan.PrivateKey) &&
 		absoluteAdmissionPath(plan.ClientRoot) && len(plan.ClientPins) > 0 && len(plan.ClientPins) <= 3 && plan.Address != ""
 }
 
-func sourceServingInputs(config *state.Config, plan sourceServePlan, inputs sourceInputs, check func() error) error {
+func sourceServingInputs(config *state.Config, plan source.ServingDeclaration, inputs sourceInputs, check func() error) error {
 	if err := check(); err != nil {
 		return err
 	}

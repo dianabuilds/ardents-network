@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
+	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -74,7 +75,7 @@ func sourcePreflightFixture(t *testing.T, retain ...bool) (infrastructure.Source
 			t.Fatal(err)
 		}
 	}
-	plan := sourceServePlan{Network: &networkAuthorityPlan{Root: r.StateRoot, NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{3}, ClockObservationFile: r.Clock}, ProcessProfile: r.Profile, ParticipationRoot: r.ParticipationRoot, Address: r.Address, Certificate: filepath.Join(r.CredentialDirectory, "certificate.pem"), PrivateKey: filepath.Join(r.CredentialDirectory, "private-key.pem"), ClientRoot: filepath.Join(r.CredentialDirectory, "client-ca.pem"), ClientPins: [][32]byte{clientPin}}
+	plan := source.ServingDeclaration{Network: &source.ServingNetwork{Root: r.StateRoot, NetworkID: [32]byte{1}, Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{3}, ClockObservationFile: r.Clock}, ProcessProfile: r.Profile, ParticipationRoot: r.ParticipationRoot, Address: r.Address, Certificate: filepath.Join(r.CredentialDirectory, "certificate.pem"), PrivateKey: filepath.Join(r.CredentialDirectory, "private-key.pem"), ClientRoot: filepath.Join(r.CredentialDirectory, "client-ca.pem"), ClientPins: [][32]byte{clientPin}}
 	raw, err := json.Marshal(plan)
 	if err != nil {
 		t.Fatal(err)

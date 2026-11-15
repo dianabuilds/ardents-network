@@ -247,7 +247,7 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 		t.Fatal("changed original input retained an accepting path")
 	}
 	servingRaw := read("source-1-serve.json")
-	serving, err := decodeSourceServePlan(servingRaw)
+	serving, err := source.DecodeServingDeclaration(servingRaw)
 	if err != nil {
 		t.Fatal(err)
 	}
