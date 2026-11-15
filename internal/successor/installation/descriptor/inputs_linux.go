@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/request"
+	"github.com/dianabuilds/ardents-network/internal/successor/protectedfiles"
 )
 
 // Inputs owns one original Descriptor declaration and its protected delivery files.
@@ -27,7 +27,7 @@ type inputs struct {
 	failure    error
 	path       string
 	request    Request
-	files      request.Files
+	files      protectedfiles.Files
 }
 
 var errInputsClosed = errors.New("descriptor installation: original inputs closed")
@@ -39,7 +39,7 @@ func ReadInputs(ctx context.Context, path string) (result Inputs, returned error
 	if ctx == nil || !validPath(path) {
 		return result, ErrInput
 	}
-	files, err := request.OpenFiles(ctx)
+	files, err := protectedfiles.OpenFiles(ctx)
 	if err != nil {
 		return result, err
 	}

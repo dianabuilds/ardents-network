@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"slices"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/protectedfiles"
 )
 
 // ErrInput preserves Installation's existing bounded input refusal identity.
-var ErrInput = errors.New("installation: invalid generation authentication input")
+var ErrInput = protectedfiles.ErrInput
 
 // Document retains checked local declarations only. It grants no Release,
 // Network, native ownership or runtime authority. Paths use the selected Linux

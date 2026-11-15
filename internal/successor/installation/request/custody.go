@@ -2,11 +2,12 @@ package request
 
 import (
 	"context"
-	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/protectedfiles"
 )
 
 // ErrNativeUnavailable refuses unavailable or foreign native custody.
-var ErrNativeUnavailable = errors.New("installation: native request custody unavailable")
+var ErrNativeUnavailable = protectedfiles.ErrNativeUnavailable
 
 // ReadOwned freezes one canonical request from a direct root-owned file
 // and trusted ancestors. It grants no Release proof or installed authority.
@@ -22,4 +23,4 @@ func ReadOwned(ctx context.Context, filename string, initial bool) (Document, er
 }
 
 // ErrChanged refuses a different declaration or original file after admission.
-var ErrChanged = errors.New("installation request: original input changed")
+var ErrChanged = protectedfiles.ErrChanged

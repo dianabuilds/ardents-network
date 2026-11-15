@@ -1,6 +1,6 @@
 //go:build linux && network_signing_native
 
-package request
+package protectedfiles
 
 import (
 	"bytes"

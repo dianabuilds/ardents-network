@@ -2684,7 +2684,7 @@ independently checks all five fixed Node slots, unit search namespaces, account 
 and every future resource, including the fifth Store root. No semantic history, Release
 verifier, account, unit or diagnostic socket is created. Every observation and reader
 joins before its public non-installed result; an original failure is retained across
-copied handles and restoration. The shared request.Files and NodeSlots mechanisms supply
+copied handles and restoration. The shared protectedfiles.Files and NodeSlots mechanisms supply
 no role permission.
 
 The existing `network-signing-linux` profile includes three `TestDescriptorInputsNative`

@@ -65,7 +65,7 @@ func introductionInitialImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/introduction/inputs_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/request":
+		case "github.com/dianabuilds/ardents-network/internal/successor/protectedfiles":
 			return true
 		}
 	case "internal/successor/installation/introduction/loaded_policy_linux.go":

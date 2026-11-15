@@ -1,6 +1,6 @@
 //go:build linux
 
-package request
+package protectedfiles
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	posixpath "path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -49,7 +50,7 @@ type deliveryFile struct {
 }
 
 func deliveryPath(path string) bool {
-	return canonicalPath(path) && path != "/" && len(path) <= 4096 && len(strings.Split(path, "/")) <= 128
+	return posixpath.IsAbs(path) && posixpath.Clean(path) == path && !strings.ContainsAny(path, "\x00\r\n") && path != "/" && len(path) <= 4096 && len(strings.Split(path, "/")) <= 128
 }
 
 var errFilesClosed = errors.New("installation request: original delivery files closed")

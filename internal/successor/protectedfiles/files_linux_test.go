@@ -1,4 +1,4 @@
-package request
+package protectedfiles
 
 import (
 	"context"
@@ -23,6 +23,21 @@ func TestDeliveryFilesZeroAndUnavailableCallerGrantNoCustody(t *testing.T) {
 		if h, err := OpenFiles(caller); err == nil || h.original != nil {
 			_ = h.Close()
 			t.Fatal("unavailable caller acquired original custody", err)
+		}
+	}
+}
+
+func TestProtectedInputPathRetainsOriginalCanonicalRules(t *testing.T) {
+	for _, tc := range []struct {
+		path  string
+		valid bool
+	}{
+		{"/var/lib/input", true}, {"/var/lib/a b", true}, {"/", false},
+		{"relative", false}, {"/var//input", false}, {"/var/../input", false},
+		{"/var/input\nname", false}, {"/var/input\x00name", false},
+	} {
+		if got := deliveryPath(tc.path); got != tc.valid {
+			t.Errorf("%q: got %v, want %v", tc.path, got, tc.valid)
 		}
 	}
 }

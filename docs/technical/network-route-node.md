@@ -4146,7 +4146,7 @@ bytes select only `introduction start-installed`, non-root `ardents-node`, the
 common protected Node envelope and explicit no-restart policy. Their preparation alone grants no runtime or native unit authority.
 
 Canonical Node's `introduction inspect-inputs` retains original root-controlled
-request/plan/TLS files through `request.Files`, validates the Ed25519 pair, and
+request/plan/TLS files through `protectedfiles.Files`, validates the Ed25519 pair, and
 keeps the root-writer clock live. Original-file mutation, same-byte foreign
 inodes or caller loss permanently deny that original lifetime; restoration
 cannot revive it. It observes the original actual manager and all five fixed

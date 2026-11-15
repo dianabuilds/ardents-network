@@ -14,7 +14,7 @@
 // independent history retains its own journal lease and original inodes.
 // Separate one-use allowance preparation borrows genuine Hosting file creation
 // without opening Receiving/Registry or lending a budget or Startup right.
-// Shared request.Files, directory/fixed-file and systemd provide mechanisms only;
+// Shared protectedfiles.Files, directory/fixed-file and systemd provide mechanisms only;
 // no sibling role's live owner, authority, root or history crosses this boundary.
 // First Start independently requires complete stopped/Hosting history and fresh
 // Release, retaining native process/scope custody through archival-before-ACK.

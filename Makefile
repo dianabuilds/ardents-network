@@ -533,7 +533,7 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/network/state -run '^TestSourceInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/forwarding -run '^TestForwarding(Inputs|Preflight|Births|StartStorage|StartSnapshot|RetirementStorage|RetirementSnapshot)Native' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/systemd -run '^Test(NodeSlotsNative|ForwardingManagerNative|SourceReferenceLibraryCloseCause)' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/request -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/protectedfiles -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/join -run '^TestJoin(Inputs|Preflight|Births)Native' -count=1 -v -timeout=3m
 
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestIntroductionPreparationNative(CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption|TemplateAndRequestLeaveRuntimeAbsent)$$' -count=1 -v -timeout=3m
@@ -556,7 +556,7 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/successor/installation/infrastructure
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/successor/network/state
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/forwarding-inputs.test" ./internal/successor/installation/forwarding
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/successor/installation/request
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/successor/protectedfiles
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-inputs.test" ./internal/successor/installation/join
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/introduction-inputs.test" ./internal/successor/installation/introduction
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/successor/reachability
