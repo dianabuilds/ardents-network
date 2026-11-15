@@ -19,6 +19,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
@@ -300,7 +301,7 @@ func TestInstallationNativeWritingRecoveryRetainsFirstFailurePrefixes(t *testing
 // not an inspected predecessor or a successful installed recovery substitute.
 // Successor production staging and original predecessor custody have separate
 // tests; these reader checks supply no Release, account, process, manager or ACK.
-func stagedRecoveryFixture(t *testing.T) (*successorRecoveryNative, Request) {
+func stagedRecoveryFixture(t *testing.T) (*successorRecoveryNative, requestinput.Document) {
 	t.Helper()
 	lease, request, files, selected := nativeStagingFixture(t)
 	declared, valid := request.Declaration()

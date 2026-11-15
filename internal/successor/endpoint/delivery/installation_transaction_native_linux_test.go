@@ -14,11 +14,13 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 )
 
 // This fixture supplies filesystem-mechanism bytes only. It grants no genuine
 // Enrollment/Release/account proof; preparation must obtain those separately.
-func nativeStagingFixture(t *testing.T) (*installationLease, Request, map[string][]byte, generationSelection) {
+func nativeStagingFixture(t *testing.T) (*installationLease, requestinput.Document, map[string][]byte, generationSelection) {
 	t.Helper()
 	directory := filepath.Join(nativeRequestDirectory(t), "installation")
 	lease, err := createInitialLease(t.Context(), directory)

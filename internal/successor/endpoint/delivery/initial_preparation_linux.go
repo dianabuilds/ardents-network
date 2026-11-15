@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	manageddirectory "github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
@@ -28,7 +29,7 @@ type initialPreparation struct {
 	terminal error
 }
 
-func prepareInitialNative(ctx context.Context, request Request, authorization generationauthorization.Authorization) (result *initialPreparation, returnedErr error) {
+func prepareInitialNative(ctx context.Context, request requestinput.Document, authorization generationauthorization.Authorization) (result *initialPreparation, returnedErr error) {
 	declared, valid := request.Declaration()
 	if ctx == nil || !valid {
 		return nil, ErrInput
@@ -155,7 +156,7 @@ func prepareInitialNative(ctx context.Context, request Request, authorization ge
 // Service traversal does not release the writer or grant installed startup.
 // The admitted operation supplies its actual NSS-observed group and rechecks
 // original roots and journals before and after both directory changes.
-func (owned *initialPreparation) promoteGenerationAccess(ctx context.Context, request Request) error {
+func (owned *initialPreparation) promoteGenerationAccess(ctx context.Context, request requestinput.Document) error {
 	if err := owned.observe(ctx, request); err != nil {
 		return err
 	}
@@ -165,7 +166,7 @@ func (owned *initialPreparation) promoteGenerationAccess(ctx context.Context, re
 	return owned.observe(ctx, request)
 }
 
-func (owned *initialPreparation) archiveInitialIntent(ctx context.Context, request Request) error {
+func (owned *initialPreparation) archiveInitialIntent(ctx context.Context, request requestinput.Document) error {
 	if err := owned.observe(ctx, request); err != nil {
 		return err
 	}
@@ -178,7 +179,7 @@ func (owned *initialPreparation) archiveInitialIntent(ctx context.Context, reque
 	return owned.observe(ctx, request)
 }
 
-func (owned *initialPreparation) observe(ctx context.Context, request Request) error {
+func (owned *initialPreparation) observe(ctx context.Context, request requestinput.Document) error {
 	if err := observeRequestCustody(ctx, request); err != nil {
 		return err
 	}
@@ -220,7 +221,7 @@ func (owned *initialPreparation) close() error {
 	return owned.terminal
 }
 
-func (owned *initialPreparation) observeStoppedInstallation(ctx context.Context, request Request) error {
+func (owned *initialPreparation) observeStoppedInstallation(ctx context.Context, request requestinput.Document) error {
 	if err := owned.observe(ctx, request); err != nil {
 		return err
 	}
@@ -253,7 +254,7 @@ func (owned *initialPreparation) observeStoppedInstallation(ctx context.Context,
 // Preflight is an observation inside native preparation, not a reusable proof.
 // Platform/protection admission must precede it in the actual provision owner.
 // Repeat these observations under that operation's lease before native effects.
-func preflightInitialEffects(ctx context.Context, request Request) error {
+func preflightInitialEffects(ctx context.Context, request requestinput.Document) error {
 	declared, valid := request.Declaration()
 	if ctx == nil || !valid || request.ManifestSHA256() == "" {
 		return ErrInput
@@ -324,7 +325,7 @@ func observeAbsentInstallationUnits(ctx context.Context) error {
 
 // Initial fixed publication retains stopped manager observations and the
 // original preparation. This private operation grants no platform admission.
-func (owned *initialPreparation) installFixedResources(ctx context.Context, request Request) error {
+func (owned *initialPreparation) installFixedResources(ctx context.Context, request requestinput.Document) error {
 	if err := owned.observe(ctx, request); err != nil {
 		return err
 	}
@@ -406,7 +407,7 @@ func (owned *initialPreparation) installFixedResources(ctx context.Context, requ
 	return stage.fixedPhase(ctx, "0004.json", "fixed-resources-installed")
 }
 
-func (owned *initialPreparation) publishInitialSelection(ctx context.Context, request Request) error {
+func (owned *initialPreparation) publishInitialSelection(ctx context.Context, request requestinput.Document) error {
 	if err := owned.observe(ctx, request); err != nil {
 		return err
 	}
@@ -439,24 +440,24 @@ func (owned *initialPreparation) publishInitialSelection(ctx context.Context, re
 	return stage.fixedPhase(ctx, "0007.json", "installed-stopped")
 }
 
-func readProvisionRequest(ctx context.Context, filename string) (Request, error) {
+func readProvisionRequest(ctx context.Context, filename string) (requestinput.Document, error) {
 	if ctx == nil {
-		return Request{}, ErrInput
+		return requestinput.Document{}, ErrInput
 	}
 	if err := observeInstallationPlatform(ctx); err != nil {
-		return Request{}, err
+		return requestinput.Document{}, err
 	}
 	request, err := readOwnedRequest(ctx, filename, true)
 	if err != nil {
-		return Request{}, err
+		return requestinput.Document{}, err
 	}
 	if err := preflightInitialEffects(ctx, request); err != nil {
-		return Request{}, err
+		return requestinput.Document{}, err
 	}
 	return request, nil
 }
 
-func provisionInitial(ctx context.Context, request Request, authorization generationauthorization.Authorization) (result ProvisionResult, returnedErr error) {
+func provisionInitial(ctx context.Context, request requestinput.Document, authorization generationauthorization.Authorization) (result ProvisionResult, returnedErr error) {
 	if ctx == nil {
 		return ProvisionResult{}, ErrInput
 	}

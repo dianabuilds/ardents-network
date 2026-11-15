@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
@@ -71,7 +72,7 @@ type generationBinding struct {
 // Assembly produces detached bytes, not a selected or installed generation.
 // Native staging owns durable intent, account/root provenance, physical writes
 // and their rechecks; it must not infer those facts from a stored binding.
-func assembleGeneration(ctx context.Context, request Request, authorization generationauthorization.Authorization, prepared preparedInstallation) (map[string][]byte, generationSelection, error) {
+func assembleGeneration(ctx context.Context, request requestinput.Document, authorization generationauthorization.Authorization, prepared preparedInstallation) (map[string][]byte, generationSelection, error) {
 	declared, valid := request.Declaration()
 	if ctx == nil || !valid || prepared.uid == 0 || prepared.gid == 0 {
 		return nil, generationSelection{}, ErrInput
@@ -182,7 +183,7 @@ func digestHex(body []byte) string { return hex.EncodeToString(digestBytes(body)
 
 // Freeze a closed artifact inventory before native staging. These bytes and
 // public binding facts grant no fresh Release or native ownership authority.
-func freezeGenerationInventory(request Request, root string, files map[string][]byte, selected generationSelection, gid uint32) (map[string][]byte, generationBinding, error) {
+func freezeGenerationInventory(request requestinput.Document, root string, files map[string][]byte, selected generationSelection, gid uint32) (map[string][]byte, generationBinding, error) {
 	declared, valid := request.Declaration()
 	if !valid || gid == 0 || selected.Schema != "ardents-endpoint-installation-selection-v1" ||
 		!canonicalDigest(selected.GenerationDigest) || !canonicalDigest(selected.BindingDigest) ||

@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
@@ -21,7 +22,7 @@ import (
 // Release effects. It is not a completed transition or an installed-start proof.
 type successorPreparation struct {
 	ctx           context.Context
-	request       Request
+	request       requestinput.Document
 	inspection    *installedRoot
 	previous      inspectedGeneration
 	terminal      error
@@ -425,10 +426,10 @@ type successorTransitionIntent struct {
 	Request          installationRequest `json:"request"`
 }
 
-func openSuccessor(ctx context.Context, filename string) (*successorPreparation, Request, error) {
+func openSuccessor(ctx context.Context, filename string) (*successorPreparation, requestinput.Document, error) {
 	owned, err := prepareSuccessorNative(ctx, filename)
 	if err != nil {
-		return nil, Request{}, err
+		return nil, requestinput.Document{}, err
 	}
 	return owned, owned.request, nil
 }

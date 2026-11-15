@@ -7,9 +7,11 @@ import (
 	"path"
 	"strings"
 	"testing"
+
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 )
 
-func inventoryFixture(t *testing.T) (Request, map[string][]byte, generationSelection) {
+func inventoryFixture(t *testing.T) (requestinput.Document, map[string][]byte, generationSelection) {
 	t.Helper()
 	selected, binding, files := installedObservationFixture(t)
 	raw, err := canonicalJSON(binding)

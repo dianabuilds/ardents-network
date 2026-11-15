@@ -9,7 +9,7 @@ import (
 
 // Initial and successor preparation independently reobserve their original
 // request through its native Origin; neither borrows the other's lifetime.
-func observeRequestCustody(ctx context.Context, input Request) error {
+func observeRequestCustody(ctx context.Context, input requestinput.Document) error {
 	declared, valid := input.Declaration()
 	origin := input.Origin()
 	if ctx == nil || origin == nil || !valid {

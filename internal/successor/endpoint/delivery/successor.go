@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
@@ -19,7 +20,7 @@ type successorOperation struct {
 	mu       sync.Mutex
 	ctx      context.Context
 	cancel   context.CancelFunc
-	request  Request
+	request  requestinput.Document
 	native   *successorPreparation
 	used     bool
 	result   ProvisionResult
@@ -47,9 +48,9 @@ func OpenSuccessor(ctx context.Context, filename string) (*Successor, error) {
 }
 
 // Request exposes immutable acquisition inputs, not installed authority.
-func (s *Successor) Request() Request {
+func (s *Successor) Request() requestinput.Document {
 	if s == nil || s.state == nil {
-		return Request{}
+		return requestinput.Document{}
 	}
 	return s.state.request
 }

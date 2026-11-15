@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 )
 
 // Independent exact schema bytes: this fixture never calls the production
@@ -140,7 +142,7 @@ func TestOwnedRequestRefusesBeforeAcquiringCustody(t *testing.T) {
 	}
 }
 
-func requestHasDeclaration(request Request) bool {
+func requestHasDeclaration(request requestinput.Document) bool {
 	_, ok := request.Declaration()
 	return ok
 }

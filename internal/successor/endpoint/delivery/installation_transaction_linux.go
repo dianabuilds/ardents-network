@@ -13,6 +13,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 )
 
 // Retain all borrowed directory handles until staging and its failure record
@@ -355,7 +356,7 @@ type generationBirth struct {
 
 // Only the genuine initial-preparation owner calls this after assembling the
 // exact authorized bytes and observing actual account/root provenance.
-func stageInitialGeneration(ctx context.Context, lease *installationLease, request Request, files map[string][]byte, selected generationSelection, gid uint32) (result *installationTransaction, returnedErr error) {
+func stageInitialGeneration(ctx context.Context, lease *installationLease, request requestinput.Document, files map[string][]byte, selected generationSelection, gid uint32) (result *installationTransaction, returnedErr error) {
 	if ctx == nil || lease == nil {
 		return nil, ErrBinding
 	}
@@ -758,7 +759,7 @@ func (stage *installationTransaction) observeIntent() error {
 
 // A native byte-staging mechanism, not fresh proof admission. Its only product
 // caller is the still-leased preparation with its genuine retained fresh pair.
-func stageSuccessorGeneration(ctx context.Context, reader *installedRoot, request Request, previous generationSelection, files map[string][]byte, selected generationSelection, gid uint32) (result *installationTransaction, returnedErr error) {
+func stageSuccessorGeneration(ctx context.Context, reader *installedRoot, request requestinput.Document, previous generationSelection, files map[string][]byte, selected generationSelection, gid uint32) (result *installationTransaction, returnedErr error) {
 	declared, valid := request.Declaration()
 	if ctx == nil || reader == nil || reader.lease == nil || !valid || request.ManifestSHA256() != "" ||
 		previous.Schema != "ardents-endpoint-installation-selection-v1" || !canonicalDigest(previous.GenerationDigest) ||

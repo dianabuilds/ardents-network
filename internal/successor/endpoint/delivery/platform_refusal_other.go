@@ -7,22 +7,23 @@ import (
 	"context"
 	"time"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
-func readProvisionRequest(ctx context.Context, _ string) (Request, error) {
+func readProvisionRequest(ctx context.Context, _ string) (requestinput.Document, error) {
 	if ctx == nil {
-		return Request{}, ErrInput
+		return requestinput.Document{}, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
-		return Request{}, err
+		return requestinput.Document{}, err
 	}
-	return Request{}, ErrNativeUnavailable
+	return requestinput.Document{}, ErrNativeUnavailable
 }
 
-func provisionInitial(ctx context.Context, _ Request, _ generationauthorization.Authorization) (ProvisionResult, error) {
+func provisionInitial(ctx context.Context, _ requestinput.Document, _ generationauthorization.Authorization) (ProvisionResult, error) {
 	if ctx == nil {
 		return ProvisionResult{}, ErrInput
 	}
@@ -46,8 +47,8 @@ func closeInitialRecovery(*recoveryNative) error { return nil }
 
 type successorPreparation struct{}
 
-func openSuccessor(context.Context, string) (*successorPreparation, Request, error) {
-	return nil, Request{}, ErrNativeUnavailable
+func openSuccessor(context.Context, string) (*successorPreparation, requestinput.Document, error) {
+	return nil, requestinput.Document{}, ErrNativeUnavailable
 }
 
 func completeSuccessor(*successorPreparation, *release.Verifier, enrollment.Candidate, release.Inputs) (ProvisionResult, error) {

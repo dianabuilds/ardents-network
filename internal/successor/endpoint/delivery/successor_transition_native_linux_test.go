@@ -14,6 +14,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
@@ -50,7 +51,7 @@ func TestInstallationNativeSuccessorCopiedHandleRetainsOriginalCancellation(t *t
 
 // Advance filesystem fixtures only, not Enrollment/Release/account/manager
 // authority. Native staging is separately constrained by the genuine caller.
-func successorStagingFixture(t *testing.T) (*installedRoot, Request, generationSelection, map[string][]byte, generationSelection) {
+func successorStagingFixture(t *testing.T) (*installedRoot, requestinput.Document, generationSelection, map[string][]byte, generationSelection) {
 	t.Helper()
 	previous := archiveStage(t)
 	if err := previous.archiveIntent(t.Context()); err != nil {
