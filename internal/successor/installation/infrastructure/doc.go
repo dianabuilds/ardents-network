@@ -1,5 +1,3 @@
-//go:build linux
-
 // Package infrastructure prepares separate Source, Forwarding, JOIN, Descriptor and Introduction public artifact
 // descriptors, with exact invocation-specific inventories. Public preparation
 // grants no installed transaction, startup or runtime permission.
