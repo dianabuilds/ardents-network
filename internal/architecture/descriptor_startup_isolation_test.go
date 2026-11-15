@@ -9,7 +9,7 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 	switch source {
 	case "internal/successor/installation/descriptor/recovery_replacement_linux.go":
 		switch dependency {
-		case modulePath + "/internal/successor/installation/cgroup", modulePath + "/internal/successor/installation/infrastructure", modulePath + "/internal/successor/installation/systemd", modulePath + "/internal/successor/release":
+		case modulePath + "/internal/successor/installation/cgroup", modulePath + "/internal/successor/installation/systemd", modulePath + "/internal/successor/release":
 			return true
 		}
 	case "internal/successor/installation/descriptor/transition_scope_linux.go":
@@ -36,7 +36,7 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/descriptor/replacement_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
 			return true
 		}
 	case "internal/successor/installation/descriptor/replacement_stopped_linux.go":
@@ -51,7 +51,7 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/descriptor/restart_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/release":
+		case "github.com/dianabuilds/ardents-network/internal/successor/release":
 			return true
 		}
 	case "internal/successor/installation/descriptor/retirement_policy_linux.go":
@@ -181,7 +181,7 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/descriptor/completed_initial_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/release":
+		case "github.com/dianabuilds/ardents-network/internal/successor/release":
 			return true
 		}
 	case "internal/successor/installation/descriptor/hosting_prepare_linux.go":
@@ -201,7 +201,7 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/descriptor/start_initial_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/installation/process", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/process", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
 			return true
 		}
 	case "internal/successor/installation/descriptor/startup_linux.go":

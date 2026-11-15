@@ -15,7 +15,7 @@ func introductionStartupImportAllowed(source, dependency string) bool {
 	case "internal/successor/installation/introduction/restart_policy_linux_test.go":
 		return dependency == "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	case "internal/successor/installation/introduction/restart_linux.go":
-		return dependency == "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/internal/successor/release"
+		return dependency == "github.com/dianabuilds/ardents-network/internal/successor/release"
 
 	case "internal/successor/installation/introduction/retirement_policy_linux.go":
 		return dependency == "github.com/dianabuilds/ardents-network/internal/successor/installation/completion" || dependency == "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
@@ -86,7 +86,7 @@ func introductionStartupImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/introduction/completed_initial_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/release":
+		case "github.com/dianabuilds/ardents-network/internal/successor/release":
 			return true
 		}
 	case "internal/successor/installation/introduction/loaded_policy_linux.go":
@@ -161,12 +161,7 @@ func introductionStartupImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/introduction/start_initial_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/installation/process", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
-			return true
-		}
-	case "internal/successor/installation/introduction/startup_admission_linux_test.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/process", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
 			return true
 		}
 	case "internal/successor/installation/introduction/startup_linux.go":
