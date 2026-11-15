@@ -77,10 +77,14 @@
 // Their literal unit and reply vocabulary grant no sibling role capability.
 package systemd
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
+)
 
 var (
 	ErrInput       = errors.New("invalid Installation manager observation")
-	ErrObservation = errors.New("installation manager observation differs")
+	ErrObservation = systemdproperty.ErrObservation
 	ErrUnavailable = errors.New("installation manager observation unavailable")
 )

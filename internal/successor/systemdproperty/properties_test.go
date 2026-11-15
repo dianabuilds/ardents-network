@@ -1,4 +1,4 @@
-package systemd
+package systemdproperty
 
 import (
 	"encoding/json"

@@ -4,11 +4,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"path"
 	"reflect"
 	"slices"
 	"strings"
+
+	systemd "github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
 )
 
 type managerValue = systemd.Value
