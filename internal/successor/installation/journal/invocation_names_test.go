@@ -15,3 +15,15 @@ func TestInvocationPrefixRejectsForeignGapsAndAmbiguity(t *testing.T) {
 		t.Fatal("unadmitted purpose accepted")
 	}
 }
+
+func TestInvocationPrefixKeepsEachPurposeSeparate(t *testing.T) {
+	for _, purpose := range []string{"forwarding", "introduction"} {
+		got, err := InvocationPrefix([]string{purpose + "-startup", purpose + "-invocation-00000001"}, purpose, 64)
+		if err != nil || got != 1 {
+			t.Fatalf("%s valid prefix: %d %v", purpose, got, err)
+		}
+		if _, err := InvocationPrefix([]string{purpose + "-startup", "join-invocation-00000001"}, purpose, 64); err == nil {
+			t.Fatalf("%s accepted foreign invocation", purpose)
+		}
+	}
+}

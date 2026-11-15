@@ -11,7 +11,7 @@ import (
 // each Installation owner supplies its own fixed purpose and bound and remains
 // responsible for independently opening and verifying every original record.
 func InvocationPrefix(names []string, purpose string, limit uint32) (uint32, error) {
-	if (purpose != "join" && purpose != "descriptor") || limit == 0 || len(names) == 0 || uint64(len(names)) > uint64(limit) {
+	if (purpose != "join" && purpose != "descriptor" && purpose != "forwarding" && purpose != "introduction") || limit == 0 || len(names) == 0 || uint64(len(names)) > uint64(limit) {
 		return 0, ErrBinding
 	}
 	seen := make(map[uint32]bool, len(names))

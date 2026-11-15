@@ -2,11 +2,11 @@ package forwarding
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
 // Discovery chooses only an original root-peer exchange. It supplies no Start,
@@ -48,30 +48,9 @@ func latestAttempt(selection *runtimeSelection) (attemptNumber, error) {
 }
 
 func attemptDirectories(names []string) (attemptNumber, error) {
-	if len(names) == 0 || len(names) > attemptLimit {
+	number, err := journal.InvocationPrefix(names, "forwarding", attemptLimit)
+	if err != nil {
 		return 0, ErrBinding
 	}
-	seen := map[uint64]bool{}
-	var latest uint64
-	for _, name := range names {
-		var number uint64
-		if name != "forwarding-startup" {
-			n, err := strconv.ParseUint(strings.TrimPrefix(name, "forwarding-invocation-"), 10, 32)
-			if err != nil || n == 0 || n >= attemptLimit || name != fmt.Sprintf("forwarding-invocation-%08d", n) {
-				return 0, ErrBinding
-			}
-			number = n
-		}
-		if seen[number] {
-			return 0, ErrBinding
-		}
-		seen[number] = true
-		latest = max(latest, number)
-	}
-	for n := uint64(0); n <= latest; n++ {
-		if !seen[n] {
-			return 0, ErrBinding
-		}
-	}
-	return attemptNumber(latest), nil
+	return attemptNumber(number), nil
 }
