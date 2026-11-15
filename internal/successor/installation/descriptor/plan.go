@@ -69,20 +69,9 @@ func (r Request) CheckPlanPreparationOutput(output, requestFile string) error {
 	if _, err := DecodeRequest(append(raw, '\n')); err != nil {
 		return err
 	}
-	if !validPath(output) || !validPath(requestFile) || r.Plan != posixpath.Join(output, "descriptor-plan.json") {
-		return ErrBinding
-	}
 	paths := append(r.paths(), r.reservedSiblingPaths()...)
-	for _, path := range paths {
-		if contains(requestFile, path) || contains(path, requestFile) {
-			return ErrBinding
-		}
-	}
-	paths = append(paths, requestFile)
-	for _, path := range paths {
-		if path != r.Plan && (contains(output, path) || contains(path, output)) {
-			return ErrBinding
-		}
+	if !deployment.PlanOutputIndependent(output, requestFile, r.Plan, "descriptor-plan.json", paths) {
+		return ErrBinding
 	}
 	return nil
 }

@@ -40,3 +40,23 @@ func IndependentNodePaths(paths ...string) bool {
 	}
 	return true
 }
+
+// PlanOutputIndependent checks that preparing one declared plan cannot overlap
+// its request or any other input and retained namespace. This validates path
+// declarations only; it does not observe filesystem identities or grant access.
+func PlanOutputIndependent(output, requestFile, plan, planName string, paths []string) bool {
+	if !ValidInfrastructurePath(output) || !ValidInfrastructurePath(requestFile) || plan != path.Join(output, planName) {
+		return false
+	}
+	for _, p := range paths {
+		if InfrastructurePathContains(requestFile, p) || InfrastructurePathContains(p, requestFile) {
+			return false
+		}
+	}
+	for _, p := range append(paths[:len(paths):len(paths)], requestFile) {
+		if p != plan && (InfrastructurePathContains(output, p) || InfrastructurePathContains(p, output)) {
+			return false
+		}
+	}
+	return true
+}

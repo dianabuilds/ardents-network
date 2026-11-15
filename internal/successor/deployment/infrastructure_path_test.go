@@ -54,3 +54,24 @@ func TestIndependentNodePathsRejectsOverlap(t *testing.T) {
 		}
 	}
 }
+
+func TestPlanOutputKeepsRequestAndOtherNamespacesIndependent(t *testing.T) {
+	const output, plan, name = "/prepared", "/prepared/join-plan.json", "join-plan.json"
+	for _, tc := range []struct {
+		request, candidate string
+		paths              []string
+		valid              bool
+	}{
+		{"/request", plan, []string{plan, "/state", "/credentials"}, true},
+		{"/request", "/prepared/foreign.json", []string{plan, "/state"}, false},
+		{"/prepared/request", plan, []string{plan, "/state"}, false},
+		{"/state/request", plan, []string{plan, "/state"}, false},
+		{"/request", plan, []string{plan, "/prepared/other"}, false},
+		{"/request", plan, []string{plan, "/prepared"}, false},
+		{"relative", plan, []string{plan, "/state"}, false},
+	} {
+		if got := PlanOutputIndependent(output, tc.request, tc.candidate, name, tc.paths); got != tc.valid {
+			t.Fatalf("request %q plan %q paths %v: got %v", tc.request, tc.candidate, tc.paths, got)
+		}
+	}
+}
