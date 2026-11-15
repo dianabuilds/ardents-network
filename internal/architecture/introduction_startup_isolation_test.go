@@ -4,6 +4,36 @@ package architecture
 // Route root/receiver, legacy bridge or additional canonical test is permitted.
 func introductionStartupImportAllowed(source, dependency string) bool {
 	switch source {
+	case "internal/successor/installation/introduction/installed_cohort_native_linux_test.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/network/epoch", "github.com/dianabuilds/ardents-network/internal/successor/network/source":
+			return true
+		}
+	case "internal/successor/installation/introduction/installed_operations_native_linux_test.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/route/ardp", "github.com/dianabuilds/ardents-network/internal/successor/route/capsule", "github.com/dianabuilds/ardents-network/internal/successor/route/introduction":
+			return true
+		}
+	case "internal/successor/installation/introduction/installed_preparation_native_linux_test.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/admission", "github.com/dianabuilds/ardents-network/internal/successor/admission/stock", "github.com/dianabuilds/ardents-network/internal/successor/custody":
+			return true
+		}
+	case "internal/successor/installation/introduction/installed_start_native_linux_test.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/introduction":
+			return true
+		}
+	case "internal/successor/installation/introduction/installed_stock_native_linux_test.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/admission", "github.com/dianabuilds/ardents-network/internal/successor/admission/issuance", "github.com/dianabuilds/ardents-network/internal/successor/admission/issuer", "github.com/dianabuilds/ardents-network/internal/successor/admission/quota", "github.com/dianabuilds/ardents-network/internal/successor/admission/receiving", "github.com/dianabuilds/ardents-network/internal/successor/admission/stock", "github.com/dianabuilds/ardents-network/internal/successor/admission/token", "github.com/dianabuilds/ardents-network/internal/successor/custody", "github.com/dianabuilds/ardents-network/internal/successor/network", "github.com/dianabuilds/ardents-network/internal/successor/network/source", "github.com/dianabuilds/ardents-network/internal/successor/network/state":
+			return true
+		}
+	case "internal/successor/installation/introduction/installed_transport_native_linux_test.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/admission/stock", "github.com/dianabuilds/ardents-network/internal/successor/route/ardp", "github.com/dianabuilds/ardents-network/internal/successor/route/channel", "github.com/dianabuilds/ardents-network/internal/successor/route/role", "github.com/dianabuilds/ardents-network/internal/successor/route/transport", "github.com/dianabuilds/ardents-network/internal/successor/route/transport/tls":
+			return true
+		}
 	case "cmd/ardents-control/introduction_artifact_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/installation/introduction":

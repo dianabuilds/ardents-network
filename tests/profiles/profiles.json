@@ -376,6 +376,32 @@
       "timeout": "3m"
     },
 {
+  "id": "introduction-exchange-linux",
+  "state": "active",
+  "make_target": "introduction-exchange-check",
+  "surface": "actual installed Introduction REGISTER, new-slot revision, opaque SUBMIT/delivery and owning WITHDRAW through authenticated adjacent peers and genuine finite rights; retained slot/spend bytes and joined channels; not full Publisher/Service or qualified lifecycle",
+  "prerequisites": [
+    "dedicated root Ubuntu24.04 amd64/systemd255/cgroupv2/ext4 stand under common exclusive lock; absent all five slots/account and private stand marker",
+    "same-source actual double-built pinned canonical Node/Control, preparer and evidence, genuine Custody/Allocation/issuer/Stock and signed cohort",
+    "exact public bootstrap commitments under explicit Product Owner delegation before Start; live original clock; unchanged runtime protection and absolute deadlines"
+  ],
+  "invalid_environment": "missing selected prerequisite fails, never skips",
+  "timeout": "3m"
+},
+{
+  "id": "introduction-exchange-preparation-linux",
+  "state": "active",
+  "make_target": "introduction-exchange-preparation-check",
+  "surface": "genuine canonical signed Introduction cohort, separate Custody/Allocation Permission authority, finite issuer/Stock preparation and irreversible presentation; no installed role, registration/delivery ACK or lifecycle acceptance",
+  "prerequisites": [
+    "root on dedicated Linux ext4 development host under common exclusive lock",
+    "same-source SHA-256-pinned canonical Control; independent private temporary roots; no fixture signing authority",
+    "live original clock and retained failures; TCP/TLS declarations only"
+  ],
+  "invalid_environment": "missing selected prerequisites fail, never skip",
+  "timeout": "3m"
+},
+{
   "id": "introduction-startup-linux",
   "state": "active",
   "make_target": "introduction-startup-check",

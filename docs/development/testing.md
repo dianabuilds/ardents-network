@@ -5621,3 +5621,28 @@ public bootstrap receipt is required before execution. This proves no registrati
 delivery, retained restart, independent family/builder or privacy qualification.
 Ordinary tests cover complete first-start grammar, partial/foreign/native-inode
 transcripts, fixed ACK, manager purpose separation and fresh observation/join.
+
+### Introduction installed exchange input preparation
+
+`make introduction-exchange-preparation-check` selects only
+`TestIntroductionInstalledNativePreparation` with `introduction_installed_native`.
+Use the common exclusive development lock and a private ext4 temporary directory
+on the root Linux host. Supply the same-source canonical Control through
+`ARDENTS_INTRODUCTION_CONTROL_PROGRAM` and its independently checked
+`ARDENTS_INTRODUCTION_CONTROL_PROGRAM_SHA256`. Missing prerequisites fail.
+The fixed signed cohort is not redrawn; separate genuine Custody/Allocation,
+issuer material/quota/results and Stock supply eight Control and four Registration
+rights. Exact retry preserves the result; presentation exhaustion cannot renew
+stock. This finite input check starts no installed role and establishes no
+registration, delivery, Publication readiness, domain retirement or privacy claim.
+
+`make introduction-exchange-check` separately selects
+`TestIntroductionInstalledNativeRegisterSubmitWithdraw` with the same tag.
+It requires the dedicated first-start stand and actual two-build pinned canonical
+artifacts, original bootstrap commitments and unchanged native protection.
+Two distinct registrations carry increasing revisions and fresh recipient keys;
+each actual delivery joins its RESULT/CLOSE before owning withdrawal. Independent
+native byte reads require four irreversible spends and both retained slot floors.
+Authenticated adjacent peers and the independent HPKE oracle establish this
+protocol boundary only; full Publication readiness, qualified explicit Stop,
+retained restart/replacement and Service acceptance remain separate obligations.

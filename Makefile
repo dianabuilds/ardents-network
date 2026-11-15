@@ -546,6 +546,7 @@ network-signing-compile-check: export GOARCH := amd64
 network-signing-compile-check: export CGO_ENABLED := 0
 network-signing-compile-check:
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
+	go test -c -tags introduction_installed_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/introduction-installed.test" ./internal/successor/installation/introduction
 	go test -c -tags descriptor_installed_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-installed.test" ./internal/successor/installation/descriptor
 	go test -c -tags join_installed_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-installed.test" ./internal/successor/installation/join
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
@@ -622,3 +623,11 @@ introduction-hosting-check:
 .PHONY: introduction-startup-check
 introduction-startup-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestIntroductionPreparationNativeProtectedStartAndIndependentStartup$$' -count=1 -v -timeout=3m
+
+.PHONY: introduction-exchange-preparation-check
+introduction-exchange-preparation-check:
+	go test -race -trimpath -buildvcs=false -tags introduction_installed_native ./internal/successor/installation/introduction -run '^TestIntroductionInstalledNativePreparation$$' -count=1 -v -timeout=3m
+
+.PHONY: introduction-exchange-check
+introduction-exchange-check:
+	go test -race -trimpath -buildvcs=false -tags introduction_installed_native ./internal/successor/installation/introduction -run '^TestIntroductionInstalledNativeRegisterSubmitWithdraw$$' -count=1 -v -timeout=3m
