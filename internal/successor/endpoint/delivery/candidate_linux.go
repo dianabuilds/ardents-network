@@ -7,7 +7,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
 	"syscall"
 	"time"
 )
@@ -287,7 +287,7 @@ func (original *installedCandidate) quiesce() error {
 			if err := errors.Join(owned.inspection.observe(cleanup), verifyEndpointConfiguration(version, unit, service, checked.request, checked.selected.GenerationDigest)); err != nil {
 				return errors.Join(original.terminal, err)
 			}
-			if !systemd.Matches(service, "MainPID", "u", uint32(0)) {
+			if !systemdproperty.Matches(service, "MainPID", "u", uint32(0)) {
 				if err := original.retain(cleanup); err != nil {
 					original.terminal = errors.Join(original.terminal, err)
 					if original.process == nil || original.scopes == nil {

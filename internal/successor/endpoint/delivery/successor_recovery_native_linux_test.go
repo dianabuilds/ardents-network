@@ -17,11 +17,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
 )
 
 // Actual filesystem admission only: no successful Release, manager, process,
@@ -1259,7 +1259,7 @@ func reloadTypedFixture(t *testing.T, request installationRequest, digest string
 		if err != nil {
 			t.Fatal(err)
 		}
-		properties[name] = systemd.Value{Type: signature, Data: raw}
+		properties[name] = systemdproperty.Value{Type: signature, Data: raw}
 	}
 	for name, value := range map[string]string{"Id": "ardents-endpoint.service", "LoadState": "loaded", "ActiveState": "inactive", "SubState": "dead", "FragmentPath": "/etc/systemd/system/ardents-endpoint.service"} {
 		put(unit, name, "s", value)
@@ -1326,7 +1326,7 @@ func TestInstallationNativeRecoveryConfigurationMatchPreservesPhase(t *testing.T
 				}
 				unit, service := reloadTypedFixture(t, r.intent.Request, digest)
 				if image == "running" {
-					service["MainPID"] = systemd.Value{Type: "u", Data: json.RawMessage("123")}
+					service["MainPID"] = systemdproperty.Value{Type: "u", Data: json.RawMessage("123")}
 				}
 				owned := &successorPreparation{previous: r.previous, recovery: r}
 				_, got, err := owned.matchQuiescentConfiguration("255.4", unit, service)

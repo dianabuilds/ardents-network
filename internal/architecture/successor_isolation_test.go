@@ -1181,7 +1181,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/installation/introduction":       {},
 		"internal/successor/installation/join":               {},
 		"internal/successor/installation/forwarding":         {},
-		"internal/successor/endpoint/delivery":               {"endpoint/delivery/authorization", "enrollment", "release", "installation/cgroup", "installation/systemd", "endpoint/delivery/manager", "endpoint/delivery/journal", "installation/process", "endpoint/delivery/generation", "installation/completion", "installation/fixedfile", "endpoint/delivery/unit", "endpoint/delivery/request", "installation/directory"},
+		"internal/successor/endpoint/delivery":               {"systemdproperty", "endpoint/delivery/authorization", "enrollment", "release", "installation/cgroup", "installation/systemd", "endpoint/delivery/manager", "endpoint/delivery/journal", "installation/process", "endpoint/delivery/generation", "installation/completion", "installation/fixedfile", "endpoint/delivery/unit", "endpoint/delivery/request", "installation/directory"},
 		"internal/successor/installation/cgroup":             {},
 		"internal/successor/endpoint/delivery/request":       {},
 		"internal/successor/installation/directory":          {},

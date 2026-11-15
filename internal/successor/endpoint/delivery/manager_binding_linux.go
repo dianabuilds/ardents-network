@@ -5,11 +5,11 @@ import (
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
 	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/unit"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
 	"strings"
 )
 
-type managerProperties = systemd.Properties
+type managerProperties = systemdproperty.Properties
 
 func unitObservationError(err error) error {
 	if err == nil {

@@ -8,6 +8,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
 )
 
 // This retained observation has requested no stop. A transition must retain
@@ -53,8 +54,8 @@ func (owned *successorPreparation) retainPredecessor() (original *installedPrede
 	if err != nil {
 		return nil, err
 	}
-	if systemd.Matches(unit, "ActiveState", "s", "inactive") && systemd.Matches(unit, "SubState", "s", "dead") &&
-		systemd.Matches(service, "MainPID", "u", uint32(0)) {
+	if systemdproperty.Matches(unit, "ActiveState", "s", "inactive") && systemdproperty.Matches(unit, "SubState", "s", "dead") &&
+		systemdproperty.Matches(service, "MainPID", "u", uint32(0)) {
 		request, generation, err := owned.matchQuiescentConfiguration(version, unit, service)
 		if err != nil {
 			return nil, err
