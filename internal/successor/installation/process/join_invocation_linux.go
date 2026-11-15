@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"syscall"
 )
 
@@ -23,20 +22,7 @@ type JoinExpected struct {
 // JoinInvocation retains its own original kernel observations. Copies
 // share admission, the first failure and physically joined Close. It exposes
 // neither the underlying Invocation nor Source's original signal right.
-type JoinInvocation struct{ original *joinInvocation }
-
-type joinInvocation struct {
-	mu          sync.Mutex
-	ioMu        sync.Mutex
-	uses        sync.WaitGroup
-	once        sync.Once
-	pin         *Invocation
-	pidfd       *os.File
-	closing     bool
-	interrupted bool
-	failure     error
-	closeErr    error
-}
+type JoinInvocation struct{ original *nodeInvocation }
 
 // RetainJoin independently observes root's exact original Join
 // process. Installation separately admits start/stop and retains cgroup join.
@@ -81,7 +67,7 @@ func retainJoin(ctx context.Context, expected JoinExpected) (JoinInvocation, err
 	if err != nil {
 		return JoinInvocation{}, err
 	}
-	o := &joinInvocation{pin: pin}
+	o := &nodeInvocation{pin: pin}
 	result := JoinInvocation{original: o}
 	if err = pin.retainNamespaces(ctx); err == nil {
 		err = pin.Observe(ctx)
@@ -112,115 +98,19 @@ func joinInvocationPolicy(expected JoinExpected) invocationPolicy {
 		placement: "0::/system.slice/ardents-join.service\n"}
 }
 
-func (o *joinInvocation) begin(ctx context.Context) error {
-	if ctx == nil {
-		return errInput
-	}
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.closing || o.failure != nil {
-		return errors.Join(os.ErrClosed, o.failure)
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	o.uses.Add(1)
-	return nil
-}
-
-func (o *joinInvocation) retainFailure(err error) error {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.failure == nil {
-		o.failure = err
-	}
-	return errors.Join(o.failure, err)
-}
-
 // Observe rechecks only original proc, executable, argv, credentials, protection,
 // invocation and namespace objects. First failure permanently denies this pin.
 // It grants no current State, manager, Guard, Startup or domain completion fact.
-func (p JoinInvocation) Observe(ctx context.Context) error {
-	o := p.original
-	if o == nil {
-		return errInput
-	}
-	if err := o.begin(ctx); err != nil {
-		return err
-	}
-	defer o.uses.Done()
-	o.ioMu.Lock()
-	defer o.ioMu.Unlock()
-	if err := o.pin.Observe(ctx); err != nil {
-		return o.retainFailure(err)
-	}
-	// A Close or failing earlier queued observer may have denied this use
-	// while its physical reads completed. No late successful observation escapes.
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.closing || o.failure != nil {
-		return errors.Join(os.ErrClosed, o.failure)
-	}
-	return ctx.Err()
-}
+func (p JoinInvocation) Observe(ctx context.Context) error { return p.original.observe(ctx) }
 
 // InterruptJoin performs at most one SIGTERM through root's own original
 // pidfd after fresh physical observations. The bool records a syscall attempt,
 // including an uncertain failed attempt. Installation supplies stop permission;
 // neither this signal nor process exit proves the original domains have joined.
 func (p JoinInvocation) InterruptJoin(ctx context.Context) (bool, error) {
-	o := p.original
-	if o == nil || os.Geteuid() != 0 || runtime.GOARCH != "amd64" {
-		return false, errInput
-	}
-	if err := o.begin(ctx); err != nil {
-		return false, err
-	}
-	defer o.uses.Done()
-	o.ioMu.Lock()
-	defer o.ioMu.Unlock()
-	if o.pidfd == nil || o.interrupted {
-		return false, errInput
-	}
-	if err := o.pin.Observe(ctx); err != nil {
-		return false, o.retainFailure(err)
-	}
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.closing || o.failure != nil || ctx.Err() != nil {
-		return false, errors.Join(os.ErrClosed, o.failure, ctx.Err())
-	}
-	o.interrupted = true
-	const pidfdSendSignalAMD64 = 424
-	_, _, failure := syscall.Syscall6(pidfdSendSignalAMD64, o.pidfd.Fd(), uintptr(syscall.SIGTERM), 0, 0, 0, 0)
-	if failure != 0 {
-		if o.failure == nil {
-			o.failure = failure
-		}
-		return true, errors.Join(o.failure, failure)
-	}
-	return true, ctx.Err()
+	return p.original.interrupt(ctx)
 }
 
 // Close denies new uses synchronously, joins admitted physical observations and
 // signal calls, then releases proc/namespaces and finally the original pidfd.
-func (p JoinInvocation) Close() error {
-	o := p.original
-	if o == nil {
-		return nil
-	}
-	o.mu.Lock()
-	o.closing = true
-	o.mu.Unlock()
-	o.once.Do(func() {
-		o.uses.Wait()
-		physical := o.pin.Close()
-		if o.pidfd != nil {
-			physical = errors.Join(physical, o.pidfd.Close())
-		}
-		o.mu.Lock()
-		o.closeErr = errors.Join(o.failure, physical)
-		o.mu.Unlock()
-	})
-	return o.closeErr
-}
+func (p JoinInvocation) Close() error { return p.original.close() }

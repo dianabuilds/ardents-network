@@ -91,7 +91,7 @@ func TestForwardingPhysicalCloseRetainsOriginalFailureAcrossCopies(t *testing.T)
 		_ = pin.Close()
 		t.Fatal(err)
 	}
-	original := &forwardingInvocation{pin: pin}
+	original := &nodeInvocation{pin: pin}
 	p := ForwardingInvocation{original: original}
 	defer p.Close()
 	copy := p

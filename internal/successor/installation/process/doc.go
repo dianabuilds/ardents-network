@@ -25,6 +25,8 @@
 // DescriptorExpected and its root/self openers fix Descriptor argv, original
 // process and unit independently. DescriptorInvocation exposes no signal right
 // or underlying Invocation and cannot borrow a sibling process observation.
+// The Node roles share one physical lifetime implementation, while each
+// acquisition retains separate original process, signal and terminal state.
 package process
 
 import "errors"

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"syscall"
 )
 
@@ -23,20 +22,7 @@ type DescriptorExpected struct {
 // DescriptorInvocation retains its own original kernel observations. Copies
 // share admission, the first failure and physically joined Close. It exposes
 // neither the underlying Invocation nor Source's original signal right.
-type DescriptorInvocation struct{ original *descriptorInvocation }
-
-type descriptorInvocation struct {
-	mu          sync.Mutex
-	ioMu        sync.Mutex
-	uses        sync.WaitGroup
-	once        sync.Once
-	pin         *Invocation
-	pidfd       *os.File
-	closing     bool
-	interrupted bool
-	failure     error
-	closeErr    error
-}
+type DescriptorInvocation struct{ original *nodeInvocation }
 
 // RetainDescriptor independently observes root's exact original Descriptor
 // process. Installation separately admits start/stop and retains cgroup descriptor.
@@ -66,7 +52,7 @@ func retainDescriptor(ctx context.Context, expected DescriptorExpected) (Descrip
 	if err != nil {
 		return DescriptorInvocation{}, err
 	}
-	o := &descriptorInvocation{pin: pin}
+	o := &nodeInvocation{pin: pin}
 	result := DescriptorInvocation{original: o}
 	if err = pin.retainNamespaces(ctx); err == nil {
 		err = pin.Observe(ctx)
@@ -97,80 +83,14 @@ func descriptorInvocationPolicy(expected DescriptorExpected) invocationPolicy {
 		placement: "0::/system.slice/ardents-descriptor.service\n"}
 }
 
-func (o *descriptorInvocation) begin(ctx context.Context) error {
-	if ctx == nil {
-		return errInput
-	}
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.closing || o.failure != nil {
-		return errors.Join(os.ErrClosed, o.failure)
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	o.uses.Add(1)
-	return nil
-}
-
-func (o *descriptorInvocation) retainFailure(err error) error {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.failure == nil {
-		o.failure = err
-	}
-	return errors.Join(o.failure, err)
-}
-
 // Observe rechecks only original proc, executable, argv, credentials, protection,
 // invocation and namespace objects. First failure permanently denies this pin.
 // It grants no current State, manager, Guard, Startup or domain completion fact.
-func (p DescriptorInvocation) Observe(ctx context.Context) error {
-	o := p.original
-	if o == nil {
-		return errInput
-	}
-	if err := o.begin(ctx); err != nil {
-		return err
-	}
-	defer o.uses.Done()
-	o.ioMu.Lock()
-	defer o.ioMu.Unlock()
-	if err := o.pin.Observe(ctx); err != nil {
-		return o.retainFailure(err)
-	}
-	// A Close or failing earlier queued observer may have denied this use
-	// while its physical reads completed. No late successful observation escapes.
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.closing || o.failure != nil {
-		return errors.Join(os.ErrClosed, o.failure)
-	}
-	return ctx.Err()
-}
+func (p DescriptorInvocation) Observe(ctx context.Context) error { return p.original.observe(ctx) }
 
 // Close denies new uses synchronously, joins admitted physical observations and
 // signal calls, then releases proc/namespaces and finally the original pidfd.
-func (p DescriptorInvocation) Close() error {
-	o := p.original
-	if o == nil {
-		return nil
-	}
-	o.mu.Lock()
-	o.closing = true
-	o.mu.Unlock()
-	o.once.Do(func() {
-		o.uses.Wait()
-		physical := o.pin.Close()
-		if o.pidfd != nil {
-			physical = errors.Join(physical, o.pidfd.Close())
-		}
-		o.mu.Lock()
-		o.closeErr = errors.Join(o.failure, physical)
-		o.mu.Unlock()
-	})
-	return o.closeErr
-}
+func (p DescriptorInvocation) Close() error { return p.original.close() }
 
 func RetainDescriptorStop(ctx context.Context, expected DescriptorExpected, device, inode uint64) (DescriptorInvocation, error) {
 	if device == 0 || inode == 0 {
@@ -192,35 +112,5 @@ func RetainDescriptorStop(ctx context.Context, expected DescriptorExpected, devi
 // including an uncertain failed attempt. Installation supplies stop permission;
 // neither this signal nor process exit proves the original domains have joined.
 func (p DescriptorInvocation) InterruptDescriptor(ctx context.Context) (bool, error) {
-	o := p.original
-	if o == nil || os.Geteuid() != 0 || runtime.GOARCH != "amd64" {
-		return false, errInput
-	}
-	if err := o.begin(ctx); err != nil {
-		return false, err
-	}
-	defer o.uses.Done()
-	o.ioMu.Lock()
-	defer o.ioMu.Unlock()
-	if o.pidfd == nil || o.interrupted {
-		return false, errInput
-	}
-	if err := o.pin.Observe(ctx); err != nil {
-		return false, o.retainFailure(err)
-	}
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	if o.closing || o.failure != nil || ctx.Err() != nil {
-		return false, errors.Join(os.ErrClosed, o.failure, ctx.Err())
-	}
-	o.interrupted = true
-	const pidfdSendSignalAMD64 = 424
-	_, _, failure := syscall.Syscall6(pidfdSendSignalAMD64, o.pidfd.Fd(), uintptr(syscall.SIGTERM), 0, 0, 0, 0)
-	if failure != 0 {
-		if o.failure == nil {
-			o.failure = failure
-		}
-		return true, errors.Join(o.failure, failure)
-	}
-	return true, ctx.Err()
+	return p.original.interrupt(ctx)
 }
