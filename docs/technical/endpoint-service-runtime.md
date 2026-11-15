@@ -268,6 +268,16 @@ scenario now exercises this bounded permission bootstrap in the actual non-root
 participant after genuine Root completion; it is not a full installed Service
 or qualification receipt.
 
+The current participant uses `state.Open`, which can initialize an empty State
+directory. Startup retains the mutable directory's identity and access but does
+not establish whether its State history is genuinely new. If previously retained
+history is removed while the directory remains, an empty directory can therefore
+be treated as a fresh root; this follows from the inspected source, not a native
+reproduction. `state.OpenRetained` refuses missing history, but using it for all
+starts would also refuse a genuine first initialization. Replacing the
+installation handoff must supply a genuine first-creation fact or use strict
+retained opening; an empty path or a caller-selected flag is not that fact.
+
 Completed Generation writes retain a matched read-only descriptor to the same
 original inode before joining the writer close. Failed read opening, identity
 matching or writer close denies completion and retains the original failure.
