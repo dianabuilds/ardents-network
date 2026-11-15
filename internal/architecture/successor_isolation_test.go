@@ -240,16 +240,19 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			{"internal/successor/installation/forwarding/plan.go", true},
 			{"internal/successor/installation/forwarding/plan_test.go", true},
 			{"internal/successor/installation/forwarding/request_test.go", true},
+			{"internal/successor/installation/join/binding.go", true},
 			{"internal/successor/installation/join/request.go", true},
 			{"internal/successor/installation/join/request_portable_test.go", true},
 			{"internal/successor/installation/join/plan.go", true},
 			{"internal/successor/installation/join/template.go", true},
 			{"internal/successor/installation/join/request_test.go", true},
 			{"internal/successor/installation/join/plan_test.go", true},
+			{"internal/successor/installation/descriptor/binding.go", true},
 			{"internal/successor/installation/descriptor/request.go", true},
 			{"internal/successor/installation/descriptor/request_portable_test.go", true},
 			{"internal/successor/installation/descriptor/plan.go", true},
 			{"internal/successor/installation/descriptor/template.go", true},
+			{"internal/successor/installation/introduction/binding.go", true},
 			{"internal/successor/installation/introduction/request.go", true},
 			{"internal/successor/installation/introduction/request_portable_test.go", true},
 			{"internal/successor/installation/introduction/plan.go", true},
@@ -915,7 +918,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/join/hosting_prepare_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
 		return true
 	}
-	if (source == "internal/successor/installation/join/binding_linux.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure") {
+	if (source == "internal/successor/installation/join/binding.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure") {
 		return true
 	}
 	if (source == "internal/successor/installation/join/generation_bytes_linux.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment") {
@@ -1959,7 +1962,7 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup", "github.com/dianabuilds/ardents-network/internal/successor/installation/completion", "github.com/dianabuilds/ardents-network/internal/successor/installation/process", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd":
 			return true
 		}
-	case "internal/successor/installation/join/binding_linux.go":
+	case "internal/successor/installation/join/binding.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
 			return true

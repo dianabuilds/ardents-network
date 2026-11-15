@@ -2,6 +2,8 @@ package join
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"strings"
 
@@ -67,4 +69,10 @@ func decodeConfiguration(raw []byte, schema string) (binding, error) {
 		return binding{}, ErrBinding
 	}
 	return b, nil
+}
+
+// digest computes the commitment to detached configuration bytes.
+func digest(raw []byte) string {
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
 }

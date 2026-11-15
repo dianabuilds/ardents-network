@@ -95,6 +95,10 @@ func (r Request) paths() []string {
 	return []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.DescriptorRoot, r.CredentialDirectory, r.Plan, r.Certificate, r.PrivateKey, r.Clock}
 }
 
+func (r Request) ownedPaths() []string {
+	return append(r.paths(), r.reservedSiblingPaths()...)
+}
+
 func (r Request) reservedSiblingPaths() []string {
 	paths := []string{r.InstallationRoot + ".descriptor-initial-journal", r.InstallationRoot + ".descriptor-initial-pending", r.InstallationRoot + ".descriptor-hosting-journal", r.InstallationRoot + ".descriptor-hosting-pending", r.InstallationRoot + ".descriptor-hosting", r.InstallationRoot + ".descriptor-first-start-journal", r.InstallationRoot + ".descriptor-replacement-pending"}
 	for n := 0; n < attemptLimit; n++ {

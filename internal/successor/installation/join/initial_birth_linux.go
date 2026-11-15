@@ -3,8 +3,6 @@ package join
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -58,11 +56,6 @@ type initialBirths struct {
 	// runs, and its independent error joins the original refusal.
 	beforeClose func(*os.File) error
 	afterRecord func(int) error
-}
-
-func digest(raw []byte) string {
-	sum := sha256.Sum256(raw)
-	return hex.EncodeToString(sum[:])
 }
 
 func nodeAccess(info os.FileInfo, mode os.FileMode, uid, gid uint32, directory bool) bool {

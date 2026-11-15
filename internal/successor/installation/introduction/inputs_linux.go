@@ -105,10 +105,6 @@ func ReadInputs(ctx context.Context, path string) (result Inputs, returned error
 	return result, result.Check()
 }
 
-func (r Request) ownedPaths() []string {
-	return append(r.paths(), r.reservedSiblingPaths()...)
-}
-
 func (p *inputs) begin() error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
