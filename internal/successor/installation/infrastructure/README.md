@@ -1,4 +1,4 @@
-# Source artifact admission and explicit installation transitions
+# Source installation transitions
 
 Late initial recovery retains every recorded native resource before its fresh
 matched manager reference may load the complete unit. It checks exact
@@ -79,7 +79,7 @@ own exact grammar and accepting-proof checks.
 The Release infrastructure owner prepares canonical descriptors and retains
 coherent fresh Release pairs with the original Enrollment caller. This transitional
 Source owner consumes those proofs for read-only native preflight, stopped
-installation and guarded startup. Detached bytes grant no installed authority. `source_plan_linux.go` consumes Source's pure serving-declaration codec and finite runtime credential-pair validation, also used by the runtime owner; Installation owns exact future-input matching, explicit delivery and preflight admission. No runtime is constructed.
+installation and guarded startup. Detached bytes grant no installed authority. `source_plan.go` consumes Source's pure serving-declaration codec and finite runtime credential-pair validation, also used by the runtime owner; this transitional owner matches future inputs, delivers credentials and performs preflight admission. No runtime is constructed.
 `source_request.go` owns a separate closed Source request and exact unit
 template/rendering. `source_observation_linux.go` retains original root-controlled
 request/plan/certificate/private-key/CA files and ancestors through joined Close.
