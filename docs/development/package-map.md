@@ -306,7 +306,7 @@ exact completion/systemd/process/cgroup imports are registered in the table abov
 `source_retirement_history_linux.go` owns independent complete predecessor-chain
 verification under the original first-journal lease. Non-root Startup's one-use
 `ReportRetirement` reports joined composition only; it grants no restart right.
-Linux-only State/durable `OpenRetained` have actual successor Source consumers
+Portable State/durable `OpenRetained` have actual successor Source consumers
 and share State's existing recovery/lifetime implementation without initialization
 of missing retained history. No new package or runtime dependency is introduced.
 

@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// OpenRetained is the selected native consumer's existing-history acquisition.
+// OpenRetained acquires an existing State history.
 // It creates no ownership marker, semantic directory or security journal and
 // does not clean a partial prefix into a fresh root. State verifies meaning.
 func OpenRetained(path string, limits Limits) (openedRoot *Root, resultErr error) {

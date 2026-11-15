@@ -134,10 +134,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/network/duty/node_inspection_linux.go",
 			"internal/successor/admission/spending/inspection_linux.go",
 			"internal/successor/hosting/inspection_linux.go",
-			"internal/successor/network/state/retained_open_linux.go",
-			"internal/successor/network/state/retained_open_linux_test.go",
-			"internal/successor/network/state/durable/retained_open_linux.go",
-			"internal/successor/network/state/durable/retained_open_linux_test.go",
 			"internal/successor/installation/infrastructure/source_stop_linux.go",
 			"internal/successor/installation/infrastructure/source_stop_storage_linux.go",
 			"internal/successor/installation/infrastructure/source_stop_storage_linux_test.go",
@@ -212,6 +208,10 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			name string
 			want bool
 		}{
+			{"internal/successor/network/state/retained_open.go", true},
+			{"internal/successor/network/state/retained_open_test.go", true},
+			{"internal/successor/network/state/durable/retained_open.go", true},
+			{"internal/successor/network/state/durable/retained_open_test.go", true},
 			{"internal/successor/network/source/serving_declaration.go", true},
 			{"internal/successor/network/source/serving_declaration_test.go", true},
 			{"internal/successor/installation/infrastructure/source_plan.go", true},
