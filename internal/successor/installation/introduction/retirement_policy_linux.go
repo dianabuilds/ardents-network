@@ -86,9 +86,9 @@ func decodeRetirementResult(raw []byte, number attemptNumber, b binding, binding
 		id == [16]byte{} || r.InvocationID != hex.EncodeToString(id[:]) || r.InvocationID != original.InvocationID || r.Manager == "" || r.Manager != original.Manager || !introductionCleanExit(r.execution(), original) {
 		return retirementResult{}, ErrBinding
 	}
-	challenge, err := retirementChallenge(r.Challenge)
-	if err != nil {
-		return retirementResult{}, err
+	challenge, ok := completion.DecodeRetirementChallenge(r.Challenge)
+	if !ok {
+		return retirementResult{}, ErrBinding
 	}
 	start, err := completion.Encode(id, b.Generation, bindingSHA)
 	if err != nil {

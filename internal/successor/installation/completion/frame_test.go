@@ -51,3 +51,15 @@ func TestInstallationCompletionEncodePreservesExactClosedBytes(t *testing.T) {
 		t.Fatal("zero invocation exposed a completion frame", err)
 	}
 }
+
+func TestRetirementChallengeCanonicalAndNonzero(t *testing.T) {
+	const valid = "abababababababababababababababababababababababababababababababab"
+	if got, ok := DecodeRetirementChallenge(valid); !ok || got[0] != 0xab {
+		t.Fatal("valid challenge refused")
+	}
+	for _, invalid := range []string{"", "0000000000000000000000000000000000000000000000000000000000000000", "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB", valid[:62], valid + "00"} {
+		if _, ok := DecodeRetirementChallenge(invalid); ok {
+			t.Fatalf("invalid challenge accepted: %q", invalid)
+		}
+	}
+}

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
@@ -186,9 +187,9 @@ func (h *retirementSnapshot) validate() error {
 	if err != nil {
 		return err
 	}
-	challenge, err := retirementChallenge(h.result.Challenge)
-	if err != nil {
-		return err
+	challenge, ok := completion.DecodeRetirementChallenge(h.result.Challenge)
+	if !ok {
+		return ErrBinding
 	}
 	transcript := h.journal.body
 	if h.recovery != nil {

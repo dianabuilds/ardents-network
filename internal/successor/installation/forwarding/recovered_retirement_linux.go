@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
@@ -83,9 +84,9 @@ func stoppedRetirementTranscript(prefix []byte, cut transitionCutResult, selecte
 		logical = append(logical, raw...)
 		logical = append(logical, '\n')
 	}
-	challenge, err := retirementChallenge(result.Challenge)
-	if err != nil {
-		return nil, err
+	challenge, ok := completion.DecodeRetirementChallenge(result.Challenge)
+	if !ok {
+		return nil, ErrBinding
 	}
 	if _, err := journal.DecodeRetirementRecords(logical, "forwarding", cut.Boundary.Journal, number.retirement(selected.binding.Request.InstallationRoot), startSHA, digest(challenge[:]), result.CompletionSHA256, digest(resultRaw), selected.binding.GID); err != nil {
 		return nil, ErrBinding

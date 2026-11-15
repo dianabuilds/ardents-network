@@ -28,3 +28,14 @@ func canonicalFrame(frame [160]byte) bool {
 	}
 	return string(frame[:32]) != "00000000000000000000000000000000"
 }
+
+// DecodeRetirementChallenge validates the detached challenge used in a
+// retirement transcript. It grants no completion or process authority.
+func DecodeRetirementChallenge(text string) (result [32]byte, ok bool) {
+	raw, err := hex.DecodeString(text)
+	if err != nil || len(raw) != len(result) || hex.EncodeToString(raw) != text {
+		return result, false
+	}
+	copy(result[:], raw)
+	return result, result != [32]byte{}
+}

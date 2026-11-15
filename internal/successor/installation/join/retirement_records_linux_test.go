@@ -84,16 +84,3 @@ func TestJoinRetirementRecordsRequireEveryOriginalClosePhase(t *testing.T) {
 		}
 	}
 }
-
-func TestJoinRetirementChallengeRequiresExactFreshNonzeroBytes(t *testing.T) {
-	text := strings.Repeat("ab", 32)
-	value, err := retirementChallenge(text)
-	if err != nil || value[0] != 0xab {
-		t.Fatal("exact byte grammar refused", err)
-	}
-	for _, other := range []string{"", strings.Repeat("0", 64), strings.Repeat("AB", 32), text[:62], text + "00"} {
-		if _, err := retirementChallenge(other); err == nil {
-			t.Fatal("foreign challenge grammar admitted", other)
-		}
-	}
-}

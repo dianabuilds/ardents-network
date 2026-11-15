@@ -5,6 +5,8 @@
 // Release, process, manager, archival, startup or Service readiness authority.
 // Encode owns the shared closed 160-byte frame grammar used by the root
 // producer and independent startup peer. It conveys detached identities only.
+// The portable retirement-challenge decoder validates canonical nonzero bytes;
+// each role independently admits its own retirement transcript.
 // The portable history ACK codec validates the closed frame and choice; native
 // peer credentials and physical exchange remain Linux-specific.
 // The distinct Forwarding exchange requires the complete 161-byte ACK and
