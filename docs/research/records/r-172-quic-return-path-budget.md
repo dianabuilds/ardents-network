@@ -4,7 +4,7 @@ title: Current native QUIC return-path reply-budget admission
 status: deferred
 owner: Product Owner and Codex
 started: 2026-10-15
-reviewed: 2026-10-15
+reviewed: 2026-11-15
 ---
 
 # R-172 — Does the current QUIC server enforce its return-path reply budget?
@@ -21,6 +21,13 @@ prove actual exclusion and no-effect QUIC refusal before Route acceptance;
 changing scope alone is not that proof. A future QUIC selection must recover
 current evidence and its availability, qualify a supported disposition and
 repeat affected checks; unavailable raw logs cannot be reconstructed as receipts.
+
+The Product Owner's 2026-11-15 strategy request authorizes the
+[read-only upstream screen](#read-only-upstream-screen-2026-11-15) below.
+It changes neither the deferred Carrier disposition nor experiment/dependency
+admission. Sections from the original review retain their 2026-10-15 source and
+contract context, including the former v0.63.0 pin and dual-Carrier selection.
+They are not descriptions of today's dependency graph or release scope.
 
 ## Decision this unlocks
 
@@ -403,7 +410,99 @@ method change; required gates for delivery of the owning documents still apply.
 
 ## Disposition
 
-Open question with an accepted evidence methodology. The selected issue owns
+At the original review: open question with an accepted evidence methodology.
+The later deferred disposition at the top of this record governs release use.
+The selected issue owns
 admission, current execution and delivery status. This record changes no runtime,
 dependency pin, wire identity or safety bound. Full Route and project transition
 acceptance remain separate; accepting the method does not close the finding.
+
+## Read-only upstream screen, 2026-11-15
+
+**Question:** has a supported current release supplied a credible remedy worth
+testing for this finding? This is a bounded continuation of R-172 for planning,
+not a new native experiment, dependency adoption or claim of exploitability.
+Primary sources were accessed on 2026-11-15; no code, compiler or module was
+installed or executed for the screen and no upstream message was sent.
+
+**Sourced facts:** the official [latest release](https://github.com/quic-go/quic-go/releases/tag/v0.65.0)
+is v0.65.0, published 2026-11-03, at commit
+`aa265c3fc6489e3bfa8071b333be95e0e887a51d`. Its
+[go.mod](https://github.com/quic-go/quic-go/blob/aa265c3fc6489e3bfa8071b333be95e0e887a51d/go.mod)
+requires Go 1.26.0. Ardents currently declares Go 1.27.4 and has no quic-go
+dependency. Compiler minimum compatibility is not a build or integration pass.
+The formerly open [#5929](https://github.com/quic-go/quic-go/pull/5929) and
+[#5930](https://github.com/quic-go/quic-go/pull/5930) merged on 2026-10-16;
+their path-count and challenge-backoff changes do not demonstrate the required
+per-address byte allowance.
+
+**Source observations at the pinned release:**
+
+| Boundary | Inspected source and limit of the observation |
+|---|---|
+| Candidate path state | [path_manager.go](https://github.com/quic-go/quic-go/blob/aa265c3fc6489e3bfa8071b333be95e0e887a51d/path_manager.go) records address/validation/challenge/backoff, with no per-address received/sent ledger in the inspected owner |
+| Server probe admission | [connection.go](https://github.com/quic-go/quic-go/blob/aa265c3fc6489e3bfa8071b333be95e0e887a51d/connection.go#L1307) passes frames from path handling to packing and SendProbe without a visible new-address allowance gate on that path |
+| Probe packing | [packet_packer.go](https://github.com/quic-go/quic-go/blob/aa265c3fc6489e3bfa8071b333be95e0e887a51d/packet_packer.go#L898) pads to MinInitialPacketSize without receiving a remaining per-address allowance |
+| Physical send | [send_queue.go](https://github.com/quic-go/quic-go/blob/aa265c3fc6489e3bfa8071b333be95e0e887a51d/send_queue.go) and [send_conn.go](https://github.com/quic-go/quic-go/blob/aa265c3fc6489e3bfa8071b333be95e0e887a51d/send_conn.go#L103) pass probe output to the socket backend |
+| Existing amplification accounting | [sent_packet_handler.go](https://github.com/quic-go/quic-go/blob/aa265c3fc6489e3bfa8071b333be95e0e887a51d/internal/ackhandler/sent_packet_handler.go#L1156) retains connection-level bytes and peerAddressValidated state; this does not establish an independent candidate-address budget |
+
+The inspected master `290a67d332ca1741bee6253dd05c11f500595863` has the same complete
+path-manager source as this release; the inspected server probe path retains
+the same mechanism. That bounded comparison and a public PR search did not
+establish a fixing candidate. They do not prove that no unexamined remedy exists.
+
+The current public [Config](https://github.com/quic-go/quic-go/blob/aa265c3fc6489e3bfa8071b333be95e0e887a51d/interface.go),
+[Transport](https://github.com/quic-go/quic-go/blob/aa265c3fc6489e3bfa8071b333be95e0e887a51d/transport.go)
+and [migration documentation](https://quic-go.net/docs/quic/connection-migration/)
+did not establish a supported per-new-address output admission setting.
+Initial Retry validation, MTU controls and stream/datagram limits retain their
+different purposes. They are not a demonstrated solution to this finding.
+
+**Measurement limits:** no new reproduction, native/OOB byte measurement or
+Ardents compatibility test was run. Historical fixture 32-byte input/1200-byte output
+from the [dependency record](../../development/dependencies.md#existing-quic-finding-return-path-reply-budget)
+remains evidence only for its original user-space fixture. Availability of its
+external raw logs was not verified. It is not recast as a demonstrated reflected
+attack against an installed Ardents artifact.
+
+**Inference:** an upgrade alone is not currently justified as a remedy.
+Confidence is sufficient to withhold admission, not to declare QUIC inherently
+unusable. The strongest uncertainty is the lack of a new causal execution and
+complete current backend/output proof; source inspection is narrower evidence.
+
+### Proposed next decision cycle
+
+The existing hypotheses and RFC oracle remain: cumulative attributable UDP
+payload to each unvalidated address must fit its own allowance under
+[RFC 9000 section 8](https://www.rfc-editor.org/rfc/rfc9000.html#section-8).
+Credit from another address, successful handshake and scanner output cannot
+establish that property.
+
+1. **Candidate gate:** identify a maintained actual patch or documented enforcing
+   boundary and its real-component causal test. If none is found after one
+   bounded source/configuration review, record no candidate and stop that cycle;
+   do not start a native campaign or repeatedly run ordinary baseline checks.
+2. **Causal component proof, only for an admitted experiment:** compare original
+   and candidate source using the same independent oracle. Cover zero/partial/
+   exact allowance, accumulated sends, independent addresses, validation changes,
+   duplicates/loss, send errors and cancellation. A model counter or modified
+   module cache is not the dependency. Any uncovered attributable output or
+   violation falsifies the proposed remedy; ambiguous attribution is inconclusive.
+3. **Ardents proof:** close actual server/client callers, configuration, TLS/ALPN,
+   toolchain/source/artifact identities and native output backends, including
+   padding/retransmission/segmentation. Use the accepted composite method rather
+   than imposing a new exclusive active-attack requirement. Equivalent mechanism
+   groups may share proof; authority/spend/lifetime controls remain role-specific.
+4. **Disposition:** supported fix plus complete evidence permits a proposal to
+   restore QUIC; a demonstrated violation or absent supported remedy is no-go
+   for the evaluated candidate; missing evidence is inconclusive with a named
+   gap. Both latter results preserve TCP-only release progress and the finding.
+
+Prefer a maintained upstream remedy. A different library needs a separate
+maintenance/security/runtime and migration-cost assessment; a private fork
+would impose continuing security/rebase/release obligations on the actual
+one-human-plus-Codex team and is not selected by this screen. Revisit on a
+specific changed budget mechanism or a new enforceable option, not a version
+number alone. Restoring the Carrier still needs an explicit scope decision and
+normal dependency/integration/qualification acceptance. No such decision or
+experimental code is produced here.

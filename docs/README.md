@@ -7,7 +7,9 @@ cannot silently change either. [Documentation policy](development/documentation.
 defines promotion and retirement.
 
 The selected contract is a closed Ubuntu text-Service by Target Link, with one
-common protection baseline and TCP/TLS plus QUIC Carriers. Component implementations
+common protection baseline and TCP/TLS alone for the nearest closed release under
+[ADR-0122](adr/0122-select-tcp-only-closed-release.md); QUIC remains deferred.
+Component implementations
 and their receipts do not establish a complete installed Service, platform support,
 independent security validation, anonymity or public-operation qualification.
 Service Names remain a future product function; the accepting Namespace and Alpha
@@ -43,8 +45,8 @@ from selected execution; read its evidence only for a named decision.
 
 GitHub [#497](https://github.com/dianabuilds/ardents-network/issues/497) owns the
 domain completion plan, dependencies and acceptance criteria; the C0 milestone
-owns live work. The current human instruction keeps Connection working and holds
-new implementations. Neither an old plan nor available WIP capacity authorizes
+owns live work. Verify the latest Product Owner selection and the selected child
+issue before implementation. Neither an old plan nor available WIP capacity authorizes
 starting the next domain. The [execution workflow](development/agent-execution.md)
 and [Route migration contract](development/route-migration-contract.md) remain
 mandatory within authorized scope.

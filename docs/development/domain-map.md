@@ -1,23 +1,18 @@
 # Domain ownership map
 
-The nearest closed release selects TCP/TLS alone under
-[ADR-0122](../adr/0122-select-tcp-only-closed-release.md). Descriptions below of
-realized dual-Carrier components retain historical source scope; current product
-execution and positive qualification require TCP/TLS plus explicit deferred-QUIC
-refusal, not successful QUIC use. The unresolved QUIC dependency finding remains
-with its owner and future selection. This changes no domain authority or old/new
-isolation boundary; actual implementation and evidence must establish exclusion.
+This map owns semantic responsibilities, exclusions, collaborations and completion
+boundaries. It does not select work, record delivery status or qualify a product.
+Accepted ADRs and current product/security/technical contracts remain authoritative.
+[CONTEXT.md](../../CONTEXT.md) owns product language; [package-map.md](package-map.md)
+owns exact Go packages and imports. Detailed formats, native procedures and
+scenario rules stay with the linked technical owners.
 
-This is the maintained semantic map for the DDD transition. The Product Owner
-assigned its upkeep to the orchestrator on 2026-10-04. It records responsibilities,
-exclusions, interaction mechanisms and realized architectural results. It does not
-select work, accept a protocol change or replace the GitHub execution ledger.
-
-Accepted ADRs and current product/security/technical owners remain authoritative.
-[CONTEXT.md](../../CONTEXT.md) owns product language;
-[package-map.md](package-map.md) owns actual Go packages and permitted imports.
-Earlier strategic proposals and source receipts are in the [archive](../archive/README.md).
-This map records current ownership; proposed future boundaries remain proposals.
+The nearest closed release uses TCP/TLS under
+[ADR-0122](../adr/0122-select-tcp-only-closed-release.md), with explicit pre-effect
+QUIC refusal and no fallback. The unresolved [QUIC finding](dependencies.md#existing-quic-finding-return-path-reply-budget)
+remains separate. This changes no authority or old/new isolation boundary.
+Component behavior, issue acceptance, repository integration and installed/privacy
+qualification are distinct results; verify them in the selected GitHub ledger.
 
 ## Reading and planning route
 
@@ -41,12 +36,12 @@ Use this document to prepare a domain change:
 | Domain boundaries, responsibility and inter-domain interaction | This map; the affected technical owner supplies exact rules and formats |
 | Actual package/import direction and dependency admission | [Package map](package-map.md), [dependency register](dependencies.md) |
 | Component prerequisites and whole-journey coverage | [Privacy integration map](privacy-anonymity-map.md), [Route integration](route-delivery-join-boundary.md) |
-| Work selection, domain order, transition conditions and full issue acceptance | [GitHub #497](https://github.com/dianabuilds/ardents-network/issues/497), its selected child issues and the C0 milestone |
+| Work selection, domain order, transition conditions and full issue acceptance | The selected parent and child issues in the [C0 milestone](https://github.com/dianabuilds/ardents-network/milestones), under [current selection](agent-execution.md#current-selection-takes-precedence) |
 | Execution, handoff and verification method | [Agent execution](agent-execution.md), [testing](testing.md), [privacy qualification](privacy-qualification.md) |
 
 An interaction described here is a contract to preserve, not evidence that its
 complete consumer is implemented. The [realized boundaries](#realized-boundaries-and-their-limits)
-record integrated component behavior and limits. A draft, prepared interface or
+identify concrete consumers and their limits. A draft, prepared interface or
 successful narrower test cannot upgrade that result or select the next domain.
 
 ## How to preserve the map
@@ -76,758 +71,131 @@ delivery labels and issue numbers are not product domain identities.
 
 ## Domains and boundaries
 
-This inventory describes ten semantic families, not ten packages, processes,
-databases or global aggregates. Each family may contain several consistency
-owners at different principals. In particular, Software acceptance groups
-Enrollment, Release verification and installation/replacement; it must not be
-implemented as one authority or shared transaction. Local Application execution
-is the execution boundary, not all Application functionality. Future boundaries
-remain proposed until their current contracts and real consumers are verified.
+These are ten semantic families, not ten packages, processes, databases or global
+aggregates. A family may contain separate consistency owners at different
+principals. Software acceptance groups Enrollment, Release and Installation
+without combining their authorities or transactions. Local Application execution
+is the execution boundary, not all Application functionality.
 
-| Domain / question | Owned rules and distinct consistency owners | Explicitly outside | Current new owner or future source map |
+| Domain / question | Owned rules and distinct owners | Explicitly outside | Current owner |
 |---|---|---|---|
-| **Network:** which authenticated facts may be used now? | Candidate eligibility/assignment, Epoch/profile history and conflicts, bound membership, trusted time/floors, coherent accepted observations and same-observation retained duty; local participation is a separate lifetime | Route purpose/path choice, tokens/spend, physical Hosting budget, process-wide resource monitor, private profile signing, Job/Service authority | [new Network](../technical/successor-network-state.md), `internal/successor/network`; State application and authentication/Source/durable/duty adapters have separate responsibilities |
-| **Admission:** which finite rights can be obtained and spent? | Allocation; issuance quota; private material and retained results; holder permission/pending batch/stock; presentation history; receiving verification, allowance and durable spend are separate owners; opaque one-use fresh receiving-root creation fact belongs to storage lifecycle | Network authenticity, transport scheduling, Introduction slots and their independent history, provider budget, Local Grants, Custody keys and file delivery; a creation fact grants no token or transport authority | [new Admission boundary](../technical/successor-admission-boundary.md), [implemented owner map](../../internal/successor/admission/README.md) |
-| **Hosting:** which physical allowance can this owner reserve? | One provider-period Tx/Rx accounting policy, coherent measurements, durable budget, work/termination reservations and their exact release | Token authority/debit, Node assignment, role envelope calculation, transport stop/join, CPU/RAM/cgroups or global process monitor | [new Hosting](../technical/successor-hosting-budget.md), `internal/successor/hosting` |
-| **Route:** which protected leg and role channel may this operation use? | Entry/Interior selection and retention; role-purpose rules; prefix/lanes and credit; forwarding parents/children and permitted parent refill transport; receiving Introduction slots/delivery/floors; JOIN pairing and physical termination | State acceptance, Admission quotas/verification/spend, Hosting budget, publication readiness, Descriptor authority/history, Instance authentication and logical recovery | [Route protocol](../technical/protected-route-protocol.md), [migration contract](route-migration-contract.md), [implemented retained prefix](../technical/successor-route-prefix.md), [registration owner](../technical/successor-route-introduction.md) and [JOIN owner](../technical/successor-route-join.md); `internal/successor/route`, `selection`, `ardp`, `channel`, `role`, `issuer`, `prefix`, `join`, `receiver`, `transport/tls` and `introduction` with real `ardents-next` consumers. Lower `transport` owns no operation or adapter selection; former `carrier` and `operation` are removed. Genuine forwarding-parent refill and issuer Control use real Admission/Hosting owners. Descriptor Control composes separately owned Reachability Store/history. Opaque delivery composes the genuine Publication recipient and Connection/Execution consumers under the [integration contract](route-delivery-join-boundary.md). Five original Node compositions consume receiving roles. Deferred QUIC is refused before Route effects; its unresolved dependency finding blocks future QUIC admission; operator cutover, old-runtime retirement and qualification retain separate boundaries |
-| **Local Application execution:** may this process invocation perform this operation? | Volatile Local Grant generation; local session with exact current/last Job and one-use handoff; separate supervisor cleanup capacity and terminal admission latch; qualified launch and joined original worker descendants. Job is a lifetime entity within the session consistency boundary, not an independent network Context | Token allowance, Service authority, Target/path choice, private routing history, remote publication, Connection recovery, software acceptance, global resource pressure, text semantics and qualification Run | [Execution contract](../technical/application-execution.md), current evidence `application/broker`, Endpoint Job/worker and scattered Service effect/handoff checks; [confinement owner](../technical/application-confinement.md). New `internal/successor/execution` implements local authority/session/Job and independent cleanup supervision; `execution/worker` implements fixed native mechanisms; `execution/runtime` has genuine permission-preparation and bounded live Route-holder consumers. One exact operation retains qualified original cleanup through Route and authenticated Service Connection borrower join. Bounded installed Reader/Publisher composition consumes genuine independently admitted startup and permission preparation; full installed qualification remains separate |
-| **Service Publication:** which authorized Instance is accepting work? | Publication generation/revision, current/pending/predecessor registration pair, private recipient lifetime, ACK/readiness, refresh and withdrawal; Instance authority/material remain purpose-scoped | Credential root signing, raw Route transport, Descriptor Store conflict floors, logical Connection recovery, Local Grant/Job mutation and worker cleanup; retain an exact live Execution operation instead | `internal/successor/publication` public proof rules, `publication/durable` exclusive floors, `publication/instance` purpose-scoped private lifetime and `publication/runtime` live qualified Publisher have real `ardents-next` consumers; [Service owner](../technical/endpoint-service-runtime.md), [private reachability](../technical/private-reachability.md), [Execution seam](../technical/application-execution.md#required-lifecycle-and-linearization) |
-| **Reachability:** what current proof is valid for this Target? | Receiving Descriptor Store and durable conflicts; local lookup verification/history is a separate owner at another principal | Publication readiness, admission spend, path choice, Service Instance authentication and logical Connection | `internal/successor/reachability` implements portable proof/conflict/history rules and native receiving Store mechanisms; real Route Prefix/Receiver and `ardents-next` consume them. [Reachability contract](../technical/private-reachability.md) records signed-input acceptance and its limits. Predecessor `service/reachability`, Endpoint history and Node resolution remain independent; their complete Service consumers are not transferred by this boundary |
-| **Service Connection:** how does one authenticated logical stream retain its identity? | Immutable destination/provenance, exact Instance TLS authentication, ordered byte state, Attachment generation, continuity/recovery deadline and retained Service terminal outcome; checks the exact retained Execution operation at effects and final handoffs | New Target/Application operation, new Grant, Job mutation/worker cleanup, publication authority, path policy and independent physical reservations | `internal/successor/connection` owns immutable logical binding, exact-role authentication, ordered byte/Terminal ledgers and finite Attachment proposals; `connection/wire` owns only canonical records and transcripts. Genuine Reader Source and Publication accepted-stream composition consume these owners; complete acceptance remains separate. Predecessor evidence: `service/connection`, Endpoint Service/binding/recovery; [Service owner](../technical/endpoint-service-runtime.md), [Execution seam](../technical/application-execution.md#required-lifecycle-and-linearization) |
-| **Software acceptance:** which exact generation may be installed or run? | Enrollment pin, Release authorization/monotonic floors, installation/replacement/recovery transaction are separate authority and state owners | Network membership, admission permissions, Service authority, generic signing and automatic rollback | New `enrollment`, `release` and `installation` have genuine new command consumers. Portable byte authentication, native transactions/recovery and bounded Source/permission startup have separate boundaries. Two independently admitted installed participants consume those startup owners for a bounded authenticated text exchange; the full Installation interruption/replacement matrix remains separate. [Enrollment](../technical/enrollment-verification.md), [Release/Custody](../technical/release-update-custody.md), [Installation](../../internal/successor/installation/README.md) |
-| **Authority Custody** (supporting boundary) | Purpose-specific encrypted authority storage, approved signing commitments and recovery floors; authority kinds never become one signing right | Generic `Sign`, exported private authority, Network/Service/Admission decisions assigned to their own domains; runtime Instance/Node keys | New `internal/successor/custody` owns encrypted records and purpose-specific Admission through new Allocation and real `ardents-custody`; Service Authority issuance consumes the one pure Publication request/response contract; predecessor records remain evidence, never signing adoption; [Custody contract](../technical/release-update-custody.md) |
-
-Forwarding retains distinct supervision responsibilities within one original
-Node invocation: the independent Node timer checks Guard and participation;
-Route's joined authority watcher calls Node's full State/duty observation.
-Canonical installed composition separately supervises Startup. Every effect
-still requires fresh original observations; none of these timers caches authority
-or substitutes another owner's physical completion.
-Concurrent requests to the same original Startup may share a complete physical
-round only if each request was admitted before that round began. An in-progress
-or completed round cannot admit a later request; checks on opposite sides of a
-domain effect still require separate fresh rounds. Startup retains and joins
-both physical observation and waiter uses without changing any supervisor timer.
-Before sealing the next batch, the one-processor observer yields to resumed
-consumers; this permits their fresh post-I/O requests to be admitted before
-that next physical round, never during or after it.
+| **Network:** which authenticated facts may be used now? | Candidate eligibility/assignment; Epoch/profile, conflict and time floors; bound membership; coherent observations and same-observation retained duty; separate local participation | Route purpose/path choice, Admission rights/spend, Hosting budget, process monitoring, private signing, Job/Service authority | [Network State](../technical/successor-network-state.md); `internal/successor/network` and its State/authentication/Source/durable/duty owners |
+| **Admission:** which finite rights can be obtained and spent? | Allocation, issuance quota, private material/results, holder permission/pending batch/stock, presentation, receiving verification/allowance and durable spend are separate owners; fresh-root creation is a storage fact | Network authenticity, transport scheduling, Introduction slots/floors, Hosting budget, Local Grants, Custody keys and file delivery | [Admission boundary](../technical/successor-admission-boundary.md), [implementation map](../../internal/successor/admission/README.md), [private admission](../technical/private-admission.md) |
+| **Hosting:** which physical allowance can this owner reserve? | One provider-period Tx/Rx policy, measurements, durable budget, work/termination reservations and exact return | Token authority/debit, Node assignment, role envelope, transport join, CPU/RAM/cgroups or global monitoring | [Hosting](../technical/successor-hosting-budget.md); `internal/successor/hosting` |
+| **Route:** which protected leg and role channel may this operation use? | Entry/Interior selection and retention, role-purpose rules, prefix/lanes/credit, forwarding/refill transport, receiving Introduction slots/delivery/floors, JOIN pairing and physical termination | State acceptance, Admission policy/spend, Hosting budget, Publication readiness, Descriptor authority/history, Instance authentication and logical recovery | [Protocol](../technical/protected-route-protocol.md), [prefix](../technical/successor-route-prefix.md), [Introduction](../technical/successor-route-introduction.md), [JOIN](../technical/successor-route-join.md), [migration](route-migration-contract.md) |
+| **Local Application execution:** may this process invocation perform this operation? | Local Grant generation, session/current-last Job and one-use handoff, separate cleanup supervisor/capacity, qualified original launch and joined descendants. Job is an entity within the session | Tokens, Service authority, Target/path selection, private routing history, Publication, Connection recovery, software acceptance, process pressure, text semantics and qualification Run | [Execution](../technical/application-execution.md), [confinement](../technical/application-confinement.md); `internal/successor/execution`, `worker`, `runtime` |
+| **Service Publication:** which authorized Instance is accepting work? | Publication generation/revision, current/pending/predecessor pair, private recipients, ACK/readiness, refresh/withdrawal; purpose-scoped Instance material | Credential-root signing, Route transport, Store conflict floors, Connection recovery, Job mutation and worker cleanup; retain the exact live Execution operation instead | [Service runtime](../technical/endpoint-service-runtime.md#publication-and-connection-lifecycle), [private reachability](../technical/private-reachability.md); `internal/successor/publication`, `durable`, `instance`, `runtime` |
+| **Reachability:** what current proof is valid for this Target? | Receiving Descriptor Store/durable conflicts; separate local lookup verification/history at another principal | Publication readiness, token spend, path selection, Instance authentication and logical Connection | [Private reachability](../technical/private-reachability.md); `internal/successor/reachability` |
+| **Service Connection:** how does one authenticated logical stream retain its identity? | Immutable destination/provenance, exact Instance TLS, ordered bytes, Attachment generation, continuity/recovery bound and retained Terminal outcome; exact Execution checks at effects/handoffs | New Target/operation/Grant, Job mutation/cleanup, Publication authority, Route policy and physical reservations | [Service runtime](../technical/endpoint-service-runtime.md#publication-and-connection-lifecycle), [Execution seam](../technical/application-execution.md#required-lifecycle-and-linearization); `internal/successor/connection` and its pure `wire` records/transcripts |
+| **Software acceptance:** which exact generation may be installed or run? | Separate Enrollment pin/inventory, Release authorization/floors, Installation transition/replacement/recovery and original Startup owners | Network membership, Admission rights, Service authority, generic signing and automatic rollback | [Enrollment](../technical/enrollment-verification.md), [Release](../technical/release-update-custody.md), [Installation](../../internal/successor/installation/README.md) |
+| **Authority Custody** (supporting boundary): which purpose-bound authority operation may be performed? | Encrypted authority records, approved signing commitments, recovery and authority floors; separate authority kinds | Generic `Sign`, exported private authority, domain decisions owned elsewhere, runtime Instance/Node keys | [Custody](../technical/release-update-custody.md); `internal/successor/custody` with purpose-specific Admission/Publication consumers |
 
 ## Supporting mechanisms and composition
 
-Introduction's separate Installation declaration/input owner binds its fixed
-request, public trust plan, non-root unit and independent slot-history root.
-Canonical Control retains public preparation custody; canonical Node's read-only
-preflight retains its own original request/plan/TLS/clock ancestry and native
-NodeSlots connection. It observes all five role slots, account absence and future
-root/journal absence, joining original users before output. No Receiving birth,
-Registry, State, Hosting or live sibling owner opens; a copied declaration or
-preflight result grants no creation, Release or Startup permission.
+A shared mechanism never transfers another owner's admission, mutable root,
+lease, private material or lifetime. Directory nesting grants no imports. The
+[package map](package-map.md) registers concrete callers and exact dependencies;
+this inventory records why their responsibilities stay separate.
 
-Introduction public artifact preparation is fixed offline Control composition.
-Infrastructure owns its exact invocation/program/unit byte binding; Enrollment
-owns the distinct seven-file inventory. Original protected input and exclusive
-output custody join before acknowledgement. These detached bytes grant no
-Release, Receiving birth, Registry history, Startup, delivery or runtime right.
-No Source, Forwarding, JOIN or Descriptor live owner is borrowed.
-
-
-Descriptor-role public preparation is fixed offline command composition.
-Infrastructure binds only its exact descriptor/program/template bytes; Enrollment
-owns the distinct seven-file inventory. Installation's separate `descriptor`
-declaration owner binds five independent State/participation/spend/Hosting/Store
-roots and the fixed non-root template. Canonical Control retains original public
-input and exclusive output custody through physical joins. These bytes confer
-neither native policy acceptance nor Release, Startup, Store ACK or runtime duty.
-Reachability remains the sole Store/proof/history owner. No live owner or role
-permission crosses from Source, Forwarding or JOIN through shared physical I/O.
-
-JOIN public artifact preparation is a separate offline Control composition.
-Infrastructure owns only its exact descriptor/program/template byte binding;
-Enrollment owns the seven-file inventory. The real canonical Control consumers
-retain original native public inputs and exclusive output until physical Close.
-These detached bytes supply neither initial trust nor coherent Release authority,
-native unit-policy acceptance, Installation startup or a Node duty. Existing
-Source and Forwarding proofs remain purpose-bound; no live owner or permission
-crosses between invocations through this shared byte-preparation mechanism.
-
-JOIN Release preparation remains separate offline command composition. Its
-fixed initial/forward signers consume exact Node/JOIN public claims and original
-private key/input/output custody; shared five-key birth is a physical mechanism,
-not shared signing purpose or trust. Release verifies signatures/floors and
-Infrastructure retains a distinct opaque JOIN candidate pair for original
-predecessor verification. Forward public metadata cannot supply native
-replacement, first-pin provenance, domain retirement or runtime duty. Enrollment
-and each eventual native Installation lifetime retain their independent gates.
-
-Canonical Node's separate `join inspect-inputs` retains original JOIN delivery
-through `installation/request.Files`, which owns only protected file/ancestor
-custody, independent byte/inode/access reobservation and joined secret erasure.
-JOIN alone decodes its request/plan, compares future paths and Ed25519 pair,
-and retains live root-clock access without time acceptance. Its independent
-NodeSlots connection checks all five absent roles; fresh future resources,
-journals and account remain absent. Neither read-only preflight nor shared
-physical source grants creation, Release, Startup or runtime permission.
-
-JOIN initial stopped Installation separately retains genuine Enrollment/Release
-admission, one fixed JOIN-only stopped manager, original account and native
-births, exact generation and pending publication after all original joins.
-The independent complete reader opens its own exclusive initial journal and
-native files; fresh artifact permission stays with Release. Shared RootBirth,
-fixed-file mutation and reload source transfer no role permission or live owner.
-Four semantic histories remain empty and unopened. No Start, runtime duty,
-replacement, recovery or installed qualification follows from initial completion.
-
-JOIN allowance preparation is a distinct Installation effect on its proven empty
-born root. Hosting initializes policy/counters; Installation retains the original
-root, exact numeric principal, stopped manager/namespace/cgroup observations and
-root-only journal/blocker until actual join. Independent completed inspection
-verifies the complete typed journal and original immutable pin/lock files without
-borrowing a live budget or freezing its mutable accounting. Neither creation nor
-an empty native scope grants Startup or original domain completion. Canonical
-installed JOIN composition is separately admitted by R01 only for
-`cmd/ardents-node/join_installed_linux.go` and its exact five imports; that boundary
-admits only that direct composition and grants no bootstrap receipt. Its separate
-root first-start owner retains fresh Release, original completed history and
-manager/process/scope through synced archive/ACK and observer joins. Non-root
-Startup independently owns immutable mount/file, process, namespace and read-only
-manager observations before constructing genuine State and Node JOIN. Fixed
-other-slot absence requests may run concurrently on that same original bounded
-connection, submitting independent read-only calls before awaiting replies;
-every exact name still requires both fresh absence results in each
-round, and all requests join before return. Bounded Startup phase counters are
-passive diagnostics, emitted after observation users join; they grant no
-accepting authority. No live
-root, Startup or role permission crosses from Source/Forwarding. First start
-supplies no domain-retirement, restart, replacement or recovery proof.
-JOIN explicit Stop separately retains original start-chain leases, process/pidfd,
-scope and manager. The original non-root command reports only after every domain,
-Startup/key/output user joins. Root independently joins original native resources
-and reads back committed retirement before publication. Same-generation Restart
-requires every predecessor retirement and fresh Release/native/independent Startup;
-existing-only State, participation and spend preserve their histories. No live
-owner transfers. Explicit JOIN stopped replacement independently retains fresh
-Release and original input/native custody, complete predecessor retirement and
-existing-only State/participation, Spending and Hosting inspections. The distinct
-selection envelope preserves immutable initial and predecessor images; original
-same-inode selection/unit mutation and one Reload precede independent readback,
-original observer/writer joins and final blocker publication. A new Startup is
-separately admitted; no live domain owner crosses generations. Original-prefix
-recovery separately admits only a proven complete stopped replacement prefix.
-Its original controller owns from-birth process denial/join and a separate cut;
-Installation owns fresh Release/native/semantic admission, immutable-prefix
-validation and guarded independent completion/readback. No physical cut grants
-original Node domain completion, Reload/Start replay or a mutable semantic root.
-Earlier/uncertain prefixes remain blocked; complete installed qualification is
-separate.
-
-Installation's separate `installation/join` declaration owner fixes the JOIN
-request/plan, four writable semantic roots, retained journal/completion namespace and
-closed non-root unit template. Canonical Control consumes it for public request
-and template preparation from explicit public flags. Hosting contributes only its
-Traffic value shape, never a budget, allowance or live borrow. The fixed template
-declares argv/protection only; it observes no
-native unit or process and grants no account adoption, original join, Start or
-runtime authority. This boundary shares no live Source or Forwarding owner.
-
-Local Node certificate provisioning is one offline supporting composition,
-`ardents-next network prepare-node-certificate` and the separate canonical
-`ardents-control forwarding prepare-node-certificate`. Canonical Control's fixed
-Node-key birth and public Record preparation/signing supply that latter path
-without JSON editing, fixture-key extraction or delegation. Network/epoch owns canonical
-initial Record bytes, ordinary signature verification and detached public facts.
-Composition owns the closed reviewed purpose, original protected matching Node
-key, standard-library X.509 leaf creation/verification and finite public output.
-The original signing input/time/custody and joined failure/secret lifetime remain
-with composition. No private material enters Network/Route; no Identity/Custody/
-PKI domain or generic signer is created. Self-signature supplies no membership:
-State owns signed acceptance/currentness, Node exact member/process/producer
-credential custody, and Route exact-key TLS/ALPN and physical join.
-
-Direct-Origin Source public preparation is one offline supporting composition,
-`ardents-next source prepare-trust`. It retains original externally supplied
-public chains/roots and independently reviewed commitments, and writes the
-existing two Source serve and one client acquisition/local headless declarations.
-The existing Source owner supplies `ObservePublicTrust`, sharing exact
-declaration/collision and leaf-key transcript rules with runtime TLS; no public
-observation grants a live Plan or clock. Private runtime paths remain opaque and
-are never opened by the preparer. The existing installed Network projection is
-pure declaration adaptation; State still owns signed acceptance/time/exposures/
-floors, Installation startup admission, processresource original protection and
-Source command physical completion remain separate. Public native custody and
-exclusive finite output/receipt stay with composition. External credential
-issuance, operational trust delivery, effective family independence and installed
-qualification are not supplied by this operation. No universal Identity/PKI
-authority, private signer, new package or runtime format is introduced.
-
-Canonical Control's separate `source prepare-install-inputs` composes a single
-honest Source/client public observation through `source.ObservePublicContact`
-and emits fixed public credential copies plus the existing serving/request
-declarations. It retains independent public file commitments and original native
-custody. Runtime private-key paths, mutable roots and clock remain unopened
-declarations. Installation independently admits delivery and native effects;
-State owns acceptance/currentness. This creates no second family or acquisition
-Plan and supplies no installed or bootstrap acceptance.
-
-Initial Network provisioning has one finite offline key producer,
-`network prepare-initial-keys`, and three fixed-purpose offline signing consumers:
-`network sign-initial-node-record` and `network sign-initial-epoch` in
-`ardents-next`, plus `network sign-closed-profile`. Network's public preparation/verification owners retain grammar,
-assignment, signatures and materializations; composition retains the exact
-reviewed prepared artifact, original root-protected private key and public-file
-descriptors, original time/purpose and finite output custody. Node and initial
-State keys remain separate. Closedprofile owns the validated public fixed-purpose
-transcript shared by producer and verifier. Its in-body Admission permission
-authority is distinct from the independently pinned State signing key. State
-alone authenticates currentness and joins signed Records/roles/issuer references.
-No private authority crosses into Network, Node
-runtime or Custody, and no generic signer, encrypted Vault, signing-history or
-bootstrap acceptance is supplied. The key producer owns fresh standard-library generation of one State and 1..64
-distinct Node keys, canonical private encoding, original root-protected native
-output, joined secret erasure and public-only receipt. It creates no NodeID,
-Network identity, assignment, State floor or other authority. Public facts pass
-to preparation; each signer independently admits its own purpose/key/pin/time.
-Receipt presence never repairs failed generation. Operational key ceremony,
-installed use and operator cutover remain distinct boundaries.
-
-Installation's portable owner authenticates the program/generation pair. Its
-Endpoint owner admits native effects and owns initial, replacement, recovery
-and startup lifetimes. Command composition consumes these owners directly,
-without a delegating facade. Native Modules retain physical custody; neither
-detached observations nor durable phase presence grant Release, mutation,
-Start, ACK replay or runtime rights. [Installation's current owner](../../internal/successor/installation/README.md)
-and [Release/Custody](../technical/release-update-custody.md) hold exact admission,
-record, recovery and fixed-resource rules.
-Source recovery is a distinct Infrastructure lifetime with its own original
-journal exclusion, independent native resources and immutable original-cut
-proof. It writes a separate completion suffix, retains every original failure
-and releases the original pending guard only after its own required joins and
-fresh Release checks. Release retains trust/floors; State alone supplies opaque
-signed/time/participation inspection. Initial recovery requires empty semantic
-roots and complete original account provenance; replacement requires genuine
-predecessor retirement. Native manager matching and zero-execution observations
-grant no semantic authority. Startup/retirement classification never replays
-Start, ACK, archival or retirement effects. The [Source lifecycle owner](../technical/network-route-node.md#initial-stopped-source-persistence)
-defines these separate boundaries; installed causal acceptance remains in the
-selected issue ledger.
-Private installed Startup reads fresh fixed manager facts on one bounded native
-connection per observation, retaining the unique manager across its original
-lifetime. Both complete property rounds, original file/process reobservations
-and physical cancellation remain distinct checks. Typed facts preserve original
-wire signatures and grant neither a cache nor startup authority; only the
-Installation consumer compares its original generation and invocation.
-Original interruption preserves its caller's exclusive cancellation cause;
-independent physical failures remain failures. Finishing an already verified
-decoder frame after socket Close grants no manager or startup authority.
-After original inode and executable matching, private Startup retains sealed
-generation files only in its own Snapshot, which fully reobserves them before
-and after manager observations. Its separate installed-file reader retains
-selection, fixed resources and original ancestors. Root inspection and recovery
-keep their independent custody; no accepting cache crosses these lifetimes.
-
-| Owner | Scope | Boundary to preserve |
+| Owner | Responsibility | Boundary and detailed owner |
 |---|---|---|
-| `admission/issuerprofile/signing` | Independently pinned imported Ed25519 material, original lease/failure/Close and validated issuer-profile signing within Admission | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
-| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Forwarding, JOIN, Descriptor and Introduction files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
-| State/Hosting/Route physical adapters | Byte verification, durable transactions, counters, sockets and Carrier mechanisms under their declared owners | Mechanisms cannot mint authority, reset floors or copy a second domain decision implementation |
-| Installation mutable-directory birth | `installation/directory` retains one original creation caller and private born inode state, exclusively creates caller-admitted paths and synchronizes same-inode account/mode promotion; checked Identity facts are detached, and Matches serves independent installed inspection | Root Installation selects paths/account, admits Release/journal/lease/effects and projects binding facts. Directory creation grants no adoption/recovery, selection, manager or startup authority; shared trusted-root predicates remain with Root lease/fixed/recovery lifetimes |
-| Installation request declarations and original input | `installation/request` owns canonical bounded declarations, detached copies, native direct root-owned input and opaque original byte/inode/access reobservation; the root Request facade is consumed by actual command and transaction composition | No Release authorization, writer lease, journal, account/root creation, generation selection, manager or startup authority. General trusted-path observations remain with root Installation lease/staging/inspection, independently of request provenance |
-| Installation native observations | `installation/cgroup` owns bounded actual kernel inventory and original event-descriptor observations; `installation/systemd` owns bounded typed facts, canonical manager version, fixed unit/instance inventory and joined subprocess mechanisms for daemon-reload, fixed Endpoint start and fixed sockets/Endpoint stop | The separate `installation/process` owns original proc-directory/start clock and exact executable/argv/credentials/supplementary groups/cgroup/InvocationID observations. Root-only predecessor opening and actual non-root self opening remain separate; private startup inspection retains its own read Snapshot and process observations, consumed by independently admitted bounded startup after actual root archival/ACK. Installation retains Release admission, expected generation/protection and process binding, original lease, stop decision and first failure. Native Modules have no parent import, shared lease or startup authority; Installation admits stop/reload and retains original physical join; its root manager_binding_linux.go collects request projection and actual manager/activation checks across initial, predecessor, candidate and recovery lifetimes; typed bus facts and kernel observations do not qualify an installed invocation |
-| Installation fixed-unit contract | `installation/unit` owns closed Endpoint template validation, immutable original template/command-path retention and exact rendering of caller-admitted write paths, alongside pure expected Endpoint/activation protection, typed execution/invocation and distinct fresh-stopped/quiescent/running observations | Installation admits request write roots and transaction effects, systemd obtains actual typed manager facts, process/cgroup retain original physical custody. Detached configuration and property maps grant no Release or start/recovery authority |
-| Installation journals | `installation/journal` owns closed preparation grammar/order and opaque original preparation/transition directory/file custody; transition owns finite creation/directory/replacement groups, exact record bytes/access, durable append/resync and partial/first-failure custody through physical close; independently reopened recovery may retain an exact original replacement group and synchronize its directory links, including an empty group | Installation retains transition record schemas/phases, original caller/lease, Release proofs, account/root/fixed-resource effects and barrier ordering. Recovery consumes preparation grammar through separate provenance/fresh-proof admission. Detached journal bytes and presence grant no adoption, mutation, generation selection or startup right |
-| Installation local completion exchange | `installation/completion` owns the shared closed 160-byte frame encoding/validation consumed by root start-barrier production and independent startup inspection; it independently owns one original Unix connection, read-only directory/guard/socket-record metadata, actual root peer PID/UID/GID and exact finite frame/reply under its original deadline; cancellation physically joins its callback and Close | Private startup inspection consumes Connect/Wait between independent generation/process/manager observations. The exchange neither reads private intent nor borrows a writer lease or grants runtime/readiness authority. Root retains start observation, durable archival and ACK decision. A private producer now orders actual retained process/peer checks, a synced start record, archival and ACK; a private candidate-start lifetime now retains original process/scope custody and failed-attempt quiescence until join, with a positive actual-manager start/ACK/original-join scenario and bounded Source/permission consumer; complete installed Service acceptance remains separate |
-| Installation fixed-file mutation | `installation/fixedfile` owns independent original parent/file descriptors, exclusive empty birth, bounded prefix repair on an original inode, access/ctime rechecks after journal I/O, physical writes/sync and retained original cancellation through Close | Installation keeps allowed paths/bytes/access, exact birth/replacement records and phase admission, original lease, Release proofs, predecessor join, selection and recovery. Neither a detached inode nor this physical mechanism grants mutation authorization or installed startup; no shared live root or parent import |
-| Installation immutable generation files | `installation/generation` owns closed artifact names, exclusively created original directory/files, exact finite inventory, same-inode read-access promotion, detached bytes and retained partial/failure custody through physical close; independent read-only Snapshot owns sealed fifteen-file custody with its own descriptors, original file ctime/bytes and caller failure, without a writer lease or creation ownership | Installation records a mandatory closed file-inventory marker and each original per-file birth before artifact bytes; compatible complete recovery independently matches recorded native inodes and fresh-bound target facts. Installation retains fresh exact-byte proofs, original lease and caller, birth journal before writes, phase-appropriate container access, fixed-resource effects, selection, original predecessor join and startup. An independent physical Prefix retains recorded original incomplete leaves and directory, checks complete preimages, repairs only original inodes and seals complete inventory; Installation separately owns ordered writing-generation admission and fresh-proof continuation. Original successor recovery admission, continuation, terminal cleanup and close are collected with one retained owner in successor_recovery_linux.go; independent Prefix/Snapshot/process custody remains distinct. Filesystem/race admission and causal ordering controls do not prove actual-manager recovery or process-crash acceptance. Sealed files and copied physical facts grant no Release, adoption, selection or startup authority |
-| Process resource/lifecycle owner | Process-wide observation, pressure availability, supervision and terminal process outcome | New `processresource` measures original native placement/pressure; new `node` owns reaction and completion. Network accepted-state policy and Hosting provider-period budget remain separate; complete role/installed qualification is not inferred |
-| Provisioning composition and signing owner | `ardents-next network prepare-initial-keys` owns a strict finite public count, fresh distinct State/Node keys, original protected files, secret erasure and a public-only receipt, without creating identities or accepting authority. `ardents-next network prepare-initial-node-record`, `prepare-initial-epoch` and `prepare-closed-profile` adapt bounded public declarations directly to Network's canonical unsigned preparation, retaining fresh native output custody. Its separate `sign-initial-node-record`, `sign-initial-epoch` and `sign-closed-profile` consumers retain exact reviewed preparations, independent purpose-specific public pins, original protected private custody/time and exclusive durable output | Private keys stay in offline command composition, outside Network; State acceptance, assignment redraw and runtime launch are not admitted. Unsigned grammar and durable output grant neither signature nor current authority; private issuer-profile signing belongs to Admission; no new Control domain or generic signing service is introduced |
-| Integration/regression harness | Registered test composition across genuine new public/application contracts | It is not a product domain, production coordinator or new test-only command; domain-local tests remain with domain rules |
-| Text Application | Fixed bounded text exchange, selected snapshot import, UTF-8/document rules, multiplexing/credit and safe presentation; current `internal/application/textdocument` | Application semantics remain outside Execution and Service Connection. The confined worker receives the selected snapshot and bounded bytes, never destination, publication or Endpoint authority. This product-specific owner is not another network authority |
-| Local Application IPC | AAI3 Connection requests/ordered local streams and separately authorized Administration Publish/Withdraw grammar; current `internal/application/connection` and `administration` | Interface admission and local transport cleanup remain explicit; an IPC request, peer socket or READY message cannot attest a qualified Job. Administration grants no byte-stream or Service authority |
-| Disclosure and diagnostics | Bounded public catalog verification, process/timeline measurements, inspection and command projections; current `alphacontrol`, `diagnostics` | Catalog verification never authorizes State, Release or runtime work; observations never decide admission or create a global cross-role trace. These are supporting mechanisms, not a generic Control authority |
-| Qualification | Selected Run/workload composition, observers, measurements, completion barriers and retained reports; current `qualification` and `application/streamqualification` | Qualification is a proof producer with its own selected environment, not an ordinary Job, a permission issuer or a runtime domain substitute. A passing module test cannot qualify an installed product |
+| Endpoint / Node composition | Construct genuine owners, order calls and supervise transfers/termination | Domain policy stays with the deciding owner. Only exact canonical files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) may cross the old-command/new-Route boundary; no wrapper, callback or process bridge |
+| State/Hosting/Route adapters | Canonical byte verification, durable transactions, counters, sockets and Carrier mechanisms | No authority minting, floor reset or copied domain policy. Lower Route `transport` owns neither operation nor adapter selection; [Route integration](route-delivery-join-boundary.md) owns composed behavior |
+| Installation request/input | Closed declarations, original protected file/ancestor custody, byte/inode/access reobservation and joined secret erasure | No Release right, writer lease, journal, birth, selection or Startup; [Endpoint Installation](../../internal/successor/installation/endpoint/README.md) and [infrastructure inventory](../technical/network-route-node.md#producer-proof-and-external-input-inventory) |
+| Installation directory and fixed-file mechanisms | Exclusive original birth; same-inode writes/access promotion, rechecks, sync and physical Close | Installation retains allowed paths/bytes/account, original caller, Release, journal order and effect admission. A copied inode or birth grants no adoption, recovery or runtime right; [Installation implementation](../../internal/successor/installation/README.md) |
+| Installation generation files | Closed inventory, original creation/partial custody, independent read-only Snapshot, bounded same-inode Prefix continuation | Installation admits fresh proofs, birth-before-bytes, phase access, selection and recovery; mechanisms grant no Release or startup. Original and recovery-owned births stay distinguishable; [generation provenance](../../internal/successor/installation/endpoint/README.md#original-generation-file-provenance) |
+| Installation journals | Canonical preparation/transition records and independently retained native directory/file custody through append/resync/Close | Installation owns phase schemas, effects, original lease, first failure and barrier order. Presence/complete-looking bytes grant no continuation; [Endpoint owner](../../internal/successor/installation/endpoint/README.md), [infrastructure lifecycle](../technical/network-route-node.md#proposed-lifecycle-and-effect-admission) |
+| Installation unit, systemd, process and cgroup | Fixed unit grammar/expected facts; actual manager and kernel observations; original proc/executable/argv/credentials/invocation custody; independently joined native effects | Detached facts grant no Release, mutation, original domain completion or Startup. Root controls, read-only inspectors and non-root self-observation remain separate lifetimes; [installed binding](../technical/network-route-node.md#proposed-exact-artifact-and-installation-binding) |
+| Installation completion exchange | Original finite Unix connection, peer credentials, frame/reply, deadline and joined cancellation | Root owns synced archive-before-ACK; independent Startup retains its own generation/process/manager observations. The exchange grants no readiness or writer lease; [Endpoint startup](../technical/endpoint-service-runtime.md#selected-protected-installation-handoff) and each [infrastructure lifecycle](../technical/network-route-node.md#proposed-lifecycle-and-effect-admission) |
+| Process resource owner | Original placement, finite measurements and pressure availability | Node reacts and owns its terminal outcome; Hosting counts provider bytes, Network owns accepted State. Unknown metrics are not zero; [native profiles](../technical/network-route-node.md#node-and-resource-lifecycle) |
+| Offline provisioning and purpose-specific signing | Original protected inputs/keys, exact reviewed public bytes, finite output, secret erasure and joined custody | Network authenticates Records/Epoch/profile; Release authorizes exact targets; Enrollment owns independent pin/inventory. Shared I/O or key generation does not share a signing purpose. No universal Identity/PKI/Control signer; [producer inventory](../technical/network-route-node.md#producer-proof-and-external-input-inventory) |
+| `admission/issuerprofile/signing` | Independently pinned imported Ed25519 material, original lease/failure/Close, exact issuer-profile signing | No Network membership, runtime duty or generic Node identity; [issuer profile](../technical/successor-issuer-profile.md) |
+| Text Application | Bounded text/snapshot semantics, UTF-8/document rules, multiplexing/credit and safe presentation | Worker receives only selected snapshot and bounded bytes, no destination or Endpoint/Publication authority; `internal/application/textdocument` and [workload](../product/protected-service-workload.md) |
+| Local Application IPC | AAI3 Connection and separately authorized Administration grammar/transport cleanup | IPC/READY does not attest a qualified Job; Administration supplies no stream/Service authority; [Execution](../technical/application-execution.md) and [Service](../technical/endpoint-service-runtime.md) |
+| Disclosure and diagnostics | Public catalog verification, bounded process/timeline observations and command projection | No State/Release/runtime permission, global cross-role tracing or invented readiness; `alphacontrol`, `diagnostics` and [diagnostics owner](local-diagnostics.md) |
+| Integration and qualification | Registered cross-domain test composition; selected Run, observers, measurements, barriers and retained reports | Neither production domain nor authority/Job substitute. Domain tests retain their own rules; an installed claim needs its exact environment and candidate under [testing](testing.md) and [privacy qualification](privacy-qualification.md) |
 
-Route's shared TLS listener owns original socket admission, finite concurrent
-authentication, queued authenticated carriers and their actual joined Close.
-Cancellation before admission cannot dispatch work or latch the original bound;
-queued transfer rechecks its original waiter and owner. No new authority or
-capacity follows. Composition joins returned carriers before semantic roots;
-listener Close retains and joins all untransferred users and physical errors.
+Offline Source contact/trust preparation supplies public declaration evidence,
+not a second effective family, acquisition Plan or installed acceptance. State
+retains its ordinary two-Source acquisition and fresh signed/time/floor rules.
+Node certificate self-signature is not membership. Runtime TLS, offline State/
+Node preparation, issuer-profile signing, Release signing and Custody authority
+remain distinct purposes. Exact commands and input inventories belong to the
+[command reference](../reference/commands.md) and technical producer owner.
+
+Installation preflight observes existing inputs and absent future resources;
+absence is not creation authority. Initial stopped installation leaves semantic
+roots empty. Hosting alone initializes its known-born allowance; receiving
+Admission and Route Registry initialize their own histories only through their
+accepted fresh-root collaboration. Descriptor Store creation/inspection remains
+Reachability's decision. Independent history readers retain their own custody;
+historical account effects do not freeze host-owned account databases.
+
+Stopped replacement and recovery consume fresh Release plus genuine existing-only
+semantic inspections, not live foreign owners. Physical cut, native process exit,
+archival, ACK, copied result and complete-looking journal are different evidence;
+none substitutes for original domain completion. New installations follow
+[ADR-0124](../adr/0124-start-new-installations-without-legacy-data-transfer.md);
+their own keys, spend, conflict/replay/time/Release floors and original histories
+survive retained restart, replacement and recovery. Detailed per-role journal
+recipes belong only to the [installed infrastructure owner](../technical/network-route-node.md#proposed-lifecycle-and-effect-admission)
+and [Endpoint Installation](../../internal/successor/installation/endpoint/README.md).
 
 ## Node composition: original lifetime boundary
 
-The directly authorized installed Forwarding composition is confined to
-`cmd/ardents-node/forwarding_installed_linux.go` and R01's exact five imports.
-It constructs new owners directly, without old-runtime delegation or a shared
-live root. This boundary decision does not accept the bootstrap receipt or
-qualify installed execution; ADR-0123 Decision 6 remains a separate gate.
+`internal/successor/node` composes one original Forwarding, Issuer, Descriptor,
+Introduction or JOIN invocation. It is a supporting lifetime, not an eleventh
+network authority. Node, process, signed identity and accepted duty generation
+remain distinct. The [Node owner](../technical/network-route-node.md#node-and-resource-lifecycle)
+owns exact behavior; GitHub owns selection and acceptance.
 
-Forwarding's distinct `installation/forwarding` owner has the fixed installed
-request/plan/template policy, with real canonical Control preparation consumers
-and independent byte vectors. Infrastructure retains its separate opaque artifact
-pair; neither public preparation nor Source Startup grants installed Node rights.
-Canonical Control's separate Forwarding key, public-plan and initial-signing
-consumers retain their own fixed initial purpose and fresh secret/output custody.
-They share physical input/output and key codecs with Source, never its signing
-purpose or Startup. Release independently checks the two exact target proofs
-before public metadata output; that diagnostic supplies no independent initial
-pin, operational build qualification or installed acceptance.
-Its separate canonical Node read-only input preflight observes all five fixed
-Node service/socket slots, original manager/search paths, absent future resources
-and absent shared account, then joins its own native input/manager users. The
-physical manager connection is shared as source code only: every fixed-purpose
-Source or Forwarding owner opens and closes its own original connection. No
-preflight observation grants native mutation, Start or runtime permission.
-The read-only Forwarding input preflight uses a distinct `systemd.NodeSlots`
-owner rather than acquiring a mutation-capable Forwarding handle. It owns only
-one original connection and all five fixed service/socket absence observations,
-with no unit/job object reply or load/reload/start surface. Shared native I/O and
-absence codecs transfer no connection or admission right. Each Installation
-operation retains its own filesystem/account policy and actual joined Close.
-The distinct Forwarding initial creator consumes genuine initial Enrollment and
-fresh coherent Release proofs, original input and verifier lifetimes, a fixed
-shared Node account, finite original births and its own stopped unit/selection.
-Four empty semantic roots remain under their respective future owners. Initial
-pending publication follows every original native/input/verifier join. It grants
-no semantic initialization, Source authority, installed startup, generation
-replacement or recovery. Native full-transaction and installed qualification
-remain separate evidence obligations.
-The distinct completed-initial reader independently acquires its own journal
-lease, original files/ancestors and current principal after pending publication.
-It checks the entire birth transcript without reading semantic histories or
-borrowing creator custody. Canonical Node's initial-history verification matches
-a separate fresh Release pair to the same installed targets and joins its own
-users before output. Historical native provenance and fresh artifact permission
-remain separate from manager/process/State admission, Start and independent
-non-root Startup; no Source authority or live root crosses this boundary.
-Independent non-root file observation acquires only its own selected generation,
-credentials, unit and clock/ancestor descriptors under the bound Node principal.
-Its closed byte grammar is shared with root inspection as pure source, without
-a root journal, Release lease, completed-history proof or live handle handoff.
-Actual immutable read-only mounts and four writable directory identities are
-reobserved through retained and freshly named descriptors. File custody alone
-supplies no manager/process/root completion or domain admission; each remains
-with its distinct Startup, native observation or runtime owner.
-Forwarding's separate root manager control and non-root read-only connection
-retain original physical bus custody and closed fixed-unit vocabularies. Root's
-reference and finite native attempts grant no Release or installed admission;
-read-only observations load nothing and cannot borrow Source or root job rights.
-All five Node slots, original manager identity and actual original I/O/Close
-remain native observations. Installation separately compares full running policy
-and process/Startup provenance and owns admission and original completion.
-Its separate root first-start owner freshly reopens initial/native history and
-matches a coherent Release pair, then retains its own unit-search, controller,
-manager/kernel and original process/scope custody. Canonical Node's `forwarding
-start-initial` consumes it directly. Its own exclusive attempt journal records
-births and the original completion/archive before ACK; successful root observer
-joins and writer closes precede pending publication. Full ACK retains handoff
-despite a later error; uncertain/no ACK preserves original native cleanup and
-blocking provenance. This supplies no domain retirement, retained restart reader,
-bootstrap acceptance or installed qualification.
-Forwarding's independent first-start observation reopens the complete ordered
-transcript and its original root:Node completion directory, private files and
-stale socket inode without reconnecting. It acquires its own start/initial leases
-and matches the retained Release directory identity. Canonical read-only start
-history verification consumes it; copied archive facts grant no live process,
-domain/native retirement, Stop or restart permission. Original descriptors and
-uses join before both leases return, with the initial lease last.
-Root completed-generation custody now acquires the invocation chain once and
-owns each child's independent journal/file/socket close. The started-history
-view checks that same operation's child custody without reopening its exclusive
-leases or making a child close its parent. Actual start/stop storage remains
-separately owned; partial child history cannot supply completed custody.
-The original Forwarding command reports through its own one-use Startup only
-after Node/Route users, purpose roots/Hosting/producer/Guard/key, State and
-Startup observations have actually joined. Its separate retirement frame binds
-the original startup and fresh root challenge; copied cancellation, a diagnostic
-or process exit cannot create that report. Physical retirement births have their
-own exclusive journal and separate finite directory, preserving first-start
-inventory and partial-prefix refusal. Root retains the decision and independent
-original peer/process/scope, native exit/close and committed retirement proof;
-neither these storage mechanisms nor runtime reporting grants restart authority.
-The root Forwarding stop consumer independently retains the archived
-original proc/pidfd, scope/events, manager and namespace custody before a signal.
-Its actual peer/challenge report, kernel join, two matching native exit rounds
-and observer closes precede independent synced-file readback and final blocker
-publication. The readback retains a present blocker; committed history requires
-absence and a separate exclusive journal lease. The history owner independently
-retains the entire finite start/retirement chain, refusing holes, duplicate
-InvocationIDs and mismatched predecessors. Explicit same-generation restart
-repeats fresh Release/native admission before a new independent Startup; its
-new intent binds the immediately preceding retirement commitment. All earlier
-history leases remain held through new root handoff/Close, without live runtime
-transfer or semantic history initialization. Installed qualification remains a
-separate boundary. No Source live owner crosses it.
-Canonical Control's distinct Forwarding offline State preparation consumes only root-controlled public
-declarations and signed Epoch/materialization/profile bytes under the actual
-Node account. State owns authentication and floors; no Source, Startup, Guard,
-participation, spend or Hosting runtime opens. Original State and physical
-inputs join before output; existing/partial State refuses another initialization.
-This preparation supplies no live duty or installed qualification.
-Canonical Control's Forwarding State-key and Epoch preparation are separate
-offline composition. They retain original protected key/input/output custody;
-new Epoch owns signature, candidate/collision, commitment, assignment and proof
-rules. The exact reviewed genesis and fixed seed are rebuilt before State-key
-use. All signed inputs and one explicitly selected Node materialization cross
-the Source bundle codec as bytes only, without Source serving authority, State
-acceptance, a live root or runtime right. A historical signed Node declaration
-does not renew its past signing reference; the Epoch verifier independently
-requires its signed validity and eligibility.
-Canonical Control's `forwarding prepare-token-keys` is a finite offline caller
-of Admission's existing immutable key-material owner, not an installed Issuer.
-Composition retains the fresh enclosing output and its public binding; Admission
-owns distinct class/hour keys, original material root/lease and public inventory.
-That lease joins before public acknowledgement and original input release.
-No private key, quota, Permission, State or duty authority crosses to composition;
-partial enclosing output cannot be adopted or reset.
-Canonical Control's separate profile preparation/signing consumes the actual
-signed Epoch bundle and public Admission inventory. Network owns exact Record,
-role/issuer/interval joins and closedprofile grammar/transcript/signature;
-composition retains independent public pins, explicit duty refinement and the
-original reviewed bytes before protected State-key use. Detached consistency
-checks grant no State/current-time acceptance, new assignment or runtime right.
-Original input/output and signer users join before acknowledgement; State's
-independent intake, histories and live admission remain mandatory.
-Canonical Control's separate `forwarding prepare-hosting` requests one owned
-Installation effect on its genuine completed, known-born empty allowance root.
-Installation retains the original directory, stopped manager/namespace/principal
-observations and one-use root-only journal/blocker outside the writable budget.
-Hosting alone validates policy/counters and creates its finite files. Installation
-matches their original native births before Node ownership delivery, joins all
-preparation users and only then publishes completion. Root Start independently
-retains the transcript and original immutable pin/lock identities; it transfers
-no live budget or foreign root lease. Partial/repeated/unknown roots refuse.
-This changes no provider allowance, reservation or runtime authority.
-Node's strict retained Forwarding opening consumes Admission's existing-only
-spend history and noncreating participation. It requires separately proved prior
-retirement and installed startup at composition; these mechanisms alone supply
-no accepting installed transaction or qualification.
+Canonical installed composition constructs new owners directly under R01's exact
+file/import exceptions. Source has a separate State/Source command lifetime;
+Endpoint installation cannot authorize Source or Node through a shared artifact,
+unit or Startup. [ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md)
+retains independent inventory, exact target authorizations and separately
+accepted bootstrap receipt requirements. Preparation or a narrower component
+result grants no installed qualification.
 
-Stopped-history observation remains with each semantic owner. State's separate
-`NodeInspection` authenticates retained signed/security/time/profile/member
-history and requires no participation producer record, sharing only independent
-native read mechanisms with the distinct Source exposure inspection. It returns
-copied binding facts, no RuntimeView or mutable root. Spending independently
-retains exact complete receiving history without creation, repair, prune or burn;
-Hosting independently retains the original policy/period and requires zero
-reservations without charging or refunding. Each inspection keeps its original
-leases through reader and physical joins. These components supply neither an
-original Node domain-join proof nor Release/Installation permission; replacement,
-recovery and their genuine lifecycle consumers retain separate boundaries.
+| Installed lifetime | Current technical rule owner |
+|---|---|
+| Source initial/start/retirement/restart and forward transition | [Initial persistence](../technical/network-route-node.md#initial-stopped-source-persistence), [forward grammar](../technical/network-route-node.md#explicit-forward-source-transition-grammar), [retirement](../technical/network-route-node.md#explicit-source-retirement-and-subsequent-invocation) |
+| Forwarding original invocation and generation transitions | [Initial/restart](../technical/network-route-node.md#forwarding-initial-lifetime-and-explicit-same-generation-restart), [replacement/recovery](../technical/network-route-node.md#explicit-forwarding-generation-transitions) |
+| JOIN original invocation and generation transitions | [Initial](../technical/network-route-node.md#initial-stopped-join-persistence), [Startup](../technical/network-route-node.md#protected-first-join-start-and-independent-startup), [replacement](../technical/network-route-node.md#explicit-stopped-join-replacement), [recovery](../technical/network-route-node.md#join-stopped-original-prefix-recovery) |
+| Descriptor original invocation and separate Store history | [Initial](../technical/network-route-node.md#initial-stopped-descriptor-installation), [Startup](../technical/network-route-node.md#protected-first-descriptor-start), [retirement/restart](../technical/network-route-node.md#descriptor-original-stop-and-retained-restart), [replacement](../technical/network-route-node.md#descriptor-explicit-stopped-replacement), [recovery](../technical/network-route-node.md#descriptor-complete-stopped-replacement-recovery) |
+| Introduction original invocation and separate slot history | [Initial](../technical/network-route-node.md#initial-stopped-introduction-installation), [Hosting preparation](../technical/network-route-node.md#stopped-introduction-allowance-preparation), [Startup](../technical/network-route-node.md#introduction-original-first-start-and-independent-startup), [history](../technical/network-route-node.md#independent-introduction-first-start-history), [Stop](../technical/network-route-node.md#introduction-explicit-original-stop) |
+| Issuer runtime and its separately admitted installed scope | [Original Issuer](../technical/network-route-node.md#original-issuer-composition), [installed inventory and admission](../technical/network-route-node.md#proposed-installed-infrastructure) |
 
-Forwarding original-prefix recovery belongs to Installation, separately from
-replacement and runtime admission. Its stopped-initial classifier consumes the
-actual original cut and fresh coherent candidate, retains independent native
-resources and creates a separate guarded completion without rewriting the
-prefix. Completed consumers acquire their own original/cut/suffix leases and
-fresh manager/search-path/kernel observations; the start commitment includes
-the recovery completion. The native adapter's distinct root read-only manager
-declaration loads or references no unit. A cut, matching completion bytes or
-process exit grants no semantic join, Start, allowance initialization or context
-refresh across a later reload. Those obligations remain with their actual
-transition and domain owners.
-Historical reconstruction retains the original four metadata files together
-with their original Enrollment inventory. Fresh current permission may advance
-metadata for unchanged payloads but cannot substitute its new inventory for
-that history. Enrollment's canonical public producer independently checks the
-seven original file commitments; Installation matches the original binding.
-Neither detached inventory nor copied metadata grants current Release authority.
-Original72..107 metadata proposals are selected from the exact typed original
-generation-file boundary before historical reads. Installation reads only
-original file-ready metadata: Enrollment inventory from90, root from99,
-snapshot from102, Targets from105 and timestamp from108 records. Enrollment's
-complete canonical producer and the original binding must commit all proposed
-bytes exactly. Read failure never selects a proposal, and matching bytes grant
-no native creation permission. Other original boundaries retain their full
-five-file historical requirement. The distinct72..104 physical suffix retains
-all ready originals, at most one empty recorded birth and every future absence;
-it owns each exclusive new artifact birth through readback and writer Close.
-Its separate finite generation control and logical completion bind each original
-or recovery-owned inode before seal/selection/unit/Reload. Independent readers
-rederive the ordered proofs; byte reconstruction alone grants no continuation.
-Initial105/106/107 physical continuation then belongs to the same Installation
-operation: exact eleven-file inventory and original ready50 directory, an absent
-exclusive timestamp birth or the original empty birth106, independent root0444
-readback, and only then directory sealing/selection/unit/Reload. The separate
-28/29-row control and v2 logical transcript bind original/new native provenance;
-fresh readers rederive it rather than inventing historical FileInfo. Fixed-file
-custody and proposed bytes supply no original cut or fresh Release permission.
-Initial recovery at the exact117/118-record pre-Reload boundary instead owns
-one separately guarded first Reload. Its original inventory parser grants no
-completed transaction or stopped state. The fixed native initial-recovery
-manager opener admits only installed-static yet unloaded Forwarding plus absent
-other Node slots; it supplies no original cut or artifact permission.
-Installation separately proves the genuine denied/joined original boundary,
-retains all original resources and fresh authority, records its own intent and
-before/after native births, then checks the stopped policy. The v2 completion
-commits its own after context. Independent readers verify both native files,
-only-generator change, complete18-record control and fresh current context
-before publication; uncertain effect or partial suffix remains blocking.
-The Initial116 empty-unit continuation retains the actual original root0600
-birth and completes bytes/access on that same inode through fixedfile's
-independent `ContinueBirth` custody. Installation owns cut classification,
-fresh authority and the retained/written control rows; the mechanism grants
-none of those permissions. A fixed unloaded-slot observation precedes writing;
-static pre-Reload policy follows independent completed-file readback. The20-row
-control and v2 continuation preserve the original birth and required joins.
-Initial108/109 retains the original generation directory at root0755, its
-original ready50 provenance and all twelve completed artifact files. A private
-sealing continuation records candidate-retained0755 and a guarded seal intent,
-then performs one same-inode Chmod0555/Sync and independent native/inventory
-readback before selection/unit creation. Its26-row control and separate logical
-completion bind original directory, actual seal and subsequent births; fresh
-readers verify current0555 without inventing historical FileInfo. The physical
-mechanism grants no cut or Release permission, borrows only that operation's
-directory custody and leaves all descriptor closes with the original owner.
-Unknown inventory, changed identity or uncertain effects/joins remain blocking.
-Initial112 retains the actual original empty selection birth111 and completes
-its original bytes/access through separate fixedfile custody on that inode.
-The selection and unit actors share only private physical commit/readback;
-their exact paths, original phases and guarded journal ordering remain distinct.
-Its23-row control binds original selection retained/written rows before the
-unit-creation triple. Fresh readers separately match original selection birth,
-current selection bytes/native metadata, full logical transcript and control.
-No missing selection is created by this boundary.
-Initial110/111 instead retains proven selection absence and the complete
-original credential/sealed-artifact inventory. A private typed continuation
-alone admits its exclusive selection birth after the recovery guard/intent;
-the actual root0600 new inode is recorded before byte delivery. Independent
-readback promotes that exact leaf to the full selection before unit creation.
-Its24-row control and separate logical continuation bind the new birth; fresh
-readers match them to current selection. The Installation-root inventory admits
-binding.json only from original provenance or that operation's actual mutation
-and independently opened file, never from a supplied path/presence flag.
-Initial114/115 instead proves the fixed unit absent under retained ancestors.
-Initial113 additionally matches the complete original selection file-ready
-birth and bytes. Its separate continuation adds the missing selected record;
-the original selection is observed, never rewritten or recreated. It then uses
-the same guarded unit-creation operation and21-row proof.
-Installation records its guarded creation intent and the actual new root0600
-birth before fixedfile's exclusive creator can deliver bytes. The21-row control
-and v2 continuation bind that new inode independently of the original prefix;
-current readback requires the same root0644 unit. The existing physical creator
-grants no recovery authority and never adopts an existing leaf.
-Replacement57/58 recovery retains an actual original-cut private prefix view,
-the complete retired predecessor and genuine existing-only semantic owners.
-That view grants no completed replacement or Start. Its one guarded Reload
-creates a separately recorded recovery-owned `.native-after` on the canonical
-path after original absence proof. The v2 continuation and control both bind
-its actual new inode. Independent complete readers verify original/continued
-history, native relation and prior lineage; unknown birth or uncertainty blocks.
-The actual root start fixes its canonical intent before its first journal birth
-and uses those same bytes for the guard and private from-birth cut boundary.
-That physical proof retains the original Release-decision digest and complete
-initial/predecessor/history-choice commitments even before the guard exists.
-It grants no fresh authority, prior-chain acceptance or safe continuation;
-recovery must independently prove each through its genuine owner.
-The selected stopped replacement recovery likewise requires the exact original
-cut, before/after snapshots and complete retired predecessor, original Hosting
-preparation and each genuine existing-only semantic inspection. Its private
-interrupted observation retains the actual recovery owner's fresh exclusive
-original lease; all other observations are independently opened. It grants no
-ordinary completed handle or repeated reload. Independent readback acquires
-new leases after original observers and writers close. All required users join
-before the original installation-root blocker is removed under the suffix guard;
-that guard is removed last using its separately retained journal parent.
-Stopped retirement recovery consumes the exact original result-ready/final cut,
-complete original invocation history, domain/native-join/close provenance and
-retained challenge/frame/execution result. Its independent child reader keeps
-the immutable prefix separate from its logical completion and owns cut/suffix
-leases under the same parent observation. Fresh native/semantic checks and
-independent readback precede original retirement-directory blocker publication
-under the separate recovery guard. No Stop, domain report, result or join is
-recreated. Native proof lineage follows actual generation/invocation order.
-Never-started recovery retains a distinct terminal invocation child with its
-own original/cut/completion leases and exact original resource inventory. Its
-completion is the next attempt's predecessor without an archive, ACK,
-InvocationID or invented runtime/domain join. Installation alone may create
-the canonical attempt directory when the original cut proves it unborn, under
-its separate recovery birth journal. Ordinary readers verify that birth anew.
-An all-terminal chain may observe only its independently known-born empty spend
-directory, creating no Spending history; a chain with actual runtime retains
-the genuine existing-only Spending inspection. State/participation and Hosting
-remain genuine separately retained owners. Independent readback repeats native
-stopped checks and closes every fresh child before supplying the concrete
-absent-original-pending proof. A caller boolean or nil file cannot waive the
-original blocker publication requirement.
-Replacement's complete before/after native snapshot births prove its own
-one-use reload. A recovered reader verifies the ordered lineage before opening
-fresh current context; no earlier non-generator observation may be replaced or
-dropped. Only the actual reload owner can refresh its three generator
-observations, with old descriptors joined before fresh custody is accepted.
-
-The [accepted installed infrastructure contract](../technical/network-route-node.md#proposed-installed-infrastructure)
-separately inventories the actual Source and five Node consumers, provisioning,
-external inputs, command/build/recovery callers and missing installed mechanisms.
-It preserves the actual owners below. Endpoint Installation's fixed unit and
-program/generation pair do not admit Node/Source. The separate Source component
-implements initial stopped installation, an original root first-start transaction
-and independent non-root Startup custody. Canonical `ardents-node`
-Source/Installation directly compose these new owners; exact artifact/bootstrap
-acceptance and actual installed qualification remain separate requirements. Source has
-one command-owned original plan/certificate/key/CA file/ancestor lifetime; four Node roles retain
-loaded TLS material, while JOIN additionally reobserves original credential files.
-The separate artifact/persisted/bootstrap extension is **accepted**
-([ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md)); acceptance
-alone records no implemented or qualified result. The separate
-`internal/successor/installation/infrastructure` now implements Source
-descriptor/public preparation, coherent artifact admission and separate Source
-read-only native preflight and the bounded initial stopped transition. The temporary
-`ardents-next infrastructure` component consumer remains separate from canonical
-Source/Installation composition. Enrollment
-owns initial-pin provenance, Release owns fresh exact-target authorization and
-floors, and infrastructure admission owns pair/resource coherence. Native
-Installation and the separately accepted exact bootstrap remain distinct gates.
-Source preflight retains original request/input/ancestor custody, closed Source
-template policy and one original read-only manager connection. Existing inputs
-and absent future destinations are different declarations; absence grants no
-creation/readiness fact. Root, account and unit namespace observations, original
-caller/manager/Release checks and physical joins precede its bounded result.
-Release floor effects stay separately owned; no State/Source runtime is opened.
-The initial stopped transition owns fresh native admission, original account and
-credential/directory births, its closed initial journal, twelve-file immutable
-generation and selected fixed unit. Its private initial admission also commits
-the exact binding to the original Release history declaration and native directory
-identity/access. Installation's independent read-only pins do not borrow Release's
-lease; Release matches its own original path, directory and lock-file identities
-retained from opening, and retains all trust/floor policy.
-An independent root-only initial-transcript reader checks the complete canonical
-birth sequence and recorded Source-owned native resources; the stopped creator
-consumes it before returning its writer lease after native join. Historical
-account database effects are not immutable Source-owned host databases. Reading
-the transcript supplies no current-principal, fresh Release or Start authority.
-The systemd adapter owns original physical
-manager custody, one explicit reload and complete typed loaded observations;
-Installation alone compares stopped policy. State and participation directories
-remain empty; their semantic owners receive no initialized contents or authority.
-Failures retain partial prefixes and original joins, without adoption/reset,
-continuation or rollback. First start independently reopens the full stopped
-transcript and retains fresh proofs, current principal and original manager /
-process / cgroup / barrier custody in its own exclusive journal lifetime. The
-Root control connection acquires one fixed Source unit reference so a stopped
-unit can be freshly observed after manager collection; physical connection
-closure returns that reference. This loads no runtime or accepting authority.
-Non-root Startup independently retains original selected inputs, actual invocation,
-namespace and manager, then completes the original root-peer exchange before
-State or Guard construction. No initial transcript, Start job, ACK or public
-receipt grants runtime authority. These mechanisms supply neither bootstrap
-acceptance nor installed runtime or operational qualification.
-
-Explicit Source retirement has distinct original owners. Canonical
-`ardents-node installation stop-source` retains the archived original proc/pidfd,
-scope and manager, and interrupts only that invocation. The original non-root
-Source command reports its joined State/input/Guard/key/output result only after
-those users physically close. Infrastructure independently joins the original
-kernel scope, verifies matching native exit/clocks and closes its own observers
-before committing the independently readable retirement transcript. Its blocking
-marker survives partial or uncertain sync/Close; complete-looking bytes alone
-cannot admit restart. `restart-source` separately verifies the whole retained
-chain under the original first journal lease, creates a distinct finite attempt
-and obtains fresh Release/native/process/credential/startup admission. It lends
-no old live owner to the successor. Network State's Linux `OpenRetained` and its
-retained local participation opening refuse missing semantic history rather than
-initializing it; only State owns signed acceptance and security/time floors.
-These implemented boundaries remain distinct from source-matched installed
-qualification and the exact bootstrap receipt's direct Product Owner acceptance.
-No automatic restart, crash continuation, adoption, reset or replacement follows.
-
-Explicit forward Source replacement has its own distinct selection grammar and
-transition journal in Infrastructure. Canonical Node directly composes the
-original retirement, fresh coherent Release pair and retained original public
-inputs. Network State supplies an opaque read-only `SourceInspection` under its
-own independently acquired existing State/participation leases. It validates
-signed/security/time history and unresolved producer policy without initializing,
-repairing, pruning or lending a mutable root or runtime right. Installation binds
-that inspection to the exact serving declaration and numeric principal, retains
-all predecessor evidence, and owns separate sealed-generation, same-inode
-selection/unit, explicit manager reload and joined-completion effects. A separate
-restart obtains a fresh invocation. These implemented component boundaries do
-not establish installed replacement qualification or bootstrap acceptance.
-
-`ardents-control source prepare-state` separately composes finite offline State
-acceptance under the runtime system UID/GID, using original public declaration /
-bundle custody and an initially empty runtime-owned root. It opens no Source
-listener/acquisition, runtime TLS key, participation owner or Installation Startup.
-State alone authenticates signed Epoch/materialization and owns durable floors;
-no Route profile, current membership or independent-family claim is supplied.
-State Close joins before public input/root descriptor release. This supporting
-producer and the real installed serving/client journey have separate evidence.
-Its distinct finite `source inspect-latest` consumer retains original local
-client credential/public inputs and invokes Source's one-contact mTLS inspection.
-Source owns declaration/key separation, bounded LATEST framing and original socket
-join. Inspection returns private local unaccepted evidence, no Plan or State
-authority. It creates no second Source, family independence or acquisition
-fallback; ordinary State acquisition retains its two-source rule.
-Canonical Control's separate `source prepare-descriptor` and `prepare-inventory`
-consume Infrastructure/Enrollment public byte preparation. Composition retains
-original root-controlled inputs and fresh output descriptors through actual
-sync/readback/Close; no signing, initial-pin, Release or runtime right is produced.
-The native offline profile's unsigned byte fixtures and actual pinned preparation
-command verify that custody only, separately from the complete signed candidate
-and installed Source journey.
-The separate canonical `source prepare-release-keys` creates only its five fresh
-distinct offline Release keys under original secret native output custody and
-emits public facts outside that key directory. No Endpoint ceremony/receipt,
-signature, independent custody or trust is supplied. Its consumer,
-`source sign-initial-release`, owns the fixed
-initial Source signing purpose, original protected five-key/input custody and
-public metadata output. Release still decides validity: the producer obtains two
-fresh same-verifier authorizations for the fixed Node/Source targets before
-publication. Actual key/signature and native custody controls with fixture build
-declarations grant no operational rebuild, independent custody or installed claim.
-Neither the Endpoint signer nor its earlier bootstrap receipt expands to Source.
-The fixed Source initial-key producer creates separate State/Node private files
-and public-only facts, without an identity or accepted State. Its one-Record
-genesis public-flag plan preparation/signing chain consumes Network's canonical initial Record /
-Epoch codecs and verifiers, original separately reviewed prepared-byte commitments,
-protected matching purpose keys and current time. Source owns bundle framing;
-State alone accepts it. This supplies no full Node/Route profile or independent
-families and no runtime TLS credential. One actual standalone numeric-UID State
-producer is distinct from the installed Source principal and startup lifetime.
-
-The process-resource owner applies the finite development CPU/I/O trend budget
-in the [native profile contract](../technical/network-route-node.md#forwarding-development-process-profile),
-with unchanged hard/event/evidence limits. Its retained failure facts contain
-only local observation/deadline/resource context. Node adds original phase and
-first logical cause, preserving separate physical cleanup outcomes. These copied
-diagnostics confer neither accepting authority nor a new monitoring domain.
-The registered native development runner orders all five complete profiles with
-real preflight and a shared own-job lock; it does not own runtime admission,
-foreign host workloads, Network authority or platform/capacity qualification.
-
-This is a design refinement of the supporting composition owner above, not an
-eleventh network authority or an execution assignment. The new `node` owner
-composes one original Forwarding, Issuer, Descriptor, Introduction or JOIN invocation; complete role and installed
-acceptance remain separately required.
-Node is a product infrastructure actor; a process, a signed Node identity and
-one accepted duty generation are distinct things. The current
-[Node contract](../technical/network-route-node.md#node-and-resource-lifecycle)
-and [glossary](../../CONTEXT.md) remain authoritative. Work selection, source
-receipts and candidate slice acceptance belong in GitHub.
+A listed contract does not imply every lifecycle or interruption boundary is
+implemented or accepted. In particular, a real Issuer runtime does not provide
+Issuer installation, and Introduction first-retirement does not establish
+retained-restart, replacement or recovery acceptance. Preserve the limits of the
+current technical owner and selected issue.
 
 ### Assessment and responsibility inventory
 
-The maintained predecessor is a brownfield Go composition with explicit
-lifecycle behavior, broad configuration and adapters that mix several owners.
-Light DDD is appropriate for its supporting lifetime: model original identity,
+Node is a supporting composition over substantive Network and Route rules.
+Light DDD is appropriate for this lifetime: model original identity,
 admission, retirement and completion precisely. Do not create a universal Node
 aggregate, repository, event bus or microservice around the old directory.
 Network and Route retain their own substantive domain models.
 
-| Inspected predecessor responsibility | Target semantic owner | Current new seam / remaining boundary |
+| Responsibility | Semantic owner | Current seam / remaining boundary |
 |---|---|---|
-| `node/admission.go`, `state_authority.go`, `authority/receiver.go`: membership, duty/profile projections and purpose checks | Network authenticates and binds membership; Route admits its exact purpose; composition matches local credentials | `state.CurrentRuntime`, `RuntimeView.RetainDuty/MatchDuty`, `route/role.Authority`; copied diagnostics cannot replace them |
-| `node/local_roles.go`: producer-owned local conflict retention | Network's separate local-participation policy and native `network/duty` owner; Node lifetime owns its producer's physical completion | Source uses `duty.OpenOperation/Replace/Remove`; the Node lifetime consumes `duty.OpenNodeProducer/Check/Live/Close` with private producer and original-caller fencing |
-| `node/lifecycle.go`, `machine.go`, `duty_cleanup.go`: startup, retirement and process result | Proposed Node runtime lifetime, orchestrated by command composition | No new general Node supervisor is inferred from `route receive`; transport already has its own currentness watcher and joined Close |
-| `node/forwarding`, `outer`, `introduction`, `join`: queues, channels, slots, pairing and physical work | Route | New `receiver`, `channel`, `introduction`, `join` and concrete Carriers own these mechanisms; Node must not copy them |
-| `node/issuer` and `node/hosting`: issuance and reserve-before-spend adapters | Admission owns issuance/spend; Hosting owns the period; Route owns the physical exchange | New `admission/issuer`, `receiving`, `hosting`, `route/issuer` and the real `route receive` composition already collaborate |
-| `node/resolution`: receiving Descriptor rules and physical listener | Reachability owns proof/conflict/history; Route owns receiving transport | New `reachability.Store` and `receiver` have a real command consumer; Node grants no Store ACK or publication readiness |
-| `node/resource_pressure.go`, `resource`: OS observations, pressure classification and reaction | Separate process-resource owner measures/classifies; Node lifetime reacts; Hosting retains provider-period accounting | New `processresource` owns actual original Linux placement, counters and pressure; `node` composes its synchronous work checks. Predecessor native source remains evidence, with no runtime import or historical profile revival |
-| `cmd/ardents-node/source_runtime.go`: Source serving/background termination | Network State and Source, with their own command composition | New State owns Source exposure, Wait and Close; `ardents-next source serve` composes that original owner with its distinct processresource Source guard. State joins transport/handlers before guard release, retains its own root lease through producer cleanup, and composition releases process pins last. A Source is not another Route role selected by Node dispatch |
-| `node/identity.go`, command key loading and signing preparation | Purpose-specific credential mechanisms and provisioning; accepted Node identity stays with Network facts | Admission `issuerprofile/signing` grants only imported offline issuer-profile signing, not generic TLS/Node authority or State signing |
-| Lifecycle/resource event output and qualification fixtures | Bounded diagnostic projection and independent test composition | Neither output success nor a measured/unknown field grants readiness; old tests are inspected evidence, not the new oracle |
+| Membership, duty/profile and purpose checks | Network authenticates and binds membership; Route admits its exact purpose; composition matches local credentials | `state.CurrentRuntime`, `RuntimeView.RetainDuty/MatchDuty`, `route/role.Authority`; copied diagnostics cannot replace them |
+| Producer-owned local conflict retention | Network's separate local-participation policy and native `network/duty` owner; Node lifetime owns its producer's physical completion | Source uses `duty.OpenOperation/Replace/Remove`; the Node lifetime consumes `duty.OpenNodeProducer/Check/Live/Close` with private producer and original-caller fencing |
+| Startup, retirement and process result | Original Node runtime lifetime, orchestrated by command composition | No new general Node supervisor is inferred from `route receive`; transport already has its own currentness watcher and joined Close |
+| Queues, channels, slots, pairing and physical work | Route | New `receiver`, `channel`, `introduction`, `join` and concrete Carriers own these mechanisms; Node must not copy them |
+| Issuance and reserve-before-spend composition | Admission owns issuance/spend; Hosting owns the period; Route owns the physical exchange | New `admission/issuer`, `receiving`, `hosting`, `route/issuer` and the real `route receive` composition already collaborate |
+| Receiving Descriptor rules and physical listener | Reachability owns proof/conflict/history; Route owns receiving transport | New `reachability.Store` and `receiver` have a real command consumer; Node grants no Store ACK or publication readiness |
+| OS observations, pressure classification and reaction | Separate process-resource owner measures/classifies; Node lifetime reacts; Hosting retains provider-period accounting | New `processresource` owns actual original Linux placement, counters and pressure; `node` composes its synchronous work checks. No old-runtime import or historical profile revival |
+| Source serving and background termination | Network State and Source, with their own command composition | New State owns Source exposure, Wait and Close; `ardents-next source serve` composes that original owner with its distinct processresource Source guard. State joins transport/handlers before guard release, retains its own root lease through producer cleanup, and composition releases process pins last. A Source is not another Route role selected by Node dispatch |
+| Purpose-specific credential loading and signing preparation | Purpose-specific credential mechanisms and provisioning; accepted Node identity stays with Network facts | Admission `issuerprofile/signing` grants only imported offline issuer-profile signing, not generic TLS/Node authority or State signing |
+| Lifecycle/resource event output and qualification fixtures | Bounded diagnostic projection and independent test composition | Neither output success nor a measured/unknown field grants readiness; historical tests cannot replace the new independent oracle |
 
 ### Original lifetime and state
 
-The candidate consistency boundary is one original runtime invocation and one
+The consistency boundary is one original runtime invocation and one
 retained role generation. It owns its admission/terminal latch, original caller,
 startup work, cancellation callbacks, physical borrow inventory and immutable
 first failure. It references external owners through their narrow contracts;
@@ -907,46 +275,31 @@ consumer cannot establish a supported Node installation or qualified host.
 
 ### Realized prerequisites and design limits
 
-`cmd/ardents-next/route_linux.go` already composes genuine State, retained duty,
-receiving Admission, Hosting and `receiver.Listen`, with additional issuer or
-Descriptor owners only when that exact duty requires them. Receiver supports
-TCP/TLS, refuses deferred QUIC before listening, reobserves authority and joins its work.
-That is an existing component consumer, not the complete Node runtime model.
+`cmd/ardents-next/route_linux.go` composes genuine State/duty, Receiving, Hosting
+and Receiver, with an Issuer or Descriptor owner only for its exact duty. The
+five `node_*_linux.go` command consumers compose original Node lifetimes.
+Receiver uses TCP/TLS, refuses deferred QUIC before listening and joins physical
+work; it is not by itself a complete Node/installed-runtime acceptance.
 
-`internal/successor/node` composes original Forwarding, Issuer, Descriptor, Introduction and
-JOIN lifetimes through the real `cmd/ardents-next/node_forwarding_linux.go`,
-`node_issuer_linux.go`, `node_descriptor_linux.go`, `node_introduction_linux.go`
-and `node_join_linux.go`
-consumers. JOIN surrounds the existing Receiver/Pairing with exact original process,
-producer and fixed TLS custody, full class-2 reserve-before-spend and retained
-joined completion. Matching, both RESULT writes, credit, EOF and CLOSE remain
-Route rules. It grants no refill, Service authority or automatic replacement.
-Introduction retains one genuine prepared Route Registry/History
-before listening, short-denies admission and joins Receiver before closing native
-History/Receiving/Hosting; Route alone retains slot and delivery policy.
-Descriptor retains a separately owned Reachability Store and reads its original
-operational cause after joined Store closure. Its private denial fences dependent
-work without attributing a foreign operational failure to Route physical cleanup.
-Store proof/conflict/durability policy remains with Reachability; full Control
-coverage and irreversible spend remain with Hosting and Admission respectively.
-Issuer retains Admission's prepared quota/key/result application
-until Route and issuing users join; it grants no private RSA or signing right
-to Node. Ordinary Control and separate Bootstrap physical reservations remain
-with Hosting, without Forward refill. Network's
-`duty.OpenNodeProducer` retains a private producer and original caller through
-short journal transactions, checking retained generation/digest floors without
-holding a live shared lease. `processresource` independently observes the
-original Linux proc/cgroup and selected limits. Node retains purpose-specific
-TLS custody, original admission/retirement and cleanup result; diagnostics
-projects observations without authority. These implementations grant no Source,
-provisioning, unselected-role or installed qualification. Their exact behavior and
-remaining scenario limits belong to the [Node owner](../technical/network-route-node.md#original-forwarding-composition).
+Node retains only its invocation's role-specific lifetime: JOIN pairing remains
+Route policy; Introduction Registry/floors remain Route; Descriptor Store remains
+Reachability; issuer quota/key/results remain Admission; Hosting keeps separate
+Control/Bootstrap reservations. Node neither receives private RSA/signing rights
+nor invents refill, Service authority, replacement or a foreign cleanup failure.
+The [original role contracts](../technical/network-route-node.md#original-forwarding-composition)
+record exact acquisitions, effect ordering and completion.
 
-Source, provisioning/signing, all-role coverage and installed/operator acceptance
-remain distinct responsibilities. An initial single-role consumer does not close
-them. Old Node/Endpoint qualification failures stay evidence at their recorded
-source; they neither select repair of old runtime nor prove the new owners fail.
-Required checks of an actually selected change remain mandatory.
+Forwarding has separate Node Guard/participation, Route authority and installed
+Startup supervisors. Each effect still requires fresh original observations.
+Shared Startup rounds admit only requests present before physical reads begin;
+later requests wait for another full round. The [Startup observation contract](../technical/network-route-node.md#proposed-lifecycle-and-effect-admission)
+keeps fresh before/after brackets, bounded observer/waiter custody and joined
+Close; no timer or cached result grants authority.
+
+Source, provisioning, installed/operator acceptance and privacy qualification
+remain separate. Historical old-runtime failures retain their exact source scope;
+they neither select repairs nor prove failure of new owners. Required checks of
+the selected change remain mandatory.
 
 ## Consistency, resources and completion inventory
 
@@ -987,7 +340,7 @@ retains live authority; Route retains selection and physical join; Execution
 retains worker admission/results; Publication retains readiness/refresh/replay;
 Connection retains logical bytes and recovery. The original participant joins
 all requests/publications before closing shared parents, Stock and authority.
-`endpoint` now owns the original participant Startup, State, local Execution,
+`endpoint` owns the original participant Startup, State, local Execution,
 permission file exchange and shared parents. Its bound Installation declarations
 are also consumed by offline Source preparation, without runtime authority.
 CLI selectors, diagnostic rendering and exit projection stay in the command. Splitting these lifetimes
@@ -1035,113 +388,35 @@ real consumer before package or implementation admission.
 | Enrollment, Release, Installation | Pinned immutable inventory; offline exact-byte authorization/floors; separate generation authentication and native initial/replacement/recovery/startup consumers | Full interruption matrix, private Service journey and installed acceptance remain separate |
 | Custody | Encrypted Vault/Bundle, purpose-specific Admission through new Allocation and Service through the pure public request/response contract, original exclusive lifetime, authenticated successor/floors and separate quarantine; genuine terminal command consumer | Full operator/installed integration and platform/crash qualification remain separate |
 
-Connection borrows one original Execution operation and one immutable Instance
-Service lease through transport gaps. Publication retains accepting generation,
-recipient cutoff and delivery replay history; Instance owns non-exporting TLS
-and proof signing. Connection owns continuity, directional workload counters,
-Attachment proposals/replay and the logical Terminal outcome. Route owns the
-exact physical JOIN and its reservation return. Joined cleanup receipts report
-physical retirement only; neither clean cleanup nor a completed Application
-result supplies accepting authority. Execution retains the original worker's
-protocol reader and cleanup capacity until those borrowers finish. These seams
-do not merge state locks, private roots or domain policy.
-Connection stages received bytes privately while its original owners validate
-the final handoff. Bounded caller-memory delivery and clean-outcome publication
-then run under the same local locks, with no foreign I/O or owner observation.
-Failure exposes neither a positive read count nor the staged plaintext.
-An early original-owner refusal retains the Stream's first logical failure;
-later cancellation cannot replace it. Failed Source/Responder acquisition also
-retains the joined original generation outcome before any replacement handoff.
-Initial Reader authentication retains its original setup deadline after joined
-proof/Continuity input, separately from the Attachment's interruption and actual
-physical error. Expired setup cannot transfer buffered complete bytes.
-An unsuccessful Attachment retires its exact Route child with the existing
-refusal terminal; its cleanup cannot mint a clean child witness and retire the
-peer's still-needed Terminal-control tail. The original logical owner and
-authority remain separate from that failed physical child.
-Route's nested framing separately retains successful lower output counts and
-the lower owner's actual physical failures. An incomplete upper frame followed
-by lower retirement remains failed work; successful lower bytes alone cannot
-poison Execution cleanup. Actual native write, close and join failures remain
-retained through their original owners.
-Instance's original Binding observation borrow retains native custody and its
-separately owned Publication reservation while full logical/physical Service
-checks run outside Instance state. Local effect gates compare the same original
-lease/Attachment; retirement joins those observers before key erasure and
-reservation return. This borrow supplies no accepting observation or new right.
-Acquisition and first consumption retain the same original custody across
-separate durable reconciliation/burn without holding Instance state. Root and
-Binding retirement deny late transfer/private effects and join those operations;
-neither a pending opening nor a completed floor burn grants readiness.
-Recipient and capsule users observe original native custody before taking their
-state locks, then compare the exact local recipient/opening and cutoff. Their
-copied candidate/Descriptor facts remain distinct from accepting Publication,
-Connection authentication and replay commitment.
-Holder Stock retains one original operation/journal use through external current
-authority observation, native presentation marking and final verification/deposit.
-These foreign observations and marks do not hold Stock state; local transitions
-still compare the original attempt/preparation/permission and monotonic floor.
-Revocation erases secrets and denies new uses before joining existing uses and
-returning the owned journal. Spent token/quota and actual late failures remain
-with their original owners; a use borrow supplies no Admission authority.
+Real consumers are recorded above and in the [implementation entry point](../../internal/successor/README.md).
+An accepting Link/capsule, successful authentication or a physical cleanup receipt
+proves only its own boundary. The [Service lifecycle](../technical/endpoint-service-runtime.md#publication-and-connection-lifecycle),
+[Execution lifecycle](../technical/application-execution.md#required-lifecycle-and-linearization)
+and [Route integration](route-delivery-join-boundary.md) own the complete rules:
 
-Canonical installed command continuation composes its private Reader and
-snapshot Administration consumers after the original retained Startup checks.
-The participant owns one shared Entry history and initialized Hosting budget;
-each operation owns its role selection, physical borrows and qualified worker.
-Fresh Link/Withdraw admission belongs to the original Execution generation and
-creates no worker or Service authority. Local listeners join before pending and
-active Publication retirement, which precedes shared-root closure. This realized
-composition is distinct from two-manager installed acceptance and final gates.
+- One original Execution operation and immutable Instance lease survive transport
+  gaps; recovery replaces an Attachment, never Target, Job, Grant or its bound.
+- Connection retains logical byte/Terminal outcomes; Route retains each physical
+  generation and joined cleanup. Application completion can precede the joined
+  Terminal-control tail. Recoverable loss or cancellation cannot erase a physical
+  failure or be reclassified as one merely to end the Job.
+- Final handoff checks precede caller-visible bytes and clean outcome; failed
+  fences expose neither staged plaintext nor a positive read count. Setup expiry
+  and original refusal remain failures despite buffered input or later cancellation.
+- Instance, recipient and Stock native observations run outside their state locks;
+  original use borrows join before private material, journals or reservations return.
+- Reader/Publisher Route scopes retain selected legs and original logical bounds.
+  Each acquisition binds one physical generation; old handles never follow a
+  successor. An ended generation joins before fresh resources open. Issuer use
+  cannot recursively replace Source during dependent presentation; Descriptor
+  Store ACK commits under its exact retained acquisition.
+- Installed listeners and pending/active Publications join before shared Entry,
+  Hosting, Stock and State close. Startup/ACK and diagnostics supply no worker or
+  Service permission; live Execution admission remains separate.
 
-Reader Source retains the full logical Stream and original Prefix outcome while
-passing only joined physical cleanup into Execution's failure accounting. A
-Route-owned opaque Source scope retains the original caller, selected leg and
-absolute bound; its logical checks reobserve genuine authority independently
-of an ended physical Prefix. Every lookup, submission and JOIN still needs its
-exact physical acquisition. Connection consumes its finite proposal before
-Route joins an ended generation and opens another with original selected bindings
-and genuine new reservations/Stock. One opaque handle binds lookup, submission,
-JOIN and final replacement handoff; an old handle never follows a successor.
-Scope retirement seals logical effects before joining all physical generations
-and retaining actual cleanup failures.
-The scope itself grants no fresh opening, token, Job or successful Connection.
-A replaced Attachment retains its own attempt outcome; that recoverable attempt
-does not overwrite successful logical recovery. Its actual physical cleanup
-failures remain retained through the original cleanup owners.
-Prefix's separate cleanup receipt requires actual original users, callbacks,
-framing and resource returns to finish; retired readiness alone cannot supply
-it. JOIN returns its own exact physical result to the Prefix borrower callback,
-keeping the complete exchange outcome with its original caller. Cancellation
-does not become a physical failure by projection, and an actual late write,
-close, borrower or resource-return error remains retained.
-
-Publisher likewise keeps its full Publication/Registration outcome while
-passing only original joined physical results to Execution. Registration owns
-its complete withdrawal/delivery result; its exact Introduction terminal owns
-lower output/deadline failures and the parent/control return. Publisher retains
-one original Source scope through private and Connection users. Route's Source
-scope and Responder scope own their original selected legs and exact physical
-generations; each transferred JOIN retains its own generation borrow. Physical
-loss seals only that generation, which joins before fresh reservation/opening.
-Responder generations retain one exact Source handle, and JOIN handoffs check
-both original scopes. Physical Source loss retires its dependent Responder
-generation without withdrawing the original accepting Publication or changing
-the Job. Current-source issuing borrows an existing opaque handle only; it
-cannot recursively replace a Source during dependent presentation. Descriptor
-publication acquires one exact handle and commits its Store ACK under that
-handle. Scope retirement joins all generations before Instance binding retirement. Ordinary
-cancellation does not seal the Execution generation as failed physical cleanup;
-actual output, close, missing join or resource-return failure still does.
-
-Actual source and imports are in the [package map](package-map.md) and
-[implementation entry point](../../internal/successor/README.md). Component
-readiness, full issue acceptance, repository integration and qualification are
-different results. [GitHub #497](https://github.com/dianabuilds/ardents-network/issues/497)
-owns their dependency order and live criteria. Exact earlier source hashes,
-failed attempts, inspected/reproduced distinctions and fixture limits remain
-in the [archived map](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/development/domain-map-before-consolidation.md)
-and issue receipts. Consolidation does not upgrade their evidence level.
+Source hashes, attempts, receipt provenance and acceptance remain in the selected
+GitHub ledger and existing evidence, not this map. Documentation consolidation
+cannot upgrade an inspected result to reproduced or qualified evidence.
 
 ## Collaborations to review
 
@@ -1276,7 +551,7 @@ or export a speculative API merely to fill the checklist.
 Missing authority or a missing real producer is a named prerequisite, never a
 successful fixture. Required rules stay with their owner when implementation is
 incomplete. The selected issue owns unresolved evidence and acceptance; preparing
-this contract does not start another domain under the current implementation hold.
+this contract does not select another implementation or alter current WIP.
 
 ## Updating after a completed slice
 
@@ -1297,121 +572,8 @@ The orchestrator checks and updates this map with the owning result:
    external handoff. After compaction reread the actual map, then verify source.
 
 Do not start new work merely because this inventory contains a future owner.
-Under the delegated project transition, the orchestrator designs and verifies
-the next dependency-ready domain, records its selection and WIP admission in
-GitHub, and assigns a real acceptance boundary only within current selection under the
-[execution workflow](agent-execution.md#delegated-project-wide-domain-transition).
+Within a selected project transition, design and verify dependency-ready work,
+record its selection and WIP admission in GitHub, and assign a real acceptance
+boundary only under the [execution workflow](agent-execution.md#delegated-project-wide-domain-transition).
 Completion of one slice does not complete a domain; completion of one domain
 continues the program until every maintained scenario has transferred.
-
-
-Descriptor original-input preflight is a distinct read-only Installation
-lifetime consumed by canonical Node. It decodes its own request/plan/TLS binding
-and retains original delivery through `installation/request.Files`; the private
-`systemd.NodeSlots` owner supplies only its own five-slot/search-path observation.
-Installation checks the independent Store future root alongside the other four,
-all future journals and account absence. No mutable history or Release opens,
-and no creation, Startup, runtime duty or Store ACK follows from inspection.
-Original manager and input users join before public output; restored files cannot
-revive a failed original lifetime. No live JOIN or Source owner is borrowed.
-
-
-Descriptor initial installation is a separate supporting lifetime. Infrastructure
-retains its typed initial/candidate Release pair; Enrollment supplies genuine first
-pin and actual running-program custody, Release its fresh coherent permission and
-floors. Canonical Node consumes Descriptor's own root transaction and independent
-completed reader. Fixed native births use existing directory/fixed-file mechanisms;
-no live JOIN/Source owner or authority is borrowed. The creator alone owns the
-123-record history and five empty semantic roots, original fixed manager Reload
-and post-join pending publication. Reachability alone may initialize and operate
-Store history. No first Start, role duty, Store ACK or runtime composition follows
-from stopped installation or copied history.
-
-Descriptor first-start composition consumes its own known-born Hosting and fresh
-Release pair. Installation owns exclusive attempt admission, original manager/
-process/scope custody, archival-before-root-peer-ACK and independently acquired
-non-root Startup. It grants no State, duty, token, Store ACK or replacement right.
-Canonical Node directly constructs genuine new State/Descriptor owners; Node
-retains Receiving, Hosting, producer and Reachability through actual joins, then
-command composition closes State and Startup. Reachability alone initializes
-Store and retains proof/conflict/durability policy. Five original semantic roots
-remain distinct; no sibling role lease, legacy backend or generic role owner
-participates. Full publication/lookup and retained lifecycle remain separate.
-
-
-Descriptor original retirement now has separate Installation report/native owners.
-Canonical composition joins genuine Node/Store/State and all original Startup
-observers before its one-use challenge-bound report. Root independently retains
-and joins original process/scope/manager custody and publishes complete retirement
-only after observer closes. Restart consumes that history plus fresh Release and
-independent Startup; Reachability's existing-only Store opening cannot create or
-repair missing/uncertain history. No sibling role lifetime or generic role owner
-participates; account, keys, original allowance and all five histories persist.
-
-
-Descriptor stopped replacement keeps Installation's transition admission and
-selection/native history separate from Reachability's read-only Store inspection.
-Each semantic owner holds its own existing-only lease through physical join;
-Inspection exports no mutable Store or proof. Fresh forward Release, original
-retirement and same-inode selection/unit mutation remain Installation rules.
-No account, credential, semantic floor or provider allowance is reset.
-
-Descriptor's parent Carrier rechecks local HELLO and original adjacent-peer facts
-from one coherent fresh State observation per frame boundary. The view is not
-retained as later authority. Store custody and effect/ACK checks remain with the
-separate Reachability/receiving role; their observations are not collapsed into
-parent framing. No durable floor, native guard or cleanup horizon changes.
-
-Descriptor recovery separates original physical cut, fresh Installation admission
-and semantic/native completion. The private same-program controller owns only
-from-birth denial/join and immutable cut publication. Installation independently
-admits the complete stopped replacement prefix and writes a separate guarded
-completion under fresh Release and five original semantic inspections. Its
-read-only manager cannot replay Reload/Start; no physical cut grants original
-Node domain completion. Original prefixes, histories, principals and floors
-remain retained across recovery and later forward replacement.
-
-Introduction initial stopped installation is a separate original lifetime.
-Infrastructure retains exact Node/Introduction Release proofs; Enrollment owns
-the independently pinned inventory and running program. Installation owns the
-fixed account/unit, twelve-file generation, five empty semantic roots, original
-journal and post-join pending publication. Its independent initial-only reader
-owns a new exclusive journal lease and native files; current principal and fresh
-Release permission are separate observations. Account database records describe
-historical effects, never immutable host databases. No Receiving birth, Registry
-initialization, first Start, role duty or runtime import follows from completion.
-
-Introduction allowance preparation retains its own original completed-installation
-lease, stopped manager, kernel/search-path and empty-scope observations. Hosting
-alone validates period/counters and creates files; Installation matches their
-original births and numeric ownership before post-join publication. Its separate
-root-only preparation journal outlives failures outside the mutable budget.
-Independent history owns its own leases and immutable pin/lock observations;
-mutable counters remain Hosting policy. Receiving and Route Registry initialize
-only through their genuine runtime fresh-root collaboration after Startup.
-No role authority, history reset, first Start or live sibling owner is supplied.
-
-
-Introduction first-start Installation owns original native admission, exclusive
-attempt history and archival-before-ACK, separately from non-root Startup's
-independent read-only principal/process/scope/manager/file custody. Canonical
-Node constructs genuine State and Introduction owners directly under the exact
-R01 boundary. Receiving alone supplies the one-use fresh-root fact consumed by
-Route Registry before listening; no offline slot initialization is introduced.
-Actual Receiver/domain users join before State and Startup release. First-start
-completion grants no original domain retirement, retained restart or replacement.
-
-Introduction's independent first-start history observer retains its own complete
-initial/Hosting/26-record startup history and original socket metadata, consumed
-by canonical Node inspection. Its original leases and file observations join
-before release. It reconnects to no completion socket and opens no semantic
-history; historical ACK/native births grant no live process or domain retirement.
-Release-history binding remains separate from fresh artifact authorization.
-
-Introduction explicit Stop keeps Installation's original start/retirement leases,
-process/pidfd and cgroup/manager observations separate from the non-root domain
-report. Canonical composition reports only after genuine Node, State, Startup
-and output joins; root independently proves native completion and publishes
-a separate retirement journal after physical closes. An independently opened
-reader requires complete provenance and absent blocker. No mutable semantic
-owner is borrowed, reset or passed onward; restart/replacement remain distinct.

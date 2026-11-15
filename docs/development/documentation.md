@@ -31,6 +31,23 @@ receipt, compatibility tree, and Git history are not default implementation
 routes. No reader should have to infer implemented behavior from stage
 chronology.
 
+## Maintained entry documents
+
+Keep policy and navigation separate from conditional detail and run results:
+
+| Owner | Keep here | Put elsewhere |
+|---|---|---|
+| `AGENTS.md` and `agent-execution.md` | Repository invariants, reader route and reusable execution/handoff rules | Current assignments, host paths and run status belong to the selected task |
+| `domain-map.md` | Semantic rules, exclusions, consistency/resource owners and inter-domain interactions | Exact format, journal sequence and role procedure belong to the affected technical owner |
+| `testing.md` | Verification policy, route selection, profile entry points and evidence limits | Conditional scenario contracts belong to its linked testing reference/profile; individual run results belong to GitHub/external evidence |
+| Skills | Task-specific decisions and a route to current owners | Duplicated product rules, generic pattern manuals and a second task ledger |
+
+A new test needs prose when it changes a checked contract, prerequisite, oracle
+or evidence limit. The test source owns individual assertions. Consolidate such
+changes into the relevant section instead of appending a chronological paragraph
+to an entry document. Preserve unique current obligations and inbound anchors;
+do not move an entire mixed file to an archive merely to shorten its entry point.
+
 ## Promotion and retirement
 
 A code, format, command, support, or operational change updates its current
@@ -111,8 +128,8 @@ records open obligations; it is not the selected runtime specification.
 
 ### Task admission after completed design
 
-**Product Owner clarification, 2026-09-07:** finish the product design of the
-affected scope before creating its tasks. The design assistant resolves the
+Finish the product design of the affected scope before creating its tasks.
+The design assistant resolves the
 necessary architecture, mechanisms and dependency choices as part of that
 preparation. Do not turn an unresolved product choice into a delivery task,
 including a research-labelled task that merely passes that choice to its
@@ -179,8 +196,8 @@ Other unaffected work may continue within its existing authorized bounds.
 This workflow does not create an implementation issue, choose a public protocol,
 authorize a new maintained package or amend accepted ADRs. The selected tracker
 continues to own live implementation status; C0 retains its milestone and WIP
-prerequisites. R-149 stays in design until an explicitly selected slice satisfies
-these conditions.
+prerequisites. An unresolved design question is not an admitted implementation;
+the research queue and selected issue own its current status.
 
 ## System protection workstream
 
@@ -262,10 +279,10 @@ The selected issue tracker owns execution and status. Keep the existing C0
 milestone prerequisite and follow the
 [repository C0 work-in-progress policy](../../AGENTS.md#c0-work-in-progress-limit);
 the workstream does not activate all of its areas at once. Its framing is recorded by
-[R-150](../archive/research/records/r-150-common-protection-baseline.md), and the current
-R-149 subject remains separate design. Completed R-152/R-099 selections live
-in their current owners and ADR-0081; their former unanswered choices are not
-active research prerequisites for the Link-first scope.
+[R-150](../archive/research/records/r-150-common-protection-baseline.md).
+Current owners and ADR-0081 supply the selected Link-first contract; completed
+research and historical open choices do not add active prerequisites. Check the
+[research queue](../research/questions.md) and selected issue for current work.
 
 ## Security work in an implementation slice
 

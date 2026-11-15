@@ -239,13 +239,15 @@ fresh Release proofs and original predecessor/startup custody govern interrupted
 replacement and recovery; a generic conversion phase or copied facts grant no
 permission to mutate, select or start a generation.
 
-Preserve every retained State, Admission, Publication/withdrawal, Release and
-Hosting floor under its owner. Fresh Service roots do not authorize resetting
-unrelated histories. Do not migrate unused old Transit Grants, live joins,
-private caches or volatile keys; retain applicable spend tombstones through
-their former expiry. Issuer/receiver roots use their authenticated duty/key and
-explicit creation/reopen contracts. No conversion issues a Service Credential
-or resurrects erased Instance material. Deletion/reset is not recovery.
+[ADR-0124](../adr/0124-start-new-installations-without-legacy-data-transfer.md)
+selects independent new installations without predecessor history/key/right
+transfer. This removes cross-owner conversion as a prerequisite, not the new
+installation's own durable obligations. Preserve its State, Admission,
+Publication/withdrawal, Release and Hosting floors, exact retries and keys under
+their owners. Issuer/receiver roots use genuine authenticated inputs and explicit
+creation/reopen contracts; failed reopen cannot select initialization. Old files
+remain untouched, and no conversion resurrects erased Instance material.
+Code-reader retirement and physical data deletion are separate decisions.
 
 Rollback of executable bytes requires fresh Release authorization and a
 candidate supporting the adopted protection generation. A predecessor that
@@ -257,8 +259,8 @@ Existing Installation artifact/startup and qualified Execution components
 support Publication/Connection using already implemented Route transport.
 Full Route acceptance consumes the genuine Connection result; complete
 Installation acceptance consumes the integrated Service journey. The exact
-handoff gates, source identities and current hold belong to
-[#497](https://github.com/dianabuilds/ardents-network/issues/497), not another
+handoff gates, source identities and current selection belong to the selected
+parent/child issues in the C0 milestone, not another
 implementation queue here. Complete migration and P1–P11 system trials remain
 required for whole-candidate qualification.
 

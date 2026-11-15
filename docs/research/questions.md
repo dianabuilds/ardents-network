@@ -7,7 +7,7 @@ cannot restore retired surfaces or create new runtime authority.
 
 | Question | Disposition and retained evidence |
 |---|---|
-| R-172: current native QUIC return-path reply budget | Deferred by [ADR-0122](../adr/0122-select-tcp-only-closed-release.md); [#519](https://github.com/dianabuilds/ardents-network/issues/519) and the [current record](records/r-172-quic-return-path-budget.md) preserve the unresolved finding and evidence limits. No experiment or dependency adoption is selected; a future QUIC selection requires current supported disposition and evidence. |
+| R-172: current native QUIC return-path reply budget | Release use deferred by [ADR-0122](../adr/0122-select-tcp-only-closed-release.md); [#519](https://github.com/dianabuilds/ardents-network/issues/519) and the [record](records/r-172-quic-return-path-budget.md) preserve the finding. The [2026-11-15 read-only screen](records/r-172-quic-return-path-budget.md#read-only-upstream-screen-2026-11-15) did not establish a supported remedy. No experiment or dependency adoption is selected; future admission requires a current supported disposition and evidence. |
 | R-171: bounded ready-component local monitoring | Earlier selection under [#394](https://github.com/dianabuilds/ardents-network/issues/394), currently paused; [current record](records/r-171-local-observability-stack.md). Exact component adoption is unselected; deferring R-172 neither resumes this experiment nor admits backend implementation. |
 | R-167: retained Carrier future-cost coverage | Paused; [#262](https://github.com/dianabuilds/ardents-network/issues/262) and draft PR #275 retain evidence. No new pool policy accepted by this queue. |
 | R-157: receive-credit/shared DATA-control reservation | Earlier prepared unresolved evidence, unselected; [pinned draft](https://github.com/dianabuilds/ardents-network/blob/e0dc1e382070f3d3c403b7501ad520ad8bfacdc9/docs/research/records/r-157-receive-credit.md). Current protocol owns accepted bounds; the old draft is not a current implementation assignment or automatic blocker disposition. |
@@ -20,5 +20,5 @@ cannot restore retired surfaces or create new runtime authority.
 Completed research is in the [archive](../archive/README.md#research-records),
 with a named current owner for its promoted result. Future Service Names,
 public autonomy and additional protection mechanisms require separate explicit
-selection and current contracts. Connection's current assignment selects no
-additional research or implementation.
+selection and current contracts. An existing implementation assignment or a
+prepared plan selects no additional research or implementation by itself.

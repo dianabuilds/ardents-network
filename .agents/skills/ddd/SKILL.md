@@ -1,83 +1,79 @@
 ---
 name: ddd
-description: "Implement Domain-Driven Design end-to-end. First decides whether a project warrants DDD at all (vs plain CRUD) and whether it is greenfield or brownfield, anemic or rich. Then runs the full lifecycle: discover the domain via Event Storming (domain events, commands, aggregate candidates, bounded contexts, ubiquitous language, context map), model the tactical design (aggregate roots, entities, value objects, domain events, repositories), and implement DDD-compliant code that adapts to the project's language and framework. Can also audit and score existing code against a domain model. Use when designing a new system, modeling a domain, carving bounded contexts from a codebase, deriving microservice boundaries from bounded contexts, designing aggregates, refactoring toward DDD, or auditing code for DDD quality."
+description: "Assess, design or audit domain ownership in Ardents, and guide an explicitly selected Go implementation slice. Use for invariants, consistency boundaries, cross-domain lifetimes, responsibility extraction or architectural duplication; ordinary local fixes do not need a full DDD workflow."
 ---
 
-# Domain-Driven Design (DDD)
+# Domain ownership in Ardents
 
-You are a DDD practitioner working **with** the user, following Vernon's *Implementing Domain-Driven Design*. DDD is collaborative modeling, not code scaffolding — your default mode is to ask probing questions, propose a model, and iterate. **Never dump a pile of artifacts without confirming the model with the user first.**
+Choose the requested mode: **plan/audit**, **design**, or **implementation**.
+A plan or audit produces findings and a verification strategy, never code,
+packages, dependency updates or an automatically selected next task.
+Implementation requires the current task's accepted contract and selection.
 
-## How to operate
+## Recover the existing model
 
-- Speak the **ubiquitous language** of the domain in every artifact and in code. If a term is ambiguous, negotiate it before using it.
-- Prefer to **ask** over to assume. Surface 2–4 targeted questions per stage; don't interrogate.
-- Make the model **visible**: produce the artifacts below as living documents the user can correct.
-- **Place every produced artifact in the project's `docs/` folder** (Markdown and PlantUML side by side, so diagrams render next to their narrative). If the project has no `docs/` folder — and no obvious equivalent — **ask the user** where artifacts should live before writing anything.
-- Be opinionated but honest — including the honesty to say *"this doesn't need DDD."*
+Read repository AGENTS.md, current scope and relevant threat conditions, then
+the affected technical owner and development policy. Follow the current document
+route before historical provenance. Verify checkout, dirty work, selected
+parent/child issue and real callers. An issue summary may lag a direct Product
+Owner correction; report the conflict without expanding scope.
 
-## Workflow
+Use CONTEXT.md for product language, docs/development/domain-map.md for semantic
+owners and collaborations, package-map.md for actual Go packages/imports, and
+technical owners for authority, bytes and lifecycle. GitHub owns selection and
+acceptance. Do not create a parallel glossary, domain model or task ledger.
 
-Run these stages in order. Each links to a reference for depth and to a template for the output.
+For Route work, read the full migration contract from disk, including after
+compaction/handoff. Orchestration also rereads the full domain map. Their
+isolation and acceptance obligations are not replaced by this skill.
 
-### 1. Assess — `references/assess.md`
-Establish the starting point:
-- **Greenfield** (no domain code yet) vs **brownfield** (existing code to respect/reshape).
-- If brownfield: detect the language/framework and whether the model is **anemic** (data bags + procedural services) or **rich** (behavior + invariants on aggregates).
-- Detect the **repository & deployment structure** (monorepo vs polyrepo; microservices vs monolith; datastore ownership; inter-service transport).
+## Assess before restructuring
 
-### 2. Gate — does this warrant DDD? — `references/assess.md`
-Classify the subdomain (**Core / Supporting / Generic**) and gauge behavioral complexity, strategic value, and volatility. Recommend one of:
-- **Full DDD** — Core domain, genuine complexity, high value.
-- **Light DDD** — model the key aggregates, skip elaborate ceremony.
-- **Plain CRUD** — generic / simple / low-value → **STOP**. Tell the user plainly that DDD is overkill and recommend the simplest durable solution (a CRUD layer, an off-the-shelf/SaaS component). Do **not** invent aggregates, domain events, or context maps for it.
+This is a brownfield modular Go system. Classify the affected responsibility:
+substantive domain rules, supporting coordination, or a technical mechanism.
+Use rich modeling for actual invariants and light DDD for composition/adapters.
+File length, repeated syntax or temporary paths alone do not justify a new
+package, aggregate or domain. See [assessment](references/assess.md).
 
-This gate is the point of the skill. Never skip it.
+Inspect both directions: rules misplaced in the affected owner and its rules
+implemented elsewhere. Trace a real operation through authority, durable effects,
+transfer and physical completion. For each material finding supply:
 
-### 3. Discover (strategic) — `references/strategic-design.md`
-Collaborative session:
-- Discuss the business problem and key scenarios.
-- **Accept sequence diagrams as optional input** (as-is / to-be business processes or key scenarios). They describe *process*, not structure — feed them into Event Storming and the ubiquitous language; never let them replace the context map.
-- Run **Event Storming**: domain events → commands → aggregate candidates → bounded contexts.
-- Forge the **ubiquitous language**.
-- Draw the **context map**.
-- **If going microservice**, derive a **service topology** from the context map — one bounded context → one service by default (co-deploying contexts is valid, never split one), each service owns its datastore, transport derived from the map's patterns.
+- source location and authoritative rule;
+- semantic, authority, state, physical-resource and terminal owners;
+- genuine producer/consumer and observable defect or maintenance risk;
+- evidence level: source observation, reported receipt, reproduced result or hypothesis;
+- smallest correction, affected neighbors and acceptance oracle.
 
-Produce from `templates/`:
-- `domain-context.md` — primary output (problem, domain vision, scenarios, context summary).
-- `ubiquitous-language.md` — the glossary.
-- `context-map.puml` — the context map (render it).
-- `service-topology.puml` — **only if going microservice**: deployable services, datastore ownership, transport (render it).
+For changed interactions use the domain map's existing interface checklist.
+Name original identity, proof/borrow, effect/handoff, partial failure, revocation
+and stop/interrupt/join/release. Copied observations are not authority; eventual
+notification cannot replace synchronous denial or physical join.
 
-### 4. Model (tactical) — `references/tactical-patterns.md`
-Refine the model inside each bounded context:
-- **Aggregates** — apply the rules of thumb (small aggregates, reference by identity, one transaction = one aggregate).
-- **Entities vs value objects** (favor value objects).
-- **Domain events**, **repositories**, **factories**.
-- **Optionally**, walk one key **scenario** through the aggregates and produce `sequence-diagram.puml` to validate the boundaries (one transaction = one aggregate; cross-aggregate steps are domain events, never direct calls).
+Classify repetition: duplicated policy, shared physical mechanism, or intentionally
+independent roles. Share source only where semantics match. Keep role permissions,
+roots, leases, journals and original lifetimes independent. Existing drift checks
+can protect intentional twins; they do not prove extraction safe or unnecessary.
 
-Produce from `templates/`:
-- `bounded-context.md` — one canvas per bounded context.
-- `class-diagram.puml` — **one detailed, implementation-ready diagram per bounded context** — specific enough that an implementer makes no assumptions. It must include:
-  - An **aggregate boundary** drawn around each root and the entities/value objects it owns.
-  - The root's **private owned fields** (including internal entity collections, e.g. `orderLines`), not just its identity.
-  - **Every method parameter type named and drawn** on the diagram — never leave an opaque type like `Item[]` undefined.
-  - Stereotypes distinguishing **Aggregate Root / Entity / Value Object / Domain Event / Repository**.
-  - **Domain events** published by each mutating operation.
-  - The **repository interface** (one per aggregate root).
-  - References to other aggregates **by identity only**, labeled as such.
-  - A **note restating the invariants** and Vernon's aggregate rules (small aggregates, reference by identity, one transaction = one aggregate).
+## Deliver within the requested mode
 
-### 5. Implement — `references/implement.md`
-Detect the project's stack and generate **idiomatic** DDD code for it (aggregate roots that enforce invariants, value objects, domain events, repository interfaces, domain isolated from infrastructure). On greenfield, propose a default stack and confirm before generating.
+**Plan/audit:** prioritize confirmed defects and bounded risks; identify evidence
+and dependencies. Do not assign numerical DDD scores or claim architectural
+correctness from directory shape. Findings do not select implementation.
 
-### 6. Audit (optional) — `references/assess.md`
-If a `domain-context.md` exists, score the code against it on five dimensions (0–5) and produce a prioritized remediation list.
+**Design:** resolve routine choices from current owners and code. Escalate only a
+consequential contradiction with evidence and a concrete proposal. Update the
+existing owner. Diagrams are optional when they clarify a difficult interaction;
+never require a class diagram per package or invent repositories/events to fill
+one. A domain boundary is not automatically a deployment boundary.
 
-## References
-- `references/assess.md` — detection, the DDD-worthiness gate, the audit scorecard.
-- `references/strategic-design.md` — subdomains, bounded contexts, context mapping, ubiquitous language, event storming.
-- `references/tactical-patterns.md` — aggregates, entities, value objects, domain events, repositories, factories.
-- `references/implement.md` — detect & adapt codegen.
+**Implementation:** follow [implementation](references/implement.md) and
+[Go guidance](references/stacks/go.md) for one selected slice. Move behavior with
+its real consumer and causal tests. Preserve authority and bytes unless an
+accepted decision explicitly changes them. A component pass or package move
+cannot establish installed acceptance or retire a live consumer.
 
-## Templates
-`templates/domain-context.md`, `templates/ubiquitous-language.md`, `templates/context-map.puml`, `templates/service-topology.puml` (microservice projects only), `templates/bounded-context.md`, `templates/class-diagram.puml`, `templates/sequence-diagram.puml` (optional; produced only in the Model stage).
+Keep output proportional: behavior/finding, evidence and limits, owner updates,
+and one next observable result. Preserve branch, index and unrelated work.
+Historical assignments and skill text grant no new publication or deployment
+rights. Do not repeat approval already granted within the selected task.

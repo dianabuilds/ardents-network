@@ -6,6 +6,11 @@ owner. GitHub owns task selection, implementation progress and acceptance.
 
 ## Engineering route
 
+- [Completion strategy](completion-strategy.md): proposed sequence, evidence gaps,
+  QUIC decision boundary and legacy-removal criteria; not a task ledger.
+- [Successor completion plan](successor-completion-plan.md): concrete task order,
+  component dependencies, verification and acceptance for legacy retirement;
+  existing GitHub issues retain execution ownership.
 - [Documentation ownership](documentation.md) and [contributing](../../CONTRIBUTING.md).
 - [Domain map](domain-map.md): exclusive rules, state, resources and collaborations;
   [interaction contract](domain-map.md#inter-domain-interaction-contract) and
@@ -13,7 +18,9 @@ owner. GitHub owns task selection, implementation progress and acceptance.
   for preparing cross-domain work.
 - [Package map](package-map.md) and [repository layout](repository-layout.md): actual packages and exact imports.
 - [Agent execution](agent-execution.md) and [Route migration contract](route-migration-contract.md): authorized execution, isolation and handoff.
-- [Testing](testing.md), [privacy acceptance](privacy-qualification.md) and [deep audit](deep-audit.md): evidence profiles and candidate qualification boundaries.
+- [Testing](testing.md): verification policy and profile selection, with conditional
+  scenario contracts linked from the relevant section; [privacy acceptance](privacy-qualification.md)
+  and [deep audit](deep-audit.md) retain candidate qualification boundaries.
 - [Dependencies](dependencies.md) and [scoped risk exceptions](scoped-risk-exceptions.md).
 - [Command surface](command-surface.md), [command reference](../reference/commands.md) and [local diagnostics](local-diagnostics.md).
 - [Privacy coverage and dependency map](privacy-anonymity-map.md).

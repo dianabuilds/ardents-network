@@ -32,8 +32,10 @@ Follow [CONTRIBUTING.md](CONTRIBUTING.md) and [repository instructions](AGENTS.m
 Maintained Go code belongs in thin command adapters and cohesive domain Modules.
 Run `make quick-check` while changing code and `make check` before integration;
 package and dependency registration are part of the architecture contract.
-The current human instruction keeps Connection working and holds new
-implementations; documentation cleanup selects no additional slice.
+The latest Product Owner selection and the selected issue control implementation
+scope; documentation cleanup selects no additional slice. The
+[completion strategy](docs/development/completion-strategy.md) explains the
+proposed route to a working closed product and retirement of replaced code.
 
 ## License
 

@@ -13,25 +13,24 @@ GitHub Issues in the C0 milestone own delivery state; this file is not a ledger.
 ## Current selection takes precedence
 
 The latest direct Product Owner instruction and selected GitHub ledger control
-work admission. The delegated transition cycle below operates within that
-selection; it cannot restore an older automatic next-domain assignment. GitHub
-[#497](https://github.com/dianabuilds/ardents-network/issues/497) records the current
-selection and visible owner. A historical assignment does not keep a completed
-domain active; a new implementation requires explicit selection. Documentation
-cleanup, archival and a completed predecessor do not
-select another implementation, research question, branch, worktree or thread.
+work admission. Recover the parent plan and selected child issue from the C0
+milestone; verify their current scope and visible owner. The transition cycle
+below operates within that selection, including an already authorized sequence.
+A historical assignment does not keep a completed domain active. If a parent
+summary conflicts with a child's explicit Product Owner correction, retain the
+correction and identify the exact inconsistency before dependent work; do not
+infer broader authorization from the summary. Documentation cleanup, archival
+and a completed predecessor select no additional implementation or experiment.
 
 ## Delegated project-wide domain transition
 
-The Product Owner delegated the entire DDD transition on 2026-10-04, including
-domain design, visible implementation threads, verification and delivery into
-`dev`. The orchestrator carries this program to completion. A bounded issue,
-implementation slice, thread turn or context compaction does not end the
-assignment. Continue routine slices within the existing selected scope
-without repeating permission. Starting or resuming another domain requires the
-current selection to permit it; the hold above takes precedence over the earlier
-automatic transition mandate. GitHub records selection and execution status;
-this section records the execution contract.
+When the Product Owner delegates a multi-slice transition, carry its selected
+scope through design, implementation, verification and authorized integration.
+A slice, turn or context compaction does not end that assignment. Continue
+routine work without repeating permission already given; starting another
+domain still requires the current selection to permit it. A plan-only or
+documentation-only request stays in that mode. GitHub records selection and
+execution status; this section records the reusable workflow.
 
 Repeat the following cycle until every maintained project scenario is carried
 by the completed domain model:
@@ -57,7 +56,7 @@ by the completed domain model:
    its implementer the verified design,
    source identity, actual consumers, all acceptance parameters, required profiles
    and a concrete goal: implemented domain behavior, full regression with the new
-   domains, scoped commits and integration into `dev`. Continue the existing
+   domains, scoped commits and integration into the selected target branch. Continue the existing
    authorized executor for an active domain. Slices are manageable steps toward
    its release, not permission checkpoints or substitute domain completion.
    Record each active issue in the C0 ledger within the existing WIP count.
@@ -70,25 +69,24 @@ by the completed domain model:
 4. **Run complete regression in the new-domain environment.** Exercise real
    product consumers with genuine new authority and durable owners, successful
    and causal refusal paths, concurrency, persistence and joined resource
-   termination. Cover every affected new domain, both selected Carriers where
-   applicable, and the required quick/full gates on the final source. A moved
+   termination. Cover every affected new domain, positive TCP/TLS and deferred-QUIC
+   refusal under ADR-0122, and the required quick/full gates on the final source. A moved
    source file, old-runtime bridge, fake successful neighbor or prior-revision
    pass cannot satisfy integration. Repair discovered defects at their owners;
    retain failures and source-matched evidence without weakening gates.
-5. **Deliver and verify `dev` integration.** The executor commits the coherent
-   verified domain changes, preserves unrelated work, merges into `dev` when a
-   separate branch was used, and pushes the resulting `dev` revision. The Product
-   Owner has already authorized commits, pushes, merges into `dev`, and creation
-   and publication of tasks/results in GitHub. Neither agent requests another
-   approval for those actions. Keep normal hooks and required checks enabled;
+5. **Deliver and verify authorized integration.** Within the selected task's
+   existing Git/publication authorization, commit the coherent verified changes,
+   preserve unrelated work and integrate into its selected target branch. Do not
+   repeat approvals already given or infer new publication rights from this
+   workflow. Keep normal hooks and required checks enabled;
    confirm the integrated source and remote revision. The orchestrator checks
    boundaries and evidence, reconciles the complete domain map and owning
    documents, and returns precise defects to the same executor when necessary.
 6. **Prepare the next domain within the current selection.** After complete
-   release and `dev` integration, design and verify dependency-ready work and
+   release and target-branch integration, design and verify dependency-ready work and
    record its acceptance boundary in GitHub. Assign its implementation only
-   within the latest direct Product Owner selection. The current hold permits
-   preparation of the plan, without an automatic next-domain implementation.
+   within the latest direct Product Owner selection. Preparation of a plan
+   does not automatically select its implementation.
    A completed slice does not complete the program while a maintained scenario,
    domain responsibility, real consumer or required release proof is missing.
 
@@ -105,8 +103,9 @@ the accepted product and security contracts; do not invent a successful result.
 After every compaction or handoff, recover this program mandate, current domain,
 visible executor, design, source, evidence and next result. Read the Route
 migration contract in full whenever Route is involved and preserve its isolation
-and acceptance rules. The Product Owner instructed the orchestrator not to edit
-`AGENTS.md`; maintain this execution owner and the domain owners instead.
+and acceptance rules. Keep reusable policy here, semantic rules with their
+owners and task assignments in the ledger. A current explicit request to edit
+system instructions is handled within that request's scope.
 
 ## Ownership and evidence rules
 
@@ -127,7 +126,7 @@ automation, scheduling or monitoring without authorization.
 
 Verify committed prerequisite components and source-matched evidence before
 dependent work. A component's readiness, full issue acceptance, repository
-integration and installed qualification are distinct. Use #497's transition
+integration and installed qualification are distinct. Use the selected parent plan's transition
 conditions rather than requiring every prerequisite issue's full closure.
 For Route, the [migration contract](route-migration-contract.md) additionally
 owns checkout, isolation, physical lifetime and restart requirements.
@@ -154,13 +153,9 @@ source identity and observed result.
 
 ## Active implementation slices
 
-The assigned implementer owns implementation, diagnosis, verification and
-authorized Git/PR work, and resolves routine questions from current owners and
-code. Review covers completed bounded changes and consequential unresolved
-design gaps; it is not an approval checkpoint for routine steps or individual
-test failures. Before escalating, the implementer checks authoritative sources
-and supplies the specific contradiction, evidence and a reviewable proposal.
-Assignments belong to the active task, not to model names in repository policy.
+Use the [repository execution policy](../../AGENTS.md#execution-design-and-review)
+for implementation ownership, routine choices and escalation. Review a completed
+bounded result; an individual failure is not a new approval checkpoint.
 
 A component needed by another issue can be implemented earlier within the
 accepted contract. Record that dependency in the owning issue and dependency
@@ -190,7 +185,7 @@ independent admitted work explicit rather than silently expanding the scope.
   not permission to erase the earlier result.
 - Update current factual owners with the implementation. Commit each coherent
   verified result separately while preserving unrelated staged or untracked
-  work. A ready branch commit is not integration into main.
+  work. A ready branch commit is not integration into the selected target branch.
 - Close an issue only when every acceptance and integration obligation is met.
   Missing prerequisites, incomplete consumers and deadcode failures stay visible.
 

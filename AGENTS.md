@@ -8,7 +8,9 @@
   from `old` unless a current research record explicitly justifies doing so.
 - Go is the selected language and runtime foundation for the maintained project
   under ADR-0009. Accepted ADRs also select one bounded closed-alpha native
-  Route, wire grammar, and TCP/TLS plus QUIC Carrier set; those selections do
+  Route and wire grammar. [ADR-0122](docs/adr/0122-select-tcp-only-closed-release.md)
+  selects TCP/TLS alone for the nearest closed release; QUIC remains deferred
+  with explicit pre-effect refusal and no fallback. Those selections do
   not imply a public or long-term protocol commitment. Public transport,
   storage, consensus and blockchain remain unselected. ADR-0081 selects the
   bounded closed Ubuntu text-Service successor, including its Application
@@ -77,9 +79,10 @@
 - Before any Route migration edit, and after every context compaction or
   handoff, read [the Route migration contract](docs/development/route-migration-contract.md)
   from disk in full. Conversation summaries and checkpoints do not replace it.
-- New Route connects only to new domains and new command composition. No old
-  runtime imports, reverse consumers, delegating wrappers, callback bridges or
-  shared live roots are permitted, including in tests.
+- New Route connects only to new domains and the exact command consumers
+  admitted by the contract's R01 boundary. No old runtime imports, unadmitted
+  reverse consumers, delegating wrappers, callback bridges or shared live roots
+  are permitted, including in tests.
 - The contract owns the restart checklist and acceptance boundary. Do not
   relax it or its architecture checks to make implementation pass. Report a
   consequential contradiction with evidence and a concrete proposal; only a
@@ -115,6 +118,18 @@ requirement, implementation plan, support claim, or backlog item.
 The C0 Closed Alpha delivery state belongs in the selected issue tracker and
 milestone. Current product documents state the contract and its limits; they
 must not become a second task ledger or repeat historical campaign chronology.
+
+For a plan or audit, inspect existing owners and real consumers before proposing
+new structure. Distinguish observed facts, reported receipts, hypotheses and
+proposed changes. A documentation-only request does not select implementation,
+dependency updates or experiments. The local [DDD skill](.agents/skills/ddd/SKILL.md)
+uses the existing glossary and domain map; it does not require parallel model
+documents or a new set of tactical patterns. Read the relevant sections of large
+owners; the mandatory full Route-contract and domain-map reads still apply.
+
+Follow [maintained entry documents](docs/development/documentation.md#maintained-entry-documents)
+when updating policy, maps, testing or skills. Link the owning rule instead of
+copying it or appending implementation chronology to an entry document.
 
 ## C0 work-in-progress limit
 
@@ -220,8 +235,10 @@ verification, or acceptance obligations.
 - `CONTEXT.md` is the canonical glossary and contains product language only.
 - Update the glossary when a domain term is resolved; avoid implementation
   details there.
-- Human-facing names are Service Names. Opaque cryptographic targets are not the
-  normal user experience.
+- Service Names are the intended human-facing naming model. The selected closed
+  scope currently uses explicit Target Links; accepting Service Name access
+  requires its own selected contract. Do not infer a Naming implementation from
+  the glossary or expose a raw cryptographic target as a substitute user journey.
 - Person, Device, Persona, transport identity, Service Target, Credential, and
   Capability are separate concepts and must not be collapsed silently.
 

@@ -31,21 +31,17 @@ co-location grants none of them access to another zone's authority material.
 
 ### Temporary successor source isolation
 
-The Product Owner selected `internal/successor/` as a temporary grouping zone
-for independently developed replacement components on 2026-10-02. It has no
-root Go package and creates no runtime, wire or domain identity. The reserved
-composition command path is `cmd/ardents-next`; it is added only with real
-behavior. Source and test imports are restricted to the standard library and
-the successor zone by the architecture gate. Existing product packages cannot
-import the zone. Exact cross-package imports are registered in the package map;
-directory nesting grants no implicit permission. The reviewed third-party
-exceptions are the enumerated OpenTelemetry command/test imports and CIRCL
-blindrsa in `admission/issuance`. The public `admission/issuerprofile` grammar
-and Hosting use only the standard library. Admission issuer-profile Signing depends only on that
-public profile contract; its pure parent cannot import Signing, and Signing cannot import Admission's ledger or issuance owner.
-Each real child package still requires the normal registration, behavior tests,
-non-test caller and permitted imports. Existing contracts and qualification
-obligations remain in force. See `internal/successor/README.md`.
+`internal/successor/` is a temporary grouping zone for isolated replacement
+components, with no root Go package, runtime, wire or domain identity.
+`cmd/ardents-next` is a real composition consumer; its name does not determine
+whether its implementation is current or require its retirement.
+The [package map](package-map.md) owns exact production/test imports and registered
+consumers; the [dependency register](dependencies.md) owns third-party admission.
+The [Route migration contract](route-migration-contract.md#r01-isolate-both-directions)
+additionally restricts both directions and enumerates its exact canonical
+composition exceptions. No wildcard permission follows from this directory.
+Each real child package still needs registration, behavior tests and a non-test
+caller. See the [implementation entry point](../../internal/successor/README.md).
 
 | Zone | Purpose |
 |---|---|

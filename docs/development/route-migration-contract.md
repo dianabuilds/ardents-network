@@ -18,8 +18,8 @@ all other Route behavior, authority/bytes/lifetime rules and mandatory checks.
 Historical both-Carrier receipts remain evidence of their original artifacts.
 
 The [execution owner's current-selection rule](agent-execution.md#current-selection-takes-precedence)
-and [#497](https://github.com/dianabuilds/ardents-network/issues/497) govern work
-admission. This contract cannot restore an earlier automatic next-domain
+and the selected parent/child issues govern work admission.
+This contract cannot restore an earlier automatic next-domain
 assignment; a committed prerequisite or documentation correction selects no
 implementation.
 
@@ -55,15 +55,15 @@ choices within the accepted scope do not require repeated permission.
 
 ## Workspace and sequential development
 
-The Product Owner explicitly directed this migration to continue in the existing
-project checkout on 2026-10-04: development is required; another worktree is not.
-Use `C:/Users/vitek/code/ardents-network`, preserve its existing branch and mixed
-work, and keep one implementation owner. Do not create or require another Route
+Continue in the existing project checkout selected by the Product Owner;
+verify its actual path from the active task rather than a historical host path.
+Preserve its existing branch and mixed work, and keep one implementation owner.
+Do not create or require another Route
 worktree. A needed Network component and its dependent Route operation form
 a sequential chain: commit and verify that exact prerequisite before selected
 dependent implementation in this checkout. They cannot be parallel
 implementations. Component readiness does not require full acceptance of every
-Network responsibility. #497 owns full-domain transition gates. A committed
+Network responsibility. The selected parent plan owns full-domain transition gates. A committed
 prerequisite is a source requirement, not permission to start another domain or
 create another checkout.
 
@@ -73,8 +73,8 @@ WIP and workspace rules. Available WIP capacity does not make dependent work
 independent. The conditional instructions below apply to an authorized change
 of execution arrangement, not to routine continuation of this domain chain.
 
-The Product Owner corrected the sequencing on 2026-10-04: first obtain the
-predecessor's scoped commit and verification of that exact revision. If another
+First obtain the predecessor's scoped commit and verification of that exact
+revision. If another
 checkout is explicitly authorized, prepare it only after that verification.
 Do not create a worktree from an
 older base and copy uncommitted predecessor implementation into it. A checked
@@ -98,7 +98,8 @@ authoritative contract path/revision when the worktree does not yet contain it:
 Implement only the explicitly selected Route slice. Before any edit and after
 every compaction/handoff, read AGENTS.md and docs/development/route-migration-contract.md
 in full from disk. Verify that the policy and its architecture guard exist in
-this worktree. New Route connects only to new domains and ardents-next; no old
+this worktree. New Route connects only to new domains and the exact composition
+consumers admitted by R01; no old
 runtime bridge, reverse consumer, test import or shared live root is permitted.
 Do not weaken policy or checks. Preserve unrelated work and report evidence
 for the real accepted boundary. Summaries do not override the contract.
@@ -261,16 +262,16 @@ behavior tests, at least one real non-test consumer and exact package-map import
 in the same change. No wrapper-only caller or test-only reachability.
 
 The new command must drive actual Route operations with actual new authority,
-Admission and Hosting owners and real TCP/TLS and QUIC as applicable to the
-selected slice. Parsing a plan or printing a prepared result is not transport
+Admission and Hosting owners and real TCP/TLS under ADR-0122, with explicit
+pre-effect QUIC refusal and no fallback. Parsing a plan or printing a prepared result is not transport
 acceptance. Unit fixtures and injected failures may isolate a stated boundary;
 they cannot supply missing successful authority, storage ACK, Service readiness
 or Instance authentication in a claimed integrated scenario.
 
-Until new Publication, Reachability, Connection and execution consumers exist,
-their full scenarios remain unavailable. Implement and verify bounded Route
-work; do not fill the gap with old consumers or reclassify missing evidence as
-successful integration.
+Full Publication, Reachability, Connection and Execution scenarios require their
+genuine new consumers and applicable acceptance evidence. A component's existence
+alone does not establish that result. Do not fill missing behavior with old
+consumers or reclassify missing evidence as successful integration.
 
 ### R08: Enforce rather than waive
 
@@ -303,7 +304,7 @@ authority contradictions must be surfaced, not silently worked around.
 [Agent execution](agent-execution.md#delegated-project-wide-domain-transition)
 owns the common design, visible ownership, correction, evidence, scoped Git
 delivery and handoff workflow. Verify the current selected executor and
-arrangement in #497 and the selected child issue; historical Route assignments
+arrangement in the selected parent and child issues; historical Route assignments
 are not a second live ledger. The [domain map](domain-map.md) owns exclusive
 responsibilities and collaborations. Reread it after compaction and reconcile
 both neighbors of any accepted ownership transfer without dropping future
@@ -321,7 +322,8 @@ Refresh those contracts and the Route owner map. Before dependent implementation
 verify the selected issue, milestone/WIP, current human selection, existing
 checkout, visible assigned executor and exclusive ownership. A finished
 predecessor cannot replace design, a real acceptance boundary or permission
-under the current hold. Follow #497's exact full-domain handoff conditions.
+under the current selection. Follow the selected parent plan's exact full-domain
+handoff conditions.
 
 ### Give the implementer a bounded objective
 
@@ -358,7 +360,8 @@ signed current State, genuine tokens and durable roots; no spend/reservation
 on pre-admission authority loss; no refund after durable spend; state change
 during I/O; expiry/cancellation; exactly-once ownership transfer/release;
 retained reservations until physical join; durable reopen/uncertain writes;
-accepted canonical bytes; and both TCP/TLS and QUIC. Race checks exercise shared
+accepted canonical bytes; positive TCP/TLS and pre-effect QUIC refusal under
+ADR-0122. Race checks exercise shared
 budget, parent/child progress, revocation and late completion where applicable.
 Check neighboring behavior too; a Route pass cannot hide a regression or
 duplicated policy. Use causal negative controls and independent byte oracles.
@@ -371,15 +374,15 @@ genuine Service consumers and installed/privacy qualification remain explicit.
 ## Acceptance checklist
 
 This checklist owns Route engineering obligations for a selected slice;
-#497 and the selected child issue own full-domain acceptance and transition.
+The selected parent and child issues own full-domain acceptance and transition.
 For each completed slice verify, with source and evidence identity:
 
 - [ ] Selected issue/WIP and current owners verified; no unrelated work lost.
 - [ ] Responsibilities classified; rules live with the proper new owner.
-- [ ] No old/new Route imports, wrappers, callbacks, process bridges or live roots.
+- [ ] No unadmitted old/new Route imports, wrappers, callbacks, process bridges or live roots.
 - [ ] Exact package/import/dependency registration; no speculative API/package.
 - [ ] Real new command consumer and genuine owner-backed operation.
-- [ ] Both selected Carriers and selected failure/race/reopen cases evidenced.
+- [ ] TCP/TLS, deferred-QUIC refusal and selected failure/race/reopen cases evidenced.
 - [ ] Presentation/reservation/spend and stop/join/release ordering preserved.
 - [ ] Accepted bytes, identities, authority/deadline and durable floors preserved.
 - [ ] No unaccepted quota, selection, retry or privacy-policy change.

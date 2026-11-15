@@ -2560,6 +2560,10 @@ retains its original Startup use, the finite observer retains its own use, and
 Close denies admission and joins the observer and every waiter before releasing
 native custody. Cancellation and late physical failure deny queued work and
 remain in the original terminal result.
+Before sealing the next batch, the one-processor observer yields to resumed
+consumers so their fresh post-I/O requests can be admitted before that next
+physical round. This admits no request during or after a round and changes no
+supervisor timer or freshness boundary.
 
 Canonical Forwarding passes the original `Startup.Check` as State's
 `PermitWork`. Both State openers check it before durable root I/O;
