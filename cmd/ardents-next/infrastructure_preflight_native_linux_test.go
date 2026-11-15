@@ -11,6 +11,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -104,7 +105,7 @@ func writeSourcePreflightRequest(t *testing.T, path string, r infrastructure.Sou
 func TestSourcePreflightNativeCompiledInitialCandidateAndNoEffects(t *testing.T) {
 	binary := sourcePreflightCommand(t)
 	r, request := sourcePreflightFixture(t)
-	dir, pin, _ := infrastructureDistribution(t, binary, nil, 1, nil, []byte(infrastructure.SourceTemplate))
+	dir, pin, _ := infrastructureDistribution(t, binary, nil, 1, nil, []byte(deployment.SourceTemplate))
 	history := filepath.Join(filepath.Dir(dir), "history")
 	program := filepath.Join(dir, "ardents-node-linux-amd64")
 	args := []string{"infrastructure", "preflight-initial", dir, pin, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339), request}
@@ -295,7 +296,7 @@ func TestSourcePreflightNativeIsolatedForeignAccountUnitAndAlias(t *testing.T) {
 	}
 	binary := sourcePreflightCommand(t)
 	r, request := sourcePreflightFixture(t)
-	dir, pin, _ := infrastructureDistribution(t, binary, nil, 1, nil, []byte(infrastructure.SourceTemplate))
+	dir, pin, _ := infrastructureDistribution(t, binary, nil, 1, nil, []byte(deployment.SourceTemplate))
 	history := filepath.Join(filepath.Dir(dir), "history")
 	program := filepath.Join(dir, "ardents-node-linux-amd64")
 	run := func(args []string, want bool) {

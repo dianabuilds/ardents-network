@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -200,7 +201,7 @@ func stoppedDistribution(t *testing.T, binary []byte) (string, string, map[strin
 		t.Fatal(err)
 	}
 	t.Log("retained original distribution/history parent", parent)
-	return infrastructureDistributionRoot(t, parent, binary, nil, 1, nil, []byte(infrastructure.SourceTemplate))
+	return infrastructureDistributionRoot(t, parent, binary, nil, 1, nil, []byte(deployment.SourceTemplate))
 }
 
 func TestSourceStoppedNativeCompiledPreEffectRefusals(t *testing.T) {

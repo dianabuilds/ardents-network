@@ -664,6 +664,22 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/nodeprincipal/creator_linux.go" || source == "internal/successor/installation/join/startup_linux.go" || source == "internal/successor/installation/descriptor/startup_linux.go" || source == "internal/successor/installation/forwarding/startup_linux.go" || source == "internal/successor/installation/introduction/startup_linux.go" || source == "internal/successor/installation/infrastructure/source_startup_linux.go" || source == "internal/successor/installation/infrastructure/source_observation_linux.go") && dependency == modulePath+"/internal/successor/ubuntu" {
 		return true
 	}
+	if dependency == modulePath+"/internal/successor/deployment" {
+		switch source {
+		case "cmd/ardents-control/source_artifact_linux.go",
+			"cmd/ardents-control/source_release_native_linux_test.go",
+			"cmd/ardents-control/source_release_plan_linux.go",
+			"cmd/ardents-next/infrastructure_preflight_native_linux_test.go",
+			"cmd/ardents-next/infrastructure_stopped_native_linux_test.go",
+			"internal/successor/installation/forwarding/unit_test.go",
+			"internal/successor/installation/infrastructure/source_binding.go",
+			"internal/successor/installation/infrastructure/source_recovery_pair_native_linux_test.go",
+			"internal/successor/installation/infrastructure/source_recovery_writing_native_linux_test.go",
+			"internal/successor/installation/infrastructure/source_request.go",
+			"internal/successor/installation/infrastructure/source_request_test.go":
+			return true
+		}
+	}
 	if (source == "internal/successor/installation/forwarding/start_records_linux.go" || source == "internal/successor/installation/forwarding/start_storage_linux.go") && dependency == modulePath+"/internal/successor/installation/journal" {
 		return true
 	}
@@ -733,7 +749,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/source_initial_network_linux.go" && (dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/network/source") {
 			return true
 		}
-		if source == "cmd/ardents-control/source_release_native_linux_test.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
+		if source == "cmd/ardents-control/source_release_native_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
 		if source == "cmd/ardents-control/source_release_coherence_native_linux_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
@@ -748,10 +764,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/source_release_predecessor_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
-		if source == "cmd/ardents-control/source_release_plan_linux.go" && dependency == modulePath+"/internal/successor/installation/infrastructure" {
-			return true
-		}
-		if source == "cmd/ardents-control/source_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
+		if source == "cmd/ardents-control/source_artifact_linux.go" && dependency == modulePath+"/internal/successor/enrollment" {
 			return true
 		}
 		if source == "cmd/ardents-control/join_hosting_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/join") {
@@ -1043,9 +1056,6 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/attempt_linux.go" && dependency == modulePath+"/internal/successor/installation/journal" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/unit_test.go" && dependency == modulePath+"/internal/successor/installation/infrastructure" {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {

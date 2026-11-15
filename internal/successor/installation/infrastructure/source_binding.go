@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"strings"
 
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
@@ -73,8 +74,8 @@ func validateSourceBindingConfiguration(b sourceBinding) error {
 	if _, err = DecodeSourceRequest(request); err != nil || digest(request) != b.RequestSHA256 {
 		return ErrBinding
 	}
-	unit, err := RenderSourceUnit([]byte(SourceTemplate), b.Request, b.Generation)
-	if err != nil || b.TemplateSHA256 != digest([]byte(SourceTemplate)) || b.UnitSHA256 != digest(unit) {
+	unit, err := RenderSourceUnit([]byte(deployment.SourceTemplate), b.Request, b.Generation)
+	if err != nil || b.TemplateSHA256 != digest([]byte(deployment.SourceTemplate)) || b.UnitSHA256 != digest(unit) {
 		return ErrBinding
 	}
 	return nil

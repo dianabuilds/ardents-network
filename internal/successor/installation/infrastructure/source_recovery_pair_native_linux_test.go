@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -75,7 +76,7 @@ func sourceRecoveryPairNativeCase(t *testing.T, count int, selectedNew, unitNew,
 		t.Fatal(err)
 	}
 	oldBinding.Generation = strings.Repeat("f", 64)
-	oldUnit, err := RenderSourceUnit([]byte(SourceTemplate), oldBinding.Request, oldBinding.Generation)
+	oldUnit, err := RenderSourceUnit([]byte(deployment.SourceTemplate), oldBinding.Request, oldBinding.Generation)
 	if err != nil {
 		t.Fatal("render original fixture unit", err)
 	}
@@ -83,7 +84,7 @@ func sourceRecoveryPairNativeCase(t *testing.T, count int, selectedNew, unitNew,
 	oldRaw = sourceRecoveryPairNativeJSON(t, oldBinding)
 	vector, binding, _ := sourceReplacementRecordVector(t)
 	binding.PredecessorBindingSHA256 = digest(oldRaw)
-	newUnit, err := RenderSourceUnit([]byte(SourceTemplate), binding.Configuration.Request, binding.Configuration.Generation)
+	newUnit, err := RenderSourceUnit([]byte(deployment.SourceTemplate), binding.Configuration.Request, binding.Configuration.Generation)
 	if err != nil {
 		t.Fatal("render candidate fixture unit", err)
 	}

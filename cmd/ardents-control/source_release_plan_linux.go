@@ -6,10 +6,10 @@ import (
 	"debug/elf"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -97,7 +97,7 @@ func sourceDeclarationObject(raw []byte, value any, fields ...string) error {
 
 func validateSourceReleaseResources(plan sourceReleasePlan, program, descriptor, template []byte) error {
 	d, err := releaseartifact.ValidateResources(descriptor, program, template)
-	if err != nil || (plan.Schema == "ardents-source-initial-release-plan-v1" && d.ReleaseVersion != 1) || !bytes.Equal(template, []byte(infrastructure.SourceTemplate)) {
+	if err != nil || (plan.Schema == "ardents-source-initial-release-plan-v1" && d.ReleaseVersion != 1) || !bytes.Equal(template, []byte(deployment.SourceTemplate)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))

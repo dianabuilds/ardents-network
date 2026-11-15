@@ -1,10 +1,9 @@
 package forwarding
 
 import (
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"strings"
 	"testing"
-
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 )
 
 func TestForwardingUnitIndependentFixedPolicy(t *testing.T) {
@@ -28,7 +27,7 @@ func TestForwardingUnitIndependentFixedPolicy(t *testing.T) {
 			t.Fatal("changed fixed policy accepted", mutation)
 		}
 	}
-	for _, template := range []string{infrastructure.SourceTemplate, Template + "\nExecStartPost=/bin/true\n"} {
+	for _, template := range []string{deployment.SourceTemplate, Template + "\nExecStartPost=/bin/true\n"} {
 		if _, err := RenderUnit([]byte(template), r, generation); err == nil {
 			t.Fatal("foreign template accepted")
 		}

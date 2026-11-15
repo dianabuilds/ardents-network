@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"io"
 	"os"
 	"os/signal"
@@ -17,7 +18,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -59,7 +59,7 @@ func prepareSourceArtifact(ctx context.Context, args []string, observe func(stri
 		if len(args) != 2 {
 			return nil, errSourceControlInput
 		}
-		result = []byte(infrastructure.SourceTemplate)
+		result = []byte(deployment.SourceTemplate)
 		name, destination = releaseartifact.TemplateName, args[1]
 	case "prepare-descriptor":
 		if len(args) != 6 {

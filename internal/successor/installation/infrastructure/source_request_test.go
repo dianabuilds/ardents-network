@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"strings"
 	"testing"
 )
@@ -97,7 +98,7 @@ func TestSourceRequestSeparatesRootDeliveryFromRuntimeNamespace(t *testing.T) {
 }
 
 func TestSourceTemplateExactPolicyAndRendering(t *testing.T) {
-	if SourceTemplate != sourceTemplateOracle {
+	if deployment.SourceTemplate != sourceTemplateOracle {
 		t.Fatal("Source release template differs from independent complete byte vector")
 	}
 	r, err := DecodeSourceRequest([]byte(sourceRequestOracle))
@@ -105,7 +106,7 @@ func TestSourceTemplateExactPolicyAndRendering(t *testing.T) {
 		t.Fatal(err)
 	}
 	generation := strings.Repeat("a", 64)
-	raw, err := RenderSourceUnit([]byte(SourceTemplate), r, generation)
+	raw, err := RenderSourceUnit([]byte(deployment.SourceTemplate), r, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,15 +125,15 @@ func TestSourceTemplateExactPolicyAndRendering(t *testing.T) {
 	}
 	// Every deleted, changed, doubled or additional policy line refuses. This
 	// includes hooks, supplementary groups, resource changes and Endpoint units.
-	for _, line := range strings.Split(strings.TrimSuffix(SourceTemplate, "\n"), "\n") {
-		for _, bad := range []string{strings.Replace(SourceTemplate, line+"\n", "", 1), strings.Replace(SourceTemplate, line+"\n", line+"x\n", 1), SourceTemplate + line + "\n"} {
+	for _, line := range strings.Split(strings.TrimSuffix(deployment.SourceTemplate, "\n"), "\n") {
+		for _, bad := range []string{strings.Replace(deployment.SourceTemplate, line+"\n", "", 1), strings.Replace(deployment.SourceTemplate, line+"\n", line+"x\n", 1), deployment.SourceTemplate + line + "\n"} {
 			if _, err := RenderSourceUnit([]byte(bad), r, generation); err == nil {
 				t.Fatal("altered template accepted", line)
 			}
 		}
 	}
 	for _, bad := range []string{"", "../generation", strings.Repeat("A", 64)} {
-		if _, err := RenderSourceUnit([]byte(SourceTemplate), r, bad); err == nil {
+		if _, err := RenderSourceUnit([]byte(deployment.SourceTemplate), r, bad); err == nil {
 			t.Fatal("unbound generation accepted")
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -97,7 +98,7 @@ func TestSourceRecoveryWritingNativeCompleteGrammarEnvelope(t *testing.T) {
 		t.Fatal(err)
 	}
 	configuration.Configuration.RequestSHA256 = digest(append(request, '\n'))
-	unit, err := RenderSourceUnit([]byte(SourceTemplate), configuration.Configuration.Request, configuration.Configuration.Generation)
+	unit, err := RenderSourceUnit([]byte(deployment.SourceTemplate), configuration.Configuration.Request, configuration.Configuration.Generation)
 	if err != nil {
 		t.Fatal(err)
 	}
