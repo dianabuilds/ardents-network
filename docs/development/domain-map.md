@@ -431,6 +431,11 @@ and [Route integration](route-delivery-join-boundary.md) own the complete rules:
   Hosting, Stock and State close. Startup/ACK and diagnostics supply no worker or
   Service permission; live Execution admission remains separate.
 
+The installed Forwarding, JOIN, Descriptor and Introduction Nodes withdraw their
+original Network participation only after their own physical cleanup succeeds;
+a failed cleanup retains the durable conflict restriction. Command-owned State
+and Startup still close later and require their own joined outcome.
+
 Source hashes, attempts, receipt provenance and acceptance remain in the selected
 GitHub ledger and existing evidence, not this map. Documentation consolidation
 cannot upgrade an inspected result to reproduced or qualified evidence.
