@@ -41,7 +41,7 @@ func prepareSuccessorNative(ctx context.Context, filename string) (result *succe
 	if err := observeInstallationPlatform(ctx); err != nil {
 		return nil, err
 	}
-	request, err := readOwnedRequest(ctx, filename, false)
+	request, err := requestinput.ReadOwned(ctx, filename, false)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func prepareSuccessorNative(ctx context.Context, filename string) (result *succe
 	}
 	if request.ReleaseHistoryRoot() != previous.binding.ReleaseFloorRoot ||
 		declared.Headless.NetworkID != previous.request.Headless.NetworkID ||
-		!slices.Equal(mutableRoots(declared.Headless), mutableRoots(previous.request.Headless)) {
+		!slices.Equal(requestinput.MutableRoots(declared.Headless), requestinput.MutableRoots(previous.request.Headless)) {
 		return nil, ErrBinding
 	}
 	owned.previous = previous
@@ -419,11 +419,11 @@ func (owned *successorPreparation) inspectStagedCandidate() error {
 // Public facts in the immutable owned intent constrain recovery; they cannot
 // replay opaque authorizations. Preserve the accepted successor-v1 identity.
 type successorTransitionIntent struct {
-	Schema           string              `json:"schema"`
-	Previous         generationSelection `json:"previous"`
-	Candidate        generationSelection `json:"candidate"`
-	CandidateBinding generationBinding   `json:"candidate_binding"`
-	Request          installationRequest `json:"request"`
+	Schema           string                   `json:"schema"`
+	Previous         generationSelection      `json:"previous"`
+	Candidate        generationSelection      `json:"candidate"`
+	CandidateBinding generationBinding        `json:"candidate_binding"`
+	Request          requestinput.Declaration `json:"request"`
 }
 
 func openSuccessor(ctx context.Context, filename string) (*successorPreparation, requestinput.Document, error) {

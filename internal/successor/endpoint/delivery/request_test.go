@@ -19,7 +19,7 @@ func requestFixture() []byte {
 
 func TestInstallationRequestPortableAdmission(t *testing.T) {
 	raw := requestFixture()
-	r, err := decodeRequest(t.Context(), raw, true)
+	r, err := requestinput.Decode(t.Context(), raw, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,13 +31,13 @@ func TestInstallationRequestPortableAdmission(t *testing.T) {
 		t.Fatal("request retained caller bytes")
 	}
 	withoutPin := strings.Replace(string(requestFixture()), `"manifest_sha256":"`+strings.Repeat("01", 32)+`",`, "", 1)
-	if _, err := decodeRequest(t.Context(), []byte(withoutPin), false); err != nil {
+	if _, err := requestinput.Decode(t.Context(), []byte(withoutPin), false); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := decodeRequest(t.Context(), []byte(withoutPin), true); !errors.Is(err, ErrInput) {
+	if _, err := requestinput.Decode(t.Context(), []byte(withoutPin), true); !errors.Is(err, ErrInput) {
 		t.Fatal("initial request accepted without independent pin")
 	}
-	if _, err := decodeRequest(t.Context(), requestFixture(), false); !errors.Is(err, ErrInput) {
+	if _, err := requestinput.Decode(t.Context(), requestFixture(), false); !errors.Is(err, ErrInput) {
 		t.Fatal("successor request accepted initial pin")
 	}
 	publisher := strings.NewReplacer(
@@ -47,7 +47,7 @@ func TestInstallationRequestPortableAdmission(t *testing.T) {
 		`"publication_root":""`, `"publication_root":"/publication","service_instance_root":"/instance"`,
 		`"administration_principal":""`, `"administration_principal":"`+strings.Repeat("09", 32)+`"`,
 	).Replace(string(requestFixture()))
-	if _, err := decodeRequest(t.Context(), []byte(publisher), true); err != nil {
+	if _, err := requestinput.Decode(t.Context(), []byte(publisher), true); err != nil {
 		t.Fatalf("ordinary participant declarations refused: %v", err)
 	}
 }
@@ -68,7 +68,7 @@ func (c *requestHandoffCancellation) Err() error {
 func TestInstallationRequestOriginalCancellationAtHandoff(t *testing.T) {
 	// A bounded CPU decode still owes its original caller a final handoff check.
 	ctx := &requestHandoffCancellation{Context: context.Background()}
-	r, err := decodeRequest(ctx, requestFixture(), true)
+	r, err := requestinput.Decode(ctx, requestFixture(), true)
 	if !errors.Is(err, context.Canceled) || requestHasDeclaration(r) {
 		t.Fatal("late cancellation published checked declarations")
 	}
@@ -105,7 +105,7 @@ func TestInstallationRequestCausalRefusals(t *testing.T) {
 		"oversized":      func(s string) string { return s + strings.Repeat(" ", 64<<10) },
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := decodeRequest(t.Context(), []byte(mutation(string(requestFixture()))), true); !errors.Is(err, ErrInput) {
+			if _, err := requestinput.Decode(t.Context(), []byte(mutation(string(requestFixture()))), true); !errors.Is(err, ErrInput) {
 				t.Fatalf("invalid declaration accepted: %v", err)
 			}
 		})
@@ -118,7 +118,7 @@ func TestInstallationRequestCausalRefusals(t *testing.T) {
 		want error
 	}{{"original-cancellation", ctx, context.Canceled}, {"nil-context", nil, ErrInput}} {
 		t.Run(input.name, func(t *testing.T) {
-			if _, err := decodeRequest(input.ctx, requestFixture(), true); !errors.Is(err, input.want) {
+			if _, err := requestinput.Decode(input.ctx, requestFixture(), true); !errors.Is(err, input.want) {
 				t.Fatalf("invalid context admitted: %v", err)
 			}
 		})
@@ -128,15 +128,15 @@ func TestInstallationRequestCausalRefusals(t *testing.T) {
 func TestOwnedRequestRefusesBeforeAcquiringCustody(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if request, err := readOwnedRequest(ctx, "/never-opened", true); !errors.Is(err, context.Canceled) || request.Origin() != nil || requestHasDeclaration(request) {
+	if request, err := requestinput.ReadOwned(ctx, "/never-opened", true); !errors.Is(err, context.Canceled) || request.Origin() != nil || requestHasDeclaration(request) {
 		t.Fatalf("original cancellation lost: %v", err)
 	}
 	for _, filename := range []string{"", "relative", "/directory/../request"} {
-		if request, err := readOwnedRequest(t.Context(), filename, true); err == nil || request.Origin() != nil || requestHasDeclaration(request) {
+		if request, err := requestinput.ReadOwned(t.Context(), filename, true); err == nil || request.Origin() != nil || requestHasDeclaration(request) {
 			t.Fatalf("invalid native input acquired custody: %v", err)
 		}
 	}
-	request, err := decodeRequest(t.Context(), requestFixture(), true)
+	request, err := requestinput.Decode(t.Context(), requestFixture(), true)
 	if err != nil || request.Origin() != nil {
 		t.Fatal("portable declarations became native provenance")
 	}

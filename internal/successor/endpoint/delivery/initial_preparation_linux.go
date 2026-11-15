@@ -110,7 +110,7 @@ func prepareInitialNative(ctx context.Context, request requestinput.Document, au
 			return nil, directoryObservationError(err)
 		}
 	}
-	for _, path := range mutableRoots(declared.Headless) {
+	for _, path := range requestinput.MutableRoots(declared.Headless) {
 		identity, err := owned.created.Identity(path)
 		if err != nil {
 			return nil, directoryObservationError(err)
@@ -447,7 +447,7 @@ func readProvisionRequest(ctx context.Context, filename string) (requestinput.Do
 	if err := observeInstallationPlatform(ctx); err != nil {
 		return requestinput.Document{}, err
 	}
-	request, err := readOwnedRequest(ctx, filename, true)
+	request, err := requestinput.ReadOwned(ctx, filename, true)
 	if err != nil {
 		return requestinput.Document{}, err
 	}

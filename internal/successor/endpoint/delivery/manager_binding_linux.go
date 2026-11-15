@@ -7,6 +7,8 @@ import (
 	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/unit"
 	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
 	"strings"
+
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 )
 
 type managerProperties = systemdproperty.Properties
@@ -25,7 +27,7 @@ func unitObservationError(err error) error {
 	}
 }
 
-func verifyStoppedEndpointProperties(version string, unit, service managerProperties, request installationRequest, generationDigest string) error {
+func verifyStoppedEndpointProperties(version string, unit, service managerProperties, request requestinput.Declaration, generationDigest string) error {
 	expected, err := expectedUnit(request)
 	if err != nil {
 		return err
@@ -33,7 +35,7 @@ func verifyStoppedEndpointProperties(version string, unit, service managerProper
 	return unitObservationError(endpointunit.VerifyFreshStopped(version, unit, service, expected, generationDigest))
 }
 
-func verifyEndpointConfiguration(version string, unit, service managerProperties, request installationRequest, generationDigest string) error {
+func verifyEndpointConfiguration(version string, unit, service managerProperties, request requestinput.Declaration, generationDigest string) error {
 	expected, err := expectedUnit(request)
 	if err != nil {
 		return err
@@ -41,7 +43,7 @@ func verifyEndpointConfiguration(version string, unit, service managerProperties
 	return unitObservationError(endpointunit.VerifyConfiguration(version, unit, service, expected, generationDigest))
 }
 
-func verifyRunningEndpointProperties(version string, unit, service managerProperties, request installationRequest, generationDigest string, pid uint32, invocation [16]byte) error {
+func verifyRunningEndpointProperties(version string, unit, service managerProperties, request requestinput.Declaration, generationDigest string, pid uint32, invocation [16]byte) error {
 	expected, err := expectedUnit(request)
 	if err != nil {
 		return err
@@ -49,7 +51,7 @@ func verifyRunningEndpointProperties(version string, unit, service managerProper
 	return unitObservationError(endpointunit.VerifyRunning(version, unit, service, expected, generationDigest, pid, invocation))
 }
 
-func verifyQuiescentEndpointProperties(version string, unit, service managerProperties, request installationRequest, generationDigest string) error {
+func verifyQuiescentEndpointProperties(version string, unit, service managerProperties, request requestinput.Declaration, generationDigest string) error {
 	expected, err := expectedUnit(request)
 	if err != nil {
 		return err
@@ -64,7 +66,7 @@ func endpointManagerInvocation(unit, service managerProperties) (uint32, [16]byt
 func verifyNoQueuedEndpointJob(unit managerProperties) error {
 	return unitObservationError(endpointunit.VerifyNoJob(unit))
 }
-func verifyStoppedAttemptProperties(version string, unit, service managerProperties, request installationRequest, generationDigest string) error {
+func verifyStoppedAttemptProperties(version string, unit, service managerProperties, request requestinput.Declaration, generationDigest string) error {
 	expected, err := expectedUnit(request)
 	if err != nil {
 		return err

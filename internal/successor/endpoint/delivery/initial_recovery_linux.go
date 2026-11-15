@@ -73,7 +73,7 @@ func openInitialRecovery(ctx context.Context, root string, reference time.Time) 
 	if _, err := rootDirectoryAncestors(intent.Request.ReleaseFloorRoot); err != nil {
 		return nil, err
 	}
-	wantedRoots := mutableRoots(intent.Request.Headless)
+	wantedRoots := requestinput.MutableRoots(intent.Request.Headless)
 	if len(wantedRoots) != len(intent.CandidateBinding.MutableRoots) {
 		return nil, ErrBinding
 	}

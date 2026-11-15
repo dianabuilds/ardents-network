@@ -59,8 +59,8 @@ func closeSuccessor(*successorPreparation) (error, bool) { return nil, true }
 
 type successorRecoveryNative struct{}
 
-func openSuccessorRecovery(context.Context, string, time.Time) (*successorRecoveryNative, installationRequest, error) {
-	return nil, installationRequest{}, ErrNativeUnavailable
+func openSuccessorRecovery(context.Context, string, time.Time) (*successorRecoveryNative, requestinput.Declaration, error) {
+	return nil, requestinput.Declaration{}, ErrNativeUnavailable
 }
 
 func completeSuccessorRecovery(context.Context, *successorRecoveryNative, time.Time, *release.Verifier, enrollment.Candidate, release.Inputs) (ProvisionResult, error) {

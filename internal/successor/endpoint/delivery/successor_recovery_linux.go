@@ -42,7 +42,7 @@ type successorRecoveryNative struct {
 	writing            *generationWriteRecovery
 }
 
-func openSuccessorRecovery(ctx context.Context, root string, reference time.Time) (result *successorRecoveryNative, request installationRequest, returnedErr error) {
+func openSuccessorRecovery(ctx context.Context, root string, reference time.Time) (result *successorRecoveryNative, request requestinput.Declaration, returnedErr error) {
 	if err := observeInstallationPlatform(ctx); err != nil {
 		return nil, request, err
 	}
@@ -542,7 +542,7 @@ func (r *successorRecoveryNative) openWritingTransition(ctx context.Context) err
 	if err != nil {
 		return err
 	}
-	request, err := decodeRequest(ctx, requestBody, false)
+	request, err := requestinput.Decode(ctx, requestBody, false)
 	if err != nil {
 		return err
 	}
@@ -567,7 +567,7 @@ func (r *successorRecoveryNative) openWritingTransition(ctx context.Context) err
 func (r *successorRecoveryNative) validateWritingBinding() error {
 	b, old, request := r.intent.CandidateBinding, r.previous.binding, r.intent.Request
 	encoded, err := canonicalJSON(b)
-	if err != nil || len(encoded) > 32<<10 || digestHex(encoded) != r.intent.Candidate.BindingDigest || b.Schema != "ardents-endpoint-installation-binding-v1" || b.InstallationRoot != r.reader.lease.path || b.GenerationDigest != r.intent.Candidate.GenerationDigest || b.Account != "ardents-endpoint" || b.Unit != "ardents-endpoint.service" || b.UID == 0 || b.UID == ^uint32(0) || b.UID != old.UID || b.GID != r.reader.gid || b.GID != old.GID || b.ReleaseFloorRoot != request.ReleaseFloorRoot || b.ReleaseFloorRoot != old.ReleaseFloorRoot || !slices.Equal(b.MutableRoots, old.MutableRoots) || !slices.Equal(mutableRoots(request.Headless), mutableRoots(r.previous.request.Headless)) || request.Headless.NetworkID != r.previous.request.Headless.NetworkID || len(b.Files) != 14 {
+	if err != nil || len(encoded) > 32<<10 || digestHex(encoded) != r.intent.Candidate.BindingDigest || b.Schema != "ardents-endpoint-installation-binding-v1" || b.InstallationRoot != r.reader.lease.path || b.GenerationDigest != r.intent.Candidate.GenerationDigest || b.Account != "ardents-endpoint" || b.Unit != "ardents-endpoint.service" || b.UID == 0 || b.UID == ^uint32(0) || b.UID != old.UID || b.GID != r.reader.gid || b.GID != old.GID || b.ReleaseFloorRoot != request.ReleaseFloorRoot || b.ReleaseFloorRoot != old.ReleaseFloorRoot || !slices.Equal(b.MutableRoots, old.MutableRoots) || !slices.Equal(requestinput.MutableRoots(request.Headless), requestinput.MutableRoots(r.previous.request.Headless)) || request.Headless.NetworkID != r.previous.request.Headless.NetworkID || len(b.Files) != 14 {
 		return errors.Join(ErrBinding, err)
 	}
 	for _, name := range generation.Names() {
@@ -924,7 +924,7 @@ func (r *successorRecoveryNative) retainStagedTransition(ctx context.Context) er
 	if err != nil {
 		return err
 	}
-	request, err := decodeRequest(ctx, requestBody, false)
+	request, err := requestinput.Decode(ctx, requestBody, false)
 	if err != nil {
 		return err
 	}

@@ -313,7 +313,7 @@ func stagedRecoveryFixture(t *testing.T) (*successorRecoveryNative, requestinput
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err = decodeRequest(t.Context(), requestBody, false)
+	request, err = requestinput.Decode(t.Context(), requestBody, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1252,7 +1252,7 @@ func TestInstallationNativeStagedReloadRefusesIncompleteProvenance(t *testing.T)
 }
 
 // Detached typed grammar only; these facts never grant physical quiescence.
-func reloadTypedFixture(t *testing.T, request installationRequest, digest string) (managerProperties, managerProperties) {
+func reloadTypedFixture(t *testing.T, request requestinput.Declaration, digest string) (managerProperties, managerProperties) {
 	t.Helper()
 	writes, err := writableDirectories(request)
 	if err != nil {
@@ -1314,7 +1314,7 @@ func TestInstallationNativeRecoveryConfigurationMatchPreservesPhase(t *testing.T
 				t.Parallel()
 				// This pure rule consumes only detached declarations/selections.
 				// Actual journal, inode and manager custody have separate probes.
-				request, err := decodeInstallationRequest(requestFixture())
+				request, err := requestinput.DecodeDeclaration(requestFixture())
 				if err != nil {
 					t.Fatal(err)
 				}

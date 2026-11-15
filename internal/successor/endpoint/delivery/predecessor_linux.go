@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
@@ -26,7 +27,7 @@ type installedPredecessor struct {
 	joined           bool
 	terminal         error
 	alreadyStopped   bool
-	loadedRequest    installationRequest
+	loadedRequest    requestinput.Declaration
 	loadedGeneration string
 }
 
@@ -324,9 +325,9 @@ func (original *installedPredecessor) joinOriginal() error {
 
 // Phase constrains expected configuration, never establishes physical quiescence.
 // The caller independently repeats actual manager, activation and kernel checks.
-func (owned *successorPreparation) matchQuiescentConfiguration(version string, unit, service managerProperties) (installationRequest, string, error) {
+func (owned *successorPreparation) matchQuiescentConfiguration(version string, unit, service managerProperties) (requestinput.Declaration, string, error) {
 	if owned == nil {
-		return installationRequest{}, "", ErrInput
+		return requestinput.Declaration{}, "", ErrInput
 	}
 	// Fresh manager retention can load candidate unit bytes after the original
 	// reference dies, before selection or reload completes. Exact fixed completion
@@ -339,11 +340,11 @@ func (owned *successorPreparation) matchQuiescentConfiguration(version string, u
 			return candidate.request, candidate.selected.GenerationDigest, nil
 		}
 		if owned.recovery.inventory["0007.json"] {
-			return installationRequest{}, "", err
+			return requestinput.Declaration{}, "", err
 		}
 	}
 	if err := verifyQuiescentEndpointProperties(version, unit, service, owned.previous.request, owned.previous.selected.GenerationDigest); err != nil {
-		return installationRequest{}, "", err
+		return requestinput.Declaration{}, "", err
 	}
 	return owned.previous.request, owned.previous.selected.GenerationDigest, nil
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
@@ -18,7 +19,7 @@ import (
 // production command integration tests in cmd/ardents-next.
 func TestAssemblyCannotUseStoredObservationsAsFreshAuthority(t *testing.T) {
 	_, binding, files := installedObservationFixture(t)
-	request, err := decodeRequest(t.Context(), files["request.json"], true)
+	request, err := requestinput.Decode(t.Context(), files["request.json"], true)
 	if err != nil {
 		t.Fatal(err)
 	}

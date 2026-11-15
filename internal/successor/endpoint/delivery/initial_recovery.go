@@ -6,17 +6,18 @@ import (
 	"sync"
 	"time"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 var ErrRepairRequired = errors.New("installation: explicit repair required")
 
 type initialTransitionIntent struct {
-	Schema           string              `json:"schema"`
-	Previous         generationSelection `json:"previous"`
-	Candidate        generationSelection `json:"candidate"`
-	CandidateBinding generationBinding   `json:"candidate_binding"`
-	Request          installationRequest `json:"request"`
+	Schema           string                   `json:"schema"`
+	Previous         generationSelection      `json:"previous"`
+	Candidate        generationSelection      `json:"candidate"`
+	CandidateBinding generationBinding        `json:"candidate_binding"`
+	Request          requestinput.Declaration `json:"request"`
 }
 
 // Recovery retains one original intent and its Installation lease. Composition
@@ -32,7 +33,7 @@ type recoveryOperation struct {
 	mu        sync.Mutex
 	ctx       context.Context
 	native    *recoveryNative
-	request   installationRequest
+	request   requestinput.Declaration
 	reference time.Time
 	used      bool
 	terminal  error

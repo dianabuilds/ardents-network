@@ -88,7 +88,7 @@ func successorStagingFixture(t *testing.T) (*installedRoot, requestinput.Documen
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := decodeRequest(t.Context(), raw, false)
+	request, err := requestinput.Decode(t.Context(), raw, false)
 	if err != nil {
 		t.Fatal(err)
 	}

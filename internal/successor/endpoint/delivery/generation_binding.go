@@ -90,10 +90,10 @@ func assembleGeneration(ctx context.Context, request requestinput.Document, auth
 	if err != nil {
 		return nil, generationSelection{}, err
 	}
-	if _, err := decodeInstallationRequest(rawRequest); err != nil {
+	if _, err := requestinput.DecodeDeclaration(rawRequest); err != nil {
 		return nil, generationSelection{}, err
 	}
-	wanted := mutableRoots(declared.Headless)
+	wanted := requestinput.MutableRoots(declared.Headless)
 	if len(wanted) != len(prepared.roots) {
 		return nil, generationSelection{}, ErrBinding
 	}
@@ -217,7 +217,7 @@ func freezeGenerationInventory(request requestinput.Document, root string, files
 // Initial and successor recovery share exact-byte proof matching, not intent
 // admission or native effects. Each caller separately verifies its own schema,
 // physical provenance, phase and original process lifetime.
-func recoverBoundGeneration(ctx context.Context, selected generationSelection, binding generationBinding, request installationRequest, reference time.Time, authorization generationauthorization.Authorization) (inspectedGeneration, error) {
+func recoverBoundGeneration(ctx context.Context, selected generationSelection, binding generationBinding, request requestinput.Declaration, reference time.Time, authorization generationauthorization.Authorization) (inspectedGeneration, error) {
 	if err := ctx.Err(); err != nil {
 		return inspectedGeneration{}, err
 	}
@@ -301,7 +301,7 @@ func pathsOverlap(left, right string) bool {
 type inspectedGeneration struct {
 	selected generationSelection
 	binding  generationBinding
-	request  installationRequest
+	request  requestinput.Declaration
 	files    map[string][]byte
 }
 
@@ -340,11 +340,11 @@ func inspectGeneration(root string, selectedRaw, bindingRaw []byte, files map[st
 	if err := enrollment.ValidateProtectedGeneration(files["protected-endpoint.json"], resources, binding.Program.ReleaseIdentity); err != nil {
 		return inspectedGeneration{}, err
 	}
-	request, err := decodeInstallationRequest(files["request.json"])
+	request, err := requestinput.DecodeDeclaration(files["request.json"])
 	if err != nil || request.InstallationRoot != root || request.ReleaseFloorRoot != binding.ReleaseFloorRoot {
 		return inspectedGeneration{}, ErrBinding
 	}
-	wantedRoots := mutableRoots(request.Headless)
+	wantedRoots := requestinput.MutableRoots(request.Headless)
 	if len(wantedRoots) != len(binding.MutableRoots) {
 		return inspectedGeneration{}, ErrBinding
 	}

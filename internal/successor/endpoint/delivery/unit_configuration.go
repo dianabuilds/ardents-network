@@ -7,11 +7,13 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 )
 
 // Template checks precede writable-root admission, retaining the original first
 // refusal. Installation owns path selection; unit owns exact byte rendering.
-func renderEndpointUnit(template []byte, request installationRequest, directory string) ([]byte, error) {
+func renderEndpointUnit(template []byte, request requestinput.Declaration, directory string) ([]byte, error) {
 	prepared, err := endpointunit.PrepareEndpointTemplate(template, request.InstallationRoot, directory)
 	if err != nil {
 		return nil, err
@@ -25,7 +27,7 @@ func renderEndpointUnit(template []byte, request installationRequest, directory 
 
 // Request write-root admission stays with Installation. The fixed unit Module
 // receives detached expected facts, never the private request or live custody.
-func expectedUnit(request installationRequest) (endpointunit.Configuration, error) {
+func expectedUnit(request requestinput.Declaration) (endpointunit.Configuration, error) {
 	paths, err := writableDirectories(request)
 	return endpointunit.Configuration{InstallationRoot: request.InstallationRoot, WritePaths: paths}, err
 }
@@ -33,8 +35,8 @@ func expectedUnit(request installationRequest) (endpointunit.Configuration, erro
 // These are the actual write allowances rendered into the fixed unit. Include
 // socket/permission parent directories, rather than checking only their leaves:
 // a writable parent must not enclose immutable artifacts or retained trust.
-func writableDirectories(request installationRequest) ([]string, error) {
-	paths := mutableRoots(request.Headless)
+func writableDirectories(request requestinput.Declaration) ([]string, error) {
+	paths := requestinput.MutableRoots(request.Headless)
 	for _, file := range []string{request.Headless.ApplicationSocket, request.Headless.ReaderPermission.RequestPath, request.Headless.ReaderPermission.ResponsePath} {
 		paths = append(paths, path.Dir(file))
 	}

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 )
 
 // Independently spelled fixed contract, not produced from the renderer's
@@ -49,7 +51,7 @@ StandardError=journal
 `
 
 func TestGenerationEndpointUnitFixedBytes(t *testing.T) {
-	request, err := decodeInstallationRequest(requestFixture())
+	request, err := requestinput.DecodeDeclaration(requestFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +75,7 @@ func TestGenerationEndpointUnitFixedBytes(t *testing.T) {
 }
 
 func TestGenerationEndpointUnitRefusesChangedProtection(t *testing.T) {
-	request, err := decodeInstallationRequest(requestFixture())
+	request, err := requestinput.DecodeDeclaration(requestFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +108,7 @@ func TestGenerationWriteAllowancesRefuseImmutableAncestors(t *testing.T) {
 			raw := string(requestFixture())
 			original := map[string]string{"bundle_root": "/bundle", "installation_root": "/installation", "release_floor_root": "/floors"}[immutable]
 			raw = strings.Replace(raw, `"`+immutable+`":"`+original+`"`, `"`+immutable+`":"/permissions/private"`, 1)
-			request, err := decodeInstallationRequest([]byte(raw))
+			request, err := requestinput.DecodeDeclaration([]byte(raw))
 			if err != nil {
 				t.Fatalf("independent declaration precondition: %v", err)
 			}
@@ -115,7 +117,7 @@ func TestGenerationWriteAllowancesRefuseImmutableAncestors(t *testing.T) {
 			}
 		})
 	}
-	request, err := decodeInstallationRequest(requestFixture())
+	request, err := requestinput.DecodeDeclaration(requestFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +132,7 @@ func TestGenerationWriteAllowancesRefuseImmutableAncestors(t *testing.T) {
 }
 
 func TestUnitConfigurationRetainsTemplateBeforeWritePolicyRefusal(t *testing.T) {
-	request, err := decodeInstallationRequest(requestFixture())
+	request, err := requestinput.DecodeDeclaration(requestFixture())
 	if err != nil {
 		t.Fatal(err)
 	}

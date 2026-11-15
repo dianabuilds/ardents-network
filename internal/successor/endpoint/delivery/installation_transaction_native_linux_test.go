@@ -32,7 +32,7 @@ func nativeStagingFixture(t *testing.T) (*installationLease, requestinput.Docume
 			t.Error(err)
 		}
 	})
-	request, err := decodeRequest(t.Context(), []byte(strings.Replace(string(requestFixture()), `"installation_root":"/installation"`, `"installation_root":"`+directory+`"`, 1)), true)
+	request, err := requestinput.Decode(t.Context(), []byte(strings.Replace(string(requestFixture()), `"installation_root":"/installation"`, `"installation_root":"`+directory+`"`, 1)), true)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 func TestRecoveryCannotMintFreshProofFromOriginalObservations(t *testing.T) {
 	selected, binding, files := installedObservationFixture(t)
-	request, err := decodeInstallationRequest(files["request.json"])
+	request, err := requestinput.DecodeDeclaration(files["request.json"])
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -13,10 +13,6 @@ type generationDeclaration = generationauthorization.GenerationDeclaration
 const programTarget = generationauthorization.ProgramTarget
 const generationTarget = generationauthorization.GenerationTarget
 
-var ErrInput = generationauthorization.ErrInput
-var ErrBinding = generationauthorization.ErrBinding
-var ErrAuthorization = generationauthorization.ErrAuthorization
-
 // Local stored facts constrain continuity, never create fresh authorization.
 // The caller must supply these facts from its still-leased native inspection.
 func successorContinuity(previous generationBinding, floors release.FloorSet, local release.LocalEnvironment) error {

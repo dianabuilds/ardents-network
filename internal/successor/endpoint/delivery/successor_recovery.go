@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
@@ -22,7 +23,7 @@ type successorRecoveryOperation struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	native    *successorRecoveryNative
-	request   installationRequest
+	request   requestinput.Declaration
 	reference time.Time
 	used      bool
 	result    ProvisionResult

@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 )
 
 // This exercises creation/read custody on actual native files only. The
@@ -346,7 +348,7 @@ func TestInstallationNativeRequestCustodyReobservation(t *testing.T) {
 	for _, name := range []string{"same", "changed-bytes", "replaced-inode", "lost-file"} {
 		t.Run(name, func(t *testing.T) {
 			filename := writeNativeRequest(t, nativeRequestDirectory(t))
-			request, err := readOwnedRequest(t.Context(), filename, true)
+			request, err := requestinput.ReadOwned(t.Context(), filename, true)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -19,7 +19,7 @@ func inventoryFixture(t *testing.T) (requestinput.Document, map[string][]byte, g
 		t.Fatal(err)
 	}
 	files["binding.json"] = raw
-	request, err := decodeRequest(t.Context(), files["request.json"], true)
+	request, err := requestinput.Decode(t.Context(), files["request.json"], true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestGenerationInventoryFreezeRetainsDetachedClosedBytes(t *testing.T) {
 // This fixture tests grammar/coherence only, not native installed acceptance.
 func installedObservationFixture(t *testing.T) (generationSelection, generationBinding, map[string][]byte) {
 	t.Helper()
-	request, err := decodeInstallationRequest(requestFixture())
+	request, err := requestinput.DecodeDeclaration(requestFixture())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func installedObservationFixture(t *testing.T) (generationSelection, generationB
 	g.Path, g.Digest, g.Length = generationTarget, digest, int64(len(files["protected-endpoint.json"]))
 	binding := generationBinding{Schema: "ardents-endpoint-installation-binding-v1", InstallationRoot: "/installation", ReleaseFloorRoot: "/floors", GenerationDigest: digest,
 		Program: p, Generation: g, Account: "ardents-endpoint", Unit: "ardents-endpoint.service", UID: 65534, GID: 65534, Files: map[string]string{}}
-	for _, name := range mutableRoots(request.Headless) {
+	for _, name := range requestinput.MutableRoots(request.Headless) {
 		binding.MutableRoots = append(binding.MutableRoots, rootIdentity{Path: name, Device: 1, Inode: 1})
 	}
 	for name, body := range files {
