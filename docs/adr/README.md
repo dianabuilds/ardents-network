@@ -76,6 +76,10 @@ and [protocol](../technical/protected-route-protocol.md) state the current rules
   removes predecessor deployment continuity obligations; new-installation
   history, authority and recovery remain required.
 
+- [ADR-0125 — Separate software delivery and infrastructure deployment](0125-separate-software-delivery-and-infrastructure-deployment.md)
+  removes Installation as a standalone domain while retaining existing safety
+  and state guarantees during the ownership transition.
+
 ## Former editions and rationale
 
 [Archived decisions](../archive/README.md#architecture-decisions) retain

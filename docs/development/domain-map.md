@@ -73,9 +73,12 @@ delivery labels and issue numbers are not product domain identities.
 
 These are ten semantic families, not ten packages, processes, databases or global
 aggregates. A family may contain separate consistency owners at different
-principals. Software acceptance groups Enrollment, Release and Installation
-without combining their authorities or transactions. Local Application execution
-is the execution boundary, not all Application functionality.
+principals. Software acceptance retains separate Enrollment and Release owners.
+[ADR-0125](../adr/0125-separate-software-delivery-and-infrastructure-deployment.md)
+removes Installation as a standalone domain and separates user application
+delivery from infrastructure deployment. Existing Installation code remains a
+transitional implementation until responsibilities and evidence have transferred.
+Local Application execution is the execution boundary, not all Application functionality.
 
 | Domain / question | Owned rules and distinct owners | Explicitly outside | Current owner |
 |---|---|---|---|
@@ -87,7 +90,7 @@ is the execution boundary, not all Application functionality.
 | **Service Publication:** which authorized Instance is accepting work? | Publication generation/revision, current/pending/predecessor pair, private recipients, ACK/readiness, refresh/withdrawal; purpose-scoped Instance material | Credential-root signing, Route transport, Store conflict floors, Connection recovery, Job mutation and worker cleanup; retain the exact live Execution operation instead | [Service runtime](../technical/endpoint-service-runtime.md#publication-and-connection-lifecycle), [private reachability](../technical/private-reachability.md); `internal/successor/publication`, `durable`, `instance`, `runtime` |
 | **Reachability:** what current proof is valid for this Target? | Receiving Descriptor Store/durable conflicts; separate local lookup verification/history at another principal | Publication readiness, token spend, path selection, Instance authentication and logical Connection | [Private reachability](../technical/private-reachability.md); `internal/successor/reachability` |
 | **Service Connection:** how does one authenticated logical stream retain its identity? | Immutable destination/provenance, exact Instance TLS, ordered bytes, Attachment generation, continuity/recovery bound and retained Terminal outcome; exact Execution checks at effects/handoffs | New Target/operation/Grant, Job mutation/cleanup, Publication authority, Route policy and physical reservations | [Service runtime](../technical/endpoint-service-runtime.md#publication-and-connection-lifecycle), [Execution seam](../technical/application-execution.md#required-lifecycle-and-linearization); `internal/successor/connection` and its pure `wire` records/transcripts |
-| **Software acceptance:** which exact generation may be installed or run? | Separate Enrollment pin/inventory, Release authorization/floors, Installation transition/replacement/recovery and original Startup owners | Network membership, Admission rights, Service authority, generic signing and automatic rollback | [Enrollment](../technical/enrollment-verification.md), [Release](../technical/release-update-custody.md), [Installation](../../internal/successor/installation/README.md) |
+| **Software acceptance:** which exact generation may be installed or run? | Separate Enrollment pin/inventory and Release authorization/floors; current Installation transition/replacement/recovery and Startup owners remain transitional under ADR-0125 | Network membership, Admission rights, Service authority, generic signing and automatic rollback | [Enrollment](../technical/enrollment-verification.md), [Release](../technical/release-update-custody.md), [Installation](../../internal/successor/installation/README.md) |
 | **Authority Custody** (supporting boundary): which purpose-bound authority operation may be performed? | Encrypted authority records, approved signing commitments, recovery and authority floors; separate authority kinds | Generic `Sign`, exported private authority, domain decisions owned elsewhere, runtime Instance/Node keys | [Custody](../technical/release-update-custody.md); `internal/successor/custody` with purpose-specific Admission/Publication consumers |
 
 ## Supporting mechanisms and composition

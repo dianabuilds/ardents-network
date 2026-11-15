@@ -14,7 +14,10 @@ Release определяет разрешённые файлы; работа з�
 выбранным Linux-профилем. Переносимые проверки данных сами по себе не добавляют
 поддержку запуска на других платформах.
 
-Домен сохраняет раздельные владельцы свежей авторизации и установленного поколения.
+[ADR-0125](../../../docs/adr/0125-separate-software-delivery-and-infrastructure-deployment.md)
+убирает Installation как самостоятельный домен. Описанные ниже владельцы и
+потребители остаются действующей реализацией до проверенного переноса; их
+существование не означает завершения этого переноса.
 
 Endpoint transactions/startup and Source transactions/startup have separate
 owners and contracts. Manifest-pinned Node/Custody companions do not extend
