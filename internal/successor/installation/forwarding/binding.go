@@ -2,6 +2,8 @@ package forwarding
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"strings"
 
@@ -71,4 +73,13 @@ func decodeConfiguration(raw []byte, schema string) (binding, error) {
 		return binding{}, ErrBinding
 	}
 	return b, nil
+}
+
+func digest(raw []byte) string {
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
+}
+
+func initialSHA(value string) bool {
+	return len(value) == 64 && strings.Trim(value, "0123456789abcdef") == ""
 }

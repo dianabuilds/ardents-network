@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"path/filepath"
+	"path"
 	"strings"
 	"testing"
 )
@@ -25,7 +25,7 @@ func selectedGenerationProgramVector(t testing.TB, program []byte) (binding, []b
 		Network: NetworkInputs{Root: b.Request.StateRoot, ClockObservationFile: b.Request.Clock, NetworkID: [32]byte{1},
 			Authorities: [][32]byte{{2}}, Threshold: 1, ProfileAuthority: [32]byte{3}},
 		ParticipationRoot: b.Request.ParticipationRoot, SpendRoot: b.Request.SpendRoot, HostingRoot: b.Request.HostingRoot,
-		Certificate: filepath.Join(b.Request.CredentialDirectory, "certificate.pem"), PrivateKey: filepath.Join(b.Request.CredentialDirectory, "private-key.pem"), RetirementWaitMS: 1000}
+		Certificate: path.Join(b.Request.CredentialDirectory, "certificate.pem"), PrivateKey: path.Join(b.Request.CredentialDirectory, "private-key.pem"), RetirementWaitMS: 1000}
 	p.Work.Tx, p.Work.Rx, p.Termination.Tx, p.Termination.Rx = 40000000, 40000000, 1024, 1024
 	encode := func(value any) []byte {
 		t.Helper()

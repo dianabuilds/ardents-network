@@ -589,7 +589,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/successor/installation/descriptor/restart_linux.go",
 			"internal/successor/installation/descriptor/start_initial_linux.go",
 			"internal/successor/installation/descriptor/template.go",
-			"internal/successor/installation/forwarding/binding_linux.go",
+			"internal/successor/installation/forwarding/binding.go",
 			"internal/successor/installation/forwarding/completed_initial_linux.go",
 			"internal/successor/installation/forwarding/initial_install_linux.go",
 			"internal/successor/installation/forwarding/recovery_candidate_linux.go",
@@ -603,7 +603,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/successor/installation/forwarding/replacement_linux.go",
 			"internal/successor/installation/forwarding/request.go",
 			"internal/successor/installation/forwarding/restart_linux.go",
-			"internal/successor/installation/forwarding/selected_generation_linux.go",
+			"internal/successor/installation/forwarding/selected_generation.go",
 			"internal/successor/installation/forwarding/start_initial_linux.go",
 			"internal/successor/installation/forwarding/start_initial_native_linux_test.go",
 			"internal/successor/installation/infrastructure/artifact_errors.go",
@@ -989,7 +989,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/forwarding/completed_initial_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
 		return true
 	}
-	if source == "internal/successor/installation/forwarding/selected_generation_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
+	if source == "internal/successor/installation/forwarding/selected_generation.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/startup_linux.go" {
@@ -1036,9 +1036,6 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/forwarding/retirement_snapshot_native_linux_test.go" || source == "internal/successor/installation/forwarding/recovery_retirement_linux_test.go") && dependency == modulePath+"/internal/successor/installation/completion" {
 		return true
 	}
-	if source == "internal/successor/installation/forwarding/binding_linux.go" && dependency == modulePath+"/internal/successor/installation/infrastructure" {
-		return true
-	}
 	if (source == "internal/successor/installation/forwarding/loaded_policy_linux.go" || source == "internal/successor/installation/forwarding/loaded_policy_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
@@ -1048,7 +1045,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/forwarding/attempt_linux.go" && dependency == modulePath+"/internal/successor/installation/journal" {
 		return true
 	}
-	if (source == "internal/successor/installation/forwarding/request.go" || source == "internal/successor/installation/forwarding/unit_linux_test.go") && dependency == modulePath+"/internal/successor/installation/infrastructure" {
+	if (source == "internal/successor/installation/forwarding/request.go" || source == "internal/successor/installation/forwarding/unit_test.go") && dependency == modulePath+"/internal/successor/installation/infrastructure" {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {

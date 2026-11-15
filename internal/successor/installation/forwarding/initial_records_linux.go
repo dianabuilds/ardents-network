@@ -310,7 +310,3 @@ func decodeInitialTranscript(raw []byte, b binding, hashes map[string]string, pr
 	}
 	return owned, nil
 }
-
-func initialSHA(value string) bool {
-	return len(value) == 64 && strings.Trim(value, "0123456789abcdef") == ""
-}
