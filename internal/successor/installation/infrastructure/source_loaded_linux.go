@@ -3,9 +3,8 @@ package infrastructure
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
-	"slices"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
 )
@@ -13,68 +12,14 @@ import (
 // Source configuration policy is shared by its separate stopped and running
 // comparisons. Neither fabricates another phase's native facts.
 func verifySourceConfiguration(unit, service systemdproperty.Properties, r SourceRequest, generation string) error {
-	for name, wanted := range map[string]string{"Id": "ardents-source.service", "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/ardents-source.service", "UnitFileState": "static"} {
-		if !systemdproperty.Matches(unit, name, "s", wanted) {
-			return fmt.Errorf("source Unit property %s: %w", name, ErrBinding)
-		}
+	section, name, ok := deployment.CheckInfrastructureService(unit, service, "source", r.InstallationRoot, generation, releaseartifact.ProgramName, []string{r.StateRoot, r.ParticipationRoot})
+	if ok {
+		return nil
 	}
-	for name, wanted := range map[string]struct {
-		signature string
-		value     any
-	}{
-		"DropInPaths": {"as", []string{}}, "Job": {"(uo)", []any{uint32(0), "/"}},
-	} {
-		if !systemdproperty.Matches(unit, name, wanted.signature, wanted.value) {
-			return fmt.Errorf("source Unit property %s: %w", name, ErrBinding)
-		}
+	if section != "" {
+		return fmt.Errorf("source %s property %s: %w", section, name, ErrBinding)
 	}
-	for name, wanted := range map[string]string{"User": "ardents-source", "Group": "ardents-source", "Type": "exec", "WorkingDirectory": "/", "ProtectHome": "yes", "ProtectSystem": "strict", "KillMode": "control-group", "Restart": "no", "RootDirectory": "", "RootImage": "", "ExitType": "main", "RestartMode": "normal", "StandardOutput": "journal", "StandardError": "journal"} {
-		if !systemdproperty.Matches(service, name, "s", wanted) {
-			return fmt.Errorf("source Service property %s: %w", name, ErrBinding)
-		}
-	}
-	for name, wanted := range map[string]uint64{"CapabilityBoundingSet": 0, "AmbientCapabilities": 0, "LimitCORE": 0, "LimitCORESoft": 0, "LimitNOFILE": 1024, "LimitNOFILESoft": 1024, "CPUQuotaPerSecUSec": 1_000_000, "CPUQuotaPeriodUSec": 100_000, "MemoryHigh": 805306368, "MemoryMax": 1073741824, "TasksMax": 256, "TimeoutStopUSec": 30_000_000} {
-		if !systemdproperty.Matches(service, name, "t", wanted) {
-			return fmt.Errorf("source Service property %s: %w", name, ErrBinding)
-		}
-	}
-	for _, name := range []string{"NoNewPrivileges", "PrivateTmp", "ProtectControlGroups", "ProtectKernelTunables", "ProtectKernelModules", "ProtectKernelLogs", "RestrictSUIDSGID", "LockPersonality", "MemoryAccounting", "CPUAccounting", "TasksAccounting"} {
-		if !systemdproperty.Matches(service, name, "b", true) {
-			return fmt.Errorf("source Service property %s: %w", name, ErrBinding)
-		}
-	}
-	if !systemdproperty.Matches(service, "UMask", "u", uint32(0077)) || !systemdproperty.Matches(service, "RemainAfterExit", "b", false) || !systemdproperty.Matches(service, "SupplementaryGroups", "as", []string{}) || !systemdproperty.Matches(service, "ReadWritePaths", "as", []string{r.StateRoot, r.ParticipationRoot}) || !systemdproperty.Matches(service, "Environment", "as", []string{"GOMAXPROCS=1", "GOMEMLIMIT=536870912"}) {
-		return ErrBinding
-	}
-	for _, name := range []string{"ExecCondition", "ExecStartPre", "ExecStartPost", "ExecReload", "ExecStop", "ExecStopPost"} {
-		if !systemdproperty.Matches(service, name, "a(sasbttttuii)", []any{}) {
-			return ErrBinding
-		}
-	}
-	families := service["RestrictAddressFamilies"]
-	var parts []json.RawMessage
-	var allow bool
-	var names []string
-	if families.Type != "(bas)" || systemdproperty.Decode(families.Data, &parts) != nil || len(parts) != 2 || systemdproperty.Decode(parts[0], &allow) != nil || !allow || systemdproperty.Decode(parts[1], &names) != nil {
-		return ErrBinding
-	}
-	slices.Sort(names)
-	if !slices.Equal(names, []string{"AF_INET", "AF_INET6", "AF_UNIX"}) {
-		return ErrBinding
-	}
-	exec := service["ExecStartEx"]
-	var entries [][]json.RawMessage
-	if exec.Type != "a(sasasttttuii)" || systemdproperty.Decode(exec.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
-		return ErrBinding
-	}
-	program := filepath.Join(r.InstallationRoot, "generations", generation, releaseartifact.ProgramName)
-	for index, wanted := range map[int]any{0: program, 1: []string{program, "source", "start-installed", filepath.Join(r.InstallationRoot, "binding.json")}, 2: []string{"no-env-expand"}} {
-		p := systemdproperty.Properties{"value": {Type: "v", Data: entries[0][index]}}
-		if !systemdproperty.Matches(p, "value", "v", wanted) {
-			return ErrBinding
-		}
-	}
-	return nil
+	return ErrBinding
 }
 
 func verifySourceStopped(unit, service systemdproperty.Properties, r SourceRequest, generation string) error {

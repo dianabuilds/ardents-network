@@ -540,6 +540,19 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if (source == "internal/successor/deployment/service_observation.go" || source == "internal/successor/deployment/service_observation_test.go") && dependency == modulePath+"/internal/successor/systemdproperty" {
+		return true
+	}
+	if dependency == modulePath+"/internal/successor/deployment" {
+		switch source {
+		case "internal/successor/installation/join/loaded_policy_linux.go",
+			"internal/successor/installation/descriptor/loaded_policy_linux.go",
+			"internal/successor/installation/introduction/loaded_policy_linux.go",
+			"internal/successor/installation/forwarding/loaded_policy_linux.go",
+			"internal/successor/installation/infrastructure/source_loaded_linux.go":
+			return true
+		}
+	}
 	if dependency == modulePath+"/internal/successor/systemdproperty" {
 		switch source {
 		case "internal/successor/installation/join/loaded_policy_linux.go":
