@@ -33,11 +33,15 @@ func (s *Session) validateIntent(intent stock.IssuanceIntent) error {
 	}
 	return funding.ValidateIntent(view, intent)
 }
+
+// Begin retains a detached intent for the completion-time Network recheck.
+// The caller may reuse its challenge slice after this operation returns.
 func (s *Session) Begin(ctx context.Context, intent stock.IssuanceIntent) (raw []byte, deadline time.Time, err error) {
 	if err = s.before(ctx, actionBegin); err != nil {
 		return
 	}
 	defer func() { err = s.after(err) }()
+	intent.Challenges = append(intent.Challenges[:0:0], intent.Challenges...)
 	if err = s.validateIntent(intent); err != nil {
 		return
 	}
