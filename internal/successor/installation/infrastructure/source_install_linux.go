@@ -113,7 +113,7 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	dir := filepath.Join(base, generation)
 	files := map[string][]byte{}
 	for _, name := range []string{ProgramName, TemplateName, DescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
-		body, ok := a.origin.File(name)
+		body, ok := a.File(name)
 		if !ok {
 			return ErrBinding
 		}

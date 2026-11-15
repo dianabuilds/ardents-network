@@ -316,7 +316,7 @@ func recoverInitialSource(ctx context.Context, v *release.Verifier, a Authorizat
 func (s *sourceInitialRecovery) prepare() error {
 	p := s.input.original
 	r := s.input.Declaration()
-	if len(p.files) != 5 || s.authorization.origin == nil {
+	if len(p.files) != 5 || !s.authorization.HasInventory() {
 		return ErrInput
 	}
 	uid, gid := s.prefix.records[4].UID, s.prefix.records[4].GID
@@ -328,7 +328,7 @@ func (s *sourceInitialRecovery) prepare() error {
 	s.unit = unit
 	files := map[string][]byte{}
 	for _, name := range []string{ProgramName, TemplateName, DescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
-		body, ok := s.authorization.origin.File(name)
+		body, ok := s.authorization.File(name)
 		if !ok {
 			return ErrBinding
 		}

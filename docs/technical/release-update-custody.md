@@ -201,7 +201,10 @@ requires empty floors; complete retained history admits only the candidate path.
 metadata files, retaining the normal narrower metadata bounds and all signature
 and root-rotation checks. `CheckAuthorizations` reobserves original Release
 ownership, caller cancellation and unchanged floors at the pair's handoff;
-physical Close and uncertainty remain Release-owned refusals.
+physical Close and uncertainty remain Release-owned refusals. Source installation
+reads detached inventory bytes through the authorization, without accessing its
+private snapshot; inventory presence or copied bytes alone confer no effect or
+Release authority.
 
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects a protected Endpoint generation target in the same signed metadata set

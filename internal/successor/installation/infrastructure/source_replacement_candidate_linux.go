@@ -17,7 +17,7 @@ type sourceReplacementCandidate struct {
 // caller retained the original complete retirement and genuine forward Release
 // pair. Nothing here grants native birth, selection, manager or Start rights.
 func prepareSourceReplacement(retired *sourceRetirement, a Authorization, input SourceInputs) (*sourceReplacementCandidate, error) {
-	if retired == nil || retired.chain == nil || retired.chain.initial == nil || retired.chain.latest == nil || retired.chain.latestSelection == nil || input.original == nil || len(input.original.files) != 5 || a.origin == nil || retired.chain.latestSelection != retired.chain.initial.selection {
+	if retired == nil || retired.chain == nil || retired.chain.initial == nil || retired.chain.latest == nil || retired.chain.latestSelection == nil || input.original == nil || len(input.original.files) != 5 || !a.HasInventory() || retired.chain.latestSelection != retired.chain.initial.selection {
 		return nil, ErrInput
 	}
 	if _, initial := a.InitialFacts(); initial {
@@ -30,7 +30,7 @@ func prepareSourceReplacement(retired *sourceRetirement, a Authorization, input 
 // Detached configuration preparation only. A recovery caller must separately
 // consume the genuine complete predecessor retirement before any new effect.
 func prepareSourceReplacementConfiguration(old *sourceSelection, result sourceRetirementResult, retirement string, a Authorization, input SourceInputs) (*sourceReplacementCandidate, error) {
-	if old == nil || input.original == nil || len(input.original.files) != 5 || a.origin == nil || !sourceInitialSHA(retirement) {
+	if old == nil || input.original == nil || len(input.original.files) != 5 || !a.HasInventory() || !sourceInitialSHA(retirement) {
 		return nil, ErrInput
 	}
 	p := old.binding
@@ -72,7 +72,7 @@ func prepareSourceReplacementConfiguration(old *sourceSelection, result sourceRe
 	}
 	c := &sourceReplacementCandidate{unit: unit, files: map[string][]byte{}}
 	for _, name := range []string{ProgramName, TemplateName, DescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
-		raw, ok := a.origin.File(name)
+		raw, ok := a.File(name)
 		if !ok {
 			return nil, ErrBinding
 		}

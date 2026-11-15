@@ -47,6 +47,19 @@ func (a Authorization) InitialFacts() (enrollment.InfrastructureFacts, bool) {
 	return a.initial.Facts()
 }
 
+// HasInventory reports whether the original immutable inventory was retained.
+// Presence is not a Release proof or permission to perform an effect.
+func (a Authorization) HasInventory() bool { return a.origin != nil }
+
+// File returns detached original inventory bytes, never the original inventory
+// or authority. The caller separately checks the original proof before effects.
+func (a Authorization) File(name string) ([]byte, bool) {
+	if a.origin == nil {
+		return nil, false
+	}
+	return a.origin.File(name)
+}
+
 // An initial pin requires an entirely unborn Release history. Partial or
 // digest-only floors are not an initial history and cannot be reset.
 func emptyInitialFloors(f release.FloorSet) bool {
