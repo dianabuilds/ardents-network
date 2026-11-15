@@ -24,3 +24,11 @@ func TestBoundDeclarationsKeepClosedSchemaAndSourceCount(t *testing.T) {
 		}
 	}
 }
+
+func TestBoundDeclarationsIgnoreFieldsOutsideTheirProjection(t *testing.T) {
+	headless := []byte(`{"schema":"ardents-headless-runtime-v2","network_source_plan":42}`)
+	source := []byte(`{"schema":"ardents-source-plan-v1","threshold":"not a projected field","sources":[{},{}]}`)
+	if _, _, err := Declarations(headless, source); err != nil {
+		t.Fatalf("unprojected fields changed the bound projection: %v", err)
+	}
+}
