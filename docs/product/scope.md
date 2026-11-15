@@ -60,6 +60,9 @@ or Capability into another concept.
 Ardents is intended to be usable on Linux, macOS and Windows. User application
 delivery and infrastructure deployment are separate concerns under
 [ADR-0125](../adr/0125-separate-software-delivery-and-infrastructure-deployment.md);
+the target uses platform delivery and service management rather than an Ardents
+installer or independent lifecycle manager, subject to the same protection and
+durable-state requirements. Existing installed operations remain transitional;
 software acceptance is not a particular operating system or service manager. The operating
 system mechanisms and their verification still need platform-specific design.
 This broader product direction does not establish support or qualification for

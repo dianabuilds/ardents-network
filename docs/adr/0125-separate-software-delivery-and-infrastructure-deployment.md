@@ -36,7 +36,22 @@ That tree describes existing implementation, not a required product domain.
    behavior satisfies the required protection and failure contract. This
    decision selects no package manager, weaker accepting path, new supported
    platform, or qualification result.
-5. ADR-0123 decision 1 is amended only in its classification of Installation
+5. Do not build a general Ardents installer or a separate lifecycle manager.
+   Application delivery uses the platform's delivery mechanism, with explicit
+   authenticated replacement and user data retained. Infrastructure operators
+   supply verified artifacts and role configuration; platform service management
+   starts and stops processes where it meets the required lifecycle and
+   confinement contract. Ardents validates its own configuration, completes its
+   own runtime work and retains its durable state. This selects no specific
+   platform mechanism and grants no automatic update or weaker startup path.
+6. Retire role-specific installation, stop, restart, replacement and recovery
+   orchestration, including journals that exist solely for those operations,
+   after their required guarantees are provided by the replacement. Keep
+   authenticated Release and Enrollment, necessary configuration validation,
+   and durable runtime state with their actual owners. Existing installed roots
+   and their bytes are preserved: no automatic migration, deletion, reset or
+   adoption of an uncertain process follows from removing the orchestration.
+7. ADR-0123 decision 1 is amended only in its classification of Installation
    as a separate domain. ADR-0119, ADR-0123 and ADR-0124 retain their artifact,
    authority, lifecycle, state and refusal guarantees. Their existing Linux
    implementation and consumers remain until equivalent ownership and evidence
