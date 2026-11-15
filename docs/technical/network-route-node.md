@@ -1749,6 +1749,18 @@ original completion or refusal mechanism whose ownership and crash behavior
 are established independently; it cannot infer a clean predecessor from the
 new invocation, an empty scope or a missing status.
 
+Systemd 255 exposes the main process result to `ExecStopPost` and to a service
+triggered by `OnSuccess` or `OnFailure`. The latter receives the monitored
+unit and invocation identity only when the handler is not triggered by multiple
+services. A manager `success` can include termination by a signal such as
+`SIGTERM`; moreover exit fields may be absent if the manager could not identify
+the main process. See the [systemd 255 execution environment](https://www.freedesktop.org/software/systemd/man/255/systemd.exec.html),
+accessed 2026-11-16. Therefore manager success alone cannot establish the actual
+joined application outcome. A candidate using such a handler must separately
+bind the exact invocation and exit, prevent a subsequent start from racing the
+handler, and refuse missing or uncertain evidence. The existing fixed unit has
+no such hook; this documentation is not an implementation or native proof.
+
 A future fixed platform composition must therefore bind the exact authenticated
 artifact and configuration to its own original invocation, retain the Release
 floors, and observe actual Node completion before treating a stop as successful.
