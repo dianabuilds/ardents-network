@@ -1739,6 +1739,16 @@ and cannot treat an empty participation history as proof that every owner
 closed successfully. See `node/join_linux.go`, `node/introduction_linux.go`
 and the canonical installed command cleanup.
 
+In the [systemd 255 service implementation](https://raw.githubusercontent.com/systemd/systemd/v255/src/core/service.c),
+`service_start` resets the recorded main-process execution status before it
+enters the pre-start sequence (source accessed 2026-11-16). Consequently a
+pre-start verifier cannot rely on the manager's previous `ExecMainStatus` to
+prove the preceding invocation completed successfully. This is an inspected
+source property, not a reproduced native result. A replacement needs a retained
+original completion or refusal mechanism whose ownership and crash behavior
+are established independently; it cannot infer a clean predecessor from the
+new invocation, an empty scope or a missing status.
+
 A future fixed platform composition must therefore bind the exact authenticated
 artifact and configuration to its own original invocation, retain the Release
 floors, and observe actual Node completion before treating a stop as successful.
