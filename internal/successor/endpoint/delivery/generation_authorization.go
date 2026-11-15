@@ -17,3 +17,12 @@ func retainedGeneration(previous generationBinding) generationauthorization.Reta
 		ReferenceTime: g.ReferenceTime, TargetsVersion: g.TargetsVersion, TargetsDigest: g.TargetsDigest, ReleaseVersion: g.ReleaseVersion,
 	}
 }
+
+func retainedTarget(target targetObservation) generationauthorization.RetainedTarget {
+	return generationauthorization.RetainedTarget{
+		Path: target.Path, Digest: target.Digest, Length: target.Length,
+		ReleaseIdentity: target.ReleaseIdentity, ReleaseVersion: target.ReleaseVersion,
+		Platform: target.Platform, Architecture: target.Architecture, Environment: target.Environment, Network: target.Network,
+		ReferenceTime: target.ReferenceTime, TargetsVersion: target.TargetsVersion, TargetsDigest: target.TargetsDigest,
+	}
+}

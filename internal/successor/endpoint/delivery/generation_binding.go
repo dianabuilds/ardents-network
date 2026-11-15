@@ -221,23 +221,8 @@ func recoverBoundGeneration(ctx context.Context, selected generationSelection, b
 	if err := ctx.Err(); err != nil {
 		return inspectedGeneration{}, err
 	}
-	programProof, generationProof := authorization.Targets()
-	p, programOK := programProof.AcceptedDecision()
-	g, generationOK := generationProof.AcceptedDecision()
-	if !programOK || !generationOK || !p.ReferenceTime.Equal(reference) || !g.ReferenceTime.Equal(reference) {
-		return inspectedGeneration{}, ErrAuthorization
-	}
-	for _, pair := range []struct{ old, fresh targetObservation }{
-		{binding.Program, observeTarget(p)}, {binding.Generation, observeTarget(g)},
-	} {
-		old, fresh := pair.old, pair.fresh
-		before, err := time.Parse(time.RFC3339Nano, old.ReferenceTime)
-		if err != nil || reference.Before(before) || old.Path != fresh.Path || old.Digest != fresh.Digest || old.Length != fresh.Length ||
-			old.ReleaseIdentity != fresh.ReleaseIdentity || old.ReleaseVersion != fresh.ReleaseVersion || old.Platform != fresh.Platform || old.Architecture != fresh.Architecture ||
-			old.Environment != fresh.Environment || old.Network != fresh.Network || fresh.TargetsVersion < old.TargetsVersion ||
-			(fresh.TargetsVersion == old.TargetsVersion && fresh.TargetsDigest != old.TargetsDigest) {
-			return inspectedGeneration{}, ErrBinding
-		}
+	if err := authorization.MatchRetainedTargets(retainedTarget(binding.Program), retainedTarget(binding.Generation), reference); err != nil {
+		return inspectedGeneration{}, err
 	}
 	files := make(map[string][]byte, 14)
 	for name, body := range authorization.Resources() {

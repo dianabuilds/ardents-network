@@ -239,7 +239,10 @@ current floors before successor authentication. The caller must independently
 retain the original installed binding; detached facts alone grant no proof,
 installed predecessor continuity or runtime readiness. Recovery authenticates
 the retained candidate again after the same floor check; unlike a new successor,
-it does not require a version newer than that candidate. New Installation separately
+it does not require a version newer than that candidate. Release compares both
+fresh opaque proofs with the retained target identities and metadata floor;
+the delivery owner independently checks the original files and recovery intent.
+New Installation separately
 owns initial stopped provisioning, successor replacement and bounded fresh-proof
 recovery through genuine command consumers. Bounded accepting non-root startup
 has an actual-manager Root archival/ACK and Source/permission receipt. Separate
