@@ -1,10 +1,13 @@
 package endpoint
 
 import (
+	"context"
 	"encoding/hex"
+	"errors"
 	"strings"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
@@ -15,6 +18,36 @@ type RetainedGeneration struct {
 	ReferenceTime                                string
 	TargetsVersion                               int64
 	TargetsDigest                                string
+	ReleaseVersion                               int64
+}
+
+// AuthenticateSuccessor checks the retained floor before authenticating the
+// candidate, then requires a newer authorized generation. The caller must
+// retain and reobserve the original binding around this operation.
+func AuthenticateSuccessor(ctx context.Context, verifier *release.Verifier, candidate enrollment.Candidate, input release.Inputs, previous RetainedGeneration) (Authorization, error) {
+	if ctx == nil || verifier == nil {
+		return Authorization{}, ErrInput
+	}
+	floors, err := verifier.CurrentFloors(ctx)
+	if err != nil {
+		return Authorization{}, err
+	}
+	if err := CheckContinuity(previous, floors, input.Local); err != nil {
+		return Authorization{}, err
+	}
+	authorized, err := AuthenticateCandidate(ctx, verifier, candidate, input)
+	if err != nil {
+		return Authorization{}, err
+	}
+	_, generation := authorized.Targets()
+	decision, valid := generation.AcceptedDecision()
+	if !valid || decision.ReleaseVersion <= previous.ReleaseVersion {
+		return Authorization{}, ErrBinding
+	}
+	if err := ctx.Err(); err != nil {
+		return Authorization{}, errors.Join(ErrAuthorization, err)
+	}
+	return authorized, nil
 }
 
 // CheckContinuity compares retained facts with the verifier's current floors

@@ -22,8 +22,7 @@ independent binding inspection and fresh-proof byte reconstruction together in
 `generation_binding.go`. Public read-only Check admission stays in `inspection.go`.
 Initial request acquisition and stopped preparation share the retained owner in
 `initial_preparation_linux.go`; successor fresh-pair and continuity admission
-reside in `generation_authorization.go`, with portable installed-successor
-proof composition in `successor_authentication.go`. Its genuine caller retains
+belong to `release/endpoint`. The delivery caller projects retained facts and retains
 native installed facts; no Windows caller or allowance is manufactured. Unsupported native operations
 share `platform_refusal_other.go`, preserving their existing no-effect refusals.
 This source layout changes no accepted bytes, authorization, effect ordering or

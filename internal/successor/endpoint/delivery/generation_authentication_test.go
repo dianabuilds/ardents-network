@@ -2,7 +2,6 @@ package delivery
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -105,14 +104,5 @@ func TestSuccessorContinuityRetainsInstalledHistoryAndEnvironment(t *testing.T) 
 				t.Fatalf("continuity: got %v, want %v", err, test.want)
 			}
 		})
-	}
-}
-
-func TestSuccessorAuthenticationRejectsMissingVerifierAndContext(t *testing.T) {
-	for _, ctx := range []context.Context{nil, context.Background()} {
-		_, err := authenticateSuccessor(ctx, nil, enrollment.Candidate{}, release.Inputs{}, generationBinding{})
-		if !errors.Is(err, ErrInput) {
-			t.Fatalf("missing original verification owner accepted: %v", err)
-		}
 	}
 }

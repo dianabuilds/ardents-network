@@ -2,13 +2,41 @@ package endpoint
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
+
+func TestAuthenticateSuccessorRequiresOriginalVerifier(t *testing.T) {
+	for _, ctx := range []context.Context{nil, context.Background()} {
+		result, err := AuthenticateSuccessor(ctx, nil, enrollment.Candidate{}, release.Inputs{}, RetainedGeneration{})
+		if !errors.Is(err, ErrInput) || len(result.Descriptor()) != 0 {
+			t.Fatalf("missing original verifier accepted: %v", err)
+		}
+	}
+}
+
+func TestAuthenticateSuccessorDoesNotBootstrapIncompleteTrust(t *testing.T) {
+	verifier, err := release.Open(filepath.Join(t.TempDir(), "history"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = verifier.Close() })
+	previous := RetainedGeneration{TargetsVersion: 1, TargetsDigest: strings.Repeat("01", 32), ReleaseVersion: 1}
+	if _, err := AuthenticateSuccessor(t.Context(), verifier, enrollment.Candidate{}, release.Inputs{}, previous); !errors.Is(err, release.ErrTrustUnavailable) {
+		t.Fatalf("incomplete trust admitted successor: %v", err)
+	}
+	floors, err := verifier.CurrentFloors(t.Context())
+	if err != nil || floors.RootVersion != 0 || floors.TargetsVersion != 0 {
+		t.Fatalf("refusal advanced trust floors: %+v, %v", floors, err)
+	}
+}
 
 func TestRetainedContinuityRejectsRollbackConflictAndForeignEnvironment(t *testing.T) {
 	reference := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)

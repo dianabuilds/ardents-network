@@ -13,9 +13,13 @@ const generationTarget = generationauthorization.GenerationTarget
 // Local stored facts constrain continuity, never create fresh authorization.
 // The caller must supply these facts from its still-leased native inspection.
 func successorContinuity(previous generationBinding, floors release.FloorSet, local release.LocalEnvironment) error {
+	return generationauthorization.CheckContinuity(retainedGeneration(previous), floors, local)
+}
+
+func retainedGeneration(previous generationBinding) generationauthorization.RetainedGeneration {
 	g := previous.Generation
-	return generationauthorization.CheckContinuity(generationauthorization.RetainedGeneration{
+	return generationauthorization.RetainedGeneration{
 		Platform: g.Platform, Architecture: g.Architecture, Environment: g.Environment, Network: g.Network,
-		ReferenceTime: g.ReferenceTime, TargetsVersion: g.TargetsVersion, TargetsDigest: g.TargetsDigest,
-	}, floors, local)
+		ReferenceTime: g.ReferenceTime, TargetsVersion: g.TargetsVersion, TargetsDigest: g.TargetsDigest, ReleaseVersion: g.ReleaseVersion,
+	}
 }
