@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // This independent transcript oracle enumerates the accepted order and lexical
@@ -184,7 +184,7 @@ func TestIntroductionInitialTranscriptRequiresWholeIndependentOracle(t *testing.
 	}
 }
 func TestIntroductionInitialEmptyAuthorityAndCompletedCustodyRefuse(t *testing.T) {
-	if InstallInitialStopped(nil, infrastructure.IntroductionAuthorization{}, Inputs{}, "/distribution", "/history") == nil {
+	if InstallInitialStopped(nil, releaseartifact.IntroductionAuthorization{}, Inputs{}, "/distribution", "/history") == nil {
 		t.Fatal("zero authority created installation")
 	}
 	if _, err := ReadCompleted(nil, "/binding"); err == nil {
@@ -196,7 +196,7 @@ func TestIntroductionInitialEmptyAuthorityAndCompletedCustodyRefuse(t *testing.T
 		t.Fatal("ended caller admitted")
 	}
 	h := Completed{}
-	if h.Check() == nil || h.CheckAuthorization(nil, infrastructure.IntroductionAuthorization{}) == nil || h.IndependentPaths("/distribution", "/history") == nil {
+	if h.Check() == nil || h.CheckAuthorization(nil, releaseartifact.IntroductionAuthorization{}) == nil || h.IndependentPaths("/distribution", "/history") == nil {
 		t.Fatal("empty completed authority accepted")
 	}
 	if h.Close() != nil {

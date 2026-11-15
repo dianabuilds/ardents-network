@@ -9,8 +9,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // The distinct Forwarding route never enters Source Installation or the legacy
@@ -102,8 +102,8 @@ func recoverForwarding(parent context.Context, args []string, output io.Writer) 
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := infrastructure.AuthenticateForwardingCandidate(ctx, v, candidate, release.Inputs{
-		RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata,
+	authorization, err := releaseartifact.AuthenticateForwardingCandidate(ctx, v, candidate, release.Inputs{
+		RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata,
 		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()},
 	})
 	if err != nil {
@@ -164,8 +164,8 @@ func replaceForwarding(parent context.Context, args []string, output io.Writer) 
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := infrastructure.AuthenticateForwardingCandidate(ctx, v, candidate, release.Inputs{
-		RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata,
+	authorization, err := releaseartifact.AuthenticateForwardingCandidate(ctx, v, candidate, release.Inputs{
+		RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata,
 		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()},
 	})
 	if err != nil {
@@ -282,8 +282,8 @@ func startForwardingGeneration(parent context.Context, args []string, output io.
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := infrastructure.AuthenticateForwardingCandidate(ctx, v, candidate, release.Inputs{
-		RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata,
+	authorization, err := releaseartifact.AuthenticateForwardingCandidate(ctx, v, candidate, release.Inputs{
+		RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata,
 		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()},
 	})
 	if err != nil {
@@ -348,8 +348,8 @@ func inspectInitialForwarding(parent context.Context, args []string, output io.W
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := infrastructure.AuthenticateForwardingCandidate(ctx, v, candidate, release.Inputs{
-		RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata,
+	authorization, err := releaseartifact.AuthenticateForwardingCandidate(ctx, v, candidate, release.Inputs{
+		RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata,
 		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()},
 	})
 	if err != nil {
@@ -394,7 +394,7 @@ func installInitialForwarding(parent context.Context, args []string, output io.W
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := infrastructure.AuthenticateForwardingInitial(ctx, v, bundle, release.Inputs{RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3], Network: args[4], RefTime: time.Now().UTC()}})
+	authorization, err := releaseartifact.AuthenticateForwardingInitial(ctx, v, bundle, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3], Network: args[4], RefTime: time.Now().UTC()}})
 	if err != nil {
 		return err
 	}

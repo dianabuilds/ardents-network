@@ -6,11 +6,12 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // This finite byte grammar is consumed by independent original root readers. It carries no descriptors, private key or live right.
 func joinGenerationNames() []string {
-	return []string{programName, infrastructure.JoinTemplateName, infrastructure.JoinDescriptorName, enrollment.InfrastructureInventoryName,
+	return []string{programName, releaseartifact.JoinTemplateName, releaseartifact.JoinDescriptorName, enrollment.InfrastructureInventoryName,
 		"root.json", "timestamp.json", "snapshot.json", "targets.json", "join-request.json", "join-plan.json", "rendered-join.service", "binding.json"}
 }
 
@@ -29,7 +30,7 @@ func validateInitialGeneration(b binding, selected []byte, files map[string][]by
 		}
 	}
 	public := make(map[string][]byte, 7)
-	for _, name := range []string{programName, infrastructure.JoinTemplateName, infrastructure.JoinDescriptorName, "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
+	for _, name := range []string{programName, releaseartifact.JoinTemplateName, releaseartifact.JoinDescriptorName, "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
 		public[name] = files[name]
 	}
 	facts, hashes, err := enrollment.ValidateInfrastructureInventory(files[enrollment.InfrastructureInventoryName], public)
@@ -48,8 +49,8 @@ func validateInitialGeneration(b binding, selected []byte, files map[string][]by
 		return sum
 	}
 	for name, expected := range map[string]string{
-		programName: b.ProgramSHA256, infrastructure.JoinTemplateName: b.TemplateSHA256,
-		infrastructure.JoinDescriptorName: b.Generation, enrollment.InfrastructureInventoryName: b.InventorySHA256,
+		programName: b.ProgramSHA256, releaseartifact.JoinTemplateName: b.TemplateSHA256,
+		releaseartifact.JoinDescriptorName: b.Generation, enrollment.InfrastructureInventoryName: b.InventorySHA256,
 		"targets.json": b.TargetsSHA256, "join-request.json": b.RequestSHA256,
 		"join-plan.json": b.PlanSHA256, "rendered-join.service": b.UnitSHA256,
 	} {
@@ -65,20 +66,20 @@ func validateInitialGeneration(b binding, selected []byte, files map[string][]by
 	if err != nil || b.Request.MatchPlan(plan) != nil {
 		return Plan{}, errors.Join(ErrBinding, err)
 	}
-	d, err := infrastructure.DecodeJoinDescriptor(files[infrastructure.JoinDescriptorName])
+	d, err := releaseartifact.DecodeJoinDescriptor(files[releaseartifact.JoinDescriptorName])
 	if err != nil {
 		return Plan{}, err
 	}
 	// Inventory validation already checked the same actual program/template
 	// bytes and their original 64 MiB bounds. Decoding here retains the separate
 	// Join grammar; its declarations must match those fresh byte digests.
-	if d.Files[programName] != hashes[programName] || d.Files[infrastructure.JoinTemplateName] != hashes[infrastructure.JoinTemplateName] {
+	if d.Files[programName] != hashes[programName] || d.Files[releaseartifact.JoinTemplateName] != hashes[releaseartifact.JoinTemplateName] {
 		return Plan{}, errors.Join(ErrBinding, infrastructure.ErrBinding)
 	}
 	if facts != (enrollment.InfrastructureFacts{Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: d.ReleaseVersion, Invocation: d.Invocation}) {
 		return Plan{}, ErrBinding
 	}
-	rendered, err := renderUnit(files[infrastructure.JoinTemplateName], b.Request, b.Generation)
+	rendered, err := renderUnit(files[releaseartifact.JoinTemplateName], b.Request, b.Generation)
 	if err != nil || !bytes.Equal(rendered, files["rendered-join.service"]) {
 		return Plan{}, errors.Join(ErrBinding, err)
 	}
@@ -88,11 +89,11 @@ func validateInitialGeneration(b binding, selected []byte, files map[string][]by
 // The independent history reader rederives forwardness; signed or complete
 // replacement bytes cannot substitute this policy or current Release admission.
 func validateForwardImage(oldDescriptor, nextDescriptor, oldPlan, nextPlan []byte, programChanged bool) error {
-	old, err := infrastructure.DecodeJoinDescriptor(oldDescriptor)
+	old, err := releaseartifact.DecodeJoinDescriptor(oldDescriptor)
 	if err != nil {
 		return err
 	}
-	next, err := infrastructure.DecodeJoinDescriptor(nextDescriptor)
+	next, err := releaseartifact.DecodeJoinDescriptor(nextDescriptor)
 	if err != nil || next.ReleaseVersion <= old.ReleaseVersion {
 		return errors.Join(ErrBinding, err)
 	}

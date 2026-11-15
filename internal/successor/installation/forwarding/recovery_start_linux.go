@@ -10,15 +10,15 @@ import (
 	"slices"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type recoveryStartAttempt struct {
 	ctx         context.Context
 	v           *release.Verifier
-	a           infrastructure.ForwardingAuthorization
+	a           releaseartifact.ForwardingAuthorization
 	input       Inputs
 	original    *recoveryOriginal
 	candidate   *recoveryCandidate

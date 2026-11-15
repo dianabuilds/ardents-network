@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Outside observation only. The runner must retain the original PID1 Source
@@ -33,7 +34,7 @@ type sourceRetirementPhysicalProfile struct {
 }
 
 func readSourceRetirementPhysicalProfile(path, pin, program, root string) (*sourceRetirementPhysicalProfile, error) {
-	if !sourcePath(path) || !sourcePath(program) || filepath.Base(program) != ProgramName || !sourcePath(root) || !sourceCutObserverSHA(pin) {
+	if !sourcePath(path) || !sourcePath(program) || filepath.Base(program) != releaseartifact.ProgramName || !sourcePath(root) || !sourceCutObserverSHA(pin) {
 		return nil, errors.New("exact retirement physical profile/program/root required")
 	}
 	raw, _, err := readSourceCutObserverFile(path, 64<<10)
@@ -204,7 +205,7 @@ func (p *sourceRetirementPhysicalProfile) image() (*sourceRetirementPhysicalSnap
 		mode      uint32
 	}{
 		{filepath.Join(p.root, "binding.json"), p.BindingSHA256, 0644},
-		{filepath.Join(p.root, "generations", p.Generation, ProgramName), p.ProgramSHA256, 0555},
+		{filepath.Join(p.root, "generations", p.Generation, releaseartifact.ProgramName), p.ProgramSHA256, 0555},
 	} {
 		info, err := os.Lstat(target.path)
 		if err != nil {

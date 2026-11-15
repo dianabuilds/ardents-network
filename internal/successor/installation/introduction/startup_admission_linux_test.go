@@ -3,13 +3,14 @@ package introduction
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"testing"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 func TestIntroductionStartAndStartupRejectMissingOriginalOwners(t *testing.T) {
 	for _, ctx := range []context.Context{nil, context.Background()} {
-		if err := StartInitial(ctx, nil, infrastructure.IntroductionAuthorization{}, "/var/lib/intro/binding.json", "/var/lib/distribution", "/var/lib/release"); err != ErrInput {
+		if err := StartInitial(ctx, nil, releaseartifact.IntroductionAuthorization{}, "/var/lib/intro/binding.json", "/var/lib/distribution", "/var/lib/release"); err != ErrInput {
 			t.Fatal("missing original Release accepted", err)
 		}
 		h, err := OpenStartup(ctx, "/var/lib/intro/binding.json")

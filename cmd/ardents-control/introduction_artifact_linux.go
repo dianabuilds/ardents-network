@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	introductioninstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/introduction"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type introductionControlFailure struct{ cause error }
@@ -91,7 +91,7 @@ func prepareIntroductionArtifact(ctx context.Context, args []string, observe fun
 			return nil, errSourceControlInput
 		}
 		result = []byte(introductioninstallation.Template)
-		name, destination = infrastructure.IntroductionTemplateName, args[1]
+		name, destination = releaseartifact.IntroductionTemplateName, args[1]
 	case "prepare-request":
 		result, destination, returned = introductionRequestArguments(args[1:])
 		name = "introduction-request.json"
@@ -118,8 +118,8 @@ func prepareIntroductionArtifact(ctx context.Context, args []string, observe fun
 		if err != nil {
 			return nil, err
 		}
-		result, returned = infrastructure.PrepareIntroductionArtifact(args[1], version, program, template)
-		name, destination = infrastructure.IntroductionArtifactName, args[5]
+		result, returned = releaseartifact.PrepareIntroductionArtifact(args[1], version, program, template)
+		name, destination = releaseartifact.IntroductionArtifactName, args[5]
 	case "prepare-inventory":
 		if len(args) != 3 || !sourceControlPath(args[1]) || args[1] == args[2] || strings.HasPrefix(args[2], args[1]+"/") {
 			return nil, errSourceControlInput
@@ -128,7 +128,7 @@ func prepareIntroductionArtifact(ctx context.Context, args []string, observe fun
 		if err != nil {
 			return nil, err
 		}
-		wanted := map[string]int64{infrastructure.ProgramName: 64 << 20, infrastructure.IntroductionTemplateName: 64 << 20, infrastructure.IntroductionArtifactName: 16 << 10,
+		wanted := map[string]int64{releaseartifact.ProgramName: 64 << 20, releaseartifact.IntroductionTemplateName: 64 << 20, releaseartifact.IntroductionArtifactName: 16 << 10,
 			"root.json": 1 << 20, "timestamp.json": 1 << 20, "snapshot.json": 1 << 20, "targets.json": 1 << 20}
 		inventory := func() error {
 			if _, err := directory.file.Seek(0, io.SeekStart); err != nil {
@@ -155,7 +155,7 @@ func prepareIntroductionArtifact(ctx context.Context, args []string, observe fun
 				return nil, err
 			}
 		}
-		d, err := infrastructure.ValidateIntroductionResources(files[infrastructure.IntroductionArtifactName], files[infrastructure.ProgramName], files[infrastructure.IntroductionTemplateName])
+		d, err := releaseartifact.ValidateIntroductionResources(files[releaseartifact.IntroductionArtifactName], files[releaseartifact.ProgramName], files[releaseartifact.IntroductionTemplateName])
 		if err != nil {
 			return nil, err
 		}

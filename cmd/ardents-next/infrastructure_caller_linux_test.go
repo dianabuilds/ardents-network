@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 func TestInfrastructureOriginalLoaderAndVerifierSurviveToHandoff(t *testing.T) {
@@ -34,28 +34,28 @@ func TestInfrastructureOriginalLoaderAndVerifierSurviveToHandoff(t *testing.T) {
 	if d := v.Evaluate(t.Context(), in); d.Outcome != release.OutcomeReleaseAccepted {
 		t.Fatalf("healthy prerequisite %s %s %v", d.Outcome, d.Notice, d.Err())
 	}
-	a, err := infrastructure.AuthenticateCandidate(t.Context(), v, c, in)
+	a, err := releaseartifact.AuthenticateCandidate(t.Context(), v, c, in)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := a.Check(t.Context(), v); err != nil {
 		t.Fatal("healthy original", err)
 	}
-	if err := (infrastructure.Authorization{}).Check(t.Context(), v); err == nil {
+	if err := (releaseartifact.Authorization{}).Check(t.Context(), v); err == nil {
 		t.Fatal("zero handoff")
 	}
 	cancel()
 	if err := a.Check(t.Context(), v); !errors.Is(err, context.Canceled) {
 		t.Fatal("canceled original snapshot revived", err)
 	}
-	if _, err := infrastructure.AuthenticateCandidate(t.Context(), v, c, in); !errors.Is(err, context.Canceled) {
+	if _, err := releaseartifact.AuthenticateCandidate(t.Context(), v, c, in); !errors.Is(err, context.Canceled) {
 		t.Fatal("new caller revived canceled loader", err)
 	}
 	fresh, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err = infrastructure.AuthenticateCandidate(t.Context(), v, fresh, in)
+	a, err = releaseartifact.AuthenticateCandidate(t.Context(), v, fresh, in)
 	if err != nil {
 		t.Fatal("independently loaded healthy counterpart", err)
 	}

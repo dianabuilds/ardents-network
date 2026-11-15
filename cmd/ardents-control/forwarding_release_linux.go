@@ -18,8 +18,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
@@ -58,7 +58,7 @@ func runForwardingReleasePurpose(args []string, out io.Writer, purpose forwardin
 		Targets     []string `json:"targets"`
 		Installed   bool     `json:"installed_qualification"`
 		Independent bool     `json:"independent_custody"`
-	}{"forwarding." + operation, hex.EncodeToString(sum[:]), []string{infrastructure.ProgramTarget, infrastructure.ForwardingGenerationTarget}, false, false})
+	}{"forwarding." + operation, hex.EncodeToString(sum[:]), []string{releaseartifact.ProgramTarget, releaseartifact.ForwardingGenerationTarget}, false, false})
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func signForwardingReleasePurpose(ctx context.Context, args []string, purpose fo
 		root = predecessor.root
 	}
 
-	paths := []string{infrastructure.ProgramTarget, infrastructure.ForwardingGenerationTarget}
+	paths := []string{releaseartifact.ProgramTarget, releaseartifact.ForwardingGenerationTarget}
 	sign := func(value sourceSignableMetadata) ([]byte, error) {
 		for _, signer := range signers[:3] {
 			if err := check(); err != nil {

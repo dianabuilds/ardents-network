@@ -9,7 +9,7 @@ import (
 	"time"
 
 	descriptorinstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type descriptorReleasePlan struct {
@@ -50,7 +50,7 @@ func decodeDescriptorReleasePurpose(raw []byte, now time.Time, purpose descripto
 	return p, nil
 }
 func validateDescriptorReleaseResources(plan descriptorReleasePlan, program, descriptor, template []byte) error {
-	d, err := infrastructure.ValidateDescriptorResources(descriptor, program, template)
+	d, err := releaseartifact.ValidateDescriptorResources(descriptor, program, template)
 	initial := plan.Schema == "ardents-descriptor-initial-release-plan-v1"
 	forward := plan.Schema == "ardents-descriptor-forward-release-plan-v1"
 	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(descriptorinstallation.Template)) {

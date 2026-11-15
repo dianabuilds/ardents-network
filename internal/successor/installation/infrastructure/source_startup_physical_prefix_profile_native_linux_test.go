@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Every finite first/subsequent path uses actual native storage, births and a
@@ -71,7 +72,7 @@ func TestSourceStartupPhysicalPrefixNative(t *testing.T) {
 				t.Fatal(err)
 			}
 			programBody := []byte("unsigned native program framing only\n")
-			if err := os.WriteFile(filepath.Join(programDirectory, ProgramName), programBody, 0555); err != nil {
+			if err := os.WriteFile(filepath.Join(programDirectory, releaseartifact.ProgramName), programBody, 0555); err != nil {
 				t.Fatal(err)
 			}
 			_, first, _, _ := number.schema()

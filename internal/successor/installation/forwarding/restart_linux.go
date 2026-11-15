@@ -5,25 +5,25 @@ import (
 	"errors"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Restart admits a new invocation of the same immutable generation only after
 // independently reading every predecessor start and committed retirement. Fresh
 // Release/native/startup admission is repeated; no old runtime owner transfers.
-func Restart(ctx context.Context, v *release.Verifier, authorization infrastructure.ForwardingAuthorization, bindingPath, distribution, history string) (returned error) {
+func Restart(ctx context.Context, v *release.Verifier, authorization releaseartifact.ForwardingAuthorization, bindingPath, distribution, history string) (returned error) {
 	return startRetained(ctx, v, authorization, bindingPath, distribution, history, false)
 }
 
 // StartSelected separately admits the first invocation of a newly selected
 // replacement after its exact predecessor retired. Replacement itself never
 // calls this operation, and ordinary same-generation Restart stays distinct.
-func StartSelected(ctx context.Context, v *release.Verifier, authorization infrastructure.ForwardingAuthorization, bindingPath, distribution, history string) error {
+func StartSelected(ctx context.Context, v *release.Verifier, authorization releaseartifact.ForwardingAuthorization, bindingPath, distribution, history string) error {
 	return startRetained(ctx, v, authorization, bindingPath, distribution, history, true)
 }
 
-func startRetained(ctx context.Context, v *release.Verifier, authorization infrastructure.ForwardingAuthorization, bindingPath, distribution, history string, replacement bool) (returned error) {
+func startRetained(ctx context.Context, v *release.Verifier, authorization releaseartifact.ForwardingAuthorization, bindingPath, distribution, history string, replacement bool) (returned error) {
 	if ctx == nil || v == nil || os.Geteuid() != 0 || !validPath(bindingPath) || !validPath(distribution) || !validPath(history) {
 		return ErrInput
 	}

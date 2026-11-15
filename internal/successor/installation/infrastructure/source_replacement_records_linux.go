@@ -6,6 +6,8 @@ import (
 	"errors"
 	"path/filepath"
 	"slices"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // This closed transcript authenticates recorded configuration/effect ordering,
@@ -126,7 +128,7 @@ func walkSourceReplacementRecords(records []sourceRecord, replacement sourceRepl
 	slices.Sort(names)
 	for _, name := range names {
 		mode := uint32(0444)
-		if name == ProgramName {
+		if name == releaseartifact.ProgramName {
 			mode = 0555
 		}
 		path := filepath.Join(sealed, name)

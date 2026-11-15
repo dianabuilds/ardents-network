@@ -14,6 +14,8 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 func sourceRetirementNativeJSON(t *testing.T, value any) []byte {
@@ -76,7 +78,7 @@ func sourceRetirementNativeStartup(t *testing.T, number sourceAttemptNumber) (*s
 	if err := os.MkdirAll(programDirectory, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(programDirectory, ProgramName), programBody, 0555); err != nil {
+	if err := os.WriteFile(filepath.Join(programDirectory, releaseartifact.ProgramName), programBody, 0555); err != nil {
 		t.Fatal(err)
 	}
 	journal, directory := number.journal(root), number.directory(root)
@@ -247,7 +249,7 @@ func TestSourceRetirementPhysicalImageNative(t *testing.T) {
 				return snapshot.image
 			}
 			check("native-before-joined")
-			for _, path := range []string{filepath.Join(p.root, "binding.json"), filepath.Join(p.root, "generations", p.Generation, ProgramName)} {
+			for _, path := range []string{filepath.Join(p.root, "binding.json"), filepath.Join(p.root, "generations", p.Generation, releaseartifact.ProgramName)} {
 				original, err := os.ReadFile(path)
 				if err != nil {
 					t.Fatal(err)

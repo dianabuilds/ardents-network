@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	joininstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/join"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type joinControlFailure struct{ cause error }
@@ -100,7 +100,7 @@ func prepareJoinArtifact(ctx context.Context, args []string, observe func(string
 			return nil, errSourceControlInput
 		}
 		result = []byte(joininstallation.Template)
-		name, destination = infrastructure.JoinTemplateName, args[1]
+		name, destination = releaseartifact.JoinTemplateName, args[1]
 	case "prepare-request":
 		result, destination, returned = joinRequestArguments(args[1:])
 		name = "join-request.json"
@@ -123,8 +123,8 @@ func prepareJoinArtifact(ctx context.Context, args []string, observe func(string
 		if err != nil {
 			return nil, err
 		}
-		result, returned = infrastructure.PrepareJoinDescriptor(args[1], version, program, template)
-		name, destination = infrastructure.JoinDescriptorName, args[5]
+		result, returned = releaseartifact.PrepareJoinDescriptor(args[1], version, program, template)
+		name, destination = releaseartifact.JoinDescriptorName, args[5]
 	case "prepare-inventory":
 		if len(args) != 3 || !sourceControlPath(args[1]) || args[1] == args[2] || strings.HasPrefix(args[2], args[1]+"/") {
 			return nil, errSourceControlInput
@@ -133,7 +133,7 @@ func prepareJoinArtifact(ctx context.Context, args []string, observe func(string
 		if err != nil {
 			return nil, err
 		}
-		wanted := map[string]int64{infrastructure.ProgramName: 64 << 20, infrastructure.JoinTemplateName: 64 << 20, infrastructure.JoinDescriptorName: 16 << 10,
+		wanted := map[string]int64{releaseartifact.ProgramName: 64 << 20, releaseartifact.JoinTemplateName: 64 << 20, releaseartifact.JoinDescriptorName: 16 << 10,
 			"root.json": 1 << 20, "timestamp.json": 1 << 20, "snapshot.json": 1 << 20, "targets.json": 1 << 20}
 		inventory := func() error {
 			if _, err := directory.file.Seek(0, io.SeekStart); err != nil {
@@ -160,7 +160,7 @@ func prepareJoinArtifact(ctx context.Context, args []string, observe func(string
 				return nil, err
 			}
 		}
-		d, err := infrastructure.ValidateJoinResources(files[infrastructure.JoinDescriptorName], files[infrastructure.ProgramName], files[infrastructure.JoinTemplateName])
+		d, err := releaseartifact.ValidateJoinResources(files[releaseartifact.JoinDescriptorName], files[releaseartifact.ProgramName], files[releaseartifact.JoinTemplateName])
 		if err != nil {
 			return nil, err
 		}

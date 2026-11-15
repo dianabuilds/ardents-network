@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // An outside process-cut declaration, never original-cut or recovery authority.
@@ -42,7 +44,7 @@ func readSourceRecoveryPhysicalProfile(path, pin, program, root string) (*source
 		return nil, errors.Join(errors.New("one exact canonical recovery process-cut declaration required"), err)
 	}
 	p.sha256, p.root = pin, root
-	if program != filepath.Join(p.argument(2), ProgramName) || sourceRecoveryPhysicalWindow(p) == nil {
+	if program != filepath.Join(p.argument(2), releaseartifact.ProgramName) || sourceRecoveryPhysicalWindow(p) == nil {
 		return nil, errors.New("finite original root recovery command required")
 	}
 	return p, nil
@@ -111,8 +113,8 @@ func (p *sourceRecoveryPhysicalProfile) repairedHold() *sourceRecoveryHold {
 		operation = "initial"
 	}
 	return &sourceRecoveryHold{journal: p.Journal, journalPin: p.JournalSHA256, operation: operation,
-		payload: filepath.Join(p.root, "generations", p.Generation, ProgramName),
-		profile: sourceRecoveryHoldProfile{Phase: "file-ready", Path: filepath.Join(p.root, "generations", p.Generation, ProgramName),
+		payload: filepath.Join(p.root, "generations", p.Generation, releaseartifact.ProgramName),
+		profile: sourceRecoveryHoldProfile{Phase: "file-ready", Path: filepath.Join(p.root, "generations", p.Generation, releaseartifact.ProgramName),
 			BodySHA256: p.ProgramSHA256, Generation: p.Generation, BindingSHA256: p.BindingSHA256, PrefixRecords: p.PrefixRecords}}
 }
 

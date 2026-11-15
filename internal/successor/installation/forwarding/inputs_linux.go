@@ -120,10 +120,6 @@ func ReadInputs(ctx context.Context, path string) (result Inputs, returned error
 	return result, result.Check()
 }
 
-func (r Request) paths() []string {
-	return []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.CredentialDirectory, r.Plan, r.Certificate, r.PrivateKey, r.Clock}
-}
-
 func (h Inputs) Request() Request {
 	if h.original == nil {
 		return Request{}

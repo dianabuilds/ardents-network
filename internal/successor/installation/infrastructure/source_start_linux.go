@@ -16,6 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/process"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // One original start attempt owns its distinct writer lease and native
@@ -25,7 +26,7 @@ import (
 type sourceStartAttempt struct {
 	ctx               context.Context
 	verifier          *release.Verifier
-	authorization     Authorization
+	authorization     releaseartifact.Authorization
 	initial           *sourceInitial
 	identity          *sourceRuntimeIdentity
 	managerIdentity   string
@@ -50,7 +51,7 @@ type sourceStartAttempt struct {
 // On uncertain Start, a return requires original kernel scope join. Missing
 // original join can remain unavailable indefinitely; the command reports that
 // bounded notice while retaining this original operation and all its custody.
-func StartSource(ctx context.Context, v *release.Verifier, a Authorization, binding, history string) (err error) {
+func StartSource(ctx context.Context, v *release.Verifier, a releaseartifact.Authorization, binding, history string) (err error) {
 	return startSourceAttempt(ctx, v, a, binding, history, nil)
 }
 
@@ -58,7 +59,7 @@ func StartSource(ctx context.Context, v *release.Verifier, a Authorization, bind
 // original retirement readback under the original first journal's lease. It
 // repeats fresh artifact/Release/native admission and never reopens or removes
 // the first-start barrier as a new operation.
-func RestartSource(ctx context.Context, v *release.Verifier, a Authorization, binding, history string) (err error) {
+func RestartSource(ctx context.Context, v *release.Verifier, a releaseartifact.Authorization, binding, history string) (err error) {
 	retired, err := openSourceRetirement(ctx, v, binding, history)
 	if err != nil {
 		return err
@@ -70,7 +71,7 @@ func RestartSource(ctx context.Context, v *release.Verifier, a Authorization, bi
 	return startSourceAttempt(ctx, v, a, binding, history, retired)
 }
 
-func startSourceAttempt(ctx context.Context, v *release.Verifier, a Authorization, binding, history string, predecessor *sourceRetirement) (err error) {
+func startSourceAttempt(ctx context.Context, v *release.Verifier, a releaseartifact.Authorization, binding, history string, predecessor *sourceRetirement) (err error) {
 	if ctx == nil || v == nil || os.Geteuid() != 0 {
 		return ErrInput
 	}
@@ -116,10 +117,10 @@ func startSourceAttempt(ctx context.Context, v *release.Verifier, a Authorizatio
 		return err
 	}
 	get := func(name string) []byte { return selection.files[filepath.Join(selection.sealed, name)].raw }
-	if !bytes.Equal(a.Descriptor(), get(DescriptorName)) || !bytes.Equal(a.Program(), get(ProgramName)) || !bytes.Equal(a.Template(), get(TemplateName)) {
+	if !bytes.Equal(a.Descriptor(), get(releaseartifact.DescriptorName)) || !bytes.Equal(a.Program(), get(releaseartifact.ProgramName)) || !bytes.Equal(a.Template(), get(releaseartifact.TemplateName)) {
 		return ErrBinding
 	}
-	if err = verifySourceControllerProgram(ctx, get(ProgramName)); err != nil {
+	if err = verifySourceControllerProgram(ctx, get(releaseartifact.ProgramName)); err != nil {
 		return err
 	}
 	s.identity, err = openSourceRootIdentity(ctx)
@@ -335,7 +336,7 @@ func (s *sourceStartAttempt) awaitRunning() error {
 				return ErrBinding
 			}
 			b := s.initial.selection.binding
-			program := s.initial.selection.files[filepath.Join(s.initial.selection.sealed, ProgramName)]
+			program := s.initial.selection.files[filepath.Join(s.initial.selection.sealed, releaseartifact.ProgramName)]
 			s.scope, err = cgroup.RetainSourceStarted(s.ctx, s.pid)
 			if err != nil {
 				return err

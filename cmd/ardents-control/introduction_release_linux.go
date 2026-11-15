@@ -18,8 +18,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
@@ -45,7 +45,7 @@ func runIntroductionReleaseSigning(args []string, out io.Writer) error {
 		Targets     []string `json:"targets"`
 		Installed   bool     `json:"installed_qualification"`
 		Independent bool     `json:"independent_custody"`
-	}{"introduction.sign-initial-release", hex.EncodeToString(sum[:]), []string{infrastructure.ProgramTarget, infrastructure.IntroductionGenerationTarget}, false, false})
+	}{"introduction.sign-initial-release", hex.EncodeToString(sum[:]), []string{releaseartifact.ProgramTarget, releaseartifact.IntroductionGenerationTarget}, false, false})
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func signIntroductionInitialRelease(ctx context.Context, args []string, observe 
 	for _, role := range metadata.TOP_LEVEL_ROLE_NAMES {
 		root.Signed.Roles[role] = &metadata.Role{KeyIDs: append([]string(nil), keyIDs...), Threshold: 3}
 	}
-	paths := []string{infrastructure.ProgramTarget, infrastructure.IntroductionGenerationTarget}
+	paths := []string{releaseartifact.ProgramTarget, releaseartifact.IntroductionGenerationTarget}
 	sign := func(value sourceSignableMetadata) ([]byte, error) {
 		for _, signer := range signers[:3] {
 			if err := check(); err != nil {

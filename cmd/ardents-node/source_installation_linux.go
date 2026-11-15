@@ -16,6 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 func runSourceInstallation(parent context.Context, args []string, out io.Writer) error {
@@ -141,7 +142,7 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 	if err != nil {
 		return err
 	}
-	input := release.Inputs{RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata,
+	input := release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata,
 		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3+offset], Network: args[4+offset], RefTime: time.Now().UTC()}}
 	if initial {
 		verifier, err = release.Open(history)
@@ -151,11 +152,11 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 	if err != nil {
 		return err
 	}
-	var authorization infrastructure.Authorization
+	var authorization releaseartifact.Authorization
 	if initial {
-		authorization, err = infrastructure.AuthenticateInitial(ctx, verifier, bundle, input)
+		authorization, err = releaseartifact.AuthenticateInitial(ctx, verifier, bundle, input)
 	} else {
-		authorization, err = infrastructure.AuthenticateCandidate(ctx, verifier, candidate, input)
+		authorization, err = releaseartifact.AuthenticateCandidate(ctx, verifier, candidate, input)
 	}
 	if err != nil {
 		return err

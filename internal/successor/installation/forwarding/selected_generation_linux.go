@@ -6,12 +6,13 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // This is a finite byte grammar, shared by independently acquired root and
 // runtime observations. It carries no descriptors, private key or live right.
 func forwardingGenerationNames() []string {
-	return []string{programName, infrastructure.ForwardingTemplateName, infrastructure.ForwardingDescriptorName, enrollment.InfrastructureInventoryName,
+	return []string{programName, releaseartifact.ForwardingTemplateName, releaseartifact.ForwardingDescriptorName, enrollment.InfrastructureInventoryName,
 		"root.json", "timestamp.json", "snapshot.json", "targets.json", "forwarding-request.json", "forwarding-plan.json", "rendered-forwarding.service", "binding.json"}
 }
 
@@ -26,7 +27,7 @@ func validateSelectedGeneration(b binding, selected []byte, files map[string][]b
 		}
 	}
 	public := make(map[string][]byte, 7)
-	for _, name := range []string{programName, infrastructure.ForwardingTemplateName, infrastructure.ForwardingDescriptorName, "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
+	for _, name := range []string{programName, releaseartifact.ForwardingTemplateName, releaseartifact.ForwardingDescriptorName, "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
 		public[name] = files[name]
 	}
 	facts, hashes, err := enrollment.ValidateInfrastructureInventory(files[enrollment.InfrastructureInventoryName], public)
@@ -45,8 +46,8 @@ func validateSelectedGeneration(b binding, selected []byte, files map[string][]b
 		return sum
 	}
 	for name, expected := range map[string]string{
-		programName: b.ProgramSHA256, infrastructure.ForwardingTemplateName: b.TemplateSHA256,
-		infrastructure.ForwardingDescriptorName: b.Generation, enrollment.InfrastructureInventoryName: b.InventorySHA256,
+		programName: b.ProgramSHA256, releaseartifact.ForwardingTemplateName: b.TemplateSHA256,
+		releaseartifact.ForwardingDescriptorName: b.Generation, enrollment.InfrastructureInventoryName: b.InventorySHA256,
 		"targets.json": b.TargetsSHA256, "forwarding-request.json": b.RequestSHA256,
 		"forwarding-plan.json": b.PlanSHA256, "rendered-forwarding.service": b.UnitSHA256,
 	} {
@@ -62,20 +63,20 @@ func validateSelectedGeneration(b binding, selected []byte, files map[string][]b
 	if err != nil || b.Request.MatchPlan(plan) != nil {
 		return Plan{}, errors.Join(ErrBinding, err)
 	}
-	d, err := infrastructure.DecodeForwardingDescriptor(files[infrastructure.ForwardingDescriptorName])
+	d, err := releaseartifact.DecodeForwardingDescriptor(files[releaseartifact.ForwardingDescriptorName])
 	if err != nil {
 		return Plan{}, err
 	}
 	// Inventory validation already checked the same actual program/template
 	// bytes and their original 64 MiB bounds. Decoding here retains the separate
 	// Forwarding grammar; its declarations must match those fresh byte digests.
-	if d.Files[programName] != hashes[programName] || d.Files[infrastructure.ForwardingTemplateName] != hashes[infrastructure.ForwardingTemplateName] {
+	if d.Files[programName] != hashes[programName] || d.Files[releaseartifact.ForwardingTemplateName] != hashes[releaseartifact.ForwardingTemplateName] {
 		return Plan{}, errors.Join(ErrBinding, infrastructure.ErrBinding)
 	}
 	if facts != (enrollment.InfrastructureFacts{Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: d.ReleaseVersion, Invocation: d.Invocation}) {
 		return Plan{}, ErrBinding
 	}
-	rendered, err := RenderUnit(files[infrastructure.ForwardingTemplateName], b.Request, b.Generation)
+	rendered, err := RenderUnit(files[releaseartifact.ForwardingTemplateName], b.Request, b.Generation)
 	if err != nil || !bytes.Equal(rendered, files["rendered-forwarding.service"]) {
 		return Plan{}, errors.Join(ErrBinding, err)
 	}

@@ -18,6 +18,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 const sourceRefusalReturnSymbol = "main.(*sourceCommandFailure).Error"
@@ -79,7 +81,7 @@ func readSourceRefusalObserverProfile(path, pin, program, root string) (*sourceR
 		return nil, errors.New("closed canonical recovery refusal profile required")
 	}
 	if p.Arguments[0] != "installation" || p.Arguments[1] != "recover-source" || p.Arguments[4] != "alpha" ||
-		!sourceCutObserverNetwork(p.Arguments[5]) || program != filepath.Join(p.Arguments[2], ProgramName) {
+		!sourceCutObserverNetwork(p.Arguments[5]) || program != filepath.Join(p.Arguments[2], releaseartifact.ProgramName) {
 		return nil, errors.New("exact canonical recovery argv required")
 	}
 	for _, index := range []int{2, 3, 6, 7} {

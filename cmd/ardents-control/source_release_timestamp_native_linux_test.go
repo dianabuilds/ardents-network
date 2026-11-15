@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -61,7 +61,7 @@ func exerciseSourceTimestampRefresh(t *testing.T, input sourceTimestampNativeInp
 	if err := os.Mkdir(distribution, 0700); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{infrastructure.ProgramName, infrastructure.DescriptorName, infrastructure.TemplateName, "root.json", "snapshot.json", "targets.json", "timestamp.json"} {
+	for _, name := range []string{releaseartifact.ProgramName, releaseartifact.DescriptorName, releaseartifact.TemplateName, "root.json", "snapshot.json", "targets.json", "timestamp.json"} {
 		directory := input.distribution
 		if name == "timestamp.json" {
 			directory = short
@@ -112,7 +112,7 @@ func exerciseSourceTimestampRefresh(t *testing.T, input sourceTimestampNativeInp
 		if err != nil {
 			t.Fatal(err)
 		}
-		for i, target := range []string{infrastructure.ProgramTarget, infrastructure.GenerationTarget} {
+		for i, target := range []string{releaseartifact.ProgramTarget, releaseartifact.GenerationTarget} {
 			artifact := [][]byte{input.program, input.descriptor}[i]
 			decision := verifier.Evaluate(t.Context(), release.Inputs{RootBytes: read(directory, "root.json"), Files: files, TargetPath: target, Artifact: artifact,
 				Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: plan.Network, RefTime: at}})

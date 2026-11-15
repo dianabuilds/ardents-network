@@ -14,11 +14,11 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/process"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // One root attempt owns all of its observations. The independently admitted
@@ -26,7 +26,7 @@ import (
 type startAttempt struct {
 	ctx               context.Context
 	verifier          *release.Verifier
-	authorization     infrastructure.JoinAuthorization
+	authorization     releaseartifact.JoinAuthorization
 	completed         Completed
 	nextNumber        attemptNumber
 	identity          *runtimeIdentity
@@ -55,7 +55,7 @@ var errControllerProgram = errors.New("join installation: original controller pr
 // including after uncertainty.
 // A failed native Start retains original custody until actual kernel join;
 // no deadline, process absence or stopped manager flag manufactures completion.
-func StartInitial(ctx context.Context, v *release.Verifier, authorization infrastructure.JoinAuthorization, bindingPath, distribution, history string) (returned error) {
+func StartInitial(ctx context.Context, v *release.Verifier, authorization releaseartifact.JoinAuthorization, bindingPath, distribution, history string) (returned error) {
 	if ctx == nil || v == nil || os.Geteuid() != 0 || !validPath(bindingPath) || !validPath(distribution) || !validPath(history) {
 		return ErrInput
 	}

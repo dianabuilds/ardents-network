@@ -17,6 +17,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/ubuntu"
 )
 
@@ -335,7 +336,7 @@ func (s SourceInputs) Close() error {
 // ObserveSource performs a bounded read-only check for a fresh stopped Source.
 // Release-owned floor authentication happened separately; no installation,
 // account, generation, credential, runtime root or listener is created here.
-func ObserveSource(v *release.Verifier, a Authorization, inputs SourceInputs, distribution, history string) (err error) {
+func ObserveSource(v *release.Verifier, a releaseartifact.Authorization, inputs SourceInputs, distribution, history string) (err error) {
 	if inputs.original == nil {
 		return ErrInput
 	}

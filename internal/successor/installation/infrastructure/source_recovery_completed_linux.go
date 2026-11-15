@@ -9,6 +9,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // An invocation journal is never replayed. Only a genuinely complete original
@@ -17,7 +18,7 @@ import (
 // composition may reference/load the fixed manager unit and joins that original
 // connection. It has no persistent recovery writes, Start, Stop, reload, unlink,
 // initialize or reset effect.
-func inspectCompletedSourceRecovery(ctx context.Context, v *release.Verifier, a Authorization, input SourceInputs, number sourceAttemptNumber, journal, distribution, history string) (err error) {
+func inspectCompletedSourceRecovery(ctx context.Context, v *release.Verifier, a releaseartifact.Authorization, input SourceInputs, number sourceAttemptNumber, journal, distribution, history string) (err error) {
 	if ctx == nil || v == nil || input.original == nil || number >= sourceAttemptLimit {
 		return ErrInput
 	}

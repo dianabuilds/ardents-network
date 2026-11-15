@@ -15,6 +15,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/process"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/ubuntu"
 )
 
@@ -93,7 +94,7 @@ func OpenSourceStartup(parent context.Context, binding string) (result *SourceSt
 	if s.id == [16]byte{} {
 		return nil, ErrBinding
 	}
-	program := s.selection.files[filepath.Join(s.selection.sealed, ProgramName)]
+	program := s.selection.files[filepath.Join(s.selection.sealed, releaseartifact.ProgramName)]
 	s.invocation, err = process.RetainSourceSelf(ctx, process.SourceExpected{PID: uint32(os.Getpid()), UID: b.UID, GID: b.GID, Invocation: s.id, InstallationRoot: b.Request.InstallationRoot, Generation: b.Generation, ProgramIdentity: program.info})
 	if err != nil {
 		return nil, err

@@ -10,6 +10,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 var ErrSourceRepairRequired = errors.New("source installation: retained initial prefix requires repair")
@@ -19,7 +20,7 @@ var ErrSourceRepairRequired = errors.New("source installation: retained initial 
 // acquired native users are joined before return, including on partial failure.
 // It consumes input custody before final stopped-selection publication. This
 // operation never starts Source, opens State, or returns runtime authority.
-func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input SourceInputs, distribution, history string) (err error) {
+func InstallInitialStoppedSource(v *release.Verifier, a releaseartifact.Authorization, input SourceInputs, distribution, history string) (err error) {
 	started := false
 	defer func() {
 		if started && err != nil {
@@ -112,7 +113,7 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	base := filepath.Join(r.InstallationRoot, "generations")
 	dir := filepath.Join(base, generation)
 	files := map[string][]byte{}
-	for _, name := range []string{ProgramName, TemplateName, DescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
+	for _, name := range []string{releaseartifact.ProgramName, releaseartifact.TemplateName, releaseartifact.DescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
 		body, ok := a.File(name)
 		if !ok {
 			return ErrBinding
@@ -122,7 +123,7 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	files["source-plan.json"] = append([]byte(nil), p.files[1].raw...)
 	files["source-request.json"] = append([]byte(nil), p.files[0].raw...)
 	files["rendered-source.service"] = unit
-	bound := sourceBinding{Schema: "ardents-source-binding-v1", Invocation: "source", Generation: generation, RequestSHA256: digest(p.files[0].raw), ProgramTarget: ProgramTarget, GenerationTarget: GenerationTarget, ProgramSHA256: digest(a.Program()), TemplateSHA256: digest(a.Template()), InventorySHA256: digest(files["infrastructure-enrollment.json"]), TargetsSHA256: digest(files["targets.json"]), PlanSHA256: digest(files["source-plan.json"]), UnitSHA256: digest(unit), Account: "ardents-source", UID: account.uid, GID: account.gid, Request: r}
+	bound := sourceBinding{Schema: "ardents-source-binding-v1", Invocation: "source", Generation: generation, RequestSHA256: digest(p.files[0].raw), ProgramTarget: releaseartifact.ProgramTarget, GenerationTarget: releaseartifact.GenerationTarget, ProgramSHA256: digest(a.Program()), TemplateSHA256: digest(a.Template()), InventorySHA256: digest(files["infrastructure-enrollment.json"]), TargetsSHA256: digest(files["targets.json"]), PlanSHA256: digest(files["source-plan.json"]), UnitSHA256: digest(unit), Account: "ardents-source", UID: account.uid, GID: account.gid, Request: r}
 	binding, err := json.Marshal(bound)
 	if err != nil || len(binding)+1 > 32<<10 {
 		return errors.Join(ErrInput, err)
@@ -301,7 +302,7 @@ func InstallInitialStoppedSource(v *release.Verifier, a Authorization, input Sou
 	slices.Sort(names)
 	for _, name := range names {
 		mode := os.FileMode(0444)
-		if name == ProgramName {
+		if name == releaseartifact.ProgramName {
 			mode = 0555
 		}
 		if err = births.write(filepath.Join(dir, name), files[name], mode, 0, 0, check); err != nil {

@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Actual native births/sealing and hostile file observations only. The twelve
@@ -46,7 +48,7 @@ func prepareSourcePhysicalSealedNative(t *testing.T) (*sourcePhysicalCut, string
 	}
 	for _, name := range names {
 		mode := os.FileMode(0444)
-		if name == ProgramName {
+		if name == releaseartifact.ProgramName {
 			mode = 0555
 		}
 		if err := births.write(filepath.Join(directory, name), []byte("native fixture only: "+name+"\n"), mode, 0, 0, ctx.Err); err != nil {
@@ -68,7 +70,7 @@ func prepareSourcePhysicalSealedNative(t *testing.T) (*sourcePhysicalCut, string
 		t.Fatal(err)
 	}
 	plan := &sourcePhysicalCut{window: "seal-before-sealed", canonical: &sourceCanonicalPhysicalProfile{
-		sourceCutObserverProfile: sourceCutObserverProfile{ProgramSHA256: sourcePhysicalSHA([]byte("native fixture only: " + ProgramName + "\n"))}, Generation: generation}}
+		sourceCutObserverProfile: sourceCutObserverProfile{ProgramSHA256: sourcePhysicalSHA([]byte("native fixture only: " + releaseartifact.ProgramName + "\n"))}, Generation: generation}}
 	return plan, root, births, records
 }
 

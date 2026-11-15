@@ -8,15 +8,15 @@ import (
 	"slices"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Independent completion readback opens all parent/child, kernel and manager
 // custody anew after the writer and original observers close. It repeats only
 // stopped observations, never Reload, Start, Stop or a domain report.
-func readbackRecoveryStopped(ctx context.Context, v *release.Verifier, a infrastructure.ForwardingAuthorization, input Inputs, publication *recoveryPublication, bindingPath string) (returned error) {
+func readbackRecoveryStopped(ctx context.Context, v *release.Verifier, a releaseartifact.ForwardingAuthorization, input Inputs, publication *recoveryPublication, bindingPath string) (returned error) {
 	if publication == nil || publication.births == nil || !publication.births.closed || publication.births.terminal != nil {
 		return ErrInput
 	}

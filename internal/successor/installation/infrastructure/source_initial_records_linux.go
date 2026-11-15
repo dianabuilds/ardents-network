@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // This is the complete initial writer's closed transcript, not a phase search,
@@ -187,7 +189,7 @@ func walkSourceInitialRecords(records []sourceRecord, b sourceBinding, hashes ma
 	slices.Sort(names)
 	for _, name := range names {
 		mode := uint32(0444)
-		if name == ProgramName {
+		if name == releaseartifact.ProgramName {
 			mode = 0555
 		}
 		if err = write(filepath.Join(sealed, name), mode, 0, 0); err != nil {

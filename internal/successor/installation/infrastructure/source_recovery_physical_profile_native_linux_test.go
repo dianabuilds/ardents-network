@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 func TestSourceRecoveryPhysicalProfileInspectionNative(t *testing.T) {
@@ -143,7 +145,7 @@ func TestSourceRecoveryPhysicalImageNative(t *testing.T) {
 	}
 	for _, name := range sourceGenerationNames() {
 		mode := os.FileMode(0444)
-		if name == ProgramName {
+		if name == releaseartifact.ProgramName {
 			mode = 0555
 		}
 		if err := births.write(filepath.Join(directory, name), []byte("unsigned native only: "+name+"\n"), mode, 0, 0, ctx.Err); err != nil {
@@ -212,7 +214,7 @@ func TestSourceRecoveryPhysicalImageNative(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	p := &sourceRecoveryPhysicalProfile{sourceCutObserverProfile: sourceCutObserverProfile{Journal: journal, ProgramSHA256: sourcePhysicalSHA([]byte("unsigned native only: " + ProgramName + "\n")), PrefixRecords: 115, LastPhase: "stopped-verified"}, Generation: generation, BindingSHA256: bindingPin, JournalSHA256: sourcePhysicalSHA(prefix.journal.raw), OriginalCutSHA256: sourcePhysicalSHA([]byte("native framing fixture only\n")), root: root}
+	p := &sourceRecoveryPhysicalProfile{sourceCutObserverProfile: sourceCutObserverProfile{Journal: journal, ProgramSHA256: sourcePhysicalSHA([]byte("unsigned native only: " + releaseartifact.ProgramName + "\n")), PrefixRecords: 115, LastPhase: "stopped-verified"}, Generation: generation, BindingSHA256: bindingPin, JournalSHA256: sourcePhysicalSHA(prefix.journal.raw), OriginalCutSHA256: sourcePhysicalSHA([]byte("native framing fixture only\n")), root: root}
 	before, err := p.image(unit)
 	if err != nil {
 		t.Fatal("actual native complete envelope/image", err)
@@ -265,7 +267,7 @@ func TestSourceRecoveryRepairedImageNative(t *testing.T) {
 			if err := os.MkdirAll(directory, 0700); err != nil {
 				t.Fatal(err)
 			}
-			payload := filepath.Join(directory, ProgramName)
+			payload := filepath.Join(directory, releaseartifact.ProgramName)
 			body := []byte("unsigned native repaired inode only\n")
 			births, err := openSourceBirthsWithPhase(ctx, journal, map[string]bool{pending: true, payload: true}, phase)
 			if err != nil {

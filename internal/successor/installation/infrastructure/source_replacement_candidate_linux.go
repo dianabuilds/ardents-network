@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type sourceReplacementCandidate struct {
@@ -16,7 +18,7 @@ type sourceReplacementCandidate struct {
 // This finite composition prepares immutable configuration only after its
 // caller retained the original complete retirement and genuine forward Release
 // pair. Nothing here grants native birth, selection, manager or Start rights.
-func prepareSourceReplacement(retired *sourceRetirement, a Authorization, input SourceInputs) (*sourceReplacementCandidate, error) {
+func prepareSourceReplacement(retired *sourceRetirement, a releaseartifact.Authorization, input SourceInputs) (*sourceReplacementCandidate, error) {
 	if retired == nil || retired.chain == nil || retired.chain.initial == nil || retired.chain.latest == nil || retired.chain.latestSelection == nil || input.original == nil || len(input.original.files) != 5 || !a.HasInventory() || retired.chain.latestSelection != retired.chain.initial.selection {
 		return nil, ErrInput
 	}
@@ -29,7 +31,7 @@ func prepareSourceReplacement(retired *sourceRetirement, a Authorization, input 
 
 // Detached configuration preparation only. A recovery caller must separately
 // consume the genuine complete predecessor retirement before any new effect.
-func prepareSourceReplacementConfiguration(old *sourceSelection, result sourceRetirementResult, retirement string, a Authorization, input SourceInputs) (*sourceReplacementCandidate, error) {
+func prepareSourceReplacementConfiguration(old *sourceSelection, result sourceRetirementResult, retirement string, a releaseartifact.Authorization, input SourceInputs) (*sourceReplacementCandidate, error) {
 	if old == nil || input.original == nil || len(input.original.files) != 5 || !a.HasInventory() || !sourceInitialSHA(retirement) {
 		return nil, ErrInput
 	}
@@ -39,11 +41,11 @@ func prepareSourceReplacementConfiguration(old *sourceSelection, result sourceRe
 		r.CredentialDirectory != p.Request.CredentialDirectory || r.Clock != p.Request.Clock || r.Profile != p.Request.Profile {
 		return nil, ErrBinding
 	}
-	next, err := DecodeDescriptor(a.Descriptor())
+	next, err := releaseartifact.DecodeDescriptor(a.Descriptor())
 	if err != nil {
 		return nil, err
 	}
-	previous, err := DecodeDescriptor(old.files[filepath.Join(old.sealed, DescriptorName)].raw)
+	previous, err := releaseartifact.DecodeDescriptor(old.files[filepath.Join(old.sealed, releaseartifact.DescriptorName)].raw)
 	if err != nil || next.ReleaseVersion <= previous.ReleaseVersion {
 		return nil, errors.Join(ErrBinding, err)
 	}
@@ -71,7 +73,7 @@ func prepareSourceReplacementConfiguration(old *sourceSelection, result sourceRe
 		return nil, err
 	}
 	c := &sourceReplacementCandidate{unit: unit, files: map[string][]byte{}}
-	for _, name := range []string{ProgramName, TemplateName, DescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
+	for _, name := range []string{releaseartifact.ProgramName, releaseartifact.TemplateName, releaseartifact.DescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
 		raw, ok := a.File(name)
 		if !ok {
 			return nil, ErrBinding
@@ -80,7 +82,7 @@ func prepareSourceReplacementConfiguration(old *sourceSelection, result sourceRe
 	}
 	c.files["source-plan.json"], c.files["source-request.json"], c.files["rendered-source.service"] = bytes.Clone(input.original.files[1].raw), bytes.Clone(input.original.files[0].raw), unit
 	c.binding = sourceReplacementBinding{Schema: "ardents-source-replacement-binding-v1", InitialGeneration: p.Generation, PredecessorBindingSHA256: digest(old.bindingBytes()), RetirementSHA256: retirement, PredecessorAttempt: result.Attempt,
-		Configuration: sourceBinding{Schema: "ardents-source-replacement-configuration-v1", Invocation: "source", Generation: generation, Predecessor: p.Generation, RequestSHA256: digest(c.files["source-request.json"]), ProgramTarget: ProgramTarget, GenerationTarget: GenerationTarget,
+		Configuration: sourceBinding{Schema: "ardents-source-replacement-configuration-v1", Invocation: "source", Generation: generation, Predecessor: p.Generation, RequestSHA256: digest(c.files["source-request.json"]), ProgramTarget: releaseartifact.ProgramTarget, GenerationTarget: releaseartifact.GenerationTarget,
 			ProgramSHA256: digest(a.Program()), TemplateSHA256: digest(a.Template()), InventorySHA256: digest(c.files["infrastructure-enrollment.json"]), TargetsSHA256: digest(c.files["targets.json"]), PlanSHA256: digest(c.files["source-plan.json"]), UnitSHA256: digest(unit), Account: p.Account, UID: p.UID, GID: p.GID, Request: r}}
 	if old.replacement != nil {
 		c.binding.InitialGeneration = old.replacement.InitialGeneration

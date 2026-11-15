@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type sourceReplacementLink struct {
@@ -106,11 +108,11 @@ func checkSourceReplacementNeighbor(previous, current *sourceSelection) error {
 		return ErrBinding
 	}
 	get := func(s *sourceSelection, name string) []byte { return s.files[filepath.Join(s.sealed, name)].raw }
-	old, err := DecodeDescriptor(get(previous, DescriptorName))
+	old, err := releaseartifact.DecodeDescriptor(get(previous, releaseartifact.DescriptorName))
 	if err != nil {
 		return err
 	}
-	next, err := DecodeDescriptor(get(current, DescriptorName))
+	next, err := releaseartifact.DecodeDescriptor(get(current, releaseartifact.DescriptorName))
 	if err != nil || next.ReleaseVersion <= old.ReleaseVersion || (b.ProgramSHA256 == p.ProgramSHA256 && b.Request.Address == p.Request.Address) {
 		return errors.Join(ErrBinding, err)
 	}

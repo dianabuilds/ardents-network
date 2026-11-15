@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Exact candidate reconstruction is separate from safe-prefix/native admission.
@@ -17,7 +18,7 @@ type recoveryCandidate struct {
 	hashes    map[string]string
 }
 
-func prepareRecoveryCandidate(a infrastructure.ForwardingAuthorization, input Inputs, selected generationSelection, original *recoveryOriginal) (*recoveryCandidate, error) {
+func prepareRecoveryCandidate(a releaseartifact.ForwardingAuthorization, input Inputs, selected generationSelection, original *recoveryOriginal) (*recoveryCandidate, error) {
 	p := input.original
 	if p == nil || len(p.files) != 4 || len(selected.raw) == 0 || original == nil || original.prefix == nil || !bytes.Equal(original.cut.Boundary.Binding, selected.raw) {
 		return nil, ErrInput

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -55,7 +56,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 			t.Fatal(err)
 		}
 	}
-	descriptorBytes, err := infrastructure.PrepareDescriptor("one", 1, nodeBytes, []byte(infrastructure.SourceTemplate))
+	descriptorBytes, err := releaseartifact.PrepareDescriptor("one", 1, nodeBytes, []byte(infrastructure.SourceTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +197,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 			t.Fatal(err)
 		}
 	}
-	for name, raw := range map[string][]byte{infrastructure.ProgramName: nodeBytes, infrastructure.TemplateName: preparedTemplate, infrastructure.DescriptorName: descriptorBytes} {
+	for name, raw := range map[string][]byte{releaseartifact.ProgramName: nodeBytes, releaseartifact.TemplateName: preparedTemplate, releaseartifact.DescriptorName: descriptorBytes} {
 		if err := os.WriteFile(filepath.Join(previous, name), raw, 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -214,7 +215,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	}
 	exerciseSourceTimestampRefresh(t, sourceTimestampNativeInput{command: command, planPath: planPath, keys: keyRoot,
 		parent: parent, distribution: previous, plan: plan, program: nodeBytes, descriptor: descriptorBytes})
-	forwardDescriptor, err := infrastructure.PrepareDescriptor("two", 2, nodeBytes, preparedTemplate)
+	forwardDescriptor, err := releaseartifact.PrepareDescriptor("two", 2, nodeBytes, preparedTemplate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,7 +294,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := infrastructure.PrepareDescriptor("one", 1, controlBytes, []byte(infrastructure.SourceTemplate))
+	badDescriptor, err := releaseartifact.PrepareDescriptor("one", 1, controlBytes, []byte(infrastructure.SourceTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}

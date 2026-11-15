@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 var ErrRepairRequired = errors.New("descriptor installation: retained initial prefix requires repair")
@@ -21,7 +22,7 @@ var ErrRepairRequired = errors.New("descriptor installation: retained initial pr
 // They close, together with all native users, before the final pending unlink.
 // It performs no Start, semantic initialization, adoption or recovery. A partial
 // or uncertain birth retains the exclusive journal and blocking pending prefix.
-func InstallInitialStopped(v *release.Verifier, a infrastructure.DescriptorAuthorization, input Inputs, distribution, history string) (returned error) {
+func InstallInitialStopped(v *release.Verifier, a releaseartifact.DescriptorAuthorization, input Inputs, distribution, history string) (returned error) {
 	p := input.original
 	if p == nil || v == nil || os.Geteuid() != 0 {
 		return ErrInput
@@ -147,7 +148,7 @@ func InstallInitialStopped(v *release.Verifier, a infrastructure.DescriptorAutho
 	files["descriptor-request.json"] = bytes.Clone(delivery[0].raw)
 	files["descriptor-plan.json"] = bytes.Clone(delivery[1].raw)
 	files["rendered-descriptor.service"] = unit
-	b := binding{Schema: "ardents-descriptor-binding-v1", Invocation: "descriptor", Generation: generation, ProgramTarget: infrastructure.ProgramTarget, GenerationTarget: infrastructure.DescriptorGenerationTarget, ProgramSHA256: digest(a.Program()), TemplateSHA256: digest(a.Template()), InventorySHA256: digest(files["infrastructure-enrollment.json"]), TargetsSHA256: digest(files["targets.json"]), RequestSHA256: digest(delivery[0].raw), PlanSHA256: digest(delivery[1].raw), UnitSHA256: digest(unit), CertificateSHA256: digest(delivery[2].raw), Account: "ardents-node", UID: account.uid, GID: account.gid, History: history, Request: r}
+	b := binding{Schema: "ardents-descriptor-binding-v1", Invocation: "descriptor", Generation: generation, ProgramTarget: releaseartifact.ProgramTarget, GenerationTarget: releaseartifact.DescriptorGenerationTarget, ProgramSHA256: digest(a.Program()), TemplateSHA256: digest(a.Template()), InventorySHA256: digest(files["infrastructure-enrollment.json"]), TargetsSHA256: digest(files["targets.json"]), RequestSHA256: digest(delivery[0].raw), PlanSHA256: digest(delivery[1].raw), UnitSHA256: digest(unit), CertificateSHA256: digest(delivery[2].raw), Account: "ardents-node", UID: account.uid, GID: account.gid, History: history, Request: r}
 	bound, err := json.Marshal(b)
 	if err != nil {
 		return err

@@ -13,12 +13,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type sourceReplacement struct {
 	ctx                context.Context
 	verifier           *release.Verifier
-	authorization      Authorization
+	authorization      releaseartifact.Authorization
 	input              SourceInputs
 	semantic           state.SourceInspection
 	usingInput         bool
@@ -44,7 +45,7 @@ type sourceReplacement struct {
 // separate effects; unknown/partial completion retains the exact blocker and
 // journal. It performs no Start, repair, rollback, adoption or crash continuation.
 // This finite operation consumes/joins input custody before its final commit.
-func ReplaceSource(ctx context.Context, v *release.Verifier, a Authorization, input SourceInputs, semantic state.SourceInspection, binding, distribution, history string) (err error) {
+func ReplaceSource(ctx context.Context, v *release.Verifier, a releaseartifact.Authorization, input SourceInputs, semantic state.SourceInspection, binding, distribution, history string) (err error) {
 	if ctx == nil || v == nil || input.original == nil || os.Geteuid() != 0 {
 		return ErrInput
 	}
@@ -173,7 +174,7 @@ func ReplaceSource(ctx context.Context, v *release.Verifier, a Authorization, in
 	slices.Sort(names)
 	for _, name := range names {
 		mode := os.FileMode(0444)
-		if name == ProgramName {
+		if name == releaseartifact.ProgramName {
 			mode = 0555
 		}
 		if err := s.births.write(filepath.Join(sealed, name), s.candidate.files[name], mode, 0, 0, s.observe); err != nil {

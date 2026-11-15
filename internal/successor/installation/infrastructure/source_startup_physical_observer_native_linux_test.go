@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Closed outside observation, never startup/recovery authority. The controller
@@ -48,7 +49,7 @@ func readSourceStartupPhysicalProfile(path, pin, program, root string) (*sourceS
 		return nil, errors.Join(errors.New("one canonical startup physical profile required"), err)
 	}
 	p.sha256, p.root = pin, root
-	if program != filepath.Join(p.argument(2), ProgramName) || sourceStartupPhysicalWindow(p) == nil {
+	if program != filepath.Join(p.argument(2), releaseartifact.ProgramName) || sourceStartupPhysicalWindow(p) == nil {
 		return nil, errors.New("finite canonical startup physical command required")
 	}
 	return p, nil
@@ -157,7 +158,7 @@ func (p *sourceStartupPhysicalProfile) image(live bool) (*sourcePhysicalImage, *
 	for _, target := range []struct {
 		path, pin string
 		mode      uint32
-	}{{filepath.Join(p.root, "binding.json"), p.BindingSHA256, 0644}, {filepath.Join(p.root, "generations", p.Generation, ProgramName), p.ProgramSHA256, 0555}} {
+	}{{filepath.Join(p.root, "binding.json"), p.BindingSHA256, 0644}, {filepath.Join(p.root, "generations", p.Generation, releaseartifact.ProgramName), p.ProgramSHA256, 0555}} {
 		info, err := os.Lstat(target.path)
 		if err != nil {
 			return nil, nil, err

@@ -7,12 +7,13 @@ import (
 	"fmt"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	"os"
 	"path/filepath"
 	"slices"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // One explicit stopped transition. It retains only independently admitted
@@ -20,7 +21,7 @@ import (
 type replacementAttempt struct {
 	ctx                context.Context
 	verifier           *release.Verifier
-	authorization      infrastructure.DescriptorAuthorization
+	authorization      releaseartifact.DescriptorAuthorization
 	input              Inputs
 	retired            Started
 	candidate          *replacementCandidate
@@ -40,7 +41,7 @@ type replacementAttempt struct {
 // Replace consumes original Inputs and verifier. It selects a strictly forward
 // stopped generation, without Start, rollback, history reset or prefix recovery.
 // Every failure after journal birth retains its blocker and original prefix.
-func Replace(v *release.Verifier, a infrastructure.DescriptorAuthorization, input Inputs, bindingPath, distribution, history string) (returned error) {
+func Replace(v *release.Verifier, a releaseartifact.DescriptorAuthorization, input Inputs, bindingPath, distribution, history string) (returned error) {
 	p := input.original
 	if p == nil || v == nil || os.Geteuid() != 0 || !validPath(bindingPath) {
 		return ErrInput

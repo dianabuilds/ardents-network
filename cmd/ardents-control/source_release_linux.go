@@ -18,8 +18,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
@@ -62,7 +62,7 @@ func runSourceReleasePurpose(args []string, out io.Writer, purpose sourceRelease
 		Installed           bool     `json:"installed_qualification"`
 		IndependentCustody  bool     `json:"independent_custody"`
 		IndependentBuilders bool     `json:"independent_builders"`
-	}{"source." + operation, hex.EncodeToString(digest[:]), []string{infrastructure.ProgramTarget, infrastructure.GenerationTarget}, false, false, false})
+	}{"source." + operation, hex.EncodeToString(digest[:]), []string{releaseartifact.ProgramTarget, releaseartifact.GenerationTarget}, false, false, false})
 	if err != nil {
 		return err
 	}
@@ -276,7 +276,7 @@ func signSourceRelease(ctx context.Context, args []string, purpose sourceRelease
 			return nil, err
 		}
 	}
-	paths := []string{infrastructure.ProgramTarget, infrastructure.GenerationTarget}
+	paths := []string{releaseartifact.ProgramTarget, releaseartifact.GenerationTarget}
 	sign := func(value sourceSignableMetadata) ([]byte, error) {
 		for _, signer := range signers[:3] {
 			if err := check(); err != nil {

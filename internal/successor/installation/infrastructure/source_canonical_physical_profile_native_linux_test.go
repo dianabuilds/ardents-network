@@ -10,6 +10,8 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Inspect the real canonical ELF only. These format pins supply no Release,
@@ -149,7 +151,7 @@ func TestSourceCanonicalPhysicalPayloadNative(t *testing.T) {
 	if err := os.MkdirAll(directory, 0700); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(directory, ProgramName)
+	path := filepath.Join(directory, releaseartifact.ProgramName)
 	body := bytes.Repeat([]byte("physical original program bytes\n"), 300)
 	if err := os.WriteFile(path, nil, 0600); err != nil {
 		t.Fatal(err)

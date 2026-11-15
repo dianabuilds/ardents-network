@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 func nativeInitialReleaseNetwork(t *testing.T) string {
@@ -48,7 +48,7 @@ func TestForwardingStartedNativeRefusesMissingStartHistory(t *testing.T) {
 	if err := Stop(ctx, v, path, b.History); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("root stop accepted an initial transcript without a start", err)
 	}
-	if err := Restart(ctx, v, infrastructure.ForwardingAuthorization{}, path, os.Getenv("ARDENTS_FORWARDING_INITIAL_DISTRIBUTION"), b.History); !errors.Is(err, os.ErrNotExist) {
+	if err := Restart(ctx, v, releaseartifact.ForwardingAuthorization{}, path, os.Getenv("ARDENTS_FORWARDING_INITIAL_DISTRIBUTION"), b.History); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("restart accepted missing initial start history", err)
 	}
 	oldGC := debug.SetGCPercent(-1)
@@ -66,7 +66,7 @@ func TestForwardingStartedNativeRefusesMissingStartHistory(t *testing.T) {
 		if err := Stop(ctx, v, path, b.History); !errors.Is(err, os.ErrNotExist) {
 			t.Fatal("root stop lost missing-start refusal", err)
 		}
-		if err := Restart(ctx, v, infrastructure.ForwardingAuthorization{}, path, os.Getenv("ARDENTS_FORWARDING_INITIAL_DISTRIBUTION"), b.History); !errors.Is(err, os.ErrNotExist) {
+		if err := Restart(ctx, v, releaseartifact.ForwardingAuthorization{}, path, os.Getenv("ARDENTS_FORWARDING_INITIAL_DISTRIBUTION"), b.History); !errors.Is(err, os.ErrNotExist) {
 			t.Fatal("restart lost missing-start refusal", err)
 		}
 	}
@@ -136,8 +136,8 @@ func TestForwardingStartInitialNativeRefusesOrdinaryRootExecutable(t *testing.T)
 		t.Fatal(err)
 	}
 	defer v.Close()
-	a, err := infrastructure.AuthenticateForwardingCandidate(ctx, v, candidate, release.Inputs{
-		RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata,
+	a, err := releaseartifact.AuthenticateForwardingCandidate(ctx, v, candidate, release.Inputs{
+		RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata,
 		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: network, RefTime: time.Now().UTC()},
 	})
 	if err != nil {

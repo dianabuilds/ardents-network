@@ -22,6 +22,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // The native controller supplies an independently hashed canonical executable.
@@ -276,7 +277,7 @@ func diagnoseSourcePreflight(t *testing.T, dir, history, request string) {
 		return
 	}
 	defer v.Close()
-	a, err := infrastructure.AuthenticateCandidate(t.Context(), v, c, infrastructureCandidateInput(t, c))
+	a, err := releaseartifact.AuthenticateCandidate(t.Context(), v, c, infrastructureCandidateInput(t, c))
 	if err != nil {
 		t.Log("candidate authentication", err)
 		return

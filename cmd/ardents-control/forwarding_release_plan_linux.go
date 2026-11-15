@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type forwardingReleasePlan struct {
@@ -50,7 +50,7 @@ func decodeForwardingReleasePurpose(raw []byte, now time.Time, purpose forwardin
 	return p, nil
 }
 func validateForwardingReleaseResources(plan forwardingReleasePlan, program, descriptor, template []byte) error {
-	d, err := infrastructure.ValidateForwardingResources(descriptor, program, template)
+	d, err := releaseartifact.ValidateForwardingResources(descriptor, program, template)
 	initial := plan.Schema == "ardents-forwarding-initial-release-plan-v1"
 	forward := plan.Schema == "ardents-forwarding-forward-release-plan-v1"
 	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(forwarding.Template)) {

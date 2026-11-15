@@ -76,12 +76,10 @@ controls supply neither installed Source authority nor phase equivalence. The
 existing ACK observer and its separately gated installed profile retain their
 own exact grammar and accepting-proof checks.
 
-This supporting Software acceptance owner implements ADR-0123's Source
-artifact component, read-only native preflight, initial stopped transition and
-guarded first startup. `artifact.go` owns canonical descriptor preparation and exact
-public program/template agreement. `admission.go` owns one coherent pair of fresh
-Release authorizations, the immutable handoff and retained original loader caller.
-It imports Enrollment and Release, never Endpoint Installation. `source_plan_linux.go` consumes Source's pure serving-declaration codec and finite runtime credential-pair validation, also used by the runtime owner; Installation owns exact future-input matching, explicit delivery and preflight admission. No runtime is constructed.
+The Release infrastructure owner prepares canonical descriptors and retains
+coherent fresh Release pairs with the original Enrollment caller. This transitional
+Source owner consumes those proofs for read-only native preflight, stopped
+installation and guarded startup. Detached bytes grant no installed authority. `source_plan_linux.go` consumes Source's pure serving-declaration codec and finite runtime credential-pair validation, also used by the runtime owner; Installation owns exact future-input matching, explicit delivery and preflight admission. No runtime is constructed.
 `source_request.go` owns a separate closed Source request and exact unit
 template/rendering. `source_observation_linux.go` retains original root-controlled
 request/plan/certificate/private-key/CA files and ancestors through joined Close.

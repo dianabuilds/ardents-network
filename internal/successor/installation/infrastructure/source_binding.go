@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"strings"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // sourceBinding is immutable selected configuration. Parsing it supplies no
@@ -40,7 +42,7 @@ func decodeSourceBinding(raw []byte) (sourceBinding, error) {
 		return sourceBinding{}, ErrInput
 	}
 	if b.Schema != "ardents-source-binding-v1" || b.Invocation != "source" || b.Predecessor != "" ||
-		b.ProgramTarget != ProgramTarget || b.GenerationTarget != GenerationTarget {
+		b.ProgramTarget != releaseartifact.ProgramTarget || b.GenerationTarget != releaseartifact.GenerationTarget {
 		return sourceBinding{}, ErrBinding
 	}
 	if err := validateSourceBindingConfiguration(b); err != nil {
@@ -54,7 +56,7 @@ func decodeSourceBinding(raw []byte) (sourceBinding, error) {
 // provenance grammars before calling it. It grants no Release or Start right.
 func validateSourceBindingConfiguration(b sourceBinding) error {
 	if b.Invocation != "source" ||
-		b.ProgramTarget != ProgramTarget || b.GenerationTarget != GenerationTarget || b.Account != "ardents-source" ||
+		b.ProgramTarget != releaseartifact.ProgramTarget || b.GenerationTarget != releaseartifact.GenerationTarget || b.Account != "ardents-source" ||
 		b.UID < 100 || b.UID > 999 || b.GID != b.UID {
 		return ErrBinding
 	}

@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // A separate physical observation purpose. It cannot produce the eligible ACK
@@ -52,7 +54,7 @@ func sourceCanonicalPhysicalWindow(p *sourceCanonicalPhysicalProfile) *sourcePhy
 	if p == nil || !sourcePath(p.root) || !sourceCutObserverSHA(p.sha256) || !sourceCutObserverSHA(p.Generation) || len(p.Arguments) != 8 {
 		return nil
 	}
-	program := filepath.Join(p.Arguments[2], ProgramName)
+	program := filepath.Join(p.Arguments[2], releaseartifact.ProgramName)
 	if validateSourceCutObserverCommand(&p.sourceCutObserverProfile, program, p.root, "source-physical-cut-observer-v1") != nil {
 		return nil
 	}
@@ -157,7 +159,7 @@ func (p *sourcePhysicalCut) canonicalTarget(root string) string {
 	case "seal-before-sealed":
 		return filepath.Join(root, "generations", p.canonical.Generation)
 	default:
-		return filepath.Join(root, "generations", p.canonical.Generation, ProgramName)
+		return filepath.Join(root, "generations", p.canonical.Generation, releaseartifact.ProgramName)
 	}
 }
 
@@ -169,7 +171,7 @@ func (p *sourcePhysicalCut) canonicalPending() (string, string) {
 }
 
 func (p *sourcePhysicalCut) canonicalPayload(last sourceRecord, root string) ([]byte, os.FileInfo, error) {
-	path := filepath.Join(root, "generations", p.canonical.Generation, ProgramName)
+	path := filepath.Join(root, "generations", p.canonical.Generation, releaseartifact.ProgramName)
 	if last.Path != path || last.SHA256 != p.canonical.ProgramSHA256 || last.Mode != 0555 || last.UID != 0 || last.GID != 0 {
 		return nil, nil, errors.New("original program record differs from pinned physical target")
 	}

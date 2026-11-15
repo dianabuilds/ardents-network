@@ -3,14 +3,15 @@ package join
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	"os"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Restart admits a new independent same-generation invocation after every
 // original predecessor has committed retirement. It never initializes history.
-func Restart(ctx context.Context, v *release.Verifier, a infrastructure.JoinAuthorization, bindingPath, distribution, history string) (returned error) {
+func Restart(ctx context.Context, v *release.Verifier, a releaseartifact.JoinAuthorization, bindingPath, distribution, history string) (returned error) {
 	if ctx == nil || v == nil || os.Geteuid() != 0 || !validPath(bindingPath) || !validPath(distribution) || !validPath(history) {
 		return ErrInput
 	}

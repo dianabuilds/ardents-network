@@ -11,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // sourceSelection owns independent read-only original files and ancestors.
@@ -32,7 +33,7 @@ type sourceSelection struct {
 }
 
 func sourceGenerationNames() []string {
-	return []string{ProgramName, TemplateName, "binding.json", "infrastructure-enrollment.json", DescriptorName, "rendered-source.service", "root.json", "snapshot.json", "source-plan.json", "source-request.json", "targets.json", "timestamp.json"}
+	return []string{releaseartifact.ProgramName, releaseartifact.TemplateName, "binding.json", "infrastructure-enrollment.json", releaseartifact.DescriptorName, "rendered-source.service", "root.json", "snapshot.json", "source-plan.json", "source-request.json", "targets.json", "timestamp.json"}
 }
 
 func openSourceSelection(ctx context.Context, bindingPath string) (result *sourceSelection, err error) {
@@ -98,11 +99,11 @@ func openSourceSelectionMode(ctx context.Context, bindingPath string, archived b
 	for _, name := range sourceGenerationNames() {
 		limit, mode := int64(1<<20), os.FileMode(0444)
 		switch name {
-		case ProgramName:
+		case releaseartifact.ProgramName:
 			limit, mode = 64<<20, 0555
 		case "binding.json":
 			limit = 32 << 10
-		case TemplateName, DescriptorName, "infrastructure-enrollment.json", "rendered-source.service", "source-plan.json", "source-request.json":
+		case releaseartifact.TemplateName, releaseartifact.DescriptorName, "infrastructure-enrollment.json", "rendered-source.service", "source-plan.json", "source-request.json":
 			limit = 16 << 10
 		}
 		if _, err = s.read(filepath.Join(s.sealed, name), limit, mode, 0, 0); err != nil {
@@ -114,21 +115,21 @@ func openSourceSelectionMode(ctx context.Context, bindingPath string, archived b
 	}
 	get := func(name string) []byte { return s.files[filepath.Join(s.sealed, name)].raw }
 	if !bytes.Equal(raw, get("binding.json")) || digest(get("source-request.json")) != b.RequestSHA256 ||
-		digest(get(ProgramName)) != b.ProgramSHA256 || digest(get(TemplateName)) != b.TemplateSHA256 ||
+		digest(get(releaseartifact.ProgramName)) != b.ProgramSHA256 || digest(get(releaseartifact.TemplateName)) != b.TemplateSHA256 ||
 		digest(get("infrastructure-enrollment.json")) != b.InventorySHA256 || digest(get("targets.json")) != b.TargetsSHA256 ||
 		digest(get("source-plan.json")) != b.PlanSHA256 || digest(get("rendered-source.service")) != b.UnitSHA256 ||
-		digest(get(DescriptorName)) != b.Generation {
+		digest(get(releaseartifact.DescriptorName)) != b.Generation {
 		return nil, ErrBinding
 	}
 	if err = b.Request.checkPlan(get("source-plan.json")); err != nil {
 		return nil, err
 	}
-	d, err := ValidateResources(get(DescriptorName), get(ProgramName), get(TemplateName))
+	d, err := releaseartifact.ValidateResources(get(releaseartifact.DescriptorName), get(releaseartifact.ProgramName), get(releaseartifact.TemplateName))
 	if err != nil {
 		return nil, err
 	}
 	public := map[string][]byte{}
-	for _, name := range []string{ProgramName, TemplateName, DescriptorName, "root.json", "snapshot.json", "targets.json", "timestamp.json"} {
+	for _, name := range []string{releaseartifact.ProgramName, releaseartifact.TemplateName, releaseartifact.DescriptorName, "root.json", "snapshot.json", "targets.json", "timestamp.json"} {
 		public[name] = get(name)
 	}
 	inventory, err := enrollment.PrepareInfrastructureInventory(enrollment.InfrastructureFacts{Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: d.ReleaseVersion, Invocation: d.Invocation}, public)

@@ -20,6 +20,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
@@ -118,10 +119,10 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		return enrollmentReport(out, "infrastructure-inventory-refused", 1)
 	}
 	root, _ := files.File("root.json")
-	program, _ := files.File(infrastructure.ProgramName)
-	descriptor, _ := files.File(infrastructure.DescriptorName)
-	template, _ := files.File(infrastructure.TemplateName)
-	d, err := infrastructure.ValidateResources(descriptor, program, template)
+	program, _ := files.File(releaseartifact.ProgramName)
+	descriptor, _ := files.File(releaseartifact.DescriptorName)
+	template, _ := files.File(releaseartifact.TemplateName)
+	d, err := releaseartifact.ValidateResources(descriptor, program, template)
 	var f enrollment.InfrastructureFacts
 	if initial {
 		f, _ = b.Facts()
@@ -131,7 +132,7 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if err != nil || d.ReleaseIdentity != f.ReleaseIdentity || d.ReleaseVersion != f.ReleaseVersion {
 		return enrollmentReport(out, "infrastructure-artifact-refused", 1)
 	}
-	input := release.Inputs{RootBytes: root, Artifact: program, TargetPath: infrastructure.ProgramTarget, Local: local, Files: map[string][]byte{}}
+	input := release.Inputs{RootBytes: root, Artifact: program, TargetPath: releaseartifact.ProgramTarget, Local: local, Files: map[string][]byte{}}
 	for _, name := range []string{"timestamp.json", "snapshot.json", "targets.json"} {
 		input.Files["https://release.invalid/metadata/"+name], _ = files.File(name)
 	}
@@ -148,11 +149,11 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if err != nil {
 		return enrollmentReport(out, "infrastructure-release-unavailable", 1)
 	}
-	var a infrastructure.Authorization
+	var a releaseartifact.Authorization
 	if initial {
-		a, err = infrastructure.AuthenticateInitial(ctx, v, b, input)
+		a, err = releaseartifact.AuthenticateInitial(ctx, v, b, input)
 	} else {
-		a, err = infrastructure.AuthenticateCandidate(ctx, v, c, input)
+		a, err = releaseartifact.AuthenticateCandidate(ctx, v, c, input)
 	}
 	if err == nil {
 		err = a.Check(ctx, v)
@@ -208,7 +209,7 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 
 // A bounded failure notice never releases the original operation or its
 // verifier. Even an uncertain Start continues retaining its own native joins.
-func executeSourceFirstStart(ctx context.Context, v *release.Verifier, a infrastructure.Authorization, binding, history string, out io.Writer) error {
+func executeSourceFirstStart(ctx context.Context, v *release.Verifier, a releaseartifact.Authorization, binding, history string, out io.Writer) error {
 	done := make(chan error, 1)
 	go func() { done <- infrastructure.StartSource(ctx, v, a, binding, history) }()
 	select {
@@ -308,8 +309,8 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 		if e != nil {
 			return nil, e
 		}
-		result, err = infrastructure.PrepareDescriptor(args[1], version, program, template)
-		destination, name = args[5], infrastructure.DescriptorName
+		result, err = releaseartifact.PrepareDescriptor(args[1], version, program, template)
+		destination, name = args[5], releaseartifact.DescriptorName
 	case "prepare-inventory":
 		if len(args) != 3 || !absoluteAdmissionPath(args[1]) {
 			return nil, infrastructure.ErrInput
@@ -334,7 +335,7 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 		if len(entries) != 7 {
 			return nil, infrastructure.ErrInput
 		}
-		wanted := map[string]int64{infrastructure.ProgramName: 64 << 20, infrastructure.TemplateName: 64 << 20, infrastructure.DescriptorName: 16 << 10, "root.json": 1 << 20, "timestamp.json": 1 << 20, "snapshot.json": 1 << 20, "targets.json": 1 << 20}
+		wanted := map[string]int64{releaseartifact.ProgramName: 64 << 20, releaseartifact.TemplateName: 64 << 20, releaseartifact.DescriptorName: 16 << 10, "root.json": 1 << 20, "timestamp.json": 1 << 20, "snapshot.json": 1 << 20, "targets.json": 1 << 20}
 		files := map[string][]byte{}
 		for _, entry := range entries {
 			limit, ok := wanted[entry.Name()]
@@ -346,13 +347,13 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 				return nil, e
 			}
 		}
-		d, e := infrastructure.DecodeDescriptor(files[infrastructure.DescriptorName])
+		d, e := releaseartifact.DecodeDescriptor(files[releaseartifact.DescriptorName])
 		if e != nil {
 			return nil, e
 		}
 		// A preparation inventory cannot silently bless different descriptor resources.
-		canonical, e := infrastructure.PrepareDescriptor(d.ReleaseIdentity, d.ReleaseVersion, files[infrastructure.ProgramName], files[infrastructure.TemplateName])
-		if e != nil || string(canonical) != string(files[infrastructure.DescriptorName]) {
+		canonical, e := releaseartifact.PrepareDescriptor(d.ReleaseIdentity, d.ReleaseVersion, files[releaseartifact.ProgramName], files[releaseartifact.TemplateName])
+		if e != nil || string(canonical) != string(files[releaseartifact.DescriptorName]) {
 			return nil, infrastructure.ErrBinding
 		}
 		result, err = enrollment.PrepareInfrastructureInventory(enrollment.InfrastructureFacts{Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: d.ReleaseVersion, Invocation: d.Invocation}, files)

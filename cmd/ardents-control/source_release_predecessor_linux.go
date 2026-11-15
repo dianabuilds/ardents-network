@@ -11,8 +11,8 @@ import (
 	"slices"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -32,7 +32,7 @@ func readSourceReleasePredecessor(inputs *sourceControlInputs, path string, plan
 	if err != nil {
 		return nil, err
 	}
-	names := []string{infrastructure.ProgramName, infrastructure.TemplateName, infrastructure.DescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"}
+	names := []string{releaseartifact.ProgramName, releaseartifact.TemplateName, releaseartifact.DescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"}
 	check := func() error {
 		if _, err := directory.file.Seek(0, io.SeekStart); err != nil {
 			return err
@@ -58,7 +58,7 @@ func readSourceReleasePredecessor(inputs *sourceControlInputs, path string, plan
 	}
 	for _, name := range names {
 		limit := int64(1 << 20)
-		if name == infrastructure.ProgramName {
+		if name == releaseartifact.ProgramName {
 			limit = 64 << 20
 		}
 		p.files[name], err = inputs.read(filepath.Join(path, name), limit)
@@ -66,16 +66,16 @@ func readSourceReleasePredecessor(inputs *sourceControlInputs, path string, plan
 			return nil, err
 		}
 	}
-	previous, err := infrastructure.ValidateResources(p.files[infrastructure.DescriptorName], p.files[infrastructure.ProgramName], p.files[infrastructure.TemplateName])
+	previous, err := releaseartifact.ValidateResources(p.files[releaseartifact.DescriptorName], p.files[releaseartifact.ProgramName], p.files[releaseartifact.TemplateName])
 	if err != nil {
 		return nil, err
 	}
 	if plan.Schema == "ardents-source-timestamp-release-plan-v1" {
-		if !bytes.Equal(candidate, p.files[infrastructure.DescriptorName]) {
+		if !bytes.Equal(candidate, p.files[releaseartifact.DescriptorName]) {
 			return nil, errSourceControlInput
 		}
 	} else {
-		next, err := infrastructure.DecodeDescriptor(candidate)
+		next, err := releaseartifact.DecodeDescriptor(candidate)
 		if plan.Schema != "ardents-source-forward-release-plan-v1" || err != nil || next.ReleaseVersion <= previous.ReleaseVersion {
 			return nil, errors.Join(errSourceControlInput, err)
 		}
@@ -108,7 +108,7 @@ func readSourceReleasePredecessor(inputs *sourceControlInputs, path string, plan
 // or detached identifier, delimit timestamp refresh. The original diagnostic
 // verifier still authenticates both targets before any signature is produced.
 func (p *sourceReleasePredecessor) checkTimestampResources(plan sourceReleasePlan, artifacts [3][]byte) error {
-	for i, name := range []string{infrastructure.ProgramName, infrastructure.DescriptorName, infrastructure.TemplateName} {
+	for i, name := range []string{releaseartifact.ProgramName, releaseartifact.DescriptorName, releaseartifact.TemplateName} {
 		if !bytes.Equal(artifacts[i], p.files[name]) {
 			return errSourceControlInput
 		}
@@ -124,7 +124,7 @@ func (p *sourceReleasePredecessor) checkTimestampResources(plan sourceReleasePla
 	if plan.Expires.After(p.root.Signed.Expires) || plan.Expires.After(targets.Signed.Expires) || plan.Expires.After(snapshot.Signed.Expires) {
 		return errSourceControlInput
 	}
-	for i, name := range []string{infrastructure.ProgramTarget, infrastructure.GenerationTarget} {
+	for i, name := range []string{releaseartifact.ProgramTarget, releaseartifact.GenerationTarget} {
 		target := targets.Signed.Targets[name]
 		if target == nil || target.Custom == nil {
 			return errSourceControlInput
@@ -167,10 +167,10 @@ func (p *sourceReleasePredecessor) authenticate(ctx context.Context, v *release.
 		return err
 	}
 	var proofs []release.Authorization
-	for i, target := range []string{infrastructure.ProgramTarget, infrastructure.GenerationTarget} {
-		artifact := p.files[infrastructure.ProgramName]
+	for i, target := range []string{releaseartifact.ProgramTarget, releaseartifact.GenerationTarget} {
+		artifact := p.files[releaseartifact.ProgramName]
 		if i == 1 {
-			artifact = p.files[infrastructure.DescriptorName]
+			artifact = p.files[releaseartifact.DescriptorName]
 		}
 		decision := v.Evaluate(ctx, release.Inputs{RootBytes: p.files["root.json"], Files: files, TargetPath: target, Artifact: artifact,
 			Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: plan.Network, RefTime: plan.Reference}})
@@ -186,8 +186,8 @@ func (p *sourceReleasePredecessor) authenticate(ctx context.Context, v *release.
 	// Reevaluate through Installation's actual coherent-pair consumer. This
 	// binds both signed target identities to the exact predecessor descriptor
 	// after the seed evaluations have established complete diagnostic floors.
-	a, err := infrastructure.AuthenticateCandidate(ctx, v, p.candidate, release.Inputs{
-		RootBytes: p.files["root.json"], Files: files, TargetPath: infrastructure.ProgramTarget, Artifact: p.files[infrastructure.ProgramName],
+	a, err := releaseartifact.AuthenticateCandidate(ctx, v, p.candidate, release.Inputs{
+		RootBytes: p.files["root.json"], Files: files, TargetPath: releaseartifact.ProgramTarget, Artifact: p.files[releaseartifact.ProgramName],
 		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: plan.Network, RefTime: plan.Reference}})
 	if err != nil {
 		return err

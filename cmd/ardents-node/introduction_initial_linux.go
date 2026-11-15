@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/introduction"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	"io"
 	"time"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 func installInitialIntroduction(parent context.Context, args []string, output io.Writer) (returned error) {
@@ -40,7 +41,7 @@ func installInitialIntroduction(parent context.Context, args []string, output io
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := infrastructure.AuthenticateIntroductionInitial(ctx, v, bundle, release.Inputs{RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3], Network: args[4], RefTime: time.Now().UTC()}})
+	authorization, err := releaseartifact.AuthenticateIntroductionInitial(ctx, v, bundle, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3], Network: args[4], RefTime: time.Now().UTC()}})
 	if err != nil {
 		return err
 	}
@@ -76,8 +77,8 @@ func inspectInitialIntroduction(parent context.Context, args []string, output io
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := infrastructure.AuthenticateIntroductionCandidate(ctx, v, candidate, release.Inputs{
-		RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata,
+	authorization, err := releaseartifact.AuthenticateIntroductionCandidate(ctx, v, candidate, release.Inputs{
+		RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata,
 		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()},
 	})
 	if err != nil {
@@ -123,7 +124,7 @@ func startIntroductionGeneration(parent context.Context, args []string, output i
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	a, err := infrastructure.AuthenticateIntroductionCandidate(ctx, v, candidate, release.Inputs{RootBytes: get("root.json"), Artifact: get(infrastructure.ProgramName), TargetPath: infrastructure.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}})
+	a, err := releaseartifact.AuthenticateIntroductionCandidate(ctx, v, candidate, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}})
 	if err != nil {
 		return err
 	}

@@ -1,12 +1,7 @@
-// Package infrastructure prepares separate Source, Forwarding, JOIN, Descriptor and Introduction public artifact
-// descriptors, with exact invocation-specific inventories. Public preparation
-// grants no installed transaction, startup or runtime permission.
-// A separate opaque JOIN candidate pair is consumed by canonical Control's
-// fixed forward-Release predecessor verification. It supplies no initial
-// provenance, native transition or Source/Forwarding right.
-// It binds exact Source artifact bytes to two fresh coherent
-// Release authorizations and separate Enrollment initial provenance. It owns
-// Source-specific read-only preflight policy, original input custody and closed
+// Package infrastructure retains the transitional Source deployment lifecycle.
+// Release infrastructure owns artifact preparation and coherent authorization;
+// their copied facts never grant native effects or Source runtime permission.
+// This package owns Source-specific read-only preflight policy, original input custody and closed
 // template rendering and one initial stopped installation transition with its
 // separate closed journal, account/credential births, immutable generation and
 // fixed-unit selection. The native systemd adapter owns the original connection

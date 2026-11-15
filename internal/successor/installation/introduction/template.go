@@ -5,10 +5,10 @@ import (
 	posixpath "path"
 	"strings"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
-const programName = infrastructure.ProgramName
+const programName = releaseartifact.ProgramName
 
 func initialSHA(value string) bool {
 	return len(value) == 64 && strings.Trim(value, "0123456789abcdef") == ""

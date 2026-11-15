@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type sourceReleasePurpose uint8
@@ -95,7 +96,7 @@ func sourceDeclarationObject(raw []byte, value any, fields ...string) error {
 }
 
 func validateSourceReleaseResources(plan sourceReleasePlan, program, descriptor, template []byte) error {
-	d, err := infrastructure.ValidateResources(descriptor, program, template)
+	d, err := releaseartifact.ValidateResources(descriptor, program, template)
 	if err != nil || (plan.Schema == "ardents-source-initial-release-plan-v1" && d.ReleaseVersion != 1) || !bytes.Equal(template, []byte(infrastructure.SourceTemplate)) {
 		return errors.Join(errSourceControlInput, err)
 	}

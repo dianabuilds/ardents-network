@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type replacementCandidate struct {
@@ -18,7 +19,7 @@ type replacementCandidate struct {
 // The lifecycle caller must retain actual independent Started/retirement,
 // input/verifier and semantic owners. Preparation alone writes nothing and
 // grants no native generation birth, selection, reload, Start or recovery right.
-func prepareReplacement(retired *started, a infrastructure.DescriptorAuthorization, input Inputs) (*replacementCandidate, error) {
+func prepareReplacement(retired *started, a releaseartifact.DescriptorAuthorization, input Inputs) (*replacementCandidate, error) {
 	if retired == nil || retired.completed.original == nil || retired.retirement == nil || retired.snapshot == nil || retired.snapshot.number+1 >= attemptLimit || input.original == nil {
 		return nil, ErrInput
 	}
@@ -34,11 +35,11 @@ func prepareReplacement(retired *started, a infrastructure.DescriptorAuthorizati
 	if r.bindingSHA != digest(old.raw) || r.binding.Generation != old.binding.Generation || r.number+1 >= attemptLimit || r.result.Code != 1 || r.result.Status != 0 {
 		return nil, ErrBinding
 	}
-	previous, err := infrastructure.DecodeDescriptorArtifact(c.files[filepath.Join(c.sealed, infrastructure.DescriptorArtifactName)].body)
+	previous, err := releaseartifact.DecodeDescriptorArtifact(c.files[filepath.Join(c.sealed, releaseartifact.DescriptorArtifactName)].body)
 	if err != nil {
 		return nil, err
 	}
-	next, err := infrastructure.DecodeDescriptorArtifact(a.Descriptor())
+	next, err := releaseartifact.DecodeDescriptorArtifact(a.Descriptor())
 	if err != nil || next.ReleaseVersion <= previous.ReleaseVersion {
 		return nil, errors.Join(ErrBinding, err)
 	}
@@ -76,7 +77,7 @@ func prepareReplacement(retired *started, a infrastructure.DescriptorAuthorizati
 	}
 	files["descriptor-request.json"], files["descriptor-plan.json"], files["rendered-descriptor.service"] = bytes.Clone(delivery[0].raw), bytes.Clone(delivery[1].raw), unit
 	b := binding{Schema: "ardents-descriptor-replacement-configuration-v1", Invocation: "descriptor", Generation: generation,
-		ProgramTarget: infrastructure.ProgramTarget, GenerationTarget: infrastructure.DescriptorGenerationTarget,
+		ProgramTarget: releaseartifact.ProgramTarget, GenerationTarget: releaseartifact.DescriptorGenerationTarget,
 		ProgramSHA256: digest(a.Program()), TemplateSHA256: digest(a.Template()), InventorySHA256: digest(files["infrastructure-enrollment.json"]), TargetsSHA256: digest(files["targets.json"]),
 		RequestSHA256: digest(files["descriptor-request.json"]), PlanSHA256: digest(files["descriptor-plan.json"]), UnitSHA256: digest(unit), CertificateSHA256: digest(delivery[2].raw),
 		Account: old.binding.Account, UID: old.binding.UID, GID: old.binding.GID, History: old.binding.History, Request: p.request}

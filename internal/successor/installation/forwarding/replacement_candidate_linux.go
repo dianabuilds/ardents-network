@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type replacementCandidate struct {
@@ -18,7 +19,7 @@ type replacementCandidate struct {
 // The lifecycle caller must retain actual independent Started/retirement,
 // input/verifier and semantic owners. Preparation alone writes nothing and
 // grants no native generation birth, selection, reload, Start or recovery right.
-func prepareReplacement(retired *started, a infrastructure.ForwardingAuthorization, input Inputs) (*replacementCandidate, error) {
+func prepareReplacement(retired *started, a releaseartifact.ForwardingAuthorization, input Inputs) (*replacementCandidate, error) {
 	if retired == nil || retired.completed.original == nil || retired.latestRetirement == nil || retired.snapshot == nil || retired.head() == nil || retired.head().number+1 >= attemptLimit || input.original == nil || len(input.original.files) != 4 {
 		return nil, ErrInput
 	}
@@ -34,11 +35,11 @@ func prepareReplacement(retired *started, a infrastructure.ForwardingAuthorizati
 	if r.bindingSHA != digest(old.raw) || r.binding.Generation != old.binding.Generation || r.number+1 >= attemptLimit || r.result.Code != 1 || r.result.Status != 0 {
 		return nil, ErrBinding
 	}
-	previous, err := infrastructure.DecodeForwardingDescriptor(c.files.files[filepath.Join(c.files.sealed, infrastructure.ForwardingDescriptorName)].body)
+	previous, err := releaseartifact.DecodeForwardingDescriptor(c.files.files[filepath.Join(c.files.sealed, releaseartifact.ForwardingDescriptorName)].body)
 	if err != nil {
 		return nil, err
 	}
-	next, err := infrastructure.DecodeForwardingDescriptor(a.Descriptor())
+	next, err := releaseartifact.DecodeForwardingDescriptor(a.Descriptor())
 	if err != nil || next.ReleaseVersion <= previous.ReleaseVersion {
 		return nil, errors.Join(ErrBinding, err)
 	}
@@ -67,7 +68,7 @@ func prepareReplacement(retired *started, a infrastructure.ForwardingAuthorizati
 	}
 	files["forwarding-request.json"], files["forwarding-plan.json"], files["rendered-forwarding.service"] = bytes.Clone(p.files[0].raw), bytes.Clone(p.files[1].raw), unit
 	b := binding{Schema: "ardents-forwarding-replacement-configuration-v1", Invocation: "forwarding", Generation: generation,
-		ProgramTarget: infrastructure.ProgramTarget, GenerationTarget: infrastructure.ForwardingGenerationTarget,
+		ProgramTarget: releaseartifact.ProgramTarget, GenerationTarget: releaseartifact.ForwardingGenerationTarget,
 		ProgramSHA256: digest(a.Program()), TemplateSHA256: digest(a.Template()), InventorySHA256: digest(files["infrastructure-enrollment.json"]), TargetsSHA256: digest(files["targets.json"]),
 		RequestSHA256: digest(files["forwarding-request.json"]), PlanSHA256: digest(files["forwarding-plan.json"]), UnitSHA256: digest(unit), CertificateSHA256: digest(p.files[2].raw),
 		Account: old.binding.Account, UID: old.binding.UID, GID: old.binding.GID, History: old.binding.History, Request: p.request}

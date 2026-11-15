@@ -11,8 +11,8 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -72,10 +72,10 @@ func TestForwardingArtifactCandidateFreshPairAndRoleSeparation(t *testing.T) {
 					t.Error(err)
 				}
 			}()
-			if _, err := infrastructure.AuthenticateForwardingCandidate(t.Context(), verifier, candidate, input); err == nil {
+			if _, err := releaseartifact.AuthenticateForwardingCandidate(t.Context(), verifier, candidate, input); err == nil {
 				t.Fatal("cold candidate obtained initial trust")
 			}
-			if _, err := infrastructure.AuthenticateCandidate(t.Context(), verifier, candidate, input); err == nil {
+			if _, err := releaseartifact.AuthenticateCandidate(t.Context(), verifier, candidate, input); err == nil {
 				t.Fatal("Source admitted Forwarding inventory")
 			}
 			decision := verifier.Evaluate(t.Context(), input)
@@ -88,7 +88,7 @@ func TestForwardingArtifactCandidateFreshPairAndRoleSeparation(t *testing.T) {
 			if _, ok := decision.Authorization(); !ok {
 				t.Fatal("healthy program counterpart", decision.Outcome, decision.Err())
 			}
-			authorization, err := infrastructure.AuthenticateForwardingCandidate(t.Context(), verifier, candidate, input)
+			authorization, err := releaseartifact.AuthenticateForwardingCandidate(t.Context(), verifier, candidate, input)
 			if scenario != "healthy" {
 				if err == nil {
 					t.Fatal("invalid Forwarding pair authorized")

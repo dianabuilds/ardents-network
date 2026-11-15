@@ -173,7 +173,7 @@ func authenticateBoundPair(ctx context.Context, v *release.Verifier, files inven
 	pd, pok := pp.AcceptedDecision()
 	gd, gok := gp.AcceptedDecision()
 	ps, gs := sha256.Sum256(program), sha256.Sum256(descriptor)
-	if !pok || !gok || !coherentTarget(pd, gd, d, target) || !bytes.Equal(pd.Digest, ps[:]) || !bytes.Equal(gd.Digest, gs[:]) {
+	if !pok || !gok || !CoherentTargets(pd, gd, d, target) || !bytes.Equal(pd.Digest, ps[:]) || !bytes.Equal(gd.Digest, gs[:]) {
 		return Authorization{}, ErrBinding
 	}
 	// Release owns original closure/cancellation/current-floor admission. Public
@@ -187,7 +187,8 @@ func authenticateBoundPair(ctx context.Context, v *release.Verifier, files inven
 	return Authorization{origin: files, program: pp, generation: gp, descriptor: descriptor, executable: program, template: template}, nil
 }
 
-func coherentTarget(p, g release.Decision, d Declaration, target string) bool {
+// CoherentTargets compares detached decision facts; it grants no Release proof.
+func CoherentTargets(p, g release.Decision, d Declaration, target string) bool {
 	return p.Path == ProgramTarget && g.Path == target && p.ReleaseIdentity == d.ReleaseIdentity && g.ReleaseIdentity == d.ReleaseIdentity && p.ReleaseVersion == d.ReleaseVersion && g.ReleaseVersion == d.ReleaseVersion &&
 		p.Platform == d.Platform && g.Platform == d.Platform && p.Architecture == g.Architecture && p.Environment == g.Environment && p.Network == g.Network && p.ReferenceTime.Equal(g.ReferenceTime) &&
 		p.SourceRevision == g.SourceRevision && p.BuildInputCommitment == g.BuildInputCommitment && p.AttestationPolicy == g.AttestationPolicy && p.Qualification == g.Qualification && p.BuildState == g.BuildState && p.ProtocolPhase == g.ProtocolPhase &&

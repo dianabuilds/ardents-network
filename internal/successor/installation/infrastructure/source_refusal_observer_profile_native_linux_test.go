@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Inspect the actual canonical ELF and closed declaration without invoking it.
@@ -193,7 +195,7 @@ func TestSourceRecoveryCancellationProfileInspectionNative(t *testing.T) {
 			}
 			p := sourceRefusalObserverProfile{Schema: "source-recovery-cancellation-observer-v1", ProgramSHA256: sourcePhysicalSHA(raw), PublicReceiptSHA256: zero,
 				Arguments: []string{"installation", "recover-source", filepath.Dir(program), "/testtmp/history", "alpha", "ardents-source-qualification", "/testtmp/request", journal}, JournalSHA256: zero, JournalMode: "0600",
-				RecoveryHold: &sourceRecoveryHoldProfile{Phase: "file-ready", Path: filepath.Join(root, "generations", generation, ProgramName), BodySHA256: sourcePhysicalSHA(raw), Generation: generation, BindingSHA256: zero, PrefixRecords: count}}
+				RecoveryHold: &sourceRecoveryHoldProfile{Phase: "file-ready", Path: filepath.Join(root, "generations", generation, releaseartifact.ProgramName), BodySHA256: sourcePhysicalSHA(raw), Generation: generation, BindingSHA256: zero, PrefixRecords: count}}
 			load := func(p sourceRefusalObserverProfile) (*sourceRefusalObserverProfile, error) {
 				t.Helper()
 				body, err := json.Marshal(p)

@@ -6,6 +6,8 @@ import (
 	"net/netip"
 	posixpath "path"
 	"strings"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // SourceRequest describes existing inputs and separate, still absent native
@@ -147,7 +149,7 @@ func RenderSourceUnit(template []byte, r SourceRequest, generation string) ([]by
 	}
 	quote := func(p string) string { return "\"" + p + "\"" }
 	return []byte(strings.NewReplacer(
-		"@ARDENTS_SOURCE_PROGRAM@", quote(posixpath.Join(r.InstallationRoot, "generations", generation, ProgramName)),
+		"@ARDENTS_SOURCE_PROGRAM@", quote(posixpath.Join(r.InstallationRoot, "generations", generation, releaseartifact.ProgramName)),
 		"@ARDENTS_SOURCE_BINDING@", quote(posixpath.Join(r.InstallationRoot, "binding.json")),
 		"@ARDENTS_SOURCE_WRITE_PATHS@", quote(r.StateRoot)+" "+quote(r.ParticipationRoot),
 	).Replace(SourceTemplate)), nil

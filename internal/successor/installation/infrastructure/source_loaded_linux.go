@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Source configuration policy is shared by its separate stopped and running
@@ -66,7 +67,7 @@ func verifySourceConfiguration(unit, service systemd.Properties, r SourceRequest
 	if exec.Type != "a(sasasttttuii)" || systemd.Decode(exec.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
 		return ErrBinding
 	}
-	program := filepath.Join(r.InstallationRoot, "generations", generation, ProgramName)
+	program := filepath.Join(r.InstallationRoot, "generations", generation, releaseartifact.ProgramName)
 	for index, wanted := range map[int]any{0: program, 1: []string{program, "source", "start-installed", filepath.Join(r.InstallationRoot, "binding.json")}, 2: []string{"no-env-expand"}} {
 		p := systemd.Properties{"value": {Type: "v", Data: entries[0][index]}}
 		if !systemd.Matches(p, "value", "v", wanted) {

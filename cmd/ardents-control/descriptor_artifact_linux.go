@@ -18,7 +18,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	descriptorinstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type descriptorControlFailure struct{ cause error }
@@ -95,7 +95,7 @@ func prepareDescriptorArtifact(ctx context.Context, args []string, observe func(
 			return nil, errSourceControlInput
 		}
 		result = []byte(descriptorinstallation.Template)
-		name, destination = infrastructure.DescriptorTemplateName, args[1]
+		name, destination = releaseartifact.DescriptorTemplateName, args[1]
 	case "prepare-request":
 		result, destination, returned = descriptorRequestArguments(args[1:])
 		name = "descriptor-request.json"
@@ -118,8 +118,8 @@ func prepareDescriptorArtifact(ctx context.Context, args []string, observe func(
 		if err != nil {
 			return nil, err
 		}
-		result, returned = infrastructure.PrepareDescriptorArtifact(args[1], version, program, template)
-		name, destination = infrastructure.DescriptorArtifactName, args[5]
+		result, returned = releaseartifact.PrepareDescriptorArtifact(args[1], version, program, template)
+		name, destination = releaseartifact.DescriptorArtifactName, args[5]
 	case "prepare-inventory":
 		if len(args) != 3 || !sourceControlPath(args[1]) || args[1] == args[2] || strings.HasPrefix(args[2], args[1]+"/") {
 			return nil, errSourceControlInput
@@ -128,7 +128,7 @@ func prepareDescriptorArtifact(ctx context.Context, args []string, observe func(
 		if err != nil {
 			return nil, err
 		}
-		wanted := map[string]int64{infrastructure.ProgramName: 64 << 20, infrastructure.DescriptorTemplateName: 64 << 20, infrastructure.DescriptorArtifactName: 16 << 10,
+		wanted := map[string]int64{releaseartifact.ProgramName: 64 << 20, releaseartifact.DescriptorTemplateName: 64 << 20, releaseartifact.DescriptorArtifactName: 16 << 10,
 			"root.json": 1 << 20, "timestamp.json": 1 << 20, "snapshot.json": 1 << 20, "targets.json": 1 << 20}
 		inventory := func() error {
 			if _, err := directory.file.Seek(0, io.SeekStart); err != nil {
@@ -155,7 +155,7 @@ func prepareDescriptorArtifact(ctx context.Context, args []string, observe func(
 				return nil, err
 			}
 		}
-		d, err := infrastructure.ValidateDescriptorResources(files[infrastructure.DescriptorArtifactName], files[infrastructure.ProgramName], files[infrastructure.DescriptorTemplateName])
+		d, err := releaseartifact.ValidateDescriptorResources(files[releaseartifact.DescriptorArtifactName], files[releaseartifact.ProgramName], files[releaseartifact.DescriptorTemplateName])
 		if err != nil {
 			return nil, err
 		}

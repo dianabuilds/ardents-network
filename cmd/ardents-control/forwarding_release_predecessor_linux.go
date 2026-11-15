@@ -10,8 +10,8 @@ import (
 	"slices"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -35,7 +35,7 @@ func readForwardingReleasePredecessor(inputs *sourceControlInputs, path string, 
 	if err != nil {
 		return nil, err
 	}
-	names := []string{infrastructure.ProgramName, infrastructure.ForwardingTemplateName, infrastructure.ForwardingDescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"}
+	names := []string{releaseartifact.ProgramName, releaseartifact.ForwardingTemplateName, releaseartifact.ForwardingDescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"}
 	check := func() error {
 		if _, err := directory.file.Seek(0, io.SeekStart); err != nil {
 			return err
@@ -61,7 +61,7 @@ func readForwardingReleasePredecessor(inputs *sourceControlInputs, path string, 
 	}
 	for _, name := range names {
 		limit := int64(1 << 20)
-		if name == infrastructure.ProgramName {
+		if name == releaseartifact.ProgramName {
 			limit = 64 << 20
 		}
 		p.files[name], err = inputs.read(filepath.Join(path, name), limit)
@@ -69,11 +69,11 @@ func readForwardingReleasePredecessor(inputs *sourceControlInputs, path string, 
 			return nil, err
 		}
 	}
-	previous, err := infrastructure.ValidateForwardingResources(p.files[infrastructure.ForwardingDescriptorName], p.files[infrastructure.ProgramName], p.files[infrastructure.ForwardingTemplateName])
+	previous, err := releaseartifact.ValidateForwardingResources(p.files[releaseartifact.ForwardingDescriptorName], p.files[releaseartifact.ProgramName], p.files[releaseartifact.ForwardingTemplateName])
 	if err != nil {
 		return nil, err
 	}
-	next, err := infrastructure.DecodeForwardingDescriptor(candidate)
+	next, err := releaseartifact.DecodeForwardingDescriptor(candidate)
 	if err != nil || next.ReleaseVersion <= previous.ReleaseVersion {
 		return nil, errors.Join(errSourceControlInput, err)
 	}
@@ -127,10 +127,10 @@ func (p *forwardingReleasePredecessor) authenticate(ctx context.Context, v *rele
 		return err
 	}
 	var proofs []release.Authorization
-	for n, target := range []string{infrastructure.ProgramTarget, infrastructure.ForwardingGenerationTarget} {
-		artifact := p.files[infrastructure.ProgramName]
+	for n, target := range []string{releaseartifact.ProgramTarget, releaseartifact.ForwardingGenerationTarget} {
+		artifact := p.files[releaseartifact.ProgramName]
 		if n == 1 {
-			artifact = p.files[infrastructure.ForwardingDescriptorName]
+			artifact = p.files[releaseartifact.ForwardingDescriptorName]
 		}
 		decision := v.Evaluate(ctx, release.Inputs{RootBytes: p.files["root.json"], Files: files, TargetPath: target, Artifact: artifact,
 			Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: plan.Network, RefTime: plan.Reference}})
@@ -143,8 +143,8 @@ func (p *forwardingReleasePredecessor) authenticate(ctx context.Context, v *rele
 	if err := v.CheckAuthorizations(ctx, proofs...); err != nil {
 		return err
 	}
-	a, err := infrastructure.AuthenticateForwardingCandidate(ctx, v, p.candidate, release.Inputs{RootBytes: p.files["root.json"], Files: files,
-		TargetPath: infrastructure.ProgramTarget, Artifact: p.files[infrastructure.ProgramName],
+	a, err := releaseartifact.AuthenticateForwardingCandidate(ctx, v, p.candidate, release.Inputs{RootBytes: p.files["root.json"], Files: files,
+		TargetPath: releaseartifact.ProgramTarget, Artifact: p.files[releaseartifact.ProgramName],
 		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: plan.Network, RefTime: plan.Reference}})
 	if err != nil {
 		return err

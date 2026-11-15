@@ -13,8 +13,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Completed retains independent read-only native observations and the original
@@ -177,7 +177,7 @@ func readCompletedWithRecovery(ctx context.Context, path string, pending *initia
 		}
 	}
 	artifacts := map[string][]byte{}
-	for _, name := range []string{programName, infrastructure.DescriptorTemplateName, infrastructure.DescriptorArtifactName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json", "descriptor-request.json", "descriptor-plan.json", "rendered-descriptor.service", "binding.json"} {
+	for _, name := range []string{programName, releaseartifact.DescriptorTemplateName, releaseartifact.DescriptorArtifactName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json", "descriptor-request.json", "descriptor-plan.json", "rendered-descriptor.service", "binding.json"} {
 		file := c.files[filepath.Join(c.sealed, name)]
 		if file == nil {
 			return result, ErrBinding
@@ -547,7 +547,7 @@ func (h Completed) Check() error { return h.operation(nil) }
 
 // CheckAuthorization matches fresh permission against historical payloads;
 // advancing metadata never replaces the original inventory or history bytes.
-func (h Completed) CheckAuthorization(v *release.Verifier, a infrastructure.DescriptorAuthorization) error {
+func (h Completed) CheckAuthorization(v *release.Verifier, a releaseartifact.DescriptorAuthorization) error {
 	return h.operation(func(c *completedInitial) error {
 		if v == nil {
 			return ErrInput
@@ -555,7 +555,7 @@ func (h Completed) CheckAuthorization(v *release.Verifier, a infrastructure.Desc
 		if err := errors.Join(a.Check(c.ctx, v), v.CheckHistoryPath(c.ctx, c.binding.History)); err != nil {
 			return err
 		}
-		for name, raw := range map[string][]byte{programName: a.Program(), infrastructure.DescriptorArtifactName: a.Descriptor(), infrastructure.DescriptorTemplateName: a.Template()} {
+		for name, raw := range map[string][]byte{programName: a.Program(), releaseartifact.DescriptorArtifactName: a.Descriptor(), releaseartifact.DescriptorTemplateName: a.Template()} {
 			if !bytes.Equal(c.files[filepath.Join(c.sealed, name)].body, raw) {
 				return ErrBinding
 			}

@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // binding fixes the original initial generation and shared host Node resources.
@@ -43,7 +43,7 @@ func decodeConfiguration(raw []byte, schema string) (binding, error) {
 		return b, ErrInput
 	}
 	encoded, err := json.Marshal(b)
-	if err != nil || !bytes.Equal(raw, append(encoded, '\n')) || b.Schema != schema || b.Invocation != "introduction" || b.ProgramTarget != infrastructure.ProgramTarget || b.GenerationTarget != infrastructure.IntroductionGenerationTarget || b.Account != "ardents-node" || b.UID < 100 || b.UID > 999 || b.GID != b.UID || !validPath(b.History) {
+	if err != nil || !bytes.Equal(raw, append(encoded, '\n')) || b.Schema != schema || b.Invocation != "introduction" || b.ProgramTarget != releaseartifact.ProgramTarget || b.GenerationTarget != releaseartifact.IntroductionGenerationTarget || b.Account != "ardents-node" || b.UID < 100 || b.UID > 999 || b.GID != b.UID || !validPath(b.History) {
 		return binding{}, ErrBinding
 	}
 	for _, sha := range []string{b.Generation, b.ProgramSHA256, b.TemplateSHA256, b.InventorySHA256, b.TargetsSHA256, b.RequestSHA256, b.PlanSHA256, b.UnitSHA256, b.CertificateSHA256} {

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 var (
@@ -95,6 +95,10 @@ func (r Request) reservedSiblingPaths() []string {
 	return paths
 }
 
+func (r Request) paths() []string {
+	return []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.CredentialDirectory, r.Plan, r.Certificate, r.PrivateKey, r.Clock}
+}
+
 func (r Request) ownedPaths() []string {
 	return append(r.paths(), r.reservedSiblingPaths()...)
 }
@@ -162,7 +166,7 @@ func RenderUnit(template []byte, r Request, generation string) ([]byte, error) {
 	}
 	quote := func(path string) string { return "\"" + path + "\"" }
 	return []byte(strings.NewReplacer(
-		"@ARDENTS_FORWARDING_PROGRAM@", quote(posixpath.Join(r.InstallationRoot, "generations", generation, infrastructure.ProgramName)),
+		"@ARDENTS_FORWARDING_PROGRAM@", quote(posixpath.Join(r.InstallationRoot, "generations", generation, releaseartifact.ProgramName)),
 		"@ARDENTS_FORWARDING_BINDING@", quote(posixpath.Join(r.InstallationRoot, "binding.json")),
 		"@ARDENTS_FORWARDING_WRITE_PATHS@", quote(r.StateRoot)+" "+quote(r.ParticipationRoot)+" "+quote(r.SpendRoot)+" "+quote(r.HostingRoot),
 	).Replace(Template)), nil

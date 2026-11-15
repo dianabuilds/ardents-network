@@ -8,8 +8,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	introductioninstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/introduction"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type introductionReleasePlan struct {
@@ -38,7 +38,7 @@ func decodeIntroductionReleasePlan(raw []byte, now time.Time) (introductionRelea
 	return p, nil
 }
 func validateIntroductionReleaseResources(plan introductionReleasePlan, program, introduction, template []byte) error {
-	d, err := infrastructure.ValidateIntroductionResources(introduction, program, template)
+	d, err := releaseartifact.ValidateIntroductionResources(introduction, program, template)
 	initial := plan.Schema == "ardents-introduction-initial-release-plan-v1"
 	if err != nil || !initial || d.ReleaseVersion != 1 || !bytes.Equal(template, []byte(introductioninstallation.Template)) {
 		return errors.Join(errSourceControlInput, err)

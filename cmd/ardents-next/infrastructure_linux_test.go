@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -314,7 +314,7 @@ func TestInfrastructureCandidateRequiresFloorsAndFreshCoherentPair(t *testing.T)
 					t.Error(err)
 				}
 			}()
-			if _, err := infrastructure.AuthenticateCandidate(t.Context(), v, c, in); err == nil {
+			if _, err := releaseartifact.AuthenticateCandidate(t.Context(), v, c, in); err == nil {
 				t.Fatal("cold candidate acquired trust")
 			}
 			// Genuine Release establishes complete floors; candidate still needs two
@@ -329,7 +329,7 @@ func TestInfrastructureCandidateRequiresFloorsAndFreshCoherentPair(t *testing.T)
 			if _, ok := d.Authorization(); !ok {
 				t.Fatalf("healthy program counterpart %s %v", d.Outcome, d.Err())
 			}
-			a, err := infrastructure.AuthenticateCandidate(t.Context(), v, c, in)
+			a, err := releaseartifact.AuthenticateCandidate(t.Context(), v, c, in)
 			if scenario != "healthy" {
 				if err == nil {
 					t.Fatal("invalid pair accepted")
@@ -359,7 +359,7 @@ func TestInfrastructureCandidateRequiresFloorsAndFreshCoherentPair(t *testing.T)
 			if err := v.Close(); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := infrastructure.AuthenticateCandidate(t.Context(), v, c, in); err == nil {
+			if _, err := releaseartifact.AuthenticateCandidate(t.Context(), v, c, in); err == nil {
 				t.Fatal("closed verifier accepted")
 			}
 		})
@@ -456,20 +456,20 @@ func TestInfrastructureRetainedReopenRollbackAndConflict(t *testing.T) {
 	if d := v.Evaluate(t.Context(), in1); d.Outcome != release.OutcomeReleaseAccepted {
 		t.Fatalf("actual bootstrap prerequisite %s %v", d.Outcome, d.Err())
 	}
-	if _, err := infrastructure.AuthenticateCandidate(t.Context(), v, c1, in1); err != nil {
+	if _, err := releaseartifact.AuthenticateCandidate(t.Context(), v, c1, in1); err != nil {
 		t.Fatal("healthy first", err)
 	}
-	if _, err := infrastructure.AuthenticateCandidate(t.Context(), v, c2, in2); err != nil {
+	if _, err := releaseartifact.AuthenticateCandidate(t.Context(), v, c2, in2); err != nil {
 		t.Fatal("forward candidate", err)
 	}
 	floor, err := v.CurrentFloors(t.Context())
 	if err != nil || floor.TargetsVersion != 2 {
 		t.Fatal("forward floor", err)
 	}
-	if _, err := infrastructure.AuthenticateCandidate(t.Context(), v, c1, in1); err == nil {
+	if _, err := releaseartifact.AuthenticateCandidate(t.Context(), v, c1, in1); err == nil {
 		t.Fatal("rollback authorized")
 	}
-	if _, err := infrastructure.AuthenticateCandidate(t.Context(), v, cc, ic); err == nil {
+	if _, err := releaseartifact.AuthenticateCandidate(t.Context(), v, cc, ic); err == nil {
 		t.Fatal("same version conflict authorized")
 	}
 	after, err := v.CurrentFloors(t.Context())
@@ -483,12 +483,12 @@ func TestInfrastructureRetainedReopenRollbackAndConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := infrastructure.AuthenticateCandidate(t.Context(), v, c2, in2); err != nil {
+	if _, err := releaseartifact.AuthenticateCandidate(t.Context(), v, c2, in2); err != nil {
 		t.Fatal("retained no-update counterpart", err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := infrastructure.AuthenticateCandidate(ctx, v, c2, in2); err == nil {
+	if _, err := releaseartifact.AuthenticateCandidate(ctx, v, c2, in2); err == nil {
 		t.Fatal("canceled original handoff")
 	}
 }

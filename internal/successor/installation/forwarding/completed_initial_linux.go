@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Completed retains independently reopened initial and selected-generation
@@ -334,7 +334,7 @@ func (h Completed) IndependentPaths(distribution, history string) error {
 // installed targets. Fresh metadata may advance Release floors without rewriting
 // historical sealed initial metadata. The verifier retains its own live root;
 // this observation holds only an independent descriptor of its original directory.
-func (h Completed) CheckAuthorization(v *release.Verifier, a infrastructure.ForwardingAuthorization) error {
+func (h Completed) CheckAuthorization(v *release.Verifier, a releaseartifact.ForwardingAuthorization) error {
 	return h.operation(func(c *completedInitial) error {
 		if v == nil {
 			return ErrInput
@@ -343,7 +343,7 @@ func (h Completed) CheckAuthorization(v *release.Verifier, a infrastructure.Forw
 		if err := errors.Join(v.CheckHistoryPath(s.ctx, c.binding.History), a.Check(s.ctx, v)); err != nil {
 			return err
 		}
-		for name, raw := range map[string][]byte{programName: a.Program(), infrastructure.ForwardingDescriptorName: a.Descriptor(), infrastructure.ForwardingTemplateName: a.Template()} {
+		for name, raw := range map[string][]byte{programName: a.Program(), releaseartifact.ForwardingDescriptorName: a.Descriptor(), releaseartifact.ForwardingTemplateName: a.Template()} {
 			file := s.files[filepath.Join(s.sealed, name)]
 			if file == nil || !bytes.Equal(file.body, raw) {
 				return ErrBinding

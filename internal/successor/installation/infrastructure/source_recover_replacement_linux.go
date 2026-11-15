@@ -10,12 +10,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // This is a fresh replacement recovery lifetime. It retains its own exclusive
 // original prefix, genuine cut result and complete predecessor retirement. No
 // old writer, authorization, Source/State root or successful manager is revived.
-func recoverReplacementSource(ctx context.Context, v *release.Verifier, a Authorization, input SourceInputs, semantic state.SourceInspection, journal, distribution, history string) (err error) {
+func recoverReplacementSource(ctx context.Context, v *release.Verifier, a releaseartifact.Authorization, input SourceInputs, semantic state.SourceInspection, journal, distribution, history string) (err error) {
 	if ctx == nil || v == nil || input.original == nil || os.Geteuid() != 0 {
 		return ErrInput
 	}
@@ -195,7 +196,7 @@ func recoverReplacementSource(ctx context.Context, v *release.Verifier, a Author
 			return ErrBinding
 		}
 		mode := os.FileMode(0444)
-		if name == ProgramName {
+		if name == releaseartifact.ProgramName {
 			mode = 0555
 		}
 		if err = s.births.write(filepath.Join(sealed, name), s.candidate.files[name], mode, 0, 0, s.observe); err != nil {

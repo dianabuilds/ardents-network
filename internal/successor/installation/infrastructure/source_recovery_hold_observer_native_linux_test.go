@@ -18,6 +18,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 const sourceRecoveryHoldRecordSymbol = "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure.(*sourceBirths).record"
@@ -37,7 +39,7 @@ type sourceRecoveryHoldProfile struct {
 
 func (p *sourceRecoveryHoldProfile) valid(root, journal string) bool {
 	return p != nil && p.Phase == "file-ready" && sourcePath(p.Path) &&
-		p.Path == filepath.Join(root, "generations", p.Generation, ProgramName) &&
+		p.Path == filepath.Join(root, "generations", p.Generation, releaseartifact.ProgramName) &&
 		sourceCutObserverSHA(p.BodySHA256) && sourceCutObserverSHA(p.Generation) && sourceCutObserverSHA(p.BindingSHA256) &&
 		(journal == root+".source-initial-journal" && p.PrefixRecords == 70 ||
 			journal == root+".source-replacement-"+p.Generation+"-journal" && p.PrefixRecords == 13)

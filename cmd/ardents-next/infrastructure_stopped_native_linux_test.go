@@ -19,6 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // A physical process cut never resumes the transaction. The outside original
@@ -35,7 +36,7 @@ func TestSourceStoppedNativeCompiledProcessCut(t *testing.T) {
 	r, request := sourcePreflightFixture(t, true)
 	dir, pin, _ := stoppedDistribution(t, sourcePreflightCommand(t))
 	history := filepath.Join(filepath.Dir(dir), "history")
-	program := filepath.Join(dir, infrastructure.ProgramName)
+	program := filepath.Join(dir, releaseartifact.ProgramName)
 	args := []string{"installation", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", request}
 	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 	defer cancel()
@@ -120,7 +121,7 @@ func TestSourceStoppedNativeOriginalOwner(t *testing.T) {
 		}
 		_, request = sourcePreflightFixture(t, true)
 		dir, pin, _ = stoppedDistribution(t, binary)
-		child := exec.CommandContext(t.Context(), filepath.Join(dir, infrastructure.ProgramName), "-test.v", "-test.run=^TestSourceStoppedNativeOriginalOwner$", "-test.count=1", "-test.timeout=3m")
+		child := exec.CommandContext(t.Context(), filepath.Join(dir, releaseartifact.ProgramName), "-test.v", "-test.run=^TestSourceStoppedNativeOriginalOwner$", "-test.count=1", "-test.timeout=3m")
 		child.Env = append(os.Environ(), "ARDENTS_SOURCE_STOPPED_OWNER_DISTRIBUTION="+dir, "ARDENTS_SOURCE_STOPPED_OWNER_REQUEST="+request, "ARDENTS_SOURCE_STOPPED_OWNER_PIN="+pin)
 		out, e := child.CombinedOutput()
 		t.Log(string(out))
@@ -129,7 +130,7 @@ func TestSourceStoppedNativeOriginalOwner(t *testing.T) {
 		}
 		return
 	}
-	binary, e := os.ReadFile(filepath.Join(dir, infrastructure.ProgramName))
+	binary, e := os.ReadFile(filepath.Join(dir, releaseartifact.ProgramName))
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -151,7 +152,7 @@ func TestSourceStoppedNativeOriginalOwner(t *testing.T) {
 		t.Fatal(e)
 	}
 	defer v.Close()
-	a, e := infrastructure.AuthenticateInitial(t.Context(), v, b, release.Inputs{RootBytes: root, Files: files, Artifact: binary, TargetPath: infrastructure.ProgramTarget, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "h3-test", Network: "new-release-test", RefTime: infrastructureReference}})
+	a, e := releaseartifact.AuthenticateInitial(t.Context(), v, b, release.Inputs{RootBytes: root, Files: files, Artifact: binary, TargetPath: releaseartifact.ProgramTarget, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "h3-test", Network: "new-release-test", RefTime: infrastructureReference}})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -233,7 +234,7 @@ func TestSourceStoppedNativeCompiledPreEffectRefusals(t *testing.T) {
 				}
 			}
 			history := filepath.Join(filepath.Dir(dir), "history")
-			cmd := exec.CommandContext(t.Context(), filepath.Join(dir, infrastructure.ProgramName), "installation", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", request)
+			cmd := exec.CommandContext(t.Context(), filepath.Join(dir, releaseartifact.ProgramName), "installation", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", request)
 			if out, e := cmd.CombinedOutput(); e == nil || bytes.Contains(out, []byte("initial-stopped-selected")) {
 				t.Fatal("causal pre-effect refusal accepted", control, string(out), e)
 			}
@@ -266,7 +267,7 @@ func TestSourceStoppedNativeCompiledOriginalInputAndCancellation(t *testing.T) {
 	r, request := sourcePreflightFixture(t, true)
 	dir, pin, _ := stoppedDistribution(t, sourcePreflightCommand(t))
 	history := filepath.Join(filepath.Dir(dir), "history")
-	program := filepath.Join(dir, infrastructure.ProgramName)
+	program := filepath.Join(dir, releaseartifact.ProgramName)
 	args := []string{"installation", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", request}
 	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
 	defer cancel()

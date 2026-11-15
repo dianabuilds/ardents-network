@@ -11,15 +11,15 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type replacementAttempt struct {
 	ctx                context.Context
 	verifier           *release.Verifier
-	authorization      infrastructure.ForwardingAuthorization
+	authorization      releaseartifact.ForwardingAuthorization
 	input              Inputs
 	usingInput         bool
 	retired            Started
@@ -41,7 +41,7 @@ type replacementAttempt struct {
 // the original Inputs and verifier, retaining all histories and blockers through
 // actual native joins. It never starts a Node, initializes semantic history,
 // retries a reload, rolls back a partial effect or recovers an earlier prefix.
-func Replace(v *release.Verifier, a infrastructure.ForwardingAuthorization, input Inputs, bindingPath, distribution, history string) (returned error) {
+func Replace(v *release.Verifier, a releaseartifact.ForwardingAuthorization, input Inputs, bindingPath, distribution, history string) (returned error) {
 	p := input.original
 	if p == nil || v == nil || os.Geteuid() != 0 || !validPath(bindingPath) {
 		return ErrInput

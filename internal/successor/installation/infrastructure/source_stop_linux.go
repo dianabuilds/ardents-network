@@ -18,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/process"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type sourceStop struct {
@@ -66,7 +67,7 @@ func StopSource(ctx context.Context, v *release.Verifier, binding, history strin
 	}
 	b := selection.binding
 	started := s.chain.latest
-	if err = verifySourceControllerProgram(ctx, selection.files[filepath.Join(selection.sealed, ProgramName)].raw); err != nil {
+	if err = verifySourceControllerProgram(ctx, selection.files[filepath.Join(selection.sealed, releaseartifact.ProgramName)].raw); err != nil {
 		return err
 	}
 	s.identity, err = openSourceRootIdentity(ctx)
@@ -89,7 +90,7 @@ func StopSource(ctx context.Context, v *release.Verifier, binding, history strin
 	if err != nil {
 		return err
 	}
-	program := selection.files[filepath.Join(selection.sealed, ProgramName)]
+	program := selection.files[filepath.Join(selection.sealed, releaseartifact.ProgramName)]
 	s.invocation, err = process.RetainSourceStop(ctx, process.SourceExpected{PID: started.archive.PID, UID: b.UID, GID: b.GID, Invocation: started.id, InstallationRoot: b.Request.InstallationRoot, Generation: b.Generation, ProgramIdentity: program.info}, started.archive.ProcessDevice, started.archive.ProcessInode)
 	if err != nil {
 		return err

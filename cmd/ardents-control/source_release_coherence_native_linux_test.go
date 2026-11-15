@@ -16,6 +16,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
@@ -67,7 +68,7 @@ func exerciseSourceReleaseCoherence(t *testing.T, input sourceTimestampNativeInp
 	}
 	targets.Signed.Version++
 	targets.Signatures = nil
-	targets.Signed.Targets[infrastructure.GenerationTarget].Custom = &plan.GenerationCustom
+	targets.Signed.Targets[releaseartifact.GenerationTarget].Custom = &plan.GenerationCustom
 	sign := func(value sourceSignableMetadata) []byte {
 		t.Helper()
 		for number := 1; number <= 3; number++ {
@@ -141,7 +142,7 @@ func exerciseSourceReleaseCoherence(t *testing.T, input sourceTimestampNativeInp
 		if err != nil {
 			t.Fatal(err)
 		}
-		return release.Inputs{RootBytes: read(directory, "root.json"), Files: files, Artifact: input.program, TargetPath: infrastructure.ProgramTarget,
+		return release.Inputs{RootBytes: read(directory, "root.json"), Files: files, Artifact: input.program, TargetPath: releaseartifact.ProgramTarget,
 			Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: input.plan.Network, RefTime: time.Now().UTC()}}
 	}
 	// Establish genuine pre-existing floors, then prove a healthy candidate is
@@ -161,7 +162,7 @@ func exerciseSourceReleaseCoherence(t *testing.T, input sourceTimestampNativeInp
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := infrastructure.AuthenticateCandidate(t.Context(), verifier, healthy, baseline); err != nil {
+	if _, err := releaseartifact.AuthenticateCandidate(t.Context(), verifier, healthy, baseline); err != nil {
 		t.Fatal("healthy signed counterpart refused", err)
 	}
 	bad, err := enrollment.ReadInfrastructureCandidate(t.Context(), distribution)
@@ -170,7 +171,7 @@ func exerciseSourceReleaseCoherence(t *testing.T, input sourceTimestampNativeInp
 	}
 	request := inputs(distribution)
 	var decisions []release.Decision
-	for number, target := range []string{infrastructure.ProgramTarget, infrastructure.GenerationTarget} {
+	for number, target := range []string{releaseartifact.ProgramTarget, releaseartifact.GenerationTarget} {
 		request.TargetPath, request.Artifact = target, [][]byte{input.program, input.descriptor}[number]
 		decision := verifier.Evaluate(t.Context(), request)
 		if _, ok := decision.Authorization(); !ok {
@@ -185,9 +186,9 @@ func exerciseSourceReleaseCoherence(t *testing.T, input sourceTimestampNativeInp
 	if err != nil {
 		t.Fatal(err)
 	}
-	request.TargetPath, request.Artifact = infrastructure.ProgramTarget, input.program
+	request.TargetPath, request.Artifact = releaseartifact.ProgramTarget, input.program
 	for attempt := 0; attempt < 2; attempt++ {
-		authorization, err := infrastructure.AuthenticateCandidate(t.Context(), verifier, bad, request)
+		authorization, err := releaseartifact.AuthenticateCandidate(t.Context(), verifier, bad, request)
 		if !errors.Is(err, infrastructure.ErrBinding) || authorization.Check(t.Context(), verifier) == nil {
 			t.Fatal("genuine individually authorized incoherent pair admitted", attempt, err)
 		}

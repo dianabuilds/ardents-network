@@ -187,8 +187,8 @@ implementation defects in the current Module.
 distinct infrastructure program and invocation-generation targets. Infrastructure
 admission must consume two fresh coherent opaque authorizations from one frozen
 input; Release retains signature, policy, expiry and floor authority. This
-contract has distinct Source, Forwarding, JOIN and Descriptor pair owners in
-`installation/infrastructure`. Native installation and each role lifecycle retain
+contract has distinct Source, Forwarding, JOIN, Descriptor and Introduction pairs in
+`internal/successor/release/infrastructure`. Native installation and each role lifecycle retain
 separate owners and acceptance scopes; existing Endpoint targets remain unchanged.
 Descriptor initial admission requires its own independently pinned running Node
 program and entirely unborn Release floors. Its candidate reader requires complete

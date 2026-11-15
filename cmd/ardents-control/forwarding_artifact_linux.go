@@ -18,7 +18,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Forwarding has a separate closed artifact consumer. The shared native input
@@ -94,7 +94,7 @@ func prepareForwardingArtifact(ctx context.Context, args []string, observe func(
 			return nil, errSourceControlInput
 		}
 		result = []byte(forwarding.Template)
-		name, destination = infrastructure.ForwardingTemplateName, args[1]
+		name, destination = releaseartifact.ForwardingTemplateName, args[1]
 	case "prepare-request":
 		result, destination, returned = forwardingRequestArguments(args[1:])
 		name = "forwarding-request.json"
@@ -123,8 +123,8 @@ func prepareForwardingArtifact(ctx context.Context, args []string, observe func(
 		if err != nil {
 			return nil, err
 		}
-		result, returned = infrastructure.PrepareForwardingDescriptor(args[1], version, program, template)
-		name, destination = infrastructure.ForwardingDescriptorName, args[5]
+		result, returned = releaseartifact.PrepareForwardingDescriptor(args[1], version, program, template)
+		name, destination = releaseartifact.ForwardingDescriptorName, args[5]
 	case "prepare-inventory":
 		if len(args) != 3 || !sourceControlPath(args[1]) || args[1] == args[2] || strings.HasPrefix(args[2], args[1]+"/") {
 			return nil, errSourceControlInput
@@ -133,7 +133,7 @@ func prepareForwardingArtifact(ctx context.Context, args []string, observe func(
 		if err != nil {
 			return nil, err
 		}
-		wanted := map[string]int64{infrastructure.ProgramName: 64 << 20, infrastructure.ForwardingTemplateName: 64 << 20, infrastructure.ForwardingDescriptorName: 16 << 10,
+		wanted := map[string]int64{releaseartifact.ProgramName: 64 << 20, releaseartifact.ForwardingTemplateName: 64 << 20, releaseartifact.ForwardingDescriptorName: 16 << 10,
 			"root.json": 1 << 20, "timestamp.json": 1 << 20, "snapshot.json": 1 << 20, "targets.json": 1 << 20}
 		inventory := func() error {
 			if _, err := directory.file.Seek(0, io.SeekStart); err != nil {
@@ -160,7 +160,7 @@ func prepareForwardingArtifact(ctx context.Context, args []string, observe func(
 				return nil, err
 			}
 		}
-		d, err := infrastructure.ValidateForwardingResources(files[infrastructure.ForwardingDescriptorName], files[infrastructure.ProgramName], files[infrastructure.ForwardingTemplateName])
+		d, err := releaseartifact.ValidateForwardingResources(files[releaseartifact.ForwardingDescriptorName], files[releaseartifact.ProgramName], files[releaseartifact.ForwardingTemplateName])
 		if err != nil {
 			return nil, err
 		}

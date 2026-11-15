@@ -18,6 +18,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 func runSourceArtifactPreparation(args []string, out io.Writer) error {
@@ -59,7 +60,7 @@ func prepareSourceArtifact(ctx context.Context, args []string, observe func(stri
 			return nil, errSourceControlInput
 		}
 		result = []byte(infrastructure.SourceTemplate)
-		name, destination = infrastructure.TemplateName, args[1]
+		name, destination = releaseartifact.TemplateName, args[1]
 	case "prepare-descriptor":
 		if len(args) != 6 {
 			return nil, errSourceControlInput
@@ -76,8 +77,8 @@ func prepareSourceArtifact(ctx context.Context, args []string, observe func(stri
 		if err != nil {
 			return nil, err
 		}
-		result, returned = infrastructure.PrepareDescriptor(args[1], version, program, template)
-		name, destination = infrastructure.DescriptorName, args[5]
+		result, returned = releaseartifact.PrepareDescriptor(args[1], version, program, template)
+		name, destination = releaseartifact.DescriptorName, args[5]
 	case "prepare-inventory":
 		if len(args) != 3 || !sourceControlPath(args[1]) || args[1] == args[2] || strings.HasPrefix(args[2], args[1]+"/") {
 			return nil, errSourceControlInput
@@ -86,7 +87,7 @@ func prepareSourceArtifact(ctx context.Context, args []string, observe func(stri
 		if err != nil {
 			return nil, err
 		}
-		wanted := map[string]int64{infrastructure.ProgramName: 64 << 20, infrastructure.TemplateName: 64 << 20, infrastructure.DescriptorName: 16 << 10,
+		wanted := map[string]int64{releaseartifact.ProgramName: 64 << 20, releaseartifact.TemplateName: 64 << 20, releaseartifact.DescriptorName: 16 << 10,
 			"root.json": 1 << 20, "timestamp.json": 1 << 20, "snapshot.json": 1 << 20, "targets.json": 1 << 20}
 		inventory := func() error {
 			if _, err := directory.file.Seek(0, io.SeekStart); err != nil {
@@ -113,7 +114,7 @@ func prepareSourceArtifact(ctx context.Context, args []string, observe func(stri
 				return nil, err
 			}
 		}
-		d, err := infrastructure.ValidateResources(files[infrastructure.DescriptorName], files[infrastructure.ProgramName], files[infrastructure.TemplateName])
+		d, err := releaseartifact.ValidateResources(files[releaseartifact.DescriptorName], files[releaseartifact.ProgramName], files[releaseartifact.TemplateName])
 		if err != nil {
 			return nil, err
 		}

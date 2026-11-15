@@ -11,9 +11,9 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Recovery never reopens a writer for the immutable original journal. This
@@ -302,7 +302,7 @@ func recoveryInitialSiblings(original *recoveryOriginal) error {
 // Recover consumes fresh candidate authority and one named genuine original cut.
 // It never replays Start, ACK, account creation or domain completion. Prefixes
 // outside the independently proved safe classifier retain every blocker.
-func Recover(v *release.Verifier, a infrastructure.ForwardingAuthorization, input Inputs, journal, distribution, history string) (returned error) {
+func Recover(v *release.Verifier, a releaseartifact.ForwardingAuthorization, input Inputs, journal, distribution, history string) (returned error) {
 	p := input.original
 	if p == nil || v == nil || !validPath(journal) || os.Geteuid() != 0 {
 		return ErrInput

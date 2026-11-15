@@ -12,8 +12,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // Completed retains independent read-only native observations and the original
@@ -133,7 +133,7 @@ func readCompleted(ctx context.Context, path string, allowStarted bool) (result 
 		}
 	}
 	artifacts := map[string][]byte{}
-	for _, name := range []string{programName, infrastructure.IntroductionTemplateName, infrastructure.IntroductionArtifactName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json", "introduction-request.json", "introduction-plan.json", "rendered-introduction.service", "binding.json"} {
+	for _, name := range []string{programName, releaseartifact.IntroductionTemplateName, releaseartifact.IntroductionArtifactName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json", "introduction-request.json", "introduction-plan.json", "rendered-introduction.service", "binding.json"} {
 		mode := os.FileMode(0444)
 		if name == programName {
 			mode = 0555
@@ -470,7 +470,7 @@ func (h Completed) Check() error { return h.operation(nil) }
 
 // CheckAuthorization matches fresh permission against historical payloads;
 // advancing metadata never replaces the original inventory or history bytes.
-func (h Completed) CheckAuthorization(v *release.Verifier, a infrastructure.IntroductionAuthorization) error {
+func (h Completed) CheckAuthorization(v *release.Verifier, a releaseartifact.IntroductionAuthorization) error {
 	return h.operation(func(c *completedInitial) error {
 		if v == nil {
 			return ErrInput
@@ -478,7 +478,7 @@ func (h Completed) CheckAuthorization(v *release.Verifier, a infrastructure.Intr
 		if err := errors.Join(a.Check(c.ctx, v), v.CheckHistoryPath(c.ctx, c.binding.History)); err != nil {
 			return err
 		}
-		for name, raw := range map[string][]byte{programName: a.Program(), infrastructure.IntroductionArtifactName: a.Descriptor(), infrastructure.IntroductionTemplateName: a.Template()} {
+		for name, raw := range map[string][]byte{programName: a.Program(), releaseartifact.IntroductionArtifactName: a.Descriptor(), releaseartifact.IntroductionTemplateName: a.Template()} {
 			if !bytes.Equal(c.files[filepath.Join(c.sealed, name)].body, raw) {
 				return ErrBinding
 			}

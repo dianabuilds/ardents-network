@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	joininstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/join"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -42,7 +42,7 @@ func TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	descriptorBytes, err := infrastructure.PrepareJoinDescriptor("one", 1, nodeBytes, []byte(joininstallation.Template))
+	descriptorBytes, err := releaseartifact.PrepareJoinDescriptor("one", 1, nodeBytes, []byte(joininstallation.Template))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := infrastructure.PrepareJoinDescriptor("one", 1, controlBytes, []byte(joininstallation.Template))
+	badDescriptor, err := releaseartifact.PrepareJoinDescriptor("one", 1, controlBytes, []byte(joininstallation.Template))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +328,7 @@ func TestJoinPreparationNativeActualBuildRecordsAndPublicPlan(t *testing.T) {
 	if err != nil || root.VerifyDelegate("targets", targets) != nil || len(targets.Signed.Targets) != 2 {
 		t.Fatal("actual build-bound target signatures", err)
 	}
-	for name, raw := range map[string][]byte{infrastructure.ProgramTarget: nodeBytes, infrastructure.JoinGenerationTarget: read(descriptor)} {
+	for name, raw := range map[string][]byte{releaseartifact.ProgramTarget: nodeBytes, releaseartifact.JoinGenerationTarget: read(descriptor)} {
 		target := targets.Signed.Targets[name]
 		sum := sha256.Sum256(raw)
 		if target == nil || !bytes.Equal(target.Hashes["sha256"], sum[:]) {
@@ -386,12 +386,12 @@ func TestJoinPreparationNativeActualBuildRecordsAndPublicPlan(t *testing.T) {
 		})
 	}
 	for _, version := range []int64{1, 2, 3} {
-		raw, err := infrastructure.PrepareDescriptor("controlled-join-build", version, nodeBytes, read(template))
+		raw, err := releaseartifact.PrepareDescriptor("controlled-join-build", version, nodeBytes, read(template))
 		if version == 2 {
-			raw, err = infrastructure.PrepareJoinDescriptor("controlled-join-build", version, nodeBytes, read(template))
+			raw, err = releaseartifact.PrepareJoinDescriptor("controlled-join-build", version, nodeBytes, read(template))
 		}
 		if version == 3 {
-			raw, err = infrastructure.PrepareForwardingDescriptor("controlled-join-build", 1, nodeBytes, read(template))
+			raw, err = releaseartifact.PrepareForwardingDescriptor("controlled-join-build", 1, nodeBytes, read(template))
 		}
 		if err != nil {
 			t.Fatal(err)

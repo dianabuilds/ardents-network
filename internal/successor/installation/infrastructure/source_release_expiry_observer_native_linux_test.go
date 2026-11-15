@@ -17,6 +17,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // An outside diagnostic of genuine Release decisions, never an Installation
@@ -65,7 +66,7 @@ func (c sourceReleaseExpiryTarget) noCompetingProtocolExpiry() bool {
 }
 
 func sourceReleaseExpiryNames() []string {
-	return []string{ProgramName, DescriptorName, TemplateName, "root.json", "timestamp.json", "snapshot.json", "targets.json", "infrastructure-enrollment.json"}
+	return []string{releaseartifact.ProgramName, releaseartifact.DescriptorName, releaseartifact.TemplateName, "root.json", "timestamp.json", "snapshot.json", "targets.json", "infrastructure-enrollment.json"}
 }
 
 func readSourceReleaseExpiryProfile(path, pin string) (*sourceReleaseExpiryProfile, error) {
@@ -111,7 +112,7 @@ func observeSourceReleaseExpiry(ctx context.Context, p *sourceReleaseExpiryProfi
 			return result, errors.New("expiry artifact differs from exact original pin")
 		}
 	}
-	declaration, err := ValidateResources(read(DescriptorName), read(ProgramName), read(TemplateName))
+	declaration, err := releaseartifact.ValidateResources(read(releaseartifact.DescriptorName), read(releaseartifact.ProgramName), read(releaseartifact.TemplateName))
 	if err != nil {
 		return result, errors.Join(ErrBinding, err)
 	}
@@ -142,7 +143,7 @@ func observeSourceReleaseExpiry(ctx context.Context, p *sourceReleaseExpiryProfi
 	if json.Unmarshal(read("targets.json"), &targets) != nil {
 		return result, ErrBinding
 	}
-	for _, target := range []string{ProgramTarget, GenerationTarget} {
+	for _, target := range []string{releaseartifact.ProgramTarget, releaseartifact.GenerationTarget} {
 		custom, ok := targets.Signed.Targets[target]
 		if !ok || custom.Custom.NoNew.IsZero() || custom.Custom.Terminate.IsZero() {
 			return result, errors.New("original target safety bounds missing")
@@ -181,8 +182,8 @@ func observeSourceReleaseExpiry(ctx context.Context, p *sourceReleaseExpiryProfi
 	input := release.Inputs{RootBytes: read("root.json"), Files: files,
 		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "alpha", Network: p.Network, RefTime: result.ReferenceTime}}
 	var decisions []release.Decision
-	for i, target := range []string{ProgramTarget, GenerationTarget} {
-		input.TargetPath, input.Artifact = target, read([]string{ProgramName, DescriptorName}[i])
+	for i, target := range []string{releaseartifact.ProgramTarget, releaseartifact.GenerationTarget} {
+		input.TargetPath, input.Artifact = target, read([]string{releaseartifact.ProgramName, releaseartifact.DescriptorName}[i])
 		decision := verifier.Evaluate(ctx, input)
 		_, authorized := decision.Authorization()
 		result.Outcomes, result.Authorized = append(result.Outcomes, decision.Outcome), append(result.Authorized, authorized)
@@ -195,7 +196,7 @@ func observeSourceReleaseExpiry(ctx context.Context, p *sourceReleaseExpiryProfi
 		}
 		decisions = append(decisions, decision)
 	}
-	if p.Phase == "before" && !coherentTarget(decisions[0], decisions[1], declaration, GenerationTarget) {
+	if p.Phase == "before" && !releaseartifact.CoherentTargets(decisions[0], decisions[1], declaration, releaseartifact.GenerationTarget) {
 		return result, errors.New("actual pre-expiry target pair is incoherent")
 	}
 	after, err := verifier.CurrentFloors(ctx)

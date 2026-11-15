@@ -12,12 +12,13 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type sourceInitialRecovery struct {
 	ctx           context.Context
 	verifier      *release.Verifier
-	authorization Authorization
+	authorization releaseartifact.Authorization
 	input         SourceInputs
 	prefix        *sourceRecoveryPrefix
 	history       *sourceHistory
@@ -39,7 +40,7 @@ type sourceInitialRecovery struct {
 // never recreates initial provenance, revives an old writer or starts Source.
 // Unsupported or uncertain prefixes retain their original repair-required
 // state. A successful continuation consumes inputs and returns stopped only.
-func RecoverSource(ctx context.Context, v *release.Verifier, a Authorization, input SourceInputs, semantic state.SourceInspection, journal, distribution, history string) error {
+func RecoverSource(ctx context.Context, v *release.Verifier, a releaseartifact.Authorization, input SourceInputs, semantic state.SourceInspection, journal, distribution, history string) error {
 	if ctx == nil || v == nil || input.original == nil || os.Geteuid() != 0 {
 		return ErrInput
 	}
@@ -58,7 +59,7 @@ func RecoverSource(ctx context.Context, v *release.Verifier, a Authorization, in
 	return recoverInitialSource(ctx, v, a, input, journal, distribution, history)
 }
 
-func recoverInitialSource(ctx context.Context, v *release.Verifier, a Authorization, input SourceInputs, journal, distribution, history string) (err error) {
+func recoverInitialSource(ctx context.Context, v *release.Verifier, a releaseartifact.Authorization, input SourceInputs, journal, distribution, history string) (err error) {
 	if ctx == nil || v == nil || input.original == nil || os.Geteuid() != 0 {
 		return ErrInput
 	}
@@ -210,7 +211,7 @@ func recoverInitialSource(ctx context.Context, v *release.Verifier, a Authorizat
 			return ErrBinding
 		}
 		mode := os.FileMode(0444)
-		if name == ProgramName {
+		if name == releaseartifact.ProgramName {
 			mode = 0555
 		}
 		path := filepath.Join(sealed, name)
@@ -327,7 +328,7 @@ func (s *sourceInitialRecovery) prepare() error {
 	}
 	s.unit = unit
 	files := map[string][]byte{}
-	for _, name := range []string{ProgramName, TemplateName, DescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
+	for _, name := range []string{releaseartifact.ProgramName, releaseartifact.TemplateName, releaseartifact.DescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
 		body, ok := s.authorization.File(name)
 		if !ok {
 			return ErrBinding
@@ -335,7 +336,7 @@ func (s *sourceInitialRecovery) prepare() error {
 		files[name] = body
 	}
 	files["source-plan.json"], files["source-request.json"], files["rendered-source.service"] = p.files[1].raw, p.files[0].raw, unit
-	s.binding = sourceBinding{Schema: "ardents-source-binding-v1", Invocation: "source", Generation: generation, RequestSHA256: digest(p.files[0].raw), ProgramTarget: ProgramTarget, GenerationTarget: GenerationTarget,
+	s.binding = sourceBinding{Schema: "ardents-source-binding-v1", Invocation: "source", Generation: generation, RequestSHA256: digest(p.files[0].raw), ProgramTarget: releaseartifact.ProgramTarget, GenerationTarget: releaseartifact.GenerationTarget,
 		ProgramSHA256: digest(s.authorization.Program()), TemplateSHA256: digest(s.authorization.Template()), InventorySHA256: digest(files["infrastructure-enrollment.json"]), TargetsSHA256: digest(files["targets.json"]), PlanSHA256: digest(files["source-plan.json"]), UnitSHA256: digest(unit), Account: "ardents-source", UID: uid, GID: gid, Request: r}
 	raw, err := json.Marshal(s.binding)
 	if err != nil {

@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 type recoveryPublication struct {
@@ -21,7 +21,7 @@ type recoveryPublication struct {
 type recoveryReplacement struct {
 	ctx           context.Context
 	verifier      *release.Verifier
-	authorization infrastructure.DescriptorAuthorization
+	authorization releaseartifact.DescriptorAuthorization
 	input         Inputs
 	completed     Completed
 	native        *recoveryContext
@@ -34,7 +34,7 @@ type recoveryReplacement struct {
 // RecoverReplacement admits only the proven complete62-record stopped cut.
 // Earlier, uncertain or unjoined prefixes retain their original blockers. It
 // performs neither Reload nor Start, and never rewrites an original journal.
-func RecoverReplacement(v *release.Verifier, a infrastructure.DescriptorAuthorization, input Inputs, bindingPath, distribution, history string) (returned error) {
+func RecoverReplacement(v *release.Verifier, a releaseartifact.DescriptorAuthorization, input Inputs, bindingPath, distribution, history string) (returned error) {
 	p := input.original
 	if p == nil || v == nil || os.Geteuid() != 0 || !validPath(bindingPath) {
 		return ErrInput

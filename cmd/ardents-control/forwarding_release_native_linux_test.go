@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -42,7 +42,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 			t.Fatal(err)
 		}
 	}
-	descriptorBytes, err := infrastructure.PrepareForwardingDescriptor("one", 1, nodeBytes, []byte(forwarding.Template))
+	descriptorBytes, err := releaseartifact.PrepareForwardingDescriptor("one", 1, nodeBytes, []byte(forwarding.Template))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := infrastructure.PrepareForwardingDescriptor("one", 1, controlBytes, []byte(forwarding.Template))
+	badDescriptor, err := releaseartifact.PrepareForwardingDescriptor("one", 1, controlBytes, []byte(forwarding.Template))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,7 +328,7 @@ func TestForwardingPreparationNativeActualBuildRecordsAndPublicPlan(t *testing.T
 	if err != nil || root.VerifyDelegate("targets", targets) != nil || len(targets.Signed.Targets) != 2 {
 		t.Fatal("actual build-bound target signatures", err)
 	}
-	for name, raw := range map[string][]byte{infrastructure.ProgramTarget: nodeBytes, infrastructure.ForwardingGenerationTarget: read(descriptor)} {
+	for name, raw := range map[string][]byte{releaseartifact.ProgramTarget: nodeBytes, releaseartifact.ForwardingGenerationTarget: read(descriptor)} {
 		target := targets.Signed.Targets[name]
 		sum := sha256.Sum256(raw)
 		if target == nil || !bytes.Equal(target.Hashes["sha256"], sum[:]) {
@@ -386,9 +386,9 @@ func TestForwardingPreparationNativeActualBuildRecordsAndPublicPlan(t *testing.T
 		})
 	}
 	for _, version := range []int64{1, 2} {
-		raw, err := infrastructure.PrepareDescriptor("controlled-forwarding-build", version, nodeBytes, read(template))
+		raw, err := releaseartifact.PrepareDescriptor("controlled-forwarding-build", version, nodeBytes, read(template))
 		if version == 2 {
-			raw, err = infrastructure.PrepareForwardingDescriptor("controlled-forwarding-build", version, nodeBytes, read(template))
+			raw, err = releaseartifact.PrepareForwardingDescriptor("controlled-forwarding-build", version, nodeBytes, read(template))
 		}
 		if err != nil {
 			t.Fatal(err)

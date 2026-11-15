@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"slices"
 	"syscall"
+
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
 // This inventory commits actual native observations, not Source authority.
@@ -104,7 +106,7 @@ func (p *sourcePhysicalCut) canonicalSealedInventory(records []sourceRecord, roo
 			}
 		}
 		mode := uint32(0444)
-		if name == ProgramName {
+		if name == releaseartifact.ProgramName {
 			mode = 0555
 		}
 		if matches != 1 || ready.Mode != mode || ready.UID != 0 || ready.GID != 0 || !sourceCutObserverSHA(ready.SHA256) {
@@ -114,7 +116,7 @@ func (p *sourcePhysicalCut) canonicalSealedInventory(records []sourceRecord, roo
 			return nil, nil, err
 		}
 		body, fileInfo, err := readSourceRecoveryHeldPayload(filePath, ready)
-		if err != nil || sourcePhysicalSHA(body) != ready.SHA256 || name == ProgramName && ready.SHA256 != p.canonical.ProgramSHA256 {
+		if err != nil || sourcePhysicalSHA(body) != ready.SHA256 || name == releaseartifact.ProgramName && ready.SHA256 != p.canonical.ProgramSHA256 {
 			return nil, nil, errors.Join(errors.New("actual original sealed file bytes/inode required"), err)
 		}
 		fileNative := fileInfo.Sys().(*syscall.Stat_t)
