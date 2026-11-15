@@ -857,7 +857,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/forwarding/loaded_policy_linux.go" || source == "internal/successor/installation/forwarding/loaded_policy_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
-	if (source == "internal/successor/installation/forwarding/request_linux.go" || source == "internal/successor/installation/forwarding/unit_linux_test.go") && dependency == modulePath+"/internal/successor/installation/infrastructure" {
+	if (source == "internal/successor/installation/forwarding/request.go" || source == "internal/successor/installation/forwarding/unit_linux_test.go") && dependency == modulePath+"/internal/successor/installation/infrastructure" {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
