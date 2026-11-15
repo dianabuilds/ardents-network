@@ -39,3 +39,26 @@ func TestSourceForwardPlanAllowsListenerChangeAndRetainsAuthority(t *testing.T) 
 		})
 	}
 }
+
+func TestSourcePlanMatchesDeclaredRuntimePaths(t *testing.T) {
+	r, err := DecodeSourceRequest([]byte(sourceRequestOracle))
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := map[string]any{"network": map[string]any{"root": r.StateRoot, "network_id": [32]byte{1}, "authorities": [][32]byte{{2}}, "threshold": 1, "profile_authority": [32]byte{3}, "clock_observation_file": r.Clock},
+		"process_profile": r.Profile, "participation_root": r.ParticipationRoot, "address": r.Address,
+		"certificate": r.CredentialDirectory + "/certificate.pem", "private_key": r.CredentialDirectory + "/private-key.pem", "client_root": r.CredentialDirectory + "/client-ca.pem", "client_pins": [][32]byte{{4}}}
+	raw, err := json.Marshal(plan)
+	if err != nil || r.checkPlan(raw) != nil {
+		t.Fatalf("exact Source declaration refused: %v", err)
+	}
+	for _, field := range []string{"certificate", "private_key", "client_root"} {
+		original := plan[field]
+		plan[field] = r.CredentialDirectory + "/foreign.pem"
+		changed, err := json.Marshal(plan)
+		if err != nil || r.checkPlan(changed) == nil {
+			t.Fatalf("foreign %s accepted: %v", field, err)
+		}
+		plan[field] = original
+	}
+}
