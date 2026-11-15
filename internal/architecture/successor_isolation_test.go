@@ -1171,7 +1171,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/release/infrastructure":          {"enrollment", "release"},
 		"internal/successor/execution":                       {},
 		"internal/successor/execution/runtime":               {"execution", "execution/worker"},
-		"internal/successor/execution/worker":                {"installation/systemd", "endpoint/delivery/unit"},
+		"internal/successor/execution/worker":                {"systemdproperty", "endpoint/delivery/unit"},
 		"internal/successor/endpoint/delivery/authorization": {"enrollment", "release", "protectedfiles"},
 		"internal/successor/installation/infrastructure":     {"enrollment", "release"},
 		"internal/successor/installation/descriptor":         {},
