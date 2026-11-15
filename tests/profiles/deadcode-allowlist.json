@@ -332,6 +332,8 @@
           "internal/successor/installation/systemd.Contains",
           "internal/successor/installation/systemd.Decode",
           "internal/successor/installation/systemd.Matches",
+          "internal/successor/installation/systemd.managerUnitReply.object",
+          "internal/successor/installation/systemd.managerUnitReply.valid",
           "internal/successor/systemdbus.managerAlign",
           "internal/successor/installation/systemd.managerJSONQuotedSize",
           "internal/successor/installation/systemd.managerJSONValue",
