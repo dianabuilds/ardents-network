@@ -108,7 +108,15 @@ func startRoleProcess(t *testing.T, index int, config node.Config, snapshot stat
 		t.Helper()
 		line, err := reader.ReadString('\n')
 		if err != nil || strings.TrimSpace(line) != want {
-			t.Fatalf("role%d expected %q got %q: %v", index, want, line, err)
+			// A failing non-verbose child prints its FAIL header before the
+			// actual cause. Retain that bounded tail after interrupting and
+			// joining this original process; the header alone hides the defect.
+			cancel()
+			tail, readErr := io.ReadAll(io.LimitReader(reader, 64<<10))
+			closeErr := stdout.Close()
+			waitErr := command.Wait()
+			joined = true
+			t.Fatalf("role%d expected %q got %q: %v; remaining output: %s; read: %v; close: %v; process: %v; stderr: %s", index, want, line, err, tail, readErr, closeErr, waitErr, stderr.String())
 		}
 	}
 	expect("role-ready")
