@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
 )
 
@@ -32,7 +33,7 @@ func forwardingPlanArguments(args []string, inputs *sourceControlInputs) ([]byte
 	flags.SetOutput(io.Discard)
 	var requestPath, destination, networkID, nodeID, profileAuthority string
 	var pins forwardingAuthorityFlags
-	var p forwarding.Plan
+	var p deployment.ForwardingPlan
 	var wait uint64
 	flags.StringVar(&requestPath, "request", "", "original canonical request")
 	flags.StringVar(&destination, "output", "", "fresh output directory")
@@ -100,9 +101,9 @@ func forwardingPlanArguments(args []string, inputs *sourceControlInputs) ([]byte
 		return nil, "", err
 	}
 	raw = append(raw, '\n')
-	p, err = forwarding.DecodePlan(raw)
+	p, err = deployment.DecodeForwardingPlan(raw)
 	if err != nil {
-		return nil, "", err
+		return nil, "", forwarding.ErrInput
 	}
 	if err := r.MatchPlan(p); err != nil {
 		return nil, "", err

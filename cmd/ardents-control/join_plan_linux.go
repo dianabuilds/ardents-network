@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	joininstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/join"
 )
 
@@ -32,7 +33,7 @@ func joinPlanArguments(args []string, inputs *sourceControlInputs) ([]byte, stri
 	flags.SetOutput(io.Discard)
 	var requestPath, destination, networkID, nodeID, profileAuthority string
 	var pins joinAuthorityFlags
-	var p joininstallation.Plan
+	var p deployment.JoinPlan
 	var wait uint64
 	flags.StringVar(&requestPath, "request", "", "original canonical request")
 	flags.StringVar(&destination, "output", "", "fresh output directory")
@@ -98,9 +99,9 @@ func joinPlanArguments(args []string, inputs *sourceControlInputs) ([]byte, stri
 		return nil, "", err
 	}
 	raw = append(raw, '\n')
-	p, err = joininstallation.DecodePlan(raw)
+	p, err = deployment.DecodeJoinPlan(raw)
 	if err != nil {
-		return nil, "", err
+		return nil, "", joininstallation.ErrInput
 	}
 	if err := r.MatchPlan(p); err != nil {
 		return nil, "", err

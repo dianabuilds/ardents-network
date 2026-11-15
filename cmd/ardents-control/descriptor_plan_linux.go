@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	descriptorinstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor"
 )
 
@@ -32,7 +33,7 @@ func descriptorPlanArguments(args []string, inputs *sourceControlInputs) ([]byte
 	flags.SetOutput(io.Discard)
 	var requestPath, destination, networkID, nodeID, profileAuthority string
 	var pins descriptorAuthorityFlags
-	var p descriptorinstallation.Plan
+	var p deployment.DescriptorPlan
 	var wait uint64
 	flags.StringVar(&requestPath, "request", "", "original canonical request")
 	flags.StringVar(&destination, "output", "", "fresh output directory")
@@ -98,9 +99,9 @@ func descriptorPlanArguments(args []string, inputs *sourceControlInputs) ([]byte
 		return nil, "", err
 	}
 	raw = append(raw, '\n')
-	p, err = descriptorinstallation.DecodePlan(raw)
+	p, err = deployment.DecodeDescriptorPlan(raw)
 	if err != nil {
-		return nil, "", err
+		return nil, "", descriptorinstallation.ErrInput
 	}
 	if err := r.MatchPlan(p); err != nil {
 		return nil, "", err

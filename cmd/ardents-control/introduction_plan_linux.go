@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	introductioninstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/introduction"
 )
 
@@ -32,7 +33,7 @@ func introductionPlanArguments(args []string, inputs *sourceControlInputs) ([]by
 	flags.SetOutput(io.Discard)
 	var requestPath, destination, networkID, nodeID, profileAuthority string
 	var pins introductionAuthorityFlags
-	var p introductioninstallation.Plan
+	var p deployment.IntroductionPlan
 	var wait uint64
 	flags.StringVar(&requestPath, "request", "", "original canonical request")
 	flags.StringVar(&destination, "output", "", "fresh output directory")
@@ -98,9 +99,9 @@ func introductionPlanArguments(args []string, inputs *sourceControlInputs) ([]by
 		return nil, "", err
 	}
 	raw = append(raw, '\n')
-	p, err = introductioninstallation.DecodePlan(raw)
+	p, err = deployment.DecodeIntroductionPlan(raw)
 	if err != nil {
-		return nil, "", err
+		return nil, "", introductioninstallation.ErrInput
 	}
 	if err := r.MatchPlan(p); err != nil {
 		return nil, "", err
