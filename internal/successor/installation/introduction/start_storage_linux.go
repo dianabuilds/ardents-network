@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
 // startStorage is one serialized root attempt's physical custody. Creation is
@@ -32,18 +34,7 @@ type startStorage struct {
 	observe func(string, *os.File) error
 }
 
-type startEntry struct {
-	Schema   string `json:"schema"`
-	Sequence uint32 `json:"sequence"`
-	Phase    string `json:"phase"`
-	Path     string `json:"path"`
-	Device   uint64 `json:"device"`
-	Inode    uint64 `json:"inode"`
-	SHA256   string `json:"sha256"`
-	Mode     uint32 `json:"mode"`
-	UID      uint32 `json:"uid"`
-	GID      uint32 `json:"gid"`
-}
+type startEntry = journal.InvocationRecord
 
 func createStartStorage(ctx context.Context, root string, bindingSHA string) (s *startStorage, returned error) {
 	s = &startStorage{ctx: ctx, path: filepath.Join(root, "introduction-startup")}

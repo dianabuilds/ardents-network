@@ -3,7 +3,7 @@ package architecture
 // Exact first-start, explicit Stop and independent history consumers. No retained runtime, sibling role,
 // Route root/receiver, legacy bridge or additional canonical test is permitted.
 func introductionStartupImportAllowed(source, dependency string) bool {
-	if (source == "internal/successor/installation/introduction/retirement_storage_linux.go" || source == "internal/successor/installation/introduction/retirement_snapshot_linux.go" || source == "internal/successor/installation/introduction/retirement_records_linux_test.go") && dependency == modulePath+"/internal/successor/installation/journal" {
+	if (source == "internal/successor/installation/introduction/start_records_linux.go" || source == "internal/successor/installation/introduction/start_storage_linux.go" || source == "internal/successor/installation/introduction/retirement_storage_linux.go" || source == "internal/successor/installation/introduction/retirement_snapshot_linux.go" || source == "internal/successor/installation/introduction/retirement_records_linux_test.go") && dependency == modulePath+"/internal/successor/installation/journal" {
 		return true
 	}
 	switch source {

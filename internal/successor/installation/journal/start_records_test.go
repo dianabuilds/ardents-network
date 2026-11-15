@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -109,5 +110,34 @@ func TestStartRecordsRejectIncompleteAndForeignPurpose(t *testing.T) {
 	}
 	if _, err := DecodeStartRecords(nil, "join", 64, "/root/journal", "/root/start", digest, digest, digest, digest, digest, digest, 988); !errors.Is(err, ErrBinding) {
 		t.Fatal("exhausted attempt accepted", err)
+	}
+}
+
+func TestIntroductionStartRequiresContextAndInvocationSchema(t *testing.T) {
+	raw, h := startRecordFixture(t, "introduction")
+	decode := func(body []byte, number uint32) error {
+		_, err := DecodeStartRecords(body, "introduction", number, "/j", "/d", h, h, h, h, h, h, 988)
+		return err
+	}
+	if decode(raw, 0) == nil {
+		t.Fatal("missing native context admitted")
+	}
+	lines := bytes.Split(bytes.TrimSuffix(raw, []byte("\n")), []byte("\n"))
+	for i := 1; i < len(lines); i++ {
+		lines[i] = bytes.Replace(lines[i], []byte(fmt.Sprintf("\"sequence\":%d,", i)), []byte(fmt.Sprintf("\"sequence\":%d,", i+1)), 1)
+	}
+	context := []byte(fmt.Sprintf("{\"schema\":\"ardents-introduction-start-journal-v1\",\"sequence\":1,\"phase\":\"native-context\",\"path\":\"/\",\"device\":0,\"inode\":0,\"sha256\":%q,\"mode\":0,\"uid\":0,\"gid\":0}", h))
+	lines = append(lines[:1], append([][]byte{context}, lines[1:]...)...)
+	complete := append(bytes.Join(lines, []byte("\n")), '\n')
+	if err := decode(complete, 0); err != nil {
+		t.Fatal("first start refused", err)
+	}
+	invocation := bytes.ReplaceAll(complete, []byte("ardents-introduction-start-journal-v1"), []byte("ardents-introduction-invocation-journal-v1"))
+	invocation = bytes.Replace(invocation, []byte("\"phase\":\"first-start\""), []byte("\"phase\":\"invocation\""), 1)
+	if err := decode(invocation, 1); err != nil {
+		t.Fatal("invocation refused", err)
+	}
+	if decode(invocation, 0) == nil || decode(complete, 1) == nil {
+		t.Fatal("invocation schema confused with first start")
 	}
 }

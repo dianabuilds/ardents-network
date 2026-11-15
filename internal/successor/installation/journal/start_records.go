@@ -13,7 +13,7 @@ import (
 // or ACK searched out of a partial journal. The returned native identities are
 // evidence for independent descriptor comparison; they confer no live rights.
 func DecodeStartRecords(raw []byte, purpose string, number uint32, journal, directory, binding, guard, socketRecord, archive, frame, acknowledgement string, gid uint32) (map[string]InvocationRecord, error) {
-	if purpose != "join" && purpose != "descriptor" && purpose != "forwarding" {
+	if purpose != "join" && purpose != "descriptor" && purpose != "forwarding" && purpose != "introduction" {
 		return nil, ErrBinding
 	}
 	if len(raw) == 0 || len(raw) > 128<<10 || raw[len(raw)-1] != '\n' || gid < 100 || gid > 999 || number >= 64 {
@@ -25,12 +25,15 @@ func DecodeStartRecords(raw []byte, purpose string, number uint32, journal, dire
 		}
 	}
 	lines := bytes.Split(raw[:len(raw)-1], []byte{'\n'})
-	if len(lines) != 25 && len(lines) != 26 {
+	if len(lines) != 26 && (purpose == "introduction" || len(lines) != 25) {
 		return nil, ErrBinding
 	}
 	schema, firstPhase := "ardents-"+purpose+"-start-journal-v1", "first-start"
 	if number != 0 {
 		firstPhase = "invocation"
+		if purpose == "introduction" {
+			schema = "ardents-introduction-invocation-journal-v1"
+		}
 	}
 	records := invocationRecords{lines: lines, schema: schema, owned: make(map[string]InvocationRecord)}
 	next := records.next
