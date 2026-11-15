@@ -6,8 +6,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
 // The closed initial-generation profile retains every attempt, never recycling
@@ -70,38 +71,9 @@ func latestAttempt(selection *runtimeSelection) (attemptNumber, error) {
 		}
 		names = append(names, name)
 	}
-	number, err := attemptDirectories(names)
+	number, err := journal.InvocationPrefix(names, "join", attemptLimit)
 	if err != nil {
-		return 0, err
-	}
-	return number, selection.check()
-}
-
-func attemptDirectories(names []string) (attemptNumber, error) {
-	if len(names) == 0 || len(names) > attemptLimit {
 		return 0, ErrBinding
 	}
-	seen := map[uint64]bool{}
-	var latest uint64
-	for _, name := range names {
-		var number uint64
-		if name != "join-startup" {
-			n, err := strconv.ParseUint(strings.TrimPrefix(name, "join-invocation-"), 10, 32)
-			if err != nil || n == 0 || n >= attemptLimit || name != fmt.Sprintf("join-invocation-%08d", n) {
-				return 0, ErrBinding
-			}
-			number = n
-		}
-		if seen[number] {
-			return 0, ErrBinding
-		}
-		seen[number] = true
-		latest = max(latest, number)
-	}
-	for n := uint64(0); n <= latest; n++ {
-		if !seen[n] {
-			return 0, ErrBinding
-		}
-	}
-	return attemptNumber(latest), nil
+	return attemptNumber(number), selection.check()
 }

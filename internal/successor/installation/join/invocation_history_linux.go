@@ -3,8 +3,10 @@ package join
 import (
 	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -44,6 +46,40 @@ func (h *invocationHistory) check() error {
 	}
 	return nil
 }
+
+// latest returns only the original latest snapshots. Retirement is absent for
+// a live latest invocation; callers must retain this history through their use.
+func (h *invocationHistory) latest() (*startSnapshot, *retirementSnapshot) {
+	if h == nil || len(h.starts) == 0 {
+		return nil, nil
+	}
+	start := h.starts[len(h.starts)-1]
+	if len(h.retirements) != len(h.starts) {
+		return start, nil
+	}
+	return start, h.retirements[len(h.retirements)-1]
+}
+
+func (h *invocationHistory) retiredAt(number uint32) *retirementSnapshot {
+	if h == nil || uint64(number) >= uint64(len(h.retirements)) {
+		return nil
+	}
+	return h.retirements[number]
+}
+
+// directories contributes only original independently retained births.
+func (h *invocationHistory) directories(wanted map[string]bool) {
+	if h == nil {
+		return
+	}
+	for _, start := range h.starts {
+		wanted[filepath.Base(start.path)] = true
+	}
+	for _, retirement := range h.retirements {
+		wanted[filepath.Base(retirement.path)] = true
+	}
+}
+
 func (h *invocationHistory) owns(path string) bool {
 	if h == nil {
 		return false
@@ -86,10 +122,11 @@ func (c *completedInitial) readInvocations() error {
 	if len(names) == 0 {
 		return nil
 	}
-	latest, err := attemptDirectories(names)
+	last, err := journal.InvocationPrefix(names, "join", attemptLimit)
 	if err != nil {
-		return err
+		return ErrBinding
 	}
+	latest := attemptNumber(last)
 	c.invocations = &invocationHistory{}
 	h := c.invocations
 	previous := ""
@@ -158,13 +195,9 @@ func ReadStarted(ctx context.Context, v *release.Verifier, bindingPath, history 
 	if err := v.CheckHistoryPath(ctx, history); err != nil {
 		return result, err
 	}
-	h := c.original.invocations
-	if h == nil || len(h.starts) == 0 {
+	s.snapshot, s.retirement = c.original.invocations.latest()
+	if s.snapshot == nil {
 		return result, ErrBinding
-	}
-	s.snapshot = h.starts[len(h.starts)-1]
-	if len(h.retirements) == len(h.starts) {
-		s.retirement = h.retirements[len(h.retirements)-1]
 	}
 	return result, result.Check()
 }

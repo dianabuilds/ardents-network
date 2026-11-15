@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
 func retirementRecordVector() ([]byte, []string) {
@@ -48,7 +50,7 @@ func retirementRecordVector() ([]byte, []string) {
 func TestForwardingRetirementRecordsRequireEveryOriginalClosePhase(t *testing.T) {
 	raw, hashes := retirementRecordVector()
 	decode := func(body []byte) error {
-		_, err := decodeRetirementRecords(body, "/opt/f.forwarding-retirement-00000000-journal", "/opt/f/forwarding-retirement-00000000", hashes[0], hashes[1], hashes[2], hashes[3], 988)
+		_, err := journal.DecodeRetirementRecords(body, "forwarding", "/opt/f.forwarding-retirement-00000000-journal", "/opt/f/forwarding-retirement-00000000", hashes[0], hashes[1], hashes[2], hashes[3], 988)
 		return err
 	}
 	if err := decode(raw); err != nil {

@@ -3,6 +3,9 @@ package architecture
 // Exact fixed Descriptor startup/offline preparation consumers only. No role selector,
 // Route root, legacy backend, callback bridge or sibling live Installation owner.
 func descriptorStartupImportAllowed(source, dependency string) bool {
+	if (source == "internal/successor/installation/descriptor/retirement_storage_linux.go" || source == "internal/successor/installation/descriptor/retirement_snapshot_linux.go" || source == "internal/successor/installation/descriptor/retirement_records_linux_test.go" || source == "internal/successor/installation/descriptor/start_storage_linux.go" || source == "internal/successor/installation/descriptor/start_snapshot_linux.go" || source == "internal/successor/installation/descriptor/start_initial_linux.go" || source == "internal/successor/installation/descriptor/start_attempt_linux.go" || source == "internal/successor/installation/descriptor/attempt_linux_test.go" || source == "internal/successor/installation/descriptor/invocation_history_linux.go") && dependency == modulePath+"/internal/successor/installation/journal" {
+		return true
+	}
 	switch source {
 	case "internal/successor/installation/descriptor/recovery_replacement_linux.go":
 		switch dependency {

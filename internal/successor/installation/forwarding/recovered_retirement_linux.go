@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
 // Historical child proof only. The snapshot owns every descriptor; an active
@@ -85,8 +87,8 @@ func stoppedRetirementTranscript(prefix []byte, cut transitionCutResult, selecte
 	if err != nil {
 		return nil, err
 	}
-	if _, err := decodeRetirementRecords(logical, cut.Boundary.Journal, number.retirement(selected.binding.Request.InstallationRoot), startSHA, digest(challenge[:]), result.CompletionSHA256, digest(resultRaw), selected.binding.GID); err != nil {
-		return nil, err
+	if _, err := journal.DecodeRetirementRecords(logical, "forwarding", cut.Boundary.Journal, number.retirement(selected.binding.Request.InstallationRoot), startSHA, digest(challenge[:]), result.CompletionSHA256, digest(resultRaw), selected.binding.GID); err != nil {
+		return nil, ErrBinding
 	}
 	return logical, nil
 }

@@ -17,6 +17,8 @@
 // Neither the copy nor physical retirement grants another Start. It creates no
 // original birth ownership or phase authority. The module never authorizes Release, account creation,
 // generation selection, process start or replacement.
+// InvocationPrefix checks a closed contiguous role-specific directory grammar;
+// it acquires no native custody and supplies no invocation or retirement proof.
 package journal
 
 import "errors"

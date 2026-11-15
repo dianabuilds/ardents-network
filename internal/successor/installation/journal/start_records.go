@@ -1,20 +1,26 @@
-package join
+package journal
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 )
 
 // A completed start is the entire original ordered transcript, not an archive
 // or ACK searched out of a partial journal. The returned native identities are
 // evidence for independent descriptor comparison; they confer no live rights.
-func decodeStartRecordsFrames(raw []byte, number attemptNumber, journal, directory, binding, guard, socketRecord, archive, frame, acknowledgement string, gid uint32) (map[string]startEntry, error) {
-	if len(raw) == 0 || len(raw) > 128<<10 || raw[len(raw)-1] != '\n' || gid < 100 || gid > 999 || number >= attemptLimit {
+func DecodeStartRecords(raw []byte, purpose string, number uint32, journal, directory, binding, guard, socketRecord, archive, frame, acknowledgement string, gid uint32) (map[string]InvocationRecord, error) {
+	if purpose != "join" && purpose != "descriptor" {
+		return nil, ErrBinding
+	}
+	if len(raw) == 0 || len(raw) > 128<<10 || raw[len(raw)-1] != '\n' || gid < 100 || gid > 999 || number >= 64 {
 		return nil, ErrBinding
 	}
 	for _, hash := range []string{binding, guard, socketRecord, archive, frame, acknowledgement} {
-		if !validStartDigest(hash) {
+		if !validInvocationDigest(hash) {
 			return nil, ErrBinding
 		}
 	}
@@ -23,16 +29,16 @@ func decodeStartRecordsFrames(raw []byte, number attemptNumber, journal, directo
 		return nil, ErrBinding
 	}
 	position := 0
-	schema, firstPhase := "ardents-join-start-journal-v1", "first-start"
+	schema, firstPhase := "ardents-"+purpose+"-start-journal-v1", "first-start"
 	if number != 0 {
 		firstPhase = "invocation"
 	}
-	owned := make(map[string]startEntry)
+	owned := make(map[string]InvocationRecord)
 	next := func(phase, path, hash string, mode, group uint32, native bool) error {
 		if position >= len(lines) || len(lines[position])+1 > 32<<10 {
 			return ErrBinding
 		}
-		var actual startEntry
+		var actual InvocationRecord
 		if json.Unmarshal(lines[position], &actual) != nil {
 			return ErrBinding
 		}
@@ -40,7 +46,7 @@ func decodeStartRecordsFrames(raw []byte, number attemptNumber, journal, directo
 		if err != nil || !bytes.Equal(canonical, lines[position]) {
 			return ErrBinding
 		}
-		wanted := startEntry{Schema: schema, Sequence: uint32(position), Phase: phase, Path: path, SHA256: hash, Mode: mode, GID: group}
+		wanted := InvocationRecord{Schema: schema, Sequence: uint32(position), Phase: phase, Path: path, SHA256: hash, Mode: mode, GID: group}
 		if native {
 			if actual.Device == 0 || actual.Inode == 0 {
 				return ErrBinding
@@ -63,8 +69,8 @@ func decodeStartRecordsFrames(raw []byte, number attemptNumber, journal, directo
 		return nil, ErrBinding
 	}
 	if len(lines) == 26 {
-		var context startEntry
-		if json.Unmarshal(lines[position], &context) != nil || !validStartDigest(context.SHA256) {
+		var context InvocationRecord
+		if json.Unmarshal(lines[position], &context) != nil || !validInvocationDigest(context.SHA256) {
 			return nil, ErrBinding
 		}
 		if next("native-context", filepath.Dir(directory), context.SHA256, 0, 0, false) != nil {
@@ -86,14 +92,14 @@ func decodeStartRecordsFrames(raw []byte, number attemptNumber, journal, directo
 		return nil
 	}
 	socket := filepath.Join(directory, "start-completion.socket")
-	pending := digest([]byte("ardents-join-start-pending-v1\n" + binding + "\n"))
-	if file("join-start-pending", pending) != nil || file("start-guard.json", guard) != nil || next("socket-intent", socket, "", 0, 0, false) != nil {
+	pending := invocationDigest([]byte("ardents-" + purpose + "-start-pending-v1\n" + binding + "\n"))
+	if file(purpose+"-start-pending", pending) != nil || file("start-guard.json", guard) != nil || next("socket-intent", socket, "", 0, 0, false) != nil {
 		return nil, ErrBinding
 	}
 	// ListenUnix's birth mode comes from the original root caller's umask.
 	// Ownership, original inode continuity and the exact promoted mode are
 	// independently checked; an assumed umask cannot replace those observations.
-	var born startEntry
+	var born InvocationRecord
 	if position >= len(lines) || json.Unmarshal(lines[position], &born) != nil || born.Mode > 0777 {
 		return nil, ErrBinding
 	}
@@ -110,4 +116,27 @@ func decodeStartRecordsFrames(raw []byte, number attemptNumber, journal, directo
 		return nil, ErrBinding
 	}
 	return owned, nil
+}
+
+// InvocationRecord describes one detached canonical journal record; it carries no
+// native custody, Release permission or evidence of a live invocation.
+type InvocationRecord struct {
+	Schema   string `json:"schema"`
+	Sequence uint32 `json:"sequence"`
+	Phase    string `json:"phase"`
+	Path     string `json:"path"`
+	Device   uint64 `json:"device"`
+	Inode    uint64 `json:"inode"`
+	SHA256   string `json:"sha256"`
+	Mode     uint32 `json:"mode"`
+	UID      uint32 `json:"uid"`
+	GID      uint32 `json:"gid"`
+}
+
+func validInvocationDigest(value string) bool {
+	return len(value) == 64 && strings.Trim(value, "0123456789abcdef") == ""
+}
+func invocationDigest(raw []byte) string {
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
 }

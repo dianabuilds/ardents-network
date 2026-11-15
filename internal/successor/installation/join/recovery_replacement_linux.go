@@ -225,13 +225,12 @@ func (s *recoveryReplacement) observe() error {
 		return err
 	}
 	c := s.completed.original
-	h := c.invocations
-	if h == nil || len(h.starts) == 0 || len(h.starts) != len(h.retirements) {
+	start, retired := c.invocations.latest()
+	if start == nil || retired == nil {
 		return ErrBinding
 	}
-	latest := len(h.starts) - 1
 	selection := c.selections[digest(c.files[filepath.Join(c.binding.Request.InstallationRoot, "binding.json")].body)]
-	if selection.replacement == nil || uint32(latest) != selection.replacement.PredecessorAttempt || h.retirements[latest].sha256 != selection.replacement.RetirementSHA256 {
+	if selection.replacement == nil || uint32(start.number) != selection.replacement.PredecessorAttempt || retired.sha256 != selection.replacement.RetirementSHA256 {
 		return ErrBinding
 	}
 	id, err := s.manager.ManagerIdentity()
@@ -246,7 +245,7 @@ func (s *recoveryReplacement) observe() error {
 		if e != nil {
 			return e
 		}
-		if err = verifyJoinReplacementStopped(facts.Unit, facts.Service, c.binding, h.starts[latest], h.retirements[latest]); err != nil {
+		if err = verifyJoinReplacementStopped(facts.Unit, facts.Service, c.binding, start, retired); err != nil {
 			return err
 		}
 		if err = errors.Join(s.completed.Check(), s.semantic.check(), s.native.check(), s.input.Check(), s.authorization.Check(s.ctx, s.verifier)); err != nil {

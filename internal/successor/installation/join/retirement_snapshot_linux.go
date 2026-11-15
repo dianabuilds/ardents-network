@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
 // Independent native custody, never a borrowed stop writer or live runtime.
@@ -164,9 +166,9 @@ func (h *retirementSnapshot) validate() error {
 		return err
 	}
 	transcript := h.journal.body
-	recorded, err := decodeRetirementRecords(transcript, h.journal.path, h.path, h.startSHA, digest(challenge[:]), h.result.CompletionSHA256, digest(raw), h.binding.GID)
+	recorded, err := journal.DecodeRetirementRecords(transcript, "join", h.journal.path, h.path, h.startSHA, digest(challenge[:]), h.result.CompletionSHA256, digest(raw), h.binding.GID)
 	if err != nil {
-		return err
+		return ErrBinding
 	}
 	for path, record := range recorded {
 		if path == filepath.Join(h.path, "retirement-pending") && h.pending == nil {

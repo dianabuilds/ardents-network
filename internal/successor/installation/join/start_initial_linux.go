@@ -15,6 +15,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/process"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
@@ -122,8 +123,8 @@ func (s *startAttempt) launch() error {
 		return err
 	}
 	if s.nextNumber != 0 {
-		h := c.invocations
-		if h == nil || len(h.starts) == 0 || h.starts[len(h.starts)-1].archive.Manager != s.managerIdentity {
+		start, _ := c.invocations.latest()
+		if start == nil || start.archive.Manager != s.managerIdentity {
 			return ErrBinding
 		}
 	}
@@ -262,9 +263,9 @@ func (s *startAttempt) checkCompletedTranscript() error {
 	if err != nil {
 		return err
 	}
-	recorded, err := decodeStartRecordsFrames(storage.journal.body, storage.number, storage.journal.path, storage.path, digest(s.bindingBytes()), digest(barrier.guard.body), digest(barrier.record.body), digest(barrier.archive.body), digest(frame[:]), digest(ack[:]), s.completed.original.binding.GID)
+	recorded, err := journal.DecodeStartRecords(storage.journal.body, "join", uint32(storage.number), storage.journal.path, storage.path, digest(s.bindingBytes()), digest(barrier.guard.body), digest(barrier.record.body), digest(barrier.archive.body), digest(frame[:]), digest(ack[:]), s.completed.original.binding.GID)
 	if err != nil {
-		return err
+		return ErrBinding
 	}
 	for _, original := range append([]*initialFile{storage.journal}, storage.files...) {
 		native, ok := infoSys(original.info)
@@ -298,12 +299,10 @@ func (s *startAttempt) observeStopped() error {
 		}
 		checkStopped := verifyJoinStopped(facts.Unit, facts.Service, b.Request, b.Generation)
 		if s.nextNumber != 0 {
-			h := s.completed.original.invocations
-			if h == nil || len(h.retirements) != len(h.starts) {
+			old, ret := s.completed.original.invocations.latest()
+			if old == nil || ret == nil {
 				return ErrBinding
 			}
-			old := h.starts[len(h.starts)-1]
-			ret := h.retirements[len(h.retirements)-1]
 			checkStopped = verifyJoinRestartStopped(facts.Unit, facts.Service, b.Request, b.Generation, old.archive, old.id, ret.result.execution())
 			if old.binding.Generation != b.Generation {
 				checkStopped = verifyJoinReplacementStopped(facts.Unit, facts.Service, b, old, ret)

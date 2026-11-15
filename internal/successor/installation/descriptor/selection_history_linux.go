@@ -210,11 +210,10 @@ func (c *completedInitial) checkReplacementLineage() error {
 		if r == nil {
 			continue
 		}
-		h := c.invocations
-		if h == nil || int(r.PredecessorAttempt) >= len(h.retirements) {
+		retired := c.invocations.retiredAt(r.PredecessorAttempt)
+		if retired == nil {
 			return ErrBinding
 		}
-		retired := h.retirements[r.PredecessorAttempt]
 		path := filepath.Join(retired.path, "retirement-result.json")
 		record, exists := c.replacementRetirements[path]
 		file := retired.files[path]

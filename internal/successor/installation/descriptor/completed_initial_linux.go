@@ -510,14 +510,7 @@ func (c *completedInitial) check() error {
 	if c.start != nil && c.start.dir != nil {
 		inventories[c.binding.Request.InstallationRoot][filepath.Base(c.start.path)] = true
 	}
-	if c.invocations != nil {
-		for _, v := range c.invocations.starts {
-			inventories[c.binding.Request.InstallationRoot][filepath.Base(v.path)] = true
-		}
-		for _, v := range c.invocations.retirements {
-			inventories[c.binding.Request.InstallationRoot][filepath.Base(v.path)] = true
-		}
-	}
+	c.invocations.directories(inventories[c.binding.Request.InstallationRoot])
 	if c.retirement != nil && c.retirement.dir != nil {
 		inventories[c.binding.Request.InstallationRoot][filepath.Base(c.retirement.path)] = true
 	}

@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
 // startSnapshot is independent read-only custody of one first-start transcript.
@@ -186,9 +187,9 @@ func (h *startSnapshot) validate() error {
 	if err != nil {
 		return err
 	}
-	recorded, err := decodeStartRecordsFrames(h.journal.body, h.number, h.journal.path, h.path, h.bindingSHA, digest(guard), digest(socketRaw), digest(archiveRaw), digest(frame[:]), digest(ack[:]), h.binding.GID)
+	recorded, err := journal.DecodeStartRecords(h.journal.body, "descriptor", uint32(h.number), h.journal.path, h.path, h.bindingSHA, digest(guard), digest(socketRaw), digest(archiveRaw), digest(frame[:]), digest(ack[:]), h.binding.GID)
 	if err != nil {
-		return err
+		return ErrBinding
 	}
 
 	for path, record := range recorded {
