@@ -40,10 +40,8 @@ func DecodePlan(raw []byte) (Plan, error) {
 		!deployment.ValidNodeTrustDeclaration(n.NetworkID, n.ProfileAuthority, n.Authorities, n.Threshold) || p.RetirementWaitMS == 0 || p.RetirementWaitMS > 5000 {
 		return Plan{}, ErrInput
 	}
-	for _, path := range []string{n.Root, n.ClockObservationFile, p.ParticipationRoot, p.SpendRoot, p.HostingRoot, p.Certificate, p.PrivateKey} {
-		if !validPath(path) {
-			return Plan{}, ErrInput
-		}
+	if !deployment.IndependentNodePaths(n.Root, n.ClockObservationFile, p.ParticipationRoot, p.SpendRoot, p.HostingRoot, p.Certificate, p.PrivateKey) {
+		return Plan{}, ErrInput
 	}
 	return p, nil
 }

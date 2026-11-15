@@ -37,3 +37,20 @@ func TestInfrastructurePathRules(t *testing.T) {
 		}
 	}
 }
+
+func TestIndependentNodePathsRejectsOverlap(t *testing.T) {
+	for _, tc := range []struct {
+		paths []string
+		valid bool
+	}{
+		{[]string{"/data/state", "/data/spend", "/credentials/cert", "/credentials/key"}, true},
+		{[]string{"/data/state", "/data/state"}, false},
+		{[]string{"/data/state", "/data/state/spend"}, false},
+		{[]string{"/data/state/spend", "/data/state"}, false},
+		{[]string{"/data/state", "relative"}, false},
+	} {
+		if got := IndependentNodePaths(tc.paths...); got != tc.valid {
+			t.Fatalf("paths %v: got %v, want %v", tc.paths, got, tc.valid)
+		}
+	}
+}

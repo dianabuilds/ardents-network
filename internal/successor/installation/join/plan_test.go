@@ -96,3 +96,16 @@ func TestPlanMatchesOneRequestWithoutGrantingNativeCustody(t *testing.T) {
 		t.Fatal("foreign declared output")
 	}
 }
+
+func TestPlanRefusesOverlappingRuntimePaths(t *testing.T) {
+	vector := independentPlanVector()
+	for _, change := range []struct{ from, to string }{
+		{"/var/lib/ardents-node-spend", "/var/lib/ardents-node-state"},
+		{"/var/lib/ardents-node-spend", "/var/lib/ardents-node-state/spend"},
+		{"/etc/ardents-node/private-key.pem", "/etc/ardents-node/certificate.pem"},
+	} {
+		if _, err := DecodePlan([]byte(strings.Replace(vector, change.from, change.to, 1))); err == nil {
+			t.Fatal("overlapping runtime paths admitted", change)
+		}
+	}
+}

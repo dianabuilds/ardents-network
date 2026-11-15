@@ -1475,7 +1475,10 @@ Common Node declarations are exact Network config, NodeID, distinct participatio
 spend and Hosting roots, certificate/private-key paths, exact role process profile,
 work/termination coverage and retirement wait in 1..5000 ms. Extra role roots are
 pairwise independent including ancestors (`node/root_paths.go` and command
-validation); changing directory names cannot create new authority or erase history.
+validation); installed role plan decoding also rejects overlap among the declared
+State, clock, semantic roots and credential paths before effects. This portable
+check proves no filesystem identity or custody. Changing directory names cannot
+create new authority or erase history.
 Network alone binds signed member/key/family/assignment/endpoint/Carrier/windows.
 Node retains its original producer and admission latch; Receiver reobserves
 current authority at effects. Process protection is not Hosting byte capacity.
