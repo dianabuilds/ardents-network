@@ -39,3 +39,15 @@ func TestNodePlanKeysRequireCanonicalHex(t *testing.T) {
 		}
 	}
 }
+
+func TestNodeOptionsAllowOnlyDeclaredRepeatedFlag(t *testing.T) {
+	if !uniqueNodeOptions([]string{"--duty", "first", "--duty=second", "--output", "/tmp/result"}, "duty") {
+		t.Fatal("declared repeated duty refused")
+	}
+	if uniqueNodeOptions([]string{"--duty", "first", "--duty=second", "--output", "/tmp/result", "-output=/tmp/other"}, "duty") {
+		t.Fatal("duplicate output accepted under another spelling")
+	}
+	if uniqueNodeOptions([]string{"--duty", "first", "--duty=second"}, "") {
+		t.Fatal("undeclared repeated duty accepted")
+	}
+}

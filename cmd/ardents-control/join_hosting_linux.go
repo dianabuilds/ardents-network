@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -28,21 +27,4 @@ func runJoinHostingPreparation(args []string, out io.Writer) error {
 		return &joinControlFailure{err}
 	}
 	return writeSourceControlBytes(ctx, out, []byte("{\"operation\":\"join.prepare-hosting\",\"prepared\":true,\"runtime_authority\":false}\n"))
-}
-
-// Public flags cannot repeat a purpose-bound declaration under another spelling.
-func joinUniqueOptions(args []string, repeatable string) bool {
-	seen := map[string]bool{}
-	for _, argument := range args {
-		if !strings.HasPrefix(argument, "-") {
-			continue
-		}
-		name := strings.TrimLeft(argument, "-")
-		name, _, _ = strings.Cut(name, "=")
-		if seen[name] && name != repeatable {
-			return false
-		}
-		seen[name] = true
-	}
-	return true
 }
