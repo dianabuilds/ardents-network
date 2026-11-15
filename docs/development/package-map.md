@@ -311,8 +311,9 @@ and share State's existing recovery/lifetime implementation without initializati
 of missing retained history. No new package or runtime dependency is introduced.
 
 The infrastructure inventory codec is portable and validates detached bytes.
-Its native inventory acquisition and infrastructure admission remain Linux-only;
-non-Linux commands refuse before effects. Existing Endpoint/v3 grammar and its
+Its native inventory acquisition remains Linux-only; byte-level Release pair
+admission is portable but does not supply native installation permission.
+Non-Linux commands refuse before effects. Existing Endpoint/v3 grammar and its
 portable controls stay unchanged. `StaticMetadataFiles` is portable: it projects detached public
 metadata bytes without authorizing a release or using platform mechanisms. The platform-selection
 architecture check asserts every exact Source file and Linux deterministic
