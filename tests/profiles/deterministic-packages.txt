@@ -113,6 +113,7 @@ github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure
 github.com/dianabuilds/ardents-network/internal/successor/release/endpoint
 github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery
 github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request
+github.com/dianabuilds/ardents-network/internal/successor/endpoint/runtimeplan
 github.com/dianabuilds/ardents-network/internal/successor/installation/directory
 github.com/dianabuilds/ardents-network/internal/successor/execution
 github.com/dianabuilds/ardents-network/internal/successor/execution/runtime

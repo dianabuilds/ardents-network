@@ -38,8 +38,9 @@ facts и повторно наблюдает тот же Creation. Незави�
 trusted-root/sync helpers для fixed resources и recovery; чужой каталог не
 принимается из публичной map или похожих UID/mode.
 
-`endpoint/delivery/request` отдельно владеет canonical request-v1, Headless-v2 и Source-v1
-декларациями, их связностью и чтением direct root-owned исходного файла.
+`endpoint/runtimeplan` владеет переносимой грамматикой Headless-v2 и Source-v1.
+`endpoint/delivery/request` проверяет canonical request-v1, связность этих
+деклараций и чтение direct root-owned исходного файла.
 `Document` выдаёт detached copies и сам проверяет исходные path/digest/inode,
 bytes и access перед эффектами. Корень сохраняет Installation admission, Release proofs и
 транзакции; происхождение запроса не выдаёт ни одного из этих прав.

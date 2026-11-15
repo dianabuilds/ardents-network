@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/runtimeplan"
 	"github.com/dianabuilds/ardents-network/internal/successor/execution"
 )
 
@@ -45,15 +46,7 @@ func TestSourceInputRefusesOriginalPreparationLossBeforeRead(t *testing.T) {
 	encoded := func(n byte) string { key := [32]byte{n}; return hex.EncodeToString(key[:]) }
 	plan := HeadlessPlan{NetworkStateRoot: filepath.Join(root, "state"), TimeConfidenceFile: filepath.Join(root, "clock"), NetworkID: encoded(1), ClosedProfileAuthority: encoded(2), NetworkAuthorities: []string{encoded(3)}, NetworkThreshold: 1}
 	source := SourcePlan{ClockObservedAt: time.Now().UTC().Format(time.RFC3339), OrderSeed: encoded(4), ClientCertificate: filepath.Join(root, "missing-certificate")}
-	source.Sources = make([]struct {
-		Address        string `json:"address"`
-		ServerName     string `json:"server_name"`
-		Identity       string `json:"identity"`
-		Family         string `json:"family"`
-		EndpointHandle string `json:"endpoint_handle"`
-		RootCA         string `json:"root_ca"`
-		LeafKeyDigest  string `json:"leaf_key_digest"`
-	}, 2)
+	source.Sources = make([]runtimeplan.SourceMember, 2)
 	lost := errors.New("original preparation lost")
 	_, err := NetworkConfig(plan, source, func() error { return lost })
 	if !errors.Is(err, lost) || errors.Is(err, os.ErrNotExist) {

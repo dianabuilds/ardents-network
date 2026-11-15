@@ -540,6 +540,9 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if (source == "internal/successor/endpoint/declarations.go" || source == "internal/successor/endpoint/participant_linux_test.go" || source == "internal/successor/endpoint/delivery/request/declaration.go") && dependency == modulePath+"/internal/successor/endpoint/runtimeplan" {
+		return true
+	}
 	if (source == "internal/successor/deployment/service_observation.go" || source == "internal/successor/deployment/service_observation_test.go") && dependency == modulePath+"/internal/successor/systemdproperty" {
 		return true
 	}
@@ -1242,6 +1245,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/endpoint/delivery":               {"systemdproperty", "release/endpoint", "enrollment", "release", "installation/cgroup", "installation/systemd", "endpoint/delivery/manager", "endpoint/delivery/journal", "installation/process", "endpoint/delivery/generation", "installation/completion", "installation/fixedfile", "endpoint/delivery/unit", "endpoint/delivery/request", "installation/directory"},
 		"internal/successor/installation/cgroup":             {},
 		"internal/successor/endpoint/delivery/request":       {},
+		"internal/successor/endpoint/runtimeplan":            {},
 		"internal/successor/installation/directory":          {},
 		"internal/successor/installation/systemd":            {"systemdproperty", "systemdbus"},
 		"internal/successor/installation/journal":            {},
