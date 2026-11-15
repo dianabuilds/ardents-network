@@ -245,7 +245,7 @@ complete interruption matrix and installed Service acceptance remain unproven; t
 not borrow the predecessor runtime or Release history.
 Portable `internal/successor/installation` owns only the fresh coherent pair,
 private initial-pin provenance and immutable inventory. The separate
-`internal/successor/installation/endpoint` owns installed binding, original
+`internal/successor/endpoint/delivery` owns installed binding, original
 transaction effects and startup/recovery lifetimes. It consumes the pair through
 opaque proofs and copied observations, without access to the private pair fields;
 stored facts remain constraints rather than authorization. Command composition

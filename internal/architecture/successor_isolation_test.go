@@ -1023,7 +1023,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/installation/introduction":       {},
 		"internal/successor/installation/join":               {},
 		"internal/successor/installation/forwarding":         {},
-		"internal/successor/installation/endpoint":           {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "installation/request", "installation/directory"},
+		"internal/successor/endpoint/delivery":               {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "installation/request", "installation/directory"},
 		"internal/successor/installation/cgroup":             {},
 		"internal/successor/installation/request":            {},
 		"internal/successor/installation/directory":          {},
@@ -1052,7 +1052,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/route/prefix":       {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "network", "admission"},
 		"internal/successor/route/receiver":     {"route/issuer", "route/join", "route", "route/role", "route/transport", "route/transport/tls", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
 		"internal/successor/endpoint/session":   {"admission", "admission/stock", "endpoint/funding", "endpoint/publisher", "execution/runtime", "hosting", "reachability", "route/ardp", "route/bootstrap", "route/capsule", "route/introduction", "route/join", "route/prefix", "route/role", "route/selection"},
-		"internal/successor/endpoint":           {"endpoint/funding", "endpoint/reader", "endpoint/publisher", "admission", "admission/stock", "execution", "execution/runtime", "hosting", "installation/endpoint", "network", "network/source", "network/state"},
+		"internal/successor/endpoint":           {"endpoint/funding", "endpoint/reader", "endpoint/publisher", "admission", "admission/stock", "execution", "execution/runtime", "hosting", "endpoint/delivery", "network", "network/source", "network/state"},
 		"internal/successor/endpoint/publisher": {"endpoint/funding", "admission", "admission/stock", "execution/runtime", "hosting", "network", "publication/durable", "publication/instance", "publication/runtime", "route/prefix", "route/selection"},
 		"internal/successor/endpoint/reader":    {"endpoint/funding", "admission", "admission/stock", "connection", "execution/runtime", "hosting", "network", "reachability", "route/prefix", "route/selection"},
 		"internal/successor/endpoint/funding":   {"admission", "admission/stock", "admission/token", "hosting", "network", "network/state", "route", "route/ardp", "route/bootstrap", "route/prefix", "route/role", "route/selection"},
@@ -1216,7 +1216,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/publication.go" && dependency == modulePath+"/internal/successor/publication/durable" {
 			return true
 		}
-		if source == "internal/successor/endpoint/participant_linux.go" && (dependency == modulePath+"/internal/successor/installation/endpoint" || dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/execution/runtime") {
+		if source == "internal/successor/endpoint/participant_linux.go" && (dependency == modulePath+"/internal/successor/endpoint/delivery" || dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/execution/runtime") {
 			return true
 		}
 		if source == "cmd/ardents-next/source_linux.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/state") {
@@ -1234,7 +1234,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/execution_holder.go" && dependency == modulePath+"/internal/successor/execution" {
 			return true
 		}
-		if (source == "cmd/ardents-next/installation.go" || source == "cmd/ardents-next/installation_test.go") && (dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/installation/endpoint" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
+		if (source == "cmd/ardents-next/installation.go" || source == "cmd/ardents-next/installation_test.go") && (dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/endpoint/delivery" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
 		if (source == "cmd/ardents-next/infrastructure_linux.go" || source == "cmd/ardents-next/infrastructure_linux_test.go" || source == "cmd/ardents-next/infrastructure_caller_linux_test.go" || source == "cmd/ardents-next/infrastructure_preflight_native_linux_test.go" || source == "cmd/ardents-next/infrastructure_stopped_native_linux_test.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
@@ -1627,10 +1627,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"native Source reference regression checks genuine bus refusal", "internal/successor/installation/systemd/source_reference_native_linux_test.go", "github.com/godbus/dbus/v5", true},
 		{"manager value validation excludes bus client", "internal/successor/installation/systemd/manager_values_linux.go", "github.com/godbus/dbus/v5", false},
 		{"manager transport excludes bus client", "internal/successor/installation/systemd/reference_transport_linux.go", "github.com/godbus/dbus/v5", false},
-		{"Installation decisions exclude bus client", "internal/successor/installation/endpoint/predecessor_linux.go", "github.com/godbus/dbus/v5", false},
-		{"portable authorization cannot own installed Endpoint", "internal/successor/installation/generation_authentication.go", modulePath + "/internal/successor/installation/endpoint", false},
+		{"Installation decisions exclude bus client", "internal/successor/endpoint/delivery/predecessor_linux.go", "github.com/godbus/dbus/v5", false},
+		{"portable authorization cannot own installed Endpoint", "internal/successor/installation/generation_authentication.go", modulePath + "/internal/successor/endpoint/delivery", false},
 		{"portable authorization cannot own physical root", "internal/successor/installation/generation_authentication.go", modulePath + "/internal/successor/installation/cgroup", false},
-		{"installed Endpoint consumes opaque authorization", "internal/successor/installation/endpoint/generation_authorization.go", modulePath + "/internal/successor/installation", true},
+		{"installed Endpoint consumes opaque authorization", "internal/successor/endpoint/delivery/generation_authorization.go", modulePath + "/internal/successor/installation", true},
 		{"unregistered manager file excludes bus client", "internal/successor/installation/systemd/other_linux.go", "github.com/godbus/dbus/v5", false},
 		{"Reachability verifies public delegation", "internal/successor/reachability/descriptor.go", modulePath + "/internal/successor/publication", true},
 		{"Prefix completes genuine private lookup", "internal/successor/route/prefix/descriptor_exchange.go", modulePath + "/internal/successor/reachability", true},

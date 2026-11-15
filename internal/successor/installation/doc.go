@@ -5,7 +5,7 @@
 // Copied bytes, descriptor facts and complete floors never recreate those proofs.
 //
 // This portable Module owns no installed root, journal, account, manager,
-// predecessor process or startup lifetime. Package endpoint separately owns
+// predecessor process or startup lifetime. Package delivery separately owns
 // installed generation binding, native transaction admission, replacement,
 // explicit recovery and startup. It consumes immutable pair observations and
 // genuine opaque proofs without acquiring their private representation.

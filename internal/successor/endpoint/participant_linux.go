@@ -19,7 +19,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/execution"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	installation "github.com/dianabuilds/ardents-network/internal/successor/installation/endpoint"
+	installation "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery"
 	networkdomain "github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 )

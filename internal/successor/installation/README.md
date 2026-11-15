@@ -44,8 +44,8 @@ reused as infrastructure permission.
 
 | Пакет | Ответственность | Настоящие потребители |
 |---|---|---|
-| `installation` | Две свежие coherent Release authorizations для exact program/generation; независимая initial-pin provenance; private immutable inventory | `cmd/ardents-next/installation.go`, `installation/endpoint` |
-| [`endpoint`](endpoint/README.md) | Request composition, bound generation, original lease/journal/resources, predecessor join, selection/reload, guarded startup и explicit recovery | `cmd/ardents-next/installation.go`, `cmd/ardents-next/installed_endpoint_linux.go` |
+| `installation` | Две свежие coherent Release authorizations для exact program/generation; независимая initial-pin provenance; private immutable inventory | `cmd/ardents-next/installation.go`, `endpoint/delivery` |
+| [`endpoint/delivery`](../endpoint/delivery/README.md) | Request composition, bound generation, original lease/journal/resources, predecessor join, selection/reload, guarded startup и explicit recovery | `cmd/ardents-next/installation.go`, `cmd/ardents-next/installed_endpoint_linux.go` |
 | [`infrastructure`](infrastructure/README.md) | Source artifact admission, closed request/template, native preflight, initial/replacement/recovery transactions, guarded startup and explicit stop/restart | Canonical `cmd/ardents-node/source_installation_linux.go`, `source_installed_linux.go`; public preparation in Control; temporary Next component consumers |
 | `forwarding` | Fixed Forwarding request/plan/template, original input custody, initial stopped installation, guarded startup, joined stop, same-generation restart, explicit forward replacement and stopped-prefix recovery | Canonical Control preparation and Release signing; canonical Node preflight, installation, start/stop, replacement and recovery; Infrastructure retains the distinct artifact pair |
 | `descriptor` | Fixed five-root declarations and original delivery; genuine initial/candidate pair; stopped birth, protected startup, joined retirement/restart and forward replacement/complete-prefix recovery; no semantic authority or Store policy | Canonical Control public/initial/forward Release preparation; canonical Node install/inspect/start/stop/restart/replace/recover consumers |
@@ -81,7 +81,7 @@ Implementation и lifetimes. Их присутствие не даёт прав�
 импорт и не объединяет владельцев.
 
 Endpoint contract и finite recovery grammar описаны у
-[installed Endpoint](endpoint/README.md) и в его
+[installed Endpoint](../endpoint/delivery/README.md) и в его
 [technical owner](../../../docs/technical/endpoint-service-runtime.md).
 Source сохраняет отдельные grammar и authority у
 [Infrastructure](infrastructure/README.md) и своего
