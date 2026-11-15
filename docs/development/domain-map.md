@@ -163,8 +163,13 @@ result grants no installed qualification.
 | Forwarding original invocation and generation transitions | [Initial/restart](../technical/network-route-node.md#forwarding-initial-lifetime-and-explicit-same-generation-restart), [replacement/recovery](../technical/network-route-node.md#explicit-forwarding-generation-transitions) |
 | JOIN original invocation and generation transitions | [Initial](../technical/network-route-node.md#initial-stopped-join-persistence), [Startup](../technical/network-route-node.md#protected-first-join-start-and-independent-startup), [replacement](../technical/network-route-node.md#explicit-stopped-join-replacement), [recovery](../technical/network-route-node.md#join-stopped-original-prefix-recovery) |
 | Descriptor original invocation and separate Store history | [Initial](../technical/network-route-node.md#initial-stopped-descriptor-installation), [Startup](../technical/network-route-node.md#protected-first-descriptor-start), [retirement/restart](../technical/network-route-node.md#descriptor-original-stop-and-retained-restart), [replacement](../technical/network-route-node.md#descriptor-explicit-stopped-replacement), [recovery](../technical/network-route-node.md#descriptor-complete-stopped-replacement-recovery) |
-| Introduction original invocation and separate slot history | [Initial](../technical/network-route-node.md#initial-stopped-introduction-installation), [Hosting preparation](../technical/network-route-node.md#stopped-introduction-allowance-preparation), [Startup](../technical/network-route-node.md#introduction-original-first-start-and-independent-startup), [history](../technical/network-route-node.md#independent-introduction-first-start-history), [Stop](../technical/network-route-node.md#introduction-explicit-original-stop) |
+| Introduction original invocation and separate slot history | [Initial](../technical/network-route-node.md#initial-stopped-introduction-installation), [Hosting preparation](../technical/network-route-node.md#stopped-introduction-allowance-preparation), [Startup](../technical/network-route-node.md#introduction-original-first-start-and-independent-startup), [history](../technical/network-route-node.md#independent-introduction-first-start-history), [Stop](../technical/network-route-node.md#introduction-explicit-original-stop), [retained restart](../technical/network-route-node.md#introduction-retained-same-generation-restart) |
 | Issuer runtime and its separately admitted installed scope | [Original Issuer](../technical/network-route-node.md#original-issuer-composition), [installed inventory and admission](../technical/network-route-node.md#proposed-installed-infrastructure) |
+
+Introduction retained restart keeps each original invocation and retirement chain,
+fresh Release and native admission, and independent existing-only State,
+participation, Receiving, Hosting and Route history checks. It transfers no live
+owner or right between roles; replacement and recovery remain separate.
 
 A listed contract does not imply every lifecycle or interruption boundary is
 implemented or accepted. In particular, a real Issuer runtime does not provide
@@ -577,11 +582,3 @@ record its selection and WIP admission in GitHub, and assign a real acceptance
 boundary only under the [execution workflow](agent-execution.md#delegated-project-wide-domain-transition).
 Completion of one slice does not complete a domain; completion of one domain
 continues the program until every maintained scenario has transferred.
-
-Introduction same-generation restart independently retains the entire finite
-invocation/retirement chain, each predecessor commitment and fresh Release/native
-admission. Its new non-root Startup selects existing-only State, participation,
-Receiving and Route Registry through the actual canonical composition. No fresh
-Receiving fact can recreate lost slot floors; keys, allowance and original roots
-persist. Every child history closes before the parent lease, without sharing a
-live runtime or a sibling role owner. Replacement/recovery remain separate.
