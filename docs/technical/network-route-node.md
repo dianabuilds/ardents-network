@@ -1660,6 +1660,35 @@ copying offline authority. The five Node accounts' delivery remains separate.
 This is an Installation input-custody effect, not a new PKI or Custody authority;
 its presence alone qualifies no installed invocation.
 
+### Platform-managed lifecycle: evidence and remaining boundary
+
+The target in ADR-0125 removes the dedicated Installation lifecycle. It does
+not change the currently admitted startup or authorize a weaker path. The
+existing JOIN startup learns whether to create or retain histories through its
+original root exchange; its State, participation and Receiving owners have
+separate existing-only openers. An absent root or a caller-selected first-run
+flag is not proof that a retained history never existed. A replacement must
+make initialization explicit at those owners and must refuse incomplete or
+unknown history rather than reinitialize it.
+
+In systemd 255, `ExecStartPre` commands run serially and a failing command
+prevents `ExecStart`; they do not retain a long-running verifier process through
+the main invocation. `StateDirectory` may create a missing directory and may
+recursively change existing ownership. Those are platform mechanics, not
+Enrollment/Release authorization, a genuine fresh-root fact or proof that a
+Node's Route, Receiving and Hosting users joined. See the upstream
+[service](https://www.freedesktop.org/software/systemd/man/255/systemd.service.html)
+and [execution](https://www.freedesktop.org/software/systemd/man/255/systemd.exec.html)
+manuals, accessed 2026-11-16.
+
+A future fixed platform composition must therefore bind the exact authenticated
+artifact and configuration to its own original invocation, retain the Release
+floors, and observe actual Node completion before treating a stop as successful.
+A manager success, filesystem existence or copied digest alone supplies none of
+those facts. The existing `Restart=no`, unit profile and root/non-root barrier
+remain in force until a replacement proves equivalent admission and failure
+ordering; describing an alternative does not implement or qualify one.
+
 ### Proposed lifecycle and effect admission
 
 #### Forwarding initial lifetime and explicit same-generation restart
