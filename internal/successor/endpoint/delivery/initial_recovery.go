@@ -5,6 +5,8 @@ import (
 	"errors"
 	"sync"
 	"time"
+
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 var ErrRepairRequired = errors.New("installation: explicit repair required")
@@ -70,7 +72,7 @@ func (r *Recovery) ReferenceTime() time.Time {
 // Complete uses two genuine fresh authorizations and only the original bytes.
 // It retains OpenInitialRecovery's original caller and leaves provisioning
 // stopped. There is no replacement context that can renew an expired opening.
-func (r *Recovery) Complete(authorization Authorization) (ProvisionResult, error) {
+func (r *Recovery) Complete(authorization generationauthorization.Authorization) (ProvisionResult, error) {
 	if r == nil || r.state == nil || r.state.ctx == nil {
 		return ProvisionResult{}, ErrInput
 	}
@@ -116,6 +118,6 @@ func (r *Recovery) Close() error {
 	return state.terminal
 }
 
-func recoveryGeneration(ctx context.Context, intent initialTransitionIntent, reference time.Time, authorization Authorization) (inspectedGeneration, error) {
+func recoveryGeneration(ctx context.Context, intent initialTransitionIntent, reference time.Time, authorization generationauthorization.Authorization) (inspectedGeneration, error) {
 	return recoverBoundGeneration(ctx, intent.Candidate, intent.CandidateBinding, intent.Request, reference, authorization)
 }

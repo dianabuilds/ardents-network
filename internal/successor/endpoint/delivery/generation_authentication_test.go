@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 // Failure-only public-boundary checks provide no successful authority fixture.
@@ -50,7 +50,7 @@ func TestAssemblyCannotUseStoredObservationsAsFreshAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Detached stored bytes cannot populate the separate owner's private pair.
-	observed := Authorization{}
+	observed := generationauthorization.Authorization{}
 	prepared := preparedInstallation{uid: binding.UID, gid: binding.GID, roots: binding.MutableRoots}
 	assembled, selected, err := assembleGeneration(t.Context(), request, observed, prepared)
 	if !errors.Is(err, ErrAuthorization) || assembled != nil || selected != (generationSelection{}) {

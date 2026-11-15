@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"syscall"
 	"testing"
+
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 func TestInstallationNativeRecoveryReadsSelectedArchiveAfterCursorRemoval(t *testing.T) {
@@ -84,7 +86,7 @@ func TestInstallationNativeRecoveryCopiesShareOriginalLeaseAndAdmission(t *testi
 	if err := copy.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.Complete(Authorization{}); !errors.Is(err, ErrInput) {
+	if _, err := owner.Complete(generationauthorization.Authorization{}); !errors.Is(err, ErrInput) {
 		t.Fatal("handle copy created another completion", err)
 	}
 	other, err := openInstalledRoot(t.Context(), directory)
@@ -102,7 +104,7 @@ func TestInstallationNativeRecoveryCannotRenewOriginalCancelledCaller(t *testing
 	owner := nativeRecoveryLifetime(t, ctx)
 	directory := owner.state.native.reader.lease.path
 	cancel()
-	if _, err := owner.Complete(Authorization{}); !errors.Is(err, context.Canceled) {
+	if _, err := owner.Complete(generationauthorization.Authorization{}); !errors.Is(err, context.Canceled) {
 		t.Fatal("another caller renewed the cancelled original operation", err)
 	}
 	other, err := openInstalledRoot(t.Context(), directory)
@@ -209,7 +211,7 @@ func TestInstallationNativeRecoveryRetainsFirstFailureAfterItWasArchived(t *test
 	if _, err := reader.read(t.Context(), archive, 64<<10, 0600, 0); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := owner.Complete(Authorization{}); !errors.Is(err, ErrAuthorization) {
+	if _, err := owner.Complete(generationauthorization.Authorization{}); !errors.Is(err, ErrAuthorization) {
 		t.Fatal("later missing authority was not retained in the current outcome", err)
 	}
 	active, err := os.ReadFile(filepath.Join(native.journal, "recovery-failure.json"))

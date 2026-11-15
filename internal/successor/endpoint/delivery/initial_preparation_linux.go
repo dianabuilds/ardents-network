@@ -13,6 +13,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"
 	manageddirectory "github.com/dianabuilds/ardents-network/internal/successor/installation/directory"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 // One operation retains all journal/root borrowers before returning its kernel
@@ -27,7 +28,7 @@ type initialPreparation struct {
 	terminal error
 }
 
-func prepareInitialNative(ctx context.Context, request Request, authorization Authorization) (result *initialPreparation, returnedErr error) {
+func prepareInitialNative(ctx context.Context, request Request, authorization generationauthorization.Authorization) (result *initialPreparation, returnedErr error) {
 	if ctx == nil || request.declared == nil {
 		return nil, ErrInput
 	}
@@ -449,7 +450,7 @@ func readProvisionRequest(ctx context.Context, filename string) (Request, error)
 	return request, nil
 }
 
-func provisionInitial(ctx context.Context, request Request, authorization Authorization) (result ProvisionResult, returnedErr error) {
+func provisionInitial(ctx context.Context, request Request, authorization generationauthorization.Authorization) (result ProvisionResult, returnedErr error) {
 	if ctx == nil {
 		return ProvisionResult{}, ErrInput
 	}

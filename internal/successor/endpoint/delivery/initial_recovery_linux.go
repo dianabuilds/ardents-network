@@ -14,6 +14,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 type recoveryNative struct {
@@ -477,7 +479,7 @@ func (r *recoveryNative) observe(ctx context.Context) error {
 	return cgroup.ObserveEmpty(ctx)
 }
 
-func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, authorization Authorization) (result ProvisionResult, returnedErr error) {
+func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, authorization generationauthorization.Authorization) (result ProvisionResult, returnedErr error) {
 	r := owner.native
 	defer func() {
 		if returnedErr != nil {

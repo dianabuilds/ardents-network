@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 func TestProvisionRefusesOriginalCancellationBeforeNativeEffects(t *testing.T) {
@@ -22,7 +24,7 @@ func TestProvisionRefusesOriginalCancellationBeforeNativeEffects(t *testing.T) {
 			if !errors.Is(err, test.want) || request.declared != nil || request.custody != nil {
 				t.Fatal("pre-effect request refusal lost", err)
 			}
-			result, err := ProvisionInitial(test.ctx, Request{}, Authorization{})
+			result, err := ProvisionInitial(test.ctx, Request{}, generationauthorization.Authorization{})
 			if !errors.Is(err, test.want) || result != (ProvisionResult{}) {
 				t.Fatal("pre-effect operation refusal lost", result, err)
 			}

@@ -1,6 +1,10 @@
 package delivery
 
-import "context"
+import (
+	"context"
+
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
+)
 
 // ProvisionResult reports the Installation outcome, not qualified Execution,
 // accepting Service readiness or a reusable Release authorization. A successor
@@ -20,6 +24,6 @@ func ReadProvisionRequest(ctx context.Context, filename string) (Request, error)
 // ProvisionInitial consumes genuine fresh initial authorization and original
 // native request custody. Composition retains the separate Release verifier
 // through this operation and its physical cleanup. No implicit start occurs.
-func ProvisionInitial(ctx context.Context, request Request, authorization Authorization) (ProvisionResult, error) {
+func ProvisionInitial(ctx context.Context, request Request, authorization generationauthorization.Authorization) (ProvisionResult, error) {
 	return provisionInitial(ctx, request, authorization)
 }

@@ -4,13 +4,9 @@ import (
 	"encoding/hex"
 	"time"
 
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
-
-// Authorization is the separately owned opaque pair consumed by installation.
-// Endpoint cannot populate its private proofs, pin or immutable byte fields.
-type Authorization = generationauthorization.Authorization
 
 type generationDeclaration = generationauthorization.GenerationDeclaration
 

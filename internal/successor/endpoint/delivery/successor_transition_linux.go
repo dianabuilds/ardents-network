@@ -14,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 // This private preparation retains one native inspection before candidate and
@@ -25,7 +26,7 @@ type successorPreparation struct {
 	previous      inspectedGeneration
 	terminal      error
 	predecessor   *installedPredecessor
-	authorization *Authorization
+	authorization *generationauthorization.Authorization
 	stage         *installationTransaction
 	candidate     *inspectedGeneration
 	started       *installedCandidate
@@ -95,23 +96,23 @@ func (owned *successorPreparation) observe() error {
 	return owned.inspection.observeAccountAndRoots(owned.previous)
 }
 
-func (owned *successorPreparation) authenticate(verifier *release.Verifier, candidate enrollment.Candidate, input release.Inputs) (Authorization, error) {
+func (owned *successorPreparation) authenticate(verifier *release.Verifier, candidate enrollment.Candidate, input release.Inputs) (generationauthorization.Authorization, error) {
 	if err := owned.observe(); err != nil {
-		return Authorization{}, err
+		return generationauthorization.Authorization{}, err
 	}
 	if owned.authorization != nil || owned.stage != nil {
-		return Authorization{}, ErrInput
+		return generationauthorization.Authorization{}, ErrInput
 	}
 	if !input.Local.RefTime.Equal(owned.request.ReferenceTime()) {
-		return Authorization{}, ErrBinding
+		return generationauthorization.Authorization{}, ErrBinding
 	}
 	authorized, err := authenticateSuccessor(owned.ctx, verifier, candidate, input, owned.previous.binding)
 	if err != nil {
-		return Authorization{}, err
+		return generationauthorization.Authorization{}, err
 	}
 	// A late custody change or original cancellation preserves any advanced floors.
 	if err := owned.observe(); err != nil {
-		return Authorization{}, err
+		return generationauthorization.Authorization{}, err
 	}
 	owned.authorization = &authorized
 	return authorized, nil

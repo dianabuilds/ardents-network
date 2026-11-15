@@ -9,6 +9,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 func readProvisionRequest(ctx context.Context, _ string) (Request, error) {
@@ -21,7 +22,7 @@ func readProvisionRequest(ctx context.Context, _ string) (Request, error) {
 	return Request{}, ErrNativeUnavailable
 }
 
-func provisionInitial(ctx context.Context, _ Request, _ Authorization) (ProvisionResult, error) {
+func provisionInitial(ctx context.Context, _ Request, _ generationauthorization.Authorization) (ProvisionResult, error) {
 	if ctx == nil {
 		return ProvisionResult{}, ErrInput
 	}
@@ -37,7 +38,7 @@ func openInitialRecovery(context.Context, string, time.Time) (*Recovery, error) 
 	return nil, ErrNativeUnavailable
 }
 
-func completeInitialRecovery(context.Context, *recoveryOperation, Authorization) (ProvisionResult, error) {
+func completeInitialRecovery(context.Context, *recoveryOperation, generationauthorization.Authorization) (ProvisionResult, error) {
 	return ProvisionResult{}, ErrNativeUnavailable
 }
 

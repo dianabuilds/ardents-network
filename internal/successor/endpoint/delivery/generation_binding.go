@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 // These observations are private implementation data. Only native preparation
@@ -71,7 +71,7 @@ type generationBinding struct {
 // Assembly produces detached bytes, not a selected or installed generation.
 // Native staging owns durable intent, account/root provenance, physical writes
 // and their rechecks; it must not infer those facts from a stored binding.
-func assembleGeneration(ctx context.Context, request Request, authorization Authorization, prepared preparedInstallation) (map[string][]byte, generationSelection, error) {
+func assembleGeneration(ctx context.Context, request Request, authorization generationauthorization.Authorization, prepared preparedInstallation) (map[string][]byte, generationSelection, error) {
 	if ctx == nil || request.declared == nil || prepared.uid == 0 || prepared.gid == 0 {
 		return nil, generationSelection{}, ErrInput
 	}
@@ -215,7 +215,7 @@ func freezeGenerationInventory(request Request, root string, files map[string][]
 // Initial and successor recovery share exact-byte proof matching, not intent
 // admission or native effects. Each caller separately verifies its own schema,
 // physical provenance, phase and original process lifetime.
-func recoverBoundGeneration(ctx context.Context, selected generationSelection, binding generationBinding, request installationRequest, reference time.Time, authorization Authorization) (inspectedGeneration, error) {
+func recoverBoundGeneration(ctx context.Context, selected generationSelection, binding generationBinding, request installationRequest, reference time.Time, authorization generationauthorization.Authorization) (inspectedGeneration, error) {
 	if err := ctx.Err(); err != nil {
 		return inspectedGeneration{}, err
 	}

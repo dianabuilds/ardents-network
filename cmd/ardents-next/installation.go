@@ -11,9 +11,9 @@ import (
 	"time"
 
 	installation "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 // Authentication and stopped provisioning retain separate acceptance results.
@@ -114,7 +114,7 @@ func runInstallation(ctx context.Context, args []string, out io.Writer) int {
 	if err != nil {
 		return installationFailure(ctx, out, err)
 	}
-	var authorization installation.Authorization
+	var authorization generationauthorization.Authorization
 	if initial {
 		authorization, err = generationauthorization.AuthenticateInitial(ctx, verifier, bundle, input)
 	} else {

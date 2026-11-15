@@ -5,6 +5,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 func TestRecoveryCannotMintFreshProofFromOriginalObservations(t *testing.T) {
@@ -19,7 +21,7 @@ func TestRecoveryCannotMintFreshProofFromOriginalObservations(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Original observations cannot populate the separate owner's private pair.
-	observed := Authorization{}
+	observed := generationauthorization.Authorization{}
 	if _, err := recoveryGeneration(t.Context(), intent, reference, observed); !errors.Is(err, ErrAuthorization) {
 		t.Fatal("original binding and exact observed bytes became fresh recovery proof", err)
 	}
@@ -32,7 +34,7 @@ func TestRecoveryCannotMintFreshProofFromOriginalObservations(t *testing.T) {
 
 func TestZeroRecoveryAndOriginalCancellationGrantNoNativeOperation(t *testing.T) {
 	var owner Recovery
-	if _, err := owner.Complete(Authorization{}); !errors.Is(err, ErrInput) {
+	if _, err := owner.Complete(generationauthorization.Authorization{}); !errors.Is(err, ErrInput) {
 		t.Fatal("zero retained operation accepted", err)
 	}
 	if err := owner.Close(); err != nil {
