@@ -1,4 +1,4 @@
-package request
+package deployment
 
 // ValidNodeTrustDeclaration checks only the shape of a Node's public Network
 // inputs. Network State independently authenticates them at runtime.

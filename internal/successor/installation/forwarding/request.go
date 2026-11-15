@@ -7,8 +7,8 @@ import (
 	posixpath "path"
 	"strings"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
-	installationrequest "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
 )
 
 var (
@@ -168,8 +168,8 @@ func RenderUnit(template []byte, r Request, generation string) ([]byte, error) {
 	).Replace(Template)), nil
 }
 
-func validPath(path string) bool { return installationrequest.ValidInfrastructurePath(path) }
+func validPath(path string) bool { return deployment.ValidInfrastructurePath(path) }
 
 func contains(parent, child string) bool {
-	return installationrequest.InfrastructurePathContains(parent, child)
+	return deployment.InfrastructurePathContains(parent, child)
 }

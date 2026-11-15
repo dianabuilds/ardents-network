@@ -7,7 +7,7 @@ import (
 	"fmt"
 	posixpath "path"
 
-	installationrequest "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 )
 
 var (
@@ -131,8 +131,8 @@ func (r Request) CheckPreparationOutput(output string) error {
 	return nil
 }
 
-func validPath(path string) bool { return installationrequest.ValidInfrastructurePath(path) }
+func validPath(path string) bool { return deployment.ValidInfrastructurePath(path) }
 
 func contains(parent, child string) bool {
-	return installationrequest.InfrastructurePathContains(parent, child)
+	return deployment.InfrastructurePathContains(parent, child)
 }
