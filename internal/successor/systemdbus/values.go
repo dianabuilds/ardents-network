@@ -1,4 +1,4 @@
-package systemd
+package systemdbus
 
 import (
 	"encoding/binary"
@@ -105,7 +105,11 @@ func managerAlign(frame []byte, position, end, alignment int) (int, error) {
 	return next, nil
 }
 
-func verifyManagerValues(frame []byte, position int, signature string, order binary.ByteOrder) error {
+// ValidateValues checks a complete bounded value payload before a bus decoder reads it.
+func ValidateValues(frame []byte, position int, signature string, order binary.ByteOrder) error {
+	if order == nil || position < 0 || position > len(frame) {
+		return ErrObservation
+	}
 	values, err := managerValueTypes(signature, 0)
 	if err != nil {
 		return err
@@ -141,7 +145,7 @@ func managerValueEnd(frame []byte, position, end int, value managerValueType, or
 	case 'x', 't', 'd':
 		size = 8
 	case 's', 'o', 'g':
-		text, next, err := referenceScalar(frame, position, end, value.kind, order)
+		text, next, err := ReadScalar(frame, position, end, value.kind, order)
 		if err != nil || !utf8.ValidString(text) {
 			return position, ErrObservation
 		}
@@ -152,7 +156,7 @@ func managerValueEnd(frame []byte, position, end int, value managerValueType, or
 		}
 		return next, nil
 	case 'v':
-		signature, next, err := referenceScalar(frame, position, end, 'g', order)
+		signature, next, err := ReadScalar(frame, position, end, 'g', order)
 		if err != nil {
 			return position, err
 		}

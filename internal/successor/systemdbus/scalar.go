@@ -1,11 +1,15 @@
-package systemd
+package systemdbus
 
 import (
 	"bytes"
 	"encoding/binary"
 )
 
-func referenceScalar(frame []byte, pos, end int, kind byte, order binary.ByteOrder) (string, int, error) {
+// ReadScalar decodes one bounded bus string or signature.
+func ReadScalar(frame []byte, pos, end int, kind byte, order binary.ByteOrder) (string, int, error) {
+	if order == nil || pos < 0 || end < pos || end > len(frame) {
+		return "", pos, ErrObservation
+	}
 	var size uint64
 	if kind == 'g' {
 		if pos >= end {

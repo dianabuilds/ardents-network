@@ -6,6 +6,27 @@ import (
 	"testing"
 )
 
+// Independently encoded property bodies isolate decoder admission only. They
+// supply no manager, installed process or successful Startup authority.
+func managerDictionaryVector(keys ...string) []byte {
+	body := make([]byte, 8)
+	for _, key := range keys {
+		for len(body)%8 != 0 {
+			body = append(body, 0)
+		}
+		body = binary.LittleEndian.AppendUint32(body, uint32(len(key)))
+		body = append(body, key...)
+		body = append(body, 0, 1, 's', 0)
+		for len(body)%4 != 0 {
+			body = append(body, 0)
+		}
+		body = binary.LittleEndian.AppendUint32(body, 5)
+		body = append(body, 'v', 'a', 'l', 'u', 'e', 0)
+	}
+	binary.LittleEndian.PutUint32(body[:4], uint32(len(body)-8))
+	return body
+}
+
 // Reference-frame vectors use the production decoder's scalar-only vocabulary.
 func verifyReferenceFrame(frame []byte, owner string) error {
 	return verifyManagerFrame(frame, owner, false, false, sourceUnitReply)

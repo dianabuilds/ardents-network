@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/systemdbus"
 )
 
 // The client decoder is never given an unchecked frame or auth line. In
@@ -248,7 +250,7 @@ func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, 
 		}
 		var value string
 		var err error
-		value, pos, err = referenceScalar(frame, pos, int(end), kind, order)
+		value, pos, err = systemdbus.ReadScalar(frame, pos, int(end), kind, order)
 		if err != nil {
 			return err
 		}
@@ -266,7 +268,7 @@ func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, 
 	}
 	sig := fields[8]
 	if properties && frame[1] == 2 && owner != "" && sender == owner && (sig == "v" || sig == "a{sv}") {
-		return verifyManagerValues(frame, int(bodyStart), sig, order)
+		return systemdbus.ValidateValues(frame, int(bodyStart), sig, order)
 	}
 	// Each connection admits only its fixed unit's native LoadUnit reply. Job
 	// replies belong only to that purpose's original root control. This grammar
@@ -276,7 +278,7 @@ func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, 
 		if reply == nodeSlotsReply {
 			return ErrObservation
 		}
-		object, pos, err := referenceScalar(frame, int(bodyStart), len(frame), 'o', order)
+		object, pos, err := systemdbus.ReadScalar(frame, int(bodyStart), len(frame), 'o', order)
 		allowJob := reply == sourceUnitReply && sourceJobs || reply == forwardingUnitReply && forwardingJobs || (reply == joinControlReply || reply == descriptorControlReply || reply == introductionControlReply) && joinJobs
 		if err != nil || pos != len(frame) || (object != reply.object() && (!allowJob || !managerJobPath(object))) {
 			return ErrObservation
@@ -292,7 +294,7 @@ func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, 
 	if sig != "s" {
 		return ErrObservation
 	}
-	_, pos, err := referenceScalar(frame, int(bodyStart), len(frame), 's', order)
+	_, pos, err := systemdbus.ReadScalar(frame, int(bodyStart), len(frame), 's', order)
 	if err != nil || pos != len(frame) {
 		return ErrObservation
 	}
