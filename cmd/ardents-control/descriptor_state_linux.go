@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/ed25519"
-	"crypto/sha256"
 	"errors"
 	"io"
 	"os"
@@ -175,28 +173,8 @@ func prepareDescriptorState(ctx context.Context, planPath, bundlePath, profilePa
 }
 
 func descriptorPreparationStateConfig(plan deployment.DescriptorPlan) (state.Config, error) {
-	n := plan.Network
-	if plan.Schema != "ardents-descriptor-runtime-v1" || plan.ProcessProfile != "ardents-descriptor-process-v1" || plan.NodeID == [32]byte{} || n.NetworkID == [32]byte{} || n.ProfileAuthority == [32]byte{} || n.Threshold < 1 || n.Threshold > len(n.Authorities) || len(n.Authorities) > 16 {
+	if plan.Schema != "ardents-descriptor-runtime-v1" || plan.ProcessProfile != "ardents-descriptor-process-v1" || plan.NodeID == [32]byte{} {
 		return state.Config{}, descriptor.ErrInput
 	}
-	roots := []string{n.Root, n.ClockObservationFile, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.Certificate, plan.PrivateKey}
-	for i, path := range roots {
-		if !sourceControlPath(path) {
-			return state.Config{}, descriptor.ErrInput
-		}
-		for _, previous := range roots[:i] {
-			if path == previous || strings.HasPrefix(path, previous+"/") || strings.HasPrefix(previous, path+"/") {
-				return state.Config{}, descriptor.ErrBinding
-			}
-		}
-	}
-	pins := make(map[[32]byte]ed25519.PublicKey, len(n.Authorities))
-	for _, public := range n.Authorities {
-		id := sha256.Sum256(public[:])
-		if public == [32]byte{} || pins[id] != nil {
-			return state.Config{}, descriptor.ErrBinding
-		}
-		pins[id] = append(ed25519.PublicKey(nil), public[:]...)
-	}
-	return state.Config{Root: n.Root, NetworkID: n.NetworkID, Authorities: pins, Threshold: n.Threshold, ClosedProfileAuthority: append(ed25519.PublicKey(nil), n.ProfileAuthority[:]...), AcceptedProfile: "ardents-route-v3", Clock: time.Now, ClockObservationFile: n.ClockObservationFile}, nil
+	return nodePreparationStateConfig(plan.Network, []string{plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.Certificate, plan.PrivateKey}, descriptor.ErrInput, descriptor.ErrBinding)
 }
