@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/ed25519"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"io"
@@ -220,13 +219,9 @@ func installedIntroductionStateConfig(plan introduction.Plan) (state.Config, err
 	if n.NetworkID == [32]byte{} || n.ProfileAuthority == [32]byte{} || n.Threshold < 1 || n.Threshold > len(n.Authorities) || len(n.Authorities) > 16 {
 		return state.Config{}, introduction.ErrInput
 	}
-	pins := make(map[[32]byte]ed25519.PublicKey, len(n.Authorities))
-	for _, public := range n.Authorities {
-		id := sha256.Sum256(public[:])
-		if _, duplicate := pins[id]; duplicate || public == [32]byte{} {
-			return state.Config{}, introduction.ErrBinding
-		}
-		pins[id] = append(ed25519.PublicKey(nil), public[:]...)
+	pins, ok := nodeAuthorityPins(n.Authorities)
+	if !ok {
+		return state.Config{}, introduction.ErrBinding
 	}
 	return state.Config{Root: n.Root, NetworkID: n.NetworkID, Authorities: pins, Threshold: n.Threshold,
 		ClosedProfileAuthority: append(ed25519.PublicKey(nil), n.ProfileAuthority[:]...), AcceptedProfile: "ardents-route-v3",
