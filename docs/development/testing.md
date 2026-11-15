@@ -5525,3 +5525,13 @@ history, absent/copied original-cut inode, partial recovery and replay must
 refuse while preserving original prefix and Store bytes. A subsequent actual
 program replacement checks recovered lineage with a new immutable program.
 Neither profile accepts earlier-prefix continuation or unknown domain completion.
+
+
+Installed participant composition tests live with `internal/successor/endpoint`.
+The permission adapter tests exercise real exclusive creation, exact repeat,
+foreign bytes, parent substitution, cancellation and response-file custody.
+Participant controls refuse canceled startup before filesystem/progress effects,
+keep Reader-only grants separate from Publisher declarations, and reject lost
+original preparation before private Source reads. Existing command/installed
+harnesses continue through the same `ardents-next endpoint start-installed` caller;
+these component controls alone do not qualify the two-manager installed journey.

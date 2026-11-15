@@ -970,7 +970,10 @@ retains live authority; Route retains selection and physical join; Execution
 retains worker admission/results; Publication retains readiness/refresh/replay;
 Connection retains logical bytes and recovery. The original participant joins
 all requests/publications before closing shared parents, Stock and authority.
-CLI schemas, output and startup stay in the command. Splitting these lifetimes
+`endpoint` now owns the original participant Startup, State, local Execution,
+permission file exchange and shared parents. Its bound Installation declarations
+are also consumed by offline Source preparation, without runtime authority.
+CLI selectors, diagnostic rendering and exit projection stay in the command. Splitting these lifetimes
 changes neither accepted persisted/wire bytes nor installed qualification.
 
 ## Responsibilities outside the selected transition

@@ -956,10 +956,11 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/route/join":         {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "network", "admission"},
 		"internal/successor/route/prefix":       {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "network", "admission"},
 		"internal/successor/route/receiver":     {"route/issuer", "route/join", "route", "route/role", "route/transport", "route/transport/tls", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
+		"internal/successor/endpoint":           {"endpoint/funding", "endpoint/reader", "endpoint/publisher", "admission", "admission/stock", "execution", "execution/runtime", "hosting", "installation/endpoint", "network", "network/source", "network/state"},
 		"internal/successor/endpoint/publisher": {"endpoint/funding", "admission", "admission/stock", "execution/runtime", "hosting", "network", "publication/durable", "publication/instance", "publication/runtime", "route/prefix", "route/selection"},
 		"internal/successor/endpoint/reader":    {"endpoint/funding", "admission", "admission/stock", "connection", "execution/runtime", "hosting", "network", "reachability", "route/prefix", "route/selection"},
 		"internal/successor/endpoint/funding":   {"admission", "admission/stock", "admission/token", "hosting", "network", "network/state", "route", "route/ardp", "route/bootstrap", "route/prefix", "route/role", "route/selection"},
-		"cmd/ardents-next":                      {"endpoint/publisher", "endpoint/reader", "endpoint/funding", "route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
+		"cmd/ardents-next":                      {"endpoint", "endpoint/publisher", "endpoint/reader", "endpoint/funding", "route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
 		// Existing new-zone QA registration, not another old-command R01 exception.
@@ -1116,7 +1117,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/publication.go" && dependency == modulePath+"/internal/successor/publication/durable" {
 			return true
 		}
-		if source == "cmd/ardents-next/installed_endpoint_linux.go" && (dependency == modulePath+"/internal/successor/installation/endpoint" || dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/execution/runtime") {
+		if source == "internal/successor/endpoint/participant_linux.go" && (dependency == modulePath+"/internal/successor/installation/endpoint" || dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/execution/runtime") {
 			return true
 		}
 		if source == "cmd/ardents-next/source_linux.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/state") {
@@ -1125,7 +1126,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/source_preparation_linux.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/processresource") {
 			return true
 		}
-		if source == "cmd/ardents-next/installed_source_linux.go" && (dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/network/source") {
+		if source == "internal/successor/endpoint/declarations_linux.go" && (dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/network/source") {
 			return true
 		}
 		if (source == "cmd/ardents-next/execution_holder.go" || source == "cmd/ardents-next/admission_holder.go") && dependency == modulePath+"/internal/successor/execution/runtime" {
@@ -1288,10 +1289,10 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/endpoint/reader/operation_linux.go" && dependency == modulePath+"/internal/application/textdocument" {
 		return true
 	}
-	if (source == "internal/successor/endpoint/reader/reader_linux.go" || source == "cmd/ardents-next/installed_endpoint_linux.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/successor/endpoint/reader/reader_linux.go" || source == "internal/successor/endpoint/participant_linux.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
-	if (source == "cmd/ardents-next/installed_endpoint_linux.go" || source == "cmd/ardents-next/installed_service_linux_test.go") && dependency == modulePath+"/internal/application/administration" {
+	if (source == "internal/successor/endpoint/participant_linux.go" || source == "cmd/ardents-next/installed_service_linux_test.go") && dependency == modulePath+"/internal/application/administration" {
 		return true
 	}
 	if source == "cmd/ardents-next/installed_pair_linux_test.go" {
@@ -1501,8 +1502,8 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"installed Reader consumes authenticated Source", "internal/successor/endpoint/reader/reader_linux.go", modulePath + "/internal/successor/connection", true},
 		{"installed Reader local byte contract", "internal/successor/endpoint/reader/reader_linux.go", modulePath + "/internal/application/connection", true},
 		{"installed Reader local Text projection", "internal/successor/endpoint/reader/result_linux.go", modulePath + "/internal/application/textdocument", true},
-		{"installed participant owns Reader listener", "cmd/ardents-next/installed_endpoint_linux.go", modulePath + "/internal/application/connection", true},
-		{"installed participant owns Administration listener", "cmd/ardents-next/installed_endpoint_linux.go", modulePath + "/internal/application/administration", true},
+		{"installed participant owns Reader listener", "internal/successor/endpoint/participant_linux.go", modulePath + "/internal/application/connection", true},
+		{"installed participant owns Administration listener", "internal/successor/endpoint/participant_linux.go", modulePath + "/internal/application/administration", true},
 		{"installed Publisher retains original worker", "internal/successor/endpoint/publisher/publisher_linux.go", modulePath + "/internal/successor/execution/runtime", true},
 		{"other installed adapter has no Publisher authority", "cmd/ardents-next/installed_other_linux.go", modulePath + "/internal/successor/execution/runtime", false},
 		{"installed Publisher cannot use old Endpoint", "internal/successor/endpoint/publisher/publisher_linux.go", modulePath + "/internal/endpoint", false},

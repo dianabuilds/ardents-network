@@ -3,191 +3,30 @@
 package main
 
 import (
-	"crypto/tls"
 	"encoding/hex"
-	"encoding/json"
-	"errors"
-	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/successor/execution"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint"
 )
 
-// These projections consume Installation's already bound declarations. They
-// neither duplicate installation admission nor turn declarations into State.
-type installedPermission struct {
-	RequestPath  string    `json:"request_path"`
-	ResponsePath string    `json:"response_path"`
-	Maxima       [3]uint32 `json:"maxima"`
-}
+// The offline producer writes Installation's bound schemas. Runtime decoding
+// and all private-input/state/participant effects belong to endpoint.
+type installedHeadless = endpoint.HeadlessPlan
+type installedSource = endpoint.SourcePlan
 
-type installedHeadless struct {
-	Schema                  string              `json:"schema"`
-	Role                    string              `json:"role"`
-	NetworkStateRoot        string              `json:"network_state_root"`
-	LocalRoleStateRoot      string              `json:"local_role_state_root"`
-	TimeConfidenceFile      string              `json:"time_confidence_file"`
-	TextTokenRoot           string              `json:"text_token_root"`
-	EntryStateRoot          string              `json:"entry_state_root"`
-	ApplicationSocket       string              `json:"application_socket"`
-	AdministrationSocket    string              `json:"administration_socket"`
-	PublicationRoot         string              `json:"publication_root"`
-	ServiceInstanceRoot     string              `json:"service_instance_root"`
-	NetworkID               string              `json:"network_id"`
-	NetworkAuthorities      []string            `json:"network_authorities"`
-	NetworkThreshold        int                 `json:"network_threshold"`
-	ClosedProfileAuthority  string              `json:"closed_profile_authority"`
-	BrokerID                string              `json:"broker_id"`
-	ConnectionPrincipal     string              `json:"connection_principal"`
-	AdministrationPrincipal string              `json:"administration_principal"`
-	ReaderPermission        installedPermission `json:"reader_permission"`
-	PublisherPermission     installedPermission `json:"publisher_permission"`
-}
-
-type installedSource struct {
-	Schema               string `json:"schema"`
-	ClockObservedAt      string `json:"clock_observed_at"`
-	OrderSeed            string `json:"order_seed"`
-	MaterializationIndex uint32 `json:"materialization_index"`
-	RefreshIntervalMS    uint32 `json:"refresh_interval_ms"`
-	ClientCertificate    string `json:"client_certificate"`
-	ClientKey            string `json:"client_key"`
-	Sources              []struct {
-		Address        string `json:"address"`
-		ServerName     string `json:"server_name"`
-		Identity       string `json:"identity"`
-		Family         string `json:"family"`
-		EndpointHandle string `json:"endpoint_handle"`
-		RootCA         string `json:"root_ca"`
-		LeafKeyDigest  string `json:"leaf_key_digest"`
-	} `json:"sources"`
-}
-
-func installedDeclarations(headlessRaw, sourceRaw []byte) (installedHeadless, installedSource, error) {
-	var headless installedHeadless
-	var source installedSource
-	if len(headlessRaw) > 16<<10 || len(sourceRaw) > 32<<10 || json.Unmarshal(headlessRaw, &headless) != nil || json.Unmarshal(sourceRaw, &source) != nil || headless.Schema != "ardents-headless-runtime-v2" || source.Schema != "ardents-source-plan-v1" || len(source.Sources) != 2 {
-		return headless, source, errors.New("installed bound declarations are unavailable")
-	}
-	return headless, source, nil
-}
-
-func installedIdentity(encoded string) ([32]byte, error) {
-	var value [32]byte
-	raw, err := hex.DecodeString(encoded)
-	if err != nil || len(raw) != len(value) || hex.EncodeToString(raw) != encoded {
-		return value, errors.New("installed identity is unavailable")
-	}
-	copy(value[:], raw)
-	return value, nil
-}
-
-func installedLocalConfig(plan installedHeadless) (execution.Config, error) {
-	id, err := installedIdentity(plan.BrokerID)
-	if err != nil {
-		return execution.Config{}, err
-	}
-	reader, err := installedIdentity(plan.ConnectionPrincipal)
-	if err != nil {
-		return execution.Config{}, err
-	}
-	config := execution.Config{ID: id, Grants: []execution.Grant{{Principal: reader, Surface: execution.Connection}}}
-	if plan.Role == "" {
-		publisher, err := installedIdentity(plan.AdministrationPrincipal)
-		if err != nil {
-			return execution.Config{}, err
-		}
-		config.Grants = append(config.Grants, execution.Grant{Principal: publisher, Surface: execution.Administration})
-	}
-	return config, nil
-}
-
-func installedNetworkConfig(plan installedHeadless, declared installedSource, check func() error) (state.Config, error) {
-	authority, err := installedNetworkAuthority(plan)
-	if err != nil {
-		return state.Config{}, err
-	}
-	config, err := networkStateConfig(authority)
-	if err != nil {
-		return state.Config{}, err
-	}
-	config.LocalRoleStateRoot = plan.LocalRoleStateRoot
-	config.ClockObservation, err = time.Parse(time.RFC3339, declared.ClockObservedAt)
-	if err != nil {
-		return state.Config{}, err
-	}
-	return installedAcquisitionConfig(config, declared, check)
-}
-
-// Detached declarations only; no clock-file, State-root or private-key I/O.
 func installedNetworkAuthority(plan installedHeadless) (*networkAuthorityPlan, error) {
-	networkID, err := installedIdentity(plan.NetworkID)
+	config, err := plan.Network()
 	if err != nil {
 		return nil, err
 	}
-	profileKey, err := installedIdentity(plan.ClosedProfileAuthority)
-	if err != nil {
-		return nil, err
-	}
-	authority := &networkAuthorityPlan{Root: plan.NetworkStateRoot, NetworkID: networkID, Threshold: plan.NetworkThreshold, ProfileAuthority: profileKey, ClockObservationFile: plan.TimeConfidenceFile}
+	authority := &networkAuthorityPlan{Root: config.Root, NetworkID: config.NetworkID, Threshold: config.Threshold, ClockObservationFile: config.ClockObservationFile}
+	copy(authority.ProfileAuthority[:], config.ClosedProfileAuthority)
+	// Preserve declared public pin order in the offline command's exact output.
 	for _, encoded := range plan.NetworkAuthorities {
-		key, err := installedIdentity(encoded)
-		if err != nil {
-			return nil, err
+		for _, key := range config.Authorities {
+			if hex.EncodeToString(key) == encoded {
+				authority.Authorities = append(authority.Authorities, [32]byte(key))
+				break
+			}
 		}
-		authority.Authorities = append(authority.Authorities, key)
 	}
 	return authority, nil
-}
-
-func installedAcquisitionConfig(config state.Config, declared installedSource, check func() error) (state.Config, error) {
-	var err error
-	config.Source.OrderSeed, err = installedIdentity(declared.OrderSeed)
-	if err != nil {
-		return state.Config{}, err
-	}
-	config.Source.MaterialIndex = declared.MaterializationIndex
-	config.AutomaticRefreshInterval = time.Duration(declared.RefreshIntervalMS) * time.Millisecond
-	read := func(path string, maximum int64) ([]byte, error) {
-		if err := check(); err != nil {
-			return nil, err
-		}
-		raw, err := readBounded(path, maximum)
-		if checked := check(); checked != nil {
-			clear(raw)
-			return nil, errors.Join(err, checked)
-		}
-		return raw, err
-	}
-	certificate, err := read(declared.ClientCertificate, 64<<10)
-	if err != nil {
-		return state.Config{}, err
-	}
-	defer clear(certificate)
-	key, err := read(declared.ClientKey, 16<<10)
-	if err != nil {
-		return state.Config{}, err
-	}
-	defer clear(key)
-	config.Source.ClientCertificate, err = tls.X509KeyPair(certificate, key)
-	if err != nil {
-		return state.Config{}, err
-	}
-	for index, member := range declared.Sources {
-		identity, err := installedIdentity(member.Identity)
-		if err != nil {
-			return state.Config{}, err
-		}
-		leaf, err := installedIdentity(member.LeafKeyDigest)
-		if err != nil {
-			return state.Config{}, err
-		}
-		root, err := read(member.RootCA, 64<<10)
-		if err != nil {
-			return state.Config{}, err
-		}
-		config.Source.Sources[index] = source.Source{Address: member.Address, ServerName: member.ServerName, Identity: identity, Family: member.Family, EndpointHandle: member.EndpointHandle, RootPEM: root, LeafKeyDigest: leaf}
-	}
-	return config, check()
 }

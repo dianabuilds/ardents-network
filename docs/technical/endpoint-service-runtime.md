@@ -2169,3 +2169,15 @@ selection or startup. The existing Installation request facade remains the
 command/transaction consumer; original Root effect admission checks that same
 provenance. General trusted-path observations for lease, staging and inspection
 remain distinct from request-file provenance.
+
+
+The new installed participant lifetime is owned by `internal/successor/endpoint`.
+Its `Run` opens and retains the original Installation Startup, decodes only its
+bound declarations, prepares the local Execution provenance, refreshes genuine
+State and performs exact permission-file handover before opening shared funding
+parents and IPC. CLI `endpoint start-installed` supplies only the original root,
+public progress rendering and process-exit projection. Progress supplies no
+readiness or authority. IPC and Publication borrowers join before shared parents,
+Stock, State, local Execution and Startup close; partial construction follows the
+same reverse ownership order and retains original failures. Permission and
+history bytes, role declarations and qualified-worker requirements are unchanged.

@@ -1,14 +1,17 @@
 //go:build linux
 
-package main
+package endpoint
 
 import (
 	"bytes"
+	"context"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 	"io"
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 )
 
 // Publish once, or resynchronize an exact retry. A partial or foreign request
@@ -176,4 +179,34 @@ func installedPermissionOwned(info os.FileInfo, directory bool) bool {
 		return info.Mode() == os.ModeDir|0700
 	}
 	return info.Mode() == 0600 && stat.Nlink == 1
+}
+
+func installedPermissionResponse(ctx context.Context, path string, digest [32]byte, deadline time.Time, holder *stock.Owner, check func() error) error {
+	bounded, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
+	tick := time.NewTicker(100 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		if err := check(); err != nil {
+			return err
+		}
+		raw, err := installedPermissionRead(path)
+		if err == nil {
+			if err := check(); err != nil {
+				clear(raw)
+				return err
+			}
+			err = holder.Import(digest, raw)
+			clear(raw)
+			return errors.Join(err, check())
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		select {
+		case <-bounded.Done():
+			return bounded.Err()
+		case <-tick.C:
+		}
+	}
 }
