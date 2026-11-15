@@ -58,11 +58,10 @@ func forwardingPlanArguments(args []string, inputs *sourceControlInputs) ([]byte
 	if err != nil || r.Plan != filepath.Join(destination, "forwarding-plan.json") {
 		return nil, "", forwarding.ErrBinding
 	}
-	for _, path := range []string{requestPath, r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.CredentialDirectory, r.Certificate, r.PrivateKey, r.Clock} {
-		if destination == path || strings.HasPrefix(destination, path+"/") || strings.HasPrefix(path, destination+"/") {
-			return nil, "", forwarding.ErrBinding
-		}
+	if err := r.CheckPlanPreparationOutput(destination, requestPath); err != nil {
+		return nil, "", err
 	}
+
 	decode := func(value string) ([32]byte, error) {
 		var result [32]byte
 		raw, err := hex.DecodeString(value)

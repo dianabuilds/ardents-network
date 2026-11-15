@@ -122,3 +122,20 @@ func TestForwardingRequestReservesEveryFiniteJournalBeforeEffects(t *testing.T) 
 		}
 	}
 }
+
+func TestForwardingPlanOutputKeepsOriginalRequestOutsideReservedHistory(t *testing.T) {
+	r, err := DecodeRequest([]byte(forwardingRequestVector))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const output = "/var/lib/forwarding-plan-output"
+	r.Plan = output + "/forwarding-plan.json"
+	if err := r.CheckPlanPreparationOutput(output, "/var/lib/forwarding-request.json"); err != nil {
+		t.Fatal(err)
+	}
+	for _, request := range []string{r.Plan, output + "/request", r.Clock, r.InstallationRoot + ".forwarding-initial-journal/request", r.InstallationRoot + ".forwarding-invocation-00000063-journal/request", r.InstallationRoot + ".forwarding-retirement-00000063-journal/request"} {
+		if err := r.CheckPlanPreparationOutput(output, request); !errors.Is(err, ErrBinding) {
+			t.Fatalf("request %q: %v", request, err)
+		}
+	}
+}

@@ -1,6 +1,7 @@
 package forwarding
 
 import (
+	"encoding/json"
 	posixpath "path"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
@@ -19,6 +20,22 @@ func DecodePlan(raw []byte) (Plan, error) {
 		return Plan{}, ErrInput
 	}
 	return p, nil
+}
+
+// CheckPlanPreparationOutput keeps the original request and the plan output
+// outside every other declared input and reserved lifecycle namespace.
+func (r Request) CheckPlanPreparationOutput(output, requestFile string) error {
+	raw, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	if _, err := DecodeRequest(append(raw, '\n')); err != nil {
+		return err
+	}
+	if !deployment.PlanOutputIndependent(output, requestFile, r.Plan, "forwarding-plan.json", append(r.paths(), r.reservedSiblingPaths()...)) {
+		return ErrBinding
+	}
+	return nil
 }
 
 // MatchPlan compares only declarations. It opens no State, key or mutable root;
