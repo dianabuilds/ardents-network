@@ -56,7 +56,18 @@ type introductionInvocation struct {
 
 // ListenIntroduction joins every rejected original startup. It cannot adopt a
 // predecessor, rebind a successor duty, or supply an accepting History callback.
-func ListenIntroduction(ctx context.Context, config IntroductionConfig) (_ *Introduction, result error) {
+func ListenIntroduction(ctx context.Context, config IntroductionConfig) (*Introduction, error) {
+	return listenIntroduction(ctx, config, true)
+}
+
+// ListenIntroductionRetained requires existing participation, Receiving and slot
+// history. Installation must independently prove prior retirement and Startup;
+// this constructor grants neither and cannot create missing histories.
+func ListenIntroductionRetained(ctx context.Context, config IntroductionConfig) (*Introduction, error) {
+	return listenIntroduction(ctx, config, false)
+}
+
+func listenIntroduction(ctx context.Context, config IntroductionConfig, create bool) (_ *Introduction, result error) {
 	if ctx == nil || config.Authority.Current == nil || !separateRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, config.IntroductionRoot) {
 		return nil, errors.New("original Introduction configuration invalid")
 	}
@@ -100,7 +111,7 @@ func ListenIntroduction(ctx context.Context, config IntroductionConfig) (_ *Intr
 	if err := f.admission(); err != nil {
 		return nil, err
 	}
-	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: true}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
+	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: create}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +128,11 @@ func ListenIntroduction(ctx context.Context, config IntroductionConfig) (_ *Intr
 	}
 	p := view.Profile()
 	binding := receiving.Receiver{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, ProfileDigest: p.Digest, NodeID: m.NodeID, DutyGeneration: m.DutyGeneration}
-	f.receiving, err = receiving.Open(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) })
+	openReceiving := receiving.Open
+	if !create {
+		openReceiving = receiving.OpenRetained
+	}
+	f.receiving, err = openReceiving(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) })
 	if err != nil {
 		return nil, err
 	}

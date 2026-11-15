@@ -26,7 +26,7 @@ func EncodeForwardingACK(request [160]byte, history uint8) ([161]byte, error) {
 	return encodeHistoryACK(request, history)
 }
 
-// EncodeIntroductionACK encodes the detached first-start history choice.
-func EncodeIntroductionACK(request [160]byte) ([161]byte, error) {
-	return encodeHistoryACK(request, 0)
+// EncodeIntroductionACK encodes a detached Introduction history choice.
+func EncodeIntroductionACK(request [160]byte, history uint8) ([161]byte, error) {
+	return encodeHistoryACK(request, history)
 }

@@ -1706,3 +1706,8 @@ and joins the original installed Introduction invocation.
 `ardents-node introduction inspect-retirement RELEASE-HISTORY BINDING` independently
 verifies its complete first retirement. Neither command admits restart or repairs
 missing history; a timeout notice retains original custody until actual join.
+
+`ardents-node introduction restart DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING`
+admits a fresh same-generation invocation only after complete original retirement
+and fresh Release/native checks. Existing semantic histories and keys are retained;
+missing history refuses, and no automatic restart or replacement follows.

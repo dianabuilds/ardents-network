@@ -21,9 +21,11 @@
 // Non-root Startup independently acquires its own read-only generation, principal,
 // process, namespace, manager and original root-peer exchange. Its private Plan
 // grants no duty, semantic history, domain completion, restart or replacement.
-// ReadStarted independently retains the complete first-start transcript and
+// ReadStarted independently retains the complete invocation chain and
 // original socket metadata without reconnecting. Its leases join before release;
 // historical ACK evidence grants no live process or domain-retirement proof.
 // Explicit Stop separately admits the original process and challenge-bound
 // joined report; independent retirement inspection grants no restart right.
+// Restart separately requires complete prior retirement and fresh Release/native
+// admission; canonical composition opens existing-only semantic histories.
 package introduction

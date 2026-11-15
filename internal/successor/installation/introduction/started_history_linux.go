@@ -8,7 +8,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
-// Started retains independently opened initial, Hosting and complete first-start
+// Started retains independently opened initial, Hosting and complete invocation
 // history. It observes no live process or domain and grants no Stop, restart or
 // replacement permission. Copies share the same joined completion.
 type Started struct{ original *started }
@@ -21,8 +21,8 @@ type started struct {
 
 // ReadStarted requires the original retained Release history, but not current
 // artifact permission: expired Release metadata must not hide shutdown evidence.
-// Only the complete first invocation and its explicit retirement are supported; later or partial histories
-// refuse rather than being adopted as a first start.
+// Every preceding invocation requires complete retirement; partial, foreign or
+// noncontiguous histories refuse.
 func ReadStarted(ctx context.Context, verifier *release.Verifier, bindingPath, history string) (result Started, returned error) {
 	if ctx == nil || verifier == nil || os.Geteuid() != 0 || !validPath(history) {
 		return result, ErrInput
@@ -63,7 +63,7 @@ func (h Started) Close() error {
 	return h.original.completed.Close()
 }
 
-// CheckRetirement requires the complete independently reopened first retirement,
+// CheckRetirement requires the complete independently reopened latest retirement,
 // including original domain/native joins, file births and absent publication
 // blocker. A result file alone cannot pass. No new invocation is admitted.
 func (h Started) CheckRetirement() error {

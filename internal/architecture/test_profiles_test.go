@@ -153,6 +153,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 	}
 	makefile := string(readProjectFile(t, root, "Makefile"))
 	required := map[string]bool{
+		"introduction-slot-inspection-linux":      false,
 		"introduction-exchange-linux":             false,
 		"introduction-exchange-preparation-linux": false,
 		"descriptor-recovery-linux":               false,

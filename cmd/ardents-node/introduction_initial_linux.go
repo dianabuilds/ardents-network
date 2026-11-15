@@ -93,19 +93,21 @@ func inspectInitialIntroduction(parent context.Context, args []string, output io
 	return errors.Join(err, ctx.Err())
 }
 
-func startIntroductionGeneration(parent context.Context, args []string, output io.Writer) (returned error) {
+func startIntroductionGeneration(parent context.Context, args []string, output io.Writer, retained bool) (returned error) {
 	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
 	defer cancel()
-	preflight, err := introduction.ReadCompleted(ctx, args[4])
-	defer func() { returned = errors.Join(returned, preflight.Close()) }()
-	if err != nil {
-		return err
-	}
-	if err := preflight.IndependentPaths(args[0], args[1]); err != nil {
-		return err
-	}
-	if err := preflight.Close(); err != nil {
-		return err
+	if !retained {
+		preflight, err := introduction.ReadCompleted(ctx, args[4])
+		defer func() { returned = errors.Join(returned, preflight.Close()) }()
+		if err != nil {
+			return err
+		}
+		if err := preflight.IndependentPaths(args[0], args[1]); err != nil {
+			return err
+		}
+		if err := preflight.Close(); err != nil {
+			return err
+		}
 	}
 	candidate, err := enrollment.ReadInfrastructureCandidate(ctx, args[0])
 	if err != nil {
@@ -125,10 +127,17 @@ func startIntroductionGeneration(parent context.Context, args []string, output i
 	if err != nil {
 		return err
 	}
-	if err := introduction.StartInitial(ctx, v, a, args[4], args[0], args[1]); err != nil {
+	start := introduction.StartInitial
+	if retained {
+		start = introduction.Restart
+	}
+	if err := start(ctx, v, a, args[4], args[0], args[1]); err != nil {
 		return err
 	}
 	outcome := "introduction-first-start-completed"
+	if retained {
+		outcome = "introduction-restart-completed"
+	}
 	_, err = io.WriteString(output, "{\"outcome\":\""+outcome+"\",\"runtime_authority\":false}\n")
 	return errors.Join(err, ctx.Err())
 }

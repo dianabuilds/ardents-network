@@ -20,6 +20,7 @@ import (
 // original manager/process/scope users until their actual joined completion.
 type startStorage struct {
 	ctx      context.Context
+	number   attemptNumber
 	parents  *nativeDirectories
 	journal  *initialFile
 	files    []*initialFile
@@ -36,16 +37,16 @@ type startStorage struct {
 
 type startEntry = journal.InvocationRecord
 
-func createStartStorage(ctx context.Context, root string, bindingSHA string) (s *startStorage, returned error) {
-	s = &startStorage{ctx: ctx, path: filepath.Join(root, "introduction-startup")}
+func createStartStorage(ctx context.Context, root string, number attemptNumber, bindingSHA string) (s *startStorage, returned error) {
+	s = &startStorage{ctx: ctx, number: number, path: number.directory(root)}
 	defer func() { s.retain(returned) }()
-	if ctx == nil || os.Geteuid() != 0 || !validPath(root) || !validStartDigest(bindingSHA) {
+	if ctx == nil || number >= attemptLimit || os.Geteuid() != 0 || !validPath(root) || !validStartDigest(bindingSHA) {
 		return s, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
 		return s, err
 	}
-	path := root + ".introduction-first-start-journal"
+	path := number.journal(root)
 	s.parents = &nativeDirectories{ctx: ctx, byPath: map[string]*inputDirectory{}}
 	if _, err := s.parents.parents(path); err != nil {
 		return s, err
@@ -80,7 +81,11 @@ func createStartStorage(ctx context.Context, root string, bindingSHA string) (s 
 	if err := errors.Join(f.Sync(), syncInitialParent(path)); err != nil {
 		return s, err
 	}
-	return s, s.record("first-start", path, s.journal.info, bindingSHA)
+	phase := "first-start"
+	if number != 0 {
+		phase = "invocation"
+	}
+	return s, s.record(phase, path, s.journal.info, bindingSHA)
 }
 
 func validStartDigest(value string) bool {
@@ -110,7 +115,7 @@ func (s *startStorage) record(phase, path string, info os.FileInfo, sha string) 
 		if !contextRecord {
 			return ErrBinding
 		}
-	case "first-start":
+	case "first-start", "invocation":
 		if s.sequence != 0 || path != s.journal.path {
 			return ErrBinding
 		}
@@ -121,7 +126,11 @@ func (s *startStorage) record(phase, path string, info os.FileInfo, sha string) 
 	default:
 		return ErrBinding
 	}
-	entry := startEntry{Schema: "ardents-introduction-start-journal-v1", Sequence: s.sequence, Phase: phase, Path: path, SHA256: sha}
+	schema := "ardents-introduction-start-journal-v1"
+	if s.number != 0 {
+		schema = "ardents-introduction-invocation-journal-v1"
+	}
+	entry := startEntry{Schema: schema, Sequence: s.sequence, Phase: phase, Path: path, SHA256: sha}
 	if info != nil {
 		native, ok := info.Sys().(*syscall.Stat_t)
 		if !ok {

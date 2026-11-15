@@ -24,6 +24,9 @@ import (
 // non-root Startup borrows none of these objects or writer leases.
 type startAttempt struct {
 	ctx               context.Context
+	nextNumber        attemptNumber
+	historyOpening    uint8
+	predecessor       string
 	verifier          *release.Verifier
 	authorization     infrastructure.IntroductionAuthorization
 	completed         Completed
@@ -117,6 +120,9 @@ func (s *startAttempt) launch() error {
 		return err
 	}
 
+	if s.nextNumber != 0 && (c.started == nil || c.started.archive.Manager != s.managerIdentity) {
+		return ErrBinding
+	}
 	facts, err := s.manager.Observe()
 	if err != nil {
 		return err
@@ -127,6 +133,20 @@ func (s *startAttempt) launch() error {
 	}
 	if err := s.observeStopped(); err != nil {
 		return err
+	}
+	if s.nextNumber != 0 {
+		// Existing-only semantic readers close before the new Startup can acquire
+		// its independent runtime leases. No missing floor can cause journal birth.
+		inspection, err := inspectStoppedHistories(ctx, c)
+		if err != nil {
+			return err
+		}
+		if err := errors.Join(inspection.check(), inspection.close()); err != nil {
+			return err
+		}
+		if err := s.observeStopped(); err != nil {
+			return err
+		}
 	}
 	s.intent, err = s.startIntentBytes()
 	if err != nil {
@@ -139,7 +159,7 @@ func (s *startAttempt) launch() error {
 	if err := s.observeStopped(); err != nil {
 		return err
 	}
-	s.storage, err = createStartStorage(ctx, c.binding.Request.InstallationRoot, digest(c.files[bindingPath].body))
+	s.storage, err = createStartStorage(ctx, c.binding.Request.InstallationRoot, s.nextNumber, digest(c.files[bindingPath].body))
 	c.start = s.storage
 	if err != nil {
 		return err
@@ -252,7 +272,7 @@ func (s *startAttempt) checkCompletedTranscript() error {
 	if err != nil {
 		return err
 	}
-	recorded, err := decodeStartRecordsFrames(storage.journal.body, storage.journal.path, storage.path, digest(s.bindingBytes()), digest(barrier.guard.body), digest(barrier.record.body), digest(barrier.archive.body), digest(frame[:]), digest(ack[:]), s.completed.original.binding.GID)
+	recorded, err := decodeStartRecordsFrames(storage.journal.body, storage.journal.path, storage.path, digest(s.bindingBytes()), digest(barrier.guard.body), digest(barrier.record.body), digest(barrier.archive.body), digest(frame[:]), digest(ack[:]), s.completed.original.binding.GID, s.nextNumber)
 	if err != nil {
 		return err
 	}
@@ -287,6 +307,13 @@ func (s *startAttempt) observeStopped() error {
 			return err
 		}
 		checkStopped := verifyIntroductionStopped(facts.Unit, facts.Service, b.Request, b.Generation)
+		if s.nextNumber != 0 {
+			c := s.completed.original
+			if c.started == nil || c.retired == nil {
+				return ErrBinding
+			}
+			checkStopped = verifyIntroductionRestartStopped(facts.Unit, facts.Service, b.Request, b.Generation, c.started.archive, c.started.id, c.retired.result.execution())
+		}
 
 		if err := checkStopped; err != nil {
 			return err

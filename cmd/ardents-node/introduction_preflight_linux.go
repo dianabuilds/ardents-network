@@ -17,8 +17,8 @@ func runIntroductionInstallation(parent context.Context, args []string, out io.W
 	if parent != nil && out != nil && len(args) == 2 && args[0] == "start-installed" {
 		return runInstalledIntroduction(parent, args[1], out)
 	}
-	if parent != nil && out != nil && len(args) == 6 && args[0] == "start-initial" {
-		return startIntroductionGeneration(parent, args[1:], out)
+	if parent != nil && out != nil && len(args) == 6 && (args[0] == "start-initial" || args[0] == "restart") {
+		return startIntroductionGeneration(parent, args[1:], out, args[0] == "restart")
 	}
 
 	if parent != nil && out != nil && len(args) == 7 && args[0] == "install-initial-stopped" {
@@ -38,7 +38,7 @@ func runIntroductionInstallation(parent context.Context, args []string, out io.W
 	}
 
 	if parent == nil || out == nil || len(args) != 2 || args[0] != "inspect-inputs" {
-		return errors.New("usage: ardents-node introduction inspect-inputs REQUEST | install-initial-stopped DISTRIBUTION PIN RELEASE-HISTORY ENVIRONMENT NETWORK REQUEST | start-installed BINDING | start-initial DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING | inspect-initial-history DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING | inspect-start-history RELEASE-HISTORY BINDING | stop RELEASE-HISTORY BINDING | inspect-retirement RELEASE-HISTORY BINDING")
+		return errors.New("usage: ardents-node introduction inspect-inputs REQUEST | install-initial-stopped DISTRIBUTION PIN RELEASE-HISTORY ENVIRONMENT NETWORK REQUEST | start-installed BINDING | restart DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING | start-initial DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING | inspect-initial-history DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING | inspect-start-history RELEASE-HISTORY BINDING | stop RELEASE-HISTORY BINDING | inspect-retirement RELEASE-HISTORY BINDING")
 	}
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()

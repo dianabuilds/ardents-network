@@ -7,8 +7,11 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/introduction"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
@@ -264,5 +267,123 @@ func checkIntroductionRetirementCustody(t *testing.T, directory, binding, histor
 	h = open(t.Context())
 	if err := errors.Join(h.CheckRetirement(), h.Close()); err != nil {
 		t.Fatal("fresh independent original retirement reader", err)
+	}
+}
+
+// A fresh installed invocation must retain the exact original semantic floors
+// and keys. Listening and a new InvocationID are observed independently of root ACK.
+func checkIntroductionRetainedRestart(t *testing.T, request introduction.Request, distribution, history, binding string, invoke func(...string) ([]byte, error)) {
+	t.Helper()
+	paths := []string{filepath.Join(request.SpendRoot, "closed-token-spends"), filepath.Join(request.IntroductionRoot, "closed-introduction-slots"), filepath.Join(request.CredentialDirectory, "certificate.pem"), filepath.Join(request.CredentialDirectory, "private-key.pem")}
+	before := map[string][]byte{}
+	identities := map[string]os.FileInfo{}
+	for _, path := range append(append([]string{}, paths...), request.StateRoot, request.ParticipationRoot, request.SpendRoot, request.HostingRoot, request.IntroductionRoot) {
+		info, err := os.Lstat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		identities[path] = info
+	}
+	for _, path := range paths {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		before[path] = raw
+	}
+	defer func() {
+		for _, raw := range before {
+			clear(raw)
+		}
+	}()
+	old, err := exec.CommandContext(t.Context(), "systemctl", "show", "ardents-introduction.service", "-p", "InvocationID", "--value").CombinedOutput()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{filepath.Join(request.SpendRoot, "closed-token-spends"), filepath.Join(request.IntroductionRoot, "closed-introduction-slots")} {
+		saved := filepath.Join(t.TempDir(), "original-semantic-history")
+		if err := os.Rename(path, saved); err != nil {
+			t.Fatal(err)
+		}
+		raw, refused := invoke("restart", distribution, history, "alpha", "initial-stopped-introduction", binding)
+		_, missing := os.Lstat(path)
+		_, journal := os.Lstat(request.InstallationRoot + ".introduction-invocation-00000001-journal")
+		_, directory := os.Lstat(filepath.Join(request.InstallationRoot, "introduction-invocation-00000001"))
+		if err := os.Rename(saved, path); err != nil {
+			t.Fatal("restore original semantic inode", err)
+		}
+		if refused == nil || !os.IsNotExist(missing) || !os.IsNotExist(journal) || !os.IsNotExist(directory) {
+			t.Fatal("missing history did not refuse before invocation birth", refused, missing, journal, directory, string(raw))
+		}
+	}
+	if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-introduction", binding); err != nil || !bytes.Contains(raw, []byte("introduction-restart-completed")) {
+		t.Fatal("canonical retained restart", err, string(raw))
+	}
+	current, err := exec.CommandContext(t.Context(), "systemctl", "show", "ardents-introduction.service", "-p", "InvocationID", "--value").CombinedOutput()
+	id := strings.TrimSpace(string(current))
+	if err != nil || len(id) != 32 || bytes.Equal(current, old) {
+		t.Fatal("restart did not acquire a distinct invocation", err)
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		raw, err := exec.CommandContext(t.Context(), "journalctl", "_SYSTEMD_INVOCATION_ID="+id, "--no-pager", "-o", "cat").CombinedOutput()
+		if err == nil && bytes.Contains(raw, []byte(`"phase":"listening"`)) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("retained runtime did not listen", err, string(raw))
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	if raw, err := invoke("inspect-start-history", history, binding); err != nil {
+		t.Fatal("whole invocation chain", err, string(raw))
+	}
+	if raw, err := invoke("inspect-retirement", history, binding); err == nil {
+		t.Fatal("prior retirement authorized current live invocation", string(raw))
+	}
+	if raw, err := invoke("restart", distribution, history, "alpha", "initial-stopped-introduction", binding); err == nil {
+		t.Fatal("live invocation replaced", string(raw))
+	}
+	if raw, err := invoke("stop", history, binding); err != nil {
+		t.Fatal("second original Stop", err, string(raw))
+	}
+	if raw, err := invoke("inspect-retirement", history, binding); err != nil {
+		t.Fatal("second retirement chain", err, string(raw))
+	}
+	for path, info := range identities {
+		actual, err := os.Lstat(path)
+		if err != nil || !os.SameFile(info, actual) {
+			t.Fatal("retained resource replaced", path, err)
+		}
+	}
+	for path, want := range before {
+		actual, err := os.ReadFile(path)
+		same := bytes.Equal(actual, want)
+		clear(actual)
+		if err != nil || !same {
+			t.Fatal("retained floors or keys changed", path, err)
+		}
+	}
+	// A complete latest retirement cannot hide missing predecessor provenance.
+	journal := request.InstallationRoot + ".introduction-retirement-00000000-journal"
+	saved := filepath.Join(t.TempDir(), "original-predecessor-retirement")
+	if err := os.Rename(journal, saved); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if _, err := os.Stat(saved); err == nil {
+			if err := os.Rename(saved, journal); err != nil {
+				t.Error(err)
+			}
+		}
+	}()
+	if raw, err := invoke("inspect-retirement", history, binding); err == nil {
+		t.Fatal("missing predecessor retirement accepted", string(raw))
+	}
+	if err := os.Rename(saved, journal); err != nil {
+		t.Fatal(err)
+	}
+	if raw, err := invoke("inspect-retirement", history, binding); err != nil {
+		t.Fatal("restored original chain refused", err, string(raw))
 	}
 }

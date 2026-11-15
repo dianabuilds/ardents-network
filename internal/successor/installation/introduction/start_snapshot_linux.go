@@ -20,6 +20,8 @@ import (
 // genuine initial/Release provenance and actual process/manager/scope custody.
 type startSnapshot struct {
 	ctx                    context.Context
+	number                 attemptNumber
+	predecessor            string
 	parents                *nativeDirectories
 	directory              *os.File
 	directoryInfo          os.FileInfo
@@ -40,14 +42,14 @@ type startSnapshot struct {
 	observe func(string, *os.File)
 }
 
-func readStartSnapshot(ctx context.Context, b binding, bindingSHA, initialSHA string) (h *startSnapshot, returned error) {
-	h = &startSnapshot{ctx: ctx, binding: b, bindingSHA: bindingSHA, initialSHA: initialSHA, path: filepath.Join(b.Request.InstallationRoot, "introduction-startup"), files: map[string]*initialFile{}}
+func readStartSnapshotAt(ctx context.Context, b binding, number attemptNumber, bindingSHA, initialSHA, predecessor string) (h *startSnapshot, returned error) {
+	h = &startSnapshot{ctx: ctx, binding: b, number: number, predecessor: predecessor, bindingSHA: bindingSHA, initialSHA: initialSHA, path: number.directory(b.Request.InstallationRoot), files: map[string]*initialFile{}}
 	defer func() {
 		if returned != nil {
 			h.terminal = returned
 		}
 	}()
-	if ctx == nil || os.Geteuid() != 0 || !validPath(b.Request.InstallationRoot) || b.UID < 100 || b.UID > 999 || b.GID != b.UID || !validStartDigest(bindingSHA) || !validStartDigest(initialSHA) {
+	if ctx == nil || number >= attemptLimit || os.Geteuid() != 0 || !validPath(b.Request.InstallationRoot) || b.UID < 100 || b.UID > 999 || b.GID != b.UID || !validStartDigest(bindingSHA) || !validStartDigest(initialSHA) {
 		return h, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
@@ -71,7 +73,7 @@ func readStartSnapshot(ctx context.Context, b binding, bindingSHA, initialSHA st
 	if err := h.pendingAbsent(); err != nil {
 		return h, err
 	}
-	journal := b.Request.InstallationRoot + ".introduction-first-start-journal"
+	journal := number.journal(b.Request.InstallationRoot)
 	journalParent, err := h.parents.parents(journal)
 	if err != nil {
 		return h, err
@@ -147,17 +149,18 @@ func canonicalStartRecord(raw []byte, target any) bool {
 func (h *startSnapshot) validate() error {
 	get := func(name string) []byte { return h.files[filepath.Join(h.path, name)].body }
 	guard, socketRaw, archiveRaw := get("start-guard.json"), get("start-socket.json"), get("start-archived.json")
-	// This reader accepts only Introduction's original first-start grammar.
-	// A restart intent or a foreign role cannot be interpreted as that history.
-	var intent startIntent
-	if !canonicalStartRecord(guard, &intent) || intent.Schema != "ardents-introduction-start-intent-v1" ||
-		intent.BindingSHA256 != h.bindingSHA || intent.InitialHistorySHA256 != h.initialSHA ||
-		!validStartDigest(intent.TargetsSHA256) || intent.UID != h.binding.UID || intent.GID != h.binding.GID || intent.Attempt != 0 {
-		return ErrBinding
+	if err := checkStartIntent(guard, h.binding, h.bindingSHA, h.initialSHA, h.number, h.predecessor); err != nil {
+		return err
+	}
+	socketSchema, archiveSchema := "ardents-introduction-start-socket-v1", "ardents-introduction-start-archive-v1"
+	historyOpening := uint8(0)
+	if h.number != 0 {
+		socketSchema, archiveSchema = "ardents-introduction-invocation-socket-v1", "ardents-introduction-invocation-archive-v1"
+		historyOpening = 1
 	}
 
 	var socket startSocketRecord
-	if !canonicalStartRecord(socketRaw, &socket) || socket.Schema != "ardents-introduction-start-socket-v1" || socket.GuardSHA256 != digest(guard) || socket.GID != h.binding.GID || socket.Device == 0 || socket.Inode == 0 {
+	if !canonicalStartRecord(socketRaw, &socket) || socket.Schema != socketSchema || socket.GuardSHA256 != digest(guard) || socket.GID != h.binding.GID || socket.Device == 0 || socket.Inode == 0 {
 		return ErrBinding
 	}
 	if !canonicalStartRecord(archiveRaw, &h.archive) {
@@ -169,18 +172,18 @@ func (h *startSnapshot) validate() error {
 		return ErrBinding
 	}
 	copy(h.id[:], id)
-	if a.Schema != "ardents-introduction-start-archive-v1" || a.BindingSHA256 != h.bindingSHA || a.GuardSHA256 != digest(guard) || a.Generation != h.binding.Generation || a.PID == 0 || h.id == [16]byte{} || a.ProcessDevice == 0 || a.ProcessInode == 0 || a.CgroupDevice == 0 || a.CgroupInode == 0 || a.Manager == "" || a.StartedRealtime == 0 || a.StartedMonotonic == 0 {
+	if a.Schema != archiveSchema || a.BindingSHA256 != h.bindingSHA || a.GuardSHA256 != digest(guard) || a.Generation != h.binding.Generation || a.PID == 0 || h.id == [16]byte{} || a.ProcessDevice == 0 || a.ProcessInode == 0 || a.CgroupDevice == 0 || a.CgroupInode == 0 || a.Manager == "" || a.StartedRealtime == 0 || a.StartedMonotonic == 0 {
 		return ErrBinding
 	}
 	frame, err := completion.Encode(h.id, h.binding.Generation, h.bindingSHA)
 	if err != nil {
 		return err
 	}
-	ack, err := completion.EncodeIntroductionACK(frame)
+	ack, err := completion.EncodeIntroductionACK(frame, historyOpening)
 	if err != nil {
 		return err
 	}
-	recorded, err := decodeStartRecordsFrames(h.journal.body, h.journal.path, h.path, h.bindingSHA, digest(guard), digest(socketRaw), digest(archiveRaw), digest(frame[:]), digest(ack[:]), h.binding.GID)
+	recorded, err := decodeStartRecordsFrames(h.journal.body, h.journal.path, h.path, h.bindingSHA, digest(guard), digest(socketRaw), digest(archiveRaw), digest(frame[:]), digest(ack[:]), h.binding.GID, h.number)
 	if err != nil {
 		return err
 	}

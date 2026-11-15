@@ -159,7 +159,7 @@ func Stop(ctx context.Context, v *release.Verifier, bindingPath, history string)
 	}
 	s.phase = stopRetirement
 
-	s.storage, err = createRetirementStorage(ctx, b.Request.InstallationRoot, retirementNumber(0), s.started.original.completed.original.started.sha256)
+	s.storage, err = createRetirementStorage(ctx, b.Request.InstallationRoot, s.started.original.completed.original.started.number, s.started.original.completed.original.started.sha256)
 	c.retirement = s.storage
 	if err != nil {
 		return err
@@ -202,7 +202,7 @@ func Stop(ctx context.Context, v *release.Verifier, bindingPath, history string)
 	if err != nil {
 		return err
 	}
-	r := retirementResult{Schema: "ardents-introduction-retirement-v1", Attempt: uint32(retirementNumber(0)), Generation: b.Generation, BindingSHA256: a.BindingSHA256, StartSHA256: s.started.original.completed.original.started.sha256, InvocationID: a.InvocationID, PID: a.PID, Manager: a.Manager, Challenge: hex.EncodeToString(challenge[:]), CompletionSHA256: digest(frame[:]), StartedRealtime: execution.startedRealtime, StartedMonotonic: execution.startedMonotonic, ExitedRealtime: execution.exitedRealtime, ExitedMonotonic: execution.exitedMonotonic, Code: execution.code, Status: execution.status}
+	r := retirementResult{Schema: "ardents-introduction-retirement-v1", Attempt: uint32(s.started.original.completed.original.started.number), Generation: b.Generation, BindingSHA256: a.BindingSHA256, StartSHA256: s.started.original.completed.original.started.sha256, InvocationID: a.InvocationID, PID: a.PID, Manager: a.Manager, Challenge: hex.EncodeToString(challenge[:]), CompletionSHA256: digest(frame[:]), StartedRealtime: execution.startedRealtime, StartedMonotonic: execution.startedMonotonic, ExitedRealtime: execution.exitedRealtime, ExitedMonotonic: execution.exitedMonotonic, Code: execution.code, Status: execution.status}
 	raw, err := json.Marshal(r)
 	if err != nil {
 		return err
@@ -226,7 +226,7 @@ func Stop(ctx context.Context, v *release.Verifier, bindingPath, history string)
 	}
 	// Reopen actual synced files with independent descriptors while the original
 	// writer still excludes other root operations and its blocker remains.
-	proof, err := readRetirementSnapshot(ctx, b, retirementNumber(0), a.BindingSHA256, s.started.original.completed.original.started.sha256, a, s.started.original.completed.original.started.id, retirementReadback)
+	proof, err := readRetirementSnapshot(ctx, b, s.started.original.completed.original.started.number, a.BindingSHA256, s.started.original.completed.original.started.sha256, a, s.started.original.completed.original.started.id, retirementReadback)
 	if err != nil {
 		return errors.Join(err, proof.close())
 	}

@@ -27,7 +27,7 @@ type retirementStorage struct {
 	listener *net.UnixListener
 	socket   os.FileInfo
 	path     string
-	number   retirementNumber
+	number   attemptNumber
 	sequence uint32
 	terminal error
 	closed   bool
@@ -38,10 +38,10 @@ type retirementStorage struct {
 
 type retirementEntry = journal.InvocationRecord
 
-func createRetirementStorage(ctx context.Context, root string, number retirementNumber, startSHA string) (s *retirementStorage, returned error) {
+func createRetirementStorage(ctx context.Context, root string, number attemptNumber, startSHA string) (s *retirementStorage, returned error) {
 	s = &retirementStorage{ctx: ctx, path: number.retirement(root), number: number}
 	defer func() { s.retain(returned) }()
-	if ctx == nil || os.Geteuid() != 0 || !validPath(root) || number >= retirementLimit || !validStartDigest(startSHA) {
+	if ctx == nil || os.Geteuid() != 0 || !validPath(root) || number >= attemptLimit || !validStartDigest(startSHA) {
 		return s, ErrInput
 	}
 	if err := ctx.Err(); err != nil {

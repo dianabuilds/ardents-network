@@ -134,7 +134,11 @@ func runInstalledIntroduction(parent context.Context, binding string, out io.Wri
 	config.PermitWork = startup.Check
 	// State invokes this original Startup admission before root I/O.
 	stage = "state"
-	opened, err := state.Open(config)
+	openState := state.Open
+	if material.ExistingHistory {
+		openState = state.OpenRetained
+	}
+	opened, err := openState(config)
 	if err != nil {
 		return err
 	}
@@ -162,7 +166,11 @@ func runInstalledIntroduction(parent context.Context, binding string, out io.Wri
 		return err
 	}
 	stage = "node"
-	original, err = node.ListenIntroduction(startup.Context(), node.IntroductionConfig{
+	listen := node.ListenIntroduction
+	if material.ExistingHistory {
+		listen = node.ListenIntroductionRetained
+	}
+	original, err = listen(startup.Context(), node.IntroductionConfig{
 		Authority:         role.Authority{Current: current, Duty: duty, Profile: view.Profile().ProfileBinding},
 		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, IntroductionRoot: plan.IntroductionRoot,
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,

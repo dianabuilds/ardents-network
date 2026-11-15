@@ -39,6 +39,7 @@ type completedInitial struct {
 	hostingBirths   *initialBirths
 	start           *startStorage
 	started         *startSnapshot
+	invocations     *invocationHistory
 	retirement      *retirementStorage
 	retired         *retirementSnapshot
 	hostingPrepared bool
@@ -55,7 +56,7 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 	return readCompleted(ctx, path, false)
 }
 
-// Only ReadStarted admits the separately verified first-start child. The
+// ReadStarted admits independently verified invocation/retirement children. The
 // stopped initial reader must continue refusing every later operation.
 func readCompleted(ctx context.Context, path string, allowStarted bool) (result Completed, returned error) {
 	if ctx == nil || os.Geteuid() != 0 || !validPath(path) {
@@ -96,7 +97,7 @@ func readCompleted(ctx context.Context, path string, allowStarted bool) (result 
 	c.sealed = filepath.Join(r.InstallationRoot, "generations", b.Generation)
 	hostingDirectory, hostingJournal, _ := hostingPreparationPaths(r.InstallationRoot)
 	hostingPresent := false
-	retirementPresent := false
+	var presentInvocationJournals []string
 	for _, reserved := range r.reservedSiblingPaths() {
 		if reserved == journal.path {
 			continue
@@ -105,11 +106,8 @@ func readCompleted(ctx context.Context, path string, allowStarted bool) (result 
 			return result, err
 		}
 		if _, err := os.Lstat(reserved); !errors.Is(err, os.ErrNotExist) {
-			if err == nil && allowStarted && reserved == retirementNumber(0).retirementJournal(r.InstallationRoot) {
-				retirementPresent = true
-				continue
-			}
-			if err == nil && allowStarted && reserved == r.InstallationRoot+".introduction-first-start-journal" {
+			if err == nil && allowStarted && invocationJournal(r.InstallationRoot, reserved) {
+				presentInvocationJournals = append(presentInvocationJournals, reserved)
 				continue
 			}
 			if err == nil && (reserved == hostingDirectory || reserved == hostingJournal) {
@@ -218,17 +216,16 @@ func readCompleted(ctx context.Context, path string, allowStarted bool) (result 
 		if !c.hostingPrepared {
 			return result, ErrBinding
 		}
-		c.started, err = readStartSnapshot(ctx, b, digest(selected.body), digest(journal.body))
-		if err != nil {
+		if err := c.readInvocations(); err != nil {
 			return result, err
 		}
-	}
-	if retirementPresent {
-		c.retired, err = readRetirementSnapshot(ctx, b, 0, c.started.bindingSHA, c.started.sha256, c.started.archive, c.started.id, retirementCommitted)
-		if err != nil {
-			return result, err
+		for _, path := range presentInvocationJournals {
+			if !c.invocations.owns(path) {
+				return result, ErrBinding
+			}
 		}
 	}
+
 	result = Completed{c}
 	return result, result.Check()
 }
@@ -393,10 +390,8 @@ func (c *completedInitial) check() error {
 			return err
 		}
 	}
-	if c.started != nil {
-		if err := c.started.check(); err != nil {
-			return err
-		}
+	if err := c.invocations.check(); err != nil {
+		return err
 	}
 	if c.hostingBirths != nil {
 		if err := c.hostingBirths.check(); err != nil {
@@ -405,11 +400,6 @@ func (c *completedInitial) check() error {
 	}
 	if c.retirement != nil {
 		if err := c.retirement.check(); err != nil {
-			return err
-		}
-	}
-	if c.retired != nil {
-		if err := c.retired.check(); err != nil {
 			return err
 		}
 	}
@@ -435,11 +425,20 @@ func (c *completedInitial) check() error {
 		c.binding.Request.CredentialDirectory: {"certificate.pem": true, "private-key.pem": true},
 	}
 	inventories[filepath.Dir(c.sealed)][c.binding.Generation] = true
-	if c.start != nil && c.start.dir != nil || c.started != nil {
-		inventories[c.binding.Request.InstallationRoot]["introduction-startup"] = true
+	rootInventory := inventories[c.binding.Request.InstallationRoot]
+	if c.start != nil && c.start.dir != nil {
+		rootInventory[filepath.Base(c.start.path)] = true
 	}
-	if c.retirement != nil && c.retirement.dir != nil || c.retired != nil {
-		inventories[c.binding.Request.InstallationRoot]["introduction-retirement-00000000"] = true
+	if c.retirement != nil && c.retirement.dir != nil {
+		rootInventory[filepath.Base(c.retirement.path)] = true
+	}
+	if c.invocations != nil {
+		for _, start := range c.invocations.starts {
+			rootInventory[filepath.Base(start.path)] = true
+		}
+		for _, retired := range c.invocations.retirements {
+			rootInventory[filepath.Base(retired.path)] = true
+		}
 	}
 	for directory, wanted := range inventories {
 		entries, err := os.ReadDir(directory)
@@ -514,7 +513,7 @@ func (h Completed) Close() error {
 		c.mu.Unlock()
 		c.uses.Wait()
 		var physical error
-		physical = errors.Join(physical, c.started.close(), c.retired.close())
+		physical = errors.Join(physical, c.invocations.close())
 		for i := len(c.fileOrder) - 1; i >= 0; i-- {
 			f := c.fileOrder[i]
 			if f == c.journal {

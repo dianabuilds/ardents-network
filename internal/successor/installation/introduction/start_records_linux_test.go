@@ -77,10 +77,25 @@ func TestIntroductionFirstStartTranscriptRejectsPartialOrForeignHistory(t *testi
 		return raw
 	}
 	decode := func(raw []byte) error {
-		_, err := decodeStartRecordsFrames(raw, journal, directory, binding, guard, socket, archive, frame, ack, 991)
+		_, err := decodeStartRecordsFrames(raw, journal, directory, binding, guard, socket, archive, frame, ack, 991, 0)
 		return err
 	}
 	raw := encode(rows)
+	restarted := append([]row(nil), rows...)
+	for i := range restarted {
+		restarted[i].Schema = "ardents-introduction-invocation-journal-v1"
+	}
+	restarted[0].Phase = "invocation"
+	restartedRaw := encode(restarted)
+	if _, err := decodeStartRecordsFrames(restartedRaw, journal, directory, binding, guard, socket, archive, frame, ack, 991, 1); err != nil {
+		t.Fatal("complete invocation refused", err)
+	}
+	if _, err := decodeStartRecordsFrames(restartedRaw, journal, directory, binding, guard, socket, archive, frame, ack, 991, 0); err == nil {
+		t.Fatal("invocation accepted as first start")
+	}
+	if _, err := decodeStartRecordsFrames(encode(append(append([]row(nil), restarted[:1]...), restarted[2:]...)), journal, directory, binding, guard, socket, archive, frame, ack, 991, 1); err == nil {
+		t.Fatal("missing native context accepted")
+	}
 	if len(rows) != 26 || decode(raw) != nil {
 		t.Fatal("independent complete transcript refused", len(rows), decode(raw))
 	}

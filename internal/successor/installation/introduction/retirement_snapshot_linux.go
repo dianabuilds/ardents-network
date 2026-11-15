@@ -24,7 +24,7 @@ type retirementSnapshot struct {
 	journal, pending          *initialFile
 	path                      string
 	binding                   binding
-	number                    retirementNumber
+	number                    attemptNumber
 	bindingSHA, startSHA      string
 	archive                   startArchive
 	id                        [16]byte
@@ -44,7 +44,7 @@ const (
 	retirementCommitted
 )
 
-func readRetirementSnapshot(ctx context.Context, b binding, number retirementNumber, bindingSHA, startSHA string, archive startArchive, id [16]byte, purpose retirementReadPurpose) (h *retirementSnapshot, returned error) {
+func readRetirementSnapshot(ctx context.Context, b binding, number attemptNumber, bindingSHA, startSHA string, archive startArchive, id [16]byte, purpose retirementReadPurpose) (h *retirementSnapshot, returned error) {
 
 	h = &retirementSnapshot{ctx: ctx, binding: b, number: number, bindingSHA: bindingSHA, startSHA: startSHA, archive: archive, id: id, purpose: purpose, files: map[string]*initialFile{}, path: number.retirement(b.Request.InstallationRoot)}
 	defer func() {
@@ -52,7 +52,7 @@ func readRetirementSnapshot(ctx context.Context, b binding, number retirementNum
 			h.terminal = returned
 		}
 	}()
-	if ctx == nil || os.Geteuid() != 0 || number >= retirementLimit || !validPath(b.Request.InstallationRoot) || b.UID < 100 || b.UID > 999 || b.GID != b.UID || !validStartDigest(bindingSHA) || !validStartDigest(startSHA) || purpose > retirementCommitted {
+	if ctx == nil || os.Geteuid() != 0 || number >= attemptLimit || !validPath(b.Request.InstallationRoot) || b.UID < 100 || b.UID > 999 || b.GID != b.UID || !validStartDigest(bindingSHA) || !validStartDigest(startSHA) || purpose > retirementCommitted {
 		return h, ErrInput
 	}
 	if err := ctx.Err(); err != nil {

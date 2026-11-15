@@ -22,4 +22,7 @@
 // A private Linux file adapter opens, verifies, commits and releases the actual
 // independently leased root. Core callers cannot inject a persistence backend;
 // encoding a snapshot grants no persistence or registration authority.
+// Independent stopped Inspection consumes only existing native history and its
+// own read-only lease, without sync, pruning or a runtime handle. Installation
+// uses it before retained startup; it cannot replace original retirement proof.
 package introduction

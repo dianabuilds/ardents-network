@@ -4219,8 +4219,8 @@ retained restart or recovery is admitted by this first-start boundary.
 `introduction start-installed` independently opens selected generation, credentials,
 clock, actual non-root identity, original process/scope/mount namespace and fixed
 read-only manager. Only its original root-peer completion permits private plan
-handoff. The exact 161-byte ACK appends zero; no retained-history choice is
-accepted. Concurrent checks share only fresh full rounds admitted before each
+handoff. The exact 161-byte ACK appends zero for the first attempt and one for a
+separately admitted retained restart. The choice must match the original attempt. Concurrent checks share only fresh full rounds admitted before each
 round begins, never cached authority. Cancellation denies new checks and joins
 physical observations before closing their native custody.
 
@@ -4273,6 +4273,50 @@ native/close phase. Independent readback retains the blocker; publication follow
 all observer, writer and verifier closes. `inspect-retirement` independently
 requires the complete transcript, original identities and absent blocker.
 Repeated Stop, partial history, foreign inode or unknown completion refuse.
-Only first-invocation retirement is implemented here: it admits no restart,
-semantic-root creation, replacement or recovery. Tests and actual qualification
+Retirement alone admits no restart, semantic-root creation, replacement or
+recovery. Tests and actual qualification
 remain separate from this implementation contract.
+
+### Introduction retained same-generation restart
+
+Canonical `introduction restart` requires the complete contiguous original
+invocation chain, every preceding retirement and fresh exact Release permission.
+Each new intent commits the immediately preceding retirement; duplicate invocation
+identities, holes, partial journals and unknown births refuse. The finite64-attempt
+namespace is never recycled. Original first-start bytes remain unchanged; later
+attempts use distinct intent, journal, socket and archive grammars.
+
+Root retains every independent history lease and fresh original manager/principal/
+namespace observation through the new attempt. The independently admitted non-root
+Startup selects its own original root exchange and requires the matching retained
+history ACK. Canonical composition opens existing-only State and Node Introduction;
+participation and Receiving cannot initialize missing history, and Route Registry
+requires its original slot history without a fresh-root fact. Keys, account,
+allowance and all five semantic roots persist. The new process reports only its
+own joined retirement. No live predecessor owner or sibling policy transfers;
+replacement, recovery and full installed qualification remain separate.
+
+After verified Stop, systemd may collect the inactive unit and discard its
+execution fields. Restart independently retains the complete original retirement
+and accepts either that exact recorded clean native exit or a freshly observed
+fully quiescent collected unit with zero execution fields. Neither current
+absence nor zero clocks can supply the missing original domain/native proof.
+
+Before retained restart creates a new invocation journal, Installation opens
+independent existing-only State/participation, Receiving spend, Hosting and Route
+slot-history inspections under the original numeric principal. Route owns its
+canonical snapshot validation and a read-only exclusive lease: inspection never
+syncs, prunes or recreates a missing member. Original reads join before leases
+return and before non-root Startup acquires its own runtime owners. Native
+retirement and fresh Release remain separate prerequisites; no copied inspection
+result grants runtime authority.
+
+The checked `introduction-slot-inspection-linux` profile exercises this Route
+reader under root on protected writable ext4 with
+`ARDENTS_INTRODUCTION_INSPECTION_NATIVE=1`. Run
+`make introduction-slot-inspection-check` under the common development lock.
+It covers genuine fresh-root creation followed by claimed retained floors,
+exclusive lease, missing/foreign/uncertain history, immutable failure after
+restoration, canceled original reads and retained physical Close failure. These
+are storage/lifetime controls; actual canonical restart remains the installed
+`introduction-exchange-linux` profile and supplies its own genuine signed inputs.

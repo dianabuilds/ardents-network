@@ -18,21 +18,21 @@ func ConnectIntroduction(ctx context.Context, directory string, expected os.File
 	return &IntroductionExchange{original: physical}, nil
 }
 
-// Wait verifies the full first-start reply and original root peer/caller.
-// Truncated replies and retained-history selectors refuse.
-func (e *IntroductionExchange) Wait() error {
+// Wait verifies the full reply and original root peer/caller. The returned
+// selection grants no authority without the owning Startup admission.
+func (e *IntroductionExchange) Wait() (uint8, error) {
 	if e == nil || e.original == nil {
-		return ErrInput
+		return 0, ErrInput
 	}
 	var reply [161]byte
 	if err := e.original.exchange(reply[:]); err != nil {
-		return err
+		return 0, err
 	}
-	if reply[160] != 0 {
+	if reply[160] > 1 {
 		e.original.terminal = ErrBinding
-		return ErrBinding
+		return 0, ErrBinding
 	}
-	return nil
+	return reply[160], nil
 }
 
 func (e *IntroductionExchange) Close() error {

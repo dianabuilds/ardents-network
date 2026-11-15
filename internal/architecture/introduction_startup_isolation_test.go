@@ -1,12 +1,22 @@
 package architecture
 
-// Exact first-start, explicit Stop and independent history consumers. No retained runtime, sibling role,
+// Exact start, retained restart, Stop and independent history consumers. No sibling role,
 // Route root/receiver, legacy bridge or additional canonical test is permitted.
 func introductionStartupImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/introduction/start_records_linux.go" || source == "internal/successor/installation/introduction/start_storage_linux.go" || source == "internal/successor/installation/introduction/retirement_storage_linux.go" || source == "internal/successor/installation/introduction/retirement_snapshot_linux.go" || source == "internal/successor/installation/introduction/retirement_records_linux_test.go") && dependency == modulePath+"/internal/successor/installation/journal" {
 		return true
 	}
 	switch source {
+	case "internal/successor/installation/introduction/stopped_inspections_linux.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/admission/spending", "github.com/dianabuilds/ardents-network/internal/successor/hosting", "github.com/dianabuilds/ardents-network/internal/successor/network/state", "github.com/dianabuilds/ardents-network/internal/successor/route/introduction":
+			return true
+		}
+	case "internal/successor/installation/introduction/restart_policy_linux_test.go":
+		return dependency == "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	case "internal/successor/installation/introduction/restart_linux.go":
+		return dependency == "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure" || dependency == "github.com/dianabuilds/ardents-network/internal/successor/release"
+
 	case "internal/successor/installation/introduction/retirement_policy_linux.go":
 		return dependency == "github.com/dianabuilds/ardents-network/internal/successor/installation/completion" || dependency == "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	case "internal/successor/installation/introduction/stop_linux.go":

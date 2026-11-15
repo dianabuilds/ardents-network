@@ -44,6 +44,8 @@ type startup struct {
 	directoryInfo         os.FileInfo
 	ready, denied, closed bool
 	reportAttempted       bool
+	attempt               attemptNumber
+	historyOpening        uint8
 	terminal, closeErr    error
 	observations          ObservationSummary
 	activeTimes           *observationTimes
@@ -53,7 +55,8 @@ type startup struct {
 // RuntimeInputs are detached copies. The direct canonical consumer clears every
 // private copy after its real users join. No field may enter a public receipt.
 type RuntimeInputs struct {
-	Plan []byte `json:"-"`
+	Plan            []byte `json:"-"`
+	ExistingHistory bool   `json:"-"`
 }
 
 // OpenStartup cannot accept a root observation, caller-provided process/manager
@@ -118,7 +121,11 @@ func OpenStartup(parent context.Context, bindingPath string) (result *Startup, r
 	if err = s.observe(); err != nil {
 		return nil, err
 	}
-	s.directory = filepath.Join(b.Request.InstallationRoot, "introduction-startup")
+	s.attempt, err = latestAttempt(s.selection)
+	if err != nil {
+		return nil, err
+	}
+	s.directory = s.attempt.directory(b.Request.InstallationRoot)
 	if err := s.selection.pinStartupDirectory(s.directory); err != nil {
 		return nil, err
 	}
@@ -136,8 +143,11 @@ func OpenStartup(parent context.Context, bindingPath string) (result *Startup, r
 	if err = s.observe(); err != nil {
 		return nil, err
 	}
-	if err = s.exchange.Wait(); err != nil {
+	if s.historyOpening, err = s.exchange.Wait(); err != nil {
 		return nil, err
+	}
+	if s.attempt == 0 && s.historyOpening != 0 || s.attempt != 0 && s.historyOpening != 1 {
+		return nil, ErrBinding
 	}
 	if err = s.exchange.Close(); err != nil {
 		return nil, err
@@ -326,7 +336,7 @@ func (h *Startup) Inputs() (result RuntimeInputs, returned error) {
 	}
 	f := s.selection.files
 	get := func(path string) []byte { return bytes.Clone(f.files[path].body) }
-	result = RuntimeInputs{Plan: get(filepath.Join(f.sealed, "introduction-plan.json"))}
+	result = RuntimeInputs{ExistingHistory: s.historyOpening == 1, Plan: get(filepath.Join(f.sealed, "introduction-plan.json"))}
 	if err := s.local(); err != nil {
 		clear(result.Plan)
 		return RuntimeInputs{}, err

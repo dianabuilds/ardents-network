@@ -577,3 +577,11 @@ record its selection and WIP admission in GitHub, and assign a real acceptance
 boundary only under the [execution workflow](agent-execution.md#delegated-project-wide-domain-transition).
 Completion of one slice does not complete a domain; completion of one domain
 continues the program until every maintained scenario has transferred.
+
+Introduction same-generation restart independently retains the entire finite
+invocation/retirement chain, each predecessor commitment and fresh Release/native
+admission. Its new non-root Startup selects existing-only State, participation,
+Receiving and Route Registry through the actual canonical composition. No fresh
+Receiving fact can recreate lost slot floors; keys, allowance and original roots
+persist. Every child history closes before the parent lease, without sharing a
+live runtime or a sibling role owner. Replacement/recovery remain separate.

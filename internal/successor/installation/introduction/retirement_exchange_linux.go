@@ -82,7 +82,7 @@ func (h *Startup) ReportRetirement(ctx context.Context, result error) (reported 
 	if os.Geteuid() != int(b.UID) || os.Getegid() != int(b.GID) {
 		return false, ErrBinding
 	}
-	path := retirementNumber(0).retirement(b.Request.InstallationRoot)
+	path := o.attempt.retirement(b.Request.InstallationRoot)
 	parents := &nativeDirectories{ctx: ctx, byPath: map[string]*inputDirectory{}}
 	defer func() {
 		returned = errors.Join(returned, parents.close(), ctx.Err())

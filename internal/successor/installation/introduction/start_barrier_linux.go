@@ -121,6 +121,9 @@ func prepareStartBarrier(owner *startAttempt) (barrier *startBarrier, err error)
 	}
 	native = barrier.socket.Sys().(*syscall.Stat_t)
 	socketSchema := "ardents-introduction-start-socket-v1"
+	if owner.nextNumber != 0 {
+		socketSchema = "ardents-introduction-invocation-socket-v1"
+	}
 	raw, err := json.Marshal(startSocketRecord{socketSchema, digest(barrier.guard.body), uint64(native.Dev), native.Ino, b.GID})
 	if err != nil {
 		return barrier, err
@@ -142,12 +145,7 @@ func (s *startAttempt) startIntentBytes() ([]byte, error) {
 	if c == nil || !ok || len(decision.Floors.TargetsDigest) != 32 {
 		return nil, ErrBinding
 	}
-	intent := startIntent{"ardents-introduction-start-intent-v1", digest(s.bindingBytes()), digest(c.journal.body), hex.EncodeToString(decision.Floors.TargetsDigest), c.binding.UID, c.binding.GID, 0}
-	raw, err := json.Marshal(intent)
-	if err != nil {
-		return nil, err
-	}
-	return append(raw, '\n'), nil
+	return encodeStartIntent(c.binding, digest(s.bindingBytes()), digest(c.journal.body), hex.EncodeToString(decision.Floors.TargetsDigest), s.nextNumber, s.predecessor)
 
 }
 
@@ -346,6 +344,9 @@ func (s *startAttempt) archive() error {
 	b := s.completed.original.binding
 	binding := s.bindingBytes()
 	archiveSchema := "ardents-introduction-start-archive-v1"
+	if s.nextNumber != 0 {
+		archiveSchema = "ardents-introduction-invocation-archive-v1"
+	}
 	// Retain the full broker-instance/unique-manager identity already freshly
 	// rechecked by observeRunning. Observe's Manager is only the unique owner;
 	// it cannot match the independent full identity required by Stop/restart.
@@ -422,7 +423,7 @@ func (b *startBarrier) ackFrame() ([161]byte, error) {
 	if err != nil {
 		return [161]byte{}, err
 	}
-	return completion.EncodeIntroductionACK(request)
+	return completion.EncodeIntroductionACK(request, b.owner.historyOpening)
 }
 
 func (b *startBarrier) close() error {

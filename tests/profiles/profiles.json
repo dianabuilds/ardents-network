@@ -376,6 +376,19 @@
       "timeout": "3m"
     },
 {
+  "id": "introduction-slot-inspection-linux",
+  "state": "active",
+  "make_target": "introduction-slot-inspection-check",
+  "surface": "existing-only original Route slot-history inspection; exclusive read-only lease, exact principal/ext4, unchanged floors and joined cancellation/Close; no runtime or installed authority",
+  "prerequisites": [
+    "Linux root on protected writable ext4 under the common exclusive development lock",
+    "ARDENTS_INTRODUCTION_INSPECTION_NATIVE=1; disposable private roots under /var/lib; numeric history owner 988:988",
+    "same-source race-enabled test binary; no accepting fixtures for installed authority"
+  ],
+  "invalid_environment": "missing selected prerequisites fail, never skip",
+  "timeout": "3m"
+},
+{
   "id": "introduction-exchange-linux",
   "state": "active",
   "make_target": "introduction-exchange-check",

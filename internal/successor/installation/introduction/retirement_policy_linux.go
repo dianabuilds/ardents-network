@@ -2,31 +2,10 @@ package introduction
 
 import (
 	"encoding/hex"
-	"path/filepath"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 )
-
-// Only the original first invocation is admitted here. Reserved future attempt
-// paths are not restart permission or an accepted invocation chain.
-type retirementNumber uint32
-
-const retirementLimit retirementNumber = 1
-
-func (n retirementNumber) retirement(root string) string {
-	if n != 0 {
-		return ""
-	}
-	return filepath.Join(root, "introduction-retirement-00000000")
-}
-
-func (n retirementNumber) retirementJournal(root string) string {
-	if n != 0 {
-		return ""
-	}
-	return root + ".introduction-retirement-00000000-journal"
-}
 
 func introductionCleanExit(actual introductionExecution, original startArchive) bool {
 	return original.PID != 0 && original.StartedRealtime != 0 && original.StartedMonotonic != 0 &&
@@ -77,9 +56,29 @@ func verifyIntroductionExited(unit, service systemd.Properties, r Request, gener
 	return actual, nil
 }
 
-func decodeRetirementResult(raw []byte, number retirementNumber, b binding, bindingSHA, startSHA string, original startArchive, id [16]byte) (retirementResult, error) {
+// A collected stopped unit has no execution fields. That fresh native absence
+// is admissible only alongside independently verified complete retirement;
+// it never manufactures domain or kernel completion for an unknown predecessor.
+func verifyIntroductionRestartStopped(unit, service systemd.Properties, r Request, generation string, original startArchive, id [16]byte, retired introductionExecution) error {
+	if !introductionCleanExit(retired, original) || id == [16]byte{} || original.InvocationID != hex.EncodeToString(id[:]) || original.Generation != generation {
+		return ErrBinding
+	}
+	if verifyIntroductionStopped(unit, service, r, generation) == nil {
+		if !systemd.Matches(unit, "TriggeredBy", "as", []string{}) || !systemd.Matches(service, "ControlPID", "u", uint32(0)) || !systemd.Matches(service, "NRestarts", "u", uint32(0)) || !systemd.Matches(service, "DynamicUser", "b", false) || !systemd.Matches(service, "StandardInput", "s", "null") {
+			return ErrBinding
+		}
+		return nil
+	}
+	actual, err := verifyIntroductionExited(unit, service, r, generation, original, id)
+	if err != nil || actual != retired {
+		return ErrBinding
+	}
+	return nil
+}
+
+func decodeRetirementResult(raw []byte, number attemptNumber, b binding, bindingSHA, startSHA string, original startArchive, id [16]byte) (retirementResult, error) {
 	var r retirementResult
-	if number >= retirementLimit || !validStartDigest(bindingSHA) || !validStartDigest(startSHA) || !canonicalStartRecord(raw, &r) {
+	if number >= attemptLimit || !validStartDigest(bindingSHA) || !validStartDigest(startSHA) || !canonicalStartRecord(raw, &r) {
 		return r, ErrBinding
 	}
 	if r.Schema != "ardents-introduction-retirement-v1" || r.Attempt != uint32(number) || r.Generation != b.Generation || r.Generation != original.Generation ||

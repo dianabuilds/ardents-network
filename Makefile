@@ -560,6 +560,7 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-inputs.test" ./internal/successor/installation/join
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/introduction-inputs.test" ./internal/successor/installation/introduction
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/successor/reachability
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/introduction-slot-inspection.test" ./internal/successor/route/introduction
 
 .PHONY: join-installed-check
 JOIN_INSTALLED_TEST ?= TestJoinInstalledNativeProtectedStartupAndPair
@@ -631,3 +632,7 @@ introduction-exchange-preparation-check:
 .PHONY: introduction-exchange-check
 introduction-exchange-check:
 	go test -race -trimpath -buildvcs=false -tags introduction_installed_native ./internal/successor/installation/introduction -run '^TestIntroductionInstalledNativeRegisterSubmitWithdraw$$' -count=1 -v -timeout=3m
+
+.PHONY: introduction-slot-inspection-check
+introduction-slot-inspection-check:
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/route/introduction -run '^TestIntroductionInspectionNative' -count=1 -v -timeout=3m

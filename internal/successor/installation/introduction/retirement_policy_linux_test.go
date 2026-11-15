@@ -29,7 +29,7 @@ func TestIntroductionRetirementRequiresOriginalCleanExit(t *testing.T) {
 	if introductionCleanExit(introductionExecution{}, startArchive{}) {
 		t.Fatal("empty native observation supplied a completed invocation")
 	}
-	if retirementNumber(1).retirement("/opt/node") != "" || retirementNumber(1).retirementJournal("/opt/node") != "" {
-		t.Fatal("first-stop owner admitted a later invocation")
+	if attemptNumber(attemptLimit).retirement("/opt/node") != "" || attemptNumber(attemptLimit).retirementJournal("/opt/node") != "" {
+		t.Fatal("exhausted history namespace was recycled")
 	}
 }
