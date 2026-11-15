@@ -190,3 +190,25 @@ func Observe(ctx context.Context, uid, gid uint32) (err error) {
 	}
 	return ctx.Err()
 }
+
+// MapObservationError preserves the observer's physical failures while mapping
+// its two validation errors to the caller's existing role-specific vocabulary.
+func MapObservationError(err, invalid, binding error) error {
+	switch err {
+	case nil:
+		return nil
+	case ErrInput:
+		return invalid
+	case ErrBinding:
+		return binding
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		causes := joined.Unwrap()
+		mapped := make([]error, len(causes))
+		for i, cause := range causes {
+			mapped[i] = MapObservationError(cause, invalid, binding)
+		}
+		return errors.Join(mapped...)
+	}
+	return err
+}

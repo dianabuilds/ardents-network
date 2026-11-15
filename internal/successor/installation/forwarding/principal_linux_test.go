@@ -34,7 +34,7 @@ func TestNodePrincipalPreservesOriginalCaller(t *testing.T) {
 
 func TestPrincipalObservationRetainsRoleAndPhysicalFailures(t *testing.T) {
 	physical := errors.New("physical close")
-	err := principalObservationError(errors.Join(nodeprincipal.ErrBinding, physical))
+	err := nodeprincipal.MapObservationError(errors.Join(nodeprincipal.ErrBinding, physical), ErrInput, ErrBinding)
 	if !errors.Is(err, ErrBinding) || !errors.Is(err, physical) || errors.Is(err, nodeprincipal.ErrBinding) {
 		t.Fatalf("observation failures changed: %v", err)
 	}
