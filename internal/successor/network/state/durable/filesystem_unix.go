@@ -20,7 +20,7 @@ func acquireRetainedRootLease(root string) (rootLease, error) {
 }
 
 func openRootLease(root string, flags int) (rootLease, error) {
-	file, err := os.OpenFile(filepath.Join(root, rootLockName), flags, 0o600)
+	file, err := os.OpenFile(filepath.Join(root, rootLockName), flags|syscall.O_NOFOLLOW, 0o600)
 	if err != nil {
 		return rootLease{}, fmt.Errorf("open state-root lease: %w", err)
 	}

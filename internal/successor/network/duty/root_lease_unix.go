@@ -17,7 +17,7 @@ func acquireRootLeaseMode(root string, create bool) (rootLease, error) {
 	if create {
 		flags |= os.O_CREATE
 	}
-	file, err := os.OpenFile(filepath.Join(root, rootLockName), flags, 0o600)
+	file, err := os.OpenFile(filepath.Join(root, rootLockName), flags|syscall.O_NOFOLLOW, 0o600)
 	if err != nil {
 		return rootLease{}, err
 	}
