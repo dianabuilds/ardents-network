@@ -9,16 +9,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 )
 
-// NetworkInputs declares independent State trust and paths, never a signed
-// observation or an accepting duty. State alone authenticates these at runtime.
-type NetworkInputs struct {
-	Root                 string     `json:"root"`
-	NetworkID            [32]byte   `json:"network_id"`
-	Authorities          [][32]byte `json:"authorities"`
-	Threshold            int        `json:"threshold"`
-	ProfileAuthority     [32]byte   `json:"profile_authority"`
-	ClockObservationFile string     `json:"clock_observation_file"`
-}
+// NetworkInputs is a public declaration, not authenticated State or duty.
+type NetworkInputs = deployment.NodeNetworkInputs
 
 // Plan is the closed installed Descriptor input. Its immutable declaration
 // grants no State, Node, Admission or Hosting permission and selects no peer.
