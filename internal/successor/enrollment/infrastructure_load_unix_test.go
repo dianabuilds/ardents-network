@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package enrollment
 
 import (
@@ -15,7 +17,10 @@ func TestForwardingCandidateRequiresPrivateExecutableDelivery(t *testing.T) {
 		want error
 	}{{"private executable", 0700, nil}, {"public executable", 0755, ErrInventory}} {
 		t.Run(scenario.name, func(t *testing.T) {
-			root := t.TempDir()
+			root, err := filepath.EvalSymlinks(t.TempDir())
+			if err != nil {
+				t.Fatal(err)
+			}
 			files := make(map[string][]byte)
 			for _, name := range []string{"ardents-node-linux-amd64", "ardents-forwarding.service", "infrastructure-forwarding.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"} {
 				files[name] = []byte("opaque public candidate input: " + name)

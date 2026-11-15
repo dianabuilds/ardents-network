@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package enrollment
 
 import (
@@ -61,8 +63,10 @@ func loadInfrastructure(ctx context.Context, path, pin string) (result *infrastr
 	if ctx == nil || !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return nil, ErrInput
 	}
-	if err := infrastructurePlatform(); err != nil {
-		return nil, err
+	if pin != "" {
+		if err := infrastructurePlatform(); err != nil {
+			return nil, err
+		}
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err

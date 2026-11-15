@@ -313,7 +313,7 @@ of missing retained history. No new package or runtime dependency is introduced.
 The infrastructure inventory codec is portable and validates detached bytes.
 The Release infrastructure owner retains canonical descriptors and fresh role-specific
 pairs; transitional Source operations consume its original opaque proof and detached bytes.
-Its native inventory acquisition remains Linux-only; byte-level Release pair
+Initial running-program acquisition remains Linux/amd64; untrusted candidate inventory reading is also available on Darwin and other Linux architectures, with the same private-file and identity checks. Candidate bytes grant no initial-pin, installed or startup authority. Byte-level Release pair
 admission is portable but does not supply native installation permission.
 Non-Linux commands refuse before effects. Existing Endpoint/v3 grammar and its
 portable controls stay unchanged. `StaticMetadataFiles` is portable: it projects detached public
