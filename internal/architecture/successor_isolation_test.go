@@ -198,7 +198,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/systemd/source_control_frame_linux_test.go",
 			"internal/successor/installation/systemd/source_attempt_linux_test.go",
 			"internal/successor/installation/infrastructure/source_observation_linux_test.go",
-			"internal/successor/release/static_metadata.go",
 			"internal/successor/release/static_metadata_test.go",
 			"internal/successor/release/history_binding_linux.go",
 			"internal/successor/release/history_binding_linux_test.go",
@@ -218,6 +217,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			name string
 			want bool
 		}{
+			{"internal/successor/release/static_metadata.go", true},
+			{"internal/successor/release/static_metadata_portable_test.go", true},
 			{"internal/successor/installation/infrastructure/doc.go", true},
 			{"internal/successor/installation/infrastructure/artifact.go", true},
 			{"internal/successor/installation/infrastructure/forwarding_artifact.go", true},

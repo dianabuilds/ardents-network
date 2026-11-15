@@ -313,7 +313,8 @@ of missing retained history. No new package or runtime dependency is introduced.
 The distinct Source inventory/codec and its new admission package compile only
 on Linux, matching their genuine accepting consumer; non-Linux commands refuse
 before effects. Existing Endpoint/v3 grammar and its portable controls stay
-unchanged. `StaticMetadataFiles` is likewise Linux-only. The platform-selection
+unchanged. `StaticMetadataFiles` is portable: it projects detached public
+metadata bytes without authorizing a release or using platform mechanisms. The platform-selection
 architecture check asserts every exact Source file and Linux deterministic
 profile membership, without a deadcode allowance or a fictitious Windows caller.
 The shared original-proof/floor check has a genuine existing portable consumer
