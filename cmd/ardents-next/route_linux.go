@@ -17,19 +17,14 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/capsule"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
-	routeprefix "github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
 	routereceiver "github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 )
 
 func releaseRouteReservation(reservation *hosting.Reservation) error {
@@ -55,160 +50,6 @@ func holdRouteIssuerReservation(c routereceiver.Channel, held *hosting.Reservati
 		}
 		return err
 	})
-}
-
-// Native composition retains the genuine original channel alongside console
-// projections. Unsupported platforms expose no original registration owner.
-type routeRegistration struct {
-	original *introduction.HolderRegistration
-	close    func() error
-	withdraw func(context.Context) error
-	done     <-chan struct{}
-	slot     [32]byte
-	facts    introduction.RegistrationFacts
-}
-
-func startRoutePrefix(ctx context.Context, plan routePrefixPlan, authority admissionAuthority, holder *stock.Owner) (_ routeHandle, result error) {
-	if authority.current == nil {
-		return routeHandle{}, errors.New("route requires opened Network")
-	}
-	if !independentRouteRoots(plan.EntryRoot, plan.InteriorRoot, plan.HostingRoot) {
-		return routeHandle{}, errors.New("route roots invalid")
-	}
-	selected, err := selection.Open(selection.Config{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot, Domain: plan.Domain, Current: authority.current, Exclusions: plan.Exclusions})
-	if err != nil {
-		return routeHandle{}, err
-	}
-	budget, err := hosting.Open(plan.HostingRoot)
-	if err != nil {
-		return routeHandle{}, errors.Join(err, selected.Close())
-	}
-	defer func() {
-		if result != nil {
-			result = errors.Join(result, selected.Close(), budget.Close())
-		}
-	}()
-	leg, err := selected.Select()
-	if err != nil {
-		return routeHandle{}, err
-	}
-	reservation, err := budget.Reserve(ctx, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: plan.Deadline, HoldUntil: plan.Deadline.Add(5 * time.Second)})
-	if err != nil {
-		return routeHandle{}, err
-	}
-	var releaseOnce sync.Once
-	var releaseErr error
-	release := func() error {
-		releaseOnce.Do(func() {
-			releaseErr = errors.Join(releaseRouteReservation(reservation), selected.Close(), budget.Close())
-		})
-		return releaseErr
-	}
-	prefix, err := routeprefix.Open(ctx, routeprefix.Config{Leg: leg, Current: authority.current, Deadline: plan.Deadline, Release: release,
-		HoldRefill: func(ctx context.Context, additional uint64) (func() error, error) {
-			limit := admission.ForwardClass.ByteLimit()
-			if err := budget.CoversJoint(ctx, reservation, hosting.JointTraffic{Tx: limit, Rx: limit, Total: limit}); err != nil {
-				return nil, err
-			}
-			held, err := budget.ReserveAdditionalJoint(ctx, reservation, hosting.JointTraffic{Tx: additional, Rx: additional, Total: additional})
-			if err != nil {
-				return nil, err
-			}
-			return func() error { return releaseRouteReservation(held) }, nil
-		},
-		Present: func(ctx context.Context, h ardp.Hello) ([]byte, error) {
-			presentation := stock.Presentation{NetworkID: h.NetworkID, StateGeneration: h.StateGeneration, StateDigest: h.StateDigest, ProfileDigest: h.ProfileDigest, RecipientNodeID: h.RecipientNodeID, RecipientDutyGeneration: h.RecipientDutyGeneration, ChannelNonce: h.ChannelNonce, Deadline: h.Deadline}
-			if err := authority.presentation(presentation); err != nil {
-				return nil, err
-			}
-			class, err := role.AdmissionClass(h.Purpose)
-			if err != nil {
-				return nil, err
-			}
-			return holder.Take(ctx, presentation, uint8(class))
-		}})
-	if err != nil {
-		return routeHandle{}, errors.Join(err, release())
-	}
-	submit := func(ctx context.Context, recipient routeRecipient, envelope capsule.Envelope) error {
-		if err := prefix.CheckSourceScope(leg.Profile.Network, leg.Profile.Digest, plan.Deadline); err != nil {
-			return err
-		}
-		duty, err := prefix.ResolveSubmission(recipient.Node, plan.Exclusions)
-		if err != nil || duty.RecordGeneration != recipient.Generation {
-			return errors.Join(errors.New("exact submission recipient generation unavailable"), err)
-		}
-		return introduction.Submit(ctx, prefix, duty, envelope, plan.Exclusions)
-	}
-	return routeHandle{close: prefix.Close, done: prefix.Done(), replenish: prefix.Replenish,
-		sealSubmitCapsule: func(ctx context.Context, recipient routeRecipient, input routeCapsuleIntent) error {
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-			request, err := capsule.ParseRequest(input.Request)
-			if err != nil {
-				return err
-			}
-			envelope, _, err := capsule.Seal(capsule.Header{Slot: input.Slot, DeliveryNonce: input.DeliveryNonce, Revision: input.Revision, Expiry: input.Expiry}, input.RecipientKey, request)
-			if err != nil {
-				return err
-			}
-			return submit(ctx, recipient, envelope)
-		},
-		submitCapsule: func(ctx context.Context, recipient routeRecipient, raw []byte) error {
-			envelope, err := capsule.Parse(raw)
-			if err != nil {
-				return err
-			}
-			return submit(ctx, recipient, envelope)
-		},
-		publishDescriptor: func(ctx context.Context, raw []byte) error {
-			end := minRouteDeadline(plan.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
-			return prefix.PublishDescriptor(ctx, end, raw, plan.Exclusions)
-		},
-		lookupDescriptor: func(ctx context.Context, target [32]byte, history *reachability.History) ([]byte, error) {
-			end := minRouteDeadline(plan.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
-			proof, err := prefix.LookupDescriptor(ctx, end, target, history, plan.Exclusions)
-			if err != nil {
-				return nil, err
-			}
-			return proof.Bytes(), nil
-		}, issue: func(ctx context.Context, class uint8, receivers [][32]byte) error {
-			end := minRouteDeadline(plan.Deadline, time.Now().Add(admission.ControlClass.Lifetime()).UTC().Truncate(time.Second))
-			return prefix.Issue(ctx, end, funding.IssuerPreparation(ctx, fundingAuthority(authority), holder, leg, class, receivers))
-		}, register: func(ctx context.Context, revision uint64) (routeRegistration, error) {
-			view, err := authority.current()
-			if err != nil {
-				return routeRegistration{}, err
-			}
-			duty, err := leg.IntroductionDuty(view, plan.Exclusions)
-			if err != nil {
-				return routeRegistration{}, err
-			}
-			end := minRouteDeadline(plan.Deadline, view.Profile().NotAfter, duty.RecordValidUntil, duty.Epoch.ValidUntil, time.Now().Add(admission.RegistrationClass.Lifetime()).UTC().Truncate(time.Second))
-			if bound, exists := ctx.Deadline(); exists && bound.Before(end) {
-				end = bound.UTC().Truncate(time.Second)
-			}
-			registration, err := introduction.Register(ctx, prefix, introduction.RegistrationConfig{Duty: duty, Revision: revision, Deadline: end})
-			if err != nil {
-				return routeRegistration{}, err
-			}
-			receipt, err := registration.Receipt()
-			if err != nil {
-				return routeRegistration{}, errors.Join(err, registration.Close())
-			}
-			facts := receipt.Facts()
-			return routeRegistration{original: registration, close: registration.Close, withdraw: registration.Withdraw, done: registration.Done(), slot: registration.Slot(), facts: facts}, nil
-		}}, nil
-}
-
-func minRouteDeadline(end time.Time, bounds ...time.Time) time.Time {
-	for _, bound := range bounds {
-		if bound.Before(end) {
-			end = bound
-		}
-	}
-	return end
 }
 
 func issueRouteBatch(ctx context.Context, authority admissionAuthority, plan issuer.Plan, batch []byte, bootstrap bool) ([]byte, error) {

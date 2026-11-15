@@ -5535,3 +5535,15 @@ keep Reader-only grants separate from Publisher declarations, and reject lost
 original preparation before private Source reads. Existing command/installed
 harnesses continue through the same `ardents-next endpoint start-installed` caller;
 these component controls alone do not qualify the two-manager installed journey.
+
+
+Holder-session behavioral controls live in `endpoint/session`: missing sealed
+Execution provenance refuses before Stock transfer or Route/Publication effects;
+preparation and live action sets remain distinct; a held real pipe close delays
+parent closure, and every injected physical failure survives exactly-once repeated
+Close. This last test isolates cleanup ordering, not accepting domain authority.
+The existing genuine signed-State/Stock/Hosting/TCP holder and compiled-console
+harnesses call the moved implementation. `route_composition_linux_test.go` adapts
+only test-local names to those genuine handles, retaining original registration
+objects for cross-domain tests. Installed worker/Service qualification still uses
+its separately selected environment; a portable refusal cannot replace it.

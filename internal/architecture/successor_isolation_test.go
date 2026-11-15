@@ -956,13 +956,17 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/route/join":         {"route/prefix", "route", "route/selection", "route/ardp", "route/channel", "route/role", "route/transport", "network", "admission"},
 		"internal/successor/route/prefix":       {"route/issuer", "route", "route/selection", "route/ardp", "route/bootstrap", "route/channel", "route/role", "route/transport", "route/transport/tls", "network", "admission"},
 		"internal/successor/route/receiver":     {"route/issuer", "route/join", "route", "route/role", "route/transport", "route/transport/tls", "route/channel", "route/bootstrap", "route/ardp", "route/introduction", "network", "admission", "admission/receiving"},
+		"internal/successor/endpoint/session":   {"admission", "admission/stock", "endpoint/funding", "endpoint/publisher", "execution/runtime", "hosting", "reachability", "route/ardp", "route/bootstrap", "route/capsule", "route/introduction", "route/join", "route/prefix", "route/role", "route/selection"},
 		"internal/successor/endpoint":           {"endpoint/funding", "endpoint/reader", "endpoint/publisher", "admission", "admission/stock", "execution", "execution/runtime", "hosting", "installation/endpoint", "network", "network/source", "network/state"},
 		"internal/successor/endpoint/publisher": {"endpoint/funding", "admission", "admission/stock", "execution/runtime", "hosting", "network", "publication/durable", "publication/instance", "publication/runtime", "route/prefix", "route/selection"},
 		"internal/successor/endpoint/reader":    {"endpoint/funding", "admission", "admission/stock", "connection", "execution/runtime", "hosting", "network", "reachability", "route/prefix", "route/selection"},
 		"internal/successor/endpoint/funding":   {"admission", "admission/stock", "admission/token", "hosting", "network", "network/state", "route", "route/ardp", "route/bootstrap", "route/prefix", "route/role", "route/selection"},
-		"cmd/ardents-next":                      {"endpoint", "endpoint/publisher", "endpoint/reader", "endpoint/funding", "route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
+		"cmd/ardents-next":                      {"endpoint/session", "endpoint", "endpoint/publisher", "endpoint/reader", "endpoint/funding", "route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if source == "cmd/ardents-next/route_composition_linux_test.go" && dependency == modulePath+"/internal/successor/reachability" {
+			return true
+		}
 		// Existing new-zone QA registration, not another old-command R01 exception.
 		if source == "cmd/ardents-next/forwarding_installed_native_linux_test.go" && (dependency == modulePath+"/internal/successor/installation/forwarding" || dependency == modulePath+"/internal/successor/route/transport" || dependency == modulePath+"/internal/successor/release") {
 			return true
@@ -1608,6 +1612,13 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"transport exporter cannot import QUIC adapter", "internal/successor/route/transport/role_exporter.go", modulePath + "/internal/successor/route/transport/quic", false},
 		{"production command excludes lower contract", "cmd/ardents-next/route_linux.go", modulePath + "/internal/successor/route/transport", false},
 		{"bootstrap scenario uses shared contract", "cmd/ardents-next/route_bootstrap_linux_test.go", modulePath + "/internal/successor/route/transport", true},
+		{"session consumes genuine stock", "internal/successor/endpoint/session/session.go", modulePath + "/internal/successor/admission/stock", true},
+		{"session consumes original Execution permission", "internal/successor/endpoint/session/session.go", modulePath + "/internal/successor/execution/runtime", true},
+		{"session cannot call command implementation", "internal/successor/endpoint/session/session.go", modulePath + "/cmd/ardents-next", false},
+		{"session cannot use old Endpoint", "internal/successor/endpoint/session/session.go", modulePath + "/internal/endpoint", false},
+		{"funding cannot depend on session", "internal/successor/endpoint/funding/source_linux.go", modulePath + "/internal/successor/endpoint/session", false},
+		{"Reader cannot own installed participant", "internal/successor/endpoint/reader/reader_linux.go", modulePath + "/internal/successor/endpoint", false},
+		{"other binaries cannot acquire holder session", "cmd/ardents/main.go", modulePath + "/internal/successor/endpoint/session", false},
 		{"funding cannot depend on Reader", "internal/successor/endpoint/funding/source_linux.go", modulePath + "/internal/successor/endpoint/reader", false},
 		{"Reader cannot own Publication", "internal/successor/endpoint/reader/reader_linux.go", modulePath + "/internal/successor/publication/runtime", false},
 		{"Publisher cannot import command composition", "internal/successor/endpoint/publisher/publisher_linux.go", modulePath + "/cmd/ardents-next", false},

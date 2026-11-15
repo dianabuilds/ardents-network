@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"net"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
-	endpointpublisher "github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/session"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/network"
-	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
 )
 
@@ -104,326 +102,139 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 	if err != nil {
 		return 1
 	}
+
 	defer func() {
-		if retainCleanup(o.Close()) != nil {
-			code = 1
-		}
 		_ = json.NewEncoder(diagnostic).Encode(map[string]any{"operation": "admission.holder", "phase": "closed", "exit_code": code})
 	}()
-	var attempt stock.Attempt
-	var retainedIntent stock.IssuanceIntent
-	var prefix routeHandle
-	var routeContext routeJoinContext
-	var registration routeRegistration
-	var publisher endpointpublisher.Publication
-	var joined net.Conn
-	// This console session is the exact local context. Prefix/worker retirement
-	// does not clear its private lookup facts; final context closure does.
-	lookupHistory := &reachability.History{}
-	closeRoute := func() error {
-		var result error
-		if publisher.Owner() != nil {
-			result = retainCleanup(publisher.Close())
-		}
-		if joined != nil {
-			result = retainCleanup(joined.Close())
-		}
-		// Prefix closure stops and joins all physical children before returning
-		// its reservations. Retrieve the child's retained result before Stock
-		// and Network roots may close, including an explicit console close.
-		if prefix.close != nil {
-			result = errors.Join(result, retainCleanup(prefix.close()))
-		}
-		if registration.close != nil {
-			result = errors.Join(result, retainCleanup(registration.close()))
-		}
-		if routeContext.close != nil {
-			result = errors.Join(result, retainCleanup(routeContext.close()))
-		}
-		result = errors.Join(result, retainCleanup(lookupHistory.Close()))
-		return retainCleanup(result)
+	var options session.Config
+	if config.Route != nil {
+		plan := fundingPlan(*config.Route)
+		options.Route = &plan
+	}
+	if config.Publication != nil {
+		plan := publisherPlan(*config.Publication)
+		options.Publication = &plan
+	}
+	var conversation *session.Session
+	switch permission := preparation.(type) {
+	case nil:
+		conversation, err = session.OpenLocal(o, fundingAuthority(authority), options)
+	case *executionruntime.Preparation:
+		conversation, err = session.OpenPreparation(o, fundingAuthority(authority), options, permission)
+	case *executionruntime.Operation:
+		conversation, err = session.OpenOperation(o, fundingAuthority(authority), options, permission)
+	}
+	if err != nil || conversation == nil {
+		_ = retainCleanup(o.Close())
+		return 1
 	}
 	defer func() {
-		if closeRoute() != nil {
+		if conversation.Close() != nil {
 			code = 1
 		}
 	}()
 	return admissionConsole(ctx, input, out, func(ctx context.Context, raw []byte) (any, bool, error) {
-		if preparation != nil {
-			if err := preparation.Check(); err != nil {
-				return nil, true, err
-			}
+		if err := conversation.Check(); err != nil {
+			return nil, true, err
 		}
 		var c holderCommand
 		if err := decodeAdmissionObject(raw, &c); err != nil {
 			return nil, false, err
 		}
-		if _, joined := preparation.(*executionruntime.Preparation); joined && !preparationOperation(c.Operation) {
-			return nil, false, errors.New("joined preparation grants only permission bootstrap")
-		}
-		if _, live := preparation.(*executionruntime.Operation); live && !executionRouteOperation(c.Operation) {
-			return nil, false, errors.New("execution holder grants only bounded Route preparation and Control")
-		}
 		var err error
 		result := map[string]any{"outcome": "completed"}
 		switch c.Operation {
 		case "publication-open":
-			if publisher.Owner() != nil || prefix.close != nil || routeContext.close != nil || config.Publication == nil {
-				err = errors.New("live Publisher original context unavailable")
-				break
-			}
-			operation, ok := preparation.(*executionruntime.Operation)
-			if !ok || operation.CheckPublisher() != nil {
-				err = errors.New("qualified snapshot Publisher operation absent")
-				break
-			}
-			publisher, err = endpointpublisher.Open(operation.Context(), publisherPlan(*config.Publication), fundingPlan(*config.Route), fundingAuthority(authority), o, operation)
+			err = conversation.OpenPublication(ctx)
 		case "publication-publish":
-			if publisher.Owner() == nil {
-				err = errors.New("live Publisher absent")
-				break
-			}
-			result["link"], err = publisher.Owner().Publish(ctx)
+			result["link"], err = conversation.Publish(ctx)
 		case "publication-refresh":
-			if publisher.Owner() == nil {
-				err = errors.New("live Publisher absent")
-				break
-			}
-			result["link"], err = publisher.Owner().Refresh(ctx)
+			result["link"], err = conversation.Refresh(ctx)
 		case "publication-link":
-			if publisher.Owner() == nil {
-				err = errors.New("live Publisher absent")
-				break
-			}
-			result["link"], err = publisher.Owner().Link(ctx)
+			result["link"], err = conversation.Link(ctx)
 		case "publication-withdraw":
-			if publisher.Owner() == nil {
-				err = errors.New("live Publisher absent")
-				break
-			}
-			err = retainCleanup(publisher.Owner().Withdraw(ctx))
+			err = conversation.Withdraw(ctx)
 		case "publication-serve":
-			if publisher.Owner() == nil {
-				err = errors.New("qualified Text Publisher is unavailable")
-				break
-			}
-			err = publisher.Serve(ctx)
+			err = conversation.Serve(ctx)
 		case "descriptor-publish":
-			if prefix.publishDescriptor == nil {
-				err = errors.New("route Descriptor publication unavailable")
-				break
-			}
-			err = prefix.publishDescriptor(ctx, c.Payload)
+			err = conversation.PublishDescriptor(ctx, c.Payload)
 		case "capsule-submit":
-			if prefix.submitCapsule == nil {
-				err = errors.New("route capsule submission unavailable")
-				break
-			}
 			if c.Capsule != nil {
-				if len(c.Payload) != 0 || prefix.sealSubmitCapsule == nil {
+				if len(c.Payload) != 0 {
 					clear(c.Capsule.Request)
 					err = errors.New("route capsule input invalid")
-					break
+				} else {
+					err = conversation.SealSubmitCapsule(ctx, session.Recipient(c.Introduction), session.CapsuleIntent(*c.Capsule))
 				}
-				err = prefix.sealSubmitCapsule(ctx, c.Introduction, *c.Capsule)
-				clear(c.Capsule.Request)
 			} else {
-				err = prefix.submitCapsule(ctx, c.Introduction, c.Payload)
+				err = conversation.SubmitCapsule(ctx, session.Recipient(c.Introduction), c.Payload)
 			}
 		case "descriptor-lookup":
-			if prefix.lookupDescriptor == nil {
-				err = errors.New("route Descriptor lookup unavailable")
-				break
-			}
-			result["proof"], err = prefix.lookupDescriptor(ctx, c.Target, lookupHistory)
+			result["proof"], err = conversation.LookupDescriptor(ctx, c.Target)
 		case "issuer-issue":
-			if prefix.issue == nil {
-				err = errors.New("route issuer exchange unavailable")
-				break
-			}
-			err = prefix.issue(ctx, c.Class, c.Receivers)
+			err = conversation.Issue(ctx, c.Class, c.Receivers)
 		case "rendezvous":
-			if prefix.recipient == nil {
-				err = errors.New("route Rendezvous selection unavailable")
-				break
-			}
-			result["recipient"], err = prefix.recipient(c.Choice)
+			var recipient session.Recipient
+			recipient, err = conversation.Recipient(ctx, c.Choice)
+			result["recipient"] = routeRecipient(recipient)
 		case "join-open":
-			if prefix.join == nil || joined != nil {
-				err = errors.New("route JOIN unavailable")
-				break
-			}
-			joined, err = prefix.join(ctx, c.Join)
+			err = conversation.OpenJoin(ctx, session.JoinIntent(c.Join))
 		case "join-close":
-			if joined == nil {
-				err = errors.New("route JOIN absent")
-				break
-			}
-			err = joined.Close()
-			if err == nil {
-				joined = nil
-			}
+			err = conversation.CloseJoin(ctx)
 		case "registration-open":
-			if registration.close != nil {
-				select {
-				case <-registration.done:
-					err = errors.New("route registration retired; close to retrieve outcome")
-				default:
-					err = errors.New("route registration already open")
-				}
-				break
-			}
-			if prefix.register == nil || c.Revision == 0 {
-				err = errors.New("route registration unavailable")
-				break
-			}
-			registration, err = prefix.register(ctx, c.Revision)
+			facts, opened := conversation.OpenRegistration(ctx, c.Revision)
+			err = opened
 			if err == nil {
-				result["slot"] = registration.slot
-				result["registration"] = registration.facts
+				result["slot"], result["registration"] = facts.Slot, facts
 			}
 		case "registration-withdraw":
-			if registration.withdraw == nil {
-				err = errors.New("route registration absent")
-				break
-			}
-			err = registration.withdraw(ctx)
-			// Retain the same handle/result after failed withdrawal; no retry can
-			// reacquire its slot or silently replace its original lifetime.
-			if err == nil {
-				registration = routeRegistration{}
-			}
+			err = conversation.WithdrawRegistration(ctx)
 		case "registration-close":
-			if registration.close == nil {
-				err = errors.New("route registration absent")
-				break
-			}
-			err = registration.close()
-			if err == nil {
-				registration = routeRegistration{}
-			}
-		case "prefix-open", "join-prefix-open", "bootstrap-open":
-			if publisher.Owner() != nil {
-				err = errors.New("live Publisher retains its original Route context")
-				break
-			}
-			if prefix.close != nil {
-				select {
-				case <-prefix.done:
-					err = errors.New("route prefix retired; close to retrieve outcome")
-				default:
-					err = errors.New("route prefix already open")
-				}
-				break
-			}
-			if config.Route == nil || authority.current == nil {
-				err = errors.New("route prefix unavailable")
-				break
-			}
-			if c.Operation == "join-prefix-open" {
-				if routeContext.open == nil {
-					routeContext, err = newRouteJoinContext(ctx, *config.Route, authority, o)
-				}
-				if err == nil {
-					prefix, err = routeContext.open(ctx)
-				}
-			} else if c.Operation == "bootstrap-open" {
-				if routeContext.close != nil {
-					err = errors.New("holder console retains its JOIN context")
-				} else {
-					prefix, err = startRouteBootstrap(ctx, *config.Route, authority, o)
-				}
-			} else {
-				if routeContext.close != nil {
-					err = errors.New("holder console retains its JOIN context")
-				} else {
-					prefix, err = startRoutePrefix(ctx, *config.Route, authority, o)
-				}
-			}
+			err = conversation.CloseRegistration(ctx)
+		case "prefix-open":
+			err = conversation.OpenPrefix(ctx)
+		case "join-prefix-open":
+			err = conversation.OpenJoinPrefix(ctx)
+		case "bootstrap-open":
+			err = conversation.OpenBootstrap(ctx)
 		case "prefix-replenish":
-			if prefix.replenish == nil {
-				err = errors.New("route replenishment absent")
-				break
-			}
-			err = prefix.replenish(ctx)
-		case "prefix-close", "bootstrap-close":
-			if c.Operation == "bootstrap-close" && !prefix.bootstrap {
-				err = errors.New("route bootstrap absent")
-				break
-			}
-			if prefix.close == nil {
-				err = errors.New("route prefix absent")
-				break
-			}
-			err = retainCleanup(prefix.close())
-			if err == nil {
-				prefix = routeHandle{}
-			}
+			err = conversation.Replenish(ctx)
+		case "prefix-close":
+			err = conversation.ClosePrefix(ctx)
+		case "bootstrap-close":
+			err = conversation.CloseBootstrap(ctx)
 		case "request":
-			var wire []byte
-			var digest [32]byte
-			wire, digest, err = o.Request(c.Maxima)
-			result["request"], result["digest"] = wire, digest
+			result["request"], result["digest"], err = conversation.Request(ctx, c.Maxima)
 		case "import":
-			err = o.Import(c.Digest, c.Payload)
+			err = conversation.Import(ctx, c.Digest, c.Payload)
 		case "begin":
-			if authority.intent != nil {
-				if err = authority.intent(c.Intent); err != nil {
-					break
-				}
-			}
-			var next stock.Attempt
-			next, err = o.Begin(c.Intent)
-			if err == nil {
-				attempt = next
-				retainedIntent = c.Intent
-				result["request"], result["deadline"], err = attempt.Request()
-			}
+			result["request"], result["deadline"], err = conversation.Begin(ctx, c.Intent)
 		case "complete":
-			if authority.intent != nil {
-				if err = authority.intent(retainedIntent); err != nil {
-					break
-				}
-			}
-			if c.Failed {
-				// A failed exchange preserves pending bytes without verification
-				// or deposit. Its normal terminal transition needs no deposit guard.
-				err = attempt.Complete(c.Payload, errors.New("exchange failed"))
-			} else {
-				// The console caller may retire during signature verification. Keep
-				// that original lifetime at the same final deposit boundary as Route.
-				err = attempt.CompleteBound(c.Payload, nil, ctx.Err)
-			}
+			err = conversation.Complete(ctx, c.Payload, c.Failed)
 		case "discard":
-			attempt.Discard()
+			err = conversation.Discard(ctx)
 		case "take":
-			if authority.presentation != nil {
-				if err = authority.presentation(c.Presentation); err != nil {
-					break
-				}
-			}
-			result["token"], err = o.Take(ctx, c.Presentation, c.Class)
-			if err == nil && authority.presentation != nil {
-				if err = authority.presentation(c.Presentation); err != nil {
-					delete(result, "token")
-				}
-			}
+			result["token"], err = conversation.Take(ctx, c.Presentation, c.Class)
 		case "refill-plan":
-			result["receivers"], err = o.RefillPlan(c.Receivers, c.Class, c.RequiresToken)
+			result["receivers"], err = conversation.RefillPlan(ctx, c.Receivers, c.Class, c.RequiresToken)
 		case "status":
-			result["stock"] = o.Status()
+			result["stock"], err = conversation.Status(ctx)
 		case "close":
-			if err := errors.Join(closeRoute(), retainCleanup(o.Close())); err != nil {
+			if err = conversation.Finish(ctx); err != nil {
 				return nil, true, err
-			}
-			if preparation != nil {
-				if err := preparation.Check(); err != nil {
-					return nil, true, err
-				}
 			}
 			return result, true, nil
 		default:
 			err = errors.New("unknown holder operation")
+			if preparation != nil {
+				return nil, false, err
+			}
+		}
+		if errors.Is(err, session.ErrPurpose) {
+			return nil, false, err
+		}
+		if errors.Is(err, session.ErrPermission) {
+			return nil, true, err
 		}
 		if err != nil {
 			stage := stock.TransferFailureStage(err)
@@ -433,38 +244,6 @@ func runHolderPlan(ctx context.Context, config holderPlan, input io.ReadCloser, 
 			}
 			return map[string]string{"outcome": "refused", "stage": stage}, false, err
 		}
-		if preparation != nil {
-			if err := preparation.Check(); err != nil {
-				return nil, true, err
-			}
-		}
 		return result, false, nil
 	})
-}
-
-// Completed launch provenance supports only the original permission/bootstrap
-// purpose. JOIN, application byte effects and publication need a live Job and
-// genuine neighboring owners; a joined worker's Grant cannot authorize them.
-func preparationOperation(operation string) bool {
-	switch operation {
-	case "request", "import", "bootstrap-open", "bootstrap-close", "issuer-issue", "status", "close":
-		return true
-	}
-	return false
-}
-
-// This live invocation consumer drives only genuine protected setup and
-// Control. Private Publication/Connection and their Service effects remain
-// unavailable even while a qualified worker is live.
-func executionRouteOperation(operation string) bool {
-	switch operation {
-	case "request", "import", "bootstrap-open", "bootstrap-close", "issuer-issue",
-		"prefix-open", "prefix-replenish", "prefix-close", "descriptor-lookup",
-		"capsule-submit",
-		"begin", "complete", "discard", "take", "refill-plan", "status", "close",
-		"publication-open", "publication-publish", "publication-refresh", "publication-link", "publication-withdraw", "publication-serve":
-		return true
-	default:
-		return false
-	}
 }

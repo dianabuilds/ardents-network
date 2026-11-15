@@ -976,6 +976,19 @@ are also consumed by offline Source preparation, without runtime authority.
 CLI selectors, diagnostic rendering and exit projection stay in the command. Splitting these lifetimes
 changes neither accepted persisted/wire bytes nor installed qualification.
 
+`endpoint/session` retains one serial holder conversation: original issuance
+attempt and intent, Prefix/JOIN context, registration, Publication, stream and
+lookup history. Its separate local, preparation and live-operation constructors
+borrow genuine authority and transfer Stock only on success. Every typed method
+checks the sealed Execution permission independently of CLI dispatch; joined
+preparation still admits only permission/bootstrap operations. Explicit Finish
+joins children and Stock before its final permission check, while deferred Close
+retains the same terminal result. Network and Execution remain outer owners.
+Native Prefix/Bootstrap/JOIN construction lives with this application scenario;
+Route retains selection, role and physical transport policy. The command keeps
+input DTOs and result/error-stage rendering. Test adapters lend real new handles
+only and do not reintroduce production command callbacks.
+
 ## Responsibilities outside the selected transition
 
 **Naming is an explicit future separate model:** Service Name to authenticated
