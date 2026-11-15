@@ -14,13 +14,11 @@
 // root separately authorizes, observes and durably archives the transition.
 // Calls are serialized by that owning operation; cancellation callbacks join
 // before Wait returns and Close physically closes all retained descriptors.
-// JoinExchange owns a separate original root-peer exchange and exact161-byte
-// JOIN ACK. Only history-opening0 is supported: an old ACK cannot reopen State,
-// prove retirement or authorize another invocation. No live foreign exchange or
-// root journal is borrowed.
-// DescriptorExchange owns its separate original root-peer exchange and complete
-// 161-byte ACK. The canonical first-start consumer accepts only initial history;
-// no sibling exchange, copied ACK or detached identity supplies Startup rights.
+// JOIN, Descriptor, Forwarding and Introduction exchanges each retain their
+// own original root-peer connection and complete 161-byte ACK. The history byte
+// is a detached choice, not proof of history or permission to initialize a root;
+// each role independently admits its applicable choice and original invocation.
+// No sibling exchange, copied ACK or detached identity supplies Startup rights.
 package completion
 
 import "errors"
