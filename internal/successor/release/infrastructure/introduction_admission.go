@@ -61,21 +61,7 @@ func AuthenticateIntroductionInitial(ctx context.Context, v *release.Verifier, b
 // immutable Introduction inventory. Canonical Node uses it to verify the exact
 // installed payloads under retained floors; it grants no native transition.
 func AuthenticateIntroductionCandidate(ctx context.Context, v *release.Verifier, c enrollment.InfrastructureCandidate, in release.Inputs) (IntroductionAuthorization, error) {
-	f, ok := c.Facts()
-	if !ok || f.Invocation != "introduction" || ctx == nil || v == nil || f.Platform != "linux-amd64" || in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform || in.Local.Architecture != "amd64" || in.Local.RefTime.IsZero() {
-		return IntroductionAuthorization{}, ErrInput
-	}
-	if err := ctx.Err(); err != nil {
-		return IntroductionAuthorization{}, err
-	}
-	floors, err := v.CurrentFloors(ctx)
-	if err != nil {
-		return IntroductionAuthorization{}, err
-	}
-	if !floors.Complete() {
-		return IntroductionAuthorization{}, release.ErrTrustUnavailable
-	}
-	a, err := authenticateInventory(ctx, v, c, f, in, artifactProfile{"introduction", IntroductionTemplateName, IntroductionArtifactName, IntroductionGenerationTarget})
+	a, err := authenticateStrictCandidate(ctx, v, c, in, artifactProfile{"introduction", IntroductionTemplateName, IntroductionArtifactName, IntroductionGenerationTarget})
 	if err != nil {
 		return IntroductionAuthorization{}, err
 	}

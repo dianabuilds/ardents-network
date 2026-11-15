@@ -61,21 +61,7 @@ func AuthenticateJoinInitial(ctx context.Context, v *release.Verifier, b enrollm
 // immutable JOIN inventory. Canonical Control uses it to verify the exact
 // predecessor before forward signing; it grants no installed transition.
 func AuthenticateJoinCandidate(ctx context.Context, v *release.Verifier, c enrollment.InfrastructureCandidate, in release.Inputs) (JoinAuthorization, error) {
-	f, ok := c.Facts()
-	if !ok || f.Invocation != "join" || ctx == nil || v == nil || f.Platform != "linux-amd64" || in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform || in.Local.Architecture != "amd64" || in.Local.RefTime.IsZero() {
-		return JoinAuthorization{}, ErrInput
-	}
-	if err := ctx.Err(); err != nil {
-		return JoinAuthorization{}, err
-	}
-	floors, err := v.CurrentFloors(ctx)
-	if err != nil {
-		return JoinAuthorization{}, err
-	}
-	if !floors.Complete() {
-		return JoinAuthorization{}, release.ErrTrustUnavailable
-	}
-	a, err := authenticateInventory(ctx, v, c, f, in, artifactProfile{"join", JoinTemplateName, JoinDescriptorName, JoinGenerationTarget})
+	a, err := authenticateStrictCandidate(ctx, v, c, in, artifactProfile{"join", JoinTemplateName, JoinDescriptorName, JoinGenerationTarget})
 	if err != nil {
 		return JoinAuthorization{}, err
 	}

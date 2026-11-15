@@ -111,6 +111,27 @@ func AuthenticateCandidate(ctx context.Context, v *release.Verifier, c enrollmen
 	return authenticateInventory(ctx, v, c, f, input, artifactProfile{"source", TemplateName, DescriptorName, GenerationTarget})
 }
 
+// authenticateStrictCandidate keeps role purpose, local binding and original
+// cancellation checks ahead of the retained-floor observation. It never
+// creates an initial pin or shares a role-specific proof.
+func authenticateStrictCandidate(ctx context.Context, v *release.Verifier, c enrollment.InfrastructureCandidate, in release.Inputs, profile artifactProfile) (Authorization, error) {
+	f, ok := c.Facts()
+	if !ok || f.Invocation != profile.invocation || ctx == nil || v == nil || f.Platform != "linux-amd64" || in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform || in.Local.Architecture != "amd64" || in.Local.RefTime.IsZero() {
+		return Authorization{}, ErrInput
+	}
+	if err := ctx.Err(); err != nil {
+		return Authorization{}, err
+	}
+	floors, err := v.CurrentFloors(ctx)
+	if err != nil {
+		return Authorization{}, err
+	}
+	if !floors.Complete() {
+		return Authorization{}, release.ErrTrustUnavailable
+	}
+	return authenticateInventory(ctx, v, c, f, in, profile)
+}
+
 type inventory interface {
 	File(string) ([]byte, bool)
 	Check() error

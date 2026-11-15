@@ -62,21 +62,7 @@ func AuthenticateDescriptorInitial(ctx context.Context, v *release.Verifier, b e
 // immutable Descriptor inventory. Canonical Node uses it to verify the exact
 // installed payloads under retained floors; it grants no native transition.
 func AuthenticateDescriptorCandidate(ctx context.Context, v *release.Verifier, c enrollment.InfrastructureCandidate, in release.Inputs) (DescriptorAuthorization, error) {
-	f, ok := c.Facts()
-	if !ok || f.Invocation != "descriptor" || ctx == nil || v == nil || f.Platform != "linux-amd64" || in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform || in.Local.Architecture != "amd64" || in.Local.RefTime.IsZero() {
-		return DescriptorAuthorization{}, ErrInput
-	}
-	if err := ctx.Err(); err != nil {
-		return DescriptorAuthorization{}, err
-	}
-	floors, err := v.CurrentFloors(ctx)
-	if err != nil {
-		return DescriptorAuthorization{}, err
-	}
-	if !floors.Complete() {
-		return DescriptorAuthorization{}, release.ErrTrustUnavailable
-	}
-	a, err := authenticateInventory(ctx, v, c, f, in, artifactProfile{"descriptor", DescriptorTemplateName, DescriptorArtifactName, DescriptorGenerationTarget})
+	a, err := authenticateStrictCandidate(ctx, v, c, in, artifactProfile{"descriptor", DescriptorTemplateName, DescriptorArtifactName, DescriptorGenerationTarget})
 	if err != nil {
 		return DescriptorAuthorization{}, err
 	}
