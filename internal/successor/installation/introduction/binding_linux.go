@@ -8,8 +8,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 )
 
-const programName = infrastructure.ProgramName
-
 // binding fixes the original initial generation and shared host Node resources.
 // Parsing copied bytes grants no Release, account, writer or startup authority.
 type binding struct {

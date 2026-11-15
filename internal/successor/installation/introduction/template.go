@@ -1,10 +1,20 @@
+//go:build linux || darwin
+
 package introduction
 
 import (
 	"encoding/json"
 	"path/filepath"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 )
+
+const programName = infrastructure.ProgramName
+
+func initialSHA(value string) bool {
+	return len(value) == 64 && strings.Trim(value, "0123456789abcdef") == ""
+}
 
 // Template is the distinct fixed Introduction resource under the common Node envelope.
 // It admits no configurable command, role switch, boot or automatic restart.

@@ -240,10 +240,15 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			{"internal/successor/installation/forwarding/plan_test.go", target == "linux" || target == "darwin"},
 			{"internal/successor/installation/join/request.go", target == "linux" || target == "darwin"},
 			{"internal/successor/installation/join/plan.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/join/template.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/join/request_test.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/join/plan_test.go", target == "linux" || target == "darwin"},
 			{"internal/successor/installation/descriptor/request.go", target == "linux" || target == "darwin"},
 			{"internal/successor/installation/descriptor/plan.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/descriptor/template.go", target == "linux" || target == "darwin"},
 			{"internal/successor/installation/introduction/request.go", target == "linux" || target == "darwin"},
 			{"internal/successor/installation/introduction/plan.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/introduction/template.go", target == "linux" || target == "darwin"},
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(item.name)), path.Base(item.name))
 			if err != nil {
@@ -888,6 +893,9 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if (source == "internal/successor/installation/forwarding/loaded_policy_linux.go" || source == "internal/successor/installation/forwarding/loaded_policy_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
+		return true
+	}
+	if (source == "internal/successor/installation/join/template.go" || source == "internal/successor/installation/descriptor/template.go" || source == "internal/successor/installation/introduction/template.go") && dependency == modulePath+"/internal/successor/installation/infrastructure" {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/attempt_linux.go" && dependency == modulePath+"/internal/successor/installation/journal" {

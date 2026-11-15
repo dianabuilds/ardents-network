@@ -1,15 +1,25 @@
-package join
+//go:build linux || darwin
+
+package descriptor
 
 import (
 	"encoding/json"
 	"path/filepath"
 	"strings"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 )
 
-// Template is the distinct fixed JOIN resource under the common Node envelope.
+const programName = infrastructure.ProgramName
+
+func initialSHA(value string) bool {
+	return len(value) == 64 && strings.Trim(value, "0123456789abcdef") == ""
+}
+
+// Template is the distinct fixed Descriptor resource under the common Node envelope.
 // It admits no configurable command, role switch, boot or automatic restart.
 const Template = `[Unit]
-Description=Ardents JOIN Node
+Description=Ardents Descriptor Node
 After=network-online.target
 Wants=network-online.target
 [Service]
@@ -17,7 +27,7 @@ Type=exec
 User=ardents-node
 Group=ardents-node
 SupplementaryGroups=
-ExecStart=:@ARDENTS_JOIN_PROGRAM@ join start-installed @ARDENTS_JOIN_BINDING@
+ExecStart=:@ARDENTS_DESCRIPTOR_PROGRAM@ descriptor start-installed @ARDENTS_DESCRIPTOR_BINDING@
 WorkingDirectory=/
 UMask=0077
 Restart=no
@@ -30,7 +40,7 @@ AmbientCapabilities=
 PrivateTmp=yes
 ProtectHome=yes
 ProtectSystem=strict
-ReadWritePaths=@ARDENTS_JOIN_WRITE_PATHS@
+ReadWritePaths=@ARDENTS_DESCRIPTOR_WRITE_PATHS@
 ProtectControlGroups=yes
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
@@ -53,7 +63,7 @@ StandardOutput=journal
 StandardError=journal
 `
 
-// Rendering is closed JOIN policy: no caller-selected argv or unit settings.
+// Rendering is closed Descriptor policy: no caller-selected argv or unit settings.
 // Detached bytes grant no loaded manager, native installation or Start right.
 func renderUnit(template []byte, r Request, generation string) ([]byte, error) {
 	raw, err := json.Marshal(r)
@@ -68,8 +78,8 @@ func renderUnit(template []byte, r Request, generation string) ([]byte, error) {
 	}
 	quote := func(path string) string { return "\"" + path + "\"" }
 	return []byte(strings.NewReplacer(
-		"@ARDENTS_JOIN_PROGRAM@", quote(filepath.Join(r.InstallationRoot, "generations", generation, programName)),
-		"@ARDENTS_JOIN_BINDING@", quote(filepath.Join(r.InstallationRoot, "binding.json")),
-		"@ARDENTS_JOIN_WRITE_PATHS@", quote(r.StateRoot)+" "+quote(r.ParticipationRoot)+" "+quote(r.SpendRoot)+" "+quote(r.HostingRoot),
+		"@ARDENTS_DESCRIPTOR_PROGRAM@", quote(filepath.Join(r.InstallationRoot, "generations", generation, programName)),
+		"@ARDENTS_DESCRIPTOR_BINDING@", quote(filepath.Join(r.InstallationRoot, "binding.json")),
+		"@ARDENTS_DESCRIPTOR_WRITE_PATHS@", quote(r.StateRoot)+" "+quote(r.ParticipationRoot)+" "+quote(r.SpendRoot)+" "+quote(r.HostingRoot)+" "+quote(r.DescriptorRoot),
 	).Replace(Template)), nil
 }
