@@ -77,3 +77,8 @@ func validateSourceBindingConfiguration(b sourceBinding) error {
 	}
 	return nil
 }
+
+// sourceInitialSHA checks a fixed canonical digest without granting provenance.
+func sourceInitialSHA(value string) bool {
+	return len(value) == 64 && strings.Trim(value, "0123456789abcdef") == ""
+}

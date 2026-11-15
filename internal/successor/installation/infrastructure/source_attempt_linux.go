@@ -9,10 +9,6 @@ import (
 	"strings"
 )
 
-// Attempts retain every original start and retirement. Exhaustion refuses;
-// no history is pruned and no old pathname is reused to restart a Source.
-const sourceAttemptLimit = 64
-
 type sourceAttemptNumber uint32
 
 func (n sourceAttemptNumber) directory(root string) string {

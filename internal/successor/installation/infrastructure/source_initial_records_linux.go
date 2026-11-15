@@ -225,7 +225,3 @@ func walkSourceInitialRecords(records []sourceRecord, b sourceBinding, hashes ma
 	}
 	return owned, nil
 }
-
-func sourceInitialSHA(value string) bool {
-	return len(value) == 64 && strings.Trim(value, "0123456789abcdef") == ""
-}

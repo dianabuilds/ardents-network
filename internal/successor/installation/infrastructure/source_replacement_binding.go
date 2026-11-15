@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 )
 
+// Retained Source attempts never reuse or prune an original pathname.
+const sourceAttemptLimit = 64
+
 // This is immutable configuration with explicit predecessor provenance, never
 // an Authorization or a join claim. Root independently consumes the complete
 // initial/replacement/start/retirement transcripts before it can mutate or Start.

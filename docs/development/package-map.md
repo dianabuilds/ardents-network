@@ -180,7 +180,7 @@ exactly the standard library, `internal/successor/release`,
 `internal/successor/network/state`. It owns explicit
 Source forward selection and joined original transition custody. The companion
 `source_replacement_candidate_linux.go`, `source_replacement_history_linux.go`,
-`source_replacement_binding_linux.go`, `source_replacement_records_linux.go` and
+`source_replacement_binding.go`, `source_replacement_records_linux.go` and
 `source_reload_namespace_linux.go` import only the standard library. The distinct
 `installation/systemd/source_replacement_linux.go` imports only the standard
 library and admits one fixed physical reload with its original reference; it
