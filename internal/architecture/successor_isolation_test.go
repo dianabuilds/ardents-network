@@ -89,7 +89,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/source_replacement_history_linux.go",
 			"internal/successor/installation/infrastructure/source_replacement_records_linux.go",
 			"internal/successor/installation/infrastructure/source_replacement_records_linux_test.go",
-			"internal/successor/installation/infrastructure/source_replacement_plan_linux_test.go",
 			"internal/successor/installation/infrastructure/source_reload_namespace_linux.go",
 			"internal/successor/installation/systemd/source_replacement_linux.go",
 			"internal/successor/installation/systemd/source_identity_linux.go",
@@ -213,6 +212,10 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			name string
 			want bool
 		}{
+			{"internal/successor/network/source/serving_declaration.go", true},
+			{"internal/successor/network/source/serving_declaration_test.go", true},
+			{"internal/successor/installation/infrastructure/source_plan.go", true},
+			{"internal/successor/installation/infrastructure/source_replacement_plan_test.go", true},
 			{"internal/successor/enrollment/infrastructure_inventory.go", true},
 			{"internal/successor/enrollment/infrastructure_inventory_portable_test.go", true},
 			{"internal/successor/release/static_metadata.go", true},
@@ -1459,7 +1462,7 @@ func successorImportAllowed(source, dependency string) bool {
 				}
 			}
 		}
-		if source == "internal/successor/installation/infrastructure/source_plan_linux.go" && dependency == modulePath+"/internal/successor/network/source" {
+		if source == "internal/successor/installation/infrastructure/source_plan.go" && dependency == modulePath+"/internal/successor/network/source" {
 			return true
 		}
 		if source == "internal/successor/installation/infrastructure/source_startup_linux.go" && (dependency == modulePath+"/internal/successor/installation/process" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/completion" || dependency == modulePath+"/internal/successor/installation/systemd") {
