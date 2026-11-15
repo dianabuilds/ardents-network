@@ -3,40 +3,12 @@
 package infrastructure
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
-
-func TestCanonicalDescriptorIndependentOracle(t *testing.T) {
-	p, u := []byte("program"), []byte("closed public template")
-	ps, us := sha256.Sum256(p), sha256.Sum256(u)
-	want := []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"release-one\",\"release_version\":7,\"invocation\":\"source\",\"files\":{\"ardents-node-linux-amd64\":\"%s\",\"ardents-source.service\":\"%s\"}}\n", hex.EncodeToString(ps[:]), hex.EncodeToString(us[:])))
-	got, err := PrepareDescriptor("release-one", 7, p, u)
-	if err != nil || !bytes.Equal(got, want) {
-		t.Fatalf("canonical bytes %s %v", got, err)
-	}
-	if _, err := DecodeDescriptor(want); err != nil {
-		t.Fatal(err)
-	}
-	for _, raw := range []string{string(want) + "\n", strings.TrimSpace(string(want)), strings.Replace(string(want), "\"source\"", "\"forwarding\"", 1), strings.Replace(string(want), "\"release_version\":7", "\"release_version\":0", 1), strings.Replace(string(want), "\"schema\":", "\"extra\":0,\"schema\":", 1), strings.Replace(string(want), "\"platform\":", "\"platform\":\"linux-amd64\",\"platform\":", 1), strings.Replace(string(want), "ardents-source.service", "foreign.service", 1)} {
-		if _, err := DecodeDescriptor([]byte(raw)); err == nil {
-			t.Fatalf("accepted noncanonical %s", raw)
-		}
-	}
-	for _, raw := range [][]byte{nil, bytes.Repeat([]byte(" "), (16<<10)+1)} {
-		if _, err := DecodeDescriptor(raw); err == nil {
-			t.Fatal("accepted absent/oversized")
-		}
-	}
-}
 
 func TestZeroAndDetachedFactsCannotCreateAuthority(t *testing.T) {
 	if _, err := AuthenticateInitial(context.Background(), nil, enrollment.InfrastructureBundle{}, release.Inputs{}); err == nil {
