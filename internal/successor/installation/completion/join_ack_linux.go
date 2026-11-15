@@ -5,18 +5,6 @@ import (
 	"os"
 )
 
-// EncodeJoinACK preserves the original request frame and adds one exact
-// history-opening byte. The caller must independently prove that choice; this
-// codec supplies no semantic root, original history or runtime authority.
-func EncodeJoinACK(request [160]byte, history uint8) (reply [161]byte, err error) {
-	if !canonicalFrame(request) || history > 1 {
-		return reply, ErrInput
-	}
-	copy(reply[:160], request[:])
-	reply[160] = history
-	return reply, nil
-}
-
 // JoinExchange owns a fresh physical exchange created by the common
 // native opener. It never accepts the legacy 160-byte response and never borrows
 // a Source caller, live exchange or startup permission.
