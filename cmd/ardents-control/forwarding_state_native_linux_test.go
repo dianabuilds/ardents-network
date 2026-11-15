@@ -26,7 +26,7 @@ import (
 // families are all one test controller, never independent operational families.
 func TestForwardingStateNativeCanonicalOfflineAcceptanceAndNoReset(t *testing.T) {
 	if planPath := os.Getenv("ARDENTS_FORWARDING_STATE_VERIFY"); planPath != "" {
-		if _, err := forwardingStatePrincipal(); err != nil {
+		if _, err := nodeStatePrincipal(forwarding.ErrInput, forwarding.ErrBinding); err != nil {
 			t.Fatal(err)
 		}
 		raw, err := os.ReadFile(planPath)

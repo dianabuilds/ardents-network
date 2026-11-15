@@ -1085,6 +1085,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-control/node_state_preparation_test.go" && dependency == modulePath+"/internal/successor/deployment" {
 		return true
 	}
+	if source == "cmd/ardents-control/node_state_inputs_linux.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/state") {
+		return true
+	}
 	if source == "cmd/ardents-control/node_state_preparation.go" && (dependency == modulePath+"/internal/successor/deployment" || dependency == modulePath+"/internal/successor/network/state") {
 		return true
 	}
