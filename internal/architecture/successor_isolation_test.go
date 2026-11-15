@@ -12,8 +12,8 @@ import (
 )
 
 // Existing Endpoint/v3 Enrollment grammar and portable behavior controls remain
-// selected on both platforms. ADR-0123's separate Source artifact extension is
-// Linux-only and checked against its exact genuine consumer profile below.
+// selected on both platforms. ADR-0123's inventory codec is portable. Its native Source acquisition
+// remains Linux-only and is checked against its exact consumer profile below.
 func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
 	directory := path.Join(repositoryRoot(t), "internal/successor/enrollment")
 	entries, err := os.ReadDir(directory)
@@ -28,7 +28,7 @@ func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
 		switch name {
 		case "file_unix.go", "file_unix_test.go", "file_windows.go", "file_unsupported.go":
 			continue
-		case "infrastructure_inventory.go", "infrastructure_inventory_test.go", "descriptor_inventory_linux_test.go", "introduction_inventory_linux_test.go", "infrastructure_process_linux.go":
+		case "infrastructure_load_linux.go", "infrastructure_inventory_test.go", "descriptor_inventory_linux_test.go", "introduction_inventory_linux_test.go", "infrastructure_process_linux.go":
 			// This distinct inventory has no Windows accepting product path.
 			continue
 		}
@@ -52,7 +52,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 		profile := build.Default
 		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
 		for _, name := range []string{
-			"internal/successor/enrollment/infrastructure_inventory.go",
+			"internal/successor/enrollment/infrastructure_load_linux.go",
 			"internal/successor/enrollment/infrastructure_inventory_test.go",
 			"internal/successor/enrollment/descriptor_inventory_linux_test.go",
 			"internal/successor/enrollment/introduction_inventory_linux_test.go",
@@ -217,6 +217,8 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			name string
 			want bool
 		}{
+			{"internal/successor/enrollment/infrastructure_inventory.go", true},
+			{"internal/successor/enrollment/infrastructure_inventory_portable_test.go", true},
 			{"internal/successor/release/static_metadata.go", true},
 			{"internal/successor/release/static_metadata_portable_test.go", true},
 			{"internal/successor/installation/infrastructure/doc.go", true},

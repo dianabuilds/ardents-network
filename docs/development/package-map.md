@@ -310,10 +310,10 @@ Linux-only State/durable `OpenRetained` have actual successor Source consumers
 and share State's existing recovery/lifetime implementation without initialization
 of missing retained history. No new package or runtime dependency is introduced.
 
-The distinct Source inventory/codec and its new admission package compile only
-on Linux, matching their genuine accepting consumer; non-Linux commands refuse
-before effects. Existing Endpoint/v3 grammar and its portable controls stay
-unchanged. `StaticMetadataFiles` is portable: it projects detached public
+The infrastructure inventory codec is portable and validates detached bytes.
+Its native inventory acquisition and infrastructure admission remain Linux-only;
+non-Linux commands refuse before effects. Existing Endpoint/v3 grammar and its
+portable controls stay unchanged. `StaticMetadataFiles` is portable: it projects detached public
 metadata bytes without authorizing a release or using platform mechanisms. The platform-selection
 architecture check asserts every exact Source file and Linux deterministic
 profile membership, without a deadcode allowance or a fictitious Windows caller.
