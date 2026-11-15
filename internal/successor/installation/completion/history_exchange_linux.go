@@ -5,22 +5,21 @@ import (
 	"os"
 )
 
-// DescriptorExchange owns a fresh physical exchange created by the common
-// native opener. It never accepts the legacy 160-byte response and never borrows
-// a Source caller, live exchange or startup permission.
-type DescriptorExchange struct{ original *Exchange }
+// HistoryExchange owns one fresh physical exchange. It accepts only the full
+// history reply and does not transfer another invocation or startup authority.
+type HistoryExchange struct{ original *Exchange }
 
-func ConnectDescriptor(ctx context.Context, directory string, expected os.FileInfo, gid uint32, request [160]byte) (*DescriptorExchange, error) {
+func ConnectHistory(ctx context.Context, directory string, expected os.FileInfo, gid uint32, request [160]byte) (*HistoryExchange, error) {
 	physical, err := Connect(ctx, directory, expected, gid, request)
 	if err != nil {
 		return nil, err
 	}
-	return &DescriptorExchange{original: physical}, nil
+	return &HistoryExchange{original: physical}, nil
 }
 
 // Wait returns the history byte only after the entire new frame and final
 // original-peer/cancellation checks. A truncated legacy reply cannot transfer it.
-func (e *DescriptorExchange) Wait() (uint8, error) {
+func (e *HistoryExchange) Wait() (uint8, error) {
 	if e == nil || e.original == nil {
 		return 0, ErrInput
 	}
@@ -35,7 +34,7 @@ func (e *DescriptorExchange) Wait() (uint8, error) {
 	return reply[160], nil
 }
 
-func (e *DescriptorExchange) Close() error {
+func (e *HistoryExchange) Close() error {
 	if e == nil {
 		return nil
 	}

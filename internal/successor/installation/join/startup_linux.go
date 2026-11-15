@@ -36,7 +36,7 @@ type startup struct {
 	invocation            process.JoinInvocation
 	scope                 *cgroup.JoinScope
 	manager               *systemd.JoinRuntime
-	exchange              *completion.JoinExchange
+	exchange              *completion.HistoryExchange
 	absent                []string
 	id                    [16]byte
 	attempt               uint32
@@ -138,7 +138,7 @@ func OpenStartup(parent context.Context, bindingPath string) (result *Startup, r
 	}
 	setup, finish := context.WithTimeout(ctx, 2*time.Minute)
 	defer finish()
-	s.exchange, err = completion.ConnectJoin(setup, s.directory, s.directoryInfo, b.GID, s.frame)
+	s.exchange, err = completion.ConnectHistory(setup, s.directory, s.directoryInfo, b.GID, s.frame)
 	if err != nil {
 		return nil, err
 	}

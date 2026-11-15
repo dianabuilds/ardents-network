@@ -21,7 +21,7 @@ func TestInstallationNativeForwardingACKRequiresWholeNewFrame(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			exchange, err := ConnectForwarding(ctx, directory, info, 65534, request)
+			exchange, err := ConnectHistory(ctx, directory, info, 65534, request)
 			if err != nil {
 				t.Fatal(err)
 			}

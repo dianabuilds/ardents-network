@@ -178,7 +178,7 @@ func (h *startSnapshot) validate() error {
 	}
 	var recorded map[string]startEntry
 	if h.extendedACK {
-		ack, encodeErr := completion.EncodeForwardingACK(frame, h.historyOpening)
+		ack, encodeErr := completion.EncodeHistoryACK(frame, h.historyOpening)
 		if encodeErr != nil {
 			return encodeErr
 		}

@@ -183,7 +183,7 @@ func (h *startSnapshot) validate() error {
 	if err != nil {
 		return err
 	}
-	ack, err := completion.EncodeJoinACK(frame, h.historyOpening)
+	ack, err := completion.EncodeHistoryACK(frame, h.historyOpening)
 	if err != nil {
 		return err
 	}

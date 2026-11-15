@@ -410,7 +410,7 @@ func (b *startBarrier) ackFrame() ([161]byte, error) {
 	if err != nil {
 		return [161]byte{}, err
 	}
-	return completion.EncodeForwardingACK(request, b.owner.historyOpening)
+	return completion.EncodeHistoryACK(request, b.owner.historyOpening)
 }
 
 func (b *startBarrier) close() error {

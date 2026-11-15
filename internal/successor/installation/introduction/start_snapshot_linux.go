@@ -179,7 +179,7 @@ func (h *startSnapshot) validate() error {
 	if err != nil {
 		return err
 	}
-	ack, err := completion.EncodeIntroductionACK(frame, historyOpening)
+	ack, err := completion.EncodeHistoryACK(frame, historyOpening)
 	if err != nil {
 		return err
 	}
