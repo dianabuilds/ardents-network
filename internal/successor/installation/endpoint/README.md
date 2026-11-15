@@ -86,7 +86,10 @@ lease, borrowed parents/containers, journal, generation/Prefix/Snapshot,
 fixed-resource observations, intent и barrier, общий observe и joined close.
 В том же файле находятся initial/successor generation birth/write/failure,
 seal/access, exact intent copy/sync/removal и проверка original generation-file
-provenance при recovery. Initial и successor completion допускаются разными checks.
+provenance при recovery; чтение записей original generation-file births и их
+сопоставление с независимо удержанными файлами находится в
+`generation_birth_history_linux.go`. Оно не владеет lease или допуском recovery.
+Initial и successor completion допускаются разными checks.
 Это один владелец транзакции: проверка всех original handles и порядок их
 закрытия должны оставаться под исходным lease. Состояние, generation-writing,
 intent observation и joined close находятся рядом: один retained lifetime
