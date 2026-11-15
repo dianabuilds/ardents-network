@@ -198,7 +198,7 @@ func prepareForwardingProfile(ctx context.Context, args []string, observe func(s
 	flags.StringVar(&inventoryPath, "token-inventory", "", "original public Admission key inventory")
 	flags.Var(&duties, "duty", "Node-ID:Role-Domain:subrole in canonical Node order; repeat at most32")
 	flags.StringVar(&output, "output", "", "fresh public profile preparation directory")
-	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 7 || !forwardingUniqueOptions(args, "duty") || !sourceControlPath(output) {
+	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 7 || !uniqueNodeOptions(args, "duty") || !sourceControlPath(output) {
 		return p, nil, errSourceControlInput
 	}
 	inputs := &sourceControlInputs{ctx: ctx}

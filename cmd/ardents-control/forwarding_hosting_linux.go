@@ -32,7 +32,7 @@ func forwardingHostingArguments(args []string) (string, hosting.Policy, error) {
 	flags.StringVar(&interfaces, "interfaces", "", "comma-separated actual interface names")
 	flags.Uint64Var(&policy.InitialUsedBytes, "initial-used-bytes", 0, "already consumed floor")
 	flags.Uint64Var(&policy.LowWatermarkBytes, "low-watermark-bytes", 0, "retained low watermark")
-	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 10 || !forwardingUniqueOptions(args, "") || !sourceControlPath(binding) {
+	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 10 || !uniqueNodeOptions(args, "") || !sourceControlPath(binding) {
 		return "", policy, forwarding.ErrInput
 	}
 	var err error

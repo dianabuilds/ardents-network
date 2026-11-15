@@ -48,8 +48,26 @@ func nodePlanFlags(args []string, name string, invalid error, threshold *int, wo
 	flags.Uint64Var(terminationTx, "termination-tx", 0, "termination Tx coverage")
 	flags.Uint64Var(terminationRx, "termination-rx", 0, "termination Rx coverage")
 	flags.Uint64Var(&v.wait, "retirement-wait-ms", 0, "bounded notice wait")
-	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 12 || !forwardingUniqueOptions(args, "authority") || !sourceControlPath(v.destination) || v.wait == 0 || v.wait > 5000 {
+	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 12 || !uniqueNodeOptions(args, "authority") || !sourceControlPath(v.destination) || v.wait == 0 || v.wait > 5000 {
 		return v, invalid
 	}
 	return v, nil
+}
+
+// Node preparation flag producers reject implicit last-wins selection.
+// Only the plan's exact State-authority option is intentionally repeatable.
+func uniqueNodeOptions(args []string, repeatable string) bool {
+	seen := map[string]bool{}
+	for _, argument := range args {
+		if len(argument) < 2 || argument[0] != '-' {
+			continue
+		}
+		name := strings.TrimLeft(argument, "-")
+		name, _, _ = strings.Cut(name, "=")
+		if seen[name] && name != repeatable {
+			return false
+		}
+		seen[name] = true
+	}
+	return true
 }

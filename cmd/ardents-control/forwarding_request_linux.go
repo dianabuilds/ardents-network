@@ -26,7 +26,7 @@ func forwardingRequestArguments(args []string) ([]byte, string, error) {
 	} {
 		flags.StringVar(option.path, option.name, "", "exact absolute path")
 	}
-	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 11 || !forwardingUniqueOptions(args, "") || !sourceControlPath(destination) {
+	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 11 || !uniqueNodeOptions(args, "") || !sourceControlPath(destination) {
 		return nil, "", errSourceControlInput
 	}
 	for _, path := range []string{r.InstallationRoot, r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.CredentialDirectory, r.Plan, r.Certificate, r.PrivateKey, r.Clock} {

@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"path/filepath"
-	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
@@ -83,22 +82,4 @@ func forwardingPlanArguments(args []string, inputs *sourceControlInputs) ([]byte
 		return nil, "", err
 	}
 	return raw, destination, nil
-}
-
-// Both finite Forwarding flag producers reject implicit last-wins selection.
-// Only the plan's exact State-authority option is intentionally repeatable.
-func forwardingUniqueOptions(args []string, repeatable string) bool {
-	seen := map[string]bool{}
-	for _, argument := range args {
-		if len(argument) < 2 || argument[0] != '-' {
-			continue
-		}
-		name := strings.TrimLeft(argument, "-")
-		name, _, _ = strings.Cut(name, "=")
-		if seen[name] && name != repeatable {
-			return false
-		}
-		seen[name] = true
-	}
-	return true
 }

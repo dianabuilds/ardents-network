@@ -25,7 +25,7 @@ func joinRequestArguments(args []string) ([]byte, string, error) {
 	} {
 		flags.StringVar(option.path, option.name, "", "exact absolute path")
 	}
-	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 11 || !forwardingUniqueOptions(args, "") {
+	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 11 || !uniqueNodeOptions(args, "") {
 		return nil, "", errSourceControlInput
 	}
 	if err := r.CheckPreparationOutput(output); err != nil {
