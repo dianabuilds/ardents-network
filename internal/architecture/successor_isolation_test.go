@@ -235,6 +235,15 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			{"internal/successor/installation/infrastructure/introduction_artifact_test.go", true},
 			{"internal/successor/installation/infrastructure/source_request.go", target == "linux" || target == "darwin"},
 			{"internal/successor/installation/infrastructure/source_request_test.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/forwarding/request.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/forwarding/plan.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/forwarding/plan_test.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/join/request.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/join/plan.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/descriptor/request.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/descriptor/plan.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/introduction/request.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/introduction/plan.go", target == "linux" || target == "darwin"},
 		} {
 			selected, err := profile.MatchFile(path.Join(root, path.Dir(item.name)), path.Base(item.name))
 			if err != nil {
@@ -926,7 +935,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/introduction/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
-	if source == "internal/successor/installation/introduction/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
+	if source == "internal/successor/installation/introduction/plan.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}
 
@@ -936,13 +945,13 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/descriptor/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
-	if source == "internal/successor/installation/descriptor/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
+	if source == "internal/successor/installation/descriptor/plan.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}
-	if source == "internal/successor/installation/join/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
+	if source == "internal/successor/installation/join/plan.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}
-	if source == "internal/successor/installation/forwarding/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
+	if source == "internal/successor/installation/forwarding/plan.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/hosting_prepare_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
@@ -1515,9 +1524,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"JOIN key birth grants no Release observation", "cmd/ardents-control/join_release_keys_linux.go", modulePath + "/internal/successor/release", false},
 		{"JOIN public signing grants no Route consumer", "cmd/ardents-control/join_release_linux.go", modulePath + "/internal/successor/route/role", false},
 		{"JOIN public plan grants no State owner", "cmd/ardents-control/join_release_plan_linux.go", modulePath + "/internal/successor/network/state", false},
-		{"JOIN public plan uses detached traffic declaration", "internal/successor/installation/join/plan_linux.go", modulePath + "/internal/successor/hosting", true},
+		{"JOIN public plan uses detached traffic declaration", "internal/successor/installation/join/plan.go", modulePath + "/internal/successor/hosting", true},
 		{"JOIN request has no Hosting import", "internal/successor/installation/join/request.go", modulePath + "/internal/successor/hosting", false},
-		{"JOIN public plan has no State owner", "internal/successor/installation/join/plan_linux.go", modulePath + "/internal/successor/network/state", false},
+		{"JOIN public plan has no State owner", "internal/successor/installation/join/plan.go", modulePath + "/internal/successor/network/state", false},
 		{"canonical JOIN plan uses exact declaration owner", "cmd/ardents-control/join_plan_linux.go", modulePath + "/internal/successor/installation/join", true},
 		{"canonical JOIN preparation grants no Route exception", "cmd/ardents-control/join_plan_linux.go", modulePath + "/internal/successor/route/role", false},
 		{"Forwarding replacement inspects signed retained State", "internal/successor/installation/forwarding/replacement_inspections_linux.go", modulePath + "/internal/successor/network/state", true},
@@ -1967,7 +1976,7 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/successor/installation/directory", "github.com/dianabuilds/ardents-network/internal/successor/installation/fixedfile":
 			return true
 		}
-	case "internal/successor/installation/join/plan_linux.go":
+	case "internal/successor/installation/join/plan.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/hosting":
 			return true

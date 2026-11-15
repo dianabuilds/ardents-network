@@ -1,4 +1,6 @@
-package introduction
+//go:build linux || darwin
+
+package forwarding
 
 import (
 	"bytes"
@@ -19,7 +21,7 @@ type NetworkInputs struct {
 	ClockObservationFile string     `json:"clock_observation_file"`
 }
 
-// Plan is the closed installed Introduction input. Its immutable declaration
+// Plan is the closed installed Forwarding input. Its immutable declaration
 // grants no State, Node, Admission or Hosting permission and selects no peer.
 type Plan struct {
 	Schema            string          `json:"schema"`
@@ -29,7 +31,6 @@ type Plan struct {
 	ParticipationRoot string          `json:"participation_root"`
 	SpendRoot         string          `json:"spend_root"`
 	HostingRoot       string          `json:"hosting_root"`
-	IntroductionRoot  string          `json:"introduction_root"`
 	Certificate       string          `json:"certificate"`
 	PrivateKey        string          `json:"private_key"`
 	Work              hosting.Traffic `json:"work"`
@@ -44,7 +45,7 @@ func DecodePlan(raw []byte) (Plan, error) {
 	}
 	canonical, err := json.Marshal(p)
 	n := p.Network
-	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) || p.Schema != "ardents-introduction-runtime-v1" || p.ProcessProfile != "ardents-introduction-process-v1" || p.NodeID == [32]byte{} ||
+	if err != nil || !bytes.Equal(raw, append(canonical, '\n')) || p.Schema != "ardents-forwarding-runtime-v1" || p.ProcessProfile != "ardents-forwarding-process-v1" || p.NodeID == [32]byte{} ||
 		n.NetworkID == [32]byte{} || n.ProfileAuthority == [32]byte{} || len(n.Authorities) == 0 || len(n.Authorities) > 16 || n.Threshold <= 0 || n.Threshold > len(n.Authorities) || p.RetirementWaitMS == 0 || p.RetirementWaitMS > 5000 {
 		return Plan{}, ErrInput
 	}
@@ -55,7 +56,7 @@ func DecodePlan(raw []byte) (Plan, error) {
 		}
 		seen[key] = true
 	}
-	for _, path := range []string{n.Root, n.ClockObservationFile, p.ParticipationRoot, p.SpendRoot, p.HostingRoot, p.IntroductionRoot, p.Certificate, p.PrivateKey} {
+	for _, path := range []string{n.Root, n.ClockObservationFile, p.ParticipationRoot, p.SpendRoot, p.HostingRoot, p.Certificate, p.PrivateKey} {
 		if !validPath(path) {
 			return Plan{}, ErrInput
 		}
@@ -66,39 +67,9 @@ func DecodePlan(raw []byte) (Plan, error) {
 // MatchPlan compares only declarations. It opens no State, key or mutable root;
 // full class coverage and actual protection/authority remain runtime decisions.
 func (r Request) MatchPlan(p Plan) error {
-	if p.Network.Root != r.StateRoot || p.Network.ClockObservationFile != r.Clock || p.ProcessProfile != r.Profile || p.ParticipationRoot != r.ParticipationRoot || p.SpendRoot != r.SpendRoot || p.HostingRoot != r.HostingRoot || p.IntroductionRoot != r.IntroductionRoot ||
+	if p.Network.Root != r.StateRoot || p.Network.ClockObservationFile != r.Clock || p.ProcessProfile != r.Profile || p.ParticipationRoot != r.ParticipationRoot || p.SpendRoot != r.SpendRoot || p.HostingRoot != r.HostingRoot ||
 		p.Certificate != filepath.Join(r.CredentialDirectory, "certificate.pem") || p.PrivateKey != filepath.Join(r.CredentialDirectory, "private-key.pem") {
 		return ErrBinding
-	}
-	return nil
-}
-
-// CheckPlanPreparationOutput admits only the request's exact future plan leaf
-// inside this fresh output. Every other declared input, root and retained
-// journal remains outside; the public request's original file is independent.
-// This checks path declarations only, not their native provenance or authority.
-func (r Request) CheckPlanPreparationOutput(output, requestFile string) error {
-	raw, err := json.Marshal(r)
-	if err != nil {
-		return err
-	}
-	if _, err := DecodeRequest(append(raw, '\n')); err != nil {
-		return err
-	}
-	if !validPath(output) || !validPath(requestFile) || r.Plan != filepath.Join(output, "introduction-plan.json") {
-		return ErrBinding
-	}
-	paths := append(r.paths(), r.reservedSiblingPaths()...)
-	for _, path := range paths {
-		if contains(requestFile, path) || contains(path, requestFile) {
-			return ErrBinding
-		}
-	}
-	paths = append(paths, requestFile)
-	for _, path := range paths {
-		if path != r.Plan && (contains(output, path) || contains(path, output)) {
-			return ErrBinding
-		}
 	}
 	return nil
 }
