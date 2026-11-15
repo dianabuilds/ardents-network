@@ -319,7 +319,7 @@
           "internal/successor/installation/cgroup.workerMatches",
           "internal/successor/installation/cgroup.workerScope",
           "internal/successor/installation/fixedfile.ReplacementPrefixAllowed",
-          "internal/successor/installation/generation.Names",
+          "internal/successor/endpoint/delivery/generation.Names",
           "internal/successor/installation/journal.Bytes",
           "internal/successor/installation/journal.Next",
           "internal/successor/installation/journal.canonicalDigest",

@@ -1,4 +1,4 @@
-// Package generation owns one exclusively created immutable Installation
+// Package generation owns one exclusively created immutable Endpoint delivery
 // generation directory and its original files, and independent read-only
 // Snapshot custody of sealed generations. Prefix independently retains an
 // interrupted original directory and its recorded leaves; after caller-owned

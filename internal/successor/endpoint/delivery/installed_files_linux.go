@@ -11,7 +11,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/generation"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
 )
 
 // installedFiles retains native file/directory provenance for one serialized
