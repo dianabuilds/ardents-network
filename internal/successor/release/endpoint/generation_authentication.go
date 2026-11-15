@@ -1,5 +1,5 @@
 // Fresh generation authorization and original installed continuity admission.
-package authorization
+package endpoint
 
 import (
 	"bytes"

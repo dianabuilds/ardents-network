@@ -2,7 +2,7 @@
 
 `endpoint/delivery` — владелец установленного поколения внутри семейства
 Software acceptance. Он допускает canonical request и потребляет fresh opaque
-program/generation pair от отдельного `endpoint/delivery/authorization`. Private proofs,
+program/generation pair от отдельного `release/endpoint`. Private proofs,
 initial pin и frozen inventory остаются у этого portable владельца; Endpoint
 получает genuine Release proofs и detached copies через его Interface.
 Native initial provision удерживает

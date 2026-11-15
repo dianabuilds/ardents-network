@@ -434,7 +434,7 @@ installation-native-compile-check: export GOARCH := amd64
 installation-native-compile-check: export CGO_ENABLED := 0
 installation-native-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-native.test" ./internal/successor/endpoint/delivery/authorization
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-native.test" ./internal/successor/release/endpoint
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-endpoint-native.test" ./internal/successor/endpoint/delivery
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-request-native.test" ./internal/successor/endpoint/delivery/request
 	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-directory-native.test" ./internal/successor/installation/directory

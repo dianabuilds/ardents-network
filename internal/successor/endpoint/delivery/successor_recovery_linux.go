@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/authorization"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/generation"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/journal"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/manager"

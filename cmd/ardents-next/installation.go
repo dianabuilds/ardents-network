@@ -11,7 +11,7 @@ import (
 	"time"
 
 	installation "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/authorization"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
