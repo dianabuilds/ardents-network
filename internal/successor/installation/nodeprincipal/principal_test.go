@@ -22,3 +22,18 @@ func TestFixedPrincipalValidation(t *testing.T) {
 		t.Fatal("foreign bytes changed")
 	}
 }
+
+func TestSelectIDUsesBothDatabasesAndRefusesExistingNode(t *testing.T) {
+	passwd := []byte("root:x:0:0:root:/root:/bin/bash\nother:x:998:999::/tmp:/bin/false\n")
+	group := []byte("root:x:0:\nother:x:997:\n")
+	id, err := SelectID(passwd, group)
+	if err != nil || id != 996 {
+		t.Fatalf("selected %d: %v", id, err)
+	}
+	if _, err := SelectID(append(passwd, []byte("ardents-node:x:996:996::/nonexistent:/usr/sbin/nologin\n")...), group); err == nil {
+		t.Fatal("existing account admitted")
+	}
+	if _, err := SelectID([]byte("bad:x:not-a-number:0::/:/bin/false\n"), group); err == nil {
+		t.Fatal("malformed identity admitted")
+	}
+}

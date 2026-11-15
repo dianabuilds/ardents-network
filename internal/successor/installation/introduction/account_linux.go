@@ -103,42 +103,11 @@ func prepareNodeAccount(ctx context.Context, inputs Inputs) (*nodeAccount, error
 		}
 		a.auxBefore[path] = f
 	}
-	used := map[uint32]bool{}
-	for _, p := range []string{"/etc/passwd", "/etc/group"} {
-		for _, line := range strings.Split(string(a.before[p].raw), "\n") {
-			if line == "" {
-				continue
-			}
-			fields := strings.Split(line, ":")
-			if len(fields) < 3 || fields[0] == "ardents-node" {
-				return a, ErrBinding
-			}
-			n, err := strconv.ParseUint(fields[2], 10, 32)
-			if err != nil {
-				return a, ErrBinding
-			}
-			used[uint32(n)] = true
-			if p == "/etc/passwd" {
-				if len(fields) != 7 {
-					return a, ErrBinding
-				}
-				primary, err := strconv.ParseUint(fields[3], 10, 32)
-				if err != nil {
-					return a, ErrBinding
-				}
-				used[uint32(primary)] = true
-			}
-		}
-	}
-	for id := uint32(999); id >= 100; id-- {
-		if !used[id] {
-			a.uid, a.gid = id, id
-			break
-		}
-	}
-	if a.uid == 0 {
+	id, err := nodeprincipal.SelectID(a.before["/etc/passwd"].raw, a.before["/etc/group"].raw)
+	if err != nil {
 		return a, ErrBinding
 	}
+	a.uid, a.gid = id, id
 	return a, errors.Join(inputs.Check(), a.checkBefore(), a.checkAbsentNSS())
 }
 

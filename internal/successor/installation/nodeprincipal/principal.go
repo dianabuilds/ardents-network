@@ -177,3 +177,45 @@ func ValidateNSS(raw []byte) error {
 	}
 	return nil
 }
+
+// SelectID chooses the highest free fixed system identity from the observed
+// passwd and group preimages. The caller retains and rechecks those originals;
+// the selected number grants no account creation or installation authority.
+func SelectID(passwd, group []byte) (uint32, error) {
+	used := map[uint32]bool{}
+	for _, database := range []struct {
+		raw    []byte
+		passwd bool
+	}{{passwd, true}, {group, false}} {
+		for _, line := range strings.Split(string(database.raw), "\n") {
+			if line == "" {
+				continue
+			}
+			fields := strings.Split(line, ":")
+			if len(fields) < 3 || fields[0] == "ardents-node" {
+				return 0, ErrBinding
+			}
+			n, err := strconv.ParseUint(fields[2], 10, 32)
+			if err != nil {
+				return 0, ErrBinding
+			}
+			used[uint32(n)] = true
+			if database.passwd {
+				if len(fields) != 7 {
+					return 0, ErrBinding
+				}
+				primary, err := strconv.ParseUint(fields[3], 10, 32)
+				if err != nil {
+					return 0, ErrBinding
+				}
+				used[uint32(primary)] = true
+			}
+		}
+	}
+	for id := uint32(999); id >= 100; id-- {
+		if !used[id] {
+			return id, nil
+		}
+	}
+	return 0, ErrBinding
+}
