@@ -132,3 +132,23 @@ func startIntroductionGeneration(parent context.Context, args []string, output i
 	_, err = io.WriteString(output, "{\"outcome\":\""+outcome+"\",\"runtime_authority\":false}\n")
 	return errors.Join(err, ctx.Err())
 }
+
+func inspectStartedIntroduction(parent context.Context, args []string, output io.Writer) (returned error) {
+	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
+	defer cancel()
+	v, err := release.OpenRetained(args[0])
+	if err != nil {
+		return err
+	}
+	defer func() { returned = errors.Join(returned, v.Close()) }()
+	history, err := introduction.ReadStarted(ctx, v, args[1], args[0])
+	defer func() { returned = errors.Join(returned, history.Close()) }()
+	if err != nil {
+		return err
+	}
+	if err := errors.Join(history.Check(), history.Close(), v.Close(), ctx.Err()); err != nil {
+		return err
+	}
+	_, err = io.WriteString(output, "{\"outcome\":\"introduction-start-history-verified\",\"runtime_authority\":false,\"retirement_proved\":false}\n")
+	return errors.Join(err, ctx.Err())
+}

@@ -1686,6 +1686,12 @@ Introduction first-start commands (Linux):
 - `ardents-node introduction start-installed BINDING` is the fixed non-root unit
   invocation, independently admitted by original native custody and root-peer
   completion; direct shell execution cannot manufacture that admission.
+- `ardents-node introduction inspect-start-history RELEASE-HISTORY BINDING`
+  independently verifies the complete first-start transcript and original native
+  identities as root. It reopens existing Release history without requiring fresh
+  artifact permission. It connects to no runtime socket and grants no domain
+  retirement, Stop, restart or replacement permission. Partial, foreign or later
+  histories refuse; original reader failure survives restoration.
 
 The fixed Introduction offline producers are `prepare-node-key`,
 `prepare-node-record`, `sign-node-record`, `prepare-node-certificate`,

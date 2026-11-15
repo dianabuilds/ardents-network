@@ -4236,3 +4236,18 @@ policy rules. No offline producer opens Receiving, Registry or a live role, and
 no copied profile supplies installed Startup or bootstrap acceptance. Exact
 artifacts, inputs, public bootstrap receipt and qualification limits remain a
 separate prerequisite before installed execution.
+
+### Independent Introduction first-start history
+
+Canonical `introduction inspect-start-history` retains its own initial/Hosting
+and first-start journal leases, original files, directory and socket metadata.
+It checks all26 ordered records, the original binding/initial-history/intent,
+root archive, exact161-byte first-start ACK and native births. It never reconnects
+to the stale completion socket or substitutes copied archive facts for a live
+process observation. The stopped initial reader still refuses started history.
+Release history is independently reobserved around the original operation;
+expired artifact permission cannot prevent inspection of shutdown evidence.
+Original mutation or custody loss permanently denies that reader, including after
+restoration. Every reader and physical close joins before either lease returns.
+This supplies no domain report, original native termination, retained runtime
+opening, restart or replacement permission. Later/partial histories refuse.

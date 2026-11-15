@@ -38,6 +38,7 @@ type completedInitial struct {
 	sealed          string
 	hostingBirths   *initialBirths
 	start           *startStorage
+	started         *startSnapshot
 	hostingPrepared bool
 	// Failure-only causal control after genuine original file observation.
 	observe func(*os.File)
@@ -49,6 +50,12 @@ var errCompletedClosed = errors.New("introduction installation: completed observ
 // own exclusive lease precedes transcript use. Account databases are checked as
 // current principal facts, not frozen postimages; semantic contents are unopened.
 func ReadCompleted(ctx context.Context, path string) (result Completed, returned error) {
+	return readCompleted(ctx, path, false)
+}
+
+// Only ReadStarted admits the separately verified first-start child. The
+// stopped initial reader must continue refusing every later operation.
+func readCompleted(ctx context.Context, path string, allowStarted bool) (result Completed, returned error) {
 	if ctx == nil || os.Geteuid() != 0 || !validPath(path) {
 		return result, ErrInput
 	}
@@ -95,6 +102,9 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 			return result, err
 		}
 		if _, err := os.Lstat(reserved); !errors.Is(err, os.ErrNotExist) {
+			if err == nil && allowStarted && reserved == r.InstallationRoot+".introduction-first-start-journal" {
+				continue
+			}
 			if err == nil && (reserved == hostingDirectory || reserved == hostingJournal) {
 				hostingPresent = true
 				continue
@@ -194,6 +204,15 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 
 	if hostingPresent {
 		if err := c.readHostingPreparation(); err != nil {
+			return result, err
+		}
+	}
+	if allowStarted {
+		if !c.hostingPrepared {
+			return result, ErrBinding
+		}
+		c.started, err = readStartSnapshot(ctx, b, digest(selected.body), digest(journal.body))
+		if err != nil {
 			return result, err
 		}
 	}
@@ -361,6 +380,11 @@ func (c *completedInitial) check() error {
 			return err
 		}
 	}
+	if c.started != nil {
+		if err := c.started.check(); err != nil {
+			return err
+		}
+	}
 	if c.hostingBirths != nil {
 		if err := c.hostingBirths.check(); err != nil {
 			return err
@@ -385,7 +409,7 @@ func (c *completedInitial) check() error {
 		c.binding.Request.CredentialDirectory: {"certificate.pem": true, "private-key.pem": true},
 	}
 	inventories[filepath.Dir(c.sealed)][c.binding.Generation] = true
-	if c.start != nil && c.start.dir != nil {
+	if c.start != nil && c.start.dir != nil || c.started != nil {
 		inventories[c.binding.Request.InstallationRoot]["introduction-startup"] = true
 	}
 	for directory, wanted := range inventories {
@@ -461,6 +485,7 @@ func (h Completed) Close() error {
 		c.mu.Unlock()
 		c.uses.Wait()
 		var physical error
+		physical = errors.Join(physical, c.started.close())
 		for i := len(c.fileOrder) - 1; i >= 0; i-- {
 			f := c.fileOrder[i]
 			if f == c.journal {

@@ -1,9 +1,18 @@
 package architecture
 
-// Exact first-start consumers. No retained-history admission, sibling role,
+// Exact first-start and independent history consumers. No retained runtime, sibling role,
 // Route root/receiver, legacy bridge or additional canonical test is permitted.
 func introductionStartupImportAllowed(source, dependency string) bool {
 	switch source {
+	case "internal/successor/installation/introduction/installed_history_native_linux_test.go":
+		switch dependency {
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/introduction", "github.com/dianabuilds/ardents-network/internal/successor/release":
+			return true
+		}
+	case "internal/successor/installation/introduction/start_snapshot_linux.go":
+		return dependency == "github.com/dianabuilds/ardents-network/internal/successor/installation/completion"
+	case "internal/successor/installation/introduction/started_history_linux.go":
+		return dependency == "github.com/dianabuilds/ardents-network/internal/successor/release"
 	case "internal/successor/installation/introduction/installed_cohort_native_linux_test.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/network/epoch", "github.com/dianabuilds/ardents-network/internal/successor/network/source":

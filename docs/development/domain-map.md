@@ -1400,3 +1400,10 @@ R01 boundary. Receiving alone supplies the one-use fresh-root fact consumed by
 Route Registry before listening; no offline slot initialization is introduced.
 Actual Receiver/domain users join before State and Startup release. First-start
 completion grants no original domain retirement, retained restart or replacement.
+
+Introduction's independent first-start history observer retains its own complete
+initial/Hosting/26-record startup history and original socket metadata, consumed
+by canonical Node inspection. Its original leases and file observations join
+before release. It reconnects to no completion socket and opens no semantic
+history; historical ACK/native births grant no live process or domain retirement.
+Release-history binding remains separate from fresh artifact authorization.

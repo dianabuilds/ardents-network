@@ -21,4 +21,7 @@
 // Non-root Startup independently acquires its own read-only generation, principal,
 // process, namespace, manager and original root-peer exchange. Its private Plan
 // grants no duty, semantic history, domain completion, restart or replacement.
+// ReadStarted independently retains the complete first-start transcript and
+// original socket metadata without reconnecting. Its leases join before release;
+// historical ACK evidence grants no live process or domain-retirement proof.
 package introduction

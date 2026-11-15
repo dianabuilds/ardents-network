@@ -1078,6 +1078,8 @@ Bootstrap acceptance remains distinct from this composition admission.
 | File `cmd/ardents-control/introduction_token_material_linux.go` | `internal/successor/admission/issuance` |
 | File `cmd/ardents-node/introduction_installed_linux.go` | `internal/successor/installation/introduction`; `internal/successor/network`; `internal/successor/network/state`; `internal/successor/node`; `internal/successor/route/role` |
 | File `internal/successor/installation/introduction/start_barrier_linux.go` | `internal/successor/installation/completion` |
+| File `internal/successor/installation/introduction/start_snapshot_linux.go` | `internal/successor/installation/completion` |
+| File `internal/successor/installation/introduction/started_history_linux.go` | `internal/successor/release` |
 | File `internal/successor/installation/introduction/start_initial_linux.go` | `internal/successor/installation/cgroup`; `internal/successor/installation/infrastructure`; `internal/successor/installation/process`; `internal/successor/installation/systemd`; `internal/successor/release` |
 | File `internal/successor/installation/introduction/startup_admission_linux_test.go` | `internal/successor/installation/infrastructure` |
 | File `internal/successor/installation/introduction/startup_linux.go` | `internal/successor/installation/cgroup`; `internal/successor/installation/completion`; `internal/successor/installation/process`; `internal/successor/installation/systemd` |
@@ -1095,5 +1097,6 @@ protocol peers. They grant no production import or full Publisher/Service claim.
 | `installed_operations_native_linux_test.go` | `internal/successor/route/ardp`, `internal/successor/route/capsule`, `internal/successor/route/introduction` |
 | `installed_preparation_native_linux_test.go` | `internal/successor/admission`, `internal/successor/admission/stock`, `internal/successor/custody` |
 | `installed_start_native_linux_test.go` | `internal/successor/installation/introduction` |
+| `installed_history_native_linux_test.go` | `internal/successor/installation/introduction`, `internal/successor/release` |
 | `installed_stock_native_linux_test.go` | `internal/successor/admission`, `internal/successor/admission/issuance`, `internal/successor/admission/issuer`, `internal/successor/admission/quota`, `internal/successor/admission/receiving`, `internal/successor/admission/stock`, `internal/successor/admission/token`, `internal/successor/custody`, `internal/successor/network`, `internal/successor/network/source`, `internal/successor/network/state` |
 | `installed_transport_native_linux_test.go` | `internal/successor/admission/stock`, `internal/successor/route/ardp`, `internal/successor/route/channel`, `internal/successor/route/role`, `internal/successor/route/transport`, `internal/successor/route/transport/tls` |

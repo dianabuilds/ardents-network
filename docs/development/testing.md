@@ -5646,3 +5646,12 @@ native byte reads require four irreversible spends and both retained slot floors
 Authenticated adjacent peers and the independent HPKE oracle establish this
 protocol boundary only; full Publication readiness, qualified explicit Stop,
 retained restart/replacement and Service acceptance remain separate obligations.
+
+Introduction's existing installed exchange profile also invokes canonical
+`inspect-start-history` against the actual completed first Start. Its external
+history controls retain genuine Release/Installation owners and prove exclusion
+of a second reader, incomplete ACK history, missing original journal, identical
+foreign inode, cancellation and permanent original refusal after restoration.
+A fresh reader may accept the restored original inode; it cannot revive the
+failed reader. These controls establish no explicit Stop or domain/native
+retirement and preserve the original installed exchange's qualification limits.
