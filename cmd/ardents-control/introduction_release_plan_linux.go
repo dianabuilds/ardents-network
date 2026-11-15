@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	introductioninstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/introduction"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -40,7 +40,7 @@ func decodeIntroductionReleasePlan(raw []byte, now time.Time) (introductionRelea
 func validateIntroductionReleaseResources(plan introductionReleasePlan, program, introduction, template []byte) error {
 	d, err := releaseartifact.ValidateIntroductionResources(introduction, program, template)
 	initial := plan.Schema == "ardents-introduction-initial-release-plan-v1"
-	if err != nil || !initial || d.ReleaseVersion != 1 || !bytes.Equal(template, []byte(introductioninstallation.Template)) {
+	if err != nil || !initial || d.ReleaseVersion != 1 || !bytes.Equal(template, []byte(deployment.IntroductionTemplate)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))

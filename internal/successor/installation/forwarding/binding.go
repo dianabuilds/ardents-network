@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -68,8 +69,8 @@ func decodeConfiguration(raw []byte, schema string) (binding, error) {
 			return binding{}, ErrBinding
 		}
 	}
-	unit, err := RenderUnit([]byte(Template), b.Request, b.Generation)
-	if err != nil || digest([]byte(Template)) != b.TemplateSHA256 || digest(unit) != b.UnitSHA256 {
+	unit, err := RenderUnit([]byte(deployment.ForwardingTemplate), b.Request, b.Generation)
+	if err != nil || digest([]byte(deployment.ForwardingTemplate)) != b.TemplateSHA256 || digest(unit) != b.UnitSHA256 {
 		return binding{}, ErrBinding
 	}
 	return b, nil

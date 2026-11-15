@@ -111,7 +111,7 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 
 	case "cmd/ardents-control/descriptor_artifact_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment", "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
+		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment":
 			return true
 		}
 	case "cmd/ardents-control/descriptor_cohort_native_linux_test.go":

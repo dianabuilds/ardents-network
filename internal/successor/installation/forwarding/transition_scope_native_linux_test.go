@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 )
 
 // This is an actual same-program native process/channel/journal test. Its
@@ -126,7 +128,7 @@ func nativePhysicalTransitionParent(t *testing.T, mode string) {
 	b.Request.InstallationRoot = filepath.Join(parent, "i")
 	request, _ := json.Marshal(b.Request)
 	b.RequestSHA256 = digest(append(request, '\n'))
-	unit, err := RenderUnit([]byte(Template), b.Request, b.Generation)
+	unit, err := RenderUnit([]byte(deployment.ForwardingTemplate), b.Request, b.Generation)
 	if err != nil {
 		t.Fatal(err)
 	}

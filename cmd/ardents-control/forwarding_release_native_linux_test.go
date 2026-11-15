@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
@@ -33,7 +34,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 		t.Fatal("actual fixed template producer", string(out), err)
 	}
 	preparedTemplate, err := os.ReadFile(filepath.Join(templateOutput, "ardents-forwarding.service"))
-	if err != nil || !bytes.Equal(preparedTemplate, []byte(forwarding.Template)) {
+	if err != nil || !bytes.Equal(preparedTemplate, []byte(deployment.ForwardingTemplate)) {
 		t.Fatal("closed template differs", err)
 	}
 	program, template, descriptor := filepath.Join(parent, "node"), filepath.Join(parent, "template"), filepath.Join(parent, "descriptor")
@@ -42,7 +43,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 			t.Fatal(err)
 		}
 	}
-	descriptorBytes, err := releaseartifact.PrepareForwardingDescriptor("one", 1, nodeBytes, []byte(forwarding.Template))
+	descriptorBytes, err := releaseartifact.PrepareForwardingDescriptor("one", 1, nodeBytes, []byte(deployment.ForwardingTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +241,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := releaseartifact.PrepareForwardingDescriptor("one", 1, controlBytes, []byte(forwarding.Template))
+	badDescriptor, err := releaseartifact.PrepareForwardingDescriptor("one", 1, controlBytes, []byte(deployment.ForwardingTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -23,8 +24,8 @@ func initialTranscriptOracle(t *testing.T) (binding, map[string]string, []initia
 	if err := json.Unmarshal([]byte(independentRequest), &request); err != nil {
 		t.Fatal(err)
 	}
-	b := binding{Schema: "ardents-introduction-binding-v1", Invocation: "introduction", Generation: hash([]byte("artifact")), ProgramTarget: "ardents/linux-amd64/node", GenerationTarget: "ardents/linux-amd64/infrastructure/introduction", ProgramSHA256: hash([]byte("program")), TemplateSHA256: hash([]byte(Template)), InventorySHA256: hash([]byte("inventory")), TargetsSHA256: hash([]byte("targets")), RequestSHA256: hash([]byte(independentRequest)), PlanSHA256: hash([]byte("plan")), CertificateSHA256: hash([]byte("certificate")), Account: "ardents-node", UID: 999, GID: 999, History: "/var/lib/release-history", Request: request}
-	unit, err := renderUnit([]byte(Template), request, b.Generation)
+	b := binding{Schema: "ardents-introduction-binding-v1", Invocation: "introduction", Generation: hash([]byte("artifact")), ProgramTarget: "ardents/linux-amd64/node", GenerationTarget: "ardents/linux-amd64/infrastructure/introduction", ProgramSHA256: hash([]byte("program")), TemplateSHA256: hash([]byte(deployment.IntroductionTemplate)), InventorySHA256: hash([]byte("inventory")), TargetsSHA256: hash([]byte("targets")), RequestSHA256: hash([]byte(independentRequest)), PlanSHA256: hash([]byte("plan")), CertificateSHA256: hash([]byte("certificate")), Account: "ardents-node", UID: 999, GID: 999, History: "/var/lib/release-history", Request: request}
+	unit, err := renderUnit([]byte(deployment.IntroductionTemplate), request, b.Generation)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 )
 
 func TestReplacementPreservesIdentityTrustAndLifetimeBounds(t *testing.T) {
@@ -55,11 +57,11 @@ func TestReplacementSelectionRetainsExactInitialAndPredecessor(t *testing.T) {
 		t.Fatal(err)
 	}
 	sha := func(c string) string { return strings.Repeat(c, 64) }
-	unit, err := renderUnit([]byte(Template), r, sha("1"))
+	unit, err := renderUnit([]byte(deployment.DescriptorTemplate), r, sha("1"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	b := binding{Schema: "ardents-descriptor-binding-v1", Invocation: "descriptor", Generation: sha("1"), ProgramTarget: "ardents/linux-amd64/node", GenerationTarget: "ardents/linux-amd64/infrastructure/descriptor", ProgramSHA256: sha("2"), TemplateSHA256: digest([]byte(Template)), InventorySHA256: sha("3"), TargetsSHA256: sha("4"), RequestSHA256: digest([]byte(independentRequest)), PlanSHA256: sha("5"), UnitSHA256: digest(unit), CertificateSHA256: sha("6"), Account: "ardents-node", UID: 999, GID: 999, History: "/var/lib/release-history", Request: r}
+	b := binding{Schema: "ardents-descriptor-binding-v1", Invocation: "descriptor", Generation: sha("1"), ProgramTarget: "ardents/linux-amd64/node", GenerationTarget: "ardents/linux-amd64/infrastructure/descriptor", ProgramSHA256: sha("2"), TemplateSHA256: digest([]byte(deployment.DescriptorTemplate)), InventorySHA256: sha("3"), TargetsSHA256: sha("4"), RequestSHA256: digest([]byte(independentRequest)), PlanSHA256: sha("5"), UnitSHA256: digest(unit), CertificateSHA256: sha("6"), Account: "ardents-node", UID: 999, GID: 999, History: "/var/lib/release-history", Request: r}
 	encode := func(v any) []byte {
 		raw, e := json.Marshal(v)
 		if e != nil {
@@ -74,7 +76,7 @@ func TestReplacementSelectionRetainsExactInitialAndPredecessor(t *testing.T) {
 	next := b
 	next.Schema = "ardents-descriptor-replacement-configuration-v1"
 	next.Generation = sha("7")
-	rendered, err := renderUnit([]byte(Template), next.Request, next.Generation)
+	rendered, err := renderUnit([]byte(deployment.DescriptorTemplate), next.Request, next.Generation)
 	if err != nil {
 		t.Fatal(err)
 	}

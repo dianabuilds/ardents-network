@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	joininstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/join"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -99,7 +99,7 @@ func prepareJoinArtifact(ctx context.Context, args []string, observe func(string
 		if len(args) != 2 {
 			return nil, errSourceControlInput
 		}
-		result = []byte(joininstallation.Template)
+		result = []byte(deployment.JoinTemplate)
 		name, destination = releaseartifact.JoinTemplateName, args[1]
 	case "prepare-request":
 		result, destination, returned = joinRequestArguments(args[1:])

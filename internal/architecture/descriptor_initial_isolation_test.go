@@ -18,12 +18,7 @@ func descriptorInitialImportAllowed(source, dependency string) bool {
 		}
 	case "cmd/ardents-control/descriptor_release_native_linux_test.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
-			return true
-		}
-	case "cmd/ardents-control/descriptor_release_plan_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
+		case "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
 	case "cmd/ardents-node/descriptor_installation_linux.go":

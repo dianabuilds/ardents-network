@@ -8,6 +8,8 @@ import (
 	"path"
 	"strings"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 )
 
 func selectedGenerationVector(t testing.TB) (binding, []byte, map[string][]byte) {
@@ -38,7 +40,7 @@ func selectedGenerationProgramVector(t testing.TB, program []byte) (binding, []b
 	// Pure codec fixture only: these bytes supply no executable, signature,
 	// Enrollment provenance, Release decision or accepting installed observation.
 	files := map[string][]byte{
-		programName: program, "ardents-forwarding.service": []byte(Template),
+		programName: program, "ardents-forwarding.service": []byte(deployment.ForwardingTemplate),
 		"root.json": []byte("root fixture"), "timestamp.json": []byte("timestamp fixture"),
 		"snapshot.json": []byte("snapshot fixture"), "targets.json": []byte("targets fixture"),
 		"forwarding-request.json": []byte(forwardingRequestVector), "forwarding-plan.json": encode(p),
@@ -54,7 +56,7 @@ func selectedGenerationProgramVector(t testing.TB, program []byte) (binding, []b
 		t.Fatal(err)
 	}
 	files["infrastructure-enrollment.json"] = fmt.Appendf(nil, "{\"schema\":\"ardents-infrastructure-enrollment-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"one\",\"release_version\":1,\"invocation\":\"forwarding\",\"files\":%s}\n", hashes)
-	files["rendered-forwarding.service"], err = RenderUnit([]byte(Template), b.Request, b.Generation)
+	files["rendered-forwarding.service"], err = RenderUnit([]byte(deployment.ForwardingTemplate), b.Request, b.Generation)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 )
 
 // Detached closed byte vectors only; no signed Release, original retirement,
@@ -17,7 +19,7 @@ func replacementSelectionVector(t *testing.T) (generationSelection, generationSe
 		t.Fatal(err)
 	}
 	b.Schema, b.Generation = "ardents-forwarding-replacement-configuration-v1", digest([]byte("new generation"))
-	unit, err := RenderUnit([]byte(Template), b.Request, b.Generation)
+	unit, err := RenderUnit([]byte(deployment.ForwardingTemplate), b.Request, b.Generation)
 	if err != nil {
 		t.Fatal(err)
 	}

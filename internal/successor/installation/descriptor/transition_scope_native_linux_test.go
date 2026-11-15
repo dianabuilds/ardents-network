@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 )
 
 // This is an actual same-program native process/channel/journal test. Its
@@ -95,7 +97,7 @@ func nativePhysicalTransitionParent(t *testing.T, mode string) {
 	b.Request.InstallationRoot = filepath.Join(parent, "i")
 	request, _ := json.Marshal(b.Request)
 	b.RequestSHA256 = digest(append(request, '\n'))
-	unit, err := renderUnit([]byte(Template), b.Request, b.Generation)
+	unit, err := renderUnit([]byte(deployment.DescriptorTemplate), b.Request, b.Generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,11 +316,11 @@ func nativeDescriptorPhysicalBinding(t *testing.T) binding {
 		t.Fatal(err)
 	}
 	sha := func(c string) string { return strings.Repeat(c, 64) }
-	unit, err := renderUnit([]byte(Template), r, sha("1"))
+	unit, err := renderUnit([]byte(deployment.DescriptorTemplate), r, sha("1"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	return binding{Schema: "ardents-descriptor-binding-v1", Invocation: "descriptor", Generation: sha("1"), ProgramTarget: "ardents/linux-amd64/node", GenerationTarget: "ardents/linux-amd64/infrastructure/descriptor", ProgramSHA256: sha("2"), TemplateSHA256: digest([]byte(Template)), InventorySHA256: sha("3"), TargetsSHA256: sha("4"), RequestSHA256: digest([]byte(independentRequest)), PlanSHA256: sha("5"), UnitSHA256: digest(unit), CertificateSHA256: sha("6"), Account: "ardents-node", UID: 999, GID: 999, History: "/var/lib/release-history", Request: r}
+	return binding{Schema: "ardents-descriptor-binding-v1", Invocation: "descriptor", Generation: sha("1"), ProgramTarget: "ardents/linux-amd64/node", GenerationTarget: "ardents/linux-amd64/infrastructure/descriptor", ProgramSHA256: sha("2"), TemplateSHA256: digest([]byte(deployment.DescriptorTemplate)), InventorySHA256: sha("3"), TargetsSHA256: sha("4"), RequestSHA256: digest([]byte(independentRequest)), PlanSHA256: sha("5"), UnitSHA256: digest(unit), CertificateSHA256: sha("6"), Account: "ardents-node", UID: 999, GID: 999, History: "/var/lib/release-history", Request: r}
 }
 
 // Close seals admission synchronously, joins the original reader and retains

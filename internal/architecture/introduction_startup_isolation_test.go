@@ -66,7 +66,7 @@ func introductionStartupImportAllowed(source, dependency string) bool {
 		}
 	case "cmd/ardents-control/introduction_artifact_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/installation/introduction":
+		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment":
 			return true
 		}
 	case "cmd/ardents-node/introduction_initial_linux.go":

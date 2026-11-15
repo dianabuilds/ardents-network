@@ -676,7 +676,37 @@ func successorImportAllowed(source, dependency string) bool {
 			"internal/successor/installation/infrastructure/source_recovery_pair_native_linux_test.go",
 			"internal/successor/installation/infrastructure/source_recovery_writing_native_linux_test.go",
 			"internal/successor/installation/infrastructure/source_request.go",
-			"internal/successor/installation/infrastructure/source_request_test.go":
+			"internal/successor/installation/infrastructure/source_request_test.go",
+			"cmd/ardents-control/descriptor_artifact_linux.go",
+			"cmd/ardents-control/descriptor_release_native_linux_test.go",
+			"cmd/ardents-control/descriptor_release_plan_linux.go",
+			"cmd/ardents-control/forwarding_artifact_linux.go",
+			"cmd/ardents-control/forwarding_artifact_native_linux_test.go",
+			"cmd/ardents-control/forwarding_release_native_linux_test.go",
+			"cmd/ardents-control/forwarding_release_plan_linux.go",
+			"cmd/ardents-control/introduction_artifact_linux.go",
+			"cmd/ardents-control/introduction_release_native_linux_test.go",
+			"cmd/ardents-control/introduction_release_plan_linux.go",
+			"cmd/ardents-control/join_artifact_linux.go",
+			"cmd/ardents-control/join_release_native_linux_test.go",
+			"cmd/ardents-control/join_release_plan_linux.go",
+			"internal/successor/installation/descriptor/binding.go",
+			"internal/successor/installation/descriptor/replacement_test.go",
+			"internal/successor/installation/descriptor/template.go",
+			"internal/successor/installation/descriptor/transition_scope_native_linux_test.go",
+			"internal/successor/installation/forwarding/binding.go",
+			"internal/successor/installation/forwarding/replacement_history_native_linux_test.go",
+			"internal/successor/installation/forwarding/request.go",
+			"internal/successor/installation/forwarding/selected_generation_test.go",
+			"internal/successor/installation/forwarding/selection_test.go",
+			"internal/successor/installation/forwarding/transition_scope_native_linux_test.go",
+			"internal/successor/installation/introduction/binding.go",
+			"internal/successor/installation/introduction/initial_records_linux_test.go",
+			"internal/successor/installation/introduction/template.go",
+			"internal/successor/installation/join/binding.go",
+			"internal/successor/installation/join/replacement_test.go",
+			"internal/successor/installation/join/request_test.go",
+			"internal/successor/installation/join/template.go":
 			return true
 		}
 	}
@@ -770,29 +800,26 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/join_hosting_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/join") {
 			return true
 		}
-		if source == "cmd/ardents-control/introduction_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/introduction") {
+		if source == "cmd/ardents-control/introduction_artifact_linux.go" && dependency == modulePath+"/internal/successor/enrollment" {
 			return true
 		}
 		if (source == "cmd/ardents-control/introduction_request_linux.go" || source == "cmd/ardents-control/introduction_plan_linux.go" || source == "cmd/ardents-node/introduction_preflight_linux.go") && dependency == modulePath+"/internal/successor/installation/introduction" {
 			return true
 		}
 
-		if source == "cmd/ardents-control/descriptor_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/descriptor") {
+		if source == "cmd/ardents-control/descriptor_artifact_linux.go" && dependency == modulePath+"/internal/successor/enrollment" {
 			return true
 		}
 		if (source == "cmd/ardents-control/descriptor_request_linux.go" || source == "cmd/ardents-control/descriptor_plan_linux.go") && dependency == modulePath+"/internal/successor/installation/descriptor" {
 			return true
 		}
-		if source == "cmd/ardents-control/join_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/join") {
+		if source == "cmd/ardents-control/join_artifact_linux.go" && dependency == modulePath+"/internal/successor/enrollment" {
 			return true
 		}
 		if source == "cmd/ardents-control/join_initial_stopped_native_linux_test.go" && dependency == modulePath+"/internal/successor/installation/join" {
 			return true
 		}
 		if (source == "cmd/ardents-control/join_request_linux.go" || source == "cmd/ardents-control/join_plan_linux.go") && dependency == modulePath+"/internal/successor/installation/join" {
-			return true
-		}
-		if (source == "cmd/ardents-control/join_release_plan_linux.go" || source == "cmd/ardents-control/join_release_native_linux_test.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/join") {
 			return true
 		}
 		if source == "cmd/ardents-control/join_release_native_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
@@ -807,7 +834,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		}
-		if source == "cmd/ardents-control/forwarding_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/forwarding") {
+		if source == "cmd/ardents-control/forwarding_artifact_linux.go" && dependency == modulePath+"/internal/successor/enrollment" {
 			return true
 		}
 		if source == "cmd/ardents-control/forwarding_state_linux.go" && (dependency == modulePath+"/internal/successor/installation/forwarding" || dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/state") {
@@ -867,7 +894,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		}
-		if (source == "cmd/ardents-control/forwarding_release_plan_linux.go" || source == "cmd/ardents-control/forwarding_release_native_linux_test.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/forwarding") {
+		if source == "cmd/ardents-control/forwarding_release_native_linux_test.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
 			return true
 		}
 		if source == "cmd/ardents-control/forwarding_release_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
@@ -2198,11 +2225,6 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/successor/network/epoch", "github.com/dianabuilds/ardents-network/internal/successor/network/source":
 			return true
 		}
-	case "cmd/ardents-control/join_release_plan_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/installation/join":
-			return true
-		}
 	case "cmd/ardents-control/join_profile_plan_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile", "github.com/dianabuilds/ardents-network/internal/successor/network", "github.com/dianabuilds/ardents-network/internal/successor/network/closedprofile", "github.com/dianabuilds/ardents-network/internal/successor/network/epoch", "github.com/dianabuilds/ardents-network/internal/successor/network/source":
@@ -2210,7 +2232,7 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 		}
 	case "cmd/ardents-control/join_artifact_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/installation/join":
+		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment":
 			return true
 		}
 	case "cmd/ardents-control/join_node_certificate_linux.go":

@@ -16,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
 )
 
@@ -143,7 +144,7 @@ func TestForwardingPreparationNativeRequestAndFixedTemplate(t *testing.T) {
 		t.Fatal("actual fixed template preparation", string(output), err)
 	}
 	template, err := os.ReadFile(filepath.Join(templateOutput, "ardents-forwarding.service"))
-	if err != nil || !bytes.Equal(template, []byte(forwarding.Template)) {
+	if err != nil || !bytes.Equal(template, []byte(deployment.ForwardingTemplate)) {
 		t.Fatal("fixed template bytes", err)
 	}
 }

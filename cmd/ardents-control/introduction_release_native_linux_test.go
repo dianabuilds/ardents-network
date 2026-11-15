@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	introductioninstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/introduction"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
@@ -33,7 +33,7 @@ func TestIntroductionPreparationNativeInitialReleasePurposeAndKeyCustody(t *test
 		t.Fatal("actual fixed template producer", string(out), err)
 	}
 	preparedTemplate, err := os.ReadFile(filepath.Join(templateOutput, "ardents-introduction.service"))
-	if err != nil || !bytes.Equal(preparedTemplate, []byte(introductioninstallation.Template)) {
+	if err != nil || !bytes.Equal(preparedTemplate, []byte(deployment.IntroductionTemplate)) {
 		t.Fatal("closed template differs", err)
 	}
 	program, template, introduction := filepath.Join(parent, "node"), filepath.Join(parent, "template"), filepath.Join(parent, "introduction")
@@ -42,7 +42,7 @@ func TestIntroductionPreparationNativeInitialReleasePurposeAndKeyCustody(t *test
 			t.Fatal(err)
 		}
 	}
-	introductionBytes, err := releaseartifact.PrepareIntroductionArtifact("one", 1, nodeBytes, []byte(introductioninstallation.Template))
+	introductionBytes, err := releaseartifact.PrepareIntroductionArtifact("one", 1, nodeBytes, []byte(deployment.IntroductionTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestIntroductionPreparationNativeInitialReleasePurposeAndKeyCustody(t *test
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badIntroduction, err := releaseartifact.PrepareIntroductionArtifact("one", 1, controlBytes, []byte(introductioninstallation.Template))
+	badIntroduction, err := releaseartifact.PrepareIntroductionArtifact("one", 1, controlBytes, []byte(deployment.IntroductionTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,9 +1,10 @@
 package forwarding
 
 import (
-	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"strings"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 )
 
 func TestForwardingUnitIndependentFixedPolicy(t *testing.T) {
@@ -13,7 +14,7 @@ func TestForwardingUnitIndependentFixedPolicy(t *testing.T) {
 	}
 	generation := strings.Repeat("a", 64)
 	want := forwardingUnitVector(generation)
-	unit, err := RenderUnit([]byte(Template), r, generation)
+	unit, err := RenderUnit([]byte(deployment.ForwardingTemplate), r, generation)
 	if err != nil || string(unit) != want {
 		t.Fatalf("fixed independent unit vector differs: %s: %v", unit, err)
 	}
@@ -22,12 +23,12 @@ func TestForwardingUnitIndependentFixedPolicy(t *testing.T) {
 		{"MemoryMax=1073741824", "MemoryMax=2147483648"}, {"forwarding start-installed", "join start-installed"},
 		{"ProtectSystem=strict", "ProtectSystem=no"}, {"KillMode=control-group", "KillMode=process"},
 	} {
-		template := strings.Replace(Template, mutation.before, mutation.after, 1)
+		template := strings.Replace(deployment.ForwardingTemplate, mutation.before, mutation.after, 1)
 		if _, err := RenderUnit([]byte(template), r, generation); err == nil {
 			t.Fatal("changed fixed policy accepted", mutation)
 		}
 	}
-	for _, template := range []string{deployment.SourceTemplate, Template + "\nExecStartPost=/bin/true\n"} {
+	for _, template := range []string{deployment.SourceTemplate, deployment.ForwardingTemplate + "\nExecStartPost=/bin/true\n"} {
 		if _, err := RenderUnit([]byte(template), r, generation); err == nil {
 			t.Fatal("foreign template accepted")
 		}

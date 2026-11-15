@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 )
 
 // This failure-only probe stops after the actual retirement leaf read. Detached
@@ -55,7 +57,7 @@ func replacementHistoryRetirementParent(t *testing.T, fault string) {
 		s.binding.History = history
 		request := encode(s.binding.Request)
 		s.binding.RequestSHA256 = digest(request)
-		unit, e := RenderUnit([]byte(Template), s.binding.Request, s.binding.Generation)
+		unit, e := RenderUnit([]byte(deployment.ForwardingTemplate), s.binding.Request, s.binding.Generation)
 		if e != nil {
 			t.Fatal(e)
 		}
@@ -73,7 +75,7 @@ func replacementHistoryRetirementParent(t *testing.T, fault string) {
 	}
 	bodies["infrastructure-forwarding.json"] = []byte("new generation")
 	bodies["forwarding-request.json"] = encode(selected.binding.Request)
-	bodies["rendered-forwarding.service"], err = RenderUnit([]byte(Template), selected.binding.Request, selected.binding.Generation)
+	bodies["rendered-forwarding.service"], err = RenderUnit([]byte(deployment.ForwardingTemplate), selected.binding.Request, selected.binding.Generation)
 	if err != nil {
 		t.Fatal(err)
 	}

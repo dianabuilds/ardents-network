@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	descriptorinstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
@@ -33,7 +33,7 @@ func TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 		t.Fatal("actual fixed template producer", string(out), err)
 	}
 	preparedTemplate, err := os.ReadFile(filepath.Join(templateOutput, "ardents-descriptor.service"))
-	if err != nil || !bytes.Equal(preparedTemplate, []byte(descriptorinstallation.Template)) {
+	if err != nil || !bytes.Equal(preparedTemplate, []byte(deployment.DescriptorTemplate)) {
 		t.Fatal("closed template differs", err)
 	}
 	program, template, descriptor := filepath.Join(parent, "node"), filepath.Join(parent, "template"), filepath.Join(parent, "descriptor")
@@ -42,7 +42,7 @@ func TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 			t.Fatal(err)
 		}
 	}
-	descriptorBytes, err := releaseartifact.PrepareDescriptorArtifact("one", 1, nodeBytes, []byte(descriptorinstallation.Template))
+	descriptorBytes, err := releaseartifact.PrepareDescriptorArtifact("one", 1, nodeBytes, []byte(deployment.DescriptorTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := releaseartifact.PrepareDescriptorArtifact("one", 1, controlBytes, []byte(descriptorinstallation.Template))
+	badDescriptor, err := releaseartifact.PrepareDescriptorArtifact("one", 1, controlBytes, []byte(deployment.DescriptorTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}

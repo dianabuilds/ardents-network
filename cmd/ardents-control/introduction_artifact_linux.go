@@ -18,8 +18,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	introductioninstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/introduction"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -90,7 +90,7 @@ func prepareIntroductionArtifact(ctx context.Context, args []string, observe fun
 		if len(args) != 2 {
 			return nil, errSourceControlInput
 		}
-		result = []byte(introductioninstallation.Template)
+		result = []byte(deployment.IntroductionTemplate)
 		name, destination = releaseartifact.IntroductionTemplateName, args[1]
 	case "prepare-request":
 		result, destination, returned = introductionRequestArguments(args[1:])

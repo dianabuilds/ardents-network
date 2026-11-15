@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -93,7 +93,7 @@ func prepareForwardingArtifact(ctx context.Context, args []string, observe func(
 		if len(args) != 2 {
 			return nil, errSourceControlInput
 		}
-		result = []byte(forwarding.Template)
+		result = []byte(deployment.ForwardingTemplate)
 		name, destination = releaseartifact.ForwardingTemplateName, args[1]
 	case "prepare-request":
 		result, destination, returned = forwardingRequestArguments(args[1:])

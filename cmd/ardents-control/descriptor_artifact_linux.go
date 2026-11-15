@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	descriptorinstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -94,7 +94,7 @@ func prepareDescriptorArtifact(ctx context.Context, args []string, observe func(
 		if len(args) != 2 {
 			return nil, errSourceControlInput
 		}
-		result = []byte(descriptorinstallation.Template)
+		result = []byte(deployment.DescriptorTemplate)
 		name, destination = releaseartifact.DescriptorTemplateName, args[1]
 	case "prepare-request":
 		result, destination, returned = descriptorRequestArguments(args[1:])

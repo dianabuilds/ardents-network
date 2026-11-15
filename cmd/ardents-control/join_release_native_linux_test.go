@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	joininstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/join"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
@@ -33,7 +33,7 @@ func TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 		t.Fatal("actual fixed template producer", string(out), err)
 	}
 	preparedTemplate, err := os.ReadFile(filepath.Join(templateOutput, "ardents-join.service"))
-	if err != nil || !bytes.Equal(preparedTemplate, []byte(joininstallation.Template)) {
+	if err != nil || !bytes.Equal(preparedTemplate, []byte(deployment.JoinTemplate)) {
 		t.Fatal("closed template differs", err)
 	}
 	program, template, descriptor := filepath.Join(parent, "node"), filepath.Join(parent, "template"), filepath.Join(parent, "descriptor")
@@ -42,7 +42,7 @@ func TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	descriptorBytes, err := releaseartifact.PrepareJoinDescriptor("one", 1, nodeBytes, []byte(joininstallation.Template))
+	descriptorBytes, err := releaseartifact.PrepareJoinDescriptor("one", 1, nodeBytes, []byte(deployment.JoinTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +240,7 @@ func TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := releaseartifact.PrepareJoinDescriptor("one", 1, controlBytes, []byte(joininstallation.Template))
+	badDescriptor, err := releaseartifact.PrepareJoinDescriptor("one", 1, controlBytes, []byte(deployment.JoinTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}

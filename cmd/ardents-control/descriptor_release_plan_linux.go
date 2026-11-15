@@ -8,7 +8,7 @@ import (
 	"errors"
 	"time"
 
-	descriptorinstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor"
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -53,7 +53,7 @@ func validateDescriptorReleaseResources(plan descriptorReleasePlan, program, des
 	d, err := releaseartifact.ValidateDescriptorResources(descriptor, program, template)
 	initial := plan.Schema == "ardents-descriptor-initial-release-plan-v1"
 	forward := plan.Schema == "ardents-descriptor-forward-release-plan-v1"
-	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(descriptorinstallation.Template)) {
+	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(deployment.DescriptorTemplate)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))

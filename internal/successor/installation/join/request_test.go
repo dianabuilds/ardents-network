@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 )
 
 const requestVector = "{\"schema\":\"ardents-join-installation-v1\",\"invocation\":\"join\",\"profile\":\"ardents-join-process-v1\",\"installation_root\":\"/opt/ardents-join\",\"state_root\":\"/var/lib/ardents-node-state\",\"participation_root\":\"/var/lib/ardents-node-participation\",\"spend_root\":\"/var/lib/ardents-node-spend\",\"hosting_root\":\"/var/lib/ardents-node-hosting\",\"credential_directory\":\"/etc/ardents-node\",\"plan\":\"/var/lib/ardents-delivery/join.json\",\"certificate\":\"/var/lib/ardents-delivery/certificate.pem\",\"private_key\":\"/var/lib/ardents-delivery/private-key.pem\",\"clock\":\"/var/lib/ardents-clock/observation\"}\n"
@@ -97,7 +99,7 @@ func TestRequestReservesFiniteJournalsAndCompletionPaths(t *testing.T) {
 }
 
 func TestFixedJoinTemplateHasOnePurposeAndUnchangedProtection(t *testing.T) {
-	unit := Template
+	unit := deployment.JoinTemplate
 	for _, line := range []string{
 		"User=ardents-node", "Group=ardents-node", "SupplementaryGroups=", "Restart=no", "KillMode=control-group", "NoNewPrivileges=yes",
 		"CapabilityBoundingSet=", "AmbientCapabilities=", "PrivateTmp=yes", "ProtectHome=yes", "ProtectSystem=strict",
@@ -121,7 +123,7 @@ func TestJoinRenderingBindsExactCommandAndFourRoots(t *testing.T) {
 		t.Fatal(err)
 	}
 	generation := strings.Repeat("1", 64)
-	actual, err := renderUnit([]byte(Template), r, generation)
+	actual, err := renderUnit([]byte(deployment.JoinTemplate), r, generation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,15 +134,15 @@ func TestJoinRenderingBindsExactCommandAndFourRoots(t *testing.T) {
 		t.Fatal("rendered fixed JOIN command/root binding differs", unit)
 	}
 	for _, bad := range []string{"", strings.Repeat("1", 63), strings.Repeat("G", 64)} {
-		if _, err := renderUnit([]byte(Template), r, bad); err == nil {
+		if _, err := renderUnit([]byte(deployment.JoinTemplate), r, bad); err == nil {
 			t.Fatal("invalid generation accepted")
 		}
 	}
-	if _, err := renderUnit([]byte(Template+"ExecStartPre=/bin/true\n"), r, generation); err == nil {
+	if _, err := renderUnit([]byte(deployment.JoinTemplate+"ExecStartPre=/bin/true\n"), r, generation); err == nil {
 		t.Fatal("unaccepted template gained a command")
 	}
 	r.InstallationRoot = "/opt/%n"
-	if _, err := renderUnit([]byte(Template), r, generation); err == nil {
+	if _, err := renderUnit([]byte(deployment.JoinTemplate), r, generation); err == nil {
 		t.Fatal("unit expansion in path admitted")
 	}
 }
