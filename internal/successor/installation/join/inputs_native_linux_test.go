@@ -194,6 +194,23 @@ func TestJoinInputsNativeOriginalCustodyAndLiveClock(t *testing.T) {
 	}
 }
 
+func TestJoinInputsNativeCloseRetainsLateDeliveryMutation(t *testing.T) {
+	f := prepareInputFixture(t)
+	input, err := ReadInputs(t.Context(), f.path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(f.request.Plan, []byte("changed after last observation\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := input.Close(); err == nil {
+		t.Fatal("Close lost the late mutation of the original delivery")
+	}
+	if err := input.Close(); err == nil {
+		t.Fatal("repeated Close lost the retained failure")
+	}
+}
+
 func TestJoinInputsNativeRefusalReturnsOwnDescriptors(t *testing.T) {
 	for _, fault := range []string{"request-mode", "plan-binding", "key-mode", "key-pair", "key-symlink", "key-hardlink", "plan-symlink", "ancestor-symlink", "clock-mode", "clock-symlink"} {
 		t.Run(fault, func(t *testing.T) {

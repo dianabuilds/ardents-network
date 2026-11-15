@@ -180,7 +180,7 @@ func (h Inputs) Close() error {
 		p.closed = true
 		p.mu.Unlock()
 		p.uses.Wait()
-		physical := p.files.Close()
+		physical := errors.Join(p.files.Check(), p.files.Close())
 		p.mu.Lock()
 		p.failure = errors.Join(p.failure, p.ctx.Err(), physical)
 		p.mu.Unlock()
