@@ -1082,7 +1082,10 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-control/node_state_preparation_linux_test.go" && (dependency == modulePath+"/internal/successor/deployment" || dependency == modulePath+"/internal/successor/installation/join" || dependency == modulePath+"/internal/successor/installation/descriptor" || dependency == modulePath+"/internal/successor/installation/introduction") {
 		return true
 	}
-	if source == "cmd/ardents-control/node_state_preparation_linux.go" && (dependency == modulePath+"/internal/successor/deployment" || dependency == modulePath+"/internal/successor/network/state") {
+	if source == "cmd/ardents-control/node_state_preparation_test.go" && dependency == modulePath+"/internal/successor/deployment" {
+		return true
+	}
+	if source == "cmd/ardents-control/node_state_preparation.go" && (dependency == modulePath+"/internal/successor/deployment" || dependency == modulePath+"/internal/successor/network/state") {
 		return true
 	}
 	if (source == "cmd/ardents-control/join_state_linux.go" || source == "cmd/ardents-control/descriptor_state_linux.go" || source == "cmd/ardents-control/introduction_state_linux.go" || source == "cmd/ardents-control/forwarding_state_linux.go") && dependency == modulePath+"/internal/successor/deployment" {

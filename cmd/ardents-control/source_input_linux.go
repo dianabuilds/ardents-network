@@ -30,10 +30,6 @@ type sourceControlInputs struct {
 	failed error
 }
 
-func sourceControlPath(path string) bool {
-	return path != "/" && len(path) > 1 && len(path) <= 4096 && filepath.IsAbs(path) && filepath.Clean(path) == path && !strings.ContainsRune(path, 0)
-}
-
 func sourceControlOpen(parent *sourceControlFile, name string, directory bool) (*os.File, error) {
 	flags := syscall.O_RDONLY | syscall.O_CLOEXEC | syscall.O_NOFOLLOW | syscall.O_NONBLOCK
 	if directory {
