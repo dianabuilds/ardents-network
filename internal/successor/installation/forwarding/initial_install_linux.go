@@ -10,7 +10,6 @@ import (
 	"slices"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
@@ -70,7 +69,7 @@ func InstallInitialStopped(v *release.Verifier, a releaseartifact.ForwardingAuth
 		return ErrInput
 	}
 	if _, ok := a.InitialFacts(); !ok {
-		return infrastructure.ErrAuthorization
+		return releaseartifact.ErrAuthorization
 	}
 	if err := errors.Join(input.IndependentPaths(distribution, history), a.Check(ctx, v), v.CheckHistoryPath(ctx, history)); err != nil {
 		return err

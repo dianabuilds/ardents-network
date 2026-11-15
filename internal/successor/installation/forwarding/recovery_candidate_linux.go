@@ -5,7 +5,6 @@ import (
 	"context"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -24,7 +23,7 @@ func prepareRecoveryCandidate(a releaseartifact.ForwardingAuthorization, input I
 		return nil, ErrInput
 	}
 	if _, initial := a.InitialFacts(); initial {
-		return nil, infrastructure.ErrAuthorization
+		return nil, releaseartifact.ErrAuthorization
 	}
 	b := selected.binding
 	incompleteArtifacts := original.cut.Boundary.Operation == "initial" && original.cut.Boundary.Records >= 72 && original.cut.Boundary.Records <= 107

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -24,7 +23,7 @@ func prepareReplacement(retired *started, a releaseartifact.JoinAuthorization, i
 		return nil, ErrInput
 	}
 	if _, initial := a.InitialFacts(); initial {
-		return nil, infrastructure.ErrAuthorization
+		return nil, releaseartifact.ErrAuthorization
 	}
 	c := retired.completed.original
 	old, found := c.selections[digest(c.files[filepath.Join(c.binding.Request.InstallationRoot, "binding.json")].body)]

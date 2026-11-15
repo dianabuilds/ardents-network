@@ -996,10 +996,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/forwarding/recovered_retirement_linux.go" || source == "internal/successor/installation/forwarding/retirement_storage_linux.go" || source == "internal/successor/installation/forwarding/retirement_snapshot_linux.go" || source == "internal/successor/installation/forwarding/retirement_records_linux_test.go") && dependency == modulePath+"/internal/successor/installation/journal" {
 		return true
 	}
-	if source == "internal/successor/installation/forwarding/initial_install_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/systemd" || dependency == modulePath+"/internal/successor/release") {
-		return true
-	}
-	if (source == "internal/successor/installation/forwarding/replacement_candidate_linux.go" || source == "internal/successor/installation/forwarding/recovery_candidate_linux.go") && dependency == modulePath+"/internal/successor/installation/infrastructure" {
+	if source == "internal/successor/installation/forwarding/initial_install_linux.go" && (dependency == modulePath+"/internal/successor/installation/systemd" || dependency == modulePath+"/internal/successor/release") {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/replacement_inspections_linux.go" {
@@ -1094,7 +1091,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/join/generation_bytes.go" && dependency == modulePath+"/internal/successor/enrollment" {
 		return true
 	}
-	if (source == "internal/successor/installation/join/initial_install_linux.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/systemd" || dependency == modulePath+"/internal/successor/release") {
+	if (source == "internal/successor/installation/join/initial_install_linux.go") && (dependency == modulePath+"/internal/successor/installation/systemd" || dependency == modulePath+"/internal/successor/release") {
 		return true
 	}
 	if (source == "internal/successor/installation/join/initial_birth_linux.go") && (dependency == modulePath+"/internal/successor/installation/directory" || dependency == modulePath+"/internal/successor/installation/fixedfile") {
@@ -2069,12 +2066,6 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 			return true
 		}
 
-	case "internal/successor/installation/join/replacement_candidate_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
-			return true
-		}
-
 	case "internal/successor/installation/join/replacement_inspections_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/admission/spending", "github.com/dianabuilds/ardents-network/internal/successor/hosting", "github.com/dianabuilds/ardents-network/internal/successor/network/state":
@@ -2125,7 +2116,7 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 
 	case "internal/successor/installation/join/initial_install_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
+		case "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd", "github.com/dianabuilds/ardents-network/internal/successor/release":
 			return true
 		}
 	case "internal/successor/installation/join/start_initial_linux.go":

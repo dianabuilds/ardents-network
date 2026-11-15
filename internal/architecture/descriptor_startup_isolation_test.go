@@ -29,11 +29,6 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/successor/enrollment", "github.com/dianabuilds/ardents-network/internal/successor/release", "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure", "github.com/theupdateframework/go-tuf/v2/metadata":
 			return true
 		}
-	case "internal/successor/installation/descriptor/replacement_candidate_linux.go":
-		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure":
-			return true
-		}
 	case "internal/successor/installation/descriptor/replacement_inspections_linux.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/admission/spending", "github.com/dianabuilds/ardents-network/internal/successor/hosting", "github.com/dianabuilds/ardents-network/internal/successor/network/state", "github.com/dianabuilds/ardents-network/internal/successor/reachability":
