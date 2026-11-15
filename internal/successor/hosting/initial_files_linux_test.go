@@ -34,11 +34,11 @@ func TestHostingFilesPreserveOriginalDirectoryAndRefuseReplay(t *testing.T) {
 	}
 	for _, name := range []string{"budget.pin", "budget.lock", "budget.json"} {
 		current, err := root.Lstat(name)
-		if err != nil || births.Original(name) == nil || !os.SameFile(births.Original(name), current) {
+		if err != nil || births.originals[name] == nil || !os.SameFile(births.originals[name], current) {
 			t.Fatal("original file birth differs", name, err)
 		}
 	}
-	if births.Original("budget.pending") != nil {
+	if births.originals["budget.pending"] != nil {
 		t.Fatal("temporary file became a period birth")
 	}
 	original, err := os.ReadFile(filepath.Join(path, "budget.json"))
@@ -98,7 +98,7 @@ func TestHostingFilesRefuseInvalidCanceledAndUnknownDirectoryWithoutEffects(t *t
 				}
 			}
 			births, err := InitializeFiles(ctx, root, candidate)
-			if err == nil || births.Original("budget.pin") != nil {
+			if err == nil || births.originals["budget.pin"] != nil {
 				t.Fatal("unusable initialization returned births", err)
 			}
 			entries, err := os.ReadDir(path)

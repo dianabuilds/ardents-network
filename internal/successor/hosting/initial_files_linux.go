@@ -16,10 +16,6 @@ import (
 // It grants no allowance, installation permission or live reservation.
 type FileBirths struct{ originals map[string]os.FileInfo }
 
-// Original returns the original observation for one fixed period file. The
-// caller must match it to the actual descriptor before delivery or promotion.
-func (births FileBirths) Original(name string) os.FileInfo { return births.originals[name] }
-
 // InitializeFiles creates the period's files in a borrowed original empty
 // directory. It neither creates nor replaces that directory and does not close
 // the caller's handle. The installation caller must independently admit its

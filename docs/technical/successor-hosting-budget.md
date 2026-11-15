@@ -47,10 +47,9 @@ a late close failure retains the uncertain result even after durable readback.
 
 `InitializeFiles` is the Linux-only file-creation effect for that installation
 composition. It borrows the original empty native directory, validates the
-policy and real counters, creates every period file exclusively, and returns
-only their original native birth observations. Those facts grant no installation
-permission or live budget; the caller matches each actual descriptor before
-ownership delivery and joins its own directory. `FileBirths.Promote` performs
+policy and real counters, creates every period file exclusively, and retains
+their original native birth observations in an opaque handle. That handle grants
+no installation permission or live budget; the caller joins its own directory. `FileBirths.Promote` performs
 that ownership transfer for only the three exact original period files; it
 rechecks file identity, metadata and single-link ownership before transfer and
 checks the original descriptor and name after it. The caller still admits the
