@@ -28,49 +28,18 @@ func DecodeStartRecords(raw []byte, purpose string, number uint32, journal, dire
 	if len(lines) != 25 && len(lines) != 26 {
 		return nil, ErrBinding
 	}
-	position := 0
 	schema, firstPhase := "ardents-"+purpose+"-start-journal-v1", "first-start"
 	if number != 0 {
 		firstPhase = "invocation"
 	}
-	owned := make(map[string]InvocationRecord)
-	next := func(phase, path, hash string, mode, group uint32, native bool) error {
-		if position >= len(lines) || len(lines[position])+1 > 32<<10 {
-			return ErrBinding
-		}
-		var actual InvocationRecord
-		if json.Unmarshal(lines[position], &actual) != nil {
-			return ErrBinding
-		}
-		canonical, err := json.Marshal(actual)
-		if err != nil || !bytes.Equal(canonical, lines[position]) {
-			return ErrBinding
-		}
-		wanted := InvocationRecord{Schema: schema, Sequence: uint32(position), Phase: phase, Path: path, SHA256: hash, Mode: mode, GID: group}
-		if native {
-			if actual.Device == 0 || actual.Inode == 0 {
-				return ErrBinding
-			}
-			wanted.Device, wanted.Inode = actual.Device, actual.Inode
-			if old, exists := owned[path]; exists && (old.Device != actual.Device || old.Inode != actual.Inode) {
-				return ErrBinding
-			}
-		}
-		if actual != wanted {
-			return ErrBinding
-		}
-		if native {
-			owned[path] = actual
-		}
-		position++
-		return nil
-	}
+	records := invocationRecords{lines: lines, schema: schema, owned: make(map[string]InvocationRecord)}
+	next := records.next
 	if next(firstPhase, journal, binding, 0600, 0, true) != nil {
 		return nil, ErrBinding
 	}
 	if len(lines) == 26 {
 		var context InvocationRecord
-		if json.Unmarshal(lines[position], &context) != nil || !validInvocationDigest(context.SHA256) {
+		if json.Unmarshal(lines[records.position], &context) != nil || !validInvocationDigest(context.SHA256) {
 			return nil, ErrBinding
 		}
 		if next("native-context", filepath.Dir(directory), context.SHA256, 0, 0, false) != nil {
@@ -100,7 +69,7 @@ func DecodeStartRecords(raw []byte, purpose string, number uint32, journal, dire
 	// Ownership, original inode continuity and the exact promoted mode are
 	// independently checked; an assumed umask cannot replace those observations.
 	var born InvocationRecord
-	if position >= len(lines) || json.Unmarshal(lines[position], &born) != nil || born.Mode > 0777 {
+	if records.position >= len(lines) || json.Unmarshal(lines[records.position], &born) != nil || born.Mode > 0777 {
 		return nil, ErrBinding
 	}
 	if next("socket-born", socket, "", born.Mode, 0, true) != nil ||
@@ -112,25 +81,10 @@ func DecodeStartRecords(raw []byte, purpose string, number uint32, journal, dire
 		file("start-archived.json", archive) != nil ||
 		next("archived", filepath.Join(directory, "start-archived.json"), archive, 0600, 0, true) != nil ||
 		next("ack-attempt", directory, acknowledgement, 0, 0, false) != nil ||
-		next("ack-written", directory, acknowledgement, 0, 0, false) != nil || position != len(lines) {
+		next("ack-written", directory, acknowledgement, 0, 0, false) != nil || records.position != len(lines) {
 		return nil, ErrBinding
 	}
-	return owned, nil
-}
-
-// InvocationRecord describes one detached canonical journal record; it carries no
-// native custody, Release permission or evidence of a live invocation.
-type InvocationRecord struct {
-	Schema   string `json:"schema"`
-	Sequence uint32 `json:"sequence"`
-	Phase    string `json:"phase"`
-	Path     string `json:"path"`
-	Device   uint64 `json:"device"`
-	Inode    uint64 `json:"inode"`
-	SHA256   string `json:"sha256"`
-	Mode     uint32 `json:"mode"`
-	UID      uint32 `json:"uid"`
-	GID      uint32 `json:"gid"`
+	return records.owned, nil
 }
 
 func validInvocationDigest(value string) bool {

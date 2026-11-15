@@ -24,39 +24,8 @@ func DecodeRetirementRecords(raw []byte, purpose string, journal, directory, sta
 	if len(lines) != 18 {
 		return nil, ErrBinding
 	}
-	position := 0
-	owned := map[string]InvocationRecord{}
-	next := func(phase, path, hash string, mode, group uint32, native bool) error {
-		if position >= len(lines) || len(lines[position])+1 > 32<<10 {
-			return ErrBinding
-		}
-		var actual InvocationRecord
-		if json.Unmarshal(lines[position], &actual) != nil {
-			return ErrBinding
-		}
-		canonical, err := json.Marshal(actual)
-		if err != nil || !bytes.Equal(canonical, lines[position]) {
-			return ErrBinding
-		}
-		wanted := InvocationRecord{Schema: "ardents-" + purpose + "-retirement-journal-v1", Sequence: uint32(position), Phase: phase, Path: path, SHA256: hash, Mode: mode, GID: group}
-		if native {
-			if actual.Device == 0 || actual.Inode == 0 {
-				return ErrBinding
-			}
-			wanted.Device, wanted.Inode = actual.Device, actual.Inode
-			if previous, exists := owned[path]; exists && (previous.Device != actual.Device || previous.Inode != actual.Inode) {
-				return ErrBinding
-			}
-		}
-		if actual != wanted {
-			return ErrBinding
-		}
-		if native {
-			owned[path] = actual
-		}
-		position++
-		return nil
-	}
+	records := invocationRecords{lines: lines, schema: "ardents-" + purpose + "-retirement-journal-v1", owned: make(map[string]InvocationRecord)}
+	next := records.next
 	if next("stop", journal, start, 0600, 0, true) != nil || next("directory-intent", directory, "", 0, 0, false) != nil || next("directory-born", directory, "", 0700, 0, true) != nil || next("directory-ready", directory, "", 0750, gid, true) != nil {
 		return nil, ErrBinding
 	}
@@ -73,11 +42,11 @@ func DecodeRetirementRecords(raw []byte, purpose string, journal, directory, sta
 		return nil, ErrBinding
 	}
 	var born InvocationRecord
-	if position >= len(lines) || json.Unmarshal(lines[position], &born) != nil || born.Mode > 0777 {
+	if records.position >= len(lines) || json.Unmarshal(lines[records.position], &born) != nil || born.Mode > 0777 {
 		return nil, ErrBinding
 	}
-	if next("socket-born", socket, "", born.Mode, 0, true) != nil || next("socket-ready", socket, "", 0660, gid, true) != nil || next("interrupt-attempt", directory, challenge, 0, 0, false) != nil || next("domain-joined", directory, completed, 0, 0, false) != nil || next("native-joined", directory, result, 0, 0, false) != nil || next("native-closed", directory, result, 0, 0, false) != nil || file("retirement-result.json", result) != nil || next("retired", filepath.Join(directory, "retirement-result.json"), result, 0600, 0, true) != nil || position != len(lines) {
+	if next("socket-born", socket, "", born.Mode, 0, true) != nil || next("socket-ready", socket, "", 0660, gid, true) != nil || next("interrupt-attempt", directory, challenge, 0, 0, false) != nil || next("domain-joined", directory, completed, 0, 0, false) != nil || next("native-joined", directory, result, 0, 0, false) != nil || next("native-closed", directory, result, 0, 0, false) != nil || file("retirement-result.json", result) != nil || next("retired", filepath.Join(directory, "retirement-result.json"), result, 0600, 0, true) != nil || records.position != len(lines) {
 		return nil, ErrBinding
 	}
-	return owned, nil
+	return records.owned, nil
 }
