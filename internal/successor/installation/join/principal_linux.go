@@ -10,6 +10,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/nodeprincipal"
 )
 
 // Host databases remain host-owned. Each observation independently reads the
@@ -55,14 +57,17 @@ func observeNodePrincipal(ctx context.Context, uid, gid uint32) (err error) {
 		}
 		files[path] = file
 	}
-	rows, err := validateNodePublicPrincipal(files["/etc/passwd"].raw, files["/etc/group"].raw, files["/etc/nsswitch.conf"].raw, uid, gid)
+	rows, err := nodeprincipal.ValidatePublic(files["/etc/passwd"].raw, files["/etc/group"].raw, files["/etc/nsswitch.conf"].raw, uid, gid)
 	if err != nil {
-		return err
+		return ErrBinding
 	}
 	if os.Geteuid() == 0 {
 		for _, path := range []string{"/etc/shadow", "/etc/gshadow"} {
-			row, e := nodeCurrentPrincipalRow(files[path].raw)
-			if e != nil || validateNodePrincipalRow(path, row, uid, gid) != nil {
+			row, e := nodeprincipal.CurrentRow(files[path].raw)
+			if e != nil || nodeprincipal.ValidateRow(path, row, uid, gid) != nil {
+				if e != nil {
+					e = ErrBinding
+				}
 				return errors.Join(ErrBinding, e)
 			}
 		}
@@ -107,106 +112,4 @@ func observeNodePrincipal(ctx context.Context, uid, gid uint32) (err error) {
 		}
 	}
 	return ctx.Err()
-}
-
-func nodeCurrentPrincipalRow(raw []byte) (string, error) {
-	if len(raw) == 0 || raw[len(raw)-1] != '\n' || strings.IndexByte(string(raw), 0) >= 0 {
-		return "", ErrBinding
-	}
-	var own string
-	for _, line := range strings.Split(string(raw), "\n") {
-		name, _, _ := strings.Cut(line, ":")
-		if name != "ardents-node" {
-			continue
-		}
-		if own != "" {
-			return "", ErrBinding
-		}
-		own = line
-	}
-	if own == "" {
-		return "", ErrBinding
-	}
-	return own, nil
-}
-
-func validateNodePublicPrincipal(passwd, group, nss []byte, uid, gid uint32) (map[string]string, error) {
-	if uid < 100 || uid > 999 || gid != uid {
-		return nil, ErrBinding
-	}
-	rows := map[string]string{}
-	for _, database := range []struct {
-		path string
-		raw  []byte
-	}{
-		{"/etc/passwd", passwd}, {"/etc/group", group},
-	} {
-		row, err := nodeCurrentPrincipalRow(database.raw)
-		if err != nil || validateNodePrincipalRow(database.path, row, uid, gid) != nil {
-			return nil, errors.Join(ErrBinding, err)
-		}
-		rows[strings.TrimPrefix(database.path, "/etc/")] = row
-		for _, line := range strings.Split(string(database.raw), "\n") {
-			if line == "" || strings.HasPrefix(line, "#") {
-				continue
-			}
-			parts := strings.Split(line, ":")
-			count := 4
-			if database.path == "/etc/passwd" {
-				count = 7
-			}
-			if len(parts) != count {
-				return nil, ErrBinding
-			}
-			number, err := strconv.ParseUint(parts[2], 10, 32)
-			if err != nil || parts[0] != "ardents-node" && number == uint64(uid) {
-				return nil, ErrBinding
-			}
-			if database.path == "/etc/passwd" {
-				number, err = strconv.ParseUint(parts[3], 10, 32)
-				if err != nil || parts[0] != "ardents-node" && number == uint64(gid) {
-					return nil, ErrBinding
-				}
-			} else {
-				for _, member := range strings.Split(parts[3], ",") {
-					if member == "ardents-node" {
-						return nil, ErrBinding
-					}
-				}
-			}
-		}
-	}
-	if err := validateNodeNSS(nss); err != nil {
-		return nil, err
-	}
-	return rows, nil
-}
-
-func validateNodeNSS(raw []byte) error {
-	seen := map[string]bool{}
-	for _, line := range strings.Split(string(raw), "\n") {
-		line, _, _ = strings.Cut(line, "#")
-		name, value, ok := strings.Cut(line, ":")
-		name = strings.TrimSpace(name)
-		if name != "passwd" && name != "group" {
-			continue
-		}
-		if !ok || seen[name] {
-			return ErrBinding
-		}
-		seen[name] = true
-		modules := strings.Fields(value)
-		if len(modules) == 0 {
-			return ErrBinding
-		}
-		for _, module := range modules {
-			if module != "files" && module != "systemd" {
-				return ErrBinding
-			}
-		}
-	}
-	if len(seen) != 2 {
-		return ErrBinding
-	}
-	return nil
 }

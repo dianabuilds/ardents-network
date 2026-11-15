@@ -481,6 +481,9 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if (source == "internal/successor/installation/join/account_linux.go" || source == "internal/successor/installation/join/principal_linux.go" || source == "internal/successor/installation/descriptor/account_linux.go" || source == "internal/successor/installation/descriptor/principal_linux.go" || source == "internal/successor/installation/forwarding/account_linux.go" || source == "internal/successor/installation/forwarding/principal_linux.go" || source == "internal/successor/installation/introduction/account_linux.go" || source == "internal/successor/installation/introduction/principal_linux.go" || source == "internal/successor/installation/forwarding/account_linux_test.go") && dependency == modulePath+"/internal/successor/installation/nodeprincipal" {
+		return true
+	}
 	if (source == "internal/successor/installation/systemd/fixed_unit_control_linux.go" || source == "internal/successor/installation/systemd/node_other_slots_linux.go" || source == "internal/successor/installation/systemd/node_observation_linux.go") && dependency == "github.com/godbus/dbus/v5" {
 		return true
 	}
@@ -961,6 +964,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/installation/directory":          {},
 		"internal/successor/installation/systemd":            {},
 		"internal/successor/installation/journal":            {},
+		"internal/successor/installation/nodeprincipal":      {},
 		"internal/successor/installation/process":            {},
 		"internal/successor/installation/generation":         {},
 		"internal/successor/installation/completion":         {},

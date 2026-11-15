@@ -13,6 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/nodeprincipal"
 )
 
 // Adapted from the maintained Source native account mechanism; this distinct
@@ -46,8 +48,8 @@ func prepareNodeAccount(ctx context.Context, inputs Inputs) (*nodeAccount, error
 		}
 		a.before[p] = f
 	}
-	if err := validateNodeNSS(a.before["/etc/nsswitch.conf"].raw); err != nil {
-		return a, err
+	if err := nodeprincipal.ValidateNSS(a.before["/etc/nsswitch.conf"].raw); err != nil {
+		return a, ErrBinding
 	}
 	operatingSystem := map[string]string{}
 	for _, line := range strings.Split(string(a.before["/usr/lib/os-release"].raw), "\n") {
@@ -282,8 +284,8 @@ func (a *nodeAccount) create(j *initialBirths, inputs Inputs, admit, admitCreate
 			return e
 		}
 		a.after[p] = f
-		if e = nodeAccountDelta(p, a.before[p].raw, f.raw, a.uid, a.gid); e != nil {
-			return e
+		if e = nodeprincipal.Delta(p, a.before[p].raw, f.raw, a.uid, a.gid); e != nil {
+			return ErrBinding
 		}
 	}
 	for _, path := range nodeAccountAuxiliaryPaths() {
@@ -382,68 +384,6 @@ func (d *nodeAccountDiagnostic) Write(raw []byte) (int, error) {
 		return 0, ErrBinding
 	}
 	return d.body.Write(raw)
-}
-
-func nodeAccountDelta(path string, before, after []byte, uid, gid uint32) error {
-	if len(before) == 0 || before[len(before)-1] != '\n' || len(after) == 0 || after[len(after)-1] != '\n' {
-		return ErrBinding
-	}
-	var own string
-	var rest strings.Builder
-	for _, line := range strings.SplitAfter(string(after), "\n") {
-		if strings.HasPrefix(line, "ardents-node:") {
-			if own != "" {
-				return ErrBinding
-			}
-			own = strings.TrimSuffix(line, "\n")
-		} else {
-			rest.WriteString(line)
-		}
-	}
-	if rest.String() != string(before) || own == "" {
-		return ErrBinding
-	}
-	return validateNodePrincipalRow(path, own, uid, gid)
-}
-
-// The initial creator checks its foreign-byte delta separately. Later native
-// admission independently checks the same fixed principal's current rows; this
-// pure condition supplies neither creation provenance nor account ownership.
-func validateNodePrincipalRow(path, own string, uid, gid uint32) error {
-	if !strings.HasPrefix(own, "ardents-node:") {
-		return ErrBinding
-	}
-	u, g := strconv.FormatUint(uint64(uid), 10), strconv.FormatUint(uint64(gid), 10)
-	switch path {
-	case "/etc/passwd":
-		if own != "ardents-node:x:"+u+":"+g+"::/nonexistent:/usr/sbin/nologin" {
-			return ErrBinding
-		}
-	case "/etc/group":
-		if own != "ardents-node:x:"+g+":" {
-			return ErrBinding
-		}
-	case "/etc/gshadow":
-		if own != "ardents-node:!::" {
-			return ErrBinding
-		}
-	case "/etc/shadow":
-		f := strings.Split(own, ":")
-		if len(f) != 9 || f[1] != "!" {
-			return ErrBinding
-		}
-		if _, e := strconv.ParseUint(f[2], 10, 32); e != nil {
-			return ErrBinding
-		}
-		for _, v := range f[3:] {
-			if v != "" {
-				return ErrBinding
-			}
-		}
-	default:
-		return ErrBinding
-	}
-	return nil
 }
 
 func (a *nodeAccount) check() error {
