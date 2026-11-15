@@ -1013,7 +1013,8 @@ Stop seals original admission and interrupts dependents before waiting.
 Receiver joins both sides, selected writers, listener and Carrier before
 Receiving/Hosting close; Node then closes its native pins and TLS credential.
 Only successful Node cleanup withdraws its participation producer; failed
-cleanup retains the conflict restriction. Command-owned State closes later. First operational and independent physical failures remain retained
+cleanup retains its record. A live restriction continues to conflict, while a
+prepared restriction keeps its original expiry. Command-owned State closes later. First operational and independent physical failures remain retained
 through concurrent/copied/repeated Close. A bounded unavailable report keeps
 resources until actual completion; absent PID or path never proves join.
 

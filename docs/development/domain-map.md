@@ -433,8 +433,10 @@ and [Route integration](route-delivery-join-boundary.md) own the complete rules:
 
 The installed Forwarding, JOIN, Descriptor and Introduction Nodes withdraw their
 original Network participation only after their own physical cleanup succeeds;
-a failed cleanup retains the durable conflict restriction. Command-owned State
-and Startup still close later and require their own joined outcome.
+a failed cleanup retains the original participation record. A live restriction
+retains its conflict; a prepared restriction keeps its original expiry.
+Command-owned State and Startup still close later and require their own joined
+outcome.
 
 Source hashes, attempts, receipt provenance and acceptance remain in the selected
 GitHub ledger and existing evidence, not this map. Documentation consolidation

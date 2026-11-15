@@ -9,8 +9,8 @@ import (
 
 // releaseParticipation withdraws the original restriction only after Node's
 // physical owners have joined successfully. A failed close leaves the durable
-// restriction in place; neither this result nor its absence proves the later
-// command-owned State and startup closes succeeded.
+// restriction in place with its original Network phase and expiry. Neither its
+// absence nor its presence proves later command-owned State and startup closes.
 func releaseParticipation(producer *duty.NodeProducer, cleanup error) error {
 	if producer == nil || cleanup != nil {
 		return nil
