@@ -3,25 +3,11 @@ package main
 import (
 	"encoding/hex"
 	"encoding/json"
-	"flag"
-	"io"
 	"path/filepath"
-	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
 	descriptorinstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor"
 )
-
-type descriptorAuthorityFlags []string
-
-func (pins *descriptorAuthorityFlags) String() string { return strings.Join(*pins, ",") }
-func (pins *descriptorAuthorityFlags) Set(value string) error {
-	if len(*pins) >= 16 || len(value) != 64 {
-		return descriptorinstallation.ErrInput
-	}
-	*pins = append(*pins, value)
-	return nil
-}
 
 // The reviewed public pins and fixed request become one immutable local plan.
 // This producer opens neither private keys nor State/participation/Hosting roots.
@@ -29,27 +15,15 @@ func descriptorPlanArguments(args []string, inputs *sourceControlInputs) ([]byte
 	if inputs == nil || len(args) > 64 {
 		return nil, "", descriptorinstallation.ErrInput
 	}
-	flags := flag.NewFlagSet("descriptor prepare-plan", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	var requestPath, destination, networkID, nodeID, profileAuthority string
-	var pins descriptorAuthorityFlags
 	var p deployment.DescriptorPlan
-	var wait uint64
-	flags.StringVar(&requestPath, "request", "", "original canonical request")
-	flags.StringVar(&destination, "output", "", "fresh output directory")
-	flags.StringVar(&networkID, "network-id", "", "exact Network ID")
-	flags.StringVar(&nodeID, "node-id", "", "exact Node ID")
-	flags.StringVar(&profileAuthority, "profile-authority", "", "independently approved profile key")
-	flags.Var(&pins, "authority", "independently approved State key; at most sixteen")
-	flags.IntVar(&p.Network.Threshold, "threshold", 0, "State signature threshold")
-	flags.Uint64Var(&p.Work.Tx, "work-tx", 0, "full Descriptor work Tx coverage")
-	flags.Uint64Var(&p.Work.Rx, "work-rx", 0, "full Descriptor work Rx coverage")
-	flags.Uint64Var(&p.Termination.Tx, "termination-tx", 0, "termination Tx coverage")
-	flags.Uint64Var(&p.Termination.Rx, "termination-rx", 0, "termination Rx coverage")
-	flags.Uint64Var(&wait, "retirement-wait-ms", 0, "bounded notice wait, not a descriptor proof")
-	if flags.Parse(args) != nil || flags.NArg() != 0 || flags.NFlag() != 12 || !forwardingUniqueOptions(args, "authority") || !sourceControlPath(destination) || wait == 0 || wait > 5000 {
-		return nil, "", descriptorinstallation.ErrInput
+	values, err := nodePlanFlags(args, "descriptor", descriptorinstallation.ErrInput, &p.Network.Threshold, &p.Work.Tx, &p.Work.Rx, &p.Termination.Tx, &p.Termination.Rx)
+	if err != nil {
+		return nil, "", err
 	}
+	requestPath, destination := values.requestPath, values.destination
+	networkID, nodeID, profileAuthority := values.networkID, values.nodeID, values.profileAuthority
+	pins, wait := values.pins.values, values.wait
+
 	raw, err := inputs.read(requestPath, 16<<10)
 	if err != nil {
 		return nil, "", err
