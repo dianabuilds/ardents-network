@@ -114,6 +114,23 @@ that next physical round, never during or after it.
 
 ## Supporting mechanisms and composition
 
+Introduction's separate Installation declaration/input owner binds its fixed
+request, public trust plan, non-root unit and independent slot-history root.
+Canonical Control retains public preparation custody; canonical Node's read-only
+preflight retains its own original request/plan/TLS/clock ancestry and native
+NodeSlots connection. It observes all five role slots, account absence and future
+root/journal absence, joining original users before output. No Receiving birth,
+Registry, State, Hosting or live sibling owner opens; a copied declaration or
+preflight result grants no creation, Release or Startup permission.
+
+Introduction public artifact preparation is fixed offline Control composition.
+Infrastructure owns its exact invocation/program/unit byte binding; Enrollment
+owns the distinct seven-file inventory. Original protected input and exclusive
+output custody join before acknowledgement. These detached bytes grant no
+Release, Receiving birth, Registry history, Startup, delivery or runtime right.
+No Source, Forwarding, JOIN or Descriptor live owner is borrowed.
+
+
 Descriptor-role public preparation is fixed offline command composition.
 Infrastructure binds only its exact descriptor/program/template bytes; Enrollment
 owns the distinct seven-file inventory. Installation's separate `descriptor`
@@ -1337,3 +1354,13 @@ completion under fresh Release and five original semantic inspections. Its
 read-only manager cannot replay Reload/Start; no physical cut grants original
 Node domain completion. Original prefixes, histories, principals and floors
 remain retained across recovery and later forward replacement.
+
+Introduction initial stopped installation is a separate original lifetime.
+Infrastructure retains exact Node/Introduction Release proofs; Enrollment owns
+the independently pinned inventory and running program. Installation owns the
+fixed account/unit, twelve-file generation, five empty semantic roots, original
+journal and post-join pending publication. Its independent initial-only reader
+owns a new exclusive journal lease and native files; current principal and fresh
+Release permission are separate observations. Account database records describe
+historical effects, never immutable host databases. No Receiving birth, Registry
+initialization, first Start, role duty or runtime import follows from completion.

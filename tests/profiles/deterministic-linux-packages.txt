@@ -9,3 +9,4 @@ github.com/dianabuilds/ardents-network/internal/endpoint/publication
 github.com/dianabuilds/ardents-network/internal/admission/attempts
 github.com/dianabuilds/ardents-network/internal/admission/permissionfile
 github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor
+github.com/dianabuilds/ardents-network/internal/successor/installation/introduction

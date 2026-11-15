@@ -48,14 +48,17 @@ const (
 	descriptorUnitReply    // Fixed Descriptor unit only; no jobs.
 	joinUnitReply          // Fixed JOIN unit only; no job replies for stopped installation.
 	joinControlReply       // Separate root start/cleanup vocabulary, never stopped/runtime permission.
+	introductionUnitReply  // Fixed Introduction initial stopped unit only; no jobs.
 )
 
 func (reply managerUnitReply) valid() bool {
-	return reply == sourceUnitReply || reply == forwardingUnitReply || reply == nodeSlotsReply || reply == joinUnitReply || reply == joinControlReply || reply == descriptorUnitReply || reply == descriptorControlReply
+	return reply == introductionUnitReply || reply == sourceUnitReply || reply == forwardingUnitReply || reply == nodeSlotsReply || reply == joinUnitReply || reply == joinControlReply || reply == descriptorUnitReply || reply == descriptorControlReply
 }
 
 func (reply managerUnitReply) object() string {
 	switch reply {
+	case introductionUnitReply:
+		return "/org/freedesktop/systemd1/unit/ardents_2dintroduction_2eservice"
 	case sourceUnitReply:
 		return "/org/freedesktop/systemd1/unit/ardents_2dsource_2eservice"
 	case forwardingUnitReply:

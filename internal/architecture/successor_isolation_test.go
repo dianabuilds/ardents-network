@@ -28,7 +28,7 @@ func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
 		switch name {
 		case "file_unix.go", "file_unix_test.go", "file_windows.go", "file_unsupported.go":
 			continue
-		case "infrastructure_inventory.go", "infrastructure_inventory_test.go", "descriptor_inventory_linux_test.go", "infrastructure_process_linux.go":
+		case "infrastructure_inventory.go", "infrastructure_inventory_test.go", "descriptor_inventory_linux_test.go", "introduction_inventory_linux_test.go", "infrastructure_process_linux.go":
 			// This distinct inventory has no Windows accepting product path.
 			continue
 		}
@@ -55,6 +55,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/enrollment/infrastructure_inventory.go",
 			"internal/successor/enrollment/infrastructure_inventory_test.go",
 			"internal/successor/enrollment/descriptor_inventory_linux_test.go",
+			"internal/successor/enrollment/introduction_inventory_linux_test.go",
 			"internal/successor/enrollment/infrastructure_process_linux.go",
 			"internal/successor/installation/infrastructure/doc.go",
 			"internal/successor/installation/infrastructure/artifact.go",
@@ -480,7 +481,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
-	if descriptorStartupImportAllowed(source, dependency) || descriptorInitialImportAllowed(source, dependency) {
+	if introductionInitialImportAllowed(source, dependency) || descriptorStartupImportAllowed(source, dependency) || descriptorInitialImportAllowed(source, dependency) {
 		return true
 	}
 	if joinFirstStartImportAllowed(source, dependency) {
@@ -561,6 +562,13 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/join_hosting_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/join") {
 			return true
 		}
+		if source == "cmd/ardents-control/introduction_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/introduction") {
+			return true
+		}
+		if (source == "cmd/ardents-control/introduction_request_linux.go" || source == "cmd/ardents-control/introduction_plan_linux.go" || source == "cmd/ardents-node/introduction_preflight_linux.go") && dependency == modulePath+"/internal/successor/installation/introduction" {
+			return true
+		}
+
 		if source == "cmd/ardents-control/descriptor_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/descriptor") {
 			return true
 		}
@@ -863,6 +871,16 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/installation/join/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
+	if source == "internal/successor/installation/introduction/inputs_linux.go" && dependency == modulePath+"/internal/successor/installation/request" {
+		return true
+	}
+	if source == "internal/successor/installation/introduction/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
+		return true
+	}
+	if source == "internal/successor/installation/introduction/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
+		return true
+	}
+
 	if source == "internal/successor/installation/descriptor/inputs_linux.go" && dependency == modulePath+"/internal/successor/installation/request" {
 		return true
 	}
@@ -928,6 +946,7 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/installation":                    {"enrollment", "release", "installation/request"},
 		"internal/successor/installation/infrastructure":     {"enrollment", "release"},
 		"internal/successor/installation/descriptor":         {},
+		"internal/successor/installation/introduction":       {},
 		"internal/successor/installation/join":               {},
 		"internal/successor/installation/forwarding":         {},
 		"internal/successor/installation/endpoint":           {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "installation/request", "installation/directory"},

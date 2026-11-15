@@ -1595,3 +1595,67 @@ it grants no recovery or runtime authority. The second admits only the complete
 stopped prefix with fresh proofs and original predecessor completion. It neither
 starts a Node nor repeats Reload. Partial or uncertain prefixes retain their
 blockers and require repair; files alone supply no recovery permission.
+
+### Introduction public artifact preparation
+
+On Linux as root, with original root-protected input paths and fresh output
+directories:
+
+```sh
+ardents-control introduction prepare-artifact RELEASE_ID VERSION NODE_PROGRAM UNIT_TEMPLATE OUTPUT_DIRECTORY
+ardents-control introduction prepare-inventory DISTRIBUTION_DIRECTORY OUTPUT_DIRECTORY
+```
+
+The first command writes `infrastructure-introduction.json`, binding the exact
+`ardents-node-linux-amd64` and `ardents-introduction.service` bytes. The second
+requires exactly those three files and `root.json`, `timestamp.json`,
+`snapshot.json`, `targets.json`, then writes `infrastructure-enrollment.json`.
+Both print only operation and output SHA-256 after original users join. Existing
+or partial output refuses; preserve it for diagnosis and use a fresh directory.
+This creates public unsigned declarations, not an independent initial pin,
+Release signature, accepted native unit, installation or running Introduction.
+These public preparation commands grant no installation or startup permission. The separate initial commands below provide stopped installation only.
+
+### Introduction request, plan and read-only preflight
+
+```sh
+ardents-control introduction prepare-template OUTPUT_DIRECTORY
+ardents-control introduction prepare-request --installation-root PATH --state-root PATH --participation-root PATH --spend-root PATH --hosting-root PATH --introduction-root PATH --credential-directory PATH --plan PATH --certificate PATH --private-key PATH --clock PATH --output OUTPUT_DIRECTORY
+ardents-control introduction prepare-plan --request REQUEST --output OUTPUT_DIRECTORY --network-id HEX --node-id HEX --profile-authority HEX --authority HEX --threshold COUNT --work-tx BYTES --work-rx BYTES --termination-tx BYTES --termination-rx BYTES --retirement-wait-ms MILLISECONDS
+ardents-node introduction inspect-inputs REQUEST
+```
+
+All run on Linux as root with protected existing delivery ancestors and fresh
+public outputs. Request preparation writes `introduction-request.json` without
+opening declared credentials, clock or semantic roots. Plan preparation retains
+the original request; its declared plan path must be exactly the new output's
+`introduction-plan.json`. Repeat `--authority` only for distinct independently
+reviewed State keys; other options occur once. `prepare-template` writes the
+fixed `ardents-introduction.service`. Supply those exact template bytes to
+`prepare-artifact`. The plan's runtime certificate/key paths point into the
+future credential directory; delivered certificate/key inputs remain separate.
+
+`inspect-inputs` checks original protected delivery, matching Ed25519 credentials,
+live root-clock access, the actual manager, all five absent Node role slots and
+future resources. It emits `introduction-inputs-preflight-completed` only after
+all original users join. Existing or changed input, account, root, unit or journal
+refuses without mutation. These declarations and observations grant no Release,
+installation, semantic initialization, Start or runtime permission.
+
+Introduction initial stopped commands (Linux root, fixed initial purpose):
+
+```text
+ardents-control introduction prepare-release-keys FRESH_PRIVATE_KEYS
+ardents-control introduction prepare-release-plan --network NETWORK --reference RFC3339 --expires RFC3339 --program NODE --descriptor ARTIFACT --template UNIT --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_OUTPUT
+ardents-control introduction sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
+ardents-node introduction install-initial-stopped DISTRIBUTION PIN RELEASE-HISTORY ENVIRONMENT NETWORK REQUEST
+ardents-node introduction inspect-initial-history DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING
+```
+
+The public build-record preparer is `scripts/installation/prepare-introduction-release-plan.py`
+(run with isolated `python3 -I -S` and `--help` for exact required public inputs).
+It signs nothing. Canonical signing retains original protected inputs and keys;
+Release independently authorizes exact targets. First installation requires the
+independent inventory pin and genuine running Node Enrollment. It performs one
+reload, leaves five semantic roots empty and the unit stopped, and publishes only
+after original joins. Independent history output grants no runtime permission.

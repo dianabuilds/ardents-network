@@ -88,6 +88,8 @@ func infrastructureNames(invocation string) []string {
 		return []string{"ardents-node-linux-amd64", "ardents-source.service", "infrastructure-source.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"}
 	case "forwarding":
 		return []string{"ardents-forwarding.service", "ardents-node-linux-amd64", "infrastructure-forwarding.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"}
+	case "introduction":
+		return []string{"ardents-introduction.service", "ardents-node-linux-amd64", "infrastructure-introduction.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"}
 	case "descriptor":
 		return []string{"ardents-descriptor.service", "ardents-node-linux-amd64", "infrastructure-descriptor.json", "root.json", "snapshot.json", "targets.json", "timestamp.json"}
 	case "join":
@@ -168,7 +170,7 @@ func parseInfrastructureInventory(raw []byte) (infrastructureInventory, error) {
 
 func infrastructureLimit(name string) int64 {
 	switch name {
-	case "infrastructure-source.json", "infrastructure-forwarding.json", "infrastructure-join.json", "infrastructure-descriptor.json":
+	case "infrastructure-source.json", "infrastructure-forwarding.json", "infrastructure-join.json", "infrastructure-descriptor.json", "infrastructure-introduction.json":
 		return 16 << 10
 	case "root.json", "snapshot.json", "targets.json", "timestamp.json":
 		return 1 << 20

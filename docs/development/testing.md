@@ -5525,3 +5525,52 @@ history, absent/copied original-cut inode, partial recovery and replay must
 refuse while preserving original prefix and Store bytes. A subsequent actual
 program replacement checks recovered lineage with a new immutable program.
 Neither profile accepts earlier-prefix continuation or unknown domain completion.
+
+### Introduction offline public artifact custody
+
+`make network-signing-check` selects
+`TestIntroductionPreparationNativeCanonicalBytesAndInventory` and
+`TestIntroductionPreparationNativeRetainsFailureAndRejectsAdoption` in canonical
+Control under `network_signing_native`. Run as root on protected ext4 with private
+0700 TMPDIR under the shared development lock. Supply the exact same-source
+canonical Control path and SHA-256 through `ARDENTS_INTRODUCTION_CONTROL_PROGRAM`
+and `ARDENTS_INTRODUCTION_CONTROL_PROGRAM_SHA256`. Independent byte/hash oracles,
+foreign role/unit, changed program, extra inventory, held-output input mutation,
+cancellation with a real failed Close, retained partial-output refusal and fresh
+positive counterparts cover the public boundary. Ordinary Infrastructure and
+Enrollment tests cover canonical grammar/role separation. Missing prerequisites
+fail. These checks supply no Release/signature, native unit, installed runtime,
+Registry floor or private-delivery qualification.
+
+### Introduction declaration and read-only input controls
+
+The ordinary Linux profile includes `installation/introduction` and checks the
+independent canonical request/plan, five-root/journal separation, complete
+107-byte Unix completion namespace, foreign grammar and unavailable caller.
+Canonical Node's shape controls require pre-diagnostic refusal.
+`network-signing-check` additionally selects
+`TestIntroductionPreparationNativeTemplateAndRequestLeaveRuntimeAbsent` and
+`TestIntroductionInputsNative*` with `network_signing_native`. Supply same-source
+pinned canonical binaries through `ARDENTS_INTRODUCTION_CONTROL_PROGRAM` /
+`ARDENTS_INTRODUCTION_NODE_PROGRAM` and corresponding `_SHA256` fields; root
+input tests require explicit `ARDENTS_INTRODUCTION_PREFLIGHT_NATIVE=1`, actual
+Ubuntu24.04/systemd255, protected ext4 inputs and absent fixed Node slots/account.
+Native controls retain private access, original same-byte inode/mutation/caller
+loss, live clock distinction, actual Node read-only manager preflight, independent
+slot-root refusal with unchanged retained bytes and no diagnostics/future births.
+Generated TLS/public trust fixtures attest custody only, never Network authority,
+Release or installed runtime. Missing native prerequisites fail. Run under the
+common own-job lock; preserve original errors and join before temporary cleanup.
+
+Introduction initial stopped verification uses `make introduction-initial-stopped-check`
+on an explicitly marked, otherwise empty Ubuntu 24.04/ext4/systemd 255 stand.
+It requires independently pinned actual canonical Node/Control binaries, two
+matching controlled build records, the pinned public Release-plan preparer and
+source-bound prestart evidence. The profile checks separate five-key/threshold-three
+signing purpose and original custody, build-bound public claims, genuine Release
+and first-pin installation, independent full history, inactive/dead zero-PID
+unit, five empty semantic roots, pre-effect wrong-pin refusal, retry refusal and
+copied slot-root inode refusal. It starts no role and grants no installed runtime
+qualification. Original failed executions remain evidence; no missing prerequisite
+is a passing skip. Ordinary tests cover the closed transcript and reply grammar;
+`network-signing-check` covers original native input/birth failure and joins.

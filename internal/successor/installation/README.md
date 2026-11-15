@@ -15,7 +15,7 @@ retain the complete original invocation chain. Canonical Forwarding also
 implements explicit forward replacement of a proven stopped generation and
 recovery of proven original prefixes to a stopped state. A replacement does
 not start the selected generation. Installed acceptance applies to the
-artifacts and scope recorded in the corresponding receipt. JOIN separately implements its canonical initial/start/stop/restart/replacement and safe-prefix recovery lifetimes. Descriptor separately owns protected root Start, independent non-root Startup, original joined Stop, retained restart, forward resource/program replacement and recovery of the proven complete stopped replacement prefix. Initial installation alone leaves all five semantic roots empty and grants neither Start nor Store initialization; Reachability remains the sole Store/proof/history owner. Introduction and Issuer have no accepting installed transaction here. Canonical Control consumers can
+artifacts and scope recorded in the corresponding receipt. JOIN separately implements its canonical initial/start/stop/restart/replacement and safe-prefix recovery lifetimes. Descriptor separately owns protected root Start, independent non-root Startup, original joined Stop, retained restart, forward resource/program replacement and recovery of the proven complete stopped replacement prefix. Initial installation alone leaves all five semantic roots empty and grants neither Start nor Store initialization; Reachability remains the sole Store/proof/history owner. Introduction separately implements initial stopped installation and independent history only; no accepting Introduction runtime or Issuer installation is provided here. Canonical Control consumers can
 prepare Forwarding descriptor and initial-inventory bytes through Infrastructure
 and Enrollment; public preparation supplies no Release or installed authority.
 The [accepted infrastructure contract](../../../docs/technical/network-route-node.md#proposed-installed-infrastructure)
@@ -72,3 +72,12 @@ root-peer exchange before genuine runtime construction. Unknown/retained attempt
 stay blocking; kernel exit is no domain retirement. Source/Forwarding live owners
 and permission never cross. Explicit JOIN retirement/restart/replacement/recovery
 require their own independent contracts and verified consumers.
+
+Introduction has its own initial-only native transaction and completed reader in
+`introduction`, consumed directly by canonical Node. Separate Infrastructure
+Release admission and canonical fixed-purpose Control producers bind only the
+Node/Introduction pair. Shared physical births and manager source transfer no live
+owner or role permission. Five semantic roots remain empty; Route retains slot
+history policy. Unknown prefixes remain blocked. See the current Node owner for
+initial journal/lease ordering and testing owner for the marked native profile;
+initial completion grants no Start, semantic initialization or runtime duty.

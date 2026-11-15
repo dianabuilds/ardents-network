@@ -1,0 +1,17 @@
+//go:build linux
+
+// Package introduction owns fixed Introduction installation declarations,
+// original-input preflight, initial stopped installation and independent complete
+// history observation. Canonical Control
+// prepares public request, plan and template bytes; canonical Node independently
+// observes original delivery, five absent semantic roots and all five Node slots.
+// State owns authenticated time/duty, Admission spend and fresh receiving birth,
+// Hosting its budget, and Route Registry/slot floors and delivery. No semantic
+// owner is opened here. Detached declarations and successful preflight grant no
+// Release, account adoption, resource creation, Start or installed runtime right.
+// Genuine separate Enrollment/Release admission is required by the initial
+// creator. It owns fixed native births, one reload and post-join publication;
+// independent history retains its own journal lease and original inodes.
+// Shared request.Files, directory/fixed-file and systemd provide mechanisms only;
+// no sibling role's live owner, authority, root or history crosses this boundary.
+package introduction

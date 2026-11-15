@@ -4112,3 +4112,69 @@ Later replacement retains recovered predecessors and their original cuts/suffixe
 Only the actual next replacement's successful one-use Reload can advance its own
 three generator-directory observations, joining old descriptors before fresh
 custody. All other original native observations and semantic floors persist.
+
+### Introduction offline public artifact preparation
+
+Canonical Control's `introduction prepare-artifact` binds actual Node program
+and explicitly supplied public template bytes to the exact Introduction descriptor
+under the accepted ADR-0123 grammar. `prepare-inventory` independently matches
+that descriptor against the closed seven-file public distribution, including all
+four metadata files. Original root-protected inputs and exclusive output remain
+retained through reobservation, synchronization, readback and physical close.
+Cancellation, mutation or late close failure suppresses success; partial output
+is retained and cannot be adopted. This is byte preparation only: it neither
+validates native template policy nor signs or admits Release, initializes
+Receiving/Registry, installs resources, starts a Node or supplies bootstrap
+acceptance. Fixed request/plan/template preparation and installed lifetimes are
+separate consumers; a supplied template is not a qualified unit.
+
+### Introduction declarations and read-only delivery preflight
+
+`installation/introduction` owns the closed `ardents-introduction-installation-v1`
+request and `ardents-introduction-runtime-v1` public plan, with the existing
+`ardents-introduction-process-v1` profile. The five semantic roots are State,
+participation, Admission spend, Hosting and Route Introduction slot history;
+`introduction_root` never substitutes for spend or carries Reachability Store
+policy. Every declared input/root and retained initial/Hosting/invocation/
+retirement/replacement namespace stays independent. All64 finite invocation and
+retirement Unix completion paths must fit107 bytes before effects. Fixed unit
+bytes select only `introduction start-installed`, non-root `ardents-node`, the
+common protected Node envelope and explicit no-restart policy. Their preparation
+does not implement that runtime command or qualify native unit behavior.
+
+Canonical Node's `introduction inspect-inputs` retains original root-controlled
+request/plan/TLS files through `request.Files`, validates the Ed25519 pair, and
+keeps the root-writer clock live. Original-file mutation, same-byte foreign
+inodes or caller loss permanently deny that original lifetime; restoration
+cannot revive it. It observes the original actual manager and all five fixed
+Node slots twice through its own read-only connection, then checks future roots,
+complete journal namespace, unit-search paths and absent Node account. Existing
+slot history refuses without opening, adopting, repairing or deleting its bytes.
+Every input/manager user joins before result. No Release verifier, Enrollment,
+semantic owner, account/resource birth, Reload, Start or runtime duty follows.
+
+### Initial stopped Introduction installation
+
+Canonical `ardents-node introduction install-initial-stopped` consumes a genuine
+first-pin Enrollment bundle and fresh coherent Node/Introduction Release pair.
+The separate root transaction retains original request/plan/TLS delivery, native
+PID1/kernel/search-path observations, all-five-slot absence, account provenance
+and one exclusive initial journal. It exclusively births the fixed Node account,
+nine directories, two credentials and twelve-file generation, seals it, selects
+it and reloads the fixed non-root unit once. Five writable semantic roots remain
+empty and unopened by their semantic owners. The fixed manager permits no job.
+
+The complete initial transcript has 123 canonical records and 28 distinct native
+identities. Completion is published by removing the original pending blocker
+only after fresh Release/native checks, independent birth readback and original
+input, writer, verifier and manager joins. A partial or uncertain write/sync/close,
+account effect, selection or reload retains its prefix/blocker and refuses reuse;
+this initial boundary implements no rollback, adoption or recovery.
+
+`inspect-initial-history` independently acquires its own exclusive journal lease,
+validates the entire transcript, fixed inventories, original inode/access/bytes
+and current numeric principal, and matches installed payloads to a fresh retained
+Release pair. It never borrows creator custody or interprets semantic contents.
+Fresh metadata cannot replace the original inventory/history. Later operation
+journals refuse in this initial-only reader. Neither output supplies a first
+Start, Registry slot birth, Receiving authority or runtime acceptance.

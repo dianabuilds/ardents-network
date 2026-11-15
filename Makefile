@@ -536,7 +536,9 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/request -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/join -run '^TestJoin(Inputs|Preflight|Births)Native' -count=1 -v -timeout=3m
 
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestIntroductionPreparationNative(CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption|TemplateAndRequestLeaveRuntimeAbsent)$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNative(CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption|TemplateAndRequestLeaveRuntimeAbsent)$$' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/introduction -run '^TestIntroduction(Inputs|Births)Native' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/descriptor -run '^TestDescriptor(Inputs|Births)Native' -count=1 -v -timeout=3m
 
 network-signing-compile-check: export GOOS := linux
@@ -555,6 +557,7 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/forwarding-inputs.test" ./internal/successor/installation/forwarding
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/successor/installation/request
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-inputs.test" ./internal/successor/installation/join
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/introduction-inputs.test" ./internal/successor/installation/introduction
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/successor/reachability
 
 .PHONY: join-installed-check
@@ -607,3 +610,7 @@ descriptor-recovery-physical-check:
 descriptor-recovery-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-recovery-check requires exact accepted artifacts and original Ubuntu/systemd installed stand"; exit 2)
 	go test -race -trimpath -buildvcs=false -tags descriptor_installed_native ./internal/successor/installation/descriptor -run '^TestDescriptorInstalledNativeRecoveredResourceReplacement$$' -count=1 -v -timeout=3m
+
+.PHONY: introduction-initial-stopped-check
+introduction-initial-stopped-check:
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestIntroductionPreparationNative(InitialReleasePurposeAndKeyCustody|ActualBuildRecordsAndPublicPlan|InitialStoppedAndIndependentHistory)$$' -count=1 -v -timeout=3m
