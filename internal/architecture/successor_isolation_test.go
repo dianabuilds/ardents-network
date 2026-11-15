@@ -60,6 +60,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/infrastructure/doc.go",
 			"internal/successor/installation/infrastructure/artifact.go",
 			"internal/successor/installation/infrastructure/admission.go",
+			"internal/successor/installation/infrastructure/initial_floors_test.go",
 			"internal/successor/installation/infrastructure/artifact_test.go",
 			"internal/successor/installation/infrastructure/source_request_linux.go",
 			"internal/successor/installation/infrastructure/source_plan_linux.go",

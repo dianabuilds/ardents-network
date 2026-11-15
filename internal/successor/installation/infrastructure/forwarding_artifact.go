@@ -23,12 +23,5 @@ func DecodeForwardingDescriptor(raw []byte) (Declaration, error) {
 // ValidateForwardingResources checks exact public bytes before Release history is
 // opened. It grants no initial provenance, native custody or accepting authority.
 func ValidateForwardingResources(raw, program, template []byte) (Declaration, error) {
-	d, err := DecodeForwardingDescriptor(raw)
-	if err != nil {
-		return Declaration{}, err
-	}
-	if len(program) == 0 || len(program) > 64<<20 || len(template) == 0 || len(template) > 64<<20 || d.Files[ProgramName] != digest(program) || d.Files[ForwardingTemplateName] != digest(template) {
-		return Declaration{}, ErrBinding
-	}
-	return d, nil
+	return validateResources(raw, program, template, "forwarding", ForwardingTemplateName)
 }

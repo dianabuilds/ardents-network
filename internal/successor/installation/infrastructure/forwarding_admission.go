@@ -53,10 +53,10 @@ func AuthenticateForwardingInitial(ctx context.Context, v *release.Verifier, b e
 	if err != nil {
 		return ForwardingAuthorization{}, err
 	}
-	if floors.RootVersion != 0 || floors.TimestampVersion != 0 || floors.SnapshotVersion != 0 || floors.TargetsVersion != 0 || len(floors.RootDigest) != 0 || len(floors.TimestampDigest) != 0 || len(floors.SnapshotDigest) != 0 || len(floors.TargetsDigest) != 0 {
+	if !emptyInitialFloors(floors) {
 		return ForwardingAuthorization{}, release.ErrTrustUnavailable
 	}
-	a, err := authenticateForwarding(ctx, v, b, f, input)
+	a, err := authenticateInventory(ctx, v, b, f, input, artifactProfile{"forwarding", ForwardingTemplateName, ForwardingDescriptorName, ForwardingGenerationTarget})
 	if err != nil {
 		return ForwardingAuthorization{}, err
 	}
@@ -80,30 +80,9 @@ func AuthenticateForwardingCandidate(ctx context.Context, v *release.Verifier, c
 	if !floors.Complete() {
 		return ForwardingAuthorization{}, release.ErrTrustUnavailable
 	}
-	a, err := authenticateForwarding(ctx, v, c, f, input)
+	a, err := authenticateInventory(ctx, v, c, f, input, artifactProfile{"forwarding", ForwardingTemplateName, ForwardingDescriptorName, ForwardingGenerationTarget})
 	if err != nil {
 		return ForwardingAuthorization{}, err
 	}
 	return ForwardingAuthorization{pair: a}, nil
-}
-
-func authenticateForwarding(ctx context.Context, v *release.Verifier, files inventory, f enrollment.InfrastructureFacts, in release.Inputs) (Authorization, error) {
-	if ctx == nil || v == nil || f.Platform != "linux-amd64" || f.Invocation != "forwarding" || in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform || in.Local.Architecture != "amd64" || in.Local.RefTime.IsZero() {
-		return Authorization{}, ErrInput
-	}
-	if err := ctx.Err(); err != nil {
-		return Authorization{}, err
-	}
-	if err := files.Check(); err != nil {
-		return Authorization{}, err
-	}
-	program, _ := files.File(ProgramName)
-	template, _ := files.File(ForwardingTemplateName)
-	descriptor, _ := files.File(ForwardingDescriptorName)
-	root, _ := files.File("root.json")
-	d, err := ValidateForwardingResources(descriptor, program, template)
-	if err != nil {
-		return Authorization{}, err
-	}
-	return authenticateBoundPair(ctx, v, files, f, in, d, program, template, descriptor, root, ForwardingGenerationTarget)
 }

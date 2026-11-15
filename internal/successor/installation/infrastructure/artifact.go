@@ -87,11 +87,17 @@ func decodeDescriptor(raw []byte, invocation, templateName string) (Declaration,
 // ValidateResources checks public declaration/byte agreement before a caller
 // opens Release history. It produces no initial or signature authority.
 func ValidateResources(raw, program, template []byte) (Declaration, error) {
-	d, err := DecodeDescriptor(raw)
+	return validateResources(raw, program, template, "source", TemplateName)
+}
+
+// validateResources compares one fixed invocation's canonical declaration
+// against the exact public program and template bytes. It grants no authority.
+func validateResources(raw, program, template []byte, invocation, templateName string) (Declaration, error) {
+	d, err := decodeDescriptor(raw, invocation, templateName)
 	if err != nil {
 		return Declaration{}, err
 	}
-	if len(program) == 0 || len(program) > 64<<20 || len(template) == 0 || len(template) > 64<<20 || d.Files[ProgramName] != digest(program) || d.Files[TemplateName] != digest(template) {
+	if len(program) == 0 || len(program) > 64<<20 || len(template) == 0 || len(template) > 64<<20 || d.Files[ProgramName] != digest(program) || d.Files[templateName] != digest(template) {
 		return Declaration{}, ErrBinding
 	}
 	return d, nil

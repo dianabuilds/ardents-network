@@ -60,10 +60,10 @@ func AuthenticateIntroductionInitial(ctx context.Context, v *release.Verifier, b
 	if err != nil {
 		return IntroductionAuthorization{}, err
 	}
-	if floors.RootVersion != 0 || floors.TimestampVersion != 0 || floors.SnapshotVersion != 0 || floors.TargetsVersion != 0 || len(floors.RootDigest) != 0 || len(floors.TimestampDigest) != 0 || len(floors.SnapshotDigest) != 0 || len(floors.TargetsDigest) != 0 {
+	if !emptyInitialFloors(floors) {
 		return IntroductionAuthorization{}, release.ErrTrustUnavailable
 	}
-	a, err := authenticateIntroductionPair(ctx, v, b, f, in)
+	a, err := authenticateInventory(ctx, v, b, f, in, artifactProfile{"introduction", IntroductionTemplateName, IntroductionArtifactName, IntroductionGenerationTarget})
 	if err != nil {
 		return IntroductionAuthorization{}, err
 	}
@@ -93,30 +93,9 @@ func AuthenticateIntroductionCandidate(ctx context.Context, v *release.Verifier,
 	if !floors.Complete() {
 		return IntroductionAuthorization{}, release.ErrTrustUnavailable
 	}
-	a, err := authenticateIntroductionPair(ctx, v, c, f, in)
+	a, err := authenticateInventory(ctx, v, c, f, in, artifactProfile{"introduction", IntroductionTemplateName, IntroductionArtifactName, IntroductionGenerationTarget})
 	if err != nil {
 		return IntroductionAuthorization{}, err
 	}
 	return IntroductionAuthorization{pair: a}, nil
-}
-
-func authenticateIntroductionPair(ctx context.Context, v *release.Verifier, files inventory, f enrollment.InfrastructureFacts, in release.Inputs) (Authorization, error) {
-	if ctx == nil || v == nil || f.Invocation != "introduction" || f.Platform != "linux-amd64" || in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform || in.Local.Architecture != "amd64" || in.Local.RefTime.IsZero() {
-		return Authorization{}, ErrInput
-	}
-	if err := ctx.Err(); err != nil {
-		return Authorization{}, err
-	}
-	if err := files.Check(); err != nil {
-		return Authorization{}, err
-	}
-	program, _ := files.File(ProgramName)
-	template, _ := files.File(IntroductionTemplateName)
-	introduction, _ := files.File(IntroductionArtifactName)
-	root, _ := files.File("root.json")
-	d, err := ValidateIntroductionResources(introduction, program, template)
-	if err != nil {
-		return Authorization{}, err
-	}
-	return authenticateBoundPair(ctx, v, files, f, in, d, program, template, introduction, root, IntroductionGenerationTarget)
 }

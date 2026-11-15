@@ -23,12 +23,5 @@ func DecodeJoinDescriptor(raw []byte) (Declaration, error) {
 // ValidateJoinResources compares exact public bytes before Release history is
 // opened. Its detached declaration supplies no pin, authority or runtime right.
 func ValidateJoinResources(raw, program, template []byte) (Declaration, error) {
-	d, err := DecodeJoinDescriptor(raw)
-	if err != nil {
-		return Declaration{}, err
-	}
-	if len(program) == 0 || len(program) > 64<<20 || len(template) == 0 || len(template) > 64<<20 || d.Files[ProgramName] != digest(program) || d.Files[JoinTemplateName] != digest(template) {
-		return Declaration{}, ErrBinding
-	}
-	return d, nil
+	return validateResources(raw, program, template, "join", JoinTemplateName)
 }

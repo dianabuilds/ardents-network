@@ -23,12 +23,5 @@ func DecodeIntroductionArtifact(raw []byte) (Declaration, error) {
 // ValidateIntroductionResources compares exact public bytes before Release history is
 // opened. Its detached declaration supplies no pin, authority or runtime right.
 func ValidateIntroductionResources(raw, program, template []byte) (Declaration, error) {
-	d, err := DecodeIntroductionArtifact(raw)
-	if err != nil {
-		return Declaration{}, err
-	}
-	if len(program) == 0 || len(program) > 64<<20 || len(template) == 0 || len(template) > 64<<20 || d.Files[ProgramName] != digest(program) || d.Files[IntroductionTemplateName] != digest(template) {
-		return Declaration{}, ErrBinding
-	}
-	return d, nil
+	return validateResources(raw, program, template, "introduction", IntroductionTemplateName)
 }

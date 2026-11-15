@@ -23,12 +23,5 @@ func DecodeDescriptorArtifact(raw []byte) (Declaration, error) {
 // ValidateDescriptorResources compares exact public bytes before Release history is
 // opened. Its detached declaration supplies no pin, authority or runtime right.
 func ValidateDescriptorResources(raw, program, template []byte) (Declaration, error) {
-	d, err := DecodeDescriptorArtifact(raw)
-	if err != nil {
-		return Declaration{}, err
-	}
-	if len(program) == 0 || len(program) > 64<<20 || len(template) == 0 || len(template) > 64<<20 || d.Files[ProgramName] != digest(program) || d.Files[DescriptorTemplateName] != digest(template) {
-		return Declaration{}, ErrBinding
-	}
-	return d, nil
+	return validateResources(raw, program, template, "descriptor", DescriptorTemplateName)
 }

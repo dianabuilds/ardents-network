@@ -60,10 +60,10 @@ func AuthenticateJoinInitial(ctx context.Context, v *release.Verifier, b enrollm
 	if err != nil {
 		return JoinAuthorization{}, err
 	}
-	if floors.RootVersion != 0 || floors.TimestampVersion != 0 || floors.SnapshotVersion != 0 || floors.TargetsVersion != 0 || len(floors.RootDigest) != 0 || len(floors.TimestampDigest) != 0 || len(floors.SnapshotDigest) != 0 || len(floors.TargetsDigest) != 0 {
+	if !emptyInitialFloors(floors) {
 		return JoinAuthorization{}, release.ErrTrustUnavailable
 	}
-	a, err := authenticateJoinPair(ctx, v, b, f, in)
+	a, err := authenticateInventory(ctx, v, b, f, in, artifactProfile{"join", JoinTemplateName, JoinDescriptorName, JoinGenerationTarget})
 	if err != nil {
 		return JoinAuthorization{}, err
 	}
@@ -93,30 +93,9 @@ func AuthenticateJoinCandidate(ctx context.Context, v *release.Verifier, c enrol
 	if !floors.Complete() {
 		return JoinAuthorization{}, release.ErrTrustUnavailable
 	}
-	a, err := authenticateJoinPair(ctx, v, c, f, in)
+	a, err := authenticateInventory(ctx, v, c, f, in, artifactProfile{"join", JoinTemplateName, JoinDescriptorName, JoinGenerationTarget})
 	if err != nil {
 		return JoinAuthorization{}, err
 	}
 	return JoinAuthorization{pair: a}, nil
-}
-
-func authenticateJoinPair(ctx context.Context, v *release.Verifier, files inventory, f enrollment.InfrastructureFacts, in release.Inputs) (Authorization, error) {
-	if ctx == nil || v == nil || f.Invocation != "join" || f.Platform != "linux-amd64" || in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform || in.Local.Architecture != "amd64" || in.Local.RefTime.IsZero() {
-		return Authorization{}, ErrInput
-	}
-	if err := ctx.Err(); err != nil {
-		return Authorization{}, err
-	}
-	if err := files.Check(); err != nil {
-		return Authorization{}, err
-	}
-	program, _ := files.File(ProgramName)
-	template, _ := files.File(JoinTemplateName)
-	descriptor, _ := files.File(JoinDescriptorName)
-	root, _ := files.File("root.json")
-	d, err := ValidateJoinResources(descriptor, program, template)
-	if err != nil {
-		return Authorization{}, err
-	}
-	return authenticateBoundPair(ctx, v, files, f, in, d, program, template, descriptor, root, JoinGenerationTarget)
 }

@@ -49,6 +49,12 @@ func (a Authorization) InitialFacts() (enrollment.InfrastructureFacts, bool) {
 	return a.initial.Facts()
 }
 
+// An initial pin requires an entirely unborn Release history. Partial or
+// digest-only floors are not an initial history and cannot be reset.
+func emptyInitialFloors(f release.FloorSet) bool {
+	return f.RootVersion == 0 && f.TimestampVersion == 0 && f.SnapshotVersion == 0 && f.TargetsVersion == 0 && len(f.RootDigest) == 0 && len(f.TimestampDigest) == 0 && len(f.SnapshotDigest) == 0 && len(f.TargetsDigest) == 0
+}
+
 func AuthenticateInitial(ctx context.Context, v *release.Verifier, b enrollment.InfrastructureBundle, input release.Inputs) (Authorization, error) {
 	f, ok := b.Facts()
 	if !ok || f.Invocation != "source" || ctx == nil || v == nil {
@@ -58,10 +64,10 @@ func AuthenticateInitial(ctx context.Context, v *release.Verifier, b enrollment.
 	if err != nil {
 		return Authorization{}, err
 	}
-	if floors.RootVersion != 0 || floors.TimestampVersion != 0 || floors.SnapshotVersion != 0 || floors.TargetsVersion != 0 || len(floors.RootDigest) != 0 || len(floors.TimestampDigest) != 0 || len(floors.SnapshotDigest) != 0 || len(floors.TargetsDigest) != 0 {
+	if !emptyInitialFloors(floors) {
 		return Authorization{}, release.ErrTrustUnavailable
 	}
-	a, err := authenticate(ctx, v, b, f, input)
+	a, err := authenticateInventory(ctx, v, b, f, input, artifactProfile{"source", TemplateName, DescriptorName, GenerationTarget})
 	if err == nil {
 		// A concurrent first evaluation can establish history after the empty
 		// observation; no-update then supplies candidate authority only.
@@ -86,7 +92,7 @@ func AuthenticateCandidate(ctx context.Context, v *release.Verifier, c enrollmen
 	if !floors.Complete() {
 		return Authorization{}, release.ErrTrustUnavailable
 	}
-	return authenticate(ctx, v, c, f, input)
+	return authenticateInventory(ctx, v, c, f, input, artifactProfile{"source", TemplateName, DescriptorName, GenerationTarget})
 }
 
 type inventory interface {
@@ -94,8 +100,12 @@ type inventory interface {
 	Check() error
 }
 
-func authenticate(ctx context.Context, v *release.Verifier, files inventory, f enrollment.InfrastructureFacts, in release.Inputs) (Authorization, error) {
-	if ctx == nil || v == nil || f.Platform != "linux-amd64" || f.Invocation != "source" || in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform || in.Local.Architecture != "amd64" || in.Local.RefTime.IsZero() {
+// artifactProfile is fixed by each purpose-specific public entry point. It
+// selects exact public bytes only, never a shared installed role or live owner.
+type artifactProfile struct{ invocation, template, descriptor, target string }
+
+func authenticateInventory(ctx context.Context, v *release.Verifier, files inventory, f enrollment.InfrastructureFacts, in release.Inputs, profile artifactProfile) (Authorization, error) {
+	if ctx == nil || v == nil || f.Platform != "linux-amd64" || f.Invocation != profile.invocation || in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform || in.Local.Architecture != "amd64" || in.Local.RefTime.IsZero() {
 		return Authorization{}, ErrInput
 	}
 	if err := ctx.Err(); err != nil {
@@ -105,14 +115,14 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 		return Authorization{}, err
 	}
 	program, _ := files.File(ProgramName)
-	template, _ := files.File(TemplateName)
-	descriptor, _ := files.File(DescriptorName)
+	template, _ := files.File(profile.template)
+	descriptor, _ := files.File(profile.descriptor)
 	root, _ := files.File("root.json")
-	d, err := ValidateResources(descriptor, program, template)
+	d, err := validateResources(descriptor, program, template, profile.invocation, profile.template)
 	if err != nil {
 		return Authorization{}, err
 	}
-	return authenticateBoundPair(ctx, v, files, f, in, d, program, template, descriptor, root, GenerationTarget)
+	return authenticateBoundPair(ctx, v, files, f, in, d, program, template, descriptor, root, profile.target)
 }
 
 // This common immutable-byte/Release operation admits no native role policy.

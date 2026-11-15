@@ -1,6 +1,6 @@
 //go:build linux
 
-// Package infrastructure prepares separate Source, Forwarding and JOIN public artifact
+// Package infrastructure prepares separate Source, Forwarding, JOIN, Descriptor and Introduction public artifact
 // descriptors, with exact invocation-specific inventories. Public preparation
 // grants no installed transaction, startup or runtime permission.
 // A separate opaque JOIN candidate pair is consumed by canonical Control's
@@ -18,5 +18,7 @@
 // Separate explicit stop and restart consumers require original domain/native
 // completion, a fully checked retirement transcript and a fresh invocation;
 // State retains semantic history/currentness and its strict retained opening.
-// It owns no State contents, serving authority or recovery continuation.
+// Explicit Source replacement and proven-prefix recovery retain fresh Release,
+// original journal and native admission. The package owns no State contents or
+// serving authority; detached artifact facts grant neither installation nor recovery.
 package infrastructure

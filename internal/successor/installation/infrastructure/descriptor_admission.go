@@ -61,10 +61,10 @@ func AuthenticateDescriptorInitial(ctx context.Context, v *release.Verifier, b e
 	if err != nil {
 		return DescriptorAuthorization{}, err
 	}
-	if floors.RootVersion != 0 || floors.TimestampVersion != 0 || floors.SnapshotVersion != 0 || floors.TargetsVersion != 0 || len(floors.RootDigest) != 0 || len(floors.TimestampDigest) != 0 || len(floors.SnapshotDigest) != 0 || len(floors.TargetsDigest) != 0 {
+	if !emptyInitialFloors(floors) {
 		return DescriptorAuthorization{}, release.ErrTrustUnavailable
 	}
-	a, err := authenticateDescriptorPair(ctx, v, b, f, in)
+	a, err := authenticateInventory(ctx, v, b, f, in, artifactProfile{"descriptor", DescriptorTemplateName, DescriptorArtifactName, DescriptorGenerationTarget})
 	if err != nil {
 		return DescriptorAuthorization{}, err
 	}
@@ -94,30 +94,9 @@ func AuthenticateDescriptorCandidate(ctx context.Context, v *release.Verifier, c
 	if !floors.Complete() {
 		return DescriptorAuthorization{}, release.ErrTrustUnavailable
 	}
-	a, err := authenticateDescriptorPair(ctx, v, c, f, in)
+	a, err := authenticateInventory(ctx, v, c, f, in, artifactProfile{"descriptor", DescriptorTemplateName, DescriptorArtifactName, DescriptorGenerationTarget})
 	if err != nil {
 		return DescriptorAuthorization{}, err
 	}
 	return DescriptorAuthorization{pair: a}, nil
-}
-
-func authenticateDescriptorPair(ctx context.Context, v *release.Verifier, files inventory, f enrollment.InfrastructureFacts, in release.Inputs) (Authorization, error) {
-	if ctx == nil || v == nil || f.Invocation != "descriptor" || f.Platform != "linux-amd64" || in.TargetPath != ProgramTarget || in.Local.Platform != f.Platform || in.Local.Architecture != "amd64" || in.Local.RefTime.IsZero() {
-		return Authorization{}, ErrInput
-	}
-	if err := ctx.Err(); err != nil {
-		return Authorization{}, err
-	}
-	if err := files.Check(); err != nil {
-		return Authorization{}, err
-	}
-	program, _ := files.File(ProgramName)
-	template, _ := files.File(DescriptorTemplateName)
-	descriptor, _ := files.File(DescriptorArtifactName)
-	root, _ := files.File("root.json")
-	d, err := ValidateDescriptorResources(descriptor, program, template)
-	if err != nil {
-		return Authorization{}, err
-	}
-	return authenticateBoundPair(ctx, v, files, f, in, d, program, template, descriptor, root, DescriptorGenerationTarget)
 }
