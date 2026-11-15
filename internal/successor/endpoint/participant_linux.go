@@ -42,10 +42,11 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 	if ctx == nil || report == nil {
 		return "", errors.New("invalid participant input")
 	}
-	if err := ctx.Err(); err != nil {
-		return "", err
-	}
 	phase = "installed-startup"
+	if err := ctx.Err(); err != nil {
+		// Pre-start refusal is not requested shutdown of an admitted participant.
+		return phase, errors.Join(ErrUnavailable, err)
+	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	startup, err := installation.OpenStartup(ctx, root)

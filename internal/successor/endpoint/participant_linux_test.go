@@ -19,7 +19,7 @@ func TestCanceledParticipantDoesNotReadStartupOrReportProgress(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	phase, err := Run(ctx, root, func(Progress) error { t.Fatal("canceled participant emitted progress"); return nil })
-	if phase != "" || !errors.Is(err, context.Canceled) {
+	if phase != "installed-startup" || !errors.Is(err, context.Canceled) || !errors.Is(err, ErrUnavailable) {
 		t.Fatal(phase, err)
 	}
 	if _, err := os.Stat(root); !errors.Is(err, os.ErrNotExist) {
