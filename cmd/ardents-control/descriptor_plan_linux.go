@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"path/filepath"
 
@@ -35,34 +34,11 @@ func descriptorPlanArguments(args []string, inputs *sourceControlInputs) ([]byte
 	if err := r.CheckPlanPreparationOutput(destination, requestPath); err != nil {
 		return nil, "", err
 	}
-	decode := func(value string) ([32]byte, error) {
-		var result [32]byte
-		raw, err := hex.DecodeString(value)
-		if err != nil || len(raw) != 32 || hex.EncodeToString(raw) != value {
-			return result, descriptorinstallation.ErrInput
-		}
-		copy(result[:], raw)
-		return result, nil
-	}
-	p.Network.NetworkID, err = decode(networkID)
+	p.Network.NetworkID, p.NodeID, p.Network.ProfileAuthority, p.Network.Authorities, err = nodePlanKeys(networkID, nodeID, profileAuthority, pins, descriptorinstallation.ErrInput)
 	if err != nil {
 		return nil, "", err
 	}
-	p.NodeID, err = decode(nodeID)
-	if err != nil {
-		return nil, "", err
-	}
-	p.Network.ProfileAuthority, err = decode(profileAuthority)
-	if err != nil {
-		return nil, "", err
-	}
-	for _, pin := range pins {
-		key, err := decode(pin)
-		if err != nil {
-			return nil, "", err
-		}
-		p.Network.Authorities = append(p.Network.Authorities, key)
-	}
+
 	p.Schema, p.ProcessProfile = "ardents-descriptor-runtime-v1", r.Profile
 	p.Network.Root, p.Network.ClockObservationFile = r.StateRoot, r.Clock
 	p.ParticipationRoot, p.SpendRoot, p.HostingRoot, p.DescriptorRoot = r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.DescriptorRoot

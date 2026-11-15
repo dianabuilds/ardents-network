@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"path/filepath"
 
@@ -36,34 +35,11 @@ func forwardingPlanArguments(args []string, inputs *sourceControlInputs) ([]byte
 		return nil, "", err
 	}
 
-	decode := func(value string) ([32]byte, error) {
-		var result [32]byte
-		raw, err := hex.DecodeString(value)
-		if err != nil || len(raw) != 32 || hex.EncodeToString(raw) != value {
-			return result, forwarding.ErrInput
-		}
-		copy(result[:], raw)
-		return result, nil
-	}
-	p.Network.NetworkID, err = decode(networkID)
+	p.Network.NetworkID, p.NodeID, p.Network.ProfileAuthority, p.Network.Authorities, err = nodePlanKeys(networkID, nodeID, profileAuthority, pins, forwarding.ErrInput)
 	if err != nil {
 		return nil, "", err
 	}
-	p.NodeID, err = decode(nodeID)
-	if err != nil {
-		return nil, "", err
-	}
-	p.Network.ProfileAuthority, err = decode(profileAuthority)
-	if err != nil {
-		return nil, "", err
-	}
-	for _, pin := range pins {
-		key, err := decode(pin)
-		if err != nil {
-			return nil, "", err
-		}
-		p.Network.Authorities = append(p.Network.Authorities, key)
-	}
+
 	p.Schema, p.ProcessProfile = "ardents-forwarding-runtime-v1", r.Profile
 	p.Network.Root, p.Network.ClockObservationFile = r.StateRoot, r.Clock
 	p.ParticipationRoot, p.SpendRoot, p.HostingRoot = r.ParticipationRoot, r.SpendRoot, r.HostingRoot

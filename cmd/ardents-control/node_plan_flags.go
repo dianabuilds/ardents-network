@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"flag"
 	"io"
 	"strings"
@@ -70,4 +71,39 @@ func uniqueNodeOptions(args []string, repeatable string) bool {
 		seen[name] = true
 	}
 	return true
+}
+
+// nodePlanKeys decodes declarations in their established order. It supplies no
+// authenticated Network or Node authority.
+func nodePlanKeys(network, node, profile string, pins []string, invalid error) ([32]byte, [32]byte, [32]byte, [][32]byte, error) {
+	decode := func(value string) ([32]byte, error) {
+		var result [32]byte
+		raw, err := hex.DecodeString(value)
+		if err != nil || len(raw) != 32 || hex.EncodeToString(raw) != value {
+			return result, invalid
+		}
+		copy(result[:], raw)
+		return result, nil
+	}
+	n, err := decode(network)
+	if err != nil {
+		return [32]byte{}, [32]byte{}, [32]byte{}, nil, err
+	}
+	id, err := decode(node)
+	if err != nil {
+		return [32]byte{}, [32]byte{}, [32]byte{}, nil, err
+	}
+	authority, err := decode(profile)
+	if err != nil {
+		return [32]byte{}, [32]byte{}, [32]byte{}, nil, err
+	}
+	var values [][32]byte
+	for _, pin := range pins {
+		key, err := decode(pin)
+		if err != nil {
+			return [32]byte{}, [32]byte{}, [32]byte{}, nil, err
+		}
+		values = append(values, key)
+	}
+	return n, id, authority, values, nil
 }

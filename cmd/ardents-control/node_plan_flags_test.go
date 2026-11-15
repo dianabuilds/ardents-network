@@ -25,3 +25,17 @@ func TestNodePlanFlagsRejectAmbiguousOptions(t *testing.T) {
 		}
 	}
 }
+
+func TestNodePlanKeysRequireCanonicalHex(t *testing.T) {
+	invalid := errors.New("invalid")
+	key := strings.Repeat("ab", 32)
+	network, node, profile, pins, err := nodePlanKeys(key, key, key, []string{key}, invalid)
+	if err != nil || network[0] != 0xab || node != network || profile != network || len(pins) != 1 || pins[0] != network {
+		t.Fatalf("canonical inputs: %v", err)
+	}
+	for _, bad := range []string{strings.ToUpper(key), key[:62], strings.Repeat("xz", 32)} {
+		if _, _, _, _, err := nodePlanKeys(key, key, key, []string{bad}, invalid); !errors.Is(err, invalid) {
+			t.Fatalf("invalid pin admitted: %v", err)
+		}
+	}
+}
