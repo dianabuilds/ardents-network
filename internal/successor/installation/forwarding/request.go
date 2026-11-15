@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	installationrequest "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
 )
 
 var (
@@ -169,18 +170,8 @@ func RenderUnit(template []byte, r Request, generation string) ([]byte, error) {
 	).Replace(Template)), nil
 }
 
-func validPath(path string) bool {
-	if !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" || len(path) > 4096 || len(strings.Split(path, "/")) > 128 {
-		return false
-	}
-	for _, c := range path {
-		if c < 32 || c > 126 || strings.ContainsRune("%\\\"'*?[]{}$`", c) {
-			return false
-		}
-	}
-	return true
-}
+func validPath(path string) bool { return installationrequest.ValidInfrastructurePath(path) }
 
 func contains(parent, child string) bool {
-	return parent == child || strings.HasPrefix(child, parent+"/")
+	return installationrequest.InfrastructurePathContains(parent, child)
 }
