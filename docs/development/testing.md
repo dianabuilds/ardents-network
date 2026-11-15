@@ -5610,3 +5610,14 @@ causes survive, and retry cannot reinitialize. Other four semantic roots remain
 empty and actual service remains inactive/dead with PID0. Preserve original
 errors; no runtime/bootstrap qualification follows. Ordinary tests independently
 enumerate the sixteen-record grammar and strict public flags.
+
+
+`make introduction-startup-check` owns the genuine canonical first-start profile:
+actual double-built Node/Control, separately pinned initial enrollment/Release,
+correct signed duty 4:3, original Hosting and offline State, root Start and
+independent non-root Startup. Direct process execution and repeated first Start
+refuse; actual Receiving/Registry initialize only in Node. A completed exact
+public bootstrap receipt is required before execution. This proves no registration,
+delivery, retained restart, independent family/builder or privacy qualification.
+Ordinary tests cover complete first-start grammar, partial/foreign/native-inode
+transcripts, fixed ACK, manager purpose separation and fresh observation/join.

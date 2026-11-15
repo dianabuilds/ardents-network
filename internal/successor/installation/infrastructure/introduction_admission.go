@@ -20,6 +20,11 @@ func (a IntroductionAuthorization) Check(ctx context.Context, v *release.Verifie
 	return a.pair.Check(ctx, v)
 }
 
+// Targets lends only the retained exact proofs; native effects still require Check.
+func (a IntroductionAuthorization) Targets() (release.Authorization, release.Authorization) {
+	return a.pair.program, a.pair.generation
+}
+
 func (a IntroductionAuthorization) Descriptor() []byte { return a.pair.Descriptor() }
 func (a IntroductionAuthorization) Program() []byte    { return a.pair.Program() }
 func (a IntroductionAuthorization) Template() []byte   { return a.pair.Template() }

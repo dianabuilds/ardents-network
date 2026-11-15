@@ -16,4 +16,9 @@
 // without opening Receiving/Registry or lending a budget or Startup right.
 // Shared request.Files, directory/fixed-file and systemd provide mechanisms only;
 // no sibling role's live owner, authority, root or history crosses this boundary.
+// First Start independently requires complete stopped/Hosting history and fresh
+// Release, retaining native process/scope custody through archival-before-ACK.
+// Non-root Startup independently acquires its own read-only generation, principal,
+// process, namespace, manager and original root-peer exchange. Its private Plan
+// grants no duty, semantic history, domain completion, restart or replacement.
 package introduction

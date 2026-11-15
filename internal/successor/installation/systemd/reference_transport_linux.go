@@ -15,25 +15,26 @@ import (
 // The client decoder is never given an unchecked frame or auth line. In
 // particular a finite outer frame alone does not bound nested length fields.
 type referenceTransport struct {
-	socket         *net.UnixConn
-	mu             sync.Mutex
-	closed         bool
-	active         sync.WaitGroup
-	closeOnce      sync.Once
-	closeErr       error
-	readMu         sync.Mutex
-	writeMu        sync.Mutex
-	binary         atomic.Bool
-	owner          atomic.Value // original manager unique bus name, never rebound
-	line           int
-	pending        []byte
-	reader         *bufio.Reader    // binary input only; unverified read-ahead never drains after Close
-	properties     bool             // closed read-only Startup replies; references keep scalar admission
-	unitReply      managerUnitReply // immutable before the decoder starts
-	sourceJobs     atomic.Bool      // only fixed root Source control admits canonical job replies
-	descriptorJobs atomic.Bool      // distinct fixed root Descriptor control
-	joinJobs       atomic.Bool      // only distinct root JOIN control
-	forwardingJobs atomic.Bool      // distinct fixed root Forwarding control; never Source permission
+	socket           *net.UnixConn
+	mu               sync.Mutex
+	closed           bool
+	active           sync.WaitGroup
+	closeOnce        sync.Once
+	closeErr         error
+	readMu           sync.Mutex
+	writeMu          sync.Mutex
+	binary           atomic.Bool
+	owner            atomic.Value // original manager unique bus name, never rebound
+	line             int
+	pending          []byte
+	reader           *bufio.Reader    // binary input only; unverified read-ahead never drains after Close
+	properties       bool             // closed read-only Startup replies; references keep scalar admission
+	unitReply        managerUnitReply // immutable before the decoder starts
+	sourceJobs       atomic.Bool      // only fixed root Source control admits canonical job replies
+	introductionJobs atomic.Bool      // distinct fixed root Introduction control
+	descriptorJobs   atomic.Bool      // distinct fixed root Descriptor control
+	joinJobs         atomic.Bool      // only distinct root JOIN control
+	forwardingJobs   atomic.Bool      // distinct fixed root Forwarding control; never Source permission
 }
 
 func (t *referenceTransport) begin() bool {
@@ -119,7 +120,9 @@ func (t *referenceTransport) Read(p []byte) (int, error) {
 		}
 		owner, _ := t.owner.Load().(string)
 		var frameErr error
-		if t.unitReply == descriptorControlReply {
+		if t.unitReply == introductionControlReply {
+			frameErr = verifyNodeManagerFrame(frame, owner, t.properties, false, false, t.introductionJobs.Load(), introductionControlReply)
+		} else if t.unitReply == descriptorControlReply {
 			frameErr = verifyNodeManagerFrame(frame, owner, t.properties, false, false, t.descriptorJobs.Load(), descriptorControlReply)
 		} else if t.unitReply == joinControlReply {
 			frameErr = verifyNodeManagerFrame(frame, owner, t.properties, false, false, t.joinJobs.Load(), joinControlReply)
@@ -274,7 +277,7 @@ func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, 
 			return ErrObservation
 		}
 		object, pos, err := referenceScalar(frame, int(bodyStart), len(frame), 'o', order)
-		allowJob := reply == sourceUnitReply && sourceJobs || reply == forwardingUnitReply && forwardingJobs || (reply == joinControlReply || reply == descriptorControlReply) && joinJobs
+		allowJob := reply == sourceUnitReply && sourceJobs || reply == forwardingUnitReply && forwardingJobs || (reply == joinControlReply || reply == descriptorControlReply || reply == introductionControlReply) && joinJobs
 		if err != nil || pos != len(frame) || (object != reply.object() && (!allowJob || !managerJobPath(object))) {
 			return ErrObservation
 		}

@@ -37,6 +37,7 @@ type completedInitial struct {
 	absent          []string
 	sealed          string
 	hostingBirths   *initialBirths
+	start           *startStorage
 	hostingPrepared bool
 	// Failure-only causal control after genuine original file observation.
 	observe func(*os.File)
@@ -355,12 +356,20 @@ func (c *completedInitial) check() error {
 			return errors.Join(ErrBinding, err, nameErr)
 		}
 	}
+	if c.start != nil {
+		if err := c.start.check(); err != nil {
+			return err
+		}
+	}
 	if c.hostingBirths != nil {
 		if err := c.hostingBirths.check(); err != nil {
 			return err
 		}
 	}
 	for _, path := range c.absent {
+		if c.start != nil && c.start.journal != nil && path == c.start.journal.path {
+			continue
+		}
 		if c.hostingOwns(path) {
 			continue
 		}
@@ -376,6 +385,9 @@ func (c *completedInitial) check() error {
 		c.binding.Request.CredentialDirectory: {"certificate.pem": true, "private-key.pem": true},
 	}
 	inventories[filepath.Dir(c.sealed)][c.binding.Generation] = true
+	if c.start != nil && c.start.dir != nil {
+		inventories[c.binding.Request.InstallationRoot]["introduction-startup"] = true
+	}
 	for directory, wanted := range inventories {
 		entries, err := os.ReadDir(directory)
 		if err != nil || len(entries) != len(wanted) {

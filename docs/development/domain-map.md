@@ -327,7 +327,7 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | `admission/issuerprofile/signing` | Independently pinned imported Ed25519 material, original lease/failure/Close and validated issuer-profile signing within Admission | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
-| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Forwarding, JOIN and Descriptor files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
+| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Forwarding, JOIN, Descriptor and Introduction files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
 | State/Hosting/Route physical adapters | Byte verification, durable transactions, counters, sockets and Carrier mechanisms under their declared owners | Mechanisms cannot mint authority, reset floors or copy a second domain decision implementation |
 | Installation mutable-directory birth | `installation/directory` retains one original creation caller and private born inode state, exclusively creates caller-admitted paths and synchronizes same-inode account/mode promotion; checked Identity facts are detached, and Matches serves independent installed inspection | Root Installation selects paths/account, admits Release/journal/lease/effects and projects binding facts. Directory creation grants no adoption/recovery, selection, manager or startup authority; shared trusted-root predicates remain with Root lease/fixed/recovery lifetimes |
 | Installation request declarations and original input | `installation/request` owns canonical bounded declarations, detached copies, native direct root-owned input and opaque original byte/inode/access reobservation; the root Request facade is consumed by actual command and transaction composition | No Release authorization, writer lease, journal, account/root creation, generation selection, manager or startup authority. General trusted-path observations remain with root Installation lease/staging/inspection, independently of request provenance |
@@ -1390,3 +1390,13 @@ Independent history owns its own leases and immutable pin/lock observations;
 mutable counters remain Hosting policy. Receiving and Route Registry initialize
 only through their genuine runtime fresh-root collaboration after Startup.
 No role authority, history reset, first Start or live sibling owner is supplied.
+
+
+Introduction first-start Installation owns original native admission, exclusive
+attempt history and archival-before-ACK, separately from non-root Startup's
+independent read-only principal/process/scope/manager/file custody. Canonical
+Node constructs genuine State and Introduction owners directly under the exact
+R01 boundary. Receiving alone supplies the one-use fresh-root fact consumed by
+Route Registry before listening; no offline slot initialization is introduced.
+Actual Receiver/domain users join before State and Startup release. First-start
+completion grants no original domain retirement, retained restart or replacement.

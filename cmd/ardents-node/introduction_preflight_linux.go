@@ -14,6 +14,13 @@ import (
 // Fixed canonical consumers retain independent preflight and initial-install
 // admission. Initial stopped completion grants no runtime duty.
 func runIntroductionInstallation(parent context.Context, args []string, out io.Writer) error {
+	if parent != nil && out != nil && len(args) == 2 && args[0] == "start-installed" {
+		return runInstalledIntroduction(parent, args[1], out)
+	}
+	if parent != nil && out != nil && len(args) == 6 && args[0] == "start-initial" {
+		return startIntroductionGeneration(parent, args[1:], out)
+	}
+
 	if parent != nil && out != nil && len(args) == 7 && args[0] == "install-initial-stopped" {
 		return installInitialIntroduction(parent, args[1:], out)
 	}
@@ -22,7 +29,7 @@ func runIntroductionInstallation(parent context.Context, args []string, out io.W
 	}
 
 	if parent == nil || out == nil || len(args) != 2 || args[0] != "inspect-inputs" {
-		return errors.New("usage: ardents-node introduction inspect-inputs REQUEST | install-initial-stopped DISTRIBUTION PIN RELEASE-HISTORY ENVIRONMENT NETWORK REQUEST | inspect-initial-history DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING")
+		return errors.New("usage: ardents-node introduction inspect-inputs REQUEST | install-initial-stopped DISTRIBUTION PIN RELEASE-HISTORY ENVIRONMENT NETWORK REQUEST | start-installed BINDING | start-initial DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING | inspect-initial-history DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING")
 	}
 	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()

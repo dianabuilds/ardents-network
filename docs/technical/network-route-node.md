@@ -4139,8 +4139,7 @@ policy. Every declared input/root and retained initial/Hosting/invocation/
 retirement/replacement namespace stays independent. All64 finite invocation and
 retirement Unix completion paths must fit107 bytes before effects. Fixed unit
 bytes select only `introduction start-installed`, non-root `ardents-node`, the
-common protected Node envelope and explicit no-restart policy. Their preparation
-does not implement that runtime command or qualify native unit behavior.
+common protected Node envelope and explicit no-restart policy. Their preparation alone grants no runtime or native unit authority.
 
 Canonical Node's `introduction inspect-inputs` retains original root-controlled
 request/plan/TLS files through `request.Files`, validates the Ed25519 pair, and
@@ -4200,3 +4199,40 @@ spend and Registry roots remain empty. Genuine Node/Receiving/Route initialize
 Receiving and Registry only after independently admitted Startup, consuming the
 opaque fresh-root fact; root preparation creates no history bytes or slot floors.
 No first Start, runtime duty, domain completion or bootstrap acceptance follows.
+
+### Introduction original first Start and independent Startup
+
+Canonical Node `introduction start-initial` admits only complete original stopped
+installation with its genuine one-use Hosting preparation and a fresh coherent
+Release pair. It matches its actual mapped executable to the installed program,
+retains original root principal/manager/search paths/kernel, and creates one
+exclusive first-start journal and completion directory. The 26-record transcript
+binds original native context, births, invocation, completion frame, synced
+archive and full ACK. Publication follows all original observer/writer/verifier
+joins. Partial or uncertain effects retain blocking history; no retry, rollback,
+retained restart or recovery is admitted by this first-start boundary.
+
+`introduction start-installed` independently opens selected generation, credentials,
+clock, actual non-root identity, original process/scope/mount namespace and fixed
+read-only manager. Only its original root-peer completion permits private plan
+handoff. The exact 161-byte ACK appends zero; no retained-history choice is
+accepted. Concurrent checks share only fresh full rounds admitted before each
+round begins, never cached authority. Cancellation denies new checks and joins
+physical observations before closing their native custody.
+
+Canonical composition directly opens genuine Network State, retains duty 4:3,
+and invokes Node Introduction. Node owns Guard, TLS, participation, Hosting,
+Receiving and the genuine Receiving-to-Registry fresh-root collaboration. Receiver
+joins before Registry/Receiving/Hosting and producer/key/Guard; composition joins
+State and Startup last. A notice timeout retains custody until actual join.
+No ACK or listening diagnostic grants registration, delivery, readiness, domain
+retirement or subsequent replacement authority.
+
+`ardents-control introduction prepare-state` is separate offline non-root State
+acceptance over canonical signed bundle/profile and the known-born empty State
+root. Its fixed Node/Record/Epoch/profile/key producers retain original protected
+input/output and signing purpose; Network and Admission retain their byte and
+policy rules. No offline producer opens Receiving, Registry or a live role, and
+no copied profile supplies installed Startup or bootstrap acceptance. Exact
+artifacts, inputs, public bootstrap receipt and qualification limits remain a
+separate prerequisite before installed execution.

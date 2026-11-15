@@ -35,6 +35,16 @@ func (e *introductionControlFailure) Unwrap() error { return e.cause }
 func runIntroductionControl(args []string, out io.Writer) error {
 	if len(args) > 0 {
 		switch args[0] {
+		case "prepare-profile", "sign-profile":
+			return runIntroductionProfileProvision(args, out)
+		case "prepare-token-keys":
+			return runIntroductionTokenMaterial(args[1:], out)
+		case "prepare-state-key", "prepare-epoch", "sign-epoch":
+			return runIntroductionEpochProvision(args, out)
+		case "prepare-node-key", "prepare-node-record", "sign-node-record", "prepare-node-certificate":
+			return runIntroductionNodeProvision(args, out)
+		case "prepare-state":
+			return runIntroductionStatePreparation(args[1:], out)
 		case "prepare-hosting":
 			return runIntroductionHostingPreparation(args[1:], out)
 		case "prepare-release-keys":

@@ -374,7 +374,20 @@
       ],
       "invalid_environment": "missing selected prerequisite fails; no skips",
       "timeout": "3m"
-    }
+    },
+{
+  "id": "introduction-startup-linux",
+  "state": "active",
+  "make_target": "introduction-startup-check",
+  "surface": "actual canonical offline State/Hosting, root protected first Start and independent non-root Introduction Startup; genuine Receiving/Registry fresh-root birth; no registration/delivery or retained lifecycle acceptance",
+  "prerequisites": [
+    "dedicated Ubuntu24.04 amd64/systemd255/cgroupv2/ext4 root stand under shared lock; all five slots/account absent",
+    "same-source actual double-built and SHA-256-pinned Node/Control, public preparer/evidence, private Introduction initial stand marker",
+    "completed exact public bootstrap receipt accepted under Product Owner delegated #559 startup; live root clock and unchanged runtime limits"
+  ],
+  "invalid_environment": "missing selected prerequisite fails; no skip",
+  "timeout": "3m"
+}
   ],
   "suite_roots": [
     {

@@ -1673,3 +1673,24 @@ completed or partial preparation refuses another initialization. Preserve errors
 and the root-only blocker/history; this command initializes no Receiving/Registry
 and starts no role. Independent `inspect-initial-history` also verifies a complete
 Hosting preparation without freezing mutable budget counters.
+
+
+Introduction first-start commands (Linux):
+
+- `ardents-control introduction prepare-state PLAN BUNDLE SIGNED_PROFILE` runs
+  as the installed numeric Node principal over original public inputs and an
+  empty known-born State root; no listener or Registry opens.
+- `ardents-node introduction start-initial DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING`
+  runs as root with fresh Release and complete initial/Hosting history. The
+  actual running program must equal the admitted Node artifact.
+- `ardents-node introduction start-installed BINDING` is the fixed non-root unit
+  invocation, independently admitted by original native custody and root-peer
+  completion; direct shell execution cannot manufacture that admission.
+
+The fixed Introduction offline producers are `prepare-node-key`,
+`prepare-node-record`, `sign-node-record`, `prepare-node-certificate`,
+`prepare-state-key`, `prepare-epoch`, `sign-epoch`, `prepare-token-keys`,
+`prepare-profile` and `sign-profile`, with the same closed public-flag/input
+shapes as the existing fixed Node provisioning surfaces. Their declarations and
+signatures grant no role, startup, bootstrap acceptance or family independence.
+First-start support alone supplies no registration/delivery or retained restart.

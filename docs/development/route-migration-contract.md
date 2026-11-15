@@ -142,11 +142,22 @@ completion plan and the direct startup request, recorded in
 legacy bridge or shared live root is admitted. This grants no bootstrap
 acceptance; ADR-0123 Decision 6 remains separate.
 
+The Product Owner selected installed Introduction in the approved completion
+plan and continued its protected-startup sequence in
+[#559](https://github.com/dianabuilds/ardents-network/issues/559#issuecomment-6892885065).
+Only `cmd/ardents-node/introduction_installed_linux.go` may compose exactly
+`internal/successor/installation/introduction`, `internal/successor/network`,
+`internal/successor/network/state`, `internal/successor/node` and
+`internal/successor/route/role`. This distinct Introduction boundary admits no
+other command/test file, role selector, Route root/receiver import, legacy
+backend, callback/process bridge or shared live root. It grants no bootstrap
+acceptance; ADR-0123 Decision 6 remains a separate gate.
+
 New Route must not import or execute old `internal/route`, `internal/entry`,
 `internal/endpoint`, `internal/node`, `internal/admission`, `internal/hosting`,
 `internal/service` or another old runtime owner. Old packages, commands and
 tests must not consume new Route, apart from the exact canonical installed
-Forwarding, JOIN and Descriptor files explicitly admitted above. The prohibition includes subpackages,
+Forwarding, JOIN, Descriptor and Introduction files explicitly admitted above. The prohibition includes subpackages,
 build-tagged code, external-package tests, transitive imports, alias imports,
 wrappers, callback adapters, plugins and local protocol bridges to old runtime.
 Renaming or moving an old bridge to another directory does not make it new.

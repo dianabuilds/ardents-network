@@ -618,3 +618,7 @@ introduction-initial-stopped-check:
 .PHONY: introduction-hosting-check
 introduction-hosting-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/introduction -run '^TestIntroductionHostingNativeOriginalPreparation$$' -count=1 -v -timeout=3m
+
+.PHONY: introduction-startup-check
+introduction-startup-check:
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestIntroductionPreparationNativeProtectedStartAndIndependentStartup$$' -count=1 -v -timeout=3m
