@@ -1681,6 +1681,26 @@ Node's Route, Receiving and Hosting users joined. See the upstream
 and [execution](https://www.freedesktop.org/software/systemd/man/255/systemd.exec.html)
 manuals, accessed 2026-11-16.
 
+A root start attempt does not keep the Release verifier alive for the whole
+Node invocation: it checks the original authorization during startup, then
+closes the verifier before publishing successful completion. Its separate
+non-root Startup continues to retain its own process, manager, file and scope
+observations. A replacement therefore needs a fresh Release handoff bound to
+the actual invocation, not a permanently running Release supervisor.
+
+Systemd 255 runs `ExecStartPost` after the configured `ExecStart` has succeeded
+according to `Type=`, and a failing post-start command fails the unit. With
+`Type=exec`, successful execution is not application readiness: the main process
+can already run while a post-start command is active. A post-start verifier
+could therefore be explored only if the actual Node synchronously refuses all
+effects until a fresh invocation-bound handoff, and the verifier separately
+checks the exact process and Release facts. `Type=notify` would deadlock if the
+Node waits for post-start verification before sending the `READY` notification
+that permits that post-start command. Neither ordering establishes original
+domain completion after an interrupted start or stop. Such a mechanism would
+also change the currently fixed no-hook unit and needs its own contract and
+evidence before replacing it; this observation grants no startup permission.
+
 A future fixed platform composition must therefore bind the exact authenticated
 artifact and configuration to its own original invocation, retain the Release
 floors, and observe actual Node completion before treating a stop as successful.
