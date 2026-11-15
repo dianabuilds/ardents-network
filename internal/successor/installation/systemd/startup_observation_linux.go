@@ -212,7 +212,7 @@ func (client *startupBus) request(ctx context.Context, destination, object, meth
 	}
 	if frame, ok := ctx.Value(requestObservationKey{}).(*requestObservation); ok && frame.client == client && frame.active.Load() {
 		answer := client.bus.Object(destination, dbus.ObjectPath(object)).CallWithContext(ctx, method, 0, arguments...)
-		if err := errors.Join(client.callFailure(ctx, answer.Err), ctx.Err(), ctx.Err()); err != nil {
+		if err := errors.Join(client.callFailure(ctx, answer.Err), ctx.Err()); err != nil {
 			return nil, err
 		}
 		return answer, nil
