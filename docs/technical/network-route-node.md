@@ -1705,6 +1705,16 @@ original cgroup and rejects child scopes. A verifier running as another process
 in that scope cannot simply be added to the current startup: its placement and
 an equivalent independent process/scope observation must first be established.
 
+The existing Network participation producer is removed by Node only after its
+Route receiver and purpose owners have joined, so a retained producer still
+refuses unsafe reuse. Its absence is not a successful whole-invocation result:
+Node closes its process guard and credential after removing the producer, and
+the installed command subsequently closes State and Startup. Those later
+operations may fail. The replacement must preserve their actual joined result
+and cannot treat an empty participation history as proof that every owner
+closed successfully. See `node/join_linux.go`, `node/introduction_linux.go`
+and the canonical installed command cleanup.
+
 A future fixed platform composition must therefore bind the exact authenticated
 artifact and configuration to its own original invocation, retain the Release
 floors, and observe actual Node completion before treating a stop as successful.
