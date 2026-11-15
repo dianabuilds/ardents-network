@@ -233,7 +233,10 @@ checks original cancellation at publication/handoff and joins admitted work
 before returning its native lease. New Installation additionally consumes two
 fresh exact-target authorizations from this owner. Its successor byte consumer
 uses `OpenRetained`, which requires complete persisted floors for all four
-top-level roles and cannot create cold trust. These pair checks grant no
+top-level roles and cannot create cold trust. `release/endpoint` compares the
+retained generation's metadata floor and local environment against the verifier's
+current floors before successor authentication. The caller must independently
+retain the original installed binding; detached facts alone grant no proof,
 installed predecessor continuity or runtime readiness. New Installation separately
 owns initial stopped provisioning, successor replacement and bounded fresh-proof
 recovery through genuine command consumers. Bounded accepting non-root startup
