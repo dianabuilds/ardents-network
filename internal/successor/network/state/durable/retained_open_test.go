@@ -42,3 +42,14 @@ func TestRetainedRootRequiresOriginalStructureAndSecurityJournal(t *testing.T) {
 		})
 	}
 }
+
+func TestRetainedLeaseNeverCreatesMissingLock(t *testing.T) {
+	root := t.TempDir()
+	if lease, err := acquireRetainedRootLease(root); err == nil {
+		_ = lease.release()
+		t.Fatal("missing retained lock was accepted")
+	}
+	if _, err := os.Lstat(filepath.Join(root, rootLockName)); !os.IsNotExist(err) {
+		t.Fatalf("retained lease created a missing lock: %v", err)
+	}
+}

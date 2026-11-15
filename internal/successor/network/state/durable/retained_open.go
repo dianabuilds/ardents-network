@@ -22,7 +22,7 @@ func OpenRetained(path string, limits Limits) (openedRoot *Root, resultErr error
 	if err = inspectRetainedRoot(absolute); err != nil {
 		return nil, err
 	}
-	lease, err := acquireRootLease(absolute)
+	lease, err := acquireRetainedRootLease(absolute)
 	if err != nil {
 		return nil, err
 	}
