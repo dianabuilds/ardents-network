@@ -26,15 +26,16 @@ type IntroductionExpected struct {
 type IntroductionInvocation struct{ original *introductionInvocation }
 
 type introductionInvocation struct {
-	mu       sync.Mutex
-	ioMu     sync.Mutex
-	uses     sync.WaitGroup
-	once     sync.Once
-	pin      *Invocation
-	pidfd    *os.File
-	closing  bool
-	failure  error
-	closeErr error
+	mu          sync.Mutex
+	ioMu        sync.Mutex
+	uses        sync.WaitGroup
+	once        sync.Once
+	pin         *Invocation
+	pidfd       *os.File
+	closing     bool
+	interrupted bool
+	failure     error
+	closeErr    error
 }
 
 // RetainIntroduction independently observes root's exact original Introduction
@@ -169,4 +170,57 @@ func (p IntroductionInvocation) Close() error {
 		o.mu.Unlock()
 	})
 	return o.closeErr
+}
+
+func RetainIntroductionStop(ctx context.Context, expected IntroductionExpected, device, inode uint64) (IntroductionInvocation, error) {
+	if device == 0 || inode == 0 {
+		return IntroductionInvocation{}, errInput
+	}
+	p, err := RetainIntroduction(ctx, expected)
+	if err != nil {
+		return IntroductionInvocation{}, err
+	}
+	native, ok := p.original.pin.identity.Sys().(*syscall.Stat_t)
+	if !ok || uint64(native.Dev) != device || native.Ino != inode {
+		return IntroductionInvocation{}, errors.Join(errBinding, p.Close())
+	}
+	return p, nil
+}
+
+// InterruptIntroduction performs at most one SIGTERM through root's own original
+// pidfd after fresh physical observations. The bool records a syscall attempt,
+// including an uncertain failed attempt. Installation supplies stop permission;
+// neither this signal nor process exit proves the original domains have joined.
+func (p IntroductionInvocation) InterruptIntroduction(ctx context.Context) (bool, error) {
+	o := p.original
+	if o == nil || os.Geteuid() != 0 || runtime.GOARCH != "amd64" {
+		return false, errInput
+	}
+	if err := o.begin(ctx); err != nil {
+		return false, err
+	}
+	defer o.uses.Done()
+	o.ioMu.Lock()
+	defer o.ioMu.Unlock()
+	if o.pidfd == nil || o.interrupted {
+		return false, errInput
+	}
+	if err := o.pin.Observe(ctx); err != nil {
+		return false, o.retainFailure(err)
+	}
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.closing || o.failure != nil || ctx.Err() != nil {
+		return false, errors.Join(os.ErrClosed, o.failure, ctx.Err())
+	}
+	o.interrupted = true
+	const pidfdSendSignalAMD64 = 424
+	_, _, failure := syscall.Syscall6(pidfdSendSignalAMD64, o.pidfd.Fd(), uintptr(syscall.SIGTERM), 0, 0, 0, 0)
+	if failure != 0 {
+		if o.failure == nil {
+			o.failure = failure
+		}
+		return true, errors.Join(o.failure, failure)
+	}
+	return true, ctx.Err()
 }

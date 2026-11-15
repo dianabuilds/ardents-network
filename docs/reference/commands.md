@@ -1700,3 +1700,9 @@ The fixed Introduction offline producers are `prepare-node-key`,
 shapes as the existing fixed Node provisioning surfaces. Their declarations and
 signatures grant no role, startup, bootstrap acceptance or family independence.
 First-start support alone supplies no registration/delivery or retained restart.
+
+`ardents-node introduction stop RELEASE-HISTORY BINDING` explicitly interrupts
+and joins the original installed Introduction invocation.
+`ardents-node introduction inspect-retirement RELEASE-HISTORY BINDING` independently
+verifies its complete first retirement. Neither command admits restart or repairs
+missing history; a timeout notice retains original custody until actual join.

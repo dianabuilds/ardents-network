@@ -4251,3 +4251,24 @@ Original mutation or custody loss permanently denies that reader, including afte
 restoration. Every reader and physical close joins before either lease returns.
 This supplies no domain report, original native termination, retained runtime
 opening, restart or replacement permission. Later/partial histories refuse.
+
+### Introduction explicit original Stop
+
+Canonical `introduction stop` independently retains the complete first-start
+history, original process/pidfd, cgroup/events, manager and namespace before
+signalling that invocation once. The original non-root command reports through
+its one-use Startup only after Receiver/Registry/Receiving/Hosting, participation,
+Guard/TLS, State, Startup observations and output have joined. The distinct
+Introduction frame binds the original startup and a fresh root challenge. A
+physical cleanup error cannot be classified as ordinary cancellation.
+
+Root separately joins the original kernel scope, compares two matching exact
+clean native exits and closes its native observers before writing retirement.
+The separate18-record journal binds original native births and every domain/
+native/close phase. Independent readback retains the blocker; publication follows
+all observer, writer and verifier closes. `inspect-retirement` independently
+requires the complete transcript, original identities and absent blocker.
+Repeated Stop, partial history, foreign inode or unknown completion refuse.
+Only first-invocation retirement is implemented here: it admits no restart,
+semantic-root creation, replacement or recovery. Tests and actual qualification
+remain separate from this implementation contract.

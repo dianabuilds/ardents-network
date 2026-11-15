@@ -39,6 +39,8 @@ type completedInitial struct {
 	hostingBirths   *initialBirths
 	start           *startStorage
 	started         *startSnapshot
+	retirement      *retirementStorage
+	retired         *retirementSnapshot
 	hostingPrepared bool
 	// Failure-only causal control after genuine original file observation.
 	observe func(*os.File)
@@ -94,6 +96,7 @@ func readCompleted(ctx context.Context, path string, allowStarted bool) (result 
 	c.sealed = filepath.Join(r.InstallationRoot, "generations", b.Generation)
 	hostingDirectory, hostingJournal, _ := hostingPreparationPaths(r.InstallationRoot)
 	hostingPresent := false
+	retirementPresent := false
 	for _, reserved := range r.reservedSiblingPaths() {
 		if reserved == journal.path {
 			continue
@@ -102,6 +105,10 @@ func readCompleted(ctx context.Context, path string, allowStarted bool) (result 
 			return result, err
 		}
 		if _, err := os.Lstat(reserved); !errors.Is(err, os.ErrNotExist) {
+			if err == nil && allowStarted && reserved == retirementNumber(0).retirementJournal(r.InstallationRoot) {
+				retirementPresent = true
+				continue
+			}
 			if err == nil && allowStarted && reserved == r.InstallationRoot+".introduction-first-start-journal" {
 				continue
 			}
@@ -212,6 +219,12 @@ func readCompleted(ctx context.Context, path string, allowStarted bool) (result 
 			return result, ErrBinding
 		}
 		c.started, err = readStartSnapshot(ctx, b, digest(selected.body), digest(journal.body))
+		if err != nil {
+			return result, err
+		}
+	}
+	if retirementPresent {
+		c.retired, err = readRetirementSnapshot(ctx, b, 0, c.started.bindingSHA, c.started.sha256, c.started.archive, c.started.id, retirementCommitted)
 		if err != nil {
 			return result, err
 		}
@@ -390,7 +403,20 @@ func (c *completedInitial) check() error {
 			return err
 		}
 	}
+	if c.retirement != nil {
+		if err := c.retirement.check(); err != nil {
+			return err
+		}
+	}
+	if c.retired != nil {
+		if err := c.retired.check(); err != nil {
+			return err
+		}
+	}
 	for _, path := range c.absent {
+		if c.retirement != nil && c.retirement.journal != nil && path == c.retirement.journal.path {
+			continue
+		}
 		if c.start != nil && c.start.journal != nil && path == c.start.journal.path {
 			continue
 		}
@@ -411,6 +437,9 @@ func (c *completedInitial) check() error {
 	inventories[filepath.Dir(c.sealed)][c.binding.Generation] = true
 	if c.start != nil && c.start.dir != nil || c.started != nil {
 		inventories[c.binding.Request.InstallationRoot]["introduction-startup"] = true
+	}
+	if c.retirement != nil && c.retirement.dir != nil || c.retired != nil {
+		inventories[c.binding.Request.InstallationRoot]["introduction-retirement-00000000"] = true
 	}
 	for directory, wanted := range inventories {
 		entries, err := os.ReadDir(directory)
@@ -485,7 +514,7 @@ func (h Completed) Close() error {
 		c.mu.Unlock()
 		c.uses.Wait()
 		var physical error
-		physical = errors.Join(physical, c.started.close())
+		physical = errors.Join(physical, c.started.close(), c.retired.close())
 		for i := len(c.fileOrder) - 1; i >= 0; i-- {
 			f := c.fileOrder[i]
 			if f == c.journal {

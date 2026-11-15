@@ -5655,3 +5655,16 @@ foreign inode, cancellation and permanent original refusal after restoration.
 A fresh reader may accept the restored original inode; it cannot revive the
 failed reader. These controls establish no explicit Stop or domain/native
 retirement and preserve the original installed exchange's qualification limits.
+
+Introduction's installed exchange profile also checks canonical explicit Stop
+after its actual registration/delivery users join. Independent retirement inspection
+refuses the live invocation, verifies the stopped original twice, rejects a
+retained blocker and rejects repeated Stop without rewriting its journal. Spend
+and slot-floor bytes must remain unchanged. An independent retained reader rejects
+result mutation and remains failed after restoration; canceled reads, missing
+results and identical foreign inodes refuse. A fresh reader independently verifies
+the restored original. Ordinary pure tests independently
+encode the distinct report/journal bytes, omit/reorder each close phase and reject
+foreign purpose, challenge and cancellation-wrapped physical failure. These are
+first-retirement controls; retained restart, replacement/recovery and the complete
+interruption matrix require their own source-matched results.

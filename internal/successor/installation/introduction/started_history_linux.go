@@ -21,7 +21,7 @@ type started struct {
 
 // ReadStarted requires the original retained Release history, but not current
 // artifact permission: expired Release metadata must not hide shutdown evidence.
-// Only the complete first invocation is supported; later or partial histories
+// Only the complete first invocation and its explicit retirement are supported; later or partial histories
 // refuse rather than being adopted as a first start.
 func ReadStarted(ctx context.Context, verifier *release.Verifier, bindingPath, history string) (result Started, returned error) {
 	if ctx == nil || verifier == nil || os.Geteuid() != 0 || !validPath(history) {
@@ -61,4 +61,22 @@ func (h Started) Close() error {
 		return nil
 	}
 	return h.original.completed.Close()
+}
+
+// CheckRetirement requires the complete independently reopened first retirement,
+// including original domain/native joins, file births and absent publication
+// blocker. A result file alone cannot pass. No new invocation is admitted.
+func (h Started) CheckRetirement() error {
+	if h.original == nil {
+		return ErrInput
+	}
+	s := h.original
+	return s.completed.operationObserved(func() error {
+		return s.verifier.CheckHistoryPath(s.ctx, s.completed.original.binding.History)
+	}, func(c *completedInitial) error {
+		if c.retired == nil {
+			return ErrBinding
+		}
+		return c.retired.check()
+	})
 }

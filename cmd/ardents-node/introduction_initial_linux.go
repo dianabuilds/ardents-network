@@ -152,3 +152,47 @@ func inspectStartedIntroduction(parent context.Context, args []string, output io
 	_, err = io.WriteString(output, "{\"outcome\":\"introduction-start-history-verified\",\"runtime_authority\":false,\"retirement_proved\":false}\n")
 	return errors.Join(err, ctx.Err())
 }
+
+func stopIntroduction(parent context.Context, args []string, out io.Writer) (returned error) {
+	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
+	defer cancel()
+	v, err := release.OpenRetained(args[0])
+	if err != nil {
+		return err
+	}
+	defer func() { returned = errors.Join(returned, v.Close()) }()
+	done := make(chan error, 1)
+	go func() { done <- introduction.Stop(ctx, v, args[1], args[0]) }()
+	timer := time.NewTimer(2*time.Minute + 5*time.Second)
+	defer timer.Stop()
+	select {
+	case err = <-done:
+	case <-timer.C:
+		_, notice := io.WriteString(out, "{\"outcome\":\"introduction-stop-completion-unavailable\"}\n")
+		err = errors.Join(<-done, notice)
+	}
+	if err = errors.Join(err, v.Close(), ctx.Err()); err != nil {
+		return err
+	}
+	_, err = io.WriteString(out, "{\"outcome\":\"introduction-original-stop-completed\",\"restart_admitted\":false}\n")
+	return err
+}
+
+func inspectIntroductionRetirement(parent context.Context, args []string, out io.Writer) (returned error) {
+	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
+	defer cancel()
+	v, err := release.OpenRetained(args[0])
+	if err != nil {
+		return err
+	}
+	defer func() { returned = errors.Join(returned, v.Close()) }()
+	h, err := introduction.ReadStarted(ctx, v, args[1], args[0])
+	if err == nil {
+		err = h.CheckRetirement()
+	}
+	if err = errors.Join(err, h.Close(), v.Close(), ctx.Err()); err != nil {
+		return err
+	}
+	_, err = io.WriteString(out, "{\"outcome\":\"introduction-retirement-verified\",\"restart_admitted\":false}\n")
+	return err
+}

@@ -11,3 +11,5 @@ import (
 func runIntroductionInstallation(context.Context, []string, io.Writer) error {
 	return errors.New("Introduction input preflight requires Linux")
 }
+
+func completedIntroductionExplicitStop(error) bool { return false }

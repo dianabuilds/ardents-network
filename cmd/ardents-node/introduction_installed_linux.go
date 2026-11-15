@@ -21,6 +21,15 @@ import (
 )
 
 // Public output never serializes private causes or grants domain retirement.
+type introductionExplicitStop struct{ cause error }
+
+func (e *introductionExplicitStop) Error() string { return "original Introduction explicitly stopped" }
+func (e *introductionExplicitStop) Unwrap() error { return e.cause }
+func completedIntroductionExplicitStop(err error) bool {
+	e, ok := err.(*introductionExplicitStop)
+	return ok && e != nil && introductionCancellationOnly(e.cause)
+}
+
 type introductionCommandFailure struct{ cause error }
 
 func (e *introductionCommandFailure) Error() string { return "introduction command failed" }
@@ -85,6 +94,16 @@ func runInstalledIntroduction(parent context.Context, binding string, out io.Wri
 			}
 		}
 		clear(privatePlan)
+		if startup != nil && introductionCancellationOnly(returned) {
+			completion, cancel := context.WithTimeout(context.WithoutCancel(parent), 3*time.Second)
+			reported, err := startup.ReportRetirement(completion, returned)
+			cancel()
+			returned = errors.Join(returned, err)
+			if reported && err == nil {
+				returned = &introductionExplicitStop{returned}
+				return
+			}
+		}
 		if returned != nil {
 			if !startupComplete {
 				returned = errors.Join(returned, writeIntroductionStartupRefusal(context.WithoutCancel(parent), out, stage, node.StartupFailure(returned), returned))

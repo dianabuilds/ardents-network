@@ -1407,3 +1407,11 @@ by canonical Node inspection. Its original leases and file observations join
 before release. It reconnects to no completion socket and opens no semantic
 history; historical ACK/native births grant no live process or domain retirement.
 Release-history binding remains separate from fresh artifact authorization.
+
+Introduction explicit Stop keeps Installation's original start/retirement leases,
+process/pidfd and cgroup/manager observations separate from the non-root domain
+report. Canonical composition reports only after genuine Node, State, Startup
+and output joins; root independently proves native completion and publishes
+a separate retirement journal after physical closes. An independently opened
+reader requires complete provenance and absent blocker. No mutable semantic
+owner is borrowed, reset or passed onward; restart/replacement remain distinct.

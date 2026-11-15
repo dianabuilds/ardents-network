@@ -43,6 +43,7 @@ type startup struct {
 	directory             string
 	directoryInfo         os.FileInfo
 	ready, denied, closed bool
+	reportAttempted       bool
 	terminal, closeErr    error
 	observations          ObservationSummary
 	activeTimes           *observationTimes

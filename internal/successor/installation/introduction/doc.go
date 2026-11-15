@@ -24,4 +24,6 @@
 // ReadStarted independently retains the complete first-start transcript and
 // original socket metadata without reconnecting. Its leases join before release;
 // historical ACK evidence grants no live process or domain-retirement proof.
+// Explicit Stop separately admits the original process and challenge-bound
+// joined report; independent retirement inspection grants no restart right.
 package introduction

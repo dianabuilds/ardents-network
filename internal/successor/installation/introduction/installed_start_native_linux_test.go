@@ -398,7 +398,8 @@ func TestIntroductionInstalledNativeRegisterSubmitWithdraw(t *testing.T) {
 	}
 	runIntroductionNativeOperations(t, preparedStock, certificates[0], certificates[1], request.SpendRoot, request.IntroductionRoot)
 	checkIntroductionStartedHistory(t, request.InstallationRoot, binding, history, invoke)
-	t.Log("actual installed registration/submission/withdrawal; no full Publisher/Service or qualified lifecycle completion claimed")
+	checkIntroductionExplicitStop(t, request.InstallationRoot, binding, history, request.SpendRoot, request.IntroductionRoot, invoke)
+	t.Log("actual installed registration/submission/withdrawal and explicit first Stop; no full Publisher/Service or qualified lifecycle completion claimed")
 
 }
 
