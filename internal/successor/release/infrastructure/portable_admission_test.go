@@ -79,3 +79,37 @@ func TestSourceAuthorizationExposesDetachedInventoryWithoutGrantingProof(t *test
 		t.Fatalf("inventory bypassed verifier: %v", err)
 	}
 }
+
+func TestRoleArtifactsKeepInventoriesSeparateAndDetached(t *testing.T) {
+	common := []string{ProgramName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"}
+	roles := []struct {
+		name, template, descriptor string
+		project                    func(Authorization) map[string][]byte
+	}{
+		{"join", JoinTemplateName, JoinDescriptorName, func(a Authorization) map[string][]byte { return (JoinAuthorization{pair: a}).Artifacts() }},
+		{"forwarding", ForwardingTemplateName, ForwardingDescriptorName, func(a Authorization) map[string][]byte { return (ForwardingAuthorization{pair: a}).Artifacts() }},
+		{"descriptor", DescriptorTemplateName, DescriptorArtifactName, func(a Authorization) map[string][]byte { return (DescriptorAuthorization{pair: a}).Artifacts() }},
+		{"introduction", IntroductionTemplateName, IntroductionArtifactName, func(a Authorization) map[string][]byte { return (IntroductionAuthorization{pair: a}).Artifacts() }},
+	}
+	for _, role := range roles {
+		t.Run(role.name, func(t *testing.T) {
+			original := detachedTestInventory{}
+			for _, name := range append(append([]string(nil), common...), role.template, role.descriptor) {
+				original[name] = []byte(name)
+			}
+			a := Authorization{origin: original}
+			files := role.project(a)
+			if len(files) != 8 || string(files[role.template]) != role.template || string(files[role.descriptor]) != role.descriptor {
+				t.Fatal("exact role inventory not projected")
+			}
+			files[role.template][0] ^= 1
+			if string(original[role.template]) != role.template {
+				t.Fatal("projection changed original inventory")
+			}
+			delete(original, role.descriptor)
+			if role.project(a) != nil {
+				t.Fatal("incomplete role inventory was projected")
+			}
+		})
+	}
+}

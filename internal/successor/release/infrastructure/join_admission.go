@@ -33,18 +33,7 @@ func (a JoinAuthorization) InitialFacts() (enrollment.InfrastructureFacts, bool)
 // Artifacts copies the closed original inventory. These bytes grant neither
 // initial provenance nor native effect permission independently of this owner.
 func (a JoinAuthorization) Artifacts() map[string][]byte {
-	if a.pair.origin == nil {
-		return nil
-	}
-	files := make(map[string][]byte, 8)
-	for _, name := range []string{ProgramName, JoinTemplateName, JoinDescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
-		raw, ok := a.pair.origin.File(name)
-		if !ok {
-			return nil
-		}
-		files[name] = raw
-	}
-	return files
+	return a.pair.artifacts(JoinTemplateName, JoinDescriptorName)
 }
 
 // AuthenticateJoinInitial consumes genuine running-program Enrollment and an

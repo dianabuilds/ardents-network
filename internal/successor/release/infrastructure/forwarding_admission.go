@@ -28,18 +28,7 @@ func (a ForwardingAuthorization) InitialFacts() (enrollment.InfrastructureFacts,
 // Artifacts returns only detached bytes from the exact frozen Forwarding
 // inventory. It grants no proof, initial provenance, mutation or startup right.
 func (a ForwardingAuthorization) Artifacts() map[string][]byte {
-	if a.pair.origin == nil {
-		return nil
-	}
-	files := make(map[string][]byte, 8)
-	for _, name := range []string{ProgramName, ForwardingTemplateName, ForwardingDescriptorName, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
-		raw, ok := a.pair.origin.File(name)
-		if !ok {
-			return nil
-		}
-		files[name] = raw
-	}
-	return files
+	return a.pair.artifacts(ForwardingTemplateName, ForwardingDescriptorName)
 }
 
 func AuthenticateForwardingInitial(ctx context.Context, v *release.Verifier, b enrollment.InfrastructureBundle, input release.Inputs) (ForwardingAuthorization, error) {

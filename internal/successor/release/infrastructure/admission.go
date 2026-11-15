@@ -60,6 +60,23 @@ func (a Authorization) File(name string) ([]byte, bool) {
 	return a.origin.File(name)
 }
 
+// artifacts projects the original complete inventory for one fixed role.
+// Detached bytes never grant proof or authority to deploy.
+func (a Authorization) artifacts(template, descriptor string) map[string][]byte {
+	if a.origin == nil {
+		return nil
+	}
+	files := make(map[string][]byte, 8)
+	for _, name := range []string{ProgramName, template, descriptor, "infrastructure-enrollment.json", "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
+		raw, ok := a.origin.File(name)
+		if !ok {
+			return nil
+		}
+		files[name] = raw
+	}
+	return files
+}
+
 // An initial pin requires an entirely unborn Release history. Partial or
 // digest-only floors are not an initial history and cannot be reset.
 func emptyInitialFloors(f release.FloorSet) bool {
