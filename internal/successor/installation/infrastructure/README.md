@@ -82,7 +82,7 @@ guarded first startup. `artifact.go` owns canonical descriptor preparation and e
 public program/template agreement. `admission.go` owns one coherent pair of fresh
 Release authorizations, the immutable handoff and retained original loader caller.
 It imports Enrollment and Release, never Endpoint Installation. `source_plan_linux.go` consumes Source's pure serving-declaration codec and finite runtime credential-pair validation, also used by the runtime owner; Installation owns exact future-input matching, explicit delivery and preflight admission. No runtime is constructed.
-`source_request_linux.go` owns a separate closed Source request and exact unit
+`source_request.go` owns a separate closed Source request and exact unit
 template/rendering. `source_observation_linux.go` retains original root-controlled
 request/plan/certificate/private-key/CA files and ancestors through joined Close.
 It consumes only the narrow fixed Source read-only systemd connection; this does

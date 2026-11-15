@@ -57,12 +57,9 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/enrollment/descriptor_inventory_linux_test.go",
 			"internal/successor/enrollment/introduction_inventory_linux_test.go",
 			"internal/successor/enrollment/infrastructure_process_linux.go",
-			"internal/successor/installation/infrastructure/doc.go",
-			"internal/successor/installation/infrastructure/artifact.go",
 			"internal/successor/installation/infrastructure/admission.go",
 			"internal/successor/installation/infrastructure/initial_floors_test.go",
 			"internal/successor/installation/infrastructure/artifact_test.go",
-			"internal/successor/installation/infrastructure/source_request_linux.go",
 			"internal/successor/installation/infrastructure/source_plan_linux.go",
 			"internal/successor/installation/infrastructure/source_observation_linux.go",
 			"internal/successor/installation/infrastructure/source_account_linux.go",
@@ -204,7 +201,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/installation/systemd/source_control_linux.go",
 			"internal/successor/installation/systemd/source_control_frame_linux_test.go",
 			"internal/successor/installation/systemd/source_attempt_linux_test.go",
-			"internal/successor/installation/infrastructure/source_request_linux_test.go",
 			"internal/successor/installation/infrastructure/source_observation_linux_test.go",
 			"internal/successor/release/static_metadata.go",
 			"internal/successor/release/static_metadata_test.go",
@@ -218,6 +214,34 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			want := target == "linux"
 			if selected != want {
 				t.Errorf("native executable adapter %s on %s: %v, want %v", name, target, selected, want)
+			}
+		}
+		// Public declarations are available independently of the executing OS;
+		// Source paths retain POSIX target semantics on Linux and macOS.
+		for _, item := range []struct {
+			name string
+			want bool
+		}{
+			{"internal/successor/installation/infrastructure/doc.go", true},
+			{"internal/successor/installation/infrastructure/artifact.go", true},
+			{"internal/successor/installation/infrastructure/forwarding_artifact.go", true},
+			{"internal/successor/installation/infrastructure/join_artifact.go", true},
+			{"internal/successor/installation/infrastructure/descriptor_artifact.go", true},
+			{"internal/successor/installation/infrastructure/introduction_artifact.go", true},
+			{"internal/successor/installation/infrastructure/descriptor_codec_test.go", true},
+			{"internal/successor/installation/infrastructure/forwarding_artifact_test.go", true},
+			{"internal/successor/installation/infrastructure/join_artifact_test.go", true},
+			{"internal/successor/installation/infrastructure/descriptor_artifact_test.go", true},
+			{"internal/successor/installation/infrastructure/introduction_artifact_test.go", true},
+			{"internal/successor/installation/infrastructure/source_request.go", target == "linux" || target == "darwin"},
+			{"internal/successor/installation/infrastructure/source_request_test.go", target == "linux" || target == "darwin"},
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(item.name)), path.Base(item.name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if selected != item.want {
+				t.Errorf("declaration %s on %s: %v, want %v", item.name, target, selected, item.want)
 			}
 		}
 		for _, tagged := range []bool{false, true} {
