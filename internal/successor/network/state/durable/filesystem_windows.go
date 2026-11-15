@@ -30,7 +30,7 @@ func openRootLease(root string, disposition uint32) (rootLease, error) {
 		return rootLease{}, fmt.Errorf("acquire exclusive state-root lease: %w", err)
 	}
 	var info syscall.ByHandleFileInformation
-	if err := syscall.GetFileInformationByHandle(handle, &info); err != nil || info.FileAttributes&(syscall.FILE_ATTRIBUTE_REPARSE_POINT|syscall.FILE_ATTRIBUTE_DIRECTORY) != 0 {
+	if err := syscall.GetFileInformationByHandle(handle, &info); err != nil || info.FileAttributes&(syscall.FILE_ATTRIBUTE_REPARSE_POINT|syscall.FILE_ATTRIBUTE_DIRECTORY) != 0 || info.NumberOfLinks != 1 {
 		return rootLease{}, errors.Join(fmt.Errorf("state-root lease is not a regular file"), err, syscall.CloseHandle(handle))
 	}
 	return rootLease{handle: handle}, nil

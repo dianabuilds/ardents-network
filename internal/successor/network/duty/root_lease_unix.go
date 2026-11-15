@@ -21,6 +21,14 @@ func acquireRootLeaseMode(root string, create bool) (rootLease, error) {
 	if err != nil {
 		return rootLease{}, err
 	}
+	info, err := file.Stat()
+	if err != nil {
+		return rootLease{}, errors.Join(err, file.Close())
+	}
+	native, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || !info.Mode().IsRegular() || native.Nlink != 1 {
+		return rootLease{}, errors.Join(errors.New("invalid history lease identity"), file.Close())
+	}
 	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		_ = file.Close()
 		return rootLease{}, fmt.Errorf("acquire exclusive local role lease: %w", err)
