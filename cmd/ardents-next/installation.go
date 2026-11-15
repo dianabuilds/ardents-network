@@ -10,9 +10,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/installation"
 	installation "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/authorization"
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 

@@ -1,5 +1,5 @@
 // Fresh generation authorization and original installed continuity admission.
-package installation
+package authorization
 
 import (
 	"bytes"
@@ -11,13 +11,13 @@ import (
 	"net/url"
 	"path"
 
-	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/successor/protectedfiles"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
 var (
-	ErrInput         = requestinput.ErrInput
+	ErrInput         = protectedfiles.ErrInput
 	ErrBinding       = errors.New("installation: generation binding differs")
 	ErrAuthorization = errors.New("installation: fresh Release authorization refused")
 )

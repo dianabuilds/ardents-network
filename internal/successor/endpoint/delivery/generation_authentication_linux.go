@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/installation"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/authorization"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 

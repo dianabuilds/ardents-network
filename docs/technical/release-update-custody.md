@@ -243,7 +243,7 @@ external trials retain the deliberately killed Root's failure and do not qualify
 the installed Service. The
 complete interruption matrix and installed Service acceptance remain unproven; these consumers do
 not borrow the predecessor runtime or Release history.
-Portable `internal/successor/installation` owns only the fresh coherent pair,
+Portable `internal/successor/endpoint/delivery/authorization` owns only the fresh coherent pair,
 private initial-pin provenance and immutable inventory. The separate
 `internal/successor/endpoint/delivery` owns installed binding, original
 transaction effects and startup/recovery lifetimes. It consumes the pair through

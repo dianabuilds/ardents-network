@@ -2,7 +2,7 @@
 
 `endpoint/delivery` — владелец установленного поколения внутри семейства
 Software acceptance. Он допускает canonical request и потребляет fresh opaque
-program/generation pair от отдельного корневого `installation`. Private proofs,
+program/generation pair от отдельного `endpoint/delivery/authorization`. Private proofs,
 initial pin и frozen inventory остаются у этого portable владельца; Endpoint
 получает genuine Release proofs и detached copies через его Interface.
 Native initial provision удерживает
@@ -192,7 +192,7 @@ manager facts или accepting authority; final Startup checks сохраняю�
 
 Пакет `endpoint` владеет installed Installation-решениями и последовательностью
 операций: проверкой запроса, binding свежей пары разрешений к установленному
-поколению, установкой, восстановлением и заменой. Корневой `installation`
+поколению, установкой, восстановлением и заменой. Пакет `authorization`
 аутентифицирует саму пару. Системные наблюдения не получают эти полномочия
 при выделении в Module.
 

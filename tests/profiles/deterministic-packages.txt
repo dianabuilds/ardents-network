@@ -109,7 +109,7 @@ github.com/dianabuilds/ardents-network/internal/successor/endpoint/reader
 github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher
 github.com/dianabuilds/ardents-network/internal/successor/route/prefix
 github.com/dianabuilds/ardents-network/internal/successor/release
-github.com/dianabuilds/ardents-network/internal/successor/installation
+github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/authorization
 github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery
 github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request
 github.com/dianabuilds/ardents-network/internal/successor/installation/directory
