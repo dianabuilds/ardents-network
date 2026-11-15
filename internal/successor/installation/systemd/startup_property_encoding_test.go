@@ -54,3 +54,23 @@ func TestManagerQuotedSizeMatchesFullStandardEncoder(t *testing.T) {
 		}
 	}
 }
+
+func TestManagerJSONPreservesBytesAndExactIntegerValues(t *testing.T) {
+	for _, test := range []struct {
+		input    any
+		expected string
+	}{
+		{[]byte{0, 255}, "[0,255]"},
+		{[]byte{}, "[]"},
+		{[]any{uint64(1<<63 + 7), "original"}, "[9223372036854775815,\"original\"]"},
+	} {
+		value, err := managerJSONValue(test.input, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := json.Marshal(value)
+		if err != nil || string(raw) != test.expected {
+			t.Fatal("typed native facts changed representation", string(raw), err)
+		}
+	}
+}
