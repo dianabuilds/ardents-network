@@ -1681,6 +1681,30 @@ Node's Route, Receiving and Hosting users joined. See the upstream
 and [execution](https://www.freedesktop.org/software/systemd/man/255/systemd.exec.html)
 manuals, accessed 2026-11-16.
 
+A possible platform handoff to investigate is systemd's per-service file
+descriptor store. The [systemd 255 source](https://raw.githubusercontent.com/systemd/systemd/v255/src/core/service.c)
+collects stored descriptors when spawning the main start command; the pre-start
+command itself is spawned without the same descriptor-passing flag. The
+[systemd 255 service manual](https://www.freedesktop.org/software/systemd/man/255/systemd.service.html)
+documents the store's bounded configuration and its retention across queued
+restart jobs. The [notification manual](https://www.freedesktop.org/software/systemd/man/255/sd_notify.html)
+states that successful notification enqueue does not prove a descriptor was
+accepted, and that the barrier only synchronizes processing. Sources accessed
+2026-11-16. These are source and documentation observations, not a reproduced
+Ubuntu 24/systemd 255 result.
+
+A candidate may use a short root pre-start operation to verify the exact Release
+and retain a sealed, invocation-bound handoff through the manager for the actual
+main process to inspect before any effect. It must refuse missing, duplicate,
+stale, unsealed or foreign descriptors, retain trust floors, and account for a
+queued restart preserving old descriptors; an enqueued notification or a
+barrier alone cannot prove acceptance. Its exact executable/configuration
+binding, manager and process custody, real descriptor-passing order, failed
+start/stop and joined domain completion require separate design and native
+evidence. The current fixed no-hook unit and singleton scope do not yet admit
+this candidate. It does not establish fresh-root provenance or authorize
+retiring the current lifecycle.
+
 A root start attempt does not keep the Release verifier alive for the whole
 Node invocation: it checks the original authorization during startup, then
 closes the verifier before publishing successful completion. Its separate
