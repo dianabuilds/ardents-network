@@ -29,35 +29,17 @@ func validateInitialGeneration(b binding, selected []byte, files map[string][]by
 			return plan, ErrBinding
 		}
 	}
-	public := make(map[string][]byte, 7)
-	for _, name := range []string{programName, releaseartifact.JoinTemplateName, releaseartifact.JoinDescriptorName, "root.json", "timestamp.json", "snapshot.json", "targets.json"} {
-		public[name] = files[name]
-	}
-	facts, hashes, err := enrollment.ValidateInfrastructureInventory(files[enrollment.InfrastructureInventoryName], public)
+	facts, hashes, matches, err := releaseartifact.CheckJoinInventory(files, releaseartifact.InventoryCommitments{
+		Program: b.ProgramSHA256, Template: b.TemplateSHA256, Artifact: b.Generation, Inventory: b.InventorySHA256,
+		Targets: b.TargetsSHA256,
+	})
 	if err != nil {
 		return plan, errors.Join(ErrBinding, err)
 	}
-	// These digests belong only to this immutable byte image. Reuse each fresh
-	// computation for its inventory, descriptor and binding commitments; retain
-	// no digest or accepting observation across calls or physical observations.
-	imageDigest := func(name string) string {
-		if sum, ok := hashes[name]; ok {
-			return sum
-		}
-		sum := digest(files[name])
-		hashes[name] = sum
-		return sum
+	if !matches || digest(files["join-request.json"]) != b.RequestSHA256 || digest(files["join-plan.json"]) != b.PlanSHA256 || digest(files["rendered-join.service"]) != b.UnitSHA256 {
+		return plan, ErrBinding
 	}
-	for name, expected := range map[string]string{
-		programName: b.ProgramSHA256, releaseartifact.JoinTemplateName: b.TemplateSHA256,
-		releaseartifact.JoinDescriptorName: b.Generation, enrollment.InfrastructureInventoryName: b.InventorySHA256,
-		"targets.json": b.TargetsSHA256, "join-request.json": b.RequestSHA256,
-		"join-plan.json": b.PlanSHA256, "rendered-join.service": b.UnitSHA256,
-	} {
-		if imageDigest(name) != expected {
-			return plan, ErrBinding
-		}
-	}
+
 	request, err := DecodeRequest(files["join-request.json"])
 	if err != nil || request != b.Request {
 		return plan, errors.Join(ErrBinding, err)
