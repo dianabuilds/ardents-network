@@ -2,12 +2,9 @@ package process
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 )
 
 // ForwardingExpected contains independently checked installation/manager facts,
@@ -44,9 +41,8 @@ func RetainForwardingStop(ctx context.Context, expected ForwardingExpected, devi
 	if err != nil {
 		return ForwardingInvocation{}, err
 	}
-	native, ok := p.original.pin.identity.Sys().(*syscall.Stat_t)
-	if !ok || uint64(native.Dev) != device || native.Ino != inode {
-		return ForwardingInvocation{}, errors.Join(errBinding, p.Close())
+	if err := p.original.matchArchived(device, inode); err != nil {
+		return ForwardingInvocation{}, err
 	}
 	return p, nil
 }
@@ -62,36 +58,11 @@ func RetainForwardingSelf(ctx context.Context, expected ForwardingExpected) (For
 }
 
 func retainForwarding(ctx context.Context, expected ForwardingExpected) (ForwardingInvocation, error) {
-	if runtime.GOARCH != "amd64" || expected.UID < 100 || expected.UID > 999 || expected.GID != expected.UID {
-		return ForwardingInvocation{}, errInput
-	}
-	facts := Expected(expected)
-	pin, err := retainFixed(ctx, facts, forwardingInvocationPolicy(expected))
+	o, err := retainNode(ctx, Expected(expected), forwardingInvocationPolicy(expected), "original Forwarding pidfd")
 	if err != nil {
 		return ForwardingInvocation{}, err
 	}
-	o := &nodeInvocation{pin: pin}
-	result := ForwardingInvocation{original: o}
-	if err = pin.retainNamespaces(ctx); err == nil {
-		err = pin.Observe(ctx)
-	}
-	if err == nil && os.Geteuid() == 0 {
-		// Linux amd64, no pointer arguments, cgo or unsafe. Reobserve after
-		// opening: a reused numeric PID cannot authorize a foreign signal.
-		const pidfdOpenAMD64 = 434
-		fd, _, failure := syscall.Syscall(pidfdOpenAMD64, uintptr(expected.PID), 0, 0)
-		if failure != 0 {
-			err = failure
-		} else {
-			o.pidfd = os.NewFile(fd, "original Forwarding pidfd")
-			err = pin.Observe(ctx)
-		}
-	}
-	if err != nil {
-		o.failure = err
-		return ForwardingInvocation{}, errors.Join(err, result.Close())
-	}
-	return result, nil
+	return ForwardingInvocation{original: o}, nil
 }
 
 func forwardingInvocationPolicy(expected ForwardingExpected) invocationPolicy {

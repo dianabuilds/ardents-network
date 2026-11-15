@@ -2,12 +2,9 @@ package process
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 )
 
 // JoinExpected contains independently checked installation/manager facts,
@@ -41,9 +38,8 @@ func RetainJoinStop(ctx context.Context, expected JoinExpected, device, inode ui
 	if err != nil {
 		return JoinInvocation{}, err
 	}
-	native, ok := p.original.pin.identity.Sys().(*syscall.Stat_t)
-	if !ok || uint64(native.Dev) != device || native.Ino != inode {
-		return JoinInvocation{}, errors.Join(errBinding, p.Close())
+	if err := p.original.matchArchived(device, inode); err != nil {
+		return JoinInvocation{}, err
 	}
 	return p, nil
 }
@@ -59,36 +55,11 @@ func RetainJoinSelf(ctx context.Context, expected JoinExpected) (JoinInvocation,
 }
 
 func retainJoin(ctx context.Context, expected JoinExpected) (JoinInvocation, error) {
-	if runtime.GOARCH != "amd64" || expected.UID < 100 || expected.UID > 999 || expected.GID != expected.UID {
-		return JoinInvocation{}, errInput
-	}
-	facts := Expected(expected)
-	pin, err := retainFixed(ctx, facts, joinInvocationPolicy(expected))
+	o, err := retainNode(ctx, Expected(expected), joinInvocationPolicy(expected), "original Join pidfd")
 	if err != nil {
 		return JoinInvocation{}, err
 	}
-	o := &nodeInvocation{pin: pin}
-	result := JoinInvocation{original: o}
-	if err = pin.retainNamespaces(ctx); err == nil {
-		err = pin.Observe(ctx)
-	}
-	if err == nil && os.Geteuid() == 0 {
-		// Linux amd64, no pointer arguments, cgo or unsafe. Reobserve after
-		// opening: a reused numeric PID cannot authorize a foreign signal.
-		const pidfdOpenAMD64 = 434
-		fd, _, failure := syscall.Syscall(pidfdOpenAMD64, uintptr(expected.PID), 0, 0)
-		if failure != 0 {
-			err = failure
-		} else {
-			o.pidfd = os.NewFile(fd, "original Join pidfd")
-			err = pin.Observe(ctx)
-		}
-	}
-	if err != nil {
-		o.failure = err
-		return JoinInvocation{}, errors.Join(err, result.Close())
-	}
-	return result, nil
+	return JoinInvocation{original: o}, nil
 }
 
 func joinInvocationPolicy(expected JoinExpected) invocationPolicy {

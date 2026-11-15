@@ -45,3 +45,34 @@ func TestNodeProcessCopiesRetainFailureAndCloseAdmission(t *testing.T) {
 		})
 	}
 }
+
+func TestRoleStopRequiresCompleteOriginalProcessIdentity(t *testing.T) {
+	checks := []struct {
+		role string
+		run  func(uint64, uint64) error
+	}{
+		{"join", func(device, inode uint64) error {
+			_, err := RetainJoinStop(context.Background(), JoinExpected{}, device, inode)
+			return err
+		}},
+		{"descriptor", func(device, inode uint64) error {
+			_, err := RetainDescriptorStop(context.Background(), DescriptorExpected{}, device, inode)
+			return err
+		}},
+		{"introduction", func(device, inode uint64) error {
+			_, err := RetainIntroductionStop(context.Background(), IntroductionExpected{}, device, inode)
+			return err
+		}},
+		{"forwarding", func(device, inode uint64) error {
+			_, err := RetainForwardingStop(context.Background(), ForwardingExpected{}, device, inode)
+			return err
+		}},
+	}
+	for _, check := range checks {
+		for _, ids := range [][2]uint64{{0, 1}, {1, 0}, {0, 0}} {
+			if err := check.run(ids[0], ids[1]); !errors.Is(err, errInput) {
+				t.Fatalf("%s admitted incomplete original identity %v: %v", check.role, ids, err)
+			}
+		}
+	}
+}

@@ -24,6 +24,47 @@ type nodeInvocation struct {
 	closeErr    error
 }
 
+// retainNode acquires one original process, its namespace observations and the
+// original root pidfd. The caller supplies only its fixed role policy.
+func retainNode(ctx context.Context, expected Expected, policy invocationPolicy, pidfdLabel string) (*nodeInvocation, error) {
+	if runtime.GOARCH != "amd64" || expected.UID < 100 || expected.UID > 999 || expected.GID != expected.UID {
+		return nil, errInput
+	}
+	pin, err := retainFixed(ctx, expected, policy)
+	if err != nil {
+		return nil, err
+	}
+	o := &nodeInvocation{pin: pin}
+	if err = pin.retainNamespaces(ctx); err == nil {
+		err = pin.Observe(ctx)
+	}
+	if err == nil && os.Geteuid() == 0 {
+		const pidfdOpenAMD64 = 434
+		fd, _, failure := syscall.Syscall(pidfdOpenAMD64, uintptr(expected.PID), 0, 0)
+		if failure != 0 {
+			err = failure
+		} else {
+			o.pidfd = os.NewFile(fd, pidfdLabel)
+			err = pin.Observe(ctx)
+		}
+	}
+	if err != nil {
+		o.failure = err
+		return nil, errors.Join(err, o.close())
+	}
+	return o, nil
+}
+
+// matchArchived retains the existing original process observation on success;
+// a mismatch joins the exact acquired original before returning.
+func (o *nodeInvocation) matchArchived(device, inode uint64) error {
+	native, ok := o.pin.identity.Sys().(*syscall.Stat_t)
+	if !ok || uint64(native.Dev) != device || native.Ino != inode {
+		return errors.Join(errBinding, o.close())
+	}
+	return nil
+}
+
 func (o *nodeInvocation) begin(ctx context.Context) error {
 	if ctx == nil {
 		return errInput

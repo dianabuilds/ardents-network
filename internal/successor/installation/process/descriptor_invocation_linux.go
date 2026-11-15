@@ -2,12 +2,9 @@ package process
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 )
 
 // DescriptorExpected contains independently checked installation/manager facts,
@@ -44,36 +41,11 @@ func RetainDescriptorSelf(ctx context.Context, expected DescriptorExpected) (Des
 }
 
 func retainDescriptor(ctx context.Context, expected DescriptorExpected) (DescriptorInvocation, error) {
-	if runtime.GOARCH != "amd64" || expected.UID < 100 || expected.UID > 999 || expected.GID != expected.UID {
-		return DescriptorInvocation{}, errInput
-	}
-	facts := Expected(expected)
-	pin, err := retainFixed(ctx, facts, descriptorInvocationPolicy(expected))
+	o, err := retainNode(ctx, Expected(expected), descriptorInvocationPolicy(expected), "original Descriptor pidfd")
 	if err != nil {
 		return DescriptorInvocation{}, err
 	}
-	o := &nodeInvocation{pin: pin}
-	result := DescriptorInvocation{original: o}
-	if err = pin.retainNamespaces(ctx); err == nil {
-		err = pin.Observe(ctx)
-	}
-	if err == nil && os.Geteuid() == 0 {
-		// Linux amd64, no pointer arguments, cgo or unsafe. Reobserve after
-		// opening: a reused numeric PID cannot authorize a foreign signal.
-		const pidfdOpenAMD64 = 434
-		fd, _, failure := syscall.Syscall(pidfdOpenAMD64, uintptr(expected.PID), 0, 0)
-		if failure != 0 {
-			err = failure
-		} else {
-			o.pidfd = os.NewFile(fd, "original Descriptor pidfd")
-			err = pin.Observe(ctx)
-		}
-	}
-	if err != nil {
-		o.failure = err
-		return DescriptorInvocation{}, errors.Join(err, result.Close())
-	}
-	return result, nil
+	return DescriptorInvocation{original: o}, nil
 }
 
 func descriptorInvocationPolicy(expected DescriptorExpected) invocationPolicy {
@@ -100,9 +72,8 @@ func RetainDescriptorStop(ctx context.Context, expected DescriptorExpected, devi
 	if err != nil {
 		return DescriptorInvocation{}, err
 	}
-	native, ok := p.original.pin.identity.Sys().(*syscall.Stat_t)
-	if !ok || uint64(native.Dev) != device || native.Ino != inode {
-		return DescriptorInvocation{}, errors.Join(errBinding, p.Close())
+	if err := p.original.matchArchived(device, inode); err != nil {
+		return DescriptorInvocation{}, err
 	}
 	return p, nil
 }

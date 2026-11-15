@@ -2,12 +2,9 @@ package process
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 )
 
 // IntroductionExpected contains independently checked installation/manager facts,
@@ -44,36 +41,11 @@ func RetainIntroductionSelf(ctx context.Context, expected IntroductionExpected) 
 }
 
 func retainIntroduction(ctx context.Context, expected IntroductionExpected) (IntroductionInvocation, error) {
-	if runtime.GOARCH != "amd64" || expected.UID < 100 || expected.UID > 999 || expected.GID != expected.UID {
-		return IntroductionInvocation{}, errInput
-	}
-	facts := Expected(expected)
-	pin, err := retainFixed(ctx, facts, introductionInvocationPolicy(expected))
+	o, err := retainNode(ctx, Expected(expected), introductionInvocationPolicy(expected), "original Introduction pidfd")
 	if err != nil {
 		return IntroductionInvocation{}, err
 	}
-	o := &nodeInvocation{pin: pin}
-	result := IntroductionInvocation{original: o}
-	if err = pin.retainNamespaces(ctx); err == nil {
-		err = pin.Observe(ctx)
-	}
-	if err == nil && os.Geteuid() == 0 {
-		// Linux amd64, no pointer arguments, cgo or unsafe. Reobserve after
-		// opening: a reused numeric PID cannot authorize a foreign signal.
-		const pidfdOpenAMD64 = 434
-		fd, _, failure := syscall.Syscall(pidfdOpenAMD64, uintptr(expected.PID), 0, 0)
-		if failure != 0 {
-			err = failure
-		} else {
-			o.pidfd = os.NewFile(fd, "original Introduction pidfd")
-			err = pin.Observe(ctx)
-		}
-	}
-	if err != nil {
-		o.failure = err
-		return IntroductionInvocation{}, errors.Join(err, result.Close())
-	}
-	return result, nil
+	return IntroductionInvocation{original: o}, nil
 }
 
 func introductionInvocationPolicy(expected IntroductionExpected) invocationPolicy {
@@ -100,9 +72,8 @@ func RetainIntroductionStop(ctx context.Context, expected IntroductionExpected, 
 	if err != nil {
 		return IntroductionInvocation{}, err
 	}
-	native, ok := p.original.pin.identity.Sys().(*syscall.Stat_t)
-	if !ok || uint64(native.Dev) != device || native.Ino != inode {
-		return IntroductionInvocation{}, errors.Join(errBinding, p.Close())
+	if err := p.original.matchArchived(device, inode); err != nil {
+		return IntroductionInvocation{}, err
 	}
 	return p, nil
 }
