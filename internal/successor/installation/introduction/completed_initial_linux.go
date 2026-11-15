@@ -22,20 +22,22 @@ import (
 type Completed struct{ original *completedInitial }
 
 type completedInitial struct {
-	ctx       context.Context
-	mu, ioMu  sync.Mutex
-	uses      sync.WaitGroup
-	once      sync.Once
-	closed    bool
-	failure   error
-	binding   binding
-	parents   *nativeDirectories
-	files     map[string]*initialFile
-	fileOrder []*initialFile
-	dirs      []*inputDirectory
-	journal   *initialFile
-	absent    []string
-	sealed    string
+	ctx             context.Context
+	mu, ioMu        sync.Mutex
+	uses            sync.WaitGroup
+	once            sync.Once
+	closed          bool
+	failure         error
+	binding         binding
+	parents         *nativeDirectories
+	files           map[string]*initialFile
+	fileOrder       []*initialFile
+	dirs            []*inputDirectory
+	journal         *initialFile
+	absent          []string
+	sealed          string
+	hostingBirths   *initialBirths
+	hostingPrepared bool
 	// Failure-only causal control after genuine original file observation.
 	observe func(*os.File)
 }
@@ -82,6 +84,8 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 		return result, err
 	}
 	c.sealed = filepath.Join(r.InstallationRoot, "generations", b.Generation)
+	hostingDirectory, hostingJournal, _ := hostingPreparationPaths(r.InstallationRoot)
+	hostingPresent := false
 	for _, reserved := range r.reservedSiblingPaths() {
 		if reserved == journal.path {
 			continue
@@ -90,6 +94,10 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 			return result, err
 		}
 		if _, err := os.Lstat(reserved); !errors.Is(err, os.ErrNotExist) {
+			if err == nil && (reserved == hostingDirectory || reserved == hostingJournal) {
+				hostingPresent = true
+				continue
+			}
 			return result, errors.Join(ErrBinding, err)
 		}
 		c.absent = append(c.absent, reserved)
@@ -183,6 +191,11 @@ func ReadCompleted(ctx context.Context, path string) (result Completed, returned
 		}
 	}
 
+	if hostingPresent {
+		if err := c.readHostingPreparation(); err != nil {
+			return result, err
+		}
+	}
 	result = Completed{c}
 	return result, result.Check()
 }
@@ -317,6 +330,9 @@ func (h Completed) operationObserved(observe func() error, effect func(*complete
 }
 
 func (c *completedInitial) check() error {
+	if err := c.checkHostingInventory(); err != nil {
+		return err
+	}
 	if err := c.local(); err != nil {
 		return err
 	}
@@ -339,7 +355,15 @@ func (c *completedInitial) check() error {
 			return errors.Join(ErrBinding, err, nameErr)
 		}
 	}
+	if c.hostingBirths != nil {
+		if err := c.hostingBirths.check(); err != nil {
+			return err
+		}
+	}
 	for _, path := range c.absent {
+		if c.hostingOwns(path) {
+			continue
+		}
 		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
 			return errors.Join(ErrBinding, err)
 		}
@@ -449,4 +473,37 @@ func (h Completed) Close() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.failure
+}
+
+func (c *completedInitial) directoryAt(path string) *inputDirectory {
+	for _, directory := range c.dirs {
+		if directory.path == path {
+			return directory
+		}
+	}
+	return nil
+}
+
+// Only this original operation's concrete born objects may replace absence.
+// A copied path or complete-looking foreign prefix grants no preparation right.
+func (c *completedInitial) hostingOwns(path string) bool {
+	j := c.hostingBirths
+	if j == nil {
+		return false
+	}
+	directory, journal, pending := hostingPreparationPaths(c.binding.Request.InstallationRoot)
+	if path == journal {
+		return j.journal != nil && j.journal.path == path
+	}
+	if path == directory {
+		return j.dirs[path] != nil
+	}
+	if path == pending {
+		for _, file := range j.files {
+			if file.path == path {
+				return true
+			}
+		}
+	}
+	return false
 }

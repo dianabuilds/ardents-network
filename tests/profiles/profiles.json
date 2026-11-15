@@ -350,6 +350,19 @@
       "timeout": "3m"
     },
     {
+      "id": "introduction-hosting-linux",
+      "state": "active",
+      "make_target": "introduction-hosting-check",
+      "surface": "one-use original known-born empty Introduction allowance preparation; retained partial/canceled/physical-close failure, independent initial/Hosting history and copied pin-inode refusal; no Receiving/Registry initialization or Start",
+      "prerequisites": [
+        "Ubuntu24.04/systemd255/cgroup-v2/ext4 root stand under shared development lock",
+        "fresh genuine canonical initial stopped Introduction for each selected complete/files-created/before-close case; same-source SHA-256-pinned Control",
+        "explicit original binding and marked stand; actual lo counters and finite provider period"
+      ],
+      "invalid_environment": "selected genuine original stand, case, pin or native prerequisite unavailable; no passing skip",
+      "timeout": "3m"
+    },
+    {
       "id": "descriptor-startup-linux",
       "state": "active",
       "make_target": "descriptor-startup-check",

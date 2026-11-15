@@ -4178,3 +4178,25 @@ Release pair. It never borrows creator custody or interprets semantic contents.
 Fresh metadata cannot replace the original inventory/history. Later operation
 journals refuse in this initial-only reader. Neither output supplies a first
 Start, Registry slot birth, Receiving authority or runtime acceptance.
+
+### Stopped Introduction allowance preparation
+
+`ardents-control introduction prepare-hosting` admits only the original empty
+allowance directory proven by complete initial Installation. Hosting validates
+the declared finite provider policy/counters and creates its period files on
+that same inode. Installation retains original native manager/namespace/kernel
+and quiescent fixed-scope observations, plus its root-only one-use journal and
+blocker outside the Node-writable budget. Original file births are independently
+matched before exact numeric ownership delivery. Every observer/writer closes
+before completion publication; partial writes, cancellation or uncertain Close
+remain blocked and cannot be retried as fresh capacity.
+
+Independent completed inspection checks the whole sixteen-record preparation,
+original allowance root and immutable policy pin/lock identities under its own
+leases. Mutable budget accounting remains Hosting's responsibility. A matching
+policy or copied pin cannot recreate original provenance; another initializer
+never resets or duplicates provider capacity. State, participation, Receiving
+spend and Registry roots remain empty. Genuine Node/Receiving/Route initialize
+Receiving and Registry only after independently admitted Startup, consuming the
+opaque fresh-root fact; root preparation creates no history bytes or slot floors.
+No first Start, runtime duty, domain completion or bootstrap acceptance follows.

@@ -1380,3 +1380,13 @@ owns a new exclusive journal lease and native files; current principal and fresh
 Release permission are separate observations. Account database records describe
 historical effects, never immutable host databases. No Receiving birth, Registry
 initialization, first Start, role duty or runtime import follows from completion.
+
+Introduction allowance preparation retains its own original completed-installation
+lease, stopped manager, kernel/search-path and empty-scope observations. Hosting
+alone validates period/counters and creates files; Installation matches their
+original births and numeric ownership before post-join publication. Its separate
+root-only preparation journal outlives failures outside the mutable budget.
+Independent history owns its own leases and immutable pin/lock observations;
+mutable counters remain Hosting policy. Receiving and Route Registry initialize
+only through their genuine runtime fresh-root collaboration after Startup.
+No role authority, history reset, first Start or live sibling owner is supplied.

@@ -5596,3 +5596,17 @@ harnesses call the moved implementation. `route_composition_linux_test.go` adapt
 only test-local names to those genuine handles, retaining original registration
 objects for cross-domain tests. Installed worker/Service qualification still uses
 its separately selected environment; a portable refusal cannot replace it.
+
+`make introduction-hosting-check` selects one explicit native case from
+`ARDENTS_INTRODUCTION_HOSTING_CASE` (`complete`, `files-created`, `before-close`).
+The outer controller must supply a fresh genuine canonical stopped Introduction
+for each case, under the marked native stand, with exact original
+`ARDENTS_INTRODUCTION_INITIAL_BINDING` and same-source pinned Control. Missing
+inputs fail. The positive drives real canonical preparation and independent
+history, nonempty-root pre-effect refusal, same-byte pin-inode replacement and
+permanent original-reader refusal. Negative cuts cancel and physically close
+original custody after actual file creation or before Close; blocker and all
+causes survive, and retry cannot reinitialize. Other four semantic roots remain
+empty and actual service remains inactive/dead with PID0. Preserve original
+errors; no runtime/bootstrap qualification follows. Ordinary tests independently
+enumerate the sixteen-record grammar and strict public flags.

@@ -1659,3 +1659,17 @@ Release independently authorizes exact targets. First installation requires the
 independent inventory pin and genuine running Node Enrollment. It performs one
 reload, leaves five semantic roots empty and the unit stopped, and publishes only
 after original joins. Independent history output grants no runtime permission.
+
+Stopped Introduction Hosting preparation:
+
+```text
+ardents-control introduction prepare-hosting --binding BINDING --provider PROVIDER --start RFC3339 --end RFC3339 --unit UNIT --quantity N --directions tx+rx --interfaces lo --initial-used-bytes N --low-watermark-bytes N
+```
+
+All ten flags are explicit and unique. The actual interfaces/provider period and
+accounting floor are operator declarations, validated by Hosting. Requires root,
+complete stopped Installation and its original empty allowance directory. A
+completed or partial preparation refuses another initialization. Preserve errors
+and the root-only blocker/history; this command initializes no Receiving/Registry
+and starts no role. Independent `inspect-initial-history` also verifies a complete
+Hosting preparation without freezing mutable budget counters.

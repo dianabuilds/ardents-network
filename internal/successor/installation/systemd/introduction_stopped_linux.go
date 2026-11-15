@@ -43,6 +43,39 @@ func OpenIntroductionStopped(ctx context.Context) (*IntroductionStopped, error) 
 	return s, err
 }
 
+// OpenIntroductionInstalledStopped retains only the already installed fixed Introduction
+// service. It has the same no-job vocabulary as initial stopped installation;
+// a server reference is physical custody, never Start or stopped-policy proof.
+func OpenIntroductionInstalledStopped(ctx context.Context) (*IntroductionStopped, error) {
+	if ctx == nil || os.Geteuid() != 0 {
+		return nil, ErrInput
+	}
+	r, err := openManagerReference(ctx, introductionUnitReply)
+	if r == nil {
+		return nil, err
+	}
+	s := &IntroductionStopped{original: &introductionStopped{reference: r, reloaded: true}}
+	if err == nil {
+		err = r.initializeManagerDeclaration()
+	}
+	if err == nil {
+		err = s.operation(func(ctx context.Context, r *managerReference) error {
+			call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.RefUnit", "ardents-introduction.service")
+			if err != nil {
+				return err
+			}
+			if len(call.Body) != 0 {
+				return ErrObservation
+			}
+			return nil
+		})
+	}
+	if err == nil {
+		_, _, err = s.ObserveLoaded()
+	}
+	return s, err
+}
+
 func (s *IntroductionStopped) operation(effect func(context.Context, *managerReference) error) (err error) {
 	if s == nil || s.original == nil || s.original.reference == nil {
 		return ErrInput
@@ -159,4 +192,12 @@ func (s *IntroductionStopped) Close() error {
 		s.original.closeErr = errors.Join(r.close(), r.original.Err())
 	})
 	return s.original.closeErr
+}
+
+// UnitPaths returns freshly checked detached original search-path declarations.
+func (s *IntroductionStopped) UnitPaths() ([]string, error) {
+	if err := s.CheckOriginal(); err != nil {
+		return nil, err
+	}
+	return append([]string(nil), s.original.reference.paths...), nil
 }

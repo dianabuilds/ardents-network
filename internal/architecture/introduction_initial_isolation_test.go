@@ -4,6 +4,13 @@ package architecture
 // No runtime/Route consumer or role-wide permission is introduced.
 func introductionInitialImportAllowed(source, dependency string) bool {
 	switch source {
+	case "cmd/ardents-control/introduction_hosting_linux.go":
+		return dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/introduction"
+	case "internal/successor/installation/introduction/hosting_prepare_linux.go":
+		return dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd"
+	case "internal/successor/installation/introduction/hosting_native_linux_test.go", "internal/successor/installation/introduction/hosting_history_linux_test.go":
+		return dependency == modulePath+"/internal/successor/hosting"
+
 	case "internal/successor/installation/systemd/introduction_stopped_linux.go":
 		return dependency == "github.com/godbus/dbus/v5"
 	case "cmd/ardents-control/introduction_initial_stopped_native_linux_test.go":

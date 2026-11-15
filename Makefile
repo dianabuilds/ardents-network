@@ -614,3 +614,7 @@ descriptor-recovery-check:
 .PHONY: introduction-initial-stopped-check
 introduction-initial-stopped-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestIntroductionPreparationNative(InitialReleasePurposeAndKeyCustody|ActualBuildRecordsAndPublicPlan|InitialStoppedAndIndependentHistory)$$' -count=1 -v -timeout=3m
+
+.PHONY: introduction-hosting-check
+introduction-hosting-check:
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/introduction -run '^TestIntroductionHostingNativeOriginalPreparation$$' -count=1 -v -timeout=3m

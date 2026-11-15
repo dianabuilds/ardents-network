@@ -35,6 +35,8 @@ func (e *introductionControlFailure) Unwrap() error { return e.cause }
 func runIntroductionControl(args []string, out io.Writer) error {
 	if len(args) > 0 {
 		switch args[0] {
+		case "prepare-hosting":
+			return runIntroductionHostingPreparation(args[1:], out)
 		case "prepare-release-keys":
 			return runIntroductionReleaseKeys(args[1:], out)
 		case "sign-initial-release":
