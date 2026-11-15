@@ -482,7 +482,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
-	if (source == "internal/successor/installation/infrastructure/source_retirement_records_linux.go" || source == "internal/successor/installation/infrastructure/source_start_storage_linux.go") && dependency == modulePath+"/internal/successor/installation/journal" {
+	if (source == "internal/successor/installation/infrastructure/source_retirement_records_linux.go" || source == "internal/successor/installation/infrastructure/source_start_records_linux.go" || source == "internal/successor/installation/infrastructure/source_start_storage_linux.go") && dependency == modulePath+"/internal/successor/installation/journal" {
 		return true
 	}
 	if (source == "internal/successor/installation/join/account_linux.go" || source == "internal/successor/installation/join/principal_linux.go" || source == "internal/successor/installation/descriptor/account_linux.go" || source == "internal/successor/installation/descriptor/principal_linux.go" || source == "internal/successor/installation/forwarding/account_linux.go" || source == "internal/successor/installation/forwarding/principal_linux.go" || source == "internal/successor/installation/introduction/account_linux.go" || source == "internal/successor/installation/introduction/principal_linux.go" || source == "internal/successor/installation/forwarding/account_linux_test.go" || source == "internal/successor/installation/forwarding/principal_linux_test.go") && dependency == modulePath+"/internal/successor/installation/nodeprincipal" {

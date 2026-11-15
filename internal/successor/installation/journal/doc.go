@@ -17,7 +17,7 @@
 // Neither the copy nor physical retirement grants another Start. It creates no
 // original birth ownership or phase authority. The module never authorizes Release, account creation,
 // generation selection, process start or replacement.
-// Node Start and Node/Source retirement decoders share canonical sequence and inode
+// Node/Source Start and retirement decoders share canonical sequence and inode
 // checks while retaining their distinct fixed-purpose phase grammars. They
 // inspect detached bytes and neither acquire a journal nor authorize effects.
 // InvocationPrefix checks a closed contiguous role-specific directory grammar;
