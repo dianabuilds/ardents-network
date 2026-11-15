@@ -6,14 +6,14 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
 )
 
 // Introduction configuration policy is shared by its separate stopped and running
 // comparisons. Neither fabricates another phase's native facts.
-func verifyIntroductionConfiguration(unit, service systemd.Properties, r Request, generation string) error {
+func verifyIntroductionConfiguration(unit, service systemdproperty.Properties, r Request, generation string) error {
 	for name, wanted := range map[string]string{"Id": "ardents-introduction.service", "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/ardents-introduction.service", "UnitFileState": "static"} {
-		if !systemd.Matches(unit, name, "s", wanted) {
+		if !systemdproperty.Matches(unit, name, "s", wanted) {
 			return fmt.Errorf("introduction Unit property %s: %w", name, ErrBinding)
 		}
 	}
@@ -23,30 +23,30 @@ func verifyIntroductionConfiguration(unit, service systemd.Properties, r Request
 	}{
 		"DropInPaths": {"as", []string{}}, "Job": {"(uo)", []any{uint32(0), "/"}},
 	} {
-		if !systemd.Matches(unit, name, wanted.signature, wanted.value) {
+		if !systemdproperty.Matches(unit, name, wanted.signature, wanted.value) {
 			return fmt.Errorf("introduction Unit property %s: %w", name, ErrBinding)
 		}
 	}
 	for name, wanted := range map[string]string{"User": "ardents-node", "Group": "ardents-node", "Type": "exec", "WorkingDirectory": "/", "ProtectHome": "yes", "ProtectSystem": "strict", "KillMode": "control-group", "Restart": "no", "RootDirectory": "", "RootImage": "", "ExitType": "main", "RestartMode": "normal", "StandardOutput": "journal", "StandardError": "journal"} {
-		if !systemd.Matches(service, name, "s", wanted) {
+		if !systemdproperty.Matches(service, name, "s", wanted) {
 			return fmt.Errorf("introduction Service property %s: %w", name, ErrBinding)
 		}
 	}
 	for name, wanted := range map[string]uint64{"CapabilityBoundingSet": 0, "AmbientCapabilities": 0, "LimitCORE": 0, "LimitCORESoft": 0, "LimitNOFILE": 1024, "LimitNOFILESoft": 1024, "CPUQuotaPerSecUSec": 1_000_000, "CPUQuotaPeriodUSec": 100_000, "MemoryHigh": 805306368, "MemoryMax": 1073741824, "TasksMax": 256, "TimeoutStopUSec": 30_000_000} {
-		if !systemd.Matches(service, name, "t", wanted) {
+		if !systemdproperty.Matches(service, name, "t", wanted) {
 			return fmt.Errorf("introduction Service property %s: %w", name, ErrBinding)
 		}
 	}
 	for _, name := range []string{"NoNewPrivileges", "PrivateTmp", "ProtectControlGroups", "ProtectKernelTunables", "ProtectKernelModules", "ProtectKernelLogs", "RestrictSUIDSGID", "LockPersonality", "MemoryAccounting", "CPUAccounting", "TasksAccounting"} {
-		if !systemd.Matches(service, name, "b", true) {
+		if !systemdproperty.Matches(service, name, "b", true) {
 			return fmt.Errorf("introduction Service property %s: %w", name, ErrBinding)
 		}
 	}
-	if !systemd.Matches(service, "UMask", "u", uint32(0077)) || !systemd.Matches(service, "RemainAfterExit", "b", false) || !systemd.Matches(service, "SupplementaryGroups", "as", []string{}) || !systemd.Matches(service, "ReadWritePaths", "as", []string{r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.IntroductionRoot}) || !systemd.Matches(service, "Environment", "as", []string{"GOMAXPROCS=1", "GOMEMLIMIT=536870912"}) {
+	if !systemdproperty.Matches(service, "UMask", "u", uint32(0077)) || !systemdproperty.Matches(service, "RemainAfterExit", "b", false) || !systemdproperty.Matches(service, "SupplementaryGroups", "as", []string{}) || !systemdproperty.Matches(service, "ReadWritePaths", "as", []string{r.StateRoot, r.ParticipationRoot, r.SpendRoot, r.HostingRoot, r.IntroductionRoot}) || !systemdproperty.Matches(service, "Environment", "as", []string{"GOMAXPROCS=1", "GOMEMLIMIT=536870912"}) {
 		return ErrBinding
 	}
 	for _, name := range []string{"ExecCondition", "ExecStartPre", "ExecStartPost", "ExecReload", "ExecStop", "ExecStopPost"} {
-		if !systemd.Matches(service, name, "a(sasbttttuii)", []any{}) {
+		if !systemdproperty.Matches(service, name, "a(sasbttttuii)", []any{}) {
 			return ErrBinding
 		}
 	}
@@ -54,7 +54,7 @@ func verifyIntroductionConfiguration(unit, service systemd.Properties, r Request
 	var parts []json.RawMessage
 	var allow bool
 	var names []string
-	if families.Type != "(bas)" || systemd.Decode(families.Data, &parts) != nil || len(parts) != 2 || systemd.Decode(parts[0], &allow) != nil || !allow || systemd.Decode(parts[1], &names) != nil {
+	if families.Type != "(bas)" || systemdproperty.Decode(families.Data, &parts) != nil || len(parts) != 2 || systemdproperty.Decode(parts[0], &allow) != nil || !allow || systemdproperty.Decode(parts[1], &names) != nil {
 		return ErrBinding
 	}
 	slices.Sort(names)
@@ -63,26 +63,26 @@ func verifyIntroductionConfiguration(unit, service systemd.Properties, r Request
 	}
 	exec := service["ExecStartEx"]
 	var entries [][]json.RawMessage
-	if exec.Type != "a(sasasttttuii)" || systemd.Decode(exec.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
+	if exec.Type != "a(sasasttttuii)" || systemdproperty.Decode(exec.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
 		return ErrBinding
 	}
 	program := filepath.Join(r.InstallationRoot, "generations", generation, programName)
 	for index, wanted := range map[int]any{0: program, 1: []string{program, "introduction", "start-installed", filepath.Join(r.InstallationRoot, "binding.json")}, 2: []string{"no-env-expand"}} {
-		p := systemd.Properties{"value": {Type: "v", Data: entries[0][index]}}
-		if !systemd.Matches(p, "value", "v", wanted) {
+		p := systemdproperty.Properties{"value": {Type: "v", Data: entries[0][index]}}
+		if !systemdproperty.Matches(p, "value", "v", wanted) {
 			return ErrBinding
 		}
 	}
 	return nil
 }
 
-func verifyIntroductionStopped(unit, service systemd.Properties, r Request, generation string) error {
+func verifyIntroductionStopped(unit, service systemdproperty.Properties, r Request, generation string) error {
 	if err := verifyIntroductionConfiguration(unit, service, r, generation); err != nil {
 		return err
 	}
-	if !systemd.Matches(unit, "ActiveState", "s", "inactive") || !systemd.Matches(unit, "SubState", "s", "dead") ||
-		!systemd.Matches(unit, "InvocationID", "ay", []any{}) || !systemd.Matches(service, "ControlGroup", "s", "") ||
-		!systemd.Matches(service, "MainPID", "u", uint32(0)) || !systemd.Matches(service, "ExecMainPID", "u", uint32(0)) {
+	if !systemdproperty.Matches(unit, "ActiveState", "s", "inactive") || !systemdproperty.Matches(unit, "SubState", "s", "dead") ||
+		!systemdproperty.Matches(unit, "InvocationID", "ay", []any{}) || !systemdproperty.Matches(service, "ControlGroup", "s", "") ||
+		!systemdproperty.Matches(service, "MainPID", "u", uint32(0)) || !systemdproperty.Matches(service, "ExecMainPID", "u", uint32(0)) {
 		return ErrBinding
 	}
 	status, err := introductionExecutionStatus(service)
@@ -98,10 +98,10 @@ type introductionExecution struct {
 	code, status                                                       int32
 }
 
-func introductionExecutionStatus(service systemd.Properties) (result introductionExecution, err error) {
+func introductionExecutionStatus(service systemdproperty.Properties) (result introductionExecution, err error) {
 	value := service["ExecStartEx"]
 	var entries [][]json.RawMessage
-	if value.Type != "a(sasasttttuii)" || systemd.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
+	if value.Type != "a(sasasttttuii)" || systemdproperty.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
 		return result, ErrBinding
 	}
 	// ExecStartEx initially carries the command's fork clock. systemd replaces
@@ -109,7 +109,7 @@ func introductionExecutionStatus(service systemd.Properties) (result introductio
 	// separate ExecMain clocks, which identify the process throughout its life.
 	var command introductionExecution
 	for index, target := range []any{&command.startedRealtime, &command.startedMonotonic, &command.exitedRealtime, &command.exitedMonotonic, &command.pid, &command.code, &command.status} {
-		if systemd.Decode(entries[0][index+3], target) != nil {
+		if systemdproperty.Decode(entries[0][index+3], target) != nil {
 			return introductionExecution{}, ErrBinding
 		}
 	}
@@ -126,7 +126,7 @@ func introductionExecutionStatus(service systemd.Properties) (result introductio
 		{"ExecMainStatus", "i", &result.status},
 	} {
 		value, present := service[field.name]
-		if !present || value.Type != field.signature || systemd.Decode(value.Data, field.target) != nil {
+		if !present || value.Type != field.signature || systemdproperty.Decode(value.Data, field.target) != nil {
 			return introductionExecution{}, ErrBinding
 		}
 	}
@@ -142,19 +142,19 @@ func introductionExecutionStatus(service systemd.Properties) (result introductio
 	return result, nil
 }
 
-func verifyIntroductionRunning(unit, service systemd.Properties, r Request, generation string, pid uint32, invocation [16]byte) error {
+func verifyIntroductionRunning(unit, service systemdproperty.Properties, r Request, generation string, pid uint32, invocation [16]byte) error {
 	if pid == 0 || invocation == [16]byte{} {
 		return ErrBinding
 	}
 	if err := verifyIntroductionConfiguration(unit, service, r, generation); err != nil {
 		return err
 	}
-	if !systemd.Matches(unit, "ActiveState", "s", "active") || !systemd.Matches(unit, "SubState", "s", "running") ||
-		!systemd.Matches(unit, "InvocationID", "ay", invocation) || !systemd.Matches(unit, "TriggeredBy", "as", []string{}) ||
-		!systemd.Matches(service, "MainPID", "u", pid) || !systemd.Matches(service, "ExecMainPID", "u", pid) ||
-		!systemd.Matches(service, "ControlPID", "u", uint32(0)) || !systemd.Matches(service, "NRestarts", "u", uint32(0)) ||
-		!systemd.Matches(service, "DynamicUser", "b", false) || !systemd.Matches(service, "ControlGroup", "s", "/system.slice/ardents-introduction.service") ||
-		!systemd.Matches(service, "StandardInput", "s", "null") {
+	if !systemdproperty.Matches(unit, "ActiveState", "s", "active") || !systemdproperty.Matches(unit, "SubState", "s", "running") ||
+		!systemdproperty.Matches(unit, "InvocationID", "ay", invocation) || !systemdproperty.Matches(unit, "TriggeredBy", "as", []string{}) ||
+		!systemdproperty.Matches(service, "MainPID", "u", pid) || !systemdproperty.Matches(service, "ExecMainPID", "u", pid) ||
+		!systemdproperty.Matches(service, "ControlPID", "u", uint32(0)) || !systemdproperty.Matches(service, "NRestarts", "u", uint32(0)) ||
+		!systemdproperty.Matches(service, "DynamicUser", "b", false) || !systemdproperty.Matches(service, "ControlGroup", "s", "/system.slice/ardents-introduction.service") ||
+		!systemdproperty.Matches(service, "StandardInput", "s", "null") {
 		return ErrBinding
 	}
 	status, err := introductionExecutionStatus(service)

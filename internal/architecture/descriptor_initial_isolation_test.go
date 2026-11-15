@@ -53,7 +53,7 @@ func descriptorInitialImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/descriptor/loaded_policy_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd":
+		case "github.com/dianabuilds/ardents-network/internal/successor/systemdproperty":
 			return true
 		}
 	case "internal/successor/installation/descriptor/plan.go":

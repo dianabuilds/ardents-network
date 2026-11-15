@@ -540,6 +540,20 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if dependency == modulePath+"/internal/successor/systemdproperty" {
+		switch source {
+		case "internal/successor/installation/join/loaded_policy_linux.go":
+			return true
+		case "internal/successor/installation/descriptor/loaded_policy_linux.go":
+			return true
+		case "internal/successor/installation/introduction/loaded_policy_linux.go":
+			return true
+		case "internal/successor/installation/forwarding/loaded_policy_linux.go":
+			return true
+		case "internal/successor/installation/infrastructure/source_loaded_linux.go":
+			return true
+		}
+	}
 	// Role installation owners no longer depend on the Source implementation.
 	// Source-specific transitional allowances cannot authorize a sibling role.
 	if dependency == modulePath+"/internal/successor/installation/infrastructure" {
@@ -1082,7 +1096,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/installation/forwarding/retirement_snapshot_native_linux_test.go" || source == "internal/successor/installation/forwarding/recovery_retirement_linux_test.go") && dependency == modulePath+"/internal/successor/installation/completion" {
 		return true
 	}
-	if (source == "internal/successor/installation/forwarding/loaded_policy_linux.go" || source == "internal/successor/installation/forwarding/loaded_policy_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
+	if source == "internal/successor/installation/forwarding/loaded_policy_linux_test.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/attempt_linux.go" && dependency == modulePath+"/internal/successor/installation/journal" {
@@ -1101,9 +1115,6 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if (source == "internal/successor/installation/join/initial_birth_linux.go") && (dependency == modulePath+"/internal/successor/installation/directory" || dependency == modulePath+"/internal/successor/installation/fixedfile") {
-		return true
-	}
-	if (source == "internal/successor/installation/join/loaded_policy_linux.go") && (dependency == modulePath+"/internal/successor/installation/systemd") {
 		return true
 	}
 	if (source == "internal/successor/installation/join/completed_initial_linux.go") && (dependency == modulePath+"/internal/successor/release") {
@@ -1568,7 +1579,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/successor/installation/infrastructure/source_stop_linux.go" && (dependency == modulePath+"/internal/successor/installation/process" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/completion" || dependency == modulePath+"/internal/successor/installation/systemd") {
 			return true
 		}
-		if (source == "internal/successor/installation/infrastructure/source_observation_linux.go" || source == "internal/successor/installation/infrastructure/source_install_linux.go" || source == "internal/successor/installation/infrastructure/source_loaded_linux.go" || source == "internal/successor/installation/infrastructure/source_policy_linux_test.go" || source == "internal/successor/installation/infrastructure/source_running_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
+		if (source == "internal/successor/installation/infrastructure/source_observation_linux.go" || source == "internal/successor/installation/infrastructure/source_install_linux.go" || source == "internal/successor/installation/infrastructure/source_policy_linux_test.go" || source == "internal/successor/installation/infrastructure/source_running_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
 			return true
 		}
 		if dependency == modulePath+"/internal/successor/network/source" {
@@ -2181,7 +2192,7 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 		}
 	case "internal/successor/installation/join/loaded_policy_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/successor/installation/systemd":
+		case "github.com/dianabuilds/ardents-network/internal/successor/systemdproperty":
 			return true
 		}
 	case "internal/successor/installation/join/completed_initial_linux.go":
