@@ -5,17 +5,6 @@ import (
 	"os"
 )
 
-// EncodeIntroductionACK preserves the original request and appends the fixed
-// first-start byte zero. It grants no retained history or runtime authority.
-func EncodeIntroductionACK(request [160]byte) (reply [161]byte, err error) {
-	if !canonicalFrame(request) {
-		return reply, ErrInput
-	}
-	copy(reply[:160], request[:])
-	reply[160] = 0
-	return reply, nil
-}
-
 // IntroductionExchange owns a fresh physical exchange created by the common
 // native opener. It never accepts the legacy 160-byte response and never borrows
 // a Source caller, live exchange or startup permission.
