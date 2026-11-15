@@ -50,7 +50,11 @@ composition. It borrows the original empty native directory, validates the
 policy and real counters, creates every period file exclusively, and returns
 only their original native birth observations. Those facts grant no installation
 permission or live budget; the caller matches each actual descriptor before
-ownership delivery and joins its own directory. The temporary pending record
+ownership delivery and joins its own directory. `FileBirths.Promote` performs
+that ownership transfer for only the three exact original period files; it
+rechecks file identity, metadata and single-link ownership before transfer and
+checks the original descriptor and name after it. The caller still admits the
+root and excludes competing users. The temporary pending record
 survives an incomplete initial file write; an inserted `budget.json` is never
 overwritten. `Policy.Validate` checks only a declaration. Both ordinary `Open`
 and the absent-path `Initialize` retain their existing refusal boundaries.

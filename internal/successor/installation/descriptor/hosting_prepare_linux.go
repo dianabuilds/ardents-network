@@ -210,7 +210,10 @@ func prepareHosting(ctx context.Context, bindingPath string, policy hosting.Poli
 		if err := check(); err != nil {
 			return err
 		}
-		info, err := promoteHostingFile(root, name, files.Original(name), b.UID, b.GID)
+		info, err := files.Promote(root, name, b.UID, b.GID)
+		if errors.Is(err, hosting.ErrInitialFileChanged) {
+			return errors.Join(ErrBinding, err)
+		}
 		if err != nil {
 			return err
 		}
@@ -245,32 +248,4 @@ func prepareHosting(ctx context.Context, bindingPath string, policy hosting.Poli
 	}
 	complete = true
 	return nil
-}
-
-func promoteHostingFile(root *os.Root, name string, original os.FileInfo, uid, gid uint32) (result os.FileInfo, returned error) {
-	before, err := root.Lstat(name)
-	if err != nil || original == nil || !sameInputFile(original, before) || !nodeAccess(before, 0600, 0, 0, false) {
-		return nil, errors.Join(ErrBinding, err)
-	}
-	file, err := root.OpenFile(name, os.O_RDWR|syscall.O_NOFOLLOW, 0)
-	if err != nil {
-		return nil, err
-	}
-	defer func() { returned = errors.Join(returned, file.Close()) }()
-	opened, err := file.Stat()
-	if err != nil || !os.SameFile(before, opened) {
-		return nil, errors.Join(ErrBinding, err)
-	}
-	if err := file.Chown(int(uid), int(gid)); err != nil {
-		return nil, err
-	}
-	if err := file.Sync(); err != nil {
-		return nil, err
-	}
-	result, err = file.Stat()
-	named, nameErr := root.Lstat(name)
-	if err != nil || nameErr != nil || !os.SameFile(before, result) || !os.SameFile(result, named) || !nodeAccess(result, 0600, uid, gid, false) || !nodeAccess(named, 0600, uid, gid, false) {
-		return nil, errors.Join(ErrBinding, err, nameErr)
-	}
-	return result, nil
 }
