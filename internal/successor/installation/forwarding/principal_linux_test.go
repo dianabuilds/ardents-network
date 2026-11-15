@@ -3,6 +3,7 @@ package forwarding
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -38,4 +39,9 @@ func TestPrincipalObservationRetainsRoleAndPhysicalFailures(t *testing.T) {
 	if !errors.Is(err, ErrBinding) || !errors.Is(err, physical) || errors.Is(err, nodeprincipal.ErrBinding) {
 		t.Fatalf("observation failures changed: %v", err)
 	}
+	wrapped := nodeprincipal.MapObservationError(fmt.Errorf("helper: %w", nodeprincipal.ErrBinding), ErrInput, ErrBinding)
+	if !errors.Is(wrapped, ErrBinding) || wrapped.Error() != "helper: "+ErrBinding.Error() {
+		t.Fatalf("wrapped role failure changed: %v", wrapped)
+	}
+
 }

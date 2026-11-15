@@ -35,7 +35,7 @@ reused as infrastructure permission.
 | `join` | JOIN installation, guarded startup, original retirement, restart, replacement and recovery | Canonical Control and Node JOIN consumers |
 | `introduction` | Introduction installation and original invocation lifecycle; separate slot history remains with Route | Canonical Control and Node Introduction consumers |
 | `platform` | Fixed Ubuntu infrastructure declaration validation; file custody and startup admission stay with each caller | Source, Forwarding, JOIN, Descriptor and Introduction consumers |
-| `nodeprincipal` | Fixed Node account records, NSS and free UID/GID selection; independently opened, joined host-principal observation; no account creation | Forwarding, JOIN, Descriptor and Introduction account and principal observers |
+| `nodeprincipal` | Fixed Node account rules, independent principal observation and original account creation custody; each role owns effect admission and journal | Forwarding, JOIN, Descriptor and Introduction account and principal observers |
 
 `Authorization` остаётся opaque: соседний пакет не может заполнить private proofs,
 pin или frozen bytes. `Targets` передаёт genuine Release proofs; `Descriptor`,

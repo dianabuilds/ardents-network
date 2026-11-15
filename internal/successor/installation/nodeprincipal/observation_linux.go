@@ -210,5 +210,20 @@ func MapObservationError(err, invalid, binding error) error {
 		}
 		return errors.Join(mapped...)
 	}
+	if wrapped, ok := err.(interface{ Unwrap() error }); ok {
+		cause := wrapped.Unwrap()
+		if errors.Is(cause, ErrInput) || errors.Is(cause, ErrBinding) {
+			mapped := MapObservationError(cause, invalid, binding)
+			return mappedObservationError{message: strings.Replace(err.Error(), cause.Error(), mapped.Error(), 1), cause: mapped}
+		}
+	}
 	return err
 }
+
+type mappedObservationError struct {
+	message string
+	cause   error
+}
+
+func (e mappedObservationError) Error() string { return e.message }
+func (e mappedObservationError) Unwrap() error { return e.cause }
