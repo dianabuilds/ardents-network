@@ -19,6 +19,8 @@ type joinedCloseWriteBoundary struct {
 	entered, release chan struct{}
 	once             sync.Once
 	partial          bool
+	returned         chan struct{}
+	finished         sync.Once
 }
 
 func (connection *joinedCloseWriteBoundary) Write(value []byte) (int, error) {
@@ -35,6 +37,9 @@ func (connection *joinedCloseWriteBoundary) Write(value []byte) (int, error) {
 		return count, err
 	}
 	written, err := connection.Conn.Write(value[count:])
+	if connection.returned != nil {
+		connection.finished.Do(func() { close(connection.returned) })
+	}
 	return count + written, err
 }
 
@@ -42,7 +47,7 @@ func (connection *joinedCloseWriteBoundary) Write(value []byte) (int, error) {
 // peer CLOSE has been accepted. It must not turn a wholly unemitted cleanup
 // frame into a shared-prefix failure.
 func TestClosedJoinedUnemittedCloseAfterOuterPeerClose(t *testing.T) {
-	for _, mode := range []string{"clean", "credit", "failed-credit", "refused", "partial"} {
+	for _, mode := range []string{"clean", "credit", "overlapping-credit", "overlapping-failed-credit", "failed-credit", "refused", "partial"} {
 		t.Run(mode, func(t *testing.T) { checkJoinedCloseBoundary(t, mode) })
 	}
 }
@@ -54,7 +59,7 @@ func checkJoinedCloseBoundary(t *testing.T, mode string) {
 	creditRelease := make(chan struct{})
 	creditPrefix := make(chan struct{})
 	var releaseCredit sync.Once
-	if mode != "credit" && mode != "failed-credit" {
+	if mode != "credit" && mode != "overlapping-credit" && mode != "overlapping-failed-credit" && mode != "failed-credit" {
 		releaseCredit.Do(func() { close(creditRelease) })
 	}
 	peerDone := make(chan struct{})
@@ -63,7 +68,7 @@ func checkJoinedCloseBoundary(t *testing.T, mode string) {
 		for index := 0; ; index++ {
 			if index == 1 {
 				<-creditRelease
-				if mode == "failed-credit" {
+				if mode == "failed-credit" || mode == "overlapping-failed-credit" {
 					var first [1]byte
 					if _, err := io.ReadFull(peer, first[:]); err == nil {
 						close(creditPrefix)
@@ -91,15 +96,19 @@ func checkJoinedCloseBoundary(t *testing.T, mode string) {
 		t.Fatal(err)
 	}
 	creditDone := make(chan error, 1)
-	if mode == "credit" || mode == "failed-credit" {
+	var creditWrite *closedSourceWrite
+	if mode == "credit" || mode == "overlapping-credit" || mode == "overlapping-failed-credit" || mode == "failed-credit" {
 		if err := ardp.WriteFrame(peer, ardp.Frame{Kind: ardp.KindBytes, Lane: lane.id, Body: []byte{1}}); err != nil {
 			t.Fatal(err)
 		}
 		tasks.Go(func() { var value [1]byte; _, err := io.ReadFull(lane, value[:]); creditDone <- err })
 		waitSourceChannelState(t, outer, func() bool { return outer.active != nil && outer.active.frame.Kind == ardp.KindCredit })
+		outer.mu.Lock()
+		creditWrite = outer.active
+		outer.mu.Unlock()
 	}
 	heldRead := &joinedReadBoundary{Conn: lane, entered: make(chan struct{}), release: make(chan struct{})}
-	heldWrite := &joinedCloseWriteBoundary{Conn: heldRead, partial: mode == "partial", entered: make(chan struct{}), release: make(chan struct{})}
+	heldWrite := &joinedCloseWriteBoundary{returned: make(chan struct{}), Conn: heldRead, partial: mode == "partial", entered: make(chan struct{}), release: make(chan struct{})}
 	ctx, cancel := context.WithCancel(t.Context())
 	released := make(chan struct{})
 	stream := newClosedJoinedStream(ctx, heldWrite, lane, func() { close(released) })
@@ -110,10 +119,10 @@ func checkJoinedCloseBoundary(t *testing.T, mode string) {
 		unblockWrite.Do(func() { close(heldWrite.release) })
 		cancel()
 		closeErr := stream.Close()
-		if (mode == "clean" || mode == "credit") && closeErr != nil {
+		if (mode == "clean" || mode == "credit" || mode == "overlapping-credit") && closeErr != nil {
 			t.Errorf("clean cleanup: %v", closeErr)
 		}
-		if (mode != "clean" && mode != "credit") && !errors.Is(closeErr, ErrClosedSourceCleanup) {
+		if (mode != "clean" && mode != "credit" && mode != "overlapping-credit") && !errors.Is(closeErr, ErrClosedSourceCleanup) {
 			t.Errorf("%s cleanup lost failure: %v", mode, closeErr)
 		}
 		select {
@@ -165,14 +174,42 @@ func checkJoinedCloseBoundary(t *testing.T, mode string) {
 		waitSourceChannelState(t, outer, func() bool { return outer.active == nil && lane.physicalWriteFailed })
 	}
 	unblockWrite.Do(func() { close(heldWrite.release) })
+	if mode == "overlapping-credit" || mode == "overlapping-failed-credit" {
+		// The inner CLOSE has actually received outer peer EOF while a CREDIT
+		// remains in the original physical writer. Only now allow that CREDIT to
+		// finish; a snapshot taken before its join cannot classify the CLOSE.
+		select {
+		case <-heldWrite.returned:
+		case <-time.After(time.Second):
+			t.Fatal("inner CLOSE did not observe peer EOF during CREDIT")
+		}
+		releaseCredit.Do(func() { close(creditRelease) })
+		if mode == "overlapping-failed-credit" {
+			select {
+			case <-creditPrefix:
+			case <-time.After(time.Second):
+				t.Fatal("original CREDIT did not emit its partial prefix")
+			}
+			if err := peer.Close(); err != nil {
+				t.Fatal(err)
+			}
+			<-creditDone
+			<-creditWrite.done
+			if creditWrite.err == nil {
+				t.Fatal("partial CREDIT failure became success")
+			}
+		} else if err := <-creditDone; err != nil {
+			t.Fatal(err)
+		}
+	}
 	waitSourceChannelState(t, stream.channels, func() bool { return stream.channels.terminal != nil })
 	unblockRead.Do(func() { close(heldRead.release) })
 	select {
 	case err := <-done:
-		if (mode == "clean" || mode == "credit") && err != nil {
+		if (mode == "clean" || mode == "credit" || mode == "overlapping-credit") && err != nil {
 			t.Fatalf("unemitted inner CLOSE poisoned cleanup: %v", err)
 		}
-		if (mode != "clean" && mode != "credit") && !errors.Is(err, ErrClosedSourceCleanup) {
+		if (mode != "clean" && mode != "credit" && mode != "overlapping-credit") && !errors.Is(err, ErrClosedSourceCleanup) {
 			t.Fatalf("%s cleanup lost failure: %v", mode, err)
 		}
 	case <-time.After(3 * time.Second):
@@ -186,7 +223,7 @@ func checkJoinedCloseBoundary(t *testing.T, mode string) {
 	outer.mu.Lock()
 	failure := outer.terminal
 	outer.mu.Unlock()
-	if (mode == "clean" || mode == "credit") && failure != nil {
+	if (mode == "clean" || mode == "credit" || mode == "overlapping-credit") && failure != nil {
 		t.Fatalf("clean outer closure poisoned retained prefix: %v", failure)
 	}
 }

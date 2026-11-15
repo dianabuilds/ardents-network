@@ -379,6 +379,9 @@ func (owner *closedSourceChannels) write() {
 		finishTerminal()
 		unwritten := false
 		if err != nil && attempted && parentWitness {
+			if request.frame.Kind == ardp.KindClose && errors.Is(err, io.EOF) {
+				owner.framedParent.joinCloseCredit()
+			}
 			after, active, clean := owner.framedParent.writeWitness()
 			if request.frame.Kind == ardp.KindClose {
 				after, active, clean = owner.framedParent.closeWriteWitness()
