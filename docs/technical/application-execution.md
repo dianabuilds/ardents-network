@@ -219,3 +219,15 @@ confinement, a complete installed Service, whole-host protection or anonymity.
 The [domain map](../development/domain-map.md) records collaborations; GitHub
 owns delivery/acceptance. The [original design and source inventory](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/development/application-execution-domain-boundary-analysis.md)
 remain historical provenance, not an alternate new-runtime destination.
+
+
+Holder conversations consume Execution through `endpoint/session`'s distinct
+preparation and live-operation constructors. Every concrete operation verifies
+the sealed original permission before effects and successful delivery; CLI
+command-name filtering is not its authority boundary. Completed preparation
+continues to permit only request/import, finite bootstrap/issuance, status and
+close. The live consumer retains its existing bounded Route/Publication set;
+JOIN/registration and independent Descriptor publication are not added to it.
+Session closure joins physical/private children and Stock before the outer
+Execution operation and invocation may retire. Ordinary CLI syntax and rendering
+remain separate from this lifecycle.

@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint"
 	"net"
 	"os"
 	"os/exec"
@@ -140,11 +141,11 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 		}
 		return raw
 	}
-	client, declared, err := installedDeclarations(read("client-headless.json"), read("client-source.json"))
+	client, declared, err := endpoint.Declarations(read("client-headless.json"), read("client-source.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	config, err := installedNetworkConfig(client, declared, func() error { return nil })
+	config, err := endpoint.NetworkConfig(client, declared, func() error { return nil })
 	if err != nil {
 		t.Fatal("real installed-network projection", err)
 	}

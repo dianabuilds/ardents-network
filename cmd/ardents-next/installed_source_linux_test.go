@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint"
 	"math/big"
 	"net"
 	"os"
@@ -142,7 +143,7 @@ func TestInstalledSourceInputsRetainGenuineNetworkAuthority(t *testing.T) {
 			LeafKeyDigest  string `json:"leaf_key_digest"`
 		}{address, name, hex.EncodeToString(identity[:]), name, address, rootPath, hex.EncodeToString(pin[:])})
 	}
-	config, err := installedNetworkConfig(headless, declared, func() error { return nil })
+	config, err := endpoint.NetworkConfig(headless, declared, func() error { return nil })
 	if err != nil {
 		t.Fatal(err)
 	}

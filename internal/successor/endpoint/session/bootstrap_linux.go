@@ -1,6 +1,6 @@
 //go:build linux
 
-package main
+package session
 
 import (
 	"context"
@@ -19,17 +19,17 @@ import (
 // This composition retains actual selection and Hosting roots until the finite
 // bootstrap transport joins. The subsequent admitted Prefix reopens those same
 // retained roots; issuance cannot relabel the bootstrap generation.
-func startRouteBootstrap(ctx context.Context, plan routePrefixPlan, authority admissionAuthority, holder *stock.Owner) (_ routeHandle, result error) {
-	if ctx == nil || authority.current == nil || holder == nil || plan.Domain != 1 || !independentRouteRoots(plan.EntryRoot, plan.InteriorRoot, plan.HostingRoot) {
-		return routeHandle{}, errors.New("route bootstrap composition invalid")
+func OpenBootstrap(ctx context.Context, plan funding.Plan, authority funding.Authority, holder *stock.Owner) (_ Prefix, result error) {
+	if ctx == nil || !authority.Available() || holder == nil || plan.Domain != 1 || !independentRouteRoots(plan.EntryRoot, plan.InteriorRoot, plan.HostingRoot) {
+		return Prefix{}, errors.New("route bootstrap composition invalid")
 	}
-	selected, err := selection.Open(selection.Config{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot, Domain: 1, Current: authority.current, Exclusions: plan.Exclusions})
+	selected, err := selection.Open(selection.Config{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot, Domain: 1, Current: authority.Current, Exclusions: plan.Exclusions})
 	if err != nil {
-		return routeHandle{}, err
+		return Prefix{}, err
 	}
 	budget, err := hosting.Open(plan.HostingRoot)
 	if err != nil {
-		return routeHandle{}, errors.Join(err, selected.Close())
+		return Prefix{}, errors.Join(err, selected.Close())
 	}
 	defer func() {
 		if result != nil {
@@ -38,7 +38,7 @@ func startRouteBootstrap(ctx context.Context, plan routePrefixPlan, authority ad
 	}()
 	leg, err := selected.Select()
 	if err != nil {
-		return routeHandle{}, err
+		return Prefix{}, err
 	}
 	end := minRouteDeadline(plan.Deadline, leg.NotAfter, time.Now().Add(bootstrap.Lifetime).UTC().Truncate(time.Second))
 	if bound, ok := ctx.Deadline(); ok {
@@ -46,7 +46,7 @@ func startRouteBootstrap(ctx context.Context, plan routePrefixPlan, authority ad
 	}
 	reservation, err := budget.Reserve(ctx, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: end, HoldUntil: end.Add(5 * time.Second)})
 	if err != nil {
-		return routeHandle{}, err
+		return Prefix{}, err
 	}
 	var once sync.Once
 	var releaseErr error
@@ -56,11 +56,11 @@ func startRouteBootstrap(ctx context.Context, plan routePrefixPlan, authority ad
 		})
 		return releaseErr
 	}
-	opened, err := prefix.OpenBootstrap(ctx, prefix.BootstrapConfig{Leg: leg, Current: authority.current, Deadline: end, Release: release})
+	opened, err := prefix.OpenBootstrap(ctx, prefix.BootstrapConfig{Leg: leg, Current: authority.Current, Deadline: end, Release: release})
 	if err != nil {
-		return routeHandle{}, errors.Join(err, release())
+		return Prefix{}, errors.Join(err, release())
 	}
-	return routeHandle{bootstrap: true, close: opened.Close, done: opened.Done(), issue: func(ctx context.Context, class uint8, receivers [][32]byte) error {
-		return opened.Issue(ctx, end, funding.IssuerPreparation(ctx, fundingAuthority(authority), holder, leg, class, receivers))
+	return Prefix{bootstrap: true, close: opened.Close, done: opened.Done(), issue: func(ctx context.Context, class uint8, receivers [][32]byte) error {
+		return opened.Issue(ctx, end, funding.IssuerPreparation(ctx, authority, holder, leg, class, receivers))
 	}}, nil
 }

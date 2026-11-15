@@ -1,40 +1,40 @@
 //go:build linux
 
-package main
+package session
 
 import (
 	"context"
 	"errors"
-	routejoin "github.com/dianabuilds/ardents-network/internal/successor/route/join"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
-
+	routejoin "github.com/dianabuilds/ardents-network/internal/successor/route/join"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 )
 
 // One holder console retains one fixed local Route context independently of
 // its physical generations. Route owns its choice, acquisitions and join;
 // command composition owns installation selection and the shared Hosting root.
-func newRouteJoinContext(ctx context.Context, plan routePrefixPlan, authority admissionAuthority, holder *stock.Owner) (_ routeJoinContext, result error) {
+func OpenJoinContext(ctx context.Context, plan funding.Plan, authority funding.Authority, holder *stock.Owner) (_ JoinContext, result error) {
 	roots := []string{plan.EntryRoot, plan.InteriorRoot, plan.HostingRoot}
 	if plan.Domain == 3 {
 		roots = append(roots, plan.SourceInteriorRoot)
 	}
-	if ctx == nil || authority.current == nil || authority.presentation == nil || holder == nil || plan.Domain != 1 && plan.Domain != 3 || !independentRouteRoots(roots...) {
-		return routeJoinContext{}, errors.New("route JOIN context setup unavailable")
+	if ctx == nil || !authority.Available() || !authority.HasPresentation() || holder == nil || plan.Domain != 1 && plan.Domain != 3 || !independentRouteRoots(roots...) {
+		return JoinContext{}, errors.New("route JOIN context setup unavailable")
 	}
-	installation, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: authority.current, Exclusions: plan.Exclusions})
+	installation, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: authority.Current, Exclusions: plan.Exclusions})
 	if err != nil {
-		return routeJoinContext{}, err
+		return JoinContext{}, err
 	}
 	budget, err := hosting.Open(plan.HostingRoot)
 	if err != nil {
-		return routeJoinContext{}, errors.Join(err, installation.Close())
+		return JoinContext{}, errors.Join(err, installation.Close())
 	}
 	var source, responder *selection.Owner
 	var owner *routejoin.JoinContext
@@ -62,12 +62,12 @@ func newRouteJoinContext(ctx context.Context, plan routePrefixPlan, authority ad
 	}
 	source, err = installation.Borrow(selection.RoleConfig{InteriorRoot: interior, Domain: 1})
 	if err != nil {
-		return routeJoinContext{}, err
+		return JoinContext{}, err
 	}
 	if plan.Domain == 3 {
 		responder, err = installation.Borrow(selection.RoleConfig{InteriorRoot: plan.InteriorRoot, Domain: 3})
 		if err != nil {
-			return routeJoinContext{}, err
+			return JoinContext{}, err
 		}
 	}
 	deadline := plan.Deadline
@@ -75,7 +75,7 @@ func newRouteJoinContext(ctx context.Context, plan routePrefixPlan, authority ad
 		deadline = end.UTC().Truncate(time.Second)
 	}
 	owner, err = routejoin.NewJoinContext(ctx, routejoin.JoinContextConfig{
-		Source: source, Responder: responder, Current: authority.current, Deadline: deadline, Exclusions: plan.Exclusions,
+		Source: source, Responder: responder, Current: authority.Current, Deadline: deadline, Exclusions: plan.Exclusions,
 		Reserve: func(caller context.Context) (func() error, error) {
 			reservation, err := budget.Reserve(caller, hosting.ReservationRequest{Work: plan.Work, Termination: plan.Termination, WorkUntil: deadline, HoldUntil: deadline.Add(5 * time.Second)})
 			if err != nil {
@@ -85,28 +85,28 @@ func newRouteJoinContext(ctx context.Context, plan routePrefixPlan, authority ad
 		},
 		Present: func(caller context.Context, hello ardp.Hello) ([]byte, error) {
 			presentation := stock.Presentation{NetworkID: hello.NetworkID, StateGeneration: hello.StateGeneration, StateDigest: hello.StateDigest, ProfileDigest: hello.ProfileDigest, RecipientNodeID: hello.RecipientNodeID, RecipientDutyGeneration: hello.RecipientDutyGeneration, ChannelNonce: hello.ChannelNonce, Deadline: hello.Deadline}
-			if err := authority.presentation(presentation); err != nil {
+			if err := authority.Presentation(presentation); err != nil {
 				return nil, err
 			}
 			return holder.Take(caller, presentation, 2)
 		},
 	})
 	if err != nil {
-		return routeJoinContext{}, err
+		return JoinContext{}, err
 	}
-	return routeJoinContext{close: closeAll, open: func(caller context.Context) (routeHandle, error) {
+	return JoinContext{close: closeAll, open: func(caller context.Context) (Prefix, error) {
 		opening, err := owner.Open(caller)
 		if err != nil {
-			return routeHandle{}, err
+			return Prefix{}, err
 		}
-		return routeHandle{close: opening.Close, done: opening.Done(), recipient: func(slot uint8) (routeRecipient, error) {
+		return Prefix{close: opening.Close, done: opening.Done(), recipient: func(slot uint8) (Recipient, error) {
 			duty, until, err := opening.Recipient(slot)
 			if err != nil {
-				return routeRecipient{}, err
+				return Recipient{}, err
 			}
-			return routeRecipient{Node: duty.NodeID, Generation: duty.RecordGeneration, NotAfter: until}, nil
-		}, join: func(caller context.Context, intent routeJoinIntent) (net.Conn, error) {
-			view, err := authority.current()
+			return Recipient{Node: duty.NodeID, Generation: duty.RecordGeneration, NotAfter: until}, nil
+		}, join: func(caller context.Context, intent JoinIntent) (net.Conn, error) {
+			view, err := authority.Current()
 			if err != nil {
 				return nil, err
 			}
