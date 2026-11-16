@@ -590,6 +590,8 @@ the original verifier remains open until the invoking action joins its borrowers
 The Release infrastructure owner projects the same fixed metadata and program
 inputs for Source and the four canonical Node role compositions; this projection
 grants no Enrollment provenance or role authorization.
+`cmd/ardents-next/release_metadata.go` uses Release to require exact retained
+metadata before detached candidate inspection; this comparison grants no proof.
 `cmd/ardents-next/node_release_unix.go` uses Enrollment, Release and Release
 infrastructure to authenticate retained candidates through each role's own
 proof; its public report grants no deployment or runtime authority.

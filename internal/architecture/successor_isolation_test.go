@@ -1497,7 +1497,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if dependency == modulePath+"/internal/successor/enrollment" && (source == "cmd/ardents-next/enrollment.go" || source == "cmd/ardents-next/release.go") {
 			return true
 		}
-		if dependency == modulePath+"/internal/successor/release" && source == "cmd/ardents-next/release.go" {
+		if dependency == modulePath+"/internal/successor/release" && (source == "cmd/ardents-next/release.go" || source == "cmd/ardents-next/release_metadata.go") {
 			return true
 		}
 		if source == "cmd/ardents-next/route_bootstrap_linux_test.go" && (dependency == modulePath+"/internal/successor/route/issuer" || dependency == modulePath+"/internal/successor/route/bootstrap") {

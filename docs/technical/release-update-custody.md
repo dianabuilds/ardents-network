@@ -213,7 +213,12 @@ checks, then closes the verifier. A detached initial check cannot be used here:
 it would advance a history that the existing initial transition requires to be
 empty, while its public result cannot retain initial Enrollment provenance.
 Candidate verification checks Linux/amd64 target bytes and retained Release
-history on Linux or macOS; the host performing that check is not an installed Source. The
+history on Linux or macOS; the host performing that check is not an installed Source.
+Detached Source and Node candidate commands require all four metadata digests
+to match the already retained floors before evaluating any target, with no
+additional unretained metadata that could initiate root rotation. A newer
+candidate is refused here without advancing trust; a real transition retains
+its own authorization and applies the normal monotonic Release policy. The
 result grants no reusable authorization and does not acquire Source installation
 inputs, start a service or establish readiness. A unit test on macOS and Linux
 authenticates a signed test candidate against Release floors established by a
@@ -248,12 +253,11 @@ storage.
 
 The isolated new-domain composition uses `internal/successor/release` with
 its own history and the genuine `ardents-next release verify-initial` consumer.
-`ardents-next release authenticate-protected-initial <bundle> <pin> <history>
-<reference-time>` and `release authenticate-protected-candidate <bundle>
-<history> <reference-time>` independently authenticate the protected program
-and generation pair using Enrollment and Release. Initial authentication binds
-the running executable and independent pin; candidate authentication requires
-complete retained Release history. The result is a public verification outcome,
+`ardents-next release authenticate-protected-candidate <bundle> <history>
+<reference-time>` independently authenticates the protected program and
+generation pair using Enrollment and Release. This detached check requires
+metadata matching complete retained Release history and cannot advance its
+floors. The result is a public verification outcome,
 not an installation, reusable authorization or runtime readiness. The existing
 `installation authenticate-*` routes retain their previous result vocabulary.
 The Release owner consumes new Enrollment's authenticated facts and frozen bytes, not the

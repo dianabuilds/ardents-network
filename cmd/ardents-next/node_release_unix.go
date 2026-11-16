@@ -49,6 +49,10 @@ func runNodeRelease(ctx context.Context, args []string, out io.Writer) int {
 	if err != nil {
 		return enrollmentReport(out, "infrastructure-release-unavailable", 1)
 	}
+	if err := sameReleaseMetadata(ctx, v, input); err != nil {
+		_ = v.Close()
+		return enrollmentReport(out, "infrastructure-authentication-refused", 1)
+	}
 	var a interface {
 		Check(context.Context, *release.Verifier) error
 		Targets() (release.Authorization, release.Authorization)

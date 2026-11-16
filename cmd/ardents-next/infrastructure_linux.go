@@ -94,7 +94,7 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if (preflight || installStopped) && source.IndependentPaths(request.bundle, request.history) != nil {
 		return enrollmentReport(out, "source-preflight-paths-refused", 2)
 	}
-	a, v, refused, err := openSourceRelease(ctx, request)
+	a, v, refused, err := openSourceRelease(ctx, request, false)
 	if refused != "" {
 		return enrollmentReport(out, refused, 1)
 	}

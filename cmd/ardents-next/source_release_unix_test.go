@@ -49,6 +49,66 @@ func TestSourceReleaseAuthenticatesSignedRetainedCandidate(t *testing.T) {
 	}
 }
 
+func TestDetachedInfrastructureInspectionCannotAdvanceRetainedFloors(t *testing.T) {
+	for _, role := range []string{"source", "forwarding"} {
+		t.Run(role, func(t *testing.T) {
+			root := sourceReleaseTestRoot(t)
+			oldParent, nextParent := filepath.Join(root, "old"), filepath.Join(root, "next")
+			for _, parent := range []string{oldParent, nextParent} {
+				if err := os.Mkdir(parent, 0700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			authority := newConsumerReleaseAuthority(t, infrastructureReference.Add(365*24*time.Hour))
+			old, _, _ := infrastructureDistributionInvocation(t, oldParent, []byte("old program"), authority, 1, nil, role)
+			next, _, _ := infrastructureDistributionInvocation(t, nextParent, []byte("new program"), authority, 2, nil, role)
+			candidate, err := enrollment.ReadInfrastructureCandidate(t.Context(), old)
+			if err != nil {
+				t.Fatal(err)
+			}
+			history := filepath.Join(root, "history")
+			v, err := release.Open(history)
+			if err != nil {
+				t.Fatal(err)
+			}
+			oldInput := infrastructureCandidateInput(t, candidate)
+			if _, ok := v.Evaluate(t.Context(), oldInput).Authorization(); !ok {
+				t.Fatal("initial signed test floors refused")
+			}
+			if err := sameReleaseMetadata(t.Context(), v, oldInput); err != nil {
+				t.Fatalf("exact retained metadata refused: %v", err)
+			}
+			missing := oldInput
+			missing.Files = map[string][]byte{}
+			if err := sameReleaseMetadata(t.Context(), v, missing); err == nil {
+				t.Fatal("incomplete retained metadata accepted")
+			}
+			extra := oldInput
+			extra.Files = make(map[string][]byte, len(oldInput.Files)+1)
+			for name, raw := range oldInput.Files {
+				extra.Files[name] = raw
+			}
+			extra.Files["https://release.invalid/metadata/2.root.json"] = []byte("unretained root")
+			if err := sameReleaseMetadata(t.Context(), v, extra); err == nil {
+				t.Fatal("unretained root rotation input accepted")
+			}
+			if err := v.Close(); err != nil {
+				t.Fatal(err)
+			}
+			var out bytes.Buffer
+			args := []string{"authenticate-" + role + "-candidate", next, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)}
+			if code := runRelease(t.Context(), args, &out); code == 0 {
+				t.Fatal("detached inspection advanced to a newer release")
+			}
+			args[1] = old
+			out.Reset()
+			if code := runRelease(t.Context(), args, &out); code != 0 {
+				t.Fatalf("previous retained release became unavailable: %d %s", code, out.String())
+			}
+		})
+	}
+}
+
 func TestInfrastructureRoleCandidatesKeepSeparateSignedAuthority(t *testing.T) {
 	for _, role := range []string{"forwarding", "join", "descriptor", "introduction"} {
 		t.Run(role, func(t *testing.T) {
@@ -205,7 +265,7 @@ func TestSourceReleaseRefusesMissingInventoryBeforeHistory(t *testing.T) {
 			if initial && request.pin != strings.Repeat("0", 64) || !initial && request.pin != "" {
 				t.Fatal("initial pin crossed the candidate boundary")
 			}
-			a, v, refused, err := openSourceRelease(t.Context(), request)
+			a, v, refused, err := openSourceRelease(t.Context(), request, false)
 			if err == nil || refused != "infrastructure-inventory-refused" || v != nil || a.HasInventory() {
 				t.Fatal("missing inventory was accepted", refused, err)
 			}

@@ -26,12 +26,8 @@ func runRelease(ctx context.Context, args []string, out io.Writer) int {
 	if len(args) > 0 && args[0] == "authenticate-source-candidate" {
 		return runSourceRelease(ctx, append([]string{"authenticate-candidate"}, args[1:]...), out)
 	}
-	if len(args) > 0 && (args[0] == "authenticate-protected-initial" || args[0] == "authenticate-protected-candidate") {
-		operation := "authenticate-initial"
-		if args[0] == "authenticate-protected-candidate" {
-			operation = "authenticate-candidate"
-		}
-		return runProtectedRelease(ctx, append([]string{operation}, args[1:]...), out, false)
+	if len(args) > 0 && args[0] == "authenticate-protected-candidate" {
+		return runProtectedRelease(ctx, append([]string{"authenticate-candidate"}, args[1:]...), out, false)
 	}
 	if len(args) != 5 || args[0] != "verify-initial" {
 		return enrollmentReport(out, "invalid-input", 2)
@@ -162,6 +158,11 @@ func runProtectedRelease(ctx context.Context, args []string, out io.Writer, lega
 	}
 	if err != nil {
 		return protectedReleaseFailure(ctx, out, err, legacy)
+	}
+	if !initial && !legacy {
+		if err := sameReleaseMetadata(ctx, verifier, input); err != nil {
+			return protectedReleaseFailure(ctx, out, errors.Join(err, verifier.Close()), legacy)
+		}
 	}
 	var authorization generationauthorization.Authorization
 	if initial {

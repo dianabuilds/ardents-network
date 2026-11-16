@@ -56,7 +56,7 @@ func parseSourceRelease(args []string) (sourceReleaseInput, string) {
 // openSourceRelease retains the original verifier on every successful open.
 // The caller joins it after its own borrowers and must not treat a public result
 // as an installation or runtime authorization.
-func openSourceRelease(ctx context.Context, request sourceReleaseInput) (releaseartifact.Authorization, *release.Verifier, string, error) {
+func openSourceRelease(ctx context.Context, request sourceReleaseInput, retainedOnly bool) (releaseartifact.Authorization, *release.Verifier, string, error) {
 	var err error
 	local := release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: request.environment, Network: request.network, RefTime: request.reference}
 	var b enrollment.InfrastructureBundle
@@ -98,6 +98,11 @@ func openSourceRelease(ctx context.Context, request sourceReleaseInput) (release
 	}
 	if err != nil {
 		return releaseartifact.Authorization{}, nil, "infrastructure-release-unavailable", err
+	}
+	if retainedOnly {
+		if err := sameReleaseMetadata(ctx, v, input); err != nil {
+			return releaseartifact.Authorization{}, v, "", err
+		}
 	}
 	var a releaseartifact.Authorization
 	if request.initial {
@@ -153,7 +158,7 @@ func runSourceRelease(ctx context.Context, args []string, out io.Writer) int {
 	if invalid != "" {
 		return enrollmentReport(out, invalid, 2)
 	}
-	a, v, refused, err := openSourceRelease(ctx, request)
+	a, v, refused, err := openSourceRelease(ctx, request, true)
 	if refused != "" {
 		return enrollmentReport(out, refused, 1)
 	}

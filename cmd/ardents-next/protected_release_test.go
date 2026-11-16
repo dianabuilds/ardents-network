@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -45,6 +46,15 @@ func TestProtectedReleaseRejectsInvalidArgumentsWithoutEffects(t *testing.T) {
 	var output bytes.Buffer
 	if code := runRelease(t.Context(), []string{"authenticate-protected-initial"}, &output); code != 2 {
 		t.Fatal("incomplete authentication was not refused", code, output.String())
+	}
+	output.Reset()
+	history := filepath.Join(t.TempDir(), "history")
+	args := []string{"authenticate-protected-initial", "/absent", strings.Repeat("0", 64), history, "2030-01-02T03:04:05Z"}
+	if code := runRelease(t.Context(), args, &output); code != 2 {
+		t.Fatal("detached initial authentication was not refused", code, output.String())
+	}
+	if _, err := os.Lstat(history); !os.IsNotExist(err) {
+		t.Fatal("detached initial refusal created history", err)
 	}
 }
 
