@@ -35,7 +35,7 @@ func runWithInput(ctx context.Context, arguments []string, input io.ReadCloser, 
 		return runName(arguments[1:], output)
 	}
 	if len(arguments) > 0 && arguments[0] == "service-instance" {
-		return runServiceInstance(ctx, arguments[1:], output)
+		return errors.New("service-instance is retired; use ardents-next publication-instance")
 	}
 	if len(arguments) > 0 && arguments[0] == "refresh-sources" {
 		return runRefreshSources(ctx, arguments, output)
@@ -44,7 +44,7 @@ func runWithInput(ctx context.Context, arguments []string, input io.ReadCloser, 
 		return runAcceptClosedProfile(arguments[1:], output)
 	}
 	if len(arguments) == 0 || arguments[0] != "accept-offline" {
-		return errors.New("usage: ardents <accept-offline|accept-closed-profile|refresh-sources|diagnostics|endpoint|entry|name|service-instance> arguments")
+		return errors.New("usage: ardents <accept-offline|accept-closed-profile|refresh-sources|diagnostics|endpoint|entry|name> arguments")
 	}
 	return runAcceptOffline(ctx, arguments[1:], output)
 }
