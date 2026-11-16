@@ -215,8 +215,10 @@ Initial verification requires the actual Linux/amd64 enrolled process. Candidate
 verification checks Linux/amd64 target bytes and retained Release history on
 Linux or macOS; the host performing that check is not an installed Source. The
 result grants no reusable authorization and does not acquire Source installation
-inputs, start a service or establish readiness. Successful macOS candidate
-authentication still requires source-matched signed-input verification.
+inputs, start a service or establish readiness. A unit test on macOS and Linux
+authenticates a signed test candidate against Release floors established by a
+separate verified evaluation and rejects substituted artifact bytes. It does
+not establish initial process enrollment or installed operation.
 
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects a protected Endpoint generation target in the same signed metadata set

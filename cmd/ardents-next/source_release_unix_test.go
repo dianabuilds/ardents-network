@@ -12,9 +12,43 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
+
+func TestSourceReleaseAuthenticatesSignedRetainedCandidate(t *testing.T) {
+	root := sourceReleaseTestRoot(t)
+	dir, _, _ := infrastructureDistributionRoot(t, root, []byte("source program fixture"), nil, 1, nil)
+	candidate, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	history := filepath.Join(root, "history")
+	verifier, err := release.Open(history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decision := verifier.Evaluate(t.Context(), infrastructureCandidateInput(t, candidate))
+	if _, ok := decision.Authorization(); !ok {
+		t.Fatalf("signed fixture did not establish Release floors: %s %v", decision.Outcome, decision.Err())
+	}
+	if err := verifier.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	args := []string{"authenticate-candidate", dir, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)}
+	if code := runSourceRelease(t.Context(), args, &out); code != 0 || !strings.Contains(out.String(), `"program_outcome":"no-update"`) || !strings.Contains(out.String(), `"generation_outcome":"no-update"`) {
+		t.Fatalf("signed retained candidate refused: %d %s", code, out.String())
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ardents-source.service"), []byte("substituted"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	if code := runSourceRelease(t.Context(), args, &out); code == 0 {
+		t.Fatal("substituted artifact accepted")
+	}
+}
 
 func TestSourceReleaseCandidateRefusesMissingInventoryWithoutHistory(t *testing.T) {
 	root := sourceReleaseTestRoot(t)

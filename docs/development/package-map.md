@@ -587,6 +587,9 @@ the public outcome grants no installation or runtime authority.
 `internal/successor/release/infrastructure`. It owns the shared Source artifact
 authentication path used by the Release command and transitional Source actions;
 the original verifier remains open until the invoking action joins its borrowers.
+The portable `source_release_unix_test.go` and `infrastructure_fixture_unix_test.go`
+use Enrollment and Release to check signed retained candidates; the latter also
+uses the existing TUF metadata dependency to construct its independent fixture.
 
 The exact `publication_network_linux_test.go` fixture independently accepts
 signed Epoch/profile inputs into a separate genuine receiving State root.
