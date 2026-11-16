@@ -1588,13 +1588,24 @@ sequence still require native evidence before retiring stopped replacement.
 An absent producer from a runtime that did not retain command completion cannot
 be upgraded into proof of that older command's cleanup.
 
-On missing/damaged history, a retained producer or uncertain original completion,
-preserve the roots and refuse further lifecycle continuation. Neither
-`prepare-state`, fresh trust setup, elapsed time nor deleting a producer/lease
-is a repair operation. The platform path supplies no general recovery command
-or supported operator procedure to clear unresolved completion. Any eventual
-repair must be justified by the affected existing owner's invariant and evidence;
-another installation journal is not implied by that gap.
+On missing/damaged history or uncertain original completion, preserve the roots
+and refuse further lifecycle continuation. Neither `prepare-state`, fresh trust
+setup, elapsed time nor deleting a producer/lease by hand is a repair operation.
+The platform path supplies no general recovery command. One bounded domain-owned
+repair is admitted: `state.RepairRetainedSourceProducer` (operator command
+`source repair-retained`, run as the fixed Source service principal) clears only
+the unresolved serving producer of a Source invocation proven defunct — the
+platform service is inactive with no live main/control process, the durable
+chain/journal/floors and wave guard verify consistently (the retained semantic
+admission minus startSource), and that producer is the sole unresolved obligation.
+It creates nothing, resets no floor, adopts no uncertain process and deletes no
+history; any uncertainty refuses with the original bytes preserved. The repair is
+justified by the duty/State owner's invariant (the producer prevents concurrent
+invocations; a defunct original with consistent effects and no other unresolved
+obligation may be re-claimed), not by an installation journal. All other unresolved
+completion — an active cycle journal, an exposure mismatch, missing/damaged history
+— remains refused. Real crash/interruption evidence is still required before this
+repair replaces the transitional Source recovery orchestration.
 
 The duplicate development `infrastructure start-source` transaction and its
 detached startup wait wrapper are retired. Canonical native installed consumers

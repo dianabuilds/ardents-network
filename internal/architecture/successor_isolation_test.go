@@ -522,7 +522,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "cmd/ardents-next/platform_linux.go" || source == "cmd/ardents-next/platform_release_linux_test.go") && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
 		return true
 	}
-	if (source == "cmd/ardents-next/platform_unit_linux.go" || source == "cmd/ardents-next/platform_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
+	if (source == "cmd/ardents-next/platform_unit_linux.go" || source == "cmd/ardents-next/platform_linux_test.go" || source == "cmd/ardents-next/source_repair_linux.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
 	// Network's physical/application adapters consume domain policy through
@@ -1162,7 +1162,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "internal/successor/endpoint/participant_linux.go" && (dependency == modulePath+"/internal/successor/installation/endpoint" || dependency == modulePath+"/internal/successor/execution" || dependency == modulePath+"/internal/successor/execution/runtime") {
 			return true
 		}
-		if source == "cmd/ardents-next/source_linux.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/state") {
+		if (source == "cmd/ardents-next/source_linux.go" || source == "cmd/ardents-next/source_repair_linux.go") && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/state") {
 			return true
 		}
 		if source == "cmd/ardents-next/source_preparation_linux.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/processresource") {
