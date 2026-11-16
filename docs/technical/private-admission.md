@@ -530,7 +530,7 @@ channel's HELLO nonce, not a context or holder identifier.
 The journal holds at most 131,072 receipts. Its append is flushed before
 presentation; the selected stock item is removed before that append and is
 never returned on refusal or uncertain completion. Missing, partial, foreign
-or replaced retained state refuses further use. Compaction stores its deletion
+or replaced retained state must refuse further use. Compaction stores its deletion
 time as the floor in the same atomic replacement, before any later append;
 a crash between those operations cannot permit time before that deletion.
 Each receipt remains until its hour plus sixty seconds has ended.
@@ -542,6 +542,16 @@ a retained root without its lease refuses, including while a previous owner is
 still live. Initial creation and validated reopen flush the root's retained
 files and directory before returning ownership. A failed initial flush cannot
 be bypassed by retrying Open against complete but unacknowledged files.
+
+There is an unresolved distinction between first creation and complete loss of
+history: the current `attempts.Open` treats an entirely empty existing directory
+as fresh. A focused Linux unit check wrote a test attempt, removed all journal
+entries, reopened the same directory and observed that the same test token could
+be marked again. This demonstrates loss of the local replay floor, not network
+acceptance of a repeated token. The installed Endpoint currently creates or
+reuses role directories before calling Stock without a proven first-creation
+fact. A replacement must retain genuine creation provenance and refuse unknown
+or erased history; directory emptiness alone is not such provenance.
 
 A fresh source prefix consumes distinct genuine class-2 stock for Entry and
 Interior on new authenticated channels after bootstrap retirement. The local

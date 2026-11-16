@@ -280,6 +280,9 @@ creating entries. This is not an installed Endpoint reproduction.
 starts would also refuse a genuine first initialization. Replacing the
 installation handoff must supply a genuine first-creation fact or use strict
 retained opening; an empty path or a caller-selected flag is not that fact.
+The same distinction is required for the Endpoint's token-attempt histories;
+their separate local replay-floor finding is recorded in
+[private admission](private-admission.md).
 
 Completed Generation writes retain a matched read-only descriptor to the same
 original inode before joining the writer close. Failed read opening, identity
