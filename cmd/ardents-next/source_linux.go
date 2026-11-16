@@ -93,7 +93,7 @@ func runSource(ctx context.Context, args []string, out, diagnostic io.Writer) (c
 		operation = &sourceTerminal{firstOwner: "input", first: err}
 		return 1
 	}
-	owner, err := state.Open(config)
+	owner, err := state.OpenRetained(config)
 	// State and its transport own defensive key copies after Open. Clear the
 	// command's original only after every State user has joined below.
 	if err != nil {
@@ -122,7 +122,7 @@ func sourceServingInputs(config *state.Config, plan source.ServingDeclaration, i
 	if err := check(); err != nil {
 		return err
 	}
-	// An independent prepared State root must already exist. Open remains the
+	// An independent prepared State root must already exist. State remains the
 	// authority for layout, authentication, native lease and recovery admission.
 	info, err := os.Stat(config.Root)
 	if err != nil || !info.IsDir() {

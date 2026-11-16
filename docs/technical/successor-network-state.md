@@ -517,7 +517,8 @@ inspection creates no second Source or accepting fallback.
 
 `ardents-next source serve <plan>` consumes State's existing serving configuration,
 Current/Wait/Close and PermitWork with one original `processresource` Source guard.
-It opens independently prepared State, borrows no old runtime root, and supplies
+It opens independently prepared State with `OpenRetained`, refusing an empty or
+missing history instead of initializing it. It borrows no old runtime root and supplies
 no new acquisition or refresh policy. State joins listener/handlers/background
 work and releases its own guards before composition releases process pins.
 Cancellation interrupts original Source sockets and joins their callbacks before
