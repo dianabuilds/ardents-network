@@ -93,7 +93,7 @@ func runSource(ctx context.Context, args []string, out, diagnostic io.Writer) (c
 		operation = &sourceTerminal{firstOwner: "input", first: err}
 		return 1
 	}
-	owner, err := state.OpenRetained(config)
+	owner, err := state.Open(config)
 	// State and its transport own defensive key copies after Open. Clear the
 	// command's original only after every State user has joined below.
 	if err != nil {
