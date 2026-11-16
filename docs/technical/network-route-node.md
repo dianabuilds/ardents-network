@@ -1591,24 +1591,57 @@ sequence still require native evidence before retiring stopped replacement.
 An absent producer from a runtime that did not retain command completion cannot
 be upgraded into proof of that older command's cleanup.
 
-On missing/damaged history or uncertain original completion, preserve the roots
-and refuse further lifecycle continuation. Neither `prepare-state`, fresh trust
-setup, elapsed time nor deleting a producer/lease by hand is a repair operation.
-The platform path supplies no general recovery command. One bounded domain-owned
-repair is admitted: `state.RepairRetainedSourceProducer` (operator command
-`source repair-retained`, run as the fixed Source service principal) clears only
-the unresolved serving producer of a Source invocation proven defunct — the
-platform service is inactive with no live main/control process, the durable
-chain/journal/floors and wave guard verify consistently (the retained semantic
-admission minus startSource), and that producer is the sole unresolved obligation.
-It creates nothing, resets no floor, adopts no uncertain process and deletes no
-history; any uncertainty refuses with the original bytes preserved. The repair is
-justified by the duty/State owner's invariant (the producer prevents concurrent
-invocations; a defunct original with consistent effects and no other unresolved
-obligation may be re-claimed), not by an installation journal. All other unresolved
-completion — an active cycle journal, an exposure mismatch, missing/damaged history
-— remains refused. Real crash/interruption evidence is still required before this
-repair replaces the transitional Source recovery orchestration.
+On missing/damaged history, a retained producer or uncertain original completion,
+preserve the roots and refuse ordinary lifecycle continuation. Neither
+`prepare-state`, fresh trust setup, elapsed time nor manually deleting a
+producer/lease is a repair operation. The bounded explicit
+`source repair-retained <source.json>` operation abandons only a dead platform
+Source's sole serving producer through Network State and participation.
+SourceCompletion is volatile and is acquired before supervision: it cannot
+survive a crash or prove terminal work after one. Repair never invents its
+successful result.
+
+Repair runs outside the service as the fixed `ardents-source` account, with the
+unchanged root-controlled public plan and existing roots below
+`/var/lib/ardents/roles/source/`. It loads no private transport key and starts
+no runtime. Both original retained leases remain held from semantic admission
+through the one participation commit. The retained signed current chain,
+trusted time, exact security floors and journal must already be consistent;
+pending generations, active cycles, exposure history, conflicting history,
+uncertain prefixes, a mismatched serving duty or any other participation record
+refuse without pre-commit mutation. A clean root refuses without a Claim probe.
+Missing pointers are not auto-repaired by this operation.
+
+The actual original read-only systemd connection must observe the fixed Source
+unit as `inactive/dead` or `failed/failed`, with zero MainPID and ControlPID,
+the exact two writable roots and loaded `serve-retained` declaration path, fixed
+principal, no drop-ins or activation socket,
+and the required control-group/no-restart/confinement policy. Independent kernel
+inspection requires its fixed cgroup absent or unpopulated, including descendants.
+Independent bounded procfs inspection also refuses every other process of the
+actual Source principal. This excludes a manually launched old command outside
+the unit whose volatile Finish could otherwise remove a successor guard.
+The checker requires the actual procfs root with complete process visibility;
+restricted `hidepid`/`subset` mounts, malformed/missing credential facts,
+permission failures and exhausted scan bounds refuse. All four native UID
+fields are checked, as defined by the [kernel proc documentation](https://docs.kernel.org/filesystems/proc.html)
+(accessed 2026-11-16).
+All observations repeat after original input checks while the leases fence new
+State/producer effects. No supplied callback, exit code or copied flag grants
+repair authority. An unavailable/unloaded unit or manager, changed account,
+populated scope or lost input refuses. Keep the failed unit's evidence until
+repair; resetting failed state is not a recovery prerequisite.
+
+Only then does participation commit removal of that exact serving producer,
+advancing its normal generation/watermark. State bytes and floors are unchanged.
+Commit, observer and physical Close errors remain failures; a post-commit error
+does not imply rollback or authorize deletion/reinitialization. A fresh retained
+admission determines the next outcome. The command emits `repaired` only after
+its actual users and handles close successfully. Relaunch still requires the
+normal mandatory platform check and independent producer Claim. Other recovery
+classes remain refusals; no installation journal or general repair manager is
+introduced. Native crash/relaunch qualification remains a separate evidence gate
+before retiring the old orchestration.
 
 The duplicate development `infrastructure start-source` transaction and its
 detached startup wait wrapper are retired. Canonical native installed consumers

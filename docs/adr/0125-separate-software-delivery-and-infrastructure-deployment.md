@@ -51,6 +51,14 @@ That tree describes existing implementation, not a required product domain.
    and durable runtime state with their actual owners. Existing installed roots
    and their bytes are preserved: no automatic migration, deletion, reset or
    adoption of an uncertain process follows from removing the orchestration.
+   Explicit Source recovery may abandon only a dead invocation's sole retained
+   serving producer after its existing State and participation leases are held,
+   signed history and unchanged floors verify, and the original fixed manager
+   plus kernel cgroup establish no remaining execution. This does not recreate
+   successful original completion: SourceCompletion is volatile, acquired before
+   supervision, and supplies no post-crash evidence. Missing, partial or
+   conflicting histories and other outstanding obligations still refuse;
+   recovery initializes nothing, resumes no wave and resets no history.
 7. ADR-0123 decision 1 is amended only in its classification of Installation
    as a separate domain. ADR-0119, ADR-0123 and ADR-0124 retain their artifact,
    authority, lifecycle, state and refusal guarantees. Their existing Linux

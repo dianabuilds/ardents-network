@@ -8,6 +8,12 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+func validateRetainedRootPermissions(string) error {
+	// Ordinary opening currently enforces DACLs by mutation. Explicit recovery
+	// must not reuse it before refusal; no Windows recovery path is selected.
+	return errors.New("retained participation repair is unavailable on Windows")
+}
+
 func validateOwnerOnlyRoot(root string, _ os.FileInfo) error {
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil {

@@ -7,6 +7,5 @@ import (
 	"io"
 )
 
-func runSource(context.Context, []string, io.Writer, io.Writer) int { return 2 }
-
+func runSource(context.Context, []string, io.Writer, io.Writer) int       { return 2 }
 func runSourceRepair(context.Context, []string, io.Writer, io.Writer) int { return 2 }

@@ -5,12 +5,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"syscall"
 )
@@ -179,52 +177,7 @@ func (s *Inspection) capture(entry *inspectionEntry) error {
 // must not cause recursive traversal or become an implicitly accepted floor.
 func (s *Inspection) knownEntry(path string, directory bool) bool {
 	relative, err := filepath.Rel(s.root.path, path)
-	if err != nil {
-		return false
-	}
-	parts := strings.Split(relative, string(filepath.Separator))
-	if relative == "." {
-		return directory
-	}
-	if len(parts) == 1 {
-		name := parts[0]
-		if name == "generations" || name == "distribution" {
-			return directory
-		}
-		if directory {
-			return false
-		}
-		if name == rootLockName || name == rootMarkerName || name == "current" {
-			return true
-		}
-		if strings.HasPrefix(name, "closed-profile-state-") {
-			return generationName.MatchString(strings.TrimPrefix(name, "closed-profile-state-"))
-		}
-		return strings.HasPrefix(name, "closed-profile-") && strings.HasSuffix(name, ".bin") && generationName.MatchString(strings.TrimSuffix(strings.TrimPrefix(name, "closed-profile-"), ".bin"))
-	}
-	if parts[0] == "distribution" {
-		if len(parts) == 2 {
-			return parts[1] == "generations" && directory || parts[1] == "current" && !directory
-		}
-		if parts[1] != "generations" || !generationName.MatchString(parts[2]) {
-			return false
-		}
-		return len(parts) == 3 && directory || len(parts) == 4 && parts[3] == "state.bin" && !directory
-	}
-	if parts[0] != "generations" || !generationName.MatchString(parts[1]) {
-		return false
-	}
-	if len(parts) == 2 {
-		return directory
-	}
-	if len(parts) == 3 {
-		return parts[2] == "epoch.bin" && !directory || parts[2] == "inputs" && directory
-	}
-	if len(parts) != 4 || parts[2] != "inputs" || directory {
-		return false
-	}
-	index, err := strconv.Atoi(strings.TrimSuffix(parts[3], ".bin"))
-	return err == nil && index >= 0 && index < 64 && parts[3] == fmt.Sprintf("%04d.bin", index)
+	return err == nil && retainedLayoutEntry(relative, directory)
 }
 
 func (s *Inspection) Principal() (uint32, uint32) {

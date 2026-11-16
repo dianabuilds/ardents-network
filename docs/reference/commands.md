@@ -237,6 +237,17 @@ adopted from an existing installation. Preflight prints only
 and Close join. The result grants no creation, delivery, start or later effect;
 Release's independent authentication floor effects are the only durable writes.
 
+`ardents-next source repair-retained <source.json>` is the Linux operator's
+explicit repair for a dead platform Source's sole retained serving producer.
+Run outside the service as the fixed `ardents-source` account, using its original
+root-controlled public plan, retained roots and loaded stopped/failed fixed unit.
+The command loads no private transport key. It requires authenticated consistent
+State/floors, both retained leases, the actual original manager and empty kernel
+cgroup; other obligations and partial histories refuse without pre-commit writes.
+It emits `repaired` only after actual cleanup. This abandons a dead invocation,
+not a successful SourceCompletion; relaunch independently repeats the mandatory
+platform check and producer Claim. See the [operator procedure](../operations/source-platform-lifecycle.md).
+
 `ardents-next source prepare-trust <public-plan> <fresh-output>` performs one
 30-second offline public observation and prepares exactly two Sources and one
 client. All paths are canonical absolute. Its closed schema is

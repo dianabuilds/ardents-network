@@ -835,6 +835,21 @@ and issue receipts. Consolidation does not upgrade their evidence level.
 
 ## Collaborations to review
 
+Explicit dead-Source recovery belongs to Network State and participation,
+not software acceptance or deployment orchestration. State authenticates the
+retained signed chain/time/security journal under its no-write existing lease;
+participation retains its own existing lease, exact sole serving obligation,
+generation and watermark. The Linux adapter consumes an actual original
+read-only fixed systemd connection and independent kernel cgroup observation,
+binds the fixed account and exact roots, and only then requests that producer's
+removal. SourceCompletion remains a volatile original-command result and grants
+no post-crash authority. `source repair-retained` retains only the public plan
+and joins its own observations; normal platform Release admission and a new
+Source Claim remain independent. Pending/wave/partial/foreign duties still
+refuse. The [Source owner](../technical/network-route-node.md#source-lifecycle-and-forward-program-change)
+defines the bounded abandonment contract; component tests supply no installed
+crash/relaunch qualification and do not retire transitional Source orchestration.
+
 Apply the interaction contract below to these collaborations. The matrix names
 semantic dependencies; the package map separately permits each implemented
 import. The technical owner defines the exact callable or wire Interface.

@@ -232,8 +232,36 @@ runtime authority. `source_release_linux.go` remains the direct signing caller.
 Platform launch composition is command-local; it introduces no Installation
 domain or new runtime supervisor. Exact additional import permissions:
 
+Explicit Source repair stays with Network State and participation. Portable
+`state/source_repair.go` consumes only `network/duty`, `network/epoch` and
+`network/state/durable`; `state/retained_history.go` consumes only `network/epoch`
+and `network/state/durable`. Its Linux native adapter and detached policy tests
+(`state/source_repair_linux.go`, `state/source_repair_linux_test.go`) additionally
+consume exactly `installation/systemd`; only the implementation also consumes
+`installation/cgroup` and `installation/process`. These are
+independent physical observations, not Installation transaction authority.
+The genuine command consumer `cmd/ardents-next/source_repair_linux.go` imports
+only `network/state`, `installation/systemd` and the standard library; its
+`source_repair_inputs_linux.go` uses only the standard library. The independent
+non-root Source cgroup recovery observation reuses the fixed physical mechanism;
+existing root-only quiescence/retirement APIs keep their original restrictions.
+`durable/retained_reader.go` and `duty/retained_history.go` use only the standard
+library and have real State repair callers. The reader exposes no State writes;
+the participation adapter owns exact producer inspection, preserved refusal
+bytes and ordinary generation/watermark commit. No old Source runtime is used.
+The process leaf `source_recovery_linux.go` uses only the standard library and
+fixed actual service-principal procfs observations. State is its genuine caller;
+`identity.go` owns strict UID-field parsing with portable behavior tests. This
+read-only refusal check has no signal, adopting or original completion surface.
+Recovery domain units use Unix filesystem semantics; the public repair command
+is Linux-only. Windows retained participation repair explicitly refuses before
+the ordinary opener's mutating DACL enforcement; no Windows repair is selected.
+
 | File | Permitted imports |
 |---|---|
+| File `internal/successor/network/state/source_repair_linux.go` | File `internal/successor/installation/systemd`; `internal/successor/installation/cgroup`; `internal/successor/installation/process` |
+| File `internal/successor/network/state/source_repair_linux_test.go` | File `internal/successor/installation/systemd` |
+| File `cmd/ardents-next/source_repair_linux.go` | File `internal/successor/network/state`; `internal/successor/installation/systemd` |
 | File `cmd/ardents-next/platform_linux.go` | File `internal/successor/enrollment`; `internal/successor/release`; `internal/successor/installation/infrastructure`; `internal/successor/network/state` for original retained SourceInspection |
 | File `cmd/ardents-next/platform_release_linux_test.go` | File `internal/successor/enrollment`; `internal/successor/release`; `internal/successor/installation/infrastructure`; `internal/successor/network/state`; `internal/successor/network/duty`; `tests/epochfixture/network`; `github.com/theupdateframework/go-tuf/v2/metadata` |
 | File `cmd/ardents-next/platform_unit_linux.go` | File `internal/successor/installation/systemd` |
@@ -648,7 +676,7 @@ platform imports declared in its table row.
 | `internal/successor/network/source` | `package source` | Own the finite Direct-Origin Source plan, credential binding, private TLS transport, network-scoped request digest and bounded response-bundle framing, material selector, ordering, and exposure identity. The pure local serving-declaration codec is consumed by `cmd/ardents-next/source_input_linux.go` and Installation `infrastructure/source_plan_linux.go`; that Installation file additionally consumes ValidateServingCredential for the same finite Ed25519 chain/private-pair policy used by runtime TLS configuration. Both are pure, open no runtime and grant no authority. It does not verify Epoch authority or admit State. | `internal/successor/network/epoch` for member bounds, standard library |
 | `internal/successor/network/epoch` | `package epoch` | Authenticate bounded Epoch/Record/View grammar, authority signatures, commitments and materializations from an explicit policy. Project decoded input facts and authentication results into Network's Candidate View policy; compare the returned disposition and summaries to signed commitments. Network is the sole production owner of eligibility, collisions, family totals and deterministic Role Domain assignment. Return one owned verified Decision; `Inspect` exposes only a bounded untrusted Header for exact-byte reuse and chain loading, and `InspectMaterializationIndex` reads an untrusted bounded prefix before the full proof check. Called by State. Under ADR-0120, the unsigned preparation contract for subsequent Control composition prepares unsigned fresh closed Node Records and initial Epoch commitments through `PrepareInitialClosedRecord`/`PrepareInitialClosedEpoch`; preparation shares Network evaluation and grants no signature or State acceptance. | `internal/successor/network` through `candidate_evaluation.go` and `assignment.go` only, `tests/epochfixture/assignment` and `tests/epochfixture/network` in behavior tests, standard library |
 | `internal/successor/network/closedprofile` | `package closedprofile` | Own only the bounded ARDCPR03 signed-profile grammar and canonical unsigned preparation, validated fixed-purpose public signing transcript and verification against an explicit caller-supplied State context. Its public token-key adapter delegates exact RSA-PSS SPKI validation to the Admission issuerprofile leaf. Return owned parsed public facts; State alone joins them to verified Epoch candidates, decides durable acceptance/conflict, and exposes runtime views. Unsigned preparation is an explicit subsequent provisioning contract; private signing remains outside Network. New State consumes verification. | `internal/successor/admission/issuerprofile` through `token_spki.go` only, standard library |
-| `internal/successor/network/state` | `package state` | Own selected closed-profile intake, authenticated history recovery, finite acquisition and serving, ordered durable publication, clock observation and joined stop/close. `CurrentRuntimeWitness` additionally retains a synchronous original-owner refusal projection without granting authority; `CurrentRuntime` returns one opaque checked observation with copied public profile and exact membership; `AcceptClosedProfile` returns only a committed identity receipt. `Current` is non-authorizing intake/acquisition diagnostics with the local Source exclusion identity. Process admission is borrowed through `PermitWork`; no process-resource monitor, Node lifecycle projection, role/Purpose selection, private signing, token debit, reservation or Carrier execution belongs here. Separate Linux NodeInspection authenticates retained signed/time/security and accepted-profile/member history plus zero-producer participation, returning only copied binding facts without runtime rights. Product tests use genuine signed closed-v3 inputs and independent canonical builders. | `internal/successor/network/closedprofile`, `internal/successor/network/duty`, `internal/successor/network/epoch`, `internal/successor/network/source`, `internal/successor/network/state/durable`; `tests/epochfixture/network` in behavior tests; `internal/successor/network` through `acquisition_history.go`, `epoch_history.go`, `membership.go`, `accepted_observation.go`, `runtime_observation.go`, `runtime_witness.go`, `closed_profile_accept.go`, `clock_observation.go`, `closed_profile_role_join_test.go` and `closed_runtime_view_test.go` only; standard library |
+| `internal/successor/network/state` | `package state` | Own selected closed-profile intake, authenticated history recovery, finite acquisition and serving, ordered durable publication, clock observation and joined stop/close. `CurrentRuntimeWitness` additionally retains a synchronous original-owner refusal projection without granting authority; `CurrentRuntime` returns one opaque checked observation with copied public profile and exact membership; `AcceptClosedProfile` returns only a committed identity receipt. `Current` is non-authorizing intake/acquisition diagnostics with the local Source exclusion identity. Process admission is borrowed through `PermitWork`; no process-resource monitor, Node lifecycle projection, role/Purpose selection, private signing, token debit, reservation or Carrier execution belongs here. Separate Linux NodeInspection authenticates retained signed/time/security and accepted-profile/member history plus zero-producer participation, returning only copied binding facts without runtime rights. Product tests use genuine signed closed-v3 inputs and independent canonical builders. | `internal/successor/network/closedprofile`, `internal/successor/network/duty`, `internal/successor/network/epoch`, `internal/successor/network/source`, `internal/successor/network/state/durable`; `tests/epochfixture/network` in behavior tests; `internal/successor/network` through `acquisition_history.go`, `epoch_history.go`, `membership.go`, `accepted_observation.go`, `runtime_observation.go`, `runtime_witness.go`, `closed_profile_accept.go`, `clock_observation.go`, `closed_profile_role_join_test.go` and `closed_runtime_view_test.go` only; `internal/successor/installation/systemd` only in `source_repair_linux.go` and `source_repair_linux_test.go`, `internal/successor/installation/cgroup` and `internal/successor/installation/process` only in `source_repair_linux.go`; standard library |
 | `internal/successor/network/state/durable` | `package durable` | Own the exclusive State-root lease, bounded opaque immutable Epoch/input generations, distribution journal, closed-profile bytes and physical state, atomic pointer replacement, fsync and recovery staging cleanup. Independent Linux Inspection retains existing read-only native history/lease without mutation or role policy; Source and Node semantic consumers verify its bytes separately. Accept exact framing limits from State; never verify Epoch authority, select Source results, decide profile conflicts, or publish a runtime View. | `golang.org/x/sys/windows` on Windows, standard library |
 | `internal/successor/admission` | `package admission` | Own canonical Permission and holder request grammar, token classes and validation of externally supplied authority facts. Child packages own allocation, quota, issuance, stock and spending transitions; no Network authority. | `internal/successor/admission/issuerprofile`, standard library |
 | `internal/successor/admission/issuerprofile` | `package issuerprofile` | Own the canonical public issuer profile, complete class/hour inventory and RSA-PSS SPKI grammar; mint opaque purpose-bound signature requests and verified public profiles. No storage, private key, quota or State authority. | standard library |
@@ -781,15 +809,11 @@ all original command cleanup/output, finishing it once with actual errors.
 State's source_completion.go owns only that original completion/result and
 producer release, using the existing local participation mechanism. It creates
 no installer, package, persisted format, policy callback or software authority.
-State's source_repair.go owns the single bounded class-G recovery repair
-(`RepairRetainedSourceProducer`): it clears only the unresolved serving producer
-of a proven-defunct original invocation after the retained consistency admission
-(chain/journal/floors and wave guard, minus startSource) and caller-supplied native
-process-death evidence, creating nothing, resetting no floor and adopting no
-uncertain process. Its genuine consumer is `cmd/ardents-next/source_repair_linux.go`
-(`source repair-retained`), which consumes new `network/state` and
-`installation/systemd` (inactive-service observation) plus the existing Source input
-custody; it runs as the fixed Source service principal and starts no runtime.
+The explicit Source repair boundary is registered with the platform composition
+above. Its native adapter accepts only a real original manager connection and
+independent kernel quiescence under both retained leases; no caller-supplied
+process-death callback grants authority. The command retains the public plan
+without loading a private transport key and initializes no runtime or root.
 
 `source_custody_linux.go` and its native scheduling/file-custody tests use only
 the standard library. Its genuine consumer is the existing Source command;

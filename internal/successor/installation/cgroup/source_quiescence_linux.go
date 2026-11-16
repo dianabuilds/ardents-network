@@ -24,6 +24,22 @@ func checkFixedQuiescent(ctx context.Context, unit string) (err error) {
 	if ctx == nil || os.Geteuid() != 0 {
 		return errInput
 	}
+	return observeFixedQuiescent(ctx, unit)
+}
+
+// CheckSourceRecoveryQuiescent is the independent read-only kernel observation
+// for explicit Source producer abandonment. It grants no original completion,
+// manager, State or participation authority. Only the fixed service principal
+// range may observe it; State separately binds the exact named account, loaded
+// stopped service, original manager and both exclusive semantic leases.
+func CheckSourceRecoveryQuiescent(ctx context.Context) error {
+	if ctx == nil || os.Geteuid() < 100 || os.Geteuid() > 999 || os.Getegid() != os.Geteuid() {
+		return errInput
+	}
+	return observeFixedQuiescent(ctx, "ardents-source.service")
+}
+
+func observeFixedQuiescent(ctx context.Context, unit string) (err error) {
 	if err = ctx.Err(); err != nil {
 		return err
 	}

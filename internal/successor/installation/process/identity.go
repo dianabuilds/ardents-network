@@ -7,6 +7,73 @@ import (
 	"strings"
 )
 
+func sourceRecoveryProcMount(body []byte) error {
+	found := false
+	for _, line := range strings.Split(string(body), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 5 || fields[4] != "/proc" {
+			continue
+		}
+		if found || len(fields) < 10 || fields[3] != "/" {
+			return errBinding
+		}
+		found = true
+		separator := -1
+		for i := 6; i < len(fields); i++ {
+			if fields[i] == "-" {
+				separator = i
+				break
+			}
+		}
+		if separator < 0 || len(fields) != separator+4 || fields[separator+1] != "proc" {
+			return errBinding
+		}
+		for _, options := range []string{fields[5], fields[separator+3]} {
+			for _, option := range strings.Split(options, ",") {
+				name, value, _ := strings.Cut(option, "=")
+				if name == "subset" || name == "hidepid" && value != "0" && value != "off" {
+					return errBinding
+				}
+			}
+		}
+	}
+	if !found {
+		return errBinding
+	}
+	return nil
+}
+
+// A real/effective/saved/filesystem UID match conservatively retains the
+// principal. Missing, duplicated or malformed native fields are not absence.
+func sourceRecoveryPrincipal(body []byte, uid uint32) (bool, error) {
+	found, matched := false, false
+	for _, line := range strings.Split(string(body), "\n") {
+		name, value, _ := strings.Cut(line, ":")
+		if name != "Uid" {
+			continue
+		}
+		if found {
+			return false, errBinding
+		}
+		found = true
+		fields := strings.Fields(value)
+		if len(fields) != 4 {
+			return false, errBinding
+		}
+		for _, field := range fields {
+			n, err := strconv.ParseUint(field, 10, 32)
+			if err != nil || strconv.FormatUint(n, 10) != field {
+				return false, errBinding
+			}
+			matched = matched || uint32(n) == uid
+		}
+	}
+	if !found {
+		return false, errBinding
+	}
+	return matched, nil
+}
+
 func startClock(body []byte, pid uint32) (uint64, error) {
 	text := string(body)
 	begin, end := strings.Index(text, " ("), strings.LastIndex(text, ") ")

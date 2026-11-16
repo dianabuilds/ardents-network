@@ -25,6 +25,10 @@
 // DescriptorExpected and its root/self openers fix Descriptor argv, original
 // process and unit independently. DescriptorInvocation exposes no signal right
 // or underlying Invocation and cannot borrow a sibling process observation.
+// CheckSourceRecoveryQuiescent independently excludes other processes of the
+// actual Source principal, including commands outside the fixed unit. State
+// separately retains semantic leases, manager and cgroup checks; procfs absence
+// is not successful original domain completion and grants no signal right.
 package process
 
 import "errors"

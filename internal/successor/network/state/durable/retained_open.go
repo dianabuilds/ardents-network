@@ -12,6 +12,10 @@ import (
 // It creates no ownership marker, semantic directory or security journal and
 // does not clean a partial prefix into a fresh root. State verifies meaning.
 func OpenRetained(path string, limits Limits) (openedRoot *Root, resultErr error) {
+	return openRetained(path, limits, true)
+}
+
+func openRetained(path string, limits Limits, writable bool) (openedRoot *Root, resultErr error) {
 	if limits.EpochBytes <= 0 || limits.RecordBytes <= 0 || limits.ClosedProfileBytes <= 0 {
 		return nil, errors.New("state storage bounds are invalid")
 	}
@@ -35,8 +39,10 @@ func OpenRetained(path string, limits Limits) (openedRoot *Root, resultErr error
 	if err = inspectRetainedRoot(absolute); err != nil {
 		return nil, err
 	}
-	if err = verifyRootWritable(absolute); err != nil {
-		return nil, err
+	if writable {
+		if err = verifyRootWritable(absolute); err != nil {
+			return nil, err
+		}
 	}
 	root := &Root{path: absolute, lease: lease, limits: limits}
 	opened = true

@@ -13,3 +13,5 @@ func validateOwnerOnlyRoot(_ string, info os.FileInfo) error {
 	}
 	return nil
 }
+
+func validateRetainedRootPermissions(root string) error { return validateRootPermissions(root) }

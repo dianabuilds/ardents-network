@@ -15,8 +15,9 @@ type Config struct {
 
 // Duty is one authenticated or locally retained conflict fact. NotAfter is the
 // terminal bound for time-held records; direct-source/live remains effective
-// until its producer replaces or removes it after joined work. Family is the
-// canonical family digest.
+// until its producer replaces or removes it after joined work, or the explicit
+// bounded State repair abandons a verified dead Source invocation. Family is
+// the canonical family digest.
 type Duty struct {
 	Identity [32]byte
 	Family   [32]byte

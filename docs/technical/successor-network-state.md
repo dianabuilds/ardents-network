@@ -183,8 +183,8 @@ diagnostic output, command composition calls `SourceCompletion.Finish` with the
 actual additional terminal result. Only successful original State join and
 successful command completion permit producer removal. Early Finish, State or
 command failure preserves the producer; copies retain the same one-shot result
-and cannot delete a successor's guard. There is no new persisted marker/schema,
-software identity, accepting receipt, recovery or reset operation. Other State
+and cannot delete a successor's guard. This completion adds no persisted marker,
+software identity or accepting receipt and cannot authorize recovery or reset. Other State
 consumers retain their existing Close behavior unless they explicitly retain
 this completion. Existing absent records from older runtimes are not retroactive
 proof of that runtime's command completion.
@@ -580,6 +580,32 @@ would let a successor start while an older Close could still remove its guard.
 A fresh invocation therefore cannot acquire that root during original guard
 removal. Physical handler join still precedes removal, and uncertain removal
 retains its failure/collision semantics; no producer identity or format changes.
+
+## Explicit Source producer recovery
+
+Linux `RepairRetainedSourceProducer` receives read-only Network configuration
+and an actual original `systemd.SourceRuntime`, never a completion boolean or
+proof callback. It holds a no-write retained State reader and participation
+operation simultaneously, authenticates the signed chain/time/exact floors,
+and refuses pending/wave/conflict/exposure/partial history or any other duty.
+The sole serving duty must exactly match the authenticated current generation.
+The native adapter binds the fixed service account, exact roots, stopped manager
+facts, independently empty kernel cgroup and absence of any other process of
+the Source principal before the one producer removal. The process check excludes
+old manual invocations outside the unit with a still-live volatile completion.
+It abandons a dead invocation without asserting successful SourceCompletion.
+The latter is volatile and is acquired before supervision, not after a crash.
+
+`durable.OpenRetainedReader` creates no writable probe and exposes no writes.
+`duty.OpenRetainedOperation` refuses staging and mismatched pointer/watermark
+before ordinary recovery could modify them. `CheckSourceProducer` is read-only;
+it cannot claim/remove a producer or establish native quiescence. The repair
+uses the existing participation commit, preserving generation continuity and
+State floors. Pre-commit refusal preserves every original file; post-commit
+cleanup/commit uncertainty returns failure without pretending rollback.
+The [operator contract](network-route-node.md#source-lifecycle-and-forward-program-change)
+owns its bounded conditions; actual installed evidence is separate from these
+domain-admission tests.
 
 ## Retained history at command boundaries
 

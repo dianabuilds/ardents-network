@@ -32,6 +32,22 @@ func Initialize(ctx context.Context, input Config) error {
 }
 
 func openMode(input Config, ctx context.Context, fresh bool) (openedStore *store, resultErr error) {
+	return openStoreMode(input, ctx, fresh, false)
+}
+
+// OpenRetainedOperation holds an existing participation lease without cleaning
+// staging, recovering pointers or creating history. Recovery callers must refuse
+// every uncertain prefix before deciding their one permitted domain effect.
+func OpenRetainedOperation(ctx context.Context, input Config) (*store, error) {
+	if ctx == nil || input.Create {
+		return nil, errors.New("retained participation requires an existing history")
+	}
+	bounded, cancel := context.WithTimeout(ctx, operationLeaseWait)
+	defer cancel()
+	return openStoreMode(input, bounded, false, true)
+}
+
+func openStoreMode(input Config, ctx context.Context, fresh, retained bool) (openedStore *store, resultErr error) {
 	if ctx != nil && ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -57,6 +73,13 @@ func openMode(input Config, ctx context.Context, fresh bool) (openedStore *store
 	}
 	if err := inspectRoot(root, input.Create); err != nil {
 		return nil, err
+	}
+	if retained {
+		// Check types before any content open: a FIFO or device is never a
+		// retained record, even before the exclusive lease can be acquired.
+		if err := inspectRetainedEntries(root); err != nil {
+			return nil, err
+		}
 	}
 	if err := verifyRootCandidate(root, input.Create); err != nil {
 		return nil, err
@@ -95,11 +118,20 @@ func openMode(input Config, ctx context.Context, fresh bool) (openedStore *store
 	if err := verifyRootClaim(root, input.Create); err != nil {
 		return nil, err
 	}
-	if err := validateRootPermissions(root); err != nil {
-		return nil, err
-	}
-	if err := prepareRoot(root, input.Create); err != nil {
-		return nil, err
+	if retained {
+		if err := validateRetainedRootPermissions(root); err != nil {
+			return nil, err
+		}
+		if err := verifyRetainedHistory(root); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := validateRootPermissions(root); err != nil {
+			return nil, err
+		}
+		if err := prepareRoot(root, input.Create); err != nil {
+			return nil, err
+		}
 	}
 	state, current, err := loadState(root)
 	if err != nil {
