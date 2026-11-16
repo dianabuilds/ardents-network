@@ -4,7 +4,10 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -160,8 +163,8 @@ func runSourceRelease(ctx context.Context, args []string, out io.Writer) int {
 		return enrollmentReport(out, refused, 1)
 	}
 	program, generation := a.Targets()
-	_, programOK := program.AcceptedDecision()
-	_, generationOK := generation.AcceptedDecision()
+	pd, programOK := program.AcceptedDecision()
+	gd, generationOK := generation.AcceptedDecision()
 	_, hasInitial := a.InitialFacts()
 	if err == nil && (!programOK || !generationOK || hasInitial != request.initial) {
 		err = releaseartifact.ErrAuthorization
@@ -170,8 +173,25 @@ func runSourceRelease(ctx context.Context, args []string, out io.Writer) int {
 	if err != nil {
 		return enrollmentReport(out, "infrastructure-authentication-refused", 1)
 	}
-	if writeNetworkPreparationReceipt(ctx, out, []byte("{\"outcome\":\"authenticated-source-artifact\"}\n")) != nil || ctx.Err() != nil {
+	if writeSourceReleaseReceipt(ctx, out, a, pd, gd) != nil {
 		return 1
 	}
 	return 0
+}
+
+// The public receipt identifies the exact authenticated bytes; it carries no
+// live authorization or permission to install or run them.
+func writeSourceReleaseReceipt(ctx context.Context, out io.Writer, a releaseartifact.Authorization, program, generation release.Decision) error {
+	receipt, err := json.Marshal(struct {
+		Outcome           string          `json:"outcome"`
+		ProgramOutcome    release.Outcome `json:"program_outcome"`
+		GenerationOutcome release.Outcome `json:"generation_outcome"`
+		ProgramSHA256     string          `json:"program_sha256"`
+		DescriptorSHA256  string          `json:"descriptor_sha256"`
+		TemplateSHA256    string          `json:"template_sha256"`
+	}{"authenticated-source-artifact", program.Outcome, generation.Outcome, fmt.Sprintf("%x", sha256.Sum256(a.Program())), fmt.Sprintf("%x", sha256.Sum256(a.Descriptor())), fmt.Sprintf("%x", sha256.Sum256(a.Template()))})
+	if err != nil {
+		return err
+	}
+	return errors.Join(writeNetworkPreparationReceipt(ctx, out, append(receipt, '\n')), ctx.Err())
 }

@@ -1,12 +1,37 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
+
+func TestSourceReleaseReceiptPreservesPublicResult(t *testing.T) {
+	var out bytes.Buffer
+	// This exercises only the detached report format, not Release authentication.
+	err := writeSourceReleaseReceipt(context.Background(), &out, releaseartifact.Authorization{}, release.Decision{Outcome: release.OutcomeReleaseAccepted}, release.Decision{Outcome: release.OutcomeNoUpdate})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const emptyDigest = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	want := `{"outcome":"authenticated-source-artifact","program_outcome":"release-accepted","generation_outcome":"no-update","program_sha256":"` + emptyDigest + `","descriptor_sha256":"` + emptyDigest + `","template_sha256":"` + emptyDigest + `"}` + "\n"
+	if out.String() != want {
+		t.Fatalf("unexpected Source release receipt: %s", out.String())
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	out.Reset()
+	if writeSourceReleaseReceipt(ctx, &out, releaseartifact.Authorization{}, release.Decision{}, release.Decision{}) == nil || out.Len() != 0 {
+		t.Fatal("canceled receipt was published")
+	}
+}
 
 func TestSourceReleaseRefusesMissingInventoryBeforeHistory(t *testing.T) {
 	for _, initial := range []bool{true, false} {

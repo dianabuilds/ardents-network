@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -134,15 +133,7 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		}
 		return 0
 	}
-	receipt, e := json.Marshal(struct {
-		Outcome           string          `json:"outcome"`
-		ProgramOutcome    release.Outcome `json:"program_outcome"`
-		GenerationOutcome release.Outcome `json:"generation_outcome"`
-		ProgramSHA256     string          `json:"program_sha256"`
-		DescriptorSHA256  string          `json:"descriptor_sha256"`
-		TemplateSHA256    string          `json:"template_sha256"`
-	}{"authenticated-source-artifact", pd.Outcome, gd.Outcome, fmt.Sprintf("%x", sha256.Sum256(a.Program())), fmt.Sprintf("%x", sha256.Sum256(a.Descriptor())), fmt.Sprintf("%x", sha256.Sum256(a.Template()))})
-	if e != nil || writeNetworkPreparationReceipt(ctx, out, append(receipt, '\n')) != nil || ctx.Err() != nil {
+	if writeSourceReleaseReceipt(ctx, out, a, pd, gd) != nil {
 		return 1
 	}
 	return 0
