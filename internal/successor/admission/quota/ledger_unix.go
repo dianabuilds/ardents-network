@@ -1,6 +1,6 @@
-//go:build linux
+//go:build unix
 
-package issuance
+package quota
 
 import (
 	"errors"
@@ -8,8 +8,8 @@ import (
 	"syscall"
 )
 
-func platform() error { return nil }
-func privateFile(info os.FileInfo, directory bool) bool {
+func admissionPlatform() error { return nil }
+func privateAdmissionFile(info os.FileInfo, directory bool) bool {
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if !ok || stat.Uid != uint32(os.Geteuid()) || info.Mode()&os.ModeSymlink != 0 {
 		return false
@@ -19,13 +19,12 @@ func privateFile(info os.FileInfo, directory bool) bool {
 	}
 	return info.Mode().IsRegular() && info.Mode().Perm() == 0600 && stat.Nlink == 1
 }
-func acquireLock(root *os.Root) (*os.File, error) { return acquireNamedLock(root, "issuer.lock") }
-func acquireNamedLock(root *os.Root, name string) (*os.File, error) {
-	before, err := root.Lstat(name)
-	if err != nil || !privateFile(before, false) {
+func acquireAdmissionLock(root *os.Root) (*os.File, error) {
+	before, err := root.Lstat("admission.lock")
+	if err != nil || !privateAdmissionFile(before, false) {
 		return nil, ErrUnavailable
 	}
-	f, err := root.OpenFile(name, os.O_RDWR, 0)
+	f, err := root.OpenFile("admission.lock", os.O_RDWR, 0)
 	if err != nil {
 		return nil, ErrUnavailable
 	}
@@ -42,7 +41,7 @@ func acquireNamedLock(root *os.Root, name string) (*os.File, error) {
 	}
 	return f, nil
 }
-func releaseLock(f *os.File) error {
+func releaseAdmissionLock(f *os.File) error {
 	if f == nil {
 		return nil
 	}
