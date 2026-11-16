@@ -992,6 +992,12 @@ are mandatory. A profile string is no admission or qualification evidence.
 
 ### Original JOIN composition
 
+The development `ardents-next node` Forwarding, JOIN, Descriptor,
+Introduction and Issuer commands consume already accepted Network history.
+They open it with `OpenRetained`; a missing or emptied root cannot be
+initialized by a runtime command. The independent installed Node startup
+continues to select its opener from its own original startup provenance.
+
 `node.ListenJoin` and `ardents-next node join` compose one original
 Role2/subrole4 invocation. Command owns genuine State and closes it last.
 Node retains its caller, process guard, Network participation producer, exact

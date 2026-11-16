@@ -53,7 +53,7 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 		return 130
 	}
 	config.LocalRoleStateRoot = plan.ParticipationRoot
-	owner, err := state.Open(config)
+	owner, err := state.OpenRetained(config)
 	if err != nil {
 		_ = nodeDescriptorReport(out, "refused", "state-unavailable", "", "")
 		return 1

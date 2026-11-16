@@ -45,7 +45,7 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 		return 2
 	}
 	config.LocalRoleStateRoot = plan.ParticipationRoot
-	owner, err := state.Open(config)
+	owner, err := state.OpenRetained(config)
 	if err != nil {
 		_ = nodeIssuerReport(out, "refused", "state-unavailable", "", "")
 		return 1

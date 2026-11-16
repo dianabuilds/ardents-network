@@ -41,7 +41,7 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 		return 2
 	}
 	config.LocalRoleStateRoot = plan.ParticipationRoot
-	owner, err := state.Open(config)
+	owner, err := state.OpenRetained(config)
 	if err != nil {
 		_ = nodeReport(out, "refused", "state-unavailable")
 		return 1

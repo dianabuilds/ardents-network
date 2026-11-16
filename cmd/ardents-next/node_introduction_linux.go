@@ -53,7 +53,7 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 		return 130
 	}
 	config.LocalRoleStateRoot = plan.ParticipationRoot
-	owner, err := state.Open(config)
+	owner, err := state.OpenRetained(config)
 	if err != nil {
 		_ = nodeIntroductionReport(out, "refused", "state-unavailable", "", "")
 		return 1

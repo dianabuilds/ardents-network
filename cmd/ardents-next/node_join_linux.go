@@ -52,7 +52,7 @@ func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) 
 		return 130
 	}
 	config.LocalRoleStateRoot = plan.ParticipationRoot
-	owner, err := state.Open(config)
+	owner, err := state.OpenRetained(config)
 	if err != nil {
 		_ = nodeJoinReport(out, "refused", "state-unavailable", "", "")
 		return 1
