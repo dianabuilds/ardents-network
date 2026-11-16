@@ -3395,7 +3395,7 @@ Release permission or installed qualification.
 
 #### Initial stopped Source persistence
 
-`ardents-next infrastructure install-initial-stopped` consumes the original
+`ardents-node installation install-initial-stopped` consumes the original
 initial Enrollment provenance, the two fresh coherent Release authorizations
 and original Source request/input custody in one root operation. It has no
 candidate/recovery/Start form. Its four destination parents must already exist

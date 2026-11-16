@@ -22,9 +22,8 @@ import (
 // sourceReleaseInput contains only the parsed and path-checked command inputs.
 // It is not Enrollment or Release authority.
 type sourceReleaseInput struct {
-	initial                                    bool
-	bundle, pin, history, environment, network string
-	reference                                  time.Time
+	bundle, history, environment, network string
+	reference                             time.Time
 }
 
 func parseSourceRelease(args []string) (sourceReleaseInput, string) {
@@ -32,23 +31,15 @@ func parseSourceRelease(args []string) (sourceReleaseInput, string) {
 	if len(args) == 0 {
 		return input, "invalid-input"
 	}
-	// Initial provenance belongs to the installation's original caller. Detached
-	// authentication/preflight must refuse before even inspecting input paths.
-	input.initial = args[0] == "install-initial-stopped"
-	if (input.initial && len(args) != 7) || (!input.initial && (args[0] != "authenticate-candidate" || len(args) != 6)) {
-		return sourceReleaseInput{}, "invalid-input"
+	if args[0] != "authenticate-candidate" || len(args) != 6 {
+		return input, "invalid-input"
 	}
 	ref, err := time.Parse(time.RFC3339, args[len(args)-1])
 	if err != nil {
 		return sourceReleaseInput{}, "invalid-input"
 	}
-	offset := 0
-	if input.initial {
-		offset = 1
-		input.pin = args[2]
-	}
-	input.bundle, input.history = args[1], args[2+offset]
-	input.environment, input.network, input.reference = args[3+offset], args[4+offset], ref.UTC()
+	input.bundle, input.history = args[1], args[2]
+	input.environment, input.network, input.reference = args[3], args[4], ref.UTC()
 	if !independentInfrastructureHistory(input.bundle, input.history) {
 		return sourceReleaseInput{}, "infrastructure-paths-refused"
 	}
@@ -58,60 +49,33 @@ func parseSourceRelease(args []string) (sourceReleaseInput, string) {
 // openSourceRelease retains the original verifier on every successful open.
 // The caller joins it after its own borrowers and must not treat a public result
 // as an installation or runtime authorization.
-func openSourceRelease(ctx context.Context, request sourceReleaseInput, retainedOnly bool) (releaseartifact.Authorization, *release.Verifier, string, error) {
-	var err error
+func openSourceRelease(ctx context.Context, request sourceReleaseInput) (releaseartifact.Authorization, *release.Verifier, string, error) {
 	local := release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: request.environment, Network: request.network, RefTime: request.reference}
-	var b enrollment.InfrastructureBundle
-	var c enrollment.InfrastructureCandidate
-	var files interface{ File(string) ([]byte, bool) }
-	if request.initial {
-		b, err = enrollment.VerifyInfrastructure(ctx, request.bundle, request.pin)
-		files = b
-	} else {
-		c, err = enrollment.ReadInfrastructureCandidate(ctx, request.bundle)
-		files = c
-	}
+	c, err := enrollment.ReadInfrastructureCandidate(ctx, request.bundle)
 	if err != nil {
 		return releaseartifact.Authorization{}, nil, "infrastructure-inventory-refused", err
 	}
-	program, _ := files.File(releaseartifact.ProgramName)
-	descriptor, _ := files.File(releaseartifact.DescriptorName)
-	template, _ := files.File(releaseartifact.TemplateName)
+	program, _ := c.File(releaseartifact.ProgramName)
+	descriptor, _ := c.File(releaseartifact.DescriptorName)
+	template, _ := c.File(releaseartifact.TemplateName)
 	d, err := releaseartifact.ValidateResources(descriptor, program, template)
-	var f enrollment.InfrastructureFacts
-	if request.initial {
-		f, _ = b.Facts()
-	} else {
-		f, _ = c.Facts()
-	}
+	f, _ := c.Facts()
 	if err != nil || d.ReleaseIdentity != f.ReleaseIdentity || d.ReleaseVersion != f.ReleaseVersion {
 		return releaseartifact.Authorization{}, nil, "infrastructure-artifact-refused", err
 	}
-	input, err := releaseartifact.ProgramInputs(files)
+	input, err := releaseartifact.ProgramInputs(c)
 	if err != nil {
 		return releaseartifact.Authorization{}, nil, "infrastructure-metadata-refused", err
 	}
 	input.Local = local
-	var v *release.Verifier
-	if request.initial {
-		v, err = release.Open(request.history)
-	} else {
-		v, err = release.OpenRetained(request.history)
-	}
+	v, err := release.OpenRetained(request.history)
 	if err != nil {
 		return releaseartifact.Authorization{}, nil, "infrastructure-release-unavailable", err
 	}
-	if retainedOnly {
-		if err := sameReleaseMetadata(ctx, v, input); err != nil {
-			return releaseartifact.Authorization{}, v, "", err
-		}
+	if err := sameReleaseMetadata(ctx, v, input); err != nil {
+		return releaseartifact.Authorization{}, v, "", err
 	}
-	var a releaseartifact.Authorization
-	if request.initial {
-		a, err = releaseartifact.AuthenticateInitial(ctx, v, b, input)
-	} else {
-		a, err = releaseartifact.AuthenticateCandidate(ctx, v, c, input)
-	}
+	a, err := releaseartifact.AuthenticateCandidate(ctx, v, c, input)
 	if err == nil {
 		err = a.Check(ctx, v)
 	}

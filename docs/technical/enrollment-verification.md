@@ -11,8 +11,8 @@ profile.
 separate closed infrastructure initial inventory and actual-running-program
 verifier. Its exact grammar belongs to the [infrastructure contract](network-route-node.md#proposed-exact-artifact-and-installation-binding).
 The isolated new owner supplies this separate Source verifier to the original
-`ardents-node installation install-initial-stopped` operation and its transitional
-`ardents-next infrastructure install-initial-stopped` component consumer.
+`ardents-node installation install-initial-stopped` operation. The duplicate
+`ardents-next infrastructure` installation/start routes are retired.
 Detached initial authentication/preflight are retired; the installation retains
 its own initial provenance through its effects. This does not extend the
 Endpoint/v3 inventory or turn a candidate into independent initial provenance.

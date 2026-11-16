@@ -366,3 +366,20 @@ func TestInfrastructureRetainedReopenRollbackAndConflict(t *testing.T) {
 		t.Fatal("canceled original handoff")
 	}
 }
+
+func TestInfrastructureDuplicateLifecycleRefusesBeforeEffects(t *testing.T) {
+	root := t.TempDir()
+	for _, args := range [][]string{
+		{"start-source", filepath.Join(root, "distribution"), filepath.Join(root, "history"), "closed", "network", filepath.Join(root, "binding")},
+		{"install-initial-stopped", filepath.Join(root, "distribution"), strings.Repeat("0", 64), filepath.Join(root, "history"), "closed", "network", "2030-01-02T03:04:05Z", filepath.Join(root, "request")},
+	} {
+		var output bytes.Buffer
+		if code := runInfrastructure(t.Context(), args, &output); code != 2 || output.Len() != 0 {
+			t.Fatalf("duplicate lifecycle accepted: %d %s", code, output.String())
+		}
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("retired lifecycle created files: %v %v", entries, err)
+	}
+}

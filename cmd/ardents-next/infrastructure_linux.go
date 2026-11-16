@@ -18,7 +18,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
-	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
@@ -29,18 +28,8 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if ctx.Err() != nil {
 		return 130
 	}
-	startSource := args[0] == "start-source"
-	var sourceBinding string
-	if startSource {
-		if len(args) != 6 || os.Geteuid() != 0 {
-			return 2
-		}
-		original, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		defer cancel()
-		ctx = original
-		sourceBinding = args[5]
-		args = append(append([]string(nil), args[:5]...), time.Now().UTC().Format(time.RFC3339Nano))
-		args[0] = "authenticate-candidate"
+	if args[0] == "start-source" || args[0] == "install-initial-stopped" {
+		return 2
 	}
 	if args[0] == "prepare-descriptor" || args[0] == "prepare-inventory" {
 		raw, err := executeInfrastructurePreparation(ctx, args, nil)
@@ -58,17 +47,12 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		return 0
 	}
 	preflight := args[0] == "preflight-candidate"
-	installStopped := args[0] == "install-initial-stopped"
 	var source infrastructure.SourceInputs
-	if preflight || installStopped {
-		if (installStopped && len(args) != 8) || (args[0] == "preflight-candidate" && len(args) != 7) {
+	if preflight {
+		if len(args) != 7 {
 			return 2
 		}
-		duration := 30 * time.Second
-		if installStopped {
-			duration = 2 * time.Minute
-		}
-		original, cancel := context.WithTimeout(ctx, duration)
+		original, cancel := context.WithTimeout(ctx, 30*time.Second)
 		defer cancel()
 		ctx = original
 		var err error
@@ -88,44 +72,28 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if invalid != "" {
 		return enrollmentReport(out, invalid, 2)
 	}
-	if (preflight || installStopped) && source.IndependentPaths(request.bundle, request.history) != nil {
+	if preflight && source.IndependentPaths(request.bundle, request.history) != nil {
 		return enrollmentReport(out, "source-preflight-paths-refused", 2)
 	}
-	// Detached candidate checks and preflight cannot advance the history used by
-	// a live Source. Actual start and initial installation retain their own proof.
-	retainedOnly := !request.initial && !startSource
-	a, v, refused, err := openSourceRelease(ctx, request, retainedOnly)
+	// Component inspection rechecks only the exact retained metadata. Canonical
+	// Node commands own installation and startup with independent live proofs.
+	a, v, refused, err := openSourceRelease(ctx, request)
 	if refused != "" {
 		return enrollmentReport(out, refused, 1)
 	}
 	if err == nil && preflight {
 		err = infrastructure.ObserveSource(v, a, source, request.bundle, request.history)
 	}
-	if err == nil && installStopped {
-		err = infrastructure.InstallInitialStoppedSource(v, a, source, request.bundle, request.history)
-	}
-	if err == nil && startSource {
-		err = executeSourceFirstStart(ctx, v, a, sourceBinding, request.history, out)
-	}
 	p, g := a.Targets()
 	pd, pok := p.AcceptedDecision()
 	gd, gok := g.AcceptedDecision()
 	_, hasInitial := a.InitialFacts()
-	if err == nil && (!pok || !gok || hasInitial != request.initial) {
+	if err == nil && (!pok || !gok || hasInitial) {
 		err = infrastructure.ErrAuthorization
 	}
 	err = errors.Join(err, source.Close(), v.Close(), ctx.Err())
 	if err != nil {
 		return enrollmentReport(out, "infrastructure-authentication-refused", 1)
-	}
-	if startSource {
-		return enrollmentReport(out, "source-first-start-completed", 0)
-	}
-	if installStopped {
-		if writeNetworkPreparationReceipt(ctx, out, []byte("{\"outcome\":\"source-initial-stopped-selected\"}\n")) != nil || ctx.Err() != nil {
-			return 1
-		}
-		return 0
 	}
 	if preflight {
 		if writeNetworkPreparationReceipt(ctx, out, []byte("{\"outcome\":\"source-read-only-preflight-observed\"}\n")) != nil || ctx.Err() != nil {
@@ -137,27 +105,6 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		return 1
 	}
 	return 0
-}
-
-// A bounded failure notice never releases the original operation or its
-// verifier. Even an uncertain Start continues retaining its own native joins.
-func executeSourceFirstStart(ctx context.Context, v *release.Verifier, a releaseartifact.Authorization, binding, history string, out io.Writer) error {
-	done := make(chan error, 1)
-	go func() { done <- infrastructure.StartSource(ctx, v, a, binding, history) }()
-	select {
-	case err := <-done:
-		return err
-	case <-ctx.Done():
-	}
-	notice := time.NewTimer(5 * time.Second)
-	defer notice.Stop()
-	select {
-	case err := <-done:
-		return err
-	case <-notice.C:
-		output := writeNetworkPreparationReceipt(context.WithoutCancel(ctx), out, []byte("{\"outcome\":\"source-start-completion-unavailable\"}\n"))
-		return errors.Join(errors.New("source first-start completion unavailable"), output, <-done)
-	}
 }
 
 // Public preparation borrows the existing original native input/output custody.

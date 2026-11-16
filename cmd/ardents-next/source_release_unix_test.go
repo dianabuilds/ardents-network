@@ -39,7 +39,7 @@ func TestSourceReleaseAuthenticatesSignedRetainedCandidate(t *testing.T) {
 	if invalid != "" {
 		t.Fatal(invalid)
 	}
-	authorization, owner, refused, err := openSourceRelease(t.Context(), request, true)
+	authorization, owner, refused, err := openSourceRelease(t.Context(), request)
 	if err != nil || refused != "" || owner == nil {
 		t.Fatalf("signed retained candidate refused: %s %v", refused, err)
 	}
@@ -52,7 +52,7 @@ func TestSourceReleaseAuthenticatesSignedRetainedCandidate(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "ardents-source.service"), []byte("substituted"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	_, owner, refused, err = openSourceRelease(t.Context(), request, true)
+	_, owner, refused, err = openSourceRelease(t.Context(), request)
 	if owner != nil {
 		_ = owner.Close()
 	}
@@ -158,13 +158,13 @@ func TestDetachedInfrastructureInspectionCannotAdvanceRetainedFloors(t *testing.
 				t.Fatal(err)
 			}
 			if role == "source" {
-				request, invalid := parseSourceRelease([]string{"authenticate-candidate", next, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)})
-				if invalid != "" {
-					t.Fatal("valid transition inputs refused", invalid)
+				owner, err := release.OpenRetained(history)
+				if err != nil {
+					t.Fatal(err)
 				}
-				a, owner, refused, err := openSourceRelease(t.Context(), request, false)
-				if err != nil || refused != "" || owner == nil {
-					t.Fatalf("retained verifier could not authenticate successor: %s %v", refused, err)
+				a, err := releaseartifact.AuthenticateCandidate(t.Context(), owner, nextCandidate, infrastructureCandidateInput(t, nextCandidate))
+				if err != nil {
+					t.Fatalf("live transition authentication refused: %v", err)
 				}
 				if err := a.Check(t.Context(), owner); err != nil {
 					t.Fatal("successor lost its original authorization", err)
@@ -176,7 +176,7 @@ func TestDetachedInfrastructureInspectionCannotAdvanceRetainedFloors(t *testing.
 				if invalid != "" {
 					t.Fatal(invalid)
 				}
-				_, oldOwner, refused, oldErr := openSourceRelease(t.Context(), oldRequest, true)
+				_, oldOwner, refused, oldErr := openSourceRelease(t.Context(), oldRequest)
 				if oldOwner != nil {
 					_ = oldOwner.Close()
 				}
@@ -272,33 +272,18 @@ func TestSourceReleaseReceiptPreservesPublicResult(t *testing.T) {
 }
 
 func TestSourceReleaseRefusesMissingInventoryBeforeHistory(t *testing.T) {
-	for _, initial := range []bool{true, false} {
-		t.Run(map[bool]string{true: "initial", false: "candidate"}[initial], func(t *testing.T) {
-			root := sourceReleaseTestRoot(t)
-			bundle := filepath.Join(root, "absent-bundle")
-			history := filepath.Join(root, "absent-history")
-			args := []string{"authenticate-candidate", bundle, history, "closed", "network", "2030-01-02T03:04:05Z"}
-			if initial {
-				args = []string{"install-initial-stopped", bundle, strings.Repeat("0", 64), history, "closed", "network", "2030-01-02T03:04:05Z"}
-			}
-			request, invalid := parseSourceRelease(args)
-			if invalid != "" {
-				t.Fatal("valid declarations refused", invalid)
-			}
-			if request.initial != initial || request.bundle != bundle || request.history != history || request.environment != "closed" || request.network != "network" || request.reference.Format(time.RFC3339) != "2030-01-02T03:04:05Z" {
-				t.Fatal("Source release fields changed", request)
-			}
-			if initial && request.pin != strings.Repeat("0", 64) || !initial && request.pin != "" {
-				t.Fatal("initial pin crossed the candidate boundary")
-			}
-			a, v, refused, err := openSourceRelease(t.Context(), request, false)
-			if err == nil || refused != "infrastructure-inventory-refused" || v != nil || a.HasInventory() {
-				t.Fatal("missing inventory was accepted", refused, err)
-			}
-			if _, err := os.Lstat(history); !os.IsNotExist(err) {
-				t.Fatal("refusal created Release history", err)
-			}
-		})
+	root := sourceReleaseTestRoot(t)
+	bundle, history := filepath.Join(root, "absent-bundle"), filepath.Join(root, "absent-history")
+	request, invalid := parseSourceRelease([]string{"authenticate-candidate", bundle, history, "closed", "network", "2030-01-02T03:04:05Z"})
+	if invalid != "" {
+		t.Fatal(invalid)
+	}
+	a, v, refused, err := openSourceRelease(t.Context(), request)
+	if err == nil || refused != "infrastructure-inventory-refused" || v != nil || a.HasInventory() {
+		t.Fatal("missing inventory accepted", refused, err)
+	}
+	if _, err := os.Lstat(history); !os.IsNotExist(err) {
+		t.Fatal("refusal created history", err)
 	}
 }
 
