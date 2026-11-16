@@ -243,6 +243,12 @@ func (h Inputs) Close() error {
 		}
 		p.uses.Wait()
 		var physical error
+		// A delivery input retains its original names and identities until all
+		// borrowers have joined. Namespace-only observations have no request
+		// path and retain their separate completion rules.
+		if p.path != "" {
+			physical = p.links()
+		}
 		for i := len(p.files) - 1; i >= 0; i-- {
 			original := p.files[i]
 			if p.observe != nil {
