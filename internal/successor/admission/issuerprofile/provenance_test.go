@@ -16,3 +16,15 @@ func TestPreparedRequestCannotBecomeVerifiedByConversion(t *testing.T) {
 		t.Fatal("a caller can convert Prepare output to Verified without checking a signature")
 	}
 }
+
+func TestPublicInspectionCannotBecomePinnedVerificationByConversion(t *testing.T) {
+	inspection := reflect.TypeOf(issuerprofile.Inspect).Out(0)
+	verified := reflect.TypeFor[issuerprofile.Verified]()
+	request := reflect.TypeFor[issuerprofile.Request]()
+	if inspection.ConvertibleTo(verified) {
+		t.Fatal("public inspection can bypass independently pinned interval verification")
+	}
+	if request.ConvertibleTo(inspection) {
+		t.Fatal("unsigned preparation can become a signature-checked inspection")
+	}
+}

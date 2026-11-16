@@ -71,6 +71,41 @@ func TestIssuerProfileIndependentBytesAndCopies(t *testing.T) {
 	}
 
 }
+
+func TestPublicInspectionKeepsIdentityPinsAndStrictSelectedInterval(t *testing.T) {
+	for _, start := range []time.Time{time.Unix(3600, 0).UTC(), time.Date(2100, 1, 1, 0, 0, 0, 0, time.UTC)} {
+		binding, keys, signer := profileFixture(t, 1)
+		binding.Start, binding.End = start, start.Add(time.Hour)
+		for i := range keys {
+			keys[i].Window = uint64(start.Unix())
+		}
+		raw := independentIssuerProfile(binding, keys, signer)
+		pins := PublicPins{Network: binding.Network, Issuer: binding.Issuer, Signer: binding.Signer}
+		verified, err := Inspect(raw, pins)
+		got, inventory, ok := verified.Snapshot()
+		if err != nil || !ok || !got.matches(binding) || len(inventory) != 3 {
+			t.Fatal("public inspection lost independently signed interval", err)
+		}
+		if _, err := Verify(raw, binding); err != nil {
+			t.Fatal("strict pinned verification regressed", err)
+		}
+		wrongInterval := binding
+		wrongInterval.End = wrongInterval.End.Add(time.Hour)
+		if _, err := Verify(raw, wrongInterval); err == nil {
+			t.Fatal("offline inspection bypassed the strict selected interval")
+		}
+		for _, bad := range []PublicPins{
+			{}, {Network: [32]byte{9}, Issuer: pins.Issuer, Signer: pins.Signer},
+			{Network: pins.Network, Issuer: [32]byte{9}, Signer: pins.Signer},
+			{Network: pins.Network, Issuer: pins.Issuer, Signer: [32]byte{9}},
+		} {
+			refused, err := Inspect(raw, bad)
+			if _, _, ok := refused.Snapshot(); err == nil || ok {
+				t.Fatal("public inspection trusted foreign or missing pins")
+			}
+		}
+	}
+}
 func TestIssuerProfileRejectsIndependentlySignedInvalidBodies(t *testing.T) {
 	b, keys, key := profileFixture(t, 2)
 	for _, name := range []string{"missing", "reorder", "class", "reuse", "spki", "negative", "overflow", "zero-network", "window"} {
@@ -100,6 +135,9 @@ func TestIssuerProfileRejectsIndependentlySignedInvalidBodies(t *testing.T) {
 			raw := independentIssuerProfile(binding, bad, key)
 			if _, e := Verify(raw, binding); e == nil {
 				t.Fatal("signed bad profile accepted")
+			}
+			if _, e := Inspect(raw, PublicPins{Network: binding.Network, Issuer: binding.Issuer, Signer: binding.Signer}); e == nil {
+				t.Fatal("public inspection accepted a signed invalid inventory")
 			}
 			if _, e := Prepare(binding, bad); e == nil {
 				t.Fatal("bad encoder accepted")
@@ -140,6 +178,13 @@ func FuzzIssuerProfile(f *testing.F) {
 			bound, keys, ok := v.Snapshot()
 			if !ok || !bound.matches(b) || ValidateCohorts(bound.Start, bound.End, keys) != nil {
 				t.Fatal("invalid verified profile")
+			}
+		}
+		inspected, err := Inspect(raw, PublicPins{Network: b.Network, Issuer: b.Issuer, Signer: b.Signer})
+		if err == nil {
+			bound, keys, ok := inspected.Snapshot()
+			if !ok || bound.Network != b.Network || bound.Issuer != b.Issuer || bound.Signer != b.Signer || ValidateCohorts(bound.Start, bound.End, keys) != nil {
+				t.Fatal("invalid public inspection")
 			}
 		}
 	})

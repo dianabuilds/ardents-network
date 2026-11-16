@@ -480,7 +480,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 			return
 		}
 		relative := relativePath(t, root, filename)
-		if !strings.HasPrefix(relative, "internal/successor/") && !strings.HasPrefix(relative, "cmd/ardents-next/") && relative != "scripts/enrollment-artifact-name.go" && relative != "scripts/protected-generation-check.go" && relative != "scripts/sign-qualification-release.go" {
+		if !strings.HasPrefix(relative, "internal/successor/") && !strings.HasPrefix(relative, "cmd/ardents-next/") && relative != "scripts/enrollment-artifact-name.go" && relative != "scripts/protected-generation-check.go" && relative != "scripts/sign-qualification-release.go" && relative != "cmd/ardents-control/closed_issuer_inspection.go" {
 			return
 		}
 		file, err := parser.ParseFile(token.NewFileSet(), filename, nil, parser.ImportsOnly)
@@ -500,6 +500,11 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if source == "cmd/ardents-control/closed_issuer_inspection.go" {
+		first := strings.Split(dependency, "/")[0]
+		return dependency == modulePath+"/internal/successor/admission/issuerprofile" ||
+			dependency != "C" && dependency != "unsafe" && dependency != "" && !strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/")
+	}
 	if source == "scripts/sign-qualification-release.go" {
 		switch dependency {
 		case modulePath + "/internal/successor/enrollment", modulePath + "/internal/successor/release",
@@ -1504,6 +1509,12 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"public issuer inspection uses new codec", "cmd/ardents-control/closed_issuer_inspection.go", modulePath + "/internal/successor/admission/issuerprofile", true},
+		{"public issuer inspection excludes old codec", "cmd/ardents-control/closed_issuer_inspection.go", modulePath + "/internal/admission", false},
+		{"public issuer inspection excludes private issuer", "cmd/ardents-control/closed_issuer_inspection.go", modulePath + "/internal/successor/admission/issuer", false},
+		{"public issuer inspection excludes Network authority", "cmd/ardents-control/closed_issuer_inspection.go", modulePath + "/internal/successor/network/state", false},
+		{"public issuer inspection excludes Route", "cmd/ardents-control/closed_issuer_inspection.go", modulePath + "/internal/successor/route/role", false},
+		{"adjacent Control has no inherited codec access", "cmd/ardents-control/another.go", modulePath + "/internal/successor/admission/issuerprofile", false},
 		{"Endpoint release producer uses new Enrollment", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/enrollment", true},
 		{"Endpoint release producer uses new Release", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/release", true},
 		{"Endpoint release producer excludes old Enrollment", "scripts/sign-qualification-release.go", modulePath + "/internal/enrollment", false},

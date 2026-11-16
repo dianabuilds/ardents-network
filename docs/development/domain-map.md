@@ -157,6 +157,14 @@ current transition remains with its technical owner until that transfer.
 
 ## Supporting mechanisms and composition
 
+Admission's pure issuer-profile leaf supplies public-only Control inspection.
+The command verifies independent Network/issuer/Node-key pins, canonical signed
+bytes and complete hourly cohorts, then reports the signed interval. The strict
+profile verifier additionally requires the caller's selected exact interval.
+Neither inspection path supplies live State, quota, private issuer material or
+clock authority. Raw new-Issuer profiles and existing public exports have the
+same report; no old runtime or root is borrowed by this leaf consumer.
+
 Descriptor-role public preparation is fixed offline command composition.
 Infrastructure binds only its exact descriptor/program/template bytes; Enrollment
 owns the distinct seven-file inventory. Installation's separate `descriptor`

@@ -26,6 +26,17 @@ signed metadata, coherent target and retained-floor units cover its reused
 owners. These checks do not execute the protected private-key signing operation
 or qualify bootstrap trust, artifact delivery or an installed participant.
 
+Public issuer inspection units independently encode Node-signed inventories
+with synthetic RSA public moduli, without private RSA material or issuer roots.
+The compiled Control consumer accepts both raw new-format profiles and public
+JSON exports, preserves every class/window/SPKI and input byte, and permits
+future offline preparation without clock acceptance. Signature, independent
+identity-pin, truncation, trailing-byte and signed-invalid-cohort refusals emit
+no report. Codec units retain exact-interval `Verify` refusal beside public
+inspection; a conversion guard prevents promoting public inspection into the
+stronger verified fact. The existing fuzz target checks both projections. These are public
+grammar/command checks, not token issuance or live State qualification.
+
 ## Platform launch unit boundary
 
 Endpoint history-preparation units use independently signed Epoch/profile bytes

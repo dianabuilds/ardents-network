@@ -3,11 +3,11 @@ package main
 import (
 	"bytes"
 	"crypto/ed25519"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
-	admissionissuer "github.com/dianabuilds/ardents-network/internal/admission/issuer"
 	"os"
 	"path/filepath"
 	"strings"
@@ -69,14 +69,11 @@ func TestClosedProfileCommandsRoundTripWithoutKeyOutput(t *testing.T) {
 	network, issuerNode, otherNode := [32]byte{1}, [32]byte{2}, [32]byte{1}
 	statePrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{3}, ed25519.SeedSize))
 	nodePrivate := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{4}, ed25519.SeedSize))
-	issuer, err := admissionissuer.InitializeClosedIssuerRoot(admissionissuer.ClosedIssuerRootConfig{Root: filepath.Join(t.TempDir(), "issuer"),
-		NetworkID: network, NodeID: issuerNode, IdentityKey: nodePrivate, NotBefore: now, NotAfter: now.Add(time.Hour), Clock: func() time.Time { return now }})
-	if err != nil {
-		t.Fatal(err)
-	}
+	profile := signedPublicIssuerProfile(t, network, issuerNode, nodePrivate, now)
+	digest := sha256.Sum256(profile)
 	exportPath := filepath.Join(t.TempDir(), "issuer.json")
-	export, err := json.Marshal(map[string]any{"schema": "ardents-closed-issuer-profile-v1", "profile": issuer.Profile,
-		"profile_sha256": hex.EncodeToString(issuer.ProfileDigest[:])})
+	export, err := json.Marshal(map[string]any{"schema": "ardents-closed-issuer-profile-v1", "profile": profile,
+		"profile_sha256": hex.EncodeToString(digest[:])})
 	if err != nil {
 		t.Fatal(err)
 	}

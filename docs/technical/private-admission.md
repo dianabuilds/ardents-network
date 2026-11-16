@@ -149,9 +149,12 @@ accepts token keys only through the subsequently State-signed `ARDCPR03`
 profile, never by trusting this profile as a replacement State authority.
 
 For offline preparation, `ardents-control inspect-closed-issuer-profile` reads
-only the public JSON initialization export. Supply `--node-key`, `--network`
+the raw signed public profile produced by new Issuer initialization/inspection,
+or the existing public JSON initialization export. It uses the new
+`issuerprofile` codec and reads no private issuer root. Supply `--node-key`, `--network`
 and `--node` from the independently authorized current Node/Network evidence,
-not from that export. The command verifies the export digest, Node signature,
+not from the supplied profile/export. The command verifies the export digest
+when present, Node signature,
 exact inventory grammar and identity bindings, then renders its public
 `NetworkID`, `IssuerNodeID`, `NotBefore`, `NotAfter` and `TokenKeys` fields for
 the bounded closed-profile plan. Retain the separately authorized Epoch,

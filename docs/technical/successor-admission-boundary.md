@@ -18,6 +18,15 @@ checks. The copied drafting view grants no effect authority or accepting cache.
 
 ## State owners
 
+The pure issuer-profile codec also authenticates offline public inventory for
+Control. `PublicPins` supplies independently authorized Network, issuer and
+Node signer identities; `Inspect` reports the signed interval and canonical
+cohorts without clock or State acceptance. Its distinct opaque `Inspection`
+cannot be converted to the stronger `Verified`. `Verify` still requires the exact
+independently selected interval. The real `inspect-closed-issuer-profile`
+command consumes new Issuer's raw profile or the existing public JSON export,
+opens no private root and retains the same public State-preparation report.
+
 | Owner | Owned facts and decisions | Commit boundary |
 | --- | --- | --- |
 | Allocation | Holder request, role, hour, aggregate allocation maxima, exact request repeat, allocation journal transition | Decision must be durably recorded by Custody before its purpose-specific signature is returned |
