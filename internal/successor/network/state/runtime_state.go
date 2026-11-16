@@ -37,8 +37,10 @@ type networkState struct {
 	work                sync.WaitGroup
 	refreshing          bool
 	closed              bool
+	closing             bool
 	closeOnce           sync.Once
 	closeErr            error
+	sourceCompletion    *sourceCompletion
 }
 
 type config struct {

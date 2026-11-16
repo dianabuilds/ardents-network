@@ -50,6 +50,7 @@ func (s *networkState) Close() error {
 func (s *networkState) closeOwned() error {
 	s.mu.Lock()
 	s.closed = true
+	s.closing = true
 	s.invalidateRuntime()
 	done, workCancel, storage := s.serverDone, s.workCancel, s.storage
 	s.mu.Unlock()
@@ -69,13 +70,27 @@ func (s *networkState) closeOwned() error {
 		// An interrupted active journal retains its live guard for recovery.
 		exposureErr = s.releaseSourceWave()
 	}
-	roleErr := s.releaseSourceServer()
-	// The serving producer is derived from this root. Keep its exclusive lease
-	// until the last old producer mutation joins, so a successor cannot acquire
-	// the root and have its live guard removed by this original Close.
+	var roleErr error
+	// An explicitly retained command completion keeps the live producer until
+	// its original State and command-owned users have all joined successfully.
+	s.mu.RLock()
+	completion := s.sourceCompletion
+	s.mu.RUnlock()
+	if completion == nil {
+		roleErr = s.releaseSourceServer()
+	}
+	// Ordinary Close removes its serving producer before releasing State. With
+	// retained command completion, Claim instead fences successors until Finish
+	// removes that producer. No old mutation follows successful Finish, and a
+	// copied Finish cannot remove a later successor's producer.
 	storageErr := storage.Close()
 	if serverErr == context.Canceled {
 		serverErr = nil
 	}
-	return errors.Join(serverErr, automaticErr, terminalErr, exposureErr, roleErr, storageErr)
+	result := errors.Join(serverErr, automaticErr, terminalErr, exposureErr, roleErr, storageErr)
+	if completion != nil {
+		completion.joined <- result
+		close(completion.joined)
+	}
+	return result
 }

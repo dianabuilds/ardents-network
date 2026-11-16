@@ -23,10 +23,3 @@ func sourceReportContext(ctx context.Context, out io.Writer, phase, outcome stri
 	}
 	return writeSourceReportContext(ctx, out, append(raw, '\n'))
 }
-
-func sourceReportCode(out io.Writer, phase, outcome string, code int) int {
-	if sourceReport(out, phase, outcome) != nil {
-		return 2
-	}
-	return code
-}

@@ -234,7 +234,7 @@ domain or new runtime supervisor. Exact additional import permissions:
 
 | File | Permitted imports |
 |---|---|
-| File `cmd/ardents-next/platform_linux.go` | File `internal/successor/enrollment`; `internal/successor/release`; `internal/successor/installation/infrastructure` |
+| File `cmd/ardents-next/platform_linux.go` | File `internal/successor/enrollment`; `internal/successor/release`; `internal/successor/installation/infrastructure`; `internal/successor/network/state` for original retained SourceInspection |
 | File `cmd/ardents-next/platform_release_linux_test.go` | File `internal/successor/enrollment`; `internal/successor/release`; `internal/successor/installation/infrastructure`; `internal/successor/network/state`; `internal/successor/network/duty`; `tests/epochfixture/network`; `github.com/theupdateframework/go-tuf/v2/metadata` |
 | File `cmd/ardents-next/platform_unit_linux.go` | File `internal/successor/installation/systemd` |
 | File `cmd/ardents-next/platform_linux_test.go` | File `internal/successor/installation/systemd` |
@@ -775,6 +775,11 @@ new State snapshots for refusal/join ordering only. The `source serve <plan>`
 consumer supplies original process admission; State retains serving/duty policy
 and joins transport before command releases process pins. No Node or Route owner
 is imported. Source output uses bounded original native stream writes.
+The Source command additionally retains State's opaque SourceCompletion through
+all original command cleanup/output, finishing it once with actual errors.
+State's source_completion.go owns only that original completion/result and
+producer release, using the existing local participation mechanism. It creates
+no installer, package, persisted format, policy callback or software authority.
 
 `source_custody_linux.go` and its native scheduling/file-custody tests use only
 the standard library. Its genuine consumer is the existing Source command;

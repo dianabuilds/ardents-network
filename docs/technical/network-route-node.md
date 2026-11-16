@@ -1551,9 +1551,11 @@ The existing owners compose this sequence without another lifecycle manager:
    before listening, including after its time bound.
 3. A requested stop cancels runtime admission. `superviseSource` waits for
    original State Close, Wait and observations, then input cleanup; the caller
-   releases process protection last. State joins serving work before removing
-   its producer and releasing the State lease. Every late failure remains a
-   failure; the completion-unavailable notice does not end that wait.
+   releases process protection last. A retained State-owned SourceCompletion
+   keeps the live producer beyond State.Close, through command cleanup and final
+   diagnostic output. Only successful original completion removes it. Every
+   late failure preserves the producer; the completion-unavailable notice does
+   not end that wait.
 4. Relaunch is a new independently checked invocation over the same histories.
    It cannot rerun first preparation or adopt an unresolved producer. Signed
    State, participation and Release floors are preserved by their own owners.
@@ -1571,10 +1573,20 @@ inspection or an exit number alone is insufficient evidence of original domain
 completion. Exit130 has meaning only as the exact verified runtime's successful
 joined requested-cancellation projection. A failure or unknown original result
 blocks program change; lease availability alone does not override it.
-The platform's artifact check does not itself implement this stopped-transition
-admission. Establishing and retaining the actual original manager/process and
-runtime-completion evidence across operator actions remains necessary before
-this sequence replaces native stopped replacement.
+Source's mandatory platform check now independently opens the existing
+State/participation SourceInspection before accepting candidate Release metadata.
+It binds the original runtime plan and actual fixed account, authenticates
+retained current State and refuses every unresolved producer (including expired
+live records). Both original semantic inspections stay held through the fresh
+Release pair, file and loaded-policy reobservations and physically close before
+pre-start success. It creates no histories, clears no producer and emits no
+completion ticket. The runtime independently repeats retained admission and
+producer Claim; a new competing original cannot be adopted after inspection
+closes. Same semantic root paths remain required across the program change.
+Actual manager/no-old-execution behavior and the complete old/new executable
+sequence still require native evidence before retiring stopped replacement.
+An absent producer from a runtime that did not retain command completion cannot
+be upgraded into proof of that older command's cleanup.
 
 On missing/damaged history, a retained producer or uncertain original completion,
 preserve the roots and refuse further lifecycle continuation. Neither

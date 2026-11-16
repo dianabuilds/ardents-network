@@ -165,6 +165,22 @@ identity, wire format or duty schema changes, and no automatic repair/reset is
 introduced. This check covers retained serving producers, not every possible
 process failure or interrupted platform transition.
 
+The platform Source command calls `RetainSourceCompletion` once on its original
+serving State before supervision. This opaque lifetime does not grant a new
+producer or borrow the State lease. State.Close joins its own physical work and
+storage, retaining the existing live producer; a free State lease cannot admit
+another serving claim or read-only SourceInspection. After supervisor Wait,
+observations and input joins, private-key erasure, process Guard Close and final
+diagnostic output, command composition calls `SourceCompletion.Finish` with the
+actual additional terminal result. Only successful original State join and
+successful command completion permit producer removal. Early Finish, State or
+command failure preserves the producer; copies retain the same one-shot result
+and cannot delete a successor's guard. There is no new persisted marker/schema,
+software identity, accepting receipt, recovery or reset operation. Other State
+consumers retain their existing Close behavior unless they explicitly retain
+this completion. Existing absent records from older runtimes are not retroactive
+proof of that runtime's command completion.
+
 State borrows `PermitWork` before effects and observation, outside its lock.
 The callback may be concurrent and cannot call back into State. Process resource
 sampling, protect/drain policy and process monitoring stay with the application

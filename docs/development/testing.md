@@ -22,6 +22,14 @@ for the [owning launch contract](../technical/network-route-node.md#platform-man
 The supervisor barriers prove only command ordering of Wait, Close and inputs;
 they supply no successful Network or platform observation. There is no
 unit-only end-to-end serving/platform claim.
+Source completion units retain actual local producer history beyond State.Close,
+refuse a successor during pending command cleanup, preserve State/command/early
+Finish failures and prove a copied Finish cannot clear a later producer. Their
+closed local background channel isolates lifecycle ordering, not successful
+serving. Linux inspection-policy units refuse expired live records; the platform
+projection unit binds the exact two retained roots without transport creation.
+Actual root/ext4 SourceInspection and mandatory pre-start invocation remain
+native evidence; these units supply no fake accepting inspection or manager.
 
 The native metadata proposal controls cover every Initial72..107 artifact
 prefix using an independently ordered twelve-file fixture. Original ready

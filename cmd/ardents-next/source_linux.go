@@ -27,6 +27,8 @@ func runSource(ctx context.Context, args []string, out, diagnostic io.Writer) (c
 	var guard *processresource.Guard
 	var operation error
 	var config state.Config
+	var completion state.SourceCompletion
+	completionRetained := false
 	phase := "refused"
 	defer func() {
 		// Every State user and its original Wait have joined before this point,
@@ -39,6 +41,7 @@ func runSource(ctx context.Context, args []string, out, diagnostic io.Writer) (c
 		if guard != nil {
 			processErr = guard.Close()
 		}
+		var reportErr error
 		if operation != nil || inputErr != nil || processErr != nil {
 			var terminal *sourceTerminal
 			if !errors.As(operation, &terminal) {
@@ -50,11 +53,24 @@ func runSource(ctx context.Context, args []string, out, diagnostic io.Writer) (c
 			}
 			terminal.inputCleanup = inputErr
 			code = 1
-			if sourceFailureReport(diagnostic, phase, terminal, processErr) != nil {
+			reportErr = sourceFailureReport(diagnostic, phase, terminal, processErr)
+			if reportErr != nil {
 				code = 2
 			}
 		} else if code == 130 {
-			code = sourceReportCode(diagnostic, "joined", "canceled", 130)
+			reportErr = sourceReport(diagnostic, "joined", "canceled")
+			if reportErr != nil {
+				code = 2
+			}
+		}
+		if completionRetained {
+			terminal := errors.Join(operation, inputErr, processErr, reportErr)
+			if err := completion.Finish(terminal); err != nil && terminal == nil {
+				code = 1
+				if sourceFailureReport(diagnostic, "completion", &sourceTerminal{firstOwner: "state", cleanup: err}, nil) != nil {
+					code = 2
+				}
+			}
 		}
 	}()
 	config, err = networkStateConfig(plan.Network)
@@ -107,6 +123,12 @@ func runSource(ctx context.Context, args []string, out, diagnostic io.Writer) (c
 		operation = &sourceTerminal{firstOwner: firstOwner, first: err}
 		return 1
 	}
+	completion, err = owner.RetainSourceCompletion()
+	if err != nil {
+		operation = errors.Join(err, owner.Close())
+		return 1
+	}
+	completionRetained = true
 	operation = superviseSource(inputs.ctx, owner, check, deny, out, diagnostic, inputs.Close)
 	phase = "joined"
 	return 130

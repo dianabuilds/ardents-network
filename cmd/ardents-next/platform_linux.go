@@ -18,6 +18,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
@@ -65,7 +66,7 @@ func runPlatform(ctx context.Context, args []string, out io.Writer) int {
 	return 0
 }
 
-func executePlatformCheck(ctx context.Context, args []string, out io.Writer, files *platformFiles) error {
+func executePlatformCheck(ctx context.Context, args []string, out io.Writer, files *platformFiles) (result error) {
 	path := args[1]
 	if !platformBelow("/etc/ardents", path) {
 		return errPlatformInput
@@ -153,6 +154,13 @@ func executePlatformCheck(ctx context.Context, args []string, out io.Writer, fil
 	if err := platformOwnExecutable(filepath.Join(launch.Distribution, infrastructure.ProgramName), program); err != nil {
 		return err
 	}
+	var sourceInspection state.SourceInspection
+	var sourceUID uint32
+	if launch.Role == "source" && args[0] == "check" {
+		// The exact root-controlled plan is reused below and remains under the
+		// existing file owner. This inspection creates no State or producer.
+		defer func() { result = errors.Join(result, sourceInspection.Close()) }()
+	}
 	if args[0] == "check" {
 		passwd, err := files.Read("/etc/passwd", 1<<20, false)
 		if err != nil {
@@ -168,6 +176,29 @@ func executePlatformCheck(ctx context.Context, args []string, out io.Writer, fil
 		}
 		if err := observePlatformPrestart(ctx, launch, path, pin); err != nil {
 			return err
+		}
+		if launch.Role == "source" {
+			for _, line := range strings.Split(string(passwd), "\n") {
+				fields := strings.Split(line, ":")
+				if len(fields) == 7 && fields[0] == platformUser(launch) {
+					n, _ := strconv.ParseUint(fields[2], 10, 32)
+					sourceUID = uint32(n)
+				}
+			}
+			if sourceUID == 0 {
+				return errPlatformInput
+			}
+			config, err := platformSourceInspectionConfig(plan)
+			if err != nil {
+				return err
+			}
+			sourceInspection, err = state.OpenSourceInspection(ctx, config)
+			if err != nil {
+				return err
+			}
+			if err := sourceInspection.Check(ctx, plan, sourceUID, sourceUID); err != nil {
+				return err
+			}
 		}
 	}
 	root, _ := inventory.File("root.json")
@@ -203,9 +234,25 @@ func executePlatformCheck(ctx context.Context, args []string, out io.Writer, fil
 	if err == nil && args[0] == "check" {
 		err = observePlatformPrestart(ctx, launch, path, pin)
 	}
+	if err == nil && launch.Role == "source" && args[0] == "check" {
+		err = sourceInspection.Check(ctx, plan, sourceUID, sourceUID)
+	}
 	// Returning success from ExecStartPre happens only after the genuine
 	// verifier and every original file observer physically close successfully.
 	return errors.Join(err, verifier.Close())
+}
+
+func platformSourceInspectionConfig(raw []byte) (state.Config, error) {
+	plan, err := decodeSourceServePlan(raw)
+	if err != nil || !validSourceServePlan(plan) {
+		return state.Config{}, errPlatformInput
+	}
+	config, err := networkStateConfig(plan.Network)
+	if err != nil {
+		return state.Config{}, err
+	}
+	config.LocalRoleStateRoot = plan.ParticipationRoot
+	return config, nil
 }
 
 // A named unit account must resolve to the fixed unprivileged local principal,

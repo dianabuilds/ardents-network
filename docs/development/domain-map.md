@@ -603,8 +603,12 @@ Source serving admission claims only an absent State-root-bound participation
 producer. Participation checks absence and commits under the same exclusive
 operation; it does not prune an expired original producer to admit a successor.
 State maps the retained-producer refusal to recovery-required and opens no
-listener. Original runtime join precedes producer removal and State lease
-release. Program authorization remains separate in Release; neither a fresh
+listener. Source command retains one opaque State-owned completion before
+supervision: State.Close joins its own work and storage while the live producer
+continues fencing new claims and inspections. Only original successful State
+join plus completed command observation/input/process/output cleanup permits
+one final removal. Failure preserves the producer; copied completion cannot
+remove a successor's guard. Program authorization remains separate in Release; neither a fresh
 software proof nor lease availability certifies predecessor completion.
 
 Platform infrastructure launch is supporting command composition in
@@ -616,6 +620,11 @@ fixed-role unit and its own original control PID before success. The unit
 directly runs the existing Source/Node composition, with no root supervisor,
 ACK exchange, transition journal or recovery controller on that path.
 `RuntimeAuthorization` cannot enter transitional native Installation effects.
+For Source, pre-start opens existing State's read-only SourceInspection before
+Release candidate acceptance, verifies the exact runtime principal/plan and
+holds both original semantic inspections through Release and loaded-policy
+reobservation. It refuses live producers, damaged history and unknown completion
+without clearing or adopting anything. Original inspection joins precede success.
 Source's `serve-retained` and Node's `--retained-config` require existing
 semantic histories; Introduction uses Receiving's existing-only opening and
 Route's `OpenRetainedReceivingRegistry`, while Issuer keeps quota/keys/results
