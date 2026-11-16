@@ -206,6 +206,14 @@ reads detached inventory bytes through the authorization, without accessing its
 private snapshot; inventory presence or copied bytes alone confer no effect or
 Release authority.
 
+The existing Source artifact authentication is also available separately as
+`ardents-next release authenticate-source-initial <bundle> <pin> <history>
+<environment> <network> <reference-time>` or `release authenticate-source-candidate
+<bundle> <history> <environment> <network> <reference-time>`. It retains the
+same independent inventory and Release verifier checks, then closes the verifier.
+This closed Linux/amd64 verification reports no reusable authorization and does
+not acquire Source installation inputs, start a service or establish readiness.
+
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects a protected Endpoint generation target in the same signed metadata set
 as the executable. The installation owner consumes two fresh coherent opaque

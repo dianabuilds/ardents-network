@@ -104,59 +104,9 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if (preflight || installStopped) && source.IndependentPaths(args[1], history) != nil {
 		return enrollmentReport(out, "source-preflight-paths-refused", 2)
 	}
-	local := release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3+offset], Network: args[4+offset], RefTime: ref.UTC()}
-	var b enrollment.InfrastructureBundle
-	var c enrollment.InfrastructureCandidate
-	var files interface{ File(string) ([]byte, bool) }
-	if initial {
-		b, err = enrollment.VerifyInfrastructure(ctx, args[1], args[2])
-		files = b
-	} else {
-		c, err = enrollment.ReadInfrastructureCandidate(ctx, args[1])
-		files = c
-	}
-	if err != nil {
-		return enrollmentReport(out, "infrastructure-inventory-refused", 1)
-	}
-	root, _ := files.File("root.json")
-	program, _ := files.File(releaseartifact.ProgramName)
-	descriptor, _ := files.File(releaseartifact.DescriptorName)
-	template, _ := files.File(releaseartifact.TemplateName)
-	d, err := releaseartifact.ValidateResources(descriptor, program, template)
-	var f enrollment.InfrastructureFacts
-	if initial {
-		f, _ = b.Facts()
-	} else {
-		f, _ = c.Facts()
-	}
-	if err != nil || d.ReleaseIdentity != f.ReleaseIdentity || d.ReleaseVersion != f.ReleaseVersion {
-		return enrollmentReport(out, "infrastructure-artifact-refused", 1)
-	}
-	input := release.Inputs{RootBytes: root, Artifact: program, TargetPath: releaseartifact.ProgramTarget, Local: local, Files: map[string][]byte{}}
-	for _, name := range []string{"timestamp.json", "snapshot.json", "targets.json"} {
-		input.Files["https://release.invalid/metadata/"+name], _ = files.File(name)
-	}
-	input.Files, err = release.StaticMetadataFiles(root, input.Files["https://release.invalid/metadata/timestamp.json"], input.Files["https://release.invalid/metadata/snapshot.json"], input.Files["https://release.invalid/metadata/targets.json"])
-	if err != nil {
-		return enrollmentReport(out, "infrastructure-metadata-refused", 1)
-	}
-	var v *release.Verifier
-	if initial {
-		v, err = release.Open(history)
-	} else {
-		v, err = release.OpenRetained(history)
-	}
-	if err != nil {
-		return enrollmentReport(out, "infrastructure-release-unavailable", 1)
-	}
-	var a releaseartifact.Authorization
-	if initial {
-		a, err = releaseartifact.AuthenticateInitial(ctx, v, b, input)
-	} else {
-		a, err = releaseartifact.AuthenticateCandidate(ctx, v, c, input)
-	}
-	if err == nil {
-		err = a.Check(ctx, v)
+	a, v, refused, err := openSourceRelease(ctx, args, initial, history, ref)
+	if refused != "" {
+		return enrollmentReport(out, refused, 1)
 	}
 	if err == nil && preflight {
 		err = infrastructure.ObserveSource(v, a, source, args[1], history)
@@ -226,35 +176,6 @@ func executeSourceFirstStart(ctx context.Context, v *release.Verifier, a release
 		output := writeNetworkPreparationReceipt(context.WithoutCancel(ctx), out, []byte("{\"outcome\":\"source-start-completion-unavailable\"}\n"))
 		return errors.Join(errors.New("source first-start completion unavailable"), output, <-done)
 	}
-}
-
-// Immutable distribution and mutable Release history cannot contain one another.
-// Direct ancestor checks also refuse a differently spelled symlink alias before
-// Release opens its independently owned native lease or creates any directory.
-func independentInfrastructureHistory(distribution, history string) bool {
-	if !absoluteAdmissionPath(distribution) || !absoluteAdmissionPath(history) {
-		return false
-	}
-	contains := func(parent, child string) bool {
-		rel, err := filepath.Rel(parent, child)
-		return err == nil && (rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))))
-	}
-	if contains(distribution, history) || contains(history, distribution) {
-		return false
-	}
-	for p := history; ; p = filepath.Dir(p) {
-		info, err := os.Lstat(p)
-		if err != nil && !os.IsNotExist(err) {
-			return false
-		}
-		if err == nil && (!info.IsDir() || info.Mode()&os.ModeSymlink != 0) {
-			return false
-		}
-		if filepath.Dir(p) == p {
-			break
-		}
-	}
-	return true
 }
 
 // Public preparation borrows the existing original native input/output custody.

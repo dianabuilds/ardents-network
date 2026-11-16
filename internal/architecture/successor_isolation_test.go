@@ -617,6 +617,7 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-next/forwarding_artifact_linux_test.go",
 			"cmd/ardents-next/infrastructure_caller_linux_test.go",
 			"cmd/ardents-next/infrastructure_linux.go",
+			"cmd/ardents-next/source_release_linux.go",
 			"cmd/ardents-next/infrastructure_linux_test.go",
 			"cmd/ardents-next/infrastructure_preflight_native_linux_test.go",
 			"cmd/ardents-next/infrastructure_stopped_native_linux_test.go",
@@ -1480,6 +1481,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if (source == "cmd/ardents-next/infrastructure_linux.go" || source == "cmd/ardents-next/infrastructure_linux_test.go" || source == "cmd/ardents-next/infrastructure_caller_linux_test.go" || source == "cmd/ardents-next/infrastructure_preflight_native_linux_test.go" || source == "cmd/ardents-next/infrastructure_stopped_native_linux_test.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
+			return true
+		}
+		if source == "cmd/ardents-next/source_release_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
 		if source == "cmd/ardents-next/forwarding_artifact_linux_test.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
