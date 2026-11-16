@@ -17,24 +17,54 @@ import (
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
 
+// sourceReleaseInput contains only the parsed and path-checked command inputs.
+// It is not Enrollment or Release authority.
+type sourceReleaseInput struct {
+	initial                                    bool
+	bundle, pin, history, environment, network string
+	reference                                  time.Time
+}
+
+func parseSourceRelease(args []string) (sourceReleaseInput, string) {
+	var input sourceReleaseInput
+	if len(args) == 0 {
+		return input, "invalid-input"
+	}
+	input.initial = args[0] == "authenticate-initial"
+	if (input.initial && len(args) != 7) || (!input.initial && (args[0] != "authenticate-candidate" || len(args) != 6)) {
+		return sourceReleaseInput{}, "invalid-input"
+	}
+	ref, err := time.Parse(time.RFC3339, args[len(args)-1])
+	if err != nil {
+		return sourceReleaseInput{}, "invalid-input"
+	}
+	offset := 0
+	if input.initial {
+		offset = 1
+		input.pin = args[2]
+	}
+	input.bundle, input.history = args[1], args[2+offset]
+	input.environment, input.network, input.reference = args[3+offset], args[4+offset], ref.UTC()
+	if !independentInfrastructureHistory(input.bundle, input.history) {
+		return sourceReleaseInput{}, "infrastructure-paths-refused"
+	}
+	return input, ""
+}
+
 // openSourceRelease retains the original verifier on every successful open.
 // The caller joins it after its own borrowers and must not treat a public result
 // as an installation or runtime authorization.
-func openSourceRelease(ctx context.Context, args []string, initial bool, history string, ref time.Time) (releaseartifact.Authorization, *release.Verifier, string, error) {
-	offset := 0
-	if initial {
-		offset = 1
-	}
+func openSourceRelease(ctx context.Context, request sourceReleaseInput) (releaseartifact.Authorization, *release.Verifier, string, error) {
 	var err error
-	local := release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3+offset], Network: args[4+offset], RefTime: ref.UTC()}
+	local := release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: request.environment, Network: request.network, RefTime: request.reference}
 	var b enrollment.InfrastructureBundle
 	var c enrollment.InfrastructureCandidate
 	var files interface{ File(string) ([]byte, bool) }
-	if initial {
-		b, err = enrollment.VerifyInfrastructure(ctx, args[1], args[2])
+	if request.initial {
+		b, err = enrollment.VerifyInfrastructure(ctx, request.bundle, request.pin)
 		files = b
 	} else {
-		c, err = enrollment.ReadInfrastructureCandidate(ctx, args[1])
+		c, err = enrollment.ReadInfrastructureCandidate(ctx, request.bundle)
 		files = c
 	}
 	if err != nil {
@@ -46,7 +76,7 @@ func openSourceRelease(ctx context.Context, args []string, initial bool, history
 	template, _ := files.File(releaseartifact.TemplateName)
 	d, err := releaseartifact.ValidateResources(descriptor, program, template)
 	var f enrollment.InfrastructureFacts
-	if initial {
+	if request.initial {
 		f, _ = b.Facts()
 	} else {
 		f, _ = c.Facts()
@@ -63,16 +93,16 @@ func openSourceRelease(ctx context.Context, args []string, initial bool, history
 		return releaseartifact.Authorization{}, nil, "infrastructure-metadata-refused", err
 	}
 	var v *release.Verifier
-	if initial {
-		v, err = release.Open(history)
+	if request.initial {
+		v, err = release.Open(request.history)
 	} else {
-		v, err = release.OpenRetained(history)
+		v, err = release.OpenRetained(request.history)
 	}
 	if err != nil {
 		return releaseartifact.Authorization{}, nil, "infrastructure-release-unavailable", err
 	}
 	var a releaseartifact.Authorization
-	if initial {
+	if request.initial {
 		a, err = releaseartifact.AuthenticateInitial(ctx, v, b, input)
 	} else {
 		a, err = releaseartifact.AuthenticateCandidate(ctx, v, c, input)
@@ -121,23 +151,11 @@ func runSourceRelease(ctx context.Context, args []string, out io.Writer) int {
 	if ctx.Err() != nil {
 		return enrollmentReport(out, "release-canceled", 130)
 	}
-	initial := args[0] == "authenticate-initial"
-	if (initial && len(args) != 7) || (!initial && (args[0] != "authenticate-candidate" || len(args) != 6)) {
-		return enrollmentReport(out, "invalid-input", 2)
+	request, invalid := parseSourceRelease(args)
+	if invalid != "" {
+		return enrollmentReport(out, invalid, 2)
 	}
-	ref, err := time.Parse(time.RFC3339, args[len(args)-1])
-	if err != nil {
-		return enrollmentReport(out, "invalid-input", 2)
-	}
-	offset := 0
-	if initial {
-		offset = 1
-	}
-	history := args[2+offset]
-	if !independentInfrastructureHistory(args[1], history) {
-		return enrollmentReport(out, "infrastructure-paths-refused", 2)
-	}
-	a, v, refused, err := openSourceRelease(ctx, args, initial, history, ref)
+	a, v, refused, err := openSourceRelease(ctx, request)
 	if refused != "" {
 		return enrollmentReport(out, refused, 1)
 	}
@@ -145,7 +163,7 @@ func runSourceRelease(ctx context.Context, args []string, out io.Writer) int {
 	_, programOK := program.AcceptedDecision()
 	_, generationOK := generation.AcceptedDecision()
 	_, hasInitial := a.InitialFacts()
-	if err == nil && (!programOK || !generationOK || hasInitial != initial) {
+	if err == nil && (!programOK || !generationOK || hasInitial != request.initial) {
 		err = releaseartifact.ErrAuthorization
 	}
 	err = errors.Join(err, v.Close(), ctx.Err())

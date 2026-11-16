@@ -85,43 +85,34 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 			args[0] = "authenticate-initial"
 		}
 	}
-	initial := args[0] == "authenticate-initial"
-	if (initial && len(args) != 7) || (!initial && (args[0] != "authenticate-candidate" || len(args) != 6)) {
+	request, invalid := parseSourceRelease(args)
+	if invalid == "invalid-input" {
 		return 2
 	}
-	ref, err := time.Parse(time.RFC3339, args[len(args)-1])
-	if err != nil {
-		return 2
+	if invalid != "" {
+		return enrollmentReport(out, invalid, 2)
 	}
-	offset := 0
-	if initial {
-		offset = 1
-	}
-	history := args[2+offset]
-	if !independentInfrastructureHistory(args[1], history) {
-		return enrollmentReport(out, "infrastructure-paths-refused", 2)
-	}
-	if (preflight || installStopped) && source.IndependentPaths(args[1], history) != nil {
+	if (preflight || installStopped) && source.IndependentPaths(request.bundle, request.history) != nil {
 		return enrollmentReport(out, "source-preflight-paths-refused", 2)
 	}
-	a, v, refused, err := openSourceRelease(ctx, args, initial, history, ref)
+	a, v, refused, err := openSourceRelease(ctx, request)
 	if refused != "" {
 		return enrollmentReport(out, refused, 1)
 	}
 	if err == nil && preflight {
-		err = infrastructure.ObserveSource(v, a, source, args[1], history)
+		err = infrastructure.ObserveSource(v, a, source, request.bundle, request.history)
 	}
 	if err == nil && installStopped {
-		err = infrastructure.InstallInitialStoppedSource(v, a, source, args[1], history)
+		err = infrastructure.InstallInitialStoppedSource(v, a, source, request.bundle, request.history)
 	}
 	if err == nil && startSource {
-		err = executeSourceFirstStart(ctx, v, a, sourceBinding, history, out)
+		err = executeSourceFirstStart(ctx, v, a, sourceBinding, request.history, out)
 	}
 	p, g := a.Targets()
 	pd, pok := p.AcceptedDecision()
 	gd, gok := g.AcceptedDecision()
 	_, hasInitial := a.InitialFacts()
-	if err == nil && (!pok || !gok || hasInitial != initial) {
+	if err == nil && (!pok || !gok || hasInitial != request.initial) {
 		err = infrastructure.ErrAuthorization
 	}
 	err = errors.Join(err, source.Close(), v.Close(), ctx.Err())
