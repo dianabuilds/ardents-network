@@ -73,7 +73,6 @@ func openSourceRelease(ctx context.Context, request sourceReleaseInput) (release
 	if err != nil {
 		return releaseartifact.Authorization{}, nil, "infrastructure-inventory-refused", err
 	}
-	root, _ := files.File("root.json")
 	program, _ := files.File(releaseartifact.ProgramName)
 	descriptor, _ := files.File(releaseartifact.DescriptorName)
 	template, _ := files.File(releaseartifact.TemplateName)
@@ -87,11 +86,7 @@ func openSourceRelease(ctx context.Context, request sourceReleaseInput) (release
 	if err != nil || d.ReleaseIdentity != f.ReleaseIdentity || d.ReleaseVersion != f.ReleaseVersion {
 		return releaseartifact.Authorization{}, nil, "infrastructure-artifact-refused", err
 	}
-	input := release.Inputs{RootBytes: root, Artifact: program, TargetPath: releaseartifact.ProgramTarget, Local: local, Files: map[string][]byte{}}
-	for _, name := range []string{"timestamp.json", "snapshot.json", "targets.json"} {
-		input.Files["https://release.invalid/metadata/"+name], _ = files.File(name)
-	}
-	input.Files, err = release.StaticMetadataFiles(root, input.Files["https://release.invalid/metadata/timestamp.json"], input.Files["https://release.invalid/metadata/snapshot.json"], input.Files["https://release.invalid/metadata/targets.json"])
+	input, err := releaseartifact.SourceInputs(files, local)
 	if err != nil {
 		return releaseartifact.Authorization{}, nil, "infrastructure-metadata-refused", err
 	}

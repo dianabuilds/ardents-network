@@ -137,13 +137,11 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 	if err != nil {
 		return err
 	}
-	get := func(name string) []byte { raw, _ := files.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	input, err := releaseartifact.SourceInputs(files, release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3+offset], Network: args[4+offset]})
 	if err != nil {
 		return err
 	}
-	input := release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata,
-		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3+offset], Network: args[4+offset], RefTime: time.Now().UTC()}}
+	input.Local.RefTime = time.Now().UTC()
 	if initial {
 		verifier, err = release.Open(history)
 	} else {
