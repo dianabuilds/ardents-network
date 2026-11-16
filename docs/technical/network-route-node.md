@@ -3942,13 +3942,16 @@ The public result is a bounded observation, never installed permission. Other
 invocations remain refused.
 
 The initial preflight's native observations are read-only, but its Release
-authentication advances the supplied Release history. Source initial admission
-requires wholly empty Release floors and the preflight report cannot retain the
-original initial Enrollment proof. Consequently that same history cannot be
-used for a subsequent initial installation. This follows from the current
-preflight and Release code; it is not a reproduced installed scenario. A
-replacement must preserve initial provenance and avoid consuming the installation
-history as a detached preflight side effect.
+authentication advances the supplied Release history. The standalone legacy
+`infrastructure authenticate-initial` path does the same. Source initial
+admission requires wholly empty Release floors, and neither detached report
+retains the original initial Enrollment proof. Consequently that same history
+cannot be used for a subsequent initial installation. The existing native
+preflight test expects a second initial authentication to fail; the subsequent
+installed scenario has not been reproduced. A replacement must preserve initial
+provenance and avoid consuming the installation history as a detached preflight
+side effect. A separate temporary history cannot establish that the intended
+installation history is suitable or transfer the original proof.
 
 The canonical `ardents-source-preflight-v1` request binds exactly `schema`,
 `invocation`, `profile`, `installation_root`, `state_root`, `participation_root`,
