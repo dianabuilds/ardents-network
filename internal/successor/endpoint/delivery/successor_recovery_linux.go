@@ -40,6 +40,7 @@ type successorRecoveryNative struct {
 	stagedReplacements *journal.RetainedReplacements
 	fixedMutation      bool
 	writing            *generationWriteRecovery
+	authorization      *generationauthorization.Authorization
 }
 
 func openSuccessorRecovery(ctx context.Context, root string, reference time.Time) (result *successorRecoveryNative, request requestinput.Declaration, returnedErr error) {
@@ -328,6 +329,11 @@ func (r *successorRecoveryNative) observe(ctx context.Context) error {
 	if r == nil || r.reader == nil || r.process == nil || r.scopes == nil {
 		return ErrBinding
 	}
+	if r.authorization != nil {
+		if err := r.authorization.Check(ctx); err != nil {
+			return err
+		}
+	}
 	if err := recoveryInventory(r.journal, r.inventory); err != nil {
 		return err
 	}
@@ -394,6 +400,7 @@ func completeSuccessorRecovery(ctx context.Context, r *successorRecoveryNative, 
 			return ProvisionResult{}, errors.Join(ErrRepairRequired, ErrBinding)
 		}
 	}
+	r.authorization = &authorization
 	if err := r.observe(ctx); err != nil {
 		return ProvisionResult{}, errors.Join(ErrRepairRequired, err)
 	}
@@ -406,6 +413,9 @@ func completeSuccessorRecovery(ctx context.Context, r *successorRecoveryNative, 
 	}
 	sort.Strings(metadata)
 	for _, filename := range metadata {
+		if err := authorization.Check(ctx); err != nil {
+			return ProvisionResult{}, errors.Join(ErrRepairRequired, err)
+		}
 		if err := r.reader.syncObserved(ctx, filename); err != nil {
 			return ProvisionResult{}, errors.Join(ErrRepairRequired, err)
 		}
@@ -754,6 +764,7 @@ func (r *successorRecoveryNative) completeWritingTransition(ctx context.Context,
 	if err := owned.stage.prefix.Match(full); err != nil {
 		return ProvisionResult{}, err
 	}
+	owned.authorization = &authorization
 	paths := make([]string, 0)
 	for filename := range r.reader.files {
 		if filename == filepath.Join(r.reader.lease.path, "transition.json") || filepath.Dir(filename) == r.journal || filepath.Dir(filename) == filepath.Join(r.reader.lease.path, "preparation") {
@@ -769,7 +780,6 @@ func (r *successorRecoveryNative) completeWritingTransition(ctx context.Context,
 	if err := owned.observe(); err != nil {
 		return ProvisionResult{}, err
 	}
-	owned.authorization = &authorization
 	// Retain the actual original predecessor before admitted writing makes its
 	// failure cleanup owe quiescence. This observation requests no Stop.
 	if _, err := owned.retainPredecessor(); err != nil {
@@ -1259,6 +1269,7 @@ func (r *successorRecoveryNative) completeStagedTransition(ctx context.Context, 
 			return ProvisionResult{}, errors.Join(ErrRepairRequired, ErrBinding)
 		}
 	}
+	owned.authorization = &authorization
 	if err := owned.observe(); err != nil {
 		return ProvisionResult{}, err
 	}
@@ -1284,7 +1295,6 @@ func (r *successorRecoveryNative) completeStagedTransition(ctx context.Context, 
 	if err := owned.observe(); err != nil {
 		return ProvisionResult{}, err
 	}
-	owned.authorization = &authorization
 	if owned.predecessor == nil {
 		if _, err := owned.retainPredecessor(); err != nil {
 			return ProvisionResult{}, err

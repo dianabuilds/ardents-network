@@ -83,6 +83,11 @@ func (owned *successorPreparation) observe() error {
 	if err := owned.ctx.Err(); err != nil {
 		return err
 	}
+	if owned.authorization != nil {
+		if err := owned.authorization.Check(owned.ctx); err != nil {
+			return err
+		}
+	}
 	if owned.recovery == nil {
 		if err := observeRequestCustody(owned.ctx, owned.request); err != nil {
 			return err

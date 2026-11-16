@@ -26,6 +26,8 @@ type successorRecoveryOperation struct {
 	request   requestinput.Declaration
 	reference time.Time
 	used      bool
+	// busy serializes Complete and Close while native I/O runs without mu.
+	busy      chan struct{}
 	result    ProvisionResult
 	terminal  error
 }
@@ -77,11 +79,20 @@ func (r *SuccessorRecovery) Complete(verifier *release.Verifier, candidate enrol
 	}
 	s := r.state
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	for s.busy != nil {
+		busy := s.busy
+		s.mu.Unlock()
+		<-busy
+		s.mu.Lock()
+	}
 	if s.used || s.native == nil {
-		return s.result, errors.Join(ErrInput, s.terminal)
+		result, err := s.result, errors.Join(ErrInput, s.terminal)
+		s.mu.Unlock()
+		return result, err
 	}
 	s.used = true
+	s.busy = make(chan struct{})
+	s.mu.Unlock()
 	var result ProvisionResult
 	var err error
 	if err = s.ctx.Err(); err == nil {
@@ -95,9 +106,13 @@ func (r *SuccessorRecovery) Complete(verifier *release.Verifier, candidate enrol
 		if s.result.Status != "" {
 			s.result.Status = "installed-started-recovery-required"
 		}
-		return s.result, s.terminal
 	}
-	return result, nil
+	s.mu.Lock()
+	close(s.busy)
+	s.busy = nil
+	result, err = s.result, s.terminal
+	s.mu.Unlock()
+	return result, err
 }
 
 // Close joins any originally admitted physical work before releasing the writer.
@@ -108,12 +123,24 @@ func (r *SuccessorRecovery) Close() error {
 	}
 	s := r.state
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	for s.busy != nil {
+		busy := s.busy
+		s.mu.Unlock()
+		<-busy
+		s.mu.Lock()
+	}
 	s.used = true
+	s.busy = make(chan struct{})
+	s.mu.Unlock()
 	if s.native != nil {
 		s.terminal = errors.Join(s.terminal, closeSuccessorRecovery(s.native), s.ctx.Err())
 		s.native = nil
 		s.cancel()
 	}
-	return s.terminal
+	s.mu.Lock()
+	close(s.busy)
+	s.busy = nil
+	err := s.terminal
+	s.mu.Unlock()
+	return err
 }

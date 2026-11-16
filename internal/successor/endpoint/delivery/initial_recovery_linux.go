@@ -20,13 +20,14 @@ import (
 )
 
 type recoveryNative struct {
-	reader      *installedRoot
-	intent      initialTransitionIntent
-	journal     string
-	generation  string
-	creations   map[string]fixedCreationRecord
-	access      map[string]fixedDirectoryCreation
-	inventories map[string]map[string]bool
+	reader        *installedRoot
+	intent        initialTransitionIntent
+	journal       string
+	generation    string
+	creations     map[string]fixedCreationRecord
+	access        map[string]fixedDirectoryCreation
+	inventories   map[string]map[string]bool
+	authorization *generationauthorization.Authorization
 }
 
 func openInitialRecovery(ctx context.Context, root string, reference time.Time) (result *Recovery, returnedErr error) {
@@ -450,6 +451,11 @@ func (r *recoveryNative) readFixedCreations(ctx context.Context) error {
 }
 
 func (r *recoveryNative) observe(ctx context.Context) error {
+	if r.authorization != nil {
+		if err := r.authorization.Check(ctx); err != nil {
+			return err
+		}
+	}
 	for directory, allowed := range r.inventories {
 		if err := recoveryInventory(directory, allowed); err != nil {
 			return err
@@ -512,6 +518,10 @@ func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, auth
 	if err != nil {
 		return ProvisionResult{}, err
 	}
+	r.authorization = &authorization
+	if err := authorization.Check(ctx); err != nil {
+		return ProvisionResult{}, err
+	}
 	if _, err := readGenerationFileBirths(ctx, r.reader, r.journal, r.intent.Candidate, checked.binding, checked.files, r.inventories[r.journal]); err != nil {
 		return ProvisionResult{}, err
 	}
@@ -566,6 +576,9 @@ func completeInitialRecovery(ctx context.Context, owner *recoveryOperation, auth
 	}
 	sort.Strings(metadata)
 	for _, filename := range metadata {
+		if err := authorization.Check(ctx); err != nil {
+			return ProvisionResult{}, err
+		}
 		if err := r.reader.syncObserved(ctx, filename); err != nil {
 			return ProvisionResult{}, err
 		}

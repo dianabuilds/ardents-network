@@ -23,6 +23,8 @@ type successorOperation struct {
 	request  requestinput.Document
 	native   *successorPreparation
 	used     bool
+	// busy serializes Complete and Close while native I/O runs without mu.
+	busy     chan struct{}
 	result   ProvisionResult
 	terminal error
 }
@@ -66,14 +68,30 @@ func (s *Successor) Complete(verifier *release.Verifier, candidate enrollment.Ca
 	}
 	state := s.state
 	state.mu.Lock()
-	defer state.mu.Unlock()
+	for state.busy != nil {
+		busy := state.busy
+		state.mu.Unlock()
+		<-busy
+		state.mu.Lock()
+	}
 	if state.used || state.native == nil {
-		return state.result, errors.Join(ErrInput, state.terminal)
+		result, err := state.result, errors.Join(ErrInput, state.terminal)
+		state.mu.Unlock()
+		return result, err
 	}
 	state.used = true
-	state.result, state.terminal = completeSuccessor(state.native, verifier, candidate, input)
+	state.busy = make(chan struct{})
+	state.mu.Unlock()
+	result, err := completeSuccessor(state.native, verifier, candidate, input)
+	state.terminal = err
+	state.result = result
 	state.finishClose()
-	return state.result, state.terminal
+	state.mu.Lock()
+	close(state.busy)
+	state.busy = nil
+	result, err = state.result, state.terminal
+	state.mu.Unlock()
+	return result, err
 }
 
 // Close retains original failed physical custody until join. It cannot stop a
@@ -84,10 +102,22 @@ func (s *Successor) Close() error {
 	}
 	state := s.state
 	state.mu.Lock()
-	defer state.mu.Unlock()
+	for state.busy != nil {
+		busy := state.busy
+		state.mu.Unlock()
+		<-busy
+		state.mu.Lock()
+	}
 	state.used = true
+	state.busy = make(chan struct{})
+	state.mu.Unlock()
 	state.finishClose()
-	return state.terminal
+	state.mu.Lock()
+	close(state.busy)
+	state.busy = nil
+	err := state.terminal
+	state.mu.Unlock()
+	return err
 }
 
 func (state *successorOperation) finishClose() {

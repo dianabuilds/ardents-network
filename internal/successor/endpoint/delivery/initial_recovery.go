@@ -36,6 +36,8 @@ type recoveryOperation struct {
 	request   requestinput.Declaration
 	reference time.Time
 	used      bool
+	// busy serializes Complete and Close while native I/O runs without mu.
+	busy      chan struct{}
 	terminal  error
 }
 
@@ -79,22 +81,35 @@ func (r *Recovery) Complete(authorization generationauthorization.Authorization)
 	}
 	state := r.state
 	state.mu.Lock()
-	defer state.mu.Unlock()
+	for state.busy != nil {
+		busy := state.busy
+		state.mu.Unlock()
+		<-busy
+		state.mu.Lock()
+	}
 	if state.used || state.native == nil {
-		return ProvisionResult{}, errors.Join(ErrInput, state.terminal)
+		err := errors.Join(ErrInput, state.terminal)
+		state.mu.Unlock()
+		return ProvisionResult{}, err
 	}
 	state.used = true
+	state.busy = make(chan struct{})
 	ctx := state.ctx
-	if err := ctx.Err(); err != nil {
-		state.terminal = errors.Join(err, closeInitialRecovery(state.native))
-		state.native = nil
-		return ProvisionResult{}, state.terminal
+	state.mu.Unlock()
+	var result ProvisionResult
+	err := ctx.Err()
+	if err == nil {
+		result, err = completeInitialRecovery(ctx, state, authorization)
 	}
-	result, err := completeInitialRecovery(ctx, state, authorization)
 	state.terminal = errors.Join(err, closeInitialRecovery(state.native), ctx.Err())
 	state.native = nil
-	if state.terminal != nil {
-		return ProvisionResult{}, state.terminal
+	state.mu.Lock()
+	close(state.busy)
+	state.busy = nil
+	err = state.terminal
+	state.mu.Unlock()
+	if err != nil {
+		return ProvisionResult{}, err
 	}
 	return result, nil
 }
@@ -107,8 +122,15 @@ func (r *Recovery) Close() error {
 	}
 	state := r.state
 	state.mu.Lock()
-	defer state.mu.Unlock()
+	for state.busy != nil {
+		busy := state.busy
+		state.mu.Unlock()
+		<-busy
+		state.mu.Lock()
+	}
 	state.used = true
+	state.busy = make(chan struct{})
+	state.mu.Unlock()
 	if state.native != nil {
 		state.terminal = errors.Join(state.terminal, closeInitialRecovery(state.native))
 		state.native = nil
@@ -116,7 +138,12 @@ func (r *Recovery) Close() error {
 	if state.ctx != nil {
 		state.terminal = errors.Join(state.terminal, state.ctx.Err())
 	}
-	return state.terminal
+	state.mu.Lock()
+	close(state.busy)
+	state.busy = nil
+	err := state.terminal
+	state.mu.Unlock()
+	return err
 }
 
 func recoveryGeneration(ctx context.Context, intent initialTransitionIntent, reference time.Time, authorization generationauthorization.Authorization) (inspectedGeneration, error) {
