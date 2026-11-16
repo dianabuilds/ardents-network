@@ -16,6 +16,13 @@ import (
 // verify-initial requires independently pinned bytes and keeps Release history
 // separate. Its output is verification, never installation or live readiness.
 func runRelease(ctx context.Context, args []string, out io.Writer) int {
+	if len(args) > 0 && (args[0] == "authenticate-protected-initial" || args[0] == "authenticate-protected-candidate") {
+		operation := "authenticate-initial"
+		if args[0] == "authenticate-protected-candidate" {
+			operation = "authenticate-candidate"
+		}
+		return runProtectedRelease(ctx, append([]string{operation}, args[1:]...), out, false)
+	}
 	if len(args) != 5 || args[0] != "verify-initial" {
 		return enrollmentReport(out, "invalid-input", 2)
 	}

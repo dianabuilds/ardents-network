@@ -227,7 +227,15 @@ storage.
 
 The isolated new-domain composition uses `internal/successor/release` with
 its own history and the genuine `ardents-next release verify-initial` consumer.
-It consumes new Enrollment's authenticated facts and frozen bytes, not the
+`ardents-next release authenticate-protected-initial <bundle> <pin> <history>
+<reference-time>` and `release authenticate-protected-candidate <bundle>
+<history> <reference-time>` independently authenticate the protected program
+and generation pair using Enrollment and Release. Initial authentication binds
+the running executable and independent pin; candidate authentication requires
+complete retained Release history. The result is a public verification outcome,
+not an installation, reusable authorization or runtime readiness. The existing
+`installation authenticate-*` routes retain their previous result vocabulary.
+The Release owner consumes new Enrollment's authenticated facts and frozen bytes, not the
 predecessor verifier or installed roots. The new owner serializes evaluations,
 checks original cancellation at publication/handoff and joins admitted work
 before returning its native lease. New Installation additionally consumes two

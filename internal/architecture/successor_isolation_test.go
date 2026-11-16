@@ -1476,6 +1476,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-next/installation.go" || source == "cmd/ardents-next/installation_test.go") && (dependency == modulePath+"/internal/successor/release/endpoint" || dependency == modulePath+"/internal/successor/endpoint/delivery" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
+		if source == "cmd/ardents-next/protected_release.go" && (dependency == modulePath+"/internal/successor/release/endpoint" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
+			return true
+		}
 		if (source == "cmd/ardents-next/infrastructure_linux.go" || source == "cmd/ardents-next/infrastructure_linux_test.go" || source == "cmd/ardents-next/infrastructure_caller_linux_test.go" || source == "cmd/ardents-next/infrastructure_preflight_native_linux_test.go" || source == "cmd/ardents-next/infrastructure_stopped_native_linux_test.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
