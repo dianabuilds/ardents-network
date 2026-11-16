@@ -31,6 +31,16 @@ type Owner struct {
 // Open owns the presentation journal lease as well as the volatile holder.
 // The selected journal implementation requires an existing private Linux root.
 func Open(root string, role admission.AllocationRole, observe func() (admission.AuthorityFacts, time.Time, error)) (*Owner, error) {
+	return open(root, role, observe, attempts.Open)
+}
+
+// OpenRetained requires an existing presentation history; it cannot initialize
+// a missing journal or infer a first creation from an empty directory.
+func OpenRetained(root string, role admission.AllocationRole, observe func() (admission.AuthorityFacts, time.Time, error)) (*Owner, error) {
+	return open(root, role, observe, attempts.OpenRetained)
+}
+
+func open(root string, role admission.AllocationRole, observe func() (admission.AuthorityFacts, time.Time, error), openJournal func(string, [32]byte, func() time.Time) (*attempts.Journal, error)) (*Owner, error) {
 	if observe == nil || role != admission.AllocationUser && role != admission.AllocationPublisher {
 		return nil, errors.New("holder observer absent")
 	}
@@ -38,7 +48,7 @@ func Open(root string, role admission.AllocationRole, observe func() (admission.
 	if err != nil || p.ValidateAt(now) != nil {
 		return nil, errors.Join(errors.New("holder authority unavailable"), err)
 	}
-	j, err := attempts.Open(root, p.NetworkID, func() time.Time {
+	j, err := openJournal(root, p.NetworkID, func() time.Time {
 		current, at, err := observe()
 		if err != nil || current.NetworkID != p.NetworkID {
 			return time.Time{}

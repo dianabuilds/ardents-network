@@ -20,5 +20,8 @@ type Attempt struct {
 func Open(string, [32]byte, func() time.Time) (*Journal, error) {
 	return nil, errors.New("presentation journal requires Linux")
 }
+func OpenRetained(string, [32]byte, func() time.Time) (*Journal, error) {
+	return nil, errors.New("presentation journal requires Linux")
+}
 func (*Journal) Mark([]byte, Attempt) error { return errors.New("presentation journal requires Linux") }
 func (*Journal) Close() error               { return nil }

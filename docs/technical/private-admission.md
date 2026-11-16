@@ -552,6 +552,9 @@ acceptance of a repeated token. The installed Endpoint currently creates or
 reuses role directories before calling Stock without a proven first-creation
 fact. A replacement must retain genuine creation provenance and refuse unknown
 or erased history; directory emptiness alone is not such provenance.
+`attempts.OpenRetained` and `stock.OpenRetained` refuse an empty or missing
+history without initializing it. The ordinary Reader command consumes that
+retained opening; the installed participant's first-creation problem remains.
 
 A fresh source prefix consumes distinct genuine class-2 stock for Entry and
 Interior on new authenticated channels after bootstrap retirement. The local

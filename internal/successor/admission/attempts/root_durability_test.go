@@ -19,7 +19,7 @@ func TestReopenRepeatsFailedInitialDurability(t *testing.T) {
 		journal, err := openJournal(root, [32]byte{1}, clock, func(string) error {
 			called = true
 			return failure
-		})
+		}, true)
 		if journal != nil {
 			_ = journal.Close()
 		}
