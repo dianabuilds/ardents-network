@@ -260,6 +260,10 @@ metadata matching complete retained Release history and cannot advance its
 floors. The result is a public verification outcome,
 not an installation, reusable authorization or runtime readiness. The existing
 `installation authenticate-*` routes retain their previous result vocabulary.
+Their detached candidate checks also require unchanged retained metadata.
+Their detached initial check may initialize an empty history, but on an existing
+history it accepts only the retained metadata; partial histories refuse. Actual
+provisioning and recovery retain their own Release authorization.
 The Release owner consumes new Enrollment's authenticated facts and frozen bytes, not the
 predecessor verifier or installed roots. The new owner serializes evaluations,
 checks original cancellation at publication/handoff and joins admitted work

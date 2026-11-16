@@ -159,10 +159,13 @@ func runProtectedRelease(ctx context.Context, args []string, out io.Writer, lega
 	if err != nil {
 		return protectedReleaseFailure(ctx, out, err, legacy)
 	}
-	if !initial && !legacy {
-		if err := sameReleaseMetadata(ctx, verifier, input); err != nil {
-			return protectedReleaseFailure(ctx, out, errors.Join(err, verifier.Close()), legacy)
-		}
+	if initial {
+		err = initialInspectionMetadata(ctx, verifier, input)
+	} else {
+		err = sameReleaseMetadata(ctx, verifier, input)
+	}
+	if err != nil {
+		return protectedReleaseFailure(ctx, out, errors.Join(err, verifier.Close()), legacy)
 	}
 	var authorization generationauthorization.Authorization
 	if initial {
