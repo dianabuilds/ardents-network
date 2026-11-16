@@ -120,16 +120,19 @@ and unchanged complete floors. Copies of public bytes/Decisions cannot recreate
 the private result; Close/cancellation cannot be bypassed with another caller.
 
 The temporary Linux component consumer is `ardents-next infrastructure`: separate public
-descriptor/inventory preparation and initial/candidate authentication. It reads
+descriptor/inventory preparation, retained candidate inspection and original
+initial stopped installation. Detached initial authentication/preflight are
+retired before input or history effects; initial proof remains with installation. It reads
 its actual executable through Enrollment, never an override or old backend.
 Preparation owns finite original native input/output custody and signs nothing.
 Signed metadata are explicitly supplied prerequisites, with controlled test
 authorities only in independent fixtures. Unit bytes are an exact public release
 resource; rendering and checking the fixed installed policy remain native
 Installation responsibilities. No account, manager, staging, installation,
-startup, Source listener or runtime history is opened by authentication. The optional preflight
-consumer opens only read-only native observations. Release's own native
-floors are the only durable authentication effects.
+startup, Source listener or runtime history is opened by authentication. The optional candidate preflight
+consumer opens only read-only native observations against already retained
+Release metadata; detached inspection cannot advance its floors. Actual initial
+installation and startup retain their own Release admission and floor effects.
 
 Canonical `ardents-node installation` directly composes Enrollment, Release and
 these Source owners in its original root operation; `source start-installed`

@@ -1172,9 +1172,12 @@ final reobservation; late manager socket loss is refused even without caller
 cancellation. Live clock replacement remains permitted under its writer/access policy,
 and a full actual output pipe cannot produce success. The compiled consumer obtains
 genuine signed artifacts and two fresh Release proofs before bounded native observation.
-Initial and retained candidate cases remain distinct. Independent
-request/template/rendering vectors and path/access/foreign namespace refusals preserve
-absence of installation/runtime effects; Release floor effects are separately retained.
+Retired detached initial commands refuse without creating history; retained
+candidate cases use explicit signed diagnostic fixture floors and cannot advance
+them. This fixture setup grants no initial provenance or installation permission;
+actual initial Enrollment remains covered by the stopped-install profile.
+Independent request/template/rendering vectors and path/access/foreign namespace
+refusals preserve absence of installation/runtime effects.
 The runner validates complete test discovery, exact source and every binary pin before
 and after execution. Missing prerequisites or a failed case fail, never skip. Existing
 Endpoint/v3, Source artifact and ordinary quick/full/hook checks remain required. Test

@@ -160,3 +160,25 @@ func infrastructureCandidateInput(t *testing.T, c enrollment.InfrastructureCandi
 	}
 	return release.Inputs{RootBytes: root, Files: files, Artifact: program, TargetPath: "ardents/linux-amd64/node", Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "h3-test", Network: "new-release-test", RefTime: infrastructureReference}}
 }
+
+// Source inspection tests start with explicit signed fixture floors. This is
+// test setup, not initial Enrollment provenance or permission to install.
+func retainSourceFixtureRelease(t *testing.T, distribution, history string) {
+	t.Helper()
+	candidate, err := enrollment.ReadInfrastructureCandidate(t.Context(), distribution)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifier, err := release.Open(history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := verifier.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	if d := verifier.Evaluate(t.Context(), infrastructureCandidateInput(t, candidate)); d.Outcome != release.OutcomeReleaseAccepted {
+		t.Fatalf("signed fixture floors refused: %s %v", d.Outcome, d.Err())
+	}
+}

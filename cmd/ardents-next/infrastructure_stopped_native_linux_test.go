@@ -207,13 +207,23 @@ func stoppedDistribution(t *testing.T, binary []byte) (string, string, map[strin
 func TestSourceStoppedNativeCompiledPreEffectRefusals(t *testing.T) {
 	sourceStoppedStand(t)
 	binary := sourcePreflightCommand(t)
-	for _, control := range []string{"mismatched-runtime-key", "foreign-journal", "existing-semantic-root"} {
+	for _, control := range []string{"wrong-pin", "foreign-executable", "mismatched-runtime-key", "foreign-journal", "existing-semantic-root"} {
 		t.Run(control, func(t *testing.T) {
 			r, request := sourcePreflightFixture(t, true)
 			dir, pin, _ := stoppedDistribution(t, binary)
 			journal := r.InstallationRoot + ".source-initial-journal"
 			var preimage []byte
+			program := filepath.Join(dir, releaseartifact.ProgramName)
 			switch control {
+			case "wrong-pin":
+				pin = strings.Repeat("0", 64)
+			case "foreign-executable":
+				// Identical program bytes at another inode cannot supply the
+				// actually enrolled mapped executable's initial provenance.
+				program = filepath.Join(filepath.Dir(dir), "foreign-node")
+				if err := os.WriteFile(program, binary, 0700); err != nil {
+					t.Fatal(err)
+				}
 			case "mismatched-runtime-key":
 				other, _ := sourcePreflightFixture(t, true)
 				raw, e := os.ReadFile(other.PrivateKey)
@@ -235,9 +245,16 @@ func TestSourceStoppedNativeCompiledPreEffectRefusals(t *testing.T) {
 				}
 			}
 			history := filepath.Join(filepath.Dir(dir), "history")
-			cmd := exec.CommandContext(t.Context(), filepath.Join(dir, releaseartifact.ProgramName), "installation", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", request)
+			cmd := exec.CommandContext(t.Context(), program, "installation", "install-initial-stopped", dir, pin, history, "h3-test", "new-release-test", request)
 			if out, e := cmd.CombinedOutput(); e == nil || bytes.Contains(out, []byte("initial-stopped-selected")) {
 				t.Fatal("causal pre-effect refusal accepted", control, string(out), e)
+			}
+			if control == "wrong-pin" || control == "foreign-executable" {
+				for _, path := range []string{history, r.StateRoot, journal} {
+					if _, err := os.Lstat(path); !os.IsNotExist(err) {
+						t.Fatal("failed Enrollment created history or initial resources", path, err)
+					}
+				}
 			}
 			for _, path := range []string{r.InstallationRoot, r.ParticipationRoot, r.CredentialDirectory, "/etc/systemd/system/ardents-source.service"} {
 				if _, e := os.Lstat(path); !os.IsNotExist(e) {

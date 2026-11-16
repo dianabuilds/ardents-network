@@ -103,7 +103,7 @@ func writeSourcePreflightRequest(t *testing.T, path string, r infrastructure.Sou
 	}
 }
 
-func TestSourcePreflightNativeCompiledInitialCandidateAndNoEffects(t *testing.T) {
+func TestSourcePreflightNativeCompiledCandidateAndRetiredInitialNoEffects(t *testing.T) {
 	binary := sourcePreflightCommand(t)
 	r, request := sourcePreflightFixture(t)
 	dir, pin, _ := infrastructureDistribution(t, binary, nil, 1, nil, []byte(deployment.SourceTemplate))
@@ -137,8 +137,11 @@ func TestSourcePreflightNativeCompiledInitialCandidateAndNoEffects(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	run(args, true)
-	run(args, false) // Retained floors cannot recreate first-pin provenance.
+	run(args, false) // Detached initial admission must not consume installation history.
+	if _, err := os.Lstat(history); !os.IsNotExist(err) {
+		t.Fatal("retired initial preflight created Release history", err)
+	}
+	retainSourceFixtureRelease(t, dir, history)
 	candidate := []string{"infrastructure", "preflight-candidate", dir, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339), request}
 	run(candidate, true)
 	// The clock is a live root-writer declaration, not a pinned snapshot. An
@@ -231,8 +234,8 @@ func TestSourcePreflightNativeCompiledInitialCandidateAndNoEffects(t *testing.T)
 	run(candidate, true)
 	// The source and future root cannot alias Release floor effects, even before
 	// a floor exists. No authentication may create the requested State root.
-	bad := append([]string(nil), args...)
-	bad[4] = r.StateRoot
+	bad := append([]string(nil), candidate...)
+	bad[3] = r.StateRoot
 	run(bad, false)
 	for _, path := range []string{"/etc/passwd", "/etc/group"} {
 		now, err := os.ReadFile(path)
@@ -251,7 +254,7 @@ func TestSourcePreflightNativeCompiledInitialCandidateAndNoEffects(t *testing.T)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if code := runInfrastructure(ctx, args[1:], new(bytes.Buffer)); code == 0 {
+	if code := runInfrastructure(ctx, candidate[1:], new(bytes.Buffer)); code == 0 {
 		t.Fatal("canceled original caller observed success")
 	}
 }
@@ -310,7 +313,11 @@ func TestSourcePreflightNativeIsolatedForeignAccountUnitAndAlias(t *testing.T) {
 			t.Fatalf("isolated original consumer success=%v: %s %v", want, out, err)
 		}
 	}
-	run([]string{"infrastructure", "preflight-initial", dir, pin, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339), request}, true)
+	run([]string{"infrastructure", "preflight-initial", dir, pin, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339), request}, false)
+	if _, err := os.Lstat(history); !os.IsNotExist(err) {
+		t.Fatal("retired initial preflight created Release history", err)
+	}
+	retainSourceFixtureRelease(t, dir, history)
 	args := []string{"infrastructure", "preflight-candidate", dir, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339), request}
 	for _, fixture := range []struct{ path, line string }{
 		{"/etc/passwd", "ardents-source:x:23456:23456:foreign fixture:/nonexistent:/usr/sbin/nologin\n"},

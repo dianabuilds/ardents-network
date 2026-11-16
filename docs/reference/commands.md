@@ -205,9 +205,7 @@ under accepted ADR-0123 through direct new owners in `ardents-next`:
 
 - `infrastructure prepare-descriptor <release-identity> <positive-version> <program> <unit-template> <fresh-output>` writes `infrastructure-source.json`.
 - `infrastructure prepare-inventory <seven-file-directory> <fresh-output>` writes `infrastructure-enrollment.json`, after actual signed metadata are supplied.
-- `infrastructure authenticate-initial <distribution> <independent-inventory-pin> <new-release-history> <environment> <network> <reference-time>` checks its actual executing artifact and two fresh Release proofs.
 - `infrastructure authenticate-candidate <distribution> <retained-release-history> <environment> <network> <reference-time>` requires complete retained floors and supplies no initial-pin provenance.
-- `infrastructure preflight-initial <distribution> <independent-inventory-pin> <new-release-history> <environment> <network> <reference-time> <source-request>` performs initial artifact admission and Source read-only native preflight in the same original caller.
 - `infrastructure preflight-candidate <distribution> <retained-release-history> <environment> <network> <reference-time> <source-request>` uses complete retained floors and adds no initial provenance.
 - `infrastructure install-initial-stopped <distribution> <independent-inventory-pin> <new-release-history> <environment> <network> <reference-time> <source-request>` performs original initial authentication, fresh native admission, exclusive account/input/root/generation/journal creation, selection, fixed Source unit publication, one reload and actual loaded stopped-policy verification. It returns only `source-initial-stopped-selected` after original users and physical Close join. Any retained history or partial prefix refuses a new initial attempt; no adoption, reset, rollback, continuation or Start is provided.
 
@@ -226,7 +224,7 @@ Only `install-initial-stopped` performs the bounded stopped installation effects
 none starts Source, provides a metadata signer, replaces independent
 first-distribution trust or establishes supported `ardents-node` cutover.
 
-The preflight variants additionally require Linux root on the selected
+The candidate preflight additionally requires Linux root on the selected
 Ubuntu24.04/systemd255/cgroup-v2/native-ext4 stand and the exact canonical
 [`ardents-source-preflight-v1` request](../technical/network-route-node.md#component-order-and-the-commandartifact-boundary).
 The existing Source plan points to future credential destinations; original
@@ -235,7 +233,13 @@ root/directory destinations and fixed account/unit namespace must be fresh, not
 adopted from an existing installation. Preflight prints only
 `source-read-only-preflight-observed` after original manager/input/Release users
 and Close join. The result grants no creation, delivery, start or later effect;
-Release's independent authentication floor effects are the only durable writes.
+the candidate must match retained Release metadata and cannot advance its floors.
+
+Detached `infrastructure authenticate-initial` and `preflight-initial` are
+retired: both refuse before input reads or Release history effects. Initial
+verification is performed only by the installation operation, which keeps its
+own initial provenance and repeats native checks. Previously consumed histories
+remain retained; this retirement provides no reset or adoption path.
 
 `ardents-next source prepare-trust <public-plan> <fresh-output>` performs one
 30-second offline public observation and prepares exactly two Sources and one

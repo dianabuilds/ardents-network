@@ -168,15 +168,17 @@ The final distribution contains these seven files plus
 
 Deliver and verify the inventory SHA-256 independently before first execution.
 Running self-verification cannot establish independent trust in that first
-execution. The initial command must execute the identical enrolled file and use
-empty independent Release history. It verifies the pin before parsing and keeps
+execution. The initial stopped-install command must execute the identical enrolled file and
+use empty independent Release history. It verifies the pin before parsing and keeps
 original initial provenance in the same process as the coherent Release pair.
 After any floor exists, use only the candidate route with complete retained
 history. There is no fallback from missing history to an initial pin and no
 reset/conversion of Endpoint, Network or Release roots. Explicit reference time,
 environment and Network remain caller bindings, not distributor-selected facts.
 
-Success attests this bounded artifact check only. The public receipt carries
+Candidate inspection success attests its bounded artifact check only; initial
+installation has the separate stopped outcome described below. The public
+candidate receipt carries
 digests and fresh program/generation outcomes; copying it transfers no proof.
 Retained template bytes do not attest rendered installed policy or current
 native resources. Native installation/startup and final supported command/tool
@@ -186,15 +188,19 @@ ADR-0120 releases and Endpoint inventories retain their scope.
 
 ## Source read-only native preflight
 
-The separate `infrastructure preflight-initial` and `preflight-candidate`
-component commands consume the same genuine artifact admission in their original
-process, plus one root-controlled canonical Source preflight request. Their
+The separate `infrastructure preflight-candidate` component command consumes
+genuine artifact admission against already retained Release metadata in its
+original process, plus one root-controlled canonical Source preflight request. Its
 [technical owner](../technical/network-route-node.md#component-order-and-the-commandartifact-boundary)
 defines its exact fields and separates original source inputs from absent future
 installation, State, participation and credential destinations. No account,
 directory, credential, generation, selection or unit is created; no reload,
-start/stop/enable or Source runtime is invoked. Release authentication floor
-effects are separate and retained even when a later native check refuses.
+start/stop/enable or Source runtime is invoked. Detached candidate inspection
+cannot advance Release floors. Detached `authenticate-initial` and
+`preflight-initial` are retired before input or history effects: initial
+verification and fresh native admission belong to the actual stopped-install
+operation. Never prepare that operation by consuming its history in another
+invocation or reset an already consumed history.
 
 Run the registered `source-preflight-linux` profile only in its private finite
 Ubuntu24.04/systemd255/cgroup-v2/native-ext4 manager. The outside controller owns

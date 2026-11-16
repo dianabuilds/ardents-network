@@ -50,11 +50,15 @@ func TestNetworkSigningInfrastructurePreparation(t *testing.T) {
 	if fmt.Sprintf("%x", sha256.Sum256(prepared)) != oraclePin {
 		t.Fatal("independent inventory oracle")
 	}
-	// The independently prepared pin here is a controlled test input, not an
-	// operational independent distribution or permission for first execution.
-	cmd = exec.CommandContext(t.Context(), filepath.Join(dir, "ardents-node-linux-amd64"), "infrastructure", "authenticate-initial", dir, oraclePin, filepath.Join(parent, "history"), "h3-test", "new-release-test", infrastructureReference.Format("2006-01-02T15:04:05Z07:00"))
-	if out, err := cmd.CombinedOutput(); err != nil || !bytes.Contains(out, []byte("authenticated-source-artifact")) {
-		t.Fatalf("prepared actual self and Release pair %s %v", out, err)
+	// Public preparation must not revive detached initial authentication.
+	// Initial provenance is consumed only by the actual installation operation.
+	history := filepath.Join(parent, "history")
+	cmd = exec.CommandContext(t.Context(), filepath.Join(dir, "ardents-node-linux-amd64"), "infrastructure", "authenticate-initial", dir, oraclePin, history, "h3-test", "new-release-test", infrastructureReference.Format("2006-01-02T15:04:05Z07:00"))
+	if out, err := cmd.CombinedOutput(); err == nil || len(out) != 0 {
+		t.Fatalf("prepared inventory revived detached initial authentication %s %v", out, err)
+	}
+	if _, err := os.Lstat(history); !os.IsNotExist(err) {
+		t.Fatal("retired authentication created Release history", err)
 	}
 }
 

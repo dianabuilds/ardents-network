@@ -10,8 +10,11 @@ profile.
 [ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md) accepts a
 separate closed infrastructure initial inventory and actual-running-program
 verifier. Its exact grammar belongs to the [infrastructure contract](network-route-node.md#proposed-exact-artifact-and-installation-binding).
-The isolated new owner implements this separate Source verifier through
-`ardents-next infrastructure authenticate-initial`. It does not extend the
+The isolated new owner supplies this separate Source verifier to the original
+`ardents-node installation install-initial-stopped` operation and its transitional
+`ardents-next infrastructure install-initial-stopped` component consumer.
+Detached initial authentication/preflight are retired; the installation retains
+its own initial provenance through its effects. This does not extend the
 Endpoint/v3 inventory or turn a candidate into independent initial provenance.
 `infrastructure-enrollment.json` is pin-checked before parsing and binds exactly
 the seven public files. The snapshot retains original loader cancellation after

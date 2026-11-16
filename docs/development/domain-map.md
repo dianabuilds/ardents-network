@@ -136,7 +136,10 @@ remain distinct purposes. Exact commands and input inventories belong to the
 [command reference](../reference/commands.md) and technical producer owner.
 
 Installation preflight observes existing inputs and absent future resources;
-absence is not creation authority. Initial stopped installation leaves semantic
+absence is not creation authority. Source detached inspection requires retained
+Release metadata and cannot consume initial Enrollment provenance; the original
+stopped-install operation owns its initial verification and native rechecks.
+Initial stopped installation leaves semantic
 roots empty. Hosting alone initializes its known-born allowance; receiving
 Admission and Route Registry initialize their own histories only through their
 accepted fresh-root collaboration. Descriptor Store creation/inspection remains

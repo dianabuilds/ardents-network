@@ -285,7 +285,7 @@ func TestSourceReleaseRefusesMissingInventoryBeforeHistory(t *testing.T) {
 			history := filepath.Join(root, "absent-history")
 			args := []string{"authenticate-candidate", bundle, history, "closed", "network", "2030-01-02T03:04:05Z"}
 			if initial {
-				args = []string{"authenticate-initial", bundle, strings.Repeat("0", 64), history, "closed", "network", "2030-01-02T03:04:05Z"}
+				args = []string{"install-initial-stopped", bundle, strings.Repeat("0", 64), history, "closed", "network", "2030-01-02T03:04:05Z"}
 			}
 			request, invalid := parseSourceRelease(args)
 			if invalid != "" {
@@ -328,4 +328,18 @@ func sourceReleaseTestRoot(t *testing.T) string {
 		t.Fatal(err)
 	}
 	return root
+}
+
+func TestSourceReleaseRetiresDetachedInitialBeforePathInspection(t *testing.T) {
+	// Overlap would produce a path refusal if either old operation reached path
+	// inspection. Neither operation may open inputs or acquire initial Release.
+	for _, operation := range []string{"authenticate-initial", "preflight-initial"} {
+		args := []string{operation, "/same", strings.Repeat("0", 64), "/same", "closed", "network", "2030-01-02T03:04:05Z"}
+		if operation == "preflight-initial" {
+			args = append(args, "/same/request")
+		}
+		if request, outcome := parseSourceRelease(args); outcome != "invalid-input" || request != (sourceReleaseInput{}) {
+			t.Fatal("detached initial operation reached Release input inspection", operation, outcome, request)
+		}
+	}
 }

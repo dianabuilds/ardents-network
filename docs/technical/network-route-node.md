@@ -3941,28 +3941,24 @@ narrow seams, never by feeding Source into `endpoint` Request/Authorization or
 generalizing its fixed unit behind a boolean. Future code/package allowances
 require the normal complete architecture change, not this document.
 
-The separate Source artifact authentication component is implemented with a real
-compiled self-artifact consumer and public finite preparation. Its same-caller
-`infrastructure preflight-initial` / `preflight-candidate` consumer additionally
-checks the closed Source request/template and read-only original native facts.
-The public result is a bounded observation, never installed permission. Other
-invocations remain refused.
+Source initial artifact authentication belongs to the original
+`install-initial-stopped` operation. It retains independently pinned Enrollment
+provenance, fresh Release authorization and native input custody through its own
+stopped installation checks and effects. The detached `infrastructure
+authenticate-initial` and `preflight-initial` commands are retired and refuse
+before reading inputs or opening Release history. They previously consumed
+initial floors without retaining provenance for installation. Already retained
+history is preserved; retirement provides no reset, refund or reconstructed proof.
 
-The initial preflight's native observations are read-only, but its Release
-authentication advances the supplied Release history. The standalone legacy
-`infrastructure authenticate-initial` path does the same. Source initial
-admission requires wholly empty Release floors, and neither detached report
-retains the original initial Enrollment proof. Consequently that same history
-cannot be used for a subsequent initial installation. The existing native
-preflight test expects a second initial authentication to fail; the subsequent
-installed scenario has not been reproduced. A replacement must preserve initial
-provenance and avoid consuming the installation history as a detached preflight
-side effect. A separate temporary history cannot establish that the intended
-installation history is suitable or transfer the original proof.
-The legacy candidate preflight and detached candidate authentication require
-the already retained metadata and cannot advance those floors. Source start
-and installation retain their own actual Release authorization and are not
-constrained by that detached-inspection rule.
+The separate `infrastructure authenticate-candidate` and `preflight-candidate`
+commands require already retained metadata and cannot advance those floors.
+Candidate preflight additionally checks the closed Source request/template and
+read-only original native facts. Its public result is a bounded observation,
+never initial provenance or installed permission. Installation repeats its own
+native admission; Source start and installation retain their actual Release
+authorization. No detached preflight or temporary history is a prerequisite for
+initial installation. The current Linux lifecycle remains transitional under
+ADR-0125; removing these commands does not replace or qualify it.
 
 The canonical `ardents-source-preflight-v1` request binds exactly `schema`,
 `invocation`, `profile`, `installation_root`, `state_root`, `participation_root`,

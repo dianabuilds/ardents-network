@@ -32,7 +32,9 @@ func parseSourceRelease(args []string) (sourceReleaseInput, string) {
 	if len(args) == 0 {
 		return input, "invalid-input"
 	}
-	input.initial = args[0] == "authenticate-initial"
+	// Initial provenance belongs to the installation's original caller. Detached
+	// authentication/preflight must refuse before even inspecting input paths.
+	input.initial = args[0] == "install-initial-stopped"
 	if (input.initial && len(args) != 7) || (!input.initial && (args[0] != "authenticate-candidate" || len(args) != 6)) {
 		return sourceReleaseInput{}, "invalid-input"
 	}

@@ -251,8 +251,9 @@ only in `source_observation_linux.go`, `source_install_linux.go`, `source_policy
 import exactly those three owners, with existing command test metadata/signature
 fixtures remaining under their existing registration. Command ownership is
 `ardents-next infrastructure prepare-descriptor`, `prepare-inventory`,
-`authenticate-initial`, `authenticate-candidate`, `preflight-initial` and
-`preflight-candidate` and `install-initial-stopped`; other platforms refuse. The native checked profile's test
+`authenticate-candidate`, `preflight-candidate` and `install-initial-stopped`;
+detached initial authentication/preflight and other platforms refuse before
+effects. Initial provenance stays with the original stopped-install operation. The native checked profile's test
 runners are `scripts/installation/run-source-preflight.py` and `run-source-stopped.py`; neither owns runtime
 authority or Source installation/execution. Synchronous private test barriers
 hold only actual original reads/manager replies and cannot inject accepting facts.

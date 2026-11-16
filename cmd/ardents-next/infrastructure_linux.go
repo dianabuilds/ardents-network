@@ -57,11 +57,11 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		}
 		return 0
 	}
-	preflight := args[0] == "preflight-initial" || args[0] == "preflight-candidate"
+	preflight := args[0] == "preflight-candidate"
 	installStopped := args[0] == "install-initial-stopped"
 	var source infrastructure.SourceInputs
 	if preflight || installStopped {
-		if ((args[0] == "preflight-initial" || installStopped) && len(args) != 8) || (args[0] == "preflight-candidate" && len(args) != 7) {
+		if (installStopped && len(args) != 8) || (args[0] == "preflight-candidate" && len(args) != 7) {
 			return 2
 		}
 		duration := 30 * time.Second
@@ -80,9 +80,6 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		defer source.Close()
 		args = append([]string(nil), args[:len(args)-1]...)
 		args[0] = strings.Replace(args[0], "preflight-", "authenticate-", 1)
-		if installStopped {
-			args[0] = "authenticate-initial"
-		}
 	}
 	request, invalid := parseSourceRelease(args)
 	if invalid == "invalid-input" {

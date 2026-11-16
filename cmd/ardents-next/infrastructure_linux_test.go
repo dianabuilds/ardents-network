@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,9 +26,9 @@ func TestInfrastructureCompiledRejectsOverlappingHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir, pin, _ := infrastructureDistribution(t, binary, nil, 1, nil)
+	dir, _, _ := infrastructureDistribution(t, binary, nil, 1, nil)
 	history := filepath.Join(dir, "release-history")
-	cmd := exec.CommandContext(t.Context(), filepath.Join(dir, "ardents-node-linux-amd64"), "infrastructure", "authenticate-initial", dir, pin, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339))
+	cmd := exec.CommandContext(t.Context(), filepath.Join(dir, "ardents-node-linux-amd64"), "infrastructure", "authenticate-candidate", dir, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339))
 	if out, err := cmd.CombinedOutput(); err == nil || !bytes.Contains(out, []byte("infrastructure-paths-refused")) {
 		t.Fatalf("mutable history entered immutable inventory %s %v", out, err)
 	}
@@ -51,62 +52,80 @@ func TestInfrastructureCompiledRejectsOverlappingHistory(t *testing.T) {
 	}
 }
 
-func TestInfrastructureCompiledCommandInitialCandidateAndForeignArtifact(t *testing.T) {
+func TestInfrastructureDetachedInitialCommandsRefuseBeforeEffects(t *testing.T) {
+	for _, operation := range []string{"authenticate-initial", "preflight-initial"} {
+		for _, retained := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/retained=%v", operation, retained), func(t *testing.T) {
+				root := t.TempDir()
+				history := filepath.Join(root, "history")
+				marker := filepath.Join(history, "retained")
+				if retained {
+					if err := os.Mkdir(history, 0700); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(marker, []byte("original history"), 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				args := []string{"infrastructure", operation, filepath.Join(root, "distribution"), strings.Repeat("0", 64), history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)}
+				if operation == "preflight-initial" {
+					args = append(args, filepath.Join(root, "request"))
+				}
+				var out, diagnostic bytes.Buffer
+				if code := run(t.Context(), args, &out, &diagnostic); code != 2 || out.Len() != 0 || diagnostic.Len() != 0 {
+					t.Fatalf("retired command reached input/native/Release work: code=%d out=%q diagnostic=%q", code, out.String(), diagnostic.String())
+				}
+				if retained {
+					entries, err := os.ReadDir(history)
+					if err != nil || len(entries) != 1 || entries[0].Name() != "retained" {
+						t.Fatal("retained history changed", err)
+					}
+					if raw, err := os.ReadFile(marker); err != nil || string(raw) != "original history" {
+						t.Fatal("retained bytes changed", err)
+					}
+				} else if _, err := os.Lstat(history); !os.IsNotExist(err) {
+					t.Fatal("retired command created history", err)
+				}
+			})
+		}
+	}
+}
+
+func TestInfrastructureCompiledCommandRetainedCandidate(t *testing.T) {
 	binary, err := os.ReadFile(compiledCommand(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Logf("actual compiled infrastructure consumer sha256=%x", sha256.Sum256(binary))
-	dir, pin, _ := infrastructureDistribution(t, binary, nil, 1, nil)
-	program := filepath.Join(dir, "ardents-node-linux-amd64")
+	dir, _, _ := infrastructureDistribution(t, binary, nil, 1, nil)
 	history := filepath.Join(t.TempDir(), "history")
-	run := func(executable string, args ...string) ([]byte, error) {
-		cmd := exec.CommandContext(t.Context(), executable, append([]string{"infrastructure"}, args...)...)
+	retainSourceFixtureRelease(t, dir, history)
+	run := func(args ...string) ([]byte, error) {
+		cmd := exec.CommandContext(t.Context(), compiledCommand(t), append([]string{"infrastructure"}, args...)...)
 		return cmd.CombinedOutput()
 	}
-	args := []string{"authenticate-initial", dir, pin, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)}
-	if out, err := run(compiledCommand(t), args...); err == nil || !bytes.Contains(out, []byte("inventory-refused")) {
-		t.Fatalf("foreign actual executable accepted %s %v", out, err)
-	}
-	if _, err := os.Stat(history); !os.IsNotExist(err) {
-		t.Fatal("foreign artifact mutated history")
-	}
-	if out, err := run(program, args...); err != nil || !bytes.Contains(out, []byte("authenticated-source-artifact")) {
-		t.Fatalf("actual self initial %s %v", out, err)
-	} else if !bytes.Contains(out, []byte(`"program_outcome":"release-accepted"`)) || !bytes.Contains(out, []byte(`"generation_outcome":"no-update"`)) {
-		t.Fatalf("initial consumer lacks fresh second no-update proof %s", out)
-	}
-	if out, err := run(program, args...); err == nil {
-		t.Fatalf("initial pin reused for retained history %s", out)
-	}
 	candidate := []string{"authenticate-candidate", dir, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)}
-	if out, err := run(compiledCommand(t), candidate...); err != nil || !bytes.Contains(out, []byte("authenticated-source-artifact")) {
+	if out, err := run(candidate...); err != nil || !bytes.Contains(out, []byte("authenticated-source-artifact")) {
 		t.Fatalf("retained candidate %s %v", out, err)
 	} else if !bytes.Contains(out, []byte(`"program_outcome":"no-update"`)) || !bytes.Contains(out, []byte(`"generation_outcome":"no-update"`)) {
 		t.Fatalf("candidate consumer lacks two fresh no-update proofs %s", out)
 	}
 	cold := append([]string(nil), candidate...)
 	cold[2] = filepath.Join(t.TempDir(), "missing-history")
-	if out, err := run(program, cold...); err == nil {
+	if out, err := run(cold...); err == nil {
 		t.Fatalf("candidate cold trust %s", out)
 	}
-	wrong := append([]string(nil), args...)
-	wrong[2] = strings.Repeat("0", 64)
-	wrong[3] = filepath.Join(t.TempDir(), "wrong-pin-history")
-	if out, err := run(program, wrong...); err == nil {
-		t.Fatalf("wrong pin %s", out)
+	if _, err := os.Lstat(cold[2]); !os.IsNotExist(err) {
+		t.Fatal("cold candidate created history", err)
 	}
-	if _, err := os.Stat(wrong[3]); !os.IsNotExist(err) {
-		t.Fatal("wrong pin mutated history")
+	wrong := append([]string(nil), candidate...)
+	wrong[3] = "foreign-environment"
+	if out, err := run(wrong...); err == nil {
+		t.Fatalf("wrong local %s %v", out, err)
 	}
-	wrong = append([]string(nil), args...)
-	wrong[4] = "foreign-environment"
-	if out, err := run(program, wrong...); err == nil {
-		t.Fatalf("wrong local %s", out)
-	}
-	wrong = append([]string(nil), args...)
-	wrong[6] = infrastructureReference.Add(500 * 24 * time.Hour).Format(time.RFC3339)
-	if out, err := run(program, wrong...); err == nil {
+	wrong = append([]string(nil), candidate...)
+	wrong[5] = infrastructureReference.Add(500 * 24 * time.Hour).Format(time.RFC3339)
+	if out, err := run(wrong...); err == nil {
 		t.Fatalf("expiry %s", out)
 	}
 }
