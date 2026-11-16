@@ -218,7 +218,9 @@ result grants no reusable authorization and does not acquire Source installation
 inputs, start a service or establish readiness. A unit test on macOS and Linux
 authenticates a signed test candidate against Release floors established by a
 separate verified evaluation and rejects substituted artifact bytes. It does
-not establish initial process enrollment or installed operation.
+not establish initial process enrollment or installed operation. The same
+portable fixture checks signed candidates for each of the four Node roles and
+rejects their use as Source artifacts; the roles retain distinct authorization.
 
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects a protected Endpoint generation target in the same signed metadata set

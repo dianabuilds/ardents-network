@@ -36,7 +36,7 @@ func infrastructureDistributionRoot(t *testing.T, parent string, binary []byte, 
 // installation policy, private root or accepting role dispatcher is shared.
 func infrastructureDistributionInvocation(t *testing.T, parent string, binary []byte, authority *consumerReleaseAuthority, version int64, mutate func(map[string]*metadata.TargetFiles), invocation string, unitOverride ...[]byte) (string, string, map[string][]byte) {
 	t.Helper()
-	if invocation != "source" && invocation != "forwarding" {
+	if invocation != "source" && invocation != "forwarding" && invocation != "join" && invocation != "descriptor" && invocation != "introduction" {
 		t.Fatal("unsupported test artifact invocation")
 	}
 	unitName, descriptorName := "ardents-"+invocation+".service", "infrastructure-"+invocation+".json"
@@ -50,8 +50,8 @@ func infrastructureDistributionInvocation(t *testing.T, parent string, binary []
 		unit = unitOverride[0]
 	}
 	descriptor := []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"infrastructure-fixture\",\"release_version\":%d,\"invocation\":\"source\",\"files\":{\"ardents-node-linux-amd64\":\"%x\",\"ardents-source.service\":\"%x\"}}\n", version, sha256.Sum256(binary), sha256.Sum256(unit)))
-	if invocation == "forwarding" {
-		descriptor = []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"infrastructure-fixture\",\"release_version\":%d,\"invocation\":\"forwarding\",\"files\":{\"ardents-forwarding.service\":\"%x\",\"ardents-node-linux-amd64\":\"%x\"}}\n", version, sha256.Sum256(unit), sha256.Sum256(binary)))
+	if invocation != "source" {
+		descriptor = []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"infrastructure-fixture\",\"release_version\":%d,\"invocation\":%q,\"files\":{%q:\"%x\",\"ardents-node-linux-amd64\":\"%x\"}}\n", version, invocation, unitName, sha256.Sum256(unit), sha256.Sum256(binary)))
 	}
 	targets := metadata.Targets(expires)
 	targets.Signed.Version = version

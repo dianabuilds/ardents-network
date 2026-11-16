@@ -50,6 +50,68 @@ func TestSourceReleaseAuthenticatesSignedRetainedCandidate(t *testing.T) {
 	}
 }
 
+func TestInfrastructureRoleCandidatesKeepSeparateSignedAuthority(t *testing.T) {
+	for _, role := range []string{"forwarding", "join", "descriptor", "introduction"} {
+		t.Run(role, func(t *testing.T) {
+			root := sourceReleaseTestRoot(t)
+			dir, _, _ := infrastructureDistributionInvocation(t, root, []byte("public program fixture"), nil, 1, nil, role)
+			candidate, err := enrollment.ReadInfrastructureCandidate(t.Context(), dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			input, err := releaseartifact.ProgramInputs(candidate)
+			if err != nil {
+				t.Fatal(err)
+			}
+			input.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: "h3-test", Network: "new-release-test", RefTime: infrastructureReference}
+			verifier, err := release.Open(filepath.Join(root, "history"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() {
+				if err := verifier.Close(); err != nil {
+					t.Error(err)
+				}
+			}()
+			if _, ok := verifier.Evaluate(t.Context(), input).Authorization(); !ok {
+				t.Fatal("signed program did not establish Release floors")
+			}
+			switch role {
+			case "forwarding":
+				a, e := releaseartifact.AuthenticateForwardingCandidate(t.Context(), verifier, candidate, input)
+				err = e
+				if err == nil {
+					err = a.Check(t.Context(), verifier)
+				}
+			case "join":
+				a, e := releaseartifact.AuthenticateJoinCandidate(t.Context(), verifier, candidate, input)
+				err = e
+				if err == nil {
+					err = a.Check(t.Context(), verifier)
+				}
+			case "descriptor":
+				a, e := releaseartifact.AuthenticateDescriptorCandidate(t.Context(), verifier, candidate, input)
+				err = e
+				if err == nil {
+					err = a.Check(t.Context(), verifier)
+				}
+			case "introduction":
+				a, e := releaseartifact.AuthenticateIntroductionCandidate(t.Context(), verifier, candidate, input)
+				err = e
+				if err == nil {
+					err = a.Check(t.Context(), verifier)
+				}
+			}
+			if err != nil {
+				t.Fatalf("signed %s candidate refused: %v", role, err)
+			}
+			if _, err := releaseartifact.AuthenticateCandidate(t.Context(), verifier, candidate, input); err == nil {
+				t.Fatal("Source accepted a different role")
+			}
+		})
+	}
+}
+
 func TestSourceReleaseCandidateRefusesMissingInventoryWithoutHistory(t *testing.T) {
 	root := sourceReleaseTestRoot(t)
 	history := filepath.Join(root, "history")
