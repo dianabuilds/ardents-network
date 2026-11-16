@@ -162,6 +162,12 @@ func TestSourceReleaseCandidateRefusesMissingInventoryWithoutHistory(t *testing.
 		if code := runSourceRelease(t.Context(), args, &out); code != 1 || !strings.Contains(out.String(), "release-incompatible") {
 			t.Fatalf("initial verification accepted an incompatible process: %d %s", code, out.String())
 		}
+		// Platform refusal precedes even validation of an overlapping history.
+		out.Reset()
+		args[3] = filepath.Join(args[1], "history")
+		if code := runSourceRelease(t.Context(), args, &out); code != 1 || !strings.Contains(out.String(), "release-incompatible") {
+			t.Fatalf("platform refusal followed path inspection: %d %s", code, out.String())
+		}
 	}
 }
 

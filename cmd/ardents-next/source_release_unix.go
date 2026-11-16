@@ -150,12 +150,12 @@ func runSourceRelease(ctx context.Context, args []string, out io.Writer) int {
 	if ctx.Err() != nil {
 		return enrollmentReport(out, "release-canceled", 130)
 	}
+	if args[0] == "authenticate-initial" && (runtime.GOOS != "linux" || runtime.GOARCH != "amd64") {
+		return enrollmentReport(out, "release-incompatible", 1)
+	}
 	request, invalid := parseSourceRelease(args)
 	if invalid != "" {
 		return enrollmentReport(out, invalid, 2)
-	}
-	if request.initial && (runtime.GOOS != "linux" || runtime.GOARCH != "amd64") {
-		return enrollmentReport(out, "release-incompatible", 1)
 	}
 	a, v, refused, err := openSourceRelease(ctx, request)
 	if refused != "" {
