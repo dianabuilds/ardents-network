@@ -3952,6 +3952,10 @@ installed scenario has not been reproduced. A replacement must preserve initial
 provenance and avoid consuming the installation history as a detached preflight
 side effect. A separate temporary history cannot establish that the intended
 installation history is suitable or transfer the original proof.
+The legacy candidate preflight and detached candidate authentication require
+the already retained metadata and cannot advance those floors. Source start
+and installation retain their own actual Release authorization and are not
+constrained by that detached-inspection rule.
 
 The canonical `ardents-source-preflight-v1` request binds exactly `schema`,
 `invocation`, `profile`, `installation_root`, `state_root`, `participation_root`,

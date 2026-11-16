@@ -136,6 +136,26 @@ func TestDetachedInfrastructureInspectionCannotAdvanceRetainedFloors(t *testing.
 			if code := runRelease(t.Context(), args, &out); code != 0 {
 				t.Fatalf("previous retained release became unavailable: %d %s", code, out.String())
 			}
+			if role == "source" {
+				request, invalid := parseSourceRelease([]string{"authenticate-candidate", next, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)})
+				if invalid != "" {
+					t.Fatal("valid transition inputs refused", invalid)
+				}
+				a, owner, refused, err := openSourceRelease(t.Context(), request, false)
+				if err != nil || refused != "" || owner == nil {
+					t.Fatalf("retained verifier could not authenticate successor: %s %v", refused, err)
+				}
+				if err := a.Check(t.Context(), owner); err != nil {
+					t.Fatal("successor lost its original authorization", err)
+				}
+				if err := owner.Close(); err != nil {
+					t.Fatal(err)
+				}
+				out.Reset()
+				if code := runRelease(t.Context(), args, &out); code == 0 {
+					t.Fatal("old release accepted after successor floor advancement")
+				}
+			}
 		})
 	}
 }

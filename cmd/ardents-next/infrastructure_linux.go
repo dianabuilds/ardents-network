@@ -94,7 +94,10 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if (preflight || installStopped) && source.IndependentPaths(request.bundle, request.history) != nil {
 		return enrollmentReport(out, "source-preflight-paths-refused", 2)
 	}
-	a, v, refused, err := openSourceRelease(ctx, request, false)
+	// Detached candidate checks and preflight cannot advance the history used by
+	// a live Source. Actual start and initial installation retain their own proof.
+	retainedOnly := !request.initial && !startSource
+	a, v, refused, err := openSourceRelease(ctx, request, retainedOnly)
 	if refused != "" {
 		return enrollmentReport(out, refused, 1)
 	}
