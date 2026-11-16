@@ -536,3 +536,12 @@ would let a successor start while an older Close could still remove its guard.
 A fresh invocation therefore cannot acquire that root during original guard
 removal. Physical handler join still precedes removal, and uncertain removal
 retains its failure/collision semantics; no producer identity or format changes.
+
+## Retained history at command boundaries
+
+`network inspect`, Admission authority consumers and standalone Node commands
+use `state.OpenRetained`, which requires existing State/security/participation
+history and its original native lease. A missing lease is not recreated; symlink,
+reparse-point and hardlinked leases refuse. Explicit initial State preparation
+retains `state.Open`. These boundaries do not infer whether an entirely absent
+root existed previously, and do not qualify a new native platform.

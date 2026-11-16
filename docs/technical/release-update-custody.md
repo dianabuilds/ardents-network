@@ -356,3 +356,11 @@ reconciliation, and sealed Name-control signing. Run the normal repository gate
 during development and the full check before integration. Platform crash,
 power-loss, permissions, and supported lifecycle qualification are not
 satisfied by these tests.
+
+## Release proof handoff
+
+The pure evaluation pipeline produces authenticated decision facts. Only the
+original `Verifier.Evaluate` handoff issues its private Authorization after
+checking original caller/owner state and binds it to that live verifier and
+caller. Evaluation facts alone cannot be passed as a reusable installation or
+runtime permission. Delivery retains its independent effect/cleanup admission.

@@ -2,6 +2,14 @@
 
 ## Selected protected installation handoff
 
+[ADR-0125](../adr/0125-separate-software-delivery-and-infrastructure-deployment.md)
+classifies the native installation lifecycles below as transitional mechanisms.
+The duplicate legacy `internal/endpoint/installation` and its `ardents endpoint`
+commands are retired; existing roots/data remain. The new-domain native lifecycle
+continues with its current consumers until required guarantees transfer to actual
+platform/runtime owners. This does not qualify a platform replacement.
+
+
 The fixed Endpoint template is validated and retained by the separately owned
 Installation unit Module before the root admits writable directories. It renders
 only that admitted path projection; root unit_configuration.go owns immutable/Release
@@ -208,7 +216,8 @@ decoding and interrupts/joins original transport I/O on close. A retained unit
 reference grants no Release, start or readiness authority. Actual successor
 recovery/start acceptance remains a separate source-matched obligation.
 
-`internal/endpoint/installation` composes the two fresh Release evaluations from
+The retained Portable enrollment composition in `cmd/ardents` performs the two
+fresh Release evaluations from
 one frozen set of enrolled metadata and the same local/reference facts. It
 checks complete resource bytes and coherent authenticated target identities and
 Targets floors before returning their opaque proofs. The ordinary enrolled

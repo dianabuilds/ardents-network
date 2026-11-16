@@ -96,6 +96,51 @@ func TestTextTokenJournalRefusesMissingPartialOrForeignRetainedState(t *testing.
 	}
 }
 
+func TestRetainedJournalRefusesEmptyOrErasedHistory(t *testing.T) {
+	journal, _, record, token := tokenJournalFixture(t)
+	if err := journal.Mark(token, record); err != nil {
+		t.Fatal(err)
+	}
+	if err := journal.Close(); err != nil {
+		t.Fatal(err)
+	}
+	retained, err := OpenRetained(journal.root, journal.network, journal.clock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := retained.Mark(token, record); err == nil {
+		t.Fatal("retained journal admitted a previously burned token")
+	}
+	if err := retained.Close(); err != nil {
+		t.Fatal(err)
+	}
+	original, err := os.Stat(journal.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(journal.root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if err := os.RemoveAll(filepath.Join(journal.root, entry.Name())); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if reopened, err := OpenRetained(journal.root, journal.network, journal.clock); err == nil {
+		_ = reopened.Close()
+		t.Fatal("erased journal was recreated")
+	}
+	after, err := os.Stat(journal.root)
+	if err != nil || !os.SameFile(original, after) {
+		t.Fatal("retained refusal changed original root", err)
+	}
+	entries, err = os.ReadDir(journal.root)
+	if err != nil || len(entries) != 0 {
+		t.Fatal("retained refusal initialized missing history", entries, err)
+	}
+}
+
 func TestTextTokenJournalPoisonsOwnerOnReplacedFile(t *testing.T) {
 	journal, _, record, token := tokenJournalFixture(t)
 	path := filepath.Join(journal.root, "attempts")

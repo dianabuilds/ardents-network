@@ -3,17 +3,19 @@
 package main
 
 import (
-	"encoding/json"
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
+	endpointrelease "github.com/dianabuilds/ardents-network/internal/successor/installation"
+	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
 
 // Actual program/worker/unit bytes are necessary for installed startup. This
-// checks their genuine signed byte-authentication consumer only; no manager,
+// checks their genuine Enrollment and Release owners directly; no manager,
 // root completion peer or accepting worker is substituted by this fixture.
 func TestExecutionSignedInstalledResources(t *testing.T) {
 	worker := filepath.Join(t.TempDir(), "ardents-text")
@@ -35,51 +37,64 @@ func TestExecutionSignedInstalledResources(t *testing.T) {
 		}
 	}
 	authority := newConsumerReleaseAuthority(t, time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC).Add(365*24*time.Hour))
+
 	bundle, pin, program := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, authority, 1, 1)
-	request := filepath.Join(t.TempDir(), "request.json")
+	reference := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
 	history := filepath.Join(t.TempDir(), "floors")
-	if err := os.WriteFile(request, installationRequestBytes(t, bundle, pin, history), 0600); err != nil {
+	verified, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: bundle, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.Headless})
+	if err != nil {
 		t.Fatal(err)
 	}
-	command := exec.CommandContext(t.Context(), program, "installation", "authenticate-initial", "--request", request)
-	out, err := command.CombinedOutput()
-	var result struct {
-		Outcome string `json:"outcome"`
+	input, ok := initialReleaseInputs(verified, reference)
+	if !ok {
+		t.Fatal("missing initial inputs")
 	}
-	if err != nil || json.Unmarshal(out, &result) != nil || result.Outcome != "authenticated-generation" {
-		t.Fatalf("genuine installed byte pair refused: %v: %s", err, out)
+	verifier, err := release.Open(history)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := verifier.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if _, err := endpointrelease.AuthenticateInitial(t.Context(), verifier, verified, input); err != nil {
+		t.Fatal(err)
 	}
 	candidateResources := make(map[string][]byte, len(resources))
 	for name, body := range resources {
 		candidateResources[name] = append([]byte(nil), body...)
 	}
 	candidateResources["ardents-endpoint.service"] = append([]byte("# signed successor fixture\n"), candidateResources["ardents-endpoint.service"]...)
-	candidate, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 2, candidateResources, authority, 2, 2)
-	command = exec.CommandContext(t.Context(), program, "installation", "authenticate-candidate", candidate, history, "2030-01-02T03:04:05Z")
-	out, err = command.CombinedOutput()
-	if err != nil || json.Unmarshal(out, &result) != nil || result.Outcome != "authenticated-generation" {
-		t.Fatalf("genuine retained-Root candidate refused: %v: %s", err, out)
+	candidateRoot, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 2, candidateResources, authority, 2, 2)
+	candidate, err := enrollment.ReadCandidate(t.Context(), candidateRoot, enrollment.Headless)
+	if err != nil {
+		t.Fatal(err)
 	}
-	command = exec.CommandContext(t.Context(), program, "installation", "authenticate-candidate", bundle, history, "2030-01-02T03:04:05Z")
-	if out, err := command.CombinedOutput(); err == nil {
-		t.Fatalf("accepted old signed snapshot after candidate floors: %s", out)
+	next, ok := candidateReleaseInputs(candidate, reference)
+	if !ok {
+		t.Fatal("missing candidate inputs")
 	}
-	// Change actual worker bytes while retaining the independently delivered pin
-	// and signed inventory. Refusal must precede a fresh Release history effect.
+	if _, err := endpointrelease.AuthenticateCandidate(t.Context(), verifier, candidate, next); err != nil {
+		t.Fatal(err)
+	}
+	old, err := enrollment.ReadCandidate(t.Context(), bundle, enrollment.Headless)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale, ok := candidateReleaseInputs(old, reference)
+	if !ok {
+		t.Fatal("missing old candidate inputs")
+	}
+	if _, err := endpointrelease.AuthenticateCandidate(t.Context(), verifier, old, stale); err == nil {
+		t.Fatal("accepted old signed snapshot after candidate floors")
+	}
 	changed := append([]byte(nil), resources["ardents-text-linux-amd64"]...)
 	changed[0] ^= 1
 	if err := os.WriteFile(filepath.Join(bundle, "ardents-text-linux-amd64"), changed, 0600); err != nil {
 		t.Fatal(err)
 	}
-	absentHistory := filepath.Join(t.TempDir(), "absent-floors")
-	if err := os.WriteFile(request, installationRequestBytes(t, bundle, pin, absentHistory), 0600); err != nil {
-		t.Fatal(err)
-	}
-	command = exec.CommandContext(t.Context(), program, "installation", "authenticate-initial", "--request", request)
-	if out, err := command.CombinedOutput(); err == nil {
-		t.Fatalf("accepted substituted actual worker: %s", out)
-	}
-	if _, err := os.Lstat(absentHistory); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("worker substitution reached fresh Release history", err)
+	if _, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: bundle, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.Headless}); err == nil {
+		t.Fatal("accepted substituted actual worker")
 	}
 }

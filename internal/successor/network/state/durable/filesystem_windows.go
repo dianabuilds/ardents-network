@@ -3,6 +3,7 @@
 package durable
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"syscall"
@@ -11,14 +12,26 @@ import (
 type rootLease struct{ handle syscall.Handle }
 
 func acquireRootLease(root string) (rootLease, error) {
+	return openRootLease(root, syscall.OPEN_ALWAYS)
+}
+
+func acquireRetainedRootLease(root string) (rootLease, error) {
+	return openRootLease(root, syscall.OPEN_EXISTING)
+}
+
+func openRootLease(root string, disposition uint32) (rootLease, error) {
 	path, err := syscall.UTF16PtrFromString(filepath.Join(root, rootLockName))
 	if err != nil {
 		return rootLease{}, fmt.Errorf("encode state-root lease path: %w", err)
 	}
 	handle, err := syscall.CreateFile(path, syscall.GENERIC_READ|syscall.GENERIC_WRITE, 0, nil,
-		syscall.OPEN_ALWAYS, syscall.FILE_ATTRIBUTE_NORMAL, 0)
+		disposition, syscall.FILE_ATTRIBUTE_NORMAL|syscall.FILE_FLAG_OPEN_REPARSE_POINT, 0)
 	if err != nil {
 		return rootLease{}, fmt.Errorf("acquire exclusive state-root lease: %w", err)
+	}
+	var info syscall.ByHandleFileInformation
+	if err := syscall.GetFileInformationByHandle(handle, &info); err != nil || info.FileAttributes&(syscall.FILE_ATTRIBUTE_REPARSE_POINT|syscall.FILE_ATTRIBUTE_DIRECTORY) != 0 || info.NumberOfLinks != 1 {
+		return rootLease{}, errors.Join(fmt.Errorf("state-root lease is not a regular file"), err, syscall.CloseHandle(handle))
 	}
 	return rootLease{handle: handle}, nil
 }

@@ -30,12 +30,12 @@ func TestOperationLeaseJoinedCancellationRetainsOriginalCause(t *testing.T) {
 	caller, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	ctx := &cancelAfterLeaseContext{Context: caller, cancel: cancel}
-	lease, err := acquireOperationLease(ctx, root)
+	lease, err := acquireOperationLeaseMode(ctx, root, true)
 	if err != context.Canceled || caller.Err() != context.Canceled {
 		_ = lease.release()
 		t.Fatalf("cleanly released acquisition changed original cancellation: %T %v", err, err)
 	}
-	next, err := acquireRootLease(root)
+	next, err := acquireRootLeaseMode(root, true)
 	if err != nil {
 		t.Fatal("canceled acquisition did not release its original native lease", err)
 	}
@@ -113,7 +113,7 @@ func TestCancelledOperationDoesNotCreateRoot(t *testing.T) {
 
 func TestOperationDoesNotWaitForUnclaimedRoot(t *testing.T) {
 	root := localRoleFixtureRoot(t)
-	lease, err := acquireRootLease(root)
+	lease, err := acquireRootLeaseMode(root, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,5 +131,32 @@ func TestOperationDoesNotWaitForUnclaimedRoot(t *testing.T) {
 	entries, err := os.ReadDir(root)
 	if err != nil || len(entries) != 1 || entries[0].Name() != rootLockName {
 		t.Fatalf("unclaimed root changed: %v, %v", entries, err)
+	}
+}
+
+func TestRetainedOperationDoesNotRecreateMissingLease(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "roles")
+	cfg := Config{Root: root, Clock: time.Now, Create: true}
+	owner, err := Open(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	lock := filepath.Join(root, rootLockName)
+	if err := os.Remove(lock); err != nil {
+		t.Fatal(err)
+	}
+	cfg.Create = false
+	for _, open := range []func() (*store, error){func() (*store, error) { return Open(cfg) }, func() (*store, error) { return OpenOperation(context.Background(), cfg) }} {
+		got, err := open()
+		if err == nil {
+			_ = got.Close()
+			t.Fatal("missing lease accepted")
+		}
+		if _, err := os.Lstat(lock); !os.IsNotExist(err) {
+			t.Fatalf("retained open recreated lease: %v", err)
+		}
 	}
 }

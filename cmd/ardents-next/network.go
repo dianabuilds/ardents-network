@@ -45,7 +45,11 @@ func runNetwork(ctx context.Context, args []string, out io.Writer) int {
 	if err != nil {
 		return 2
 	}
-	owner, err := state.Open(config)
+	openState := state.Open
+	if args[0] == "inspect" {
+		openState = state.OpenRetained
+	}
+	owner, err := openState(config)
 	if err != nil {
 		return reportNetwork(out, "owner-unavailable", nil, time.Time{}, 1)
 	}

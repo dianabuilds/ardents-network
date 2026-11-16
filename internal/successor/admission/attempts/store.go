@@ -19,12 +19,18 @@ const journalMarker = "ardents-token-attempts-v1\n"
 
 // Open claims one existing private root and refuses ambiguous retained state.
 func Open(root string, network [32]byte, clock func() time.Time) (*Journal, error) {
-	return openJournal(root, network, clock, syncJournalRoot)
+	return openJournal(root, network, clock, syncJournalRoot, true)
+}
+
+// OpenRetained requires an existing complete journal and never initializes an
+// empty root. It does not prove whether an absent history was ever created.
+func OpenRetained(root string, network [32]byte, clock func() time.Time) (*Journal, error) {
+	return openJournal(root, network, clock, syncJournalRoot, false)
 }
 
 // Only persistence can be substituted by fault tests; validation, lease and
 // retained attempt handling follow the same production path.
-func openJournal(root string, network [32]byte, clock func() time.Time, syncRoot func(string) error) (*Journal, error) {
+func openJournal(root string, network [32]byte, clock func() time.Time, syncRoot func(string) error, allowFresh bool) (*Journal, error) {
 	if !filepath.IsAbs(root) || filepath.Clean(root) != root || network == [32]byte{} || clock == nil || clock().IsZero() {
 		return nil, errors.New("text token journal configuration invalid")
 	}
@@ -37,6 +43,9 @@ func openJournal(root string, network [32]byte, clock func() time.Time, syncRoot
 		return nil, errors.New("text token journal root shape unavailable")
 	}
 	fresh := len(entries) == 0
+	if fresh && !allowFresh {
+		return nil, errors.New("retained text token journal is missing")
+	}
 	for _, entry := range entries {
 		name := entry.Name()
 		info, err := os.Lstat(filepath.Join(root, name))

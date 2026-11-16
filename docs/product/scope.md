@@ -18,6 +18,23 @@ or qualification of the complete installed journey. Product acceptance still
 requires two separate installed Endpoints, the selected TCP/TLS Carrier and honest
 restart/refusal outcomes.
 
+## Software delivery and infrastructure deployment
+
+[ADR-0125](../adr/0125-separate-software-delivery-and-infrastructure-deployment.md)
+removes Installation as a standalone product domain. Application delivery and
+update use platform delivery mechanisms; infrastructure deployment is a separate
+operator concern. Enrollment and Release retain exact artifact acceptance and
+trust floors. Runtime owners validate their configuration, admit and complete
+their own work, and retain their durable data. Ardents does not introduce a
+general installer or a separate lifecycle manager.
+
+The existing native installation code is transitional implementation. Removing
+it requires equivalent ownership of necessary authorization, configuration,
+predecessor completion and failure guarantees; neither source moves nor unit
+tests qualify a platform replacement. Existing data and floors are preserved.
+Linux, macOS and Windows are product directions, not a claim of qualified native
+runtime support on each platform.
+
 Status: **current C0 candidate contract.** This document names the maintained
 product surfaces that may enter the next architecture and security audit. It is
 not a release qualification, Public Beta claim, or authorization to add missing

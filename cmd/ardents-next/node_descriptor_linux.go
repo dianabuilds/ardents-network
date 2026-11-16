@@ -53,14 +53,17 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 		return 130
 	}
 	config.LocalRoleStateRoot = plan.ParticipationRoot
-	owner, err := state.Open(config)
+	owner, err := state.OpenRetained(config)
 	if err != nil {
 		_ = nodeDescriptorReport(out, "refused", "state-unavailable", "", "")
 		return 1
 	}
 	refuse := func(cause error) int {
-		_ = owner.Close()
-		if nodeDescriptorReport(out, "refused", "startup-unavailable", "", "", encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
+		cleanup := ""
+		if owner.Close() != nil {
+			cleanup = "network"
+		}
+		if nodeDescriptorReport(out, "refused", "startup-unavailable", "", cleanup, encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
 			return 2
 		}
 		return 1
@@ -89,38 +92,29 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 		}
 	}
 	original.Stop()
-	type completion struct {
-		outcome, first, cleanup string
-		stateError              error
-	}
-	joined := make(chan completion, 1)
+	joined := make(chan nodeCompletion, 1)
 	go func() {
 		_ = original.Close()
 		first, cleanup := original.JoinedFailureOwners()
-		joined <- completion{original.JoinedOutcome(), first, cleanup, owner.Close()}
+		joined <- nodeCompletion{outcome: original.JoinedOutcome(), first: first, cleanup: cleanup, stateError: owner.Close()}
 	}()
 	timer := time.NewTimer(time.Duration(plan.RetirementWaitMS) * time.Millisecond)
 	defer timer.Stop()
-	var result completion
-	timedOut := false
-	select {
-	case result = <-joined:
-	case <-timer.C:
-		timedOut = true
+	result, timedOut := awaitNodeCompletion(joined, timer.C, func() {
 		_ = nodeDescriptorReport(diagnostic, "retiring", "completion-unavailable", "", "")
-		// A bounded report never releases original roots/producer/TLS/State or
-		// exits the command before actual physical completion.
-		result = <-joined
-	}
-	if outputErr != nil {
-		return 2
-	}
+	})
 	if timedOut || result.outcome != "canceled" || result.stateError != nil {
 		if result.stateError != nil {
 			result.cleanup = "network"
 		}
 		_ = nodeDescriptorReport(diagnostic, "joined", "failed", result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
+		if outputErr != nil {
+			return 2
+		}
 		return 1
+	}
+	if outputErr != nil {
+		return 2
 	}
 	if nodeDescriptorReport(diagnostic, "joined", "canceled", "", "") != nil {
 		return 2

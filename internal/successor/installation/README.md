@@ -1,6 +1,13 @@
 # Installation
 
-Домен сохраняет раздельные владельцы свежей авторизации и установленного поколения.
+Это переходная native-реализация, а не самостоятельный продуктовый домен.
+[ADR-0125](../../../docs/adr/0125-separate-software-delivery-and-infrastructure-deployment.md)
+разделяет доставку приложения и развёртывание инфраструктуры. Enrollment/Release
+сохраняют авторизацию; runtime-владельцы — admission, завершение и свои данные.
+Существующие consumers ниже сохраняются до переноса необходимых гарантий.
+Новые role-specific установщики и lifecycle managers не являются целью.
+Дублирующий legacy `internal/endpoint/installation` удалён; данные на диске
+сохраняются, автоматического импорта его истории нет.
 
 Endpoint transactions/startup and Source transactions/startup have separate
 owners and contracts. Manifest-pinned Node/Custody companions do not extend

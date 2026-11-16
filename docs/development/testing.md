@@ -3803,9 +3803,11 @@ complete gate, including cold compiler caches and the race suite. The Go test
 timeouts and required checks remain unchanged; cancellation is an incomplete
 gate, never a passing result.
 
-Installation filesystem component checks select
-`ARDENTS_INSTALLATION_COMPONENT_PROFILE=root` and run
-`go test -count=1 ./internal/endpoint/installation` with actual UID 0.
+The duplicate legacy Endpoint installer and its root-only component tests are
+retired. `cmd/ardents` retains unit no-effect refusal and genuine signed
+Enrollment/Release pair verification. Remaining native installation components
+retain their explicitly selected root profile and do not inherit qualification
+from the retired package.
 The selected prerequisite test fails under a non-root UID; an ordinary
 unprivileged run cannot supply Root filesystem evidence. In Docker explicitly
 select `--user 0` and the profile environment variable rather than inferring

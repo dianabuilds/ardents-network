@@ -143,10 +143,10 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/network/duty/node_inspection_linux.go",
 			"internal/successor/admission/spending/inspection_linux.go",
 			"internal/successor/hosting/inspection_linux.go",
-			"internal/successor/network/state/retained_open_linux.go",
-			"internal/successor/network/state/retained_open_linux_test.go",
-			"internal/successor/network/state/durable/retained_open_linux.go",
-			"internal/successor/network/state/durable/retained_open_linux_test.go",
+			"internal/successor/network/state/retained_open.go",
+			"internal/successor/network/state/retained_open_test.go",
+			"internal/successor/network/state/durable/retained_open.go",
+			"internal/successor/network/state/durable/retained_open_test.go",
 			"internal/successor/installation/infrastructure/source_stop_linux.go",
 			"internal/successor/installation/infrastructure/source_stop_storage_linux.go",
 			"internal/successor/installation/infrastructure/source_stop_storage_linux_test.go",
@@ -1137,6 +1137,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/execution_holder.go" && dependency == modulePath+"/internal/successor/execution" {
+			return true
+		}
+		if source == "cmd/ardents-next/execution_artifact_linux_test.go" && (dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
 		if (source == "cmd/ardents-next/installation.go" || source == "cmd/ardents-next/installation_test.go") && (dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/installation/endpoint" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {

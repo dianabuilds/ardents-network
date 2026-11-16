@@ -79,8 +79,8 @@ delivery labels and issue numbers are not product domain identities.
 This inventory describes ten semantic families, not ten packages, processes,
 databases or global aggregates. Each family may contain several consistency
 owners at different principals. In particular, Software acceptance groups
-Enrollment, Release verification and installation/replacement; it must not be
-implemented as one authority or shared transaction. Local Application execution
+Enrollment and Release verification; platform delivery and transitional
+installation/replacement do not form another product domain or shared authority. Local Application execution
 is the execution boundary, not all Application functionality. Future boundaries
 remain proposed until their current contracts and real consumers are verified.
 
@@ -94,7 +94,7 @@ remain proposed until their current contracts and real consumers are verified.
 | **Service Publication:** which authorized Instance is accepting work? | Publication generation/revision, current/pending/predecessor registration pair, private recipient lifetime, ACK/readiness, refresh and withdrawal; Instance authority/material remain purpose-scoped | Credential root signing, raw Route transport, Descriptor Store conflict floors, logical Connection recovery, Local Grant/Job mutation and worker cleanup; retain an exact live Execution operation instead | `internal/successor/publication` public proof rules, `publication/durable` exclusive floors, `publication/instance` purpose-scoped private lifetime and `publication/runtime` live qualified Publisher have real `ardents-next` consumers; [Service owner](../technical/endpoint-service-runtime.md), [private reachability](../technical/private-reachability.md), [Execution seam](../technical/application-execution.md#required-lifecycle-and-linearization) |
 | **Reachability:** what current proof is valid for this Target? | Receiving Descriptor Store and durable conflicts; local lookup verification/history is a separate owner at another principal | Publication readiness, admission spend, path choice, Service Instance authentication and logical Connection | `internal/successor/reachability` implements portable proof/conflict/history rules and native receiving Store mechanisms; real Route Prefix/Receiver and `ardents-next` consume them. [Reachability contract](../technical/private-reachability.md) records signed-input acceptance and its limits. Predecessor `service/reachability`, Endpoint history and Node resolution remain independent; their complete Service consumers are not transferred by this boundary |
 | **Service Connection:** how does one authenticated logical stream retain its identity? | Immutable destination/provenance, exact Instance TLS authentication, ordered byte state, Attachment generation, continuity/recovery deadline and retained Service terminal outcome; checks the exact retained Execution operation at effects and final handoffs | New Target/Application operation, new Grant, Job mutation/worker cleanup, publication authority, path policy and independent physical reservations | `internal/successor/connection` owns immutable logical binding, exact-role authentication, ordered byte/Terminal ledgers and finite Attachment proposals; `connection/wire` owns only canonical records and transcripts. Genuine Reader Source and Publication accepted-stream composition consume these owners; complete acceptance remains separate. Predecessor evidence: `service/connection`, Endpoint Service/binding/recovery; [Service owner](../technical/endpoint-service-runtime.md), [Execution seam](../technical/application-execution.md#required-lifecycle-and-linearization) |
-| **Software acceptance:** which exact generation may be installed or run? | Enrollment pin, Release authorization/monotonic floors, installation/replacement/recovery transaction are separate authority and state owners | Network membership, admission permissions, Service authority, generic signing and automatic rollback | New `enrollment`, `release` and `installation` have genuine new command consumers. Portable byte authentication, native transactions/recovery and bounded Source/permission startup have separate boundaries. Two independently admitted installed participants consume those startup owners for a bounded authenticated text exchange; the full Installation interruption/replacement matrix remains separate. [Enrollment](../technical/enrollment-verification.md), [Release/Custody](../technical/release-update-custody.md), [Installation](../../internal/successor/installation/README.md) |
+| **Software acceptance:** which exact generation may be installed or run? | Separate Enrollment initial-pin/inventory and Release exact-target authorization/monotonic floors | Network membership, Admission permissions, Service authority, generic signing, platform delivery and automatic rollback | [Enrollment](../technical/enrollment-verification.md), [Release/Custody](../technical/release-update-custody.md); current installation consumers are transitional mechanisms under [ADR-0125](../adr/0125-separate-software-delivery-and-infrastructure-deployment.md) |
 | **Authority Custody** (supporting boundary) | Purpose-specific encrypted authority storage, approved signing commitments and recovery floors; authority kinds never become one signing right | Generic `Sign`, exported private authority, Network/Service/Admission decisions assigned to their own domains; runtime Instance/Node keys | New `internal/successor/custody` owns encrypted records and purpose-specific Admission through new Allocation and real `ardents-custody`; Service Authority issuance consumes the one pure Publication request/response contract; predecessor records remain evidence, never signing adoption; [Custody contract](../technical/release-update-custody.md) |
 
 Forwarding retains distinct supervision responsibilities within one original
@@ -111,6 +111,36 @@ both physical observation and waiter uses without changing any supervisor timer.
 Before sealing the next batch, the one-processor observer yields to resumed
 consumers; this permits their fresh post-I/O requests to be admitted before
 that next physical round, never during or after it.
+
+## Software delivery and infrastructure deployment
+
+[ADR-0125](../adr/0125-separate-software-delivery-and-infrastructure-deployment.md)
+removes Installation as a standalone domain. The current native implementation
+inventory below describes mechanisms that still have real consumers; it does
+not make them target domain boundaries or require another role installer.
+
+| Responsibility | Owner and required result |
+| --- | --- |
+| Initial pin, complete inventory | Enrollment; verified bytes do not authorize runtime work |
+| Exact software authorization, rollback/security floors | Release; neither root creation nor stored binding facts can mint a fresh proof |
+| Application installation/update | Platform delivery; exact authorized artifacts, configuration binding and retained user data |
+| Infrastructure deployment | Operator-supplied verified artifacts/configuration and platform service management |
+| Work admission, interruption and physical completion | Runtime composition and its actual Node/Network/Execution/Service owners; process exit or timeout cannot stand in for required joined completion |
+| Spend/quota/results, slot/history/time floors, keys | Their existing Admission/Route/Network/Custody owners; program replacement does not reset their state |
+
+The target contains no general Ardents installer, separate lifecycle manager or
+new role-specific install/restart/replacement/recovery domain.
+The replacement composes the existing direct new-domain runtime consumers under
+the platform service manager with verified artifacts and role configuration;
+it does not implement each Node role a second time in an installed runtime.
+That direct platform composition requires its own artifact/configuration and
+completion evidence before it replaces the current native launch contract. Technical checks
+must preserve exact artifact/configuration binding, predecessor completion and
+unsafe-interruption refusal at the actual effect boundary. Platform mechanisms
+may replace a custom journal or exchange only when they provide the required
+guarantee; a directory move is not that transfer. Existing roots are preserved,
+with no automatic migration, reset or uncertain-process adoption. The detailed
+current transition remains with its technical owner until that transfer.
 
 ## Supporting mechanisms and composition
 
@@ -949,7 +979,7 @@ bounds and terminal result; no late completion can act on a replacement.
 | Service Publication | Purpose-scoped Instance generation/material; publication lifecycle with current/pending/predecessor pair, revision, recipient/replay and readiness | Publication stops new acquisitions before joining registrations and retiring/erasing private recipients. Descriptor Store ACK and REGISTER ACK remain different prerequisites; a late ACK cannot renew a retired generation |
 | Reachability | Receiving Descriptor Store/conflict floors; local exact-Target lookup/history at another principal | Receiving Store owns original native root/records/marker/lock/record custody, permanent operational denial, serialized durable effects and ACK; joins original operations before retained physical release. Foreign observations run outside its state mutex. Lookup owns its bounded attempt/history. Refusal cannot expose an older proof or substitute another destination; proof validity is neither readiness nor Instance authentication |
 | Service Connection | Immutable destination/provenance, authenticated Instance, logical ordered bytes, Attachment generation, original recovery bound and terminal result | Connection stops/joins its current Attachments and retains the logical outcome. Route joins each physical stream; Execution joins its worker. Recovery changes an Attachment, never Target, Job, Grant or original recovery time |
-| Software acceptance | Enrollment first-pin/inventory; Release authentication and monotonic floors; installation/replacement journal and generation ownership | Enrollment cannot sign or install; Release authorizes exact bytes but cannot download/activate. Installation authenticates fixed resources, joins its predecessor and completes its own transaction before runtime admission; ordinary Job cleanup does not own replacement |
+| Software acceptance | Separate Enrollment first-pin/inventory and Release authorization/floors; transitional delivery retains its own journal/generation until required guarantees transfer | Enrollment cannot sign or install; Release cannot activate. Platform delivery and runtime composition retain artifact/configuration binding and predecessor completion. Existing installation transactions are transitional mechanisms under ADR-0125; ordinary Job cleanup does not own program replacement |
 | Authority Custody | Purpose-specific encrypted vault/recovery record, approved signing commitment and retained authority floors; separate authority kinds | Custody owns unlock, secret erasure and durable successor-before-response. Service Credential issuance retains its own purpose-specific approval/generation policy; Admission supplies allocation rules. No generic Sign or shared right across Service, Admission, State, Name and Release. Runtime Instance/Node keys stay outside the vault authority owner |
 
 ### Endpoint application composition

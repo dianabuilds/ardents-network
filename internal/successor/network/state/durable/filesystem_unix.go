@@ -3,6 +3,7 @@
 package durable
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,9 +13,25 @@ import (
 type rootLease struct{ file *os.File }
 
 func acquireRootLease(root string) (rootLease, error) {
-	file, err := os.OpenFile(filepath.Join(root, rootLockName), os.O_RDWR|os.O_CREATE, 0o600)
+	return openRootLease(root, os.O_RDWR|os.O_CREATE)
+}
+
+func acquireRetainedRootLease(root string) (rootLease, error) {
+	return openRootLease(root, os.O_RDWR)
+}
+
+func openRootLease(root string, flags int) (rootLease, error) {
+	file, err := os.OpenFile(filepath.Join(root, rootLockName), flags|syscall.O_NOFOLLOW, 0o600)
 	if err != nil {
 		return rootLease{}, fmt.Errorf("open state-root lease: %w", err)
+	}
+	info, err := file.Stat()
+	if err != nil {
+		return rootLease{}, errors.Join(err, file.Close())
+	}
+	native, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || !info.Mode().IsRegular() || native.Nlink != 1 {
+		return rootLease{}, errors.Join(errors.New("invalid history lease identity"), file.Close())
 	}
 	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		_ = file.Close()

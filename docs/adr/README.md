@@ -85,3 +85,5 @@ snapshot, including superseded, withdrawn, proposed and retired-subsystem
 editions. Their recorded dispositions do not repeal surviving accepted
 constraints.
 Create a new ADR only for a consequential, hard-to-reverse accepted trade-off.
+
+- [ADR-0125 — Separate software delivery and infrastructure deployment](0125-separate-software-delivery-and-infrastructure-deployment.md) removes Installation as a product domain and separates platform application delivery from infrastructure deployment.

@@ -655,3 +655,13 @@ provisions exact Node-signed ARDCIP01 bytes under the
 binding preparation copies only verified token keys; it never replaces the
 independently supplied State profile digest, authority or duty. Existing legacy
 consumers and roots are not switched or migrated by that operation.
+
+## Retained presentation history at runtime
+
+`attempts.OpenRetained` and `stock.OpenRetained` refuse missing or erased
+presentation history rather than initializing an empty directory. The Reader
+uses retained Stock. Participant bootstrap initializes Stock only after this
+caller successfully creates its new role directory; an existing role directory
+requires retained history. Program delivery, restart and inspection cannot turn
+history loss into new rights. Entire-root loss can remain ambiguous; these
+checks do not establish recovery of lost data.

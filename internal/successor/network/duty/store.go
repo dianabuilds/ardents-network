@@ -30,9 +30,9 @@ func open(input Config, ctx context.Context) (openedStore *store, resultErr erro
 	}
 	var lease rootLease
 	if ctx == nil {
-		lease, err = acquireRootLease(root)
+		lease, err = acquireRootLeaseMode(root, input.Create)
 	} else {
-		lease, err = acquireOperationLease(ctx, root)
+		lease, err = acquireOperationLeaseMode(ctx, root, input.Create)
 	}
 	if err != nil {
 		return nil, err

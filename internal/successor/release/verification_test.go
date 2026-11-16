@@ -23,6 +23,31 @@ func publicVector(t *testing.T) Inputs {
 	return Inputs{RootBytes: read("root.json"), Files: map[string][]byte{metadataBaseURL + "timestamp.json": read("timestamp.json"), metadataBaseURL + "1.snapshot.json": read("1.snapshot.json"), metadataBaseURL + "1.targets.json": read("1.targets.json")}, Artifact: read("artifact.bin"), TargetPath: "ardents/windows-amd64/application", Local: LocalEnvironment{Platform: "windows-amd64", Architecture: "amd64", Environment: "h3-test", Network: "ardents-h3-test-1", RefTime: time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)}}
 }
 
+// Evaluation facts alone cannot become an original verifier authorization.
+func TestEvaluationRequiresVerifierHandoffForAuthorization(t *testing.T) {
+	v, err := Open(filepath.Join(t.TempDir(), "history"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := v.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	input := publicVector(t)
+	observed := evaluate(t.Context(), input, v.store)
+	if observed.Outcome != outcomeReleaseAccepted {
+		t.Fatalf("evaluation refused: %s %v", observed.Outcome, observed.Err())
+	}
+	if _, ok := observed.Authorization(); ok {
+		t.Fatal("detached evaluation granted authorization")
+	}
+	admitted := v.Evaluate(t.Context(), input)
+	if _, ok := admitted.Authorization(); !ok || admitted.Outcome != outcomeNoUpdate {
+		t.Fatalf("original verifier refused: %s %v", admitted.Outcome, admitted.Err())
+	}
+}
+
 func TestUncertainPublicationRetiresOwnerAndReopenConfirmsHistory(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "history")
 	v, err := Open(root)

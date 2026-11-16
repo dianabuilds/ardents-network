@@ -41,7 +41,7 @@ digests and projects those bytes separately. This is manifest authentication,
 not the required fresh Release generation authorization or an installed
 qualification receipt; the installation consumer remains unfinished.
 
-After this manifest-only projection, `internal/endpoint/installation` now
+After this manifest-only projection, `cmd/ardents/protected_enrollment.go`
 composes fresh program and generation Release proofs from the same frozen
 metadata/local/reference inputs. The enrolled command uses this composition
 when the complete protected group is present, and passes only the program proof
