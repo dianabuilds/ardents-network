@@ -11,8 +11,6 @@ import (
 	"syscall"
 )
 
-var errSourceControlInput = errors.New("original source preparation input unavailable")
-
 type sourceControlFile struct {
 	file   *os.File
 	info   os.FileInfo

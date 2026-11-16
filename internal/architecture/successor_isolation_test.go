@@ -148,7 +148,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"cmd/ardents-control/source_inspection_linux_test.go",
 			"cmd/ardents-control/source_artifact_linux.go",
 			"cmd/ardents-control/join_artifact_linux.go",
-			"cmd/ardents-control/join_request_linux.go",
+			"cmd/ardents-control/join_request.go",
 			"cmd/ardents-control/join_plan_linux.go",
 			"cmd/ardents-control/join_release_keys_linux.go",
 			"cmd/ardents-control/infrastructure_release_keys_linux.go",
@@ -158,7 +158,7 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"cmd/ardents-control/join_release_predecessor_linux.go",
 			"cmd/ardents-control/join_release_plan_linux_test.go",
 			"cmd/ardents-control/forwarding_artifact_linux.go",
-			"cmd/ardents-control/forwarding_request_linux.go",
+			"cmd/ardents-control/forwarding_request.go",
 			"cmd/ardents-control/forwarding_plan_linux.go",
 			"cmd/ardents-control/source_artifact_output_linux.go",
 			"cmd/ardents-control/source_release_linux.go",
@@ -849,14 +849,14 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/introduction_artifact_linux.go" && dependency == modulePath+"/internal/successor/enrollment" {
 			return true
 		}
-		if (source == "cmd/ardents-control/introduction_request_linux.go" || source == "cmd/ardents-control/introduction_plan_linux.go" || source == "cmd/ardents-node/introduction_preflight_linux.go") && dependency == modulePath+"/internal/successor/installation/introduction" {
+		if (source == "cmd/ardents-control/introduction_request.go" || source == "cmd/ardents-control/introduction_plan_linux.go" || source == "cmd/ardents-node/introduction_preflight_linux.go") && dependency == modulePath+"/internal/successor/installation/introduction" {
 			return true
 		}
 
 		if source == "cmd/ardents-control/descriptor_artifact_linux.go" && dependency == modulePath+"/internal/successor/enrollment" {
 			return true
 		}
-		if (source == "cmd/ardents-control/descriptor_request_linux.go" || source == "cmd/ardents-control/descriptor_plan_linux.go") && dependency == modulePath+"/internal/successor/installation/descriptor" {
+		if (source == "cmd/ardents-control/descriptor_request.go" || source == "cmd/ardents-control/descriptor_plan_linux.go") && dependency == modulePath+"/internal/successor/installation/descriptor" {
 			return true
 		}
 		if source == "cmd/ardents-control/join_artifact_linux.go" && dependency == modulePath+"/internal/successor/enrollment" {
@@ -865,7 +865,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/join_initial_stopped_native_linux_test.go" && dependency == modulePath+"/internal/successor/installation/join" {
 			return true
 		}
-		if (source == "cmd/ardents-control/join_request_linux.go" || source == "cmd/ardents-control/join_plan_linux.go") && dependency == modulePath+"/internal/successor/installation/join" {
+		if (source == "cmd/ardents-control/join_request.go" || source == "cmd/ardents-control/join_plan_linux.go") && dependency == modulePath+"/internal/successor/installation/join" {
 			return true
 		}
 		if source == "cmd/ardents-control/join_release_native_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
@@ -960,7 +960,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/forwarding_forward_release_native_linux_test.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
 			return true
 		}
-		if source == "cmd/ardents-control/forwarding_request_linux.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
+		if source == "cmd/ardents-control/forwarding_request.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
 			return true
 		}
 		if source == "cmd/ardents-control/forwarding_plan_linux.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
@@ -2302,7 +2302,7 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/successor/network/epoch":
 			return true
 		}
-	case "cmd/ardents-control/join_request_linux.go":
+	case "cmd/ardents-control/join_request.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/installation/join":
 			return true
