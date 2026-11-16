@@ -13,13 +13,13 @@ import (
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
+	installation "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery"
 	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher"
 	endpointreader "github.com/dianabuilds/ardents-network/internal/successor/endpoint/reader"
 	"github.com/dianabuilds/ardents-network/internal/successor/execution"
 	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
 	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	installation "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery"
 	networkdomain "github.com/dianabuilds/ardents-network/internal/successor/network"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 )
@@ -168,13 +168,19 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 			}
 		}
 		root := filepath.Join(plan.TextTokenRoot, name)
-		if err := os.Mkdir(root, 0700); err != nil && !errors.Is(err, os.ErrExist) {
-			return phase, errors.Join(ErrUnavailable, err)
+		mkdirErr := os.Mkdir(root, 0700)
+		if mkdirErr != nil && !errors.Is(mkdirErr, os.ErrExist) {
+			return phase, errors.Join(ErrUnavailable, mkdirErr)
 		}
 		if err := check(); err != nil {
 			return phase, errors.Join(ErrUnavailable, err)
 		}
-		holder, err := stock.Open(root, role, observe)
+		var holder *stock.Owner
+		if mkdirErr == nil {
+			holder, err = stock.Open(root, role, observe)
+		} else {
+			holder, err = stock.OpenRetained(root, role, observe)
+		}
 		if err != nil {
 			return phase, errors.Join(ErrUnavailable, err)
 		}

@@ -548,13 +548,16 @@ history: the current `attempts.Open` treats an entirely empty existing directory
 as fresh. A focused Linux unit check wrote a test attempt, removed all journal
 entries, reopened the same directory and observed that the same test token could
 be marked again. This demonstrates loss of the local replay floor, not network
-acceptance of a repeated token. The installed Endpoint currently creates or
-reuses role directories before calling Stock without a proven first-creation
-fact. A replacement must retain genuine creation provenance and refuse unknown
-or erased history; directory emptiness alone is not such provenance.
+acceptance of a repeated token. The installed Endpoint now opens an existing
+role directory only with `stock.OpenRetained`, so an emptied existing directory
+is refused. A newly created role directory still does not prove first-ever use:
+an entire earlier directory could have been erased. A replacement must retain
+genuine creation provenance and refuse unknown or erased history; directory
+emptiness alone is not such provenance.
 `attempts.OpenRetained` and `stock.OpenRetained` refuse an empty or missing
 history without initializing it. The ordinary Reader command consumes that
-retained opening; the installed participant's first-creation problem remains.
+retained opening; the installed participant's complete-directory-erasure and
+first-creation problems remain.
 
 A fresh source prefix consumes distinct genuine class-2 stock for Entry and
 Interior on new authenticated channels after bootstrap retirement. The local
