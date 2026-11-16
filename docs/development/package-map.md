@@ -855,6 +855,16 @@ The other retirement/intent/attempt files use only the standard library. None
 imports Forwarding or Source; native fixed JOIN stop adapters retain their own
 original pidfd and cgroup. Canonical installed Node keeps R01's exact five imports.
 
+The standalone `scripts/sign-qualification-release.go` implements only the
+ADR-0120 initial Endpoint Release operation. Its exact permitted imports are
+`internal/successor/enrollment`, `internal/successor/release`,
+`github.com/sigstore/sigstore/pkg/signature`,
+`github.com/theupdateframework/go-tuf/v2/metadata`, `golang.org/x/sys/unix` and
+the standard library. Enrollment validates the static protected resources;
+Release verifies both actual signed targets in fresh diagnostic histories.
+No old runtime, Network, Route, installation or generic signing authority is
+admitted. This permission does not extend to adjacent signing scripts.
+
 ### JOIN fixed first-start import inventory
 
 Root Start retains fresh Release/native/journal/process custody; independently

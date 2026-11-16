@@ -21,8 +21,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/release"
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 	"golang.org/x/sys/unix"
@@ -118,7 +118,9 @@ func signRelease() error {
 		return errors.New("release target build and policy facts do not agree")
 	}
 	resources := map[string][]byte{"ardents-linux-amd64": artifacts[0]}
-	for _, name := range enrollment.ProtectedResourceNames()[1:] {
+	// The adapter opens the fixed producer inputs; Enrollment below decides
+	// whether they are the complete canonical protected generation.
+	for _, name := range []string{"ardents-text-linux-amd64", "ardents-text-reader@.service", "ardents-text-publisher@.service", "ardents-text-reader.socket", "ardents-text-publisher.socket", "50-ardents-text.rules", "ardents-text.conf", "ardents-endpoint.service"} {
 		resources[name], err = boundedRead(filepath.Join(plan.ResourceRoot, name), 64<<20)
 		if err != nil {
 			return err

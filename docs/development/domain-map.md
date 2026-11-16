@@ -134,6 +134,13 @@ script consumers. The same constructor binds the bundle verifier's companion
 names. This supporting producer seam supplies no initial-pin provenance,
 Release permission, execution or domain-state ownership.
 
+The separate ADR-0120 Endpoint Release producer consumes new Enrollment's static
+protected-generation validator and new Release's ordinary two-target verification.
+`scripts/sign-qualification-release.go` owns the bounded offline signing operation;
+neither domain signs, selects bootstrap trust, installs or starts the result.
+Its fresh diagnostic verification roots are not participant trust or runtime
+history. The producer creates no general signer or lifecycle manager.
+
 The target contains no general Ardents installer, separate lifecycle manager or
 new role-specific install/restart/replacement/recovery domain.
 The replacement composes the existing direct new-domain runtime consumers under

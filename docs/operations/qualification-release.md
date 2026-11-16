@@ -342,6 +342,11 @@ Build the two adapters explicitly from their source files:
 adapters. It is required by `quick-check` and the complete `check` gate;
 compilation is not a key/signing-operation or installed qualification result.
 
+The Endpoint signing adapter uses the maintained new Enrollment validator for
+the exact protected resources and the new Release verifier for both signed
+targets. Its two fresh diagnostic histories do not supply a participant's
+independent initial pin or replace that participant's retained Release floors.
+
 ```sh
 go build -trimpath -buildvcs=false -o /absolute/new/prepare-release-keys ./scripts/prepare-qualification-release-keys.go
 go build -trimpath -buildvcs=false -o /absolute/new/sign-release ./scripts/sign-qualification-release.go

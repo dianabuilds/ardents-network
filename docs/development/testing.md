@@ -19,6 +19,13 @@ history, including lost-history refusal; the real TLS regression retains
 predecessors until its accepted handler joins. Neither supplies installed
 Source or platform qualification.
 
+The explicit ADR-0120 Endpoint Release producer is covered by the exact
+new-owner import guard and `release-operation-compile-check`. Enrollment's
+independent protected-resource grammar/refusal units and Release's independent
+signed metadata, coherent target and retained-floor units cover its reused
+owners. These checks do not execute the protected private-key signing operation
+or qualify bootstrap trust, artifact delivery or an installed participant.
+
 ## Platform launch unit boundary
 
 Endpoint history-preparation units use independently signed Epoch/profile bytes

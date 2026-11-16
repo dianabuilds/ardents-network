@@ -480,7 +480,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 			return
 		}
 		relative := relativePath(t, root, filename)
-		if !strings.HasPrefix(relative, "internal/successor/") && !strings.HasPrefix(relative, "cmd/ardents-next/") && relative != "scripts/enrollment-artifact-name.go" && relative != "scripts/protected-generation-check.go" {
+		if !strings.HasPrefix(relative, "internal/successor/") && !strings.HasPrefix(relative, "cmd/ardents-next/") && relative != "scripts/enrollment-artifact-name.go" && relative != "scripts/protected-generation-check.go" && relative != "scripts/sign-qualification-release.go" {
 			return
 		}
 		file, err := parser.ParseFile(token.NewFileSet(), filename, nil, parser.ImportsOnly)
@@ -500,6 +500,15 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if source == "scripts/sign-qualification-release.go" {
+		switch dependency {
+		case modulePath + "/internal/successor/enrollment", modulePath + "/internal/successor/release",
+			"github.com/sigstore/sigstore/pkg/signature", "github.com/theupdateframework/go-tuf/v2/metadata", "golang.org/x/sys/unix":
+			return true
+		}
+		first := strings.Split(dependency, "/")[0]
+		return dependency != "C" && dependency != "unsafe" && dependency != "" && !strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/")
+	}
 	if source == "scripts/enrollment-artifact-name.go" || source == "scripts/protected-generation-check.go" {
 		return dependency == modulePath+"/internal/successor/enrollment" || !strings.Contains(dependency, ".")
 	}
@@ -1492,6 +1501,17 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"Endpoint release producer uses new Enrollment", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/enrollment", true},
+		{"Endpoint release producer uses new Release", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/release", true},
+		{"Endpoint release producer excludes old Enrollment", "scripts/sign-qualification-release.go", modulePath + "/internal/enrollment", false},
+		{"Endpoint release producer excludes old Release", "scripts/sign-qualification-release.go", modulePath + "/internal/release", false},
+		{"Endpoint release producer has no Network authority", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/network", false},
+		{"Endpoint release producer has no Route runtime", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/route/role", false},
+		{"Endpoint release producer retains TUF mechanism", "scripts/sign-qualification-release.go", "github.com/theupdateframework/go-tuf/v2/metadata", true},
+		{"Endpoint release producer retains signing mechanism", "scripts/sign-qualification-release.go", "github.com/sigstore/sigstore/pkg/signature", true},
+		{"Endpoint release producer retains native files", "scripts/sign-qualification-release.go", "golang.org/x/sys/unix", true},
+		{"Endpoint release producer excludes foreign library", "scripts/sign-qualification-release.go", "example.org/foreign", false},
+		{"adjacent signer has no inherited Release access", "scripts/sign-qualification-network.go", modulePath + "/internal/successor/release", false},
 		{"packaging identity uses new Enrollment", "scripts/enrollment-artifact-name.go", modulePath + "/internal/successor/enrollment", true},
 		{"packaging identity excludes old Enrollment", "scripts/enrollment-artifact-name.go", modulePath + "/internal/enrollment", false},
 		{"packaging validator uses new Enrollment", "scripts/protected-generation-check.go", modulePath + "/internal/successor/enrollment", true},
