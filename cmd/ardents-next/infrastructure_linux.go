@@ -133,7 +133,7 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		}
 		return 0
 	}
-	if writeSourceReleaseReceipt(ctx, out, a, pd, gd) != nil {
+	if writeInfrastructureReleaseReceipt(ctx, out, "authenticated-source-artifact", a, pd, gd) != nil {
 		return 1
 	}
 	return 0

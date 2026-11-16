@@ -221,6 +221,11 @@ separate verified evaluation and rejects substituted artifact bytes. It does
 not establish initial process enrollment or installed operation. The same
 portable fixture checks signed candidates for each of the four Node roles and
 rejects their use as Source artifacts; the roles retain distinct authorization.
+The Release command also accepts `authenticate-forwarding-candidate`,
+`authenticate-join-candidate`, `authenticate-descriptor-candidate` and
+`authenticate-introduction-candidate`, with the same candidate arguments as
+Source. Each checks its own invocation and retained Release history and returns
+only a public report; it does not install, start or authorize a runtime.
 
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects a protected Endpoint generation target in the same signed metadata set

@@ -17,6 +17,12 @@ import (
 // verify-initial requires independently pinned bytes and keeps Release history
 // separate. Its output is verification, never installation or live readiness.
 func runRelease(ctx context.Context, args []string, out io.Writer) int {
+	if len(args) > 0 {
+		switch args[0] {
+		case "authenticate-forwarding-candidate", "authenticate-join-candidate", "authenticate-descriptor-candidate", "authenticate-introduction-candidate":
+			return runNodeRelease(ctx, args, out)
+		}
+	}
 	if len(args) > 0 && (args[0] == "authenticate-source-initial" || args[0] == "authenticate-source-candidate") {
 		operation := "authenticate-initial"
 		if args[0] == "authenticate-source-candidate" {
