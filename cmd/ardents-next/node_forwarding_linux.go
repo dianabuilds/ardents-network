@@ -16,12 +16,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 )
 
-type forwardingCompletion struct {
-	outcome        string
-	stateError     error
-	first, cleanup string
-}
-
 // Command composition retains State until the original Node has physically
 // joined. A bounded failed wait cannot close it or report completed retirement.
 func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Writer) int {
@@ -72,15 +66,15 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 		}
 	}
 	original.Stop()
-	joined := make(chan forwardingCompletion, 1)
+	joined := make(chan nodeCompletion, 1)
 	go func() {
 		_ = original.Close()
 		first, cleanup := original.JoinedFailureOwners()
-		joined <- forwardingCompletion{original.JoinedOutcome(), owner.Close(), first, cleanup}
+		joined <- nodeCompletion{outcome: original.JoinedOutcome(), stateError: owner.Close(), first: first, cleanup: cleanup}
 	}()
 	timer := time.NewTimer(time.Duration(plan.RetirementWaitMS) * time.Millisecond)
 	defer timer.Stop()
-	result, timedOut := awaitForwardingCompletion(joined, timer.C, func() {
+	result, timedOut := awaitNodeCompletion(joined, timer.C, func() {
 		_ = nodeReport(diagnostic, "retiring", "completion-unavailable", encodeNodeFailureDiagnostic(original.FirstFailure()))
 	})
 	if outputErr != nil && !timedOut {
@@ -100,18 +94,6 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 		return 2
 	}
 	return 130
-}
-
-// Timeout publishes a failure notice but never lets the command exit before
-// the original Node and State have physically joined.
-func awaitForwardingCompletion(joined <-chan forwardingCompletion, timeout <-chan time.Time, notify func()) (forwardingCompletion, bool) {
-	select {
-	case result := <-joined:
-		return result, false
-	case <-timeout:
-		notify()
-		return <-joined, true
-	}
 }
 
 func nodeStartupRefusal(out io.Writer, cause error) int {

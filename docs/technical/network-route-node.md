@@ -1477,6 +1477,10 @@ recorded source; source inspection alone is not execution.
 | Introduction: `node_introduction_linux.go` → `node.ListenIntroduction` | Common inputs plus independent Introduction root. `introduction.OpenReceivingRegistry` consumes the genuine Receiving fresh-root fact before listening; Registry checks native/history binding | Route owns slots/non-reclaim floors/capsule delivery, not Admission. Join Receiver/children before Registry/Receiving/Hosting and producer/Guard/key; State last. REGISTER ACK is not installed or Service readiness |
 | JOIN: `node_join_linux.go` → `node.ListenJoin` | Common inputs with JOIN profile and full class-2/termination coverage. Exact Rendezvous DataJoin duty; original credential file pins (`node/join_credential_linux.go`); genuine Receiver/Pairing | Route owns opposite-side match, both RESULT barrier, credit/EOF/CLOSE and physical join. Node retains Receiving/Hosting/producer/native pins/TLS until actual join; command keeps State. No refill, retry or renewed setup deadline |
 
+The five development Node commands share the same bounded-notice and joined
+completion wait. Each role still owns its own denial, physical cleanup and
+terminal result; a timeout notice does not release any of those owners.
+
 Common Node declarations are exact Network config, NodeID, distinct participation,
 spend and Hosting roots, certificate/private-key paths, exact role process profile,
 work/termination coverage and retirement wait in 1..5000 ms. Extra role roots are

@@ -83,29 +83,17 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 		}
 	}
 	original.Stop()
-	type completion struct {
-		outcome, first, cleanup string
-		stateError              error
-	}
-	joined := make(chan completion, 1)
+	joined := make(chan nodeCompletion, 1)
 	go func() {
 		_ = original.Close()
 		first, cleanup := original.JoinedFailureOwners()
-		joined <- completion{original.JoinedOutcome(), first, cleanup, owner.Close()}
+		joined <- nodeCompletion{outcome: original.JoinedOutcome(), first: first, cleanup: cleanup, stateError: owner.Close()}
 	}()
 	timer := time.NewTimer(time.Duration(plan.RetirementWaitMS) * time.Millisecond)
 	defer timer.Stop()
-	var result completion
-	timedOut := false
-	select {
-	case result = <-joined:
-	case <-timer.C:
-		timedOut = true
+	result, timedOut := awaitNodeCompletion(joined, timer.C, func() {
 		_ = nodeIssuerReport(diagnostic, "retiring", "completion-unavailable", "", "")
-		// Preserve original roots/keys/producer/State while physical work joins.
-		// Reporting a bounded failure never exits the process ahead of its users.
-		result = <-joined
-	}
+	})
 	if outputErr != nil {
 		return 2
 	}
