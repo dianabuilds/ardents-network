@@ -226,11 +226,6 @@ The Release command also accepts `authenticate-forwarding-candidate`,
 `authenticate-introduction-candidate`, with the same candidate arguments as
 Source. Each checks its own invocation and retained Release history and returns
 only a public report; it does not install, start or authorize a runtime.
-The enrolled `ardents-node release authenticate-initial <bundle> <pin> <history>
-<environment> <network>` separately checks actual Linux/amd64 executable
-provenance and the invocation-specific initial Release pair. Its report grants
-no installation or runtime right. Refusal and path isolation have unit coverage;
-a successful command with the exact enrolled executable remains unverified.
 
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects a protected Endpoint generation target in the same signed metadata set
