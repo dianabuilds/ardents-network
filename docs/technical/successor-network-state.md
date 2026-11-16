@@ -142,7 +142,7 @@ samples trusted time after that I/O and binds membership to current authenticate
 Epoch records. Expiry, owner failure and changed bytes/context cannot use the
 retained result as permission; it only avoids repeating identical cryptography.
 
-`OpenRetained` is the separate Linux already-initialized opening used by a
+`OpenRetained` is the separate portable already-initialized opening used by a
 subsequent installed Source invocation. Durable storage requires the existing ownership
 marker, lease file, generation/control directories and complete retained control
 pointer/generation before opening; it never creates missing semantic structure.
@@ -164,6 +164,14 @@ within that original lifetime still use producer-scoped replacement. No stored
 identity, wire format or duty schema changes, and no automatic repair/reset is
 introduced. This check covers retained serving producers, not every possible
 process failure or interrupted platform transition.
+
+When the last accepted serving handler joins, the original State replaces its
+own claimed producer with only the current Source duty, releasing predecessor
+identity/family guards while preserving the current guard. This is not a new
+producer Claim or whole-command completion. The update opens only existing
+participation history; lost history retires State without recreating it. A new
+serving State still refuses the retained original producer until its owning
+completion removes it.
 
 The platform Source command calls `RetainSourceCompletion` once on its original
 serving State before supervision. This opaque lifetime does not grant a new

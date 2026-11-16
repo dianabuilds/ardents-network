@@ -46,6 +46,30 @@ func TestSuccessorEnrollmentRunsPortableRulesOnWindowsAndLinux(t *testing.T) {
 	}
 }
 
+// Retained State opening uses portable history rules and each platform's
+// existing lease adapter; it supplies no native Source installation permission.
+func TestSuccessorStateRetainedOpeningRunsPortableRules(t *testing.T) {
+	root := repositoryRoot(t)
+	for _, target := range []string{"linux", "windows", "darwin"} {
+		profile := build.Default
+		profile.GOOS, profile.GOARCH, profile.CgoEnabled = target, "amd64", false
+		for _, name := range []string{
+			"internal/successor/network/state/retained_open.go",
+			"internal/successor/network/state/retained_open_test.go",
+			"internal/successor/network/state/durable/retained_open.go",
+			"internal/successor/network/state/durable/retained_open_test.go",
+		} {
+			selected, err := profile.MatchFile(path.Join(root, path.Dir(name)), path.Base(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !selected {
+				t.Errorf("portable retained State source %s excluded on %s", name, target)
+			}
+		}
+	}
+}
+
 func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T) {
 	root := repositoryRoot(t)
 	for _, target := range []string{"linux", "windows", "darwin"} {
@@ -143,10 +167,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"internal/successor/network/duty/node_inspection_linux.go",
 			"internal/successor/admission/spending/inspection_linux.go",
 			"internal/successor/hosting/inspection_linux.go",
-			"internal/successor/network/state/retained_open.go",
-			"internal/successor/network/state/retained_open_test.go",
-			"internal/successor/network/state/durable/retained_open.go",
-			"internal/successor/network/state/durable/retained_open_test.go",
 			"internal/successor/installation/infrastructure/source_stop_linux.go",
 			"internal/successor/installation/infrastructure/source_stop_storage_linux.go",
 			"internal/successor/installation/infrastructure/source_stop_storage_linux_test.go",

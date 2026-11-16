@@ -41,6 +41,12 @@ peer refusal; cancellation or a completed handshake cannot erase it.
 `channel` owns portable parent/child framing, finite credit/queues, serialized
 physical output and joined retirement. `prefix` owns its exact generations and
 terminal openings; `join` and `introduction` own their holder operations.
+Opening and receiving OPEN admission share 256 ordinary child slots plus two
+reserved control slots for Issuer, Reachability, Introduction and Submission.
+Controls use ordinary slots first; the original reserved/ordinary classification
+lasts until joined child Finish or joined parent Close. Child CLOSE alone does
+not return its claim. Both Endpoint and Node envelopes retain the same limits,
+within the unchanged shared-principal 1024-child, memory and parent-byte bounds.
 Nested framing retains successful lower output counts separately from the
 lower lane's actual physical failure. Successful lower bytes followed by a
 retirement refusal leave the upper frame incomplete and its full work result

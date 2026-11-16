@@ -327,7 +327,7 @@ exact completion/systemd/process/cgroup imports are registered in the table abov
 `source_retirement_history_linux.go` owns independent complete predecessor-chain
 verification under the original first-journal lease. Non-root Startup's one-use
 `ReportRetirement` reports joined composition only; it grants no restart right.
-Linux-only State/durable `OpenRetained` have actual successor Source consumers
+Portable State/durable `OpenRetained` have actual successor Source consumers
 and share State's existing recovery/lifetime implementation without initialization
 of missing retained history. No new package or runtime dependency is introduced.
 
@@ -335,8 +335,9 @@ The distinct Source inventory/codec and its new admission package compile only
 on Linux, matching their genuine accepting consumer; non-Linux commands refuse
 before effects. Existing Endpoint/v3 grammar and its portable controls stay
 unchanged. `StaticMetadataFiles` is likewise Linux-only. The platform-selection
-architecture check asserts every exact Source file and Linux deterministic
-profile membership, without a deadcode allowance or a fictitious Windows caller.
+architecture check asserts every exact native Source file and Linux deterministic
+profile membership, and separately requires portable retained State files on
+Linux, Windows and macOS, without a deadcode allowance or a fictitious native caller.
 The shared original-proof/floor check has a genuine existing portable consumer
 in `cmd/ardents-next/release.go`, before its verification report and physical
 Close; it does not provide a native infrastructure accepting path on Windows.

@@ -45,6 +45,7 @@ type Session struct {
 	lanes                   map[uint32]*Lane
 	next, last              uint32
 	live                    uint32
+	reservedControls        uint32
 	queued, used, limit     uint64
 	stopped                 bool
 	finishingRole           bool
@@ -192,10 +193,7 @@ func (s *Session) Close() error {
 				}
 			}
 			l.buffer = nil
-			if !l.finished {
-				s.queues.releaseChild()
-				l.finished = true
-			}
+			s.finishChildLocked(l)
 			if l.afterFinish != nil {
 				returns = append(returns, l.afterFinish)
 				l.afterFinish = nil
@@ -341,13 +339,18 @@ func (s *Session) read() {
 		}
 		l := s.lanes[f.Lane]
 		if f.Kind == ardp.KindOpen {
-			if s.open == nil || l != nil || f.Lane%2 != 1 || f.Lane <= s.last || s.live >= 256 || !s.queues.child() {
+			if s.open == nil || l != nil || f.Lane%2 != 1 || f.Lane <= s.last {
+				s.mu.Unlock()
+				s.Retire(errors.New("route child unavailable"))
+				return
+			}
+			l = s.newChildLocked(f.Lane, f.Body)
+			if l == nil {
 				s.mu.Unlock()
 				s.Retire(errors.New("route child unavailable"))
 				return
 			}
 			s.last = f.Lane
-			l = s.newLaneLocked(f.Lane)
 			l.trafficUsed = cost
 			body := append([]byte(nil), f.Body...)
 			s.children.Add(1)
@@ -730,13 +733,17 @@ func (s *Session) Open(ctx, caller context.Context, body []byte) (*Lane, error) 
 		return nil, os.ErrDeadlineExceeded
 	}
 	s.mu.Lock()
-	if s.stopped || s.finishingRole || s.live >= 256 || s.next == 0 || !s.queues.child() {
+	if s.stopped || s.finishingRole || s.next == 0 {
 		s.mu.Unlock()
 		return nil, errors.New("route child capacity unavailable")
 	}
 	id := s.next
+	l := s.newChildLocked(id, body)
+	if l == nil {
+		s.mu.Unlock()
+		return nil, errors.New("route child capacity unavailable")
+	}
 	s.next += 2
-	l := s.newLaneLocked(id)
 	// Cancellation of the physical child may lose the original deadline reason.
 	// Retain the actual caller so retirement cannot resurrect expired output.
 	l.caller = caller

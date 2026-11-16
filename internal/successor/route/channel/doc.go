@@ -9,6 +9,10 @@
 // their original finite deadline and already accepted byte allowance. Handlers
 // are captured before reading starts; they own domain decisions and return
 // genuine owner-backed results to the physical channel.
+// Both OPEN directions share 256 ordinary child slots and two additional slots
+// reserved for Issuer, Reachability, Introduction and Submission. Controls use
+// ordinary slots first. Each original claim lasts through joined Lane Finish;
+// the extra reserve never bypasses the shared principal's 1024-child bound.
 // PrepareOpen binds child capacity synchronously outside the framing lock,
 // before pipelined handshake input. ConstrainQueues applies a separate shared
 // child-group queue without replacing principal accounting; it includes queued

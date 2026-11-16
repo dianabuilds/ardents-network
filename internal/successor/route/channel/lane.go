@@ -39,6 +39,7 @@ type Lane struct {
 	openEmitted                       bool
 	outputEOF                         bool
 	finished                          bool
+	reservedControl                   bool
 	afterFinish                       func()
 	queueBound                        *Budget
 	queuedOutput                      uint64
@@ -475,13 +476,11 @@ func (l *Lane) Finish() {
 		l.s.mu.Unlock()
 		return
 	}
-	l.finished = true
 	if l.queueTermination {
 		l.queueBound.release(ardp.HeaderSize + 1)
 		l.queueTermination = false
 	}
-	l.s.live--
-	l.s.queues.releaseChild()
+	l.s.finishChildLocked(l)
 	if len(l.buffer) == 0 {
 		delete(l.s.lanes, l.id)
 	}

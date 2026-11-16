@@ -34,7 +34,7 @@ func (s *networkState) sourceConnectionActive(delta int) {
 	if s.activeSource != 0 || s.closed || len(s.servingPredecessors) == 0 {
 		return
 	}
-	if err := s.retainSourceServer(); err != nil {
+	if err := s.releaseSourcePredecessors(); err != nil {
 		s.terminalErr = fmt.Errorf("release joined Source predecessors: %w", err)
 		s.retireStateLocked()
 		return

@@ -1,5 +1,24 @@
 # Testing
 
+## Host quick-check prerequisites
+
+Select the registered Go toolchain and GNU Make on PATH before running
+`make quick-check`; nested build proofs and the commit hook invoke `make` too.
+The architecture helper tests also require Python 3.11 or newer for
+`ExceptionGroup`/`BaseExceptionGroup` and the registered PowerShell release.
+On macOS, put the chosen Python installation's `libexec/bin` and the explicitly
+installed `ARDENTS_POWERSHELL_ROOT/bin` ahead of system tools on PATH. The
+[dependency register](dependencies.md#development-tools) owns exact tool versions
+and the explicit installation workflow. Normal checks never install tools or
+skip missing prerequisites.
+
+Retained State opening has positive source-selection checks for Linux, Windows
+and macOS, distinct from native Source deployment/inspection checks. Source
+predecessor-retirement units exercise original handler joins and actual duty
+history, including lost-history refusal; the real TLS regression retains
+predecessors until its accepted handler joins. Neither supplies installed
+Source or platform qualification.
+
 ## Platform launch unit boundary
 
 On Linux, `make platform-launch-unit` selects only in-process platform declaration,

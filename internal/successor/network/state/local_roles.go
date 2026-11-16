@@ -160,6 +160,20 @@ func sourceServerDuty(decision epoch.Decision) duty.Duty {
 		Class: "direct-source", State: "live", NotAfter: decision.Snapshot.ValidUntil}
 }
 
+// The original State calls this only after its last accepted handler joins.
+// This updates its already claimed producer; a new State must still use Claim.
+// Retained opening refuses lost history instead of creating a fresh journal.
+func (s *networkState) releaseSourcePredecessors() error {
+	if s.current == nil {
+		return errors.New("direct Source server has no current identity")
+	}
+	roles, err := duty.OpenOperation(context.Background(), duty.Config{Root: s.config.localRoles, Clock: s.config.clock})
+	if err != nil {
+		return err
+	}
+	return errors.Join(roles.Replace(sourceProducer("server", s.config.root), []duty.Duty{sourceServerDuty(*s.current)}), roles.Close())
+}
+
 // servingDutySet keeps distinct still-servable identity/family pairs. When a
 // successor reuses both, its authenticated bound replaces the old record.
 func servingDutySet(decision epoch.Decision, predecessors []duty.Duty) []duty.Duty {

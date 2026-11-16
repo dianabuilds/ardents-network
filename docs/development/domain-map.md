@@ -365,6 +365,13 @@ queued transfer rechecks its original waiter and owner. No new authority or
 capacity follows. Composition joins returned carriers before semantic roots;
 listener Close retains and joins all untransferred users and physical errors.
 
+Route channel owns both opening and receiving child-capacity decisions: 256
+ordinary slots plus two reserved for Issuer, Reachability, Introduction and
+Submission, with ordinary capacity used first. The original claim returns only
+after joined child Finish or parent Close; the reserve remains inside the shared
+physical principal's 1024-child and memory bounds. Admission rights and Hosting
+reservations remain separate and grant no bypass of these Route limits.
+
 ## Node composition: original lifetime boundary
 
 Existing Node and Source runtime composition remains distinct from software
