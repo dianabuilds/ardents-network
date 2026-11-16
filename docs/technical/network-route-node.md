@@ -1446,6 +1446,9 @@ supervisor or automatic update policy. It is currently verified at unit scope;
 actual systemd startup, restart, interruption, confinement and complete operator
 acceptance require separate native evidence. Endpoint still consumes its
 transitional Startup; the new path does not qualify or replace that consumer.
+The operator sequencing of these commands (first installation, clean stop,
+relaunch, forward program change and recovery) is the
+[Source platform lifecycle procedure](../operations/source-platform-lifecycle.md).
 
 The operator supplies an authenticated private infrastructure inventory, an
 independent initial pin, a separately prepared domain state, a read-only runtime
