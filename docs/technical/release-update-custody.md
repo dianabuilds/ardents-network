@@ -206,14 +206,14 @@ reads detached inventory bytes through the authorization, without accessing its
 private snapshot; inventory presence or copied bytes alone confer no effect or
 Release authority.
 
-The existing Source artifact authentication is also available separately as
-`ardents-next release authenticate-source-initial <bundle> <pin> <history>
-<environment> <network> <reference-time>` or `release authenticate-source-candidate
-<bundle> <history> <environment> <network> <reference-time>`. It retains the
-same independent inventory and Release verifier checks, then closes the verifier.
-Initial verification requires the actual Linux/amd64 enrolled process. Candidate
-verification checks Linux/amd64 target bytes and retained Release history on
-Linux or macOS; the host performing that check is not an installed Source. The
+Source candidate authentication is available separately as `ardents-next release
+authenticate-source-candidate <bundle> <history> <environment> <network>
+<reference-time>`. It retains the independent inventory and Release verifier
+checks, then closes the verifier. A detached initial check cannot be used here:
+it would advance a history that the existing initial transition requires to be
+empty, while its public result cannot retain initial Enrollment provenance.
+Candidate verification checks Linux/amd64 target bytes and retained Release
+history on Linux or macOS; the host performing that check is not an installed Source. The
 result grants no reusable authorization and does not acquire Source installation
 inputs, start a service or establish readiness. A unit test on macOS and Linux
 authenticates a signed test candidate against Release floors established by a

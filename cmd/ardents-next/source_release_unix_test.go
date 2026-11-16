@@ -7,7 +7,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -156,18 +155,13 @@ func TestSourceReleaseCandidateRefusesMissingInventoryWithoutHistory(t *testing.
 	if _, err := os.Lstat(history); !os.IsNotExist(err) {
 		t.Fatal("candidate refusal touched history", err)
 	}
-	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
-		out.Reset()
-		args = []string{"authenticate-initial", filepath.Join(root, "absent"), strings.Repeat("0", 64), history, "closed", "network", "2030-01-02T03:04:05Z"}
-		if code := runSourceRelease(t.Context(), args, &out); code != 1 || !strings.Contains(out.String(), "release-incompatible") {
-			t.Fatalf("initial verification accepted an incompatible process: %d %s", code, out.String())
-		}
-		// Platform refusal precedes even validation of an overlapping history.
-		out.Reset()
-		args[3] = filepath.Join(args[1], "history")
-		if code := runSourceRelease(t.Context(), args, &out); code != 1 || !strings.Contains(out.String(), "release-incompatible") {
-			t.Fatalf("platform refusal followed path inspection: %d %s", code, out.String())
-		}
+	out.Reset()
+	initial := []string{"authenticate-source-initial", filepath.Join(root, "absent"), strings.Repeat("0", 64), history, "closed", "network", "2030-01-02T03:04:05Z"}
+	if code := runRelease(t.Context(), initial, &out); code != 2 || !strings.Contains(out.String(), "invalid-input") {
+		t.Fatalf("detached initial verification accepted: %d %s", code, out.String())
+	}
+	if _, err := os.Lstat(history); !os.IsNotExist(err) {
+		t.Fatal("detached initial refusal changed history", err)
 	}
 }
 

@@ -3941,6 +3941,15 @@ checks the closed Source request/template and read-only original native facts.
 The public result is a bounded observation, never installed permission. Other
 invocations remain refused.
 
+The initial preflight's native observations are read-only, but its Release
+authentication advances the supplied Release history. Source initial admission
+requires wholly empty Release floors and the preflight report cannot retain the
+original initial Enrollment proof. Consequently that same history cannot be
+used for a subsequent initial installation. This follows from the current
+preflight and Release code; it is not a reproduced installed scenario. A
+replacement must preserve initial provenance and avoid consuming the installation
+history as a detached preflight side effect.
+
 The canonical `ardents-source-preflight-v1` request binds exactly `schema`,
 `invocation`, `profile`, `installation_root`, `state_root`, `participation_root`,
 `credential_directory`, `plan`, `certificate`, `private_key`, `client_ca`, `clock`,

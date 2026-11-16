@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
@@ -144,14 +143,11 @@ func independentInfrastructureHistory(distribution, history string) bool {
 // runSourceRelease verifies the Source pair without acquiring installation
 // inputs, starting a service or granting a reusable authorization.
 func runSourceRelease(ctx context.Context, args []string, out io.Writer) int {
-	if ctx == nil || len(args) == 0 {
+	if ctx == nil || len(args) == 0 || args[0] != "authenticate-candidate" {
 		return enrollmentReport(out, "invalid-input", 2)
 	}
 	if ctx.Err() != nil {
 		return enrollmentReport(out, "release-canceled", 130)
-	}
-	if args[0] == "authenticate-initial" && (runtime.GOOS != "linux" || runtime.GOARCH != "amd64") {
-		return enrollmentReport(out, "release-incompatible", 1)
 	}
 	request, invalid := parseSourceRelease(args)
 	if invalid != "" {

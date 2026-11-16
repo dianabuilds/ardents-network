@@ -23,12 +23,8 @@ func runRelease(ctx context.Context, args []string, out io.Writer) int {
 			return runNodeRelease(ctx, args, out)
 		}
 	}
-	if len(args) > 0 && (args[0] == "authenticate-source-initial" || args[0] == "authenticate-source-candidate") {
-		operation := "authenticate-initial"
-		if args[0] == "authenticate-source-candidate" {
-			operation = "authenticate-candidate"
-		}
-		return runSourceRelease(ctx, append([]string{operation}, args[1:]...), out)
+	if len(args) > 0 && args[0] == "authenticate-source-candidate" {
+		return runSourceRelease(ctx, append([]string{"authenticate-candidate"}, args[1:]...), out)
 	}
 	if len(args) > 0 && (args[0] == "authenticate-protected-initial" || args[0] == "authenticate-protected-candidate") {
 		operation := "authenticate-initial"
