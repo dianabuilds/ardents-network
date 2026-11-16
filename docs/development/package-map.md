@@ -598,6 +598,8 @@ proof; its public report grants no deployment or runtime authority.
 The portable `source_release_unix_test.go` and `infrastructure_fixture_unix_test.go`
 use Enrollment and Release to check signed retained candidates; the latter also
 uses the existing TUF metadata dependency to construct its independent fixture.
+The candidate test also uses that dependency to construct a signed root rotation
+for its independent floor-advancement control.
 
 The exact `publication_network_linux_test.go` fixture independently accepts
 signed Epoch/profile inputs into a separate genuine receiving State root.

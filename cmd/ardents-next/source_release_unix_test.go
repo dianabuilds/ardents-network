@@ -14,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
+	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
 func TestSourceReleaseAuthenticatesSignedRetainedCandidate(t *testing.T) {
@@ -88,9 +89,39 @@ func TestDetachedInfrastructureInspectionCannotAdvanceRetainedFloors(t *testing.
 			for name, raw := range oldInput.Files {
 				extra.Files[name] = raw
 			}
-			extra.Files["https://release.invalid/metadata/2.root.json"] = []byte("unretained root")
+			nextRoot, err := metadata.Root().FromBytes(oldInput.RootBytes)
+			if err != nil {
+				t.Fatal(err)
+			}
+			nextRoot.Signed.Version = 2
+			nextRoot.Signatures = nil
+			for _, signer := range authority.signers[:3] {
+				if _, err := nextRoot.Sign(signer); err != nil {
+					t.Fatal(err)
+				}
+			}
+			nextRootBytes, err := nextRoot.ToBytes(false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			extra.Files["https://release.invalid/metadata/2.root.json"] = nextRootBytes
 			if err := sameReleaseMetadata(t.Context(), v, extra); err == nil {
-				t.Fatal("unretained root rotation input accepted")
+				t.Fatal("signed unretained root rotation input accepted")
+			}
+			control, err := release.Open(filepath.Join(root, "control-history"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := control.Evaluate(t.Context(), oldInput).Authorization(); !ok {
+				t.Fatal("control initial floors refused")
+			}
+			control.Evaluate(t.Context(), extra)
+			floors, err := control.CurrentFloors(t.Context())
+			if err != nil || floors.RootVersion != 2 {
+				t.Fatalf("signed root did not advance control history: %v %v", floors.RootVersion, err)
+			}
+			if err := control.Close(); err != nil {
+				t.Fatal(err)
 			}
 			if err := v.Close(); err != nil {
 				t.Fatal(err)

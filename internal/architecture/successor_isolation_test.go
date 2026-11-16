@@ -1716,7 +1716,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-next/release_process_test.go" || source == "cmd/ardents-next/infrastructure_linux_test.go") && (dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 			return true
 		}
-		if source == "cmd/ardents-next/infrastructure_fixture_unix_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
+		if (source == "cmd/ardents-next/infrastructure_fixture_unix_test.go" || source == "cmd/ardents-next/source_release_unix_test.go") && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
 		if source == "cmd/ardents-next/forwarding_artifact_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
