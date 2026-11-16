@@ -140,8 +140,15 @@ func TestSourcePreparationNativeInitialNetworkAndNonrootState(t *testing.T) {
 	if err := os.WriteFile(clock, []byte("clock observation\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
+	participationRoot := filepath.Join(fixture, "participation")
+	if err := os.Mkdir(participationRoot, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chown(participationRoot, 199, 199); err != nil {
+		t.Fatal(err)
+	}
 	serve := source.ServingDeclaration{Network: &source.ServingNetwork{Root: stateRoot, NetworkID: p.Network, Authorities: [][32]byte{p.StateKey}, Threshold: 1, ProfileAuthority: p.StateKey, ClockObservationFile: clock},
-		ProcessProfile: "ardents-source-process-v1", ParticipationRoot: filepath.Join(fixture, "unopened-participation"), Address: p.Endpoint, Certificate: "/unopened-source-certificate", PrivateKey: "/unopened-source-private-key", ClientRoot: "/unopened-client-ca", ClientPins: [][32]byte{{1}}}
+		ProcessProfile: "ardents-source-process-v1", ParticipationRoot: participationRoot, Address: p.Endpoint, Certificate: "/unopened-source-certificate", PrivateKey: "/unopened-source-private-key", ClientRoot: "/unopened-client-ca", ClientPins: [][32]byte{{1}}}
 	serveRaw, err := json.Marshal(serve)
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +169,7 @@ func TestSourcePreparationNativeInitialNetworkAndNonrootState(t *testing.T) {
 	if out, err := child.CombinedOutput(); err == nil || bytes.Contains(out, []byte("state-prepared")) {
 		t.Fatal("prepared root automatically adopted", string(out), err)
 	}
-	if _, err := os.Lstat(serve.ParticipationRoot); !os.IsNotExist(err) {
-		t.Fatal("offline preparation opened participation", err)
+	if raw, err := os.ReadFile(filepath.Join(serve.ParticipationRoot, "current")); err != nil || len(raw) != 65 {
+		t.Fatal("offline preparation did not retain initial participation", err)
 	}
 }

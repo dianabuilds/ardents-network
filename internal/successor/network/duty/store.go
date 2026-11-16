@@ -3,6 +3,7 @@ package duty
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 )
 
@@ -12,6 +13,25 @@ func Open(input Config) (*store, error) {
 	return open(input, nil)
 }
 func open(input Config, ctx context.Context) (openedStore *store, resultErr error) {
+	return openMode(input, ctx, false)
+}
+
+// Initialize creates only an empty first participation history in an existing
+// vacant private directory. Existing leases, complete histories and partial
+// attempts refuse without recovery or cleanup. It grants no participation.
+func Initialize(ctx context.Context, input Config) error {
+	if ctx == nil {
+		return errors.New("local role initialization context is absent")
+	}
+	input.Create = true
+	owner, err := openMode(input, ctx, true)
+	if err != nil {
+		return err
+	}
+	return errors.Join(owner.Close(), ctx.Err())
+}
+
+func openMode(input Config, ctx context.Context, fresh bool) (openedStore *store, resultErr error) {
 	if ctx != nil && ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
@@ -22,6 +42,19 @@ func open(input Config, ctx context.Context) (openedStore *store, resultErr erro
 	if err != nil {
 		return nil, err
 	}
+	if fresh {
+		info, err := os.Lstat(root)
+		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return nil, errors.Join(errors.New("local role initialization requires an existing directory"), err)
+		}
+		if err := validateRootPermissions(root); err != nil {
+			return nil, err
+		}
+		entries, err := os.ReadDir(root)
+		if err != nil || len(entries) != 0 {
+			return nil, errors.Join(errors.New("local role initialization requires a vacant root"), err)
+		}
+	}
 	if err := inspectRoot(root, input.Create); err != nil {
 		return nil, err
 	}
@@ -29,7 +62,12 @@ func open(input Config, ctx context.Context) (openedStore *store, resultErr erro
 		return nil, err
 	}
 	var lease rootLease
-	if ctx == nil {
+	if fresh {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		lease, err = acquireFreshRootLease(root)
+	} else if ctx == nil {
 		lease, err = acquireRootLeaseMode(root, input.Create)
 	} else {
 		lease, err = acquireOperationLeaseMode(ctx, root, input.Create)
@@ -45,6 +83,15 @@ func open(input Config, ctx context.Context) (openedStore *store, resultErr erro
 			}
 		}
 	}()
+	if fresh {
+		entries, err := os.ReadDir(root)
+		if err != nil || len(entries) != 1 || entries[0].Name() != rootLockName {
+			return nil, errors.Join(errors.New("local role initialization root changed"), err)
+		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+	}
 	if err := verifyRootClaim(root, input.Create); err != nil {
 		return nil, err
 	}

@@ -18,6 +18,14 @@ func acquireRootLeaseMode(root string, create bool) (rootLease, error) {
 	if create {
 		disposition = syscall.OPEN_ALWAYS
 	}
+	return openRootLease(root, disposition)
+}
+
+func acquireFreshRootLease(root string) (rootLease, error) {
+	return openRootLease(root, syscall.CREATE_NEW)
+}
+
+func openRootLease(root string, disposition uint32) (rootLease, error) {
 	path, err := syscall.UTF16PtrFromString(filepath.Join(root, rootLockName))
 	if err != nil {
 		return rootLease{}, err

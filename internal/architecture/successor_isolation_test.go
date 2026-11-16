@@ -698,6 +698,15 @@ func successorImportAllowed(source, dependency string) bool {
 			if source == "cmd/ardents-control/source_state_linux.go" && dependency == modulePath+"/internal/successor/network/state" {
 				return true
 			}
+			if source == "cmd/ardents-control/source_state_linux.go" && dependency == modulePath+"/internal/successor/network/duty" {
+				return true
+			}
+		}
+		if source == "cmd/ardents-control/source_state_preparation_linux_test.go" {
+			switch dependency {
+			case modulePath + "/internal/successor/network/source", modulePath + "/internal/successor/network/state", modulePath + "/internal/successor/network/duty", modulePath + "/tests/epochfixture/network":
+				return true
+			}
 		}
 		if source == "cmd/ardents-node/join_installed_linux.go" {
 			switch dependency {

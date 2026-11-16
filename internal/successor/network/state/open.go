@@ -13,6 +13,26 @@ func Open(input Config) (*networkState, error) {
 	return open(input, nil, nil)
 }
 
+// OpenFresh is explicit initial preparation, never a recovery or retained
+// runtime opening. It requires a vacant existing root and refuses every prior
+// attempt. Ordinary signed acceptance and joined Close remain State-owned.
+func OpenFresh(input Config) (*networkState, error) {
+	resolved, err := validateConfig(input)
+	if err != nil {
+		return nil, err
+	}
+	if resolved.permitWork != nil {
+		if err := resolved.permitWork(); err != nil {
+			return nil, err
+		}
+	}
+	storage, err := durable.OpenFresh(resolved.root, storageLimits())
+	if err != nil {
+		return nil, err
+	}
+	return activateState(resolved, storage, nil, nil)
+}
+
 func open(input Config, automaticTicks <-chan time.Time, automaticResults chan<- error) (openedState *networkState, resultErr error) {
 	resolved, err := validateConfig(input)
 	if err != nil {

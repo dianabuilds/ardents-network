@@ -13,4 +13,8 @@
 // exposure records; stopped Node inspection permits no producer record at all.
 // Neither policy clears, repairs or initializes history, and native readers join
 // before their original lease returns.
+// Initialize is a separate explicit first-history operation for offline Source
+// preparation. It claims only an existing vacant root with a newly born lease;
+// existing or partial histories refuse without cleanup. Empty history grants no
+// producer, exposure, Node duty or runtime right.
 package duty

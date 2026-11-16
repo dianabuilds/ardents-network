@@ -444,9 +444,18 @@ The canonical `ardents-control source prepare-state` finite producer adapts the
 same public serving declaration to State with no acquisition or serving half.
 Under the actual runtime system UID/GID and no supplementary groups, it retains
 original public input/ancestor descriptors and an initially empty runtime-owned
-0700 State directory through genuine `State.Accept` and joined Close. It opens
-no runtime TLS key or Installation Startup and initializes no participation
-contents. The Source response needs the accepted Epoch and materialization;
+0700 State and participation directories through genuine `State.Accept` and
+joined Close. `State.OpenFresh` and its durable owner exclusively create the
+first State lease and refuse every previous or partial claim before recovery.
+After signed acceptance and fresh original-input checks, `duty.Initialize`
+creates only an empty first participation generation with its own exclusively
+born lease. Participation is not a Source producer or exposure permission.
+Existing histories refuse before State mutation; a competing/failed later
+participation initialization leaves accepted State intact, and another
+`prepare-state` refuses rather than completing or resetting that partial pair.
+Every original owner closes before the preparation receipt. The command opens
+no runtime TLS key, serving/acquisition transport, Guard or Installation Startup.
+The Source response needs the accepted Epoch and materialization;
 this producer does not accept a Route profile or establish current membership,
 duty or effective-family eligibility. Partial acceptance remains durable state,
 never permission to reset or automatically repeat initialization. Native operator

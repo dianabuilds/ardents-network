@@ -39,6 +39,17 @@ type Root struct {
 }
 
 func Open(path string, limits Limits) (openedRoot *Root, resultErr error) {
+	return openRoot(path, limits, false)
+}
+
+// OpenFresh claims only an existing vacant directory. The exclusively born
+// lease is retained even after a failed preparation, so retry cannot recover
+// or adopt an interrupted initialization as a new root.
+func OpenFresh(path string, limits Limits) (*Root, error) {
+	return openRoot(path, limits, true)
+}
+
+func openRoot(path string, limits Limits, fresh bool) (openedRoot *Root, resultErr error) {
 	if limits.EpochBytes <= 0 || limits.RecordBytes <= 0 || limits.ClosedProfileBytes <= 0 {
 		return nil, errors.New("state storage bounds are invalid")
 	}
@@ -46,10 +57,24 @@ func Open(path string, limits Limits) (openedRoot *Root, resultErr error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := inspectRoot(absolute); err != nil {
+	if fresh {
+		info, err := os.Lstat(absolute)
+		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return nil, errors.Join(errors.New("initial State requires an existing directory"), err)
+		}
+		entries, err := readBoundedDirectory(absolute, 1)
+		if err != nil || len(entries) != 0 {
+			return nil, errors.Join(errors.New("initial State requires a vacant root"), err)
+		}
+	} else if err := inspectRoot(absolute); err != nil {
 		return nil, err
 	}
-	lease, err := acquireRootLease(absolute)
+	var lease rootLease
+	if fresh {
+		lease, err = acquireFreshRootLease(absolute)
+	} else {
+		lease, err = acquireRootLease(absolute)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -61,6 +86,12 @@ func Open(path string, limits Limits) (openedRoot *Root, resultErr error) {
 			}
 		}
 	}()
+	if fresh {
+		entries, err := readBoundedDirectory(absolute, 2)
+		if err != nil || len(entries) != 1 || entries[0].Name() != rootLockName {
+			return nil, errors.Join(errors.New("initial State root changed before claim"), err)
+		}
+	}
 	if err := prepareRoot(absolute); err != nil {
 		return nil, err
 	}

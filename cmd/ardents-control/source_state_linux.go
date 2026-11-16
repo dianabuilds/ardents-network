@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
@@ -48,10 +49,31 @@ func prepareSourceState(ctx context.Context, planPath, bundlePath string) (resul
 			return errSourceControlInput
 		}
 	}
+	return prepareSourceStateInputs(ctx, planPath, bundlePath)
+}
+
+// Domain preparation uses the actual current principal's roots. The command's
+// fixed system-account admission is separate; no injected authority or native
+// platform observation is needed to exercise this finite composition.
+func prepareSourceStateInputs(ctx context.Context, planPath, bundlePath string) (result error) {
+	return prepareObservedSourceState(ctx, planPath, bundlePath, nil)
+}
+
+// The private observation can delay or interrupt an actual completed phase in
+// tests; it cannot provide State, history, permission or successful I/O.
+func prepareObservedSourceState(ctx context.Context, planPath, bundlePath string, afterAccept func()) (result error) {
+	if ctx == nil {
+		return errSourceControlInput
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	uid := os.Geteuid()
 	inputs := &sourceControlInputs{ctx: ctx}
 	defer func() { result = errors.Join(result, inputs.close(), ctx.Err()) }()
 	paths := []string{planPath, bundlePath}
 	var raw [2][]byte
+	var err error
 	for i, path := range paths {
 		for _, previous := range paths[:i] {
 			if path == previous {
@@ -82,16 +104,18 @@ func prepareSourceState(ctx context.Context, planPath, bundlePath string) (resul
 			}
 		}
 	}
-	root, err := inputs.directory(config.Root)
-	if err != nil {
-		return err
-	}
-	if root.info.Mode().Perm() != 0700 || root.info.Sys().(*syscall.Stat_t).Uid != uint32(uid) || root.info.Sys().(*syscall.Stat_t).Gid != uint32(uid) {
-		return errSourceControlInput
-	}
-	entries, err := root.file.ReadDir(1)
-	if err != io.EOF || len(entries) != 0 {
-		return errSourceControlInput
+	for _, path := range []string{config.Root, plan.ParticipationRoot} {
+		root, err := inputs.directory(path)
+		if err != nil {
+			return err
+		}
+		if root.info.Mode().Perm() != 0700 || root.info.Sys().(*syscall.Stat_t).Uid != uint32(uid) || root.info.Sys().(*syscall.Stat_t).Gid != uint32(uid) {
+			return errSourceControlInput
+		}
+		entries, err := root.file.ReadDir(1)
+		if err != io.EOF || len(entries) != 0 {
+			return errSourceControlInput
+		}
 	}
 	bundle, err := source.DecodeBundle(raw[1])
 	if err != nil {
@@ -101,17 +125,26 @@ func prepareSourceState(ctx context.Context, planPath, bundlePath string) (resul
 	if err := inputs.check(); err != nil {
 		return err
 	}
-	owner, err := state.Open(config)
+	owner, err := state.OpenFresh(config)
 	if err != nil {
 		return err
 	}
 	defer func() { result = errors.Join(result, owner.Close(), inputs.check()) }()
-	// A different explicit producer could have completed between the empty
-	// directory observation and State's exclusive acquisition.
+	// The fresh owner excludes every prior/competing claim. Verify the original
+	// owner still has no accepted generation before authenticating these bytes.
 	if _, err = owner.Current(); !errors.Is(err, state.ErrNoCurrentGeneration) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	if _, err = owner.Accept(ctx, bundle.Epoch, bundle.Inputs, bundle.Materials); err != nil {
+		return err
+	}
+	if afterAccept != nil {
+		afterAccept()
+	}
+	if err := inputs.check(); err != nil {
+		return err
+	}
+	if err := duty.Initialize(ctx, duty.Config{Root: plan.ParticipationRoot, Clock: time.Now}); err != nil {
 		return err
 	}
 	return inputs.check()

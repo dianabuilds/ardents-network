@@ -1519,7 +1519,11 @@ ExecStart directly invokes `source serve-retained` or
 recovery chain participates. Retained State, participation, spend, Hosting,
 Introduction slots, Descriptor Store and Issuer histories remain with their
 existing owners. This retained-only path supplies no first-history initialization
-flow; those histories must already have been prepared by their genuine owners.
+flow itself. For Source, `ardents-control source prepare-state` explicitly
+prepares signed State and empty participation through their genuine owners in
+operator-provided fresh private directories. Repeated/partial preparation
+refuses without recovery, reset or rollback; other roles still require their
+separately prepared genuine histories.
 Missing, damaged or unresolved history refuses rather than silently creating
 new rights. This path admits no automatic restart, incompatible live replacement,
 adoption after uncertain completion or domain-state reset.

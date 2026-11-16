@@ -16,6 +16,10 @@ func acquireRootLease(root string) (rootLease, error) {
 	return openRootLease(root, os.O_RDWR|os.O_CREATE)
 }
 
+func acquireFreshRootLease(root string) (rootLease, error) {
+	return openRootLease(root, os.O_RDWR|os.O_CREATE|os.O_EXCL)
+}
+
 func acquireRetainedRootLease(root string) (rootLease, error) {
 	return openRootLease(root, os.O_RDWR)
 }

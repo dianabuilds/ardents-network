@@ -591,6 +591,14 @@ Required checks of an actually selected change remain mandatory.
 
 ## Consistency, resources and completion inventory
 
+Source's explicit offline `ardents-control source prepare-state` composes
+`state.OpenFresh`/Accept and `duty.Initialize` in that order over two original
+vacant runtime-owned directories. State owns authenticated acceptance/floors;
+participation owns its empty first generation and exclusive new lease. A
+preparation failure preserves completed and partial native history, with no
+automatic continuation or cleanup. Both owners and inputs join before receipt;
+no Source transport, producer, process Guard or Installation Startup is opened.
+
 Platform infrastructure launch is supporting command composition in
 `cmd/ardents-next/platform_linux.go`, not a restored Installation domain.
 Enrollment/Release bind the exact signed program/template; root-controlled

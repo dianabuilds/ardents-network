@@ -10,6 +10,36 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 )
 
+func TestFreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory(t *testing.T) {
+	genesis := newFixture(t)
+	cfg := fixtureConfig(genesis, t.TempDir(), time.Unix(genesis.now, 0))
+	owner, err := state.OpenFresh(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted, err := owner.Accept(t.Context(), genesis.epoch, genesis.inputs, genesis.materializations)
+	if err != nil {
+		_ = owner.Close()
+		t.Fatal(err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if duplicate, err := state.OpenFresh(cfg); err == nil {
+		_ = duplicate.Close()
+		t.Fatal("fresh State adopted existing history")
+	}
+	owner, err = state.OpenRetained(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer owner.Close()
+	current, err := owner.Current()
+	if err != nil || current.Digest != accepted.Digest {
+		t.Fatal("fresh acceptance lost at retained open", err)
+	}
+}
+
 func TestRetainedStateWorkRefusalPrecedesRootIO(t *testing.T) {
 	genesis := newFixture(t)
 	root := filepath.Join(t.TempDir(), "absent-state")

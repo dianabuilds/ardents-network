@@ -15,6 +15,10 @@ func acquireRootLease(root string) (rootLease, error) {
 	return openRootLease(root, syscall.OPEN_ALWAYS)
 }
 
+func acquireFreshRootLease(root string) (rootLease, error) {
+	return openRootLease(root, syscall.CREATE_NEW)
+}
+
 func acquireRetainedRootLease(root string) (rootLease, error) {
 	return openRootLease(root, syscall.OPEN_EXISTING)
 }

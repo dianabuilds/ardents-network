@@ -819,13 +819,18 @@ This selector bypasses optional debug-socket setup.
 offline producer under the actual Source system UID/GID, without supplementary
 groups. It consumes the public serving declaration and bounded signed Epoch /
 materialization bundle with original file/ancestor custody, and requires the
-already created runtime-owned 0700 State directory to be empty. New State
+already created runtime-owned 0700 State and participation directories to be
+empty. State's fresh-only opening exclusively creates the first lease and
+refuses every complete or partial earlier attempt. New State
 authenticates and durably accepts the bundle under its independently selected
 pins and confirmed time, including the serving declaration's fresh independent
-clock observation. The command joins State before releasing inputs and emits
+clock observation. After acceptance, `network/duty` initializes only an empty
+participation history under its independently created original lease, granting
+no Source exposure or live duty. The command joins both owners before releasing inputs and emits
 only a bounded outcome. It opens no serving/acquisition transport, process Guard,
 Installation Startup or runtime TLS key. Partial failure preserves the resulting
-State files; it supplies no reset, adoption, retry or rollback operation.
+State/participation files; another invocation refuses the partial pair. It
+supplies no reset, adoption, continuation or rollback operation.
 It accepts no Route profile and proves no Node duty, independent-family supply,
 installed runtime admission or bootstrap acceptance.
 
