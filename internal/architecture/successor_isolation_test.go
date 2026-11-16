@@ -496,6 +496,12 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/route/prefix/prefix.go" && dependency == modulePath+"/internal/successor/network/state" {
 		return true
 	}
+	if (source == "cmd/ardents-next/platform_linux.go" || source == "cmd/ardents-next/platform_release_linux_test.go") && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
+		return true
+	}
+	if (source == "cmd/ardents-next/platform_unit_linux.go" || source == "cmd/ardents-next/platform_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
+		return true
+	}
 	// Network's physical/application adapters consume domain policy through
 	// exact files. Directory nesting does not grant policy or Admission access.
 	if strings.HasPrefix(source, "internal/successor/network/") {

@@ -18,6 +18,10 @@ import (
 // Command composition retains State until the original Node has physically
 // joined. A bounded failed wait cannot close it or report completed retirement.
 func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	retained := len(args) == 2 && args[0] == "--retained-config"
+	if retained {
+		args = []string{"--config", args[1]}
+	}
 	var plan struct {
 		Network           *networkAuthorityPlan `json:"network"`
 		NodeID            [32]byte              `json:"node_id"`
@@ -53,7 +57,11 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 	if err != nil {
 		return nodeStartupRefusal(out, err, owner.Close())
 	}
-	original, err := node.ListenForwarding(ctx, node.ForwardingConfig{Authority: role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding}, ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination})
+	listen := node.ListenForwarding
+	if retained {
+		listen = node.ListenForwardingRetained
+	}
+	original, err := listen(ctx, node.ForwardingConfig{Authority: role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding}, ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination})
 	if err != nil {
 		return nodeStartupRefusal(out, err, owner.Close())
 	}

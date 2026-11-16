@@ -1436,6 +1436,108 @@ The diagnostic interface reports process observations; existing owner events
 remain the source of readiness and typed product failure.
 
 
+## Platform-managed infrastructure launch
+
+Under [ADR-0125](../adr/0125-separate-software-delivery-and-infrastructure-deployment.md),
+`ardents-next platform` supplies a bounded Linux infrastructure launch path for
+the existing Source, Forwarding, Issuer, Descriptor, Introduction and JOIN
+runtimes. This is command/platform composition, not a new domain, installer,
+supervisor or automatic update policy. It is currently verified at unit scope;
+actual systemd startup, restart, interruption, confinement and complete operator
+acceptance require separate native evidence. Endpoint still consumes its
+transitional Startup; the new path does not qualify or replace that consumer.
+
+The operator supplies an authenticated private infrastructure inventory, an
+independent initial pin, a separately prepared domain state, a read-only runtime
+program copy, and role configuration. No account, domain history, floor, key,
+allowance or root is created by launch. Existing native installed roots are not
+converted, removed or adopted. The runtime program is the same signed payload
+as the inventory program, checked as exact bytes; its public executable path is
+root-owned mode0555 under `/usr/lib/ardents`. Private inventory files retain
+Enrollment's original access contract. The pre-start checker runs the original
+private enrolled executable, independently matched through `/proc/self/exe`.
+
+The root-controlled launch JSON has exactly `role`, `distribution`,
+`release_root`, `environment`, `network`, `program`, `configuration`,
+`config_sha256`, `writable_roots` and `inputs`. The `inputs` map must commit
+exactly the plan's certificate/private-key files and, for Source, its client CA.
+Those files live under root-controlled `/etc/ardents` ancestors, outside all
+runtime write grants; original owner/inode/access/bytes are retained through
+the check. Private service material excludes other users and its loaded identity
+is independently matched by the actual runtime. Dynamic Network clock/state and
+Issuer key/result histories keep their domain validation rather than becoming
+immutable operator configuration. Launch declarations and role plans live
+under `/etc/ardents`; their original root-controlled files/ancestors remain
+observed until verification finishes. The declaration's SHA256 is a literal
+argument in the rendered pre-start command. The role configuration's bytes
+must match `config_sha256`. Writable paths equal the runtime plan's exact
+ordered domain roots, all below `/var/lib/ardents/roles/<role>/`; they cannot
+contain artifact/configuration/Release trust. Issuer additionally needs its
+existing key-store `issuer.lock` file writable for the genuine native lease;
+private key bytes remain outside writable paths. Runtime owners validate their
+complete plans, current authority, credentials, protection and state before work.
+
+Command ownership:
+
+- `platform template` emits the exact immutable template to authenticate as the
+  role's signed resource. Offline `infrastructure prepare-runtime-descriptor`
+  and `prepare-runtime-inventory` prepare only canonical public bytes for the
+  six fixed artifact purposes; they sign nothing and authorize no activation.
+- `platform unit <launch.json>` validates the local declaration/configuration
+  binding and emits the rendered unit. The operator installs it as
+  `/etc/systemd/system/ardents-<role>.service`; this command installs nothing.
+- `platform initialize-trust <launch.json> <independent-inventory-sha256>` is
+  explicit first-pin setup. It requires empty Release floors and actual
+  Enrollment executable provenance. It neither starts a runtime nor repairs
+  missing old trust. It must never be put in automatic pre-start.
+- `platform check <launch.json> <launch-sha256>` is the mandatory privileged
+  `ExecStartPre`. It requires `release.OpenRetained`, fresh coherent exact
+  program/generation proofs, the exact signed template, the unchanged runtime
+  copy/configuration and fixed local non-root account. It compares both the
+  original on-disk unit and loaded typed Unit/Service properties, including its
+  own actual ControlPID, start-pre phase, literal precheck/main argv, privileges,
+  confinement, resources, write paths, no drop-ins and no extra commands. It
+  independently requires the other four Node service/socket slots and its own
+  activation socket absent (Source checks its own socket). Only the original
+  manager's exact typed absence replies count; failed reads never prove absence.
+  repeats loaded/file checks after Release handoff and joins every observer and
+  verifier before returning success. It emits no replayable authorization ticket.
+
+The template uses a mandatory `+:` privileged pre-start and a distinct `:`
+non-root main command. systemd prevents ExecStart after a failed mandatory
+pre-start, and `+` applies privileges to that command only, as specified in
+[systemd.service(5)](https://www.freedesktop.org/software/systemd/man/255/systemd.service.html)
+(accessed 2026-11-16). Loaded `ExecStartPreEx`/`ExecStartEx` comparisons retain
+the original typed command flags rather than treating disk text as loaded policy;
+the property representation is defined by
+[systemd v255's D-Bus implementation](https://github.com/systemd/systemd/blob/v255/src/core/dbus-execute.c).
+The exact `privileged` and `no-env-expand` flag names/order follow its
+[execution flag codec](https://github.com/systemd/systemd/blob/v255/src/shared/exec-util.c).
+
+ExecStart directly invokes `source serve-retained` or
+`node <role> --retained-config`; no Installation Startup/ACK/retirement or
+recovery chain participates. Retained State, participation, spend, Hosting,
+Introduction slots, Descriptor Store and Issuer histories remain with their
+existing owners. This retained-only path supplies no first-history initialization
+flow; those histories must already have been prepared by their genuine owners.
+Missing, damaged or unresolved history refuses rather than silently creating
+new rights. This path admits no automatic restart, incompatible live replacement,
+adoption after uncertain completion or domain-state reset.
+
+The unit has `Restart=no`, `KillMode=control-group`, `SendSIGKILL=no` and an
+infinite stop wait: runtime denial, interruption and original joins complete
+before process exit. The existing commands retain failure after their bounded
+completion-unavailable notice; timeouts cannot turn outstanding work into joined
+completion. Exit130 represents only the existing clean requested-cancellation
+projection. Platform stop or process death alone supplies no domain completion;
+unresolved producer/history obligations still block a subsequent invocation.
+No full installed/platform acceptance follows from unit policy fixtures.
+
+The duplicate development `infrastructure start-source` transaction and its
+detached startup wait wrapper are retired. Canonical native installed consumers
+remain transitional under ADR-0125 until equivalent real-platform evidence
+permits their removal; source relocation or these unit checks cannot supply it.
+
 ## Proposed installed infrastructure
 
 **Status: accepted contract under ADR-0123. Source artifact/admission, read-only

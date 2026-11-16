@@ -3,6 +3,10 @@
 // Package infrastructure prepares separate Source, Forwarding and JOIN public artifact
 // descriptors, with exact invocation-specific inventories. Public preparation
 // grants no installed transaction, startup or runtime permission.
+// RuntimeAuthorization separately binds the six fixed platform runtime artifact
+// pairs for privileged pre-start verification. It cannot be consumed as a
+// native Installation transaction permission. Platform service management runs
+// existing direct runtimes; semantic state remains with its domain owners.
 // A separate opaque JOIN candidate pair is consumed by canonical Control's
 // fixed forward-Release predecessor verification. It supplies no initial
 // provenance, native transition or Source/Forwarding right.

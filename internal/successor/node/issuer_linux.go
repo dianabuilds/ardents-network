@@ -60,6 +60,16 @@ type issuerInvocation struct {
 // ListenIssuer joins rejected partial acquisitions before returning. It neither
 // initializes issuing roots nor silently replaces the original member/profile.
 func ListenIssuer(ctx context.Context, config IssuerConfig) (_ *Issuer, result error) {
+	return listenIssuer(ctx, config, false)
+}
+
+// ListenIssuerRetained keeps quota/results, participation and Receiving history
+// with their original owners. Missing state cannot become fresh issuance rights.
+func ListenIssuerRetained(ctx context.Context, config IssuerConfig) (*Issuer, error) {
+	return listenIssuer(ctx, config, true)
+}
+
+func listenIssuer(ctx context.Context, config IssuerConfig, retained bool) (_ *Issuer, result error) {
 	p := config.Issuance
 	if ctx == nil || config.Authority.Current == nil || !separateRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, p.AdmissionRoot, p.KeyRoot, p.ResultRoot) {
 		return nil, errors.New("original Issuer configuration invalid")
@@ -104,7 +114,7 @@ func ListenIssuer(ctx context.Context, config IssuerConfig) (_ *Issuer, result e
 	if err := f.admission(); err != nil {
 		return nil, err
 	}
-	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: true}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
+	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: !retained}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +133,11 @@ func ListenIssuer(ctx context.Context, config IssuerConfig) (_ *Issuer, result e
 	}
 	profile := view.Profile()
 	binding := receiving.Receiver{NetworkID: profile.Network, StateGeneration: profile.Generation, StateDigest: profile.EpochDigest, ProfileDigest: profile.Digest, NodeID: m.NodeID, DutyGeneration: m.DutyGeneration}
-	f.receiving, err = receiving.Open(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) })
+	openReceiving := receiving.Open
+	if retained {
+		openReceiving = receiving.OpenRetained
+	}
+	f.receiving, err = openReceiving(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) })
 	if err != nil {
 		return nil, err
 	}

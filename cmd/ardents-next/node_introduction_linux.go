@@ -16,6 +16,10 @@ import (
 
 // The command owns genuine State; it closes that owner after original Node join.
 func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	retained := len(args) == 2 && args[0] == "--retained-config"
+	if retained {
+		args = []string{"--config", args[1]}
+	}
 	if ctx == nil {
 		return 2
 	}
@@ -76,7 +80,11 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 	if err != nil {
 		return refuse(err)
 	}
-	original, err := node.ListenIntroduction(ctx, node.IntroductionConfig{
+	listen := node.ListenIntroduction
+	if retained {
+		listen = node.ListenIntroductionRetained
+	}
+	original, err := listen(ctx, node.IntroductionConfig{
 		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
 		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, IntroductionRoot: plan.IntroductionRoot,
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,

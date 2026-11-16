@@ -16,6 +16,10 @@ import (
 
 // The command owns genuine State; it closes that owner after original Node join.
 func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	retained := len(args) == 2 && args[0] == "--retained-config"
+	if retained {
+		args = []string{"--config", args[1]}
+	}
 	if ctx == nil {
 		return 2
 	}
@@ -75,7 +79,11 @@ func runNodeJoin(ctx context.Context, args []string, out, diagnostic io.Writer) 
 	if err != nil {
 		return refuse(err)
 	}
-	original, err := node.ListenJoin(ctx, node.JoinConfig{
+	listen := node.ListenJoin
+	if retained {
+		listen = node.ListenJoinRetained
+	}
+	original, err := listen(ctx, node.JoinConfig{
 		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
 		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot,
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,

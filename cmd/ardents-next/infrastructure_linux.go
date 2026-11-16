@@ -29,20 +29,7 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if ctx.Err() != nil {
 		return 130
 	}
-	startSource := args[0] == "start-source"
-	var sourceBinding string
-	if startSource {
-		if len(args) != 6 || os.Geteuid() != 0 {
-			return 2
-		}
-		original, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		defer cancel()
-		ctx = original
-		sourceBinding = args[5]
-		args = append(append([]string(nil), args[:5]...), time.Now().UTC().Format(time.RFC3339Nano))
-		args[0] = "authenticate-candidate"
-	}
-	if args[0] == "prepare-descriptor" || args[0] == "prepare-inventory" {
+	if args[0] == "prepare-descriptor" || args[0] == "prepare-runtime-descriptor" || args[0] == "prepare-runtime-inventory" || args[0] == "prepare-inventory" {
 		raw, err := executeInfrastructurePreparation(ctx, args, nil)
 		if err != nil {
 			return enrollmentReport(out, "infrastructure-preparation-refused", 1)
@@ -163,9 +150,6 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if err == nil && installStopped {
 		err = infrastructure.InstallInitialStoppedSource(v, a, source, args[1], history)
 	}
-	if err == nil && startSource {
-		err = executeSourceFirstStart(ctx, v, a, sourceBinding, history, out)
-	}
 	p, g := a.Targets()
 	pd, pok := p.AcceptedDecision()
 	gd, gok := g.AcceptedDecision()
@@ -176,9 +160,6 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	err = errors.Join(err, source.Close(), v.Close(), ctx.Err())
 	if err != nil {
 		return enrollmentReport(out, "infrastructure-authentication-refused", 1)
-	}
-	if startSource {
-		return enrollmentReport(out, "source-first-start-completed", 0)
 	}
 	if installStopped {
 		if writeNetworkPreparationReceipt(ctx, out, []byte("{\"outcome\":\"source-initial-stopped-selected\"}\n")) != nil || ctx.Err() != nil {
@@ -204,27 +185,6 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		return 1
 	}
 	return 0
-}
-
-// A bounded failure notice never releases the original operation or its
-// verifier. Even an uncertain Start continues retaining its own native joins.
-func executeSourceFirstStart(ctx context.Context, v *release.Verifier, a infrastructure.Authorization, binding, history string, out io.Writer) error {
-	done := make(chan error, 1)
-	go func() { done <- infrastructure.StartSource(ctx, v, a, binding, history) }()
-	select {
-	case err := <-done:
-		return err
-	case <-ctx.Done():
-	}
-	notice := time.NewTimer(5 * time.Second)
-	defer notice.Stop()
-	select {
-	case err := <-done:
-		return err
-	case <-notice.C:
-		output := writeNetworkPreparationReceipt(context.WithoutCancel(ctx), out, []byte("{\"outcome\":\"source-start-completion-unavailable\"}\n"))
-		return errors.Join(errors.New("source first-start completion unavailable"), output, <-done)
-	}
 }
 
 // Immutable distribution and mutable Release history cannot contain one another.
@@ -292,6 +252,24 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 	}
 	var destination, name string
 	switch args[0] {
+	case "prepare-runtime-descriptor":
+		if len(args) != 7 {
+			return nil, infrastructure.ErrInput
+		}
+		version, e := strconv.ParseInt(args[3], 10, 64)
+		if e != nil || strconv.FormatInt(version, 10) != args[3] {
+			return nil, infrastructure.ErrInput
+		}
+		program, e := read(args[4], 64<<20)
+		if e != nil {
+			return nil, e
+		}
+		template, e := read(args[5], 64<<20)
+		if e != nil {
+			return nil, e
+		}
+		result, err = infrastructure.PrepareRuntimeDescriptor(args[1], args[2], version, program, template)
+		destination, name = args[6], "infrastructure-"+args[1]+".json"
 	case "prepare-descriptor":
 		if len(args) != 6 {
 			return nil, infrastructure.ErrInput
@@ -310,7 +288,20 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 		}
 		result, err = infrastructure.PrepareDescriptor(args[1], version, program, template)
 		destination, name = args[5], infrastructure.DescriptorName
-	case "prepare-inventory":
+	case "prepare-inventory", "prepare-runtime-inventory":
+		invocation := "source"
+		if args[0] == "prepare-runtime-inventory" {
+			if len(args) != 4 {
+				return nil, infrastructure.ErrInput
+			}
+			invocation = args[1]
+			args = []string{args[0], args[2], args[3]}
+		}
+		switch invocation {
+		case "source", "forwarding", "issuer", "descriptor", "introduction", "join":
+		default:
+			return nil, infrastructure.ErrInput
+		}
 		if len(args) != 3 || !absoluteAdmissionPath(args[1]) {
 			return nil, infrastructure.ErrInput
 		}
@@ -334,7 +325,8 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 		if len(entries) != 7 {
 			return nil, infrastructure.ErrInput
 		}
-		wanted := map[string]int64{infrastructure.ProgramName: 64 << 20, infrastructure.TemplateName: 64 << 20, infrastructure.DescriptorName: 16 << 10, "root.json": 1 << 20, "timestamp.json": 1 << 20, "snapshot.json": 1 << 20, "targets.json": 1 << 20}
+		templateName, descriptorName := "ardents-"+invocation+".service", "infrastructure-"+invocation+".json"
+		wanted := map[string]int64{infrastructure.ProgramName: 64 << 20, templateName: 64 << 20, descriptorName: 16 << 10, "root.json": 1 << 20, "timestamp.json": 1 << 20, "snapshot.json": 1 << 20, "targets.json": 1 << 20}
 		files := map[string][]byte{}
 		for _, entry := range entries {
 			limit, ok := wanted[entry.Name()]
@@ -346,13 +338,13 @@ func executeInfrastructurePreparation(ctx context.Context, args []string, observ
 				return nil, e
 			}
 		}
-		d, e := infrastructure.DecodeDescriptor(files[infrastructure.DescriptorName])
-		if e != nil {
-			return nil, e
+		var d infrastructure.Declaration
+		if json.Unmarshal(files[descriptorName], &d) != nil || d.Invocation != invocation {
+			return nil, infrastructure.ErrBinding
 		}
 		// A preparation inventory cannot silently bless different descriptor resources.
-		canonical, e := infrastructure.PrepareDescriptor(d.ReleaseIdentity, d.ReleaseVersion, files[infrastructure.ProgramName], files[infrastructure.TemplateName])
-		if e != nil || string(canonical) != string(files[infrastructure.DescriptorName]) {
+		canonical, e := infrastructure.PrepareRuntimeDescriptor(invocation, d.ReleaseIdentity, d.ReleaseVersion, files[infrastructure.ProgramName], files[templateName])
+		if e != nil || string(canonical) != string(files[descriptorName]) {
 			return nil, infrastructure.ErrBinding
 		}
 		result, err = enrollment.PrepareInfrastructureInventory(enrollment.InfrastructureFacts{Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: d.ReleaseVersion, Invocation: d.Invocation}, files)

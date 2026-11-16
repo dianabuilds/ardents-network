@@ -37,13 +37,17 @@ its contract, tests and non-test consumer are implemented together.
 | [connection/](connection/README.md) | Аутентифицированный logical stream, Attachment continuity и joined lifetime | Реальные Reader/Publisher consumers: exact-Instance Service TLS, Continuity, ordered bytes, bounded recovery, Terminal receipts и joined cleanup под исходной Execution operation |
 | [enrollment/](enrollment/README.md) | Первичное закрепление доверенного комплекта | Отдельная проверка portable v3 комплекта по независимому pin, закрытый snapshot и реальный read-only consumer; не разрешение Release или запуска |
 | [release/](release/README.md) | Разрешение на точные программные артефакты | Реализованы offline-проверка точных байтов, отдельные floors/history и реальные команды; разрешение не устанавливает и не запускает |
-| [installation/](installation/README.md) | Установка, замена и восстановление поколения | Separate Endpoint transaction/recovery/startup and installed Reader/Publisher consumers; Source initial stopped/first-start/independent Startup with canonical Node consumers. Exact bootstrap acceptance and installed qualification remain separate under the owning contracts |
+| [installation/](installation/README.md) | Переходные технические механизмы доставки и запуска | Существующие Endpoint и канонические native consumers сохраняются до переноса необходимых гарантий. Это не целевой домен; платформенный путь непосредственно запускает существующий runtime. Квалификация остаётся отдельной границей |
 | [custody/](custody/README.md) | Encrypted Authority records and purpose-specific signing | Vault/Bundle, original lifetime и отдельные Admission Permission / Service Credential terminal operations; platform qualification сохраняет собственные границы |
 | `admission/issuerprofile/signing/` | Purpose-bound offline issuer-profile signing | Вспомогательный механизм Admission; pure parent не импортирует private owner |
 
-Enrollment, Release и Installation составляют семейство Software acceptance,
-но сохраняют разные полномочия и транзакции. Для общего `software`-агрегата
-или универсального `identity`-домена каталог не создаётся.
+Семейство Software acceptance объединяет разные обязанности Enrollment и Release.
+По [ADR-0125](../../docs/adr/0125-separate-software-delivery-and-infrastructure-deployment.md)
+Installation не является отдельным доменом: платформа доставляет файлы и управляет
+процессами, runtime завершает собственную работу, домены сохраняют свои данные и
+floors. Для общего `software`-агрегата или универсального `identity`-домена каталог
+не создаётся. [Платформенный запуск](../../docs/technical/network-route-node.md#platform-managed-infrastructure-launch)
+сохраняет отдельную границу между проверенной реализацией и installed acceptance.
 
 Custody implements bounded encrypted-record, Admission Permission and Service
 Credential operations through real terminal commands.

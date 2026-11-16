@@ -18,6 +18,10 @@ import (
 
 // State is owned here; Node joins its original dependents before State closes.
 func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	retained := len(args) == 2 && args[0] == "--retained-config"
+	if retained {
+		args = []string{"--config", args[1]}
+	}
 	var plan struct {
 		Network           *networkAuthorityPlan `json:"network"`
 		NodeID            [32]byte              `json:"node_id"`
@@ -68,7 +72,11 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 	if err != nil {
 		return refuse(err)
 	}
-	original, err := node.ListenIssuer(ctx, node.IssuerConfig{
+	listen := node.ListenIssuer
+	if retained {
+		listen = node.ListenIssuerRetained
+	}
+	original, err := listen(ctx, node.IssuerConfig{
 		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
 		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot,
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey,

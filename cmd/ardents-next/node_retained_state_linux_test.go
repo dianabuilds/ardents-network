@@ -43,8 +43,12 @@ func TestNodeRolesRefuseMissingNetworkHistoryWithoutInitializing(t *testing.T) {
 				t.Fatal(err)
 			}
 			var out, diagnostic bytes.Buffer
-			if code := role.run(t.Context(), []string{"--config", path}, &out, &diagnostic); code != 1 || !bytes.Contains(out.Bytes(), []byte("state-unavailable")) {
-				t.Errorf("expected State refusal, got %d: %s %s", code, &out, &diagnostic)
+			for _, option := range []string{"--config", "--retained-config"} {
+				out.Reset()
+				diagnostic.Reset()
+				if code := role.run(t.Context(), []string{option, path}, &out, &diagnostic); code != 1 || !bytes.Contains(out.Bytes(), []byte("state-unavailable")) {
+					t.Errorf("expected State refusal for %s, got %d: %s %s", option, code, &out, &diagnostic)
+				}
 			}
 			entries, err := os.ReadDir(root)
 			if err != nil || len(entries) != 0 {

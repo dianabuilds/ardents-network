@@ -125,6 +125,15 @@ after Receiver's original physical users join, before Receiving and Hosting.
 state without invoking a Network/Node observer. Receiver observes original
 authority, checks native custody, then observes authority freshly. Node composition
 may use the same nonrecursive boundary with its own original base observations.
+
+`OpenRetainedReceivingRegistry` has no initialization branch or fresh-root input.
+It strictly reopens Route's complete original History before constructing the
+Registry. `node.ListenIntroductionRetained`, consumed by the platform unit's
+existing Node command, independently requires retained participation and
+Receiving history before this Route opening. Missing or erased spend/slot/time
+floors never become a new root. Actual runtime admission and joined completion
+still belong to the original Node/Route owners; opening a Registry supplies
+neither predecessor completion nor a platform qualification receipt.
 `Stop` synchronously seals admission and cancels original delivery waiters without
 waiting behind History I/O or a foreign callback. Complete capacity/claim
 transitions remain serialized separately from Registry's short state lock;

@@ -17,7 +17,7 @@ import (
 )
 
 func runSource(ctx context.Context, args []string, out, diagnostic io.Writer) (code int) {
-	if ctx == nil || ctx.Err() != nil || len(args) != 2 || args[0] != "serve" {
+	if ctx == nil || ctx.Err() != nil || len(args) != 2 || (args[0] != "serve" && args[0] != "serve-retained") {
 		return 2
 	}
 	inputs, plan, err := acquireSourceInputs(ctx, args[1])
@@ -92,7 +92,11 @@ func runSource(ctx context.Context, args []string, out, diagnostic io.Writer) (c
 		operation = &sourceTerminal{firstOwner: "input", first: err}
 		return 1
 	}
-	owner, err := state.Open(config)
+	openState := state.Open
+	if args[0] == "serve-retained" {
+		openState = state.OpenRetained
+	}
+	owner, err := openState(config)
 	// State and its transport own defensive key copies after Open. Clear the
 	// command's original only after every State user has joined below.
 	if err != nil {

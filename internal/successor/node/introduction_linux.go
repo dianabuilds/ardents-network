@@ -57,6 +57,16 @@ type introductionInvocation struct {
 // ListenIntroduction joins every rejected original startup. It cannot adopt a
 // predecessor, rebind a successor duty, or supply an accepting History callback.
 func ListenIntroduction(ctx context.Context, config IntroductionConfig) (_ *Introduction, result error) {
+	return listenIntroduction(ctx, config, false)
+}
+
+// ListenIntroductionRetained requires complete participation, Receiving and
+// Route histories. Platform restart never initializes missing history.
+func ListenIntroductionRetained(ctx context.Context, config IntroductionConfig) (*Introduction, error) {
+	return listenIntroduction(ctx, config, true)
+}
+
+func listenIntroduction(ctx context.Context, config IntroductionConfig, retained bool) (_ *Introduction, result error) {
 	if ctx == nil || config.Authority.Current == nil || !separateRoots(config.ParticipationRoot, config.SpendRoot, config.HostingRoot, config.IntroductionRoot) {
 		return nil, errors.New("original Introduction configuration invalid")
 	}
@@ -100,7 +110,7 @@ func ListenIntroduction(ctx context.Context, config IntroductionConfig) (_ *Intr
 	if err := f.admission(); err != nil {
 		return nil, err
 	}
-	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: true}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
+	f.producer, err = duty.OpenNodeProducer(child, duty.Config{Root: config.ParticipationRoot, Clock: time.Now, Create: !retained}, duty.NodeParticipation{Identity: m.NodeID, FamilyID: m.FamilyID, Assignment: m.Assignment, EpochUntil: config.Authority.Duty.Epoch.ValidUntil, RecordUntil: m.NotAfter()})
 	if err != nil {
 		return nil, err
 	}
@@ -117,11 +127,19 @@ func ListenIntroduction(ctx context.Context, config IntroductionConfig) (_ *Intr
 	}
 	p := view.Profile()
 	binding := receiving.Receiver{NetworkID: p.Network, StateGeneration: p.Generation, StateDigest: p.EpochDigest, ProfileDigest: p.Digest, NodeID: m.NodeID, DutyGeneration: m.DutyGeneration}
-	f.receiving, err = receiving.Open(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) })
+	openReceiving := receiving.Open
+	if retained {
+		openReceiving = receiving.OpenRetained
+	}
+	f.receiving, err = openReceiving(config.SpendRoot, binding, func() (receiving.Observation, error) { return f.observeReceiving(binding) })
 	if err != nil {
 		return nil, err
 	}
-	f.registry, err = introduction.OpenReceivingRegistry(config.IntroductionRoot, f.historyBinding(), f.receiving)
+	if retained {
+		f.registry, err = introduction.OpenRetainedReceivingRegistry(config.IntroductionRoot, f.historyBinding())
+	} else {
+		f.registry, err = introduction.OpenReceivingRegistry(config.IntroductionRoot, f.historyBinding(), f.receiving)
+	}
 	if err != nil {
 		return nil, err
 	}

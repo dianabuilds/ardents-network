@@ -71,7 +71,7 @@ func infrastructureDistributionRoot(t *testing.T, parent string, binary []byte, 
 // installation policy, private root or accepting role dispatcher is shared.
 func infrastructureDistributionInvocation(t *testing.T, parent string, binary []byte, authority *consumerReleaseAuthority, version int64, mutate func(map[string]*metadata.TargetFiles), invocation string, unitOverride ...[]byte) (string, string, map[string][]byte) {
 	t.Helper()
-	if invocation != "source" && invocation != "forwarding" {
+	if invocation != "source" && invocation != "forwarding" && invocation != "issuer" && invocation != "descriptor" && invocation != "introduction" && invocation != "join" {
 		t.Fatal("unsupported test artifact invocation")
 	}
 	unitName, descriptorName := "ardents-"+invocation+".service", "infrastructure-"+invocation+".json"
@@ -87,6 +87,16 @@ func infrastructureDistributionInvocation(t *testing.T, parent string, binary []
 	descriptor := []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"infrastructure-fixture\",\"release_version\":%d,\"invocation\":\"source\",\"files\":{\"ardents-node-linux-amd64\":\"%x\",\"ardents-source.service\":\"%x\"}}\n", version, sha256.Sum256(binary), sha256.Sum256(unit)))
 	if invocation == "forwarding" {
 		descriptor = []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"infrastructure-fixture\",\"release_version\":%d,\"invocation\":\"forwarding\",\"files\":{\"ardents-forwarding.service\":\"%x\",\"ardents-node-linux-amd64\":\"%x\"}}\n", version, sha256.Sum256(unit), sha256.Sum256(binary)))
+	}
+	if invocation != "source" && invocation != "forwarding" {
+		names := []string{unitName, "ardents-node-linux-amd64"}
+		sort.Strings(names)
+		values := map[string][]byte{unitName: unit, "ardents-node-linux-amd64": binary}
+		pairs := []string{}
+		for _, name := range names {
+			pairs = append(pairs, fmt.Sprintf("%q:%q", name, fmt.Sprintf("%x", sha256.Sum256(values[name]))))
+		}
+		descriptor = []byte(fmt.Sprintf("{\"schema\":\"ardents-infrastructure-artifact-v1\",\"platform\":\"linux-amd64\",\"release_identity\":\"infrastructure-fixture\",\"release_version\":%d,\"invocation\":%q,\"files\":{%s}}\n", version, invocation, strings.Join(pairs, ",")))
 	}
 	targets := metadata.Targets(expires)
 	targets.Signed.Version = version

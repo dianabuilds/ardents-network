@@ -88,6 +88,15 @@ vet:
 unit:
 	go test -p 1 $(UNIT_PACKAGES) -short -shuffle=on -count=1 -timeout=15m
 
+# Pure launch policy/Release handoff and independently retained Route history.
+# This target starts no system manager, runtime listener or installed process.
+.PHONY: platform-launch-unit
+platform-launch-unit:
+	@test "$(HEADLESS_GOOS)" = linux || (echo "platform-launch-unit requires Linux"; exit 2)
+	go test ./cmd/ardents-next -run '^Test(Platform.*|NodeRolesRefuseMissingNetworkHistoryWithoutInitializing)$$' -count=1 -timeout=3m
+	go test ./internal/successor/route/introduction -run '^TestRetainedReceivingRegistryPreservesClaimAndRejectsErasedHistory$$' -count=1 -timeout=3m
+	go test ./internal/successor/installation/systemd -run '^TestPlatformSiblingVocabularyPreservesFixedNodeExclusion$$' -count=1 -timeout=3m
+
 heapdump-capture:
 	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)
 	@test -n "$(ARDENTS_HEAPDUMP_REPORT)" || (echo "ARDENTS_HEAPDUMP_REPORT is required"; exit 2)

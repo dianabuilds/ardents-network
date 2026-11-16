@@ -1,5 +1,19 @@
 # Testing
 
+## Platform launch unit boundary
+
+On Linux, `make platform-launch-unit` selects only in-process platform declaration,
+rendered/loaded policy refusal, coherent signed Release pair/retained rollback,
+missing State refusal, fixed sibling-slot vocabulary and original Introduction
+slot-history reopen tests. The
+loaded-policy fixture is detached pure data, not an actual systemd observation.
+Release fixtures use actual signatures and the original verifier without claiming
+an independent initial pin or an executing artifact. The Route test uses its
+actual local history mechanism, with no listener, network or system service.
+No installed startup, protection, stop/restart, process-crash or platform
+qualification follows from this target. Those remain separate native evidence
+for the [owning launch contract](../technical/network-route-node.md#platform-managed-infrastructure-launch).
+
 The native metadata proposal controls cover every Initial72..107 artifact
 prefix using an independently ordered twelve-file fixture. Original ready
 metadata is read from actual root0444 files; an original empty root0600 birth

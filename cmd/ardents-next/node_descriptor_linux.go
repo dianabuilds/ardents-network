@@ -16,6 +16,10 @@ import (
 
 // The command owns genuine State; it closes that owner after original Node join.
 func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Writer) int {
+	retained := len(args) == 2 && args[0] == "--retained-config"
+	if retained {
+		args = []string{"--config", args[1]}
+	}
 	if ctx == nil {
 		return 2
 	}
@@ -76,7 +80,11 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 	if err != nil {
 		return refuse(err)
 	}
-	original, err := node.ListenDescriptor(ctx, node.DescriptorConfig{
+	listen := node.ListenDescriptor
+	if retained {
+		listen = node.ListenDescriptorRetained
+	}
+	original, err := listen(ctx, node.DescriptorConfig{
 		Authority:         role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding},
 		ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, DescriptorRoot: plan.DescriptorRoot,
 		Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination,
