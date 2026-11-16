@@ -41,6 +41,27 @@ func TestExecutionObservationRequiresConsistentMainProcess(t *testing.T) {
 		}
 		service[change.name] = original
 	}
+	for _, name := range []string{"ExecMainStartTimestamp", "ExecMainStartTimestampMonotonic", "ExecMainExitTimestamp", "ExecMainExitTimestampMonotonic", "ExecMainPID", "ExecMainCode", "ExecMainStatus"} {
+		original := service[name]
+		service[name] = Value{Type: original.Type, Data: json.RawMessage("null")}
+		if _, ok := ReadExecution(service); ok {
+			t.Fatal("null execution field accepted", name)
+		}
+		service[name] = original
+	}
+	original := service["ExecStartEx"]
+	for index := 3; index < 10; index++ {
+		var entries [][]json.RawMessage
+		if err := json.Unmarshal(original.Data, &entries); err != nil {
+			t.Fatal(err)
+		}
+		entries[0][index] = json.RawMessage("null")
+		service["ExecStartEx"] = makeValue(original.Type, entries)
+		if _, ok := ReadExecution(service); ok {
+			t.Fatal("null command execution field accepted", index)
+		}
+	}
+	service["ExecStartEx"] = original
 	delete(service, "ExecMainCode")
 	if _, ok := ReadExecution(service); ok {
 		t.Fatal("missing execution field accepted")

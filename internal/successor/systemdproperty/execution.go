@@ -1,6 +1,9 @@
 package systemdproperty
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+)
 
 // Execution is a detached observation of systemd's main process clocks and
 // exit status. It is not evidence of process identity or joined completion.
@@ -22,7 +25,8 @@ func ReadExecution(service Properties) (result Execution, ok bool) {
 	// separate ExecMain clocks, which identify the process throughout its life.
 	var command Execution
 	for index, target := range []any{&command.StartedRealtime, &command.StartedMonotonic, &command.ExitedRealtime, &command.ExitedMonotonic, &command.PID, &command.Code, &command.Status} {
-		if Decode(entries[0][index+3], target) != nil {
+		part := entries[0][index+3]
+		if bytes.Equal(bytes.TrimSpace(part), []byte("null")) || Decode(part, target) != nil {
 			return Execution{}, false
 		}
 	}
@@ -39,7 +43,7 @@ func ReadExecution(service Properties) (result Execution, ok bool) {
 		{"ExecMainStatus", "i", &result.Status},
 	} {
 		value, present := service[field.name]
-		if !present || value.Type != field.signature || Decode(value.Data, field.target) != nil {
+		if !present || value.Type != field.signature || bytes.Equal(bytes.TrimSpace(value.Data), []byte("null")) || Decode(value.Data, field.target) != nil {
 			return Execution{}, false
 		}
 	}
