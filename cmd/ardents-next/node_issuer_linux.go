@@ -51,8 +51,11 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 		return 1
 	}
 	refuse := func(cause error) int {
-		_ = owner.Close()
-		if nodeIssuerReport(out, "refused", "startup-unavailable", "", "", encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
+		cleanup := ""
+		if owner.Close() != nil {
+			cleanup = "network"
+		}
+		if nodeIssuerReport(out, "refused", "startup-unavailable", "", cleanup, encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
 			return 2
 		}
 		return 1
@@ -94,15 +97,18 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 	result, timedOut := awaitNodeCompletion(joined, timer.C, func() {
 		_ = nodeIssuerReport(diagnostic, "retiring", "completion-unavailable", "", "")
 	})
-	if outputErr != nil {
-		return 2
-	}
 	if timedOut || result.outcome != "canceled" || result.stateError != nil {
 		if result.stateError != nil {
 			result.cleanup = "network"
 		}
 		_ = nodeIssuerReport(diagnostic, "joined", "failed", result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
+		if outputErr != nil {
+			return 2
+		}
 		return 1
+	}
+	if outputErr != nil {
+		return 2
 	}
 	if nodeIssuerReport(diagnostic, "joined", "canceled", "", "") != nil {
 		return 2

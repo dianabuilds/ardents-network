@@ -59,8 +59,11 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 		return 1
 	}
 	refuse := func(cause error) int {
-		_ = owner.Close()
-		if nodeDescriptorReport(out, "refused", "startup-unavailable", "", "", encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
+		cleanup := ""
+		if owner.Close() != nil {
+			cleanup = "network"
+		}
+		if nodeDescriptorReport(out, "refused", "startup-unavailable", "", cleanup, encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
 			return 2
 		}
 		return 1
@@ -100,15 +103,18 @@ func runNodeDescriptor(ctx context.Context, args []string, out, diagnostic io.Wr
 	result, timedOut := awaitNodeCompletion(joined, timer.C, func() {
 		_ = nodeDescriptorReport(diagnostic, "retiring", "completion-unavailable", "", "")
 	})
-	if outputErr != nil {
-		return 2
-	}
 	if timedOut || result.outcome != "canceled" || result.stateError != nil {
 		if result.stateError != nil {
 			result.cleanup = "network"
 		}
 		_ = nodeDescriptorReport(diagnostic, "joined", "failed", result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
+		if outputErr != nil {
+			return 2
+		}
 		return 1
+	}
+	if outputErr != nil {
+		return 2
 	}
 	if nodeDescriptorReport(diagnostic, "joined", "canceled", "", "") != nil {
 		return 2

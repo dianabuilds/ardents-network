@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"time"
 
@@ -48,15 +47,15 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 	}
 	view, err := owner.CurrentRuntime()
 	if err != nil {
-		return nodeStartupRefusal(out, errors.Join(err, owner.Close()))
+		return nodeStartupRefusal(out, err, owner.Close())
 	}
 	duty, err := view.RetainDuty(plan.NodeID, view.ObservedAt())
 	if err != nil {
-		return nodeStartupRefusal(out, errors.Join(err, owner.Close()))
+		return nodeStartupRefusal(out, err, owner.Close())
 	}
 	original, err := node.ListenForwarding(ctx, node.ForwardingConfig{Authority: role.Authority{Current: owner.CurrentRuntime, Duty: duty, Profile: view.Profile().ProfileBinding}, ParticipationRoot: plan.ParticipationRoot, SpendRoot: plan.SpendRoot, HostingRoot: plan.HostingRoot, Certificate: plan.Certificate, PrivateKey: plan.PrivateKey, Work: plan.Work, Termination: plan.Termination})
 	if err != nil {
-		return nodeStartupRefusal(out, errors.Join(err, owner.Close()))
+		return nodeStartupRefusal(out, err, owner.Close())
 	}
 	outputErr := nodeReport(out, "listening", "original-duty")
 	if outputErr == nil {
@@ -77,18 +76,21 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 	result, timedOut := awaitNodeCompletion(joined, timer.C, func() {
 		_ = nodeReport(diagnostic, "retiring", "completion-unavailable", encodeNodeFailureDiagnostic(original.FirstFailure()))
 	})
-	if outputErr != nil && !timedOut {
-		return 2
-	}
 	if result.outcome != "canceled" || result.stateError != nil {
 		if result.stateError != nil {
 			result.cleanup = "network"
 		}
 		_ = nodeJoinedFailure(diagnostic, result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
+		if outputErr != nil && !timedOut {
+			return 2
+		}
 		return 1
 	}
 	if timedOut {
 		return 1
+	}
+	if outputErr != nil {
+		return 2
 	}
 	if nodeReport(diagnostic, "joined", "canceled") != nil {
 		return 2
@@ -96,8 +98,21 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 	return 130
 }
 
-func nodeStartupRefusal(out io.Writer, cause error) int {
-	if nodeReport(out, "refused", "startup-unavailable", encodeNodeFailureDiagnostic(node.StartupFailure(cause))) != nil {
+func nodeStartupRefusal(out io.Writer, cause, cleanup error) int {
+	detail := encodeNodeFailureDiagnostic(node.StartupFailure(cause))
+	var err error
+	if cleanup == nil {
+		err = nodeReport(out, "refused", "startup-unavailable", detail)
+	} else {
+		err = json.NewEncoder(out).Encode(struct {
+			FirstFailure string `json:"first_failure,omitempty"`
+			Operation    string `json:"operation"`
+			Phase        string `json:"phase"`
+			Outcome      string `json:"outcome"`
+			Cleanup      string `json:"cleanup_owner"`
+		}{detail, "node.forwarding", "refused", "startup-unavailable", "network"})
+	}
+	if err != nil {
 		return 2
 	}
 	return 1

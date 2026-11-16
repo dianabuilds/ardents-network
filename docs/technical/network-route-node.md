@@ -1480,6 +1480,9 @@ recorded source; source inspection alone is not execution.
 The five development Node commands share the same bounded-notice and joined
 completion wait. Each role still owns its own denial, physical cleanup and
 terminal result; a timeout notice does not release any of those owners.
+If State cleanup fails during startup refusal, the public diagnostic records
+the Network cleanup owner without exposing the underlying private error. A
+failed output write does not suppress an independently joined failure report.
 
 Common Node declarations are exact Network config, NodeID, distinct participation,
 spend and Hosting roots, certificate/private-key paths, exact role process profile,
