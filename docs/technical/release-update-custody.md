@@ -211,8 +211,12 @@ The existing Source artifact authentication is also available separately as
 <environment> <network> <reference-time>` or `release authenticate-source-candidate
 <bundle> <history> <environment> <network> <reference-time>`. It retains the
 same independent inventory and Release verifier checks, then closes the verifier.
-This closed Linux/amd64 verification reports no reusable authorization and does
-not acquire Source installation inputs, start a service or establish readiness.
+Initial verification requires the actual Linux/amd64 enrolled process. Candidate
+verification checks Linux/amd64 target bytes and retained Release history on
+Linux or macOS; the host performing that check is not an installed Source. The
+result grants no reusable authorization and does not acquire Source installation
+inputs, start a service or establish readiness. Successful macOS candidate
+authentication still requires source-matched signed-input verification.
 
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects a protected Endpoint generation target in the same signed metadata set

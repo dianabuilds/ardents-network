@@ -582,7 +582,7 @@ observation after actual public record replacement; it supplies no ACK.
 `internal/successor/release/endpoint`. It authenticates protected program and
 generation bytes for the Release command without importing Endpoint delivery;
 the public outcome grants no installation or runtime authority.
-`cmd/ardents-next/source_release_linux.go` may import only the standard library,
+`cmd/ardents-next/source_release_unix.go` may import only the standard library,
 `internal/successor/enrollment`, `internal/successor/release` and
 `internal/successor/release/infrastructure`. It owns the shared Source artifact
 authentication path used by the Release command and transitional Source actions;

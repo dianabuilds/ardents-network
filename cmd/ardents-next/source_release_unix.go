@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux || darwin
 
 package main
 
@@ -148,7 +148,7 @@ func independentInfrastructureHistory(distribution, history string) bool {
 // runSourceRelease verifies the Source pair without acquiring installation
 // inputs, starting a service or granting a reusable authorization.
 func runSourceRelease(ctx context.Context, args []string, out io.Writer) int {
-	if ctx == nil || runtime.GOARCH != "amd64" || len(args) == 0 {
+	if ctx == nil || len(args) == 0 {
 		return enrollmentReport(out, "invalid-input", 2)
 	}
 	if ctx.Err() != nil {
@@ -157,6 +157,9 @@ func runSourceRelease(ctx context.Context, args []string, out io.Writer) int {
 	request, invalid := parseSourceRelease(args)
 	if invalid != "" {
 		return enrollmentReport(out, invalid, 2)
+	}
+	if request.initial && (runtime.GOOS != "linux" || runtime.GOARCH != "amd64") {
+		return enrollmentReport(out, "release-incompatible", 1)
 	}
 	a, v, refused, err := openSourceRelease(ctx, request)
 	if refused != "" {

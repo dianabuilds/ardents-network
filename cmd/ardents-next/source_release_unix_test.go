@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 package main
 
 import (
@@ -5,6 +7,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +15,26 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
 )
+
+func TestSourceReleaseCandidateRefusesMissingInventoryWithoutHistory(t *testing.T) {
+	root := sourceReleaseTestRoot(t)
+	history := filepath.Join(root, "history")
+	var out bytes.Buffer
+	args := []string{"authenticate-candidate", filepath.Join(root, "absent"), history, "closed", "network", "2030-01-02T03:04:05Z"}
+	if code := runSourceRelease(t.Context(), args, &out); code != 1 || !strings.Contains(out.String(), "infrastructure-inventory-refused") {
+		t.Fatalf("missing candidate was not refused: %d %s", code, out.String())
+	}
+	if _, err := os.Lstat(history); !os.IsNotExist(err) {
+		t.Fatal("candidate refusal touched history", err)
+	}
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		out.Reset()
+		args = []string{"authenticate-initial", filepath.Join(root, "absent"), strings.Repeat("0", 64), history, "closed", "network", "2030-01-02T03:04:05Z"}
+		if code := runSourceRelease(t.Context(), args, &out); code != 1 || !strings.Contains(out.String(), "release-incompatible") {
+			t.Fatalf("initial verification accepted an incompatible process: %d %s", code, out.String())
+		}
+	}
+}
 
 func TestSourceReleaseReceiptPreservesPublicResult(t *testing.T) {
 	var out bytes.Buffer
@@ -36,7 +59,7 @@ func TestSourceReleaseReceiptPreservesPublicResult(t *testing.T) {
 func TestSourceReleaseRefusesMissingInventoryBeforeHistory(t *testing.T) {
 	for _, initial := range []bool{true, false} {
 		t.Run(map[bool]string{true: "initial", false: "candidate"}[initial], func(t *testing.T) {
-			root := t.TempDir()
+			root := sourceReleaseTestRoot(t)
 			bundle := filepath.Join(root, "absent-bundle")
 			history := filepath.Join(root, "absent-history")
 			args := []string{"authenticate-candidate", bundle, history, "closed", "network", "2030-01-02T03:04:05Z"}
@@ -65,7 +88,7 @@ func TestSourceReleaseRefusesMissingInventoryBeforeHistory(t *testing.T) {
 }
 
 func TestSourceReleaseInputRefusesOverlappingAndIncompletePaths(t *testing.T) {
-	root := t.TempDir()
+	root := sourceReleaseTestRoot(t)
 	args := []string{"authenticate-candidate", filepath.Join(root, "bundle"), filepath.Join(root, "bundle", "history"), "closed", "network", "2030-01-02T03:04:05Z"}
 	if _, outcome := parseSourceRelease(args); outcome != "infrastructure-paths-refused" {
 		t.Fatal("overlapping history accepted", outcome)
@@ -75,4 +98,13 @@ func TestSourceReleaseInputRefusesOverlappingAndIncompletePaths(t *testing.T) {
 			t.Fatal("invalid source arguments accepted", outcome)
 		}
 	}
+}
+
+func sourceReleaseTestRoot(t *testing.T) string {
+	t.Helper()
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return root
 }

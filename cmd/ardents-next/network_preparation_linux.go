@@ -161,10 +161,6 @@ func writeNetworkPreparation(ctx context.Context, path, name string, raw []byte)
 	return persistNetworkPreparation(ctx, path, name, raw, nil)
 }
 
-func writeNetworkPreparationReceipt(ctx context.Context, out io.Writer, raw []byte) error {
-	return writeSourceReportContext(ctx, out, raw)
-}
-
 // observe is only a synchronous test barrier around real native effects. It
 // cannot supply successful file operations, bytes or accepting observations.
 func persistNetworkPreparation(ctx context.Context, path, name string, raw []byte, observe func(string, *os.File)) (err error) {
