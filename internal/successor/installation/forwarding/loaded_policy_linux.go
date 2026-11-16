@@ -1,7 +1,6 @@
 package forwarding
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
@@ -65,46 +64,10 @@ func verifyForwardingRunning(unit, service systemdproperty.Properties, r Request
 	return nil
 }
 
-func forwardingExecutionStatus(service systemdproperty.Properties) (result forwardingExecution, err error) {
-	value := service["ExecStartEx"]
-	var entries [][]json.RawMessage
-	if value.Type != "a(sasasttttuii)" || systemdproperty.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
-		return result, ErrBinding
-	}
-	// ExecStartEx initially carries the command's fork clock. systemd replaces
-	// it with the main process clock when reaping that same process. Retain the
-	// separate ExecMain clocks, which identify the process throughout its life.
-	var command forwardingExecution
-	for index, target := range []any{&command.startedRealtime, &command.startedMonotonic, &command.exitedRealtime, &command.exitedMonotonic, &command.pid, &command.code, &command.status} {
-		if systemdproperty.Decode(entries[0][index+3], target) != nil {
-			return forwardingExecution{}, ErrBinding
-		}
-	}
-	for _, field := range []struct {
-		name, signature string
-		target          any
-	}{
-		{"ExecMainStartTimestamp", "t", &result.startedRealtime},
-		{"ExecMainStartTimestampMonotonic", "t", &result.startedMonotonic},
-		{"ExecMainExitTimestamp", "t", &result.exitedRealtime},
-		{"ExecMainExitTimestampMonotonic", "t", &result.exitedMonotonic},
-		{"ExecMainPID", "u", &result.pid},
-		{"ExecMainCode", "i", &result.code},
-		{"ExecMainStatus", "i", &result.status},
-	} {
-		value, present := service[field.name]
-		if !present || value.Type != field.signature || systemdproperty.Decode(value.Data, field.target) != nil {
-			return forwardingExecution{}, ErrBinding
-		}
-	}
-	if command.pid != result.pid || command.code != result.code || command.status != result.status ||
-		command.exitedRealtime != result.exitedRealtime || command.exitedMonotonic != result.exitedMonotonic ||
-		(command.startedRealtime == 0) != (result.startedRealtime == 0) || (command.startedMonotonic == 0) != (result.startedMonotonic == 0) ||
-		command.startedRealtime > result.startedRealtime || command.startedMonotonic > result.startedMonotonic {
+func forwardingExecutionStatus(service systemdproperty.Properties) (forwardingExecution, error) {
+	observed, ok := systemdproperty.ReadExecution(service)
+	if !ok {
 		return forwardingExecution{}, ErrBinding
 	}
-	if result.code != 0 && (command.startedRealtime != result.startedRealtime || command.startedMonotonic != result.startedMonotonic) {
-		return forwardingExecution{}, ErrBinding
-	}
-	return result, nil
+	return forwardingExecution{observed.StartedRealtime, observed.StartedMonotonic, observed.ExitedRealtime, observed.ExitedMonotonic, observed.PID, observed.Code, observed.Status}, nil
 }

@@ -1,6 +1,6 @@
 # Package map
 
-The fixed loaded-property comparisons for Source, Forwarding, JOIN, Descriptor and Introduction use the shared `deployment/service_observation.go` policy and detached `systemdproperty` values; they acquire no manager or installation authority.
+The fixed loaded-property comparisons for Source, Forwarding, JOIN, Descriptor and Introduction use the shared `deployment/service_observation.go` policy and detached `systemdproperty` values. The four Node roles share its main-process execution observation decoder; role-specific running and retirement decisions remain separate. These observations acquire no manager or installation authority.
 
 ## Installed role declaration and protection policy
 
