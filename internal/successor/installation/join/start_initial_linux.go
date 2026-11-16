@@ -3,7 +3,6 @@ package join
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	releaseartifact "github.com/dianabuilds/ardents-network/internal/successor/release/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/successor/systemdproperty"
 )
 
 // One root attempt owns all of its observations. The independently admitted
@@ -378,19 +378,9 @@ func ownQueuedJob(unit systemd.Properties, object string) bool {
 	return err == nil && id != 0 && strconv.FormatUint(id, 10) == text && systemd.Matches(unit, "Job", "(uo)", []any{uint32(id), object})
 }
 
-func runningInvocation(unit, service systemd.Properties) (pid uint32, id [16]byte, err error) {
-	p, ok := service["MainPID"]
-	i, yes := unit["InvocationID"]
-	var parts []json.RawMessage
-	if !ok || !yes || p.Type != "u" || i.Type != "ay" || systemd.Decode(p.Data, &pid) != nil || pid == 0 || systemd.Decode(i.Data, &parts) != nil || len(parts) != len(id) {
-		return 0, [16]byte{}, ErrBinding
-	}
-	for index, part := range parts {
-		if systemd.Decode(part, &id[index]) != nil {
-			return 0, [16]byte{}, ErrBinding
-		}
-	}
-	if id == [16]byte{} {
+func runningInvocation(unit, service systemd.Properties) (uint32, [16]byte, error) {
+	pid, id, ok := systemdproperty.ReadInvocation(unit, service)
+	if !ok {
 		return 0, [16]byte{}, ErrBinding
 	}
 	return pid, id, nil

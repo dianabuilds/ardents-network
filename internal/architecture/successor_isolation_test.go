@@ -566,6 +566,11 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		case "internal/successor/installation/forwarding/loaded_policy_linux.go":
 			return true
+		case "internal/successor/installation/join/start_initial_linux.go",
+			"internal/successor/installation/descriptor/start_initial_linux.go",
+			"internal/successor/installation/introduction/start_initial_linux.go",
+			"internal/successor/installation/forwarding/start_initial_linux.go":
+			return true
 		case "internal/successor/installation/infrastructure/source_loaded_linux.go":
 			return true
 		}

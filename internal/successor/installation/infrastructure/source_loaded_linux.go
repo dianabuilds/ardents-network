@@ -1,7 +1,6 @@
 package infrastructure
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/deployment"
@@ -44,68 +43,20 @@ type sourceExecution struct {
 	code, status                                                       int32
 }
 
-func sourceExecutionStatus(service systemdproperty.Properties) (result sourceExecution, err error) {
-	value := service["ExecStartEx"]
-	var entries [][]json.RawMessage
-	if value.Type != "a(sasasttttuii)" || systemdproperty.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
-		return result, ErrBinding
-	}
-	// ExecStartEx initially carries the command's fork clock. systemd replaces
-	// it with the main process clock when reaping that same process. Retain the
-	// separate ExecMain clocks, which identify the process throughout its life.
-	var command sourceExecution
-	for index, target := range []any{&command.startedRealtime, &command.startedMonotonic, &command.exitedRealtime, &command.exitedMonotonic, &command.pid, &command.code, &command.status} {
-		if systemdproperty.Decode(entries[0][index+3], target) != nil {
-			return sourceExecution{}, ErrBinding
-		}
-	}
-	for _, field := range []struct {
-		name, signature string
-		target          any
-	}{
-		{"ExecMainStartTimestamp", "t", &result.startedRealtime},
-		{"ExecMainStartTimestampMonotonic", "t", &result.startedMonotonic},
-		{"ExecMainExitTimestamp", "t", &result.exitedRealtime},
-		{"ExecMainExitTimestampMonotonic", "t", &result.exitedMonotonic},
-		{"ExecMainPID", "u", &result.pid},
-		{"ExecMainCode", "i", &result.code},
-		{"ExecMainStatus", "i", &result.status},
-	} {
-		value, present := service[field.name]
-		if !present || value.Type != field.signature || systemdproperty.Decode(value.Data, field.target) != nil {
-			return sourceExecution{}, ErrBinding
-		}
-	}
-	if command.pid != result.pid || command.code != result.code || command.status != result.status ||
-		command.exitedRealtime != result.exitedRealtime || command.exitedMonotonic != result.exitedMonotonic ||
-		(command.startedRealtime == 0) != (result.startedRealtime == 0) || (command.startedMonotonic == 0) != (result.startedMonotonic == 0) ||
-		command.startedRealtime > result.startedRealtime || command.startedMonotonic > result.startedMonotonic {
+func sourceExecutionStatus(service systemdproperty.Properties) (sourceExecution, error) {
+	observed, ok := systemdproperty.ReadExecution(service)
+	if !ok {
 		return sourceExecution{}, ErrBinding
 	}
-	if result.code != 0 && (command.startedRealtime != result.startedRealtime || command.startedMonotonic != result.startedMonotonic) {
-		return sourceExecution{}, ErrBinding
-	}
-	return result, nil
+	return sourceExecution{observed.StartedRealtime, observed.StartedMonotonic, observed.ExitedRealtime, observed.ExitedMonotonic, observed.PID, observed.Code, observed.Status}, nil
 }
 
 func sourceInvocation(unit, service systemdproperty.Properties) (uint32, [16]byte, error) {
-	var pid uint32
-	var invocation [16]byte
-	var parts []json.RawMessage
-	main, id := service["MainPID"], unit["InvocationID"]
-	if main.Type != "u" || systemdproperty.Decode(main.Data, &pid) != nil || pid == 0 ||
-		id.Type != "ay" || systemdproperty.Decode(id.Data, &parts) != nil || len(parts) != len(invocation) {
-		return 0, invocation, ErrBinding
+	pid, id, ok := systemdproperty.ReadInvocation(unit, service)
+	if !ok {
+		return 0, [16]byte{}, ErrBinding
 	}
-	for index, part := range parts {
-		if systemdproperty.Decode(part, &invocation[index]) != nil {
-			return 0, [16]byte{}, ErrBinding
-		}
-	}
-	if invocation == [16]byte{} {
-		return 0, invocation, ErrBinding
-	}
-	return pid, invocation, nil
+	return pid, id, nil
 }
 
 func verifySourceRunning(unit, service systemdproperty.Properties, r SourceRequest, generation string, pid uint32, invocation [16]byte) error {
