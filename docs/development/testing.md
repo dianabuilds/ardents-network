@@ -21,6 +21,14 @@ Source or platform qualification.
 
 ## Platform launch unit boundary
 
+Endpoint history-preparation units use independently signed Epoch/profile bytes
+through real Network State, actual participation and role Stock files. They
+cover first preparation and retained reopen, Reader/dual-role separation,
+partial cancellation and repeat refusal, invalid signatures and preserved Epoch
+floors, missing Stock children and erased contents with retained root inodes.
+The public command is exercised without Startup, a system manager or accepting
+Service. These checks do not qualify installed startup, restart or two participants.
+
 On Linux, `make platform-launch-unit` selects only in-process platform declaration,
 rendered/loaded policy refusal, coherent signed Release pair/retained rollback,
 missing State refusal, fixed sibling-slot vocabulary and original Introduction

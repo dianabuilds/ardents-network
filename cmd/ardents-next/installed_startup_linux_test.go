@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
@@ -274,25 +275,33 @@ func runInstalledParticipant(t *testing.T, publicationEnabled bool, network inst
 	if err := os.Chmod(bootstrap, 0755); err != nil {
 		t.Fatal(err)
 	}
-	accept := func(operation string, input any, outcome string) {
-		raw, err := json.Marshal(input)
-		if err != nil {
-			t.Fatal(err)
-		}
-		path := filepath.Join(bootstrap, operation+".json")
-		installedStartupWrite(t, path, raw, 0644)
-		installedStartupCommand(t, installedProgram, credential, outcome, "network", operation, "--config", path)
+	// The participant runtime cannot infer first creation from lost history.
+	// Prepare the genuine histories once through authenticated offline State
+	// acceptance before every installed Start. Replacement retains them.
+	var declaration struct{ Headless json.RawMessage }
+	if err := json.Unmarshal([]byte(request), &declaration); err != nil {
+		t.Fatal(err)
 	}
-	accept("accept-epoch", struct {
-		Network   *networkAuthorityPlan "json:\"network\""
-		Epoch     []byte                "json:\"epoch\""
-		Inputs    [][]byte              "json:\"inputs\""
-		Materials [][]byte              "json:\"materials\""
-	}{plan, network.Epoch, network.Inputs, network.Materials}, "accepted-epoch")
-	accept("accept-profile", struct {
-		Network *networkAuthorityPlan "json:\"network\""
-		Profile []byte                "json:\"profile\""
-	}{plan, network.Profile}, "accepted-profile")
+	historyPlan := filepath.Join(bootstrap, "headless.json")
+	installedStartupWrite(t, historyPlan, declaration.Headless, 0644)
+	// Source framing carries exactly one independently verified materialization,
+	// matching this fixture's already declared MaterializationIndex=0.
+	bundleRaw, err := source.EncodeBundle(source.Bundle{Epoch: network.Epoch, Inputs: network.Inputs, Materials: network.Materials[:1]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundlePath, profilePath := filepath.Join(bootstrap, "state.bundle"), filepath.Join(bootstrap, "profile.bin")
+	installedStartupWrite(t, bundlePath, bundleRaw, 0644)
+	installedStartupWrite(t, profilePath, network.Profile, 0644)
+	prepare := exec.CommandContext(t.Context(), installedProgram, "endpoint", "prepare-history", historyPlan, bundlePath, profilePath)
+	prepare.SysProcAttr = &syscall.SysProcAttr{Credential: credential, Pdeathsig: syscall.SIGKILL}
+	runtime.LockOSThread()
+	prepared, prepareErr := prepare.CombinedOutput()
+	runtime.UnlockOSThread()
+	var preparation struct{ Phase, Outcome string }
+	if prepareErr != nil || json.Unmarshal(prepared, &preparation) != nil || preparation.Phase != "history-preparation" || preparation.Outcome != "prepared" {
+		t.Fatalf("explicit history preparation: %v: %s", prepareErr, prepared)
+	}
 	candidateResources := make(map[string][]byte, len(resources))
 	for name, body := range resources {
 		candidateResources[name] = append([]byte(nil), body...)

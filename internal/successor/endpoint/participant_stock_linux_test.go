@@ -13,9 +13,14 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
 )
 
 func participantStockFacts(t *testing.T) (admission.AuthorityFacts, time.Time) {
+	return participantStockFactsAt(t, time.Unix(1800000000, 0).UTC(), 1)
+}
+
+func participantStockFactsAt(t *testing.T, now time.Time, windows int) (admission.AuthorityFacts, time.Time) {
 	t.Helper()
 	type algorithm struct {
 		OID    asn1.ObjectIdentifier
@@ -39,10 +44,9 @@ func participantStockFacts(t *testing.T) (admission.AuthorityFacts, time.Time) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	now := time.Unix(1800000000, 0).UTC()
 	window := now.Truncate(time.Hour)
-	p := admission.AuthorityFacts{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, Digest: [32]byte{4}, IssuanceAuthorityKey: [32]byte{5}, IssuerNodeID: [32]byte{6}, IssuerDutyGeneration: 1, NotBefore: window, NotAfter: window.Add(time.Hour), TokenKeyCount: 3}
-	for i := 0; i < 3; i++ {
+	p := admission.AuthorityFacts{NetworkID: [32]byte{1}, StateGeneration: [32]byte{2}, StateDigest: [32]byte{3}, Digest: [32]byte{4}, IssuanceAuthorityKey: [32]byte{5}, IssuerNodeID: [32]byte{6}, IssuerDutyGeneration: 1, NotBefore: window, NotAfter: window.Add(time.Duration(windows) * time.Hour), TokenKeyCount: uint8(3 * windows)}
+	for i := 0; i < int(p.TokenKeyCount); i++ {
 		n := new(big.Int).Lsh(big.NewInt(1), 2047)
 		n.Add(n, big.NewInt(int64(2*i+1)))
 		raw := x509.MarshalPKCS1PublicKey(&rsa.PublicKey{N: n, E: 65537})
@@ -53,7 +57,7 @@ func participantStockFacts(t *testing.T) (admission.AuthorityFacts, time.Time) {
 		if len(encoded) != len(p.TokenKeys[i].SPKI) {
 			t.Fatalf("unexpected key size %d", len(encoded))
 		}
-		p.TokenKeys[i].WindowStart, p.TokenKeys[i].Class = window, uint8(i+1)
+		p.TokenKeys[i].WindowStart, p.TokenKeys[i].Class = window.Add(time.Duration(i/3)*time.Hour), uint8(i%3+1)
 		copy(p.TokenKeys[i].SPKI[:], encoded)
 	}
 	if err := p.ValidateAt(now); err != nil {
@@ -67,7 +71,19 @@ func TestParticipantStockRequiresExistingHistory(t *testing.T) {
 	observe := func() (admission.AuthorityFacts, time.Time, error) { return facts, now, nil }
 	check := func() error { return nil }
 	root := filepath.Join(t.TempDir(), "reader")
-	owner, err := openParticipantStock(root, admission.AllocationUser, observe, check)
+	if owner, err := openParticipantStock(root, admission.AllocationUser, observe, check); err == nil {
+		_ = owner.Close()
+		t.Fatal("missing role history initialized by runtime")
+	}
+	if _, err := os.Lstat(root); !os.IsNotExist(err) {
+		t.Fatal("refusal created role directory", err)
+	}
+	if err := os.Mkdir(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	// Standalone Stock creation is explicit preparation, separate from the
+	// participant runtime. Its authority fixture exercises only Stock's seam.
+	owner, err := stock.Open(root, admission.AllocationUser, observe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,5 +114,16 @@ func TestParticipantStockRequiresExistingHistory(t *testing.T) {
 	entries, err = os.ReadDir(root)
 	if err != nil || len(entries) != 0 {
 		t.Fatalf("refusal modified history: %v, %v", entries, err)
+	}
+	if err := os.Remove(root); err != nil {
+		t.Fatal(err)
+	}
+	owner, err = openParticipantStock(root, admission.AllocationUser, observe, check)
+	if err == nil {
+		_ = owner.Close()
+		t.Fatal("removed role directory recreated")
+	}
+	if _, err := os.Lstat(root); !os.IsNotExist(err) {
+		t.Fatal("refusal recreated lost directory", err)
 	}
 }

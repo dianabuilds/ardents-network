@@ -11,7 +11,16 @@ import (
 )
 
 func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writer) int {
-	if len(args) != 2 || args[0] != "start-installed" || ctx == nil {
+	if ctx == nil || len(args) == 0 {
+		return 2
+	}
+	if args[0] == "prepare-history" {
+		if len(args) != 4 {
+			return 2
+		}
+		return runEndpointHistoryPreparation(ctx, args[1:], diagnostic)
+	}
+	if len(args) != 2 || args[0] != "start-installed" {
 		return 2
 	}
 	if ctx.Err() != nil {

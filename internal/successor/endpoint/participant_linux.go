@@ -116,7 +116,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 	// gates permission bootstrap only and cannot stand in for a live worker.
 	config.PermitWork = startup.Check
 	phase = "network-open"
-	network, err := state.Open(config)
+	network, err := state.OpenRetained(config)
 	if err != nil {
 		return phase, errors.Join(ErrUnavailable, err)
 	}
@@ -307,18 +307,11 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 	return phase, nil
 }
 
-// openParticipantStock never treats an existing role directory as new history.
-// Creating a directory is not proof that a deleted predecessor never existed.
+// openParticipantStock cannot reconstruct a lost role directory or journal.
+// Only explicit first preparation may create these histories.
 func openParticipantStock(root string, role admission.AllocationRole, observe func() (admission.AuthorityFacts, time.Time, error), check func() error) (*stock.Owner, error) {
-	err := os.Mkdir(root, 0700)
-	if err != nil && !errors.Is(err, os.ErrExist) {
-		return nil, err
-	}
 	if checkErr := check(); checkErr != nil {
 		return nil, checkErr
-	}
-	if err == nil {
-		return stock.Open(root, role, observe)
 	}
 	return stock.OpenRetained(root, role, observe)
 }

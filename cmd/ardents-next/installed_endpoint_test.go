@@ -23,7 +23,10 @@ func TestInstalledEndpointCancelledBeforeEffects(t *testing.T) {
 	if _, err := os.Lstat(root); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("refusal changed installation", err)
 	}
-	for _, args := range [][]string{{"endpoint"}, {"endpoint", "start-installed"}, {"endpoint", "foreign", root}} {
+	if code := run(ctx, []string{"endpoint", "prepare-history", root, root, root}, &output, &diagnostic); code != 1 || output.Len() != 0 || diagnostic.Len() != 0 {
+		t.Fatal("canceled preparation read inputs or reported success", code)
+	}
+	for _, args := range [][]string{{"endpoint"}, {"endpoint", "start-installed"}, {"endpoint", "foreign", root}, {"endpoint", "prepare-history", root}} {
 		if code := run(t.Context(), args, &output, &diagnostic); code != 2 {
 			t.Fatal("malformed installed selector admitted", args, code)
 		}

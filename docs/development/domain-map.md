@@ -689,6 +689,15 @@ are also consumed by offline Source preparation, without runtime authority.
 CLI selectors, diagnostic rendering and exit projection stay in the command. Splitting these lifetimes
 changes neither accepted persisted/wire bytes nor installed qualification.
 
+Endpoint's explicit offline first preparation consumes declared trust/roots and
+public signed Epoch/profile through fresh Network State, then initializes empty
+participation and role Stock through their own owners. The original fresh State
+claim remains held through subsequent effects and joins. A partial or completed
+preparation cannot replay, adopt or clear history. Runtime uses retained State
+and role Stock only, including when the role child itself disappeared. This
+composition grants no permission, Job, Source transport, Service readiness or
+installed acceptance; Hosting and Service preparation retain separate owners.
+
 `endpoint/session` retains one serial holder conversation: original issuance
 attempt and intent, Prefix/JOIN context, registration, Publication, stream and
 lookup history. Its separate local, preparation and live-operation constructors
