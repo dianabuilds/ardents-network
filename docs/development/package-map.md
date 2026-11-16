@@ -346,7 +346,7 @@ Node certificate provisioning is Linux-only offline composition in
 `cmd/ardents-next/node_certificate_linux.go`, using the standard library and
 exactly `internal/successor/network/epoch`. Its genuine consumer is the closed
 `network prepare-node-certificate` operation through the existing original
-signing custody/output lifetime. `epoch/initial_record_verification_linux.go`
+signing custody/output lifetime. `epoch/initial_record_verification.go`
 adds `VerifyInitialClosedRecord`: exact canonical preparation, generation-one
 ARNR-v2 signature and detached public facts, without State acceptance. It uses
 only the standard library; its behavior tests do too. No package, private-key
