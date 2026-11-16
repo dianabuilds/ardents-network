@@ -11,9 +11,84 @@ import (
 	"sync/atomic"
 	"syscall"
 	"testing"
+	"testing/synctest"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 )
+
+// These barriers model only the supervisor's physical join contract. They do
+// not supply successful State authority, a listener, a process or manager facts.
+type sourceRetirementBarriers struct {
+	waitRelease, closeRelease chan struct{}
+	waitErr, closeErr         error
+}
+
+func (*sourceRetirementBarriers) Current() (state.Snapshot, error) {
+	return state.Snapshot{}, context.Canceled
+}
+func (b *sourceRetirementBarriers) Wait(context.Context) error { <-b.waitRelease; return b.waitErr }
+func (b *sourceRetirementBarriers) Close() error               { <-b.closeRelease; return b.closeErr }
+
+func TestSourceCancellationJoinsWaitCloseAndInputsBeforeCompletion(t *testing.T) {
+	for _, failure := range []string{"none", "wait", "close", "inputs"} {
+		t.Run(failure, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				ctx, cancel := context.WithCancel(t.Context())
+				cancel()
+				late := errors.New("late original join failure")
+				owner := &sourceRetirementBarriers{waitRelease: make(chan struct{}), closeRelease: make(chan struct{})}
+				if failure == "wait" {
+					owner.waitErr = late
+				}
+				if failure == "close" {
+					owner.closeErr = late
+				}
+				inputStarted, inputRelease := make(chan struct{}), make(chan struct{})
+				joined := make(chan error, 1)
+				go func() {
+					joined <- superviseSource(ctx, owner, ctx.Err, func() {}, io.Discard, io.Discard, func() error {
+						close(inputStarted)
+						<-inputRelease
+						if failure == "inputs" {
+							return late
+						}
+						return nil
+					})
+				}()
+				synctest.Wait()
+				select {
+				case <-joined:
+					t.Fatal("cancellation substituted for join")
+				default:
+				}
+				close(owner.closeRelease)
+				synctest.Wait()
+				select {
+				case <-inputStarted:
+					t.Fatal("Close alone released inputs before Wait joined")
+				default:
+				}
+				close(owner.waitRelease)
+				synctest.Wait()
+				select {
+				case <-inputStarted:
+				default:
+					t.Fatal("joined State did not begin input cleanup")
+				}
+				select {
+				case <-joined:
+					t.Fatal("unjoined inputs permitted completion")
+				default:
+				}
+				close(inputRelease)
+				err := <-joined
+				if failure == "none" && err != nil || failure != "none" && !errors.Is(err, late) {
+					t.Fatal("original completion outcome lost", err)
+				}
+			})
+		})
+	}
+}
 
 // Failure fixtures isolate command ordering, never successful State authority.
 type failedSourceLifetime struct {

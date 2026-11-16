@@ -5,7 +5,13 @@
 On Linux, `make platform-launch-unit` selects only in-process platform declaration,
 rendered/loaded policy refusal, coherent signed Release pair/retained rollback,
 missing State refusal, fixed sibling-slot vocabulary and original Introduction
-slot-history reopen tests. The
+slot-history reopen tests. It also selects initial Source preparation,
+producer claim/removal/reclaim and deterministic supervisor cancellation joins.
+The Source program-change unit authenticates distinct signed program bytes
+against one retained Release history and reopens the same genuine signed State
+and participation history, retaining the Epoch floor and exposure restriction;
+rollback and mixed signed releases refuse. It executes neither program.
+The
 loaded-policy fixture is detached pure data, not an actual systemd observation.
 Release fixtures use actual signatures and the original verifier without claiming
 an independent initial pin or an executing artifact. The Route test uses its
@@ -13,6 +19,9 @@ actual local history mechanism, with no listener, network or system service.
 No installed startup, protection, stop/restart, process-crash or platform
 qualification follows from this target. Those remain separate native evidence
 for the [owning launch contract](../technical/network-route-node.md#platform-managed-infrastructure-launch).
+The supervisor barriers prove only command ordering of Wait, Close and inputs;
+they supply no successful Network or platform observation. There is no
+unit-only end-to-end serving/platform claim.
 
 The native metadata proposal controls cover every Initial72..107 artifact
 prefix using an independently ordered twelve-file fixture. Original ready

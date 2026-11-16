@@ -1537,6 +1537,53 @@ projection. Platform stop or process death alone supplies no domain completion;
 unresolved producer/history obligations still block a subsequent invocation.
 No full installed/platform acceptance follows from unit policy fixtures.
 
+### Source lifecycle and forward program change
+
+The existing owners compose this sequence without another lifecycle manager:
+
+1. Explicit first preparation authenticates signed State and initializes empty
+   participation through `prepare-state`. It runs once on the two fresh roots,
+   separately from platform trust initialization and launch.
+2. Each launch authenticates the exact program/template/configuration through
+   the mandatory platform check. `serve-retained` independently validates its
+   original inputs/process and opens the same retained State/participation.
+   The server producer must be absent: a retained original producer refuses
+   before listening, including after its time bound.
+3. A requested stop cancels runtime admission. `superviseSource` waits for
+   original State Close, Wait and observations, then input cleanup; the caller
+   releases process protection last. State joins serving work before removing
+   its producer and releasing the State lease. Every late failure remains a
+   failure; the completion-unavailable notice does not end that wait.
+4. Relaunch is a new independently checked invocation over the same histories.
+   It cannot rerun first preparation or adopt an unresolved producer. Signed
+   State, participation and Release floors are preserved by their own owners.
+5. A program change first requires the original stop and joined completion,
+   with no remaining old execution. The operator then supplies separately
+   authenticated forward program/generation artifacts, updates the exact launch
+   declaration/unit and runtime copy, and starts through the same mandatory
+   check and retained opening. Old proofs, mixed generations and backward
+   Release metadata supply no new authorization. Changing program paths or
+   bytes does not change the semantic root paths or reset their histories.
+
+This is the required ordering, not proof that systemd enforces every boundary.
+`systemctl stop`, an inactive/failed unit, process disappearance, a read-only
+inspection or an exit number alone is insufficient evidence of original domain
+completion. Exit130 has meaning only as the exact verified runtime's successful
+joined requested-cancellation projection. A failure or unknown original result
+blocks program change; lease availability alone does not override it.
+The platform's artifact check does not itself implement this stopped-transition
+admission. Establishing and retaining the actual original manager/process and
+runtime-completion evidence across operator actions remains necessary before
+this sequence replaces native stopped replacement.
+
+On missing/damaged history, a retained producer or uncertain original completion,
+preserve the roots and refuse further lifecycle continuation. Neither
+`prepare-state`, fresh trust setup, elapsed time nor deleting a producer/lease
+is a repair operation. The platform path supplies no general recovery command
+or supported operator procedure to clear unresolved completion. Any eventual
+repair must be justified by the affected existing owner's invariant and evidence;
+another installation journal is not implied by that gap.
+
 The duplicate development `infrastructure start-source` transaction and its
 detached startup wait wrapper are retired. Canonical native installed consumers
 remain transitional under ADR-0125 until equivalent real-platform evidence

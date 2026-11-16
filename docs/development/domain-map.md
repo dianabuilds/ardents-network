@@ -599,6 +599,14 @@ preparation failure preserves completed and partial native history, with no
 automatic continuation or cleanup. Both owners and inputs join before receipt;
 no Source transport, producer, process Guard or Installation Startup is opened.
 
+Source serving admission claims only an absent State-root-bound participation
+producer. Participation checks absence and commits under the same exclusive
+operation; it does not prune an expired original producer to admit a successor.
+State maps the retained-producer refusal to recovery-required and opens no
+listener. Original runtime join precedes producer removal and State lease
+release. Program authorization remains separate in Release; neither a fresh
+software proof nor lease availability certifies predecessor completion.
+
 Platform infrastructure launch is supporting command composition in
 `cmd/ardents-next/platform_linux.go`, not a restored Installation domain.
 Enrollment/Release bind the exact signed program/template; root-controlled

@@ -148,7 +148,11 @@ func (s *networkState) retainSourceServer() error {
 	if err != nil {
 		return err
 	}
-	return errors.Join(roles.Replace(sourceProducer("server", s.config.root), []duty.Duty{sourceServerDuty(*s.current)}), roles.Close())
+	err = roles.Claim(sourceProducer("server", s.config.root), []duty.Duty{sourceServerDuty(*s.current)})
+	if errors.Is(err, duty.ErrLocalRoleProducerRetained) {
+		err = errors.Join(&RecoveryRequiredError{Reason: "serving Source producer has no joined removal"}, err)
+	}
+	return errors.Join(err, roles.Close())
 }
 
 func sourceServerDuty(decision epoch.Decision) duty.Duty {

@@ -120,6 +120,20 @@ func openMode(input Config, ctx context.Context, fresh bool) (openedStore *store
 
 // Replace atomically replaces one producer's complete current duty set.
 func (store *store) Replace(producer [32]byte, duties []Duty) error {
+	return store.replace(producer, duties, false)
+}
+
+// Claim records a new producer only when no record for it is retained. Expiry
+// does not establish the original producer's completion. The same exclusive
+// operation observes absence and commits; this cannot adopt an old producer.
+func (store *store) Claim(producer [32]byte, duties []Duty) error {
+	if len(duties) == 0 {
+		return errors.New("local role claim has no duties")
+	}
+	return store.replace(producer, duties, true)
+}
+
+func (store *store) replace(producer [32]byte, duties []Duty, claim bool) error {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed || store.failed != nil || producer == ([32]byte{}) {
@@ -127,6 +141,13 @@ func (store *store) Replace(producer [32]byte, duties []Duty) error {
 			return errors.New("local role store requires restart after a failed commit")
 		}
 		return errors.New("local role replacement is invalid")
+	}
+	if claim {
+		for _, record := range store.state.Duties {
+			if record.Producer == producer {
+				return ErrLocalRoleProducerRetained
+			}
+		}
 	}
 	records, err := proposeParticipation(store.state.Duties, producer, duties, store.clock().UTC())
 	if err != nil {
@@ -182,3 +203,7 @@ var ErrLocalRoleProducerLimit = errors.New("local role producer limit exceeded")
 // ErrLocalRoleConflict reports an identity or family collision between
 // retained non-Initiator duties.
 var ErrLocalRoleConflict = errors.New("local role duty conflicts with retained state")
+
+// ErrLocalRoleProducerRetained refuses a new lifetime's claim of a producer
+// whose original records have not been removed after joined completion.
+var ErrLocalRoleProducerRetained = errors.New("local role producer remains retained")

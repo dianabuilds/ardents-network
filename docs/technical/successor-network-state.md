@@ -154,6 +154,17 @@ signed State and may initialize its originally empty participation root. Neither
 opening supplies Installation permission or alters expired-Epoch distribution
 or CurrentRuntime authority semantics.
 
+Serving admission uses participation's atomic `Claim` for the State-root-bound
+server producer, rather than replacing a retained producer. An original `live`
+record, even past its time bound, causes `RecoveryRequiredError` with the
+retained-producer cause before a listener is opened. The refusal changes no
+producer generation. Only the original runtime's post-join removal permits a
+new claim; a lease becoming available is not joined domain completion. Updates
+within that original lifetime still use producer-scoped replacement. No stored
+identity, wire format or duty schema changes, and no automatic repair/reset is
+introduced. This check covers retained serving producers, not every possible
+process failure or interrupted platform transition.
+
 State borrows `PermitWork` before effects and observation, outside its lock.
 The callback may be concurrent and cannot call back into State. Process resource
 sampling, protect/drain policy and process monitoring stay with the application

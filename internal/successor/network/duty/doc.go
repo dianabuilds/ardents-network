@@ -17,4 +17,7 @@
 // preparation. It claims only an existing vacant root with a newly born lease;
 // existing or partial histories refuse without cleanup. Empty history grants no
 // producer, exposure, Node duty or runtime right.
+// Claim admits an absent producer without replacing retained records, including
+// expired ones. Source uses it only at initial serving admission; its original
+// runtime keeps Replace for updates and Remove after joined serving completion.
 package duty

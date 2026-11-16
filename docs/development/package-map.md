@@ -235,7 +235,7 @@ domain or new runtime supervisor. Exact additional import permissions:
 | File | Permitted imports |
 |---|---|
 | File `cmd/ardents-next/platform_linux.go` | File `internal/successor/enrollment`; `internal/successor/release`; `internal/successor/installation/infrastructure` |
-| File `cmd/ardents-next/platform_release_linux_test.go` | File `internal/successor/enrollment`; `internal/successor/release`; `internal/successor/installation/infrastructure` |
+| File `cmd/ardents-next/platform_release_linux_test.go` | File `internal/successor/enrollment`; `internal/successor/release`; `internal/successor/installation/infrastructure`; `internal/successor/network/state`; `internal/successor/network/duty`; `tests/epochfixture/network`; `github.com/theupdateframework/go-tuf/v2/metadata` |
 | File `cmd/ardents-next/platform_unit_linux.go` | File `internal/successor/installation/systemd` |
 | File `cmd/ardents-next/platform_linux_test.go` | File `internal/successor/installation/systemd` |
 
