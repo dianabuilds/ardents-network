@@ -587,7 +587,8 @@ The Linux `installed_endpoint_linux.go` adapter calls `endpoint.Run` and renders
 only public progress and the final phase. The original participant owns Startup,
 Execution preparation, State, permission-file exchange, Stock, shared funding
 parents and IPC listeners. Its portable `declarations.go` decodes the bound
-public schemas; `declarations_linux.go` supplies native projections. Offline
+public schemas; `configuration.go` projects portable execution and Network
+configuration, while `declarations_linux.go` reads native Source inputs. Offline
 Source preparation consumes these schemas and Network configuration without
 acquiring a live participant. The native
 `permission_linux.go` retains write-once/exact retry and original parent checks.

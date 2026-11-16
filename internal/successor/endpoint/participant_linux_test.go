@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/successor/execution"
 )
 
 func TestCanceledParticipantDoesNotReadStartupOrReportProgress(t *testing.T) {
@@ -24,19 +22,6 @@ func TestCanceledParticipantDoesNotReadStartupOrReportProgress(t *testing.T) {
 	}
 	if _, err := os.Stat(root); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("startup root changed", err)
-	}
-}
-
-func TestReaderDeclarationDoesNotAcquirePublisherGrant(t *testing.T) {
-	encode := func(n byte) string { key := [32]byte{n}; return hex.EncodeToString(key[:]) }
-	plan := HeadlessPlan{Role: "reader", BrokerID: encode(1), ConnectionPrincipal: encode(2), AdministrationPrincipal: "not-an-identity"}
-	config, err := installedLocalConfig(plan)
-	if err != nil || len(config.Grants) != 1 || config.Grants[0].Surface != execution.Connection {
-		t.Fatal(config, err)
-	}
-	plan.Role = ""
-	if _, err := installedLocalConfig(plan); err == nil {
-		t.Fatal("dual-role declaration ignored invalid Publisher identity")
 	}
 }
 
