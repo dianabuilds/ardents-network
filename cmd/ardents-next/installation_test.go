@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	installation "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	installation "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
 // These portable authentication tests model the selected linux-amd64 bundle,
@@ -83,6 +83,9 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 		_ = v.Close()
 		t.Fatal(err)
 	}
+	if err := initial.Check(t.Context()); err != nil {
+		t.Fatal("original Release pair check", err)
+	}
 	p, g := initial.Targets()
 	programDecision, pOK := p.AcceptedDecision()
 	generationDecision, gOK := g.AcceptedDecision()
@@ -107,6 +110,9 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 	}
 	if err := v.Close(); err != nil {
 		t.Fatal(err)
+	}
+	if err := initial.Check(t.Context()); !errors.Is(err, release.ErrClosed) {
+		t.Fatalf("closed original verifier retained authority: %v", err)
 	}
 	// A fresh candidate reloads the actual inventory, then reopens complete
 	// established history without borrowing initial pin provenance.

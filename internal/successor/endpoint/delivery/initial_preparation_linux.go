@@ -34,6 +34,9 @@ func prepareInitialNative(ctx context.Context, request requestinput.Document, au
 	if ctx == nil || !valid {
 		return nil, ErrInput
 	}
+	if err := authorization.Check(ctx); err != nil {
+		return nil, errors.Join(ErrAuthorization, err)
+	}
 	facts, initial := authorization.InitialFacts()
 	programProof, generationProof := authorization.Targets()
 	p, program := programProof.AcceptedDecision()
@@ -49,6 +52,9 @@ func prepareInitialNative(ctx context.Context, request requestinput.Document, au
 	}
 	if err := preflightInitialEffects(ctx, request); err != nil {
 		return nil, err
+	}
+	if err := authorization.Check(ctx); err != nil {
+		return nil, errors.Join(ErrAuthorization, err)
 	}
 	lease, err := createInitialLease(ctx, declared.InstallationRoot)
 	if err != nil {

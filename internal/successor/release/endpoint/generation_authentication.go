@@ -32,10 +32,20 @@ const GenerationTarget = "ardents/linux-amd64/protected-endpoint"
 // bytes. It is not serializable installation or restart authority. Its zero
 // value grants nothing; installed ownership and admission remain separate.
 type Authorization struct {
+	verifier            *release.Verifier
 	initial             enrollment.Bundle
 	program, generation release.Authorization
 	descriptor          []byte
 	resources           map[string][]byte
+}
+
+// Check reobserves the original verifier, callers and Release floors. The
+// caller retains verifier ownership and must separately admit native effects.
+func (a Authorization) Check(ctx context.Context) error {
+	if ctx == nil || a.verifier == nil {
+		return ErrInput
+	}
+	return a.verifier.CheckAuthorizations(ctx, a.program, a.generation)
 }
 
 func (a Authorization) Targets() (release.Authorization, release.Authorization) {
@@ -189,10 +199,10 @@ func authenticate(ctx context.Context, v *release.Verifier, files inventory, f e
 	if !bytes.Equal(acceptedProgram.Digest, programDigest[:]) || !bytes.Equal(acceptedGeneration.Digest, generationDigest[:]) {
 		return Authorization{}, ErrBinding
 	}
-	if err := ctx.Err(); err != nil {
+	if err := v.CheckAuthorizations(ctx, programProof, generationProof); err != nil {
 		return Authorization{}, err
 	}
-	return Authorization{program: programProof, generation: generationProof, descriptor: descriptor, resources: resources}, nil
+	return Authorization{verifier: v, program: programProof, generation: generationProof, descriptor: descriptor, resources: resources}, nil
 }
 
 // CoherentTargets checks agreement of detached target and descriptor facts.
