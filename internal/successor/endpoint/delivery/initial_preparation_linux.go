@@ -21,12 +21,13 @@ import (
 // lease. It is private: platform/protection admission and genuine command
 // composition remain necessary before calling this effect owner.
 type initialPreparation struct {
-	lease    *installationLease
-	journal  *journal.Owner
-	prepared preparedInstallation
-	stage    *installationTransaction
-	created  *manageddirectory.Creation
-	terminal error
+	authorization generationauthorization.Authorization
+	lease         *installationLease
+	journal       *journal.Owner
+	prepared      preparedInstallation
+	stage         *installationTransaction
+	created       *manageddirectory.Creation
+	terminal      error
 }
 
 func prepareInitialNative(ctx context.Context, request requestinput.Document, authorization generationauthorization.Authorization) (result *initialPreparation, returnedErr error) {
@@ -60,7 +61,7 @@ func prepareInitialNative(ctx context.Context, request requestinput.Document, au
 	if err != nil {
 		return nil, err
 	}
-	owned := &initialPreparation{lease: lease}
+	owned := &initialPreparation{lease: lease, authorization: authorization}
 	defer func() {
 		if returnedErr != nil {
 			owned.terminal = returnedErr
@@ -87,8 +88,14 @@ func prepareInitialNative(ctx context.Context, request requestinput.Document, au
 	}
 	record := journal.Record{Schema: "ardents-endpoint-installation-preparation-v1", GenerationDigest: digestHex(authorization.Descriptor()),
 		RequestDigest: digestHex(raw), Phase: "creating-account"}
+	if err := owned.checkAuthorization(ctx); err != nil {
+		return nil, err
+	}
 	owned.journal, err = journal.Create(ctx, filepath.Join(lease.path, "preparation"), record)
 	if err != nil {
+		return nil, err
+	}
+	if err := owned.checkAuthorization(ctx); err != nil {
 		return nil, err
 	}
 	if err := createEndpointAccount(ctx); err != nil {
@@ -99,6 +106,9 @@ func prepareInitialNative(ctx context.Context, request requestinput.Document, au
 		return nil, err
 	}
 	owned.prepared.uid, owned.prepared.gid = uid, gid
+	if err := owned.checkAuthorization(ctx); err != nil {
+		return nil, err
+	}
 	record.Phase, record.UID, record.GID = "creating-mutable-roots", uid, gid
 	if err := owned.journal.Append(ctx, record); err != nil {
 		return nil, err
@@ -112,6 +122,9 @@ func prepareInitialNative(ctx context.Context, request requestinput.Document, au
 		return nil, directoryObservationError(err)
 	}
 	for _, path := range paths {
+		if err := owned.checkAuthorization(ctx); err != nil {
+			return nil, err
+		}
 		if err := owned.created.Create(path); err != nil {
 			return nil, directoryObservationError(err)
 		}
@@ -122,6 +135,9 @@ func prepareInitialNative(ctx context.Context, request requestinput.Document, au
 			return nil, directoryObservationError(err)
 		}
 		owned.prepared.roots = append(owned.prepared.roots, rootIdentity{Path: path, Device: identity.Device, Inode: identity.Inode})
+	}
+	if err := owned.checkAuthorization(ctx); err != nil {
+		return nil, err
 	}
 	record.Phase = "mutable-roots-prepared"
 	if err := owned.journal.Append(ctx, record); err != nil {
@@ -135,6 +151,9 @@ func prepareInitialNative(ctx context.Context, request requestinput.Document, au
 	}
 	files, selected, err := assembleGeneration(ctx, request, authorization, owned.prepared)
 	if err != nil {
+		return nil, err
+	}
+	if err := owned.checkAuthorization(ctx); err != nil {
 		return nil, err
 	}
 	owned.stage, err = stageInitialGeneration(ctx, lease, request, files, selected, gid)
@@ -185,7 +204,17 @@ func (owned *initialPreparation) archiveInitialIntent(ctx context.Context, reque
 	return owned.observe(ctx, request)
 }
 
+func (owned *initialPreparation) checkAuthorization(ctx context.Context) error {
+	if err := owned.authorization.Check(ctx); err != nil {
+		return errors.Join(ErrAuthorization, err)
+	}
+	return nil
+}
+
 func (owned *initialPreparation) observe(ctx context.Context, request requestinput.Document) error {
+	if err := owned.authorization.Check(ctx); err != nil {
+		return errors.Join(ErrAuthorization, err)
+	}
 	if err := observeRequestCustody(ctx, request); err != nil {
 		return err
 	}
@@ -482,6 +511,9 @@ func provisionInitial(ctx context.Context, request requestinput.Document, author
 			owned.terminal = errors.Join(owned.terminal, owned.journal.RecordFailure(ctx, returnedErr))
 		}
 		returnedErr = errors.Join(returnedErr, owned.close(), ctx.Err())
+		if returnedErr == nil {
+			returnedErr = owned.checkAuthorization(ctx)
+		}
 		if returnedErr != nil {
 			result = ProvisionResult{}
 		}

@@ -6,7 +6,10 @@ program/generation pair от отдельного `release/endpoint`. Private pr
 initial pin и frozen inventory остаются у этого portable владельца; Endpoint
 получает genuine Release proofs и detached copies через его Interface.
 Пара проверяет исходный Release verifier при выдаче и при initial admission до
-и после native preflight; это не заменяет проверки на последующих effects.
+и после native preflight. Initial preparation повторно проверяет его перед
+основными ранними effects, при своих observations и после joined cleanup перед
+успешным результатом. Проверки внутри каждой физической операции и successor/
+recovery требуют отдельной оценки; эти проверки не дают права native effects.
 Native initial provision удерживает
 собственные lease/journals и fixed resources, завершает stopped selection и
 intent archive. Read-only Check независимо сверяет выбранные bytes, account и

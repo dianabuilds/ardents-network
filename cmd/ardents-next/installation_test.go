@@ -78,7 +78,9 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 			}
 		}
 	}()
-	initial, err := installation.AuthenticateInitial(t.Context(), v, bundle, in)
+	proofContext, cancelProof := context.WithCancel(t.Context())
+	defer cancelProof()
+	initial, err := installation.AuthenticateInitial(proofContext, v, bundle, in)
 	if err != nil {
 		_ = v.Close()
 		t.Fatal(err)
@@ -107,6 +109,10 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 	programDecision, _ = p.AcceptedDecision()
 	if !bytes.Equal(programDecision.Digest, resourceDigest[:]) || !bytes.Equal(generationDecision.Digest, descriptorDigest[:]) {
 		t.Fatal("authorization or generation bytes alias exported copies")
+	}
+	cancelProof()
+	if err := initial.Check(t.Context()); !errors.Is(err, context.Canceled) {
+		t.Fatalf("fresh caller revived canceled original proof: %v", err)
 	}
 	if err := v.Close(); err != nil {
 		t.Fatal(err)
