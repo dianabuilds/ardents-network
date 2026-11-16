@@ -12,7 +12,7 @@ func TestReadInvocationRequiresExactOriginalTypedValues(t *testing.T) {
 	if !ok || pid != 7317 || id != [16]byte{9} {
 		t.Fatal("valid observation refused", pid, id, ok)
 	}
-	for _, raw := range []string{`[]`, `[9]`, `null`, `"CQAAAAAAAAAAAAAAAAAAAA=="`, `[256,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`, `[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`} {
+	for _, raw := range []string{`[]`, `[9]`, `null`, `"CQAAAAAAAAAAAAAAAAAAAA=="`, `[9,null,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`, `[256,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`, `[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]`} {
 		unit["InvocationID"] = Value{Type: "ay", Data: json.RawMessage(raw)}
 		if _, _, ok := ReadInvocation(unit, service); ok {
 			t.Fatal("invalid invocation accepted", raw)

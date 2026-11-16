@@ -133,27 +133,11 @@ func endpointExecObservation(properties managerProperties, root, generationDiges
 }
 
 func Invocation(unit, service managerProperties) (uint32, [16]byte, error) {
-	var pid uint32
-	var invocation [16]byte
-	main := service["MainPID"]
-	value := unit["InvocationID"]
-	var parts []json.RawMessage
-	if main.Type != "u" || systemd.Decode(main.Data, &pid) != nil || pid == 0 ||
-		value.Type != "ay" || systemd.Decode(value.Data, &parts) != nil || len(parts) != len(invocation) {
-		return 0, invocation, ErrBinding
+	pid, id, ok := systemd.ReadInvocation(unit, service)
+	if !ok {
+		return 0, [16]byte{}, ErrBinding
 	}
-	for index, part := range parts {
-		var number uint8
-		if systemd.Decode(part, &number) != nil ||
-			!systemd.Matches(managerProperties{"value": {Type: "y", Data: part}}, "value", "y", number) {
-			return 0, [16]byte{}, ErrBinding
-		}
-		invocation[index] = number
-	}
-	if invocation == [16]byte{} {
-		return 0, invocation, ErrBinding
-	}
-	return pid, invocation, nil
+	return pid, id, nil
 }
 
 // This validates typed live observations against the original identity. Native

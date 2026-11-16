@@ -14,7 +14,7 @@ func ReadInvocation(unit, service Properties) (uint32, [16]byte, bool) {
 		return 0, [16]byte{}, false
 	}
 	for index, part := range parts {
-		if Decode(part, &id[index]) != nil {
+		if Decode(part, &id[index]) != nil || !Matches(Properties{"value": {Type: "y", Data: part}}, "value", "y", id[index]) {
 			return 0, [16]byte{}, false
 		}
 	}

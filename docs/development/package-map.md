@@ -1,6 +1,6 @@
 # Package map
 
-The fixed loaded-property comparisons for Source, Forwarding, JOIN, Descriptor and Introduction use the shared `deployment/service_observation.go` policy and detached `systemdproperty` values. All five share its main-process and invocation decoders; role-specific running and retirement decisions remain separate. The exact `start_initial_linux.go` files in `installation/forwarding`, `installation/join`, `installation/descriptor` and `installation/introduction` may import `systemdproperty` for invocation decoding. These observations acquire no manager or installation authority.
+The fixed loaded-property comparisons for Source, Forwarding, JOIN, Descriptor and Introduction use the shared `deployment/service_observation.go` policy and detached `systemdproperty` values. All five share its main-process and invocation decoders; Endpoint uses the same strict invocation decoder. Null elements are not invocation bytes. Role-specific running and retirement decisions remain separate. The exact `start_initial_linux.go` files in `installation/forwarding`, `installation/join`, `installation/descriptor` and `installation/introduction` may import `systemdproperty` for invocation decoding. These observations acquire no manager or installation authority.
 
 ## Installed role declaration and protection policy
 
