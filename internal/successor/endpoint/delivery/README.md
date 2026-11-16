@@ -785,14 +785,13 @@ result; clean manager shutdown не заявлен.
 и inventory проверками, но без independent-pin или running-executable claim.
 Новый Release имеет `Evaluate`, `CurrentFloors(ctx)` и immutable
 `Authorization.AcceptedDecision` и `OpenRetained`, который не создаёт пустую
-историю доверия и требует сохранённые floors всех metadata roles. Новый
-`installation.AuthenticateInitial` потребляет настоящий pinned Bundle, а
-`AuthenticateCandidate` — отдельный Candidate и уже полные Release floors.
-Обе операции замораживают те же metadata/local/reference inputs, проверяют
-private proofs и удерживают exact generation bytes; отказ второй оценки
-не возвращает floors. Настоящие `ardents-next installation authenticate-initial`
-и `authenticate-candidate` выполняют эти операции, закрывают Release owner и
-возвращают только `authenticated-generation`. Это не `installed` и не readiness.
+историю доверия и требует сохранённые floors всех metadata roles.
+`release/endpoint.AuthenticateInitial` потребляет pinned Bundle, а
+`AuthenticateCandidate` — Candidate и полные Release floors. Эти операции
+вызываются из живой delivery/recovery composition, которая удерживает Release
+до завершения физических borrowers. Отдельного CLI-результата
+`authenticated-generation` нет: закрытая проверка не передаёт право следующей
+операции. Отказ второй оценки не возвращает уже сохранённые floors.
 Successor transition отдельно удерживает installed binding/history continuity
 и actual native transaction; одна полная Release history их не заменяет.
 Candidate не возвращает `Bundle` и не принимает искусственно вычисленный
@@ -809,9 +808,8 @@ declarations через `request.Decode`, сохраняя текущие schema
 Root declarations выбранного Linux-профиля используют одну POSIX grammar
 на всех hosts; это не native filesystem проверка или Windows installation.
 Нормализованные дубликаты public keys, invalid threshold и перекрывающиеся
-mutable roots отказывают до эффектов. `authenticate-initial --request <file>`
-и `authenticate-candidate --request <file>` потребляют проверенные
-bundle/pin/history/reference inputs через настоящие Enrollment/Release.
+mutable roots отказывают до эффектов. Проверенные bundle/pin/history/reference
+inputs потребляются самой delivery/recovery операцией.
 Декодирование не открывает State, Source credentials или grants; bounded
 command-file reading не доказывает root-owned custody. Новая runtime
 composition начальной остановленной установки, read-only inspection и bounded

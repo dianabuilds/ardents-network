@@ -1715,3 +1715,11 @@ missing history; a timeout notice retains original custody until actual join.
 admits a fresh same-generation invocation only after complete original retirement
 and fresh Release/native checks. Existing semantic histories and keys are retained;
 missing history refuses, and no automatic restart or replacement follows.
+
+### Retired detached Endpoint authentication
+
+`installation authenticate-initial` and `installation authenticate-candidate`,
+including their `--request` forms, are retired. They refuse before input or
+Release history effects. Endpoint delivery and recovery obtain their private
+Enrollment/Release proofs within their own operation and retain the verifier
+through physical cleanup; a printed authentication result grants no continuation.

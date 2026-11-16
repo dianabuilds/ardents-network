@@ -84,24 +84,18 @@ func TestDetachedInfrastructureInspectionCannotAdvanceRetainedFloors(t *testing.
 				t.Fatal(err)
 			}
 			oldInput := infrastructureCandidateInput(t, candidate)
-			if err := initialInspectionMetadata(t.Context(), v, oldInput); err != nil {
-				t.Fatalf("empty initial inspection history refused: %v", err)
-			}
 			if _, ok := v.Evaluate(t.Context(), oldInput).Authorization(); !ok {
 				t.Fatal("initial signed test floors refused")
 			}
 			if err := sameReleaseMetadata(t.Context(), v, oldInput); err != nil {
 				t.Fatalf("exact retained metadata refused: %v", err)
 			}
-			if err := initialInspectionMetadata(t.Context(), v, oldInput); err != nil {
-				t.Fatalf("unchanged initial inspection refused: %v", err)
-			}
 			nextCandidate, err := enrollment.ReadInfrastructureCandidate(t.Context(), next)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err := initialInspectionMetadata(t.Context(), v, infrastructureCandidateInput(t, nextCandidate)); err == nil {
-				t.Fatal("detached initial inspection accepted newer metadata")
+			if err := sameReleaseMetadata(t.Context(), v, infrastructureCandidateInput(t, nextCandidate)); err == nil {
+				t.Fatal("detached inspection accepted newer metadata")
 			}
 			missing := oldInput
 			missing.Files = map[string][]byte{}

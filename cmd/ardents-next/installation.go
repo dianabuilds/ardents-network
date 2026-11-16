@@ -9,14 +9,12 @@ import (
 	"time"
 
 	installation "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery"
-	requestinput "github.com/dianabuilds/ardents-network/internal/successor/endpoint/delivery/request"
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
 	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/release/endpoint"
 )
 
-// Authentication and stopped provisioning retain separate acceptance results.
-// Neither starts a worker or establishes Service readiness.
+// Transitional native delivery commands retain their own original custody.
 func runInstallation(ctx context.Context, args []string, out io.Writer) int {
 	if len(args) == 3 && args[0] == "recover-installed" {
 		reference, err := time.Parse(time.RFC3339Nano, args[2])
@@ -45,33 +43,7 @@ func runInstallation(ctx context.Context, args []string, out io.Writer) int {
 	if len(args) == 3 && args[0] == "provision" && args[1] == "--request" {
 		return runInstallationProvision(ctx, args[2], out)
 	}
-	// A canonical Installation request supplies the same byte-authentication
-	// inputs after its declarations have passed their own portable admission.
-	// This branch does not provision the declared roots or load credentials.
-	if len(args) == 3 && (args[0] == "authenticate-initial" || args[0] == "authenticate-candidate") && args[1] == "--request" {
-		if err := ctx.Err(); err != nil {
-			return installationFailure(ctx, out, err)
-		}
-		raw, err := readBounded(args[2], 64<<10)
-		if err != nil {
-			return installationFailure(ctx, out, err)
-		}
-		document, err := requestinput.Decode(ctx, raw, args[0] == "authenticate-initial")
-		if err != nil {
-			return installationFailure(ctx, out, err)
-		}
-		request, ok := document.Declaration()
-		if !ok {
-			return installationFailure(ctx, out, requestinput.ErrInput)
-		}
-		parameters := []string{args[0], request.BundleRoot}
-		if args[0] == "authenticate-initial" {
-			parameters = append(parameters, request.ManifestSHA256)
-		}
-		parameters = append(parameters, request.ReleaseFloorRoot, request.ReferenceTime)
-		return runProtectedRelease(ctx, parameters, out)
-	}
-	return runProtectedRelease(ctx, args, out)
+	return enrollmentReport(out, "invalid-input", 2)
 }
 
 func runInstallationSuccessor(ctx context.Context, filename string, out io.Writer) int {

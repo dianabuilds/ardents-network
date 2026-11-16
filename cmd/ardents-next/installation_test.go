@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -392,45 +391,6 @@ func TestInstallationOriginalCancellationAtPairHandoffRetainsFloors(t *testing.T
 	}
 }
 
-func TestInstallationCompiledCandidateAndInitialUseIndependentTrust(t *testing.T) {
-	directory, pin, program := signedConsumerTargets(t, "linux-amd64", true, true, 1)
-	history := filepath.Join(t.TempDir(), "history")
-	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
-		// Actual native-platform admission refusal runs on every other host;
-		// portable successful pair verification above still uses genuine owners.
-		cmd := exec.CommandContext(t.Context(), compiledCommand(t), "installation", "authenticate-candidate", directory, history, "2030-01-02T03:04:05Z")
-		out, err := cmd.CombinedOutput()
-		if err == nil || !strings.Contains(string(out), "installation-incompatible") {
-			t.Fatalf("foreign platform accepted: %v %s", err, out)
-		}
-		if _, err := os.Lstat(history); !errors.Is(err, os.ErrNotExist) {
-			t.Fatal("foreign platform created history")
-		}
-		return
-	}
-	for _, invocation := range []struct {
-		args     []string
-		want     string
-		accepted bool
-	}{
-		{[]string{"authenticate-candidate", directory, history, "2030-01-02T03:04:05Z"}, "installation-trust-unavailable", false},
-		{[]string{"authenticate-initial", directory, strings.Repeat("0", 64), history, "2030-01-02T03:04:05Z"}, "installation-refused", false},
-		{[]string{"authenticate-initial", directory, pin, history, "2030-01-02T03:04:05Z"}, "authenticated-generation", true},
-		{[]string{"authenticate-candidate", directory, history, "2030-01-02T03:04:05Z"}, "authenticated-generation", true},
-	} {
-		cmd := exec.CommandContext(t.Context(), program, append([]string{"installation"}, invocation.args...)...)
-		out, err := cmd.CombinedOutput()
-		if (err == nil) != invocation.accepted || !strings.Contains(string(out), invocation.want) {
-			t.Fatalf("actual authentication consumer: %v %s", err, out)
-		}
-		if !invocation.accepted {
-			if _, err := os.Lstat(history); !errors.Is(err, os.ErrNotExist) {
-				t.Fatal("refusal created initial trust history")
-			}
-		}
-	}
-}
-
 // The literal is an independent request schema fixture, not a production encoder.
 func installationRequestBytes(t *testing.T, bundle, pin, history string) []byte {
 	t.Helper()
@@ -447,56 +407,6 @@ func installationRequestBytes(t *testing.T, bundle, pin, history string) []byte 
 	raw = strings.Replace(raw, "\"release_floor_root\":\"/floors\"", "\"release_floor_root\":"+quoted(history), 1)
 	raw = strings.Replace(raw, strings.Repeat("01", 32), pin, 1)
 	return []byte(raw + "\n")
-}
-
-func TestInstallationCompiledRequestAdmissionPrecedesTrust(t *testing.T) {
-	directory, pin, program := signedConsumerTargets(t, "linux-amd64", true, true, 1)
-	history := filepath.Join(t.TempDir(), "history")
-	requestFile := filepath.Join(t.TempDir(), "request.json")
-	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
-		// A valid selected-platform declaration must decode on every host.
-		// Its nonexistent Linux bundle is refused, never turned into installation.
-		raw := installationRequestBytes(t, "/bundle", pin, "/floors")
-		if err := os.WriteFile(requestFile, raw, 0600); err != nil {
-			t.Fatal(err)
-		}
-		cmd := exec.CommandContext(t.Context(), compiledCommand(t), "installation", "authenticate-initial", "--request", requestFile)
-		out, err := cmd.CombinedOutput()
-		if err == nil || !strings.Contains(string(out), "installation-refused") {
-			t.Fatalf("request consumer absent or accepted: %v %s", err, out)
-		}
-		return
-	}
-	raw := installationRequestBytes(t, directory, pin, history)
-	invalid := bytes.Replace(raw, []byte("\"family\":\"b\""), []byte("\"family\":\"a\""), 1)
-	if err := os.WriteFile(requestFile, invalid, 0600); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.CommandContext(t.Context(), program, "installation", "authenticate-initial", "--request", requestFile)
-	out, err := cmd.CombinedOutput()
-	if err == nil || !strings.Contains(string(out), "installation-refused") {
-		t.Fatalf("invalid request accepted: %v %s", err, out)
-	}
-	if _, err := os.Lstat(history); !errors.Is(err, os.ErrNotExist) {
-		t.Fatal("request refusal created trust history")
-	}
-	if err := os.WriteFile(requestFile, raw, 0600); err != nil {
-		t.Fatal(err)
-	}
-	cmd = exec.CommandContext(t.Context(), program, "installation", "authenticate-initial", "--request", requestFile)
-	out, err = cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(out), "authenticated-generation") {
-		t.Fatalf("genuine request authentication refused: %v %s", err, out)
-	}
-	withoutPin := bytes.Replace(raw, []byte("\"manifest_sha256\":\""+pin+"\","), nil, 1)
-	if err := os.WriteFile(requestFile, withoutPin, 0600); err != nil {
-		t.Fatal(err)
-	}
-	cmd = exec.CommandContext(t.Context(), program, "installation", "authenticate-candidate", "--request", requestFile)
-	out, err = cmd.CombinedOutput()
-	if err != nil || !strings.Contains(string(out), "authenticated-generation") {
-		t.Fatalf("genuine retained request refused: %v %s", err, out)
-	}
 }
 
 func TestInstallationSuccessorCommandRefusesBeforeTrust(t *testing.T) {
@@ -526,5 +436,25 @@ func TestInstallationSuccessorRecoveryCommandRefusesBeforeTrust(t *testing.T) {
 	// profile. Both must reach the actual new consumer before any trust effects.
 	if err == nil || !strings.Contains(string(output), "installation-") || strings.Contains(string(output), "invalid-input") || strings.Contains(string(output), "installed-recovered-started") {
 		t.Fatalf("actual recovery consumer absent or accepting: %v %s", err, output)
+	}
+}
+
+// Retired detached authentication must refuse before reading inputs or creating
+// Release history. The live delivery operation obtains its own private pair.
+func TestInstallationDetachedAuthenticationIsNotACommand(t *testing.T) {
+	history := filepath.Join(t.TempDir(), "history")
+	for _, args := range [][]string{
+		{"authenticate-initial", "/absent", strings.Repeat("0", 64), history, "2030-01-02T03:04:05Z"},
+		{"authenticate-candidate", "/absent", history, "2030-01-02T03:04:05Z"},
+		{"authenticate-initial", "--request", "/absent"},
+		{"authenticate-candidate", "--request", "/absent"},
+	} {
+		var out bytes.Buffer
+		if code := runInstallation(t.Context(), args, &out); code != 2 || !strings.Contains(out.String(), "invalid-input") {
+			t.Fatalf("retired authentication entered delivery: %d %s", code, out.String())
+		}
+	}
+	if _, err := os.Lstat(history); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("retired command touched history", err)
 	}
 }
