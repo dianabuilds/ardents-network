@@ -628,6 +628,8 @@ func successorImportAllowed(source, dependency string) bool {
 			"cmd/ardents-node/introduction_initial_linux.go",
 			"cmd/ardents-node/join_installation_linux.go",
 			"cmd/ardents-node/source_installation_linux.go",
+			"cmd/ardents-node/release_initial_linux.go",
+			"cmd/ardents-node/release_initial_linux_test.go",
 			"internal/successor/installation/descriptor/binding.go",
 			"internal/successor/installation/descriptor/completed_initial_linux.go",
 			"internal/successor/installation/descriptor/generation_bytes.go",
@@ -1017,6 +1019,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-node/source_installation_linux.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/state" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
+			return true
+		}
+		if source == "cmd/ardents-node/release_initial_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
 		if source == "tests/e2e/service/service_custody_process_linux_test.go" && dependency == modulePath+"/internal/successor/publication" {

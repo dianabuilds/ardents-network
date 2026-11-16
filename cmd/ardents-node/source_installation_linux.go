@@ -7,8 +7,6 @@ import (
 	"errors"
 	"io"
 	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
@@ -108,7 +106,7 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 		offset = 1
 	}
 	distribution, history := args[1], args[2+offset]
-	if !sourceInstallationIndependent(distribution, history) {
+	if !independentReleasePaths(distribution, history) {
 		return infrastructure.ErrBinding
 	}
 	if initial || replacing || recovering {
@@ -195,32 +193,4 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 		return infrastructure.RestartSource(ctx, verifier, authorization, args[5], history)
 	}
 	return infrastructure.StartSource(ctx, verifier, authorization, args[5], history)
-}
-
-// Check path declarations before Release can create or advance history.
-// Authentication and Installation still retain their own independent native
-// ancestors, immutable inputs and original verifier custody.
-func sourceInstallationIndependent(distribution, history string) bool {
-	for _, path := range []string{distribution, history} {
-		if !filepath.IsAbs(path) || filepath.Clean(path) != path || path == "/" || strings.ContainsRune(path, 0) {
-			return false
-		}
-		for p := path; ; p = filepath.Dir(p) {
-			info, err := os.Lstat(p)
-			if err != nil && !os.IsNotExist(err) {
-				return false
-			}
-			if err == nil && (!info.IsDir() || info.Mode()&os.ModeSymlink != 0) {
-				return false
-			}
-			if p == "/" {
-				break
-			}
-		}
-	}
-	inside := func(parent, child string) bool {
-		relative, err := filepath.Rel(parent, child)
-		return err == nil && (relative == "." || relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator)))
-	}
-	return !inside(distribution, history) && !inside(history, distribution)
 }

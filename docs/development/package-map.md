@@ -593,6 +593,10 @@ grants no Enrollment provenance or role authorization.
 `cmd/ardents-next/node_release_unix.go` uses Enrollment, Release and Release
 infrastructure to authenticate retained candidates through each role's own
 proof; its public report grants no deployment or runtime authority.
+`cmd/ardents-node/release_initial_linux.go` uses those same owners for the
+initial pair of the actual enrolled executable, without installation or Route
+imports; `release_paths_linux.go` checks independent public paths before opening
+Release history. Actual installed qualification remains separate.
 The portable `source_release_unix_test.go` and `infrastructure_fixture_unix_test.go`
 use Enrollment and Release to check signed retained candidates; the latter also
 uses the existing TUF metadata dependency to construct its independent fixture.

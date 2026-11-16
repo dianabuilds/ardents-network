@@ -28,13 +28,16 @@ func runCommand(ctx context.Context, arguments []string, output io.Writer) error
 	// Installed Source and its retired selector reach their own admission before
 	// any optional diagnostic socket is opened. Installation is a distinct root
 	// operation, with no process diagnostic side effect either.
-	if len(arguments) > 0 && (arguments[0] == "source" || arguments[0] == "installation" || arguments[0] == "forwarding" || arguments[0] == "join" || arguments[0] == "descriptor" || arguments[0] == "introduction") {
+	if len(arguments) > 0 && (arguments[0] == "source" || arguments[0] == "installation" || arguments[0] == "forwarding" || arguments[0] == "join" || arguments[0] == "descriptor" || arguments[0] == "introduction" || arguments[0] == "release") {
 		return run(ctx, arguments, output)
 	}
 	return processdiag.Run(ctx, os.Getenv("ARDENTS_DEBUG_SOCKET"), func(workCtx context.Context) error { return run(workCtx, arguments, output) })
 }
 
 func run(ctx context.Context, arguments []string, output io.Writer) error {
+	if len(arguments) > 0 && arguments[0] == "release" {
+		return runInitialInfrastructureRelease(ctx, arguments[1:], output)
+	}
 	if len(arguments) > 0 && arguments[0] == "introduction" {
 		return runIntroductionInstallation(ctx, arguments[1:], output)
 	}
