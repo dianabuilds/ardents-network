@@ -26,7 +26,13 @@ func TestIssuerProfileCommandsRefuseBeforeReadingOnOtherPlatforms(t *testing.T) 
 func TestIssuerProfileUnsupportedCommandRefusesBeforeConfigRead(t *testing.T) {
 	base := t.TempDir()
 	missing := filepath.Join(base, "private-config-that-does-not-exist")
-	for _, args := range [][]string{{"node-identity", "import"}, {"issuance", "initialize-profile"}, {"issuance", "inspect-profile"}, {"admission", "prepare-binding"}} {
+	for _, args := range [][]string{
+		{"node-identity", "import"}, {"issuance", "initialize-profile"},
+		{"issuance", "inspect-profile"}, {"admission", "prepare-binding"},
+		{"issuance", "initialize"}, {"issuance", "inspect"},
+		{"issuance", "initialize-results"}, {"issuance", "issue"},
+		{"admission", "initialize"}, {"admission", "debit"},
+	} {
 		cmd := exec.CommandContext(t.Context(), compiledCommand(t), append(args, "--config", missing)...)
 		raw, e := cmd.Output()
 		if e == nil {

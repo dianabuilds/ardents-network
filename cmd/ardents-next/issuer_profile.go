@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"runtime"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
@@ -27,7 +28,7 @@ func runIssuerProfile(ctx context.Context, operation string, args []string, out,
 		}
 		return code
 	}
-	if !issuance.Supported() {
+	if runtime.GOOS != "linux" || !issuance.Supported() {
 		r.Outcome = "unsupported-platform"
 		return write()
 	}

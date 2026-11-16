@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"runtime"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 )
@@ -66,7 +67,7 @@ func runAdmission(ctx context.Context, args []string, out, diagnostic io.Writer)
 		return write()
 	}
 	r.Operation = "admission." + args[0]
-	if !quota.Supported() {
+	if runtime.GOOS != "linux" || !quota.Supported() {
 		r.Outcome = quota.Unsupported
 		return write()
 	}

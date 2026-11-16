@@ -8,6 +8,11 @@ at every authority boundary with the current UTC wall clock. Removing/changing
 the file withdraws subsequent admission; reading signed bytes alone is never
 promoted into trusted Network authority.
 
+Native quota and issuer key/profile/result command adapters retain the selected
+Linux-only surface and refuse before reading private configuration elsewhere.
+Availability of a shared Unix storage mechanism does not select these commands
+on another platform or qualify their private-input/export lifecycle there.
+
 ## Invocation and input
 
 Every command takes `--config /absolute/file.json`. Unknown/duplicate JSON fields,

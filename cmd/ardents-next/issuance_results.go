@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"runtime"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
@@ -33,7 +34,7 @@ func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.W
 		return write()
 	}
 	r.Operation = "issuance." + args[0]
-	if !issuance.Supported() {
+	if runtime.GOOS != "linux" || !issuance.Supported() {
 		r.Outcome = "unsupported-platform"
 		return write()
 	}
