@@ -272,8 +272,11 @@ The current participant uses `state.Open`, which can initialize an empty State
 directory. Startup retains the mutable directory's identity and access but does
 not establish whether its State history is genuinely new. If previously retained
 history is removed while the directory remains, an empty directory can therefore
-be treated as a fresh root; this follows from the inspected source, not a native
-reproduction. `state.OpenRetained` refuses missing history, but using it for all
+be treated as a fresh root. A focused durable-State unit check on macOS and
+Linux reproduced ordinary `Open` recreating its marker after stored test data
+was removed; `OpenRetained` refused the same empty retained directory without
+creating entries. This is not an installed Endpoint reproduction.
+`state.OpenRetained` refuses missing history, but using it for all
 starts would also refuse a genuine first initialization. Replacing the
 installation handoff must supply a genuine first-creation fact or use strict
 retained opening; an empty path or a caller-selected flag is not that fact.

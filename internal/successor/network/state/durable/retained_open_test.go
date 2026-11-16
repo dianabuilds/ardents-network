@@ -53,3 +53,44 @@ func TestRetainedLeaseNeverCreatesMissingLock(t *testing.T) {
 		t.Fatalf("retained lease created a missing lock: %v", err)
 	}
 }
+
+func TestRetainedRootDoesNotReinitializeErasedHistory(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state")
+	owner, err := Open(path, testLimits())
+	if err != nil {
+		t.Fatal(err)
+	}
+	control := []byte("previously accepted state")
+	name := fmt.Sprintf("%x", sha256.Sum256(control))
+	if err := owner.CommitControl(name, control); err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
+	}
+	original, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if err := os.RemoveAll(filepath.Join(path, entry.Name())); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if reopened, err := OpenRetained(path, testLimits()); err == nil {
+		_ = reopened.Close()
+		t.Fatal("erased retained history was accepted")
+	}
+	after, err := os.Stat(path)
+	if err != nil || !os.SameFile(original, after) {
+		t.Fatal("refusal changed the original directory", err)
+	}
+	entries, err = os.ReadDir(path)
+	if err != nil || len(entries) != 0 {
+		t.Fatal("refusal recreated erased history", entries, err)
+	}
+}
