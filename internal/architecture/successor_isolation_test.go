@@ -1041,7 +1041,7 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 	}
-	if (source == "internal/successor/installation/forwarding/recovered_retirement_linux.go" || source == "internal/successor/installation/forwarding/retirement_storage_linux.go" || source == "internal/successor/installation/forwarding/retirement_snapshot_linux.go" || source == "internal/successor/installation/forwarding/retirement_records_linux_test.go") && dependency == modulePath+"/internal/successor/installation/journal" {
+	if (source == "internal/successor/installation/forwarding/recovered_retirement_linux.go" || source == "internal/successor/installation/forwarding/retirement_storage_linux.go" || source == "internal/successor/installation/forwarding/retirement_snapshot_linux.go") && dependency == modulePath+"/internal/successor/installation/journal" {
 		return true
 	}
 	if source == "internal/successor/installation/forwarding/initial_install_linux.go" && (dependency == modulePath+"/internal/successor/installation/systemd" || dependency == modulePath+"/internal/successor/release") {
@@ -2110,7 +2110,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 
 // Fixed JOIN first-start and its separate native regression consumers.
 func joinFirstStartImportAllowed(source, dependency string) bool {
-	if (source == "internal/successor/installation/join/retirement_storage_linux.go" || source == "internal/successor/installation/join/retirement_snapshot_linux.go" || source == "internal/successor/installation/join/retirement_records_linux_test.go" || source == "internal/successor/installation/join/start_storage_linux.go" || source == "internal/successor/installation/join/start_snapshot_linux.go" || source == "internal/successor/installation/join/start_initial_linux.go" || source == "internal/successor/installation/join/start_attempt_linux.go" || source == "internal/successor/installation/join/attempt_linux_test.go" || source == "internal/successor/installation/join/invocation_history_linux.go") && dependency == modulePath+"/internal/successor/installation/journal" {
+	if (source == "internal/successor/installation/join/retirement_storage_linux.go" || source == "internal/successor/installation/join/retirement_snapshot_linux.go" || source == "internal/successor/installation/join/start_storage_linux.go" || source == "internal/successor/installation/join/start_snapshot_linux.go" || source == "internal/successor/installation/join/start_initial_linux.go" || source == "internal/successor/installation/join/start_attempt_linux.go" || source == "internal/successor/installation/join/attempt_linux_test.go" || source == "internal/successor/installation/join/invocation_history_linux.go") && dependency == modulePath+"/internal/successor/installation/journal" {
 		return true
 	}
 	switch source {
