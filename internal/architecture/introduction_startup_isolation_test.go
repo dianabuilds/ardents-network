@@ -89,7 +89,7 @@ func introductionStartupImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/successor/release":
 			return true
 		}
-	case "internal/successor/installation/introduction/loaded_policy_linux.go":
+	case "internal/successor/installation/introduction/loaded_policy.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/systemdproperty":
 			return true

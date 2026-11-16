@@ -548,23 +548,25 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 	if dependency == modulePath+"/internal/successor/deployment" {
 		switch source {
-		case "internal/successor/installation/join/loaded_policy_linux.go",
-			"internal/successor/installation/descriptor/loaded_policy_linux.go",
-			"internal/successor/installation/introduction/loaded_policy_linux.go",
-			"internal/successor/installation/forwarding/loaded_policy_linux.go",
+		case "internal/successor/installation/join/loaded_policy.go",
+			"internal/successor/installation/descriptor/loaded_policy.go",
+			"internal/successor/installation/introduction/loaded_policy.go",
+			"internal/successor/installation/forwarding/loaded_policy.go",
 			"internal/successor/installation/infrastructure/source_loaded_linux.go":
 			return true
 		}
 	}
 	if dependency == modulePath+"/internal/successor/systemdproperty" {
 		switch source {
-		case "internal/successor/installation/join/loaded_policy_linux.go":
+		case "internal/successor/installation/join/loaded_policy.go":
 			return true
-		case "internal/successor/installation/descriptor/loaded_policy_linux.go":
+		case "internal/successor/installation/descriptor/loaded_policy.go":
 			return true
-		case "internal/successor/installation/introduction/loaded_policy_linux.go":
+		case "internal/successor/installation/introduction/loaded_policy.go":
 			return true
-		case "internal/successor/installation/forwarding/loaded_policy_linux.go":
+		case "internal/successor/installation/forwarding/loaded_policy.go":
+			return true
+		case "internal/successor/installation/forwarding/loaded_policy_test.go":
 			return true
 		case "internal/successor/installation/join/start_initial_linux.go",
 			"internal/successor/installation/descriptor/start_initial_linux.go",
@@ -2215,7 +2217,7 @@ func joinFirstStartImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/successor/protectedfiles":
 			return true
 		}
-	case "internal/successor/installation/join/loaded_policy_linux.go":
+	case "internal/successor/installation/join/loaded_policy.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/successor/systemdproperty":
 			return true
