@@ -660,8 +660,17 @@ consumers and roots are not switched or migrated by that operation.
 
 `attempts.OpenRetained` and `stock.OpenRetained` refuse missing or erased
 presentation history rather than initializing an empty directory. The Reader
-uses retained Stock. Participant bootstrap initializes Stock only after this
-caller successfully creates its new role directory; an existing role directory
-requires retained history. Program delivery, restart and inspection cannot turn
-history loss into new rights. Entire-root loss can remain ambiguous; these
-checks do not establish recovery of lost data.
+uses retained Stock. Explicit offline Endpoint preparation initializes Stock
+only after a fresh State claim, genuine signed Epoch/profile acceptance and
+exclusive role-directory birth. Ordinary participant bootstrap requires retained
+Stock even when the role directory itself is missing. Program delivery, restart
+and inspection cannot turn history loss into new rights. These checks do not
+recover lost data or protect against complete storage/time-authority rollback.
+
+The same explicit preparation initializes empty Route Entry and role Interior
+histories through selection, before Hosting initialization. It draws no pair.
+Participant funding uses `OpenRetainedInstallation`; every role borrow under
+that original owner also requires retained Interior history. Missing roots,
+markers, leases or floors cannot select fresh storage. Existing pointer recovery
+keeps its original watermark, alternatives and six-hour/thirty-minute bounds;
+it supplies no redraw or new Admission allowance.

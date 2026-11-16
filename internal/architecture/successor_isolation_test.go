@@ -1012,6 +1012,9 @@ func successorImportAllowed(source, dependency string) bool {
 		"cmd/ardents-next":                      {"endpoint/session", "endpoint", "endpoint/publisher", "endpoint/reader", "endpoint/funding", "route/introduction", "route/prefix", "network", "network/state", "admission/stock", "admission/receiving", "admission/allocation", "admission", "admission/quota", "admission/issuerprofile", "admission/issuance", "admission/issuer", "admission/issuerprofile/signing", "hosting", "route", "route/role", "route/selection", "route/join", "route/receiver", "route/channel", "route/ardp"},
 	}
 	if zoneDependency {
+		if (source == "internal/successor/endpoint/history_preparation_linux.go" || source == "internal/successor/endpoint/history_preparation_linux_test.go") && dependency == modulePath+"/internal/successor/route/selection" {
+			return true
+		}
 		if (source == "internal/successor/endpoint/history_preparation_linux.go" || source == "internal/successor/endpoint/history_preparation_linux_test.go") && dependency == modulePath+"/internal/successor/network/duty" {
 			return true
 		}
@@ -1573,6 +1576,7 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"installed Reader local Text projection", "internal/successor/endpoint/reader/result_linux.go", modulePath + "/internal/application/textdocument", true},
 		{"installed participant owns Reader listener", "internal/successor/endpoint/participant_linux.go", modulePath + "/internal/application/connection", true},
 		{"first participant preparation initializes participation", "internal/successor/endpoint/history_preparation_linux.go", modulePath + "/internal/successor/network/duty", true},
+		{"first participant preparation initializes selection history", "internal/successor/endpoint/history_preparation_linux.go", modulePath + "/internal/successor/route/selection", true},
 		{"participant runtime cannot initialize participation directly", "internal/successor/endpoint/participant_linux.go", modulePath + "/internal/successor/network/duty", false},
 		{"first participant preparation uses Stock owner", "internal/successor/endpoint/history_preparation_linux.go", modulePath + "/internal/successor/admission/stock", true},
 		{"first participant preparation cannot bypass Stock", "internal/successor/endpoint/history_preparation_linux.go", modulePath + "/internal/successor/admission/attempts", false},

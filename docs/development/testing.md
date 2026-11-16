@@ -26,6 +26,11 @@ through real Network State, actual participation and role Stock files. They
 cover first preparation and retained reopen, Reader/dual-role separation,
 partial cancellation and repeat refusal, invalid signatures and preserved Epoch
 floors, missing Stock children and erased contents with retained root inodes.
+Selection units additionally preserve fixed Entry/Interior choices and refuse
+lost roots, contents, leases and floors without writing replacement history.
+The genuine Endpoint funding consumer refuses erased Entry history under its
+actual independently opened signed State. First preparation creates empty role
+histories without selecting members; later borrows require their original files.
 The public command is exercised without Startup, a system manager or accepting
 Service. These checks do not qualify installed startup, restart or two participants.
 

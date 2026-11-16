@@ -32,13 +32,24 @@ type interiorStore struct {
 }
 
 func openInteriorStore(root string, network [32]byte, domain uint8) (_ *interiorStore, result error) {
+	return openInteriorStoreMode(root, network, domain, closedSetEither)
+}
+
+func openInteriorStoreMode(root string, network [32]byte, domain uint8, opening closedSetOpening) (_ *interiorStore, result error) {
 	absolute, err := filepath.Abs(root)
 	if err != nil {
 		return nil, err
 	}
 	root = absolute
-	if err := inspectRoot(root); err != nil {
-		return nil, err
+	if opening == closedSetEither {
+		if err := inspectRoot(root); err != nil {
+			return nil, err
+		}
+	} else {
+		info, err := os.Lstat(root)
+		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return nil, errors.Join(errors.New("Interior requires an existing directory"), err)
+		}
 	}
 	if err := validateRootPermissions(root); err != nil {
 		return nil, err
@@ -48,7 +59,13 @@ func openInteriorStore(root string, network [32]byte, domain uint8) (_ *interior
 		return nil, err
 	}
 	fresh := len(entries) == 0
+	if opening == closedSetFresh && !fresh || opening == closedSetRetained && fresh {
+		return nil, errors.New("Interior history does not match the requested opening")
+	}
 	acquire := acquireRootLease
+	if opening == closedSetFresh {
+		acquire = acquireFreshRootLease
+	}
 	if !fresh {
 		// Refuse foreign formats before a creating open. A retained root also
 		// requires its original lease file; inspection alone cannot make a

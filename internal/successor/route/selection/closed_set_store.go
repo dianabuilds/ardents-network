@@ -13,6 +13,14 @@ import (
 
 const closedSetMarker = ".ardents-entry-set-v1"
 
+type closedSetOpening uint8
+
+const (
+	closedSetEither closedSetOpening = iota
+	closedSetFresh
+	closedSetRetained
+)
+
 // OpenClosedSets opens a fresh or previously committed closed Entry selection
 // owner. Initial creation and subsequent commits precede every returned set;
 // ambiguous interrupted creation refuses instead of drawing replacement peers.
@@ -21,6 +29,10 @@ func openClosedSets(config ClosedSetConfig) (*ClosedSets, error) {
 }
 
 func openClosedSetsWithLease(config ClosedSetConfig, acquire func(string) (rootLease, error)) (_ *ClosedSets, resultErr error) {
+	return openClosedSetsMode(config, closedSetEither, acquire)
+}
+
+func openClosedSetsMode(config ClosedSetConfig, opening closedSetOpening, acquire func(string) (rootLease, error)) (_ *ClosedSets, resultErr error) {
 	if config.Root == "" || config.NetworkID == [32]byte{} || config.Current == nil {
 		return nil, errors.New("closed Entry setup incomplete")
 	}
@@ -28,14 +40,24 @@ func openClosedSetsWithLease(config ClosedSetConfig, acquire func(string) (rootL
 	if err != nil {
 		return nil, err
 	}
-	if err := inspectRoot(root); err != nil {
-		return nil, err
+	if opening == closedSetEither {
+		if err := inspectRoot(root); err != nil {
+			return nil, err
+		}
+	} else {
+		info, err := os.Lstat(root)
+		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return nil, errors.Join(errors.New("selection requires an existing directory"), err)
+		}
 	}
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil, err
 	}
 	fresh := len(entries) == 0
+	if opening == closedSetFresh && !fresh || opening == closedSetRetained && fresh {
+		return nil, errors.New("selection history does not match the requested opening")
+	}
 	if !fresh {
 		if err := inspectClosedSetRoot(root); err != nil {
 			return nil, err

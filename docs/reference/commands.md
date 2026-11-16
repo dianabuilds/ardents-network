@@ -443,15 +443,17 @@ Before first Endpoint runtime, the actual runtime principal runs
 The bounded v2 Headless declaration supplies only trust, clock and storage
 targets here; it is not accepting runtime-plan validation. `BUNDLE` uses the
 existing Source bundle framing and `SIGNED_PROFILE` the signed closed profile.
-Existing vacant 0700 State/participation/token directories are required. Fresh
+Existing vacant 0700 State/participation/token/Entry directories are required. Fresh
 State authenticates the public inputs and retains its exclusive claim through
-initialization of participation and Reader[/Publisher] Stock. No permission,
+initialization of participation, empty Entry/role Interior histories and
+Reader[/Publisher] Stock. No Route member is drawn. No permission,
 worker, Source transport, Service or Startup is created. All owners join before
 the fixed `history-preparation` diagnostic reports `prepared`; stdout is empty.
 Partial/completed preparation refuses retry without cleanup or reset. Ordinary
 `endpoint start-installed` requires retained State and role Stock, including
-the role child directory. Missing histories cannot trigger initialization.
-Hosting and Service preparation remain separate. This command requires Linux;
+the role child directory. Shared Entry and each role Interior also open retained.
+Missing histories cannot trigger initialization. Hosting is initialized separately
+after this preparation; Service preparation remains separate. This command requires Linux;
 other platforms refuse before reading the declaration.
 
 Detached `ardents-next installation authenticate-initial` and

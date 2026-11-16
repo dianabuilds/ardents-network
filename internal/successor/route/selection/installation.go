@@ -40,9 +40,50 @@ type Installation struct {
 	closing    bool
 	done       chan struct{}
 	failure    error
+	retained   bool
 }
 
 func OpenInstallation(config InstallationConfig) (*Installation, error) {
+	return openInstallation(config, openClosedSets)
+}
+
+// InitializeInstallation explicitly creates the first empty Entry history in
+// an existing vacant directory. It selects no members and grants no transport,
+// installation or runtime authority. Complete and partial prior attempts refuse.
+func InitializeInstallation(config InstallationConfig, roles ...RoleConfig) (result error) {
+	owner, err := openInstallation(config, func(input ClosedSetConfig) (*ClosedSets, error) {
+		return openClosedSetsMode(input, closedSetFresh, acquireFreshRootLease)
+	})
+	if err != nil {
+		return err
+	}
+	defer func() { result = errors.Join(result, owner.Close()) }()
+	for _, role := range roles {
+		borrower, err := owner.borrow(role, closedSetFresh)
+		if err != nil {
+			return err
+		}
+		if err := borrower.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// OpenRetainedInstallation requires the original Entry history and lease. An
+// absent or emptied root cannot cause initialization or another selection draw.
+func OpenRetainedInstallation(config InstallationConfig) (*Installation, error) {
+	owner, err := openInstallation(config, func(input ClosedSetConfig) (*ClosedSets, error) {
+		return openClosedSetsMode(input, closedSetRetained, acquireRetainedRootLease)
+	})
+	if err != nil {
+		return nil, err
+	}
+	owner.retained = true
+	return owner, nil
+}
+
+func openInstallation(config InstallationConfig, openEntries func(ClosedSetConfig) (*ClosedSets, error)) (*Installation, error) {
 	if config.Current == nil || config.EntryRoot == "" {
 		return nil, errors.New("route installation selection unavailable")
 	}
@@ -59,7 +100,7 @@ func OpenInstallation(config InstallationConfig) (*Installation, error) {
 	}
 	i := &Installation{root: root, network: initial.Profile().Network, current: config.Current, exclusions: append([]route.Member(nil), config.Exclusions...), borrowers: make(map[string]bool), done: make(chan struct{})}
 	i.changed = sync.NewCond(&i.mu)
-	i.entries, err = openClosedSets(ClosedSetConfig{Root: root, NetworkID: i.network, Current: func() (ClosedSetView, error) {
+	i.entries, err = openEntries(ClosedSetConfig{Root: root, NetworkID: i.network, Current: func() (ClosedSetView, error) {
 		view, err := i.observe()
 		if err != nil {
 			return ClosedSetView{}, err
@@ -102,6 +143,14 @@ func (i *Installation) observe() (network.RuntimeView, error) {
 }
 
 func (i *Installation) Borrow(config RoleConfig) (_ *Owner, result error) {
+	opening := closedSetEither
+	if i != nil && i.retained {
+		opening = closedSetRetained
+	}
+	return i.borrow(config, opening)
+}
+
+func (i *Installation) borrow(config RoleConfig, opening closedSetOpening) (_ *Owner, result error) {
 	if i == nil || config.InteriorRoot == "" || closedAdjacentIndex(config.Domain) < 0 {
 		return nil, errors.New("route role selection unavailable")
 	}
@@ -137,7 +186,7 @@ func (i *Installation) Borrow(config RoleConfig) (_ *Owner, result error) {
 	if err != nil {
 		return nil, err
 	}
-	interior, err = openInteriorStore(root, i.network, config.Domain)
+	interior, err = openInteriorStoreMode(root, i.network, config.Domain, opening)
 	if err != nil {
 		return nil, err
 	}

@@ -246,12 +246,13 @@ connection. File/inode/access/inventory, process and manager-property checks
 remain at their original boundaries; detached facts grant no accepting cache.
 Before first runtime, `ardents-next endpoint prepare-history HEADLESS_PLAN BUNDLE
 SIGNED_PROFILE` performs finite offline preparation under the actual runtime
-principal. The three declared State, participation and token roots must be
+principal. The four declared State, participation, token and Entry roots must be
 existing vacant private 0700 directories. State's exclusive fresh claim remains
 held while State authenticates and durably accepts the supplied public Epoch
 bundle and closed profile under the declaration's independently selected pins
 and clock observation. Participation then initializes its empty first history;
-Stock initializes separate Reader and, for dual role, Publisher potential-spend
+Route selection initializes empty Entry and separately bound role Interior
+histories without drawing members. Stock initializes separate Reader and, for dual role, Publisher potential-spend
 histories from genuine current Network observations. No permission is requested
 or imported. No Source transport, worker, Startup or Service is opened. The
 command joins every original owner before reporting preparation. A failed or
@@ -259,7 +260,9 @@ partial preparation preserves its files and refuses another initial attempt;
 it cannot clean, adopt or reset them. This operation is not an installer or
 recovery controller. Hosting and Service Instance preparation remain separate.
 
-The ordinary participant opens State and role Stock retained-only. Missing
+Hosting must be initialized separately after this first preparation. The ordinary
+participant opens State, shared Entry and role Stock retained-only; its role
+Interior borrows also require existing histories. Missing
 State contents, a missing Stock child, or missing presentation history refuse
 instead of selecting a fresh constructor, even when the top root inode survived.
 Native Startup's root inode/access observation is not evidence of these domain

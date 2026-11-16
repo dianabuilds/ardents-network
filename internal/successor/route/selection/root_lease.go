@@ -13,7 +13,11 @@ func acquireRootLease(root string) (rootLease, error) {
 	return openRootLease(root, os.O_RDWR|os.O_CREATE)
 }
 
-// Retained Interior history must never regain a missing lease file by opening.
+func acquireFreshRootLease(root string) (rootLease, error) {
+	return openRootLease(root, os.O_RDWR|os.O_CREATE|os.O_EXCL)
+}
+
+// Retained selection history must never regain a missing lease file by opening.
 func acquireRetainedRootLease(root string) (rootLease, error) {
 	return openRootLease(root, os.O_RDWR)
 }

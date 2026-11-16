@@ -27,7 +27,7 @@ func OpenParents(plan Plan, authority Authority) (*Parents, error) {
 	if authority.current == nil || !independentRoots(plan.EntryRoot, plan.HostingRoot) {
 		return nil, errors.New("installed Route owners are unavailable")
 	}
-	entry, err := selection.OpenInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: authority.current, Exclusions: plan.Exclusions})
+	entry, err := selection.OpenRetainedInstallation(selection.InstallationConfig{EntryRoot: plan.EntryRoot, Current: authority.current, Exclusions: plan.Exclusions})
 	if err != nil {
 		return nil, err
 	}

@@ -15,9 +15,11 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/attempts"
+	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
@@ -44,8 +46,9 @@ func historyPreparationPlan(t *testing.T, role string) (HeadlessPlan, source.Bun
 	plan := HeadlessPlan{Schema: "ardents-headless-runtime-v2", Role: role,
 		NetworkStateRoot: filepath.Join(root, "state"), LocalRoleStateRoot: filepath.Join(root, "participation"),
 		TextTokenRoot: filepath.Join(root, "stock"), TimeConfidenceFile: filepath.Join(root, "clock"),
-		NetworkID: encoded(1), NetworkAuthorities: []string{public}, ClosedProfileAuthority: public, NetworkThreshold: 1}
-	for _, path := range []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot} {
+		EntryStateRoot: filepath.Join(root, "route"),
+		NetworkID:      encoded(1), NetworkAuthorities: []string{public}, ClosedProfileAuthority: public, NetworkThreshold: 1}
+	for _, path := range []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.EntryStateRoot} {
 		if err := os.Mkdir(path, 0700); err != nil {
 			t.Fatal(err)
 		}
@@ -108,6 +111,20 @@ func TestParticipantInitialHistoriesAreExplicitAndRetained(t *testing.T) {
 			}
 			if current, err := network.CurrentRuntime(); err != nil || current.Profile().Epoch != 1 {
 				t.Fatal("signed preparation lost original State", err)
+			}
+			entryOwner, err := selection.OpenRetainedInstallation(selection.InstallationConfig{EntryRoot: filepath.Join(plan.EntryStateRoot, "entry"), Current: network.CurrentRuntime})
+			if err != nil {
+				t.Fatal("first preparation did not initialize genuine Entry owner", err)
+			}
+			readerRole, err := entryOwner.Borrow(selection.RoleConfig{InteriorRoot: filepath.Join(plan.EntryStateRoot, "reader-interior"), Domain: 1})
+			if err != nil {
+				t.Fatal("Reader Interior was not explicitly prepared", err)
+			}
+			if err := readerRole.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := entryOwner.Close(); err != nil {
+				t.Fatal(err)
 			}
 			if err := network.Close(); err != nil {
 				t.Fatal(err)
@@ -270,7 +287,7 @@ func TestParticipantHistoryPreparationRetainsFailureAndSignedFloor(t *testing.T)
 			if err := PrepareHistories(t.Context(), plan, bundle, profile); err == nil {
 				t.Fatal("altered signature accepted")
 			}
-			for _, path := range []string{plan.LocalRoleStateRoot, plan.TextTokenRoot} {
+			for _, path := range []string{plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.EntryStateRoot} {
 				entries, err := os.ReadDir(path)
 				if err != nil || len(entries) != 0 {
 					t.Fatal("unauthenticated preparation created later history", entries, err)
@@ -304,5 +321,45 @@ func TestParticipantHistoryPreparationRetainsFailureAndSignedFloor(t *testing.T)
 				t.Fatal("retry changed retained failure prefix")
 			}
 		})
+	}
+}
+
+func TestParticipantFundingRefusesErasedEntryWithoutReinitializing(t *testing.T) {
+	plan, bundle, profile := historyPreparationPlan(t, "reader")
+	if err := PrepareHistories(t.Context(), plan, bundle, profile); err != nil {
+		t.Fatal(err)
+	}
+	config, err := plan.Network()
+	if err != nil {
+		t.Fatal(err)
+	}
+	network, err := state.OpenRetained(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := network.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	entryRoot := filepath.Join(plan.EntryStateRoot, "entry")
+	entries, err := os.ReadDir(entryRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if err := os.Remove(filepath.Join(entryRoot, entry.Name())); err != nil {
+			t.Fatal(err)
+		}
+	}
+	authority := funding.Observe(network.CurrentRuntime, network.CurrentRuntimeWitness, presentationGuard(network.CurrentRuntime))
+	parents, err := funding.OpenParents(funding.Plan{EntryRoot: entryRoot, HostingRoot: filepath.Join(plan.EntryStateRoot, "hosting")}, authority)
+	if err == nil {
+		_ = parents.Close()
+		t.Fatal("lost Entry history accepted by participant funding")
+	}
+	entries, err = os.ReadDir(entryRoot)
+	if err != nil || len(entries) != 0 {
+		t.Fatal("participant funding recreated lost Entry history", entries, err)
 	}
 }

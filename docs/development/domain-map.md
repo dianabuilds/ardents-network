@@ -691,10 +691,13 @@ changes neither accepted persisted/wire bytes nor installed qualification.
 
 Endpoint's explicit offline first preparation consumes declared trust/roots and
 public signed Epoch/profile through fresh Network State, then initializes empty
-participation and role Stock through their own owners. The original fresh State
+participation, Entry/role Interior and Stock through their own owners, without
+drawing any Route member. The original fresh State
 claim remains held through subsequent effects and joins. A partial or completed
 preparation cannot replay, adopt or clear history. Runtime uses retained State
-and role Stock only, including when the role child itself disappeared. This
+and role Stock only, including when the role child itself disappeared. Shared
+Entry and role Interior openings are retained-only as well; missing history
+cannot redraw the original pair or reset its watermark/horizon. This
 composition grants no permission, Job, Source transport, Service readiness or
 installed acceptance; Hosting and Service preparation retain separate owners.
 

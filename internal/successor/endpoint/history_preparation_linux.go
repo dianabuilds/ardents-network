@@ -18,10 +18,11 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
 )
 
-// PrepareHistories explicitly prepares the first signed State, participation and
-// potential-spend histories in three existing vacant private directories. It
+// PrepareHistories explicitly prepares the first signed State, participation,
+// Entry and potential-spend histories in four existing vacant private directories. It
 // authenticates public State/profile bytes through Network and creates no
 // permission, key, Service or installed startup. It is never recovery:
 // every partial or completed earlier attempt is preserved and
@@ -43,7 +44,7 @@ func prepareHistories(ctx context.Context, plan HeadlessPlan, bundle source.Bund
 	if err != nil {
 		return err
 	}
-	paths := []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot}
+	paths := []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.EntryStateRoot}
 	// These are only preparation targets, not an accepting runtime-plan check.
 	// They must not overlap one another or the declared independent clock file.
 	isolated := append(append([]string(nil), paths...), plan.TimeConfidenceFile)
@@ -139,6 +140,32 @@ func prepareHistories(ctx context.Context, plan HeadlessPlan, bundle source.Bund
 		return funding.NetworkFacts(view)
 	}
 	if err := duty.Initialize(ctx, duty.Config{Root: plan.LocalRoleStateRoot, Clock: time.Now}); err != nil {
+		return err
+	}
+	if err := check(); err != nil {
+		return err
+	}
+	entryRoot := filepath.Join(plan.EntryStateRoot, "entry")
+	roles := []selection.RoleConfig{{InteriorRoot: filepath.Join(plan.EntryStateRoot, "reader-interior"), Domain: 1}}
+	if plan.Role == "" {
+		roles = append(roles,
+			selection.RoleConfig{InteriorRoot: filepath.Join(plan.EntryStateRoot, "introduction-interior"), Domain: 4},
+			selection.RoleConfig{InteriorRoot: filepath.Join(plan.EntryStateRoot, "publisher-source-interior"), Domain: 1},
+			selection.RoleConfig{InteriorRoot: filepath.Join(plan.EntryStateRoot, "responder-interior"), Domain: 3})
+	}
+	selectionPaths := []string{entryRoot}
+	for _, role := range roles {
+		selectionPaths = append(selectionPaths, role.InteriorRoot)
+	}
+	for _, path := range selectionPaths {
+		if err := os.Mkdir(path, 0700); err != nil {
+			return err
+		}
+	}
+	if err := roots[3].Sync(); err != nil {
+		return err
+	}
+	if err := selection.InitializeInstallation(selection.InstallationConfig{EntryRoot: entryRoot, Current: network.CurrentRuntime}, roles...); err != nil {
 		return err
 	}
 	names := []string{"reader"}

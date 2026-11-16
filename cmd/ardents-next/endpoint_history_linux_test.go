@@ -27,8 +27,9 @@ func TestEndpointHistoryCommandPreparesGenuineStateOnce(t *testing.T) {
 	plan := endpoint.HeadlessPlan{Schema: "ardents-headless-runtime-v2", Role: "reader",
 		NetworkStateRoot: filepath.Join(root, "state"), LocalRoleStateRoot: filepath.Join(root, "participation"), TextTokenRoot: filepath.Join(root, "stock"),
 		TimeConfidenceFile: filepath.Join(root, "clock"), NetworkID: hex.EncodeToString(f.spec.NetworkID[:]),
+		EntryStateRoot:     filepath.Join(root, "route"),
 		NetworkAuthorities: []string{public}, ClosedProfileAuthority: public, NetworkThreshold: 1}
-	for _, path := range []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot} {
+	for _, path := range []string{plan.NetworkStateRoot, plan.LocalRoleStateRoot, plan.TextTokenRoot, plan.EntryStateRoot} {
 		if err := os.Mkdir(path, 0700); err != nil {
 			t.Fatal(err)
 		}

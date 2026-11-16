@@ -16,6 +16,17 @@ retains exact duties from one coherent Network observation and rechecks with
 fresh `CurrentRuntime`/`MatchDuty`; transport failure does not redraw a pair.
 Known locally controlled identities and families enter selection as exclusions.
 
+`selection.InitializeInstallation` explicitly prepares empty Entry and declared
+role Interior histories in existing vacant roots under a current Network
+observation. It selects no members and refuses complete or partial prior
+attempts. Endpoint's initial offline preparation is the real consumer.
+`OpenRetainedInstallation` opens the Entry history and original non-creating
+lease; its role borrows likewise require existing Interior histories. Participant
+funding uses that retained path. Lost contents or an absent role directory
+cannot draw another pair. Marker/lease/floor refusal, canonical bytes, pointer
+recovery and original six-hour/thirty-minute horizons remain selection-owned.
+These local storage boundaries do not qualify installed Route or Service work.
+
 `ardp` owns canonical generation-three frames and HELLO. It rejects invalid
 header kind/lane/length before body allocation or reads. The lower `transport`
 owns the portable stream/exporter contract, exact accepted profile identities,
