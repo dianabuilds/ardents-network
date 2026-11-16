@@ -145,47 +145,9 @@ func independentInfrastructureHistory(distribution, history string) bool {
 	return true
 }
 
-// runSourceRelease verifies the Source pair without acquiring installation
-// inputs, starting a service or granting a reusable authorization.
-func runSourceRelease(ctx context.Context, args []string, out io.Writer) int {
-	if ctx == nil || len(args) == 0 || args[0] != "authenticate-candidate" {
-		return enrollmentReport(out, "invalid-input", 2)
-	}
-	if ctx.Err() != nil {
-		return enrollmentReport(out, "release-canceled", 130)
-	}
-	request, invalid := parseSourceRelease(args)
-	if invalid != "" {
-		return enrollmentReport(out, invalid, 2)
-	}
-	a, v, refused, err := openSourceRelease(ctx, request, true)
-	if refused != "" {
-		return enrollmentReport(out, refused, 1)
-	}
-	program, generation := a.Targets()
-	pd, programOK := program.AcceptedDecision()
-	gd, generationOK := generation.AcceptedDecision()
-	_, hasInitial := a.InitialFacts()
-	if err == nil && (!programOK || !generationOK || hasInitial != request.initial) {
-		err = releaseartifact.ErrAuthorization
-	}
-	err = errors.Join(err, v.Close(), ctx.Err())
-	if err != nil {
-		return enrollmentReport(out, "infrastructure-authentication-refused", 1)
-	}
-	if writeInfrastructureReleaseReceipt(ctx, out, "authenticated-source-artifact", a, pd, gd) != nil {
-		return 1
-	}
-	return 0
-}
-
 // The public receipt identifies the exact authenticated bytes; it carries no
 // live authorization or permission to install or run them.
-func writeInfrastructureReleaseReceipt(ctx context.Context, out io.Writer, outcome string, a interface {
-	Program() []byte
-	Descriptor() []byte
-	Template() []byte
-}, program, generation release.Decision) error {
+func writeInfrastructureReleaseReceipt(ctx context.Context, out io.Writer, a releaseartifact.Authorization, program, generation release.Decision) error {
 	receipt, err := json.Marshal(struct {
 		Outcome           string          `json:"outcome"`
 		ProgramOutcome    release.Outcome `json:"program_outcome"`
@@ -193,7 +155,7 @@ func writeInfrastructureReleaseReceipt(ctx context.Context, out io.Writer, outco
 		ProgramSHA256     string          `json:"program_sha256"`
 		DescriptorSHA256  string          `json:"descriptor_sha256"`
 		TemplateSHA256    string          `json:"template_sha256"`
-	}{outcome, program.Outcome, generation.Outcome, fmt.Sprintf("%x", sha256.Sum256(a.Program())), fmt.Sprintf("%x", sha256.Sum256(a.Descriptor())), fmt.Sprintf("%x", sha256.Sum256(a.Template()))})
+	}{"authenticated-source-artifact", program.Outcome, generation.Outcome, fmt.Sprintf("%x", sha256.Sum256(a.Program())), fmt.Sprintf("%x", sha256.Sum256(a.Descriptor())), fmt.Sprintf("%x", sha256.Sum256(a.Template()))})
 	if err != nil {
 		return err
 	}

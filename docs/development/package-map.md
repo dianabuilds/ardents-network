@@ -579,22 +579,19 @@ observation after actual public record replacement; it supplies no ACK.
 
 `cmd/ardents-next/release.go` may import only the standard library,
 `internal/successor/enrollment`, `internal/successor/release` and
-`internal/successor/release/endpoint`. It authenticates protected program and
-generation bytes for the Release command without importing Endpoint delivery;
-the public outcome grants no installation or runtime authority.
+`internal/successor/release/endpoint`. The transitional Installation command
+uses its protected program and generation authentication without granting
+installation or runtime authority from the public outcome.
 `cmd/ardents-next/source_release_unix.go` may import only the standard library,
 `internal/successor/enrollment`, `internal/successor/release` and
 `internal/successor/release/infrastructure`. It owns the shared Source artifact
-authentication path used by the Release command and transitional Source actions;
+authentication path used by transitional Source actions;
 the original verifier remains open until the invoking action joins its borrowers.
 The Release infrastructure owner projects the same fixed metadata and program
 inputs for Source and the four canonical Node role compositions; this projection
 grants no Enrollment provenance or role authorization.
 `cmd/ardents-next/release_metadata.go` uses Release to require exact retained
 metadata before detached candidate inspection; this comparison grants no proof.
-`cmd/ardents-next/node_release_unix.go` uses Enrollment, Release and Release
-infrastructure to authenticate retained candidates through each role's own
-proof; its public report grants no deployment or runtime authority.
 The portable `source_release_unix_test.go` and `infrastructure_fixture_unix_test.go`
 use Enrollment and Release to check signed retained candidates; the latter also
 uses the existing TUF metadata dependency to construct its independent fixture.

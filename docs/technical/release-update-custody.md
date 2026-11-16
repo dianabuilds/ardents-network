@@ -206,31 +206,11 @@ reads detached inventory bytes through the authorization, without accessing its
 private snapshot; inventory presence or copied bytes alone confer no effect or
 Release authority.
 
-Source candidate authentication is available separately as `ardents-next release
-authenticate-source-candidate <bundle> <history> <environment> <network>
-<reference-time>`. It retains the independent inventory and Release verifier
-checks, then closes the verifier. A detached initial check cannot be used here:
-it would advance a history that the existing initial transition requires to be
-empty, while its public result cannot retain initial Enrollment provenance.
-Candidate verification checks Linux/amd64 target bytes and retained Release
-history on Linux or macOS; the host performing that check is not an installed Source.
-Detached Source and Node candidate commands require all four metadata digests
-to match the already retained floors before evaluating any target, with no
-additional unretained metadata that could initiate root rotation. A newer
-candidate is refused here without advancing trust; a real transition retains
-its own authorization and applies the normal monotonic Release policy. The
-result grants no reusable authorization and does not acquire Source installation
-inputs, start a service or establish readiness. A unit test on macOS and Linux
-authenticates a signed test candidate against Release floors established by a
-separate verified evaluation and rejects substituted artifact bytes. It does
-not establish initial process enrollment or installed operation. The same
-portable fixture checks signed candidates for each of the four Node roles and
-rejects their use as Source artifacts; the roles retain distinct authorization.
-The Release command also accepts `authenticate-forwarding-candidate`,
-`authenticate-join-candidate`, `authenticate-descriptor-candidate` and
-`authenticate-introduction-candidate`, with the same candidate arguments as
-Source. Each checks its own invocation and retained Release history and returns
-only a public report; it does not install, start or authorize a runtime.
+Detached Source candidate observation requires metadata matching the retained
+floors, without additional files that could initiate root rotation. An actual
+transition retains its own authorization and applies normal monotonic Release
+policy. Portable signed-input tests exercise the distinct Source and Node role
+proofs; they do not establish initial enrollment or installed operation.
 
 [ADR-0119](../adr/0119-bind-protected-endpoint-generation-to-release.md)
 selects a protected Endpoint generation target in the same signed metadata set
@@ -253,13 +233,8 @@ storage.
 
 The isolated new-domain composition uses `internal/successor/release` with
 its own history and the genuine `ardents-next release verify-initial` consumer.
-`ardents-next release authenticate-protected-candidate <bundle> <history>
-<reference-time>` independently authenticates the protected program and
-generation pair using Enrollment and Release. This detached check requires
-metadata matching complete retained Release history and cannot advance its
-floors. The result is a public verification outcome,
-not an installation, reusable authorization or runtime readiness. The existing
-`installation authenticate-*` routes retain their previous result vocabulary.
+The existing `installation authenticate-*` routes give only a public
+verification outcome, not installation or reusable authorization.
 Their detached candidate checks also require unchanged retained metadata.
 Their detached initial check may initialize an empty history, but on an existing
 history it accepts only the retained metadata; partial histories refuse. Actual

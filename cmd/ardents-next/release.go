@@ -17,18 +17,6 @@ import (
 // verify-initial requires independently pinned bytes and keeps Release history
 // separate. Its output is verification, never installation or live readiness.
 func runRelease(ctx context.Context, args []string, out io.Writer) int {
-	if len(args) > 0 {
-		switch args[0] {
-		case "authenticate-forwarding-candidate", "authenticate-join-candidate", "authenticate-descriptor-candidate", "authenticate-introduction-candidate":
-			return runNodeRelease(ctx, args, out)
-		}
-	}
-	if len(args) > 0 && args[0] == "authenticate-source-candidate" {
-		return runSourceRelease(ctx, append([]string{"authenticate-candidate"}, args[1:]...), out)
-	}
-	if len(args) > 0 && args[0] == "authenticate-protected-candidate" {
-		return runProtectedRelease(ctx, append([]string{"authenticate-candidate"}, args[1:]...), out, false)
-	}
 	if len(args) != 5 || args[0] != "verify-initial" {
 		return enrollmentReport(out, "invalid-input", 2)
 	}
@@ -112,7 +100,7 @@ func initialReleaseInputs(bundle enrollment.Bundle, ref time.Time) (release.Inpu
 
 // runProtectedRelease authenticates exact Enrollment and Release bytes. Its
 // public result is not a reusable authorization, install right or readiness.
-func runProtectedRelease(ctx context.Context, args []string, out io.Writer, legacy bool) int {
+func runProtectedRelease(ctx context.Context, args []string, out io.Writer) int {
 	if len(args) < 1 || (args[0] != "authenticate-initial" && args[0] != "authenticate-candidate") ||
 		(args[0] == "authenticate-initial" && len(args) != 5) ||
 		(args[0] == "authenticate-candidate" && len(args) != 4) {
@@ -131,24 +119,24 @@ func runProtectedRelease(ctx context.Context, args []string, out io.Writer, lega
 	if initial {
 		program, err := os.Executable()
 		if err != nil {
-			return enrollmentReport(out, protectedReleaseOutcome("unavailable", legacy), 1)
+			return enrollmentReport(out, "installation-unavailable", 1)
 		}
 		bundle, err = enrollment.Verify(ctx, enrollment.Request{BundleRoot: args[1], ExecutablePath: program, ManifestSHA256: args[2], Scope: enrollment.Headless})
 		if err != nil {
-			return protectedReleaseFailure(ctx, out, err, legacy)
+			return protectedReleaseFailure(ctx, out, err)
 		}
 		input, ok = initialReleaseInputs(bundle, ref)
 		history = args[3]
 	} else {
 		candidate, err = enrollment.ReadCandidate(ctx, args[1], enrollment.Headless)
 		if err != nil {
-			return protectedReleaseFailure(ctx, out, err, legacy)
+			return protectedReleaseFailure(ctx, out, err)
 		}
 		input, ok = candidateReleaseInputs(candidate, ref)
 		history = args[2]
 	}
 	if !ok || input.Local.Platform != runtime.GOOS+"-"+runtime.GOARCH {
-		return enrollmentReport(out, protectedReleaseOutcome("incompatible", legacy), 1)
+		return enrollmentReport(out, "installation-incompatible", 1)
 	}
 	var verifier *release.Verifier
 	if initial {
@@ -157,7 +145,7 @@ func runProtectedRelease(ctx context.Context, args []string, out io.Writer, lega
 		verifier, err = release.OpenRetained(history)
 	}
 	if err != nil {
-		return protectedReleaseFailure(ctx, out, err, legacy)
+		return protectedReleaseFailure(ctx, out, err)
 	}
 	if initial {
 		err = initialInspectionMetadata(ctx, verifier, input)
@@ -165,7 +153,7 @@ func runProtectedRelease(ctx context.Context, args []string, out io.Writer, lega
 		err = sameReleaseMetadata(ctx, verifier, input)
 	}
 	if err != nil {
-		return protectedReleaseFailure(ctx, out, errors.Join(err, verifier.Close()), legacy)
+		return protectedReleaseFailure(ctx, out, errors.Join(err, verifier.Close()))
 	}
 	var authorization generationauthorization.Authorization
 	if initial {
@@ -175,32 +163,25 @@ func runProtectedRelease(ctx context.Context, args []string, out io.Writer, lega
 	}
 	err = errors.Join(err, verifier.Close(), ctx.Err())
 	if err != nil {
-		return protectedReleaseFailure(ctx, out, err, legacy)
+		return protectedReleaseFailure(ctx, out, err)
 	}
 	program, generation := authorization.Targets()
 	_, programOK := program.AcceptedDecision()
 	_, generationOK := generation.AcceptedDecision()
 	if !programOK || !generationOK {
-		return enrollmentReport(out, protectedReleaseOutcome("refused", legacy), 1)
+		return enrollmentReport(out, "installation-refused", 1)
 	}
 	return enrollmentReport(out, "authenticated-generation", 0)
 }
 
-func protectedReleaseOutcome(suffix string, legacy bool) string {
-	if legacy {
-		return "installation-" + suffix
-	}
-	return "release-" + suffix
-}
-
-func protectedReleaseFailure(ctx context.Context, out io.Writer, err error, legacy bool) int {
+func protectedReleaseFailure(ctx context.Context, out io.Writer, err error) int {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
-		return enrollmentReport(out, protectedReleaseOutcome("canceled", legacy), 130)
+		return enrollmentReport(out, "installation-canceled", 130)
 	}
 	if errors.Is(err, release.ErrTrustUnavailable) {
-		return enrollmentReport(out, protectedReleaseOutcome("trust-unavailable", legacy), 1)
+		return enrollmentReport(out, "installation-trust-unavailable", 1)
 	}
-	return enrollmentReport(out, protectedReleaseOutcome("refused", legacy), 1)
+	return enrollmentReport(out, "installation-refused", 1)
 }
 
 func candidateReleaseInputs(c enrollment.Candidate, ref time.Time) (release.Inputs, bool) {

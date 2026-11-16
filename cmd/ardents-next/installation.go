@@ -69,9 +69,9 @@ func runInstallation(ctx context.Context, args []string, out io.Writer) int {
 			parameters = append(parameters, request.ManifestSHA256)
 		}
 		parameters = append(parameters, request.ReleaseFloorRoot, request.ReferenceTime)
-		return runProtectedRelease(ctx, parameters, out, true)
+		return runProtectedRelease(ctx, parameters, out)
 	}
-	return runProtectedRelease(ctx, args, out, true)
+	return runProtectedRelease(ctx, args, out)
 }
 
 func runInstallationSuccessor(ctx context.Context, filename string, out io.Writer) int {

@@ -29,23 +29,34 @@ func TestSourceReleaseAuthenticatesSignedRetainedCandidate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	decision := verifier.Evaluate(t.Context(), infrastructureCandidateInput(t, candidate))
-	if _, ok := decision.Authorization(); !ok {
-		t.Fatalf("signed fixture did not establish Release floors: %s %v", decision.Outcome, decision.Err())
+	if _, ok := verifier.Evaluate(t.Context(), infrastructureCandidateInput(t, candidate)).Authorization(); !ok {
+		t.Fatal("signed fixture did not establish Release floors")
 	}
 	if err := verifier.Close(); err != nil {
 		t.Fatal(err)
 	}
-	var out bytes.Buffer
-	args := []string{"authenticate-candidate", dir, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)}
-	if code := runSourceRelease(t.Context(), args, &out); code != 0 || !strings.Contains(out.String(), `"program_outcome":"no-update"`) || !strings.Contains(out.String(), `"generation_outcome":"no-update"`) {
-		t.Fatalf("signed retained candidate refused: %d %s", code, out.String())
+	request, invalid := parseSourceRelease([]string{"authenticate-candidate", dir, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)})
+	if invalid != "" {
+		t.Fatal(invalid)
+	}
+	authorization, owner, refused, err := openSourceRelease(t.Context(), request, true)
+	if err != nil || refused != "" || owner == nil {
+		t.Fatalf("signed retained candidate refused: %s %v", refused, err)
+	}
+	if err := authorization.Check(t.Context(), owner); err != nil {
+		t.Fatal(err)
+	}
+	if err := owner.Close(); err != nil {
+		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "ardents-source.service"), []byte("substituted"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	out.Reset()
-	if code := runSourceRelease(t.Context(), args, &out); code == 0 {
+	_, owner, refused, err = openSourceRelease(t.Context(), request, true)
+	if owner != nil {
+		_ = owner.Close()
+	}
+	if err == nil && refused == "" {
 		t.Fatal("substituted artifact accepted")
 	}
 }
@@ -139,15 +150,18 @@ func TestDetachedInfrastructureInspectionCannotAdvanceRetainedFloors(t *testing.
 			if err := v.Close(); err != nil {
 				t.Fatal(err)
 			}
-			var out bytes.Buffer
-			args := []string{"authenticate-" + role + "-candidate", next, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)}
-			if code := runRelease(t.Context(), args, &out); code == 0 {
-				t.Fatal("detached inspection advanced to a newer release")
+			retained, err := release.OpenRetained(history)
+			if err != nil {
+				t.Fatal(err)
 			}
-			args[1] = old
-			out.Reset()
-			if code := runRelease(t.Context(), args, &out); code != 0 {
-				t.Fatalf("previous retained release became unavailable: %d %s", code, out.String())
+			if err := sameReleaseMetadata(t.Context(), retained, infrastructureCandidateInput(t, nextCandidate)); err == nil {
+				t.Fatal("detached inspection accepted a newer release")
+			}
+			if err := sameReleaseMetadata(t.Context(), retained, oldInput); err != nil {
+				t.Fatal("previous retained metadata became unavailable", err)
+			}
+			if err := retained.Close(); err != nil {
+				t.Fatal(err)
 			}
 			if role == "source" {
 				request, invalid := parseSourceRelease([]string{"authenticate-candidate", next, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)})
@@ -164,8 +178,15 @@ func TestDetachedInfrastructureInspectionCannotAdvanceRetainedFloors(t *testing.
 				if err := owner.Close(); err != nil {
 					t.Fatal(err)
 				}
-				out.Reset()
-				if code := runRelease(t.Context(), args, &out); code == 0 {
+				oldRequest, invalid := parseSourceRelease([]string{"authenticate-candidate", old, history, "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)})
+				if invalid != "" {
+					t.Fatal(invalid)
+				}
+				_, oldOwner, refused, oldErr := openSourceRelease(t.Context(), oldRequest, true)
+				if oldOwner != nil {
+					_ = oldOwner.Close()
+				}
+				if oldErr == nil && refused == "" {
 					t.Fatal("old release accepted after successor floor advancement")
 				}
 			}
@@ -231,68 +252,15 @@ func TestInfrastructureRoleCandidatesKeepSeparateSignedAuthority(t *testing.T) {
 			if _, err := releaseartifact.AuthenticateCandidate(t.Context(), verifier, candidate, input); err == nil {
 				t.Fatal("Source accepted a different role")
 			}
-			if err := verifier.Close(); err != nil {
-				t.Fatal(err)
-			}
-			var out bytes.Buffer
-			args := []string{"authenticate-" + role + "-candidate", dir, filepath.Join(root, "history"), "h3-test", "new-release-test", infrastructureReference.Format(time.RFC3339)}
-			cold := append([]string(nil), args...)
-			cold[2] = filepath.Join(root, "missing-history")
-			if code := runRelease(t.Context(), cold, &out); code == 0 {
-				t.Fatal("candidate created initial trust")
-			}
-			if _, err := os.Lstat(cold[2]); !os.IsNotExist(err) {
-				t.Fatal("candidate refusal changed missing history", err)
-			}
-			out.Reset()
-			if code := runRelease(t.Context(), args, &out); code != 0 || !strings.Contains(out.String(), "authenticated-"+role+"-artifact") || !strings.Contains(out.String(), `"generation_outcome":"no-update"`) {
-				t.Fatalf("role command refused signed candidate: %d %s", code, out.String())
-			}
-			args[0] = "authenticate-join-candidate"
-			if role == "join" {
-				args[0] = "authenticate-forwarding-candidate"
-			}
-			out.Reset()
-			if code := runRelease(t.Context(), args, &out); code == 0 || !strings.Contains(out.String(), "infrastructure-artifact-refused") {
-				t.Fatalf("role command accepted another role: %d %s", code, out.String())
-			}
-			args[0] = "authenticate-" + role + "-candidate"
-			if err := os.WriteFile(filepath.Join(dir, "ardents-"+role+".service"), []byte("substituted"), 0600); err != nil {
-				t.Fatal(err)
-			}
-			out.Reset()
-			if code := runRelease(t.Context(), args, &out); code == 0 {
-				t.Fatal("role command accepted substituted artifact")
-			}
-		})
-	}
-}
 
-func TestSourceReleaseCandidateRefusesMissingInventoryWithoutHistory(t *testing.T) {
-	root := sourceReleaseTestRoot(t)
-	history := filepath.Join(root, "history")
-	var out bytes.Buffer
-	args := []string{"authenticate-candidate", filepath.Join(root, "absent"), history, "closed", "network", "2030-01-02T03:04:05Z"}
-	if code := runSourceRelease(t.Context(), args, &out); code != 1 || !strings.Contains(out.String(), "infrastructure-inventory-refused") {
-		t.Fatalf("missing candidate was not refused: %d %s", code, out.String())
-	}
-	if _, err := os.Lstat(history); !os.IsNotExist(err) {
-		t.Fatal("candidate refusal touched history", err)
-	}
-	out.Reset()
-	initial := []string{"authenticate-source-initial", filepath.Join(root, "absent"), strings.Repeat("0", 64), history, "closed", "network", "2030-01-02T03:04:05Z"}
-	if code := runRelease(t.Context(), initial, &out); code != 2 || !strings.Contains(out.String(), "invalid-input") {
-		t.Fatalf("detached initial verification accepted: %d %s", code, out.String())
-	}
-	if _, err := os.Lstat(history); !os.IsNotExist(err) {
-		t.Fatal("detached initial refusal changed history", err)
+		})
 	}
 }
 
 func TestSourceReleaseReceiptPreservesPublicResult(t *testing.T) {
 	var out bytes.Buffer
 	// This exercises only the detached report format, not Release authentication.
-	err := writeInfrastructureReleaseReceipt(context.Background(), &out, "authenticated-source-artifact", releaseartifact.Authorization{}, release.Decision{Outcome: release.OutcomeReleaseAccepted}, release.Decision{Outcome: release.OutcomeNoUpdate})
+	err := writeInfrastructureReleaseReceipt(context.Background(), &out, releaseartifact.Authorization{}, release.Decision{Outcome: release.OutcomeReleaseAccepted}, release.Decision{Outcome: release.OutcomeNoUpdate})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +272,7 @@ func TestSourceReleaseReceiptPreservesPublicResult(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	out.Reset()
-	if writeInfrastructureReleaseReceipt(ctx, &out, "authenticated-source-artifact", releaseartifact.Authorization{}, release.Decision{}, release.Decision{}) == nil || out.Len() != 0 {
+	if writeInfrastructureReleaseReceipt(ctx, &out, releaseartifact.Authorization{}, release.Decision{}, release.Decision{}) == nil || out.Len() != 0 {
 		t.Fatal("canceled receipt was published")
 	}
 }
