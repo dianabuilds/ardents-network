@@ -154,6 +154,11 @@ signed State and may initialize its originally empty participation root. Neither
 opening supplies Installation permission or alters expired-Epoch distribution
 or CurrentRuntime authority semantics.
 
+The `ardents-next network inspect` consumer also uses the retained opening, so
+inspection refuses a missing or empty history rather than initializing it.
+The retained owner still performs its normal durability probe and recovery;
+this is not a claim that the underlying filesystem is opened read-only.
+
 State borrows `PermitWork` before effects and observation, outside its lock.
 The callback may be concurrent and cannot call back into State. Process resource
 sampling, protect/drain policy and process monitoring stay with the application
