@@ -29,7 +29,6 @@ type inputs struct {
 	installing bool
 	failure    error
 	request    Request
-	plan       Plan
 	path       string
 	dirs       []*inputDirectory
 	byPath     map[string]*inputDirectory
@@ -96,11 +95,11 @@ func ReadInputs(ctx context.Context, path string) (result Inputs, returned error
 			return result, err
 		}
 	}
-	p.plan, err = DecodePlan(p.files[1].raw)
+	plan, err := DecodePlan(p.files[1].raw)
 	if err != nil {
 		return result, err
 	}
-	if err := p.request.MatchPlan(p.plan); err != nil {
+	if err := p.request.MatchPlan(plan); err != nil {
 		return result, err
 	}
 	pair, err := tls.X509KeyPair(p.files[2].raw, p.files[3].raw)

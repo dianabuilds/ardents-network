@@ -32,8 +32,13 @@ func (h Inputs) Plan() Plan {
 	if h.original == nil {
 		return Plan{}
 	}
-	p := h.original.plan
-	p.Network.Authorities = append([][32]byte(nil), p.Network.Authorities...)
+	if len(h.original.files) < 2 {
+		return Plan{}
+	}
+	p, err := DecodePlan(h.original.files[1].raw)
+	if err != nil {
+		return Plan{}
+	}
 	return p
 }
 
