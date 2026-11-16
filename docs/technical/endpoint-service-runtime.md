@@ -2,6 +2,14 @@
 
 ## Selected protected installation handoff
 
+Under ADR-0125, Installation is a transitional implementation rather than a
+product domain. The duplicate `internal/endpoint/installation` lifecycle and
+its `ardents endpoint` commands are retired. Existing roots and persisted bytes
+are preserved. The native lifecycle described below belongs to the remaining
+`internal/successor/endpoint/delivery` consumer in `ardents-next`; its removal
+still requires equivalent platform and runtime ownership under ADR-0125.
+
+
 The fixed Endpoint template is validated and retained by the separately owned
 Installation unit Module before the root admits writable directories. It renders
 only that admitted path projection; root unit_configuration.go owns immutable/Release
@@ -206,7 +214,8 @@ decoding and interrupts/joins original transport I/O on close. A retained unit
 reference grants no Release, start or readiness authority. Actual successor
 recovery/start acceptance remains a separate source-matched obligation.
 
-`internal/endpoint/installation` composes the two fresh Release evaluations from
+The retained Portable enrollment composition in `cmd/ardents` performs the two
+fresh Release evaluations from
 one frozen set of enrolled metadata and the same local/reference facts. It
 checks complete resource bytes and coherent authenticated target identities and
 Targets floors before returning their opaque proofs. The ordinary enrolled

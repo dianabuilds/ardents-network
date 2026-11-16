@@ -566,9 +566,10 @@ runtime-допущение следует за завершением требу
 на точные байты; Execution использует разрешённый установленный артефакт и
 владеет отдельным жизненным циклом worker.
 
-**Где искать обязанности:** `internal/endpoint/installation`,
-`internal/endpoint/replacement` и установочные command-адаптеры. Композиция
-и системные механизмы не получают полномочий Release.
+**Текущие владельцы:** `release/endpoint` проверяет пару артефактов;
+этот переходный delivery-код удерживает native транзакцию и Startup.
+Дублирующий legacy Endpoint installer удалён; его история не принимается
+автоматически. Композиция и системные механизмы не получают полномочий Release.
 
 **Основа:** [Release и установка](../../../../docs/technical/release-update-custody.md),
 [карта доменов](../../../../docs/development/domain-map.md).
@@ -586,7 +587,7 @@ runtime-допущение следует за завершением требу
 |---|---|---|
 | Enrollment | Первичный pin, точный inventory, неизменяемый снимок файлов; отдельная загрузка самосогласованного кандидата для замены | Подписи Release, свежие floors, разрешение установки или запуска |
 | Release | Свежие непрозрачные разрешения на точные байты программы и descriptor; собственная монотонная история | Владение каталогами, состояние manager, завершение процессов |
-| Installation | Связность пары разрешений, локальные declarations, поколения, binding/selection, собственный журнал и транзакция | Network/Admission/Instance/Publication authority, готовность Service |
+| Endpoint delivery (переходная реализация) | Локальные declarations, поколения, binding/selection, собственный журнал и транзакция | Network/Admission/Instance/Publication authority, готовность Service |
 | Native adapters Installation | Реальные account/ownership/inode, fixed resources, unit/InvocationID, pin и join исходных scopes | Право принять неизвестную платформу или ослабить обязательную защиту |
 | Execution | Отдельный допуск и lifetime конкретного квалифицированного worker | Право устанавливать, менять Release floors или восстанавливать установку |
 | Command composition | Создание подлинных новых владельцев и перевод результата операции | Подмена доказательств данными CLI или сохранённым JSON |
@@ -830,22 +831,6 @@ Product Owner в [#359](https://github.com/dianabuilds/ardents-network/issues/35
 byte authorization продолжаются независимо; изменение принимающих native
 profiles требует конкретного разрешённого ремонта с causal protection tests.
 Unknown/missing protection никогда не является принимающим fallback.
-
-## Source inventory: что разобрать, что оставить
-
-Исходники ниже — named provenance прежнего владельца в текущем checkout, не dependencies. Без полного пути имена в этой таблице относятся к `internal/endpoint/installation`; текущая компоновка нового владельца описана выше.
-
-| Прежняя ответственность | Проверенный source | Решение для нового владельца |
-|---|---|---|
-| Coherent fresh pair | `internal/endpoint/installation/release_authentication.go` | Перепроверить по новому Enrollment/Release; private proofs вместо mutable public Decision |
-| Existing trust continuity | `successor_authentication_linux.go` | Portable rule; actual complete floors и binding constraints, никакого initial-pin bootstrap |
-| Request and declaration consistency | `request.go`, `internal/endpoint/runtimeplan` | Сохранить grammar/limits; отделить pure declarations от acquisition/credentials |
-| Frozen generation assembly | `generation_assembly.go`, `unit_rendering.go` | Portable deterministic bytes; actual inode/account facts проверяются native owner |
-| Ownership and journal writes | `generation_ownership_linux.go`, `resource_creation_linux.go`, `resource_replacement_linux.go` | Native identity/durability; canonical records и переходы отдельно от syscalls |
-| Original process termination | `predecessor_linux.go` | Exact invocation + original pins, no replacement-generation completion |
-| Selection/reload/start/ACK | `transition_finishing_linux.go`, `start_guard_linux.go`, `start_completion_linux.go` | Самостоятельный transition lifetime, retained errors и explicit barrier |
-| Ordinary Job/worker lifecycle | `internal/endpoint/worker` | Оставить отдельному новому Execution; installation не получает fake qualification через wrapper |
-| Runtime authority and Service | Endpoint composition | Оставить новым Network/Admission/Publication/Instance/Connection consumers |
 
 ## Приёмка и execution profiles
 

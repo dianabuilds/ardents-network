@@ -425,33 +425,12 @@ return `installation-repair-required`. Full ACK survives late errors with
 Successful command composition and filesystem controls do not establish a
 positive installed recovery; the genuine new runtime consumer remains required.
 
-ADR-0119's successor selects `endpoint provision <request-file>`,
-`endpoint installation-check <installation-root>`,
-`endpoint start-installed <installation-root>`,
-`endpoint upgrade-installed <request-file>` and
-`endpoint recover-installed <installation-root>`. Provision, installation-check
-and start-installed are callable; upgrade and successor recovery also have
-production callers, while their complete interruption/installed qualification
-remains unfinished. Initial recovery requires an owned initial intent and complete
-fixed-file birth records; missing provenance returns repair-required rather than
-adopting leftover objects. It returns `installed-recovered-stopped`, preserving
-the separate explicit-start operation. The
-[implementation handoff](../technical/endpoint-service-runtime.md#selected-protected-installation-handoff)
-defines their bounded contract. Full supported installed qualification is still
-incomplete. Provision returns only `installed-stopped`; installation-check
-returns only `local-integrity-verified`; start-installed accepts only the actual
-fixed service main process before delegating to the bound participant plan.
-Successful upgrade returns `installed-started`, and successful successor recovery
-returns `installed-recovered-started`; neither is a Service readiness or
-publication-continuity receipt. If Root has acknowledged the installed invocation
-but subsequent completion cleanup fails, upgrade or successor recovery emits
-`installed-started-recovery-required` together with a nonzero command result.
-The exact recovery guard remains retained; the result does not establish Service
-readiness or permit ordinary restart through that guard. Upgrade requests omit
-the first-install pin.
-No generic privileged launch,
-implicit start on provision, authority-key creation or accepting test permission
-route is selected. Existing command behavior remains documented below.
+The duplicate `ardents endpoint provision`, `installation-check`,
+`start-installed`, `upgrade-installed` and `recover-installed` routes are retired
+before input or root effects. Their old implementation has been removed. Existing
+installation roots and user data are preserved. The transitional native Endpoint
+commands above belong to `ardents-next`; ADR-0125 governs their eventual replacement
+by platform delivery and runtime owners.
 
 `ardents` is the Endpoint and Network State command adapter.
 

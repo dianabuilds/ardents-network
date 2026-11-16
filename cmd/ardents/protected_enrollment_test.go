@@ -1,4 +1,4 @@
-package installation
+package main
 
 import (
 	"bytes"
@@ -21,7 +21,7 @@ import (
 )
 
 func TestProtectedTargetsUseFreshProofsFromOneSignedSet(t *testing.T) {
-	enrolled := protectedReleaseFixture(t, nil, false)
+	enrolled := protectedEnrollmentReleaseFixture(t, nil, false)
 	verifier, err := release.Open(filepath.Join(t.TempDir(), "floors"))
 	if err != nil {
 		t.Fatal(err)
@@ -31,7 +31,7 @@ func TestProtectedTargetsUseFreshProofsFromOneSignedSet(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	authorization, err := Authenticate(context.Background(), verifier, enrolled)
+	authorization, err := authenticateProtectedEnrollment(context.Background(), verifier, enrolled)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,13 +39,13 @@ func TestProtectedTargetsUseFreshProofsFromOneSignedSet(t *testing.T) {
 	program, programOK := programProof.AcceptedDecision()
 	generation, generationOK := generationProof.AcceptedDecision()
 	if !programOK || !generationOK || program.Outcome != release.OutcomeReleaseAccepted ||
-		generation.Outcome != release.OutcomeNoUpdate || program.Path != programTarget || generation.Path != generationTarget ||
+		generation.Outcome != release.OutcomeNoUpdate || program.Path != protectedEnrollmentProgramTarget || generation.Path != protectedEnrollmentGenerationTarget ||
 		bytes.Equal(program.Digest, generation.Digest) || !bytes.Equal(program.Floors.TargetsDigest, generation.Floors.TargetsDigest) {
 		t.Fatalf("proofs do not cover two distinct targets in one set: program=%+v generation=%+v", program, generation)
 	}
 	// A fresh repeated transaction must still produce two opaque proofs after
 	// the shared floor has committed; display outcomes alone are insufficient.
-	repeated, err := Authenticate(context.Background(), verifier, enrolled)
+	repeated, err := authenticateProtectedEnrollment(context.Background(), verifier, enrolled)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestProtectedTargetsUseFreshProofsFromOneSignedSet(t *testing.T) {
 			t.Fatalf("repeat lacks fresh no-update proof: %+v", decision)
 		}
 	}
-	for _, proof := range []release.Authorization{func() release.Authorization { p, _ := (Authorization{}).Targets(); return p }(), func() release.Authorization { _, g := (Authorization{}).Targets(); return g }()} {
+	for _, proof := range []release.Authorization{func() release.Authorization { p, _ := (protectedEnrollmentAuthorization{}).Targets(); return p }(), func() release.Authorization { _, g := (protectedEnrollmentAuthorization{}).Targets(); return g }()} {
 		if _, ok := proof.AcceptedDecision(); ok {
 			t.Fatal("zero installation proof authorizes a target")
 		}
@@ -64,13 +64,13 @@ func TestProtectedTargetsUseFreshProofsFromOneSignedSet(t *testing.T) {
 }
 
 func TestProtectedTargetsRefuseMissingGenerationProof(t *testing.T) {
-	enrolled := protectedReleaseFixture(t, nil, true)
+	enrolled := protectedEnrollmentReleaseFixture(t, nil, true)
 	verifier, err := release.Open(filepath.Join(t.TempDir(), "floors"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer verifier.Close()
-	if _, err := Authenticate(context.Background(), verifier, enrolled); err == nil {
+	if _, err := authenticateProtectedEnrollment(context.Background(), verifier, enrolled); err == nil {
 		t.Fatal("executable-only signed set produced a protected generation proof")
 	} else {
 		t.Logf("missing generation target refusal: %v", err)
@@ -92,13 +92,13 @@ func TestProtectedTargetsRefuseAuthenticIdentityMismatch(t *testing.T) {
 		{"network", "network", "other-network"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			enrolled := protectedReleaseFixture(t, func(custom map[string]any) { custom[test.field] = test.value }, false)
+			enrolled := protectedEnrollmentReleaseFixture(t, func(custom map[string]any) { custom[test.field] = test.value }, false)
 			verifier, err := release.Open(filepath.Join(t.TempDir(), "floors"))
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer verifier.Close()
-			if authorization, err := Authenticate(context.Background(), verifier, enrolled); err == nil {
+			if authorization, err := authenticateProtectedEnrollment(context.Background(), verifier, enrolled); err == nil {
 				t.Fatalf("authentic conflicting generation crossed protection boundary: %+v", authorization)
 			}
 		})
@@ -116,7 +116,7 @@ func TestProtectedTargetsRefuseSubstitutionBeforeReleaseFloors(t *testing.T) {
 		{"missing-descriptor", func(e *enrollment.Verified) { e.ProtectedDescriptor = nil }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			enrolled := protectedReleaseFixture(t, nil, false)
+			enrolled := protectedEnrollmentReleaseFixture(t, nil, false)
 			original := enrolled.Inputs
 			test.change(&enrolled)
 			verifier, err := release.Open(filepath.Join(t.TempDir(), "floors"))
@@ -124,7 +124,7 @@ func TestProtectedTargetsRefuseSubstitutionBeforeReleaseFloors(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer verifier.Close()
-			if _, err := Authenticate(context.Background(), verifier, enrolled); err == nil {
+			if _, err := authenticateProtectedEnrollment(context.Background(), verifier, enrolled); err == nil {
 				t.Fatal("invalid generation accepted")
 			}
 			decision := verifier.Evaluate(context.Background(), original)
@@ -135,9 +135,9 @@ func TestProtectedTargetsRefuseSubstitutionBeforeReleaseFloors(t *testing.T) {
 	}
 }
 
-// protectedReleaseFixture signs synthetic public metadata solely for behavior
+// protectedEnrollmentReleaseFixture signs synthetic public metadata solely for behavior
 // tests. Its builder identities and qualification field are not release evidence.
-func protectedReleaseFixture(t *testing.T, changeGeneration func(map[string]any), omitGeneration bool) enrollment.Verified {
+func protectedEnrollmentReleaseFixture(t *testing.T, changeGeneration func(map[string]any), omitGeneration bool) enrollment.Verified {
 	t.Helper()
 	now := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	resources := map[string][]byte{}
@@ -146,7 +146,7 @@ func protectedReleaseFixture(t *testing.T, changeGeneration func(map[string]any)
 		resources[name] = []byte("fixture resource: " + name)
 		if name == "ardents-endpoint.service" {
 			var err error
-			resources[name], err = os.ReadFile("../../../packaging/text-worker/ardents-endpoint.service")
+			resources[name], err = os.ReadFile("../../packaging/text-worker/ardents-endpoint.service")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -212,8 +212,8 @@ func protectedReleaseFixture(t *testing.T, changeGeneration func(map[string]any)
 	for _, target := range []struct {
 		path     string
 		artifact []byte
-	}{{programTarget, resources["ardents-linux-amd64"]}, {generationTarget, descriptor}} {
-		if target.path == generationTarget && omitGeneration {
+	}{{protectedEnrollmentProgramTarget, resources["ardents-linux-amd64"]}, {protectedEnrollmentGenerationTarget, descriptor}} {
+		if target.path == protectedEnrollmentGenerationTarget && omitGeneration {
 			continue
 		}
 		digest := sha256.Sum256(target.artifact)
@@ -229,7 +229,7 @@ func protectedReleaseFixture(t *testing.T, changeGeneration func(map[string]any)
 				{"builder_identity": "builder-b", "build_identity": "fixture-build", "source_revision": "fixture-source", "build_input_commitment": "fixture-inputs", "target_sha256": hex.EncodeToString(digest[:])},
 			},
 		}
-		if target.path == generationTarget && changeGeneration != nil {
+		if target.path == protectedEnrollmentGenerationTarget && changeGeneration != nil {
 			changeGeneration(custom)
 		}
 		raw, err := json.Marshal(custom)
@@ -261,6 +261,6 @@ func protectedReleaseFixture(t *testing.T, changeGeneration func(map[string]any)
 	}
 	return enrollment.Verified{ProtectedDescriptor: descriptor, ProtectedFiles: resources, Inputs: release.Inputs{
 		RootBytes: rootBytes, Files: map[string][]byte{release.MetadataURL("timestamp.json"): timestampBytes, release.MetadataURL("1.snapshot.json"): snapshotBytes, release.MetadataURL("1.targets.json"): targetBytes},
-		Artifact: resources["ardents-linux-amd64"], TargetPath: programTarget, Local: release.LocalEnvironment{Environment: "alpha", Network: "alpha-network-1", Platform: "linux-amd64", Architecture: "amd64", RefTime: now},
+		Artifact: resources["ardents-linux-amd64"], TargetPath: protectedEnrollmentProgramTarget, Local: release.LocalEnvironment{Environment: "alpha", Network: "alpha-network-1", Platform: "linux-amd64", Architecture: "amd64", RefTime: now},
 	}}
 }
