@@ -154,8 +154,25 @@ func TestNameRouteRejectsIncompleteCommand(t *testing.T) {
 func TestRootUsageListsRetainedRoutes(t *testing.T) {
 	t.Parallel()
 	err := run(t.Context(), nil, &bytes.Buffer{})
-	if err == nil || err.Error() != "usage: ardents <accept-offline|accept-closed-profile|refresh-sources|diagnostics|endpoint|entry|name|service-instance> arguments" {
+	if err == nil || err.Error() != "usage: ardents <accept-offline|accept-closed-profile|refresh-sources|diagnostics|endpoint|entry|name> arguments" {
 		t.Fatalf("root usage error = %v", err)
+	}
+}
+
+func TestServiceInstanceRetiredBeforeEffects(t *testing.T) {
+	t.Parallel()
+	for _, arguments := range [][]string{
+		{"service-instance", "initialize", "--config", "missing.json"},
+		{"service-instance", "accept", "--root", "missing", "--response", "missing"},
+	} {
+		var output bytes.Buffer
+		err := run(t.Context(), arguments, &output)
+		if err == nil || !strings.Contains(err.Error(), "service-instance is retired") {
+			t.Fatalf("retired service-instance reached effects: %v", err)
+		}
+		if output.Len() != 0 {
+			t.Fatalf("retired service-instance wrote output: %s", output.String())
+		}
 	}
 }
 
