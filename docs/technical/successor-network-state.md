@@ -156,6 +156,8 @@ or CurrentRuntime authority semantics.
 
 The `ardents-next network inspect` consumer also uses the retained opening, so
 inspection refuses a missing or empty history rather than initializing it.
+The command's Network-backed Admission authority opens existing history in the
+same way; it cannot create a State root while trying to observe authority.
 The retained owner still performs its normal durability probe and recovery;
 this is not a claim that the underlying filesystem is opened read-only.
 

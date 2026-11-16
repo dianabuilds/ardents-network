@@ -72,7 +72,7 @@ func openAdmissionAuthority(profile string, plan *networkAuthorityPlan) (admissi
 	if err != nil {
 		return admissionAuthority{}, err
 	}
-	owner, err := state.Open(config)
+	owner, err := state.OpenRetained(config)
 	if err != nil {
 		return admissionAuthority{}, err
 	}
