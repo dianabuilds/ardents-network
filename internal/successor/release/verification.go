@@ -154,7 +154,8 @@ func (v *Verifier) Evaluate(ctx context.Context, in Inputs) Decision {
 		}())
 		decision = reject(outcomeReleaseUnavailable, "evaluation retired before handoff", err)
 	}
-	if decision.authorization != nil {
+	if decision.Outcome == outcomeReleaseAccepted || decision.Outcome == outcomeNoUpdate {
+		decision = authorize(decision)
 		decision.authorization.owner = v
 		decision.authorization.caller = ctx
 	}

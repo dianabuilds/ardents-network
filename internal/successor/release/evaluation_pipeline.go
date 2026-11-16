@@ -84,9 +84,6 @@ func evaluate(ctx context.Context, in Inputs, store floorPersistence) Decision {
 		targetDecision.RootVersion = successor.RootVersion
 		targetDecision.Notice = notice
 		targetDecision.EvidenceNotice = h3EvidenceNotice
-		if combined == outcomeReleaseAccepted || combined == outcomeNoUpdate {
-			targetDecision = authorize(targetDecision)
-		}
 		return targetDecision
 	default:
 		targetDecision.Outcome = combined
