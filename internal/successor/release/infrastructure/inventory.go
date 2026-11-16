@@ -8,28 +8,6 @@ type InventoryCommitments struct {
 	Program, Template, Artifact, Inventory, Targets string
 }
 
-// MatchesInventoryResources compares a decoded role declaration with digests
-// already checked against the actual inventory bytes. It grants no authority.
-func MatchesInventoryResources(d Declaration, hashes map[string]string) bool {
-	var template string
-	switch d.Invocation {
-	case "forwarding":
-		template = ForwardingTemplateName
-	case "join":
-		template = JoinTemplateName
-	case "descriptor":
-		template = DescriptorTemplateName
-	case "introduction":
-		template = IntroductionTemplateName
-	case "source":
-		template = TemplateName
-	default:
-		return false
-	}
-	program, unit := d.Files[ProgramName], d.Files[template]
-	return program != "" && unit != "" && program == hashes[ProgramName] && unit == hashes[template]
-}
-
 // CheckJoinInventory compares the fixed JOIN generation's original bytes.
 func CheckJoinInventory(files map[string][]byte, expected InventoryCommitments) (enrollment.InfrastructureFacts, map[string]string, bool, error) {
 	return checkInventory(files, expected, JoinTemplateName, JoinDescriptorName)

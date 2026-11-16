@@ -54,7 +54,7 @@ func validateInitialGeneration(b binding, selected []byte, files map[string][]by
 	// Inventory validation already checked the same actual program/template
 	// bytes and their original 64 MiB bounds. Decoding here retains the separate
 	// Introduction grammar; its declarations must match those fresh byte digests.
-	if !releaseartifact.MatchesInventoryResources(d, hashes) {
+	if d.Files[programName] != hashes[programName] || d.Files[releaseartifact.IntroductionTemplateName] != hashes[releaseartifact.IntroductionTemplateName] {
 		return Plan{}, errors.Join(ErrBinding, releaseartifact.ErrBinding)
 	}
 	if facts != (enrollment.InfrastructureFacts{Platform: d.Platform, ReleaseIdentity: d.ReleaseIdentity, ReleaseVersion: d.ReleaseVersion, Invocation: d.Invocation}) {
