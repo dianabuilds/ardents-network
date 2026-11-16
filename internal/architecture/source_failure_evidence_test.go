@@ -3,15 +3,11 @@ package architecture
 import (
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
 
 func TestSourceQualificationRetainsPrivateFailureCauses(t *testing.T) {
-	python := "python3"
-	if runtime.GOOS == "windows" {
-		python = "python"
-	}
+	python := pythonExceptionGroup(t)
 	command := exec.CommandContext(t.Context(), python, "-I", "-S", "-c", `
 import ast,json,os,re,runpy,subprocess,sys,tempfile,types
 from pathlib import Path

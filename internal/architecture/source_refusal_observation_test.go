@@ -826,10 +826,7 @@ for output in (b"source command failed\n",notice+raw,b'{"outcome":"source-recove
 // Only the outside helper transport is exercised here. Detached child messages
 // below are never canonical observations, Source authority or installed evidence.
 func TestSourceCancellationObserverTransportJoinsAndRejectsDuplicateEvents(t *testing.T) {
-	python := "python3"
-	if runtime.GOOS == "windows" {
-		python = "python"
-	}
+	python := pythonExceptionGroup(t)
 	command := exec.CommandContext(t.Context(), python, "-I", "-S", "-c", `
 import os, pathlib, queue, runpy, sys, tempfile
 observer = runpy.run_path(sys.argv[1])["RecoveryCancellationObserver"]

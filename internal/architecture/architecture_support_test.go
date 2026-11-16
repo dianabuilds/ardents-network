@@ -3,11 +3,33 @@ package architecture
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 	"testing"
 )
+
+// pythonExceptionGroup selects a Python 3.11+ interpreter for tests whose embedded
+// scripts use ExceptionGroup/BaseExceptionGroup (3.11+ builtins). The ambient
+// python3 may be older (e.g. macOS system 3.9), so prefer an explicit newer
+// interpreter and verify its version rather than assuming python3 suffices.
+func pythonExceptionGroup(t *testing.T) string {
+	t.Helper()
+	for _, name := range []string{"python3.13", "python3.12", "python3.11", "python3", "python"} {
+		path, err := exec.LookPath(name)
+		if err != nil {
+			continue
+		}
+		out, err := exec.Command(path, "-I", "-S", "-c", "import sys; sys.stdout.write('1' if sys.version_info >= (3, 11) else '0')").Output()
+		if err == nil && strings.TrimSpace(string(out)) == "1" {
+			return path
+		}
+	}
+	t.Fatal("no Python 3.11+ interpreter available for ExceptionGroup test")
+	return ""
+}
 
 func repositoryRoot(t *testing.T) string {
 	t.Helper()
