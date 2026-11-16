@@ -14,3 +14,10 @@ func runNodeIntroduction(_ context.Context, _ []string, out, _ io.Writer) int {
 	}
 	return 1
 }
+
+func runIntroductionRepair(_ context.Context, _ []string, out, _ io.Writer) int {
+	if nodeIntroductionReport(out, "refused", "unsupported-platform", "", "") != nil {
+		return 2
+	}
+	return 1
+}

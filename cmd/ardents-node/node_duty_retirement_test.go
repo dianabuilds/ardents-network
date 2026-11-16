@@ -2,62 +2,43 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-func TestNodeCommandRefusesOldDutyReservationsBeforeEffects(t *testing.T) {
+// The legacy generic Node runtime, issuer and hosting operator paths are retired
+// before any private configuration is read or any root effect is attempted. Each
+// maintained operation uses its explicit successor composition through the
+// canonical ardents-next commands; these refusals grant no runtime or adoption.
+func TestLegacyNodeCommandPathsRefuseBeforeEffects(t *testing.T) {
 	for _, test := range []struct {
-		name       string
-		selectDuty func(*nodePlan)
+		name      string
+		arguments []string
+		refusal   error
 	}{
-		{name: "rendezvous", selectDuty: func(plan *nodePlan) { plan.Rendezvous = &rendezvousPlan{} }},
-		{name: "initiator", selectDuty: func(plan *nodePlan) { plan.Initiator = &initiatorPlan{} }},
-		{name: "introduction", selectDuty: func(plan *nodePlan) { plan.Introduction = &introductionPlan{} }},
-		{name: "responder", selectDuty: func(plan *nodePlan) { plan.Responder = &responderPlan{} }},
-		{name: "transit issuer", selectDuty: func(plan *nodePlan) { plan.TransitIssuer = &transitIssuerPlan{} }},
-		{name: "old and closed", selectDuty: func(plan *nodePlan) {
-			plan.Rendezvous = &rendezvousPlan{}
-			plan.ClosedForwarding = &closedForwardingPlan{}
-			plan.ClosedProfileAuthority = plan.AuthorityPublic[0]
-		}},
+		{name: "node config", arguments: []string{"node", "--config", "missing.json"}, refusal: errOldNodeConfigRetired},
+		{name: "issuer initialize", arguments: []string{"issuer", "initialize", "--config", "missing.json"}, refusal: errOldIssuerRetired},
+		{name: "issuer serve", arguments: []string{"issuer", "serve", "--config", "missing.json"}, refusal: errOldIssuerRetired},
+		{name: "hosting initialize", arguments: []string{"hosting", "initialize", "--config", "missing.json"}, refusal: errOldHostingRetired},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			plan := oldDutyRetirementPlan(t)
-			test.selectDuty(&plan)
-			path := writeForwardingNodePlan(t, plan)
-
-			err := runNode(t.Context(), path, new(bytes.Buffer))
-			if !errors.Is(err, errOldNodeDutyRetired) {
-				t.Fatalf("old duty error = %v", err)
+			root := t.TempDir()
+			socket := filepath.Join(root, "diagnostics.socket")
+			t.Setenv("ARDENTS_DEBUG_SOCKET", socket)
+			var output bytes.Buffer
+			err := runCommand(context.Background(), test.arguments, &output)
+			if !errors.Is(err, test.refusal) {
+				t.Fatalf("legacy path error = %v; want %v", err, test.refusal)
 			}
-			for _, root := range []string{plan.StateRoot, plan.LocalRoleStateRoot} {
-				if _, statErr := os.Stat(root); !errors.Is(statErr, os.ErrNotExist) {
-					t.Fatalf("retired duty changed root %q: %v", root, statErr)
-				}
+			if output.Len() != 0 {
+				t.Fatalf("retired path wrote output: %s", output.String())
+			}
+			if _, err := os.Lstat(socket); !os.IsNotExist(err) {
+				t.Fatalf("retired path opened diagnostic socket: %v", err)
 			}
 		})
 	}
-}
-
-func oldDutyRetirementPlan(t *testing.T) nodePlan {
-	t.Helper()
-	plan := forwardingNodePlan(t)
-	missing := filepath.Join(t.TempDir(), "missing")
-	plan.StateRoot = filepath.Join(missing, "state")
-	plan.LocalRoleStateRoot = filepath.Join(missing, "role")
-	plan.ClockObservationFile = filepath.Join(missing, "clock")
-	plan.SourceClientCertificate = filepath.Join(missing, "source.pem")
-	plan.SourceClientKey = filepath.Join(missing, "source.key")
-	plan.IdentityKey = filepath.Join(missing, "identity.key")
-	plan.ServerCertificate = filepath.Join(missing, "node.pem")
-	plan.ServerKey = filepath.Join(missing, "node.key")
-	for index := range plan.Sources {
-		plan.Sources[index].RootCA = filepath.Join(missing, "source-root.pem")
-	}
-	plan.ClosedProfileAuthority = ""
-	plan.ClosedForwarding = nil
-	return plan
 }
