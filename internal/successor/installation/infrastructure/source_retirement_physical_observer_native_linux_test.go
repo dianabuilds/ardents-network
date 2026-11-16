@@ -181,9 +181,9 @@ func (p *sourceRetirementPhysicalProfile) image() (*sourceRetirementPhysicalSnap
 			result.ExitedRealtime < result.StartedRealtime || result.ExitedMonotonic < result.StartedMonotonic || result.Code != 1 || result.Status != 0 {
 			return nil, errors.New("original retirement result/archive binding differs")
 		}
-		originalChallenge, err := sourceRetirementChallenge(result.Challenge)
-		if err != nil {
-			return nil, err
+		originalChallenge, ok := completion.DecodeRetirementChallenge(result.Challenge)
+		if !ok {
+			return nil, errors.New("invalid original retirement challenge")
 		}
 		completed := sourceRetirementFrame(frame, originalChallenge)
 		if result.CompletionSHA256 != digest(completed[:]) || challenge.SHA256 != digest(originalChallenge[:]) || joined.SHA256 != digest(completed[:]) {

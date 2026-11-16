@@ -1,8 +1,6 @@
 package infrastructure
 
 import (
-	"encoding/hex"
-
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/journal"
 )
 
@@ -38,17 +36,4 @@ func decodeSourceRetirementRecords(raw []byte, directory, start, challenge, comp
 		return nil, ErrBinding
 	}
 	return records, nil
-}
-
-func sourceRetirementChallenge(text string) ([32]byte, error) {
-	var result [32]byte
-	raw, err := hex.DecodeString(text)
-	if err != nil || len(raw) != len(result) || hex.EncodeToString(raw) != text {
-		return result, ErrBinding
-	}
-	copy(result[:], raw)
-	if result == [32]byte{} {
-		return result, ErrBinding
-	}
-	return result, nil
 }

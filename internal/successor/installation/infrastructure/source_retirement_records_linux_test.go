@@ -81,15 +81,3 @@ func TestSourceRetirementTranscriptRequiresDomainNativeJoinCloseAndExactCommit(t
 		t.Fatal("replayed retirement accepted")
 	}
 }
-
-func TestSourceRetirementChallengeHasOneExactNonzeroEncoding(t *testing.T) {
-	text := strings.Repeat("01", 32)
-	if challenge, err := sourceRetirementChallenge(text); err != nil || challenge[0] != 1 || challenge[31] != 1 {
-		t.Fatal("independent challenge encoding refused", challenge, err)
-	}
-	for _, value := range []string{"", strings.Repeat("00", 32), strings.Repeat("ff", 31), strings.Repeat("FF", 32), text + "00"} {
-		if _, err := sourceRetirementChallenge(value); err == nil {
-			t.Fatal("noncanonical/zero challenge accepted", value)
-		}
-	}
-}

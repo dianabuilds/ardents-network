@@ -154,9 +154,9 @@ func readSourceRetirementProof(s *sourceSelection, started *sourceStartHistory) 
 	if f.Schema != "ardents-source-retirement-v1" || f.Attempt != uint32(started.number) || f.Generation != b.Generation || f.BindingSHA256 != binding || f.StartSHA256 != started.sha256 || f.InvocationID != a.InvocationID || f.PID != a.PID || f.Manager != a.Manager || f.StartedRealtime != a.StartedRealtime || f.StartedMonotonic != a.StartedMonotonic || f.ExitedRealtime < f.StartedRealtime || f.ExitedMonotonic < f.StartedMonotonic || f.Code != 1 || f.Status != 0 {
 		return nil, ErrBinding
 	}
-	challenge, err := sourceRetirementChallenge(f.Challenge)
-	if err != nil {
-		return nil, err
+	challenge, ok := completion.DecodeRetirementChallenge(f.Challenge)
+	if !ok {
+		return nil, ErrBinding
 	}
 	start, err := completion.Encode(started.id, b.Generation, binding)
 	if err != nil {
