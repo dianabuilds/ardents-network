@@ -149,6 +149,55 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 	}
 }
 
+// A genuine forward Release changes the verifier's floors; detached decisions
+// from an earlier accepted pair must not remain usable as current authority.
+func TestInstallationPairRefusesAfterReleaseFloorsAdvance(t *testing.T) {
+	ref := time.Date(2030, 1, 2, 3, 4, 5, 0, time.UTC)
+	authority := newConsumerReleaseAuthority(t, ref.Add(365*24*time.Hour))
+	dir, pin, program := signedConsumerRelease(t, "linux-amd64", true, true, 1, nil, authority, 1, 1)
+	bundle, err := enrollment.Verify(t.Context(), enrollment.Request{BundleRoot: dir, ExecutablePath: program, ManifestSHA256: pin, Scope: enrollment.Headless})
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, ok := installationFixtureInputs(bundle, ref)
+	if !ok {
+		t.Fatal("initial fixture input refused")
+	}
+	v, err := release.Open(filepath.Join(t.TempDir(), "history"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := v.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	old, err := installation.AuthenticateInitial(t.Context(), v, bundle, input)
+	if err != nil || old.Check(t.Context()) != nil {
+		t.Fatal("initial genuine pair refused", err)
+	}
+	nextDir, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 2, nil, authority, 2, 2)
+	candidate, err := enrollment.ReadCandidate(t.Context(), nextDir, enrollment.Headless)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nextInput, ok := candidateReleaseInputs(candidate, ref)
+	nextInput.Local.Architecture = "amd64"
+	if !ok {
+		t.Fatal("candidate fixture input refused")
+	}
+	current, err := installation.AuthenticateCandidate(t.Context(), v, candidate, nextInput)
+	if err != nil {
+		t.Fatal("forward genuine pair refused", err)
+	}
+	if err := current.Check(t.Context()); err != nil {
+		t.Fatal("current pair refused", err)
+	}
+	if err := old.Check(t.Context()); !errors.Is(err, release.ErrTrustUnavailable) {
+		t.Fatalf("old pair survived advanced floors: %v", err)
+	}
+}
+
 func TestInstallationSecondTargetRefusalRetainsRealFloors(t *testing.T) {
 	for _, scenario := range []string{"missing-generation", "incoherent-generation"} {
 		t.Run(scenario, func(t *testing.T) {
