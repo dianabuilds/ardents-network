@@ -128,6 +128,12 @@ not make them target domain boundaries or require another role installer.
 | Work admission, interruption and physical completion | Runtime composition and its actual Node/Network/Execution/Service owners; process exit or timeout cannot stand in for required joined completion |
 | Spend/quota/results, slot/history/time floors, keys | Their existing Admission/Route/Network/Custody owners; program replacement does not reset their state |
 
+Alpha-bundle packaging obtains platform executable identities and static
+protected-generation validation from new Enrollment through its two thin Go
+script consumers. The same constructor binds the bundle verifier's companion
+names. This supporting producer seam supplies no initial-pin provenance,
+Release permission, execution or domain-state ownership.
+
 The target contains no general Ardents installer, separate lifecycle manager or
 new role-specific install/restart/replacement/recovery domain.
 The replacement composes the existing direct new-domain runtime consumers under

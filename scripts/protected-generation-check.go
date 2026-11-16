@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 )
 
 func main() {

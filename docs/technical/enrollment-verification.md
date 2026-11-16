@@ -192,6 +192,15 @@ complete retained Release history. Snapshot loading itself establishes neither
 proof. Installed predecessor binding, forward generation continuity and actual
 transition remain separate unimplemented obligations before successor effects.
 
+The alpha-bundle packaging producers use the new owner's public
+`ExecutableArtifactName` and existing `ValidateProtectedGeneration`. Both the
+bundle verifier and packaging use the same artifact-name constructor, including
+Windows `.exe` identities; the helper formats declared names without selecting
+platform support or attesting artifact provenance. The two Go script entry points
+retain their existing argv, stdout and exit-status contract and static-byte
+refusal boundary. The protected
+checker never rewrites the descriptor whose exact bytes Release must bind.
+
 ### Predecessor owner
 
 `internal/enrollment` behavior tests cover pin-before-parse,

@@ -480,7 +480,7 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 			return
 		}
 		relative := relativePath(t, root, filename)
-		if !strings.HasPrefix(relative, "internal/successor/") && !strings.HasPrefix(relative, "cmd/ardents-next/") {
+		if !strings.HasPrefix(relative, "internal/successor/") && !strings.HasPrefix(relative, "cmd/ardents-next/") && relative != "scripts/enrollment-artifact-name.go" && relative != "scripts/protected-generation-check.go" {
 			return
 		}
 		file, err := parser.ParseFile(token.NewFileSet(), filename, nil, parser.ImportsOnly)
@@ -500,6 +500,9 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	if source == "scripts/enrollment-artifact-name.go" || source == "scripts/protected-generation-check.go" {
+		return dependency == modulePath+"/internal/successor/enrollment" || !strings.Contains(dependency, ".")
+	}
 	if source == "cmd/ardents-next/platform_release_linux_test.go" && (dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 		return true
 	}
@@ -1477,6 +1480,11 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		name, source, dependency string
 		allowed                  bool
 	}{
+		{"packaging identity uses new Enrollment", "scripts/enrollment-artifact-name.go", modulePath + "/internal/successor/enrollment", true},
+		{"packaging identity excludes old Enrollment", "scripts/enrollment-artifact-name.go", modulePath + "/internal/enrollment", false},
+		{"packaging validator uses new Enrollment", "scripts/protected-generation-check.go", modulePath + "/internal/successor/enrollment", true},
+		{"packaging validator excludes Release authority", "scripts/protected-generation-check.go", modulePath + "/internal/successor/release", false},
+		{"adjacent script has no inherited Enrollment access", "scripts/another-tool.go", modulePath + "/internal/successor/enrollment", false},
 		{"fixed JOIN stopped observer consumes physical D-Bus", "internal/successor/installation/systemd/join_stopped_linux.go", "github.com/godbus/dbus/v5", true},
 		{"JOIN creator uses its own native manager", "internal/successor/installation/join/initial_install_linux.go", modulePath + "/internal/successor/installation/systemd", true},
 		{"JOIN creator cannot borrow Forwarding", "internal/successor/installation/join/initial_install_linux.go", modulePath + "/internal/successor/installation/forwarding", false},

@@ -162,3 +162,10 @@ version, canonical bytes, состав, digest, пары, protected generation, 
 зарегистрированный регресс новых доменов, race/static/isolation и обязательные
 repository gates. Приёмка относится к точному исходнику и genuine consumer;
 полная цель Route остаётся отдельной и не закрывается этим результатом.
+
+`ExecutableArtifactName` — единственный конструктор имени артефакта для descriptor,
+metadata projection и действующей alpha-bundle packaging composition. Два тонких
+скрипта `enrollment-artifact-name.go` и `protected-generation-check.go` вызывают
+нового владельца; статическая проверка не выдаёт pin provenance или Release proof.
+Реальные compiled-script controls проверяют имена Linux/Windows/macOS, полный
+protected inventory и причинные отказы без перезаписи descriptor.

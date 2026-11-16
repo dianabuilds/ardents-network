@@ -30,7 +30,7 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 		values["control_release"] != "release.ac1" || values["control_network"] != "network.ac1" ||
 		values["control_compatibility"] != "compatibility.ac1" || values["control_release_root"] != "release.pub" ||
 		values["control_network_root"] != "network.pub" || values["control_compatibility_root"] != "compatibility.pub" ||
-		values["corpus_authority"] != "corpus.pub" || values["control_artifact"] != artifactName("ardents-control", values["platform"]) {
+		values["corpus_authority"] != "corpus.pub" || values["control_artifact"] != ExecutableArtifactName("ardents-control", values["platform"]) {
 		return descriptor{}, ErrInventory
 	}
 	seen := make(map[string]bool)
@@ -44,22 +44,14 @@ func parseDescriptor(raw []byte) (descriptor, error) {
 	return descriptor{values: values}, nil
 }
 
-func artifactName(command, platform string) string {
-	name := command + "-" + platform
-	if strings.HasPrefix(platform, "windows-") {
-		name += ".exe"
-	}
-	return name
-}
-
 func (d descriptor) bind(files map[string][]byte, scope Scope) (Facts, error) {
 	for _, key := range []string{"artifact", "trusted_root", "control_catalog", "disclosure_root", "control_release", "control_network", "control_compatibility", "control_release_root", "control_network_root", "control_compatibility_root", "corpus_authority", "control_artifact"} {
 		if _, ok := files[d.values[key]]; !ok {
 			return Facts{}, ErrInventory
 		}
 	}
-	_, node := files[artifactName("ardents-node", d.values["platform"])]
-	_, custody := files[artifactName("ardents-custody", d.values["platform"])]
+	_, node := files[ExecutableArtifactName("ardents-node", d.values["platform"])]
+	_, custody := files[ExecutableArtifactName("ardents-custody", d.values["platform"])]
 	if node != custody || (scope == Headless && !node) {
 		return Facts{}, ErrInventory
 	}

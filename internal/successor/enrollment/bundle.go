@@ -105,8 +105,8 @@ func (s *snapshot) metadataNames() []string {
 		"release.pub": true, "network.pub": true, "compatibility.pub": true, "corpus.pub": true,
 	}
 	if f.Headless {
-		static[artifactName("ardents-node", f.Platform)] = true
-		static[artifactName("ardents-custody", f.Platform)] = true
+		static[ExecutableArtifactName("ardents-node", f.Platform)] = true
+		static[ExecutableArtifactName("ardents-custody", f.Platform)] = true
 	}
 	if f.Protected {
 		static["protected-endpoint.json"] = true
