@@ -16,6 +16,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
 )
 
+type forwardingCompletion struct {
+	outcome        string
+	stateError     error
+	first, cleanup string
+}
+
 // Command composition retains State until the original Node has physically
 // joined. A bounded failed wait cannot close it or report completed retirement.
 func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Writer) int {
@@ -66,40 +72,45 @@ func runNodeForwarding(ctx context.Context, args []string, out, diagnostic io.Wr
 		}
 	}
 	original.Stop()
-	type joinedResult struct {
-		outcome        string
-		stateError     error
-		first, cleanup string
-	}
-	joined := make(chan joinedResult, 1)
+	joined := make(chan forwardingCompletion, 1)
 	go func() {
 		_ = original.Close()
 		first, cleanup := original.JoinedFailureOwners()
-		joined <- joinedResult{original.JoinedOutcome(), owner.Close(), first, cleanup}
+		joined <- forwardingCompletion{original.JoinedOutcome(), owner.Close(), first, cleanup}
 	}()
 	timer := time.NewTimer(time.Duration(plan.RetirementWaitMS) * time.Millisecond)
 	defer timer.Stop()
+	result, timedOut := awaitForwardingCompletion(joined, timer.C, func() {
+		_ = nodeReport(diagnostic, "retiring", "completion-unavailable", encodeNodeFailureDiagnostic(original.FirstFailure()))
+	})
+	if outputErr != nil && !timedOut {
+		return 2
+	}
+	if result.outcome != "canceled" || result.stateError != nil {
+		if result.stateError != nil {
+			result.cleanup = "network"
+		}
+		_ = nodeJoinedFailure(diagnostic, result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
+		return 1
+	}
+	if timedOut {
+		return 1
+	}
+	if nodeReport(diagnostic, "joined", "canceled") != nil {
+		return 2
+	}
+	return 130
+}
+
+// Timeout publishes a failure notice but never lets the command exit before
+// the original Node and State have physically joined.
+func awaitForwardingCompletion(joined <-chan forwardingCompletion, timeout <-chan time.Time, notify func()) (forwardingCompletion, bool) {
 	select {
 	case result := <-joined:
-		if outputErr != nil {
-			return 2
-		}
-		if result.outcome != "canceled" || result.stateError != nil {
-			if result.stateError != nil {
-				result.cleanup = "network"
-			}
-			_ = nodeJoinedFailure(diagnostic, result.first, result.cleanup, encodeNodeFailureDiagnostic(original.FirstFailure()))
-			return 1
-		}
-		if nodeReport(diagnostic, "joined", "canceled") != nil {
-			return 2
-		}
-		return 130
-	case <-timer.C:
-		// The original cleanup goroutine retains State and all remaining owners.
-		// It can finish later but cannot turn this failed bounded result into EXIT.
-		_ = nodeReport(diagnostic, "retiring", "completion-unavailable", encodeNodeFailureDiagnostic(original.FirstFailure()))
-		return 1
+		return result, false
+	case <-timeout:
+		notify()
+		return <-joined, true
 	}
 }
 
