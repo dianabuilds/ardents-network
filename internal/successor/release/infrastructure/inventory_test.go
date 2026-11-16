@@ -38,6 +38,18 @@ func TestRoleInventoryChecksExactCommittedBytes(t *testing.T) {
 			if err != nil || !ok || got != facts || hashes[ProgramName] != want.Program {
 				t.Fatal("original inventory refused", got, ok, err)
 			}
+			declaration := Declaration{Invocation: test.role, Files: map[string]string{ProgramName: want.Program, test.template: want.Template}}
+			if !MatchesInventoryResources(declaration, hashes) {
+				t.Fatal("original declaration did not match inventory")
+			}
+			wrong := map[string]string{ProgramName: want.Program, test.template: "foreign"}
+			if MatchesInventoryResources(declaration, wrong) {
+				t.Fatal("foreign template digest accepted")
+			}
+			declaration.Invocation = "unknown"
+			if MatchesInventoryResources(declaration, hashes) {
+				t.Fatal("unknown role accepted")
+			}
 			for _, name := range []string{ProgramName, test.template, test.artifact, "root.json", "timestamp.json", "snapshot.json", "targets.json", enrollment.InfrastructureInventoryName} {
 				original := files[name]
 				files[name] = append(bytes.Clone(original), '!')
