@@ -137,11 +137,11 @@ func performSourceInstallation(ctx context.Context, args []string, initial bool)
 	if err != nil {
 		return err
 	}
-	input, err := releaseartifact.SourceInputs(files, release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3+offset], Network: args[4+offset]})
+	input, err := releaseartifact.ProgramInputs(files)
 	if err != nil {
 		return err
 	}
-	input.Local.RefTime = time.Now().UTC()
+	input.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3+offset], Network: args[4+offset], RefTime: time.Now().UTC()}
 	if initial {
 		verifier, err = release.Open(history)
 	} else {

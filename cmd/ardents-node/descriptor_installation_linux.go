@@ -92,8 +92,7 @@ func installInitialDescriptor(parent context.Context, args []string, output io.W
 	if !ok || facts.Invocation != "descriptor" {
 		return descriptor.ErrBinding
 	}
-	get := func(name string) []byte { raw, _ := bundle.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(bundle)
 	if err != nil {
 		return err
 	}
@@ -102,7 +101,8 @@ func installInitialDescriptor(parent context.Context, args []string, output io.W
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := releaseartifact.AuthenticateDescriptorInitial(ctx, v, bundle, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3], Network: args[4], RefTime: time.Now().UTC()}})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3], Network: args[4], RefTime: time.Now().UTC()}
+	authorization, err := releaseartifact.AuthenticateDescriptorInitial(ctx, v, bundle, releaseInput)
 	if err != nil {
 		return err
 	}
@@ -128,8 +128,7 @@ func inspectInitialDescriptor(parent context.Context, args []string, output io.W
 	if err != nil {
 		return err
 	}
-	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(candidate)
 	if err != nil {
 		return err
 	}
@@ -138,10 +137,8 @@ func inspectInitialDescriptor(parent context.Context, args []string, output io.W
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := releaseartifact.AuthenticateDescriptorCandidate(ctx, v, candidate, release.Inputs{
-		RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata,
-		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()},
-	})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}
+	authorization, err := releaseartifact.AuthenticateDescriptorCandidate(ctx, v, candidate, releaseInput)
 	if err != nil {
 		return err
 	}
@@ -173,8 +170,7 @@ func startDescriptorGeneration(parent context.Context, args []string, output io.
 	if err != nil {
 		return err
 	}
-	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(candidate)
 	if err != nil {
 		return err
 	}
@@ -183,7 +179,8 @@ func startDescriptorGeneration(parent context.Context, args []string, output io.
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	a, err := releaseartifact.AuthenticateDescriptorCandidate(ctx, v, candidate, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}
+	a, err := releaseartifact.AuthenticateDescriptorCandidate(ctx, v, candidate, releaseInput)
 	if err != nil {
 		return err
 	}
@@ -278,8 +275,7 @@ func replaceDescriptorGeneration(parent context.Context, args []string, output i
 	if err != nil {
 		return err
 	}
-	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(candidate)
 	if err != nil {
 		return err
 	}
@@ -288,7 +284,8 @@ func replaceDescriptorGeneration(parent context.Context, args []string, output i
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	a, err := releaseartifact.AuthenticateDescriptorCandidate(ctx, v, candidate, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}
+	a, err := releaseartifact.AuthenticateDescriptorCandidate(ctx, v, candidate, releaseInput)
 	if err != nil {
 		return err
 	}
@@ -340,8 +337,7 @@ func recoverDescriptorGeneration(parent context.Context, args []string, output i
 	if err != nil {
 		return err
 	}
-	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(candidate)
 	if err != nil {
 		return err
 	}
@@ -350,7 +346,8 @@ func recoverDescriptorGeneration(parent context.Context, args []string, output i
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	a, err := releaseartifact.AuthenticateDescriptorCandidate(ctx, v, candidate, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}
+	a, err := releaseartifact.AuthenticateDescriptorCandidate(ctx, v, candidate, releaseInput)
 	if err != nil {
 		return err
 	}

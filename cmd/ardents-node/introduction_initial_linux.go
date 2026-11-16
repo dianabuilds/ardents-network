@@ -31,8 +31,7 @@ func installInitialIntroduction(parent context.Context, args []string, output io
 	if !ok || facts.Invocation != "introduction" {
 		return introduction.ErrBinding
 	}
-	get := func(name string) []byte { raw, _ := bundle.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(bundle)
 	if err != nil {
 		return err
 	}
@@ -41,7 +40,8 @@ func installInitialIntroduction(parent context.Context, args []string, output io
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := releaseartifact.AuthenticateIntroductionInitial(ctx, v, bundle, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3], Network: args[4], RefTime: time.Now().UTC()}})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3], Network: args[4], RefTime: time.Now().UTC()}
+	authorization, err := releaseartifact.AuthenticateIntroductionInitial(ctx, v, bundle, releaseInput)
 	if err != nil {
 		return err
 	}
@@ -67,8 +67,7 @@ func inspectInitialIntroduction(parent context.Context, args []string, output io
 	if err != nil {
 		return err
 	}
-	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(candidate)
 	if err != nil {
 		return err
 	}
@@ -77,10 +76,8 @@ func inspectInitialIntroduction(parent context.Context, args []string, output io
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := releaseartifact.AuthenticateIntroductionCandidate(ctx, v, candidate, release.Inputs{
-		RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata,
-		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()},
-	})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}
+	authorization, err := releaseartifact.AuthenticateIntroductionCandidate(ctx, v, candidate, releaseInput)
 	if err != nil {
 		return err
 	}
@@ -114,8 +111,7 @@ func startIntroductionGeneration(parent context.Context, args []string, output i
 	if err != nil {
 		return err
 	}
-	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(candidate)
 	if err != nil {
 		return err
 	}
@@ -124,7 +120,8 @@ func startIntroductionGeneration(parent context.Context, args []string, output i
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	a, err := releaseartifact.AuthenticateIntroductionCandidate(ctx, v, candidate, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}
+	a, err := releaseartifact.AuthenticateIntroductionCandidate(ctx, v, candidate, releaseInput)
 	if err != nil {
 		return err
 	}

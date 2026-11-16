@@ -2,9 +2,9 @@ package infrastructure
 
 import "github.com/dianabuilds/ardents-network/internal/successor/release"
 
-// SourceInputs projects public inventory bytes into the fixed Source Release
+// ProgramInputs projects public inventory bytes into the fixed infrastructure Release
 // targets. It supplies neither Enrollment provenance nor Release authority.
-func SourceInputs(files interface{ File(string) ([]byte, bool) }, local release.LocalEnvironment) (release.Inputs, error) {
+func ProgramInputs(files interface{ File(string) ([]byte, bool) }) (release.Inputs, error) {
 	if files == nil {
 		return release.Inputs{}, ErrInput
 	}
@@ -17,5 +17,5 @@ func SourceInputs(files interface{ File(string) ([]byte, bool) }, local release.
 	if err != nil {
 		return release.Inputs{}, err
 	}
-	return release.Inputs{RootBytes: root, Artifact: program, TargetPath: ProgramTarget, Local: local, Files: metadata}, nil
+	return release.Inputs{RootBytes: root, Artifact: program, TargetPath: ProgramTarget, Files: metadata}, nil
 }

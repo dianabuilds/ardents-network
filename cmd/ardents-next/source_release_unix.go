@@ -86,10 +86,11 @@ func openSourceRelease(ctx context.Context, request sourceReleaseInput) (release
 	if err != nil || d.ReleaseIdentity != f.ReleaseIdentity || d.ReleaseVersion != f.ReleaseVersion {
 		return releaseartifact.Authorization{}, nil, "infrastructure-artifact-refused", err
 	}
-	input, err := releaseartifact.SourceInputs(files, local)
+	input, err := releaseartifact.ProgramInputs(files)
 	if err != nil {
 		return releaseartifact.Authorization{}, nil, "infrastructure-metadata-refused", err
 	}
+	input.Local = local
 	var v *release.Verifier
 	if request.initial {
 		v, err = release.Open(request.history)

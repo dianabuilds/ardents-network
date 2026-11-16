@@ -587,9 +587,9 @@ the public outcome grants no installation or runtime authority.
 `internal/successor/release/infrastructure`. It owns the shared Source artifact
 authentication path used by the Release command and transitional Source actions;
 the original verifier remains open until the invoking action joins its borrowers.
-The Release infrastructure owner projects the same fixed Source metadata and
-program inputs for this command and canonical Node composition; this projection
-grants no Enrollment provenance or authorization.
+The Release infrastructure owner projects the same fixed metadata and program
+inputs for Source and the four canonical Node role compositions; this projection
+grants no Enrollment provenance or role authorization.
 The portable `source_release_unix_test.go` and `infrastructure_fixture_unix_test.go`
 use Enrollment and Release to check signed retained candidates; the latter also
 uses the existing TUF metadata dependency to construct its independent fixture.

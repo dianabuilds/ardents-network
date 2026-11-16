@@ -90,8 +90,7 @@ func installInitialJoin(parent context.Context, args []string, output io.Writer)
 	if !ok || facts.Invocation != "join" {
 		return join.ErrBinding
 	}
-	get := func(name string) []byte { raw, _ := bundle.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(bundle)
 	if err != nil {
 		return err
 	}
@@ -100,7 +99,8 @@ func installInitialJoin(parent context.Context, args []string, output io.Writer)
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := releaseartifact.AuthenticateJoinInitial(ctx, v, bundle, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3], Network: args[4], RefTime: time.Now().UTC()}})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3], Network: args[4], RefTime: time.Now().UTC()}
+	authorization, err := releaseartifact.AuthenticateJoinInitial(ctx, v, bundle, releaseInput)
 	if err != nil {
 		return err
 	}
@@ -126,8 +126,7 @@ func inspectInitialJoin(parent context.Context, args []string, output io.Writer)
 	if err != nil {
 		return err
 	}
-	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(candidate)
 	if err != nil {
 		return err
 	}
@@ -136,10 +135,8 @@ func inspectInitialJoin(parent context.Context, args []string, output io.Writer)
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	authorization, err := releaseartifact.AuthenticateJoinCandidate(ctx, v, candidate, release.Inputs{
-		RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata,
-		Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()},
-	})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}
+	authorization, err := releaseartifact.AuthenticateJoinCandidate(ctx, v, candidate, releaseInput)
 	if err != nil {
 		return err
 	}
@@ -171,8 +168,7 @@ func startJoinGeneration(parent context.Context, args []string, output io.Writer
 	if err != nil {
 		return err
 	}
-	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(candidate)
 	if err != nil {
 		return err
 	}
@@ -181,7 +177,8 @@ func startJoinGeneration(parent context.Context, args []string, output io.Writer
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	a, err := releaseartifact.AuthenticateJoinCandidate(ctx, v, candidate, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}
+	a, err := releaseartifact.AuthenticateJoinCandidate(ctx, v, candidate, releaseInput)
 	if err != nil {
 		return err
 	}
@@ -250,8 +247,7 @@ func replaceJoinGeneration(parent context.Context, args []string, output io.Writ
 	if err != nil {
 		return err
 	}
-	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(candidate)
 	if err != nil {
 		return err
 	}
@@ -260,7 +256,8 @@ func replaceJoinGeneration(parent context.Context, args []string, output io.Writ
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	a, err := releaseartifact.AuthenticateJoinCandidate(ctx, v, candidate, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}
+	a, err := releaseartifact.AuthenticateJoinCandidate(ctx, v, candidate, releaseInput)
 	if err != nil {
 		return err
 	}
@@ -312,8 +309,7 @@ func recoverJoinGeneration(parent context.Context, args []string, output io.Writ
 	if err != nil {
 		return err
 	}
-	get := func(name string) []byte { raw, _ := candidate.File(name); return raw }
-	metadata, err := release.StaticMetadataFiles(get("root.json"), get("timestamp.json"), get("snapshot.json"), get("targets.json"))
+	releaseInput, err := releaseartifact.ProgramInputs(candidate)
 	if err != nil {
 		return err
 	}
@@ -322,7 +318,8 @@ func recoverJoinGeneration(parent context.Context, args []string, output io.Writ
 		return err
 	}
 	defer func() { returned = errors.Join(returned, v.Close()) }()
-	a, err := releaseartifact.AuthenticateJoinCandidate(ctx, v, candidate, release.Inputs{RootBytes: get("root.json"), Artifact: get(releaseartifact.ProgramName), TargetPath: releaseartifact.ProgramTarget, Files: metadata, Local: release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}})
+	releaseInput.Local = release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[2], Network: args[3], RefTime: time.Now().UTC()}
+	a, err := releaseartifact.AuthenticateJoinCandidate(ctx, v, candidate, releaseInput)
 	if err != nil {
 		return err
 	}

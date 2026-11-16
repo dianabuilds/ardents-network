@@ -51,6 +51,28 @@ func (i detachedTestInventory) File(name string) ([]byte, bool) {
 	return bytes.Clone(body), ok
 }
 
+func TestProgramInputsProjectOnlyFixedPublicBytes(t *testing.T) {
+	files := detachedTestInventory{
+		ProgramName:      []byte("program"),
+		"root.json":      []byte(`{"signed":{"consistent_snapshot":false}}`),
+		"timestamp.json": []byte(`{"signed":{}}`),
+		"snapshot.json":  []byte(`{"signed":{}}`),
+		"targets.json":   []byte(`{"signed":{}}`),
+	}
+	input, err := ProgramInputs(files)
+	if err != nil || input.TargetPath != ProgramTarget || string(input.Artifact) != "program" || !bytes.Equal(input.RootBytes, files["root.json"]) || !bytes.Equal(input.Files["https://release.invalid/metadata/targets.json"], files["targets.json"]) {
+		t.Fatalf("incorrect public projection: %v", err)
+	}
+	input.Artifact[0] ^= 1
+	if string(files[ProgramName]) != "program" {
+		t.Fatal("projection modified original inventory")
+	}
+	delete(files, "timestamp.json")
+	if _, err := ProgramInputs(files); err == nil {
+		t.Fatal("missing metadata accepted")
+	}
+}
+
 func TestSourceAuthorizationExposesDetachedInventoryWithoutGrantingProof(t *testing.T) {
 	if (Authorization{}).HasInventory() {
 		t.Fatal("zero value has original inventory")
