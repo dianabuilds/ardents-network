@@ -1,31 +1,25 @@
 # Endpoint command end to end
 
-This package builds the real `ardents` command and runs it from the exact
-artifact placed in a synthetic closed-alpha bundle. It proves that
-`endpoint enrollment-check` accepts an independently pinned, exact local
-inventory and refuses a changed manifest before parsing it. On Linux it also
-creates ephemeral TUF-compatible metadata for that exact artifact and proves
-`endpoint enroll` reaches a Release Decision plus Portable readiness, commits
-release floors, and removes the local attachment after a participant stop.
-The Endpoint replacement case then proves an explicit local replacement bundle with newly
-accepted metadata stops only the fixed user-unit name, atomically runs the
-candidate's no-network self-test, commits its successor binding, and permits a
-later ordinary start. Its `systemctl` process is a narrow fixture that records
-the exact arguments; it is not native `systemd --user` qualification. A
-separate Endpoint replacement recovery case makes the activated candidate fail, then proves
-that only the retained journal-bound predecessor program can invoke an
-explicit rollback with fresh successor Release metadata for those exact bytes.
-The installed Endpoint package Linux package case builds two direct `.deb` files with versioned
-static enrollment roots. It proves install, explicit re-enrollment after a
-distinct v2 package and Release metadata set, removal, and purge retain Vault
-and Release-floor state outside package ownership.
+This package builds the real `ardents` and `ardents-control` commands and runs
+them against exact artifacts placed in synthetic closed-alpha bundles. It proves
+that `endpoint enrollment-check` accepts an independently pinned, exact local
+inventory and refuses a changed manifest before parsing it, including the
+historical persisted-input form. On Linux it also creates ephemeral
+TUF-compatible Release metadata for an exact artifact and proves the
+enrollment-pinned `ardents-control inspect-bundle` reader reaches an accepted
+Release Decision and cached restart observation, and that the retired
+`accept-alpha-corpus` intake returns its stable retirement refusal before a
+control root exists while the seeded corpus floor bytes remain identical.
 
-The alpha-control case additionally creates an exact v3 enrolled bundle with
-an independent corpus root and seeds one existing corpus floor. It invokes
-`ardents-control accept-alpha-corpus` with a previously valid signed successor,
-requires the stable retirement refusal before a control root exists, proves the
-floor bytes remain identical, and verifies that the retained predecessor Target
-still resolves.
+The per-user Portable Endpoint lifecycle process evidence formerly here
+(`endpoint enroll`/`enroll-installed` readiness and release floors, the
+fixed-user-unit replacement and journal-bound rollback cases, the installed
+`.deb` re-enrollment case, and the live two-Endpoint alpha-control agreement
+cases) is retired with that command surface (ADR-0125, #617 S3.5). The canonical
+protected text Endpoint launch is the platform-led `ardents-next` system-unit
+composition; its installed qualification is a separate selected gate. The
+shared ephemeral Release-metadata fixtures survive only for the read-only
+inspection regressions above.
 
 The bundle, TUF keys, and metadata are test-only and ephemeral. This is process
 evidence for the post-execution Enrollment Pin and Release Decision handoff; it

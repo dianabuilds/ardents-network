@@ -3,12 +3,10 @@ package main
 import (
 	"crypto/tls"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 )
 
 var errOperatorInputTooLarge = errors.New("operator input exceeds its bound")
@@ -36,22 +34,6 @@ func readOperatorInput(path string, maximum int64) ([]byte, error) {
 		return contents, errOperatorInputTooLarge
 	}
 	return contents, nil
-}
-
-func decodeOperatorInput(path string, maximum int64, target any) error {
-	raw, err := readOperatorInput(path, maximum)
-	if err != nil {
-		return err
-	}
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(target); err != nil {
-		return err
-	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return errors.New("operator input contains trailing JSON")
-	}
-	return nil
 }
 
 func decodeOperatorFixedHex(encoded string, destination []byte) error {

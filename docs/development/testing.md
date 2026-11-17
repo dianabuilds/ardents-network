@@ -3943,8 +3943,13 @@ Ordinary checks do not build or run Docker and never install tools implicitly.
 `make check` also verifies pinned tool versions and the dead-code inventory.
 Its vulnerability check uses the [Go vulnerability database](https://go.dev/doc/security/vuln/)
 and requires network access unless the needed data is already cached. On Linux,
-it additionally runs `package-e2e`, which uses root to exercise `dpkg` and
-`setpriv`; missing privilege invalidates that selected profile. Dedicated
+it additionally runs the stream-network fixture command test and `package-e2e`,
+which uses root to exercise `dpkg` and `setpriv`; missing privilege invalidates
+that selected profile. Since the per-user Portable Endpoint cutover (#617 S3.5)
+the deb profile proves the package payload shape and that install/upgrade/
+remove/purge retain user state outside package ownership, and that the retired
+`enroll-installed` route refuses before effects; it no longer exercises Portable
+re-enrollment. Dedicated
 Rendezvous qualifications have their own targets and prerequisites. Local
 setup and hook installation belong in [CONTRIBUTING.md](../../CONTRIBUTING.md#local-setup).
 
@@ -4513,8 +4518,15 @@ The maintained local profiles are:
   confinement qualification. Ordinary quick checks cross-compile its tagged
   tests into the external quality cache;
 - developer, deterministic, process, package-e2e, headless-network, race, and fuzz;
-- `qualification`, the aggregate selected Ubuntu Endpoint lifecycle profile;
-- `endpoint-portable-ubuntu` and `endpoint-replacement-ubuntu`;
+- the former `qualification` aggregate and its `endpoint-portable-ubuntu` /
+  `endpoint-replacement-ubuntu` lanes are retired with the per-user Portable
+  Endpoint command surface (ADR-0125, #617 S3.5): their process tests drove the
+  now-retired enroll/headless/user-unit/replace/rollback routes. The surviving
+  `tests/e2e/endpoint` process regressions cover the read-only `enrollment-check`
+  diagnostic, the enrollment-pinned alpha-control inspection, and the Ubuntu deb
+  package payload/retention shape with the retired `enroll-installed` refusal.
+  Successor platform-led Endpoint qualification is a separate selected
+  composition;
 - `service-credential-response-linux`;
 - `text-role-durable-state-capture`, the Linux-only isolated Role and Publisher
   durable-state observation; it retains secret-bearing raw observations only in

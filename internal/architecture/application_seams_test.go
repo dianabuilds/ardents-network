@@ -54,13 +54,16 @@ func TestArdentsLinuxClosureRetiresAAI2(t *testing.T) {
 		receipt.Command != wantReceipt.Command || receipt.ScopeLimit != wantReceipt.ScopeLimit {
 		t.Fatalf("receipt = %+v", receipt)
 	}
-	for _, required := range []string{
-		ardentsModulePath + "/internal/application/administration",
-		ardentsModulePath + "/internal/application/connection",
-	} {
-		if !receipt.Dependencies[required] {
-			t.Errorf("Linux %s closure does not retain %s", receipt.Command, required)
-		}
+	// The withdraw Administration Interface client remains in cmd/ardents. The
+	// protected text participant (internal/application/connection) is retired
+	// from this command to the platform-led ardents-next system-unit composition
+	// (ADR-0125, #617 S3.5); the AAI2 forbidden-dependency enforcement is
+	// unchanged.
+	if !receipt.Dependencies[ardentsModulePath+"/internal/application/administration"] {
+		t.Errorf("Linux %s closure does not retain the Administration Interface", receipt.Command)
+	}
+	if receipt.Dependencies[ardentsModulePath+"/internal/application/connection"] {
+		t.Errorf("Linux %s closure retains the retired protected text participant connection", receipt.Command)
 	}
 }
 

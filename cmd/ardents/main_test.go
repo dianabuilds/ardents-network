@@ -88,52 +88,6 @@ func TestRefreshSourcesRejectsConflictingExecutionModesBeforeReadingPlan(t *test
 	}
 }
 
-func TestPortableEnrollmentUserUnitEscapesExactArguments(t *testing.T) {
-	t.Parallel()
-	executable := filepath.Join(t.TempDir(), "bin", "ardents")
-	bundle := filepath.Join(t.TempDir(), "bundle $cohort%")
-	manifestPin := strings.Repeat("a", 64)
-	unit, err := portableEnrollmentUserUnit(executable, bundle, manifestPin, "Ardents Portable Endpoint (closed alpha)")
-	if err != nil {
-		t.Fatal(err)
-	}
-	escapedExecutable, _ := unitArgument(executable)
-	escapedBundle, _ := unitArgument(bundle)
-	if !strings.Contains(unit, "ExecStart="+escapedExecutable+" endpoint enroll "+escapedBundle+" "+manifestPin) ||
-		!strings.Contains(escapedBundle, "$$cohort%%") ||
-		!strings.Contains(unit, "UMask=0077\nRestart=no\n") || strings.Contains(unit, "User=") {
-		t.Fatalf("unexpected Portable user unit:\n%s", unit)
-	}
-	for _, value := range []string{"relative.json", filepath.Join(t.TempDir(), "a\n.json")} {
-		if _, err := unitArgument(value); err == nil {
-			t.Fatalf("unit argument accepted %q", value)
-		}
-	}
-	if _, err := portableEnrollmentUserUnit(executable, bundle, strings.Repeat("A", 64), "Ardents"); err == nil {
-		t.Fatal("portable unit accepted a non-canonical manifest pin")
-	}
-}
-
-func TestInstalledUserUnitUsesOnlyExplicitInstalledEnrollmentAction(t *testing.T) {
-	t.Parallel()
-	executable := filepath.Join(t.TempDir(), "usr", "lib", "ardents", "ardents")
-	enrollment := filepath.Join(t.TempDir(), "package-enrollment.json")
-	unit, err := installedEnrollmentUserUnit(executable, enrollment, "Ardents Installed Endpoint (closed alpha)")
-	if err != nil {
-		t.Fatal(err)
-	}
-	escapedExecutable, _ := unitArgument(executable)
-	escapedEnrollment, _ := unitArgument(enrollment)
-	if !strings.Contains(unit, "Description=Ardents Installed Endpoint (closed alpha)\n") ||
-		!strings.Contains(unit, "ExecStart="+escapedExecutable+" endpoint enroll-installed "+escapedEnrollment) ||
-		strings.Contains(unit, "endpoint enroll ") || strings.Contains(unit, "User=") || strings.Contains(unit, "Restart=always") {
-		t.Fatalf("unexpected Installed user unit:\n%s", unit)
-	}
-	if _, err := installedEnrollmentUserUnit(executable, enrollment, ""); err == nil {
-		t.Fatal("installed unit accepted an empty description")
-	}
-}
-
 func TestEntryImportRouteReturnsRetirementRefusal(t *testing.T) {
 	t.Parallel()
 	var output bytes.Buffer

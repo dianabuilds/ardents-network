@@ -198,12 +198,14 @@ before opening either input or output path, dialing its local socket, or
 starting Endpoint or Network work. The accepting file client has been removed;
 the uncalled AAI2 codec/server/client and exclusive Endpoint adapter have also
 been removed. AAI2 supplies no C0 readiness or compatibility surface. The
-portable enrollment route
-receives only the bundle root and an independently
-delivered manifest SHA-256 pin; it verifies that pin before parsing the
-manifest and derives the remaining enrollment facts from its bound `RELEASE`
-descriptor. This does not bypass Endpoint-owned Resolution, Route, or
-authority boundaries.
+per-user Portable enrollment route (`endpoint enroll`/`enroll-installed`) is
+retired under ADR-0125 (#617 S3.5) in favor of the platform-led protected
+system-unit delivery; it returns a typed refusal before input or root effects.
+The read-only `endpoint enrollment-check` diagnostic remains: it receives only
+the bundle root and an independently delivered manifest SHA-256 pin, verifies
+that pin before parsing the manifest, and derives the remaining enrollment
+facts from its bound `RELEASE` descriptor. This does not bypass Endpoint-owned
+Resolution, Route, or authority boundaries.
 
 The selected Endpoint startup transition retires acceptance of
 `ardents-headless-runtime-v1` rather than converting it into the protected v2

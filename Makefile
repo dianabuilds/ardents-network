@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e fixture-network-test format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check issue60-checks mod-check package-e2e package-ubuntu-deb qualification qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln source-startup-check
+.PHONY: architecture artifact-representation-check build check deadcode e2e fixture-network-test format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check issue60-checks mod-check package-e2e package-ubuntu-deb qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln source-startup-check
 
 define newline
 
@@ -147,16 +147,8 @@ headless-check: export ARDENTS_EXTRACTION_OWNER := network
 headless-check: headless-evidence
 	go test ./internal/architecture -run '^TestNetworkExtractionRehearsal$$' -count=1
 
-qualification-endpoint-portable-ubuntu:
-	sh ./tests/qualification/endpoint-portable-ubuntu/run-ubuntu.sh -timeout=2m
-
-qualification-endpoint-replacement-ubuntu:
-	sh ./tests/qualification/endpoint-replacement-ubuntu/run-ubuntu.sh -timeout=2m
-
 qualification-service-credential-response-linux:
 	sh ./tests/qualification/service-credential-response-linux/run-ubuntu.sh -timeout=2m
-
-qualification: qualification-endpoint-portable-ubuntu qualification-endpoint-replacement-ubuntu
 
 package-ubuntu-deb:
 	sh ./packaging/ubuntu-deb/build.sh

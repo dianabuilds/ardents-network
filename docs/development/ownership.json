@@ -236,16 +236,6 @@
       "path": "tests/qualification/text-worker-policy"
     },
     {
-      "id": "endpoint-portable-ubuntu",
-      "owner": "network",
-      "path": "tests/qualification/endpoint-portable-ubuntu"
-    },
-    {
-      "id": "endpoint-replacement-ubuntu",
-      "owner": "network",
-      "path": "tests/qualification/endpoint-replacement-ubuntu"
-    },
-    {
       "id": "service-credential-response-linux",
       "owner": "network",
       "path": "tests/qualification/service-credential-response-linux"

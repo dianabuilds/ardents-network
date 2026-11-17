@@ -9,6 +9,24 @@ commands are retired; existing roots/data remain. The new-domain native lifecycl
 continues with its current consumers until required guarantees transfer to actual
 platform/runtime owners. This does not qualify a platform replacement.
 
+The per-user Portable Endpoint command surface is retired under the same ADR
+(#617 S3.5): `ardents endpoint enroll/enroll-installed/headless/user-unit/
+installed-user-unit/replace/rollback/replacement-self-test/replacement-recovery`
+return typed refusals before input or root effects, and their legacy command
+implementations are removed. The canonical protected text Endpoint launch is the
+platform-led system-unit composition in `ardents-next` — the platform unit's
+ExecStartPre `platform check` transfers accepted current-program identity before
+runtime start (F-25), `endpoint construct-plan` renders authenticated preparation
+plans (F-27), `endpoint prepare-history` initializes the first histories, and
+`endpoint start-installed` runs the participant under the system unit. The
+successor Endpoint lifecycle is forward-only; rollback has no successor
+translation. The read-only `ardents endpoint enrollment-check` diagnostic and the
+`ardents endpoint withdraw` Administration Interface client remain. The owning
+`internal/endpoint/portable` and `internal/endpoint/replacement` Modules keep
+their behavior tests but have no maintained production caller; their removal is
+the separately gated Endpoint cohort step. Existing per-user roots and floors
+remain retained evidence, not authority for an automatic migration.
+
 
 The fixed Endpoint template is validated and retained by the separately owned
 Installation unit Module before the root admits writable directories. It renders
