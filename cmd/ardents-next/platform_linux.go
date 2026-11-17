@@ -79,6 +79,9 @@ func executePlatformCheck(ctx context.Context, args []string, out io.Writer, fil
 	if decodeAdmissionObject(raw, &launch) != nil || !validPlatformLaunch(launch) {
 		return errPlatformInput
 	}
+	if launch.Role == "endpoint" {
+		return executeEndpointPlatformCheck(ctx, args, out, files, launch, raw)
+	}
 	digest := sha256.Sum256(raw)
 	pin := hex.EncodeToString(digest[:])
 	if args[0] == "check" && args[2] != pin {
@@ -333,9 +336,15 @@ func platformBelow(parent, path string) bool {
 func validPlatformLaunch(p platformLaunch) bool {
 	switch p.Role {
 	case "source", "forwarding", "issuer", "descriptor", "introduction", "join":
+		return validInfraPlatformLaunch(p)
+	case "endpoint":
+		return validEndpointPlatformLaunch(p)
 	default:
 		return false
 	}
+}
+
+func validInfraPlatformLaunch(p platformLaunch) bool {
 	if !platformBelow("/usr/lib/ardents", p.Program) || !platformBelow("/etc/ardents", p.Configuration) || !platformPath(p.Distribution) || !platformPath(p.ReleaseRoot) || !independentRouteRoots(p.Distribution, p.ReleaseRoot) || p.Environment == "" || p.Network == "" || len(p.ConfigSHA256) != 64 || strings.ToLower(p.ConfigSHA256) != p.ConfigSHA256 {
 		return false
 	}
@@ -366,6 +375,13 @@ func validPlatformLaunch(p platformLaunch) bool {
 }
 
 func platformPlanInputs(role string, raw []byte) ([]string, error) {
+	if role == "endpoint" {
+		decl, err := platformEndpointDeclaration(raw)
+		if err != nil {
+			return nil, err
+		}
+		return platformEndpointInputs(decl)
+	}
 	var fields map[string]json.RawMessage
 	if json.Unmarshal(raw, &fields) != nil {
 		return nil, errPlatformInput
@@ -395,6 +411,13 @@ func equalPlatformRoots(a, b []string) bool {
 // This projection limits platform write access to exactly the declared domain
 // roots. No root is opened, initialized, inspected as clean or repaired here.
 func platformPlanRoots(role string, raw []byte) ([]string, error) {
+	if role == "endpoint" {
+		decl, err := platformEndpointDeclaration(raw)
+		if err != nil {
+			return nil, err
+		}
+		return platformEndpointRoots(decl)
+	}
 	var fields map[string]json.RawMessage
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
