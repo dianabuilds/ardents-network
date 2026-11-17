@@ -67,6 +67,9 @@ func platformUser(p platformLaunch) string {
 	if p.Role == "source" {
 		return "ardents-source"
 	}
+	if p.Role == "endpoint" {
+		return "ardents-endpoint"
+	}
 	return "ardents-node"
 }
 
