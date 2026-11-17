@@ -31,6 +31,19 @@ func VerifyFreshStopped(version string, unit, service managerProperties, request
 // Configuration is shared by stopped and live observations, while each caller
 // separately requires its exact process state. It grants no invocation proof.
 func VerifyConfiguration(version string, unit, service managerProperties, request Configuration, generationDigest string) error {
+	return verifyEndpointConfiguration(version, unit, service, request, generationDigest, nil)
+}
+
+// VerifyPlatformConfiguration admits the platform-managed Endpoint unit whose sole
+// ExecStartPre is the original privileged platform check (F-25 pre-start trust
+// transfer). It grants no installation, start, replacement or recovery authority;
+// the runtime remains the sole domain admission owner. The transitional native
+// configuration (VerifyConfiguration) keeps ExecStartPre empty and is unchanged.
+func VerifyPlatformConfiguration(version string, unit, service managerProperties, request Configuration, generationDigest, checkProgram, manifest, pin string) error {
+	return verifyEndpointConfiguration(version, unit, service, request, generationDigest, []string{checkProgram, "platform", "check", manifest, pin})
+}
+
+func verifyEndpointConfiguration(version string, unit, service managerProperties, request Configuration, generationDigest string, preExec []string) error {
 	major, _, _ := strings.Cut(version, ".")
 	if major != "249" && major != "255" || !canonicalDigest(generationDigest) {
 		return ErrNativeUnavailable
@@ -78,10 +91,17 @@ func VerifyConfiguration(version string, unit, service managerProperties, reques
 	if !systemd.Matches(service, "RemainAfterExit", "b", false) {
 		return ErrBinding
 	}
-	for _, name := range []string{"ExecCondition", "ExecStartPre", "ExecStartPost", "ExecReload", "ExecStop", "ExecStopPost"} {
+	for _, name := range []string{"ExecCondition", "ExecStartPost", "ExecReload", "ExecStop", "ExecStopPost"} {
 		if !systemd.Matches(service, name, "a(sasbttttuii)", []any{}) {
 			return ErrBinding
 		}
+	}
+	if preExec == nil {
+		if !systemd.Matches(service, "ExecStartPre", "a(sasbttttuii)", []any{}) {
+			return ErrBinding
+		}
+	} else if !platformPreExecMatches(service, preExec) {
+		return ErrBinding
 	}
 	families, found := service["RestrictAddressFamilies"]
 	var parts []json.RawMessage
@@ -112,6 +132,28 @@ func verifyStoppedEndpointExec(properties managerProperties, root, generationDig
 		}
 	}
 	return nil
+}
+
+// platformPreExecMatches requires exactly one privileged ExecStartPre whose argv is
+// the original platform check command. The "+" prefix renders the privileged flag;
+// no environment expansion, drop-in, extra hook or unrelated helper is admitted.
+func platformPreExecMatches(properties managerProperties, argv []string) bool {
+	value, found := properties["ExecStartPreEx"]
+	var entries [][]json.RawMessage
+	if !found || value.Type != "a(sasasttttuii)" || systemd.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
+		return false
+	}
+	for index, wanted := range []any{argv[0], argv, []string{"privileged", "no-env-expand"}} {
+		encoded, err := json.Marshal(wanted)
+		if err != nil {
+			return false
+		}
+		var actual, expected any
+		if systemd.Decode(entries[0][index], &actual) != nil || systemd.Decode(encoded, &expected) != nil || !reflect.DeepEqual(actual, expected) {
+			return false
+		}
+	}
+	return true
 }
 
 func endpointExecObservation(properties managerProperties, root, generationDigest string) ([]json.RawMessage, error) {

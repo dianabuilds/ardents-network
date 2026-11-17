@@ -170,7 +170,7 @@ func executeEndpointPlatformCheck(ctx context.Context, args []string, out io.Wri
 	if err != nil {
 		return err
 	}
-	template, ok := candidate.File("endpoint-unit.service")
+	template, ok := candidate.File("ardents-endpoint.service")
 	if !ok {
 		return errPlatformInput
 	}
@@ -178,7 +178,13 @@ func executeEndpointPlatformCheck(ctx context.Context, args []string, out io.Wri
 	if err != nil {
 		return errPlatformInput
 	}
-	unit, err := prepared.Render(roots)
+	base, err := prepared.Render(roots)
+	if err != nil {
+		return errPlatformInput
+	}
+	checkProgram := filepath.Join(launch.Distribution, "ardents-linux-amd64")
+	manifest := args[1]
+	unit, err := renderEndpointPlatformUnit(base, checkProgram, manifest, pin)
 	if err != nil {
 		return errPlatformInput
 	}
@@ -192,7 +198,28 @@ func executeEndpointPlatformCheck(ctx context.Context, args []string, out io.Wri
 	if args[0] == "initialize-trust" {
 		return errEndpointPlatformInitialPending
 	}
-	return verifyEndpointPlatformPrestart(ctx, files, launch, decl, roots, unit, candidate)
+	return verifyEndpointPlatformPrestart(ctx, files, launch, decl, roots, unit, candidate, checkProgram, manifest, pin)
+}
+
+// renderEndpointPlatformUnit derives the platform-managed Endpoint unit from the
+// enrolled fixed template by injecting the sole privileged F-25 pre-start check. The
+// transitional native rendering (renderEndpointUnit) stays unchanged and keeps no
+// ExecStartPre; the enrolled inventory and protected descriptor are not widened. The
+// check program is the original enrolled executable, bound to this exact launch
+// declaration digest; literal safe paths only, no expansion or extra hook.
+func renderEndpointPlatformUnit(base []byte, checkProgram, manifest, pin string) ([]byte, error) {
+	if !platformPath(checkProgram) || !platformPath(manifest) || len(pin) != 64 || strings.ToLower(pin) != pin {
+		return nil, errPlatformInput
+	}
+	if _, err := hex.DecodeString(pin); err != nil || bytes.Contains(base, []byte("ExecStartPre=")) {
+		return nil, errPlatformInput
+	}
+	pre := "ExecStartPre=+:" + checkProgram + " platform check " + manifest + " " + pin + "\n"
+	unit := bytes.Replace(base, []byte("ExecStart="), []byte(pre+"ExecStart="), 1)
+	if bytes.Equal(unit, base) {
+		return nil, errPlatformInput
+	}
+	return unit, nil
 }
 
 // errEndpointPlatformInitialPending refuses offline first-pin setup until the
@@ -205,7 +232,7 @@ var errEndpointPlatformInitialPending = errors.New("endpoint platform initialize
 // systemd confinement, and a fresh retained Release authorization. It performs no
 // installation/start/stop/recovery effect and yields no accepting receipt to replay;
 // success returns only after the verifier physically closes.
-func verifyEndpointPlatformPrestart(ctx context.Context, files *platformFiles, launch platformLaunch, decl requestinput.Declaration, roots []string, unit []byte, candidate enrollment.Candidate) error {
+func verifyEndpointPlatformPrestart(ctx context.Context, files *platformFiles, launch platformLaunch, decl requestinput.Declaration, roots []string, unit []byte, candidate enrollment.Candidate, checkProgram, manifest, pin string) error {
 	passwd, err := files.Read("/etc/passwd", 1<<20, false)
 	if err != nil {
 		return err
@@ -236,7 +263,7 @@ func verifyEndpointPlatformPrestart(ctx context.Context, files *platformFiles, l
 		return err
 	}
 	generationDigest := path.Base(filepath.Dir(launch.Program))
-	if err := endpointunit.VerifyConfiguration(version, unitProps, serviceProps, endpointunit.Configuration{InstallationRoot: decl.InstallationRoot, WritePaths: roots}, generationDigest); err != nil {
+	if err := endpointunit.VerifyPlatformConfiguration(version, unitProps, serviceProps, endpointunit.Configuration{InstallationRoot: decl.InstallationRoot, WritePaths: roots}, generationDigest, checkProgram, manifest, pin); err != nil {
 		return errPlatformInput
 	}
 	refTime, err := time.Parse(time.RFC3339Nano, decl.ReferenceTime)
