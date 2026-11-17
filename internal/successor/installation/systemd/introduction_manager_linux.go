@@ -28,18 +28,6 @@ type introductionRuntime struct {
 	closeErr  error
 }
 
-// IntroductionControl owns root's original fixed-unit reference and at most one
-// start/cleanup-stop attempt. Neither a reference nor job reply grants admission
-// or original process/domain completion. Closing returns the original server reference.
-type IntroductionControl struct{ original *introductionControl }
-
-type introductionControl struct {
-	reference                     *managerReference
-	startAttempted, stopAttempted bool // original physical I/O serialization
-	once                          sync.Once
-	closeErr                      error
-}
-
 func OpenIntroductionRuntime(ctx context.Context) (*IntroductionRuntime, error) {
 	if ctx == nil || os.Geteuid() < 100 || os.Geteuid() > 999 || os.Getegid() != os.Geteuid() {
 		return nil, ErrInput
@@ -56,70 +44,6 @@ func OpenIntroductionRuntime(ctx context.Context) (*IntroductionRuntime, error) 
 		_, err = r.introductionLoadedObservation()
 	}
 	return s, err
-}
-
-func OpenIntroductionControl(ctx context.Context) (*IntroductionControl, error) {
-	if ctx == nil || os.Geteuid() != 0 {
-		return nil, ErrInput
-	}
-	r, err := openManagerReference(ctx, introductionControlReply)
-	if r == nil {
-		return nil, err
-	}
-	s := &IntroductionControl{original: &introductionControl{reference: r}}
-	if err == nil {
-		err = r.initializeManagerDeclaration()
-	}
-	if err == nil {
-		err = r.retainIntroductionControlUnit()
-	}
-	if err == nil {
-		_, err = r.introductionLoadedObservation()
-	}
-	if err == nil {
-		// Source and non-root/read-only vocabularies remain separate. Only this
-		// original fixed Introduction control may receive native job object replies.
-		r.client.transport.introductionJobs.Store(true)
-	}
-	return s, err
-}
-
-func (r *managerReference) retainIntroductionControlUnit() (err error) {
-	if err = r.begin(); err != nil {
-		return err
-	}
-	defer r.uses.Done()
-	r.ioMu.Lock()
-	defer r.ioMu.Unlock()
-	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
-	defer cancel()
-	defer func() { err = r.managerResult(err, ctx) }()
-	if err = r.local(); err != nil {
-		return err
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return err
-	}
-	if err = r.matchManagerDeclaration(ctx); err != nil {
-		return err
-	}
-	call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.RefUnit", "ardents-introduction.service")
-	if err != nil {
-		return err
-	}
-	if len(call.Body) != 0 {
-		return ErrObservation
-	}
-	if err = r.matchManagerDeclaration(ctx); err != nil {
-		return err
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return err
-	}
-	if err = r.local(); err != nil {
-		return err
-	}
-	return r.client.transport.socket.SetDeadline(time.Time{})
 }
 
 func (r *managerReference) introductionLoadedObservation() (result IntroductionObservation, err error) {
@@ -212,32 +136,7 @@ func (s *IntroductionRuntime) Observe() (IntroductionObservation, error) {
 	return s.original.reference.introductionLoadedObservation()
 }
 
-func (s *IntroductionControl) Observe() (IntroductionObservation, error) {
-	if s == nil || s.original == nil || s.original.reference == nil {
-		return IntroductionObservation{}, ErrInput
-	}
-	return s.original.reference.introductionLoadedObservation()
-}
-
-// ManagerIdentity returns fresh detached broker-instance/unique-manager facts
-// from this original connection, never another connection or accepting right.
-func (s *IntroductionControl) ManagerIdentity() (string, error) {
-	if s == nil || s.original == nil || s.original.reference == nil {
-		return "", ErrInput
-	}
-	return s.original.reference.managerIdentity()
-}
-
 func (s *IntroductionRuntime) Close() error {
-	if s == nil || s.original == nil || s.original.reference == nil {
-		return nil
-	}
-	o := s.original
-	o.once.Do(func() { o.closeErr = errors.Join(o.reference.close(), o.reference.original.Err()) })
-	return o.closeErr
-}
-
-func (s *IntroductionControl) Close() error {
 	if s == nil || s.original == nil || s.original.reference == nil {
 		return nil
 	}

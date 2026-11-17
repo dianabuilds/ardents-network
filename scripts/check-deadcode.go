@@ -1,7 +1,13 @@
 //go:build ignore
 
 // Command check-deadcode verifies the reviewed deadcode result for each
-// maintained production platform and requires no function to be test-only.
+// maintained production platform. Production-dead functions must match the
+// reviewed production allowlist. The native-tag test analysis (which includes
+// the native-tagged test executables) must match the reviewed test_dead
+// allowlist: a function fully-dead under native tags is admitted only as a
+// reviewed platform-native allowance (for example a Linux-native composition
+// whose native tests Windows excludes), never as unreviewed test-only dead.
+// The linux-amd64 native-tag test analysis must remain empty.
 package main
 
 import (
@@ -14,6 +20,11 @@ import (
 )
 
 const modulePath = "github.com/dianabuilds/ardents-network"
+
+// nativeTags are the selected native test/executable build tags. Including them
+// lets the analysis see native-tagged test coverage; deadcode only compiles the
+// program, it does not execute the native stands.
+const nativeTags = "network_signing_native,text_worker_installed,installation_native,node_process_native,descriptor_installed_native,join_installed_native,startup_manager_native,network_preparation_native,heapdumpcapture"
 
 type reportPackage struct {
 	Path  string
@@ -33,6 +44,7 @@ type allowance struct {
 type allowlist struct {
 	Common     []allowance
 	Production map[string][]allowance
+	TestDead   map[string][]allowance `json:"test_dead"`
 }
 
 func main() {
@@ -53,8 +65,8 @@ func main() {
 		if runErr != nil {
 			fail(runErr)
 		}
-		if len(testActual) != 0 {
-			fail(fmt.Errorf("%s test analysis found test-only functions:\n%s", platform, strings.Join(testActual, "\n")))
+		if err := compare(platform+" native-tag test", testActual, symbols(allowed.TestDead[platform])); err != nil {
+			fail(err)
 		}
 	}
 }
@@ -96,6 +108,23 @@ func readAllowlist(path string) (allowlist, error) {
 			}
 		}
 	}
+	if len(result.TestDead) != 2 || result.TestDead["windows-amd64"] == nil || result.TestDead["linux-amd64"] == nil {
+		return allowlist{}, fmt.Errorf("deadcode allowlist must define exactly two test_dead platforms")
+	}
+	for platform, entries := range result.TestDead {
+		seen := map[string]bool{}
+		for _, entry := range entries {
+			if len(entry.Symbols) == 0 || entry.Classification == "" || entry.Rationale == "" || entry.Owner == "" || entry.Retirement == "" {
+				return allowlist{}, fmt.Errorf("deadcode test_dead entry is incomplete")
+			}
+			for _, symbol := range entry.Symbols {
+				if symbol == "" || seen[symbol] {
+					return allowlist{}, fmt.Errorf("deadcode test_dead symbol is empty or duplicated for %s", platform)
+				}
+				seen[symbol] = true
+			}
+		}
+	}
 	return result, nil
 }
 
@@ -112,7 +141,7 @@ func dead(platform string, tests bool) ([]string, error) {
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid deadcode platform %q", platform)
 	}
-	args := []string{"-json"}
+	args := []string{"-json", "-tags=" + nativeTags}
 	if tests {
 		args = append(args, "-test")
 	}
