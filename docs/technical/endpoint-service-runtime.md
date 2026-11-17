@@ -244,7 +244,26 @@ dictionary keys are checked before library decoding, and original wire variant
 signatures survive typed projection. Cancellation and return join the physical
 connection. File/inode/access/inventory, process and manager-property checks
 remain at their original boundaries; detached facts grant no accepting cache.
-Before first runtime, `ardents-next endpoint prepare-history HEADLESS_PLAN BUNDLE
+Before first runtime, `ardents-next endpoint construct-plan NETWORK_OWNER
+SOURCE_PLAN DECLARATION OUTPUT_DIR` renders the canonical `headless.json` and
+`source.json` preparation plans without manual plan editing. The network owner
+input reuses the established local Network owner pin grammar; its pins must
+open the referenced already accepted retained State and yield a current
+closed-profile observation, so a wrong network identity, authority set,
+threshold or profile authority refuses before any byte is rendered. The plan's
+network trust facts originate only from those authenticated pins. The bounded
+operator declaration supplies local storage roots, sockets, execution
+principals, permissions and role; the distributed Source plan artifact supplies
+the client credential paths, both source members and the refresh grammar.
+Construction reuses the same offline declaration projections preparation and
+runtime consume, including the Source credential files, and refuses overlapping
+preparation roots or roots overlapping the accepted reference State. Output
+files are exclusively created and synchronized; existing bytes are never
+adopted or overwritten. Construction opens no preparation root and creates no
+State, permission, Stock, Service or runtime authority; its result is
+preparation input, not an accepting receipt.
+
+`ardents-next endpoint prepare-history HEADLESS_PLAN BUNDLE
 SIGNED_PROFILE` performs finite offline preparation under the actual runtime
 principal. The four declared State, participation, token and Entry roots must be
 existing vacant private 0700 directories. State's exclusive fresh claim remains

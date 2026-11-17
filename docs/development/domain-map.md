@@ -715,6 +715,10 @@ Entry and role Interior openings are retained-only as well; missing history
 cannot redraw the original pair or reset its watermark/horizon. This
 composition grants no permission, Job, Source transport, Service readiness or
 installed acceptance; Hosting and Service preparation retain separate owners.
+The authenticated plan constructor separately renders preparation plans from
+an already accepted retained State's authenticated pins plus bounded operator
+declarations and the distributed Source artifact; it opens no preparation root
+and grants no runtime authority.
 
 `endpoint/session` retains one serial holder conversation: original issuance
 attempt and intent, Prefix/JOIN context, registration, Publication, stream and

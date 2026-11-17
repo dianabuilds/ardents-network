@@ -1455,7 +1455,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/forwarding_artifact_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
-		if (owner == "internal/successor/network/epoch" || owner == "internal/successor/network/state" || owner == "cmd/ardents-next" || source == "internal/successor/endpoint/history_preparation_linux_test.go") && dependency == modulePath+"/tests/epochfixture/network" {
+		if (owner == "internal/successor/network/epoch" || owner == "internal/successor/network/state" || owner == "cmd/ardents-next" || source == "internal/successor/endpoint/history_preparation_linux_test.go" || source == "internal/successor/endpoint/plan_construction_linux_test.go") && dependency == modulePath+"/tests/epochfixture/network" {
 			return true
 		}
 		if owner == "internal/successor/network/epoch" && dependency == modulePath+"/tests/epochfixture/assignment" {
@@ -1621,6 +1621,13 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"first participant preparation uses Stock owner", "internal/successor/endpoint/history_preparation_linux.go", modulePath + "/internal/successor/admission/stock", true},
 		{"first participant preparation cannot bypass Stock", "internal/successor/endpoint/history_preparation_linux.go", modulePath + "/internal/successor/admission/attempts", false},
 		{"first participant preparation has no old backend", "internal/successor/endpoint/history_preparation_linux.go", modulePath + "/internal/endpoint", false},
+		{"plan constructor authenticates retained State", "internal/successor/endpoint/plan_construction_linux.go", modulePath + "/internal/successor/network/state", true},
+		{"plan constructor observes authenticated facts", "internal/successor/endpoint/plan_construction_linux.go", modulePath + "/internal/successor/endpoint/funding", true},
+		{"plan constructor cannot initialize participation", "internal/successor/endpoint/plan_construction_linux.go", modulePath + "/internal/successor/network/duty", false},
+		{"plan constructor cannot initialize selection history", "internal/successor/endpoint/plan_construction_linux.go", modulePath + "/internal/successor/route/selection", false},
+		{"plan constructor has no old backend", "internal/successor/endpoint/plan_construction_linux.go", modulePath + "/internal/endpoint", false},
+		{"plan constructor command uses endpoint owner", "cmd/ardents-next/endpoint_construction_linux.go", modulePath + "/internal/successor/endpoint", true},
+		{"plan constructor command has no direct Source codec", "cmd/ardents-next/endpoint_construction_linux.go", modulePath + "/internal/successor/network/source", false},
 		{"installed participant owns Administration listener", "internal/successor/endpoint/participant_linux.go", modulePath + "/internal/application/administration", true},
 		{"installed Publisher retains original worker", "internal/successor/endpoint/publisher/publisher_linux.go", modulePath + "/internal/successor/execution/runtime", true},
 		{"other installed adapter has no Publisher authority", "cmd/ardents-next/installed_other_linux.go", modulePath + "/internal/successor/execution/runtime", false},
