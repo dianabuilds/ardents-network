@@ -14,6 +14,12 @@ func runInstalledEndpoint(ctx context.Context, args []string, diagnostic io.Writ
 	if ctx == nil || len(args) == 0 {
 		return 2
 	}
+	if args[0] == "construct-plan" {
+		if len(args) != 5 {
+			return 2
+		}
+		return runEndpointPlanConstruction(ctx, args[1:], diagnostic)
+	}
 	if args[0] == "prepare-history" {
 		if len(args) != 4 {
 			return 2
