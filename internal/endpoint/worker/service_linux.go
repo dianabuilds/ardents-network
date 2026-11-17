@@ -76,18 +76,6 @@ func ReadEndpointProperties(ctx context.Context) (Properties, Properties, error)
 	return readFixedUnitProperties(ctx, "ardents-endpoint.service", "Service")
 }
 
-// ReadActivationSocketProperties observes a fixed text activation socket.
-// It grants no activation, launch or stop permission.
-func ReadActivationSocketProperties(ctx context.Context, role string) (Properties, Properties, error) {
-	if ctx == nil || role != "reader" && role != "publisher" {
-		return nil, nil, errors.New("text activation socket observation is unavailable")
-	}
-	if err := verifyPlatform(ctx); err != nil {
-		return nil, nil, err
-	}
-	return readFixedUnitProperties(ctx, "ardents-text-"+role+".socket", "Socket")
-}
-
 func readFixedUnitProperties(ctx context.Context, name, propertyKind string) (Properties, Properties, error) {
 	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "GetUnit", "s", name)
 	var paths []string

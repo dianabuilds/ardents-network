@@ -26,12 +26,6 @@ func PinCgroup(instance Instance) (*os.File, error) {
 	return pinCgroupPath(instance.Cgroup)
 }
 
-// PinEndpointCgroup observes only the fixed Endpoint's original kernel scope.
-// It grants no stop authority and cannot select another unit or cgroup path.
-func PinEndpointCgroup() (*os.File, error) {
-	return pinCgroupPath("/system.slice/ardents-endpoint.service")
-}
-
 func pinCgroupPath(group string) (*os.File, error) {
 	path := "/sys/fs/cgroup" + group
 	before, err := installedPath(path, true)

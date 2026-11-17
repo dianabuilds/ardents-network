@@ -4092,19 +4092,32 @@ existing Descriptor effect/result boundaries; TCP/TLS composition remains
 separately required.
 
 `make deadcode` runs `golang.org/x/tools/cmd/deadcode` for the maintained
-Windows and Linux production builds, then for their test executables. The test
-result must be empty. Production results must match
+Windows and Linux production builds, then for their test executables, with the
+selected native build tags enabled (`network_signing_native`,
+`text_worker_installed`, `installation_native`, `node_process_native`,
+`descriptor_installed_native`, `join_installed_native`, `startup_manager_native`,
+`network_preparation_native`, `heapdumpcapture`). The analyzer only compiles the
+program; it does not execute the native stands. Including the native tags lets
+native-tagged test coverage count, so a function exercised only by a native test
+is not reported as unreachable.
+
+Production results must match
 [`tests/profiles/deadcode-allowlist.json`](../../tests/profiles/deadcode-allowlist.json)
 exactly: an entry names every retained symbol, its classification, rationale,
-owner, and deletion condition. Prefix, package, or count-based exceptions are
-not permitted.
+owner, and deletion condition. The native-tag test result must match the
+registry's reviewed `test_dead` allowlist exactly; the linux-amd64 `test_dead`
+allowlist is empty. A function fully-dead under native tags is admitted only as
+a reviewed platform-native allowance (for example a Linux-native composition
+whose native test executables Windows excludes), never as unreviewed test-only
+dead. Prefix, package, or count-based exceptions are not permitted.
 
 Most retained production entries are intentionally unwired closed-alpha
-tracers with deterministic behavior evidence; this is not a claim that they
-are a selected product path. A newly reported symbol fails the gate until its
-owner either removes it or reviews it with a concrete retirement condition.
-An absent listed symbol also fails the gate, so the registry cannot silently
-accumulate stale exemptions. `make check` includes this audit.
+tracers with deterministic behavior evidence, or retired legacy runtime awaiting
+the gated cohort removal (#564/#565); this is not a claim that they are a
+selected product path. A newly reported symbol fails the gate until its owner
+either removes it or reviews it with a concrete retirement condition. An absent
+listed symbol also fails the gate, so the registry cannot silently accumulate
+stale exemptions. `make check` includes this audit.
 
 Retained Receiving/Spending openings have exactly two Windows production
 allowances: the original Node retained Forwarding consumer reaches them on
@@ -4114,12 +4127,14 @@ allowances grant no Windows native or installed acceptance. Hosting's native
 file-birth effect is Linux-only. Forwarding's detached input-plan projection,
 first-start snapshot convenience wrapper and native manager identity projections
 reside in their native tests; they are not production Interfaces. The analyzer,
-Linux production comparison and empty test-result requirements are unchanged.
+Linux production comparison and reviewed native-tag test-result requirements
+apply as described above.
 
 Service Connection's portable implementation has exact Windows allowances only
 for functions reached by genuine Linux Reader, Publisher and installed command
 composition. Linux production remains fully checked against its own inventory;
-both platforms' test analysis must report no unreachable functions. Independent
+both platforms' native-tag test analysis must match the reviewed `test_dead`
+allowlist (empty for linux-amd64). Independent
 Instance proof vectors exercise the same wire verifier used by both initial
 response owners, and active streams consume the stream-only record parser.
 Physical Source fixture constructors and scalar manager-vector wrappers remain
