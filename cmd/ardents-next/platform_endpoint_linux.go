@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -12,16 +13,15 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/installation"
 	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/installation/unit"
+	"github.com/dianabuilds/ardents-network/internal/successor/release"
 )
-
-// errEndpointPlatformCheckPending refuses the privileged Endpoint pre-start check
-// until the F-25 trust transfer and worker confinement verification are owned by the
-// next bounded step. It is a fail-closed refusal, never an accepting receipt.
-var errEndpointPlatformCheckPending = errors.New("endpoint platform check is not yet available")
 
 // validEndpointPlatformLaunch admits the protected text Endpoint declaration shape.
 // The Program is the enrolled generation executable (installationRoot/generations/
@@ -189,5 +189,75 @@ func executeEndpointPlatformCheck(ctx context.Context, args []string, out io.Wri
 		_, err = out.Write(unit)
 		return err
 	}
-	return errEndpointPlatformCheckPending
+	if args[0] == "initialize-trust" {
+		return errEndpointPlatformInitialPending
+	}
+	return verifyEndpointPlatformPrestart(ctx, files, launch, decl, roots, unit, candidate)
+}
+
+// errEndpointPlatformInitialPending refuses offline first-pin setup until the
+// Endpoint initial-trust composition is owned by a separate bounded step.
+var errEndpointPlatformInitialPending = errors.New("endpoint platform initialize-trust is not yet available")
+
+// verifyEndpointPlatformPrestart is the privileged F-25 pre-start trust transfer. It
+// verifies the fixed account, the installed main unit against the rendered enrolled
+// template, the enrolled program against the actual generation executable, the loaded
+// systemd confinement, and a fresh retained Release authorization. It performs no
+// installation/start/stop/recovery effect and yields no accepting receipt to replay;
+// success returns only after the verifier physically closes.
+func verifyEndpointPlatformPrestart(ctx context.Context, files *platformFiles, launch platformLaunch, decl requestinput.Declaration, roots []string, unit []byte, candidate enrollment.Candidate) error {
+	passwd, err := files.Read("/etc/passwd", 1<<20, false)
+	if err != nil {
+		return err
+	}
+	group, err := files.Read("/etc/group", 1<<20, false)
+	if err != nil || !platformAccount(passwd, group, platformUser(launch)) {
+		return errPlatformInput
+	}
+	installed, err := files.Read("/etc/systemd/system/ardents-endpoint.service", 64<<10, false)
+	if err != nil || !bytes.Equal(installed, unit) {
+		return errPlatformInput
+	}
+	facts, ok := candidate.Facts()
+	if !ok {
+		return errPlatformInput
+	}
+	program, _ := candidate.File(facts.Artifact)
+	actual, err := files.Read(launch.Program, 64<<20, true)
+	if err != nil || len(program) == 0 || !bytes.Equal(actual, program) {
+		return errPlatformInput
+	}
+	version, err := systemd.Version(ctx)
+	if err != nil {
+		return err
+	}
+	unitProps, serviceProps, err := systemd.Endpoint(ctx)
+	if err != nil {
+		return err
+	}
+	generationDigest := path.Base(filepath.Dir(launch.Program))
+	if err := endpointunit.VerifyConfiguration(version, unitProps, serviceProps, endpointunit.Configuration{InstallationRoot: decl.InstallationRoot, WritePaths: roots}, generationDigest); err != nil {
+		return errPlatformInput
+	}
+	refTime, err := time.Parse(time.RFC3339Nano, decl.ReferenceTime)
+	if err != nil {
+		return errPlatformInput
+	}
+	input, ok := candidateReleaseInputs(candidate, refTime)
+	if !ok {
+		return errPlatformInput
+	}
+	verifier, err := release.OpenRetained(decl.ReleaseFloorRoot)
+	if err != nil {
+		return err
+	}
+	auth, err := generationauthorization.AuthenticateCandidate(ctx, verifier, candidate, input)
+	if err == nil {
+		programAuth, _ := auth.Targets()
+		decision, accepted := programAuth.AcceptedDecision()
+		if !accepted || decision.Outcome != release.OutcomeReleaseAccepted {
+			err = release.ErrTrustUnavailable
+		}
+	}
+	return errors.Join(err, verifier.Close())
 }
