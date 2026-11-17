@@ -1,141 +1,730 @@
 {
   "schema": "ardents-test-profiles-v1",
-    "profiles": [
-{"id":"descriptor-recovery-linux","state":"active","make_target":"descriptor-recovery-check","surface":"actual same-program canonical replacement cut at record62, independent safe stopped recovery and immutable original prefix, fresh non-root startup, genuine retained Store exchange and joined Stop; pending restart/replace, wrong history, absent/copied cut inode, partial completion and replay refusal","prerequisites":["source-matched original publication and independently committed domain/native retirement on dedicated Ubuntu24.04/systemd255/cgroup-v2/ext4 stand","exact two-build artifacts, signed forward Release and fresh bootstrap accepted under Product Owner delegation; all guards/quotas/bounds unchanged","original account, keys and five semantic histories retained; later changed-program replacement separately verifies recovered lineage"],"invalid_environment":"missing original cut, completed predecessor or selected native/artifact prerequisite fails, never skips","timeout":"3m"},
-{"id":"descriptor-recovery-physical-linux","state":"active","make_target":"descriptor-recovery-physical-check","surface":"actual original same-program process/seqpacket/journal custody, frozen cut and cancellation with outstanding ACK, independent retained lease/readers and late Close failure; detached physical fixtures grant no Release, safe recovery, native manager or domain join","prerequisites":["explicit disposable root Linux/ext4 TMPDIR and /etc/ardents-descriptor-preparation-native-stand containing ardents-descriptor-preparation-native-v1 newline","actual root-owned checked native test executable and original pidfd/subreaper support; common development lock"],"invalid_environment":"missing selected prerequisite fails, never skips","timeout":"3m"},
-{"id":"descriptor-replacement-linux","state":"active","make_target":"descriptor-replacement-check","surface":"separately finite actual stopped resource then changed-program replacement stages; preserve original Store proof/floors, account/keys/five roots, fresh Release and original non-root startup, genuine new holder issuance under retained quota and original domain/native Stop","prerequisites":["source-matched first Descriptor publication/lookup and original joined Stop, or retained Stop/restart completed, on this dedicated Ubuntu24.04/systemd255/cgroup-v2/ext4 stand; every prior original domain/native retirement independently verified through canonical history owner","exact two-build canonical artifact sets, SHA-pinned current/final Node and Control, descriptor_installed_native driver, actual build-bound forward Release preparation","new exact prepared commitments accepted under existing Product Owner delegation before each replacement/Start; unchanged guards/quotas/bounds and per-operation absolute deadlines; one checked stage per process, no live operation deadline reset"],"invalid_environment":"missing completed original history, current authority, matching artifacts or native prerequisites fails, never skips","timeout":"3m"},
-{"id":"descriptor-forward-release-linux","state":"active","make_target":"descriptor-forward-release-check","surface":"actual canonical Descriptor initial/forward Release signature chain, unchanged root and raised metadata floors; exact-purpose and wrong-predecessor/key refusal; no installed or independent-builder claim","prerequisites":["explicit root-controlled ext4 Source-artifact test output namespace for shared physical I/O only","source-matched SHA-pinned ARDENTS_DESCRIPTOR_CONTROL_PROGRAM and ARDENTS_DESCRIPTOR_NODE_PROGRAM; actual canonical programs and fixture public build declarations"],"invalid_environment":"missing original artifacts or native prerequisites fails; no skips","timeout":"3m"},
-{"id":"descriptor-store-inspection-linux","state":"active","make_target":"descriptor-store-inspection-check","surface":"independently leased stopped Store signed history, exact numeric principal/native custody, missing or uncertain history refusal without creation/repair, inode-restoration refusal, held reader and physical Close join; no installed/runtime/ACK claim","prerequisites":["explicit ARDENTS_DESCRIPTOR_STORE_INSPECTION_NATIVE=1; Linux root with writable ext4 under root-controlled /var/lib","no live Store owner; finite caller and original exclusively held read-only lease; fixtures prove physical history only, not Release or domain retirement"],"invalid_environment":"missing selected prerequisite fails, never skips","timeout":"3m"},
-{"id":"descriptor-restart-linux","state":"active","make_target":"descriptor-restart-check","surface":"genuine signed Descriptor exchange before and after explicit joined original Stop and same-generation retained restart; existing-only histories/account/keys/allowance, report replay and unretired restart refusal; no replacement/recovery or full Service claim","prerequisites":["fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2/ext4 stand and common development lock","source-matched two-build canonical Node/Control and SHA-pinned descriptor_installed_native driver; genuine State/Custody/Allocation/issuer/Stock and signed public proof","actual committed bootstrap scope under direct Product Owner delegation; unchanged runtime limits, guards and absolute wire deadlines"],"invalid_environment":"missing selected prerequisite fails, never skips","timeout":"3m"},
-{"id":"descriptor-publish-linux","state":"active","make_target":"descriptor-publish-check","surface":"actual installed non-root Descriptor signed publication, Store ACK and exact lookup; invalid signature/foreign profile/future interval, absent Target, revision conflict and higher revision repair; real finite Custody/Allocation/issuer/Stock Control rights, irreversible receiving spends, joined TLS/lower channels and independent original-UID Store reopen; no live Publisher, registration, Source prefix, Service or retained lifecycle claim","prerequisites":["fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2/ext4 stand with all slots/account absent and shared development lock","matching actual two-build Node/Control, SHA-pinned descriptor_installed_native race harness, canonical signed State/material/profile inputs and independent public Service proof","completed exact bootstrap scope under Product Owner delegation; unchanged guard, spend, resource and deadline limits"],"invalid_environment":"missing selected prerequisite fails; no skips","timeout":"3m"},
-      {"id":"join-installed-linux","state":"active","make_target":"join-installed-check","surface":"canonical protected first JOIN start, independent actual non-root Startup and genuine signed-State/Stock/TLS paired duplex bytes, credit, EOF and terminal completion; one selected journey per fresh stand: original Stop/same-generation restart or explicit forward resource/program replacement; no full Route, Service or recovery qualification","prerequisites":["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2/ext4 private manager and fixed all-five Node slot policy","exact retained source, matching two-build canonical Node/Control and SHA-256-pinned native race driver; genuine signed input and Custody/Allocation/issuance/Stock producers","completed exact bootstrap scope under current explicit Product Owner acceptance/delegation, actual protected numeric Node account and unchanged process limits","original manager/proc/cgroup/mount/root and input custody, shared development lock, bounded logs and cleanup only after actual original joins"],"invalid_environment":"missing selected native/artifact/authority prerequisite fails; no passing skip","timeout":"3m"},
-      {"id":"forwarding-installed-linux","state":"active","make_target":"forwarding-installed-check","surface":"prepared bounded canonical first start, TCP/TLS parent and actual forwarded Interior TLS/admission/refill held through original joined stop, retained same-generation restart/contact/refill/final stop; distinct retained client/Interior State, real non-root Receiver/Receiving and shared Hosting budget, original credential FDs, native pidfd/cgroup and independent two-receiver spend/provider-byte oracles; finite four-case scope adds missing/damaged original retirement history and actual crash with unknown domain join, strict restart refusal and retained unresolved reservation; compilation/discovery alone grants no profile acceptance; actual source-matched execution and the remaining causal/protection matrix require owning evidence","prerequisites":["NEW exact completed public Forwarding bootstrap receipt for all actual source/build/artifacts/inputs/controller/cases, separately directly accepted by the Product Owner under ADR-0123 Decision6 BEFORE any installed execution; matching receipt bytes or Source541 acceptance do not grant permission","original private Ubuntu24.04 amd64 systemd255/ext4/cgroup-v2 manager; six independently pinned original namespaces/root, same namespaces as the root driver, root driver outside the measured fixed Node leaf; original outside supervisor holds the shared development lock and every descendant until actual join, including after failure","explicit ARDENTS_FORWARDING_INSTALLED_CASE selects lifetime-refill, retirement-history-missing, retirement-history-damaged or unknown-domain-join in a separate fresh stand; independently pinned TEST, SOURCE_MANIFEST and BOOTSTRAP paths/SHA256; bootstrap fixed at /artifacts/forwarding-bootstrap-receipt.json with exact source/artifact inventory and all eight input hashes separately for all four case_inputs entries; same-source network_signing_native race cmd/ardents-next test artifact pinned as forwarding-installed.test and original-reference helper separately pinned as forwarding-manager.test; the helper holds one genuine fixed-unit reference through fresh native exit observation, invokes no Start or Stop, and releases/joins before another invocation; its readiness is no accepting authority","actual canonical independent first-pin/artifact admission and initial-stopped State/Hosting preparation, original known-born Node UID/GID and one shared provider budget; eight genuine already-presented credentials for two exact recipients in original private custody with at least one minute remaining; canonical separate Interior State/plan, original root-owned read-only certificate/key descriptors transferred to the non-root peer component, original component process/pidfd and two receiving histories, actual signed current Epoch/profile/member, live external clock evidence, all four semantic roots preserved; no fixture-key extraction or copied semantic root","actual original pidfds/cgroup-v2 events, loopback TCP, private journalctl/systemctl and isolated Python3.12 -I -S; logical test families under one known controller are one effective family, never operational eligibility or privacy evidence"],"invalid_environment":"missing exact direct acceptance, current credential/authority, pinned source/artifact/input or original native prerequisite prohibits execution; no passing skips, automatic retry, adoption or reset","timeout":"4m"},
-      {"id":"source-recovery-linux","state":"active","make_target":"source-replacement-check","surface":"explicit finite positive Source recovery frontiers: initial70/106/110/113/114/115 and replacement13/49/50/51/52/53/54/55; actual canonical original cut with processed cancellation and native join, immutable original prefix plus separate completion, preserved account/credentials/semantic/Release history, then separate actual Source contact and full explicit stop/restart lifecycle. Also24 terminal refusals at initial70/replacement49: held journal lease, copied journal/result/generation inode, wrong journal access, torn journal, missing pending, partial completion, actual private manager reexec with changed broker/unique-owner identity, and actual Timestamp expiry for the same already-admitted eight-file candidate; replacement-only missing original startup journal/archive or retirement journal/result. Two separate refused recovery commands preserve damaged history, allowing only a new exact empty failure header before the second attempt. Each case also discovers and runs the finite thirty-two native file/process ownership controls before installed work; these controls grant no Source or semantic authority. Two additional concurrent cancellation controls at initial70/replacement13 hold the original repaired program before its first suffix record, require a sibling actual Release flock refusal and before-return join, cancel/join the first and retain a partial envelope against a later fresh caller. Six physical controls at initial69/70 and replacement12/13 interrupt the first original program before its born/ready record or after its born record is appended but before the original journal Sync; the pre-Sync argument must be the actual original journal descriptor and the born inode must remain empty0600. Both fresh recovery callers must retain the physical history, actual missing-original-cut read/ENOENT cause and before-return cleanup with no eligible original-cut proof or completion header. Two further physical controls at initial105/replacement48 hold the already sealed original generation before its sealed record, require all twelve original file birth triples/native bytes and retained file change/modify times, then preserve the image through both causal recovery refusals. Four fixed publication controls at initial109/113 and replacement50/52 hold binding/unit after actual publication but before the next record, retain the sealed candidate inventory and original0644 native file, and require an actual independently pinned pre-Commit preimage observation for replacement. Four further physical controls at initial114/115 and replacement54/55 retain both completed publications before the final verified record or original writer Close; Close observation binds the actual first receiver and live original journal descriptor. Two final ordinary-publication controls at full115/55 hold the actual pending Remove entry only after original journal exclusion is available and journal/pending/generation-directory descriptors are closed. Eight additional recovery-root cases at initial70/115 or replacement13/55 kill the real recovery root at completion-writer Close or final pending Remove, retain its separate complete envelope and original blocker through two fresh before-return refusals, and require a separate exact root_recovery_cuts prediction before the original cut. Two additional recovery-root cases at initial70/replacement13 hold the actual first program file-ready record entry after original-inode repair, require an exact original-bound zero-record partial completion header and live writer/lease custody, then SIGKILL/reap the root and preserve that image through causal refusals. Four additional startup-root cases select first/subsequent attempt0/1 at archive-before-archived or ack-before-written under a separate exact startup_cuts prediction. Before the directed cut the outside controller retains the archived original Source pidfd/proc/cgroup and fresh manager execution identity; after root SIGKILL/reaps it separately requires Source pidfd exit and original kernel-scope join, then two causal pending-guard recovery refusals and ordinary start/restart refusals with unchanged original history. Six additional retirement-root cases select first/subsequent attempt0/1 at native-before-joined, result-before-close or pending-before-unlink under a separate exact retirement_cuts prediction. Source pidfd/proc/cgroup and manager/archive identity are retained before stop-source launch; original Source pidfd exit and scope join must finish before root SIGKILL/reaps. Two subsequent causal retirement-pending recovery refusals and ordinary start/restart refusals preserve all original blocked history. Every positive recovered lifecycle separately classifies both complete committed startup and retirement journals after each genuine original join, with exact completed_classifications predictions, current declaration commitment, unchanged histories/fixed files and stopped independent manager facts. Two expiry cases additionally require actual paired pre/post wall-time Release decisions, unchanged metadata/program/generation and noncompeting announced protocol/parent/safety bounds, then two separate canonical before-return recovery refusals with unchanged original/fixed/semantic histories. Two initial-only early physical controls at24/42 interrupt completed-helper account birth history before its second database record or the actual empty root0700 directory before its born record. They preserve absent future semantic/credential roots and all actual account/auxiliary/native images; both fresh recovery callers must successfully acquire, fully read and close the original journal under their own exclusive lease before refusing, with no borrowed missing-cut ENOENT claim. These80 prepared cases do not establish the complete causal negative/unsafe-window matrix or full issue acceptance","prerequisites":["NEW completed exact public bootstrap receipt covering all actual source/build/artifacts/predecessors/inputs/observer/matrix/cases, directly accepted by the Product Owner under ADR-0123 Decision6 BEFORE any installed execution; no earlier receipt transfer","same original private Ubuntu24.04 amd64 systemd255/ext4/cgroup-v2 Source stand, actual whole-scope events/descendant joins and exclusive development lock as the other Source profiles; root native ptrace and Python3.12 -I -S; native file-test marker /etc/ardents-source-stopped-native-stand and fresh private evidence on actual ext4 for the required ninety-second native controls","explicit ARDENTS_SOURCE_STARTUP_CASE recovery-initial-N, recovery-replacement-N or recovery-refusal-OPERATION-FAULT or recovery-concurrent-OPERATION or recovery-physical-OPERATION-WINDOW or recovery-root-OPERATION-N-WINDOW or recovery-startup-ATTEMPT-WINDOW or recovery-retirement-ATTEMPT-WINDOW from the finite maintained inventory; pinned RECOVERY_MATRIX matches exact source manifest; independently pinned CUT_CONTROL_RUNNER maintained pipe-owner script; same-source independently pinned RECOVERY_OBSERVER native Infrastructure .test executable with TestSourceCutObserverNative, TestSourceRefusalObserverNative and TestSourceCanonicalPhysicalCutObserverNative and TestSourceRecoveryPhysicalCutObserverNative; concurrent/physical/root cases require separately published exact concurrent_cancellation/physical_cuts/root_recovery_cuts/startup_cuts/retirement_cuts/completed_classifications/release_expiry matrix entries; runtime Source unit limits remain unchanged","initial cases use exact recoverable115 producer; positive replacement cases retain actual A-to-B program change and B-to-C resource-only change; terminal replacement refusals retain a genuine complete A predecessor/start/retirement and State histories before the B candidate cut; all ordinary signed State/TLS/client/native manager prerequisites remain mandatory","one fresh stand per selected case, original failure retained; positive cases use direct canonical fresh recover-source followed by separate fresh start/contact/stop/restart; terminal negative cases retain the selected fault and never turn the same damaged history into a positive; no Start/ACK replay, reset, copied lineage or phase-equivalence waiver"],"invalid_environment":"missing exact direct acceptance or any selected original authority/input/native prerequisite prohibits execution. Unsafe/partial original or recovery completion remains repair-required, never a passing skip or successful continuation","timeout":"10m"},
-      {"id":"source-replacement-linux","state":"active","make_target":"source-replacement-check","surface":"explicit genuine program A-to-B then unchanged-program address-only B-to-C forward Source replacement on one retained installation/account/trust/State/participation lineage; four distinct invocations and independent old-listener closure, original held-join refusal, independent replacement/start/retirement native transcripts, replay/rollback and actual canonically signed expired Release, missing retained input and native account/binding/unit substitution refusal, real exclusive-birth and read-only selection/unit partial-prefix failures, kernel-held actual Reload cancellation with processed caller cancellation, original-thread join and unchanged blocker/prefix followed by canonical start/replacement refusal, preserved original history FD/flock regressions without GC; safe-prefix retention only, no recovery continuation","prerequisites":["NEW exact public bootstrap receipt covering all A/B/C artifacts, inputs and selected replacement cases, directly accepted by the Product Owner before any installed execution; prior receipts do not transfer","same original private Ubuntu24.04 amd64 systemd255/ext4 stand and outside whole-scope/descendant join as source-startup-linux; Linux root and Python3.12 -I -S with native pidfds","independently pinned actual predecessor A and distinct candidate B programs; C has B program bytes and a changed permitted address; real canonical preparation/signing/Release verification with same Root and strict forward metadata; genuine signed State and TLS inputs","complete pinned final source, canonical Control and same-source native manager/Infrastructure owner test binaries; original shared development lock, fresh own stand/evidence per selected replacement case; root mount/umount for isolated same-inode read-only fault controls; selected reload-cancellation case additionally requires same-source pinned cmd/ardents-next CUT_TEST and native amd64 ptrace; case inventory in the maintained runner"],"invalid_environment":"missing direct acceptance, original proof, semantic history or native prerequisite prohibits execution; partial or uncertain completion retains blockers and is never a passing skip","timeout":"10m"},
-      {"id":"source-restart-linux","state":"active","make_target":"source-restart-check","surface":"canonical same-generation Source first start, explicit original domain/native retirement and two subsequent invocations; actual non-root State/protection/mTLS, original held-process concurrent restart refusal, separate retirement/start transcripts and retained credential/State-input loss controls; complete cut/uncertainty and final acceptance remain separately required","prerequisites":["separate direct Product Owner acceptance of the exact new public bootstrap receipt covering this candidate and explicit stop/restart scope before any installed execution; receipt presence is not an approval token","same private Ubuntu24.04 amd64 systemd255/ext4 stand, original namespaces/root mount/journal and supervisor placement as source-startup-linux; outside original whole-scope events descriptor retained through every descendant join","actual independently pinned canonical Node/Control and same-source network_signing_native manager binary including TestSourceRetirementObserverNative; complete read-only source snapshot, enrolled distribution/pin, signed bundle/unsigned Epoch and genuine TLS inputs","Python3.12 -I -S, native pidfd open/signal including original SIGSTOP/SIGCONT and one original shared development lock; fresh resources/evidence per restart, restart-credential-loss or restart-state-loss case; no reset/adoption/replay or foreign mutation"],"invalid_environment":"missing direct acceptance or any original native/input/protection prerequisite prohibits execution; partial/uncertain original completion refuses, never a passing skip","timeout":"8m"},
-      {"id":"source-startup-linux","state":"active","make_target":"source-startup-check","surface":"canonical installed Source first startup, actual non-root State/protection/TLS/client use, original invocation denial and scope join; selected positive, credential-substitution and clock-loss cases do not establish the full interruption/pressure matrix","prerequisites":["direct Product Owner acceptance of the completed exact public bootstrap receipt under ADR-0123 before any installed execution; a receipt pin identifies the cohort and is not an approval token","fresh private Ubuntu24.04 amd64 systemd255/ext4 stand with original mount/PID/cgroup/UTS namespaces with an independent root mount and canonical procfs executable paths, working journal and system bus; caller/helpers in the original supervisor sibling covered by the outside whole-scope events descriptor","actual independently pinned canonical Node/Control and same-source systemd network_signing_native manager test, complete read-only source snapshot, enrolled distribution/initial pin, signed State bundle, independently pinned unsigned Epoch preparation and genuine TLS inputs; Python3.12 -I -S and native pidfd open/signal support","original external development exclusive lock and outside descendant join; fresh evidence and resources per selected case; no adoption, restart, protection override or foreign host mutation"],"invalid_environment":"missing prior PO acceptance or any selected original input/namespace/manager/protection prerequisite prohibits execution; no skip or waiver","timeout":"3m"},
-      {"id":"source-stopped-linux","state":"active","make_target":"source-stopped-check","surface":"genuine compiled initial stopped Source installation, exclusive account/credential/directory/generation/journal effects, selection and fixed-unit reload with actual loaded stopped policy; no Source Start/runtime/bootstrap acceptance","prerequisites":["fresh isolated Ubuntu24.04 amd64 rootfs/systemd255 with private mount/PID/cgroup/UTS namespaces, original manager bus and cgroup-v2 cpu/memory/pids; outer controller joins only its own delegated stand","root-controlled native ext4 source inputs, 0700 TMPDIR, 0755 future parent, absent fixed Source account/unit; explicit runtime TLS key and controlled signed test distribution","Go1.27.4, canonical compiled command and race owner/command tests, complete immutable source manifest and independent binary/source pins; Python3.12 -I -S","one original external development exclusive lock for all cooperating jobs; preserve failed native prefixes, no host account/unit/hostname mutation"],"invalid_environment":"missing/changed original namespace, manager, mount, binary, source or input prerequisite fails; no skip, adoption or retry erasure","timeout":"3m"},
-      {"id":"source-preflight-linux","state":"active","make_target":"source-preflight-check","surface":"compiled same-caller Source initial/candidate artifact admission followed by closed Source policy and read-only fresh stopped native observation; no installed Source execution or installation effects","prerequisites":["Ubuntu24.04 amd64 root controller in its finite private systemd255 manager namespaces, actual socket/notify-ready system bus and cgroup-v2 cpu/memory/pids","root-controlled direct ancestors, private native-ext4 0700 TMPDIR and separate 0755 future parent, absent fixed Source account/unit and fresh future destinations","Go1.27.4, populated immutable dependencies and race-capable C compiler; complete source manifest and canonical command plus owner/manager/command race binary pins","same external development exclusive lock; controlled test signing authorities only"],"invalid_environment":"missing or changed original native prerequisites fail; no skip or acceptance by absence alone","timeout":"3m"},
-      {"id":"network-signing-linux","state":"active","make_target":"network-signing-check","surface":"genuine purpose-bound initial Record/Epoch/profile signing, public-only Source trust and infrastructure artifact preparation, independent transcripts to new State, retained Source and distinct signed Node State/zero-producer participation semantic-history inspections, plus distinct Receiving-spend and provider-period Hosting read-only inspections with original numeric principal/lease/copy/close, cancellation/held-user late-failure and missing/changed-history refusal without repair or creation, original protected input and finite durable output custody/refusals/process cuts; no operational trust ceremony or installed qualification; separate Forwarding original request/plan/TLS-input and ancestor custody, live clock policy, joined Check/Close and returned real descriptors without GC; no installed duty execution; separate actual five-Node-slot Forwarding manager preflight, original connection/cancellation/Close and read-only native input preflight; separate controlled two-execution Node/Control build records and public initial Forwarding plan/signing, with no independent-builder, first-pin or installed claim; distinct fixed JOIN initial/forward Release keys, plans and signatures with actual shared canonical-command build records, original key/input/output custody and exact JOIN candidate predecessor verification; no installed JOIN or cross-role authority; separate read-only five-Node-slot observation with no unit/job object vocabulary, original descriptor return and causal cancellation/held-observer joined Close; separate original JOIN request/plan/Ed25519 delivery and protected file/ancestor custody, live root-clock access and canonical read-only JOIN initial preflight, no installation or runtime execution; distinct genuine canonical initial stopped JOIN installation and independently reopened original history, one fixed JOIN manager reload, no Start or runtime duty; original physical directory/private-file birth and joined failure controls; distinct offline Descriptor-role artifact/inventory/request/plan/template preparation using original root/ext4 public input/output custody and a separately SHA-256-pinned canonical Control, with no native installation or runtime authority","prerequisites":["Linux root and root-owned non-group/other-writable direct ancestors; private 0700 TMPDIR on actual ext4; Descriptor public preparation additionally requires ARDENTS_DESCRIPTOR_CONTROL_PROGRAM and ARDENTS_DESCRIPTOR_CONTROL_PROGRAM_SHA256 for the same-source compiled Control; Descriptor original-input preflight requires ARDENTS_DESCRIPTOR_PREFLIGHT_NATIVE=1, independently pinned ARDENTS_DESCRIPTOR_NODE_PROGRAM and ARDENTS_DESCRIPTOR_NODE_PROGRAM_SHA256, actual systemd255, absent five Node slots/account and protected ext4","selected Go1.27.4, immutable populated dependencies and race-capable C compiler","same external development lock, complete source/artifact/config and actual mount pins; isolated test authorities only","explicit separate root Forwarding preparation marker /etc/ardents-forwarding-preparation-native-stand and source offline expiry marker where those controls are selected","Forwarding coherent initial-stopped preparation additionally requires its exact private-root marker, outside-pinned original root and six independent namespaces, actual private systemd255 and fresh Node/unit namespace; it performs initial stopped installation and offline State/Hosting preparation only; the prepared-channel variant additionally requires more than one minute left in the actual current token window and publishes only four genuine already-presented credentials for two distinct channels under private test custody, without installed execution","Forwarding and JOIN actual-build public-plan controls additionally require a completed original two-execution build scope, independently pinned READY/canonical Node/Control/public-preparer/prestart-evidence bytes and unchanged root-controlled actual build records; build outputs are read-only during preparation","Forwarding and JOIN manager/preflight controls additionally require actual systemd255 on the original system bus, all five fixed Node slots and shared ardents-node account absent; no runtime execution","JOIN initial stopped selection requires a fresh private Ubuntu24.04/systemd255/ext4 root with all five Node slots/account absent, marker /etc/ardents-join-initial-native-stand, independently pinned actual matching two-build Node/Control records and public plan/evidence; TLS/runtime declarations remain prestart fixtures, never signed State or duty authority"],"invalid_environment":"missing native custody/durability prerequisite fails; no skips","timeout":"3m"},
-      {"id":"network-preparation-linux","state":"active","make_target":"network-preparation-check","surface":"actual public Record/Epoch/profile commands, independent byte oracles, isolated test-only exact-message signatures to genuine new State commands, native original-descriptor durability/refusal and actual writer interruption; no product private signer or installed qualification","prerequisites":["Linux with private caller-owned 0700 TMPDIR on actual native ext4, directory fsync, openat NOFOLLOW, tmpfs refusal control and isolated child file-size limit/process kill/join","selected Go1.27.4, populated immutable dependencies and race-capable C compiler","same external development exclusive lock, pinned complete source and recorded actual canonical command/test artifact identities"],"invalid_environment":"missing selected native durability or build prerequisite fails; no passing skips","timeout":"3m"},
-      {"id":"source-process-linux","state":"active","make_target":"source-process-check","surface":"original authenticated Direct-Origin Source command and actual offline-prepared two-Source/client cohort, genuine signed Epoch acquisition/distribution, refusal and original joined State/process retirement; bounded development only","prerequisites":["Linux cgroup-v2/systemd root driver outside original sole-process Source leaf","exact Source CPU/memory/PID/FD/Go envelope with actual proc/cgroup/PSI evidence and native ext4 durable roots","independently pinned canonical command, node_process_native command/resource race binaries and complete source manifest","same external own-job lock, real mTLS loopback transport, reviewed isolated Python3.12 and native fixture tools"],"invalid_environment":"missing selected prerequisite or unestablished overload fails; no skips or retries-until-pass","timeout":"3m"},
-      {"id":"node-development-linux","state":"active","make_target":"node-development-check","surface":"finite three-iteration development baseline of all five complete original Node profiles, with genuine non-test native preflight and continued environment/source/artifact validity; no capacity or installed claim","prerequisites":["Ubuntu24.04 Linux root driver, actual systemd255, native ext4 durable TMPDIR and cgroup-v2 cpu/memory/pids with PSI","all five original Node profile prerequisites and independently pinned source manifest/command/native race artifacts","reviewed Python3.12 isolated standard library (-I -S), fresh external evidence directory and same external atomic lock parent for all own build/scanner/native jobs across Windows/WSL","no competing own jobs; exclusive wrapper covers direct builds/checks/scanners; individual profile entrypoints remain complete and mandatory"],"invalid_environment":"missing or changed prerequisites, lock contention or failed case is failure/invalid; no passing skips or retry-until-pass","timeout":"90m"},
-      {"id":"execution-installed-timing","state":"active","make_target":"execution-installed-timing-check","surface":"canonical independently Installation-admitted original participants, real post-ACK Root cut/fresh recovery and exact Text exchange, unchanged-clock automatic Publication refresh proven by independently verified Store revision and second real Reader exchange, withdrawal/join/restart refusal; no full interruption or whole-host qualification","prerequisites":["all execution-installed pair original manager, namespace, artifact pin and fresh-root prerequisites","fifteen-minute timing controller and participant profiles, retained outer managers RuntimeMaxSec at least 920s","at least sixteen minutes remaining in original token hour","TCP/TLS selected for each fresh pair; deferred QUIC must refuse"],"invalid_environment":"selected installed timing environment or original token hour unavailable; no passing skips","timeout":"15m"},
-      {"id":"execution-installed-pair","state":"active","make_target":"execution-installed-pair-check","surface":"two independently installed participants with genuine permission approvals, public signed Network inputs, actual Snapshot/Link and AAI3 text exchange, Withdraw/Link refusal, joined original participants and actual new-process Startup refusal with retained regular-file bytes and actual post-ACK cut/fresh-proof recovery; no full interruption or whole-host qualification","prerequisites":["root Linux x86-64 controller outside two fresh Ubuntu24.04/systemd255 managers with distinct PID/mount/cgroup namespaces and shared fixture loopback","independently pinned canonical participant/Text/resource inventory and text_worker_installed test binary in controller and both managers","ARDENTS_EXECUTION_PAIR_MANAGERS names the two original manager PIDs; ARDENTS_EXECUTION_START_CARRIER selects one Carrier per fresh pair","each manager contains /root/startup.test, /root/artifacts, /root/run-profile.sh and trusted /var/lib/profile-root; four-minute checked participant profile","fresh controller root and all retained logs outside the repository"],"invalid_environment":"selected independently installed pair environment unavailable; no passing skips","timeout":"8m"},
-      {"id":"join-process-linux","state":"active","make_target":"node-join-check","surface":"original native Node JOIN command, genuine signed State/Stock/Admission/Hosting and paired TCP/TLS; original failure, join and reopen; bounded development only","prerequisites":["Linux cgroup-v2 actual systemd manager and root driver outside sole original Node leaf","exact JOIN CPU/memory/PID/FD/Go envelope and genuine proc/cgroup/PSI observations","independently SHA-256-pinned canonical command and node_process_native command/resource race binaries from checked source","private durable roots, exact workload discovery and real loopback TCP; deferred-QUIC refusal controls also observe UDP"],"invalid_environment":"selected original JOIN native environment or artifacts unavailable; no passing skips","timeout":"3m"},
-      {"id":"introduction-process-linux","state":"active","make_target":"node-introduction-check","surface":"original Node Introduction native command, genuine signed State/Stock/Registration and Control/Hosting/History REGISTER, opaque delivery and withdrawal on TCP/TLS; bounded development only, no qualified recipient or installed claim","prerequisites":["Linux cgroup-v2 actual systemd manager and root driver outside sole original Node leaf","exact Introduction CPU/memory/PID/FD/Go envelope and original proc/cgroup/PSI observations","independently SHA-256-pinned canonical command plus node_process_native command/resource race binaries from checked source","private durable roots and real loopback TCP; deferred-QUIC refusal controls also observe UDP; complete exact workload discovery"],"invalid_environment":"selected original Introduction native environment or artifacts unavailable; no passing skips","timeout":"3m"},
-      {"id":"descriptor-process-linux","state":"active","make_target":"node-descriptor-check","surface":"original Node Descriptor native command, genuine signed State/Stock/Control/Hosting/Store publish and exact lookup on TCP/TLS, original native protection/evidence/pressure and joined durability; bounded development only","prerequisites":["Linux cgroup v2 and actual systemd manager; root driver outside each sole original Node leaf","selected Descriptor CPU/memory/PID/FD/Go limits and actual proc/cgroup/PSI observations","independently SHA-256-pinned canonical command and node_process_native command/resource race binaries built from checked source","private durable roots and real loopback TCP; deferred-QUIC refusal controls also observe UDP; exact complete command/resource discovery","preinstalled taskset; bounded transient helper support for RuntimeMax, CPUQuota, MemoryMax, TasksMax, NOFILE, DynamicUser, NoNewPrivileges and PrivateTmp"],"invalid_environment":"selected Descriptor native environment or artifact unavailable; no passing skips","timeout":"3m"},
-      {"id":"issuer-process-linux","state":"active","make_target":"node-issuer-check","surface":"original Node Issuer native command, genuine bootstrap then fresh ordinary issuance and spending on TCP/TLS, independent original process/evidence/pressure controls; bounded development, no installed qualification","prerequisites":["Linux cgroup v2 and actual systemd manager; root driver outside sole original Node leaf","approved Issuer CPU/memory/PID/FD/Go limits and real proc/cgroup/PSI observations","independently SHA-256-pinned canonical command and node_process_native command/resource race binaries built from checked source","private durable roots and real loopback TCP; deferred-QUIC refusal controls also observe UDP"],"invalid_environment":"selected Issuer native environment or artifact unavailable; no passing skips","timeout":"3m"},
-      {"id":"forwarding-process-linux","state":"active","make_target":"node-process-check","surface":"original Forwarding command and mandatory genuine process protection, TCP/TLS, signed-State/token/Hosting consumers and physical joined retirement; bounded development only","prerequisites":["Linux cgroup v2 and actual systemd manager with root driver outside the measured Node services","separate original sole-process leaf with approved CPU/memory/PID/FD/Go limits","independently SHA-256-pinned canonical Node command, node_process_native command test and resource test binaries from checked source; race-capable Go1.27.4 build","private local durable roots, proc/cgroup/PSI counters and loopback TCP; deferred-QUIC refusal controls also observe UDP"],"invalid_environment":"selected Forwarding native environment or artifact unavailable; no passing skips","timeout":"3m"},
-      {"id":"startup-manager-native-linux","state":"active","make_target":"startup-manager-check","surface":"fresh Version and both complete fixed Endpoint/activation property rounds on one original read-only connection; exact signatures and required values compared with independent busctl; native manager mechanism only, no installed Startup acceptance","prerequisites":["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager","actual fixed Endpoint and both activation objects","original non-root Endpoint MainPID executing independently pinned startup_manager_native systemd test binary at installation-systemd.test","root-owned pinned fresh qualification unit and root driver"],"invalid_environment":"selected original manager mechanism environment unavailable; no passing skips","timeout":"20s"},
-      {"id":"custody-native-linux","state":"active","make_target":"custody-check","surface":"encrypted Admission birth, new Allocation issuance/retry, retained floors, real native partial-write/floor refusals, original cancellation/join, quarantine lifecycle, official Argon2 vectors and canonical built terminal commands including genuine new Instance request/acceptance and Service issuance, Service expiry/generation/pending-floor checks; no platform/crash qualification","prerequisites":["Linux private local filesystem with flock, hardlinks, atomic rename and directory fsync","Go 1.27.4 and race-capable C compiler","256 MiB fixed Argon2 workspace per original serialized operation","real PTY and populated immutable module cache"],"invalid_environment":"selected Custody native environment unavailable; no passing skips","timeout":"3m"},
-      {
-        "id": "connection-nonce",
-        "state": "active",
-        "make_target": "connection-nonce-check",
-        "surface": "genuine capsule acceptance followed by original Reader revocation after successful RESULT before CLOSE, or actual Rendezvous retirement before JOIN or during TLS after ClientHello on TCP/TLS; no authenticated Attachment or Application transfer, same original Jobs with Reader revoked only in result case, retained Source and actual physical interruption failures, Publisher and original workers joined, accepted nonce retained after failed RESULT/JOIN/TLS; read-only private history oracle after joined Publisher; exact result+join+tls cases on TCP/TLS and causal closed-peer write error classification with unrelated-error refusals, no two-host qualification",
-        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test", "independently pinned root-owned qualification unit and root driver", "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"],
-        "invalid_environment": "selected installed Connection nonce environment unavailable; no passing skips"
-      },
-      {
-        "id": "connection-withdrawal",
-        "state": "active",
-        "make_target": "connection-withdrawal-check",
-        "surface": "genuine authenticated initial bytes followed by actual Publication Withdraw on TCP/TLS; original Publication physical borrowers join, original Jobs remain live, late Publisher bytes and stream acquisition refuse, Reader refuses without authenticated EOF or caller-memory mutation; component only, no full installed qualification",
-        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test", "independently pinned root-owned qualification unit and root driver", "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"],
-        "invalid_environment": "selected installed Connection withdrawal environment unavailable; no passing skips"
-      },
-      {
-        "id": "connection-refresh",
-        "state": "active",
-        "make_target": "connection-refresh-check",
-        "surface": "genuine accepting Publication refresh followed by original Connection response loss and authenticated recovery on TCP/TLS; accepted and pending-ack cases require exact pending recipient SubmissionRefusal status1 while original Streams stay live; verified Store ACK advances revision, slot and recipient while retaining Publication digest, profile, Target, original workers, one request and exact joined result; component only, no two independently installed Endpoints or full Connection acceptance",
-        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test", "independently pinned root-owned qualification unit and root driver", "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"],
-        "invalid_environment": "selected installed Connection refresh environment unavailable; no passing skips"
-      },
-      {
-        "id": "connection-reopen",
-        "state": "active",
-        "make_target": "connection-reopen-check",
-        "surface": "one genuine qualified Reader/Publisher Connection on each Carrier, joined original receivers, actual Network/receiving/Hosting/Descriptor/Publication owner reopen on the same roots, spent token replay refusal with real reservation rollback and consumed Instance refusal; no process-crash or two-host qualification",
-        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test", "pinned root-owned qualification unit selecting TestInstalledConnectionDurableReopenTCP", "root driver, private local roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"],
-        "invalid_environment": "selected original qualified reopen environment unavailable; no passing skips"
-      },
-      {
-        "id": "connection-authority",
-        "state": "active",
-        "make_target": "connection-authority-check",
-        "surface": "actual worker StopUnit, independent local Network owner loss or elapsed original safety deadline during delayed Application Read, both roles over TCP/TLS; no late caller-memory bytes or EOF, retained refusal and original joined cleanup; component only",
-        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID with independently pinned execution-command.test and its existing fixed-worker StopUnit permission", "pinned root-owned qualification unit selecting TestInstalledConnectionAuthorityTCP with timeout20m and RuntimeMaxSec1260s", "root driver and real loopback TCP; deferred-QUIC refusal controls also observe UDP"],
-        "invalid_environment": "selected original qualified authority environment unavailable; no passing skips"
-      },
-      {
-        "id": "connection-control-delivery",
-        "state": "active",
-        "make_target": "connection-control-delivery-check",
-        "surface": "actual Terminal/receipt/confirmation physically written before opposite reader acceptance, or accepted with original sender finishWrite completed; both roles over TCP/TLS, actual Rendezvous retirement/reopen, original qualified workers and one request; no supplied authority or records, component only",
-        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID with independently pinned execution-command.test", "pinned root-owned qualification unit selecting TestInstalledConnectionControlDeliveryTCP with timeout20m and RuntimeMaxSec1260s", "root driver and real loopback TCP; deferred-QUIC refusal controls also observe UDP"],
-        "invalid_environment": "selected original qualified control environment unavailable; no passing skips"
-      },
-      {
-        "id": "connection-control-received",
-        "state": "active",
-        "make_target": "connection-control-received-check",
-        "surface": "actual original Terminal/receipt/confirmation accepted by the opposite record reader while sender remains before finishWrite; both roles over TCP/TLS, actual Rendezvous retirement/reopen, original qualified workers and one Application request; no supplied authority or records; component only",
-        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID with independently pinned execution-command.test", "pinned root-owned qualification unit selecting TestInstalledConnectionControlReceivedTCP with timeout20m and RuntimeMaxSec1260s", "root driver and real loopback TCP; deferred-QUIC refusal controls also observe UDP"],
-        "invalid_environment": "selected original qualified control environment unavailable; no passing skips"
-      },
-      {
-        "id": "connection-control",
-        "state": "active",
-        "make_target": "connection-control-check",
-        "surface": "genuine original qualified Reader and Publisher; exact immutable writer control ticket selects Terminal, receipt or confirmation before TLS Write or after Write before ledger commit, for both roles over TCP/TLS, plus independently delayed genuine Data ACK progress before Terminal loss; each local recovery cutoff and unchanged sealed request deadline remain binding; actual Rendezvous join/restart and same logical stream recovery, one Application request and exact result after all original joins; no supplied authority/records, production hook or whole installed qualification",
-        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test", "pinned root-owned qualification unit selecting TestInstalledConnectionControlWritesTCP with test timeout20m and RuntimeMaxSec1260s; driver bound12600 polls", "root driver, private local roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"],
-        "invalid_environment": "selected original qualified control environment unavailable; no passing skips"
-      },
-      {
-        "id": "connection-stream",
-        "state": "active",
-        "make_target": "connection-stream-check",
-          "surface": "genuine qualified original Reader/Publisher workers and authenticated Stream across actual Rendezvous, Reader Source, Publisher Source and Responder parent loss, before request, before Publisher request-Terminal post-read observation returns, mid-response and after request Terminal on TCP/TLS; source-checked scheduler selects second complete request-side body after real TLS I/O, physical Rendezvous loss and same-owner recovery without supplied records/errors; one Application request, exact original result and joined cleanup, retained receiving peer-retirement failures; delayed genuine Application Read observations for both roles check independent local-gate progress, original caller cancellation, Connection Close without Job revocation and refusal of late bytes; component only, no two independently installed Endpoints or full Connection acceptance",
-        "prerequisites": ["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager", "genuine fixed root-installed Text artifact and activation units", "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test", "independently pinned root-owned qualification unit and root driver", "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"],
-        "invalid_environment": "selected installed Connection Stream environment unavailable; no passing skips"
-      },
-      {
-        "id": "publication-timing",
-        "state": "active",
-        "make_target": "publication-timing-check",
-        "surface": "genuine qualified Publisher automatic refresh at original registration creation+300s and bounded predecessor overlap on TCP/TLS with unchanged clocks; no complete installed Service or privacy qualification",
-        "prerequisites": [
-          "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
-          "genuine fixed root-installed Text snapshot artifact and activation units",
-          "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test",
-          "root driver and pinned temporary unit selecting only TestInstalledPublicationElapsedTCP with test timeout15m, RuntimeMaxSec920s and TimeoutStopSec30s",
-          "sixteen minutes remaining in the original token hour before admission",
-          "private temporary durable roots, loopback TCP; deferred-QUIC refusal controls also observe UDP and independent original process/cgroup join observers"
-        ],
-        "invalid_environment": "elapsed Publication prerequisites unavailable; no clock override, deadline reset or passing skip",
-        "timeout": "15m"
-      },
-      {"id":"execution-recovery","state":"active","make_target":"execution-recovery-check","surface":"new Execution original Endpoint pidfd SIGKILL, independently pinned hostile worker descendants joined by manager lifetime, fresh Endpoint/worker/Job identities after explicit restart; no logical Service recovery or whole-host qualification","prerequisites":["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager and kernel pidfd support","separately pinned text_worker_hostile artifact and matching fixed root manifest","root-owned independently pinned text_worker_installed runtime test binary","fresh inactive temporary Endpoint unit selecting only TestInstalledExecutionEndpointDeathHeldWorkers under the original non-root Endpoint account","Root controller outside the Endpoint unit, readable original kernel cgroup/proc descriptors and actual manager journal"],"invalid_environment":"selected Endpoint-death Execution component environment unavailable; missing original identities, descendants or prerequisites fail without passing skips","timeout":"2m"},
-      {"id":"execution-escape","state":"active","make_target":"execution-escape-check","surface":"new Execution genuine qualified escape-artifact launch, independent positive-controlled host TCP/UDP/DNS/IPC observers and original physical join on both local surfaces; no Service or whole-host qualification","prerequisites":["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager","separately pinned text_worker_escape artifact and matching fixed root manifest","original non-root Endpoint MainPID running independently pinned text_worker_installed Execution runtime test binary","root-owned independently pinned temporary qualification unit selecting TestInstalledExecutionEscapeMatrix with a two-minute test deadline","root driver and actual kernel cgroup/proc observers plus positive-controlled IPv4/IPv6/Unix listeners"],"invalid_environment":"selected escape Execution component environment unavailable; missing artifact, controls or prerequisites fail without passing skips"},
-      {"id":"execution-tree","state":"active","make_target":"execution-tree-check","surface":"new Execution qualified hostile-worker parent/child/grandchild join, synchronous operation denial after attachment loss and original sibling operation survival on both local surfaces; no private Service or whole-host qualification","prerequisites":["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager","separately pinned text_worker_hostile artifact and matching fixed root manifest","original non-root Endpoint MainPID running independently pinned text_worker_installed Execution runtime test binary","root-owned independently pinned temporary qualification unit selecting TestInstalledExecutionHostileTree with a two-minute test deadline","root driver and actual readable kernel cgroup/proc observers"],"invalid_environment":"selected hostile Execution component environment unavailable; missing descendants or prerequisites fail without passing skips"},
-    {"id":"execution-installed","state":"active","make_target":"execution-installed-check","surface":"actual new installed program startup, independent Installation Root completion, qualified joined permission preparation, genuine TLS Source and Stock permission import, explicit Hosting initialization and original-process AAI3 listener; no accepted Service request or whole-host qualification","prerequisites":["fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager without Ardents accounts or fixed resources","root driver outside the Endpoint unit","independently pinned root-owned canonical participant/Text/resource inventory and text_worker_installed command test binary","trusted fresh filesystem root outside the repository and private root-owned temporary directory","loopback TCP and genuine signed Epoch/profile/Release fixtures"],"invalid_environment":"selected fresh installed startup environment unavailable; no passing skips","timeout":"4m"},
-    {"id":"execution-installed-publication","state":"active","make_target":"execution-installed-publication-check","surface":"canonical installed dual-role participant, original Root completion, qualified snapshot worker, genuine issuer token acquisition, REGISTER and Descriptor Store ACK, accepting Link and joined withdrawal; no two-Endpoint Connection or whole-host qualification","prerequisites":["fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager without Ardents accounts or fixed resources; own cgroup namespace and pivoted root","root driver outside the Endpoint unit","independently pinned canonical participant/Text/resource inventory and text_worker_installed command test binary","ARDENTS_EXECUTION_START_CARRIER selects ardents-carrier-tcp-tls-v2; deferred QUIC refuses before installation effects","trusted fresh filesystem root and retained log outside the repository","real loopback role/issuer/Source servers, signed Network/Release and independently approved fixture permissions and public Service Credential"],"invalid_environment":"selected fresh installed publication environment unavailable; no passing skips","timeout":"4m"},
-    {"id":"execution-lifecycle","state":"active","make_target":"execution-lifecycle-check","surface":"new Execution installed lifecycle component: genuine fixed Text worker activation, joined preparation, one live operation, revoke-before-join, synchronous first-cleanup-failure denial and original pinned descendants on both local surfaces; no accepting Installation startup, live Service operation or whole-host qualification","prerequisites":["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager","genuine fixed root-installed Text artifact and activation units","non-root original Endpoint MainPID running the independently pinned text_worker_installed Execution test binary","root-owned independently pinned temporary qualification unit and root driver"],"invalid_environment":"selected installed Execution component environment unavailable; no passing skips"},
-    {"id":"execution-route","state":"active","make_target":"execution-route-check","surface":"new installed Execution live production holder: genuine signed Network, Admission permission/stock/bootstrap/spend and Hosting/Route TCP/TLS physical join; no accepting Installation startup or Service readiness","prerequisites":["dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager","genuine fixed root-installed Text artifact and activation units","original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test","independently pinned root-owned qualification unit and root driver","private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"],"invalid_environment":"selected installed Execution Route environment unavailable; no passing skips"},
-    {"id":"installation-native-linux","state":"active","make_target":"installation-native-check","surface":"new Installation root-owned request custody, actual inode/link/ancestor changes, original cancellation and owned ordered preparation journals and exclusive initial-root leases; filesystem component only, no installed runtime qualification","prerequisites":["Linux root test driver","ARDENTS_INSTALLATION_NATIVE_ROOT naming an existing root:root direct directory with trusted non-writable ancestors outside the repository","Go 1.27.4 with a race-capable C compiler","local filesystem with hardlinks, symlinks and native ownership"],"invalid_environment":"selected native Installation filesystem environment unavailable; no passing skips","timeout":"1m"},
-    {"id":"route-prefix-linux","state":"active","make_target":"route-check","surface":"new Network, Admission, Hosting, Publication, Connection, Reachability, Enrollment, Release, Installation, Execution and Route regression; Connection initial binding and isolated v3 mechanisms do not supply an authenticated stream; genuine signed-state prefix, Introduction registration and paired JOIN on TCP/TLS; compiled consumers, retained selection/reopen, bounded framing, pool, scheduling, revocation and joined physical cleanup","prerequisites":["Linux with proc/sys counters and loopback TCP; deferred-QUIC refusal controls also observe UDP","Go 1.27.4 with a race-capable C compiler","writable private temporary filesystem with flock, atomic rename and directory fsync"],"invalid_environment":"selected Route Linux environment unavailable; no passing skips","timeout":"5m"},
-{"id":"issuer-profile-linux","state":"active","make_target":"issuer-profile-check","surface":"pinned identity and signed issuer profile files/race/process/CLI and bounded fuzz","prerequisites":["Linux local durable filesystem and flock","proc/sys and loopback for shared CLI tests","Go1.27.4 race-capable C compiler","pinned golang:1.27.4-bookworm Docker image"],"invalid_environment":"selected issuer profile Linux environment unavailable","timeout":"5m"},
-{"id":"token-issuance-linux","state":"active","make_target":"token-issuance-check","surface":"confirmed offline token issuance filesystem/race/compiled process acceptance","prerequisites":["Linux local durable filesystem and flock","proc/sys and loopback for shared CLI tests","Go1.27.4 race-capable C compiler","pinned golang:1.27.4-bookworm Docker image"],"invalid_environment":"selected offline issuance Linux profile unavailable","timeout":"5m"},
-{"id":"issuer-key-material-linux","state":"active","make_target":"issuance-check","surface":"independent issuer key material real-file and compiled CLI process behavior","prerequisites":["Linux with flock and durable local filesystem","proc/sys network counters and loopback for shared command tests","Go 1.27.4 and C compiler for race","pinned golang:1.27.4-bookworm image for Docker acceptance"],"invalid_environment":"selected issuer material Linux environment is unavailable","timeout":"3m"},
-    {"id":"admission-ledger-linux","state":"active","make_target":"admission-check","surface":"all successor Admission owners and standalone holder/allocation/issuer/receiver processes, durable reopen and Hosting integration","prerequisites":["Linux with flock and durable local filesystem","Go 1.27.4 and C compiler for race","pinned golang:1.27.4-bookworm image for Docker acceptance"],"invalid_environment":"selected Admission Linux environment is unavailable","timeout":"5m"},
+  "profiles": [
+    {
+      "id": "descriptor-recovery-linux",
+      "state": "active",
+      "make_target": "descriptor-recovery-check",
+      "surface": "actual same-program canonical replacement cut at record62, independent safe stopped recovery and immutable original prefix, fresh non-root startup, genuine retained Store exchange and joined Stop; pending restart/replace, wrong history, absent/copied cut inode, partial completion and replay refusal",
+      "prerequisites": [
+        "source-matched original publication and independently committed domain/native retirement on dedicated Ubuntu24.04/systemd255/cgroup-v2/ext4 stand",
+        "exact two-build artifacts, signed forward Release and fresh bootstrap accepted under Product Owner delegation; all guards/quotas/bounds unchanged",
+        "original account, keys and five semantic histories retained; later changed-program replacement separately verifies recovered lineage"
+      ],
+      "invalid_environment": "missing original cut, completed predecessor or selected native/artifact prerequisite fails, never skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "descriptor-recovery-physical-linux",
+      "state": "active",
+      "make_target": "descriptor-recovery-physical-check",
+      "surface": "actual original same-program process/seqpacket/journal custody, frozen cut and cancellation with outstanding ACK, independent retained lease/readers and late Close failure; detached physical fixtures grant no Release, safe recovery, native manager or domain join",
+      "prerequisites": [
+        "explicit disposable root Linux/ext4 TMPDIR and /etc/ardents-descriptor-preparation-native-stand containing ardents-descriptor-preparation-native-v1 newline",
+        "actual root-owned checked native test executable and original pidfd/subreaper support; common development lock"
+      ],
+      "invalid_environment": "missing selected prerequisite fails, never skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "descriptor-replacement-linux",
+      "state": "active",
+      "make_target": "descriptor-replacement-check",
+      "surface": "separately finite actual stopped resource then changed-program replacement stages; preserve original Store proof/floors, account/keys/five roots, fresh Release and original non-root startup, genuine new holder issuance under retained quota and original domain/native Stop",
+      "prerequisites": [
+        "source-matched first Descriptor publication/lookup and original joined Stop, or retained Stop/restart completed, on this dedicated Ubuntu24.04/systemd255/cgroup-v2/ext4 stand; every prior original domain/native retirement independently verified through canonical history owner",
+        "exact two-build canonical artifact sets, SHA-pinned current/final Node and Control, descriptor_installed_native driver, actual build-bound forward Release preparation",
+        "new exact prepared commitments accepted under existing Product Owner delegation before each replacement/Start; unchanged guards/quotas/bounds and per-operation absolute deadlines; one checked stage per process, no live operation deadline reset"
+      ],
+      "invalid_environment": "missing completed original history, current authority, matching artifacts or native prerequisites fails, never skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "descriptor-forward-release-linux",
+      "state": "active",
+      "make_target": "descriptor-forward-release-check",
+      "surface": "actual canonical Descriptor initial/forward Release signature chain, unchanged root and raised metadata floors; exact-purpose and wrong-predecessor/key refusal; no installed or independent-builder claim",
+      "prerequisites": [
+        "explicit root-controlled ext4 Source-artifact test output namespace for shared physical I/O only",
+        "source-matched SHA-pinned ARDENTS_DESCRIPTOR_CONTROL_PROGRAM and ARDENTS_DESCRIPTOR_NODE_PROGRAM; actual canonical programs and fixture public build declarations"
+      ],
+      "invalid_environment": "missing original artifacts or native prerequisites fails; no skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "descriptor-store-inspection-linux",
+      "state": "active",
+      "make_target": "descriptor-store-inspection-check",
+      "surface": "independently leased stopped Store signed history, exact numeric principal/native custody, missing or uncertain history refusal without creation/repair, inode-restoration refusal, held reader and physical Close join; no installed/runtime/ACK claim",
+      "prerequisites": [
+        "explicit ARDENTS_DESCRIPTOR_STORE_INSPECTION_NATIVE=1; Linux root with writable ext4 under root-controlled /var/lib",
+        "no live Store owner; finite caller and original exclusively held read-only lease; fixtures prove physical history only, not Release or domain retirement"
+      ],
+      "invalid_environment": "missing selected prerequisite fails, never skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "descriptor-restart-linux",
+      "state": "active",
+      "make_target": "descriptor-restart-check",
+      "surface": "genuine signed Descriptor exchange before and after explicit joined original Stop and same-generation retained restart; existing-only histories/account/keys/allowance, report replay and unretired restart refusal; no replacement/recovery or full Service claim",
+      "prerequisites": [
+        "fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2/ext4 stand and common development lock",
+        "source-matched two-build canonical Node/Control and SHA-pinned descriptor_installed_native driver; genuine State/Custody/Allocation/issuer/Stock and signed public proof",
+        "actual committed bootstrap scope under direct Product Owner delegation; unchanged runtime limits, guards and absolute wire deadlines"
+      ],
+      "invalid_environment": "missing selected prerequisite fails, never skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "descriptor-publish-linux",
+      "state": "active",
+      "make_target": "descriptor-publish-check",
+      "surface": "actual installed non-root Descriptor signed publication, Store ACK and exact lookup; invalid signature/foreign profile/future interval, absent Target, revision conflict and higher revision repair; real finite Custody/Allocation/issuer/Stock Control rights, irreversible receiving spends, joined TLS/lower channels and independent original-UID Store reopen; no live Publisher, registration, Source prefix, Service or retained lifecycle claim",
+      "prerequisites": [
+        "fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2/ext4 stand with all slots/account absent and shared development lock",
+        "matching actual two-build Node/Control, SHA-pinned descriptor_installed_native race harness, canonical signed State/material/profile inputs and independent public Service proof",
+        "completed exact bootstrap scope under Product Owner delegation; unchanged guard, spend, resource and deadline limits"
+      ],
+      "invalid_environment": "missing selected prerequisite fails; no skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "join-installed-linux",
+      "state": "active",
+      "make_target": "join-installed-check",
+      "surface": "canonical protected first JOIN start, independent actual non-root Startup and genuine signed-State/Stock/TLS paired duplex bytes, credit, EOF and terminal completion; one selected journey per fresh stand: original Stop/same-generation restart or explicit forward resource/program replacement; no full Route, Service or recovery qualification",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2/ext4 private manager and fixed all-five Node slot policy",
+        "exact retained source, matching two-build canonical Node/Control and SHA-256-pinned native race driver; genuine signed input and Custody/Allocation/issuance/Stock producers",
+        "completed exact bootstrap scope under current explicit Product Owner acceptance/delegation, actual protected numeric Node account and unchanged process limits",
+        "original manager/proc/cgroup/mount/root and input custody, shared development lock, bounded logs and cleanup only after actual original joins"
+      ],
+      "invalid_environment": "missing selected native/artifact/authority prerequisite fails; no passing skip",
+      "timeout": "3m"
+    },
+    {
+      "id": "forwarding-installed-linux",
+      "state": "active",
+      "make_target": "forwarding-installed-check",
+      "surface": "prepared bounded canonical first start, TCP/TLS parent and actual forwarded Interior TLS/admission/refill held through original joined stop, retained same-generation restart/contact/refill/final stop; distinct retained client/Interior State, real non-root Receiver/Receiving and shared Hosting budget, original credential FDs, native pidfd/cgroup and independent two-receiver spend/provider-byte oracles; finite four-case scope adds missing/damaged original retirement history and actual crash with unknown domain join, strict restart refusal and retained unresolved reservation; compilation/discovery alone grants no profile acceptance; actual source-matched execution and the remaining causal/protection matrix require owning evidence",
+      "prerequisites": [
+        "NEW exact completed public Forwarding bootstrap receipt for all actual source/build/artifacts/inputs/controller/cases, separately directly accepted by the Product Owner under ADR-0123 Decision6 BEFORE any installed execution; matching receipt bytes or Source541 acceptance do not grant permission",
+        "original private Ubuntu24.04 amd64 systemd255/ext4/cgroup-v2 manager; six independently pinned original namespaces/root, same namespaces as the root driver, root driver outside the measured fixed Node leaf; original outside supervisor holds the shared development lock and every descendant until actual join, including after failure",
+        "explicit ARDENTS_FORWARDING_INSTALLED_CASE selects lifetime-refill, retirement-history-missing, retirement-history-damaged or unknown-domain-join in a separate fresh stand; independently pinned TEST, SOURCE_MANIFEST and BOOTSTRAP paths/SHA256; bootstrap fixed at /artifacts/forwarding-bootstrap-receipt.json with exact source/artifact inventory and all eight input hashes separately for all four case_inputs entries; same-source network_signing_native race cmd/ardents-next test artifact pinned as forwarding-installed.test and original-reference helper separately pinned as forwarding-manager.test; the helper holds one genuine fixed-unit reference through fresh native exit observation, invokes no Start or Stop, and releases/joins before another invocation; its readiness is no accepting authority",
+        "actual canonical independent first-pin/artifact admission and initial-stopped State/Hosting preparation, original known-born Node UID/GID and one shared provider budget; eight genuine already-presented credentials for two exact recipients in original private custody with at least one minute remaining; canonical separate Interior State/plan, original root-owned read-only certificate/key descriptors transferred to the non-root peer component, original component process/pidfd and two receiving histories, actual signed current Epoch/profile/member, live external clock evidence, all four semantic roots preserved; no fixture-key extraction or copied semantic root",
+        "actual original pidfds/cgroup-v2 events, loopback TCP, private journalctl/systemctl and isolated Python3.12 -I -S; logical test families under one known controller are one effective family, never operational eligibility or privacy evidence"
+      ],
+      "invalid_environment": "missing exact direct acceptance, current credential/authority, pinned source/artifact/input or original native prerequisite prohibits execution; no passing skips, automatic retry, adoption or reset",
+      "timeout": "4m"
+    },
+    {
+      "id": "source-recovery-linux",
+      "state": "active",
+      "make_target": "source-replacement-check",
+      "surface": "explicit finite positive Source recovery frontiers: initial70/106/110/113/114/115 and replacement13/49/50/51/52/53/54/55; actual canonical original cut with processed cancellation and native join, immutable original prefix plus separate completion, preserved account/credentials/semantic/Release history, then separate actual Source contact and full explicit stop/restart lifecycle. Also24 terminal refusals at initial70/replacement49: held journal lease, copied journal/result/generation inode, wrong journal access, torn journal, missing pending, partial completion, actual private manager reexec with changed broker/unique-owner identity, and actual Timestamp expiry for the same already-admitted eight-file candidate; replacement-only missing original startup journal/archive or retirement journal/result. Two separate refused recovery commands preserve damaged history, allowing only a new exact empty failure header before the second attempt. Each case also discovers and runs the finite thirty-two native file/process ownership controls before installed work; these controls grant no Source or semantic authority. Two additional concurrent cancellation controls at initial70/replacement13 hold the original repaired program before its first suffix record, require a sibling actual Release flock refusal and before-return join, cancel/join the first and retain a partial envelope against a later fresh caller. Six physical controls at initial69/70 and replacement12/13 interrupt the first original program before its born/ready record or after its born record is appended but before the original journal Sync; the pre-Sync argument must be the actual original journal descriptor and the born inode must remain empty0600. Both fresh recovery callers must retain the physical history, actual missing-original-cut read/ENOENT cause and before-return cleanup with no eligible original-cut proof or completion header. Two further physical controls at initial105/replacement48 hold the already sealed original generation before its sealed record, require all twelve original file birth triples/native bytes and retained file change/modify times, then preserve the image through both causal recovery refusals. Four fixed publication controls at initial109/113 and replacement50/52 hold binding/unit after actual publication but before the next record, retain the sealed candidate inventory and original0644 native file, and require an actual independently pinned pre-Commit preimage observation for replacement. Four further physical controls at initial114/115 and replacement54/55 retain both completed publications before the final verified record or original writer Close; Close observation binds the actual first receiver and live original journal descriptor. Two final ordinary-publication controls at full115/55 hold the actual pending Remove entry only after original journal exclusion is available and journal/pending/generation-directory descriptors are closed. Eight additional recovery-root cases at initial70/115 or replacement13/55 kill the real recovery root at completion-writer Close or final pending Remove, retain its separate complete envelope and original blocker through two fresh before-return refusals, and require a separate exact root_recovery_cuts prediction before the original cut. Two additional recovery-root cases at initial70/replacement13 hold the actual first program file-ready record entry after original-inode repair, require an exact original-bound zero-record partial completion header and live writer/lease custody, then SIGKILL/reap the root and preserve that image through causal refusals. Four additional startup-root cases select first/subsequent attempt0/1 at archive-before-archived or ack-before-written under a separate exact startup_cuts prediction. Before the directed cut the outside controller retains the archived original Source pidfd/proc/cgroup and fresh manager execution identity; after root SIGKILL/reaps it separately requires Source pidfd exit and original kernel-scope join, then two causal pending-guard recovery refusals and ordinary start/restart refusals with unchanged original history. Six additional retirement-root cases select first/subsequent attempt0/1 at native-before-joined, result-before-close or pending-before-unlink under a separate exact retirement_cuts prediction. Source pidfd/proc/cgroup and manager/archive identity are retained before stop-source launch; original Source pidfd exit and scope join must finish before root SIGKILL/reaps. Two subsequent causal retirement-pending recovery refusals and ordinary start/restart refusals preserve all original blocked history. Every positive recovered lifecycle separately classifies both complete committed startup and retirement journals after each genuine original join, with exact completed_classifications predictions, current declaration commitment, unchanged histories/fixed files and stopped independent manager facts. Two expiry cases additionally require actual paired pre/post wall-time Release decisions, unchanged metadata/program/generation and noncompeting announced protocol/parent/safety bounds, then two separate canonical before-return recovery refusals with unchanged original/fixed/semantic histories. Two initial-only early physical controls at24/42 interrupt completed-helper account birth history before its second database record or the actual empty root0700 directory before its born record. They preserve absent future semantic/credential roots and all actual account/auxiliary/native images; both fresh recovery callers must successfully acquire, fully read and close the original journal under their own exclusive lease before refusing, with no borrowed missing-cut ENOENT claim. These80 prepared cases do not establish the complete causal negative/unsafe-window matrix or full issue acceptance",
+      "prerequisites": [
+        "NEW completed exact public bootstrap receipt covering all actual source/build/artifacts/predecessors/inputs/observer/matrix/cases, directly accepted by the Product Owner under ADR-0123 Decision6 BEFORE any installed execution; no earlier receipt transfer",
+        "same original private Ubuntu24.04 amd64 systemd255/ext4/cgroup-v2 Source stand, actual whole-scope events/descendant joins and exclusive development lock as the other Source profiles; root native ptrace and Python3.12 -I -S; native file-test marker /etc/ardents-source-stopped-native-stand and fresh private evidence on actual ext4 for the required ninety-second native controls",
+        "explicit ARDENTS_SOURCE_STARTUP_CASE recovery-initial-N, recovery-replacement-N or recovery-refusal-OPERATION-FAULT or recovery-concurrent-OPERATION or recovery-physical-OPERATION-WINDOW or recovery-root-OPERATION-N-WINDOW or recovery-startup-ATTEMPT-WINDOW or recovery-retirement-ATTEMPT-WINDOW from the finite maintained inventory; pinned RECOVERY_MATRIX matches exact source manifest; independently pinned CUT_CONTROL_RUNNER maintained pipe-owner script; same-source independently pinned RECOVERY_OBSERVER native Infrastructure .test executable with TestSourceCutObserverNative, TestSourceRefusalObserverNative and TestSourceCanonicalPhysicalCutObserverNative and TestSourceRecoveryPhysicalCutObserverNative; concurrent/physical/root cases require separately published exact concurrent_cancellation/physical_cuts/root_recovery_cuts/startup_cuts/retirement_cuts/completed_classifications/release_expiry matrix entries; runtime Source unit limits remain unchanged",
+        "initial cases use exact recoverable115 producer; positive replacement cases retain actual A-to-B program change and B-to-C resource-only change; terminal replacement refusals retain a genuine complete A predecessor/start/retirement and State histories before the B candidate cut; all ordinary signed State/TLS/client/native manager prerequisites remain mandatory",
+        "one fresh stand per selected case, original failure retained; positive cases use direct canonical fresh recover-source followed by separate fresh start/contact/stop/restart; terminal negative cases retain the selected fault and never turn the same damaged history into a positive; no Start/ACK replay, reset, copied lineage or phase-equivalence waiver"
+      ],
+      "invalid_environment": "missing exact direct acceptance or any selected original authority/input/native prerequisite prohibits execution. Unsafe/partial original or recovery completion remains repair-required, never a passing skip or successful continuation",
+      "timeout": "10m"
+    },
+    {
+      "id": "source-replacement-linux",
+      "state": "active",
+      "make_target": "source-replacement-check",
+      "surface": "explicit genuine program A-to-B then unchanged-program address-only B-to-C forward Source replacement on one retained installation/account/trust/State/participation lineage; four distinct invocations and independent old-listener closure, original held-join refusal, independent replacement/start/retirement native transcripts, replay/rollback and actual canonically signed expired Release, missing retained input and native account/binding/unit substitution refusal, real exclusive-birth and read-only selection/unit partial-prefix failures, kernel-held actual Reload cancellation with processed caller cancellation, original-thread join and unchanged blocker/prefix followed by canonical start/replacement refusal, preserved original history FD/flock regressions without GC; safe-prefix retention only, no recovery continuation",
+      "prerequisites": [
+        "NEW exact public bootstrap receipt covering all A/B/C artifacts, inputs and selected replacement cases, directly accepted by the Product Owner before any installed execution; prior receipts do not transfer",
+        "same original private Ubuntu24.04 amd64 systemd255/ext4 stand and outside whole-scope/descendant join as source-startup-linux; Linux root and Python3.12 -I -S with native pidfds",
+        "independently pinned actual predecessor A and distinct candidate B programs; C has B program bytes and a changed permitted address; real canonical preparation/signing/Release verification with same Root and strict forward metadata; genuine signed State and TLS inputs",
+        "complete pinned final source, canonical Control and same-source native manager/Infrastructure owner test binaries; original shared development lock, fresh own stand/evidence per selected replacement case; root mount/umount for isolated same-inode read-only fault controls; selected reload-cancellation case additionally requires same-source pinned cmd/ardents-next CUT_TEST and native amd64 ptrace; case inventory in the maintained runner"
+      ],
+      "invalid_environment": "missing direct acceptance, original proof, semantic history or native prerequisite prohibits execution; partial or uncertain completion retains blockers and is never a passing skip",
+      "timeout": "10m"
+    },
+    {
+      "id": "source-restart-linux",
+      "state": "active",
+      "make_target": "source-restart-check",
+      "surface": "canonical same-generation Source first start, explicit original domain/native retirement and two subsequent invocations; actual non-root State/protection/mTLS, original held-process concurrent restart refusal, separate retirement/start transcripts and retained credential/State-input loss controls; complete cut/uncertainty and final acceptance remain separately required",
+      "prerequisites": [
+        "separate direct Product Owner acceptance of the exact new public bootstrap receipt covering this candidate and explicit stop/restart scope before any installed execution; receipt presence is not an approval token",
+        "same private Ubuntu24.04 amd64 systemd255/ext4 stand, original namespaces/root mount/journal and supervisor placement as source-startup-linux; outside original whole-scope events descriptor retained through every descendant join",
+        "actual independently pinned canonical Node/Control and same-source network_signing_native manager binary including TestSourceRetirementObserverNative; complete read-only source snapshot, enrolled distribution/pin, signed bundle/unsigned Epoch and genuine TLS inputs",
+        "Python3.12 -I -S, native pidfd open/signal including original SIGSTOP/SIGCONT and one original shared development lock; fresh resources/evidence per restart, restart-credential-loss or restart-state-loss case; no reset/adoption/replay or foreign mutation"
+      ],
+      "invalid_environment": "missing direct acceptance or any original native/input/protection prerequisite prohibits execution; partial/uncertain original completion refuses, never a passing skip",
+      "timeout": "8m"
+    },
+    {
+      "id": "source-startup-linux",
+      "state": "active",
+      "make_target": "source-startup-check",
+      "surface": "canonical installed Source first startup, actual non-root State/protection/TLS/client use, original invocation denial and scope join; selected positive, credential-substitution and clock-loss cases do not establish the full interruption/pressure matrix",
+      "prerequisites": [
+        "direct Product Owner acceptance of the completed exact public bootstrap receipt under ADR-0123 before any installed execution; a receipt pin identifies the cohort and is not an approval token",
+        "fresh private Ubuntu24.04 amd64 systemd255/ext4 stand with original mount/PID/cgroup/UTS namespaces with an independent root mount and canonical procfs executable paths, working journal and system bus; caller/helpers in the original supervisor sibling covered by the outside whole-scope events descriptor",
+        "actual independently pinned canonical Node/Control and same-source systemd network_signing_native manager test, complete read-only source snapshot, enrolled distribution/initial pin, signed State bundle, independently pinned unsigned Epoch preparation and genuine TLS inputs; Python3.12 -I -S and native pidfd open/signal support",
+        "original external development exclusive lock and outside descendant join; fresh evidence and resources per selected case; no adoption, restart, protection override or foreign host mutation"
+      ],
+      "invalid_environment": "missing prior PO acceptance or any selected original input/namespace/manager/protection prerequisite prohibits execution; no skip or waiver",
+      "timeout": "3m"
+    },
+    {
+      "id": "source-stopped-linux",
+      "state": "active",
+      "make_target": "source-stopped-check",
+      "surface": "genuine compiled initial stopped Source installation, exclusive account/credential/directory/generation/journal effects, selection and fixed-unit reload with actual loaded stopped policy; no Source Start/runtime/bootstrap acceptance",
+      "prerequisites": [
+        "fresh isolated Ubuntu24.04 amd64 rootfs/systemd255 with private mount/PID/cgroup/UTS namespaces, original manager bus and cgroup-v2 cpu/memory/pids; outer controller joins only its own delegated stand",
+        "root-controlled native ext4 source inputs, 0700 TMPDIR, 0755 future parent, absent fixed Source account/unit; explicit runtime TLS key and controlled signed test distribution",
+        "Go1.27.4, canonical compiled command and race owner/command tests, complete immutable source manifest and independent binary/source pins; Python3.12 -I -S",
+        "one original external development exclusive lock for all cooperating jobs; preserve failed native prefixes, no host account/unit/hostname mutation"
+      ],
+      "invalid_environment": "missing/changed original namespace, manager, mount, binary, source or input prerequisite fails; no skip, adoption or retry erasure",
+      "timeout": "3m"
+    },
+    {
+      "id": "source-preflight-linux",
+      "state": "active",
+      "make_target": "source-preflight-check",
+      "surface": "compiled same-caller Source initial/candidate artifact admission followed by closed Source policy and read-only fresh stopped native observation; no installed Source execution or installation effects",
+      "prerequisites": [
+        "Ubuntu24.04 amd64 root controller in its finite private systemd255 manager namespaces, actual socket/notify-ready system bus and cgroup-v2 cpu/memory/pids",
+        "root-controlled direct ancestors, private native-ext4 0700 TMPDIR and separate 0755 future parent, absent fixed Source account/unit and fresh future destinations",
+        "Go1.27.4, populated immutable dependencies and race-capable C compiler; complete source manifest and canonical command plus owner/manager/command race binary pins",
+        "same external development exclusive lock; controlled test signing authorities only"
+      ],
+      "invalid_environment": "missing or changed original native prerequisites fail; no skip or acceptance by absence alone",
+      "timeout": "3m"
+    },
+    {
+      "id": "network-signing-linux",
+      "state": "active",
+      "make_target": "network-signing-check",
+      "surface": "genuine purpose-bound initial Record/Epoch/profile signing, public-only Source trust and infrastructure artifact preparation, independent transcripts to new State, retained Source and distinct signed Node State/zero-producer participation semantic-history inspections, plus distinct Receiving-spend and provider-period Hosting read-only inspections with original numeric principal/lease/copy/close, cancellation/held-user late-failure and missing/changed-history refusal without repair or creation, original protected input and finite durable output custody/refusals/process cuts; no operational trust ceremony or installed qualification; separate Forwarding original request/plan/TLS-input and ancestor custody, live clock policy, joined Check/Close and returned real descriptors without GC; no installed duty execution; separate actual five-Node-slot Forwarding manager preflight, original connection/cancellation/Close and read-only native input preflight; separate controlled two-execution Node/Control build records and public initial Forwarding plan/signing, with no independent-builder, first-pin or installed claim; distinct fixed JOIN initial/forward Release keys, plans and signatures with actual shared canonical-command build records, original key/input/output custody and exact JOIN candidate predecessor verification; no installed JOIN or cross-role authority; separate read-only five-Node-slot observation with no unit/job object vocabulary, original descriptor return and causal cancellation/held-observer joined Close; separate original JOIN request/plan/Ed25519 delivery and protected file/ancestor custody, live root-clock access and canonical read-only JOIN initial preflight, no installation or runtime execution; distinct genuine canonical initial stopped JOIN installation and independently reopened original history, one fixed JOIN manager reload, no Start or runtime duty; original physical directory/private-file birth and joined failure controls; distinct offline Descriptor-role artifact/inventory/request/plan/template preparation using original root/ext4 public input/output custody and a separately SHA-256-pinned canonical Control, with no native installation or runtime authority",
+      "prerequisites": [
+        "Linux root and root-owned non-group/other-writable direct ancestors; private 0700 TMPDIR on actual ext4; Descriptor public preparation additionally requires ARDENTS_DESCRIPTOR_CONTROL_PROGRAM and ARDENTS_DESCRIPTOR_CONTROL_PROGRAM_SHA256 for the same-source compiled Control; Descriptor original-input preflight requires ARDENTS_DESCRIPTOR_PREFLIGHT_NATIVE=1, independently pinned ARDENTS_DESCRIPTOR_NODE_PROGRAM and ARDENTS_DESCRIPTOR_NODE_PROGRAM_SHA256, actual systemd255, absent five Node slots/account and protected ext4",
+        "selected Go1.27.4, immutable populated dependencies and race-capable C compiler",
+        "same external development lock, complete source/artifact/config and actual mount pins; isolated test authorities only",
+        "explicit separate root Forwarding preparation marker /etc/ardents-forwarding-preparation-native-stand and source offline expiry marker where those controls are selected",
+        "Forwarding coherent initial-stopped preparation additionally requires its exact private-root marker, outside-pinned original root and six independent namespaces, actual private systemd255 and fresh Node/unit namespace; it performs initial stopped installation and offline State/Hosting preparation only; the prepared-channel variant additionally requires more than one minute left in the actual current token window and publishes only four genuine already-presented credentials for two distinct channels under private test custody, without installed execution",
+        "Forwarding and JOIN actual-build public-plan controls additionally require a completed original two-execution build scope, independently pinned READY/canonical Node/Control/public-preparer/prestart-evidence bytes and unchanged root-controlled actual build records; build outputs are read-only during preparation",
+        "Forwarding and JOIN manager/preflight controls additionally require actual systemd255 on the original system bus, all five fixed Node slots and shared ardents-node account absent; no runtime execution",
+        "JOIN initial stopped selection requires a fresh private Ubuntu24.04/systemd255/ext4 root with all five Node slots/account absent, marker /etc/ardents-join-initial-native-stand, independently pinned actual matching two-build Node/Control records and public plan/evidence; TLS/runtime declarations remain prestart fixtures, never signed State or duty authority"
+      ],
+      "invalid_environment": "missing native custody/durability prerequisite fails; no skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "network-preparation-linux",
+      "state": "active",
+      "make_target": "network-preparation-check",
+      "surface": "actual public Record/Epoch/profile commands, independent byte oracles, isolated test-only exact-message signatures to genuine new State commands, native original-descriptor durability/refusal and actual writer interruption; no product private signer or installed qualification",
+      "prerequisites": [
+        "Linux with private caller-owned 0700 TMPDIR on actual native ext4, directory fsync, openat NOFOLLOW, tmpfs refusal control and isolated child file-size limit/process kill/join",
+        "selected Go1.27.4, populated immutable dependencies and race-capable C compiler",
+        "same external development exclusive lock, pinned complete source and recorded actual canonical command/test artifact identities"
+      ],
+      "invalid_environment": "missing selected native durability or build prerequisite fails; no passing skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "source-process-linux",
+      "state": "active",
+      "make_target": "source-process-check",
+      "surface": "original authenticated Direct-Origin Source command and actual offline-prepared two-Source/client cohort, genuine signed Epoch acquisition/distribution, refusal and original joined State/process retirement; bounded development only",
+      "prerequisites": [
+        "Linux cgroup-v2/systemd root driver outside original sole-process Source leaf",
+        "exact Source CPU/memory/PID/FD/Go envelope with actual proc/cgroup/PSI evidence and native ext4 durable roots",
+        "independently pinned canonical command, node_process_native command/resource race binaries and complete source manifest",
+        "same external own-job lock, real mTLS loopback transport, reviewed isolated Python3.12 and native fixture tools"
+      ],
+      "invalid_environment": "missing selected prerequisite or unestablished overload fails; no skips or retries-until-pass",
+      "timeout": "3m"
+    },
+    {
+      "id": "node-development-linux",
+      "state": "active",
+      "make_target": "node-development-check",
+      "surface": "finite three-iteration development baseline of all five complete original Node profiles, with genuine non-test native preflight and continued environment/source/artifact validity; no capacity or installed claim",
+      "prerequisites": [
+        "Ubuntu24.04 Linux root driver, actual systemd255, native ext4 durable TMPDIR and cgroup-v2 cpu/memory/pids with PSI",
+        "all five original Node profile prerequisites and independently pinned source manifest/command/native race artifacts",
+        "reviewed Python3.12 isolated standard library (-I -S), fresh external evidence directory and same external atomic lock parent for all own build/scanner/native jobs across Windows/WSL",
+        "no competing own jobs; exclusive wrapper covers direct builds/checks/scanners; individual profile entrypoints remain complete and mandatory"
+      ],
+      "invalid_environment": "missing or changed prerequisites, lock contention or failed case is failure/invalid; no passing skips or retry-until-pass",
+      "timeout": "90m"
+    },
+    {
+      "id": "execution-installed-timing",
+      "state": "active",
+      "make_target": "execution-installed-timing-check",
+      "surface": "canonical independently Installation-admitted original participants, real post-ACK Root cut/fresh recovery and exact Text exchange, unchanged-clock automatic Publication refresh proven by independently verified Store revision and second real Reader exchange, withdrawal/join/restart refusal; no full interruption or whole-host qualification",
+      "prerequisites": [
+        "all execution-installed pair original manager, namespace, artifact pin and fresh-root prerequisites",
+        "fifteen-minute timing controller and participant profiles, retained outer managers RuntimeMaxSec at least 920s",
+        "at least sixteen minutes remaining in original token hour",
+        "TCP/TLS selected for each fresh pair; deferred QUIC must refuse"
+      ],
+      "invalid_environment": "selected installed timing environment or original token hour unavailable; no passing skips",
+      "timeout": "15m"
+    },
+    {
+      "id": "execution-installed-pair",
+      "state": "active",
+      "make_target": "execution-installed-pair-check",
+      "surface": "two independently installed participants with genuine permission approvals, public signed Network inputs, actual Snapshot/Link and AAI3 text exchange, Withdraw/Link refusal, joined original participants and actual new-process Startup refusal with retained regular-file bytes and actual post-ACK cut/fresh-proof recovery; no full interruption or whole-host qualification",
+      "prerequisites": [
+        "root Linux x86-64 controller outside two fresh Ubuntu24.04/systemd255 managers with distinct PID/mount/cgroup namespaces and shared fixture loopback",
+        "independently pinned canonical participant/Text/resource inventory and text_worker_installed test binary in controller and both managers",
+        "ARDENTS_EXECUTION_PAIR_MANAGERS names the two original manager PIDs; ARDENTS_EXECUTION_START_CARRIER selects one Carrier per fresh pair",
+        "each manager contains /root/startup.test, /root/artifacts, /root/run-profile.sh and trusted /var/lib/profile-root; four-minute checked participant profile",
+        "fresh controller root and all retained logs outside the repository"
+      ],
+      "invalid_environment": "selected independently installed pair environment unavailable; no passing skips",
+      "timeout": "8m"
+    },
+    {
+      "id": "join-process-linux",
+      "state": "active",
+      "make_target": "node-join-check",
+      "surface": "original native Node JOIN command, genuine signed State/Stock/Admission/Hosting and paired TCP/TLS; original failure, join and reopen; bounded development only",
+      "prerequisites": [
+        "Linux cgroup-v2 actual systemd manager and root driver outside sole original Node leaf",
+        "exact JOIN CPU/memory/PID/FD/Go envelope and genuine proc/cgroup/PSI observations",
+        "independently SHA-256-pinned canonical command and node_process_native command/resource race binaries from checked source",
+        "private durable roots, exact workload discovery and real loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected original JOIN native environment or artifacts unavailable; no passing skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "introduction-process-linux",
+      "state": "active",
+      "make_target": "node-introduction-check",
+      "surface": "original Node Introduction native command, genuine signed State/Stock/Registration and Control/Hosting/History REGISTER, opaque delivery and withdrawal on TCP/TLS; bounded development only, no qualified recipient or installed claim",
+      "prerequisites": [
+        "Linux cgroup-v2 actual systemd manager and root driver outside sole original Node leaf",
+        "exact Introduction CPU/memory/PID/FD/Go envelope and original proc/cgroup/PSI observations",
+        "independently SHA-256-pinned canonical command plus node_process_native command/resource race binaries from checked source",
+        "private durable roots and real loopback TCP; deferred-QUIC refusal controls also observe UDP; complete exact workload discovery"
+      ],
+      "invalid_environment": "selected original Introduction native environment or artifacts unavailable; no passing skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "descriptor-process-linux",
+      "state": "active",
+      "make_target": "node-descriptor-check",
+      "surface": "original Node Descriptor native command, genuine signed State/Stock/Control/Hosting/Store publish and exact lookup on TCP/TLS, original native protection/evidence/pressure and joined durability; bounded development only",
+      "prerequisites": [
+        "Linux cgroup v2 and actual systemd manager; root driver outside each sole original Node leaf",
+        "selected Descriptor CPU/memory/PID/FD/Go limits and actual proc/cgroup/PSI observations",
+        "independently SHA-256-pinned canonical command and node_process_native command/resource race binaries built from checked source",
+        "private durable roots and real loopback TCP; deferred-QUIC refusal controls also observe UDP; exact complete command/resource discovery",
+        "preinstalled taskset; bounded transient helper support for RuntimeMax, CPUQuota, MemoryMax, TasksMax, NOFILE, DynamicUser, NoNewPrivileges and PrivateTmp"
+      ],
+      "invalid_environment": "selected Descriptor native environment or artifact unavailable; no passing skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "issuer-process-linux",
+      "state": "active",
+      "make_target": "node-issuer-check",
+      "surface": "original Node Issuer native command, genuine bootstrap then fresh ordinary issuance and spending on TCP/TLS, independent original process/evidence/pressure controls; bounded development, no installed qualification",
+      "prerequisites": [
+        "Linux cgroup v2 and actual systemd manager; root driver outside sole original Node leaf",
+        "approved Issuer CPU/memory/PID/FD/Go limits and real proc/cgroup/PSI observations",
+        "independently SHA-256-pinned canonical command and node_process_native command/resource race binaries built from checked source",
+        "private durable roots and real loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected Issuer native environment or artifact unavailable; no passing skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "forwarding-process-linux",
+      "state": "active",
+      "make_target": "node-process-check",
+      "surface": "original Forwarding command and mandatory genuine process protection, TCP/TLS, signed-State/token/Hosting consumers and physical joined retirement; bounded development only",
+      "prerequisites": [
+        "Linux cgroup v2 and actual systemd manager with root driver outside the measured Node services",
+        "separate original sole-process leaf with approved CPU/memory/PID/FD/Go limits",
+        "independently SHA-256-pinned canonical Node command, node_process_native command test and resource test binaries from checked source; race-capable Go1.27.4 build",
+        "private local durable roots, proc/cgroup/PSI counters and loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected Forwarding native environment or artifact unavailable; no passing skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "startup-manager-native-linux",
+      "state": "active",
+      "make_target": "startup-manager-check",
+      "surface": "fresh Version and both complete fixed Endpoint/activation property rounds on one original read-only connection; exact signatures and required values compared with independent busctl; native manager mechanism only, no installed Startup acceptance",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "actual fixed Endpoint and both activation objects",
+        "original non-root Endpoint MainPID executing independently pinned startup_manager_native systemd test binary at installation-systemd.test",
+        "root-owned pinned fresh qualification unit and root driver"
+      ],
+      "invalid_environment": "selected original manager mechanism environment unavailable; no passing skips",
+      "timeout": "20s"
+    },
+    {
+      "id": "custody-native-linux",
+      "state": "active",
+      "make_target": "custody-check",
+      "surface": "encrypted Admission birth, new Allocation issuance/retry, retained floors, real native partial-write/floor refusals, original cancellation/join, quarantine lifecycle, official Argon2 vectors and canonical built terminal commands including genuine new Instance request/acceptance and Service issuance, Service expiry/generation/pending-floor checks; no platform/crash qualification",
+      "prerequisites": [
+        "Linux private local filesystem with flock, hardlinks, atomic rename and directory fsync",
+        "Go 1.27.4 and race-capable C compiler",
+        "256 MiB fixed Argon2 workspace per original serialized operation",
+        "real PTY and populated immutable module cache"
+      ],
+      "invalid_environment": "selected Custody native environment unavailable; no passing skips",
+      "timeout": "3m"
+    },
+    {
+      "id": "connection-nonce",
+      "state": "active",
+      "make_target": "connection-nonce-check",
+      "surface": "genuine capsule acceptance followed by original Reader revocation after successful RESULT before CLOSE, or actual Rendezvous retirement before JOIN or during TLS after ClientHello on TCP/TLS; no authenticated Attachment or Application transfer, same original Jobs with Reader revoked only in result case, retained Source and actual physical interruption failures, Publisher and original workers joined, accepted nonce retained after failed RESULT/JOIN/TLS; read-only private history oracle after joined Publisher; exact result+join+tls cases on TCP/TLS and causal closed-peer write error classification with unrelated-error refusals, no two-host qualification",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "independently pinned root-owned qualification unit and root driver",
+        "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected installed Connection nonce environment unavailable; no passing skips"
+    },
+    {
+      "id": "connection-withdrawal",
+      "state": "active",
+      "make_target": "connection-withdrawal-check",
+      "surface": "genuine authenticated initial bytes followed by actual Publication Withdraw on TCP/TLS; original Publication physical borrowers join, original Jobs remain live, late Publisher bytes and stream acquisition refuse, Reader refuses without authenticated EOF or caller-memory mutation; component only, no full installed qualification",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "independently pinned root-owned qualification unit and root driver",
+        "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected installed Connection withdrawal environment unavailable; no passing skips"
+    },
+    {
+      "id": "connection-refresh",
+      "state": "active",
+      "make_target": "connection-refresh-check",
+      "surface": "genuine accepting Publication refresh followed by original Connection response loss and authenticated recovery on TCP/TLS; accepted and pending-ack cases require exact pending recipient SubmissionRefusal status1 while original Streams stay live; verified Store ACK advances revision, slot and recipient while retaining Publication digest, profile, Target, original workers, one request and exact joined result; component only, no two independently installed Endpoints or full Connection acceptance",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "independently pinned root-owned qualification unit and root driver",
+        "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected installed Connection refresh environment unavailable; no passing skips"
+    },
+    {
+      "id": "connection-reopen",
+      "state": "active",
+      "make_target": "connection-reopen-check",
+      "surface": "one genuine qualified Reader/Publisher Connection on each Carrier, joined original receivers, actual Network/receiving/Hosting/Descriptor/Publication owner reopen on the same roots, spent token replay refusal with real reservation rollback and consumed Instance refusal; no process-crash or two-host qualification",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test",
+        "pinned root-owned qualification unit selecting TestInstalledConnectionDurableReopenTCP",
+        "root driver, private local roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected original qualified reopen environment unavailable; no passing skips"
+    },
+    {
+      "id": "connection-authority",
+      "state": "active",
+      "make_target": "connection-authority-check",
+      "surface": "actual worker StopUnit, independent local Network owner loss or elapsed original safety deadline during delayed Application Read, both roles over TCP/TLS; no late caller-memory bytes or EOF, retained refusal and original joined cleanup; component only",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "original non-root Endpoint MainPID with independently pinned execution-command.test and its existing fixed-worker StopUnit permission",
+        "pinned root-owned qualification unit selecting TestInstalledConnectionAuthorityTCP with timeout20m and RuntimeMaxSec1260s",
+        "root driver and real loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected original qualified authority environment unavailable; no passing skips"
+    },
+    {
+      "id": "connection-control-delivery",
+      "state": "active",
+      "make_target": "connection-control-delivery-check",
+      "surface": "actual Terminal/receipt/confirmation physically written before opposite reader acceptance, or accepted with original sender finishWrite completed; both roles over TCP/TLS, actual Rendezvous retirement/reopen, original qualified workers and one request; no supplied authority or records, component only",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "original non-root Endpoint MainPID with independently pinned execution-command.test",
+        "pinned root-owned qualification unit selecting TestInstalledConnectionControlDeliveryTCP with timeout20m and RuntimeMaxSec1260s",
+        "root driver and real loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected original qualified control environment unavailable; no passing skips"
+    },
+    {
+      "id": "connection-control-received",
+      "state": "active",
+      "make_target": "connection-control-received-check",
+      "surface": "actual original Terminal/receipt/confirmation accepted by the opposite record reader while sender remains before finishWrite; both roles over TCP/TLS, actual Rendezvous retirement/reopen, original qualified workers and one Application request; no supplied authority or records; component only",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "original non-root Endpoint MainPID with independently pinned execution-command.test",
+        "pinned root-owned qualification unit selecting TestInstalledConnectionControlReceivedTCP with timeout20m and RuntimeMaxSec1260s",
+        "root driver and real loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected original qualified control environment unavailable; no passing skips"
+    },
+    {
+      "id": "connection-control",
+      "state": "active",
+      "make_target": "connection-control-check",
+      "surface": "genuine original qualified Reader and Publisher; exact immutable writer control ticket selects Terminal, receipt or confirmation before TLS Write or after Write before ledger commit, for both roles over TCP/TLS, plus independently delayed genuine Data ACK progress before Terminal loss; each local recovery cutoff and unchanged sealed request deadline remain binding; actual Rendezvous join/restart and same logical stream recovery, one Application request and exact result after all original joins; no supplied authority/records, production hook or whole installed qualification",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test",
+        "pinned root-owned qualification unit selecting TestInstalledConnectionControlWritesTCP with test timeout20m and RuntimeMaxSec1260s; driver bound12600 polls",
+        "root driver, private local roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected original qualified control environment unavailable; no passing skips"
+    },
+    {
+      "id": "connection-stream",
+      "state": "active",
+      "make_target": "connection-stream-check",
+      "surface": "genuine qualified original Reader/Publisher workers and authenticated Stream across actual Rendezvous, Reader Source, Publisher Source and Responder parent loss, before request, before Publisher request-Terminal post-read observation returns, mid-response and after request Terminal on TCP/TLS; source-checked scheduler selects second complete request-side body after real TLS I/O, physical Rendezvous loss and same-owner recovery without supplied records/errors; one Application request, exact original result and joined cleanup, retained receiving peer-retirement failures; delayed genuine Application Read observations for both roles check independent local-gate progress, original caller cancellation, Connection Close without Job revocation and refusal of late bytes; component only, no two independently installed Endpoints or full Connection acceptance",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "independently pinned root-owned qualification unit and root driver",
+        "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected installed Connection Stream environment unavailable; no passing skips"
+    },
+    {
+      "id": "publication-timing",
+      "state": "active",
+      "make_target": "publication-timing-check",
+      "surface": "genuine qualified Publisher automatic refresh at original registration creation+300s and bounded predecessor overlap on TCP/TLS with unchanged clocks; no complete installed Service or privacy qualification",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text snapshot artifact and activation units",
+        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next binary at execution-command.test",
+        "root driver and pinned temporary unit selecting only TestInstalledPublicationElapsedTCP with test timeout15m, RuntimeMaxSec920s and TimeoutStopSec30s",
+        "sixteen minutes remaining in the original token hour before admission",
+        "private temporary durable roots, loopback TCP; deferred-QUIC refusal controls also observe UDP and independent original process/cgroup join observers"
+      ],
+      "invalid_environment": "elapsed Publication prerequisites unavailable; no clock override, deadline reset or passing skip",
+      "timeout": "15m"
+    },
+    {
+      "id": "execution-recovery",
+      "state": "active",
+      "make_target": "execution-recovery-check",
+      "surface": "new Execution original Endpoint pidfd SIGKILL, independently pinned hostile worker descendants joined by manager lifetime, fresh Endpoint/worker/Job identities after explicit restart; no logical Service recovery or whole-host qualification",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager and kernel pidfd support",
+        "separately pinned text_worker_hostile artifact and matching fixed root manifest",
+        "root-owned independently pinned text_worker_installed runtime test binary",
+        "fresh inactive temporary Endpoint unit selecting only TestInstalledExecutionEndpointDeathHeldWorkers under the original non-root Endpoint account",
+        "Root controller outside the Endpoint unit, readable original kernel cgroup/proc descriptors and actual manager journal"
+      ],
+      "invalid_environment": "selected Endpoint-death Execution component environment unavailable; missing original identities, descendants or prerequisites fail without passing skips",
+      "timeout": "2m"
+    },
+    {
+      "id": "execution-escape",
+      "state": "active",
+      "make_target": "execution-escape-check",
+      "surface": "new Execution genuine qualified escape-artifact launch, independent positive-controlled host TCP/UDP/DNS/IPC observers and original physical join on both local surfaces; no Service or whole-host qualification",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "separately pinned text_worker_escape artifact and matching fixed root manifest",
+        "original non-root Endpoint MainPID running independently pinned text_worker_installed Execution runtime test binary",
+        "root-owned independently pinned temporary qualification unit selecting TestInstalledExecutionEscapeMatrix with a two-minute test deadline",
+        "root driver and actual kernel cgroup/proc observers plus positive-controlled IPv4/IPv6/Unix listeners"
+      ],
+      "invalid_environment": "selected escape Execution component environment unavailable; missing artifact, controls or prerequisites fail without passing skips"
+    },
+    {
+      "id": "execution-tree",
+      "state": "active",
+      "make_target": "execution-tree-check",
+      "surface": "new Execution qualified hostile-worker parent/child/grandchild join, synchronous operation denial after attachment loss and original sibling operation survival on both local surfaces; no private Service or whole-host qualification",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "separately pinned text_worker_hostile artifact and matching fixed root manifest",
+        "original non-root Endpoint MainPID running independently pinned text_worker_installed Execution runtime test binary",
+        "root-owned independently pinned temporary qualification unit selecting TestInstalledExecutionHostileTree with a two-minute test deadline",
+        "root driver and actual readable kernel cgroup/proc observers"
+      ],
+      "invalid_environment": "selected hostile Execution component environment unavailable; missing descendants or prerequisites fail without passing skips"
+    },
+    {
+      "id": "execution-installed",
+      "state": "active",
+      "make_target": "execution-installed-check",
+      "surface": "actual new installed program startup, independent Installation Root completion, qualified joined permission preparation, genuine TLS Source and Stock permission import, explicit Hosting initialization and original-process AAI3 listener; no accepted Service request or whole-host qualification",
+      "prerequisites": [
+        "fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager without Ardents accounts or fixed resources",
+        "root driver outside the Endpoint unit",
+        "independently pinned root-owned canonical participant/Text/resource inventory and text_worker_installed command test binary",
+        "trusted fresh filesystem root outside the repository and private root-owned temporary directory",
+        "loopback TCP and genuine signed Epoch/profile/Release fixtures"
+      ],
+      "invalid_environment": "selected fresh installed startup environment unavailable; no passing skips",
+      "timeout": "4m"
+    },
+    {
+      "id": "execution-installed-publication",
+      "state": "active",
+      "make_target": "execution-installed-publication-check",
+      "surface": "canonical installed dual-role participant, original Root completion, qualified snapshot worker, genuine issuer token acquisition, REGISTER and Descriptor Store ACK, accepting Link and joined withdrawal; no two-Endpoint Connection or whole-host qualification",
+      "prerequisites": [
+        "fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager without Ardents accounts or fixed resources; own cgroup namespace and pivoted root",
+        "root driver outside the Endpoint unit",
+        "independently pinned canonical participant/Text/resource inventory and text_worker_installed command test binary",
+        "ARDENTS_EXECUTION_START_CARRIER selects ardents-carrier-tcp-tls-v2; deferred QUIC refuses before installation effects",
+        "trusted fresh filesystem root and retained log outside the repository",
+        "real loopback role/issuer/Source servers, signed Network/Release and independently approved fixture permissions and public Service Credential"
+      ],
+      "invalid_environment": "selected fresh installed publication environment unavailable; no passing skips",
+      "timeout": "4m"
+    },
+    {
+      "id": "execution-lifecycle",
+      "state": "active",
+      "make_target": "execution-lifecycle-check",
+      "surface": "new Execution installed lifecycle component: genuine fixed Text worker activation, joined preparation, one live operation, revoke-before-join, synchronous first-cleanup-failure denial and original pinned descendants on both local surfaces; no accepting Installation startup, live Service operation or whole-host qualification",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "non-root original Endpoint MainPID running the independently pinned text_worker_installed Execution test binary",
+        "root-owned independently pinned temporary qualification unit and root driver"
+      ],
+      "invalid_environment": "selected installed Execution component environment unavailable; no passing skips"
+    },
+    {
+      "id": "execution-route",
+      "state": "active",
+      "make_target": "execution-route-check",
+      "surface": "new installed Execution live production holder: genuine signed Network, Admission permission/stock/bootstrap/spend and Hosting/Route TCP/TLS physical join; no accepting Installation startup or Service readiness",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "independently pinned root-owned qualification unit and root driver",
+        "private writable temporary roots and loopback TCP; deferred-QUIC refusal controls also observe UDP"
+      ],
+      "invalid_environment": "selected installed Execution Route environment unavailable; no passing skips"
+    },
+    {
+      "id": "installation-native-linux",
+      "state": "active",
+      "make_target": "installation-native-check",
+      "surface": "new Installation root-owned request custody, actual inode/link/ancestor changes, original cancellation and owned ordered preparation journals and exclusive initial-root leases; filesystem component only, no installed runtime qualification",
+      "prerequisites": [
+        "Linux root test driver",
+        "ARDENTS_INSTALLATION_NATIVE_ROOT naming an existing root:root direct directory with trusted non-writable ancestors outside the repository",
+        "Go 1.27.4 with a race-capable C compiler",
+        "local filesystem with hardlinks, symlinks and native ownership"
+      ],
+      "invalid_environment": "selected native Installation filesystem environment unavailable; no passing skips",
+      "timeout": "1m"
+    },
+    {
+      "id": "route-prefix-linux",
+      "state": "active",
+      "make_target": "route-check",
+      "surface": "new Network, Admission, Hosting, Publication, Connection, Reachability, Enrollment, Release, Installation, Execution and Route regression; Connection initial binding and isolated v3 mechanisms do not supply an authenticated stream; genuine signed-state prefix, Introduction registration and paired JOIN on TCP/TLS; compiled consumers, retained selection/reopen, bounded framing, pool, scheduling, revocation and joined physical cleanup",
+      "prerequisites": [
+        "Linux with proc/sys counters and loopback TCP; deferred-QUIC refusal controls also observe UDP",
+        "Go 1.27.4 with a race-capable C compiler",
+        "writable private temporary filesystem with flock, atomic rename and directory fsync"
+      ],
+      "invalid_environment": "selected Route Linux environment unavailable; no passing skips",
+      "timeout": "5m"
+    },
+    {
+      "id": "issuer-profile-linux",
+      "state": "active",
+      "make_target": "issuer-profile-check",
+      "surface": "pinned identity and signed issuer profile files/race/process/CLI and bounded fuzz",
+      "prerequisites": [
+        "Linux local durable filesystem and flock",
+        "proc/sys and loopback for shared CLI tests",
+        "Go1.27.4 race-capable C compiler",
+        "pinned golang:1.27.4-bookworm Docker image"
+      ],
+      "invalid_environment": "selected issuer profile Linux environment unavailable",
+      "timeout": "5m"
+    },
+    {
+      "id": "token-issuance-linux",
+      "state": "active",
+      "make_target": "token-issuance-check",
+      "surface": "confirmed offline token issuance filesystem/race/compiled process acceptance",
+      "prerequisites": [
+        "Linux local durable filesystem and flock",
+        "proc/sys and loopback for shared CLI tests",
+        "Go1.27.4 race-capable C compiler",
+        "pinned golang:1.27.4-bookworm Docker image"
+      ],
+      "invalid_environment": "selected offline issuance Linux profile unavailable",
+      "timeout": "5m"
+    },
+    {
+      "id": "issuer-key-material-linux",
+      "state": "active",
+      "make_target": "issuance-check",
+      "surface": "independent issuer key material real-file and compiled CLI process behavior",
+      "prerequisites": [
+        "Linux with flock and durable local filesystem",
+        "proc/sys network counters and loopback for shared command tests",
+        "Go 1.27.4 and C compiler for race",
+        "pinned golang:1.27.4-bookworm image for Docker acceptance"
+      ],
+      "invalid_environment": "selected issuer material Linux environment is unavailable",
+      "timeout": "3m"
+    },
+    {
+      "id": "admission-ledger-linux",
+      "state": "active",
+      "make_target": "admission-check",
+      "surface": "all successor Admission owners and standalone holder/allocation/issuer/receiver processes, durable reopen and Hosting integration",
+      "prerequisites": [
+        "Linux with flock and durable local filesystem",
+        "Go 1.27.4 and C compiler for race",
+        "pinned golang:1.27.4-bookworm image for Docker acceptance"
+      ],
+      "invalid_environment": "selected Admission Linux environment is unavailable",
+      "timeout": "5m"
+    },
     {
       "id": "hosting-budget-linux",
       "state": "active",
       "make_target": "hosting-check",
       "surface": "isolated durable Hosting accounting, native counters and compiled finite CLI lifecycle/race",
-      "prerequisites": ["Linux amd64 with readable proc/sys network counters and loopback", "Go 1.27.4 and C compiler for race", "writable temporary filesystem with flock, atomic rename and directory fsync"],
+      "prerequisites": [
+        "Linux amd64 with readable proc/sys network counters and loopback",
+        "Go 1.27.4 and C compiler for race",
+        "writable temporary filesystem with flock, atomic rename and directory fsync"
+      ],
       "invalid_environment": "the selected Linux Hosting profile is unavailable; non-Linux refuses without storage effects",
       "timeout": "3m"
     },
@@ -144,7 +733,12 @@
       "state": "active",
       "make_target": "text-worker-network-check",
       "surface": "installed confined reader/publisher document exchange over TCP/TLS; State and authority provisioning remain fixtures",
-      "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "exact ordinary worker artifacts and canonical manifest", "independent Endpoint test binary and temporary unit SHA-256 values", "inactive temporary Endpoint service selecting TestInstalledTextWorkersReadTargetThroughJoinedNetwork; fifteen-minute test deadline and RuntimeMaxSec=960s; four exact TCP document and elapsed-refresh cases"],
+      "prerequisites": [
+        "dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment",
+        "exact ordinary worker artifacts and canonical manifest",
+        "independent Endpoint test binary and temporary unit SHA-256 values",
+        "inactive temporary Endpoint service selecting TestInstalledTextWorkersReadTargetThroughJoinedNetwork; fifteen-minute test deadline and RuntimeMaxSec=960s; four exact TCP document and elapsed-refresh cases"
+      ],
       "invalid_environment": "the dedicated installed network qualification environment is unavailable"
     },
     {
@@ -152,7 +746,12 @@
       "state": "active",
       "make_target": "text-worker-recovery-check",
       "surface": "installed confined reader/publisher single-recovery smoke over TCP/TLS; not NET-14 percentile or traffic qualification",
-      "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "exact ordinary worker and Service command artifacts with canonical manifest", "independent Endpoint test binary and temporary unit SHA-256 values", "inactive temporary Endpoint service selecting TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork; five-minute test deadline and RuntimeMaxSec=360s; exact TCP/TLS cases"],
+      "prerequisites": [
+        "dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment",
+        "exact ordinary worker and Service command artifacts with canonical manifest",
+        "independent Endpoint test binary and temporary unit SHA-256 values",
+        "inactive temporary Endpoint service selecting TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork; five-minute test deadline and RuntimeMaxSec=360s; exact TCP/TLS cases"
+      ],
       "invalid_environment": "the dedicated installed recovery smoke environment is unavailable"
     },
     {
@@ -160,31 +759,53 @@
       "state": "active",
       "make_target": "text-command-network-check",
       "surface": "installed ordinary command journey through TCP/TLS",
-      "prerequisites": ["dedicated Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "root-owned candidate commands, worker, E2E binary and temporary unit with independent SHA-256 values", "inactive temporary Endpoint service selecting TestInstalledClosedTextCommandsThroughNodeProcesses", "49-minute Go test deadline within an independent 51-minute outer command limit"],
+      "prerequisites": [
+        "dedicated Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment",
+        "root-owned candidate commands, worker, E2E binary and temporary unit with independent SHA-256 values",
+        "inactive temporary Endpoint service selecting TestInstalledClosedTextCommandsThroughNodeProcesses",
+        "49-minute Go test deadline within an independent 51-minute outer command limit"
+      ],
       "invalid_environment": "the dedicated installed command-journey environment is unavailable"
     },
-      {
-        "id": "text-worker-tree",
+    {
+      "id": "text-worker-tree",
       "state": "active",
       "make_target": "text-worker-tree-check",
       "surface": "root-pinned hostile worker child/grandchild cleanup and sibling snapshot progress; not full host qualification",
-      "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "separately built text_worker_hostile artifact and exact root manifest", "independent hostile executable, Endpoint test binary and temporary unit SHA-256 values", "inactive temporary Endpoint test service selecting TestInstalledTextWorkerHostileTree"],
-        "invalid_environment": "the dedicated hostile installed worker qualification environment is unavailable"
-      },
-      {
-        "id": "text-worker-escape",
-        "state": "active",
-        "make_target": "text-worker-escape-check",
-        "surface": "installed reader/publisher P6/P7 host-access and privilege-escape matrix; not whole-host qualification",
-        "prerequisites": ["dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment", "separately built text_worker_escape artifact and canonical root manifest", "independent Endpoint test binary and temporary unit SHA-256 values", "inactive temporary Endpoint test service selecting TestInstalledTextWorkerEscapeMatrix"],
-        "invalid_environment": "the dedicated installed escape-matrix qualification environment is unavailable"
-      },
-      {
+      "prerequisites": [
+        "dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment",
+        "separately built text_worker_hostile artifact and exact root manifest",
+        "independent hostile executable, Endpoint test binary and temporary unit SHA-256 values",
+        "inactive temporary Endpoint test service selecting TestInstalledTextWorkerHostileTree"
+      ],
+      "invalid_environment": "the dedicated hostile installed worker qualification environment is unavailable"
+    },
+    {
+      "id": "text-worker-escape",
+      "state": "active",
+      "make_target": "text-worker-escape-check",
+      "surface": "installed reader/publisher P6/P7 host-access and privilege-escape matrix; not whole-host qualification",
+      "prerequisites": [
+        "dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment",
+        "separately built text_worker_escape artifact and canonical root manifest",
+        "independent Endpoint test binary and temporary unit SHA-256 values",
+        "inactive temporary Endpoint test service selecting TestInstalledTextWorkerEscapeMatrix"
+      ],
+      "invalid_environment": "the dedicated installed escape-matrix qualification environment is unavailable"
+    },
+    {
       "id": "text-worker-lifecycle",
       "state": "active",
       "make_target": "text-worker-lifecycle-check",
       "surface": "installed Endpoint text-worker launch, Grant and joined cgroup lifecycle; not full host qualification",
-      "prerequisites": ["dedicated Ubuntu 24.04 x86-64 with systemd 255, cgroup v2 and active polkit", "root driver and separate ardents-endpoint account", "exact installed worker artifacts and sockets", "root-owned Endpoint qualification test binary built with text_worker_installed tag", "independent binary and temporary service-unit SHA-256 values", "fresh inactive temporary ardents-endpoint.service; no operational Endpoint"],
+      "prerequisites": [
+        "dedicated Ubuntu 24.04 x86-64 with systemd 255, cgroup v2 and active polkit",
+        "root driver and separate ardents-endpoint account",
+        "exact installed worker artifacts and sockets",
+        "root-owned Endpoint qualification test binary built with text_worker_installed tag",
+        "independent binary and temporary service-unit SHA-256 values",
+        "fresh inactive temporary ardents-endpoint.service; no operational Endpoint"
+      ],
       "invalid_environment": "the declared dedicated installed worker lifecycle environment is unavailable"
     },
     {
@@ -192,7 +813,13 @@
       "state": "active",
       "make_target": "text-worker-policy-check",
       "surface": "installed local text-worker stop authorization mechanism; not complete host qualification",
-      "prerequisites": ["Ubuntu 24.04 x86-64 with systemd 255 and active polkitd", "root test driver", "installed root:root mode 0644 non-symlink text-worker stop rule matching this source candidate", "distinct unprivileged ardents-endpoint and nobody accounts", "pkcheck, setpriv, stat, awk, sleep, timeout, id, systemctl, cmp, uname and dirname"],
+      "prerequisites": [
+        "Ubuntu 24.04 x86-64 with systemd 255 and active polkitd",
+        "root test driver",
+        "installed root:root mode 0644 non-symlink text-worker stop rule matching this source candidate",
+        "distinct unprivileged ardents-endpoint and nobody accounts",
+        "pkcheck, setpriv, stat, awk, sleep, timeout, id, systemctl, cmp, uname and dirname"
+      ],
       "invalid_environment": "the selected installed policy-query environment is unavailable"
     },
     {
@@ -200,7 +827,10 @@
       "state": "active",
       "make_target": "quick-check",
       "surface": "deterministic-module",
-      "prerequisites": ["local Git executable with init, commit, clone, and linked-worktree support", "POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, and hard-link-capable temporary storage"],
+      "prerequisites": [
+        "local Git executable with init, commit, clone, and linked-worktree support",
+        "POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, and hard-link-capable temporary storage"
+      ],
       "invalid_environment": "the developer Git or artifact-shell prerequisites are unavailable"
     },
     {
@@ -208,7 +838,9 @@
       "state": "active",
       "make_target": "unit",
       "surface": "deterministic-module",
-      "prerequisites": ["unprivileged Linux caller for caller-owned enrollment and chmod-denial controls when running on Linux"],
+      "prerequisites": [
+        "unprivileged Linux caller for caller-owned enrollment and chmod-denial controls when running on Linux"
+      ],
       "invalid_environment": "Linux root cannot execute the selected permission-denial controls; no passing skips"
     },
     {
@@ -216,7 +848,9 @@
       "state": "active",
       "make_target": "fixture-network-test",
       "surface": "bounded two-host qualification fixture command and Route selection",
-      "prerequisites": ["Linux host"],
+      "prerequisites": [
+        "Linux host"
+      ],
       "invalid_environment": "the selected Linux fixture-command environment is unavailable"
     },
     {
@@ -224,7 +858,11 @@
       "state": "active",
       "make_target": "heapdump-capture",
       "surface": "one captured Go heap dump structural Target locator; not a P3 verdict or host qualification",
-      "prerequisites": ["ARDENTS_HEAPDUMP_INPUT_ROOT naming the immutable composed-reader observation directory", "ARDENTS_HEAPDUMP_REPORT naming an absolute writable report path", "receipt.json, target-presence.json, reader-input.json and selected resolution published.heap with matching SHA-256 values"],
+      "prerequisites": [
+        "ARDENTS_HEAPDUMP_INPUT_ROOT naming the immutable composed-reader observation directory",
+        "ARDENTS_HEAPDUMP_REPORT naming an absolute writable report path",
+        "receipt.json, target-presence.json, reader-input.json and selected resolution published.heap with matching SHA-256 values"
+      ],
       "invalid_environment": "the declared captured observation inputs or writable report destination are unavailable"
     },
     {
@@ -232,7 +870,11 @@
       "state": "active",
       "make_target": "heapdump-role-map",
       "surface": "all 90 captured role heaps structurally mapped to receipt-bound role inputs and reader controls; not a P3 verdict or host qualification",
-      "prerequisites": ["ARDENTS_HEAPDUMP_INPUT_ROOT naming the immutable composed-reader observation directory", "ARDENTS_HEAPDUMP_ROLE_MAP naming an absolute writable report path", "receipt.json binding every source, role-input, reader-exchange and heap artifact"],
+      "prerequisites": [
+        "ARDENTS_HEAPDUMP_INPUT_ROOT naming the immutable composed-reader observation directory",
+        "ARDENTS_HEAPDUMP_ROLE_MAP naming an absolute writable report path",
+        "receipt.json binding every source, role-input, reader-exchange and heap artifact"
+      ],
       "invalid_environment": "the declared complete captured observation set or writable role-map destination is unavailable",
       "timeout": "5m"
     },
@@ -241,7 +883,11 @@
       "state": "active",
       "make_target": "text-role-durable-state-capture",
       "surface": "Linux-only isolated text Role and Publisher durable-state observation across TCP/TLS; not a P3 verdict or host qualification",
-      "prerequisites": ["Linux host", "ARDENTS_TEXT_ROLE_OBSERVATIONS naming an existing absolute writable non-symlink directory outside the Git worktree", "exclusive local retention for secret-bearing raw observations"],
+      "prerequisites": [
+        "Linux host",
+        "ARDENTS_TEXT_ROLE_OBSERVATIONS naming an existing absolute writable non-symlink directory outside the Git worktree",
+        "exclusive local retention for secret-bearing raw observations"
+      ],
       "invalid_environment": "the selected Linux host or external capture directory is unavailable",
       "timeout": "4m"
     },
@@ -250,7 +896,9 @@
       "state": "active",
       "make_target": "e2e",
       "surface": "adapter-process",
-      "prerequisites": ["local process execution"],
+      "prerequisites": [
+        "local process execution"
+      ],
       "invalid_environment": "process prerequisites unavailable"
     },
     {
@@ -258,7 +906,11 @@
       "state": "active",
       "make_target": "package-e2e",
       "surface": "privileged Ubuntu package installation, upgrade, removal, and purge",
-      "prerequisites": ["Linux host", "passwordless sudo to root", "dpkg-deb, dpkg, and setpriv"],
+      "prerequisites": [
+        "Linux host",
+        "passwordless sudo to root",
+        "dpkg-deb, dpkg, and setpriv"
+      ],
       "invalid_environment": "the selected privileged Ubuntu package process profile is unavailable"
     },
     {
@@ -266,7 +918,11 @@
       "state": "active",
       "make_target": "headless-check",
       "surface": "headless Network command build, bounded process journey, and enrollment-v3 artifact inventory",
-      "prerequisites": ["Linux x86-64 host", "local process execution", "POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, find, and hard-link-capable temporary storage"],
+      "prerequisites": [
+        "Linux x86-64 host",
+        "local process execution",
+        "POSIX artifact shell with mktemp, install, sha256sum, GNU tar, gzip, cmp, ln, find, and hard-link-capable temporary storage"
+      ],
       "invalid_environment": "selected Linux host, headless command build, artifact shell, or local process prerequisites unavailable"
     },
     {
@@ -274,7 +930,9 @@
       "state": "active",
       "make_target": "test-race",
       "surface": "deterministic-race",
-      "prerequisites": ["race-supported Go toolchain"],
+      "prerequisites": [
+        "race-supported Go toolchain"
+      ],
       "invalid_environment": "race toolchain or platform unavailable"
     },
     {
@@ -282,42 +940,22 @@
       "state": "active",
       "make_target": "fuzz",
       "surface": "deterministic-fuzz",
-      "prerequisites": ["Go fuzz-capable toolchain"],
+      "prerequisites": [
+        "Go fuzz-capable toolchain"
+      ],
       "invalid_environment": "fuzz-capable Go toolchain unavailable"
-    },
-    {
-      "id": "qualification",
-      "state": "active",
-      "make_target": "qualification",
-      "surface": "selected Ubuntu Endpoint lifecycle qualification",
-      "prerequisites": ["clean unprivileged Ubuntu Linux user session", "reachable systemd --user manager", "linger disabled", "preinstalled sha256sum"],
-      "invalid_environment": "the selected Ubuntu user-session qualification environment is unavailable",
-      "timeout": "2m"
-    },
-    {
-      "id": "endpoint-portable-ubuntu",
-      "state": "active",
-      "make_target": "qualification-endpoint-portable-ubuntu",
-      "surface": "unprivileged Ubuntu portable Endpoint lifecycle",
-      "prerequisites": ["clean unprivileged Ubuntu Linux user session", "reachable systemd --user manager", "linger disabled", "preinstalled sha256sum"],
-      "invalid_environment": "the selected Ubuntu portable Endpoint qualification environment is unavailable",
-      "timeout": "2m"
-    },
-    {
-      "id": "endpoint-replacement-ubuntu",
-      "state": "active",
-      "make_target": "qualification-endpoint-replacement-ubuntu",
-      "surface": "unprivileged Ubuntu Endpoint replacement and rollback",
-      "prerequisites": ["clean unprivileged Ubuntu Linux user session", "reachable systemd --user manager", "linger disabled", "preinstalled sha256sum"],
-      "invalid_environment": "the selected Ubuntu Endpoint replacement qualification environment is unavailable",
-      "timeout": "2m"
     },
     {
       "id": "service-credential-response-linux",
       "state": "active",
       "make_target": "qualification-service-credential-response-linux",
       "surface": "unprivileged Linux/Docker Service Credential response publication",
-      "prerequisites": ["POSIX shell with id, mktemp, and rm", "unprivileged Docker client with a reachable daemon", "preinstalled golang:1.26.8 image", "local Go 1.26.8 toolchain and populated immutable module cache"],
+      "prerequisites": [
+        "POSIX shell with id, mktemp, and rm",
+        "unprivileged Docker client with a reachable daemon",
+        "preinstalled golang:1.26.8 image",
+        "local Go 1.26.8 toolchain and populated immutable module cache"
+      ],
       "invalid_environment": "the selected Linux/Docker Service Credential response profile is unavailable",
       "timeout": "2m"
     },

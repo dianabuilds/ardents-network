@@ -13,16 +13,24 @@ Invite root reader, converter, or deleter remains. `inspect-alpha-corpus`
 joined them under ADR-0110: the exact route returns `inspect-alpha-corpus is
 retired` before parsing arguments or opening any file, root, or floor, and no
 ACA2 verifier remains in the tree.
-Eight separately classified Portable routes remain maintained, but their
-per-user readiness does not start the protected text Service. Retired writers and retained compatibility bounds belong to the current
-Service/Reachability owners; historical reconstruction findings do not select
-new work. The F-08 operator-surface reduction is complete:
+The F-08 operator-surface reduction is complete:
 the Invite root's data obligation was resolved as typed incompatibility
 (existing roots stay on disk byte-for-byte), the import writer is stopped,
 and the read-only recipient command is retired with it.
-Installed Portable retirement needs a proved
-protected system-unit successor; renaming its event to C0 readiness would
-leave the missing trust transfer unresolved (F-25/F-27).
+The per-user Portable Endpoint lifecycle is retired under ADR-0125 (#617
+S3.5): the proved protected system-unit successor (platform launch/unit/check
+F-25 trust transfer plus the authenticated F-27 plan constructor) is merged,
+and the Product Owner confirmed the command-surface cutover. `endpoint
+enroll/enroll-installed/headless/user-unit/installed-user-unit/replace/
+rollback/replacement-self-test/replacement-recovery` now return typed
+retirement refusals before input or root effects; the canonical delivery,
+preparation and forward-only replacement/recovery composition lives in
+`ardents-next` (platform, endpoint construct-plan/prepare-history/
+start-installed, installation upgrade-installed/recover-installed). The
+read-only `endpoint enrollment-check` diagnostic and the `endpoint withdraw`
+Administration Interface client remain. Renaming a Portable event to C0
+readiness would still leave the missing trust transfer unresolved; retirement
+resolves it by selecting the platform-led successor instead.
 
 ## Process boundaries
 
@@ -50,9 +58,12 @@ and the headless command inventory under tests/profiles.
 
 | Binary | Routes | Classification |
 |---|---|---|
-| ardents | accept-offline, accept-closed-profile, refresh-sources; service-instance initialize/accept; endpoint enrollment-check/enroll/enroll-installed/headless/publish/withdraw/user-unit/installed-user-unit/replace/replacement-recovery/rollback | keep |
+| ardents | accept-offline, accept-closed-profile, refresh-sources; endpoint enrollment-check/withdraw | keep |
+| ardents | service-instance initialize/accept | retirement refusal at dispatch; canonical lifecycle is ardents-next publication-instance (#562) |
+| ardents | endpoint enroll/enroll-installed/headless/user-unit/installed-user-unit/replace/rollback/replacement-recovery | retirement refusal at dispatch before input or root effects; canonical platform-led delivery and forward-only replacement/recovery is ardents-next platform/endpoint/installation (#617 S3.5, ADR-0125) |
+| ardents | endpoint publish | retirement refusal at dispatch; use ardents-text publish |
 | ardents | entry recipient/import | retirement refusal at dispatch before arguments or effects; no Invite reader, converter, or deleter remains (ADR-0106) |
-| ardents | endpoint replacement-self-test | keep internal-only; invoked by the replacement controller, not an operator route |
+| ardents | endpoint replacement-self-test | retirement refusal at dispatch; the per-user replacement controller is retired (#617 S3.5) |
 | ardents | diagnostics timeline | keep local, read-only projection of bounded runtime events from standard input; no storage, authority, or network effect |
 | ardents | name encode/resolve/control | retired at command dispatch before arguments or effects; no successor or fallback is implied (ADR-0113) |
 | ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, hosting initialize | keep; old Source selector and Node duty reservations retired |
@@ -62,12 +73,17 @@ and the headless command inventory under tests/profiles.
 | ardents-qualification | run from a local plan; preflight, verify-run, verify-pair, verify-network-manifest, verify-net14v, verify-failed-net14v | keep as installed verification tooling; never a participant route |
 | ardents-stream-qualification | worker-reader, worker-publisher | keep as fixed installed verification workers; never an operator route |
 
-The `endpoint enroll` and `enroll-installed` routes own artifact/Release
-acceptance and the Portable per-user profile. Their `ready` event describes
-the generic local probe attachment. The separate `endpoint headless` route
-owns the protected text participant and its Network/Service lifetime. The
-current command dispatcher does not transfer enrollment state between these
-routes; the joined installed C0 launch remains a distinct composition task.
+The former `endpoint enroll`/`enroll-installed` Portable per-user profile and
+the separate `endpoint headless` protected text participant are retired. Their
+joined installed C0 launch is now the platform-led successor composition in
+`ardents-next`: the platform unit's ExecStartPre `platform check` transfers
+accepted current-program identity before runtime start (F-25), the
+authenticated `endpoint construct-plan` renders preparation plans from accepted
+State pins (F-27), `endpoint prepare-history` initializes the first histories,
+and `endpoint start-installed` runs the protected participant under the system
+unit. `endpoint enrollment-check` remains a read-only bundle diagnostic and
+`endpoint withdraw` remains a thin Administration Interface client; neither
+starts a runtime or transfers enrollment state.
 
 ## Retired surface
 
@@ -77,6 +93,7 @@ qualification owner and are rejected:
 | Removed input | Reason |
 |---|---|
 | ardents endpoint portable | bypassed enrollment and Release Decision while duplicating the selected endpoint enroll lifecycle |
+| ardents endpoint enroll/enroll-installed/headless/user-unit/installed-user-unit/replace/rollback/replacement-self-test/replacement-recovery | retired per-user Portable lifecycle (ADR-0125, #617 S3.5); each route returns its typed refusal before input or root effects, the legacy cmd implementation is removed, and the platform-led ardents-next successor owns delivery/preparation/forward-only replacement. The owning portable/replacement Modules remain until the separately gated Endpoint cohort removal; their process and Ubuntu qualification evidence retires with the surface |
 | ardents-control inspect | caller-keyed low-level ACA1 reader with its own mutable floor duplicated the enrollment-pinned participant inspection |
 | ardents-control inspect-public-control | rendered a future public-control declaration that was definitionally never qualified and had only a unit-test caller |
 | completed ardents-control simulate-* routes | historical planning-campaign generators retired by ADR-0060 |
