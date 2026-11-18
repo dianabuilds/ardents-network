@@ -5165,6 +5165,43 @@ covers absent/empty history, genuinely committed Root-only history and complete
 reopen. These are byte authentication and native history checks, not installed
 journal, predecessor join, manager start or installed/privacy qualification.
 
+## Protected Endpoint platform-led pre-start native qualification
+
+The `endpoint_platform_native` build tag selects
+`cmd/ardents-next/endpoint_platform_native_linux_test.go`
+(`TestNativeEndpointPlatformPrestartTrustTransfer`). It is a real-host
+qualification run under a root driver on an admitted Ubuntu/systemd manager
+(systemd 249/255, `/usr/bin/busctl --system`, cgroup v2); missing privileges or
+manager are an invalid environment and fail, never a passing skip. It is not a
+`make quick-check` lane: the ordinary suite excludes the tag, while
+`scripts/check-deadcode.go` compiles it so its native-test coverage counts.
+
+The test provisions genuine platform delivery on the real host: a dedicated
+`ardents-endpoint` account (unique 100-999 UID/GID, nologin, `/nonexistent`), an
+enrolled protected candidate signed by a fixture TUF Release authority, complete
+retained Release floors established through the actual initial two-target
+authorization, the selected generation executable (the compiled consumer bytes,
+mode 0555) and the rendered platform main unit — enrolled fixed template plus the
+sole privileged F-25 `ExecStartPre` — installed at
+`/etc/systemd/system/ardents-endpoint.service` and loaded by `daemon-reload`.
+Immutable/trust paths are root-controlled; the declaration and Source credential
+pair live below `/etc/ardents`. It then runs the actual privileged
+`ardents-next platform check <manifest> <pin>` consumer against the real system
+manager. The positive case obtains a fresh release-accepted program proof (the
+candidate is one release newer than the established floor) and passes the loaded
+platform confinement (`unit.VerifyPlatformConfiguration`). Causal pre-effect
+refusals cover substituted program/unit/credential, wrong/missing account, lost
+Release authority and a foreign manifest pin. Joined cleanup removes the account,
+unit, trust roots and configuration.
+
+This is component/acceptance evidence with fixture Release authority for the F-25
+pre-start trust transfer on the real platform. It opens no Network State, starts
+no participant and claims no Service readiness; the installed two-participant
+privacy journey and full `start-installed` platform-led Service readiness remain
+separate #391 acceptance. The transitional installation orchestration is neither
+exercised nor retired here (ADR-0125 D6 gates retirement on proven replacement
+guarantees).
+
 ## Bounded Authority Custody native lane
 
 `make custody-check` requires Linux, Go 1.27.4, a race-capable compiler,
