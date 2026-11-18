@@ -66,13 +66,13 @@ func TestEndpointRouteRejectsRetiredPortableBypass(t *testing.T) {
 	}
 }
 
-func TestRefreshSourcesRejectsConflictingExecutionModesBeforeReadingPlan(t *testing.T) {
+func TestRefreshSourcesRouteReturnsRetirementRefusal(t *testing.T) {
 	t.Parallel()
 	var output bytes.Buffer
 	err := run(t.Context(), []string{"refresh-sources", "--once", "--resume",
 		"--state-root", t.TempDir(), "--source-plan", filepath.Join(t.TempDir(), "absent.json")}, &output)
-	if err == nil || err.Error() != "refresh-sources --once and --resume are mutually exclusive" || output.Len() != 0 {
-		t.Fatalf("conflicting refresh modes err=%v output=%q", err, output.String())
+	if err == nil || err.Error() != errRefreshSourcesRetired.Error() || output.Len() != 0 {
+		t.Fatalf("retired refresh-sources err=%v output=%q", err, output.String())
 	}
 }
 
@@ -96,7 +96,7 @@ func TestNameRouteRejectsIncompleteCommand(t *testing.T) {
 func TestRootUsageListsRetainedRoutes(t *testing.T) {
 	t.Parallel()
 	err := run(t.Context(), nil, &bytes.Buffer{})
-	if err == nil || err.Error() != "usage: ardents <accept-offline|accept-closed-profile|refresh-sources|diagnostics|endpoint|entry|name> arguments" {
+	if err == nil || err.Error() != "usage: ardents <accept-offline|accept-closed-profile|diagnostics|endpoint|entry|name> arguments" {
 		t.Fatalf("root usage error = %v", err)
 	}
 }
@@ -124,17 +124,6 @@ func TestAcceptClosedProfileRejectsOfflineEpochInput(t *testing.T) {
 	err := run(t.Context(), []string{"accept-closed-profile", "--epoch", "epoch.bin"}, &output)
 	if err == nil || !strings.Contains(err.Error(), "flag provided but not defined") || output.Len() != 0 {
 		t.Fatalf("closed-profile command accepted offline Epoch input: %v / %q", err, output.String())
-	}
-}
-
-func TestSourcePlanRejectsRetiredH3Schema(t *testing.T) {
-	t.Parallel()
-	path := filepath.Join(t.TempDir(), "retired-source-plan.json")
-	if err := os.WriteFile(path, []byte(`{"schema":"ardents-h3-source-plan-v1"}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := readSourcePlan(t.TempDir(), path); err == nil {
-		t.Fatal("retired H3 source plan schema was accepted")
 	}
 }
 

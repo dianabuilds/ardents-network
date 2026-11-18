@@ -58,7 +58,8 @@ and the headless command inventory under tests/profiles.
 
 | Binary | Routes | Classification |
 |---|---|---|
-| ardents | accept-offline, accept-closed-profile, refresh-sources; endpoint enrollment-check/withdraw | keep |
+| ardents | accept-offline, accept-closed-profile; endpoint enrollment-check/withdraw | keep |
+| ardents | refresh-sources | retirement refusal at dispatch before input or root effects; the platform-led runtime owns automatic Source refresh and the successor State never samples process resources (#493) |
 | ardents | service-instance initialize/accept | retirement refusal at dispatch; canonical lifecycle is ardents-next publication-instance (#562) |
 | ardents | endpoint enroll/enroll-installed/headless/user-unit/installed-user-unit/replace/rollback/replacement-recovery | retirement refusal at dispatch before input or root effects; canonical platform-led delivery and forward-only replacement/recovery is ardents-next platform/endpoint/installation (#617 S3.5, ADR-0125) |
 | ardents | endpoint publish | retirement refusal at dispatch; use ardents-text publish |

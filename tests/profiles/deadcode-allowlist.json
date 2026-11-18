@@ -128,6 +128,17 @@
       "rationale": "cmd/ardents-control/closed_profile.go cut over to the successor closed-profile owner (#493), removing the last main-package production caller of the old internal/network/closedprofile Prepare/Sign on both platforms. The old closed-profile owner remains reached only by the Linux old network/state and admission cluster (itself production-dead, allowlisted) and by its own behavior tests on both platforms, so these symbols are production-dead but not test-only dead. The owning legacy Module remains until the gated cohort removal (#564/#565).",
       "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
       "retirement": "Remove each exact symbol when the gated legacy cohort removal retires the old closed-profile owner, or when a selected genuine production caller reaches it."
+    },
+    {
+      "symbols": [
+        "internal/endpoint/runtimeplan.DecodeSource",
+        "internal/endpoint/runtimeplan.decodeAuthorities",
+        "internal/endpoint/runtimeplan.decodeFixedHex"
+      ],
+      "classification": "retired legacy source-plan grammar orphaned by the #493 refresh-sources retirement",
+      "rationale": "The standalone ardents refresh-sources command was the sole production caller of the legacy source-plan decoder and its authority/fixed-hex helpers. Its retirement (#493) leaves them production-unreachable on both platforms; the legacy runtimeplan test inventory still exercises them, so no fully-dead test allowance is added. The successor State owner never samples process resources and the platform-led runtime owns automatic Source refresh.",
+      "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
+      "retirement": "Remove each exact symbol when the gated legacy Endpoint cohort removal retires the runtimeplan Module, or when a selected genuine production caller reaches it again. Both platform test analyses must remain unchanged."
     }
   ],
   "production": {
@@ -2313,6 +2324,7 @@
           "internal/network/state.networkState.CurrentClosedProfile",
           "internal/network/state.networkState.CurrentClosedRoute",
           "internal/network/state.networkState.CurrentNodeDuty",
+          "internal/network/state.networkState.Wait",
           "internal/network/state.networkState.currentClosedProfile"
         ],
         "classification": "retired legacy network runtime awaiting legacy cohort removal (windows-amd64)",
