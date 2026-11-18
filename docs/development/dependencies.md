@@ -191,10 +191,39 @@ or empty scanner result substitutes for it:
 | [shadow CVE-2024-56433](https://ubuntu.com/security/CVE-2024-56433), subordinate-ID defaults | Fixed `--system` without `-F` bypasses subordinate-ID allocation in the reviewed useradd source. No subuid/subgid file is opened for mutation; no user namespace mapping helper is invoked |
 | [shadow CVE-2019-19882](https://ubuntu.com/security/CVE-2019-19882), setuid account tools | Ubuntu explicitly compiles with `--disable-account-tools-setuid`. Original helper is root-controlled and set-id files refuse. No arbitrary user authentication/PAM ceremony is selected |
 | [systemd USN-8119-1](https://ubuntu.com/security/notices/USN-8119-1) | Installed `.14` contains the cgroup-path and udev security fixes. New Source operations retain fixed original manager/path and never supply an arbitrary cgroup path |
-| [systemd CVE-2026-40226](https://lists.ubuntu.com/archives/noble-changes/2026-June/056564.html), fixed in `.16` | systemd-nspawn is absent and never used. The stand uses original unshare/chroot and a separately verified private rootfs/namespace/cgroup, with no nspawn settings, BindUser, Ephemeral or pivot_root input |
+| [systemd CVE-2026-40226](https://lists.ubuntu.com/archives/noble-changes/2026-June/056564.html), fixed in `.16` | In the stopped-transition stand systemd-nspawn is absent and never used; it uses original unshare/chroot and a separately verified private rootfs/namespace/cgroup, with no nspawn settings, BindUser, Ephemeral or pivot_root input. The separate #391 S2.1 platform-led pair qualification uses systemd-nspawn on patched host systemd at or above `.16` (scoped below) |
 | [systemd USN-8626-1](https://ubuntu.com/security/notices/USN-8626-1), newer `.17` | Affected homed/oomd and the newer-release machined paths are not started or consumed. The private minimal target starts only its manager/system bus; NSS admits only files/systemd with no homed/userdb service. No home records, login, polkit operation or pressure-kill IPC is selected |
 | [glibc USN-8611-1](https://ubuntu.com/security/notices/USN-8611-1): CVE-2026-4046, -4437, -4438, -5435, -5450, -5928, -6238 | IBM iconv conversions, DNS/reverse-DNS/debug-print records, wide-character ungetwc and scanf `%mc` with width greater than1024 are outside this finite call/input contract. Native arguments/configuration are fixed ASCII; useradd uses C locale, NSS contains no DNS backend, and the stand has private network with no external protocol input. Verify original helper/configuration and dynamic closure; product commands are Go no-cgo. This does not qualify general host libc use |
 | [PAM USN-8601-1](https://lists.ubuntu.com/archives/ubuntu-security-announce/2026-July/010963.html), CVE-2026-54411 | No PAM userdb/password comparison or repeated authentication is invoked. Source is never started, useradd's Ubuntu account-tools build omits that setuid/PAM path, and the private target supplies no login/PAM service |
+
+### Scoped systemd-nspawn use: #391 S2.1 two-manager platform-led qualification
+
+Reviewed 2026-11-18. The `endpoint_pair_native` qualification controller
+(`cmd/ardents-next/endpoint_pair_native_linux_test.go`) uses `systemd-nspawn` as a
+qualification-environment tool to provision two separately admitted Ubuntu/systemd
+managers on the Product Owner host. It is not a product runtime dependency and
+adds no `go.mod` entry. Bounded applicability for the native findings above:
+
+- Host manager (the nspawn binary's own systemd): `255.4-1ubuntu8.18`
+  (`dpkg -l systemd`, accessed 2026-11-18), at or above the CVE-2026-40226 `.16`
+  fix and the USN-8626-1 `.17` path. The controller refuses a host without
+  `systemd-nspawn`/`machinectl`/`debootstrap` and cgroup v2.
+- Guest managers: a cached debootstrapped noble rootfs whose systemd is upgraded
+  via `apt-get --only-upgrade systemd systemd-sysv libnss-systemd dbus` to the
+  current patched noble release before any guest is cloned; the controller asserts
+  each guest's systemd package version is at or above `.16` and refuses an
+  unpatched manager as an invalid environment. debootstrap's release snapshot
+  (`.8`) alone is not admitted.
+- Each guest is a fresh private rootfs with its own PID-1 systemd and separate
+  PID/mount/cgroup namespaces and pivoted root, sharing only the host network
+  namespace (fixture loopback). No `BindUser`, `Ephemeral`, `--private-users`
+  mapping or arbitrary cgroup path is supplied; the private minimal target starts
+  only its manager/system bus. No homed/userdb, login/PAM, polkit operation or
+  external protocol input is selected; fixture authority is local and signed.
+- This is component/acceptance evidence with fixture authority, not whole-host
+  privacy qualification. Capture the actual host/guest systemd package versions
+  and namespace identities with each final receipt; a passing run alone does not
+  establish ongoing patch currency.
 
 Actual useradd ELF linkage is libaudit, libselinux, libsemanage, libc, libcap-ng,
 PCRE2, libsepol, bzip2 and the original loader; it has no direct PAM dependency.

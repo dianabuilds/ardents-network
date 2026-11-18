@@ -5243,6 +5243,46 @@ qualification (#391 S2: two separately admitted managers, publish/link/read over
 the Carrier). The transitional guarded-start/ACK/recovery orchestration is neither
 exercised nor retired (ADR-0125 D6).
 
+## Protected Endpoint two-manager platform-led launch native qualification
+
+The `endpoint_pair_native` build tag selects
+`cmd/ardents-next/endpoint_pair_native_linux_test.go`
+(`TestNativeEndpointPlatformLedPair`), a real-host root-driver qualification that
+proves the platform-led launch foundation on TWO separately admitted Ubuntu/systemd
+managers (#391 S2.1). One Endpoint per system manager is a fixed, multiply-enforced
+contract (dedicated `ardents-endpoint` account, unit names, fixed resource paths,
+preflight absence and `DynamicUser` name-hash UIDs), so the installed two-Endpoint
+oracle requires two independent managers rather than two Endpoints on one manager.
+
+The controller is a standard-library-only environment orchestrator: it imports no
+successor or old runtime owner. It caches one pristine debootstrapped Ubuntu 24.04
+rootfs (environment provisioning outside Git, `ARDENTS_PAIR_BASE_ROOTFS` override),
+upgrades its systemd to the current patched noble release, and clones a fresh guest
+per manager. Each `systemd-nspawn` guest boots its own PID-1 systemd with separate
+PID/mount/cgroup namespaces and a pivoted root, sharing the host network namespace
+(fixture loopback). The controller asserts each guest is a separate admitted
+manager — distinct namespaces from the host and from each other, Ubuntu
+24.04/systemd 255 (patched ≥ the CVE-2026-40226 `.16` fix), cgroup v2, root-owned
+os-release, original manager at `/init.scope`, reachable system bus — then runs the
+checked `endpoint_launch_native` full-launch qualification inside each guest
+against its own original manager, using the canonical repository and toolchain
+bound at their host paths. Both guests must reach protected text Service readiness
+with positive and causal-refusal evidence and distinct original InvocationIDs;
+passing skips are refused. Joined cleanup terminates both machines and removes the
+cloned rootfs. Missing privileges, tools, platform or freshness are invalid
+environments, never a passing skip. It is not a `make quick-check` lane; the
+ordinary suite excludes the tag while `scripts/check-deadcode.go` compiles it so
+native coverage counts.
+
+This is component/acceptance evidence with fixture Release/Network authority for
+two independently admitted managers reaching platform-led Service readiness. It is
+NOT the cross-Endpoint publish/link/read journey (#391 S2.2) and NOT the whole-host
+two-participant privacy qualification. The transitional guarded-start/ACK/recovery
+orchestration is neither exercised nor retired (ADR-0125 D6). `systemd-nspawn` is a
+qualification-environment tool on the admitted host, not a product runtime
+dependency; its bounded use and patched-systemd applicability are recorded in
+[dependencies](dependencies.md).
+
 ## Bounded Authority Custody native lane
 
 `make custody-check` requires Linux, Go 1.27.4, a race-capable compiler,

@@ -1893,6 +1893,10 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint launch native qualification excludes old Endpoint", "cmd/ardents-next/endpoint_launch_native_linux_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint launch native qualification has no Node runtime", "cmd/ardents-next/endpoint_launch_native_linux_test.go", modulePath + "/internal/successor/node", false},
 		{"adjacent Endpoint launch test has no inherited Source edge", "cmd/ardents-next/other_endpoint_launch_native_linux_test.go", modulePath + "/internal/successor/network/source", false},
+		{"Endpoint pair native controller is a stdlib-only environment orchestrator", "cmd/ardents-next/endpoint_pair_native_linux_test.go", modulePath + "/internal/successor/enrollment", false},
+		{"Endpoint pair native controller excludes old Endpoint", "cmd/ardents-next/endpoint_pair_native_linux_test.go", modulePath + "/internal/endpoint", false},
+		{"Endpoint pair native controller has no Node runtime", "cmd/ardents-next/endpoint_pair_native_linux_test.go", modulePath + "/internal/successor/node", false},
+		{"Endpoint pair native controller has no direct Source edge", "cmd/ardents-next/endpoint_pair_native_linux_test.go", modulePath + "/internal/successor/network/source", false},
 		{"unsafe", "internal/successor/admission/check.go", "unsafe", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
