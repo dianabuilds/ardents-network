@@ -200,11 +200,31 @@ func Invocation(unit, service managerProperties) (uint32, [16]byte, error) {
 // This validates typed live observations against the original identity. Native
 // process bytes, credentials and kernel scope still require separate checks.
 func VerifyRunning(version string, unit, service managerProperties, request Configuration, generationDigest string, pid uint32, invocation [16]byte) error {
-	if pid == 0 || invocation == [16]byte{} {
-		return ErrBinding
-	}
 	if err := VerifyConfiguration(version, unit, service, request, generationDigest); err != nil {
 		return err
+	}
+	return verifyRunningInvocation(unit, service, request, generationDigest, pid, invocation)
+}
+
+// VerifyPlatformRunning admits the running platform-managed Endpoint invocation
+// whose sole ExecStartPre is the original privileged F-25 platform check. It
+// verifies the same complete confinement and the same exact running process as
+// VerifyRunning; only the admitted pre-start binding differs (platform check
+// versus the transitional empty ExecStartPre). It grants no installation, start,
+// replacement or recovery authority.
+func VerifyPlatformRunning(version string, unit, service managerProperties, request Configuration, generationDigest string, pid uint32, invocation [16]byte, checkProgram, manifest, pin string) error {
+	if err := VerifyPlatformConfiguration(version, unit, service, request, generationDigest, checkProgram, manifest, pin); err != nil {
+		return err
+	}
+	return verifyRunningInvocation(unit, service, request, generationDigest, pid, invocation)
+}
+
+// verifyRunningInvocation binds the exact started execution: active/running
+// state, this InvocationID/MainPID/control group, and nonzero start clocks with
+// zero stop clocks, exit result and status for this running invocation.
+func verifyRunningInvocation(unit, service managerProperties, request Configuration, generationDigest string, pid uint32, invocation [16]byte) error {
+	if pid == 0 || invocation == [16]byte{} {
+		return ErrBinding
 	}
 	if !systemd.Matches(unit, "ActiveState", "s", "active") || !systemd.Matches(unit, "SubState", "s", "running") ||
 		!systemd.Matches(unit, "InvocationID", "ay", invocation) || !systemd.Matches(service, "MainPID", "u", pid) ||

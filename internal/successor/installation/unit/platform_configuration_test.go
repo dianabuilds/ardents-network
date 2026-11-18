@@ -37,6 +37,9 @@ func platformEndpointFixture(t *testing.T) (managerProperties, managerProperties
 	}
 	argv := []string{platformTestCheckProgram, "platform", "check", platformTestManifest, pin}
 	put("ExecStartPreEx", "a(sasasttttuii)", []any{[]any{platformTestCheckProgram, argv, []string{"privileged", "no-env-expand"}, 0, 0, 0, 0, 0, 0, 0}})
+	// A real platform unit also carries the pre-start command in ExecStartPre; the
+	// transitional empty-ExecStartPre admission must refuse it.
+	put("ExecStartPre", "a(sasbttttuii)", []any{[]any{platformTestCheckProgram, argv, false, 0, 0, 0, 0, 0, 0, 0}})
 	return unit, service, request, digest
 }
 
@@ -61,7 +64,8 @@ func TestPlatformConfigurationAdmitsSolePrivilegedPreStartCheck(t *testing.T) {
 	if err := VerifyConfiguration("255.4", transitional, transitionalService, transitionalRequest, transitionalDigest); err != nil {
 		t.Fatal("transitional configuration refused", err)
 	}
-	if err := VerifyConfiguration("255.4", unit, service, request, digest); !errors.Is(err, ErrBinding) {
+	freshUnit, freshService, freshRequest, freshDigest := platformEndpointFixture(t)
+	if err := VerifyConfiguration("255.4", freshUnit, freshService, freshRequest, freshDigest); !errors.Is(err, ErrBinding) {
 		t.Fatal("transitional admission accepted the platform pre-start check", err)
 	}
 }
@@ -351,5 +355,89 @@ func TestPlatformConfigurationRefusesForeignPreStartCheck(t *testing.T) {
 	}
 	if err := VerifyPlatformConfiguration("255.4", unit, service, request, digest, "/foreign/ardents-linux-amd64", platformTestManifest, pin); !errors.Is(err, ErrBinding) {
 		t.Fatal("pre-start check bound to a foreign check program accepted", err)
+	}
+}
+
+// platformRunningEndpointFixture extends the platform configuration with the
+// exact running invocation (active/running, this InvocationID/MainPID/control
+// group, nonzero start clocks). It supplies no native manager or process proof.
+func platformRunningEndpointFixture(t *testing.T) (managerProperties, managerProperties, Configuration, string, [16]byte) {
+	t.Helper()
+	unit, service, request, digest := platformEndpointFixture(t)
+	invocation := [16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
+	raw, err := json.Marshal(invocation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unit["InvocationID"] = managerValue{Type: "ay", Data: raw}
+	unit["ActiveState"] = managerValue{Type: "s", Data: json.RawMessage(`"active"`)}
+	unit["SubState"] = managerValue{Type: "s", Data: json.RawMessage(`"running"`)}
+	service["MainPID"] = managerValue{Type: "u", Data: json.RawMessage(`123`)}
+	service["ControlGroup"] = managerValue{Type: "s", Data: json.RawMessage(`"/system.slice/ardents-endpoint.service"`)}
+	var entries [][]json.RawMessage
+	if err := json.Unmarshal(service["ExecStartEx"].Data, &entries); err != nil {
+		t.Fatal(err)
+	}
+	entries[0][3] = json.RawMessage(`1000000`)
+	entries[0][4] = json.RawMessage(`2000000`)
+	entries[0][7] = json.RawMessage(`123`)
+	raw, err = json.Marshal(entries)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service["ExecStartEx"] = managerValue{Type: "a(sasasttttuii)", Data: raw}
+	return unit, service, request, digest, invocation
+}
+
+func verifyPlatformRunning(unit, service managerProperties, request Configuration, digest string, invocation [16]byte) error {
+	return VerifyPlatformRunning("255.4", unit, service, request, digest, 123, invocation, platformTestCheckProgram, platformTestManifest, platformTestPin())
+}
+
+func TestPlatformRunningAdmitsSolePrivilegedPreStartCheck(t *testing.T) {
+	unit, service, request, digest, invocation := platformRunningEndpointFixture(t)
+	if err := verifyPlatformRunning(unit, service, request, digest, invocation); err != nil {
+		t.Fatal("valid platform running invocation refused", err)
+	}
+	// The transitional running admission keeps ExecStartPre empty and refuses the
+	// platform pre-start check; the two running modes do not cross-admit.
+	if err := VerifyRunning("255.4", unit, service, request, digest, 123, invocation); !errors.Is(err, ErrBinding) {
+		t.Fatal("transitional running admission accepted the platform pre-start check", err)
+	}
+	for _, change := range []string{"replacement-pid", "replacement-invocation", "different-cgroup", "stopped", "weak-protection", "hook", "foreign-executable", "foreign-pre-start", "zero-start-clock"} {
+		t.Run(change, func(t *testing.T) {
+			unit, service, request, digest, invocation := platformRunningEndpointFixture(t)
+			switch change {
+			case "replacement-pid":
+				service["MainPID"] = managerValue{Type: "u", Data: json.RawMessage(`124`)}
+			case "replacement-invocation":
+				unit["InvocationID"].Data[1] = '9'
+			case "different-cgroup":
+				service["ControlGroup"] = managerValue{Type: "s", Data: json.RawMessage(`"/system.slice/replacement.service"`)}
+			case "stopped":
+				unit["ActiveState"] = managerValue{Type: "s", Data: json.RawMessage(`"inactive"`)}
+			case "weak-protection":
+				service["NoNewPrivileges"] = managerValue{Type: "b", Data: json.RawMessage(`false`)}
+			case "hook":
+				service["ExecStop"] = managerValue{Type: "a(sasbttttuii)", Data: json.RawMessage(`[["/bin/true",["/bin/true"],false,0,0,0,0,0,0,0]]`)}
+			case "foreign-executable":
+				service["ExecStartEx"] = managerValue{Type: "a(sasasttttuii)", Data: json.RawMessage(`[["/foreign",["/foreign"],[],1,2,0,0,123,0,0]]`)}
+			case "foreign-pre-start":
+				service["ExecStartPreEx"] = managerValue{Type: "a(sasasttttuii)", Data: json.RawMessage(`[["/foreign",["/foreign","platform","check","/etc/ardents/endpoint.json","` + platformTestPin() + `"],["privileged","no-env-expand"],0,0,0,0,0,0,0]]`)}
+			case "zero-start-clock":
+				var entries [][]json.RawMessage
+				if err := json.Unmarshal(service["ExecStartEx"].Data, &entries); err != nil {
+					t.Fatal(err)
+				}
+				entries[0][3] = json.RawMessage(`0`)
+				raw, err := json.Marshal(entries)
+				if err != nil {
+					t.Fatal(err)
+				}
+				service["ExecStartEx"] = managerValue{Type: "a(sasasttttuii)", Data: raw}
+			}
+			if err := verifyPlatformRunning(unit, service, request, digest, invocation); !errors.Is(err, ErrBinding) {
+				t.Fatal("changed platform running invocation/configuration accepted", change, err)
+			}
+		})
 	}
 }
