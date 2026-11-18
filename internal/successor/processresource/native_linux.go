@@ -184,14 +184,14 @@ func (pin *nativePin) observe() (Observation, error) {
 	if err != nil {
 		return observation, err
 	}
-	observation.HighEvents, err = nativeCounter(files["memory.events.local"], "high")
+	events, err := nativeMemoryEvents(files["memory.events.local"])
 	if err != nil {
 		return observation, err
 	}
-	for _, name := range []string{"max", "oom", "oom_kill", "oom_group_kill"} {
-		value, err := nativeCounter(files["memory.events.local"], name)
-		if err != nil || value > math.MaxUint64-observation.EmergencyEvents {
-			return observation, errors.Join(errors.New("native memory event invalid"), err)
+	observation.HighEvents = events.high
+	for _, value := range [4]uint64{events.max, events.oom, events.oomKill, events.oomGroupKill} {
+		if value > math.MaxUint64-observation.EmergencyEvents {
+			return observation, errors.New("native memory event invalid")
 		}
 		observation.EmergencyEvents += value
 	}
