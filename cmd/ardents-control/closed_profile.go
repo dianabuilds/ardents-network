@@ -16,7 +16,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/successor/network/closedprofile"
 )
 
 const maximumClosedProfilePlanBytes = 64 << 10
@@ -83,10 +83,26 @@ func signClosedProfile(arguments []string, output io.Writer) error {
 		return err
 	}
 	defer zeroPrivateKey(signer)
-	raw, err := closedprofile.Sign(input, signer)
+	// The successor closed-profile owner separates the canonical body from the
+	// signing transcript. The transcript is the same ARDCPR03 prefix plus body,
+	// so the signed bytes are unchanged; NotBefore is the profile's own validity
+	// reference for the transcript check (the signature does not depend on it).
+	body, err := closedprofile.Prepare(input)
 	if err != nil {
 		return err
 	}
+	authority, ok := signer.Public().(ed25519.PublicKey)
+	if !ok {
+		return errors.New("closed profile signing is unavailable")
+	}
+	transcript, err := closedprofile.SigningTranscript(body, closedprofile.Context{
+		StateGeneration: input.StateGeneration, NetworkID: input.NetworkID, EpochDigest: input.EpochDigest,
+		Epoch: input.Epoch, Authority: authority, Now: input.NotBefore,
+	})
+	if err != nil {
+		return err
+	}
+	raw := append(body, ed25519.Sign(signer, transcript)...)
 	if err := writeNewClosedProfile(destination, raw); err != nil {
 		return err
 	}
