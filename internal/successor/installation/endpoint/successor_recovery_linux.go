@@ -156,7 +156,7 @@ func openSuccessorRecovery(ctx context.Context, root string, reference time.Time
 		if err := r.readStagedFixedResources(ctx); err != nil {
 			return nil, request, err
 		}
-	} else if err := reader.inspectFixedResources(ctx, r.checked); err != nil {
+	} else if err := reader.inspectFixedResources(ctx, r.checked, false); err != nil {
 		return nil, request, err
 	}
 	if err := r.readPreparation(ctx); err != nil {
@@ -518,7 +518,7 @@ func (r *successorRecoveryNative) openWritingTransition(ctx context.Context) err
 	if err := r.reader.observeAccountAndRoots(previous); err != nil {
 		return err
 	}
-	if err := r.reader.inspectFixedResources(ctx, previous); err != nil {
+	if err := r.reader.inspectFixedResources(ctx, previous, false); err != nil {
 		return err
 	}
 	if err := r.readPreparation(ctx); err != nil {

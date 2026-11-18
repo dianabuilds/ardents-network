@@ -199,7 +199,7 @@ func openStartupInspection(ctx context.Context, directory string) (result *start
 	if err := s.files.observeAccountAndRoots(s.checked); err != nil {
 		return nil, err
 	}
-	if err := s.files.inspectFixedResources(ctx, s.checked); err != nil {
+	if err := s.files.inspectFixedResources(ctx, s.checked, s.platformLed); err != nil {
 		return nil, err
 	}
 	// This second opening is retained by startup itself, independently of the
