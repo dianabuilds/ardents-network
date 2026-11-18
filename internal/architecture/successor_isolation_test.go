@@ -545,6 +545,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/platform_endpoint_linux_test.go" && dependency == modulePath+"/internal/successor/installation/request" {
 		return true
 	}
+	if source == "cmd/ardents-next/endpoint_platform_native_linux_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/installation/request" || dependency == modulePath+"/internal/successor/installation/unit" || dependency == modulePath+"/internal/successor/release") {
+		return true
+	}
 	if (source == "cmd/ardents-next/platform_unit_linux.go" || source == "cmd/ardents-next/platform_linux_test.go" || source == "cmd/ardents-next/source_repair_linux.go" || source == "cmd/ardents-next/introduction_repair_linux.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
@@ -1862,6 +1865,15 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Source retirement observer runtime spelling has no frame permission", "internal/successor/installation/infrastructure/source_retirement_physical_observer_linux.go", modulePath + "/internal/successor/installation/completion", false},
 		{"Source retirement adjacent native file has no frame permission", "internal/successor/installation/infrastructure/source_retirement_physical_other_native_linux_test.go", modulePath + "/internal/successor/installation/completion", false},
 		{"Source retirement observer excludes State authority", "internal/successor/installation/infrastructure/source_retirement_physical_observer_native_linux_test.go", modulePath + "/internal/successor/network/state", false},
+		{"Endpoint platform native qualification uses new Enrollment", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/enrollment", true},
+		{"Endpoint platform native qualification uses fresh Release", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/release", true},
+		{"Endpoint platform native qualification uses generation authorization", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/installation", true},
+		{"Endpoint platform native qualification uses request grammar", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/installation/request", true},
+		{"Endpoint platform native qualification uses unit contract", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/installation/unit", true},
+		{"Endpoint platform native qualification excludes old Endpoint", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/endpoint", false},
+		{"Endpoint platform native qualification excludes old Release", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/release", false},
+		{"Endpoint platform native qualification has no Node runtime", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/node", false},
+		{"adjacent Endpoint native test has no inherited Release edge", "cmd/ardents-next/other_endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/release", false},
 		{"unsafe", "internal/successor/admission/check.go", "unsafe", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
