@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"sync"
+	"sync/atomic"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 	"github.com/dianabuilds/ardents-network/internal/successor/publication/durable"
@@ -31,6 +32,31 @@ type Binding struct {
 	revision       uint64
 	lifetime       *PublicationLifetime
 	observations   sync.WaitGroup // Admission and retirement share root.mu.
+
+	// Single-flight coalescing of the physical observation round (audit DD-5
+	// family, rework §4.1; the installation startup_check_observation pattern).
+	// Concurrent admitted callers share one fresh physical round; the batch is
+	// closed before any native read, no positive result is retained across rounds,
+	// and each caller keeps its own checkLocal fences. observeMu guards the queue,
+	// observeIO serializes the physical round, observeUsers joins it before Close.
+	observeMu         sync.Mutex
+	observeIO         sync.Mutex
+	observeQueue      []*observeRequest
+	observing         bool
+	observeUsers      sync.WaitGroup
+	observeRoundCount atomic.Uint64 // diagnostic: complete physical rounds run (audit DD-1 oracle)
+	// observePhysical is the native custody + durable generation round. It is a
+	// field so the coalescing oracle can hold a round open deterministically
+	// (rework §4.1); Bind installs the genuine original observation.
+	observePhysical func(context.Context, rootLease) error
+}
+
+// observeRequest is one admitted caller waiting for a complete physical round
+// that starts after its own admission. ctx is borrowed only for the duration of
+// the shared round; a caller arriving during I/O joins the next round.
+type observeRequest struct {
+	ctx  context.Context
+	done chan error
 }
 
 // Bind reconciles through the actual durable owner, never a supplied scalar
@@ -103,6 +129,12 @@ func (root *Root) Bind(ctx context.Context, history *durable.Root) (*Binding, er
 		return nil, errors.Join(err, generation.Close())
 	}
 	binding := &Binding{root: root, generation: generation, credential: credential}
+	binding.observePhysical = func(ctx context.Context, lease rootLease) error {
+		if err := root.checkOriginal(ctx, lease); err != nil {
+			return err
+		}
+		return generation.Check(ctx)
+	}
 	root.binding = binding
 	root.mu.Unlock()
 	return binding, nil
@@ -111,6 +143,9 @@ func (root *Root) Bind(ctx context.Context, history *durable.Root) (*Binding, er
 // observe reobserves original native custody and the separately owned durable
 // reservation outside Instance state. The original borrow keeps both alive
 // until the observation returns; the final local gate refuses concurrent revoke.
+// Concurrent admitted callers share one fresh physical round (rework §4.1): the
+// batch is closed before any native read, no positive result is retained, and
+// each caller still runs its own before/after checkLocal fences.
 func (binding *Binding) observe(ctx context.Context) error {
 	if binding == nil || binding.root == nil || ctx == nil {
 		return ErrUnavailable
@@ -125,15 +160,52 @@ func (binding *Binding) observe(ctx context.Context) error {
 	lease := root.lease
 	root.mu.Unlock()
 	defer binding.observations.Done()
-	if err := root.checkOriginal(ctx, lease); err != nil {
-		return err
+	request := &observeRequest{ctx: ctx, done: make(chan error, 1)}
+	binding.observeMu.Lock()
+	binding.observeQueue = append(binding.observeQueue, request)
+	if !binding.observing {
+		binding.observing = true
+		binding.observeUsers.Add(1)
+		go binding.observeRounds(lease)
 	}
-	if err := binding.generation.Check(ctx); err != nil {
-		return err
-	}
+	binding.observeMu.Unlock()
+	roundErr := <-request.done
 	root.mu.Lock()
 	defer root.mu.Unlock()
-	return binding.checkLocal(ctx)
+	// The shared round honors the first admitted caller's context; every caller
+	// still applies its own cancellation and local gate, so a canceled caller is
+	// refused even when it shared a round with a live caller.
+	return errors.Join(roundErr, ctx.Err(), binding.checkLocal(ctx))
+}
+
+// observeRounds runs complete physical rounds for queued callers. It takes and
+// clears the batch under observeMu before any native read, so neither a later
+// request nor an operation following a previous result joins this round. The
+// physical round honors the first admitted caller's context; every caller still
+// receives the round result and applies its own local gate. observeIO serializes
+// rounds; the caller's observations borrow keeps custody alive across them.
+func (binding *Binding) observeRounds(lease rootLease) {
+	defer binding.observeUsers.Done()
+	for {
+		binding.observeIO.Lock()
+		binding.observeMu.Lock()
+		requests := binding.observeQueue
+		binding.observeQueue = nil
+		binding.observeMu.Unlock()
+		binding.observeRoundCount.Add(1)
+		err := binding.observePhysical(requests[0].ctx, lease)
+		binding.observeIO.Unlock()
+		for _, request := range requests {
+			request.done <- err
+		}
+		binding.observeMu.Lock()
+		if len(binding.observeQueue) == 0 {
+			binding.observing = false
+			binding.observeMu.Unlock()
+			return
+		}
+		binding.observeMu.Unlock()
+	}
 }
 
 // checkLocal follows observe and compares only original local state. It cannot
@@ -177,6 +249,9 @@ func (binding *Binding) Close() error {
 	if lifetime != nil {
 		<-lifetime.done
 	}
+	// Join any in-flight coalesced physical round before joining the caller
+	// borrows; closed is already set under root.mu, so no new round can start.
+	binding.observeUsers.Wait()
 	binding.observations.Wait()
 	root.mu.Lock()
 	recipients := binding.recipients
