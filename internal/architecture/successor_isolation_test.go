@@ -695,6 +695,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/forwarding_profile_signing_linux.go" && dependency == modulePath+"/internal/successor/network/closedprofile" {
 			return true
 		}
+		if source == "cmd/ardents-control/closed_profile.go" && dependency == modulePath+"/internal/successor/network/closedprofile" {
+			return true
+		}
 		if source == "cmd/ardents-control/forwarding_profile_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/closedprofile" || dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/network/source") {
 			return true
 		}
