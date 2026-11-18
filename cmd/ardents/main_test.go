@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,9 +11,15 @@ import (
 	"time"
 )
 
-func TestAcceptOfflineCommandPublishesFrozenGeneration(t *testing.T) {
+// The successor State owner selects only the closed Route profile and refuses
+// the frozen retired-profile Epoch even when the pinned closed-profile authority
+// is supplied. This mirrors the State owner's own frozen-retired refusal oracle
+// and proves the acceptance adapter wires that contract rather than publishing a
+// retired generation. Genuine closed-Route acceptance is exercised by the State
+// owner tests and the two-host qualification preparation consumer.
+func TestAcceptOfflineCommandRefusesFrozenRetiredProfile(t *testing.T) {
 	t.Parallel()
-	base := filepath.Join("..", "..", "internal", "network", "state", "testdata")
+	base := filepath.Join("..", "..", "internal", "successor", "network", "state", "testdata")
 	fixture := t.TempDir()
 	inputs := filepath.Join(fixture, "inputs")
 	if err := os.Mkdir(inputs, 0o700); err != nil {
@@ -37,28 +42,11 @@ func TestAcceptOfflineCommandPublishesFrozenGeneration(t *testing.T) {
 		"-epoch", epoch,
 		"-inputs", inputs,
 		"-materialization", material,
+		"-profile", "ardents-route-v3",
+		"-closed-profile-authority", "c2f38d34dafe402561da5a0a278e8a3255e0fc9c2e58c0209966a589fd07b631",
 	}, &output)
-	if err != nil {
-		t.Fatalf("run accept-offline: %v", err)
-	}
-	var result struct {
-		Schema     string `json:"schema"`
-		Generation string `json:"generation"`
-		Epoch      uint64 `json:"epoch"`
-		ViewLength uint32 `json:"view_length"`
-	}
-	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
-		t.Fatalf("decode output: %v", err)
-	}
-	if result.Schema != "ardents-state-event-v1" || result.Generation != "243fba444fe71948f6cd4a253552301192857a156c7eb6359eed604c2d2cda4b" || result.Epoch != 1 || result.ViewLength != 2 {
-		t.Fatalf("unexpected command result: %+v", result)
-	}
-	wantEvent, err := os.ReadFile(filepath.Join("testdata", "event.jsonl"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Equal(output.Bytes(), wantEvent) {
-		t.Fatalf("event bytes differ:\n got %s\nwant %s", output.Bytes(), wantEvent)
+	if err == nil || output.Len() != 0 {
+		t.Fatalf("accept-offline published the frozen retired profile: err=%v output=%q", err, output.String())
 	}
 }
 

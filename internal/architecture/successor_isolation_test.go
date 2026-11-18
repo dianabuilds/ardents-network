@@ -698,6 +698,13 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/closed_profile.go" && dependency == modulePath+"/internal/successor/network/closedprofile" {
 			return true
 		}
+		// #493 Network State cutover: the offline acceptance adapter consumes the
+		// successor State owner. refresh-sources stays on the legacy H3-S governor
+		// pending its consequential re-scope (successor State never samples
+		// process resources and admits work through PermitWork).
+		if (source == "cmd/ardents/offline.go" || source == "cmd/ardents/config.go") && dependency == modulePath+"/internal/successor/network/state" {
+			return true
+		}
 		if source == "cmd/ardents-control/forwarding_profile_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/closedprofile" || dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/network/source") {
 			return true
 		}

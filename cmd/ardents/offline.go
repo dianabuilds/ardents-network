@@ -11,7 +11,7 @@ import (
 	"os"
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/timeline"
-	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 )
 
 func run(ctx context.Context, arguments []string, output io.Writer) error {
@@ -168,7 +168,7 @@ func runAcceptClosedProfile(arguments []string, output io.Writer) (resultErr err
 		ClosedProfile string `json:"closed_profile_sha256"`
 	}{
 		Schema: "ardents-state-event-v1", Sequence: 1, Kind: "closed-profile-accepted",
-		Generation: hex.EncodeToString(view.StateGeneration[:]), Epoch: view.Epoch,
+		Generation: hex.EncodeToString(view.Generation[:]), Epoch: view.Epoch,
 		ClosedProfile: hex.EncodeToString(view.Digest[:]),
 	})
 }

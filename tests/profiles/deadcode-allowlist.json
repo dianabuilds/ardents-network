@@ -810,15 +810,6 @@
       },
       {
         "symbols": [
-          "internal/successor/network/state.networkState.Accept"
-        ],
-        "classification": "Linux offline State preparation with portable acceptance tests",
-        "rationale": "Canonical Control Source and Forwarding offline State preparation genuinely call Accept on Linux. The portable network accept-epoch command now uses AcceptEpoch to report whether the supplied Epoch is pending. Windows has no native Source or Forwarding preparer, so only this convenience method is production-unreachable there. Its accepted clock, history and floor behavior remains exercised in both platform test analyses. No Linux production allowance or Windows native/runtime support is granted.",
-        "owner": "Product Owner and Codex; Network State and canonical offline preparation",
-        "retirement": "Remove this exact Windows entry when a separately selected genuine Windows production caller reaches Accept, or when the convenience API is retired. Lost Linux production reachability requires repair; both platform test analyses must remain empty."
-      },
-      {
-        "symbols": [
           "internal/successor/admission/receiving.OpenRetained",
           "internal/successor/admission/spending.OpenRetained"
         ],
@@ -3130,6 +3121,46 @@
         "rationale": "These exact internal/successor/route/selection functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
+      },
+      {
+        "symbols": [
+          "internal/network/closedprofile.ValidateTokenSPKI",
+          "internal/network/closedprofile.Verify",
+          "internal/network/closedprofile.decodeKeys",
+          "internal/network/closedprofile.decodeNodes",
+          "internal/network/closedprofile.decoder.byte",
+          "internal/network/closedprofile.decoder.bytes",
+          "internal/network/closedprofile.decoder.done",
+          "internal/network/closedprofile.decoder.uint16",
+          "internal/network/closedprofile.decoder.uint64",
+          "internal/network/closedprofile.newDecoder",
+          "internal/network/closedprofile.parseBody",
+          "internal/network/closedprofile.validDuty",
+          "internal/network/state.closedProfileGeneration",
+          "internal/network/state.closedProfileView",
+          "internal/network/state.closedRoleDomain",
+          "internal/network/state.matchesClosedProfileCandidates",
+          "internal/network/state.networkState.AcceptClosedProfile",
+          "internal/network/state.networkState.acceptClosedProfileWithCommit",
+          "internal/network/state.networkState.verifyClosedProfileLocked",
+          "internal/network/state/durable.ClosedProfileState.valid",
+          "internal/network/state/durable.Root.CommitClosedProfile",
+          "internal/network/state/durable.Root.LoadClosedProfile",
+          "internal/network/state/durable.Root.commitClosedProfileWithOps",
+          "internal/network/state/durable.closedProfileBytesName",
+          "internal/network/state/durable.closedProfileStateName",
+          "internal/network/state/durable.decodeClosedProfileState",
+          "internal/network/state/durable.encodeClosedProfileState",
+          "internal/network/state/durable.publishClosedProfileBytes",
+          "internal/network/state/durable.replaceClosedProfileState",
+          "internal/network/state/durable.replaceClosedProfileStateWithSync",
+          "internal/network/state/durable.standardClosedProfileByteOps",
+          "internal/network/state/durable.syncClosedProfileFile"
+        ],
+        "classification": "retired legacy closed-profile acceptance subtree orphaned by the #493 offline State cutover (windows-amd64)",
+        "rationale": "The ardents accept-offline and accept-closed-profile adapters now consume the successor State owner (#493). On Windows the legacy offline acceptance command was the sole production caller of the old closed-profile verification, acceptance and durable-publication subtree; after the cutover these functions are production-unreachable there. Linux retains genuine legacy-runtime callers, so no Linux allowance is granted. Every function remains exercised by the legacy State test inventory in both platform test analyses, so no fully-dead test allowance is added.",
+        "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
+        "retirement": "Remove each exact symbol when the gated legacy cohort removal retires its owning Module, or when a selected genuine Windows production caller reaches it again. Lost Linux production reachability requires repair; both platform test analyses must remain unchanged."
       }
     ]
   },
