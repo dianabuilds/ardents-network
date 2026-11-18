@@ -82,7 +82,7 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if !vault.now().UTC().Truncate(time.Hour).Equal(now) {
 		return Receipt{}, ErrInvalid
 	}
-	source, _, err := vault.openCurrentAdmissionAuthority(operation.RecordID, password, operation.Expected)
+	source, sourceInfo, err := vault.openCurrentAdmissionAuthority(operation.RecordID, password, operation.Expected)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -116,7 +116,7 @@ func (vault *Vault) issueAdmissionPermission(ctx context.Context, operation Oper
 	if err != nil {
 		return Receipt{}, err
 	}
-	info, err := vault.writeAdmissionSuccessor(operation.RecordID, source, successor, password, now)
+	info, err := vault.writeAdmissionSuccessor(operation.RecordID, source, sourceInfo, successor, password, now)
 	if err != nil {
 		return Receipt{}, err
 	}
@@ -329,30 +329,22 @@ func admissionLedgerFollowsFloor(state authorityState, floor authorityFloor) boo
 	return true
 }
 
-func (vault *Vault) writeAdmissionSuccessor(recordID string, source, expected authorityState, password []byte, window time.Time) (EnvelopeInfo, error) {
+// writeAdmissionSuccessor commits the next admission authority. source is the
+// current authority already decrypted and validated by openCurrentAdmissionAuthority
+// within this same locked operation, and sourceInfo is its envelope projection.
+// The ledger cannot change under the vault lock, so the successor check reuses
+// source instead of re-deriving the ledger key (audit DD-5). source's secret
+// material remains owned and cleared by the caller; this function only reads it.
+func (vault *Vault) writeAdmissionSuccessor(recordID string, source authorityState, sourceInfo EnvelopeInfo, expected authorityState, password []byte, window time.Time) (EnvelopeInfo, error) {
 	path, err := admissionLedgerPath(vault.root, recordID)
 	if err != nil {
 		return EnvelopeInfo{}, err
 	}
-	raw, err := readEnvelopeFile(path)
-	defer clear(raw)
-	if err == nil {
-		state, info, openErr := openAdmissionAuthority(raw, password, expected.Binding)
-		if openErr == nil && sameAuthorityState(state, expected) {
-			clear(state.RootMaterial)
-			clear(state.AdmissionJournal)
-			return info, nil
+	if _, err := os.Lstat(path); err == nil {
+		if sameAuthorityState(source, expected) {
+			return sourceInfo, nil
 		}
-		if openErr != nil || !sameAuthorityState(state, source) {
-			clear(state.RootMaterial)
-			clear(state.AdmissionJournal)
-			clear(raw)
-			return EnvelopeInfo{}, ErrInvalid
-		}
-		clear(state.RootMaterial)
-		clear(state.AdmissionJournal)
-	}
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
+	} else if !errors.Is(err, os.ErrNotExist) {
 		return EnvelopeInfo{}, ErrInvalid
 	}
 	plaintext, err := encodeAuthorityState(PurposeVault, expected)

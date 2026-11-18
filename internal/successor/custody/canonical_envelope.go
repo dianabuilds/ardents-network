@@ -170,7 +170,11 @@ func validateKDF(profile kdfProfile) error {
 	return nil
 }
 
-func deriveKey(password, salt []byte) []byte {
+// deriveKey is the envelope argon2id derivation. It is a package-level variable
+// so operation tests can count derivations within one custody operation (audit
+// DD-5); production callers sealEnvelope/openEnvelope use the default derivation
+// unchanged. Tests must restore it before returning.
+var deriveKey = func(password, salt []byte) []byte {
 	return argon2.IDKey(password, salt, kdfPasses, kdfMemoryKiB, kdfLanes, 32)
 }
 
