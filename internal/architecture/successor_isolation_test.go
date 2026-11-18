@@ -551,6 +551,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/endpoint_launch_native_linux_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/unit" || dependency == modulePath+"/internal/successor/network/source") {
 		return true
 	}
+	if source == "cmd/ardents-next/endpoint_journey_native_linux_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/unit" || dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/route/transport") {
+		return true
+	}
 	if (source == "cmd/ardents-next/platform_unit_linux.go" || source == "cmd/ardents-next/platform_linux_test.go" || source == "cmd/ardents-next/source_repair_linux.go" || source == "cmd/ardents-next/introduction_repair_linux.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
@@ -1401,7 +1404,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/endpoint/participant_linux.go" || source == "cmd/ardents-next/installed_service_linux_test.go") && dependency == modulePath+"/internal/application/administration" {
 		return true
 	}
-	if source == "cmd/ardents-next/installed_pair_linux_test.go" {
+	if source == "cmd/ardents-next/installed_pair_linux_test.go" || source == "cmd/ardents-next/endpoint_journey_native_linux_test.go" {
 		switch dependency {
 		case modulePath + "/internal/application/administration", modulePath + "/internal/application/connection", modulePath + "/internal/application/textdocument":
 			return true
@@ -1897,6 +1900,15 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint pair native controller excludes old Endpoint", "cmd/ardents-next/endpoint_pair_native_linux_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint pair native controller has no Node runtime", "cmd/ardents-next/endpoint_pair_native_linux_test.go", modulePath + "/internal/successor/node", false},
 		{"Endpoint pair native controller has no direct Source edge", "cmd/ardents-next/endpoint_pair_native_linux_test.go", modulePath + "/internal/successor/network/source", false},
+		{"Endpoint journey native qualification uses new Enrollment", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/successor/enrollment", true},
+		{"Endpoint journey native qualification uses unit contract", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/successor/installation/unit", true},
+		{"Endpoint journey native qualification uses live Source", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/successor/network/source", true},
+		{"Endpoint journey native qualification names selected Carrier", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/successor/route/transport", true},
+		{"Endpoint journey native qualification uses public Administration client", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/application/administration", true},
+		{"Endpoint journey native qualification uses public Connection client", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/application/connection", true},
+		{"Endpoint journey native qualification uses actual text exchange", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/application/textdocument", true},
+		{"Endpoint journey native qualification excludes old Endpoint", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/endpoint", false},
+		{"Endpoint journey native qualification has no Node runtime", "cmd/ardents-next/endpoint_journey_native_linux_test.go", modulePath + "/internal/successor/node", false},
 		{"unsafe", "internal/successor/admission/check.go", "unsafe", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
