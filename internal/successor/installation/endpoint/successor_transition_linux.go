@@ -392,7 +392,7 @@ func (owned *successorPreparation) inspectStagedCandidate() error {
 	if err := owned.inspection.observeAccountAndRoots(checked); err != nil {
 		return err
 	}
-	if err := owned.inspection.inspectFixedResources(owned.ctx, checked); err != nil {
+	if err := owned.inspection.inspectFixedResources(owned.ctx, checked, false); err != nil {
 		return err
 	}
 	if err := owned.observe(); err != nil {

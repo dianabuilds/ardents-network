@@ -136,7 +136,7 @@ func (reader *installedRoot) inspectSelected(ctx context.Context) (inspectedGene
 	if err := reader.observeAccountAndRoots(checked); err != nil {
 		return inspectedGeneration{}, err
 	}
-	if err := reader.inspectFixedResources(ctx, checked); err != nil {
+	if err := reader.inspectFixedResources(ctx, checked, false); err != nil {
 		return inspectedGeneration{}, err
 	}
 	if err := reader.observe(ctx); err != nil {
@@ -187,7 +187,7 @@ func (reader *installedFiles) observeAccountAndRoots(checked inspectedGeneration
 	return nil
 }
 
-func (reader *installedFiles) inspectFixedResources(ctx context.Context, checked inspectedGeneration) error {
+func (reader *installedFiles) inspectFixedResources(ctx context.Context, checked inspectedGeneration, platformLed bool) error {
 	digests := make(map[string]string)
 	for filename, name := range fixedResourceNames() {
 		mode := os.FileMode(0644)
@@ -195,6 +195,16 @@ func (reader *installedFiles) inspectFixedResources(ctx context.Context, checked
 			mode = 0555
 		}
 		if name == "ardents-endpoint.service" {
+			// Platform-led delivery installs the platform main unit (the enrolled
+			// base render plus the sole privileged F-25 ExecStartPre), not the
+			// transitional endpoint-unit.service render retained in the generation.
+			// Its exact bytes are verified by the pre-start platform check and its
+			// loaded confinement/command binding by the running platform observation
+			// (VerifyPlatformRunning); the transitional byte comparison does not
+			// apply. Worker resources remain exactly compared below.
+			if platformLed {
+				continue
+			}
 			name = "endpoint-unit.service"
 		}
 		body, err := reader.read(ctx, filename, 64<<20, mode, 0)

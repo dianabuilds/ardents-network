@@ -5197,10 +5197,51 @@ unit, trust roots and configuration.
 This is component/acceptance evidence with fixture Release authority for the F-25
 pre-start trust transfer on the real platform. It opens no Network State, starts
 no participant and claims no Service readiness; the installed two-participant
-privacy journey and full `start-installed` platform-led Service readiness remain
-separate #391 acceptance. The transitional installation orchestration is neither
-exercised nor retired here (ADR-0125 D6 gates retirement on proven replacement
-guarantees).
+privacy journey remains separate #391 acceptance. The transitional installation
+orchestration is neither exercised nor retired here (ADR-0125 D6 gates retirement
+on proven replacement guarantees).
+
+## Protected Endpoint platform-led full-launch native qualification
+
+The `endpoint_launch_native` build tag selects
+`cmd/ardents-next/endpoint_launch_native_linux_test.go`
+(`TestNativeEndpointPlatformLedLaunch` + `...Refusals`), a real-host root-driver
+qualification on an admitted Ubuntu/systemd manager (systemd 249/255,
+`/usr/bin/busctl --system`, cgroup v2). Missing privileges or manager fail, never
+a passing skip. It is not a `make quick-check` lane; the ordinary suite excludes
+the tag while `scripts/check-deadcode.go` compiles it so native coverage counts.
+
+It proves the FULL platform-led launch chain to protected text Service readiness
+for ONE dual-role (publisher+reader) Endpoint (#391 S1): genuine Network State +
+live Source servers + fixture Release authority + enrolled protected candidate;
+`installation provision` delivery staging creates the installed-stopped root (no
+`start-guard.json`, hence platform-led compatible); `endpoint prepare-history` and
+`hosting initialize` prepare the genuine histories; the platform main unit (sole
+privileged F-25 `ExecStartPre`) and canonical socket-activated worker units are
+installed; systemd starts the participant (no root ACK); the F-25 pre-start check
+transfers accepted current-program identity; `endpoint start-installed` runs the
+platform-led participant; an independent fixture permission granter signs the
+permission requests; the test observes the original-process administration and
+application listeners (Service readiness). Causal pre-effect refusals cover
+substituted program/unit/credential, wrong account and foreign manifest pin.
+Joined cleanup removes the account, units, worker instances, trust roots and
+configuration; the test is repeatable (`-count=2`).
+
+Supporting production repair (same change): `installation/endpoint`
+`createEndpointAccount` allocates a dedicated uid==gid account (the infrastructure
+Source and platform pre-start account contract; `useradd --user-group` previously
+produced uid!=gid that the platform check refuses), and `inspectFixedResources`
+admits the platform-led main unit — its exact bytes are verified by the F-25
+pre-start check and its loaded confinement/command binding by the running platform
+observation (`VerifyPlatformRunning`) — while transitional Check/transition/recovery
+callers keep the exact enrolled-unit comparison. Worker resources remain exactly
+compared in both modes.
+
+This is component/acceptance evidence with fixture authority for one dual-role
+Endpoint reaching Service readiness. It is NOT the two-participant privacy
+qualification (#391 S2: two separately admitted managers, publish/link/read over
+the Carrier). The transitional guarded-start/ACK/recovery orchestration is neither
+exercised nor retired (ADR-0125 D6).
 
 ## Bounded Authority Custody native lane
 

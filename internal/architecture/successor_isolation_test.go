@@ -548,6 +548,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/endpoint_platform_native_linux_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/installation/request" || dependency == modulePath+"/internal/successor/installation/unit" || dependency == modulePath+"/internal/successor/release") {
 		return true
 	}
+	if source == "cmd/ardents-next/endpoint_launch_native_linux_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/unit" || dependency == modulePath+"/internal/successor/network/source") {
+		return true
+	}
 	if (source == "cmd/ardents-next/platform_unit_linux.go" || source == "cmd/ardents-next/platform_linux_test.go" || source == "cmd/ardents-next/source_repair_linux.go" || source == "cmd/ardents-next/introduction_repair_linux.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
@@ -1884,6 +1887,12 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint platform native qualification excludes old Release", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/release", false},
 		{"Endpoint platform native qualification has no Node runtime", "cmd/ardents-next/endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/node", false},
 		{"adjacent Endpoint native test has no inherited Release edge", "cmd/ardents-next/other_endpoint_platform_native_linux_test.go", modulePath + "/internal/successor/release", false},
+		{"Endpoint launch native qualification uses new Enrollment", "cmd/ardents-next/endpoint_launch_native_linux_test.go", modulePath + "/internal/successor/enrollment", true},
+		{"Endpoint launch native qualification uses unit contract", "cmd/ardents-next/endpoint_launch_native_linux_test.go", modulePath + "/internal/successor/installation/unit", true},
+		{"Endpoint launch native qualification uses live Source", "cmd/ardents-next/endpoint_launch_native_linux_test.go", modulePath + "/internal/successor/network/source", true},
+		{"Endpoint launch native qualification excludes old Endpoint", "cmd/ardents-next/endpoint_launch_native_linux_test.go", modulePath + "/internal/endpoint", false},
+		{"Endpoint launch native qualification has no Node runtime", "cmd/ardents-next/endpoint_launch_native_linux_test.go", modulePath + "/internal/successor/node", false},
+		{"adjacent Endpoint launch test has no inherited Source edge", "cmd/ardents-next/other_endpoint_launch_native_linux_test.go", modulePath + "/internal/successor/network/source", false},
 		{"unsafe", "internal/successor/admission/check.go", "unsafe", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
