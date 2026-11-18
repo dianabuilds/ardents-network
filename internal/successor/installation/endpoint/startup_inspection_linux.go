@@ -31,15 +31,24 @@ type startupLifetime struct {
 	result     error
 }
 
-// OpenStartup observes this actual non-root installed invocation, joins the
-// bounded original root exchange and reobserves it before yielding any plans.
+// OpenStartup observes this actual non-root installed invocation and reobserves
+// it before yielding any plans. The transitional root guarded-start retains a
+// private start-guard.json intent and awaits this participant's bounded completion
+// exchange; OpenStartup joins that exchange. Platform-led delivery (ADR-0125) has
+// no root start operation: systemd owns start, the ExecStartPre platform check
+// transferred accepted current-program identity before this invocation, and the
+// participant validates itself against the platform without a root ACK. The
+// retained start-guard.json presence selects the mode; both paths keep the same
+// independent generation, account, invocation and manager observation.
 func OpenStartup(ctx context.Context, directory string) (*Startup, error) {
 	inspection, err := openStartupInspection(ctx, directory)
 	if err != nil {
 		return nil, err
 	}
-	if err := inspection.awaitRootCompletion(); err != nil {
-		return nil, errors.Join(err, inspection.close())
+	if !inspection.platformLed {
+		if err := inspection.awaitRootCompletion(); err != nil {
+			return nil, errors.Join(err, inspection.close())
+		}
 	}
 	return &Startup{lifetime: &startupLifetime{inspection: inspection}}, nil
 }
@@ -113,6 +122,7 @@ type startupInspection struct {
 	invocation          *process.Invocation
 	id                  [16]byte
 	manager             string // original unique bus owner, never rebound
+	platformLed         bool   // no root guarded-start intent; systemd owns start
 	terminal            error
 	completion          *completion.Exchange
 	completionAttempted bool
@@ -153,6 +163,16 @@ func openStartupInspection(ctx context.Context, directory string) (result *start
 			result = nil
 		}
 	}()
+	// The transitional root guarded-start retains its private start intent before
+	// manager start; its absence selects platform-led delivery (systemd owns start,
+	// no root completion exchange). Only root can create that private record, so a
+	// caller cannot select the mode by writing it.
+	if _, guardErr := s.root.Lstat("start-guard.json"); guardErr != nil {
+		if !errors.Is(guardErr, os.ErrNotExist) {
+			return nil, errors.Join(ErrBinding, guardErr)
+		}
+		s.platformLed = true
+	}
 	selectedRaw, err := s.files.read(ctx, filepath.Join(directory, "selection.json"), 4<<10, 0640, native.Gid)
 	if err != nil {
 		return nil, err
@@ -279,7 +299,15 @@ func (s *startupInspection) observeManager() error {
 		return ErrBinding
 	}
 	for _, round := range observation.Rounds {
-		if err := verifyRunningEndpointProperties(observation.Version, round.EndpointUnit, round.EndpointService, s.checked.request, s.checked.selected.GenerationDigest, uint32(os.Getpid()), s.id); err != nil {
+		if s.platformLed {
+			checkProgram, manifest, pin, err := platformCheckBinding(round.EndpointService)
+			if err != nil {
+				return err
+			}
+			if err := verifyPlatformRunningEndpointProperties(observation.Version, round.EndpointUnit, round.EndpointService, s.checked.request, s.checked.selected.GenerationDigest, uint32(os.Getpid()), s.id, checkProgram, manifest, pin); err != nil {
+				return err
+			}
+		} else if err := verifyRunningEndpointProperties(observation.Version, round.EndpointUnit, round.EndpointService, s.checked.request, s.checked.selected.GenerationDigest, uint32(os.Getpid()), s.id); err != nil {
 			return err
 		}
 		if err := verifyBoundActivationSocket(round.ReaderUnit, round.ReaderSocket, "reader"); err != nil {

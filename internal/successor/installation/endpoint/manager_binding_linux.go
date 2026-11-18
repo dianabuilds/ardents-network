@@ -2,6 +2,7 @@ package endpoint
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/installation/unit"
@@ -46,6 +47,40 @@ func verifyRunningEndpointProperties(version string, unit, service managerProper
 		return err
 	}
 	return unitObservationError(endpointunit.VerifyRunning(version, unit, service, expected, generationDigest, pid, invocation))
+}
+
+// verifyPlatformRunningEndpointProperties admits the running platform-managed
+// invocation. The F-25 ExecStartPre platform check transferred accepted
+// current-program identity before this start; the binding below is read from the
+// loaded pre-start argv and re-checked against the complete platform confinement
+// and this exact running process. It grants no installation or start authority.
+func verifyPlatformRunningEndpointProperties(version string, unit, service managerProperties, request installationRequest, generationDigest string, pid uint32, invocation [16]byte, checkProgram, manifest, pin string) error {
+	expected, err := expectedUnit(request)
+	if err != nil {
+		return err
+	}
+	return unitObservationError(endpointunit.VerifyPlatformRunning(version, unit, service, expected, generationDigest, pid, invocation, checkProgram, manifest, pin))
+}
+
+// platformCheckBinding reads the sole privileged F-25 pre-start argv from the
+// loaded ExecStartPreEx. The exact launch-declaration digest was verified by the
+// platform check before start; this projection only retains that bound argv so
+// the running confinement observation re-checks the same pre-start binding.
+func platformCheckBinding(service managerProperties) (checkProgram, manifest, pin string, err error) {
+	value, found := service["ExecStartPreEx"]
+	var entries [][]json.RawMessage
+	if !found || value.Type != "a(sasasttttuii)" || systemd.Decode(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
+		return "", "", "", ErrBinding
+	}
+	var argv []string
+	if systemd.Decode(entries[0][1], &argv) != nil || len(argv) != 5 || argv[1] != "platform" || argv[2] != "check" {
+		return "", "", "", ErrBinding
+	}
+	var program string
+	if systemd.Decode(entries[0][0], &program) != nil || program != argv[0] {
+		return "", "", "", ErrBinding
+	}
+	return argv[0], argv[3], argv[4], nil
 }
 
 func verifyQuiescentEndpointProperties(version string, unit, service managerProperties, request installationRequest, generationDigest string) error {

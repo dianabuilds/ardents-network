@@ -1063,6 +1063,7 @@
           "internal/successor/installation/unit.quoteUnitPath",
           "internal/successor/installation/unit.unitPath",
           "internal/successor/installation/unit.verifyActivationSocketState",
+          "internal/successor/installation/unit.verifyRunningInvocation",
           "internal/successor/installation/unit.verifyStoppedEndpointExec"
         ],
         "classification": "portable Installation rules behind actual Linux installation consumers",
@@ -2952,6 +2953,7 @@
       {
         "symbols": [
           "internal/successor/installation/unit.VerifyPlatformConfiguration",
+          "internal/successor/installation/unit.VerifyPlatformRunning",
           "internal/successor/installation/unit.platformPreExecMatches",
           "internal/successor/installation/unit.verifyEndpointConfiguration"
         ],

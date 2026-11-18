@@ -356,6 +356,21 @@ Before returning the plan, startup observes both live socket units through typed
 manager properties and checks their fixed fragments, PartOf, listening state,
 Endpoint ownership, mode0600 and removal-on-stop contract.
 Effective stop/activation ordering still needs admitted installed qualification.
+`start-installed` admits two launch modes selected by the retained root start
+intent. The transitional root guarded-start retains a private `start-guard.json`
+and the participant joins its bounded completion exchange before yielding plans.
+Platform-led delivery (ADR-0125) has no root start operation: `start-guard.json`
+is absent, systemd owns start, and the ExecStartPre `platform check` transferred
+accepted current-program identity before this invocation. In that mode the
+participant skips the root completion exchange and validates the running
+invocation against the complete platform confinement (`VerifyPlatformRunning`,
+the sole privileged F-25 pre-start argv read from the loaded `ExecStartPreEx`)
+plus the same exact MainPID/InvocationID/control group and started clocks. Only
+root can create the private start intent, so a caller cannot select the mode by
+writing it. Both modes keep the same independent generation, account, invocation
+and manager observation; the transitional orchestration remains until its
+required guarantees are proven by the platform-led replacement and it is retired
+by the separately gated cohort step.
 During successor start a root-private `start-guard.json` retains the exact intent
 independently of cursor archival. Before manager start, root binds a private
 ephemeral Unix completion socket under the protected installation root. The
