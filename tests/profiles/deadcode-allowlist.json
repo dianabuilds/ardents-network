@@ -1946,6 +1946,7 @@
           "internal/successor/publication/instance.Binding.checkLocal",
           "internal/successor/publication/instance.Binding.consumeOriginal",
           "internal/successor/publication/instance.Binding.observe",
+          "internal/successor/publication/instance.Binding.observeRounds",
           "internal/successor/publication/instance.PublicationLifetime.BeginService",
           "internal/successor/publication/instance.PublicationLifetime.CheckLocal",
           "internal/successor/publication/instance.Recipient.checkLocal",
