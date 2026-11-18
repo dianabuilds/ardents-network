@@ -854,6 +854,7 @@
           "internal/successor/network/duty.store.retainOriginalNode",
           "internal/successor/node.separateRoots",
           "internal/successor/processresource.nativeCounter",
+          "internal/successor/processresource.nativeMemoryEvents",
           "internal/successor/processresource.nativePressure"
         ],
         "classification": "Linux Forwarding native composition with portable rule tests",
