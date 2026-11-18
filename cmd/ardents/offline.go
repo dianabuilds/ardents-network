@@ -14,6 +14,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 )
 
+// refresh-sources is retired (#493): the successor State owner never samples
+// process resources and the platform-led runtime owns automatic Source refresh,
+// so the standalone legacy refresh command has no successor translation. It
+// refuses before input or root effects.
+var errRefreshSourcesRetired = errors.New("refresh-sources is retired; the platform-led runtime owns automatic Source refresh")
+
 func run(ctx context.Context, arguments []string, output io.Writer) error {
 	return runWithInput(ctx, arguments, os.Stdin, output)
 }
@@ -38,13 +44,13 @@ func runWithInput(ctx context.Context, arguments []string, input io.ReadCloser, 
 		return errors.New("service-instance is retired; use ardents-next publication-instance")
 	}
 	if len(arguments) > 0 && arguments[0] == "refresh-sources" {
-		return runRefreshSources(ctx, arguments, output)
+		return errRefreshSourcesRetired
 	}
 	if len(arguments) > 0 && arguments[0] == "accept-closed-profile" {
 		return runAcceptClosedProfile(arguments[1:], output)
 	}
 	if len(arguments) == 0 || arguments[0] != "accept-offline" {
-		return errors.New("usage: ardents <accept-offline|accept-closed-profile|refresh-sources|diagnostics|endpoint|entry|name> arguments")
+		return errors.New("usage: ardents <accept-offline|accept-closed-profile|diagnostics|endpoint|entry|name> arguments")
 	}
 	return runAcceptOffline(ctx, arguments[1:], output)
 }

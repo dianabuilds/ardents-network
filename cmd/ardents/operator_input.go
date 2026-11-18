@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -43,16 +42,4 @@ func decodeOperatorFixedHex(encoded string, destination []byte) error {
 	}
 	copy(destination, decoded)
 	return nil
-}
-
-func readOperatorKeyPair(certificatePath, keyPath string) (tls.Certificate, error) {
-	certificate, err := readOperatorInput(certificatePath, 64<<10)
-	if err != nil {
-		return tls.Certificate{}, err
-	}
-	key, err := readOperatorInput(keyPath, 64<<10)
-	if err != nil {
-		return tls.Certificate{}, err
-	}
-	return tls.X509KeyPair(certificate, key)
 }
