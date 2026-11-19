@@ -34,6 +34,12 @@ func TestMain(m *testing.M) {
 }
 func compiledCommand(t *testing.T) string {
 	t.Helper()
+	// A native guest may receive an independently prebuilt canonical consumer so
+	// it does not repeat the Go build under shared-host load; the bytes are still
+	// the canonical command, pinned by the caller.
+	if prebuilt := os.Getenv("ARDENTS_PREBUILT_NEXT"); prebuilt != "" {
+		return prebuilt
+	}
 	commandBuild.once.Do(func() {
 		commandBuild.directory, commandBuild.err = os.MkdirTemp("", "ardents-next-tests-")
 		if commandBuild.err != nil {
