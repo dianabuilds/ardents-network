@@ -176,6 +176,13 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 		defer func() {
 			result = errors.Join(result, holder.Close())
 		}()
+		// A platform-led restart erases the volatile holder; retire the prior
+		// invocation's handover so this fresh invocation can publish its own fresh
+		// holder request for external authority re-approval. First boot has no
+		// handover and this is a no-op; the durable presentation journal is retained.
+		if err := installedPermissionRetire(permission.RequestPath, permission.ResponsePath, check); err != nil {
+			return phase, errors.Join(ErrUnavailable, err)
+		}
 		originalFacts, _, err := observe()
 		if err != nil {
 			return phase, errors.Join(ErrUnavailable, err)

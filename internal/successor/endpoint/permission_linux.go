@@ -113,6 +113,80 @@ func installedPermissionRequest(path string, raw []byte, check func() error) (er
 	return current()
 }
 
+// installedPermissionRetire retires a prior invocation's permission handover so a
+// fresh platform-led invocation can publish its own fresh holder request. The
+// volatile holder is erased at shutdown, so a restart requires a fresh holder and a
+// fresh external authority approval, never a revival of the preceding allocation.
+// Retirement removes only endpoint-owned regular handover files under the original
+// private parent, response before request so a stale grant can never pair with a
+// fresh request. A foreign, partial or substituted handover is retained as a
+// refusal and never removed. Retirement grants no authority: the external permission
+// authority must still sign the fresh request, and the durable presentation journal
+// retains every prior spend. The within-invocation publish rule
+// (installedPermissionRequest) is unchanged; this is a distinct bootstrap-phase
+// lifecycle step, and at bootstrap any existing handover necessarily belongs to a
+// prior invocation because this process has not published yet.
+func installedPermissionRetire(requestPath, responsePath string, check func() error) (err error) {
+	if check == nil || !filepath.IsAbs(requestPath) || filepath.Clean(requestPath) != requestPath ||
+		!filepath.IsAbs(responsePath) || filepath.Clean(responsePath) != responsePath {
+		return errors.New("invalid installed permission handover")
+	}
+	parent := filepath.Dir(requestPath)
+	if filepath.Dir(responsePath) != parent {
+		return errors.New("invalid installed permission handover")
+	}
+	resolved, err := filepath.EvalSymlinks(parent)
+	if err != nil || resolved != parent {
+		return errors.Join(errors.New("permission parent unavailable"), err)
+	}
+	before, err := os.Lstat(parent)
+	if err != nil || !installedPermissionOwned(before, true) {
+		return errors.Join(errors.New("permission parent unavailable"), err)
+	}
+	root, err := os.OpenRoot(parent)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, root.Close()) }()
+	current := func() error {
+		if err := check(); err != nil {
+			return err
+		}
+		opened, a := root.Stat(".")
+		linked, b := os.Lstat(parent)
+		if a != nil || b != nil || !os.SameFile(before, opened) || !os.SameFile(before, linked) || !installedPermissionOwned(linked, true) {
+			return errors.Join(errors.New("permission parent changed"), a, b)
+		}
+		return nil
+	}
+	if err := current(); err != nil {
+		return err
+	}
+	for _, name := range []string{filepath.Base(responsePath), filepath.Base(requestPath)} {
+		linked, err := root.Lstat(name)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil || !installedPermissionOwned(linked, false) {
+			return errors.Join(errors.New("permission handover changed"), err)
+		}
+		if err := root.Remove(name); err != nil {
+			return errors.Join(errors.New("permission handover retirement failed"), err)
+		}
+		if err := current(); err != nil {
+			return err
+		}
+	}
+	directory, err := root.Open(".")
+	if err != nil {
+		return err
+	}
+	if err := errors.Join(directory.Sync(), directory.Close()); err != nil {
+		return err
+	}
+	return current()
+}
+
 func installedPermissionRead(path string) (raw []byte, err error) {
 	if !filepath.IsAbs(path) || filepath.Clean(path) != path {
 		return nil, errors.New("invalid permission response path")

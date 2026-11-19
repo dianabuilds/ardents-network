@@ -144,3 +144,154 @@ func TestInstalledPermissionResponseCustody(t *testing.T) {
 		t.Fatal("accepted partial response")
 	}
 }
+
+func TestInstalledPermissionRetireRestart(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.Chmod(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	requestPath := filepath.Join(directory, "request")
+	responsePath := filepath.Join(directory, "response")
+	check := func() error { return nil } // Filesystem mechanism only; no authority fixture.
+	// First boot has no handover; retirement is a no-op.
+	if err := installedPermissionRetire(requestPath, responsePath, check); err != nil {
+		t.Fatal("first-boot retirement", err)
+	}
+	original := []byte("prior invocation public request")
+	if err := installedPermissionRequest(requestPath, original, check); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(responsePath, bytes.Repeat([]byte{9}, 228), 0600); err != nil {
+		t.Fatal(err)
+	}
+	// The single-shot publish rule is unchanged: a differing fresh request is
+	// refused while the prior invocation's handover is retained.
+	if err := installedPermissionRequest(requestPath, []byte("fresh invocation request"), check); err == nil {
+		t.Fatal("replaced a prior invocation request without retirement")
+	}
+	// Retirement clears the prior handover so the fresh invocation can publish.
+	if err := installedPermissionRetire(requestPath, responsePath, check); err != nil {
+		t.Fatal("restart retirement", err)
+	}
+	if _, err := os.Lstat(requestPath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("retirement retained the prior request", err)
+	}
+	if _, err := os.Lstat(responsePath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("retirement retained the prior response", err)
+	}
+	fresh := []byte("fresh invocation request")
+	if err := installedPermissionRequest(requestPath, fresh, check); err != nil {
+		t.Fatal("fresh invocation publish after retirement", err)
+	}
+	retained, err := os.ReadFile(requestPath)
+	if err != nil || !bytes.Equal(retained, fresh) {
+		t.Fatal("fresh invocation request bytes", err)
+	}
+}
+
+func TestInstalledPermissionRetireResponseBeforeRequest(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.Chmod(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	requestPath := filepath.Join(directory, "request")
+	responsePath := filepath.Join(directory, "response")
+	if err := os.WriteFile(requestPath, []byte("prior request"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(responsePath, bytes.Repeat([]byte{9}, 228), 0600); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	check := func() error {
+		calls++
+		if calls == 2 {
+			return errors.New("interrupted after response retirement")
+		}
+		return nil
+	}
+	if err := installedPermissionRetire(requestPath, responsePath, check); err == nil {
+		t.Fatal("accepted interrupted retirement")
+	}
+	if _, err := os.Lstat(responsePath); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("response not retired first", err)
+	}
+	if _, err := os.Lstat(requestPath); err != nil {
+		t.Fatal("request removed before response retirement completed", err)
+	}
+}
+
+func TestInstalledPermissionRetireRefusesForeignHandover(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.Chmod(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	requestPath := filepath.Join(directory, "request")
+	responsePath := filepath.Join(directory, "response")
+	check := func() error { return nil }
+	// A shared-mode request is not a private handover; retirement refuses and
+	// retains it rather than removing a foreign file.
+	if err := os.WriteFile(requestPath, []byte("shared request"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := installedPermissionRetire(requestPath, responsePath, check); err == nil {
+		t.Fatal("retired a shared-mode request")
+	}
+	if _, err := os.Lstat(requestPath); err != nil {
+		t.Fatal("refusal removed the foreign request", err)
+	}
+	if err := os.Chmod(requestPath, 0600); err != nil {
+		t.Fatal(err)
+	}
+	// A symlink response is refused without touching its target.
+	target := filepath.Join(directory, "target")
+	if err := os.WriteFile(target, []byte("untouched"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, responsePath); err != nil {
+		t.Fatal(err)
+	}
+	if err := installedPermissionRetire(requestPath, responsePath, check); err == nil {
+		t.Fatal("retired a symlink response")
+	}
+	if raw, err := os.ReadFile(target); err != nil || string(raw) != "untouched" {
+		t.Fatal("symlink refusal changed target", err)
+	}
+	if _, err := os.Lstat(responsePath); err != nil {
+		t.Fatal("refusal removed the symlink entry", err)
+	}
+}
+
+func TestInstalledPermissionRetireRefusesParentReplacementAndCancellation(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "handover")
+	if err := os.Mkdir(directory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	requestPath := filepath.Join(directory, "request")
+	responsePath := filepath.Join(directory, "response")
+	if err := os.WriteFile(requestPath, []byte("prior request"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := installedPermissionRetire(requestPath, responsePath, func() error { return context.Canceled }); !errors.Is(err, context.Canceled) {
+		t.Fatal("cancelled retirement", err)
+	}
+	if _, err := os.Lstat(requestPath); err != nil {
+		t.Fatal("cancelled retirement removed the request", err)
+	}
+	calls := 0
+	check := func() error {
+		calls++
+		if calls == 2 {
+			if err := os.Rename(directory, directory+"-original"); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Mkdir(directory, 0700); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return nil
+	}
+	if err := installedPermissionRetire(requestPath, responsePath, check); err == nil {
+		t.Fatal("accepted replacement parent")
+	}
+}
