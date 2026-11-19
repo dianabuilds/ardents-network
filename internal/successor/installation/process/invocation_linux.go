@@ -189,7 +189,7 @@ func (pin *Invocation) Observe(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if !bytes.Equal(cgroup, []byte(pin.placement)) {
+	if !cgroupPlacementMatches(cgroup, pin.placement) {
 		return errBinding
 	}
 	environment, err := pin.read(ctx, "environ", 64<<10)
@@ -235,4 +235,26 @@ func executableNative(info os.FileInfo) (*syscall.Stat_t, bool) {
 	}
 	native, ok := info.Sys().(*syscall.Stat_t)
 	return native, ok
+}
+
+// cgroupPlacementMatches reports whether the retained process cgroup carries the
+// exact expected unified cgroup2 placement. The authoritative entry is the single
+// "0::" (unified) line; its path must equal the expected placement byte for byte,
+// so a process moved to a different cgroup2 path is still refused. Ubuntu 22.04
+// hybrid mode adds a redundant v1 "name=systemd" tracking line that carries no
+// controllers and grants no confinement; that line is tolerated while the cgroup2
+// placement remains exactly verified. A missing or repeated unified line refuses.
+func cgroupPlacementMatches(cgroup []byte, placement string) bool {
+	var unified []byte
+	count := 0
+	for _, line := range bytes.Split(cgroup, []byte{'\n'}) {
+		if bytes.HasPrefix(line, []byte("0::")) {
+			unified = line
+			count++
+		}
+	}
+	if count != 1 {
+		return false
+	}
+	return bytes.Equal(unified, bytes.TrimSuffix([]byte(placement), []byte{'\n'}))
 }

@@ -141,10 +141,17 @@ func unitAfterEndpoint(unit properties) bool {
 }
 
 func endpointStopsWithMain(service properties, version uint16) bool {
-	if version != 255 || !service.exact("RemainAfterExit", "b", false) {
+	if (version != 249 && version != 255) || !service.exact("RemainAfterExit", "b", false) {
 		return false
 	}
+	// ExitType and RestartMode are systemd 255 properties; 249 has no such named
+	// properties and its default exit behaviour already stops the unit with its
+	// main process. Mirror the unit contract: tolerate their absence on 249, but
+	// require the exact values whenever present (and always on 255).
 	for key, want := range map[string]string{"ExitType": "main", "RestartMode": "normal"} {
+		if _, present := service[key]; !present && version == 249 {
+			continue
+		}
 		if !service.exact(key, "s", want) {
 			return false
 		}
@@ -186,7 +193,7 @@ func ubuntuRelease(body []byte) bool {
 		}
 	}
 	id, version = strings.Trim(id, "\""), strings.Trim(version, "\"")
-	return id == "ubuntu" && version == "24.04"
+	return id == "ubuntu" && (version == "22.04" || version == "24.04")
 }
 
 func managerVersionValid(answer value) bool { return decodeManagerVersion(answer) != 0 }
@@ -201,7 +208,7 @@ func decodeManagerVersion(answer value) uint16 {
 	for _, major := range []struct {
 		text  string
 		value uint16
-	}{{"255", 255}} {
+	}{{"249", 249}, {"255", 255}} {
 		if version == major.text || strings.HasPrefix(version, major.text+".") {
 			return major.value
 		}
