@@ -16,7 +16,7 @@ import (
 )
 
 func TestRetiredPlanningCampaignRoutesAreNotCommandSurface(t *testing.T) {
-	const usage = "usage: ardents-control source, forwarding, join, descriptor, inspect-bundle, inspect-transitions, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile, prepare-qualification-evidence, prepare-qualification-catalog, prepare-qualification-node-record, or prepare-qualification-epoch"
+	const usage = "usage: ardents-control source, forwarding, join, descriptor, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile"
 	for _, route := range []string{
 		"inspect",
 		"inspect-public-control",
@@ -53,14 +53,6 @@ func TestAcceptAlphaCorpusIsRetiredBeforeEffects(t *testing.T) {
 		if _, statErr := os.Stat(root); !os.IsNotExist(statErr) {
 			t.Fatalf("retired alpha corpus intake created %s: %v", root, statErr)
 		}
-	}
-}
-
-func TestInspectTransitionsNamesItsInvalidArguments(t *testing.T) {
-	var output bytes.Buffer
-	err := run([]string{"inspect-transitions"}, &output)
-	if err == nil || !strings.Contains(err.Error(), "inspect-transitions") {
-		t.Fatalf("inspect-transitions invalid arguments = %v", err)
 	}
 }
 

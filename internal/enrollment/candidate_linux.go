@@ -3,9 +3,11 @@
 package enrollment
 
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/release"
@@ -50,4 +52,30 @@ func ReadHeadlessCandidate(root, executable string, at time.Time) (Candidate, er
 		return Candidate{}, errors.New("headless candidate lacks Node or custody artifact")
 	}
 	return Candidate{Inputs: loaded.Inputs, ProtectedDescriptor: loaded.ProtectedDescriptor, ProtectedFiles: loaded.ProtectedFiles}, nil
+}
+
+// requestFromManifest derives the complete verification request from one
+// already-read manifest whose checksum the caller has checked. It supplies no
+// independent pin provenance; only Verify adds that boundary.
+func requestFromManifest(root, executablePath string, manifest []byte, manifestSHA256 string, at time.Time) (Request, error) {
+	entries, err := parseManifest(manifest)
+	if err != nil {
+		return Request{}, err
+	}
+	descriptorDigest, found := entries[descriptorName]
+	if !found {
+		return Request{}, errors.New("manifest-pinned enrollment lacks its descriptor")
+	}
+	descriptorContents, err := readEnrollmentFile(filepath.Join(root, descriptorName), false)
+	if err != nil || !bytes.Equal(digest(descriptorContents), descriptorDigest) {
+		return Request{}, errors.New("manifest-pinned enrollment descriptor does not match manifest")
+	}
+	descriptor, err := parseDescriptor(descriptorContents)
+	if err != nil {
+		return Request{}, err
+	}
+	return Request{BundleRoot: root, ExecutablePath: executablePath,
+		Pin:         Pin{Cohort: descriptor.cohort, Release: descriptor.release, Platform: descriptor.platform, ManifestSHA256: manifestSHA256},
+		Environment: descriptor.environment, Network: descriptor.network, TargetPath: descriptor.targetPath,
+		Architecture: runtime.GOARCH, ReferenceTime: at.UTC()}, nil
 }

@@ -138,7 +138,7 @@ headless-evidence: headless-build
 	@test "$(HEADLESS_GOOS)" = linux && test "$(HEADLESS_GOARCH)" = amd64 || (echo "headless-evidence requires Linux x86-64"; exit 2)
 	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))" "$(abspath $(HEADLESS_NODE_ARTIFACT))" "$(abspath $(HEADLESS_CONTROL_ARTIFACT))" "$(abspath $(HEADLESS_CUSTODY_ARTIFACT))"
 	go test ./internal/enrollment -run '^(TestVerifyReturnsV3HeadlessArtifactsOutsideReleaseMetadata|TestVerifyRejectsUnknownInventoryAndExecutableSubstitution)$$' -count=1
-	go test ./tests/e2e/endpoint -run '^(TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest|TestAlphaControlReaderVerifiesPinnedBundleAndCachedRestart)$$' -count=1
+	go test ./tests/e2e/endpoint -run '^(TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest|TestLegacyEnrollmentCheckFormIsRetiredBeforeEffects|TestRetiredControlRoutesRefuseBeforeEffectsAgainstExactArtifact)$$' -count=1
 	go test ./tests/e2e/network-source -run '^TestFiniteEndpointAcquisitionWithGenuineSourceOwners$$' -count=1
 	go test ./tests/e2e/node -run '^TestClosedTextTopologyProvisioningAcrossProcesses$$' -count=1
 	go test ./tests/e2e/service -run '^TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses$$' -count=1
@@ -187,16 +187,10 @@ standalone-staticcheck-linux:
 	staticcheck ./scripts/check-tools.go
 	staticcheck ./scripts/install-quality-analyzer.go
 	staticcheck ./scripts/enrollment-artifact-name.go
-	staticcheck ./scripts/prepare-qualification-alpha-catalog.go
-	staticcheck ./scripts/prepare-qualification-alpha-evidence.go
-	staticcheck ./scripts/prepare-qualification-alpha-keys.go
-	staticcheck ./scripts/prepare-qualification-network-keys.go
 	staticcheck ./scripts/prepare-qualification-release-keys.go
 	staticcheck ./scripts/protected-generation-check.go
 	staticcheck ./scripts/run-fuzz-targets.go
 	staticcheck ./scripts/run-issue60-checks.go
-	staticcheck ./scripts/sign-qualification-alpha.go
-	staticcheck ./scripts/sign-qualification-network.go
 	staticcheck ./scripts/sign-qualification-release.go
 	staticcheck ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go
 
@@ -253,20 +247,8 @@ release-operation-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
 	go vet ./scripts/prepare-qualification-release-keys.go
 	go vet ./scripts/sign-qualification-release.go
-	go vet ./scripts/prepare-qualification-alpha-evidence.go
-	go vet ./scripts/prepare-qualification-alpha-catalog.go
-	go vet ./scripts/prepare-qualification-alpha-keys.go
-	go vet ./scripts/prepare-qualification-network-keys.go
-	go vet ./scripts/sign-qualification-network.go
-	go vet ./scripts/sign-qualification-alpha.go
 	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-release-keys" ./scripts/prepare-qualification-release-keys.go
 	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-qualification-release" ./scripts/sign-qualification-release.go
-	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-alpha-evidence" ./scripts/prepare-qualification-alpha-evidence.go
-	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-alpha-catalog" ./scripts/prepare-qualification-alpha-catalog.go
-	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-alpha-keys" ./scripts/prepare-qualification-alpha-keys.go
-	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-network-keys" ./scripts/prepare-qualification-network-keys.go
-	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-qualification-network" ./scripts/sign-qualification-network.go
-	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-qualification-alpha" ./scripts/sign-qualification-alpha.go
 
 issue60-checks:
 	@test -n "$(ARDENTS_ISSUE60_REPORT)" || (echo "ARDENTS_ISSUE60_REPORT is required"; exit 2)

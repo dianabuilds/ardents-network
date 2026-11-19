@@ -49,46 +49,6 @@ func TestRepositoryArchitecture(t *testing.T) {
 	assertRepositoryContainsNoArtifacts(t, root)
 }
 
-// Alpha-control readers are maintained command-facing packages. Fixture
-// encoding and signing must stay outside their exported API.
-func TestAlphaControlReadersDoNotExportFixtureWriters(t *testing.T) {
-	root := repositoryRoot(t)
-	for _, reader := range []struct {
-		path      string
-		forbidden []string
-	}{
-		{"internal/alphacontrol", []string{"Sign", "SignV2", "SignComponent"}},
-		{"internal/alphacontrol/inspection", []string{"EncodeReleaseEvidence", "EncodeNetworkEvidence", "EncodeCompatibilityEvidence"}},
-	} {
-		directory := filepath.Join(root, filepath.FromSlash(reader.path))
-		entries, err := os.ReadDir(directory)
-		if err != nil {
-			t.Fatal(err)
-		}
-		// Inspect every platform source, independently of the current build tags.
-		for _, entry := range entries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
-				continue
-			}
-			file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(directory, entry.Name()), nil, 0)
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, decl := range file.Decls {
-				function, ok := decl.(*ast.FuncDecl)
-				if !ok {
-					continue
-				}
-				for _, forbidden := range reader.forbidden {
-					if function.Name.Name == forbidden {
-						t.Errorf("%s exports fixture-only writer %s", reader.path, forbidden)
-					}
-				}
-			}
-		}
-	}
-}
-
 func assertDependenciesRegistered(t *testing.T, root string) {
 	t.Helper()
 	moduleFile, err := os.Open(filepath.Join(root, "go.mod"))

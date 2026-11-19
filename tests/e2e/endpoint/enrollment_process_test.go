@@ -20,13 +20,18 @@ func TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest(t *te
 	if err != nil {
 		t.Fatalf("verify exact enrolled bundle: %v\n%s", err, output)
 	}
-	var observed struct {
-		Kind, Cohort, Release, Platform, ArtifactSHA256 string
+	// The successor-verifier cutover (ADR-0127, #647) preserves the accepted
+	// diagnostic output byte-for-byte: exact field names/order, no HTML
+	// escaping, one trailing newline.
+	artifact, err := os.ReadFile(enrolledCommand)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if err := json.Unmarshal(output, &observed); err != nil || observed.Kind != "manifest-pinned-enrollment-verified" ||
-		observed.Cohort != "closed-cohort-1" || observed.Release != "alpha-1" || observed.Platform != runtime.GOOS+"-"+runtime.GOARCH ||
-		len(observed.ArtifactSHA256) != sha256.Size*2 {
-		t.Fatalf("exact bundle result = %q / %+v / %v", output, observed, err)
+	artifactDigest := sha256.Sum256(artifact)
+	want := `{"Kind":"manifest-pinned-enrollment-verified","Cohort":"closed-cohort-1","Release":"alpha-1","Platform":"` +
+		runtime.GOOS + "-" + runtime.GOARCH + `","ArtifactSHA256":"` + hex.EncodeToString(artifactDigest[:]) + `"}` + "\n"
+	if string(output) != want {
+		t.Fatalf("exact bundle result = %q, want %q", output, want)
 	}
 
 	manifest := filepath.Join(bundle, "SHA256SUMS")
@@ -39,10 +44,12 @@ func TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest(t *te
 	}
 }
 
-// TestLegacyEnrollmentCheckRemainsAvailableForPersistedPortableUnits proves
-// that an already-generated v1 user unit remains restartable. New enrollment
-// uses the separate manifest-pin argument route above.
-func TestLegacyEnrollmentCheckRemainsAvailableForPersistedPortableUnits(t *testing.T) {
+// TestLegacyEnrollmentCheckFormIsRetiredBeforeEffects proves the persisted
+// ardents-alpha-enrollment-input-v1 document form refuses at dispatch before
+// reading the document or touching the bundle (ADR-0127, #647). A well-formed
+// historical document and an absent path reach the identical refusal; the
+// bundle-root+pin form remains the only accepting enrollment-check route.
+func TestLegacyEnrollmentCheckFormIsRetiredBeforeEffects(t *testing.T) {
 	command := buildArdents(t)
 	bundle, enrolledCommand, manifestPin := enrollmentBundle(t, command)
 	legacyInput := filepath.Join(t.TempDir(), "alpha-enrollment.json")
@@ -63,16 +70,17 @@ func TestLegacyEnrollmentCheckRemainsAvailableForPersistedPortableUnits(t *testi
 	if err := os.WriteFile(legacyInput, input, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	output, err := exec.Command(enrolledCommand, "endpoint", "enrollment-check", legacyInput).CombinedOutput()
-	if err != nil {
-		t.Fatalf("verify persisted v1 unit input: %v\n%s", err, output)
+	const refusal = "endpoint enrollment-check <alpha-enrollment.json> is retired; use endpoint enrollment-check <bundle-root> <manifest-sha256>"
+	for _, path := range []string{legacyInput, filepath.Join(t.TempDir(), "absent.json")} {
+		output, err := exec.Command(enrolledCommand, "endpoint", "enrollment-check", path).CombinedOutput()
+		if err == nil || !strings.Contains(string(output), refusal) {
+			t.Fatalf("retired persisted-input form = %v\n%s", err, output)
+		}
 	}
-	var observed struct {
-		Kind, Cohort, Release, Platform string
-	}
-	if err := json.Unmarshal(output, &observed); err != nil || observed.Kind != "alpha-enrollment-verified" ||
-		observed.Cohort != "closed-cohort-1" || observed.Release != "alpha-1" || observed.Platform != runtime.GOOS+"-"+runtime.GOARCH {
-		t.Fatalf("persisted v1 unit result = %q / %+v / %v", output, observed, err)
+	// The refusals had no bundle effect: the accepting form still verifies.
+	output, err := exec.Command(enrolledCommand, "endpoint", "enrollment-check", bundle, manifestPin).CombinedOutput()
+	if err != nil || !strings.Contains(string(output), `"Kind":"manifest-pinned-enrollment-verified"`) {
+		t.Fatalf("accepting form after refusals = %v\n%s", err, output)
 	}
 }
 

@@ -169,7 +169,8 @@ the tracker is the one live task ledger.
 ### C0 command roles, state, and outcomes
 
 The four commands have non-interchangeable C0 roles: `ardents-control` verifies
-the enrollment-pinned control evidence; `ardents-node` runs only the
+the closed-profile and closed-issuer-profile control evidence and prepares the
+offline infrastructure inputs; `ardents-node` runs only the
 project-controlled Source and selected closed Node duties, including the
 closed-token issuer;
 `ardents-custody` creates the Service Authority and issues the one public
@@ -203,8 +204,10 @@ retired under ADR-0125 (#617 S3.5) in favor of the platform-led protected
 system-unit delivery; it returns a typed refusal before input or root effects.
 The read-only `endpoint enrollment-check` diagnostic remains: it receives only
 the bundle root and an independently delivered manifest SHA-256 pin, verifies
-that pin before parsing the manifest, and derives the remaining enrollment
-facts from its bound `RELEASE` descriptor. This does not bypass Endpoint-owned
+that pin before parsing the manifest through the successor enrollment verifier,
+and derives the remaining enrollment facts from its bound `RELEASE` descriptor.
+The historical persisted `alpha-enrollment.json` document form is retired and
+refuses before any file read (ADR-0127). This does not bypass Endpoint-owned
 Resolution, Route, or authority boundaries.
 
 The selected Endpoint startup transition retires acceptance of

@@ -6,8 +6,6 @@ github.com/dianabuilds/ardents-network/internal/admission
 github.com/dianabuilds/ardents-network/internal/admission/allocation
 github.com/dianabuilds/ardents-network/internal/application/broker
 github.com/dianabuilds/ardents-network/internal/application/administration
-github.com/dianabuilds/ardents-network/internal/alphacontrol
-github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection
 github.com/dianabuilds/ardents-network/internal/diagnostics/process
 github.com/dianabuilds/ardents-network/internal/diagnostics/timeline
 github.com/dianabuilds/ardents-network/internal/endpoint

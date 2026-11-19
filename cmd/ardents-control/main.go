@@ -1,22 +1,15 @@
 package main
 
 import (
-	"context"
 	"crypto/ed25519"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"os"
-	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/alphacontrol/inspection"
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
 
-const commandUsage = "usage: ardents-control source, forwarding, join, descriptor, inspect-bundle, inspect-transitions, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile, prepare-qualification-evidence, prepare-qualification-catalog, prepare-qualification-node-record, or prepare-qualification-epoch"
+const commandUsage = "usage: ardents-control source, forwarding, join, descriptor, prepare-closed-profile, sign-closed-profile, inspect-closed-profile, or inspect-closed-issuer-profile"
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout); err != nil {
@@ -38,16 +31,22 @@ func run(arguments []string, output io.Writer) error {
 		return runForwardingControl(arguments[1:], output)
 	case "source":
 		return runSourceControl(arguments[1:], output)
+	// The ACA1 disclosure reader and its qualification preparation are retired
+	// (ADR-0127, #647): successor per-domain commands verify the same authority
+	// facts, and no unified replacement report is selected. Each route refuses
+	// before parsing arguments or opening any file, root, or floor.
 	case "inspect-bundle":
-		return inspectBundle(arguments[1:], output)
+		return errors.New("inspect-bundle is retired")
 	case "inspect-transitions":
-		return inspectTransitions(arguments[1:], output)
+		return errors.New("inspect-transitions is retired")
 	case "prepare-qualification-evidence":
-		return prepareEvidence(arguments[1:], output)
+		return errors.New("prepare-qualification-evidence is retired")
 	case "prepare-qualification-catalog":
-		return prepareCatalog(arguments[1:], output)
-	case "prepare-qualification-node-record", "prepare-qualification-epoch":
-		return prepareQualificationNetwork(arguments[0], arguments[1:], output)
+		return errors.New("prepare-qualification-catalog is retired")
+	case "prepare-qualification-node-record":
+		return errors.New("prepare-qualification-node-record is retired; use ardents-next network prepare-initial-node-record")
+	case "prepare-qualification-epoch":
+		return errors.New("prepare-qualification-epoch is retired; use ardents-next network prepare-initial-epoch")
 	case "inspect-alpha-corpus":
 		return errors.New("inspect-alpha-corpus is retired")
 	case "accept-alpha-corpus":
@@ -63,38 +62,6 @@ func run(arguments []string, output io.Writer) error {
 	default:
 		return errors.New(commandUsage)
 	}
-}
-
-func inspectBundle(arguments []string, output io.Writer) error {
-	report, inspectionErr := inspectBundleReport("inspect-bundle", arguments)
-	return errors.Join(inspectionErr, writeBundleInspectionReport(output, report))
-}
-
-func inspectTransitions(arguments []string, output io.Writer) error {
-	report, inspectionErr := inspectBundleReport("inspect-transitions", arguments)
-	return errors.Join(inspectionErr, json.NewEncoder(output).Encode(transitionInspectionReport(report)))
-}
-
-func inspectBundleReport(command string, arguments []string) (inspection.Report, error) {
-	flags := flag.NewFlagSet(command, flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	var enrollmentPath, artifact, stateRoot, atText string
-	flags.StringVar(&enrollmentPath, "enrollment", "", "alpha enrollment input JSON")
-	flags.StringVar(&artifact, "artifact", "", "exact enrolled artifact path")
-	flags.StringVar(&stateRoot, "state-root", "", "reader-owned inspection state root")
-	flags.StringVar(&atText, "at", "", "decision time in RFC3339")
-	if err := flags.Parse(arguments); err != nil || flags.NArg() != 0 {
-		return inspection.Report{}, fmt.Errorf("alpha control %s arguments are invalid", command)
-	}
-	at, err := time.Parse(time.RFC3339, atText)
-	if err != nil {
-		return inspection.Report{}, fmt.Errorf("alpha control %s time is invalid", command)
-	}
-	input, err := enrollment.ReadClosedAlphaInput(enrollmentPath)
-	if err != nil {
-		return inspection.Report{}, err
-	}
-	return inspection.Inspect(context.Background(), inspection.Config{Root: stateRoot, Enrollment: input.Request(artifact, at), At: at.UTC()})
 }
 
 func decodePublicKey(encoded string) (ed25519.PublicKey, error) {
