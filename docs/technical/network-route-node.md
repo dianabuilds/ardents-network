@@ -422,7 +422,7 @@ changes.
 
 This contract is selected by
 [ADR-0118](../adr/0118-retain-direct-source-guards-through-dependent-work.md)
-from [R-169](../archive/research/records/r-169-source-duty-lifetime.md). Serving Duty
+from [R-169](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-169-source-duty-lifetime.md). Serving Duty
 still stores Epoch `ValidUntil`, but `direct-source/live` conflict truth follows
 explicit owner release; State holds accepted-handler predecessors through their
 joined close. Outbound contact uses an owner-held live guard across the journal
@@ -1349,7 +1349,7 @@ ever surfaced, stay on disk with no reader.
   [ADR-0048](../adr/0048-maintain-tcp-and-quic-carriers.md), and
   [ADR-0049](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0049-defer-blocked-entry-profile.md) define the selected
   native Route and Carrier facts.
-- [R-092](../archive/research/records/r-092-native-node-operating-profile.md) retains the
+- [R-092](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-092-native-node-operating-profile.md) retains the
   measured dedicated-host Rendezvous Functional Alpha result for its original
   recorded candidate. That historical result does not qualify the current C0
   candidate, select another duty, or establish public capacity, availability,

@@ -287,6 +287,16 @@ accepted root/floors before reporting network readiness. The pin is neither a
 Release Module input nor successor authority; it authorizes only this first
 bundle and makes no public or independent release-control claim.
 
+The per-user foreground replacement command surface is retired (#617 S3.5):
+`ardents endpoint replace/rollback/replacement-self-test/replacement-recovery`
+return typed refusals before input or root effects, and the successor Endpoint
+lifecycle is forward-only (`ardents-next installation upgrade-installed` /
+`recover-installed`). The `internal/endpoint/replacement` Module keeps its
+behavior tests but has no maintained production caller; its removal is the
+separately gated Endpoint cohort step. The contract below is retained historical
+evidence for that Module, not a live command route. Existing per-user roots and
+floors remain retained evidence, not authority for an automatic migration.
+
 `internal/endpoint/replacement` consumes only the opaque Release authorization
 and exact candidate bytes. It owns the selected Ubuntu foreground replacement:
 direct-file admission, immutable staging beside the program, retained
@@ -305,7 +315,7 @@ form, symlink, non-regular file, or oversized residue remains an explicit
 failure. Any state mutation still belongs to a locked replacement operation;
 the read-only paths do not repair, delete, roll back, or alter Release floors.
 
-### Foreground replacement retry
+### Foreground replacement retry (retired command surface)
 
 Release commits its non-decreasing floors before the foreground replacement
 writer opens Endpoint state. Therefore a repeat of the same explicit `endpoint

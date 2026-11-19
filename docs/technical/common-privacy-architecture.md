@@ -22,7 +22,7 @@ relationships; detailed formats and numbers belong to their linked owners.
 | Which implementation uses are selected and what evidence admits a candidate | [Dependency register](../development/dependencies.md) |
 | Parameters, accounting, test environment, acceptance and generation migration | [Privacy qualification](../development/privacy-qualification.md) |
 | How the complete work is sequenced and covered | [Integration and delivery map](../development/privacy-anonymity-map.md) |
-| Why this construction was selected and what the probes demonstrate | [R-152 research](../archive/research/records/r-152-common-privacy-design.md) |
+| Why this construction was selected and what the probes demonstrate | [R-152 research](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-152-common-privacy-design.md) |
 
 The current [Network/Route/Node](network-route-node.md) and
 [Endpoint/Service](endpoint-service-runtime.md) documents describe implemented

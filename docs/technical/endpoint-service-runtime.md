@@ -1259,9 +1259,10 @@ runtime effects. The internal composition carries this choice as `ReaderOnly`.
 Both compositions retain the same required worker qualification, State and
 Permission currentness, finite allocation and joined shutdown. No protection
 mode, wire identity or permission authority is added.
-`endpoint headless` selects this composition through an explicit v2 plan;
-missing permissions or mixed legacy fields fail without selecting another
-runtime. The decoder refuses persisted v1 plans under
+`ardents-next endpoint start-installed` selects this composition under the
+platform unit; missing permissions or mixed legacy fields fail without selecting
+another runtime. The retired `endpoint headless` command refuses at dispatch,
+and the decoder refuses persisted v1 plans under
 [v1 startup retirement](#v1-startup-retirement) before runtime dispatch. The
 protected composition still requires installed command
 and full network lifecycle
@@ -2228,8 +2229,10 @@ and [ADR-0069](../adr/0069-retire-active-browser-implementation.md).
   Application owner I/O. Architecture tests forbid a second Endpoint-local
   transport owner and enforce the command dependency graphs.
 - [ADR-0024](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0024-native-interactive-route-foundation.md) selects the
-  native Route foundation; [ADR-0075](../archive/adr/0075-service-connection-v2-terminal-receipt.md)
-  selects the closed Service Connection grammar.
+  native Route foundation; [ADR-0075](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0075-service-connection-v2-terminal-receipt.md)
+  preserves the surviving Terminal receipt, confirmation and control-tail
+  clauses; byte identities are selected by
+  [ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md).
 - The Broker is limited to its explicit generic/unqualified contract; it makes
   no platform-isolation or Application-level Endpoint Location Privacy claim.
 

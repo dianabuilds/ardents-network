@@ -16,8 +16,17 @@ not a Windows confinement or Application execution profile.
 
 ## Selected boundary
 
-Use the distribution-maintained systemd system manager on Ubuntu 24.04 LTS,
-with systemd 255, cgroup v2 and kernel namespace/seccomp support. The Endpoint
+Use the distribution-maintained systemd system manager on Ubuntu 22.04 LTS
+(systemd 249) or Ubuntu 24.04 LTS (systemd 255), with cgroup v2 and kernel
+namespace/seccomp support. Admission is the fail-closed capability floor
+(Ubuntu >= 22.04, systemd >= 249) accepted under
+[ADR-0126](../adr/0126-admit-platform-by-capability-floor.md), not an exact-version
+whitelist. Ubuntu 22.04's systemd always creates a redundant
+v1 `name=systemd` tracking hierarchy even on a unified boot; that line carries
+no controllers and is tolerated while the cgroup2 placement stays exactly
+verified (#641). systemd 249 omits the encrypted/imported credential properties
+and `ExitType`/`RestartMode`; their absence is tolerated as the secure default
+on 249 only (#642). The Endpoint
 runs as its own unprivileged service account. Every reader or Publisher worker
 runs under a separate DynamicUser in a separate systemd service/cgroup and
 private filesystem/network/IPC namespaces. No untrusted Application shares
@@ -49,10 +58,12 @@ is null. No logging, session bus, credentials, environment strings containing
 destinations, or arbitrary file-descriptor passing is available to the worker.
 
 Each worker unit has `BindsTo=ardents-endpoint.service` and an `After`
-dependency on it. The launch boundary verifies the root-owned Ubuntu 24.04 identity, amd64
-architecture and actual system-manager version 255, then verifies that the caller is that active
-service's MainPID under the dedicated Endpoint user/group, with
-`RemainAfterExit=no`, `ExitType=main` and `RestartMode=normal`. Unknown values
+dependency on it. The launch boundary verifies the root-owned Ubuntu 22.04 or
+24.04 identity, amd64 architecture and actual system-manager version 249 or 255,
+then verifies that the caller is that active service's MainPID under the
+dedicated Endpoint user/group, with `RemainAfterExit=no`, `ExitType=main` and
+`RestartMode=normal` (the latter two absent and tolerated as the secure default
+on 249 only, #642). Unknown values
 or semantics that keep the parent active after its main process exits refuse
 before worker activation. This manager-owned lifetime dependency covers an
 Endpoint exit that cannot run its Go cleanup; socket EOF is insufficient.

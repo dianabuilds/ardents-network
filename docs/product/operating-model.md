@@ -166,7 +166,7 @@ Without discretionary emergency power, new flaws or failed agreement may cause
 bounded unavailability or require coordinated owner adoption and an explicit
 fork. Autonomy does not imply universal availability, automatic repair, qualified
 anonymity, independent operators, or freedom from social/resource concentration.
-[R-149](../archive/research/records/r-149-autonomy-transition.md) records the migration
+[R-149](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-149-autonomy-transition.md) records the migration
 questions and qualification gates; live implementation status stays in the tracker.
 
 ### Participant selection and public voting
@@ -189,7 +189,7 @@ their private keys. Pseudonyms alone do not qualify anonymity or unlinkability.
 The core produces scoped voting evidence; application scenarios later declare
 their allowed inputs and effects. Ordinary network participation creates no
 general voting right or obligation to vote. The
-[focused design assessment](../archive/research/records/r-149-voting-core-design.md)
+[focused design assessment](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-149-voting-core-design.md)
 records candidates and the unresolved complete-architecture gate. These product
 choices select no protocol, implementation, human exclusion authority or change
 to the current C0 contract.
@@ -228,7 +228,7 @@ remains unaccepted evidence, not the selected closed State contract.
 authority target. This section prepares its semantics; it does not replace any
 current C0 acceptance rule. Requirement maturity is registered only in the
 [functional map](functional-map.md#autonomous-public-requirements). The
-[research record](../archive/research/records/r-149-autonomy-transition.md#requirements-preparation-results)
+[research record](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-149-autonomy-transition.md#requirements-preparation-results)
 owns evidence, conformance cases, open parameters, and the first development brief.
 
 ### Participation and powers

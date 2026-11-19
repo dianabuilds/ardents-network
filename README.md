@@ -19,9 +19,10 @@ Go packages and imports. GitHub [#497](https://github.com/dianabuilds/ardents-ne
 owns the domain completion plan and acceptance criteria.
 
 [Current ADRs](docs/adr/README.md) record surviving decisions.
-[Archived documentation](docs/archive/README.md) preserves former editions,
-completed evidence, retired plans and unselected proposals with their current
-owners. Historical material is read for named provenance, not as an alternate
+Former editions, completed evidence, retired plans and unselected proposals
+are retained in Git history with their current owners, recoverable via the
+[pinned archive index](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/README.md).
+Historical material is read for named provenance, not as an alternate
 implementation plan. The former Go/Waku implementation on
 [`old`](https://github.com/dianabuilds/ardents-network/tree/old) remains historical
 evidence only.

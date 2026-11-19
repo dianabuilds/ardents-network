@@ -298,7 +298,7 @@ stay on disk untouched and unread, and a fresh Target requires a new root.
 Consistent with the no-backward-compatibility policy, no adoption or
 migration path exists, and neither historical bytes authorize a second
 runtime version. The historical finding text remains in the
-[architecture finding](../archive/development/repository-reconstruction-findings.md#f-32-legacy-descriptor-issuance-and-persisted-decoding-have-different-fates).
+[architecture finding](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/development/repository-reconstruction-findings.md#f-32-legacy-descriptor-issuance-and-persisted-decoding-have-different-fates).
 
 ## Non-claims
 

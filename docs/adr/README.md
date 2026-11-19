@@ -27,7 +27,6 @@ and [protocol](../technical/protected-route-protocol.md) state the current rules
 - [Separate unit, end-to-end, and live tests](0011-separate-unit-e2e-and-live-tests.md)
 - [ADR-0015 — Separate release decision from versioned local activation](0015-separate-release-decision-from-local-activation.md)
 - [ADR-0021 — Use password-derived Authority Custody](0021-use-password-derived-authority-custody.md)
-- [ADR-0030 — Retire Update V0 as an unobserved test format](0030-retire-update-v0-as-test-format.md)
 - [ADR-0031 — Retire the generic live-test tree](0031-retire-generic-live-test-tree.md)
 - [ADR-0038 — Keep alpha disclosure separate from acceptance authority](0038-alpha-control-disclosure-reader-v1.md)
 - [ADR-0043 — Derive Grace from signed Name deadlines](0043-derive-grace-from-signed-deadlines.md)
@@ -78,12 +77,14 @@ and [protocol](../technical/protected-route-protocol.md) state the current rules
 
 ## Former editions and rationale
 
-[Archived decisions](../archive/README.md#architecture-decisions) retain
-needed historical decision evidence unchanged, with its current owner. The
-complete earlier archive and manifest remain available at the pinned Git
-snapshot, including superseded, withdrawn, proposed and retired-subsystem
-editions. Their recorded dispositions do not repeal surviving accepted
-constraints.
+[Archived decisions](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/README.md#architecture-decisions)
+in the pinned Git snapshot retain needed historical decision evidence
+unchanged, with its current owner. The complete earlier archive and manifest
+remain available at that snapshot, including superseded, withdrawn, proposed
+and retired-subsystem editions. Their recorded dispositions do not repeal
+surviving accepted constraints.
 Create a new ADR only for a consequential, hard-to-reverse accepted trade-off.
 
 - [ADR-0125 — Separate software delivery and infrastructure deployment](0125-separate-software-delivery-and-infrastructure-deployment.md) removes Installation as a product domain and separates platform application delivery from infrastructure deployment.
+
+- [ADR-0126 — Admit the platform by capability floor, not exact version pins](0126-admit-platform-by-capability-floor.md) amends ADR-0081's platform-selection clause only: admission floor Ubuntu >= 22.04 / systemd >= 249 with fail-closed capability grammar across all roles; qualification lanes stay LTS. Accepted 2026-11-19; runtime code migration is the separately gated #643 slice.

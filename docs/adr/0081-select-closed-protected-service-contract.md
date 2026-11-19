@@ -10,6 +10,13 @@ dual-Carrier selection and qualification for the nearest closed release. TCP/TLS
 retains its existing v2 Carrier identity and v3 binding; QUIC is deferred and
 refused without fallback. All other protection and acceptance obligations remain.
 
+[ADR-0126](0126-admit-platform-by-capability-floor.md) amends only this decision's
+platform-selection clause: admission becomes a fail-closed capability floor
+(Ubuntu >= 22.04, systemd >= 249) across all roles instead of the exact
+24.04/255/cgroup-v2 pin. The confinement, worker-isolation and acceptance
+obligations selected here remain; the runtime code migration is the gated #643
+slice.
+
 ## Context
 
 ADR-0078 chooses the split-circuit architecture but leaves its exact admission,
@@ -18,7 +25,7 @@ the complete first scheme in a closed network, text publication/read with
 confinement on Ubuntu, and subsequently Target Link first. The delegated design
 must settle mechanisms before implementation tasks.
 
-[R-152's contract assessment](../archive/research/records/r-152-closed-scheme-contract.md)
+[R-152's contract assessment](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-152-closed-scheme-contract.md)
 records source review, component evidence, rejected alternatives and the cost
 model. It supports a bounded design selection, not implementation qualification.
 

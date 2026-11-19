@@ -41,7 +41,7 @@ the one common construction; it is not a parallel privacy mode.
 | OS boundary, installed units, local interfaces, workers and cleanup | [Application confinement](../technical/application-confinement.md) |
 | Selected components and continued acceptance | [Dependency register](dependencies.md) |
 | Parameters, complete test matrix and state/artifact migration | [Qualification](privacy-qualification.md) |
-| Why these choices and what the experiments actually establish | [R-152 contract assessment](../archive/research/records/r-152-closed-scheme-contract.md) |
+| Why these choices and what the experiments actually establish | [R-152 contract assessment](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-152-closed-scheme-contract.md) |
 
 Current Network, Endpoint, Reachability, Application and Release owners state
 their retained implementation and compatibility bounds; the domain map names
@@ -59,7 +59,7 @@ register. Historical exact-version receipts cannot qualify changed inputs.
 
 | Component or obligation | Selected disposition |
 |---|---|
-| Go toolchain, standard TLS/RSA/Ed25519, CIRCL and quic-go | Use the current admitted baseline and reviewed HPKE/blind-token uses from the dependency and technical owners; retain both selected Carriers and qualify the same inner composition on each. No generic cryptographic framework or private fork. |
+| Go toolchain, standard TLS/RSA/Ed25519, CIRCL and quic-go | Use the current admitted baseline and reviewed HPKE/blind-token uses from the dependency and technical owners; qualify the inner composition on the admitted TCP/TLS Carrier (ADR-0122 selects TCP/TLS alone for the nearest closed release; QUIC is deferred and refused pre-effect, and quic-go is removed from the module graph). No generic cryptographic framework or private fork. |
 | Other runtime modules and build/test tools | Review the actual dependency closure and current advisories under the register's acceptance rule. Removed Naming/OHTTP dependencies do not remain obligations of the selected Link-first path. |
 | Ubuntu/kernel/systemd | Use the selected supported family and required mechanisms; record exact security-updated package inventory and installed-artifact tests for each candidate. WSL is mechanism evidence only. |
 | Source, State, time, Enrollment and Custody | Preserve independently pinned authorities and monotonic floors. Current authenticated owners, not caller-made validity flags, supply accepted facts. |
@@ -116,7 +116,8 @@ control is disclosed even when synthetic role facts exercise a positive path.
 
 Use deterministic parsers/ledger tests for receiving boundaries, process tests
 for actual command composition, and the exact Ubuntu installed-artifact profile
-for confinement and the final journey. Exercise both accepted Carriers.
+for confinement and the final journey. Exercise the admitted TCP/TLS Carrier
+(QUIC is deferred under ADR-0122).
 Cold/warm trials preserve durable quotas and authority floors; long workloads
 retain NET-14AD and the complete NET-14 capacity/recovery requirements.
 The easier no-loss latency cell cannot replace the retained normal cell.

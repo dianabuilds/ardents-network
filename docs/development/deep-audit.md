@@ -209,7 +209,9 @@ evidence:
   retain an ongoing purpose;
 - updated current technical and participant-facing limitations;
 - updated execution-profile registrations;
-- a concise immutable receipt under `docs/development/audit-receipts/`; and
+- a concise immutable receipt, retained as immutable Git history (committed
+  provenance or the selected external audit workspace), recoverable via the
+  pinned Git snapshot; and
 - a concise final verdict in the canonical Qualification or release owner
   selected before the corresponding conclusion is accepted.
 
