@@ -8,7 +8,7 @@ date: 2026-09-09
 ## Context
 
 The Product Owner approved the exact JOIN-to-data proposal on 2026-09-09.
-[R-154](../archive/research/records/r-154-join-data-lane-transition.md) records the gap:
+[R-154](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-154-join-data-lane-transition.md) records the gap:
 ADR-0081 specifies the JOIN body and opposite-side pairing but does not define
 how that operation creates an accepted data lane. Ordinary OPEN selects a real
 next Node and cannot supply an unchecked self-hop at Rendezvous.

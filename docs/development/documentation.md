@@ -13,10 +13,12 @@ Product scope, journeys, and honest promises belong in `docs/product/`.
 Threats, protected information, adversaries, conditions, measurements, and
 limitations belong in `docs/security/`. Surviving hard-to-reverse decisions live
 in `docs/adr/`; active decision work and its method live in `docs/research/`.
-`docs/archive/` retains selected decision evidence, unresolved findings and
-immutable receipts with their original source identity. Superseded copies and
-retired plans without a unique current use remain recoverable from the pinned
-Git snapshot in the archive index.
+Selected decision evidence, unresolved findings and immutable receipts are
+retained in Git history with their original source identity, not in a local
+archive tree. They remain recoverable from the pinned Git snapshot
+`c58268d72f1eaeae173144e76d32d50986de2a77` via its
+[archive index](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/README.md)
+and [manifest](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/manifest.json).
 `docs/development/` owns engineering policy, factual source maps, and developer
 workflow. Implementation and operator facts belong in the smallest current
 technical, operations, or reference document that has the responsible Module
@@ -39,19 +41,20 @@ compatibility/retirement conditions, and honest limitations where applicable.
 An ADR or research record remains rationale/evidence after that promotion; it
 does not become the operator manual.
 
-Retain current accepted ADRs in their decision owner. Keep historical records
-locally when they supply needed decision evidence, unique measurements, unresolved
-findings or immutable audit receipts. After unique current facts are promoted,
-remove superseded copies, retired procedures and unused historical proposals
-from the checkout; repair inbound references to their pinned Git source. The
-archive index links the complete historical snapshot and records disposition,
-original path/source/hash, current owner and retention reason for local records.
-An archived accepted decision retains any explicitly surviving clauses; pruning
-never accepts a proposal, closes a finding or qualifies a newer candidate.
-Preserve retained immutable record bytes; their original relative links resolve
-against the pinned source revision exposed by the archive index. A historical
-path quoted in a completed record identifies that record's source revision;
-it does not promise a current procedure.
+Retain current accepted ADRs in their decision owner. Historical records that
+supply needed decision evidence, unique measurements, unresolved findings or
+immutable audit receipts are retained in Git history, not as a local archive
+tree. After unique current facts are promoted, remove superseded copies,
+retired procedures and unused historical proposals from the checkout; repair
+inbound references to their pinned Git source. The pinned snapshot's archive
+index and manifest record disposition, original path/source/hash, current
+owner and retention reason for retired records. A retired accepted decision
+retains any explicitly surviving clauses; pruning never accepts a proposal,
+closes a finding or qualifies a newer candidate. Preserve immutable record
+bytes in Git; their original relative links resolve against the pinned source
+revision exposed by the archive index. A historical path quoted in a completed
+record identifies that record's source revision; it does not promise a current
+procedure.
 
 Completed experiment source and one-off file, dependency or behavior inventories
 belong to their recorded Git revision once no selected ongoing work consumes
@@ -106,7 +109,7 @@ component that can change those contracts blocks dependent implementation;
 an assumed honest service, mock proof or unchecked callback cannot close the gap.
 Future application scenarios need not all be specified, but their supported
 extension/effect boundary must be explicit. The
-[research readiness assessment](../archive/research/records/r-149-autonomy-transition.md#participant-selection-and-voting-core-readiness)
+[research readiness assessment](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-149-autonomy-transition.md#participant-selection-and-voting-core-readiness)
 records open obligations; it is not the selected runtime specification.
 
 ### Task admission after completed design
@@ -262,7 +265,7 @@ The selected issue tracker owns execution and status. Keep the existing C0
 milestone prerequisite and follow the
 [repository C0 work-in-progress policy](../../AGENTS.md#c0-work-in-progress-limit);
 the workstream does not activate all of its areas at once. Its framing is recorded by
-[R-150](../archive/research/records/r-150-common-protection-baseline.md), and the current
+[R-150](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-150-common-protection-baseline.md), and the current
 R-149 subject remains separate design. Completed R-152/R-099 selections live
 in their current owners and ADR-0081; their former unanswered choices are not
 active research prerequisites for the Link-first scope.

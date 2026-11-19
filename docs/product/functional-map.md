@@ -78,19 +78,19 @@ as such instead of inventing an honest operator, a trustworthy majority, or a
 safe local execution environment.
 
 The [threat model](../security/threat-model.md#hostile-environment-premise-and-residual-assumptions)
-owns these conditions and limits. [R-149](../archive/research/records/r-149-autonomy-transition.md#outcome-first-decision-preparation)
+owns these conditions and limits. [R-149](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-149-autonomy-transition.md#outcome-first-decision-preparation)
 owns the open decision questions. Its existing proposed verification brief does
 not outrank this task definition or select a public mechanism.
-The [solution comparison](../archive/research/records/r-149-autonomy-transition.md#solution-proposals-by-outcome)
+The [solution comparison](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-149-autonomy-transition.md#solution-proposals-by-outcome)
 now proposes an approach, alternatives, assumptions and implementation boundary
 for every outcome; public mechanisms remain subject to their individual gates.
 The Product Owner's task-first clarification makes PoW optional, including its
 complete absence. Local authorization, replication, conflict agreement,
 freshness and admission are evaluated separately before composing a solution.
-The [mechanism comparison](../archive/research/records/r-149-autonomy-transition.md#task-first-mechanism-comparison)
+The [mechanism comparison](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-149-autonomy-transition.md#task-first-mechanism-comparison)
 retains the alternatives; one illustrative work-based experiment cannot impose
 its blocks, confirmation delays or history requirements on the product.
-The [first operation/candidate assessment](../archive/research/records/r-149-autonomy-transition.md#operation-level-findings-and-candidate-assessment)
+The [first operation/candidate assessment](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-149-autonomy-transition.md#operation-level-findings-and-candidate-assessment)
 records semantic counterexamples and finite quorum checks. These are research
 evidence, not an implemented protocol or new public guarantee.
 
@@ -297,7 +297,7 @@ Their signature thresholds are not a selected public consensus quorum.
 
 The rows below extend this registry, not the C0 backlog. **Working** rows are
 prepared for decision through [ADR-0080](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0080-separate-public-state-acceptance-obligations.md)
-and [R-149](../archive/research/records/r-149-autonomy-transition.md). The
+and [R-149](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-149-autonomy-transition.md). The
 [operating model](operating-model.md#autonomous-shared-state-contract) owns the
 lifecycle semantics; no additional numeric budget is fixed here.
 

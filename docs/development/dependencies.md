@@ -1163,7 +1163,7 @@ and the reachable scan. The raised three-module set preserved upstream and
 profile tests. `govulncheck` reported no symbol or imported-package
 vulnerability; its remaining module-only finding is the unimported and
 unmaintained `x/crypto/openpgp` package. This is dated selection evidence;
-[the 2026-09-07 source check](../archive/research/records/r-150-common-protection-baseline.md#dependency-baseline-observation)
+[the 2026-09-07 source check](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-150-common-protection-baseline.md#dependency-baseline-observation)
 records its current bounded applicability result. Integration repeats the
 applicable scans and support review. Any exploitable or unresolved advisory,
 regardless of severity, fails the

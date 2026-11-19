@@ -463,11 +463,12 @@ a printed authentication result grants no continuation.
 
 `ardents` is the Endpoint and Network State command adapter.
 
-For the Portable `endpoint user-unit` and `endpoint enroll` first execution,
-follow the [independently pinned Ubuntu procedure](portable-enrollment.md)
-before running the downloaded program. That procedure starts the generic
-per-user profile; the protected text Service has a separate installed
-system-manager launch boundary.
+The Portable per-user `endpoint user-unit`/`endpoint enroll` start route is
+retired (#617 S3.5); platform delivery owns first execution. Use `ardents-next
+platform unit` with `endpoint construct-plan` and `prepare-history`, then
+`ardents-next endpoint start-installed` under the platform unit. The
+[independently pinned Ubuntu verification procedure](portable-enrollment.md)
+still applies before running a downloaded program.
 
 | Route | Purpose |
 |---|---|
@@ -477,17 +478,17 @@ system-manager launch boundary.
 | `diagnostics timeline` | Read app JSON lines or journalctl JSON from standard input and stream a local timeline of Node, Source, and Endpoint events. It reads no authority root, contacts no peer, and saves no history. |
 | `service-instance initialize --config PATH` | Create or reopen one host-owned Service Instance generation from an `ardents-service-instance-initialize-v1` plan whose `request_file` names one new public output, and emit its stable public request plus `request_sha256` for the independently transferred custody ceremony. The command exposes neither private key, Service Authority, Credential, Target, Route, nor Browser state. |
 | `service-instance accept --root PATH --response PATH` | Atomically accept only the exact canonical public Authority response for that pending root. An exact repeat is harmless; malformed or different input terminally rejects/conflicts rather than replacing the generation. |
-| `endpoint headless <headless-runtime.json>` | Only an explicit `ardents-headless-runtime-v2` plan selects the protected text participant. With omitted `role`, it requires the closed Route profile, an explicit `closed_profile_authority` Ed25519 public key already present in `network_authorities`, existing `service_instance_root`, distinct absolute State/Entry/local-role/publication/token roots, two sockets, and `reader_permission`/`publisher_permission` objects containing `request_path`, `response_path`, and three-class `maxima`. With omitted `role`, both actual offline permissions must be accepted before command exposure. An explicit `role: reader` requires only its own Connection principal/socket and Reader Permission, together with the same State/Source/time/Entry/local-role/token and qualified-worker inputs; it rejects nonempty Instance/Publication/Administration/Publisher inputs and opens no Administration transport. Unknown roles refuse before effects. This component selection does not establish the supported installed two-Endpoint journey. Legacy acquisition and corpus fields are rejected in v2. Event output must be a pollable pipe or stream socket (including the systemd journal); each JSON line carries `schema: ardents-headless-runtime-event-v1`, `kind`, and UTC `at` for local timeline inspection. Cancellation and bounded writes retain descriptor ownership. Full installed command qualification remains required. |
+| `endpoint headless <headless-runtime.json>` | Return `endpoint headless is retired; use ardents-next endpoint start-installed under the platform unit` at command dispatch before reading the plan or opening any runtime resource. The protected text participant now starts through `ardents-next endpoint start-installed` under the platform unit; the former v1/v2 headless composition is removed. The exact v1 refusal and retained-data boundary remain defined by the [Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement). |
 | `endpoint open <application-socket> <target-link> <input-file> <output-file>` | Return `endpoint open is retired` before opening either file, dialing the local socket, or causing Endpoint/Network work. The AAI2 codec/server/client and exclusive Endpoint adapter are absent; no generic AAI3 translation or fallback is selected. |
 | `endpoint publish <administration-socket>` | Return `endpoint publish is retired; use ardents-text publish <administration-socket> <document-file>` before dialing the Administration socket or starting Endpoint/Network work. Use `ardents-text publish /absolute/path/to/administration.sock /absolute/path/to/document` for snapshot publication. |
 | `endpoint withdraw <administration-socket>` | Request withdrawal through the exact local one-use Service Administration capability and render its bounded receipt. A publisher plan must explicitly retain its administration listener after publication for this route. |
 | `endpoint enrollment-check <bundle-root> <manifest-sha256>` | Diagnose one already-running artifact against an independently pinned closed-alpha inventory. It does not authenticate first execution. |
-| `endpoint enroll <bundle-root> <manifest-sha256>` | Run the explicit Ubuntu Portable enrollment and per-user profile start. On first acceptance it verifies the pin and Release Decision before reporting `ready`; that event proves the generic local probe attachment, not protected text Service readiness. An exact current-program restart uses its retained replacement record. |
-| `endpoint enroll-installed <package-enrollment.json>` | Run the Installed enrollment and per-user profile start for one root-owned package artifact and versioned static enrollment root. Its `ready` event has the same generic attachment scope; protected text runs through the separate `endpoint headless` route. |
-| `endpoint user-unit <bundle-root> <manifest-sha256>` / `endpoint installed-user-unit <package-enrollment.json>` | Render, but never write, enable, or start, the matching `systemd --user` unit. |
-| `endpoint replace <replacement-bundle>` | Perform one explicit Ubuntu local Release-authorized replacement against the fixed user unit; it neither downloads nor schedules updates. After a preactivation staging or temporary stop refusal, rerun this same command with a still-valid bundle for the exact candidate bytes. It rechecks Release and the retained transaction; do not edit or delete replacement state manually. |
-| `endpoint replacement-recovery` | Report durable replacement recovery classification only; it never starts, replaces, or rolls back a program. An owned interrupted temporary write does not invalidate a matching committed executable; this read-only route leaves the residue untouched. Unexpected state must not be manually edited or deleted. |
-| `<journal-bound-recovery-program> endpoint rollback <replacement-bundle>` | Perform the only permitted explicit rollback: the retained predecessor, with a fresh Release authorization for its exact bytes. |
+| `endpoint enroll <bundle-root> <manifest-sha256>` | Return `endpoint enroll is retired; use ardents-next platform delivery with endpoint construct-plan and prepare-history` at command dispatch before reading the bundle or causing any effect (#617 S3.5). |
+| `endpoint enroll-installed <package-enrollment.json>` | Return `endpoint enroll-installed is retired; use ardents-next platform delivery with endpoint construct-plan and prepare-history` at command dispatch before reading the enrollment or causing any effect (#617 S3.5). |
+| `endpoint user-unit <bundle-root> <manifest-sha256>` / `endpoint installed-user-unit <package-enrollment.json>` | Return `endpoint user-unit is retired; use ardents-next platform unit` (respectively `endpoint installed-user-unit is retired; use ardents-next platform unit`) at command dispatch before rendering any unit. The per-user `systemd --user` profile is retired; platform delivery owns the system unit (#617 S3.5). |
+| `endpoint replace <replacement-bundle>` | Return `endpoint replace is retired; use ardents-next installation upgrade-installed` at command dispatch before reading the bundle or causing any effect. The successor Endpoint lifecycle is forward-only (#617 S3.5). |
+| `endpoint replacement-recovery` | Return `endpoint replacement-recovery is retired; use ardents-next installation recover-installed` at command dispatch before reading any replacement state (#617 S3.5). |
+| `<journal-bound-recovery-program> endpoint rollback <replacement-bundle>` | Return `endpoint rollback is retired; the successor Endpoint lifecycle is forward-only` at command dispatch before reading the bundle or causing any effect (#617 S3.5). |
 | `entry recipient <entry-import-plan.json>` | Return `entry Invite command is retired; the closed Entry set has no operator import surface` at command dispatch before interpreting the remaining arguments, reading the plan file, or creating any root. It never prints a recipient key; no Invite root reader, converter, or deleter remains (ADR-0106). |
 | `entry import <entry-import-plan.json>` | Return the same retirement refusal at command dispatch before any argument interpretation or filesystem effect. Existing Invite roots stay on disk byte-for-byte; the closed Entry set root refuses them by marker and allowed-name inspection (ADR-0106). |
 | `name encode <name>` | Return `name network command is retired; protected Service Name access is not selected` at command dispatch before interpreting the argument; ADR-0113 retired the local canonical encoder with its package. |
@@ -515,11 +516,12 @@ An Endpoint fatal return after event output is acquired adds
 `running` category. The local command error remains on stderr; the timeline
 does not include its wrapped details.
 
-`endpoint headless` refuses `ardents-headless-runtime-v1` before opening any
-plan-owned runtime resource. The exact refusal and retained-data boundary are
-defined by the
+`endpoint headless` is retired at command dispatch before opening any
+plan-owned runtime resource; the protected text participant starts through
+`ardents-next endpoint start-installed` under the platform unit. The exact v1
+refusal and retained-data boundary remain defined by the
 [Endpoint startup retirement contract](../technical/endpoint-service-runtime.md#v1-startup-retirement).
-The former v1 participant process composition has been removed; refusal does
+The former v1/v2 participant process composition has been removed; refusal does
 not retain a hidden fallback or migration runtime.
 Generic `endpoint open` is separately selected for
 [effect-free retirement](../technical/endpoint-service-runtime.md#generic-connection-command-retirement).
@@ -543,12 +545,13 @@ The current State and source event schemas are coordinated C0 command outputs:
 there is no H3 reader or compatibility window. Resource observations are
 Module diagnostics, not a capacity or hosting claim.
 
-The three-argument v1 forms `endpoint enrollment-check <alpha-enrollment.json>`,
-`endpoint enroll <alpha-enrollment.json>`, and `endpoint user-unit
-<alpha-enrollment.json>` are retained solely so a pre-existing Portable user
-unit can restart or render its explicit migration unit. They verify the same
-bundle and manifest digest but are not a new C0 enrollment route; new units use
-the independently delivered manifest pin argument.
+The three-argument v1 form `endpoint enrollment-check <alpha-enrollment.json>`
+is retained as a bounded local diagnosis for an already-running artifact; it is
+not a new C0 enrollment route. The three-argument `endpoint enroll` and
+`endpoint user-unit` forms are retired at command dispatch like their
+two-argument forms (#617 S3.5); no per-user restart or migration-unit render
+path remains. New units use the independently delivered manifest pin argument
+through platform delivery.
 
 ## `ardents-node`
 

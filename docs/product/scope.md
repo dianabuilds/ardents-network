@@ -47,7 +47,7 @@ package, release, wire, or persisted identities. Existing accepted wire or
 persisted identities that contain an earlier label remain compatibility
 obligations until a separately researched migration retires them.
 For the exact closed Service identities inventoried in
-[R-168](../archive/research/records/r-168-service-v3-format-reset.md),
+[R-168](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-168-service-v3-format-reset.md),
 [ADR-0117](../adr/0117-reset-closed-service-formats-to-v3.md) selects a
 fresh-root v3 replacement instead: there are no supported old Service clients,
 and old formats receive only refusal without conversion or automatic deletion.

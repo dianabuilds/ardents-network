@@ -68,51 +68,18 @@ Any non-zero result stops the journey. Do not mark the artifact executable, run
 it can recheck the inventory before Endpoint readiness only after the artifact
 has already executed.
 
-## Start without a local enrollment file
+## Start (per-user route retired)
 
-After the preceding external verification succeeds, use the same absolute
-bundle path and independently received manifest pin to render the unit. The
-program rechecks that pin before parsing `SHA256SUMS`, then derives the
-cohort, release, platform, environment, network, and target path from the
-manifest-bound `RELEASE` descriptor. There is no local enrollment JSON to
-create, keep, or treat as release authority.
+The former per-user `endpoint user-unit` / `endpoint enroll` start procedure is
+retired (#617 S3.5); `ardents endpoint user-unit/enroll/enroll-installed/
+installed-user-unit/replace/rollback` return typed refusals before effects. The
+external verification above still applies before running a downloaded program.
 
-## Explicit Ubuntu user-session start
-
-Only after the external check succeeds, mark the exact artifact executable and
-render the unit. Replace the command path with the verified artifact path.
-
-```sh
-chmod 700 /absolute/path/to/unpacked-bundle/ardents-linux-amd64
-mkdir -p ~/.config/systemd/user
-/absolute/path/to/unpacked-bundle/ardents-linux-amd64 endpoint user-unit \
-  /absolute/path/to/unpacked-bundle \
-  64-lowercase-hex-characters-from-the-invitation \
-  > ~/.config/systemd/user/ardents-endpoint.service
-chmod 600 ~/.config/systemd/user/ardents-endpoint.service
-systemctl --user daemon-reload
-systemctl --user enable --now ardents-endpoint.service
-```
-
-This is a per-user session unit. It neither enables linger nor creates a system
-service, startup task, system proxy, DNS/route/VPN setting, browser integration,
-remote listener, or Authority. `journalctl --user -u ardents-endpoint.service`
-must show `endpoint-lifecycle` `starting`, then `release-decision`, then
-`endpoint-lifecycle` `ready`. A terminal `blocked` or `incompatible` event is
-an explicit failed start, not a partly ready Endpoint.
-
-Routine stop and restart are explicit:
-
-```sh
-systemctl --user stop ardents-endpoint.service
-systemctl --user start ardents-endpoint.service
-```
-
-Deleting the stopped bundle directory removes only program bytes. It does not
-remove the per-user release floors, replacement ledger, or live state roots.
-The contracted profile (ADR-0108) no longer creates the former grants, Vault,
-diagnostics, or cache directories; any such directories left by an older
-profile remain on disk untouched and unread. There is no supported automatic
-replacement, repair, or destructive state removal in the portable profile. Foreground replacement is separately
-owned by `internal/endpoint/replacement`; destructive state removal remains
-unsupported.
+First execution now uses platform delivery: `ardents-next platform unit` with
+`endpoint construct-plan` and `prepare-history`, then `ardents-next endpoint
+start-installed` under the platform system unit (see
+[Endpoint service runtime](../technical/endpoint-service-runtime.md) and
+[commands](commands.md)). The successor Endpoint lifecycle is forward-only;
+there is no per-user session unit, automatic replacement, repair, or destructive
+state removal. Existing per-user roots and floors remain retained evidence, not
+authority for an automatic migration.

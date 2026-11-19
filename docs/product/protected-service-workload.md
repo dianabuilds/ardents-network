@@ -31,8 +31,14 @@ Names are a separate next stage with their real authority/close producer under
 An alpha alias or provisioned lookup table is not canonical naming.
 
 The selected platform family is Ubuntu LTS x86-64 on both endpoints.
-Use Ubuntu 24.04 LTS, systemd 255 and cgroup v2 as the first exact engineering
-profile; security-updated package revisions enter each candidate's inventory.
+The admitted Endpoint/worker engineering profiles are Ubuntu 22.04 LTS
+(systemd 249) and Ubuntu 24.04 LTS (systemd 255), both on cgroup v2;
+security-updated package revisions enter each candidate's inventory. The
+platform contract is a capability floor (Ubuntu 22.04+, fail-closed) rather
+than a frozen version whitelist, accepted under
+[ADR-0126](../adr/0126-admit-platform-by-capability-floor.md). Infrastructure
+(Source/Forwarding) runtime code still pins Ubuntu 24.04/systemd 255 until the
+gated #643 migration adopts the same floor there.
 A WSL run can test mechanisms but cannot qualify the complete Ubuntu host.
 
 The protected job includes both the reader and Publisher Application process

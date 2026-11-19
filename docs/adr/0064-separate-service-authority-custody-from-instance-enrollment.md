@@ -67,7 +67,7 @@ Service Authority.
 
 ## Compliance
 
-[R-131](../archive/research/records/r-131-headless-publisher-authority-acquisition.md)
+[R-131](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-131-headless-publisher-authority-acquisition.md)
 records the accepted option and rejected alternatives. ADR-0003 continues to
 own the bounded Service Instance Credential hierarchy, and ADR-0021 continues
 to own password-derived encrypted Authority custody.

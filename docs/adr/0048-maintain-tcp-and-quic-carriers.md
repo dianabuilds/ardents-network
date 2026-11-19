@@ -73,8 +73,8 @@ cannot silently change the Carrier of a live attachment.
 
 - [ADR-0024](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0024-native-interactive-route-foundation.md) remains the Route and
   authentication foundation.
-- [R-094](../archive/research/records/r-094-hostile-network-carrier-profiles.md) is the
+- [R-094](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-094-hostile-network-carrier-profiles.md) is the
   original `v0.61.0` dependency and behavior evidence.
-- [R-140](../archive/research/records/r-140-quic-go-v0-62-c0-requalification.md)
+- [R-140](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-140-quic-go-v0-62-c0-requalification.md)
   requalifies the `v0.62.0` direct dependency and records the remaining
   exact-version network-profile gate.

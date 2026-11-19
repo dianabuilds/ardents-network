@@ -16,7 +16,8 @@ select work, accept a protocol change or replace the GitHub execution ledger.
 Accepted ADRs and current product/security/technical owners remain authoritative.
 [CONTEXT.md](../../CONTEXT.md) owns product language;
 [package-map.md](package-map.md) owns actual Go packages and permitted imports.
-Earlier strategic proposals and source receipts are in the [archive](../archive/README.md).
+Earlier strategic proposals and source receipts are retained in Git history,
+recoverable via the [pinned archive index](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/README.md).
 This map records current ownership; proposed future boundaries remain proposals.
 
 ## Reading and planning route

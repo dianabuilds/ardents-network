@@ -622,7 +622,7 @@ Changing those semantics requires a new authenticated generation and review;
 the closed permission format cannot become a permanent public administrator.
 
 Evidence and limitations are in the
-[R-152 contract research](../archive/research/records/r-152-closed-scheme-contract.md).
+[R-152 contract research](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-152-closed-scheme-contract.md).
 
 ## Spend journal failure containment
 

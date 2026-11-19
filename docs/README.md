@@ -7,7 +7,9 @@ cannot silently change either. [Documentation policy](development/documentation.
 defines promotion and retirement.
 
 The selected contract is a closed Ubuntu text-Service by Target Link, with one
-common protection baseline and TCP/TLS plus QUIC Carriers. Component implementations
+common protection baseline and the TCP/TLS Carrier (ADR-0122 selects TCP/TLS
+alone for the nearest closed release; QUIC is deferred and refused pre-effect).
+Component implementations
 and their receipts do not establish a complete installed Service, platform support,
 independent security validation, anonymity or public-operation qualification.
 Service Names remain a future product function; the accepting Namespace and Alpha
@@ -32,12 +34,15 @@ unselected. The [scope](product/scope.md) owns these boundaries.
 
 ## Decisions, evidence and execution
 
-[Current decisions](adr/README.md) index surviving selections. The
-[archive](archive/README.md) retains selected decision evidence, unresolved
-findings and exact audit receipts, with disposition, current owner and source
-identity. Other historical editions and retired plans are recoverable from its
-pinned Git snapshot. An archived proposal is not a contract;
-archiving an accepted edition does not withdraw its explicitly retained rules.
+[Current decisions](adr/README.md) index surviving selections. Selected
+decision evidence, unresolved findings and exact audit receipts are retained
+in Git history, with disposition, current owner and source identity recorded
+in the pinned snapshot's
+[archive index](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/README.md)
+and [manifest](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/manifest.json).
+Other historical editions and retired plans are recoverable from the same
+pinned Git snapshot. A retired proposal is not a contract;
+retiring an accepted edition does not withdraw its explicitly retained rules.
 The [research queue](research/questions.md) distinguishes undecided questions
 from selected execution; read its evidence only for a named decision.
 

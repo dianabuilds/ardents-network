@@ -6,7 +6,7 @@ date: 2026-09-07
 # Select the common split-circuit privacy architecture
 
 The Product Owner requests selection or creation of the common privacy scheme.
-[R-152](../archive/research/records/r-152-common-privacy-design.md#architecture-selection-and-component-evidence)
+[R-152](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-152-common-privacy-design.md#architecture-selection-and-component-evidence)
 selects the successor's architecture: endpoint-selected split circuits,
 recipient-confidential control, one-use admission and traffic driven by useful
 work. The [technical owner](../technical/common-privacy-architecture.md) fixes

@@ -84,12 +84,14 @@ the typed retirement classification. Its former inputs and results remain only
 in the non-executable compatibility evidence tree.
 
 The Endpoint adapter also retains a parser for the complete historical
-`ardents-alpha-enrollment-input-v1` document when an already generated Portable
-user unit invokes its original three-argument command. This is an execution
-compatibility bridge, not an enrollment format: it derives the same verifier
-request, including the manifest digest, and new C0 enrollment and newly rendered
-units receive the bundle root and independently delivered pin as separate
-arguments.
+`ardents-alpha-enrollment-input-v1` document. Its live consumers are the
+three-argument `endpoint enrollment-check <alpha-enrollment.json>` local
+diagnosis and `ardents-control inspect-bundle`; the per-user `endpoint enroll`
+/ `endpoint user-unit` start path that once invoked it is retired (#617 S3.5).
+This is a diagnosis compatibility bridge, not an enrollment format: it derives
+the same verifier request, including the manifest digest, while new C0
+enrollment and newly rendered units receive the bundle root and independently
+delivered pin as separate arguments.
 
 ## Acceptance sequence
 

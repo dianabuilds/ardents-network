@@ -7,7 +7,7 @@ date: 2026-09-30
 
 ## Context
 
-[R-170](../archive/research/records/r-170-unified-protected-endpoint-artifact.md)
+[R-170](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/research/records/r-170-unified-protected-endpoint-artifact.md)
 established that enrollment-v3 authenticates declared bytes but has no protected
 worker inventory projection. Existing replacement authorization covers only the
 executable. Root-installed worker digests establish local integrity, not Release
