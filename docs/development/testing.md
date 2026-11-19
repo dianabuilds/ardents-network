@@ -4538,10 +4538,14 @@ The maintained local profiles are:
   Endpoint command surface (ADR-0125, #617 S3.5): their process tests drove the
   now-retired enroll/headless/user-unit/replace/rollback routes. The surviving
   `tests/e2e/endpoint` process regressions cover the read-only `enrollment-check`
-  diagnostic, the enrollment-pinned alpha-control inspection, and the Ubuntu deb
-  package payload/retention shape with the retired `enroll-installed` refusal.
-  Successor platform-led Endpoint qualification is a separate selected
-  composition;
+  diagnostic through the successor enrollment verifier (byte-identical output
+  contract), the retired persisted-input form and retired ACA1 control-route
+  before-effect refusals, and the Ubuntu deb package payload/retention shape
+  with the retired `enroll-installed` refusal. The enrollment-pinned
+  alpha-control inspection regressions retired with the reader itself
+  (ADR-0127, #647); the corpus-intake refusals stay covered by the
+  `cmd/ardents-control` command tests. Successor platform-led Endpoint
+  qualification is a separate selected composition;
 - `service-credential-response-linux`;
 - `text-role-durable-state-capture`, the Linux-only isolated Role and Publisher
   durable-state observation; it retains secret-bearing raw observations only in
@@ -4554,7 +4558,7 @@ The maintained local profiles are:
 - the retired two-Endpoint alpha-control runner is no longer a contributor
   route. Its historical receipts remain in their existing evidence locations;
   its last source revision is retained in Git as `6ac9cba0856a7a0b92f2e8a4e11b246625f6716d`;
-  current enrolled-bundle and inspection regressions stay with
+  current enrolled-bundle and retired-route refusal regressions stay with
   `headless-evidence` and its owned package tests;
 - `text-worker-network`, the installed confined worker/network composition invoked
   by `make text-worker-network-check`; requires all four TCP document and elapsed-refresh cases,

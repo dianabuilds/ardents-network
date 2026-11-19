@@ -711,6 +711,13 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents/offline.go" || source == "cmd/ardents/config.go") && dependency == modulePath+"/internal/successor/network/state" {
 			return true
 		}
+		// ADR-0127 (#647) enrollment-check cutover: the read-only bundle-root+pin
+		// diagnosis consumes the successor enrollment owner. The persisted
+		// v1-document form refuses before effects; this exact file admits no other
+		// successor dependency and no other old command gains an exception.
+		if source == "cmd/ardents/endpoint.go" && dependency == modulePath+"/internal/successor/enrollment" {
+			return true
+		}
 		if source == "cmd/ardents-control/forwarding_profile_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/closedprofile" || dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/network/source") {
 			return true
 		}
@@ -1550,7 +1557,6 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint release producer retains signing mechanism", "scripts/sign-qualification-release.go", "github.com/sigstore/sigstore/pkg/signature", true},
 		{"Endpoint release producer retains native files", "scripts/sign-qualification-release.go", "golang.org/x/sys/unix", true},
 		{"Endpoint release producer excludes foreign library", "scripts/sign-qualification-release.go", "example.org/foreign", false},
-		{"adjacent signer has no inherited Release access", "scripts/sign-qualification-network.go", modulePath + "/internal/successor/release", false},
 		{"packaging identity uses new Enrollment", "scripts/enrollment-artifact-name.go", modulePath + "/internal/successor/enrollment", true},
 		{"packaging identity excludes old Enrollment", "scripts/enrollment-artifact-name.go", modulePath + "/internal/enrollment", false},
 		{"packaging validator uses new Enrollment", "scripts/protected-generation-check.go", modulePath + "/internal/successor/enrollment", true},
@@ -1763,6 +1769,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Reader cannot own Publication", "internal/successor/endpoint/reader/reader_linux.go", modulePath + "/internal/successor/publication/runtime", false},
 		{"Publisher cannot import command composition", "internal/successor/endpoint/publisher/publisher_linux.go", modulePath + "/cmd/ardents-next", false},
 		{"other binaries cannot acquire new funding", "cmd/ardents/main.go", modulePath + "/internal/successor/endpoint/funding", false},
+		{"enrollment-check diagnosis uses new Enrollment", "cmd/ardents/endpoint.go", modulePath + "/internal/successor/enrollment", true},
+		{"enrollment-check diagnosis has no Route runtime", "cmd/ardents/endpoint.go", modulePath + "/internal/successor/route/role", false},
+		{"adjacent endpoint file has no enrollment exception", "cmd/ardents/main.go", modulePath + "/internal/successor/enrollment", false},
 		{"funded Source uses real token grammar", "internal/successor/endpoint/funding/source_linux.go", modulePath + "/internal/successor/admission/token", true},
 		{"funded Source uses finite bootstrap", "internal/successor/endpoint/funding/source_linux.go", modulePath + "/internal/successor/route/bootstrap", true},
 		{"funded Source behavior selects real Carrier", "cmd/ardents-next/route_token_linux_test.go", modulePath + "/internal/successor/route/transport", true},

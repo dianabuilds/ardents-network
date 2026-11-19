@@ -12,7 +12,11 @@ retired` before any argument interpretation or filesystem effect, and no
 Invite root reader, converter, or deleter remains. `inspect-alpha-corpus`
 joined them under ADR-0110: the exact route returns `inspect-alpha-corpus is
 retired` before parsing arguments or opening any file, root, or floor, and no
-ACA2 verifier remains in the tree.
+ACA2 verifier remains in the tree. ADR-0127 (#647) added the persisted-input
+`endpoint enrollment-check` form, `inspect-bundle`, `inspect-transitions`, and
+the four `prepare-qualification-*` routes: each refuses at dispatch before
+arguments, files, roots, or floors, and the ACA1 reader/inspection Modules are
+removed.
 The F-08 operator-surface reduction is complete:
 the Invite root's data obligation was resolved as typed incompatibility
 (existing roots stay on disk byte-for-byte), the import writer is stopped,
@@ -42,7 +46,7 @@ boundaries; they are not alpha-bundle artifacts.
 |---|---|---|---|
 | Network participant | ardents | keep and deepen | Headless Endpoint, Network State and selected closed Service interfaces; Entry Invite and Name routes are retired. |
 | Network participant | ardents-node | keep | Source, Node duty, and closed issuer process lifecycle. |
-| Network participant | ardents-control | keep after contraction | Enrollment-pinned ACA1 disclosure/transition reader and bounded closed-profile operator adapter; ACA2 corpus intake/inspection are retired. |
+| Network participant | ardents-control | keep after contraction | Bounded closed-profile operator adapter and offline infrastructure preparation compositions; the ACA1 disclosure/transition reader and ACA2 corpus intake/inspection are retired (ADR-0110, ADR-0127). |
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
 | Isolated domain composition | ardents-next | maintained domain consumer | New-domain commands and bounded native consumers; no old-runtime imports, installed Service or final artifact cutover implied. |
 | Installed Application | ardents-text | keep | Trusted local text UI and fixed confined Reader/Publisher worker entrypoints. |
@@ -58,7 +62,8 @@ and the headless command inventory under tests/profiles.
 
 | Binary | Routes | Classification |
 |---|---|---|
-| ardents | accept-offline, accept-closed-profile; endpoint enrollment-check/withdraw | keep |
+| ardents | accept-offline, accept-closed-profile; endpoint enrollment-check <bundle-root> <manifest-sha256>/withdraw | keep; enrollment-check verifies through the successor enrollment owner (ADR-0127) |
+| ardents | endpoint enrollment-check <alpha-enrollment.json> | retirement refusal at dispatch before any file read; the persisted v1 document parser is removed and existing documents stay on disk (ADR-0127, #647) |
 | ardents | refresh-sources | retirement refusal at dispatch before input or root effects; the platform-led runtime owns automatic Source refresh and the successor State never samples process resources (#493) |
 | ardents | service-instance initialize/accept | retirement refusal at dispatch; canonical lifecycle is ardents-next publication-instance (#562) |
 | ardents | endpoint enroll/enroll-installed/headless/user-unit/installed-user-unit/replace/rollback/replacement-recovery | retirement refusal at dispatch before input or root effects; canonical platform-led delivery and forward-only replacement/recovery is ardents-next platform/endpoint/installation (#617 S3.5, ADR-0125) |
@@ -68,7 +73,10 @@ and the headless command inventory under tests/profiles.
 | ardents | diagnostics timeline | keep local, read-only projection of bounded runtime events from standard input; no storage, authority, or network effect |
 | ardents | name encode/resolve/control | retired at command dispatch before arguments or effects; no successor or fallback is implied (ADR-0113) |
 | ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, hosting initialize | keep; old Source selector and Node duty reservations retired |
-| ardents-control | inspect-bundle, inspect-transitions; prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile | keep |
+| ardents-control | prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile | keep |
+| ardents-control | inspect-bundle, inspect-transitions | retirement refusal at dispatch before arguments, files, roots, or floors; the ACA1 reader/report Modules are removed and no unified replacement is selected (ADR-0127, #647) |
+| ardents-control | prepare-qualification-evidence, prepare-qualification-catalog | retirement refusal at dispatch; the ACA1 preparation scripts are removed with the reader (ADR-0127, #647) |
+| ardents-control | prepare-qualification-node-record, prepare-qualification-epoch | retirement refusal at dispatch pointing at ardents-next network prepare-initial-node-record/prepare-initial-epoch; the qualification-network scripts are removed (ADR-0127, #647) |
 | ardents-custody | create-service-authority, issue-service-credential, create-admission-authority, issue-admission-permission, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
 | ardents-text | read, publish, link; worker-reader/worker-publisher | keep; trusted local UI routes and fixed installed worker entrypoints |
 | ardents-qualification | run from a local plan; preflight, verify-run, verify-pair, verify-network-manifest, verify-net14v, verify-failed-net14v | keep as installed verification tooling; never a participant route |
@@ -100,6 +108,10 @@ qualification owner and are rejected:
 | completed ardents-control simulate-* routes | historical planning-campaign generators retired by [ADR-0060](https://github.com/dianabuilds/ardents-network/blob/c58268d72f1eaeae173144e76d32d50986de2a77/docs/archive/adr/0060-retire-completed-planning-campaign-generators.md) (archived) |
 | ardents-control accept-alpha-corpus | retired fresh corpus intake; the exact route returns `accept-alpha-corpus is retired` before parsing arguments or opening any file or floor |
 | ardents-control inspect-alpha-corpus | retired ACA2/corpus diagnostic; the exact route returns `inspect-alpha-corpus is retired` before parsing arguments or opening any file, root, or floor, and the ACA2 production verifier is removed (ADR-0110) |
+| ardents endpoint enrollment-check <alpha-enrollment.json> | retired persisted portable-document diagnosis (ADR-0127, #647); the typed refusal precedes any document read, the v1 parser is removed, and the bundle-root+pin form through the successor verifier is the sole accepting route. Existing documents stay on disk byte-for-byte |
+| ardents-control inspect-bundle/inspect-transitions | retired ACA1 disclosure reader and unified transition report (ADR-0127, #647); each returns `<route> is retired` before parsing arguments or opening any file, root, or floor. The alphacontrol/inspection Modules and report schemas are removed; successor per-domain commands verify the same authority facts and no unified replacement is selected. Existing inspection floor roots stay unchanged |
+| ardents-control prepare-qualification-evidence/prepare-qualification-catalog | retired ACA1 signing-input preparation (ADR-0127, #647); typed refusal at dispatch and the alpha preparation scripts are removed with the reader |
+| ardents-control prepare-qualification-node-record/prepare-qualification-epoch | retired old-epoch Network preparation (ADR-0127, #647); typed refusals point at the successor `ardents-next network` preparation commands that produce the same canonical ARNR-v2/AREP-v3 bytes, and the qualification-network scripts are removed |
 | ardents-release-custody initialize/inspect | completed RC1/RC2 release-seed ceremony; retired by ADR-0067 |
 | ardents-state-custody initialize-alpha-genesis | completed fixed functional-alpha genesis ceremony; retired by ADR-0067 |
 | ardents endpoint headless with `ardents-headless-runtime-v1` | retired startup schema; refused before plan-owned runtime effects without converting retained roots or floors |

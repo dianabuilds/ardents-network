@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux && packagee2e
 
 package endpoint_test
 
@@ -22,9 +22,10 @@ import (
 // These fixtures build the ephemeral TUF-compatible Release metadata and
 // canonical manifest for one exact enrolled artifact. The per-user Portable
 // lifecycle that formerly consumed the assembled bundle is retired (#617
-// S3.5); the surviving alpha-control inspection regressions still reuse this
-// metadata to pin an exact artifact and Release decision offline. The bundle,
-// keys and metadata are test-only and ephemeral.
+// S3.5), and the alpha-control inspection regressions retired with the reader
+// (ADR-0127, #647); the Ubuntu deb package payload/retention case still reuses
+// this metadata to pin an exact artifact offline. The bundle, keys and
+// metadata are test-only and ephemeral.
 
 type enrolledRuntimeKey struct {
 	public ed25519.PublicKey

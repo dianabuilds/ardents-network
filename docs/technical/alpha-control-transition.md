@@ -1,82 +1,38 @@
-# Alpha control transition contract
+# Alpha control transition contract (retired)
 
-Status: **current project-controlled alpha control-transition contract.** This document describes
-an inspectable project-operated alpha. It does not claim threshold governance,
-independent custody, public control, availability, or a canonical Namespace.
+Status: **retired by [ADR-0127](../adr/0127-retire-aca1-inspection-and-portable-enrollment-diagnosis.md)
+(2026-11-19, #647).** This document formerly owned the project-controlled ACA1
+control-transition disclosure contract consumed by `ardents-control
+inspect-transitions`. The ACA1 reader, its inspection Modules, and the
+`ardents-alpha-control-report-v1` / `ardents-alpha-transition-report-v1` report
+schemas are removed; `inspect-bundle` and `inspect-transitions` return typed
+before-effect refusals, and no unified replacement report is selected.
 
-## Ownership and scope
+The authority separation this contract described remains binding in its
+current owners:
 
-`internal/release` owns Release Safety. `internal/network/state` owns accepted
-Epoch successors and duty withdrawal. The enrollment-pinned Compatibility
-component binds accepted Release and Network facts without becoming either
-authority. ADR-0105 removed the whole Namespace subsystem, so no global
-Namespace close/materialization input exists at all. The
-`internal/alphacontrol` declaration and the `ardents-control
-inspect-transitions` report authorize no Endpoint action. The inspector owns
-separate catalog, Release, and Network roots: successful inspection can advance
-their authenticated floors without changing a live Endpoint root. Current
-inspection returns an error if any of their Close operations fails. A component
-with failed Release or Network cleanup is reported unavailable, while the
-authenticated decision and any already committed owner floor remain visible.
-Catalog cleanup failure preserves the authenticated report but makes the
-command fail; it never rolls back an already committed floor.
+- Release Safety belongs to the Release owner's own verification and floors;
+- accepted Epoch successors and duty withdrawal belong to the Network State
+  owner;
+- the disclosed Compatibility cross-binding was an ACA1 disclosure artifact:
+  the successor enforces Release/State coherence as a runtime invariant of its
+  own owners, exercised behaviorally by the selected native harness, not by a
+  static disclosure-consistency report;
+- Namespace materialization remains absent (ADR-0105); no close, release,
+  reclaim, or current Namespace state exists.
 
-Initial closed Route disclosure under ADR-0120 pins exactly one State key at
-threshold one. Inspection passes that same unambiguous pinned key as the
-State-owned Closed Profile authority; it still runs ordinary State acceptance.
-ACN1 does not separately identify a Closed Profile authority among multiple
-State keys, so closed disclosures with more than one key refuse as invalid.
-This grants no Closed Profile acceptance or Route readiness; one operator
-family still cannot fill multiple Role Domains or supply two Source families.
+Inspection never authorized an Endpoint action, and its retirement waives no
+protection or qualification case: acceptance outcomes come only from the
+qualification harness bound to the exact candidate (ADR-0120;
+[privacy qualification](../development/privacy-qualification.md)). Existing
+ACA1 inspection floor roots and catalog/component bytes stay on disk
+byte-for-byte as retained evidence with no maintained reader, converter, or
+deleter (ADR-0124). The enrollment v3 companion inventory that pinned the
+disclosure keys is unchanged grammar (ADR-0112/ADR-0119).
 
-| Domain | Authority / predecessor / freshness | Rotation, revocation, and floor | Emergency, participant failure, and evidence |
-|---|---|---|---|
-| Release Safety | Enrollment-pinned Release trusted-root chain; retained Release floor and consecutive root chain; timestamp and Release Safety bounds. | Consecutive authenticated root rotation; authenticated build revocation/replacement; Endpoint-owned non-decreasing Release floor. | Stop new work or terminate at the authenticated deadline; `release unsafe`, `revoked`, `expired`, `conflicting`, or `unavailable`; exact metadata, artifact digest, Release component, and floor. |
-| Network Epoch | Enrolled Network evidence pins authority set/threshold; persisted Epoch successor; Epoch validity and Time Confidence. | Verified State successor rotates facts and withdraws expired/ineligible duties; State-owned non-decreasing Epoch root. | Refuse State-dependent new work and drain/withdraw affected duty; `network state unavailable`, `expired`, `invalid`, `replayed`, or `conflicting`; exact Epoch bytes, authority IDs/signatures, material roots, and State floor. |
-| Compatibility | Independently pinned Compatibility component; accepted Release identity plus Epoch/profile tuple; earlier bound validity limit. | Higher catalog/component generation bound to a successor tuple; revoked Release or incompatible profile invalidates it; catalog/component plus Release/State floors. | Refuse the incompatible profile, never downgrade Route; `build incompatible` or tuple unavailable/stale/forged/replayed/conflicting; exact component and all bound identities. |
-| Namespace materialization | **No authority, predecessor, or accepted input in project-controlled alpha.** | No rotation, revocation, or materialization floor exists. | Do not materialize, release, or reclaim a Namespace; `Namespace materialization is unavailable`; absence of a Namespace component/authority plus ADR-0054 and this contract. |
-
-## Transition matrix
-
-| Input condition | Required outcome | Evidence / recovery boundary |
-|---|---|---|
-| Forged | `forged`; reject that domain. | Invalid catalog/component signature, digest, or tuple; obtain independently authenticated replacement bytes. |
-| Stale | `stale`; do not extend work or publish fresh state. | Authenticated validity bound; only a current successor can restore readiness. |
-| Replayed | `replayed`; preserve the retained floor. | Lower catalog/component, Release, or State generation; never replace with older bytes. |
-| Revoked | `revoked` for Release Safety; dependent Compatibility is refused. | Authenticated Release Safety decision; use an explicitly authorized replacement, never automatic install. |
-| Conflicting | `conflicting`; no winner is invented. | Same-level divergent authenticated input; retain conflict evidence for owner resolution. |
-| Withheld | `unavailable`; no silent cached extension beyond validity. | The Endpoint cannot distinguish intentional withholding from outage; retry only the same authenticated identity/source rule. |
-| Unavailable | `unavailable`; no fallback root, source, profile, or Namespace authority. | Missing bounded input; cached valid state may be inspected only within its declared validity. |
-
-`inspect-transitions` emits `ardents-alpha-transition-report-v1`, the nested
-exact alpha-control report identity, and a result for all four domains. The accepted
-outcomes are `accepted` and `not-selected`; failure outcomes are
-`forged`, `stale`, `replayed`, `revoked`, `conflicting`, and `unavailable`.
-
-ADR-0110 selects ACA1 as the sole maintained control-inspection format. The
-ACA1 catalog and independent Release and Network inspection floors continue
-to back `inspect-bundle` and this transition report. The separate ACA2
-Alpha Corpus diagnostic is retired and removed: the exact
-`inspect-alpha-corpus` route refuses before parsing arguments or opening any
-file, root, or floor, and no ACA2 verifier remains in the tree. Retained
-Alpha Corpus floor bytes were the ADR-0088 compatibility obligation; ADR-0113
-deleted that reader, so existing floor bytes are byte-for-byte inert evidence
-that no maintained code can read, convert, or delete. The removed diagnostic
-never owned an inspection floor or Endpoint authority.
-
-## Verification
-
-The maintained report classifier exercises the complete matrix. The Linux
-process test `TestAlphaControlTransitionsTwoFreshEnrolledEndpointsAgree` builds the
-exact Endpoint/control pair, starts two fresh Endpoint processes with distinct
-state roots, and demands byte-identical transition reports from two separate
-fresh reader roots. The [historical run record](https://github.com/dianabuilds/ardents-network/blob/f82a52dde912e975df0b23bdcf459f1e5b71def3/docs/technical/alpha-control-transition.md#verification)
-retains the dated environment and outcome. This checks functional equality
-only; it is not published-release qualification, independent audit, or Public
-Beta promotion.
-
-## Governing decisions
-
-ADR-0004, ADR-0006, ADR-0038, ADR-0043, ADR-0053, ADR-0054, and ADR-0110 govern this
-contract. R-123 records its transition evidence; F-49 records the one-format
-inspection disposition.
+The complete former contract text, transition matrix, and verification record
+remain in Git history at this path (last maintained revision before the
+retirement change). ADR-0004, ADR-0006, ADR-0038, ADR-0043, ADR-0053, ADR-0054,
+ADR-0110, and ADR-0127 govern the disposition; R-123 and F-49 remain historical
+evidence. The retired `accept-alpha-corpus` / `inspect-alpha-corpus` refusals
+and their retained-floor boundary are unchanged (ADR-0110, ADR-0113).

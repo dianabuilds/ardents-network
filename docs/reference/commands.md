@@ -482,7 +482,7 @@ still applies before running a downloaded program.
 | `endpoint open <application-socket> <target-link> <input-file> <output-file>` | Return `endpoint open is retired` before opening either file, dialing the local socket, or causing Endpoint/Network work. The AAI2 codec/server/client and exclusive Endpoint adapter are absent; no generic AAI3 translation or fallback is selected. |
 | `endpoint publish <administration-socket>` | Return `endpoint publish is retired; use ardents-text publish <administration-socket> <document-file>` before dialing the Administration socket or starting Endpoint/Network work. Use `ardents-text publish /absolute/path/to/administration.sock /absolute/path/to/document` for snapshot publication. |
 | `endpoint withdraw <administration-socket>` | Request withdrawal through the exact local one-use Service Administration capability and render its bounded receipt. A publisher plan must explicitly retain its administration listener after publication for this route. |
-| `endpoint enrollment-check <bundle-root> <manifest-sha256>` | Diagnose one already-running artifact against an independently pinned closed-alpha inventory. It does not authenticate first execution. |
+| `endpoint enrollment-check <bundle-root> <manifest-sha256>` | Diagnose one already-running artifact against an independently pinned closed-alpha inventory through the successor enrollment verifier (ADR-0127). It renders only authenticated initial facts and does not authenticate first execution. |
 | `endpoint enroll <bundle-root> <manifest-sha256>` | Return `endpoint enroll is retired; use ardents-next platform delivery with endpoint construct-plan and prepare-history` at command dispatch before reading the bundle or causing any effect (#617 S3.5). |
 | `endpoint enroll-installed <package-enrollment.json>` | Return `endpoint enroll-installed is retired; use ardents-next platform delivery with endpoint construct-plan and prepare-history` at command dispatch before reading the enrollment or causing any effect (#617 S3.5). |
 | `endpoint user-unit <bundle-root> <manifest-sha256>` / `endpoint installed-user-unit <package-enrollment.json>` | Return `endpoint user-unit is retired; use ardents-next platform unit` (respectively `endpoint installed-user-unit is retired; use ardents-next platform unit`) at command dispatch before rendering any unit. The per-user `systemd --user` profile is retired; platform delivery owns the system unit (#617 S3.5). |
@@ -546,12 +546,15 @@ there is no H3 reader or compatibility window. Resource observations are
 Module diagnostics, not a capacity or hosting claim.
 
 The three-argument v1 form `endpoint enrollment-check <alpha-enrollment.json>`
-is retained as a bounded local diagnosis for an already-running artifact; it is
-not a new C0 enrollment route. The three-argument `endpoint enroll` and
-`endpoint user-unit` forms are retired at command dispatch like their
-two-argument forms (#617 S3.5); no per-user restart or migration-unit render
-path remains. New units use the independently delivered manifest pin argument
-through platform delivery.
+is retired (ADR-0127, #647): it returns `endpoint enrollment-check
+<alpha-enrollment.json> is retired; use endpoint enrollment-check <bundle-root>
+<manifest-sha256>` at command dispatch before reading the document or touching
+the bundle. The v1-document parser is removed; existing persisted documents
+stay on disk byte-for-byte with no reader or converter. The three-argument
+`endpoint enroll` and `endpoint user-unit` forms are retired at command
+dispatch like their two-argument forms (#617 S3.5); no per-user restart or
+migration-unit render path remains. New units use the independently delivered
+manifest pin argument through platform delivery.
 
 ## `ardents-node`
 
@@ -1185,22 +1188,18 @@ historical evidence.
 
 ## `ardents-control`
 
-`ardents-control` is a separate alpha-control program. It never starts an
+`ardents-control` is a separate control program. It never starts an
 Endpoint, downloads bytes, changes Release/Network State roots, or turns an
 alpha name into any canonical Naming state. It has no current two-Endpoint
 qualification intake; the retained routes below own their own explicit inputs
-and inspection roots.
+and inspection roots. The enrollment-pinned ACA1 disclosure reader retired
+with ADR-0127 (#647); successor per-domain commands verify the same authority
+facts, and no unified replacement report is selected.
 
 | Route | Required flags | Result |
 |---|---|---|
-| `inspect-bundle` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | Participant closed-alpha route. It first verifies the exact enrolled bundle and artifact, then runs the maintained Release Decision, Network State, ACA1 catalog, and Release/Network/Compatibility component verifiers. The named standalone inspection root owns separate `catalog`, `release`, and `network` floor children and is physically distinct from Endpoint state. Repeating the same accepted input against the same inspection root reports the cached/no-update outcome; a second absent inspection root supplies an independent fresh observation. |
-| `inspect-transitions` | `--enrollment PATH --artifact PATH --state-root PATH --at RFC3339` | Participant transition diagnostic. It runs the same enrollment-pinned inspection and emits `ardents-alpha-transition-report-v1`: nested exact closed-alpha control evidence plus independent Release Safety, Network Epoch, Compatibility, and Namespace-materialization outcomes. It advances only the explicitly named standalone inspection floors; it never mutates Endpoint state. `not-selected` for Namespace never creates a close, release, reclaim, or current Namespace state. |
 | `inspect-closed-issuer-profile` | `--profile PATH --node-key HEX --network HEX --node HEX` | Read-only offline inspection of the JSON public export from closed `ardents-node issuer initialize`. Verifies its schema, digest, Node signature and independently supplied Network/Node bindings. Reports `ardents-closed-issuer-inspection-v1`, including `NetworkID`, `IssuerNodeID`, `NotBefore`, `NotAfter` and `TokenKeys` in closed-profile-plan form. It does not accept State or decide current validity; future hourly keys may be provisioned before activation. |
 | `prepare-closed-profile` | `--plan PATH --output PATH` | Render the canonical unsigned `ARDCPR03` body from a bounded public plan into a new file. |
-| `prepare-qualification-evidence` | `--plan PATH --output-root PATH` | Prepare the mutually bound initial unsigned Release/Network/Compatibility payloads and ACS1 signing inputs under ADR-0120. Absolute public plan and previously absent absolute output root; no signatures, State acceptance or participant floor mutation. |
-| `prepare-qualification-catalog` | `--plan PATH --output-root PATH` | Prepare the initial unsigned ACA1 signing input from exact component references. Absolute public plan and previously absent absolute output root; referenced bytes and their authorities remain separately verified. |
-| `prepare-qualification-node-record` | `--plan PATH --output-root PATH` | Prepare the existing unsigned ARNR-v2 message for a fresh generation-one closed Node Record with its own public key and explicit Node identity. No Node signature, duty or State acceptance. |
-| `prepare-qualification-epoch` | `--plan PATH --output-root PATH` | Verify every supplied initial closed Node Record and prepare the existing unsigned AREP-v3 initial Epoch commitments/assignments. State signing keys are separate from Node keys; no State signature, acceptance or floor reset. |
 | `sign-closed-profile` | `--plan PATH --authority-key PATH --output PATH` | Reread the exact public plan and sign only `ARDCPR03` with the owner-only PKCS#8 Ed25519 State-authority file; write a new file and report its digest without printing key or profile bytes. |
 | `inspect-closed-profile` | `--plan PATH --profile PATH --authority HEX --at RFC3339` | Read-only verification of the signed profile against the independently pinned State authority and exact Network/Epoch/time context. Durable State acceptance is separate. |
 
@@ -1212,6 +1211,22 @@ retained floor bytes, and no ACA2 verifier remains in the tree
 ([ADR-0110](../adr/0110-retire-aca2-corpus-inspection.md)). The
 [Endpoint Alpha destination retirement contract](../technical/endpoint-service-runtime.md#alpha-destination-retirement)
 owns the wider existing-link and retained-data boundary.
+
+The ACA1 inspection and qualification-preparation routes are likewise omitted
+from usage and refuse at dispatch before parsing arguments or opening any
+file, root, or floor ([ADR-0127](../adr/0127-retire-aca1-inspection-and-portable-enrollment-diagnosis.md), #647):
+`inspect-bundle` and `inspect-transitions` return `<route> is retired`; the
+`ardents-alpha-control-report-v1` / `ardents-alpha-transition-report-v1`
+schemas and the ACA1 reader/inspection Modules are removed, and existing
+inspection floor roots stay on disk unchanged. `prepare-qualification-evidence`
+and `prepare-qualification-catalog` return `<route> is retired` with their
+alpha preparation scripts. `prepare-qualification-node-record` returns
+`prepare-qualification-node-record is retired; use ardents-next network
+prepare-initial-node-record`, and `prepare-qualification-epoch` returns
+`prepare-qualification-epoch is retired; use ardents-next network
+prepare-initial-epoch`; the successor preparation and signing commands cover
+the same initial Network need with the same canonical ARNR-v2/AREP-v3 bytes,
+and the qualification-network scripts are removed.
 
 The caller-keyed low-level `inspect` route and the always-unqualified future
 `inspect-public-control` projection are not maintained command routes. Their

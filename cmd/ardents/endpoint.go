@@ -9,9 +9,8 @@ import (
 	"io"
 	"os"
 	"runtime"
-	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
 )
 
 var errEndpointOpenRetired = errors.New("endpoint open is retired")
@@ -33,6 +32,11 @@ var errEndpointReplaceRetired = errors.New("endpoint replace is retired; use ard
 var errEndpointRollbackRetired = errors.New("endpoint rollback is retired; the successor Endpoint lifecycle is forward-only")
 var errEndpointReplacementSelfTestRetired = errors.New("endpoint replacement-self-test is retired; use ardents-next installation upgrade-installed")
 var errEndpointReplacementRecoveryRetired = errors.New("endpoint replacement-recovery is retired; use ardents-next installation recover-installed")
+
+// The persisted ardents-alpha-enrollment-input-v1 document form is retired
+// (ADR-0127, #647): the bundle root and independently delivered manifest pin
+// are the only enrollment-check inputs. The refusal precedes any file read.
+var errEndpointEnrollmentCheckDocumentRetired = errors.New("endpoint enrollment-check <alpha-enrollment.json> is retired; use endpoint enrollment-check <bundle-root> <manifest-sha256>")
 
 // runEndpoint adapts one bounded Endpoint process to the retained command
 // result projection. The Endpoint owns process and connection lifecycle; this
@@ -63,10 +67,10 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 		}
 	}
 	if len(arguments) == 3 && arguments[1] == "enrollment-check" {
-		return runLegacyEnrollmentCheck(arguments[2], output)
+		return errEndpointEnrollmentCheckDocumentRetired
 	}
 	if len(arguments) == 4 && arguments[1] == "enrollment-check" {
-		return runEnrollmentCheck(arguments[2], arguments[3], output)
+		return runEnrollmentCheck(ctx, arguments[2], arguments[3], output)
 	}
 	if len(arguments) == 6 && arguments[1] == "open" {
 		return errEndpointOpenRetired
@@ -80,85 +84,39 @@ func runEndpoint(ctx context.Context, arguments []string, output io.Writer) erro
 	return errors.New("usage: ardents endpoint <enrollment-check <bundle-root> <manifest-sha256>|enroll (retired; use ardents-next platform delivery)|enroll-installed (retired; use ardents-next platform delivery)|headless (retired; use ardents-next endpoint start-installed)|open <application-socket> <target-link> <input-file> <output-file> (retired; refuses before effects)|publish <administration-socket> (retired; use ardents-text publish <administration-socket> <document-file>)|withdraw <administration-socket>|user-unit (retired; use ardents-next platform unit)|installed-user-unit (retired; use ardents-next platform unit)|replacement-self-test (retired)|replacement-recovery (retired)|replace (retired; use ardents-next installation upgrade-installed)|rollback (retired; forward-only)>")
 }
 
-type enrollmentFact struct {
-	Cohort, Release string
-	Verified        enrollment.Verified
-}
-
 // runEnrollmentCheck is an already-running command's bounded local diagnosis
-// for one closed-alpha bundle. It verifies the independently delivered pin
-// before parsing the manifest and does not report Endpoint or network
-// readiness. It cannot authenticate its own first execution.
-func runEnrollmentCheck(bundleRoot, manifestSHA256 string, output io.Writer) error {
-	fact, err := verifyManifestPinnedEnrollment(bundleRoot, manifestSHA256, enrollment.Verify)
+// for one closed-alpha bundle. The successor enrollment owner verifies the
+// independently delivered pin before parsing the manifest; this command only
+// renders the authenticated initial facts. It does not report Endpoint or
+// network readiness and cannot authenticate its own first execution.
+func runEnrollmentCheck(ctx context.Context, bundleRoot, manifestSHA256 string, output io.Writer) error {
+	executable, err := os.Executable()
 	if err != nil {
 		return err
 	}
+	bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: bundleRoot, ExecutablePath: executable, ManifestSHA256: manifestSHA256, Scope: enrollment.General})
+	if err != nil {
+		return err
+	}
+	facts, ok := bundle.Facts()
+	if !ok {
+		return errors.New("manifest-pinned enrollment returned no verified facts")
+	}
+	if facts.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return errors.New("manifest-pinned enrollment does not match this platform")
+	}
+	artifact, ok := bundle.File(facts.Artifact)
+	if !ok {
+		return errors.New("manifest-pinned enrollment lacks its verified artifact")
+	}
+	defer clear(artifact)
 	encoder := json.NewEncoder(output)
 	encoder.SetEscapeHTML(false)
 	return encoder.Encode(struct {
 		Kind, Cohort, Release, Platform string
 		ArtifactSHA256                  string
-	}{Kind: "manifest-pinned-enrollment-verified", Cohort: fact.Cohort, Release: fact.Release, Platform: fact.Verified.Inputs.Local.Platform,
-		ArtifactSHA256: hexDigest(fact.Verified.Inputs.Artifact)})
-}
-
-func runLegacyEnrollmentCheck(path string, output io.Writer) error {
-	input, verified, err := verifyLegacyPortableEnrollment(path, enrollment.Verify)
-	if err != nil {
-		return err
-	}
-	encoder := json.NewEncoder(output)
-	encoder.SetEscapeHTML(false)
-	return encoder.Encode(struct {
-		Kind, Cohort, Release, Platform string
-		ArtifactSHA256                  string
-	}{Kind: "alpha-enrollment-verified", Cohort: input.Cohort, Release: input.Release, Platform: input.Platform,
-		ArtifactSHA256: hexDigest(verified.Inputs.Artifact)})
-}
-
-func verifyManifestPinnedEnrollment(bundleRoot, manifestSHA256 string,
-	verify func(enrollment.Request) (enrollment.Verified, error),
-) (enrollmentFact, error) {
-	executable, err := os.Executable()
-	if err != nil {
-		return enrollmentFact{}, err
-	}
-	request, err := enrollment.RequestFromManifestPin(bundleRoot, executable, manifestSHA256, time.Now().UTC())
-	if err != nil {
-		return enrollmentFact{}, err
-	}
-	if request.Pin.Platform != runtime.GOOS+"-"+runtime.GOARCH {
-		return enrollmentFact{}, errors.New("manifest-pinned enrollment does not match this platform")
-	}
-	verified, err := verify(request)
-	return enrollmentFact{Cohort: request.Pin.Cohort, Release: request.Pin.Release, Verified: verified}, err
-}
-
-func verifyLegacyPortableEnrollment(path string,
-	verify func(enrollment.Request) (enrollment.Verified, error),
-) (enrollment.ClosedAlphaInput, enrollment.Verified, error) {
-	input, err := loadLegacyPortableEnrollment(path)
-	if err != nil {
-		return enrollment.ClosedAlphaInput{}, enrollment.Verified{}, err
-	}
-	executable, err := os.Executable()
-	if err != nil {
-		return enrollment.ClosedAlphaInput{}, enrollment.Verified{}, err
-	}
-	verified, err := verify(input.Request(executable, time.Now().UTC()))
-	return input, verified, err
-}
-
-func loadLegacyPortableEnrollment(path string) (enrollment.ClosedAlphaInput, error) {
-	input, err := enrollment.ReadClosedAlphaInput(path)
-	if err != nil {
-		return enrollment.ClosedAlphaInput{}, err
-	}
-	if input.Platform != runtime.GOOS+"-"+runtime.GOARCH {
-		return enrollment.ClosedAlphaInput{}, errors.New("legacy portable enrollment input does not match this platform")
-	}
-	return input, nil
+	}{Kind: "manifest-pinned-enrollment-verified", Cohort: facts.Cohort, Release: facts.Release, Platform: facts.Platform,
+		ArtifactSHA256: hexDigest(artifact)})
 }
 
 func hexDigest(value []byte) string {

@@ -1,9 +1,12 @@
 # Closed-alpha enrollment verification
 
 Status: **current maintained technical contract.** This document defines the
-bounded first-artifact verifier in `internal/enrollment`. It is not a
-release procedure, download guide, installer, updater, or qualification
-profile.
+bounded first-artifact verification contract. The maintained
+`endpoint enrollment-check` command boundary consumes
+`internal/successor/enrollment`; the predecessor `internal/enrollment` Module
+retains the same grammar and its behavior tests until the gated legacy cohort
+removal (ADR-0127). It is not a release procedure, download guide, installer,
+updater, or qualification profile.
 
 ## Interface and ownership
 
@@ -83,15 +86,16 @@ surface, and an unknown schema keeps its generic invalid refusal rather than
 the typed retirement classification. Its former inputs and results remain only
 in the non-executable compatibility evidence tree.
 
-The Endpoint adapter also retains a parser for the complete historical
-`ardents-alpha-enrollment-input-v1` document. Its live consumers are the
-three-argument `endpoint enrollment-check <alpha-enrollment.json>` local
-diagnosis and `ardents-control inspect-bundle`; the per-user `endpoint enroll`
-/ `endpoint user-unit` start path that once invoked it is retired (#617 S3.5).
-This is a diagnosis compatibility bridge, not an enrollment format: it derives
-the same verifier request, including the manifest digest, while new C0
-enrollment and newly rendered units receive the bundle root and independently
-delivered pin as separate arguments.
+The historical `ardents-alpha-enrollment-input-v1` persisted document is
+retired (ADR-0127, #647). Its former consumers — the three-argument
+`endpoint enrollment-check <alpha-enrollment.json>` local diagnosis and
+`ardents-control inspect-bundle` — return typed before-effect refusals, the
+v1-document parser is removed, and the per-user `endpoint enroll` /
+`endpoint user-unit` start path that once invoked it was already retired
+(#617 S3.5). Existing documents stay on disk byte-for-byte with no reader,
+converter, or deleter. The four-argument bundle-root+pin form is the sole
+`enrollment-check` input; new C0 enrollment and platform delivery receive the
+bundle root and independently delivered pin as separate arguments.
 
 ## Acceptance sequence
 
@@ -157,10 +161,13 @@ on both entry points.
 
 `internal/successor/enrollment` owns a separately implemented initial portable
 verification flow consumed by `ardents-next enrollment verify` and
-`verify-headless`, each taking only Bundle Root and independent manifest pin.
-The command obtains its own original executable path from the OS. This is a
-read-only initial verification consumer, not a new supported distribution or
-installed runtime. The predecessor commands and roots remain independent.
+`verify-headless` and by the read-only `ardents endpoint enrollment-check`
+bundle-root+pin diagnostic (ADR-0127), each taking only Bundle Root and
+independent manifest pin. Each command obtains its own original executable
+path from the OS. These are read-only initial verification consumers, not a
+new supported distribution or installed runtime; the enrollment-check
+diagnostic renders only authenticated initial facts and grants no readiness.
+The predecessor commands and roots remain independent.
 
 The new owner authenticates pin before parsing, reads each file once into an
 owned snapshot with actual byte bounds, limits directory enumeration, verifies
@@ -210,7 +217,10 @@ inventory rejection, executable substitution, the typed refusal of retired
 v1/v2 descriptors and the generic refusal of unknown schemas, v3 companion
 separation including the partial-pair failure, package-owned artifact binding,
 Windows v3 manifest acceptance through the running-artifact identity gate in
-a re-executed enrolled child process. Callers in
-`cmd/ardents` and `cmd/ardents-control` exercise this narrow Network enrollment
-interface. Repository gates provide integration evidence;
+a re-executed enrolled child process. The retired ACA1 inspection chain and
+the legacy enrollment-check forms were its last production callers; the
+four-argument `endpoint enrollment-check` now consumes the successor owner
+(ADR-0127, #647). The Module remains with these behavior tests until the gated
+legacy cohort removal; its production-dead symbols are reviewed in the
+deadcode allowlist. Repository gates provide integration evidence;
 historical RC2 enrollment evidence does not qualify a future baseline.

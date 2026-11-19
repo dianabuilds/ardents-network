@@ -17,24 +17,26 @@ supported Node hosting, or Route qualification.
 
 Under the [bounded qualification operation](../operations/qualification-release.md)
 and [ADR-0120](../adr/0120-authorize-operator-prepared-qualification-release.md),
-`ardents-control prepare-qualification-node-record` prepares only existing
-unsigned generation-one ARNR-v2 bytes for explicit closed Node facts.
-`prepare-qualification-epoch` checks supplied signed closed Records with the
-ordinary Epoch owner, computes actual commitments/assignments and prepares
-only existing unsigned initial AREP-v3 bytes. State authorities remain distinct
-from Node identity keys; any rejected or colliding initial Record refuses
-preparation. Neither command signs, grants a duty, accepts State, modifies a
-floor or starts a Node. Existing State signature, closed-profile and Source
-verification contracts remain binding.
-
-The isolated new public composition exposes the corresponding canonical owners
-through `ardents-next network prepare-initial-node-record`,
+initial closed Node Record and Epoch preparation is owned by the isolated new
+public composition: `ardents-next network prepare-initial-node-record`,
 `prepare-initial-epoch` and `prepare-closed-profile`, under the
 [new Network boundary](successor-network-state.md) and
 [command reference](../reference/commands.md#public-network-preparation-in-the-isolated-command).
-It prepares only public unsigned bytes with fresh native output custody and
-TCP/TLS-only admission. It imports no predecessor command/runtime and implements
-no private signing or installed operator provisioning journey.
+It prepares only existing unsigned generation-one ARNR-v2 bytes for explicit
+closed Node facts and existing unsigned initial AREP-v3 bytes after checking
+supplied signed closed Records with the ordinary Epoch owner and computing
+actual commitments/assignments. State authorities remain distinct from Node
+identity keys; any rejected or colliding initial Record refuses preparation.
+Preparation signs nothing, grants no duty, accepts no State, modifies no floor
+and starts no Node. It prepares only public unsigned bytes with fresh native
+output custody and TCP/TLS-only admission, imports no predecessor
+command/runtime, and implements no private signing or installed operator
+provisioning journey. The former `ardents-control
+prepare-qualification-node-record` / `prepare-qualification-epoch` routes and
+the qualification-network scripts retired with ADR-0127 (#647): they return
+typed before-effect refusals pointing at these successor commands, and the
+canonical wire bytes are unchanged. Existing State signature, closed-profile
+and Source verification contracts remain binding.
 
 The [selected architecture](common-privacy-architecture.md) under
 [ADR-0078](../adr/0078-select-common-split-circuit-privacy.md) and

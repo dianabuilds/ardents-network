@@ -612,31 +612,29 @@ absolute memory erasure is not claimed. No operational ceremony, new trust,
 key generation or installed acceptance follows from these
 engineering operations. ADR-0120 bootstrap receipt acceptance remains separate.
 
-The maintained `ardents-control prepare-qualification-node-record` and
-`prepare-qualification-epoch` commands prepare the real initial Network inputs
-under ADR-0120. Both use `--plan` and `--output-root` with canonical absolute
-public paths and a previously absent output directory. Plans are bounded to
-8 MiB, reject unknown fields/trailing JSON, and use the existing JSON byte-array,
-base64 and whole-second time conventions below. The Node plan schema is
-`ardents-qualification-node-record-plan-v1` with a `record` object containing
-the exported `epoch.InitialClosedRecord` fields. NodeID and its public key are
-distinct explicit facts. Only the two closed Carrier profiles, valid host/port,
-canonical ASCII text, finite integral nonnegative validity, and capacity
-1..1024 prepare. The output is `node-record.signing-input`, unsigned existing
-ARNR-v2 bytes with generation one and closed capability two.
+The maintained initial Network preparation under ADR-0120 is the isolated new
+public composition: `ardents-next network prepare-initial-node-record` and
+`prepare-initial-epoch`
+([command reference](../reference/commands.md#public-network-preparation-in-the-isolated-command)).
+Both take one absolute public plan and one previously absent absolute output
+directory. The Node plan schema is `ardents-initial-node-record-plan-v1` with
+explicit Network/Node identities, valid host/port, canonical ASCII family text,
+finite whole-second validity, the closed TCP/TLS Carrier and capacity 1..1024;
+NodeID and its public key are distinct explicit facts. The output is
+`node-record.signing-input`, unsigned existing ARNR-v2 bytes with generation
+one and closed capability two.
 
 Sign each exact message separately with its matching Node identity key before
-Epoch preparation. The Epoch plan schema is
-`ardents-qualification-epoch-plan-v1`, with an `epoch` object containing the
-exported `epoch.InitialClosedEpoch` fields. Supply 1..64 signed Records in the
-exact intended Source order, 1..16 strictly ordered Role Domains, nonzero
-Network/assignment seed, finite validity covered by every Record, and 1..16
-distinct public State authority keys. Preparation reuses ordinary Record
-evaluation and refuses any rejection/collision, including a Node key reused as
-a State authority. It computes actual input/view/rejection commitments,
-family/capacity/Domain summaries and deterministic assignments. The output
-`epoch.unsigned` is existing AREP-v3 with Epoch one, zero predecessor, closed
-Route profile and no retired interactive Gateway/Transit projection.
+Epoch preparation. The Epoch plan schema is `ardents-initial-epoch-plan-v1`:
+supply 1..64 signed Records in the exact intended Source order, 1..16 strictly
+ordered Role Domains, nonzero Network/assignment seed, finite validity covered
+by every Record, and 1..16 distinct public State authority keys. Preparation
+reuses ordinary Record evaluation and refuses any rejection/collision,
+including a Node key reused as a State authority. It computes actual
+input/view/rejection commitments, family/capacity/Domain summaries and
+deterministic assignments. The output `epoch.unsigned` is existing AREP-v3
+with Epoch one, zero predecessor, closed Route profile and no retired
+interactive Gateway/Transit projection.
 
 These public commands create exclusive `0700`/`0600` outputs and synchronize
 files/directories before acknowledgement; retain partial outputs on failure.
@@ -644,116 +642,58 @@ They sign no Record or Epoch and admit no State. Separate State signatures over
 the actual unsigned Epoch digest, ordinary verification/materializations,
 closed profile and Source delivery preparation remain required. Never use test
 fixtures, copied historical authorities or cleared floors as operational input.
+The former `ardents-control prepare-qualification-node-record` /
+`prepare-qualification-epoch` routes retired with ADR-0127 (#647) and return
+typed before-effect refusals pointing at these successor commands; the
+canonical ARNR-v2/AREP-v3 wire bytes are unchanged.
 
-The explicit Linux-root adapter `scripts/prepare-qualification-network-keys.go`
-takes a previously absent canonical absolute private directory and a Node count
-from 1 to 64. It creates one `state-key.pem` and the requested distinct
-`node-00-key.pem` through `node-63-key.pem` identities, using fresh Ed25519 keys.
-The same root-owned ancestor, exclusive mode, synchronization and interrupted
-output rules as the Release operation apply. Its public receipt records roles,
-public keys and their digests and declares `independent_custody: false`.
-It signs nothing, grants no Node duty and creates no Network identity or State
-floor. Keep these roles separate from Release, alpha, Source and Custody keys.
-The closed-profile signer must be one of the configured pinned State authorities;
-the single initial State key can fulfill that State-owned signing responsibility.
-Never reuse diagnostic keys in the admitted qualification operation.
+Initial State and Node key birth uses the maintained
+`ardents-next network prepare-initial-keys` operation specified in
+[Initial State and Node keys](#initial-state-and-node-keys) above; it replaces
+the retired `scripts/prepare-qualification-network-keys.go` adapter (ADR-0127,
+#647). Keep these roles separate from Release, Source and Custody keys. The
+closed-profile signer must be one of the configured pinned State authorities;
+the single initial State key can fulfill that State-owned signing
+responsibility. Never reuse diagnostic keys in the admitted qualification
+operation.
 
-The explicit Linux-root adapter `scripts/sign-qualification-network.go` takes
-an absolute public plan, one root-owned `0600` PKCS#8 identity key and a new
-absolute output directory. Plan schema is
-`ardents-qualification-network-signing-plan-v1`, with `reference_time` and exactly
-one of `record` (`InitialClosedRecord`) or `epoch` (`InitialClosedEpoch`). The
-reference must be current within the same five-minute/past and one-minute/future
-window used by the Release operation. The finite interval must contain both
-the reference and current time and span at most seven days.
+Record and Epoch signing uses the maintained
+`ardents-next network sign-initial-node-record` / `sign-initial-epoch`
+operations specified in [Initial and profile signing](#initial-and-profile-signing)
+above; they replace the retired `scripts/sign-qualification-network.go`
+adapter (ADR-0127, #647). The Record public key must match the supplied Node
+key; the Epoch operation admits exactly one matching initial State key, signs
+the reprepared unsigned digest, runs ordinary Epoch verification, derives every
+materialization and verifies again with all materials required. No State root,
+floor, Source credential or installed process is created, and the receipt
+explicitly leaves State acceptance and installed qualification false.
 
-The Record public key must match the supplied Node key. The Epoch operation
-admits exactly one matching initial State key, signs the unsigned digest, runs
-ordinary Epoch verification, derives every materialization and verifies again
-with all materials required. It writes `node-record.bin` or `epoch.bin` plus
-Source-ordered `input-NN.bin` and accepted-View-ordered `material-NN.bin` files.
-It rejects invalid signed inputs before creating the output directory. Output
-files and directories are synchronized before the public receipt; interrupted
-outputs remain retained and cannot be replaced. No State root, floor, Source
-credential or installed process is created, and the receipt explicitly leaves
-State acceptance and installed qualification false.
+The ACA1 disclosure preparation and signing operations are retired (ADR-0127,
+#647): `ardents-control prepare-qualification-evidence` and
+`prepare-qualification-catalog` return typed before-effect refusals, and
+`scripts/prepare-qualification-alpha-evidence.go`,
+`scripts/prepare-qualification-alpha-catalog.go`,
+`scripts/prepare-qualification-alpha-keys.go` and
+`scripts/sign-qualification-alpha.go` are removed. No maintained ACA1 signing
+or inspection operation remains; the catalog was disclosure-only and never
+granted Release, Network or Endpoint authority.
 
-The maintained `ardents-control prepare-qualification-evidence` command prepares
-initial unsigned disclosure payloads and component signing inputs. Its explicit
-source-file adapter is `scripts/prepare-qualification-alpha-evidence.go`; both
-use the existing evidence and component codec owners. Pass `--plan` with an
-absolute public JSON plan and `--output-root` with a previously absent absolute
-output directory. The plan schema is
-`ardents-qualification-alpha-evidence-plan-v1`; its other top-level fields are
-`not_before`, `not_after`, `release`, `network`, and `compatibility`. Times are
-UTC whole-second RFC3339 values. Nested evidence fields use the exported field
-names of the current `inspection` evidence contracts: byte slices are JSON
-base64 strings and fixed 32-byte arrays are JSON numeric arrays. Unknown fields
-and trailing JSON values refuse; the public plan is bounded to 32 MiB.
+The enrollment v3 descriptor grammar is unchanged (ADR-0112/ADR-0119): the
+bundle still binds the exact companion inventory `catalog.ac1`, `release.ac1`,
+`network.ac1`, `compatibility.ac1`, `catalog.pub`, `release.pub`,
+`network.pub`, `compatibility.pub` and `corpus.pub`. These bytes remain
+digest-bound retained evidence; the maintained packaging lane supplies them as
+inert inventory (see `packaging/alpha-bundle/test.sh`), and the successor
+enrollment verifier checks their digests like every other static entry.
+Supplying them grants no disclosure authority, and no maintained reader
+verifies their signatures. Existing signed ACA1 bundles and inspection floors
+stay on disk byte-for-byte with no maintained reader, converter or deleter
+(ADR-0124).
 
-Preparation checks canonical evidence grammar and shared Release/Network/
-Compatibility bindings, including the inspected Epoch identity. It writes
-`release.payload`, `network.payload`, and `compatibility.payload`, each with
-a `.signing-input` companion containing the exact domain-separated initial
-ACS1 signing message. Generation is fixed to one; existing signatures, negative
-or fractional timestamps and invalid validity intervals refuse. The new output
-directory and files use `0700`/`0600`, exclusive creation and synchronization
-before acknowledgement. Preserve partial outputs on failure. This public-input
-adapter does not enforce the private-key ancestor policy of the Release signer.
-It creates no keys or signatures, authenticates no State Epoch, and grants no
-Release, Network or Endpoint acceptance. Separate role signatures and ordinary
-complete-bundle inspection remain required.
-
-After separately signing the component bytes, the explicit
-`ardents-control prepare-qualification-catalog` command prepares the initial
-ACA1 signing message (`--plan` and `--output-root`); its explicit source-file
-adapter is `scripts/prepare-qualification-alpha-catalog.go`. Its absolute public JSON plan uses schema
-`ardents-qualification-alpha-catalog-plan-v1` and a `catalog` object with the
-exported `alphacontrol.Catalog` fields. Use the same JSON array/time conventions
-above. It bounds the plan to 1 MiB, rejects unknown fields/trailing values,
-fixes catalog and component generations to one, refuses a predecessor digest
-or existing signature, and requires every component expiry after catalog start
-and no later than catalog expiry. References must name the exact signed
-component sizes/digests and their separately pinned roots. Preparation checks
-grammar only; it does not verify the referenced bytes or grant their authority.
-The new exclusive synchronized output is `catalog.signing-input`, with the
-same output permissions and partial-output retention as evidence preparation.
-Signing this message under the separate disclosure key and ordinary inspection
-of the resulting full bundle remain mandatory.
-
-The root-controlled `scripts/prepare-qualification-alpha-keys.go` adapter
-creates a new protected directory with four independently generated Ed25519
-PKCS#8 files: `catalog-key.pem`, `release-key.pem`, `network-key.pem`, and
-`compatibility-key.pem`. These are disclosure/component roles, separate from
-the five TUF keys and the State, Node, Source and Custody authorities. Its
-public receipt names each role and commitment. Four keys under one operator
-are not independent custody. The required retired `corpus.pub` companion is a
-fresh public key whose private key is immediately discarded; it grants no
-live corpus operation. Creation uses the same root/direct-ancestor, exclusive
-`0700`/`0600`, synchronization and retained-failure rules as Release keys.
-
-The explicit `scripts/sign-qualification-alpha.go` adapter takes an absolute
-public plan, that private key directory, and a new absolute output directory.
-Plan schema is `ardents-qualification-alpha-signing-plan-v1`, with `cohort`,
-`reference_time`, `not_before`, `not_after`, `release`, `network` and
-`compatibility`. Evidence JSON uses the field conventions above. The operation
-requires a current reference (-5 minutes/+1 minute), finite validity of at most
-seven days and expiry after current wall time, generation-one v3 Epoch with zero predecessor, closed Route profile,
-the fixed Endpoint target, and current/announced initial Release facts.
-It checks mutual evidence bindings, bounded direct input files and four
-distinct root-owned `0600` opened key files, signs ACS1 components and ACA1
-catalog, then verifies exact envelope bindings/signatures with the ordinary
-reader. Its callback reports component-domain decisions as unavailable;
-neither Release nor State acceptance is asserted or persisted. Completed
-outputs are the four `.ac1` files, four `.pub` files and inert `corpus.pub`.
-Private keys and any inspection roots are absent from the distribution.
-All outputs are exclusive and synchronized before the public receipt. A
-successful envelope receipt still requires ordinary complete-bundle inspection
-and bootstrap acceptance before installed execution.
-
-The four metadata files alone are not the complete bundle. Prepare the real
-current alpha-control and Network companions with their own maintained owners;
-keep authority roles separate. Supply exact signed descriptor/resources and
+The four metadata files alone are not the complete bundle. Supply the exact
+signed Network companions and the retained-evidence alpha-control companion
+inventory required by the unchanged v3 grammar; keep authority roles separate.
+Supply exact signed descriptor/resources and
 all required static companions to the maintained alpha-bundle assembler.
 Verify the complete 27-entry unpacked inventory and collect its manifest digest.
 Wrong-pin, mixed/expired metadata, resource substitution and incomplete inventory
