@@ -306,8 +306,15 @@ Native Startup's root inode/access observation is not evidence of these domain
 histories. The consumer obtains qualified joined permission preparation,
 uses actual Source refresh and Stock verification, and publishes an owner-private
 public request with exact retry and file/directory durability. It refuses foreign
-or partial request bytes. Permission waiting retains the original request's hour
-boundary; malformed responses are terminal. After genuine Stock import and its
+or partial request bytes. A platform-led restart erases the volatile holder, so the
+fresh invocation first retires the prior invocation's endpoint-owned regular
+handover (response before request) under the same private-parent integrity checks,
+then publishes its own fresh holder request for external authority re-approval; a
+foreign, partial or substituted handover is retained as a refusal and never removed.
+Retirement grants no authority and revives no preceding allocation: the durable
+presentation journal retains every prior spend, and the within-invocation
+exact-retry/never-replace publish rule is unchanged. Permission waiting retains the
+original request's hour boundary; malformed responses are terminal. After genuine Stock import and its
 final currentness check, a public permission-accepted diagnostic carries only
 the role and original public request digest. It is bootstrap progress, never
 Service readiness or a reusable permission. Background Source work belongs to

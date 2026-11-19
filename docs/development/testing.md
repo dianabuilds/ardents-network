@@ -5359,6 +5359,24 @@ cover the path/name policy matrix and the inherited-descriptor positive/refusal
 cases. The confinement contract amendment is recorded in
 [application-confinement](../technical/application-confinement.md).
 
+Supporting restart-continuity repair (same change): the platform-led permission
+handover is invocation-scoped. A fresh invocation erases its volatile holder, so
+`endpoint` bootstrap first retires the prior invocation's endpoint-owned regular
+handover (response before request) under the same private-parent integrity checks,
+then publishes its own fresh holder request; the external fixture authority
+re-approves it and the participant reaches Service readiness again under a new
+InvocationID with the retained immutable selection and durable floors. Retirement
+grants no authority and revives no preceding allocation (the durable presentation
+journal retains every prior spend); a foreign/partial/substituted handover is
+retained as a refusal and never removed, and the within-invocation
+exact-retry/never-replace publish rule is unchanged. Causal unit tests cover the
+restart retire+fresh-publish positive, first-boot no-op, response-before-request
+ordering, and foreign-mode/symlink/parent-replacement/cancellation refusals. The
+journey participant re-grants both roles over the fixture channel on restart and
+both controllers serve the interleaved re-approval before asserting the new
+InvocationID. The owner contract is recorded in
+[endpoint-service-runtime](../technical/endpoint-service-runtime.md).
+
 This is component/acceptance evidence with fixture Release/Network authority for
 two independently admitted real host managers performing the protected-text
 journey. It is NOT the whole-host two-participant privacy qualification. The

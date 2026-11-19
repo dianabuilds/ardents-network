@@ -165,7 +165,7 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 					t.Fatal("withdrawn installed publisher still exposes a Link")
 				}
 			case "restart":
-				original = journeyRestartContinuity(t, participant, original)
+				original = journeyRestartContinuity(t, participant, original, approve)
 				response.Original = original
 				installedPairSend(t, conn, response)
 				return
@@ -654,8 +654,11 @@ func journeyWaitServiceReady(t *testing.T, base string, original [3]string, uid,
 // journeyRestartContinuity proves a platform-led restart reaches Service
 // readiness again under a new InvocationID with the same immutable selection and
 // retained durable floors (the platform-led replacement for the transitional
-// pair's restart-refusal). It returns the new original invocation.
-func journeyRestartContinuity(t *testing.T, participant journeyParticipant, previous [3]string) [3]string {
+// pair's restart-refusal). The restarted invocation erased its volatile holder and
+// retired the prior permission handover, so the external fixture authority
+// re-approves its fresh request before readiness, exactly as the original
+// bootstrap. It returns the new original invocation.
+func journeyRestartContinuity(t *testing.T, participant journeyParticipant, previous [3]string, approve func(base, role string, request []byte) []byte) [3]string {
 	t.Helper()
 	selectionPath := filepath.Join(participant.base, "installation", "selection.json")
 	before, err := os.ReadFile(selectionPath)
@@ -681,9 +684,39 @@ func journeyRestartContinuity(t *testing.T, participant journeyParticipant, prev
 	if err != nil || !bytes.Equal(before, after) {
 		t.Fatal("platform-led restart changed the immutable selection", err)
 	}
+	journeyGrantPermissions(t, participant.base, current, uint64(participantUID(t)), uint64(participantGID(t)), approve)
 	journeyWaitServiceReady(t, participant.base, current, participantUID(t), participantGID(t))
 	t.Logf("platform-led restart reached Service readiness; new InvocationID=%s, selection retained", current[1])
 	return current
+}
+
+// journeyRestartExchange sends the restart fixture command and serves the two
+// interleaved fresh permission requests the restarted participant sends over the
+// channel before it reports its new original invocation. The fixture authority
+// re-approves each role exactly once; the signing key never leaves the controller.
+func journeyRestartExchange(t *testing.T, conn net.Conn, approve func(role string, request []byte) []byte) installedPairMessage {
+	t.Helper()
+	installedPairSend(t, conn, installedPairMessage{Operation: "restart"})
+	approved := make(map[string]bool)
+	for {
+		message := installedPairReceive(t, conn)
+		switch message.Operation {
+		case "permission":
+			if (message.Role != "reader" && message.Role != "publisher") || approved[message.Role] {
+				t.Fatal("unexpected restart approval request")
+			}
+			response := approve(message.Role, message.Body)
+			approved[message.Role] = true
+			installedPairSend(t, conn, installedPairMessage{Operation: "permission", Role: message.Role, Body: response})
+		case "restart":
+			if !approved["reader"] || !approved["publisher"] {
+				t.Fatal("platform-led restart omitted independent permission re-admission")
+			}
+			return message
+		default:
+			t.Fatal("unexpected journey message during restart exchange")
+		}
+	}
 }
 
 func participantUID(t *testing.T) uint32 {
@@ -889,7 +922,13 @@ func TestNativeEndpointPlatformLedJourney(t *testing.T) {
 	}
 	exchange(0, installedPairMessage{Operation: "withdraw"})
 	for i := range peers {
-		response := exchange(i, installedPairMessage{Operation: "restart"})
+		restartRoot := filepath.Join(t.TempDir(), "restart-"+[]string{"publisher", "reader"}[i])
+		if err := os.MkdirAll(restartRoot, 0700); err != nil {
+			t.Fatal(err)
+		}
+		response := journeyRestartExchange(t, peers[i], func(role string, request []byte) []byte {
+			return installedServiceApproval(t, restartRoot, role, request, f)
+		})
 		if response.Original[1] == identities[i][1] {
 			t.Fatal("platform-led restart reused the original invocation")
 		}
@@ -1018,12 +1057,13 @@ const (
 // reuse the unchanged platform-led participant and receive only public signed
 // Network material and actual permission requests/responses over the fixture
 // channel. The controller approves each permission with the fixture authority
-// and coordinates publish → accepting Link → byte-equal read → withdraw, then
-// joins both participants and restores both hosts to their pre-run state.
-// Restart continuity is a stated residual: the F-25 pre-start check admits a
-// restart's no-update re-evaluation, but the single-shot platform-led permission
-// bootstrap refuses a fresh invocation's differing permission request, so a full
-// restart awaits a restart-aware permission re-bootstrap design.
+// and coordinates publish → accepting Link → byte-equal read → withdraw →
+// platform-led restart continuity on both hosts (new InvocationID, retained
+// immutable selection, fresh permission re-bootstrap and Service readiness), then
+// joins both participants and restores both hosts to their pre-run state. A
+// restart erases the volatile holder and retires the prior permission handover;
+// the fixture authority re-approves the fresh invocation's request. Restart
+// proves readiness continuity, not publication continuity.
 //
 // Environment: ARDENTS_XH_BIND_HOST (controller address reachable from the
 // publisher; must be a local interface address), ARDENTS_XH_PUBLISHER_SSH (SSH
@@ -1282,16 +1322,26 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 		t.Fatal("installed reader returned different Application bytes")
 	}
 	exchange(0, installedPairMessage{Operation: "withdraw"})
-	// Restart continuity is a stated residual of this qualification: the F-25
-	// pre-start check now admits a restart's no-update re-evaluation against the
-	// committed floor, but the platform-led permission bootstrap is single-shot
-	// (a fresh invocation's permission request differs from the retained prior
-	// handover and is refused), so a full restart needs a restart-aware permission
-	// re-bootstrap design. The core protected-text exchange — publish, accepting
-	// Link, exact cross-host read and owning withdrawal — is proven here between
-	// two real admitted host managers, repeatably (-count=2).
+	// Platform-led restart continuity on both real hosts: each participant stops
+	// and starts its Endpoint under a new InvocationID with the same immutable
+	// selection and retained durable floors. The fresh invocation erased its
+	// volatile holder and retired the prior permission handover, so the fixture
+	// authority re-approves its fresh request and the participant reaches Service
+	// readiness again. The proven publish/read/withdraw exchange precedes restart;
+	// restart proves readiness continuity, not publication continuity
+	// (endpoint-service-runtime owner). Repeatable (-count=2).
 	for i := range peers {
-		exchange(i, installedPairMessage{Operation: "finish"})
+		restartRoot := filepath.Join(t.TempDir(), "restart-"+roles[i])
+		if err := os.MkdirAll(restartRoot, 0700); err != nil {
+			t.Fatal(err)
+		}
+		response := journeyRestartExchange(t, peers[i], func(role string, request []byte) []byte {
+			return installedServiceApproval(t, restartRoot, role, request, f)
+		})
+		if response.Original[1] == identities[i][1] {
+			t.Fatal("platform-led restart reused the original invocation")
+		}
+		identities[i] = response.Original
 		_ = peers[i].Close()
 		peers[i] = nil
 		waitErr := commands[i].Wait()
@@ -1301,7 +1351,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 			t.Fatal("journey participant did not join", waitErr)
 		}
 	}
-	t.Log("two real admitted host managers: platform-led publish/link, exact cross-host read and owning withdrawal completed")
+	t.Log("two real admitted host managers: platform-led publish/link, exact cross-host read, owning withdrawal and restart continuity completed")
 }
 
 // crossHostSSHArgs keeps the publisher transport non-interactive: a missing key
@@ -1434,18 +1484,23 @@ func journeyCrossHostBinaries(t *testing.T, repoRoot string) (string, string, st
 // crossHostCleanupScript mirrors the single-real-host publication cleanup: the
 // account, units, fixed resources and roots are namespaced Ardents artifacts
 // only. It runs via bash -s so the pkill patterns cannot match the transporting
-// shell, and never touches the website's containers or fixed ports.
+// shell, and never touches the website's containers or fixed ports. Account and
+// group removal use absolute /usr/sbin paths so they do not depend on the
+// caller's PATH containing /usr/sbin, with a bounded wait for the killed
+// endpoint/worker processes to exit and a bounded removal retry, making the
+// joined cleanup reliable across -count repeats.
 func crossHostCleanupScript(base, etcDir string) string {
 	return `systemctl stop ardents-endpoint.service ardents-text-reader.socket ardents-text-publisher.socket 2>/dev/null
 pkill -9 -f ardents-linux-amd64 2>/dev/null
 pkill -9 -f ardents-text 2>/dev/null
+for i in $(seq 1 20); do if ! pgrep -f ardents-linux-amd64 >/dev/null 2>&1 && ! pgrep -f ardents-text >/dev/null 2>&1; then break; fi; sleep 0.5; done
 rm -f /etc/systemd/system/ardents-endpoint.service /etc/systemd/system/ardents-text-reader@.service /etc/systemd/system/ardents-text-publisher@.service /etc/systemd/system/ardents-text-reader.socket /etc/systemd/system/ardents-text-publisher.socket /usr/share/polkit-1/rules.d/50-ardents-text.rules /usr/lib/tmpfiles.d/ardents-text.conf /etc/ardents/text-worker-artifact.json
 rm -rf /usr/lib/ardents/text-worker-root /run/ardents-text
 systemctl daemon-reload
 systemctl reset-failed ardents-endpoint.service 2>/dev/null
 systemctl list-units --all 'ardents-text-*' --plain --no-legend | awk '{print $1}' | xargs -r systemctl reset-failed
-userdel -f ardents-endpoint 2>/dev/null
-groupdel ardents-endpoint 2>/dev/null
+for i in $(seq 1 20); do /usr/sbin/userdel -f ardents-endpoint 2>/dev/null; getent passwd ardents-endpoint >/dev/null 2>&1 || break; sleep 0.5; done
+for i in $(seq 1 20); do /usr/sbin/groupdel ardents-endpoint 2>/dev/null; getent group ardents-endpoint >/dev/null 2>&1 || break; sleep 0.5; done
 rm -rf ` + base + ` ` + etcDir + `
 echo host-cleanup-done
 `
