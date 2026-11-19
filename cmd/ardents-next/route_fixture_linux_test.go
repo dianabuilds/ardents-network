@@ -28,6 +28,12 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
+// routeFixtureBindHost is the address the fixture route nodes listen on and
+// advertise in the signed epoch. It defaults to loopback for single-host
+// qualifications; a cross-host qualification sets it to the controller's
+// reachable address so a participant on another host can dial the receivers.
+var routeFixtureBindHost = "127.0.0.1"
+
 func routeTestCertificate(t *testing.T, key ed25519.PrivateKey) tls.Certificate {
 	t.Helper()
 	template := &x509.Certificate{SerialNumber: big.NewInt(1), NotBefore: time.Now().Add(-time.Minute), NotAfter: time.Now().Add(time.Hour), KeyUsage: x509.KeyUsageDigitalSignature, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}}
@@ -105,14 +111,14 @@ func newRoleRouteFixtureConfigured(t *testing.T, profile transport.CarrierProfil
 			}
 			var address string
 			if profile == transport.ClosedCarrierTCP {
-				listener, err := net.Listen("tcp", "127.0.0.1:0")
+				listener, err := net.Listen("tcp", routeFixtureBindHost+":0")
 				if err != nil {
 					t.Fatal(err)
 				}
 				address = listener.Addr().String()
 				reservations[id] = func() { _ = listener.Close() }
 			} else {
-				socket, err := net.ListenPacket("udp", "127.0.0.1:0")
+				socket, err := net.ListenPacket("udp", routeFixtureBindHost+":0")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -139,14 +145,14 @@ func newRoleRouteFixtureConfigured(t *testing.T, profile transport.CarrierProfil
 			node := &f.spec.Nodes[0]
 			var address string
 			if profile == transport.ClosedCarrierTCP {
-				listener, err := net.Listen("tcp", "127.0.0.1:0")
+				listener, err := net.Listen("tcp", routeFixtureBindHost+":0")
 				if err != nil {
 					t.Fatal(err)
 				}
 				address = listener.Addr().String()
 				reservations[node.NodeID] = func() { _ = listener.Close() }
 			} else {
-				socket, err := net.ListenPacket("udp", "127.0.0.1:0")
+				socket, err := net.ListenPacket("udp", routeFixtureBindHost+":0")
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -386,14 +392,14 @@ func publicationRouteNetworkConfigured(t *testing.T, carrier transport.CarrierPr
 			t.Cleanup(func() { clear(key) })
 			var address string
 			if carrier == transport.ClosedCarrierTCP {
-				listener, err := net.Listen("tcp", "127.0.0.1:0")
+				listener, err := net.Listen("tcp", routeFixtureBindHost+":0")
 				if err != nil {
 					t.Fatal(err)
 				}
 				address = listener.Addr().String()
 				reservations[id] = func() { _ = listener.Close() }
 			} else {
-				socket, err := net.ListenPacket("udp", "127.0.0.1:0")
+				socket, err := net.ListenPacket("udp", routeFixtureBindHost+":0")
 				if err != nil {
 					t.Fatal(err)
 				}
