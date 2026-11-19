@@ -32,6 +32,13 @@ func TestClosedSourceOwnersDistributeAcceptedState(t *testing.T) {
 		root := t.TempDir()
 		args := append([]string(nil), arguments...)
 		args[2] = root
+		// Each acceptance observes its own fresh reference clock; the shared
+		// fixture reference would otherwise age past the two-second bound.
+		for position, argument := range args {
+			if argument == "--at" {
+				args[position+1] = time.Now().UTC().Format(time.RFC3339Nano)
+			}
+		}
 		runProvisioningCommand(t, endpoint, args...)
 		serverAuthority := makeAuthority(t, fmt.Sprintf("closed-source-%d", index))
 		serverName := fmt.Sprintf("closed-source-%d.test", index)

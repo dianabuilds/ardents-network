@@ -139,8 +139,8 @@ headless-evidence: headless-build
 	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))" "$(abspath $(HEADLESS_NODE_ARTIFACT))" "$(abspath $(HEADLESS_CONTROL_ARTIFACT))" "$(abspath $(HEADLESS_CUSTODY_ARTIFACT))"
 	go test ./internal/enrollment -run '^(TestVerifyReturnsV3HeadlessArtifactsOutsideReleaseMetadata|TestVerifyRejectsUnknownInventoryAndExecutableSubstitution)$$' -count=1
 	go test ./tests/e2e/endpoint -run '^(TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest|TestLegacyEnrollmentCheckFormIsRetiredBeforeEffects|TestRetiredControlRoutesRefuseBeforeEffectsAgainstExactArtifact)$$' -count=1
-	go test ./tests/e2e/network-source -run '^TestFiniteEndpointAcquisitionWithGenuineSourceOwners$$' -count=1
-	go test ./tests/e2e/node -run '^TestClosedTextTopologyProvisioningAcrossProcesses$$' -count=1
+	go test ./tests/e2e/network-source -run '^TestSourceSelectorRetiresBeforeRuntimeDiagnostics$$' -count=1
+	go test ./tests/e2e/node -run '^TestClosedSourceOwnersDistributeAcceptedState$$' -count=1
 	go test ./tests/e2e/service -run '^TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses$$' -count=1
 
 headless-check: export ARDENTS_EXTRACTION_OWNER := network

@@ -69,7 +69,7 @@ func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authori
 	}
 	public := authority.Public().(ed25519.PublicKey)
 	config := state.Config{Root: t.TempDir(), NetworkID: network, Authorities: map[[32]byte]ed25519.PublicKey{sha256.Sum256(public): public},
-		Threshold: 1, ClosedProfileAuthority: public, AcceptedProfile: "ardents-route-v3", Now: time.Now().UTC(), ClockObservation: time.Now().UTC()}
+		Threshold: 1, ClosedProfileAuthority: public, AcceptedProfile: "ardents-route-v3"}
 	binary := buildCommand(t, "ardents")
 	directory := t.TempDir()
 	inputs := filepath.Join(directory, "inputs")
@@ -89,8 +89,13 @@ func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authori
 			t.Fatal(err)
 		}
 	}
+	// Sample the reference clock as late as possible and keep sub-second
+	// precision: the acceptance clock-confidence bound is two seconds, and a
+	// second-truncated RFC3339 reference plus process startup under host load
+	// exhausted that budget (#649).
+	config.Now, config.ClockObservation = time.Now().UTC(), time.Now().UTC()
 	arguments := []string{"accept-offline", "--state-root", config.Root, "--network-id", hex.EncodeToString(network[:]),
-		"--authorities", hex.EncodeToString(public), "--threshold", "1", "--at", config.Now.Format(time.RFC3339),
+		"--authorities", hex.EncodeToString(public), "--threshold", "1", "--at", config.Now.Format(time.RFC3339Nano),
 		"--epoch", epochPath, "--inputs", inputs, "--materialization", materialPath, "--profile", config.AcceptedProfile,
 		"--closed-profile-authority", hex.EncodeToString(public)}
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)

@@ -3833,11 +3833,17 @@ selected Carriers.
   Root is an invalid environment for those rows. Root-only Installation profiles
   run separately under their explicit selectors; they do not replace this gate.
 - On Linux x86-64, `make headless-check` builds the exact Network command
-  inventory, checks the enrollment-v3 artifact, runs bounded Endpoint, Source, Node, and Service
-  process evidence, then rebuilds and tests the headless command candidate in
-  a fresh temporary tree containing no Browser/Application implementation. It
-  also proves that canonical command bytes are unchanged when the same owned
-  source is represented as a Git repository or as a VCS-free extraction.
+  inventory, checks the enrollment-v3 artifact, runs bounded Endpoint
+  enrollment, retired-Source-selector and closed-State/Source-distribution, and
+  Service ceremony process evidence, then rebuilds and tests the headless
+  command candidate in a fresh temporary tree containing no Browser/Application
+  implementation. The former refresh-sources acquisition and old Node-topology
+  process cells drove routes retired by #493/#562; their headless selections now
+  point at the surviving retired-selector refusal and closed-Source distribution
+  cells (#649), and genuine Source-acquisition/Node-role evidence is the selected
+  native harness. It also proves that canonical command bytes are unchanged when
+  the same owned source is represented as a Git repository or as a VCS-free
+  extraction.
 - `make check` runs unit, process, race, command build, formatting,
   Staticcheck, and vulnerability checks. On Linux it also runs the bounded
   two-host qualification fixture command tests through `fixture-network-test`;
