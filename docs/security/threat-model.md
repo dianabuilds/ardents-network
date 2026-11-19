@@ -28,6 +28,18 @@ or trust-delivery channel is outside that local integrity guarantee. The initial
 pin grants no successor authority; retaining predecessor bytes never lowers
 Release floors or creates rollback authority.
 
+The endpoint installed-startup observation uses two granularities (S8 D1c option
+b): inner effect brackets re-verify file IDENTITY
+(dev/ino/mode/size/ModTime/uid/gid/nlink/Ctim) without re-reading content, while
+operation/admission boundaries re-read FULL content. Substitution and metadata
+tamper by a non-root writer are refused at every bracket; an in-place content
+rewrite by a root writer who forges Ctim/Mtim back to the retained values is
+detected at the next full-content operation boundary, so the root-tamper detection
+latency is bounded by the operation cadence rather than every inner bracket. This
+is consistent with the preceding limitation: a compromised root is already outside
+the local integrity guarantee, and the full-content boundary re-read still binds
+the accepted program bytes before each operation's effects.
+
 This threat model covers the current [C0 product scope](../product/scope.md) and
 the stronger public-product claims retained for later decisions. It is not a
 statement that the C0 implementation passed audit or qualification.

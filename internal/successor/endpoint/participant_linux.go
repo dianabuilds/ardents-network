@@ -76,7 +76,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 	defer func() {
 		result = errors.Join(result, owner.Close())
 	}()
-	if err := startup.Check(); err != nil {
+	if err := startup.CheckFull(); err != nil {
 		return phase, errors.Join(ErrUnavailable, err)
 	}
 	phase = "reader-preparation"
@@ -87,7 +87,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 	defer func() {
 		result = errors.Join(result, reader.Close())
 	}()
-	check := func() error { return errors.Join(startup.Check(), reader.Check(), ctx.Err()) }
+	check := func() error { return errors.Join(startup.CheckFull(), reader.Check(), ctx.Err()) }
 	var publisher *executionruntime.Preparation
 	if plan.Role == "" {
 		phase = "publisher-preparation"
@@ -229,6 +229,10 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 		// The actual provider budget must already exist; runtime cannot
 		// initialize or reset Hosting history to manufacture capacity.
 		current := func() error { return errors.Join(startup.Check(), ctx.Err()) }
+		// Operation admission boundaries use the full-content installed
+		// observation; inner effect brackets (current, PermitWork) use the
+		// identity-only granularity.
+		boundary := func() error { return errors.Join(startup.CheckFull(), ctx.Err()) }
 		originalCurrent := authority.Current
 		serviceCurrent := func() (networkdomain.RuntimeView, error) {
 			// CurrentRuntime already calls this same Startup.Check through
@@ -255,7 +259,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 			result = errors.Join(result, routes.Close())
 		}()
 		readerOwner := endpointreader.New(endpointreader.Config{Local: owner, Principal: local.Grants[0].Principal,
-			Authority: serviceAuthority, Holder: holders["reader"], Check: current, Plan: readerPlan, Parents: routes})
+			Authority: serviceAuthority, Holder: holders["reader"], Check: current, Boundary: boundary, Plan: readerPlan, Parents: routes})
 		if plan.Role == "" {
 			phase = "administration-listener"
 			publisherPlan := readerPlan
@@ -267,7 +271,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 				Local: owner, Principal: local.Grants[1].Principal,
 				Plan:  endpointpublisher.Plan{InstanceRoot: plan.ServiceInstanceRoot, Root: plan.PublicationRoot},
 				Route: publisherPlan, Parents: routes, Authority: serviceAuthority,
-				Holder: holders["publisher"], Check: current, Failed: cancel})
+				Holder: holders["publisher"], Check: current, Boundary: boundary, Failed: cancel})
 			defer func() {
 				cancel()
 				result = errors.Join(result, publisherOwner.Close())

@@ -77,6 +77,19 @@ func TestNativeEndpointPlatformPrestartTrustTransfer(t *testing.T) {
 	}
 	t.Logf("F-25 platform check accepted against real systemd; launch pin=%s", stand.pin)
 
+	// Restart causality: the first evaluation committed the candidate into the
+	// retained floor, so a second pre-start check re-evaluates the SAME candidate
+	// against the now-current floor and obtains no-update (the program is already
+	// the accepted one). The check admits this fresh re-evaluation — it is the
+	// current accepted program bound byte-for-byte, not a stored replay of a stale
+	// proof. The causal refusals below still refuse a substituted program/unit,
+	// foreign pin or authority loss against the committed floor.
+	restartOut, restartErr := exec.Command(stand.binary, "platform", "check", stand.manifest, stand.pin).CombinedOutput()
+	if restartErr != nil {
+		t.Fatalf("F-25 restart no-update re-evaluation refused: %v\n%s", restartErr, restartOut)
+	}
+	t.Log("F-25 restart no-update re-evaluation accepted against the committed floor")
+
 	for _, fault := range []string{"substituted-program", "substituted-unit", "wrong-account", "missing-account", "authority-loss", "foreign-pin", "substituted-credential"} {
 		t.Run(fault, func(t *testing.T) {
 			restore := mutateEndpointPlatformNativeStand(t, stand, fault)

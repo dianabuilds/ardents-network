@@ -25,6 +25,7 @@ type Reader struct {
 	authority funding.Authority
 	holder    *stock.Owner
 	check     func() error
+	boundary  func() error
 	route     *funding.Parents
 }
 
@@ -32,7 +33,9 @@ func (owner *Reader) Open(ctx context.Context, request application.Request) (_ a
 	if ctx == nil || owner == nil || owner.local == nil || owner.holder == nil || owner.check == nil || !owner.authority.Available() || request.Destination != application.TargetLink {
 		return nil, application.Refuse(application.Outcome{Class: application.ServiceUnavailable})
 	}
-	if err := errors.Join(ctx.Err(), owner.check()); err != nil {
+	// Operation admission boundary: full-content installed observation. Inner
+	// effect brackets below use the identity-only check.
+	if err := errors.Join(ctx.Err(), owner.boundary()); err != nil {
 		return nil, err
 	}
 	view, err := owner.authority.Current()
@@ -87,11 +90,19 @@ type Config struct {
 	Authority funding.Authority
 	Holder    *stock.Owner
 	Check     func() error
-	Parents   *funding.Parents
+	// Boundary is the full-content installed observation at each read operation's
+	// admission entry; Check is the identity-only inner bracket. When Boundary is
+	// nil it falls back to Check (the caller then supplies one granularity).
+	Boundary func() error
+	Parents  *funding.Parents
 }
 
 // New binds the participant. Every Open independently rechecks its original
 // admission and launches one qualified Reader; construction is not acceptance.
 func New(c Config) *Reader {
-	return &Reader{local: c.Local, principal: c.Principal, plan: c.Plan, authority: c.Authority, holder: c.Holder, check: c.Check, route: c.Parents}
+	boundary := c.Boundary
+	if boundary == nil {
+		boundary = c.Check
+	}
+	return &Reader{local: c.Local, principal: c.Principal, plan: c.Plan, authority: c.Authority, holder: c.Holder, check: c.Check, boundary: boundary, route: c.Parents}
 }

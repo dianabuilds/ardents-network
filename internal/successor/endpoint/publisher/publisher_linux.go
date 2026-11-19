@@ -30,6 +30,7 @@ type Publisher struct {
 	authority     funding.Authority
 	holder        *stock.Owner
 	check         func() error
+	boundary      func() error
 	failed        context.CancelFunc
 	mu            sync.Mutex
 	closed        bool
@@ -64,7 +65,7 @@ func (owner *Publisher) PublishSnapshot(caller context.Context, snapshot []byte)
 	if owner == nil || caller == nil || owner.ctx == nil || owner.local == nil || owner.holder == nil || owner.check == nil || !owner.authority.Available() || !owner.routes.Matches(owner.routePlan) {
 		return errors.New("installed Publisher is unavailable")
 	}
-	if err := errors.Join(caller.Err(), owner.ctx.Err(), owner.check()); err != nil {
+	if err := errors.Join(caller.Err(), owner.ctx.Err(), owner.boundary()); err != nil {
 		return err
 	}
 	ctx, setupCancel := context.WithCancel(owner.ctx)
@@ -186,7 +187,7 @@ func (owner *Publisher) PublishedLink(caller context.Context) (_ string, result 
 	if caller == nil || owner == nil || owner.ctx == nil || owner.local == nil || owner.check == nil {
 		return "", errors.New("installed Publication is unavailable")
 	}
-	if err := errors.Join(caller.Err(), owner.ctx.Err(), owner.check()); err != nil {
+	if err := errors.Join(caller.Err(), owner.ctx.Err(), owner.boundary()); err != nil {
 		return "", err
 	}
 	request, err := owner.local.AdmitAdministration(caller, owner.principal)
@@ -212,7 +213,7 @@ func (owner *Publisher) Withdraw(caller context.Context) (result error) {
 	if owner == nil || caller == nil || owner.ctx == nil || owner.local == nil || owner.check == nil {
 		return errors.New("installed Publication is unavailable")
 	}
-	if err := errors.Join(caller.Err(), owner.ctx.Err(), owner.check()); err != nil {
+	if err := errors.Join(caller.Err(), owner.ctx.Err(), owner.boundary()); err != nil {
 		return err
 	}
 	request, err := owner.local.AdmitAdministration(caller, owner.principal)
@@ -310,13 +311,21 @@ type Config struct {
 	Authority funding.Authority
 	Holder    *stock.Owner
 	Check     func() error
-	Failed    context.CancelFunc
+	// Boundary is the full-content installed observation at each publication
+	// operation's admission entry (PublishSnapshot/PublishedLink/Withdraw); Check
+	// is the identity-only inner bracket. Nil Boundary falls back to Check.
+	Boundary func() error
+	Failed   context.CancelFunc
 }
 
 // New retains one participant lifetime. Snapshot authority is checked afresh
 // through Execution and Publication for every actual PublishSnapshot.
 func New(c Config) *Publisher {
 	ctx, cancel := context.WithCancel(c.Context)
+	boundary := c.Boundary
+	if boundary == nil {
+		boundary = c.Check
+	}
 	return &Publisher{ctx: ctx, cancel: cancel, local: c.Local, principal: c.Principal, plan: c.Plan,
-		routePlan: c.Route, routes: c.Parents, authority: c.Authority, holder: c.Holder, check: c.Check, failed: c.Failed}
+		routePlan: c.Route, routes: c.Parents, authority: c.Authority, holder: c.Holder, check: c.Check, boundary: boundary, failed: c.Failed}
 }

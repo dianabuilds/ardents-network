@@ -240,6 +240,85 @@ func (reader *installedFiles) observe(ctx context.Context) (returnedErr error) {
 	return ctx.Err()
 }
 
+// observeIdentity re-verifies every retained file's identity at an inner
+// observation bracket without re-reading content: dev/ino/mode/size/ModTime/
+// uid/gid/nlink/Ctim must still match the retained admission observation, with
+// the original parent/ancestor custody reobserved before and after the leaf
+// checks. Substitution and metadata tamper are refused; an in-place content
+// rewrite with forged timestamps is detected by the full-content observe at the
+// next operation/admission boundary (the identity-only inner granularity).
+func (reader *installedFiles) observeIdentity(ctx context.Context) (returnedErr error) {
+	if err := reader.observeDirectories(ctx); err != nil {
+		return err
+	}
+	roots := make(map[string]*os.Root)
+	defer func() {
+		for _, root := range roots {
+			returnedErr = errors.Join(returnedErr, root.Close())
+		}
+		returnedErr = errors.Join(returnedErr, reader.observeDirectories(ctx))
+	}()
+	names := make([]string, 0, len(reader.files))
+	for filename := range reader.files {
+		if !canonicalPath(filename) {
+			return ErrInput
+		}
+		parent := filepath.Dir(filename)
+		if roots[parent] == nil {
+			root, err := os.OpenRoot(parent)
+			if err != nil {
+				return err
+			}
+			roots[parent] = root
+		}
+		names = append(names, filename)
+	}
+	sort.Strings(names)
+	for _, filename := range names {
+		if err := reader.observeFileIdentity(ctx, roots[filepath.Dir(filename)], filename, reader.files[filename]); err != nil {
+			return err
+		}
+	}
+	return ctx.Err()
+}
+
+// observeFileIdentity keeps the original parent/leaf bracket order (parent
+// descriptor+path, leaf Lstat, fresh O_NOFOLLOW open, descriptor Stat, final
+// path/descriptor re- Stat) but compares identity only against the retained
+// observation, never content.
+func (reader *installedFiles) observeFileIdentity(ctx context.Context, root *os.Root, filename string, expected fileObservation) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	parent := filepath.Dir(filename)
+	original, known := reader.directories[parent]
+	openedParent, fdErr := root.Stat(".")
+	pathParent, pathErr := os.Lstat(parent)
+	if !known || fdErr != nil || pathErr != nil || !sameObservedDirectory(original, openedParent) || !sameObservedDirectory(original, pathParent) {
+		return errors.Join(ErrBinding, fdErr, pathErr)
+	}
+	name := filepath.Base(filename)
+	before, err := root.Lstat(name)
+	if err != nil || !sameObservedFile(expected.identity, before) {
+		return errors.Join(ErrBinding, err)
+	}
+	file, err := root.OpenFile(name, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return errors.Join(ErrBinding, err)
+	}
+	defer func() { _ = file.Close() }()
+	opened, err := file.Stat()
+	if err != nil || !sameObservedFile(expected.identity, opened) {
+		return errors.Join(ErrBinding, err)
+	}
+	final, pathErr := root.Lstat(name)
+	finalHandle, handleErr := file.Stat()
+	if pathErr != nil || handleErr != nil || !sameObservedFile(expected.identity, final) || !sameObservedFile(expected.identity, finalHandle) {
+		return errors.Join(ErrBinding, pathErr, handleErr)
+	}
+	return ctx.Err()
+}
+
 func (reader *installedFiles) retainMutableDirectory(name string, info os.FileInfo) error {
 	if original, known := reader.mutableDirectories[name]; known {
 		if !os.SameFile(original, info) || original.Mode() != info.Mode() {
