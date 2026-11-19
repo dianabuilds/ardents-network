@@ -4,6 +4,7 @@ package service_test
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -12,18 +13,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/service/instance"
+	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 )
 
+// The Service Instance ceremony runs through the successor publication owner
+// (ardents-next publication instance-initialize/instance-accept); the former
+// ardents service-instance routes are retired (#562). These process tests keep
+// the at-most-once acceptance, exact-retry and durable-conflict evidence on the
+// accepting successor surface (#649).
+
 func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testing.T) {
-	binary := buildProductCommand(t, "ardents")
+	next := buildProductCommand(t, "ardents-next")
 	custodyBinary := buildProductCommand(t, "ardents-custody")
 	directory := t.TempDir()
 	vaultRoot := filepath.Join(directory, "authority-vault")
 	rootPath := filepath.Join(directory, "instance-root")
-	if err := os.Mkdir(rootPath, 0o700); err != nil {
-		t.Fatal(err)
-	}
 	network := [32]byte{41}
 	environment, authorityRoot := [32]byte{42}, [32]byte{43}
 	password := "artifact native custody password"
@@ -49,35 +53,8 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 
 	now := time.Now().UTC().Truncate(time.Second)
 	requestPath := filepath.Join(directory, "instance-request.bin")
-	planPath := filepath.Join(directory, "instance-plan.json")
-	plan, err := json.Marshal(map[string]string{
-		"schema":       "ardents-service-instance-initialize-v1",
-		"root":         rootPath,
-		"network_id":   hex.EncodeToString(network[:]),
-		"not_before":   now.Format(time.RFC3339),
-		"not_after":    now.Add(time.Hour).Format(time.RFC3339),
-		"request_file": requestPath,
-	})
-	if err != nil || os.WriteFile(planPath, plan, 0o600) != nil {
-		t.Fatal("write Service Instance process plan")
-	}
-
-	initialized := runCommand(t, t.Context(), directory, binary,
-		"service-instance", "initialize", "--config", planPath)
-	var initialization struct {
-		Schema        string `json:"schema"`
-		Request       []byte `json:"request"`
-		RequestSHA256 string `json:"request_sha256"`
-	}
-	if err := json.Unmarshal(initialized, &initialization); err != nil ||
-		initialization.Schema != "ardents-service-instance-request-v3" || initialization.RequestSHA256 == "" {
-		t.Fatalf("initialization receipt = %+v / %v", initialization, err)
-	}
-	request, err := os.ReadFile(requestPath)
-	if err != nil || string(request) != string(initialization.Request) {
-		t.Fatalf("persisted public request differs: %v", err)
-	}
-	requestView, err := instance.ParseRequest(request)
+	request, requestSHA256 := initializeSuccessorInstance(t, directory, next, rootPath, network, now, requestPath)
+	requestView, err := publication.ParseServiceRequest(request)
 	if err != nil || requestView.NetworkID != network {
 		t.Fatalf("public request = %+v / %v", requestView, err)
 	}
@@ -90,7 +67,7 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 		"-root-commitment", hex.EncodeToString(authorityRoot[:]),
 		"-kind", "service", "-id-commitment", created.IDCommitment}
 	issuedTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting Endpoint:", value: initialization.RequestSHA256},
+		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting Endpoint:", value: requestSHA256},
 			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments...)
 	if bytes.Contains(issuedTerminal, []byte(password)) {
 		t.Fatal("custody artifact echoed its unlock password")
@@ -111,7 +88,7 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 		t.Fatalf("custody response file differs from receipt: %v", err)
 	}
 	repeatedTerminal := runInteractiveProductCommand(t, directory, custodyBinary,
-		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting Endpoint:", value: initialization.RequestSHA256},
+		[]interactiveProductInput{{prompt: "service-request SHA-256 from the requesting Endpoint:", value: requestSHA256},
 			{prompt: "vault-unlock password:", value: password, secret: true}}, issueArguments...)
 	var repeated struct {
 		RecordID string `json:"record_id"`
@@ -121,8 +98,8 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 		repeated.RecordID != issued.RecordID || !bytes.Equal(repeated.Response, response) {
 		t.Fatalf("custody exact retry changed its public result: %+v / %v", repeated, err)
 	}
-	assertServiceInstanceAccepted(t, directory, binary, rootPath, responsePath)
-	assertServiceInstanceAccepted(t, directory, binary, rootPath, responsePath)
+	assertServiceInstanceAccepted(t, directory, next, rootPath, responsePath)
+	assertServiceInstanceAccepted(t, directory, next, rootPath, responsePath)
 
 	conflicting := append([]byte(nil), response...)
 	conflicting[len(conflicting)-1] ^= 0xff
@@ -130,12 +107,12 @@ func TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses(t *testin
 	if err := os.WriteFile(conflictingPath, conflicting, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	assertServiceInstanceUnavailable(t, directory, binary, rootPath, conflictingPath)
-	assertServiceInstanceUnavailable(t, directory, binary, rootPath, responsePath)
+	assertServiceInstanceUnavailable(t, directory, next, rootPath, conflictingPath)
+	assertServiceInstanceUnavailable(t, directory, next, rootPath, responsePath)
 }
 
 func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
-	binary := buildProductCommand(t, "ardents")
+	next := buildProductCommand(t, "ardents-next")
 	custodyBinary := buildProductCommand(t, "ardents-custody")
 	directory := t.TempDir()
 	vaultRoot := filepath.Join(directory, "authority-vault")
@@ -167,36 +144,9 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 	initialize := func(name string) initializedInstance {
 		t.Helper()
 		rootPath := filepath.Join(directory, name+"-root")
-		if err := os.Mkdir(rootPath, 0o700); err != nil {
-			t.Fatal(err)
-		}
 		requestPath := filepath.Join(directory, name+"-request.bin")
-		planPath := filepath.Join(directory, name+"-plan.json")
-		plan, err := json.Marshal(map[string]string{
-			"schema":       "ardents-service-instance-initialize-v1",
-			"root":         rootPath,
-			"network_id":   hex.EncodeToString(network[:]),
-			"not_before":   now.Format(time.RFC3339),
-			"not_after":    now.Add(time.Hour).Format(time.RFC3339),
-			"request_file": requestPath,
-		})
-		if err != nil {
-			t.Fatalf("marshal Service Instance process plan: %v", err)
-		}
-		if err := os.WriteFile(planPath, plan, 0o600); err != nil {
-			t.Fatalf("write Service Instance process plan %q: %v", planPath, err)
-		}
-		initialized := runCommand(t, t.Context(), directory, binary,
-			"service-instance", "initialize", "--config", planPath)
-		var receipt struct {
-			Schema        string `json:"schema"`
-			RequestSHA256 string `json:"request_sha256"`
-		}
-		if err := json.Unmarshal(initialized, &receipt); err != nil ||
-			receipt.Schema != "ardents-service-instance-request-v3" || receipt.RequestSHA256 == "" {
-			t.Fatalf("Service Instance initialization receipt = %+v / %v", receipt, err)
-		}
-		return initializedInstance{rootPath: rootPath, requestPath: requestPath, requestSHA256: receipt.RequestSHA256}
+		_, requestSHA256 := initializeSuccessorInstance(t, directory, next, rootPath, network, now, requestPath)
+		return initializedInstance{rootPath: rootPath, requestPath: requestPath, requestSHA256: requestSHA256}
 	}
 	issueArguments := func(requestPath, responsePath string) []string {
 		return []string{"issue-service-credential", "-vault-root", vaultRoot, "-record", created.RecordID,
@@ -255,8 +205,8 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 		repeated.RecordID != recovered.RecordID || !bytes.Equal(repeated.Response, recovered.Response) {
 		t.Fatalf("exact Credential response retry changed its result: %+v / %v", repeated, err)
 	}
-	assertServiceInstanceAccepted(t, directory, binary, blocked.rootPath, recoveredResponsePath)
-	assertServiceInstanceAccepted(t, directory, binary, blocked.rootPath, recoveredResponsePath)
+	assertServiceInstanceAccepted(t, directory, next, blocked.rootPath, recoveredResponsePath)
+	assertServiceInstanceAccepted(t, directory, next, blocked.rootPath, recoveredResponsePath)
 
 	conflicting := initialize("conflicting-instance")
 	conflictingPublicationPath := filepath.Join(directory, "second-response.bin")
@@ -272,6 +222,27 @@ func TestHeadlessCredentialResponseConflictRecoversExactlyOnce(t *testing.T) {
 	}
 }
 
+// initializeSuccessorInstance prepares one fresh successor Instance root and
+// persists its exact public request. The successor owner creates the root
+// itself; an existing destination is never adopted.
+func initializeSuccessorInstance(t *testing.T, directory, next, rootPath string, network [32]byte, now time.Time, requestPath string) ([]byte, string) {
+	t.Helper()
+	output := runCommand(t, t.Context(), directory, next, "publication", "instance-initialize", rootPath,
+		hex.EncodeToString(network[:]), now.Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339))
+	var receipt struct {
+		Outcome string `json:"outcome"`
+		Request []byte `json:"request"`
+	}
+	if err := json.Unmarshal(output, &receipt); err != nil || receipt.Outcome != "instance-request-prepared" || len(receipt.Request) == 0 {
+		t.Fatalf("successor instance initialization receipt = %+v / %v", receipt, err)
+	}
+	if err := os.WriteFile(requestPath, receipt.Request, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(receipt.Request)
+	return receipt.Request, hex.EncodeToString(digest[:])
+}
+
 func assertTerminalPasswordHidden(t *testing.T, transcript []byte, password string) {
 	t.Helper()
 	if bytes.Contains(transcript, []byte(password)) {
@@ -282,22 +253,22 @@ func assertTerminalPasswordHidden(t *testing.T, transcript []byte, password stri
 func assertServiceInstanceAccepted(t *testing.T, directory, binary, rootPath, responsePath string) {
 	t.Helper()
 	output := runCommand(t, t.Context(), directory, binary,
-		"service-instance", "accept", "--root", rootPath, "--response", responsePath)
+		"publication", "instance-accept", rootPath, responsePath)
 	var receipt struct {
-		Schema     string `json:"schema"`
-		State      string `json:"state"`
-		Generation uint64 `json:"generation"`
+		Outcome    string `json:"outcome"`
+		Acceptance struct {
+			Generation uint64 `json:"Generation"`
+		} `json:"acceptance"`
 	}
 	if err := json.Unmarshal(output, &receipt); err != nil ||
-		receipt.Schema != "ardents-service-instance-acceptance-v1" ||
-		receipt.State != "accepted" || receipt.Generation != 1 {
+		receipt.Outcome != "instance-response-accepted" || receipt.Acceptance.Generation != 1 {
 		t.Fatalf("acceptance receipt = %+v / %v", receipt, err)
 	}
 }
 
 func assertServiceInstanceUnavailable(t *testing.T, directory, binary, rootPath, responsePath string) {
 	t.Helper()
-	command := exec.Command(binary, "service-instance", "accept", "--root", rootPath, "--response", responsePath)
+	command := exec.Command(binary, "publication", "instance-accept", rootPath, responsePath)
 	command.Dir = directory
 	if output, err := command.CombinedOutput(); err == nil {
 		t.Fatalf("unavailable Service Instance accepted a response: %s", output)

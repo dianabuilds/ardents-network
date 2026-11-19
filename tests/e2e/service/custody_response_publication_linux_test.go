@@ -16,7 +16,7 @@ import (
 )
 
 func TestLinuxCredentialResponsePublicationRecoversAfterFileSizeLimit(t *testing.T) {
-	endpointBinary := buildProductCommand(t, "ardents")
+	next := buildProductCommand(t, "ardents-next")
 	custodyBinary := buildProductCommand(t, "ardents-custody")
 	directory := t.TempDir()
 	vaultRoot := filepath.Join(directory, "authority-vault")
@@ -42,41 +42,14 @@ func TestLinuxCredentialResponsePublicationRecoversAfterFileSizeLimit(t *testing
 		t.Fatalf("Service Authority receipt = %+v / %v", created, err)
 	}
 
+	// The request comes from the successor publication owner; the former
+	// ardents service-instance initialize route is retired (#562, #649).
 	instanceRoot := filepath.Join(directory, "instance-root")
-	if err := os.Mkdir(instanceRoot, 0o700); err != nil {
-		t.Fatal(err)
-	}
 	requestPath := filepath.Join(directory, "instance-request.bin")
-	planPath := filepath.Join(directory, "instance-plan.json")
 	now := time.Now().UTC().Truncate(time.Second)
-	plan, err := json.Marshal(map[string]string{
-		"schema":       "ardents-service-instance-initialize-v1",
-		"root":         instanceRoot,
-		"network_id":   hex.EncodeToString(network[:]),
-		"not_before":   now.Format(time.RFC3339),
-		"not_after":    now.Add(time.Hour).Format(time.RFC3339),
-		"request_file": requestPath,
-	})
-	if err != nil {
-		t.Fatalf("marshal Service Instance plan: %v", err)
-	}
-	if err := os.WriteFile(planPath, plan, 0o600); err != nil {
-		t.Fatalf("write Service Instance plan: %v", err)
-	}
-	initialized := runCommand(t, t.Context(), directory, endpointBinary,
-		"service-instance", "initialize", "--config", planPath)
-	var initialization struct {
-		Schema        string `json:"schema"`
-		Request       []byte `json:"request"`
-		RequestSHA256 string `json:"request_sha256"`
-	}
-	if err := json.Unmarshal(initialized, &initialization); err != nil ||
-		initialization.Schema != "ardents-service-instance-request-v3" || initialization.RequestSHA256 == "" {
-		t.Fatalf("Service Instance initialization receipt = %+v / %v", initialization, err)
-	}
-	request, err := os.ReadFile(requestPath)
-	if err != nil || !bytes.Equal(request, initialization.Request) {
-		t.Fatalf("public request differs from its receipt: %v", err)
+	request, requestSHA256 := initializeSuccessorInstance(t, directory, next, instanceRoot, network, now, requestPath)
+	if persisted, readErr := os.ReadFile(requestPath); readErr != nil || !bytes.Equal(persisted, request) {
+		t.Fatalf("public request differs from its persisted file: %v", readErr)
 	}
 
 	issueArguments := func(responsePath string) []string {
@@ -88,7 +61,7 @@ func TestLinuxCredentialResponsePublicationRecoversAfterFileSizeLimit(t *testing
 			"-kind", "service", "-id-commitment", created.IDCommitment}
 	}
 	issueInputs := []interactiveProductInput{
-		{prompt: "service-request SHA-256 from the requesting Endpoint:", value: initialization.RequestSHA256},
+		{prompt: "service-request SHA-256 from the requesting Endpoint:", value: requestSHA256},
 		{prompt: "vault-unlock password:", value: password, secret: true},
 	}
 	establishedResponsePath := filepath.Join(directory, "established-response.bin")
@@ -143,7 +116,7 @@ func TestLinuxCredentialResponsePublicationRecoversAfterFileSizeLimit(t *testing
 	if err != nil || !bytes.Equal(persisted, retried.Response) {
 		t.Fatalf("recovered public response differs from receipt: %v", err)
 	}
-	assertServiceInstanceAccepted(t, directory, endpointBinary, instanceRoot, responsePath)
+	assertServiceInstanceAccepted(t, directory, next, instanceRoot, responsePath)
 }
 
 func runInteractiveProductCommandWithFileSizeLimitResult(t *testing.T, directory, binary string, inputs []interactiveProductInput, arguments ...string) ([]byte, error) {

@@ -36,8 +36,15 @@ func (raw rawConfig) networkStateConfig() (state.Config, error) {
 	if err != nil {
 		return state.Config{}, fmt.Errorf("at: %w", err)
 	}
+	// The offline command operates in the State owner's fixed-reference mode:
+	// the operator-declared verification time is both the reference clock and
+	// its independent observation, exactly as the owner's fixed-mode contract
+	// requires (Now and ClockObservation together). Without the observation the
+	// owner's two-second clock-confidence check refuses every acceptance (#649).
+	// Live clock observation belongs to the runtime's automatic Source refresh,
+	// not to this bounded offline adapter.
 	config := state.Config{Root: raw.root, NetworkID: networkID, Authorities: authorities, Threshold: raw.threshold,
-		AcceptedProfile: raw.profile, Now: at}
+		AcceptedProfile: raw.profile, Now: at, ClockObservation: at}
 	if raw.closedProfileAuthority != "" {
 		config.ClosedProfileAuthority = make(ed25519.PublicKey, ed25519.PublicKeySize)
 		if err := decodeOperatorFixedHex(raw.closedProfileAuthority, config.ClosedProfileAuthority); err != nil {
