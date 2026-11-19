@@ -30,6 +30,7 @@ import (
 	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/installation/unit"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
 
@@ -178,6 +179,69 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 		}
 	}
 	runPlatformLedJourneyParticipant(t, base, etcDir, *input.Network, approve, exercise)
+}
+
+// TestNativeEndpointRealHostPublication proves platform-led publication on ONE
+// real dual-role Endpoint installed directly on the admitted host manager (no
+// container). It is the real-host de-risk for the finite blind-token batch
+// deadline that the shared nspawn VPS could not meet: a single manager publishes
+// a snapshot through real REGISTER/Store ACK, obtains the canonical accepting
+// Link and withdraws, all within the product publication deadlines. The
+// cross-Endpoint read is deliberately not exercised here: the receiving fixture
+// requires a separate reader participant (pair topology), so the full
+// publish/link/read journey belongs to the two-manager qualification. Component
+// evidence with fixture authority; not the two-manager privacy qualification.
+func TestNativeEndpointRealHostPublication(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Fatal("real-host publication qualification requires a root driver")
+	}
+	carrier := string(transport.ClosedCarrierTCP)
+	f, _ := installedServiceNetwork(t, carrier)
+	network := installedSignedNetwork(t, f)
+	var nonce [32]byte
+	if _, err := rand.Read(nonce[:]); err != nil {
+		t.Fatal(err)
+	}
+	tag := hex.EncodeToString(nonce[:6])
+	base := filepath.Join("/var/lib/ardents", "rh-"+tag)
+	etcDir := filepath.Join("/etc/ardents", "rh-"+tag)
+	approve := func(approvalBase, role string, request []byte) []byte {
+		return installedServiceApproval(t, approvalBase, role, request, f)
+	}
+	body := []byte("one platform-led request on a real admitted host manager\n")
+	exercise := func(p journeyParticipant) {
+		socket := filepath.Join(p.base, "administration", "socket")
+		ctx, cancel := context.WithTimeout(t.Context(), administration.SnapshotTimeout)
+		_, err := administration.RequestSnapshot(ctx, socket, body)
+		cancel()
+		if err != nil {
+			journeyDumpJournal(t)
+			t.Fatal("real-host installed Snapshot", err)
+		}
+		ctx, cancel = context.WithTimeout(t.Context(), 15*time.Second)
+		link, err := administration.RequestPublishedLink(ctx, socket)
+		cancel()
+		if err != nil || link == "" {
+			t.Fatal("real-host committed Link", err)
+		}
+		if _, _, err := publication.ParseTargetLink(link); err != nil {
+			t.Fatal("real-host canonical Link", err)
+		}
+		ctx, cancel = context.WithTimeout(t.Context(), 15*time.Second)
+		_, err = administration.Request(ctx, socket, administration.Withdraw)
+		cancel()
+		if err != nil {
+			t.Fatal("real-host withdrawal", err)
+		}
+		ctx, cancel = context.WithTimeout(t.Context(), 15*time.Second)
+		link, err = administration.RequestPublishedLink(ctx, socket)
+		cancel()
+		if err == nil || link != "" {
+			t.Fatal("withdrawn real-host publisher still exposes a Link")
+		}
+		t.Log("real-host platform-led publish/link/withdraw completed within the finite publication deadlines")
+	}
+	runPlatformLedJourneyParticipant(t, base, etcDir, network, approve, exercise)
 }
 
 // runPlatformLedJourneyParticipant provisions and platform-led-launches one
