@@ -13,7 +13,7 @@ import (
 // The caller must separately establish the pinned artifact, accepted socket's
 // kernel credentials, live process/cgroup identity and joined cleanup owner.
 func verifyPropertiesVersion(unit, service properties, name, role, cgroup string, pid uint32, version uint16) error {
-	if version != 255 {
+	if version != 249 && version != 255 {
 		return errors.New("worker manager version unavailable")
 	}
 	if !cgroupPath(cgroup, name, role) || pid == 0 {
@@ -66,6 +66,17 @@ func verifyPropertiesVersion(unit, service properties, name, role, cgroup string
 		"SetCredential": "a(say)", "SetCredentialEncrypted": "a(say)", "ImportCredential": "as", "EnvironmentFiles": "a(sb)",
 		"PassEnvironment": "as", "ExecStartPre": "a(sasbttttuii)", "ExecStartPost": "a(sasbttttuii)",
 		"ExecStop": "a(sasbttttuii)", "ExecStopPost": "a(sasbttttuii)", "ExecCondition": "a(sasbttttuii)", "ExecReload": "a(sasbttttuii)"} {
+		// systemd 249 has no encrypted/imported credential properties; their
+		// absence means no such credential can be loaded (the secure default), so
+		// tolerate it exactly as the unit contract tolerates absent 249 properties.
+		// Every other inherited resource must still be present and empty, and on
+		// 255 these three are required present and empty too.
+		if _, present := service[key]; !present && version == 249 {
+			switch key {
+			case "LoadCredentialEncrypted", "SetCredentialEncrypted", "ImportCredential":
+				continue
+			}
+		}
 		if !service.exact(key, signature, []any{}) {
 			return errors.New("text worker inherited resources are unavailable")
 		}
