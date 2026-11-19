@@ -282,7 +282,16 @@ func verifyEndpointPlatformPrestart(ctx context.Context, files *platformFiles, l
 	if err == nil {
 		programAuth, _ := auth.Targets()
 		decision, accepted := programAuth.AcceptedDecision()
-		if !accepted || decision.Outcome != release.OutcomeReleaseAccepted {
+		// A fresh re-evaluation against the CURRENT committed floor admits either a
+		// new release acceptance (first launch: candidate newer than the floor) or
+		// no-update (restart: the candidate IS the already-accepted committed floor).
+		// AuthenticateCandidate has already bound the accepted decision to the exact
+		// candidate program/generation bytes (CoherentTargets + digest equality), so
+		// no-update is the current accepted program, not a stored replay of a stale
+		// proof: a candidate that does not match the current committed floor is
+		// refused upstream. Both outcomes require an accepted decision; anything else
+		// (no accepted decision, foreign floor, authority loss) refuses.
+		if !accepted || (decision.Outcome != release.OutcomeReleaseAccepted && decision.Outcome != release.OutcomeNoUpdate) {
 			err = release.ErrTrustUnavailable
 		}
 	}

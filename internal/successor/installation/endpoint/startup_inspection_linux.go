@@ -53,24 +53,45 @@ func OpenStartup(ctx context.Context, directory string) (*Startup, error) {
 	return &Startup{lifetime: &startupLifetime{inspection: inspection}}, nil
 }
 
-// Check reobserves the same retained installed invocation before an effect.
+// Check reobserves the same retained installed invocation at an INNER effect
+// bracket using identity-only granularity: sealed generation and retained file
+// identity (dev/ino/mode/size/ModTime/uid/gid/nlink/Ctim) plus the original
+// process, manager and account observations, without re-reading file content.
+// Full content is reserved for operation/admission boundaries (CheckFull). An
+// in-place root rewrite with forged timestamps between boundaries is detected at
+// the next CheckFull; that root-tamper latency bound (the operation cadence) is
+// the admitted trade of the identity-only inner granularity.
 func (s *Startup) Check() error {
 	if s == nil || s.lifetime == nil {
 		return ErrInput
 	}
 	s.lifetime.mu.Lock()
 	defer s.lifetime.mu.Unlock()
-	return s.lifetime.checkLocked()
+	return s.lifetime.checkLocked(s.lifetime.inspection.observeIdentity)
 }
 
-func (s *startupLifetime) checkLocked() error {
+// CheckFull reobserves the retained installed invocation with FULL content at an
+// operation/admission boundary: every sealed generation and retained file is
+// freshly re-read and byte-compared, detecting an in-place content rewrite even
+// with forged ModTime/Ctim. Operation entry points and admission handoffs use
+// this; inner effect brackets use Check.
+func (s *Startup) CheckFull() error {
+	if s == nil || s.lifetime == nil {
+		return ErrInput
+	}
+	s.lifetime.mu.Lock()
+	defer s.lifetime.mu.Unlock()
+	return s.lifetime.checkLocked(s.lifetime.inspection.observe)
+}
+
+func (s *startupLifetime) checkLocked(observe func() error) error {
 	if s.closed || s.inspection == nil {
 		return errors.Join(ErrBinding, s.result)
 	}
 	if s.result != nil {
 		return s.result
 	}
-	s.result = s.inspection.observe()
+	s.result = observe()
 	return s.result
 }
 
@@ -82,12 +103,12 @@ func (s *Startup) Plans() ([]byte, []byte, error) {
 	}
 	s.lifetime.mu.Lock()
 	defer s.lifetime.mu.Unlock()
-	if err := s.lifetime.checkLocked(); err != nil {
+	if err := s.lifetime.checkLocked(s.lifetime.inspection.observe); err != nil {
 		return nil, nil, err
 	}
 	headless := bytes.Clone(s.lifetime.inspection.checked.files["headless.json"])
 	source := bytes.Clone(s.lifetime.inspection.checked.files["source.json"])
-	if err := s.lifetime.checkLocked(); err != nil {
+	if err := s.lifetime.checkLocked(s.lifetime.inspection.observe); err != nil {
 		return nil, nil, err
 	}
 	return headless, source, nil
@@ -241,7 +262,19 @@ func openStartupInspection(ctx context.Context, directory string) (result *start
 	return s, nil
 }
 
-func (s *startupInspection) observe() (returnedErr error) {
+func (s *startupInspection) observe() error { return s.observeGranular(true) }
+
+// observeIdentity is the inner-bracket observation: file identity only, no
+// content re-read. The process, manager and account observations are retained
+// (they verify identity/properties, not sealed file content).
+func (s *startupInspection) observeIdentity() error { return s.observeGranular(false) }
+
+// observeGranular keeps one before/after bracket order for both granularities.
+// full selects fresh full-content re-reads of the sealed generation and retained
+// files (operation/admission boundaries); otherwise identity-only re-verification
+// (inner brackets). The root identity, account/roots, invocation and manager
+// observations are identical in both, and failure is terminal in both.
+func (s *startupInspection) observeGranular(full bool) (returnedErr error) {
 	if s == nil || s.ctx == nil || s.root == nil || s.files == nil || s.snapshot == nil || s.invocation == nil {
 		return ErrInput
 	}
@@ -260,10 +293,14 @@ func (s *startupInspection) observe() (returnedErr error) {
 	if err != nil || !sameObservedDirectory(s.identity, current) {
 		return errors.Join(ErrBinding, err)
 	}
-	if err := s.files.observe(s.ctx); err != nil {
+	observeFiles, observeSnapshot := s.files.observeIdentity, s.snapshot.ObserveIdentity
+	if full {
+		observeFiles, observeSnapshot = s.files.observe, s.snapshot.Observe
+	}
+	if err := observeFiles(s.ctx); err != nil {
 		return err
 	}
-	if err := s.snapshot.Observe(); err != nil {
+	if err := observeSnapshot(); err != nil {
 		return err
 	}
 	if err := s.files.observeAccountAndRoots(s.checked); err != nil {
@@ -278,10 +315,10 @@ func (s *startupInspection) observe() (returnedErr error) {
 	if err := s.invocation.Observe(s.ctx); err != nil {
 		return err
 	}
-	if err := s.snapshot.Observe(); err != nil {
+	if err := observeSnapshot(); err != nil {
 		return err
 	}
-	if err := s.files.observe(s.ctx); err != nil {
+	if err := observeFiles(s.ctx); err != nil {
 		return err
 	}
 	if err := s.files.observeAccountAndRoots(s.checked); err != nil {

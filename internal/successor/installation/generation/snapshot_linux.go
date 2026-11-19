@@ -297,6 +297,76 @@ func (s *Snapshot) Observe() (returnedErr error) {
 	return errors.Join(s.observeDirectories(), s.inventory(), s.ctx.Err())
 }
 
+// ObserveIdentity re-verifies the sealed generation at an inner observation
+// bracket without re-reading file content: each file's dev/ino/mode/size/
+// ModTime/uid/gid/nlink/Ctim must still match the retained admission
+// observation, and the directory/inventory identity must hold before and after.
+// Substitution and metadata tamper are refused. An in-place content rewrite with
+// forged timestamps is NOT detected here; the full-content Observe at the next
+// operation/admission boundary detects it (the endpoint's identity-only inner
+// granularity, whose root-tamper latency bound is the operation cadence).
+// Failure is terminal and never renewed, exactly as Observe.
+func (s *Snapshot) ObserveIdentity() (returnedErr error) {
+	if s == nil || s.ctx == nil {
+		return ErrInput
+	}
+	if s.terminal != nil {
+		return s.terminal
+	}
+	defer func() {
+		if returnedErr != nil {
+			s.terminal = returnedErr
+		}
+	}()
+	if err := s.ctx.Err(); err != nil {
+		return err
+	}
+	if err := s.observeDirectories(); err != nil {
+		return err
+	}
+	if err := s.inventory(); err != nil {
+		return err
+	}
+	if len(s.files) != len(Names()) {
+		return ErrBinding
+	}
+	for name, original := range s.files {
+		if err := s.observeFileIdentity(name, original); err != nil {
+			return err
+		}
+	}
+	return errors.Join(s.observeDirectories(), s.inventory(), s.ctx.Err())
+}
+
+// observeFileIdentity keeps the original path/descriptor bracket order (Lstat,
+// fresh O_NOFOLLOW open, descriptor Stat, final path/descriptor re- Stat) but
+// compares identity only, never content. snapshotFileMatches binds dev/ino,
+// exact mode, size to the retained body length, ModTime, uid/gid/nlink and Ctim.
+func (s *Snapshot) observeFileIdentity(name string, original fileObservation) error {
+	if _, allowed := fileMode(name); !allowed {
+		return ErrInput
+	}
+	before, err := s.root.Lstat(name)
+	if err != nil || !snapshotFileMatches(original, before) {
+		return errors.Join(ErrBinding, err)
+	}
+	file, err := s.root.OpenFile(name, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return errors.Join(ErrBinding, err)
+	}
+	defer func() { _ = file.Close() }()
+	opened, err := file.Stat()
+	if err != nil || !snapshotFileMatches(original, opened) {
+		return errors.Join(ErrBinding, err)
+	}
+	final, pathErr := s.root.Lstat(name)
+	finalHandle, handleErr := file.Stat()
+	if pathErr != nil || handleErr != nil || !snapshotFileMatches(original, final) || !snapshotFileMatches(original, finalHandle) {
+		return errors.Join(ErrBinding, pathErr, handleErr)
+	}
+	return s.ctx.Err()
+}
+
 // Bytes and Matches return detached bytes and a physical comparison, not handles
 // or shared observations. The original operation must Observe before effects.
 func (s *Snapshot) Bytes(name string) []byte {

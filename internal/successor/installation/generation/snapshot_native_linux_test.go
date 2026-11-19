@@ -315,3 +315,133 @@ func TestInstallationNativeSnapshotServiceAccount(t *testing.T) {
 		t.Fatalf("actual service-account snapshot failed: %v\n%s", err, output)
 	}
 }
+
+// ObserveIdentity is the inner-bracket granularity: it re-verifies sealed file
+// identity (dev/ino/mode/size/ModTime/uid/gid/nlink/Ctim) without re-reading
+// content. Substitution and metadata tamper are refused exactly as the full
+// Observe; an ordinary in-place rewrite moves Ctim and is therefore refused here
+// too. The admitted trade (S8 D1c option b) is narrower: a root writer who
+// forges Ctim/Mtim back to the retained values while changing content passes
+// identity-only inner brackets and is detected by the full-content Observe at
+// the next operation/admission boundary. That forged-Ctim case requires kernel
+// inode manipulation and is not reproducible from userspace; the boundary
+// causality is pinned by TestInstallationNativeSnapshotIdentityOnlyBoundary.
+func TestInstallationNativeSnapshotObserveIdentityRefusesTamper(t *testing.T) {
+	for _, mutation := range []string{"extra", "missing", "inode", "hardlink", "bytes", "mode", "size"} {
+		t.Run(mutation, func(t *testing.T) {
+			directory, _ := snapshotFixture(t)
+			s := openSnapshotFixture(t, directory, t.Context())
+			if err := s.ObserveIdentity(); err != nil {
+				t.Fatal("unchanged snapshot refused by identity observation", err)
+			}
+			name := filepath.Join(directory, "headless.json")
+			var err error
+			switch mutation {
+			case "extra":
+				err = os.WriteFile(filepath.Join(directory, "foreign"), []byte("extra"), 0640)
+			case "missing":
+				err = os.Remove(name)
+			case "inode":
+				err = os.Rename(name, filepath.Join(filepath.Dir(directory), "old-headless"))
+				if err == nil {
+					err = os.WriteFile(name, s.Bytes("headless.json"), 0640)
+				}
+				if err == nil {
+					err = os.Chown(name, 0, 65534)
+				}
+			case "hardlink":
+				err = os.Link(name, filepath.Join(filepath.Dir(directory), "alias"))
+			case "bytes":
+				body := s.Bytes("headless.json")
+				body[0] ^= 1
+				err = os.WriteFile(name, body, 0640)
+				if err == nil {
+					original := s.files["headless.json"].identity.ModTime()
+					err = os.Chtimes(name, original, original)
+				}
+			case "mode":
+				err = os.Chmod(name, 0600)
+			case "size":
+				var file *os.File
+				file, err = os.OpenFile(name, os.O_WRONLY|os.O_APPEND, 0640)
+				if err == nil {
+					_, err = file.Write([]byte("x"))
+					_ = file.Close()
+				}
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := s.ObserveIdentity(); !errors.Is(err, ErrBinding) {
+				t.Fatal("identity observation accepted tamper", mutation, err)
+			}
+			if s.Bytes("binding.json") != nil || !errors.Is(s.Close(), ErrBinding) {
+				t.Fatal("identity failure renewed snapshot")
+			}
+		})
+	}
+}
+
+// An unchanged sealed generation admits repeated identity-only inner
+// observations; the first terminal failure is retained and never renewed.
+func TestInstallationNativeSnapshotObserveIdentityAdmitsUnchanged(t *testing.T) {
+	directory, _ := snapshotFixture(t)
+	s := openSnapshotFixture(t, directory, t.Context())
+	for range 5 {
+		if err := s.ObserveIdentity(); err != nil {
+			t.Fatal("unchanged identity observation refused", err)
+		}
+	}
+	name := filepath.Join(directory, "headless.json")
+	if err := os.Remove(name); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ObserveIdentity(); !errors.Is(err, ErrBinding) {
+		t.Fatal("missing file accepted", err)
+	}
+	if err := s.ObserveIdentity(); !errors.Is(err, ErrBinding) {
+		t.Fatal("terminal identity failure renewed", err)
+	}
+}
+
+// Identity-only inner brackets are content-agnostic: the identity matcher
+// admits a file whose dev/ino/mode/size/ModTime/uid/gid/nlink/Ctim match the
+// retained admission observation without reading its bytes. The full-content
+// Observe at the operation boundary is what detects an in-place content rewrite
+// (here Ctim moves, so identity refuses too; a forged-Ctim rewrite is the
+// admitted residual detected only by the boundary full read). This pins the
+// mechanism and the boundary causality of option (b).
+func TestInstallationNativeSnapshotIdentityOnlyBoundary(t *testing.T) {
+	directory, _ := snapshotFixture(t)
+	inner := openSnapshotFixture(t, directory, t.Context())
+	boundary := openSnapshotFixture(t, directory, t.Context())
+	name := filepath.Join(directory, "headless.json")
+	info, err := os.Lstat(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The identity matcher admits the retained identity without reading content.
+	if !snapshotFileMatches(inner.files["headless.json"], info) {
+		t.Fatal("retained identity does not match the original file")
+	}
+	// In-place content rewrite with restored ModTime: Ctim moves, so the
+	// identity-only inner bracket refuses via Ctim and the full-content boundary
+	// observe refuses via the rewritten bytes. A forged-Ctim rewrite (the admitted
+	// option-b residual) would pass the inner bracket and still be refused here at
+	// the boundary full read.
+	body := inner.Bytes("headless.json")
+	body[0] ^= 1
+	if err := os.WriteFile(name, body, 0640); err != nil {
+		t.Fatal(err)
+	}
+	original := inner.files["headless.json"].identity.ModTime()
+	if err := os.Chtimes(name, original, original); err != nil {
+		t.Fatal(err)
+	}
+	if err := inner.ObserveIdentity(); !errors.Is(err, ErrBinding) {
+		t.Fatal("identity inner bracket accepted a Ctim-moving rewrite", err)
+	}
+	if err := boundary.Observe(); !errors.Is(err, ErrBinding) {
+		t.Fatal("full boundary observe accepted rewritten content", err)
+	}
+}

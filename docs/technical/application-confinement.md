@@ -161,10 +161,28 @@ required settings make the platform unavailable before Grant delivery:
 RestrictAddressFamilies constrains socket creation, not already inherited
 descriptors. PrivateNetwork does not close an inherited external socket.
 Therefore installation/activation must enumerate descriptors and allow only
-the accepted local stream plus harmless null descriptors. AF_UNIX alone
-does not authorize access to an unrestricted host IPC peer; the private root,
-private network namespace and socket permissions enforce that exclusion.
-The protocol never receives SCM_RIGHTS and grants no file-descriptor exchange.
+the accepted local stream plus harmless null descriptors, with one verified
+manager exception: a resource-limited service on systemd 255 inherits its own
+cgroup resource-control file (observed `cpu.max`) without close-on-exec, as
+default manager behavior for units carrying MemoryMax/TasksMax. The audit
+admits such a descriptor only when its kernel-resolved `/proc/self/fd` target
+is a regular file directly inside the worker's own unified cgroup
+(`/proc/self/cgroup` `0::` placement) and names a resource control from the
+fixed allowlist (`cpu.max`, `cpu.weight`, `cpu.weight.nice`, `cpu.idle`,
+`memory.min`, `memory.low`, `memory.high`, `memory.max`, `memory.swap.max`,
+`memory.zswap.max`, `pids.max`, `io.max`, `io.weight`), then closes it before
+admission completes: the fixed worker never manages its own cgroup, so no
+control authority survives the audit. Each allowlisted file grants only the
+service's own limit management, bounded by its parent cgroup. Migration,
+controller-enablement and lifecycle surfaces (`cgroup.procs`, `cgroup.threads`,
+`cgroup.subtree_control`, `cgroup.type`, `cgroup.kill`, `cgroup.freeze`,
+`cgroup.events`) are not resource controls and remain foreign authority, as
+does every descriptor of a foreign cgroup, a nested child cgroup, a spoofed
+path prefix or a non-regular file. systemd 249 passes no such descriptor and
+its audit behavior is unchanged. AF_UNIX alone does not authorize access to
+an unrestricted host IPC peer; the private root, private network namespace
+and socket permissions enforce that exclusion. The protocol never receives
+SCM_RIGHTS and grants no file-descriptor exchange.
 
 ## Data and authority flow
 

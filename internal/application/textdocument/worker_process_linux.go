@@ -5,18 +5,27 @@ package textdocument
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
 	"os/signal"
+	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 )
 
 // RunInheritedWorker admits only the installed entrypoint's AF_UNIX stdio
-// attachment and null stderr. This descriptor check does not attest installed
-// confinement: Endpoint independently verifies the unit/root/accepted socket.
+// attachment and null stderr, plus any resource-control descriptor the system
+// manager passed for the worker's OWN cgroup (systemd 255 hands cpu.max to a
+// resource-limited service without close-on-exec). Each such descriptor is
+// identity-verified against the kernel-resolved own-cgroup path and closed
+// before admission completes: the fixed worker never manages its own cgroup,
+// so no inherited authority survives the audit. This descriptor check does not
+// attest installed confinement: Endpoint independently verifies the unit/root/
+// accepted socket.
 func RunInheritedWorker(mode WorkerMode) error {
 	if mode != ReaderWorker && mode != PublisherWorker {
 		return errors.New("text worker mode is unavailable")
@@ -71,6 +80,9 @@ func verifyWorkerDescriptors() error {
 		return errors.New("text worker descriptor inventory is unavailable")
 	}
 	defer syscall.Close(directory)
+	// Resolved lazily: a manager that passes no control descriptor (systemd 249)
+	// never requires the observation, and its behavior is unchanged.
+	var ownCgroupPath string
 	var buffer [4096]byte
 	for {
 		n, err := syscall.ReadDirent(directory, buffer[:])
@@ -94,10 +106,81 @@ func verifyWorkerDescriptors() error {
 				return errors.New("text worker descriptor inventory is unavailable")
 			}
 			if survived {
-				return errors.New("text worker inherited a foreign descriptor")
+				if ownCgroupPath == "" {
+					path, pathErr := workerUnifiedCgroupPath()
+					if pathErr != nil {
+						return errors.New("text worker inherited a foreign descriptor")
+					}
+					ownCgroupPath = path
+				}
+				if !managerCgroupControlFD(fd, ownCgroupPath) {
+					return errors.New("text worker inherited a foreign descriptor")
+				}
+				if err := syscall.Close(fd); err != nil {
+					return errors.New("text worker descriptor inventory is unavailable")
+				}
 			}
 		}
 	}
+}
+
+// managerCgroupControlNames are the cgroup v2 resource-control files a system
+// manager may hand to its own resource-limited service without close-on-exec.
+// Each grants only the service's own limit management, bounded by its parent
+// cgroup. Migration, controller-enablement and lifecycle surfaces
+// (cgroup.procs, cgroup.threads, cgroup.subtree_control, cgroup.type,
+// cgroup.kill, cgroup.freeze, ...) are deliberately absent: they are not
+// resource controls and remain foreign authority.
+var managerCgroupControlNames = map[string]bool{
+	"cpu.max": true, "cpu.weight": true, "cpu.weight.nice": true, "cpu.idle": true,
+	"memory.min": true, "memory.low": true, "memory.high": true, "memory.max": true,
+	"memory.swap.max": true, "memory.zswap.max": true,
+	"pids.max": true, "io.max": true, "io.weight": true,
+}
+
+// managerCgroupControlTarget admits only a control file directly inside the
+// worker's own unified cgroup. Pure path/name policy; the caller supplies the
+// kernel-resolved descriptor target and independently verifies the file kind.
+func managerCgroupControlTarget(target, ownCgroupPath string) bool {
+	name, ok := strings.CutPrefix(target, path.Join("/sys/fs/cgroup", ownCgroupPath)+"/")
+	return ok && managerCgroupControlNames[name]
+}
+
+// managerCgroupControlFD verifies one surviving descriptor is a regular
+// resource-control file of the worker's own cgroup. The readlink target is the
+// kernel-resolved path (symlinks and hard links cannot disguise a foreign
+// file); the caller closes the descriptor after admission.
+func managerCgroupControlFD(fd int, ownCgroupPath string) bool {
+	target, err := os.Readlink(fmt.Sprintf("/proc/self/fd/%d", fd))
+	if err != nil || !managerCgroupControlTarget(target, ownCgroupPath) {
+		return false
+	}
+	var status syscall.Stat_t
+	if err := syscall.Fstat(fd, &status); err != nil || status.Mode&syscall.S_IFMT != syscall.S_IFREG {
+		return false
+	}
+	return true
+}
+
+// workerUnifiedCgroupPath reads the kernel-provided unified placement. The
+// input is trusted, but a missing, relative or traversing path refuses
+// admission outright rather than guessing a cgroup identity.
+func workerUnifiedCgroupPath() (string, error) {
+	raw, err := os.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		return "", err
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		path, ok := strings.CutPrefix(line, "0::")
+		if !ok {
+			continue
+		}
+		if !strings.HasPrefix(path, "/") || strings.Contains(path, "..") {
+			return "", errors.New("text worker unified cgroup placement is invalid")
+		}
+		return path, nil
+	}
+	return "", errors.New("text worker unified cgroup placement is unavailable")
 }
 
 func descriptorSurvivedExec(fd int) (bool, error) {

@@ -5283,6 +5283,88 @@ qualification-environment tool on the admitted host, not a product runtime
 dependency; its bounded use and patched-systemd applicability are recorded in
 [dependencies](dependencies.md).
 
+## Protected Endpoint platform-led text journey native qualification
+
+The `endpoint_pair_native` build tag additionally selects
+`cmd/ardents-next/endpoint_journey_native_linux_test.go` (compiled together with
+`text_worker_installed`), the #391 S2.2 journey harness. It reuses one unchanged
+platform-led participant (`TestNativeEndpointPlatformLedJourneyParticipant`):
+the participant receives only public signed Network material and actual
+permission requests/responses over a local fixture channel, independently
+provisions and platform-led-launches its own dual-role Endpoint against that
+Network (delivery staging → prepare-history → hosting → platform main unit +
+canonical socket-activated workers → systemd start without root ACK → F-25
+pre-start transfer → start-installed platform-led → independent fixture
+permission approval → original-process listeners), and exercises the
+publish/read/withdraw/restart fixture commands. No private key, live owner or
+accepting flag crosses managers. Three controllers share that participant:
+
+- `TestNativeEndpointRealHostPublication` proves platform-led publication on ONE
+  real dual-role Endpoint installed directly on the admitted host manager (no
+  container): snapshot → real REGISTER/Descriptor Store ACK → canonical accepting
+  Link → withdrawal, all within the finite product publication deadlines. It is
+  the real-host de-risk for the blind-token batch deadline; the cross-Endpoint
+  read is deliberately not exercised (the receiving fixture requires a separate
+  reader participant). Joined cleanup removes the account, units, fixed
+  resources and roots so the test is repeatable (`-count=2`).
+- `TestNativeEndpointPlatformLedJourney` is the single-host nspawn controller: it
+  provisions two separately admitted managers (S2.1 foundation), keeps one shared
+  fixture route network on the host loopback, distributes the signed Network and
+  prebuilt canonical consumer/worker binaries, admits both participants serially
+  and coordinates the journey. On the shared VPS the nspawn DynamicUser
+  worker-activation latency can exceed the finite publication batch deadline;
+  that deadline is a product bound and is not weakened to absorb it.
+- `TestNativeEndpointCrossHostJourney` is the cross-host controller for two REAL
+  admitted host managers. It runs as root on the reader/controller host and lifts
+  `routeFixtureBindHost` from loopback to the controller's reachable address
+  (`ARDENTS_XH_BIND_HOST`, verified local) BEFORE the fixture network is created,
+  so the signed epoch advertises receivers the remote publisher can dial; the
+  Endpoint runtime opens only outbound role connections, so no participant
+  listens for cross-host traffic. It verifies the publisher→controller fixture
+  path with one ephemeral probe, refuses residual installed state on either host,
+  compiles the participant and prebuilds the canonical consumer and text worker
+  as STATIC executables (`CGO_ENABLED=0`, no glibc forward-compatibility
+  assumption across the two admitted platform releases), distributes them over
+  SSH (`ARDENTS_XH_PUBLISHER_SSH`, optional `ARDENTS_XH_SSH_KEY`) and launches the
+  publisher on the second real host and the reader locally. Both participants
+  launch concurrently; connections are bound by the original fixture nonce and
+  role, the signed Network is sent to both immediately, and permissions are
+  approved serially by the fixture authority. The exchange is publish → canonical
+  Link → byte-equal cross-host read → owning withdrawal → platform-led restart
+  continuity on both hosts (new InvocationID, retained immutable selection), with
+  distinct original InvocationIDs and joined cleanup that restores both hosts to
+  their pre-run state (namespaced Ardents artifacts only; a co-hosted website's
+  containers and fixed ports are never touched). Reading immediately after
+  publication keeps the exchange inside the publisher's initial route-context
+  lifetime; descriptor automatic-refresh timing across a long publish/read gap is
+  a stated residual (S2.3). Missing privileges, tools, residual state or an
+  unreachable fixture path are invalid environments, never a passing skip; the
+  finite publication and bootstrap deadlines require a quiet controller host
+  (concurrent heavy load is an invalid environment for the timing-sensitive
+  exchange, not a reason to widen a product bound). It is not a `make quick-check`
+  lane; the ordinary suite excludes the tag while `scripts/check-deadcode.go`
+  compiles it so native coverage counts.
+
+Supporting product defect repair (same change): the fixed worker
+inherited-descriptor audit (`internal/application/textdocument`) admits and
+CLOSES a manager-passed resource-control descriptor of the worker's OWN unified
+cgroup — systemd 255 hands `cpu.max` to a resource-limited service without
+close-on-exec (default behavior for units carrying MemoryMax/TasksMax; systemd 249
+passes no such descriptor). The audit identity-verifies the kernel-resolved
+`/proc/self/fd` target against the `/proc/self/cgroup` `0::` placement and a fixed
+resource-control allowlist, refuses every other surviving descriptor (including
+own-cgroup migration/lifecycle surfaces such as `cgroup.procs`), and closes the
+admitted descriptor so no control authority survives admission. Causal unit tests
+cover the path/name policy matrix and the inherited-descriptor positive/refusal
+cases. The confinement contract amendment is recorded in
+[application-confinement](../technical/application-confinement.md).
+
+This is component/acceptance evidence with fixture Release/Network authority for
+two independently admitted real host managers performing the protected-text
+journey. It is NOT the whole-host two-participant privacy qualification. The
+transitional guarded-start/ACK/recovery orchestration is neither exercised nor
+retired (ADR-0125 D6).
+
 ## Bounded Authority Custody native lane
 
 `make custody-check` requires Linux, Go 1.27.4, a race-capable compiler,
