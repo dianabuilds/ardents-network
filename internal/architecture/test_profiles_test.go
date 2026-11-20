@@ -163,7 +163,6 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"descriptor-startup-linux":           false,
 		"descriptor-initial-stopped-linux":   false,
 		"join-installed-linux":               false,
-		"forwarding-installed-linux":         false,
 		"network-signing-linux":              false,
 		"network-preparation-linux":          false,
 		"source-process-linux":               false,

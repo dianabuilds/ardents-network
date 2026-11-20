@@ -81,635 +81,38 @@ projection unit binds the exact two retained roots without transport creation.
 Actual root/ext4 SourceInspection and mandatory pre-start invocation remain
 native evidence; these units supply no fake accepting inspection or manager.
 
-The native metadata proposal controls cover every Initial72..107 artifact
-prefix using an independently ordered twelve-file fixture. Original ready
-metadata is read from actual root0444 files; an original empty root0600 birth
-or absence is preserved. Full canonical Enrollment and original binding checks
-distinguish exact proposals from advanced metadata/inventory, missing or changed
-original ready metadata and canceled reads. Original bytes, inodes, access and
-the directory inventory remain unchanged. This is byte reconstruction and
-physical historical-read evidence, not original-cut, Release, native
-continuation or installed qualification.
+The transitional Forwarding orchestration native qualification is retired (#604
+FJD stage D, ADR-0125). The former `forwarding-installed-linux` profile, its
+`make forwarding-installed-check` lane, the `run-forwarding-installed.py` runner,
+the `installation/forwarding` package, the OLD-path installed QA test and its
+bootstrap-receipt consumer, the `forwarding prepare-template`, `prepare-request`,
+`prepare-plan`, `prepare-hosting` and `prepare-state` producers, the
+`prepare-forwarding-release-plan.py` public plan preparer and the
+`TestForwardingPreparationNativeActualBuildRecordsAndPublicPlan` build-records
+control are removed. `ardents-node forwarding ...` returns typed before-effect
+refusals. The platform-led Forwarding lifecycle replaces them: the canonical
+platform unit with its mandatory `platform check` ExecStartPre gate,
+`ardents-next node forwarding --retained-config` and
+`ardents-next forwarding repair-retained`. Retained native evidence is
+`TestNativeForwardingPlatformInstalledLifecycle` under the
+`forwarding_platform_native` build tag (the installed gate),
+`TestNativeNodeForwardingTCP` in `forwarding-process-linux`, and the separately
+selected `TestNativeForwardingRetainedLifecycle` retained-lifecycle evidence
+(`node_process_native`). Forwarding Release signing is preserved and cut over
+to the static `ardents-next` program and `infrastructure.PlatformUnitTemplate`;
+the retained signing controls below remain required. The shared candidate
+builder `build-forwarding-candidate.py` remains the build-scope reference for
+the retained JOIN/Descriptor cohorts; a new-path Forwarding candidate build and
+release plan builder is a separate follow-up, exactly as for Source (#604
+stage 1.6).
 
-Initial72..104 physical generation-suffix controls exercise every prefix with
-real ext4 files, original empty births, exclusive later births, program0555 and
-other artifact0444 access, exact finite inventories and fresh same-inode byte
-readback after writer/reader Close. Cancellation after birth, substituted inode
-and unknown entry refuse. Independent complete logical transcript vectors and
-native-metadata control vectors bind each original/new artifact and reject
-missing/foreign/misclassified births. These component fixtures do not provide
-fresh Release authority, an original process cut, actual manager recovery or
-installed qualification; those remain separate evidence obligations.
-
-The earlier Initial72..104 pure-byte control uses literal positions for all
-twelve generation artifacts. Every prefix retains only completed files or one
-recorded empty birth, preserves directory-ready50/root0755, and rejects changed
-artifact paths. It separately confirms that decoding these earlier inventories
-does not admit native continuation; original account, directories and credentials
-must already be complete. These vectors supply no physical cut or recovery right.
-
-Initial105/106/107 pure-byte controls distinguish an absent timestamp from its
-original empty birth106, preserve directory-ready50/root0755 and reject every
-changed original path. Their incomplete inventories cannot become a complete
-installation or supply native admission. These vectors provide no native cut, Release,
-artifact reconstruction or accepting recovery authority.
-The native timestamp-proposal control independently reads four actual historical
-files while retaining the supplied timestamp proposal. Full original canonical
-inventory/binding verification accepts only matching bytes; advanced proposals,
-changed/missing inventories and cancellation refuse without creating timestamp
-or rewriting historical inputs. These public byte fixtures provide no original
-cut, signed Release or accepting continuation.
-Initial105/106/107 logical continuation vectors require the real new timestamp
-birth where applicable and preserve original birth106 otherwise. Native control
-vectors independently bind28/29-row grammar, timestamp access/bytes/inode and
-logical ready107, rejecting changed rows and missing/substituted provenance.
-The fixed-file read-only-birth native control exercises Create/ContinueBirth
-at root:root0444 with retained original inode and joined descriptors, and proves
-that complete0444 replacement and a foreign public-file group remain refused
-without modifying the original.
-`TestForwardingRecoveryPublicationNativeOriginalTimestamp` exercises actual
-exclusive and original-empty physical custody, root0444 Commit/readback and
-both real writer openings/phases; cancellation and replaced-inode controls
-retain the original empty file and failure. These physical/public-byte fixtures
-grant no original process cut, Release or installed recovery authority.
-
-The native metadata-continuity regression uses two complete independent public
-byte vectors plus actual protected original files. It restores historical
-metadata after the current vector advances, requires the matching original
-Enrollment inventory, and refuses missing/substituted inventory or cancellation
-without rewriting files. It reproduces the four-file-only restoration defect;
-these fixtures provide no signed Release, original cut or successful recovery
-authority. Current artifact admission remains separately required.
-
-Initial108/109 byte vectors preserve original generation-directory-ready50 at
-root0755 without inventing sealing, then bind the separate missing seal rows
-and actual later births into a complete logical transcript. Physical26-row
-control fixtures reject missing/substituted directory provenance, synthetic
-already-sealed before state and every changed control row. The selected native
-`TestForwardingRecoveryPublicationNativeOriginalSeal` exercises the actual
-same-directory access/sync/readback mechanism and exact writer opening/phases.
-Unknown entries, changed inode/access and cancellation refuse before mutation;
-post-Sync cancellation and late errors remain uncertain on the retained original
-FD, with no repeated effect or fabricated completion. This is physical/component
-evidence, not original-cut, Release, manager or installed recovery qualification.
-
-Initial110/111 controls distinguish25 original native objects from a selection
-that does not exist, require the separate actual selection birth and match both
-new selection and unit births in the24-row control/logical continuation. The
-actual writer fixture exercises the exact selection-creation opening and
-intent/born/written phases. Changed rows, missing birth, substituted inode or
-selection bytes refuse. These fixtures supply no installed authority; actual
-process/native interruption and successful recovery still require the admitted
-installed campaign.
-
-Initial112 byte controls retain selection-born111 without inventing readiness,
-preserve its original native numbers in the logical continuation and reject all
-earlier unsupported boundaries. The physical23-row control fixtures match an
-independently observed current selection and original birth, reject missing or
-substituted selection provenance/bytes and every changed row. An actual writer
-subcase exercises the new exact header and retained/written appends around a
-synced original empty fixture. These component tests grant no original process
-cut, fresh Release/manager admission or installed recovery success.
-
-Initial113 byte vectors prove the original selection already reached file-ready,
-refuse incomplete earlier selection boundaries, and reconstruct only the missing
-selected acknowledgement before the existing unit-creation continuation.
-The21-row control binds the unit birth at its exact offset after those logical
-rows. No test-vector acknowledgement grants a native selection or installed
-recovery right.
-
-Initial114/115 byte controls require26 original objects and no invented unit
-birth. Separate continuation vectors require the actual new birth and complete
-120-row logical transcript. The physical control-codec checks both21-row
-creation grammars against independently opened native files and rejects changed
-rows, missing completion birth and substituted unit identity. These component
-checks supply no actual process cut, manager/Release admission or installed
-recovery; that campaign remains separately admitted.
-The native writer subcase opens the actual creation-control journal and appends
-intent/born/written rows around an exclusively created, synchronized leaf. It
-causally rejects missing writer-phase registration; literal decoder vectors do
-not establish that real writer path. This fixture supplies no fixed-unit,
-original-cut, manager or Release admission.
-
-Initial116 byte controls distinguish an actual unit-born row from readiness,
-preserve its original inode in the separate continuation, and require the20-row
-retained/written proof before complete readback. Fixed-file native continuation
-supplies only physical custody; actual controlled Initial116 continuation and
-its manager/process interruption cases still require the separately admitted
-installed profile.
-
-Fixed-file native checks include independently reopening a recorded empty
-root0600 birth, retaining its parent/inode through first byte delivery and
-access promotion, and closing every descriptor. Changed bytes, inode, mode or
-link count before opening, and changed bytes or cancellation after journal I/O,
-refuse without overwriting or releasing custody before Close. These physical
-fixtures grant no original-cut, journal, Release or recovery admission.
-
-Replacement pre-Reload byte controls independently check57/58 original rows,
-all20 original native objects, every original path and unchanged cut context.
-They reject treating the prefix as completed/stopped history. Separate v2
-continuations commit the recovery-owned canonical after birth without changing
-the original prefix. A physical absence control preserves an unrecorded after
-leaf and refuses adoption. These component vectors provide no genuine original
-scope, Reload or accepting installed recovery.
-
-Initial pre-Reload byte controls independently check117/118 original records,
-all27 owned native identities, every original path, source/context commitments,
-and the refusal to treat that inventory as completed/stopped history. Separate
-v2-completion vectors bind the actual after-context digest and reject missing,
-unversioned, cross-operation and unrelated-native changes. Invented native
-values in these byte vectors supply no real Reload or accepting recovery.
-
-Never-started Forwarding byte controls cover all original1..18-record boundaries,
-path/inode substitution, incomplete sidecars and legacy original guard-preimage
-requirements. They supply no original native cut or successful recovery right.
-The accepting recovery consumes the actual independently reopened terminal
-child, fresh coherent candidate, genuine semantic owners and two complete
-stopped native rounds. Its separate11/14-record publication retains original
-resources unchanged; independent readback and all physical closes precede either
-original-blocker removal or the concrete absent-original-blocker check, with
-the recovery guard removed last. Actual installed continuation and process-cut
-qualification still require the separately accepted exact installed profile.
-
-Forwarding's stopped-initial recovery classifier has independent complete
-120-record byte vectors, both119/120-record stopped boundaries and causal
-earlier-prefix/context/manager/program/grammar refusals. These vectors have
-invented native identities and supply no installed authority. The separately
-selected physical `TestForwardingRecoveryPublicationNativeGuardsSpanPhysicalClose`
-requires the disposable root/ext4 preparation stand. It holds the actual
-writer Close and checks both guards, preserved late Close/cancellation failures,
-original-blocker publication under the still-present recovery guard, and final
-guard removal only after successful close. It supplies no Release, original-cut,
-manager, domain or installed qualification. Genuine recovery/readback and the
-remaining operation matrix belong to the separately admitted installed profile.
-The accompanying physical control-codec case checks exact guard device/inode
-matching; equal bytes in another inode and internally consistent invented birth
-rows refuse. It does not grant original-cut or candidate authority.
-
-Stopped replacement recovery independently checks original61/62-record byte
-prefixes against the complete62-record v2 vector. Only the final verification
-row may appear in the separate continuation at61; at62 it is empty. Foreign
-program, binding, manager, before/after context and ready-inode controls refuse;
-the original prefix stays unchanged. These are byte-classifier checks, not
-genuine native or Release admission. The physical publication test additionally
-uses distinct original-blocker and suffix parents and refuses a substituted
-parent without removing either blocker.
-
-Completed-generation custody acquires child invocation journals once and owns
-their physical close before its original initial lease. The namespace control
-rejects orphan first/last start and retirement journal births as empty history.
-`TestForwardingStartSnapshotNativeParentOwnsChildLease` retains actual parent
-and child flocks while the child's Close is held, then checks joined release
-and retained cancellation or actual late Close failure. Its detached archive
-supplies no original process, domain join, Release or installed recovery right.
-
-Retirement recovery byte vectors retain the original result and all original
-domain/native-join/close rows at17/18-record boundaries. Only the final `retired`
-row may appear in the separate continuation; earlier prefixes and substituted
-frame, result, challenge, exit, native identity, context or program refuse.
-These detached vectors grant no original cut or authority. Native historical
-reader controls add incomplete cut/recovery sidecars to a valid physical-only
-baseline, require refusal while its original lease remains held through Close,
-and preserve all original/history/blocker bytes. Publication controls additionally
-use the root:Node0750 retirement parent. Context graph controls place an older
-recovered retirement before a later owned reload and reject a missing reload
-proof or a later retirement's generator/manager substitution.
-
-Start-boundary intent controls retain exact initial/predecessor, fresh-target
-digest, attempt and history-choice bytes before any guard birth. They reject
-mixed private versions, changed guard/start commitments, a later metadata
-preimage, noncanonical intent and values beyond8KiB; boundary-v1 encoding omits
-the new field. The physical packet case carries the complete64/64/32/8KiB
-snapshot/binding/intent tuple with real kernel credentials under the unchanged
-256KiB packet bound. The original-scope case also cuts a real same-program
-start coordinator before its directory birth, verifies denied next effect and
-independent cut-result retention of the original intent. Its detached Release
-and deliberately invalid native-context fixtures supply no safe continuation,
-installed Start, domain join or recovery authority.
-
-Forwarding replacement-v2 byte controls independently assemble62 records with
-two snapshot birth triples, retain complete56-record v1 reading, and refuse
-partial/aliased/mixed context proofs. Recovered native-lineage controls reject
-a v1 gap, changed original manager/process/namespace/ancestor, or dropped prior
-ancestor even when both later snapshots agree with each other. Controlled-cut
-checks permit the current snapshot only at the exact after-file group following
-the original reload intent, or final replacement verification.
-The retained generator-gap RED additionally demonstrates an internally coherent
-later pair whose before snapshot already substituted a previous generator inode.
-The repaired lineage rejects that unproved intervening change; only the actual
-proved before-to-after transition may change generator observations.
-`TestForwardingReplacementContextNativeGeneratorJoin` separately creates only
-absent disposable generator fixtures, observes actual root namespaces and new
-directory inodes, and holds the original descriptor Close. A fresh native
-observation is withheld until all old descriptors join; late Close failure and
-cancellation refuse transfer. The case has no systemd broker, genuine reload,
-Release or installed authority and cannot qualify an installed transition.
-
-`forwarding-installed-linux` / `make forwarding-installed-check` runs the
-explicit finite cases `lifetime-refill`, `retirement-history-missing`,
-`retirement-history-damaged` and `unknown-domain-join` through the corresponding
-pinned native tests in the existing new-command test owner. Each case needs a
-separate freshly prepared private stand; no failed case is reset or reused.
-The outside original private-manager controller must first obtain
-the separate direct Product Owner acceptance of the completed exact public
-Forwarding bootstrap receipt and retain the shared development lock and all
-descendants through native join. Receipt consistency, a matching hash and test
-discovery grant no acceptance. Missing prerequisites fail before execution.
-
-The finite runner requires explicit case, TEST, SOURCE_MANIFEST and BOOTSTRAP
-paths with SHA256 pins. It checks complete source bytes/Git modes, fixed private
-manager namespaces and the exact reviewed artifact/input/case scope before
-discovery and execution, and reobserves them afterwards. The receipt has a
-complete `case_inputs` map: all eight exact input hashes for each of the four
-named cases. Inputs from one case cannot substitute for another case's original
-preparation. Its public consistency
-rule has portable wrong-purpose/source/artifact/input/extra-case controls in
-`TestForwardingInstalledProfileRequiresExactPreparedScope`; these run no installed
-command or native environment fixture.
-
-The native case executes canonical Node CLI first start, separate explicit
-stop and same-generation restart. It waits for the original PID/InvocationID's
-public listening event before real TLS, reopens a separate genuine client State,
-uses eight already-marked genuine credentials and keeps the actual parent and
-forwarded Interior channel open through root Stop. The same native artifact's
-`TestForwardingInstalledNativeInteriorPeer` runs only as a non-root descendant
-Receiver component with its separate retained State/receiving history and the
-original shared Hosting root. It receives the original read-only certificate/key
-descriptors without parent extraction of private bytes. Its complete work and
-termination reservation precedes genuine receiving spend; its own refill uses
-the retained original grant. A second invocation reopens that same receiving
-history. This remote leg supplies no second installed Node, Guard, producer or
-extra provider allowance. Inner TLS, HELLO, admission and refill traverse the
-installed Forwarding's actual child, without an echo or supplied successful peer.
-Independent byte oracles inspect both receivers' spends, complete ordered
-25-record startup/18-record retirement transcripts and immutable prior history;
-original pidfd and actual cgroup-v2 core-file custody independently check native
-join. Provider accounting is inspected read-only so a root observer cannot
-rewrite Node-owned files. Keys/private account files are compared through their
-original metadata without extracting their bytes. The one cohesive test file
-retains this scenario's authority, native pins and before/after oracles together.
-The driver joins its sole parent reader, child and original non-root peer, checks
-the peer's original pidfd and compares shared reservation return before restart.
-Its prepared scope is protected parent/child contact/refill and original lifetime
-preservation. While both real legs and reservations are held, a concurrent
-canonical restart must refuse without creating an installation attempt or sibling
-journal, changing the original invocation/start transcript, spending tokens or
-releasing capacity. Compilation and discovery alone do not accept these cases;
-the selected issue retains actual source-matched execution results. The complete
-causal/protection matrix remains
-separate required evidence. Compilation or this case alone cannot qualify the full issue,
-another role, an independently operated Route or whole-product privacy.
-
-The root driver separately pins the same-source manager test artifact and retains
-its actual fixed-unit reference through each invocation's Stop and fresh native
-exit observation. This keeps systemd's original execution facts observable without
-relaxing the clean-exit oracle after unit collection. The helper opens no domain
-root and invokes no Start or Stop; its readiness grants no runtime or domain-join
-authority. The driver releases and physically joins its original connection and
-process before the next invocation, retaining Close and Wait failures.
-
-The missing/damaged retirement cases first complete the same two original
-lifetimes, then withhold the final original retirement result or damage its
-canonical bytes. Explicit restart must refuse with no next-attempt birth,
-process, spend or reservation. The original fault is retained and never repaired
-or used for another accepting attempt. The unknown-join case instead kills the
-actual first invocation while both protected legs are held. Native pidfd/cgroup
-join must not manufacture its missing domain report: Stop/restart must refuse,
-no successor attempt may be born, token spends remain irreversible and the
-crashed Node's durable reservation remains charged after the remote component
-has physically joined. Actual holder/remote Route cleanup failures caused by
-this negative case are retained separately; positive cases still require clean
-physical cleanup. This is crash refusal, not recovery continuation or reset.
-
-Forwarding's physical transition controls run with `network_signing_native`
-in an explicitly marked disposable root/ext4 preparation stand. The packet
-tests exercise actual root credentials, finite complete snapshot bytes,
-foreign-PID refusal, closure of every delivered descriptor, truncation and
-orderly peer closure. `TestForwardingTransitionScopeNativeFromBirth` launches
-its own same-program process through the real pidfd/subreaper/channel mechanism,
-uses actual synced journal records, independently holds the frozen prefix and
-checks continuation, cut, frozen cancellation and outstanding-ACK cancellation.
-Its late proof-Close control retains the guard and exclusive original lease
-while Close is held, and preserves the refusal after releasing actual custody.
-The detached binding and explicitly non-native context in this physical test
-supply no signed Release, installed transaction, manager, domain join or safe
-recovery. Genuine canonical transitions and the complete installed campaign
-retain their separate prerequisite, receipt and acceptance requirements.
-
-`TestForwardingBuildRecordsAndSourceManifestRules` exercises the public build
-producer's exact source byte/mode grammar, duplicate refusal and actual compiled
-module projection without supplying a build or authority fixture.
-`TestForwardingInitialReleasePreparationRequiresCompleteSafetyHorizon` checks
-the initial-only public plan's finite safety horizon, including refusal of a
-short Timestamp that cannot cover artifact termination. These portable rules
-do not execute or qualify Linux builds.
-
-`TestForwardingPreparationNativeActualBuildRecordsAndPublicPlan` separately
-requires an outside-pinned actual two-execution build inventory, public preparer
-and prestart evidence. It joins the public plan to canonical template/descriptor
-production and actual fresh-key signing, independently checks signed target
-hashes and leaves original private-key custody unchanged. Copies of actual
-public records provide causal wrong-purpose, changed-command/SBOM, false
-independence and writable-root refusals before output. Source descriptors,
-noninitial versions and existing output also refuse. The build controller owns
-the original shared lock, read-only source and complete compiler-scope join.
-These are controlled offline build/signing checks; they supply no independent
-builders, participant first pin, native installation or accepted bootstrap.
-
-`TestForwardingInstallInputsNativeCanonicalNodeCredentialAndPlan` is root/ext4
-`network-signing-linux` preparation through independently pinned canonical
-Control and a genuine separate Custody Permission authority. Actual canonical
-Record/Epoch/profile/key-material producers supply one exact Forwarding member;
-the canonical certificate producer uses that member's original Node key.
-Independent public signature/Record/profile checks bind its key, digest,
-generation, role and interval. Canonical request/plan commands then name that
-same Node, independent State pins and original private/certificate input paths,
-with the fixed installed credential destinations. The original private-key
-inode/access/mtime remains unchanged and no private key bytes are read by the
-test. All semantic and installation roots remain absent. These are coherent
-input declarations, not native path/account/Release/delivery admission,
-Startup, installed execution or bootstrap qualification. Controlled logical
-test-family declarations grant no operational independence.
-
-`TestForwardingInstallInputsNativeCoherentInitialStoppedPreparation` separately
-requires an outside-pinned original private root, six independent namespaces,
-private systemd255, fresh Node account/unit slots and actual controlled build
-records. The same canonical input chain feeds actual initial stopped installation.
-Its independently reopened completed-initial owner joins before canonical
-offline State preparation under the new Node UID/GID; a fresh non-root verifier
-checks retained membership, and canonical root preparation initializes Hosting.
-The clock lives under the traversable runtime parent; secret delivery remains
-0700. Participation and spend remain empty, and the fixed unit has no invocation.
-After the test and its Custody users join, the outside oracle independently
-checks the complete ordered birth journal, original native identities, exact
-resource bytes, account delta and retained-history retry refusal. Reports use
-distinct exclusive destinations. The controller joins its original private
-manager/namespace descendants and checks unchanged host account databases.
-This checked preparation scenario starts no installed runtime, Startup, Guard,
-Route or duty; it supplies no bootstrap acceptance or operational-family claim.
-
-`TestForwardingInstallInputsNativePreparedChannelsAndInitialStopped` adds four
-genuine blind-issued Forward credentials to that same preparation, two for each
-of two distinct channels. Custody's encrypted Permission successor, State's
-authenticated issuer facts, real immutable material/quota/results and Stock's
-durable pre-I/O presentation marks all precede the private output. Independent
-Receiving verification checks every credential. Stock and the separate client
-State close before exclusive 0600 file publication and parent synchronization;
-the output contains finite already-presented bytes, never an exported Stock
-owner or signing key. It expires no later than ten minutes, the current token
-hour and the authenticated profile. Insufficient current window is an invalid
-environment. These inputs permit neither installed startup nor a reused token,
-renewed deadline, bootstrap acceptance or independence claim.
-
-`TestForwardingInstallInputsNativePreparedPeerAndInitialStopped` retains those
-checks and prepares one additional Interior from a fixed 18-Record cohort and
-the same fixed assignment seed. Every Record remains in the signed Epoch;
-there is no family, key or seed redraw. The authenticated assignment must be
-`introduction`, the Network correspondence for Role Domain 4, for both the
-original Forwarding member and the distinct Interior refined to subrole 2.
-Canonical Control produces the peer certificate using its original protected
-Node key. Public signature/profile/Record checks and a separately reopened State
-under the Node UID verify that binding. The outside oracle checks the finite
-cohort, public certificate and Record hashes, profile commitment and original
-private-key metadata. It extracts no private key. This is offline peer
-preparation. One actual finite blind issuance supplies eight credentials: four
-for the original Forwarding member and four for the Interior, with two distinct
-channels per recipient. Genuine Receiving verification rejects every credential
-at the other recipient. Both exclusive private presentation files follow the
-original Stock and client State joins. The outside oracle compares all eight
-durable marks with the exact receiver, profile, duty and channel bindings,
-checks distinct nonces and token hashes, and excludes raw tokens from the
-journal. This scenario starts no peer listener, forwards no child data and supplies no
-second installed Node, extra Hosting allowance or operational independence.
-The same scenario uses canonical request/plan production to declare the remote
-component's separate State root and the original common Hosting path. Canonical
-outputs remain in the private delivery directory; only exact public plan bytes
-are copied to a root-controlled readable input. Actual canonical offline State
-acceptance and a fresh retained opener run under the original Node UID and
-check Interior subrole 2. The outside oracle compares canonical plan bytes,
-independent State/lock identities, principal and public trust pins, and returned
-flock custody. Peer participation, spend, credentials and installation remain
-absent. This prepares no listener, live duty, producer or installed startup.
-
-`TestForwardingInstallInputsNativeReplacementChannelsAndInitialStopped` uses
-that same private root/ext4/manager profile and genuine authority chain, with
-four distinct channels per recipient and sixteen total already-presented Forward
-credentials. Its private v2 presentation schema remains separate from the existing
-two-channel v1 input. One finite issuance splits its actual receiver challenges
-into eight original Forwarding and eight Interior credentials; every presentation
-is independently verified for its recipient and refused for the other one.
-No runtime quota, token grammar, class allowance or accepting role is changed.
-The original token-hour/profile/deadline and joined secret lifetime still apply.
-
-This preparation additionally requires the successor Node and Control binaries
-and both actual matching build executions, pinned through
-`ARDENTS_FORWARDING_SUCCESSOR_NODE_PROGRAM`,
-`ARDENTS_FORWARDING_SUCCESSOR_CONTROL_PROGRAM`, their `_SHA256` values,
-`ARDENTS_FORWARDING_SUCCESSOR_BUILD_ROOT` and
-`ARDENTS_FORWARDING_SUCCESSOR_BUILD_READY_SHA256`. The successor Node must differ
-from the initial program. The existing build-bound public preparer with `--forward`
-and canonical `sign-forward-release` produce versions 2 and 3 under the same
-original Root. Version 2 preserves the original runtime plan; version 3 retains
-the same program and changes actual work Tx by 1 MiB and termination Tx by
-64 KiB, preserving all other declarations. These are finite fixture values,
-not a new resource policy. The private `successor-deliveries.json` binds both
-actual distributions, canonical requests/plans and public input commitments.
-The successor's canonical template preparation is byte-compared with the initial
-template and retained outside the predecessor distribution. The signer's
-independent predecessor custody and candidate-resource namespace remain separate.
-Preparing these deliveries performs no replacement, reload, Stop or Start;
-all lifecycle admission and separate bootstrap acceptance remain required.
-
-`TestForwardingInstallInputsNativeOriginalInitialCutDelivery` instead ends
-before the first installation effect. It produces the real initial signed
-artifact/inventory and canonical request/plan, invokes canonical read-only
-`forwarding inspect-inputs`, and checks all future owned resources and the
-installation Release history remain absent with unchanged private account
-bytes. Its exclusive synchronized `initial-cut-inputs.json` records actual
-command arguments and public input commitments. The outside controller still
-pins and preserves the complete private input/body pack separately, checks the
-original root/manager/namespaces, and joins the fixture before consuming results.
-Original-process initial-cut cases must use this delivery boundary, never reuse
-an already installed preparation root. Neither new preparation scenario starts
-an installed runtime or supplies bootstrap, recovery or installed acceptance.
-
-The installed Forwarding runner retains the exact four-case v1 receipt profile
-and the all-inputs-at-once v2 transition receipt. The transition profiles bind
-the fixture source plus two distinct
-actual committed runtime source manifests, distinct initial/successor Node
-artifacts, and a closed 312-case catalog: the four original cases, one genuine
-four-lifetime replacement journey, one direct replacement refusal after an
-unknown domain join, one changed-native-account refusal, one stale-authority refusal, eight competing-slot
-refusals, and 296 original record boundaries across
-initial, replacement, first/selected/restarted start and initial/selected
-retirement. Receipt consistency grants no bootstrap acceptance. Every required
-entrypoint must be discovered in the exact test artifact before any transition case
-runs; missing implementation or prerequisites are invalid, never passing skips.
-The replacement journey also invokes canonical `replace` with each already
-selected generation after its genuine joined retirement, and with the original
-generation after the first forward replacement. Before the first forward
-replacement it also supplies a copy of the genuine successor delivery with
-only its descriptor replaced by the genuine predecessor descriptor. Signed
-metadata is not edited and no private key or test signer is used. An intact
-successor copy made by the same file/access recipe must then admit the real
-forward replacement; the rejected copy stays unchanged in the case evidence.
-Both copies retain root0700 for the executable and root0600 for all other
-files, satisfying Enrollment's closed native file-custody rule. Independent
-Enrollment reader tests causally distinguish admitted0700 from refused0755
-without executing a Node or granting Release or installed authority.
-These requests must refuse
-without changing the original selection/unit, sealed generations, semantic and
-Release histories, account files or transaction-parent identities and times.
-The following genuine forward transition remains the positive control. These
-same/backward/mixed-generation checks are implemented fixture assertions; their native
-execution requires a new source-matched receipt and its separate acceptance.
-The replacement journey also refuses a genuine forward candidate while the
-original invocation and both Route reservations remain active. Its distinct
-live oracle retains PID/InvocationID, protected bytes, spends and transaction
-namespace, without requiring stopped state or free capacity. Separately prepared
-changed-root and credential requests must first pass the real input owner's
-ReadInputs/Check/Close before canonical refusal. Their request/plan bytes come
-from the pinned public Control producers; no signed metadata or key bytes are
-edited. An alternate installation root must also preserve the admitted whole-
-lifetime Unix completion-socket path bound. The offline canonical-producer
-control admits the original and same-length sibling roots but refuses an
-overlong suffix before output creation; that early request refusal cannot count
-as evidence about retained replacement bindings. A genuine forward Release pair may commit its exact metadata floors
-before Installation refuses these requests. The oracle retains and independently
-matches those exact candidate floors and digests rather than refunding them;
-installation and semantic histories remain unchanged.
-The separate `replacement-unknown-domain-join` case prepares genuine successor
-deliveries and four bounded channel cohorts. After the original pidfd SIGKILL
-and physical joins, its direct canonical replacement must refuse without a
-domain report, retirement history, restored capacity or another invocation.
-It requires complete original initial/start file custody, unchanged semantic
-histories and native transaction namespace, and the original killed-unit result.
-The original four-case profile and its eight-input unknown-join case remain
-unchanged; only the distinct new transition case requires successor input pins.
-The distinct `replacement-changed-account` case also prepares genuine successor
-inputs. After the first actual contact/refill and joined retirement, independent
-completed-history and input readers must succeed. It preserves the original
-public passwd bytes, then changes only the private stand's Node numeric UID to
-an unused equal-width value on the original file. Actual NSS must observe the
-changed row. Independent completed custody and canonical replacement must refuse;
-the installation, semantic histories, spent rights and original Release floors
-remain unchanged. The changed account is retained in evidence without repair,
-restoration or another runtime invocation. This is a hostile local configuration
-control, not account adoption or an accepting replacement principal.
-Eight separate `replacement-competing-ROLE-KIND` cases cover the four other
-fixed Node roles (`issuer`, `descriptor`, `introduction`, `join`) and both
-`service` and `socket`. Each fresh case first completes the genuine first
-Forwarding lifetime and joined stop, verifies completed/input custody, then
-exclusively creates one static foreign unit file in the private stand. That
-file is a namespace conflict, not an installed or accepted neighboring role;
-no other-role installation consumer is selected or available in this slice.
-The case never loads, starts, repairs or removes that unit. Independent history
-custody must remain readable. Genuine B2 Release authentication may advance its
-exact floors, but canonical replacement must refuse without installation or
-semantic changes, another invocation or an activation socket. The original
-foreign file and fixed unit-directory metadata remain unchanged by refusal.
-All eight cases require separately pinned successor inputs and terminate with
-the conflict retained. Passing them supplies no accepting other-role scenario.
-The distinct `replacement-stale-authority` case requires the separate native
-preparation entrypoint
-`TestForwardingInstallInputsNativeStaleReplacementChannelsAndInitialStopped`.
-Only that preparation uses the canonical public producer and signer to give B2
-a genuine90-second signed no-new-work bound while current. Its original A1 and
-B3 retain ordinary bounds. No signed JSON, private key or runtime clock is edited.
-After the genuine first lifetime and joined stop, the independent negative oracle
-matches both signed target bounds and waits for the actual wall clock, at most
-90 seconds and within the original input/test deadlines with30 seconds retained
-for refusal. These copied fields supply no authority; the canonical command
-must independently authenticate the signed pair and refuse specifically with
-`program: update-required`. Release classifies the elapsed no-new-work bound
-before metadata floor commitment; the same initial Root and all old floors must
-remain exact. Installation/semantic/spend histories stay unchanged. The expired
-delivery is retained; the case neither renews it nor runs B2. An ordinary
-replacement preparation is invalid input for this negative case.
-The pure architecture tests check both receipt shapes and causal refusals for
-missing cases/inputs, changed source/artifact commitments and identical program
-pairs. They execute no installed code and establish no native qualification.
-
-The v3 serial receipt binds that same complete catalog and implementation but
-contains prepared-input hashes for exactly one `selected_case`. It also matches
-the original `installedN` stand and reservation-receipt hash, plus the exact
-outside controller, worker and input-preparer hashes, to the controller's pinned
-declarations. Its `campaign_sha256` is SHA-256 of the ASCII JSON object containing
-`source_manifest_sha256`, `runtime_source_manifests`, `artifacts`, `cases` and
-`controllers`, with sorted keys and compact separators. Fresh stand/input facts
-do not change this grouping commitment; changed implementation or catalog does.
-The runner still discovers every required entrypoint before executing the one
-selected case and compares that case's actual prepared bytes before and after it.
-Another case, stand or controller cannot borrow the receipt's declarations.
-
-This permits fresh finite credentials on one original stand at a time under the
-disposable-stand lifecycle below, without preallocating other managers, extending
-authority windows or reusing finalized roots. A completed public receipt and
-separate direct Product Owner acceptance remain required before each installed
-execution under ADR-0123 Decision 6. This is an authorization condition, not a
-requirement to ask again for each engineering attempt: an explicit campaign
-delegation may carry the already accepted identical source/artifact/target/limit
-envelope across fresh stands of the same selected scenario, as defined by
-[agent execution](agent-execution.md#delegated-project-wide-domain-transition).
-Each stand still publishes its own exact receipt and records its actual
-authorization basis; a delegated case is not described as individually accepted
-by the Product Owner. Changed envelopes require their own acceptance.
-The digest and controller pins grant no
-acceptance or native provenance; the outside controller must independently retain
-the original reservation, manager, users and actual joins. One prepared or passed
-case establishes nothing about the other 311. Full acceptance still requires
-actual source-applicable results for the complete catalog and the selected
-uncertainty/refusal matrix. Pure serial-profile controls check every finite case,
-cross-case/stand/controller substitutions, missing inputs and campaign mutations;
-they start no installed code. `forwarding_bootstrap_receipt_test.go` holds the
-same portable public-consistency reader actually called by each native installed
-entrypoint, together with the closed case/input inventory. Its runner-to-consumer
-test supplies independent Python-produced v1/v2 receipts and all 312 serial
-cases, including changed bytes, case/stand substitutions and incomplete scopes.
-Both readers must agree before this preparation check passes. Printable ASCII
-artifact names keep their campaign JSON encodings identical. Native provenance,
-original joins and direct acceptance remain outside this pure parser.
-The root driver's reader requires every actual case input. The distinct
-non-root Interior reader instead compares exactly its own public peer plan or
-certificate after independently validating the complete public receipt scope.
-It cannot read the root driver's private presentation files. Neither partial
-root checks nor other input names are admitted through this narrow peer path;
-the shared receipt-byte pin and artifact checks remain mandatory. Portable
-controls reproduce both actual peer call shapes, retain full-root refusal for
-incomplete input, reject changed/foreign peer bytes and require the full public
-scope for v1/v2 and every applicable serial case.
-
-`TestForwardingInstalledNativeReplacementLifetimeAndRefill` uses the v2 private
-six-namespace systemd/ext4 profile and exact four-channel input per recipient.
-Its ordered operations are initial A1 contact/refill and joined stop, canonical
-B2 replacement and separate selected start/contact/refill/stop, B3 resource-only
-replacement and separate selected start/contact/refill/stop, then explicit B3
-same-generation restart/contact/refill/stop. The driver checks the actual process
-executable inode/bytes, independent retained Release floors and metadata hashes,
-unchanged semantic histories and sealed predecessors through replacement,
-original selection/unit inodes, actual rendered unit/plan and retained lineage.
-The prepared initial selection/plan are pinned from their immutable sealed
-generation across later mutable selection changes. Input commitments include
-the two exact successor deliveries. All original State, spend, Hosting,
-participation, authority, token deadline and physical-join checks remain required.
-
-The original-prefix entrypoints are
-`TestForwardingInstalledNativeOriginalInitialPrefix`,
-`TestForwardingInstalledNativeOriginalReplacementPrefix`,
-`TestForwardingInstalledNativeOriginalStartPrefix` and
-`TestForwardingInstalledNativeOriginalRetirementPrefix`. Their fixed case names
-select an exact original record, not a supplied success result. Initial cases
-use the genuine B program with its own coherent initial Release/pin delivery;
-A does not implement the new early-generation suffix. Replacement cases first
-perform genuine A contact/refill and original joined stop. The canonical
-`supervise-transition` retains its original pidfd/process group and actual
-manager namespaces through SIGKILL/Wait, denying the next effect before
-publishing a separate native proof. Fresh independent recovery must preserve
-the original raw prefix, input/native provenance and all historical results,
-complete only the owned safe stopped suffix, or refuse with blockers unchanged.
-No Start, ACK or domain completion may be synthesized. The full native/crash
-and uncertainty controls remain distinct from pure grammar or physical-file
-component checks and from the separate Product Owner bootstrap decision.
+`TestForwardingBuildRecordsAndSourceManifestRules` exercises the shared public
+build producer's exact source byte/mode grammar, duplicate refusal and actual
+compiled module projection without supplying a build or authority fixture. The
+builder remains the build-scope reference for the retained JOIN/Descriptor
+cohorts; the former Forwarding-specific safety-horizon plan preparer retired
+with the transitional orchestration. These portable rules do not execute or
+qualify Linux builds.
 
 `TestForwardingTokenAuthorityNativeGenuineCustodyStateAndStock` is bounded
 root/ext4 `network-signing-linux` preparation, with no installed Issuer.
@@ -728,19 +131,6 @@ Custody owner, never a private authority, generic signer or terminal bypass.
 No private fixture key is extracted, no old/Next backend is called, and no Route,
 Hosting reservation, receiving spend, installed runtime, operational family or
 bootstrap qualification is claimed by this credential-preparation case.
-
-`TestForwardingStateNativeCanonicalOfflineAcceptanceAndNoReset` obtains its
-signed inputs from the actual canonical key, Record, Epoch, token-material and
-profile commands through `forwarding_state_preparation_native_linux_test.go`.
-The positive path uses no signed-byte fixture builder or extracted private key.
-One fixed Network/seed and fixed logical test-family declarations replace any
-fixture family search; they supply no operational independence claim. The real
-private initial-stopped installation supplies the Node principal. Canonical
-`prepare-state` then accepts these exact public outputs under that principal;
-a fresh non-root State owner independently checks retained current membership.
-Existing root-principal, repeat/partial/no-reset, damaged-profile and unopened
-other-purpose-root controls remain. This is separate offline State evidence,
-not an installed Forwarding invocation or bootstrap acceptance.
 
 `TestForwardingProfileNativeCanonicalEpochInventoryAndSignature` belongs to
 root/ext4 `network-signing-linux` offline preparation. Independently pinned
@@ -800,178 +190,24 @@ reject identity/purpose/time/Carrier/endpoint ambiguity and actual extra X.509
 subject, SAN, CA, key, interval, usage or signature. This is neither membership,
 State/Startup acceptance nor installed or independently operated qualification.
 
-`TestForwardingHostingNativePrepareOriginalAllowanceAndNoReset` is a separate
-final case of the private initial-stopped preparation profile. It consumes the
-actual completed installation and pinned Control artifact, preserves the original
-Hosting directory, independently reopens the complete root-only preparation and
-proves replay refusal without changing budget bytes. A separate actual Node-UID
-test process opens the delivered period files through Hosting. It starts no
-installed Node and grants no Startup, Forward reservation or bootstrap acceptance.
-
-`TestForwardingHostingNativePartialRetainsOriginalPrefix` selects exactly one of
-`files-cancel`, `files-cancel-close`, `complete-cancel` or `complete-cancel-close`
-through `ARDENTS_FORWARDING_HOSTING_PARTIAL`, each on its own fresh completed
-private installation. It holds the actual original allowance-directory fd after
-semantic file creation or before original close, proves both journal leases stay
-held across real cancellation, and optionally closes that exact fd to retain a
-real late Close error. The 11-record or complete-looking 16-record prefix keeps
-its pending blocker. The independent root-start proof reader and two fresh
-preparation callers must refuse without changing original inventory, inodes,
-access or bytes. These cuts perform no installed Start or recovery.
-
-The `network-signing-linux` preparation profile also executes the physical
-`TestForwardingStartStorageNative`, `TestForwardingStartSnapshotNative`,
-`TestForwardingRetirementStorageNative` and
-`TestForwardingRetirementSnapshotNative` groups under race. They require the
-separate preparation marker, root and actual ext4, and use exclusively born
-files/directories/Unix sockets and real journal flocks. Detached process, manager,
-exit and domain-frame fixtures test byte grammar only and never enter live
-Startup/Stop/process owners. Readback requires a present original blocker;
-committed-file custody requires absence and an independently acquired exclusive
-journal. Partial phases, substituted inodes and missing blockers refuse. Held
-actual Close retains the lease through cancellation and late physical errors.
-The separate private initial-stopped profile's genuine missing-start control
-also invokes root `Stop`/`Restart` and the pinned canonical stop/restart commands;
-both must refuse without native births, manager effects or leaked descriptors.
-None of these controls runs an installed Node or qualifies a positive stop/restart.
-
-`TestForwardingStateNativeCanonicalOfflineAcceptanceAndNoReset` belongs to that
-private initial-stopped profile, with the actual completed installation and Node
-account plus independently pinned canonical Control/native test artifacts. It
-uses a separate offline State directory and fresh isolated signed Epoch/profile
-inputs, all under one test controller. The actual Node UID/GID command accepts
-through State, a separate actual Node process reopens retained State, and exact
-retry, root principal and damaged-profile controls refuse. A partial accepted
-Epoch with a refused profile remains present and cannot be reset by retry.
-Participation, spend, Hosting and private credential paths remain unopened.
-This is neither installed execution nor an independent-family/build/Startup
-claim; fixture keys remain isolated test inputs, never operator instructions.
-The preparation profile's nonzero start snapshots additionally exercise attempts
-1 and63 against substituted predecessor hashes, and real 130-entry discovery
-covers all64 retained start/retirement directory names without recycling paths.
-
-`TestForwardingLoadedNativeOriginalRootAndNonrootConnections` belongs to the
-private initial-stopped `network-signing-linux` component profile. The genuine
-canonical installation supplies its exact binding through
-`ARDENTS_FORWARDING_INITIAL_BINDING`. A root control retains the actual fixed
-unit without starting it; a separate ordinary test process uses the real Node
-UID/GID and cleared supplementary groups to open its own read-only connection.
-The private bus must permit authenticated read-only Hello/owner/broker-ID,
-Properties Get/GetAll and manager GetUnit/GetUnitFileState requests. This is
-component infrastructure, not an application admission exception or operational
-qualification. Mutating methods and name ownership remain root-only there.
-Actual original manager identities must match; held real observation across
-cancellation and physical Close must deny late results and retain copied Close
-outcomes. The test starts no installed Forwarding or accepting Startup.
-Deterministic tests separately bind native job frames to the Forwarding root
-control, refuse read-only/Source flags, malformed/foreign/partial objects and
-denied or repeated local attempts. A canonical job reply alone proves no effect
-completion or original process/domain join.
-
-`TestForwardingRuntimeSelectionNativeIndependentFiles` is a file-custody component
-of the private `network-signing-linux` initial-stopped profile. It requires that
-profile's actual canonical completed installation, a separate mount namespace
-and actual Node UID/GID with cleared supplementary groups. Set
-`ARDENTS_FORWARDING_INITIAL_BINDING` to the original binding and
-`ARDENTS_FORWARDING_RUNTIME_SELECTION_EXPECT` to `unprotected` or `protected`.
-The controller first requires refusal on writable immutable directories, then
-retains independent original files on read-only mounts, then changes the same
-mount back to writable and requires refusal again. A real lost executable fd
-must latch denial and its original Close error. No root journal or Release
-history is opened by the non-root observer; all four semantic roots remain
-empty. The ordinary test executable supplies no accepting installed invocation,
-manager, root completion, Guard, Startup or domain authority. Its component
-PASS cannot qualify installed Forwarding execution. Deterministic byte vectors
-separately mutate or omit every selected generation file and refuse extra files.
-
-`TestForwardingRuntimeNamedMountNativeMetadata` runs as the root actor of that
-profile in a separate private mount namespace. It checks actual writable
-directory content changes and a read-only original descriptor against a freshly
-writable bind of the same inode. Symlink and lost-descriptor controls refuse.
-This exercises physical mount observations without supplying Startup authority.
-
-`TestForwardingStartupPathsNativeInterruptedObservation` uses the protected
-non-root file fixture in that same profile. Real original-file descriptor loss
-or caller cancellation after either access observation or after the absence
-scan must deny the complete compound observation permanently, retain the first
-failure, refuse late work and preserve the joined Close result. Its physical
-read boundaries supply no Startup, manager or domain authority.
-
-`TestForwardingStartupQueuedObservationFreshness` and
-`TestForwardingStartupQueuedObservationClose` use deterministic in-memory
-concurrency controls for the original Startup observation queue. Requests made
-during a held round require a subsequent fresh round; queued callers cannot
-borrow the earlier image. Cancellation and late physical failure must deny all
-waiters, and copied Close must retain actual completion and the original causes.
-The callback supplies no native Startup authority. Actual file/process/manager
-controls and installed execution remain separate required profiles.
-
-`TestForwardingStartupQueuedFileObservationNative` runs under that protected
-non-root file fixture. It holds actual access I/O while later requests queue,
-cancels the original caller and requires Close to retain the file custody until
-the observer and waiters join. A real lost original program descriptor must
-also survive as a physical Close failure. Its private queue observer supplies
-no actual Startup/process/manager or State authority.
-`BenchmarkForwardingStartupQueuedFilesNative` measures the same complete file
-observation under serial requests and a finite burst of three concurrent
-requests, reporting actual physical rounds. This models queue costs only;
-installed timers, pressure, throughput and Node acceptance remain unqualified.
-
-`TestForwardingCompletedNative*` belongs to the existing `network-signing-linux`
-private initial-stopped profile after actual canonical installation. It uses the
-same explicit `ARDENTS_FORWARDING_INITIAL_BINDING` input and checks independent
-opening/exclusion/return of the original journal lock, published-pending refusal,
-sixteen original-descriptor returns without GC, latched original-byte loss, copied
-Check/Close denial and a held actual read followed by held physical Close across
-cancellation. The journal lease stays held through both waits; original context
-and actual descriptor-close failures survive together. Restoring bytes cannot
-revive the failed owner. The actual canonical initial-history command additionally
-consumes a genuine fresh Release candidate and joins before its public output.
-These verification scenarios grant no manager invocation or Startup authority.
-The root missing-start-history and ordinary-executable refusal controls also
-require `ARDENTS_FORWARDING_INITIAL_DISTRIBUTION` and the independently declared
-`ARDENTS_FORWARDING_INITIAL_NETWORK` from the original canonical producer's
-installation command. They do not assume one historical fixture's Network name.
-Fresh Release authentication still matches that expected Network to the signed
-candidate before the ordinary executable must reach its specific refusal.
-The same cohort substitutes new State/Release directory inodes and a new
-byte-identical matching private-key inode with the original modes/IDs. Independent
-opening must refuse before returning a usable observation and return its original
-flock. Only exact causal test resources are removed; original semantic roots and
-credentials remain in retained non-automatic backups if restoration fails.
-
-`TestForwardingInitialNativeCompleteRecordsAndCausalRefusals` is a separate
-`network-signing-linux` control run only inside a fresh private initial-stopped
-stand after the actual pinned canonical installer and independent controller
-readback complete. Set `ARDENTS_FORWARDING_INITIAL_BINDING` to that actual
-selected binding. It consumes the genuine complete current initial transcript
-and checks its historical 119-record grammar,
-refuses substitution and omission of every phase, swaps every adjacent pair
-after repairing sequence numbers, and refuses incomplete/extra framing. Its
-27 native records grant no authority until separately matched. The creator-only
-readback cannot adopt a completed installation after pending publication. The
-controller owns fresh namespaces/rootfs, private systemd/account databases,
-actual artifacts/first pin, independent whole-inventory/account/record oracles
-and original native joins; no host Node unit/account or installed runtime starts.
-Controlled public build/TLS declarations isolate this component and supply no
-operational qualification, signed membership, independent builds or bootstrap
-acceptance. A later Startup requires its own fresh completed-installation opener.
-
 `TestForwardingLoadUnitReplyIndependentVector` reproduces the actual fixed
 Forwarding D-Bus object response that the formerly Source-only physical reply
 grammar refused during initial stopped installation. The Linux deterministic
 systemd suite checks each original connection's closed vocabulary: reciprocal
 Source/Forwarding refusal, other duties, Source jobs, foreign manager, unknown
-vocabulary and every truncation. Loaded policy still belongs to Installation;
-accepting a native frame cannot grant Start or reuse Source startup authority.
+vocabulary and every truncation. Loaded policy belongs to the platform-led
+pre-start check; accepting a native frame cannot grant Start or reuse Source
+startup authority.
 
 `TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody` belongs to
-the existing `network-signing-linux` offline native profile. It additionally
-requires independently pinned actual static canonical Node and Control programs
-through `ARDENTS_FORWARDING_NODE_PROGRAM` / `_SHA256` and
+the existing `network-signing-linux` offline native profile. After the #604
+FJD stage D signing cutover it additionally requires independently pinned actual
+static canonical `ardents-next` and Control programs through
+`ARDENTS_FORWARDING_NEXT_PROGRAM` / `_SHA256` and
 `ARDENTS_FORWARDING_CONTROL_PROGRAM` / `_SHA256`. Existing preparation controls
 retain their separately named `ARDENTS_SOURCE_CONTROL_PROGRAM` pin. The test
-executes the actual Forwarding template, key, public-plan and initial-signing
+executes `ardents-next platform template` for the exact canonical platform unit
+template, then the actual Forwarding key, public-plan and initial-signing
 commands; verifies five distinct private/public keys, ordinary three-of-five
 metadata signatures and exactly two target purposes; and refuses foreign plans
 and a substituted actual Control executable. Original key/output descriptor
@@ -987,39 +223,16 @@ forward-signing and inventory commands for three successive versions, retaining
 one exact initial Root and increasing each signed metadata version and reference.
 Same-version predecessor and different-key controls must refuse before creating
 metadata or diagnostic history. The controlled public build claims qualify only
-this signing boundary; the installed resource-only journey uses actual build
-records and separate bootstrap acceptance. Neither test starts a Node, selects
-an installed generation, consumes a runtime root or supplies a recovery proof.
-
-The Forwarding native preparation profile also owns `TestForwardingBirthsNative`:
-real journal flock exclusion/return, retained retry refusal, original directory/
-file births, joined descriptor closure and actual-sync result uncertainty with
-original cancellation. These controls use only disposable root-owned ext4 files;
-they create no Node account/unit and cannot qualify the full initial transaction.
-Independent canonical binding bytes and locked account/loaded-policy causal
-vectors complement those physical controls. Initial account/helper and complete
-compiled stopped-installation scenarios still require a fresh isolated Ubuntu
-rootfs/manager and exact source/artifact/controller provenance, with no host
-account/unit change or reset of a retained partial result.
-
-The same native profile owns `TestForwardingManagerNative` and
-`TestForwardingPreflightNative`. They require the separate Forwarding preparation
-marker, actual systemd255/system bus, absent five fixed Node service/socket slots
-and absent common Node account. The preflight test additionally pins an actual
-canonical Node executable with `ARDENTS_FORWARDING_NODE_PROGRAM` and
-`ARDENTS_FORWARDING_NODE_PROGRAM_SHA256`. It runs only the read-only
-`forwarding inspect-inputs` operation and verifies no future resource appears.
-Original manager copies, detached paths, repeated real connection/descriptor
-return without GC, held actual observation, cancellation and joined Close are
-checked separately from artifact admission and installed execution. The shared
-physical manager-reference extraction preserves Source's fixed-purpose methods;
-affected original Source manager/cancellation and transport controls remain required.
+this signing boundary; the former installed resource-only journey retired with
+the transitional orchestration. Neither test starts a Node, selects an installed
+generation, consumes a runtime root or supplies a recovery proof.
 
 The existing `network-signing-linux` offline native profile also owns
 `TestForwardingPreparationNativeCanonicalCommand` and
-`TestForwardingPreparationNativeRetainsOriginalFailures`,
-`TestForwardingPreparationNativeRequestAndFixedTemplate` and
-`TestForwardingPreparationNativePlanInputs` in canonical Control.
+`TestForwardingPreparationNativeRetainsOriginalFailures` in canonical Control.
+The former request/plan/fixed-template preparation controls retired with the
+transitional orchestration; `prepare-descriptor`/`prepare-inventory` remain the
+generic public Forwarding artifact surface.
 They require an independently hash-pinned actual Control executable, root-owned
 protected direct ancestors and native ext4 under a private TMPDIR. They compare
 independent descriptor/inventory byte vectors, refuse Source/extra-resource
@@ -1030,32 +243,11 @@ Unsigned public metadata fixtures establish preparation only. These tests do
 not execute installed Node or supply Release/bootstrap acceptance. Deterministic
 Enrollment/Infrastructure tests separately check exact Forwarding lexical
 inventory, descriptor bounds, role separation and resource substitution.
-The Linux deterministic `installation/forwarding` package checks the separate
-closed request/plan/protection policy and full independent unit vector. Control's
-actual public plan producer checks original request loss, duplicate flags/keys,
-unknown role, mismatched output and invalid identity/wait bounds, with no runtime
-root effects. Admission's portable retained-opening controls use real native
+Admission's portable retained-opening controls use real native
 leases on Windows and Unix: both missing files, individual loss, damaged header/
 tail/lease, binding mismatch, no fresh-root fact and no return before owned Close.
 Linux race checks cover the same strict owners and the unchanged Node completion
 rules. These are component proofs, not installed restart qualification.
-The same existing offline profile runs `installation/forwarding`'s native input
-controls on its separate explicit preparation stand. Real root-owned direct
-ext4 inputs/ancestors are mandatory. Positive checks preserve live clock writes/
-inode replacement under the same parent; causal mode/key/plan/link/ancestor
-substitution refuses. Sixteen repeated refusals for each declared cause compare
-actual FD inventories without GC. Held real reads retain private bytes/FDs until
-original cancellation and Close join; independent native Close failure remains
-in the original result. `network-signing-compile-check` compiles this separate
-tagged package, and `network-signing-check` executes its exact native group.
-The same file-only native group exercises the actual replacement-history reader
-through the exact root:Node0750 predecessor retirement directory and root-only
-result. A failure-only cancellation after the real leaf read prevents detached
-byte fixtures from supplying successful history or authority. Wrong owner/group,
-writable parent, foreign leaf and symlink refuse; the original journal flock
-remains held through physical Close, and ordinary ancestors remain root:root.
-These component controls supply no installed replacement acceptance.
-
 The transitional Source orchestration native qualification is retired (#604
 stage 1.6, ADR-0125). The former `source-startup-linux`, `source-restart-linux`,
 `source-replacement-linux`, `source-stopped-linux`, `source-preflight-linux` and
@@ -4225,27 +3417,13 @@ join before disposal. This is a component proof, not authenticated State, Route
 success, Node domain completion or installed qualification. Missing native
 prerequisites fail the selected profile; they never skip it.
 
-The `network_signing_native` Forwarding file component also selects
-`TestForwardingStartupFilesNativeOriginalObservation` with the same genuine
-protected non-root selection fixture. Complete file observation, retained foreign
-refusal, real descriptor loss after native work, caller cancellation and joined
-close remain distinct. Its callback supplies no successful manager, process or
-Startup authority. `BenchmarkForwardingStartupFilesNative` compares the original
-three separate content brackets with one complete bracket and three metadata/
-access/path observations; it measures this file component only, excluding actual
-manager/process observations and installed throughput.
-
-`TestForwardingStartupFilesNativeRestoredBytesRemainDenied` is the final negative
-control on that fixture. The root actor opens the exact stopped-generation
-program before protecting the mount and passes its original writable descriptor
-only to this non-root test process. The test independently matches that inode,
-changes and restores one real byte, and requires the original metadata-bound
-observation to remain denied through Close. No Node is running; the fixture is
-archived and never reused after that physical mutation. The ordinary Linux
-`TestStartupOriginalFileCannotReviveAfterBytesAndMtimeRestoration` additionally
-restores actual bytes and mtime and verifies that changed kernel ctime still
-refuses the original binding. These controls supply no permission to replace
-required complete byte comparisons with metadata-only runtime admission.
+The former `network_signing_native` Forwarding startup-file observation controls
+(`TestForwardingStartupFilesNative*`, `BenchmarkForwardingStartupFilesNative` and
+`TestStartupOriginalFileCannotReviveAfterBytesAndMtimeRestoration`) retired with
+the transitional `installation/forwarding` orchestration (#604 FJD stage D,
+ADR-0125). The platform-led runtime independently binds its exact retained
+program bytes; the retained node-domain local-protection control above remains
+required.
 
 ### JOIN offline public artifact custody
 

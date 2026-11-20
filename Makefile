@@ -483,18 +483,11 @@ network-preparation-compile-check:
 
 .PHONY: network-signing-check network-signing-compile-check
 
-.PHONY: forwarding-installed-check
-# The outside controller must obtain the separate exact PO bootstrap acceptance.
-forwarding-installed-check:
-	@test "$(HEADLESS_GOOS)" = linux || (echo "forwarding-installed-check requires the separately accepted exact bootstrap and private Ubuntu stand"; exit 2)
-	python3 -I -S scripts/installation/run-forwarding-installed.py -timeout=4m
-
 network-signing-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-signing-check requires Linux root and root-controlled native ext4 TMPDIR"; exit 2)
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/network/state -run '^TestSourceInspectionNative' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/forwarding -run '^TestForwarding(Inputs|Preflight|Births|StartStorage|StartSnapshot|RetirementStorage|RetirementSnapshot)Native' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/systemd -run '^Test(NodeSlotsNative|ForwardingManagerNative|SourceReferenceLibraryCloseCause)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/systemd -run '^Test(NodeSlotsNative|SourceReferenceLibraryCloseCause)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/request -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/join -run '^TestJoin(Inputs|Preflight|Births)Native' -count=1 -v -timeout=3m
 
@@ -514,7 +507,6 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/successor/installation/systemd
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/successor/installation/infrastructure
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/successor/network/state
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/forwarding-inputs.test" ./internal/successor/installation/forwarding
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/successor/installation/request
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-inputs.test" ./internal/successor/installation/join
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/successor/reachability

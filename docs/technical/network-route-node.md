@@ -1652,10 +1652,13 @@ The duplicate development `infrastructure start-source` transaction and its
 detached startup wait wrapper are retired. The transitional Source
 orchestration (preflight, initial stopped installation, first start,
 stop/restart/replacement/recovery) is retired (#604 stage 1.6, ADR-0125); this
-platform-led lifecycle owns Source delivery. The remaining canonical native
-installed consumers (Forwarding, JOIN, Descriptor) remain transitional under
-ADR-0125 until equivalent real-platform evidence permits their removal; source
-relocation or these unit checks cannot supply it.
+platform-led lifecycle owns Source delivery. The transitional Forwarding
+orchestration is retired in turn (#604 FJD stage D, ADR-0125) after the merged
+real-platform installed evidence (`TestNativeForwardingPlatformInstalledLifecycle`);
+the platform-led Forwarding lifecycle owns Forwarding delivery. The remaining
+canonical native installed consumers (JOIN, Descriptor) remain transitional
+under ADR-0125 until equivalent real-platform evidence permits their removal;
+source relocation or these unit checks cannot supply it.
 
 ## Proposed installed infrastructure
 
@@ -1891,6 +1894,15 @@ its presence alone qualified no installed invocation.
 ### Proposed lifecycle and effect admission
 
 #### Forwarding initial lifetime and explicit same-generation restart
+
+**Retired (#604 FJD stage D, ADR-0125).** `ardents-node forwarding start-installed`
+and the installation transactions return typed before-effect refusals; the
+transitional `installation/forwarding` orchestration and its fixed
+`forwarding start-installed` unit are removed. The platform-led Forwarding
+lifecycle (canonical platform unit with the mandatory `platform check`
+ExecStartPre gate, `ardents-next node forwarding --retained-config`,
+`forwarding repair-retained`) replaces this admission. The contract text below
+is retained as superseded historical provenance, not an available operation.
 
 The closed installed Forwarding plan opens genuine retained State without a
 Source server or automatic refresh worker. Its composition supervises the
@@ -2447,6 +2459,21 @@ This finite recovery boundary supplies no Start, ACK or domain-report replay,
 original prefix rewrite, allowance renewal or weaker protection/deadline. Broader
 interruption acceptance and installed qualification require their own evidence.
 
+**Forwarding orchestration retired (#604 FJD stage D, ADR-0125); Release signing
+preserved and cut over.** The former `prepare-request`, `prepare-plan`,
+`prepare-template`, `prepare-hosting` and `prepare-state` producers return typed
+before-effect refusals; `ardents-next platform template` emits the canonical
+platform unit template. After the signing cutover the closed version-one purpose
+checks the actual static Linux-amd64 `ardents-next` program and the exact
+canonical platform unit template (`infrastructure.PlatformUnitTemplate`); the
+descriptor/inventory file identities below remain the retained compatibility
+names for the enrolled `ardents-next` bytes. The former
+`prepare-forwarding-release-plan.py` public plan preparer and its build-records
+native control retired with the orchestration; a new-path Forwarding candidate
+build and release plan builder is a separate follow-up, exactly as for Source
+(#604 stage 1.6). The request/template contract text below is superseded
+historical provenance.
+
 The bounded first installed Forwarding contract admits only `forwarding`, not
 another Node duty or Source. Its artifact pair uses the exact Node program target
 and `ardents/linux-amd64/infrastructure/forwarding`; its descriptor and initial
@@ -2459,21 +2486,20 @@ Canonical Control has distinct Forwarding initial key, public release-plan and
 signing producers, documented in the [command reference](../reference/commands.md).
 Five fresh offline keys and the reviewed public claims remain under original
 root-controlled native custody. The closed version-one purpose checks the actual
-static Node program and fixed template, signs only Node/Forwarding targets and
-requires two coherent Release decisions before publishing metadata. Shared
+static `ardents-next` program and canonical platform unit template, signs only
+Node/Forwarding targets and requires two coherent Release decisions before
+publishing metadata. Shared
 physical codecs/output mechanisms confer no Source signing right. Public claims
 and diagnostic self-verification supply neither independent build evidence nor
 the initial pin or separately accepted installed bootstrap.
 
-The separate controlled build and public-plan consumers in the
+The former separate controlled build and public-plan consumers in the
 [qualification operation](../operations/qualification-release.md#forwarding-infrastructure-artifact-component)
-replace hand-authored build claims with two actual Node/Control build records,
-their exact compiled dependency/SBOM commitments and separately pinned prestart
-evidence. Both executions remain under project control. Their Forwarding-only
-initial formats neither consume Source authority nor grant a first pin,
-independent builders, installation, startup or bootstrap acceptance. The existing
-canonical signer still independently validates the exact resources and obtains
-both fresh Release decisions before metadata output.
+retired with the transitional Forwarding orchestration (#604 FJD stage D,
+ADR-0125); the shared candidate builder remains the build-scope reference for
+the retained JOIN/Descriptor cohorts. The existing canonical signer still
+independently validates the exact resources and obtains both fresh Release
+decisions before metadata output.
 
 The separate `ardents-forwarding-installation-v1` request is compact canonical
 JSON plus LF, at most 16 KiB, with exact ordered fields `schema`, `invocation`,
@@ -2836,6 +2862,14 @@ stop/restart must preserve enough immutable generation and original retirement
 evidence for that later contract, without preauthorizing it.
 
 #### Explicit Forwarding generation transitions
+
+**Retired (#604 FJD stage D, ADR-0125).** The transitional stopped replacement,
+explicit start and original-prefix recovery transactions return typed
+before-effect refusals; the platform-led Forwarding lifecycle owns stop,
+relaunch, forward program change through a newly signed strictly forward
+Release authenticated against retained floors, and retained-producer repair.
+The contract text below is retained as superseded historical provenance, not
+an available operation.
 
 The manual transition has separate stopped replacement, explicit start and
 original-prefix recovery admissions under ADR-0123. Replacement consumes a

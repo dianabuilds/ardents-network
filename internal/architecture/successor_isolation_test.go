@@ -114,8 +114,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			"cmd/ardents-control/join_release_plan_linux_test.go",
 			"internal/successor/installation/infrastructure/join_admission.go",
 			"cmd/ardents-control/forwarding_artifact_linux.go",
-			"cmd/ardents-control/forwarding_request_linux.go",
-			"cmd/ardents-control/forwarding_plan_linux.go",
 			"cmd/ardents-control/source_artifact_output_linux.go",
 			"cmd/ardents-control/source_release_linux.go",
 			"cmd/ardents-control/source_release_predecessor_linux.go",
@@ -575,13 +573,7 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		}
-		if source == "cmd/ardents-control/forwarding_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/forwarding") {
-			return true
-		}
-		if source == "cmd/ardents-control/forwarding_state_linux.go" && (dependency == modulePath+"/internal/successor/installation/forwarding" || dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/state") {
-			return true
-		}
-		if source == "cmd/ardents-control/forwarding_hosting_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/forwarding") {
+		if source == "cmd/ardents-control/forwarding_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
 			return true
 		}
 		if dependency == modulePath+"/internal/successor/network/epoch" {
@@ -592,12 +584,6 @@ func successorImportAllowed(source, dependency string) bool {
 		}
 		if source == "cmd/ardents-control/forwarding_epoch_plan_linux.go" && dependency == modulePath+"/internal/successor/network/epoch" {
 			return true
-		}
-		if source == "cmd/ardents-control/forwarding_install_inputs_native_linux_test.go" {
-			switch dependency {
-			case modulePath + "/internal/successor/custody", modulePath + "/internal/successor/installation/forwarding", modulePath + "/internal/successor/network/closedprofile", modulePath + "/internal/successor/network/epoch", modulePath + "/internal/successor/network/source":
-				return true
-			}
 		}
 		if source == "cmd/ardents-control/forwarding_token_authority_native_linux_test.go" {
 			switch dependency {
@@ -643,16 +629,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-control/forwarding_epoch_signing_linux.go" || source == "cmd/ardents-control/forwarding_epoch_provision_native_linux_test.go") && (dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/network/source") {
 			return true
 		}
-		if source == "cmd/ardents-control/forwarding_state_linux_test.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
-			return true
-		}
-		if source == "cmd/ardents-control/forwarding_state_native_linux_test.go" {
-			switch dependency {
-			case modulePath + "/internal/successor/installation/forwarding", modulePath + "/internal/successor/network/state":
-				return true
-			}
-		}
-		if (source == "cmd/ardents-control/forwarding_release_plan_linux.go" || source == "cmd/ardents-control/forwarding_release_native_linux_test.go") && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/forwarding") {
+		if (source == "cmd/ardents-control/forwarding_release_plan_linux.go" || source == "cmd/ardents-control/forwarding_release_native_linux_test.go") && dependency == modulePath+"/internal/successor/installation/infrastructure" {
 			return true
 		}
 		if source == "cmd/ardents-control/forwarding_release_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release" || dependency == "github.com/sigstore/sigstore/pkg/signature" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
@@ -667,18 +644,9 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/forwarding_release_native_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
 			return true
 		}
-		// Canonical forward-delivery QA uses the same public request/plan codecs
-		// as Control's existing preparation consumers, without a runtime owner.
-		if source == "cmd/ardents-control/forwarding_forward_release_native_linux_test.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
-			return true
-		}
-		if source == "cmd/ardents-control/forwarding_request_linux.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
-			return true
-		}
-		if source == "cmd/ardents-control/forwarding_plan_linux.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
-			return true
-		}
-		if source == "cmd/ardents-control/forwarding_artifact_native_linux_test.go" && dependency == modulePath+"/internal/successor/installation/forwarding" {
+		// Canonical forward-release signing binds the shared platform template
+		// resource after the #604 FJD stage D cutover, without a runtime owner.
+		if source == "cmd/ardents-control/forwarding_forward_release_native_linux_test.go" && dependency == modulePath+"/internal/successor/installation/infrastructure" {
 			return true
 		}
 		if (source == "cmd/ardents-control/source_inspection_linux.go" || source == "cmd/ardents-control/source_inspection_linux_test.go") && dependency == modulePath+"/internal/successor/network/source" {
@@ -709,12 +677,6 @@ func successorImportAllowed(source, dependency string) bool {
 				return true
 			}
 		}
-		if source == "cmd/ardents-node/forwarding_installed_linux.go" {
-			switch dependency {
-			case modulePath + "/internal/successor/installation/forwarding", modulePath + "/internal/successor/network", modulePath + "/internal/successor/network/state", modulePath + "/internal/successor/node", modulePath + "/internal/successor/route/role":
-				return true
-			}
-		}
 		if source == "cmd/ardents-node/source_supervision_linux_test.go" && dependency == modulePath+"/internal/successor/network/state" {
 			return true
 		}
@@ -729,9 +691,6 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-node/join_installation_linux.go" && (dependency == modulePath+"/internal/successor/installation/join" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
-			return true
-		}
-		if source == "cmd/ardents-node/forwarding_installation_linux.go" && (dependency == modulePath+"/internal/successor/installation/forwarding" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
 		if source == "cmd/ardents-node/source_installation_linux.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/state" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
@@ -752,98 +711,6 @@ func successorImportAllowed(source, dependency string) bool {
 		return !zoneDependency
 	}
 	if source == "internal/successor/route/introduction/receiving_history_linux.go" && dependency == modulePath+"/internal/successor/admission/receiving" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/initial_install_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/systemd" || dependency == modulePath+"/internal/successor/release") {
-		return true
-	}
-	if (source == "internal/successor/installation/forwarding/replacement_candidate_linux.go" || source == "internal/successor/installation/forwarding/recovery_candidate_linux.go") && dependency == modulePath+"/internal/successor/installation/infrastructure" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/replacement_inspections_linux.go" {
-		switch dependency {
-		case modulePath + "/internal/successor/network/state", modulePath + "/internal/successor/admission/spending", modulePath + "/internal/successor/hosting":
-			return true
-		}
-	}
-	if source == "internal/successor/installation/forwarding/replacement_linux.go" {
-		switch dependency {
-		case modulePath + "/internal/successor/installation/cgroup", modulePath + "/internal/successor/installation/fixedfile", modulePath + "/internal/successor/installation/infrastructure", modulePath + "/internal/successor/installation/systemd", modulePath + "/internal/successor/release":
-			return true
-		}
-	}
-	if source == "internal/successor/installation/forwarding/recovery_initial_linux.go" || source == "internal/successor/installation/forwarding/recovery_initial_reload_linux.go" || source == "internal/successor/installation/forwarding/recovery_replacement_linux.go" || source == "internal/successor/installation/forwarding/recovery_retirement_linux.go" || source == "internal/successor/installation/forwarding/recovery_start_linux.go" || source == "internal/successor/installation/forwarding/recovery_readback_linux.go" {
-		switch dependency {
-		case modulePath + "/internal/successor/installation/cgroup", modulePath + "/internal/successor/installation/infrastructure", modulePath + "/internal/successor/installation/systemd", modulePath + "/internal/successor/release":
-			return true
-		}
-	}
-	if (source == "internal/successor/installation/forwarding/recovery_initial_unit_linux.go" || source == "internal/successor/installation/forwarding/recovery_initial_selection_linux.go" || source == "internal/successor/installation/forwarding/recovery_initial_artifact_linux.go" || source == "internal/successor/installation/forwarding/recovery_initial_artifact_native_linux_test.go") && dependency == modulePath+"/internal/successor/installation/fixedfile" {
-		return true
-	}
-	if (source == "internal/successor/installation/forwarding/recovered_initial_linux.go" || source == "internal/successor/installation/forwarding/recovery_replacement_reload_linux.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/completed_initial_linux.go" && (dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/selected_generation_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/startup_linux.go" {
-		for _, owner := range []string{"cgroup", "completion", "process", "systemd"} {
-			if dependency == modulePath+"/internal/successor/installation/"+owner {
-				return true
-			}
-		}
-	}
-	if source == "internal/successor/installation/forwarding/start_initial_linux.go" {
-		if dependency == modulePath+"/internal/successor/release" {
-			return true
-		}
-		for _, owner := range []string{"cgroup", "infrastructure", "process", "systemd"} {
-			if dependency == modulePath+"/internal/successor/installation/"+owner {
-				return true
-			}
-		}
-	}
-	if source == "internal/successor/installation/forwarding/start_barrier_linux.go" && dependency == modulePath+"/internal/successor/installation/completion" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/start_initial_native_linux_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
-		return true
-	}
-	if (source == "internal/successor/installation/forwarding/start_snapshot_linux.go" || source == "internal/successor/installation/forwarding/start_snapshot_native_linux_test.go") && dependency == modulePath+"/internal/successor/installation/completion" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/started_linux.go" && dependency == modulePath+"/internal/successor/release" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/restart_linux.go" && (dependency == modulePath+"/internal/successor/release" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/stop_linux.go" {
-		switch dependency {
-		case modulePath + "/internal/successor/installation/cgroup", modulePath + "/internal/successor/installation/completion", modulePath + "/internal/successor/installation/process", modulePath + "/internal/successor/installation/systemd", modulePath + "/internal/successor/release":
-			return true
-		}
-	}
-	if (source == "internal/successor/installation/forwarding/retirement_policy_linux.go" || source == "internal/successor/installation/forwarding/retirement_policy_linux_test.go") && (dependency == modulePath+"/internal/successor/installation/completion" || dependency == modulePath+"/internal/successor/installation/systemd") {
-		return true
-	}
-	if (source == "internal/successor/installation/forwarding/retirement_snapshot_native_linux_test.go" || source == "internal/successor/installation/forwarding/recovery_retirement_linux_test.go") && dependency == modulePath+"/internal/successor/installation/completion" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/binding_linux.go" && dependency == modulePath+"/internal/successor/installation/infrastructure" {
-		return true
-	}
-	if (source == "internal/successor/installation/forwarding/loaded_policy_linux.go" || source == "internal/successor/installation/forwarding/loaded_policy_linux_test.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
-		return true
-	}
-	if (source == "internal/successor/installation/forwarding/request_linux.go" || source == "internal/successor/installation/forwarding/unit_linux_test.go") && dependency == modulePath+"/internal/successor/installation/infrastructure" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
 	if source == "internal/successor/installation/join/hosting_prepare_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
@@ -883,18 +750,6 @@ func successorImportAllowed(source, dependency string) bool {
 		return true
 	}
 	if source == "internal/successor/installation/join/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/hosting_prepare_linux.go" && (dependency == modulePath+"/internal/successor/hosting" || dependency == modulePath+"/internal/successor/installation/cgroup" || dependency == modulePath+"/internal/successor/installation/systemd") {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/hosting_prepare_native_linux_test.go" && dependency == modulePath+"/internal/successor/hosting" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/hosting_partial_native_linux_test.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
@@ -939,7 +794,6 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/installation/infrastructure":     {"enrollment", "release"},
 		"internal/successor/installation/descriptor":         {},
 		"internal/successor/installation/join":               {},
-		"internal/successor/installation/forwarding":         {},
 		"internal/successor/installation/endpoint":           {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "installation/request", "installation/directory"},
 		"internal/successor/installation/cgroup":             {},
 		"internal/successor/installation/request":            {},
@@ -987,10 +841,6 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/route_composition_linux_test.go" && dependency == modulePath+"/internal/successor/reachability" {
-			return true
-		}
-		// Existing new-zone QA registration, not another old-command R01 exception.
-		if source == "cmd/ardents-next/forwarding_installed_native_linux_test.go" && (dependency == modulePath+"/internal/successor/installation/forwarding" || dependency == modulePath+"/internal/successor/route/transport" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
 		if source == "cmd/ardents-next/source_state_linux_test.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/duty") {
@@ -1372,7 +1222,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (owner == "internal/successor/admission/issuance" || owner == "internal/successor/admission/token") && dependency == "github.com/cloudflare/circl/blindsign/blindrsa" {
 		return true
 	}
-	if (source == "internal/successor/installation/systemd/manager_reference_linux.go" || source == "internal/successor/installation/systemd/node_slots_linux.go" || source == "internal/successor/installation/systemd/join_stopped_linux.go" || source == "internal/successor/installation/systemd/forwarding_stopped_linux.go" || source == "internal/successor/installation/systemd/forwarding_manager_linux.go" || source == "internal/successor/installation/systemd/forwarding_control_linux.go" || source == "internal/successor/installation/systemd/introduction_manager_linux.go" || source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go" || source == "internal/successor/installation/systemd/source_preflight_linux.go" || source == "internal/successor/installation/systemd/source_stopped_linux.go" || source == "internal/successor/installation/systemd/source_manager_linux.go" || source == "internal/successor/installation/systemd/source_control_linux.go" || source == "internal/successor/installation/systemd/source_reference_native_linux_test.go") && dependency == "github.com/godbus/dbus/v5" {
+	if (source == "internal/successor/installation/systemd/manager_reference_linux.go" || source == "internal/successor/installation/systemd/node_slots_linux.go" || source == "internal/successor/installation/systemd/join_stopped_linux.go" || source == "internal/successor/installation/systemd/forwarding_manager_linux.go" || source == "internal/successor/installation/systemd/introduction_manager_linux.go" || source == "internal/successor/installation/systemd/endpoint_reference_linux.go" || source == "internal/successor/installation/systemd/startup_observation_linux.go" || source == "internal/successor/installation/systemd/source_preflight_linux.go" || source == "internal/successor/installation/systemd/source_stopped_linux.go" || source == "internal/successor/installation/systemd/source_manager_linux.go" || source == "internal/successor/installation/systemd/source_control_linux.go" || source == "internal/successor/installation/systemd/source_reference_native_linux_test.go") && dependency == "github.com/godbus/dbus/v5" {
 		return true
 	}
 	if (owner == "internal/successor/admission/spending" || owner == "internal/successor/network/duty" || owner == "internal/successor/network/state/durable") && dependency == "golang.org/x/sys/windows" {
@@ -1418,12 +1268,6 @@ func successorImportAllowed(source, dependency string) bool {
 	}
 
 	if source == "internal/successor/installation/infrastructure/source_transition_scope_linux.go" && dependency == "golang.org/x/sys/unix" {
-		return true
-	}
-	if source == "internal/successor/installation/forwarding/transition_scope_linux.go" && dependency == "golang.org/x/sys/unix" {
-		return true
-	}
-	if source == "cmd/ardents-next/forwarding_installed_native_linux_test.go" && dependency == "golang.org/x/sys/unix" {
 		return true
 	}
 	if source == "internal/successor/endpoint/reader/result_linux.go" && (dependency == modulePath+"/internal/application/connection" || dependency == modulePath+"/internal/application/textdocument") {
@@ -1511,29 +1355,6 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"JOIN public plan has no State owner", "internal/successor/installation/join/plan_linux.go", modulePath + "/internal/successor/network/state", false},
 		{"canonical JOIN plan uses exact declaration owner", "cmd/ardents-control/join_plan_linux.go", modulePath + "/internal/successor/installation/join", true},
 		{"canonical JOIN preparation grants no Route exception", "cmd/ardents-control/join_plan_linux.go", modulePath + "/internal/successor/route/role", false},
-		{"Forwarding replacement inspects signed retained State", "internal/successor/installation/forwarding/replacement_inspections_linux.go", modulePath + "/internal/successor/network/state", true},
-		{"Forwarding replacement inspects original spend", "internal/successor/installation/forwarding/replacement_inspections_linux.go", modulePath + "/internal/successor/admission/spending", true},
-		{"Forwarding replacement inspects original Hosting", "internal/successor/installation/forwarding/replacement_inspections_linux.go", modulePath + "/internal/successor/hosting", true},
-		{"Forwarding candidate has no semantic history lease", "internal/successor/installation/forwarding/replacement_candidate_linux.go", modulePath + "/internal/successor/network/state", false},
-		{"Forwarding byte history cannot mutate spend", "internal/successor/installation/forwarding/selection_history_linux.go", modulePath + "/internal/successor/admission/spending", false},
-		{"Forwarding replacement cannot import old Node", "internal/successor/installation/forwarding/replacement_linux.go", modulePath + "/internal/node", false},
-		{"Forwarding replacement cannot import Route", "internal/successor/installation/forwarding/replacement_linux.go", modulePath + "/internal/successor/route/role", false},
-		{"Forwarding timestamp actor uses fixed-file custody", "internal/successor/installation/forwarding/recovery_initial_artifact_linux.go", modulePath + "/internal/successor/installation/fixedfile", true},
-		{"Forwarding timestamp native fixture uses actual mutation", "internal/successor/installation/forwarding/recovery_initial_artifact_native_linux_test.go", modulePath + "/internal/successor/installation/fixedfile", true},
-		{"Forwarding timestamp adjacent fixture has no mutation permission", "internal/successor/installation/forwarding/recovery_initial_artifact_other_native_linux_test.go", modulePath + "/internal/successor/installation/fixedfile", false},
-		{"Forwarding timestamp actor has no Release permission", "internal/successor/installation/forwarding/recovery_initial_artifact_linux.go", modulePath + "/internal/successor/release", false},
-		{"Forwarding recovery cannot import old Node", "internal/successor/installation/forwarding/recovery_initial_linux.go", modulePath + "/internal/node", false},
-		{"Forwarding recovery cannot import Route", "internal/successor/installation/forwarding/recovery_initial_linux.go", modulePath + "/internal/successor/route/role", false},
-		{"Forwarding recovered bytes cannot acquire Release", "internal/successor/installation/forwarding/recovered_initial_linux.go", modulePath + "/internal/successor/release", false},
-		{"Forwarding recovery codec cannot acquire manager", "internal/successor/installation/forwarding/recovery_completion_linux.go", modulePath + "/internal/successor/installation/systemd", false},
-		{"new installed Forwarding test reads pure declaration", "cmd/ardents-next/forwarding_installed_native_linux_test.go", modulePath + "/internal/successor/installation/forwarding", true},
-		{"new installed Forwarding test selects shared Carrier", "cmd/ardents-next/forwarding_installed_native_linux_test.go", modulePath + "/internal/successor/route/transport", true},
-		{"new installed Forwarding test observes original pidfd", "cmd/ardents-next/forwarding_installed_native_linux_test.go", "golang.org/x/sys/unix", true},
-		{"unregistered new test has no installed declaration edge", "cmd/ardents-next/other_forwarding_linux_test.go", modulePath + "/internal/successor/installation/forwarding", false},
-		{"unregistered new test has no pidfd edge", "cmd/ardents-next/other_forwarding_linux_test.go", "golang.org/x/sys/unix", false},
-		{"old Node test remains outside new Route", "cmd/ardents-node/forwarding_installed_native_linux_test.go", modulePath + "/internal/successor/route/transport", false},
-		{"new installed Forwarding test cannot bypass canonical Node", "cmd/ardents-next/forwarding_installed_native_linux_test.go", modulePath + "/internal/successor/node", false},
-		{"new installed Forwarding test cannot construct concrete TLS", "cmd/ardents-next/forwarding_installed_native_linux_test.go", modulePath + "/internal/successor/route/transport/tls", false},
 		{"delayed ACK fixture retains genuine installed operation", "cmd/ardents-next/publication_ack_installed_linux_test.go", modulePath + "/internal/successor/execution/runtime", true},
 		{"receiving Network fixture selects accepted profile", "cmd/ardents-next/publication_network_linux_test.go", modulePath + "/internal/successor/network/epoch", true},
 		{"receiving Network fixture names selected Carriers", "cmd/ardents-next/publication_network_linux_test.go", modulePath + "/internal/successor/route/transport", true},

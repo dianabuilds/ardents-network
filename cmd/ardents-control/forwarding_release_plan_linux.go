@@ -8,7 +8,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 )
 
@@ -53,11 +52,11 @@ func validateForwardingReleaseResources(plan forwardingReleasePlan, program, des
 	d, err := infrastructure.ValidateForwardingResources(descriptor, program, template)
 	initial := plan.Schema == "ardents-forwarding-initial-release-plan-v1"
 	forward := plan.Schema == "ardents-forwarding-forward-release-plan-v1"
-	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(forwarding.Template)) {
+	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(infrastructure.PlatformUnitTemplate)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))
-	if err != nil || info.Path != "github.com/dianabuilds/ardents-network/cmd/ardents-node" {
+	if err != nil || info.Path != "github.com/dianabuilds/ardents-network/cmd/ardents-next" {
 		return errors.Join(errSourceControlInput, err)
 	}
 	settings := map[string]string{}

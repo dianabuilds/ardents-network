@@ -46,20 +46,10 @@ var errNodeInspectionClosed = errors.New("retained Node inspection closed")
 // and Node. No missing history selects a fresh opening, and no expired producer
 // can be removed in order to inspect a supposedly stopped installation.
 func OpenNodeInspection(parent context.Context, input Config, node [32]byte, uid, gid uint32) (result NodeInspection, returned error) {
-	return openNodeInspection(parent, input, node, uid, gid, nil)
+	return openNodeInspection(parent, input, node, uid, gid)
 }
 
-// InspectUnstartedNode authenticates the same retained signed State while
-// retaining the original, still-empty participation directory. Installation
-// must independently prove that no runtime start was admitted.
-func InspectUnstartedNode(parent context.Context, input Config, node [32]byte, uid, gid uint32, participation os.FileInfo) (NodeInspection, error) {
-	if participation == nil {
-		return NodeInspection{}, errors.New("unstarted Node inspection requires original participation directory")
-	}
-	return openNodeInspection(parent, input, node, uid, gid, participation)
-}
-
-func openNodeInspection(parent context.Context, input Config, node [32]byte, uid, gid uint32, unopened os.FileInfo) (result NodeInspection, returned error) {
+func openNodeInspection(parent context.Context, input Config, node [32]byte, uid, gid uint32) (result NodeInspection, returned error) {
 	if parent == nil || os.Geteuid() != 0 || node == [32]byte{} || !filepath.IsAbs(input.Root) || filepath.Clean(input.Root) != input.Root || !filepath.IsAbs(input.LocalRoleStateRoot) || filepath.Clean(input.LocalRoleStateRoot) != input.LocalRoleStateRoot || !filepath.IsAbs(input.ClockObservationFile) || filepath.Clean(input.ClockObservationFile) != input.ClockObservationFile || input.ObserveClock != nil || input.PermitWork != nil {
 		return result, errors.New("invalid retained Node inspection")
 	}
@@ -92,11 +82,7 @@ func openNodeInspection(parent context.Context, input Config, node [32]byte, uid
 	if actualUID, actualGID := s.state.Principal(); actualUID != uid || actualGID != gid {
 		return result, errors.New("retained Node State principal differs")
 	}
-	if unopened == nil {
-		s.roles, err = duty.OpenNodeInspection(ctx, cfg.localRoles, uid, gid)
-	} else {
-		s.roles, err = duty.InspectUnopenedNode(ctx, cfg.localRoles, uid, gid, unopened)
-	}
+	s.roles, err = duty.OpenNodeInspection(ctx, cfg.localRoles, uid, gid)
 	if err != nil {
 		return result, err
 	}

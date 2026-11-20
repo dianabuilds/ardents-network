@@ -11,7 +11,7 @@ import (
 type SourceInspection struct{ original *participationInspection }
 
 func OpenSourceInspection(ctx context.Context, path string, uid, gid uint32) (*SourceInspection, error) {
-	original, err := openParticipationInspection(ctx, path, uid, gid, nil)
+	original, err := openParticipationInspection(ctx, path, uid, gid)
 	if err != nil {
 		return nil, err
 	}

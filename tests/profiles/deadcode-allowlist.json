@@ -937,6 +937,16 @@
         "rationale": "ADR-0127 (#647) removed internal/enrollment/input.go with the persisted v1 document parser and RequestFromManifestPin; requestFromManifest relocated to candidate_linux.go, whose sole caller ReadHeadlessCandidate is itself reviewed production-dead in the common allowlist. The helper therefore has no production caller on linux-amd64 and does not exist on windows-amd64. It remains with the candidate behavior tests until the gated legacy cohort removal.",
         "owner": "Product Owner and Codex; legacy cohort removal #564/#565 (#497 M3)",
         "retirement": "Remove this exact symbol when the gated legacy cohort removal retires the predecessor enrollment Module, or when a separately selected genuine production caller reaches it."
+      },
+      {
+        "symbols": [
+          "internal/successor/installation/infrastructure.ForwardingAuthorization.InitialFacts",
+          "internal/successor/installation/infrastructure.ForwardingAuthorization.Targets"
+        ],
+        "classification": "retired transitional Forwarding orchestration; retained candidate-admission test coverage",
+        "rationale": "The transitional installation/forwarding orchestration and its canonical Node initial/start consumers retired (#604 FJD stage D, ADR-0125). The retained Forwarding forward-Release predecessor verification consumes AuthenticateForwardingCandidate/Check in production; the exact target-pair and no-initial-facts assertions remain exercised by the genuine signed-artifact integration in cmd/ardents-next/forwarding_artifact_linux_test.go. Platform-led installed admission uses the mandatory platform check, not this candidate pair. Linux-native only; the file is excluded on Windows.",
+        "owner": "Product Owner and Codex",
+        "retirement": "Remove them if the forward-Release candidate admission loses its signed-artifact integration coverage or gains a production consumer again."
       }
     ],
     "windows-amd64": [

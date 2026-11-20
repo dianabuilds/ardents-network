@@ -5,10 +5,32 @@ package systemd
 import (
 	"context"
 	"errors"
+	"os"
 	"sync"
 	"testing"
 	"time"
 )
+
+// The shared read-only manager mechanism is observed on the explicit root
+// Forwarding preparation stand. The former ForwardingStopped/Control native
+// references retired with the transitional Forwarding orchestration (#604 FJD
+// stage D, ADR-0125); NodeSlots keeps the same physical custody controls.
+func forwardingManagerStand(t *testing.T) {
+	t.Helper()
+	marker, err := os.ReadFile("/etc/ardents-forwarding-preparation-native-stand")
+	if err != nil || string(marker) != "ardents-forwarding-preparation-native-v1\n" || os.Geteuid() != 0 {
+		t.Fatal("invalid environment: explicit root Forwarding preparation stand required", err)
+	}
+}
+
+func managerFDCount(t *testing.T) int {
+	t.Helper()
+	entries, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return len(entries)
+}
 
 func TestNodeSlotsNativeIndependentReadOnlyCustodyAndDescriptorReturn(t *testing.T) {
 	forwardingManagerStand(t)

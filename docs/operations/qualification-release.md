@@ -14,54 +14,55 @@ unchanged. Never use diagnostic keys as the operational release authority.
 
 ## Forwarding infrastructure artifact component
 
+The transitional Forwarding orchestration and its OLD preparation are retired
+(#604 FJD stage D, ADR-0125). `ardents-control forwarding prepare-template`,
+`prepare-request`, `prepare-plan`, `prepare-hosting` and `prepare-state` return
+typed before-effect refusals; `ardents-next platform template` emits the exact
+canonical platform unit template (`infrastructure.PlatformUnitTemplate`). The
+former `scripts/installation/prepare-forwarding-release-plan.py` public plan
+transformation and its build-records native control are removed with the
+orchestration; a new-path Forwarding candidate build and release plan builder is
+a follow-up, exactly as for Source (#604 stage 1.6). Until it lands, no deleted
+script may be invoked.
+
 `python3 -I -S scripts/installation/build-forwarding-candidate.py
 --source-manifest PATH --source-manifest-sha256 SHA256 --source-revision REVISION
---output FRESH_OUTPUT` builds exactly `ardents-node` and `ardents-control` twice
-under the outside controller's original development lock and joined build scope.
-The complete read-only source manifest records each file's `sha256` and Git
-`mode` (`100644` or `100755`). The tool checks both bytes and modes, the selected
-Go1.27.4 Linux-amd64 toolchain, module integrity and actual compiled dependency
-closure. It retains both executions, canonical build inputs and a scoped SBOM;
-matching output grants no independent-builder or installed qualification claim.
-An unfinished output is preserved and cannot be adopted. A dirty preliminary
+--output FRESH_OUTPUT` remains the shared candidate builder: it builds exactly
+`ardents-node` and `ardents-control` twice under the outside controller's
+original development lock and joined build scope, and its
+`ardents-forwarding-build-execution-v1` records remain the exact build input of
+the retained JOIN/Descriptor public plan preparers. The complete read-only
+source manifest records each file's `sha256` and Git `mode` (`100644` or
+`100755`). The tool checks both bytes and modes, the selected Go1.27.4
+Linux-amd64 toolchain, module integrity and actual compiled dependency closure.
+It retains both executions, canonical build inputs and a scoped SBOM; matching
+output grants no independent-builder or installed qualification claim. An
+unfinished output is preserved and cannot be adopted. A dirty preliminary
 snapshot uses `snapshot-sha256:<manifest pin>`; final delivery still requires the
-committed exact revision, normal gates and independent source/remote audit.
+committed exact revision, normal gates and independent source/remote audit. Its
+build-scope discipline also remains the reference for Source build commitments.
 
-The separate public transformation is:
-
-```text
-python3 -I -S scripts/installation/prepare-forwarding-release-plan.py --build-root PATH --descriptor PATH --template PATH --network NAME --expires UTC_TIME --no-new-work-after UTC_TIME --terminate-after UTC_TIME --qualification-evidence PATH --qualification-evidence-sha256 SHA256 --output FRESH_OUTPUT
-```
-
-After the build scope joins, deliver the exact records and outputs into
-root-controlled custody. The preparer rechecks both actual command inventories,
-source/input/module/SBOM commitments, a separately reviewed evidence commitment,
-the exact initial Forwarding descriptor and finite safety horizon. It emits
-`forwarding-release-plan.json` for the existing canonical
-`ardents-control forwarding sign-initial-release` consumer. It reads no private
-key and grants no first pin, signature, native installation or runtime right.
-The two named executions remain under project control. Metadata's existing
-`qualified` value describes only the pinned prestart component evidence and
-limits; neither it nor `READY` establishes installed qualification. A completed
-exact public receipt and direct Product Owner acceptance under ADR-0123
-Decision6 remain mandatory before installed execution. Source build/plan
-schemas and its signer cannot authorize this purpose. Forward replacement,
-Timestamp refresh and other Node roles are outside this initial producer.
-
-For a separately admitted forward Release, invoke this same public plan tool
-with `--forward` and a strictly forward Forwarding descriptor. It preserves
-the actual build/claim/evidence and safety checks and emits only schema
-`ardents-forwarding-forward-release-plan-v1`. Canonical Control's distinct
-`forwarding sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA
-FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION` requires the exact eight-file
-predecessor, matches the same five keys to its original Root and authenticates
-its actual coherent Node/Forwarding pair before signing. Root bytes remain
-unchanged; Targets/Snapshot/Timestamp and their exact version references advance
-by one. New metadata is independently verified in that fresh diagnostic history
-before output. This is offline preparation, not an installation history or first
-pin, a stopped replacement, original-prefix recovery or bootstrap acceptance.
-The installed replacement/recovery campaign still needs its own completed exact
-receipt and separate direct acceptance before execution.
+The canonical signing purposes remain and are cut over to the platform-led
+runtime. Use `forwarding sign-initial-release` for the initial plan and the
+distinct `forwarding sign-forward-release` with the retained original five-key
+directory and complete predecessor distribution for an explicit forward
+candidate. After the #604 FJD stage D signing cutover the bound program is the
+static Linux-amd64 `ardents-next` binary and the bound template is the exact
+canonical platform unit template (`infrastructure.PlatformUnitTemplate`); the
+signer refuses a substituted program or template. The public
+`forwarding prepare-release-plan` / `prepare-forward-release-plan` flag-based
+producers emit the closed plans from reviewed public claims; the forward plan
+schema is `ardents-forwarding-forward-release-plan-v1` with a strictly higher
+descriptor version. Root bytes remain unchanged; Targets/Snapshot/Timestamp and
+their exact version references advance by one. New metadata is independently
+verified in that fresh diagnostic history before output. This is offline
+preparation, not an installation history or first pin, a stopped replacement,
+original-prefix recovery or bootstrap acceptance. The platform-led Forwarding
+lifecycle (canonical platform unit with the mandatory `platform check`
+ExecStartPre gate, `ardents-next node forwarding --retained-config`,
+`forwarding repair-retained`) owns installed delivery; a new candidate and the
+explicit relaunch/program-change scope require their own exact bootstrap receipt
+and direct Product Owner acceptance before any installed execution.
 
 ## Source infrastructure artifact component
 

@@ -76,8 +76,6 @@ func (handle *Forwarding) JoinedFailureOwners() (first, cleanup string) {
 
 type forwarding struct {
 	failure                  failureRecord
-	workRefusal              failureRecord
-	workRefusalCause         error
 	mu                       sync.Mutex
 	caller, ctx              context.Context
 	cancel                   context.CancelFunc
@@ -391,35 +389,6 @@ func (f *forwarding) Close() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.result
-}
-
-// WorkRefusal returns the first failed admission/refill observation. It does not
-// wait for completion or grant authority, and does not change FirstFailure,
-// denial, spending, reservations or the invocation's retained terminal result.
-// The error is original local evidence; callers must not print its private text.
-func (handle *Forwarding) WorkRefusal() (*FailureDiagnostic, error) {
-	if handle == nil || handle.original == nil {
-		return nil, nil
-	}
-	f := handle.original
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.workRefusal.snapshot(f.workRefusalCause), f.workRefusalCause
-}
-
-func (f *forwarding) retainWorkRefusal(ctx context.Context, operation, stage string, started time.Time, cause error) {
-	if cause == nil {
-		return
-	}
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.workRefusal.first != nil {
-		return
-	}
-	f.workRefusal.started, f.workRefusal.serving = started, true
-	f.workRefusal.retain(cause, ctx, "work")
-	f.workRefusal.first.Kind, f.workRefusal.first.Phase = "refusal", operation+"-"+stage
-	f.workRefusalCause = cause
 }
 
 // FirstFailure returns detached original facts without observing or waiting for completion.
