@@ -17,10 +17,9 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 	routeSource := strings.HasPrefix(source, directory+"/")
 	routeDependency := dependency == imported || strings.HasPrefix(dependency, imported+"/")
 	newSource := strings.HasPrefix(source, "internal/successor/") || strings.HasPrefix(source, "cmd/ardents-next/")
-	canonicalForwarding := source == "cmd/ardents-node/forwarding_installed_linux.go" && dependency == imported+"/role"
 	canonicalJoin := source == "cmd/ardents-node/join_installed_linux.go" && dependency == imported+"/role"
 	canonicalDescriptor := source == "cmd/ardents-node/descriptor_installed_linux.go" && dependency == imported+"/role"
-	if routeDependency && !newSource && !canonicalForwarding && !canonicalJoin && !canonicalDescriptor {
+	if routeDependency && !newSource && !canonicalJoin && !canonicalDescriptor {
 		return false
 	}
 	if routeSource && strings.HasPrefix(dependency, modulePath+"/") && !strings.HasPrefix(dependency, modulePath+"/internal/successor/") {
@@ -69,11 +68,6 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"old Node dependency in test", "internal/successor/route/role_test.go", modulePath + "/internal/node/outer", false},
 		{"external fixture dependency", "internal/successor/route/selection_test.go", modulePath + "/tests/epochfixture/network", false},
 		{"new command boundary", "cmd/ardents-next/route.go", modulePath + "/internal/successor/route", true},
-		{"canonical installed Forwarding role only", "cmd/ardents-node/forwarding_installed_linux.go", modulePath + "/internal/successor/route/role", true},
-		{"canonical installed Forwarding sibling denied", "cmd/ardents-node/other.go", modulePath + "/internal/successor/route/role", false},
-		{"canonical installed Forwarding tests denied", "cmd/ardents-node/forwarding_installed_linux_test.go", modulePath + "/internal/successor/route/role", false},
-		{"canonical installed Forwarding Route root denied", "cmd/ardents-node/forwarding_installed_linux.go", modulePath + "/internal/successor/route", false},
-		{"canonical installed Forwarding receiver denied", "cmd/ardents-node/forwarding_installed_linux.go", modulePath + "/internal/successor/route/receiver", false},
 		{"canonical installed Descriptor role only", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/successor/route/role", true},
 		{"canonical Descriptor test denied", "cmd/ardents-node/descriptor_installed_linux_test.go", modulePath + "/internal/successor/route/role", false},
 		{"canonical Descriptor Route root denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/successor/route", false},

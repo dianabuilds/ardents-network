@@ -1,5 +1,5 @@
 // Package process retains original kernel process observations of the separately
-// fixed installed Endpoint, Source and Forwarding. It owns proc-directory identity, start clock, executable,
+// fixed installed Endpoint and Source. It owns proc-directory identity, start clock, executable,
 // arguments, credentials, cgroup membership and InvocationID observations.
 // Retain is root-only predecessor observation; RetainSelf is limited to the
 // actual non-root calling process. Kernel supplementary groups may contain only
@@ -10,13 +10,11 @@
 // the platform-led Source lifecycle owns Source delivery. Installation checks
 // its original lease, bytes and manager around observations; cgroup separately
 // owns descendant join.
-// ForwardingExpected and its root/self openers choose only the Forwarding argv
-// and unit. ForwardingInvocation hides the underlying Invocation type,
-// retains its own root pidfd and shares permanent refusal/joined Close across
-// copies. InterruptForwarding supplies only an original physical SIGTERM;
-// Installation must separately establish stop admission and original domain join.
-// RetainForwardingStop additionally compares the archived original proc inode
-// after fresh fixed-purpose admission; copied archive facts grant no signal right.
+// The transitional Forwarding invocation orchestration (ForwardingExpected,
+// RetainForwarding/RetainForwardingStop/RetainForwardingSelf and
+// InterruptForwarding) is retired (ADR-0125, #604 FJD stage D); the platform-led
+// Forwarding lifecycle owns process delivery and stop through the canonical
+// platform unit.
 // JoinExpected, RetainJoin and RetainJoinSelf independently fix only JOIN argv,
 // unit and original native identity. They share physical source, not Source or
 // Forwarding process custody, root signal rights or startup authority.

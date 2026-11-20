@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 )
 
@@ -27,6 +26,18 @@ type forwardingControlFailure struct{ cause error }
 
 func (e *forwardingControlFailure) Error() string { return "forwarding artifact preparation refused" }
 func (e *forwardingControlFailure) Unwrap() error { return e.cause }
+
+// The transitional Forwarding preparation is retired (ADR-0125, #604 FJD stage D);
+// the platform-led Forwarding lifecycle replaces it. Each refusal fires before any
+// input is read or any effect is attempted. Release signing is preserved and bound
+// to the canonical platform template and ardents-next program.
+var (
+	errForwardingPrepareTemplateRetired = errors.New("old Forwarding prepare-template is retired; use ardents-next platform template")
+	errForwardingPrepareRequestRetired  = errors.New("old Forwarding prepare-request is retired; use the platform-led Forwarding lifecycle")
+	errForwardingPreparePlanRetired     = errors.New("old Forwarding prepare-plan is retired; use the platform-led Forwarding lifecycle")
+	errForwardingPrepareHostingRetired  = errors.New("old Forwarding prepare-hosting is retired; use the platform-led Forwarding lifecycle")
+	errForwardingPrepareStateRetired    = errors.New("old Forwarding prepare-state is retired; use the platform-led Forwarding lifecycle")
+)
 
 func runForwardingControl(args []string, out io.Writer) error {
 	if len(args) > 0 && (args[0] == "prepare-profile" || args[0] == "sign-profile") {
@@ -42,10 +53,10 @@ func runForwardingControl(args []string, out io.Writer) error {
 		return runForwardingNodeProvision(args, out)
 	}
 	if len(args) > 0 && args[0] == "prepare-hosting" {
-		return runForwardingHostingPreparation(args[1:], out)
+		return errForwardingPrepareHostingRetired
 	}
 	if len(args) > 0 && args[0] == "prepare-state" {
-		return runForwardingStatePreparation(args[1:], out)
+		return errForwardingPrepareStateRetired
 	}
 	if len(args) > 0 && args[0] == "prepare-release-keys" {
 		return runForwardingReleaseKeys(args[1:], out)
@@ -90,17 +101,11 @@ func prepareForwardingArtifact(ctx context.Context, args []string, observe func(
 	check := inputs.checkProtected
 	switch args[0] {
 	case "prepare-template":
-		if len(args) != 2 {
-			return nil, errSourceControlInput
-		}
-		result = []byte(forwarding.Template)
-		name, destination = infrastructure.ForwardingTemplateName, args[1]
+		return nil, errForwardingPrepareTemplateRetired
 	case "prepare-request":
-		result, destination, returned = forwardingRequestArguments(args[1:])
-		name = "forwarding-request.json"
+		return nil, errForwardingPrepareRequestRetired
 	case "prepare-plan":
-		result, destination, returned = forwardingPlanArguments(args[1:], inputs)
-		name = "forwarding-plan.json"
+		return nil, errForwardingPreparePlanRetired
 	case "prepare-release-plan":
 		result, destination, returned = forwardingReleasePlanArguments(args[1:], inputs)
 		name = "forwarding-release-plan.json"

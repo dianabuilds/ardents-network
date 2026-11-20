@@ -100,45 +100,18 @@ program, Forwarding template/descriptor and four Release metadata files. Both
 operations require root-controlled original inputs/ancestors and create exclusive
 protected output. Their public SHA-256 result confirms byte preparation only;
 it grants no signature, first-pin provenance, installation or runtime right.
-`forwarding prepare-hosting` runs once as root after completed stopped
-installation, before the first start. Supply exactly `--binding`, `--provider`,
-`--start`, `--end`, `--unit`, `--quantity`, `--directions`, `--interfaces`,
-`--initial-used-bytes` and `--low-watermark-bytes`. Dates use RFC3339 whole
-seconds; interfaces are comma-separated actual names. The original binding
-selects the one already-born host allowance directory; no alternate root option
-exists. Existing contents, any prior invocation or partial preparation refuse.
-It preserves the directory inode, delivers original period files to the Node
-account and retains a separate root-only one-use transcript. Output supplies no
-runtime authority. A failed partial operation cannot reset or retry the period.
-
-`forwarding prepare-state PLAN BUNDLE SIGNED_PROFILE` runs finite offline
-preparation as the `ardents-node` system account. The root-controlled plan comes
-from `forwarding prepare-plan`; the bundle and profile contain independently
-supplied signed public Network inputs. State verifies both and checks the declared
-Node before the command closes its State/input owners and prints
-`state_accepted:true` with `runtime_authority:false`. The State directory must
-already be empty and owned 0700 by that account. Existing/partial directories
-refuse another initialization. The plan's independent clock observation must
-be fresh and agree with State's clock evidence before Epoch acceptance.
-This command opens no private key, participation,
-spend or Hosting root and supplies no installed Startup or role authority.
-
-`forwarding prepare-template <fresh-output>` writes the fixed
-`ardents-forwarding.service`. `forwarding prepare-request` requires exactly one
-each of `--installation-root`, `--state-root`, `--participation-root`,
-`--spend-root`, `--hosting-root`, `--credential-directory`, `--plan`,
-`--certificate`, `--private-key`, `--clock` and `--output`. It writes the closed
-`forwarding-request.json` to a separate fresh protected directory. Declared
-runtime/input paths are not opened or created by this preparation.
-`forwarding prepare-plan` requires `--request`, `--output`, `--network-id`,
-`--node-id`, `--profile-authority`, one or more `--authority`, `--threshold`,
-`--work-tx`, `--work-rx`, `--termination-tx`, `--termination-rx` and
-`--retirement-wait-ms`. IDs and independently approved public keys are lowercase
-64-digit hex. Output must be the directory already declared for the request's
-`forwarding-plan.json`; all runtime paths come from that retained request. The
-producer validates canonical declarations and original input custody, not signed
-State, private credentials or sufficient runtime allowance. Missing full Forward
-coverage still refuses before receiving spend at runtime.
+`forwarding prepare-hosting`, `forwarding prepare-state`,
+`forwarding prepare-template`, `forwarding prepare-request` and
+`forwarding prepare-plan` are retired (#604 FJD stage D, ADR-0125). Each returns
+its typed before-effect refusal (`old Forwarding prepare-hosting is retired;
+use the platform-led Forwarding lifecycle`, and the corresponding
+prepare-state/prepare-template/prepare-request/prepare-plan forms) before
+reading any input or attempting any effect. `ardents-next platform template`
+emits the exact canonical platform unit template
+(`infrastructure.PlatformUnitTemplate`); the platform-led Forwarding lifecycle
+owns Hosting/State preparation and installed delivery. The generic network
+authority preparation above (profile/token-keys/epoch/node-*) and the
+descriptor/inventory preparation remain available.
 
 The separate Linux Forwarding Release producers are:
 
@@ -150,13 +123,15 @@ ardents-control forwarding prepare-forward-release-plan --network NETWORK --refe
 ardents-control forwarding sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION
 ```
 
-Before initial signing, the separate
+Before initial signing, use the canonical `prepare-release-plan` producer above
+with reviewed public claims and fresh protected keys. The former
 [controlled Forwarding build and public-plan tools](../operations/qualification-release.md#forwarding-infrastructure-artifact-component)
-can produce `forwarding-release-plan.json` from two actual Node/Control builds
-and separately pinned prestart evidence. This avoids hand-authoring build claims.
-Use the canonical `sign-initial-release` command above with that plan and fresh
-protected keys. Build records and signatures do not grant independent builders,
-a participant first pin or the separate bootstrap acceptance.
+(`prepare-forwarding-release-plan.py` and its build-records native control)
+retired with the transitional Forwarding orchestration (#604 FJD stage D,
+ADR-0125); a new-path Forwarding candidate build and release plan builder is a
+separate follow-up, exactly as for Source (#604 stage 1.6). Build records and
+signatures do not grant independent builders, a participant first pin or the
+separate bootstrap acceptance.
 
 Key preparation creates five distinct Ed25519 PKCS8 files, `release-key-1.pem`
 through `release-key-5.pem`, under exclusive root-owned 0700 native ext4 custody;
@@ -164,8 +139,10 @@ the files are 0600. Its receipt contains only public keys and commitments. Plan
 preparation retains the exact public artifact and reviewed claim files and writes
 `forwarding-release-plan.json` with schema
 `ardents-forwarding-initial-release-plan-v1`. It requires all nine flags exactly
-once, version one, the fixed Forwarding template and an actual static Linux-amd64
-canonical Node executable. It invents no build or qualification claim. The
+once, version one, the exact canonical platform unit template
+(`infrastructure.PlatformUnitTemplate`) and an actual static Linux-amd64
+`ardents-next` executable (the #604 FJD stage D signing cutover). It invents no
+build or qualification claim. The
 public claims must describe the actual artifacts and evidence; component fixture
 claims are not operational qualification or independent builds.
 
@@ -194,10 +171,12 @@ advances that same diagnostic history. Protected predecessor files and namespace
 remain retained through output. Missing/changed/stale/mixed predecessor authority,
 different keys, exhausted metadata versions or non-forward descriptors refuse.
 No timestamp-only purpose, Root rotation or Source target enters this operation.
-The public build-plan script's `--forward` switch produces this separate plan
-from actual build records and a forward descriptor, without JSON editing. Its
-signatures and diagnostic floors remain separate from Installation's actual
-retained trust, stopped replacement, subsequent explicit Start and bootstrap
+The canonical `prepare-forward-release-plan` producer emits this separate plan
+from reviewed public claims and a forward descriptor, without JSON editing; the
+former public build-plan script's `--forward` switch retired with the
+transitional Forwarding orchestration (#604 FJD stage D, ADR-0125). Its
+signatures and diagnostic floors remain separate from the platform-led
+lifecycle's actual retained trust, forward program change and bootstrap
 acceptance. Existing partial output or diagnostic history is never reused.
 
 The Linux-amd64 component commands below implement the Source artifact boundary
@@ -553,154 +532,29 @@ manifest pin argument through platform delivery.
 
 ## `ardents-node`
 
-`forwarding inspect-inputs REQUEST` is a separate root-only Linux read-only
-preflight. It retains the original Forwarding request/plan/TLS files and direct
-ancestors, checks the actual systemd255 manager and all five absent Node
-service/socket slots, absent common account and future runtime destinations,
-then joins its native users before public output. It creates no resource or
-Release history and grants no install, Start or runtime permission.
-
-`forwarding install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK
-REQUEST` directly verifies the actual first Node executable and Forwarding
-inventory, obtains the coherent fresh Release pair, and invokes its distinct
-initial creator. It creates only the fixed shared Node account, empty semantic
-directories, protected credentials, immutable generation and stopped unit. Partial
-or uncertain prefixes refuse ordinary retry and remain repair-required. It does
-not start a runtime or initialize State/spend/Hosting; full native transaction and
-installed startup acceptance remain required.
-
-`forwarding inspect-initial-history DISTRIBUTION HISTORY ENVIRONMENT NETWORK
-BINDING` independently opens the completed initial journal and original files,
-retains its own exclusive lease, checks the current fixed principal and obtains
-fresh coherent Release decisions for the same installed targets. It creates no
-history or semantic root and repairs no partial result. The public result
-`forwarding-initial-history-verified` supplies no runtime authority or current
-manager/invocation admission. Original descriptors and the verifier close before
-that result. This is a separate verification step, not an installed Start.
-
-`forwarding start-initial DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
-directly obtains a fresh coherent Release pair and invokes root's separate
-first-start owner. It repeats original initial/native admission, admits at most
-one fixed-unit Start, verifies the actual non-root peer/process/scope and syncs
-the original archive before ACK. The pending marker is published only after
-root's original observers and writers join. A completion-unavailable notice
-continues waiting for original physical completion; it grants no successful
-start or join. Existing/uncertain attempt storage refuses replay or fresh retry.
-The public `forwarding-initial-start-completed` result grants no transferable
-runtime authority. This command does not supply explicit retirement/restart,
-bootstrap acceptance or installed qualification.
-
-`forwarding inspect-start-history HISTORY BINDING` independently reopens only a
-fully published finite invocation/retirement chain, retains its own initial/start/retirement journal
-leases and checks every original file/socket identity and the retained Release
-history directory. It creates or repairs no history. Its public result
-`forwarding-start-history-verified` has `runtime_authority:false` and
-`retirement_proved:false`; it supplies no current process, Stop or restart right.
-
-`forwarding stop HISTORY BINDING` is the separate root latest-invocation stop
-consumer. It requires complete published start history and independently matched
-original program/process/scope/manager custody. It interrupts only the original
-pidfd, requires the original command's joined-domain report, actual kernel join,
-matching native exit and observer closes, then commits independently reopened
-retirement bytes. Release expiry does not prevent shutdown. A two-minute bound
-may print `forwarding-stop-completion-unavailable`; the command keeps waiting
-for original physical completion. Unknown or partial completion retains blocking
-history. The successful result `forwarding-original-stop-completed` has
-`restart_admitted:false`. It refuses a latest invocation already retired or any
-unknown/partial earlier history. An installed run still requires its exact
-bootstrap acceptance.
-
-`forwarding restart DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING` requires
-the entire retained chain and the latest committed original retirement. It
-repeats fresh coherent Release and actual stopped/native protection checks,
-then starts the next independently admitted invocation of the same immutable
-generation. The new intent commits its immediate predecessor's retirement
-hash; no old live owner transfers. Missing/damaged/held/partial histories refuse,
-and at most 64 retained invocations exist without path reuse or automatic reset.
-
-The non-root `forwarding start-installed BINDING` consumer emits a bounded
-`forwarding.start-installed` event after a failed original lifetime has joined.
-Its `trigger`, `first_owner` and `cleanup_owner` are fixed local categories;
-optional `first_failure` uses Node's existing numeric/category projection, with
-no identities, paths or private error text. This event preserves diagnosis only:
-it grants no domain retirement proof or restart right, and failure to write it
-remains part of the original failed result.
-An original rejection before startup completes emits `startup-refused` after
-the acquired Startup, State and Node owners have joined. Its `stage` is one of
-the fixed installation/runtime-input/plan/State/duty/Node/listening categories;
-`first_failure`, when available, uses the same Node projection. `error_shape`
-records bounded wrapper and native-error categories without calling private
-error strings. This diagnostic changes neither refusal nor retirement/restart
-authority; a failed diagnostic write is joined with the original failure.
-All installed Forwarding lifecycle events use one original nonblocking native
-descriptor. The listening event has a one-second write bound, shortened by the
-startup caller's deadline or cancellation. Retirement notices and failed joined
-results instead receive a fresh one-second cleanup allowance after caller
-cancellation; they retain no expired runtime authority. Saturated output and
-broken peers remain errors; no detached writer can retain Startup or private
-plan material after command completion.
-Account, credentials and semantic histories remain retained. Its public result
-is `forwarding-same-generation-restart-completed`, with `runtime_authority:false`;
-runtime State/duty and role authority remain separately owned. This command
-selects no generation replacement, recovery continuation, automatic boot or
-restart, and supplies no installed qualification by itself.
-
-`forwarding replace DISTRIBUTION HISTORY ENVIRONMENT NETWORK REQUEST BINDING`
-selects one strictly forward stopped generation after fresh coherent Release
-authorization and independent complete predecessor retirement. The separate
-`forwarding start-selected DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
-admits its first runtime invocation; later `restart` stays within that selected
-generation. Credentials, semantic roots, provider allowance and the entire
-original history remain bound. Installed qualification requires its own exact
-accepted bootstrap receipt.
-
-`forwarding supervise-transition --stop-after-record N --timeout-ms MS -- ACTION ...`
-retains an original canonical coordinator from native birth through physical
-join. ACTION is exactly `install-initial-stopped`, `replace`, `start-initial`,
-`start-selected`, `restart` or `stop`, with that command's usual arguments.
-MS is1..120000; N is zero for ordinary completion or a positive original journal
-record count, bounded by120 initial,62 replacement,26 start or18 retirement.
-A controlled cut reports `forwarding-original-cut-completed` with
-`recovered:false`, and retains the original interrupted operation's blockers.
-Its separate root-only guarded proof supplies historical physical observations;
-recovery still requires independent fresh admission and operation-specific proof.
-An arbitrary executable, non-root runtime start, unknown action, late Close
-failure or uncertain acknowledgement cannot supply this result.
-
-`forwarding recover DISTRIBUTION HISTORY ENVIRONMENT NETWORK REQUEST JOURNAL`
-uses an existing Release trust root and fresh coherent candidate authorization.
-Its classifier independently admits only an exactly proven original boundary:
-initial generation-file delivery, sealing, selection/unit creation and pre-Reload
-continuation; already stopped initial publication; replacement pre-Reload or
-stopped publication; a proved never-started attempt; or retirement publication
-with the complete original joined-domain/native result. Each continuation has
-its own exact original inventory, native preimages and separate guarded proof.
-The [Forwarding recovery contract](../technical/network-route-node.md)
-owns the finite boundary and refusal matrix; a matching record count or visible
-file alone grants no continuation.
-
-Replacement recovery independently retains the complete retired predecessor,
-original Hosting preparation and existing semantic histories. Fresh permission
-for the same payloads may advance metadata floors; original historical metadata
-and Enrollment inventory remain bound. A proven pre-Reload continuation may
-perform its one separately admitted first Reload after recording its own intent;
-an uncertain or already attempted Reload is never replayed. Generation-file and
-fixed-file continuation use only proven original births or separately recorded
-exclusive new births, never adoption or recreation of unknown resources.
-Ambiguous account/directory provenance, partial or foreign bytes, missing history,
-changed manager, uncertain effects or unknown joins return repair-required with
-blockers preserved. Recovery never rewrites the original journal, replays account
-creation/Start/ACK, initializes semantic roots or invents domain completion.
-Its separate guarded suffix and independently reopened completed readback precede
-removal of the original blocker; the recovery guard is removed last, after all
-required physical closes. The result is `forwarding-recovery-stopped`, with
-`started:false`; any later start requires independent fresh admission.
-Ordinary readers independently validate the original cut, complete suffix,
-original resources and fresh manager/search-path/kernel context. A subsequent
-generation requires the complete v2 replacement before/after snapshot lineage;
-all original non-generator observations remain exact. Missing or v1-only
-reload evidence cannot supply a context refresh. Installed qualification remains
-separately admitted.
+The transitional Forwarding orchestration is retired (#604 FJD stage D,
+ADR-0125). `ardents-node forwarding start-installed BINDING` returns
+`old Forwarding start-installed orchestration is retired; use the platform-led
+Forwarding lifecycle (ardents-next node forwarding --retained-config, platform
+check/unit, systemctl start ardents-forwarding)` before reading the binding or
+attempting any effect. Every other `ardents-node forwarding ...` form
+(`inspect-inputs`, `install-initial-stopped`, `start-initial`, `restart`,
+`start-selected`, `stop`, `replace`, `recover`, `inspect-initial-history`,
+`inspect-start-history`, `supervise-transition`) returns
+`old Forwarding installation transactions are retired; use the platform-led
+Forwarding lifecycle (ardents-next platform check, node forwarding
+--retained-config, forwarding repair-retained)` before reading inputs or
+attempting any effect. The former `installation/forwarding` package, its fixed
+`forwarding start-installed` unit and the OLD-path installed QA profile are
+removed. The platform-led Forwarding lifecycle owns installed delivery: the
+canonical platform unit with the mandatory `platform check` ExecStartPre gate,
+`ardents-next node forwarding --retained-config` and
+`ardents-next forwarding repair-retained` for a dead retained producer. State
+and participation histories are reopened by their own semantic owners, never
+reset. A new candidate and the explicit relaunch/program-change scope require
+their own exact bootstrap receipt and direct Product Owner acceptance before
+any installed execution. The historical transaction contracts remain superseded
+provenance in the [Node owner](../technical/network-route-node.md#proposed-lifecycle-and-effect-admission).
 
 The isolated development consumer `ardents-next node forwarding --config <file>`
 starts one original authenticated Forwarding duty on Linux. Its closed input

@@ -362,7 +362,7 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | `admission/issuerprofile/signing` | Independently pinned imported Ed25519 material, original lease/failure/Close and validated issuer-profile signing within Admission | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
-| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Forwarding, JOIN and Descriptor files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
+| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed JOIN and Descriptor files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
 | State/Hosting/Route physical adapters | Byte verification, durable transactions, counters, sockets and Carrier mechanisms under their declared owners | Mechanisms cannot mint authority, reset floors or copy a second domain decision implementation |
 | Installation mutable-directory birth | `installation/directory` retains one original creation caller and private born inode state, exclusively creates caller-admitted paths and synchronizes same-inode account/mode promotion; checked Identity facts are detached, and Matches serves independent installed inspection | Root Installation selects paths/account, admits Release/journal/lease/effects and projects binding facts. Directory creation grants no adoption/recovery, selection, manager or startup authority; shared trusted-root predicates remain with Root lease/fixed/recovery lifetimes |
 | Installation request declarations and original input | `installation/request` owns canonical bounded declarations, detached copies, native direct root-owned input and opaque original byte/inode/access reobservation; the root Request facade is consumed by actual command and transaction composition | No Release authorization, writer lease, journal, account/root creation, generation selection, manager or startup authority. General trusted-path observations remain with root Installation lease/staging/inspection, independently of request provenance |
@@ -407,10 +407,16 @@ not additional product meanings or another execution ledger in this map.
 
 ### Transitional native consumers
 
-The existing canonical Forwarding, JOIN and Descriptor installed consumers
-still use native deployment mechanisms. Source delivery cut over to the
-platform-led lifecycle (#604 stage 1.6, ADR-0125); its transitional
-orchestration is retired and the platform-led lifecycle owns Source delivery.
+The existing canonical JOIN and Descriptor installed consumers still use native
+deployment mechanisms. Source delivery cut over to the platform-led lifecycle
+(#604 stage 1.6, ADR-0125); its transitional orchestration is retired and the
+platform-led lifecycle owns Source delivery. Forwarding delivery cut over in
+turn (#604 FJD stage D, ADR-0125) after the merged real-platform installed
+evidence; its transitional orchestration, OLD-path installed QA test and
+`forwarding-installed-linux` profile are retired, and `ardents-node forwarding
+...` returns typed before-effect refusals. Forwarding Release signing is
+preserved and bound to `cmd/ardents-next` plus the canonical platform unit
+template.
 The retained mechanisms' current source remains under
 `internal/successor/installation`; that placement grants no new domain
 or mandate to add an Introduction/Issuer installer. Endpoint Startup remains
@@ -418,10 +424,12 @@ transitional separately from Node/Source. Preserve these consumers until their
 necessary guarantees have equivalent owners and evidence; no automatic data
 conversion, adoption, reset or stored-root deletion follows from code retirement.
 
-The canonical new-Route exceptions remain exactly the three files and imports
+The canonical new-Route exceptions remain exactly the two files and imports
 admitted by [R01](route-migration-contract.md#r01-isolate-both-directions):
-`cmd/ardents-node/forwarding_installed_linux.go`, `join_installed_linux.go` and
-`descriptor_installed_linux.go`. They directly construct genuine new owners.
+`cmd/ardents-node/join_installed_linux.go` and `descriptor_installed_linux.go`.
+They directly construct genuine new owners. The former
+`forwarding_installed_linux.go` exception retired with the transitional
+Forwarding orchestration (#604 FJD stage D, ADR-0125).
 No old-runtime wrapper, shared live root, role selector or additional canonical
 consumer is admitted by the platform path in `cmd/ardents-next`.
 
@@ -430,7 +438,7 @@ consumer is admitted by the platform path in `cmd/ardents-next`.
 | Initial pin and immutable role inventory | Enrollment retains independent pin and actual mapped-program provenance; a candidate or copied inventory cannot establish initial trust |
 | Exact coherent program/generation permission | Release retains trust, monotonic floors and original opaque proofs; native composition matches exact role/resources and current verifier. RuntimeAuthorization is a separate platform pre-start result and cannot enter native effects |
 | Read-only request/native preflight | Role-specific bounded input custody plus independently opened fixed-purpose systemd observations. Absence/preflight grants no creation, Start, domain initialization or recovery permission |
-| Initial stopped native deployment | Existing Forwarding/JOIN/Descriptor creators retain their own account/root/file births, exact Release binding, immutable generation, selection/unit and explicit Reload. Semantic roots remain with their future domain owners; pending publication follows actual joins. Source first installation is platform-led (`source prepare-state`, `platform initialize-trust`/`unit`, `systemctl start ardents-source`), not a native stopped creator |
+| Initial stopped native deployment | Existing JOIN/Descriptor creators retain their own account/root/file births, exact Release binding, immutable generation, selection/unit and explicit Reload. Semantic roots remain with their future domain owners; pending publication follows actual joins. Source and Forwarding first installation are platform-led (`source prepare-state` / `platform initialize-trust`/`unit` / `systemctl start ardents-source`; canonical platform unit / `platform check` / `node forwarding --retained-config`), not native stopped creators |
 | Existing native first Start and independent Startup | Root control retains its original manager/process/scope and archival-before-ACK ordering. Non-root Startup independently checks original files, actual invocation/protection and root completion. It grants no State, duty, spend, Store ACK or Service readiness |
 | Original runtime retirement and native stop | Runtime joins its actual Node/Route/Store/State/credential/Guard borrowers before its original challenge-bound report. Root independently joins actual process/scope/manager observers and retains failed/uncertain retirement. A timeout, missing path, ACK or process exit cannot supply domain completion |
 | Existing native restart | Fresh Release and new independent invocation after complete original retirement; all original principals, keys, allowance and semantic floors persist. No late original result binds a successor |

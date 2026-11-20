@@ -63,47 +63,11 @@ else:
 	}
 }
 
-func TestForwardingInitialReleasePreparationRequiresCompleteSafetyHorizon(t *testing.T) {
-	python := "python3"
-	if runtime.GOOS == "windows" {
-		python = "python"
-	}
-	command := exec.CommandContext(t.Context(), python, "-I", "-S", "-c", `
-import runpy, sys
-from datetime import datetime, timedelta, timezone
-tool = runpy.run_path(sys.argv[1])
-assert tool["COMMANDS"] == ("ardents-node", "ardents-control")
-check = tool["check_time_bounds"]
-version = tool["check_release_version"]
-version(1, False)
-for candidate in (2, 3, (1 << 63) - 1):
-    version(candidate, True)
-for candidate, forward in ((0, False), (2, False), (True, False), (1, True), (0, True), (-1, True), (1 << 63, True), (2.0, True)):
-    try:
-        version(candidate, forward)
-    except RuntimeError:
-        pass
-    else:
-        raise AssertionError("foreign Forwarding signing version accepted")
-now = datetime(2026, 10, 27, tzinfo=timezone.utc)
-no_new, terminate = now + timedelta(hours=2), now + timedelta(hours=3)
-for expires in (terminate, now + timedelta(days=7)):
-    check(now, expires, no_new, terminate)
-for expires, stop_new, stop_all in (
-    (now + timedelta(minutes=10), no_new, terminate),
-    (terminate, now, terminate),
-    (terminate, no_new, no_new),
-    (terminate, terminate, no_new),
-    (now + timedelta(days=7, seconds=1), no_new, terminate),
-):
-    try:
-        check(now, expires, stop_new, stop_all)
-    except RuntimeError:
-        pass
-    else:
-        raise AssertionError("initial Forwarding admitted incomplete safety horizon")
-`, filepath.Join(repositoryRoot(t), "scripts", "installation", "prepare-forwarding-release-plan.py"))
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("Forwarding initial release bounds: %v\n%s", err, output)
-	}
-}
+// The former TestForwardingInitialReleasePreparationRequiresCompleteSafetyHorizon
+// retired with prepare-forwarding-release-plan.py (#604 FJD stage D, ADR-0125):
+// the public plan preparer bound the old ardents-node program and the retired
+// Forwarding template. The platform-led signing cutover keeps the canonical
+// prepare-release-plan producer and signer; a new-path Forwarding candidate
+// build and release plan builder is a separate follow-up, exactly as for Source
+// (#604 stage 1.6). The shared candidate builder above remains the build-scope
+// reference for the retained JOIN/Descriptor cohorts.

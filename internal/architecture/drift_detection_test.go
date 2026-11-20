@@ -9,13 +9,16 @@ import (
 	"testing"
 )
 
-// Security-critical installation mechanisms exist as deliberate forwarding and
-// source copies that must stay in sync (triage C1; audit X-4/X-5). This gate
-// turns silent divergence into a failure: each declared pair is compared after
-// erasing the variant role vocabulary, and its normalized line similarity must
-// stay at or above the recorded baseline. Re-sync both sides when editing one;
-// lowering a baseline is a deliberate decision, not a routine fix. Consolidating
-// a pair into one owner remains a separate architecture change (C1 step-2).
+// Security-critical installation mechanisms existed as deliberate forwarding
+// and source copies that had to stay in sync (triage C1; audit X-4/X-5). This
+// gate turns silent divergence into a failure: each declared pair is compared
+// after erasing the variant role vocabulary, and its normalized line similarity
+// must stay at or above the recorded baseline. Re-sync both sides when editing
+// one; lowering a baseline is a deliberate decision, not a routine fix.
+// Consolidating a pair into one owner remains a separate architecture change
+// (C1 step-2). The transitional Source and Forwarding storage twins retired
+// with their orchestrations (ADR-0125, #604); the gate remains for future
+// declared pairs.
 
 type driftPair struct {
 	name      string
@@ -25,17 +28,12 @@ type driftPair struct {
 	minimum   float64
 }
 
-var phaseVocabulary = [][2]string{{"start", ""}, {"retirement", ""}, {"stop", ""}}
-
 const (
-	forwardingDir     = "internal/successor/installation/forwarding/"
 	infrastructureDir = "internal/successor/installation/infrastructure/"
 	systemdDir        = "internal/successor/installation/systemd/"
 )
 
-var driftPairs = []driftPair{
-	{"start/retirement storage", forwardingDir + "start_storage_linux.go", forwardingDir + "retirement_storage_linux.go", phaseVocabulary, 0.83},
-}
+var driftPairs = []driftPair{}
 
 var (
 	driftBlockComment = regexp.MustCompile(`(?s)/\*.*?\*/`)

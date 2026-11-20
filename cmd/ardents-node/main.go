@@ -16,7 +16,7 @@ func main() {
 	defer stop()
 	arguments := os.Args[1:]
 	if err := runCommand(ctx, arguments, os.Stdout); err != nil {
-		if completedExplicitForwardingStop(err) || completedJoinExplicitStop(err) || completedDescriptorExplicitStop(err) {
+		if completedJoinExplicitStop(err) || completedDescriptorExplicitStop(err) {
 			return
 		}
 		fmt.Fprintln(os.Stderr, err)
@@ -25,9 +25,10 @@ func main() {
 }
 
 func runCommand(ctx context.Context, arguments []string, output io.Writer) error {
-	// The retired Source orchestration and the retired legacy Node/issuer/hosting
-	// paths refuse before any optional diagnostic socket is opened. The maintained
-	// installed Forwarding/JOIN/Descriptor roles reach their own admission first.
+	// The retired Source/Forwarding orchestration and the retired legacy
+	// Node/issuer/hosting paths refuse before any optional diagnostic socket is
+	// opened. The maintained installed JOIN/Descriptor roles reach their own
+	// admission first.
 	if len(arguments) > 0 && (arguments[0] == "source" || arguments[0] == "installation" || arguments[0] == "forwarding" || arguments[0] == "join" || arguments[0] == "descriptor" || arguments[0] == "node" || arguments[0] == "issuer" || arguments[0] == "hosting") {
 		return run(ctx, arguments, output)
 	}
@@ -42,7 +43,10 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 		return runJoinInstallation(ctx, arguments[1:], output)
 	}
 	if len(arguments) > 0 && arguments[0] == "forwarding" {
-		return runForwardingInstallation(ctx, arguments[1:], output)
+		if len(arguments) == 3 && arguments[1] == "start-installed" {
+			return errOldForwardingInstalledRetired
+		}
+		return errOldForwardingInstallationRetired
 	}
 	if len(arguments) > 0 && arguments[0] == "source" {
 		if len(arguments) == 3 && arguments[1] == "--config" {
@@ -65,5 +69,5 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if len(arguments) == 3 && arguments[0] == "node" && arguments[1] == "--config" {
 		return errOldNodeConfigRetired
 	}
-	return errors.New("usage: ardents-node forwarding ... | join ... | descriptor ...")
+	return errors.New("usage: ardents-node join ... | descriptor ...")
 }

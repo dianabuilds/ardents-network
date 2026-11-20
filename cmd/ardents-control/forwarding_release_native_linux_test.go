@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/forwarding"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
@@ -27,22 +26,18 @@ import (
 func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 	parent := sourceArtifactNativeParent(t)
 	command, controlBytes := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_CONTROL_PROGRAM")
-	_, nodeBytes := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_NODE_PROGRAM")
-	templateOutput := filepath.Join(parent, "template-output")
-	if out, err := exec.CommandContext(t.Context(), command, "forwarding", "prepare-template", templateOutput).CombinedOutput(); err != nil {
-		t.Fatal("actual fixed template producer", string(out), err)
-	}
-	preparedTemplate, err := os.ReadFile(filepath.Join(templateOutput, "ardents-forwarding.service"))
-	if err != nil || !bytes.Equal(preparedTemplate, []byte(forwarding.Template)) {
-		t.Fatal("closed template differs", err)
+	nextPath, nextBytes := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_NEXT_PROGRAM")
+	preparedTemplate, err := exec.CommandContext(t.Context(), nextPath, "platform", "template").Output()
+	if err != nil || !bytes.Equal(preparedTemplate, []byte(infrastructure.PlatformUnitTemplate)) {
+		t.Fatal("canonical platform template producer", err)
 	}
 	program, template, descriptor := filepath.Join(parent, "node"), filepath.Join(parent, "template"), filepath.Join(parent, "descriptor")
-	for path, raw := range map[string][]byte{program: nodeBytes, template: preparedTemplate} {
+	for path, raw := range map[string][]byte{program: nextBytes, template: preparedTemplate} {
 		if err := os.WriteFile(path, raw, 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	descriptorBytes, err := infrastructure.PrepareForwardingDescriptor("one", 1, nodeBytes, []byte(forwarding.Template))
+	descriptorBytes, err := infrastructure.PrepareForwardingDescriptor("one", 1, nextBytes, []byte(infrastructure.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +124,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 		}
 		return raw
 	}
-	plan := forwardingReleasePlan{Schema: "ardents-forwarding-initial-release-plan-v1", Network: "one-network", Reference: now, Expires: now.Add(time.Hour), Program: program, Descriptor: descriptor, Template: template, ProgramCustom: custom(nodeBytes), GenerationCustom: custom(descriptorBytes)}
+	plan := forwardingReleasePlan{Schema: "ardents-forwarding-initial-release-plan-v1", Network: "one-network", Reference: now, Expires: now.Add(time.Hour), Program: program, Descriptor: descriptor, Template: template, ProgramCustom: custom(nextBytes), GenerationCustom: custom(descriptorBytes)}
 	planPath := filepath.Join(parent, "plan")
 	writePlan := func() {
 		raw, err := json.Marshal(plan)
@@ -240,7 +235,7 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := infrastructure.PrepareForwardingDescriptor("one", 1, controlBytes, []byte(forwarding.Template))
+	badDescriptor, err := infrastructure.PrepareForwardingDescriptor("one", 1, controlBytes, []byte(infrastructure.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,155 +249,11 @@ func TestForwardingPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 	}
 }
 
-// Actual controlled double-build records feed the public preparer and the
-// existing canonical signer. Neither the records nor signatures supply an
-// independent builder, first pin, installed qualification or bootstrap right.
-func TestForwardingPreparationNativeActualBuildRecordsAndPublicPlan(t *testing.T) {
-	parent := sourceArtifactNativeParent(t)
-	command, controlBytes := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_CONTROL_PROGRAM")
-	_, nodeBytes := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_NODE_PROGRAM")
-	buildRoot := os.Getenv("ARDENTS_FORWARDING_BUILD_ROOT")
-	preparer, _ := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_RELEASE_PREPARER")
-	evidence, _ := sourceNativePinnedProgram(t, "ARDENTS_FORWARDING_BUILD_EVIDENCE")
-	read := func(path string) []byte {
-		t.Helper()
-		raw, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return raw
-	}
-	digest := func(raw []byte) string { sum := sha256.Sum256(raw); return hex.EncodeToString(sum[:]) }
-	if !filepath.IsAbs(buildRoot) || digest(read(filepath.Join(buildRoot, "READY"))) != os.Getenv("ARDENTS_FORWARDING_BUILD_READY_SHA256") {
-		t.Fatal("invalid environment: actual controlled build commitment required")
-	}
-	for _, number := range []string{"build-1", "build-2"} {
-		if !bytes.Equal(read(filepath.Join(buildRoot, number, "ardents-node")), nodeBytes) || !bytes.Equal(read(filepath.Join(buildRoot, number, "ardents-control")), controlBytes) {
-			t.Fatal("actual canonical commands differ from controlled build records")
-		}
-	}
-	call := func(args ...string) []byte {
-		t.Helper()
-		raw, err := exec.CommandContext(t.Context(), command, append([]string{"forwarding"}, args...)...).CombinedOutput()
-		if err != nil {
-			t.Fatal("canonical build-bound preparation", args[0], err, string(raw))
-		}
-		return raw
-	}
-	templateRoot, descriptorRoot := filepath.Join(parent, "template"), filepath.Join(parent, "descriptor")
-	call("prepare-template", templateRoot)
-	template := filepath.Join(templateRoot, "ardents-forwarding.service")
-	call("prepare-descriptor", "controlled-forwarding-build", "1", filepath.Join(buildRoot, "build-1", "ardents-node"), template, descriptorRoot)
-	descriptor := filepath.Join(descriptorRoot, "infrastructure-forwarding.json")
-	now := time.Now().UTC().Truncate(time.Second)
-	arguments := func(build, declaration, output string) []string {
-		return []string{"-I", "-S", preparer, "--build-root", build, "--descriptor", declaration, "--template", template, "--network", "controlled-forwarding-build", "--expires", now.Add(time.Hour).Format(time.RFC3339), "--no-new-work-after", now.Add(30 * time.Minute).Format(time.RFC3339), "--terminate-after", now.Add(45 * time.Minute).Format(time.RFC3339), "--qualification-evidence", evidence, "--qualification-evidence-sha256", os.Getenv("ARDENTS_FORWARDING_BUILD_EVIDENCE_SHA256"), "--output", output}
-	}
-	output := filepath.Join(parent, "public-plan")
-	if raw, err := exec.CommandContext(t.Context(), "python3", arguments(buildRoot, descriptor, output)...).CombinedOutput(); err != nil {
-		t.Fatal("actual build-bound public plan", err, string(raw))
-	}
-	planPath := filepath.Join(output, "forwarding-release-plan.json")
-	planBytes := read(planPath)
-	plan, err := decodeForwardingReleasePurpose(planBytes, time.Now().UTC(), forwardingReleaseInitial)
-	if err != nil || plan.Program != filepath.Join(buildRoot, "build-1", "ardents-node") || plan.Descriptor != descriptor || plan.Template != template {
-		t.Fatal("public plan changed exact canonical resources", err)
-	}
-	keyRoot := filepath.Join(parent, "release-keys")
-	call("prepare-release-keys", keyRoot)
-	keyFacts := map[string]os.FileInfo{}
-	for i := 1; i <= 5; i++ {
-		path := filepath.Join(keyRoot, fmt.Sprintf("release-key-%d.pem", i))
-		keyFacts[path], err = os.Lstat(path)
-		if err != nil || keyFacts[path].Mode() != 0600 {
-			t.Fatal("original private key custody", err)
-		}
-	}
-	metadataRoot := filepath.Join(parent, "metadata")
-	call("sign-initial-release", planPath, keyRoot, metadataRoot, filepath.Join(parent, "verification"))
-	root, err := metadata.Root().FromBytes(read(filepath.Join(metadataRoot, "root.json")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	targets, err := metadata.Targets().FromBytes(read(filepath.Join(metadataRoot, "targets.json")))
-	if err != nil || root.VerifyDelegate("targets", targets) != nil || len(targets.Signed.Targets) != 2 {
-		t.Fatal("actual build-bound target signatures", err)
-	}
-	for name, raw := range map[string][]byte{infrastructure.ProgramTarget: nodeBytes, infrastructure.ForwardingGenerationTarget: read(descriptor)} {
-		target := targets.Signed.Targets[name]
-		sum := sha256.Sum256(raw)
-		if target == nil || !bytes.Equal(target.Hashes["sha256"], sum[:]) {
-			t.Fatal("signed target differs from actual resource", name)
-		}
-	}
-	for path, before := range keyFacts {
-		after, err := os.Lstat(path)
-		if err != nil || !os.SameFile(before, after) || before.Mode() != after.Mode() || !before.ModTime().Equal(after.ModTime()) {
-			t.Fatal("private key replaced or changed", err)
-		}
-	}
-	if raw, err := exec.CommandContext(t.Context(), "python3", arguments(buildRoot, descriptor, output)...).CombinedOutput(); err == nil || !bytes.Equal(read(planPath), planBytes) {
-		t.Fatal("existing public output adopted or changed", err, string(raw))
-	}
-	for _, fault := range []string{"source-record", "changed-command", "independent-claim", "changed-sbom", "writable-root"} {
-		t.Run(fault, func(t *testing.T) {
-			copyRoot := filepath.Join(parent, fault+"-build")
-			if err := os.CopyFS(copyRoot, os.DirFS(buildRoot)); err != nil {
-				t.Fatal(err)
-			}
-			name := "build-2.json"
-			switch fault {
-			case "changed-command":
-				name = "build-2/ardents-node"
-			case "independent-claim":
-				name = "READY"
-			case "changed-sbom":
-				name = "sbom.json"
-			}
-			path := filepath.Join(copyRoot, name)
-			raw := read(path)
-			switch fault {
-			case "source-record":
-				raw = bytes.ReplaceAll(raw, []byte("ardents-forwarding-build-execution-v1"), []byte("ardents-source-build-execution-v1"))
-			case "independent-claim":
-				raw = bytes.ReplaceAll(raw, []byte(`"independent_builders":false`), []byte(`"independent_builders":true`))
-			case "writable-root":
-				if err := os.Chmod(copyRoot, 0777); err != nil {
-					t.Fatal(err)
-				}
-			default:
-				raw = append(raw, '\n')
-			}
-			if err := os.WriteFile(path, raw, 0600); err != nil {
-				t.Fatal(err)
-			}
-			refused := filepath.Join(parent, fault+"-output")
-			if result, err := exec.CommandContext(t.Context(), "python3", arguments(copyRoot, descriptor, refused)...).CombinedOutput(); err == nil {
-				t.Fatal("damaged actual build record admitted", string(result))
-			}
-			if _, err := os.Lstat(refused); !os.IsNotExist(err) {
-				t.Fatal("refused public input created output", err)
-			}
-		})
-	}
-	for _, version := range []int64{1, 2} {
-		raw, err := infrastructure.PrepareDescriptor("controlled-forwarding-build", version, nodeBytes, read(template))
-		if version == 2 {
-			raw, err = infrastructure.PrepareForwardingDescriptor("controlled-forwarding-build", version, nodeBytes, read(template))
-		}
-		if err != nil {
-			t.Fatal(err)
-		}
-		foreign := filepath.Join(parent, fmt.Sprintf("foreign-descriptor-%d.json", version))
-		if err := os.WriteFile(foreign, raw, 0600); err != nil {
-			t.Fatal(err)
-		}
-		refused := foreign + "-output"
-		if result, err := exec.CommandContext(t.Context(), "python3", arguments(buildRoot, foreign, refused)...).CombinedOutput(); err == nil {
-			t.Fatal("foreign invocation or noninitial version admitted", string(result))
-		}
-		if _, err := os.Lstat(refused); !os.IsNotExist(err) {
-			t.Fatal("foreign descriptor created output", err)
-		}
-	}
-}
+// The former TestForwardingPreparationNativeActualBuildRecordsAndPublicPlan
+// retired with the transitional Forwarding orchestration (#604 FJD stage D,
+// ADR-0125): its controlled two-execution records bound the old ardents-node
+// program and the retired prepare-forwarding-release-plan.py public preparer.
+// The platform-led Forwarding signing cutover keeps the canonical public
+// prepare-release-plan producer and real signature coverage above; a new-path
+// Forwarding candidate build and release plan builder is a separate follow-up,
+// exactly as for Source (#604 stage 1.6).

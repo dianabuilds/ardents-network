@@ -282,54 +282,17 @@ func TestNodeInspectionNativeSignedAndMissingHistoryRefuse(t *testing.T) {
 	}
 }
 
-func TestNodeInspectionNativeUnstartedParticipation(t *testing.T) {
+// The former InspectUnstartedNode empty-participation wrapper retired with the
+// transitional Forwarding orchestration (#604 FJD stage D, ADR-0125). The live
+// retained inspection still refuses an empty participation directory.
+func TestNodeInspectionNativeEmptyParticipationRefuses(t *testing.T) {
 	cfg, expected := nodeInspectionNativeFixture(t, false)
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	const principal = 61100
-	original, err := os.Lstat(cfg.LocalRoleStateRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
 	if opened, err := state.OpenNodeInspection(ctx, cfg, expected.NodeID, principal, principal); err == nil {
 		_ = opened.Close()
 		t.Fatal("ordinary retained inspection admitted missing participation history")
-	}
-	foreign, err := os.Lstat(cfg.Root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if opened, err := state.InspectUnstartedNode(ctx, cfg, expected.NodeID, principal, principal, foreign); err == nil {
-		_ = opened.Close()
-		t.Fatal("unstarted inspection admitted a different original directory")
-	}
-	inspection, err := state.InspectUnstartedNode(ctx, cfg, expected.NodeID, principal, principal, original)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = inspection.Close() })
-	if got, err := inspection.Check(); err != nil || got != expected {
-		t.Fatal("original empty participation did not retain signed State binding", got, err)
-	}
-	if entries, err := os.ReadDir(cfg.LocalRoleStateRoot); err != nil || len(entries) != 0 {
-		t.Fatal("inspection created participation history", entries, err)
-	}
-	if err := os.WriteFile(filepath.Join(cfg.LocalRoleStateRoot, "unexpected"), nil, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if got, err := inspection.Check(); err == nil || got != (state.NodeHistory{}) {
-		t.Fatal("changed original participation did not deny binding facts", got, err)
-	}
-	if err := inspection.Close(); err == nil {
-		t.Fatal("Close lost the first refusal")
-	}
-	nonempty, err := os.Lstat(cfg.LocalRoleStateRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if opened, err := state.InspectUnstartedNode(ctx, cfg, expected.NodeID, principal, principal, nonempty); err == nil {
-		_ = opened.Close()
-		t.Fatal("unstarted inspection admitted nonempty participation at acquisition")
 	}
 }
 

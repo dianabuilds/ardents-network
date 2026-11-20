@@ -5,9 +5,9 @@
 // Release, process, manager, archival, startup or Service readiness authority.
 // Encode owns the shared closed 160-byte frame grammar used by the root
 // producer and independent startup peer. It conveys detached identities only.
-// The distinct Forwarding exchange requires the complete 161-byte ACK and
-// exposes its one bounded history-opening byte only after native peer checks.
-// Its own fresh physical opener shares no Source Startup or live exchange.
+// The distinct Forwarding exchange/ACK retired with the transitional Forwarding
+// orchestration (#604 FJD stage D, ADR-0125); the shared physical exchange and
+// the JOIN/Descriptor ACKs remain.
 // Installation observes its actual invocation before and after the exchange;
 // root separately authorizes, observes and durably archives the transition.
 // Calls are serialized by that owning operation; cancellation callbacks join

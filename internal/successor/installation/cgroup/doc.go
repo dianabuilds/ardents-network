@@ -6,14 +6,13 @@
 // effect; pending-start PID zero cannot match any worker. The caller joins every
 // retained original descriptor before releasing that failed attempt's lease;
 // it grants no Release, manager, process identity, stop or startup authority.
-// ForwardingScope retains its fixed directory and original events object,
-// observes one original PID with no child scopes, and reports actual original
-// join independently of caller cancellation. Root's post-attempt partial
-// observation and non-root actual-self observation are distinct openers; neither
-// widens the Endpoint/worker scope inventory. Copies share one original
-// purpose-specific observation and physical Close result. Installation owns
-// attempt, process/manager matching, stopping and when to release these
-// observations. CheckSourceRecoveryQuiescent is the separate read-only kernel
+// The transitional Forwarding scope orchestration (ForwardingScope,
+// CheckForwardingQuiescent and the RetainForwarding* openers) is retired
+// (ADR-0125, #604 FJD stage D); the platform-led Forwarding lifecycle owns
+// attempt, process/manager matching and stopping. CheckForwardingRecoveryQuiescent
+// remains the separate read-only per-unit kernel observation for explicit
+// Forwarding participation-producer abandonment, consumed by the retained
+// platform repair. CheckSourceRecoveryQuiescent is the separate read-only kernel
 // observation for explicit Source producer abandonment; the transitional Source
 // scope orchestration is retired (ADR-0125, #604).
 // DescriptorScope separately retains its fixed original kernel scope and events
