@@ -8,7 +8,9 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/exec"
 	"strconv"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -100,9 +102,34 @@ func TestInstalledExecutionEscapeMatrix(t *testing.T) {
 			if !invocation.CompletedCurrent() || operation.Check() == nil {
 				t.Fatal("joined escape operation retained effects or lost exact completion")
 			}
+			requireExecutionEscapeUnitCollected(t, ctx, invocation.activation.Instance.Name)
 			probes.requireControls(t)
 			probes.requireNoContact(t)
 		})
+	}
+}
+
+// Unit collection is observed after the original kernel and proc observers
+// have established physical join. Listing loaded units does not load a name.
+func requireExecutionEscapeUnitCollected(t *testing.T, parent context.Context, unit string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(parent, 3*time.Second)
+	defer cancel()
+	ticker := time.NewTicker(25 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		output, err := exec.CommandContext(ctx, "systemctl", "list-units", "--no-legend", "--no-pager", "--plain", "--all", "--", unit).Output()
+		if err != nil {
+			t.Fatalf("observe collection of %s: %v", unit, err)
+		}
+		if strings.TrimSpace(string(output)) == "" {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("joined worker unit was not collected: %s", unit)
+		case <-ticker.C:
+		}
 	}
 }
 

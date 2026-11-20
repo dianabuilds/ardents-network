@@ -2514,9 +2514,10 @@ The maintained local profiles are:
   original-cgroup cleanup and independent Publisher sibling snapshot progress. It
   does not replace the escape matrix, protected Route admission or full host
   qualification.
-- `text-worker-escape`, the separately pinned installed P6/P7 escape matrix invoked
-  by `make text-worker-escape-check`; it tests hostile worker access attempts under
-  the effective selected unit policy and does not establish whole-host qualification.
+- `execution-escape`, invoked by `make execution-escape-check`, runs the separately
+  pinned installed P6/P7 escape matrix through the current Execution owner on both
+  local surfaces. The fixture records independent host listeners, effective unit
+  policy and joined original cleanup.
 
 Profile, target, directory, build-tag, environment-variable, and test names use
 domain language. Historical wire, persisted, release, and artifact identities

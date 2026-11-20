@@ -215,7 +215,6 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"text-worker-network":                false,
 		"text-worker-recovery":               false,
 		"text-worker-tree":                   false,
-		"text-worker-escape":                 false,
 		"text-worker-lifecycle":              false,
 		"text-worker-policy":                 false,
 	}
