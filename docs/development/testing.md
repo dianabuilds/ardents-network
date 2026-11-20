@@ -4053,13 +4053,17 @@ The `endpoint_pair_native` build tag additionally selects
 platform-led participant (`TestNativeEndpointPlatformLedJourneyParticipant`):
 the participant receives only public signed Network material and actual
 permission requests/responses over a local fixture channel, independently
-provisions and platform-led-launches its own dual-role Endpoint against that
-Network (delivery staging → prepare-history → hosting → platform main unit +
+provisions and platform-led-launches a dual-role Endpoint with its own random
+declared Broker/Connection/Administration principals against that Network
+(delivery staging → prepare-history → hosting → platform main unit +
 canonical socket-activated workers → systemd start without root ACK → F-25
 pre-start transfer → start-installed platform-led → independent fixture
 permission approval → original-process listeners), and exercises the
 publish/read/withdraw/restart fixture commands. No private key, live owner or
-accepting flag crosses managers. Three controllers share that participant:
+accepting flag crosses managers. Both pair controllers assert the participants'
+declared principals and original InvocationIDs are pairwise distinct (two
+Endpoints, each with its own roots and principals). Three controllers share
+that participant:
 
 - `TestNativeEndpointRealHostPublication` proves platform-led publication on ONE
   real dual-role Endpoint installed directly on the admitted host manager (no
@@ -4094,9 +4098,10 @@ accepting flag crosses managers. Three controllers share that participant:
   approved serially by the fixture authority. The exchange is publish → canonical
   Link → byte-equal cross-host read → owning withdrawal → platform-led restart
   continuity on both hosts (new InvocationID, retained immutable selection), with
-  distinct original InvocationIDs and joined cleanup that restores both hosts to
-  their pre-run state (namespaced Ardents artifacts only; a co-hosted website's
-  containers and fixed ports are never touched). Reading immediately after
+  distinct declared principals and original InvocationIDs, and joined cleanup
+  that restores both hosts to their pre-run state (namespaced Ardents artifacts
+  only; a co-hosted website's containers and fixed ports are never touched).
+  Reading immediately after
   publication keeps the exchange inside the publisher's initial route-context
   lifetime; descriptor automatic-refresh timing across a long publish/read gap is
   a stated residual (S2.3). Missing privileges, tools, residual state or an

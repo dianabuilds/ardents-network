@@ -63,9 +63,10 @@ const (
 )
 
 type journeyParticipant struct {
-	base     string
-	original [3]string
-	stop     func()
+	base       string
+	original   [3]string
+	principals [3]string
+	stop       func()
 }
 
 // TestNativeEndpointPlatformLedJourneyParticipant runs inside one guest manager.
@@ -110,7 +111,7 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 	}
 	exercise := func(participant journeyParticipant) {
 		original := participant.original
-		installedPairSend(t, conn, installedPairMessage{Operation: "ready", Original: original})
+		installedPairSend(t, conn, installedPairMessage{Operation: "ready", Original: original, Principals: participant.principals})
 		for {
 			command := installedPairReceive(t, conn)
 			if command.Operation != "restart" && installedStartupIdentity(t) != original {
@@ -394,6 +395,23 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 		}
 		return string(raw)
 	}
+	// Two Endpoints require distinct declared principals as well as distinct
+	// roots/accounts/invocations. The network-facing authorities (Instance,
+	// holder, permission, recipient) are already fresh per participant; replace
+	// the shared local Broker/Connection/Administration identity placeholders
+	// with this participant's own random declarations.
+	var principals [3]string
+	for i, placeholder := range []string{strings.Repeat("03", 32), strings.Repeat("04", 32), strings.Repeat("09", 32)} {
+		var identity [32]byte
+		if _, err := rand.Read(identity[:]); err != nil {
+			t.Fatal(err)
+		}
+		principals[i] = hex.EncodeToString(identity[:])
+		if strings.Count(request, quoted(placeholder)) != 1 {
+			t.Fatal("journey declaration identity fixture changed")
+		}
+		request = strings.Replace(request, quoted(placeholder), quoted(principals[i]), 1)
+	}
 	for old, newPath := range map[string]string{
 		"/installation": filepath.Join(base, "installation"), "/state": plan.Root,
 		"/entry": filepath.Join(base, "entry"), "/roles": filepath.Join(base, "roles"),
@@ -504,7 +522,7 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 	}
 	t.Cleanup(stop)
 	t.Logf("guest platform-led Endpoint reached Service readiness; MainPID=%s InvocationID=%s", original[0], original[1])
-	exercise(journeyParticipant{base: base, original: original, stop: stop})
+	exercise(journeyParticipant{base: base, original: original, principals: principals, stop: stop})
 }
 
 func journeyBuildWorkerBinary(t *testing.T) []byte {
@@ -839,6 +857,7 @@ func TestNativeEndpointPlatformLedJourney(t *testing.T) {
 	// Start and admit one participant at a time so the publication issuance runs
 	// with the host's full resources: the finite blind-token batch deadlines are
 	// product bounds and must not be weakened to absorb concurrent-guest load.
+	var declared [2][3]string
 	startAdmit := func(i int, role string) [3]string {
 		var nonce [32]byte
 		if _, err := rand.Read(nonce[:]); err != nil {
@@ -895,6 +914,7 @@ func TestNativeEndpointPlatformLedJourney(t *testing.T) {
 				if !approved["reader"] || !approved["publisher"] || request.Original[1] == "" {
 					t.Fatal("participant omitted independent admission")
 				}
+				declared[i] = request.Principals
 				return request.Original
 			}
 			if request.Operation != "permission" || (request.Role != "reader" && request.Role != "publisher") || approved[request.Role] {
@@ -915,6 +935,11 @@ func TestNativeEndpointPlatformLedJourney(t *testing.T) {
 	identities[1] = startAdmit(1, "reader")
 	if identities[0][1] == identities[1][1] {
 		t.Fatal("participants share a manager invocation")
+	}
+	for j := range declared[0] {
+		if declared[0][j] == "" || declared[0][j] == declared[1][j] {
+			t.Fatal("participants share a declared principal")
+		}
 	}
 	read := exchange(1, installedPairMessage{Operation: "read", Link: publication.Link})
 	if !bytes.Equal(read.Body, body) {
@@ -1257,6 +1282,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 			installedPairSend(t, peers[i], installedPairMessage{Operation: "network", Network: &network})
 		}
 	}
+	var declared [2][3]string
 	admit := func(i int) [3]string {
 		conn := peers[i]
 		approvalRoot := filepath.Join(t.TempDir(), roles[i])
@@ -1270,6 +1296,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 				if !approved["reader"] || !approved["publisher"] || request.Original[1] == "" {
 					t.Fatal("participant omitted independent admission")
 				}
+				declared[i] = request.Principals
 				return request.Original
 			}
 			if request.Operation != "permission" || (request.Role != "reader" && request.Role != "publisher") || approved[request.Role] {
@@ -1309,6 +1336,11 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 	identities[1] = admit(1)
 	if identities[0][1] == identities[1][1] {
 		t.Fatal("participants share a manager invocation")
+	}
+	for j := range declared[0] {
+		if declared[0][j] == "" || declared[0][j] == declared[1][j] {
+			t.Fatal("participants share a declared principal")
+		}
 	}
 	published := exchange(0, installedPairMessage{Operation: "publish", Body: body})
 	if published.Link == "" {
