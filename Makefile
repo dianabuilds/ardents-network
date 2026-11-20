@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e fixture-network-test format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check issue60-checks mod-check package-e2e package-ubuntu-deb qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e fixture-network-test format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check mod-check package-e2e package-ubuntu-deb qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
 
 define newline
 
@@ -190,7 +190,6 @@ standalone-staticcheck-linux:
 	staticcheck ./scripts/prepare-qualification-release-keys.go
 	staticcheck ./scripts/protected-generation-check.go
 	staticcheck ./scripts/run-fuzz-targets.go
-	staticcheck ./scripts/run-issue60-checks.go
 	staticcheck ./scripts/sign-qualification-release.go
 	staticcheck ./scripts/select-pr-checks.go ./scripts/select-pr-check-registry.go
 
@@ -249,10 +248,6 @@ release-operation-compile-check:
 	go vet ./scripts/sign-qualification-release.go
 	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/prepare-qualification-release-keys" ./scripts/prepare-qualification-release-keys.go
 	go build $(CANONICAL_GO_BUILD_FLAGS) -o "$(INSTALLED_TAG_COMPILE_ROOT)/sign-qualification-release" ./scripts/sign-qualification-release.go
-
-issue60-checks:
-	@test -n "$(ARDENTS_ISSUE60_REPORT)" || (echo "ARDENTS_ISSUE60_REPORT is required"; exit 2)
-	go run ./scripts/run-issue60-checks.go -report "$(ARDENTS_ISSUE60_REPORT)"
 
 check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln deadcode

@@ -1,16 +1,18 @@
 # Ubuntu `.deb` packaging
 
-This is the selected Endpoint package source for Ubuntu `amd64`. It builds
-one directly distributed `.deb`; it does not define an APT repository, a
-package signing key, a maintainer script, a system service, a user service, or
-an updater.
+This builder packages the `ardents` executable and static enrollment files for
+Ubuntu `amd64`. The `make package-e2e` profile checks the installed package
+contents and verifies that a user-owned state marker survives upgrade, removal,
+and purge.
 
-`build.sh` takes three already authenticated release-workflow inputs:
+`make package-ubuntu-deb` runs `build.sh` with these environment variables:
 
 - `ARDENTS_PACKAGE_PROGRAM`: the exact Linux `amd64` `ardents` executable;
 - `ARDENTS_PACKAGE_STATIC_ROOT`: the independently pinned static enrollment
-  directory, containing `SHA256SUMS`, `RELEASE`, the Release root, and metadata
-  but **not** the executable; and
+  directory containing `SHA256SUMS`, `RELEASE`, the Release root, and metadata.
+  Supply the executable separately through `ARDENTS_PACKAGE_PROGRAM`.
+- `ARDENTS_PACKAGE_VERSION`: the Debian package version, also used in the
+  installed enrollment path; and
 - `ARDENTS_PACKAGE_OUTPUT`: an absolute path outside the repository for the
   generated `.deb`.
 
@@ -23,28 +25,13 @@ The package contains only:
 ```
 
 The package manager records those payload files as root-owned. The executable
-and launcher are `0755`; static enrollment files are `0644` and every package
-payload path rejects group/world write. This lets the unprivileged participant
-read authenticated static facts while refusing a user-writable substitute.
+and launcher have mode `0755`. Static enrollment files have mode `0644`.
+Package-owned files and directories disallow group and world writes.
 
-The launcher executes the direct `/usr/lib/ardents/ardents` file so
-`endpoint enroll-installed` can reject a substituted program rather than
-accepting a symlink. The package deliberately contains no XDG, Vault, floor,
-cache, runtime, enrollment-input, or unit path. `dpkg` remove/purge can thus
-remove only package-owned bytes; Authority and Release state are outside the
-package lifecycle.
+The launcher executes `/usr/lib/ardents/ardents` directly. User data, Authority
+and Release state, and service units live outside the package's payload.
 
-The participant still verifies the `.deb` through independently delivered
-package digest/provenance before `dpkg -i`, creates their owner-only package
-enrollment input outside `/usr` naming the exact versioned static directory,
-and explicitly renders/enables a user unit:
-
-```sh
-/usr/bin/ardents endpoint installed-user-unit /absolute/path/to/package-enrollment.json \
-  > ~/.config/systemd/user/ardents-endpoint.service
-```
-
-The installed executable then verifies the pinned static manifest, exact
-package-owned artifact, and Release Decision before Endpoint readiness. A
-package checksum or any future package-store signature is transport/bootstrap
-evidence, not Release authorization.
+Verify a distributed `.deb` against its independently delivered digest before
+running `dpkg -i`. Endpoint startup follows the
+[platform delivery procedure](../../docs/reference/commands.md#ardents), which
+uses `ardents-next` and performs its own artifact and Release checks.
