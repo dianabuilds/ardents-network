@@ -89,13 +89,10 @@ supported full installation receipt yet. Commands remain thin adapters under
 `ardents endpoint`; the owning implementation issue must register any new
 package before adding one.
 
-`internal/endpoint/runtimeplan` owns the existing bounded headless-v2 and Source-v1 local
-declarations and their role/path/permission and public-identity validation.
-The current headless and Source refresh commands read bounded bytes and call these same decoders;
-installation consumes that grammar rather than defining another copy. Decoding
-opens no State or mutable root, contacts no manager and grants no Release,
-holder or runtime authority. Source credential loading, runtime composition and installation transitions
-remain separate owners; this parser extraction does not implement provisioning.
+The retired headless and `refresh-sources` commands refuse at dispatch before
+reading their former declarations or opening State. The platform-led runtime
+owns Source refresh. Its declaration validation and Source credential loading
+remain separate responsibilities.
 
 The isolated new Installation owner separately validates the same canonical
 installation-request and nested declaration identities. It uses the selected
@@ -105,7 +102,7 @@ root separation before byte authentication. Its real `ardents-next installation`
 authentication consumers accept `--request <file>`; they grant only the exact
 fresh program/generation proof pair. They neither load Source credentials nor
 create declared runtime roots, prepare an installed binding or establish
-runtime readiness. The predecessor parser and runtime remain independent.
+runtime readiness.
 
 New `ardents-next installation provision --request` separately composes native
 initial preflight, new Enrollment and fresh Release authorization with its own
@@ -936,7 +933,7 @@ The local runtime has separate Modules and Interfaces:
 | internal/application/broker | Admit and consume one short-lived Local Grant capability for either connection or administration; revoke, drain, and close pending capabilities and active Connection leases; report generic/unqualified. | Capability generation, replay removal, expiry, commitments, admission-load accounting, and grant invalidation. |
 | internal/application/connection | Carry one typed Target-Link request and the fixed protected text exchange under AAI3; refuse reserved Name requests and join terminal/cancellation cleanup. It is not a generic binary Application interface. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
-| internal/endpoint | Compose the selected protected text participant and implement its AAI3 Connection Adapter plus the separate Administration Interface. `RunClosedParticipant` opens authenticated participant owners, delegates local transports to the Application Modules, and joins shutdown. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
+| internal/successor/endpoint | Compose the platform-led protected text participant over the maintained AAI3 and Administration Interfaces, with joined shutdown of its role owners. | Broker consumption, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
 | internal/service/connection | Carry one logical authenticated Service Connection across fresh Route Attachments, preserve directional Application EOF through its existing authenticated Terminal record, and return one terminal outcome. | Exact Instance challenge/proof, continuity MAC, ordered data/acknowledgement offsets, replay handling, recovery deadline, and attachment cleanup. |
 
@@ -1250,29 +1247,12 @@ read. One retained Reader context admits one read through result completion.
 Local network tests exercise this result projection with explicit qualification
 fixtures. The installed profile uses the actual AAI3 owner and launcher, but
 that revised profile still requires execution on its qualified host.
-The protected `RunClosedParticipant` composition opens the accepted closed State,
-Entry sets and the `internal/admission/attempts` durable potential-spend owner.
-The default composition also opens the existing Instance binding and provisions
-both retained text contexts before opening the AAI3 Connection and snapshot
-Administration transports. An explicit v2 `role: reader` selects only the
-Connection context. It requires its own State/Source/time/local-role/Entry/token
-inputs, Broker and Connection principal, Application socket and Reader Permission.
-It rejects nonempty Instance, Publication, Administration or Publisher Permission
-configuration and opens none of those owners, grants or transports. An omitted
-role preserves the existing dual-role contract; any other role refuses before
-runtime effects. The internal composition carries this choice as `ReaderOnly`.
-Both compositions retain the same required worker qualification, State and
-Permission currentness, finite allocation and joined shutdown. No protection
-mode, wire identity or permission authority is added.
-`ardents-next endpoint start-installed` selects this composition under the
-platform unit; missing permissions or mixed legacy fields fail without selecting
-another runtime. The retired `endpoint headless` command refuses at dispatch,
-and the decoder refuses persisted v1 plans under
-[v1 startup retirement](#v1-startup-retirement) before runtime dispatch. The
-protected composition still requires installed command
-and full network lifecycle
-qualification. No caller-supplied Target, permission file or local context
-identifier may bypass these owners.
+The retired `endpoint headless` selector refuses before reading its former
+plan or opening runtime roots. The process regression checks that refusal and
+preserves the plan and State bytes. The platform-led installed command uses
+its own selected declaration and runtime. It preserves the required worker
+qualification, State and Permission currentness, finite allocation and joined
+shutdown. Caller-supplied Targets or context identifiers confer no authority.
 
 Reader-only component checks do not establish the two-Endpoint installed journey.
 The new canonical `ardents-next endpoint start-installed` continuation exposes

@@ -80,19 +80,3 @@ func (config ClosedParticipantConfig) validate() error {
 	}
 	return nil
 }
-
-// RunClosedParticipant qualifies and provisions each selected context before
-// exposing local commands, retaining State and worker cleanup owners. A Reader
-// owns no Instance or Publication; the default also retains those owners.
-func RunClosedParticipant(ctx context.Context, config ClosedParticipantConfig) error {
-	if ctx == nil {
-		return errors.New("text participant context unavailable")
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if err := config.validate(); err != nil {
-		return err
-	}
-	return runClosedParticipant(ctx, config)
-}

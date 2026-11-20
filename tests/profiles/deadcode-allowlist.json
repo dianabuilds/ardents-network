@@ -34,16 +34,6 @@
     },
     {
       "symbols": [
-        "internal/endpoint/runtimeplan.DecodeHeadless",
-        "internal/endpoint/runtimeplan.validateTextFields"
-      ],
-      "classification": "retired headless Endpoint plan awaiting runtimeplan retirement",
-      "rationale": "The former ardents endpoint headless commands refused before input effects after the #617 S3.5 cutover. The runtimeplan behavior tests still reach the plan decoder and validator.",
-      "owner": "Product Owner and Codex; Endpoint",
-      "retirement": "Remove each exact symbol when the gated Endpoint cohort removal retires its owning Module or former headless participant/declaration source, or when a separately selected genuine successor production caller reaches it. Lost production reachability elsewhere requires repair, not another allowance."
-    },
-    {
-      "symbols": [
         "internal/network/closedprofile.Prepare",
         "internal/network/closedprofile.Sign"
       ],
@@ -51,17 +41,6 @@
       "rationale": "cmd/ardents-control/closed_profile.go cut over to the successor closed-profile owner (#493), removing the last main-package production caller of the old internal/network/closedprofile Prepare/Sign on both platforms. The old closed-profile owner remains reached only by the Linux old network/state and admission cluster (itself production-dead, allowlisted) and by its own behavior tests on both platforms, so these symbols are production-dead but not test-only dead. The owning legacy Module remains until the gated cohort removal (#564/#565).",
       "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
       "retirement": "Remove each exact symbol when the gated legacy cohort removal retires the old closed-profile owner, or when a selected genuine production caller reaches it."
-    },
-    {
-      "symbols": [
-        "internal/endpoint/runtimeplan.DecodeSource",
-        "internal/endpoint/runtimeplan.decodeAuthorities",
-        "internal/endpoint/runtimeplan.decodeFixedHex"
-      ],
-      "classification": "retired legacy source-plan grammar orphaned by the #493 refresh-sources retirement",
-      "rationale": "The standalone ardents refresh-sources command was the sole production caller of the legacy source-plan decoder and its authority/fixed-hex helpers. Its retirement (#493) leaves them production-unreachable on both platforms; the legacy runtimeplan test inventory still exercises them, so no fully-dead test allowance is added. The successor State owner never samples process resources and the platform-led runtime owns automatic Source refresh.",
-      "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
-      "retirement": "Remove each exact symbol when the gated legacy Endpoint cohort removal retires the runtimeplan Module, or when a selected genuine production caller reaches it again. Both platform test analyses must remain unchanged."
     },
     {
       "symbols": [
@@ -716,18 +695,16 @@
       },
       {
         "symbols": [
-          "internal/endpoint.RunClosedParticipant",
           "internal/endpoint.dutyContext.openAdministration",
           "internal/endpoint.endpoint.runInterfaces",
           "internal/endpoint.newParticipantObservation",
           "internal/endpoint.participantObservation.background",
           "internal/endpoint.participantObservation.emit",
           "internal/endpoint.participantObservation.pendingFailure",
-          "internal/endpoint.participantObservation.wait",
-          "internal/endpoint.runClosedParticipant"
+          "internal/endpoint.participantObservation.wait"
         ],
         "classification": "retired headless participant runtime (linux-only production-dead)",
-        "rationale": "These exact internal/endpoint headless participant functions lost their cmd/ardents headless consumer in the per-user Portable cutover (#617 S3.5) and are production-dead on linux-amd64. Windows cmd/ardents-qualification still reaches them, so they are not Windows-dead and are recorded here rather than in the common allowlist. The owning legacy Modules remain with behavior tests until the gated cohort removal (#564/#565).",
+        "rationale": "These Linux headless participant functions retain legacy behavior tests. The command stopped starting the old participant in the Portable cutover (#617 S3.5).",
         "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
         "retirement": "Remove each exact symbol when the gated legacy cohort removal retires its owning Module, or when a selected genuine production caller reaches it on linux-amd64."
       },

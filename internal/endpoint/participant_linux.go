@@ -15,10 +15,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
 
-func runClosedParticipant(ctx context.Context, config ClosedParticipantConfig) error {
-	return withParticipant(ctx, config, func(owner *endpoint) error { return owner.runInterfaces(ctx, config) })
-}
-
 func withParticipant(ctx context.Context, config ClosedParticipantConfig, run func(*endpoint) error) error {
 	return useParticipant(ctx, config, true, run)
 }
