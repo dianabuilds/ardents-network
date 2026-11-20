@@ -106,6 +106,31 @@ the retained JOIN/Descriptor cohorts; a new-path Forwarding candidate build and
 release plan builder is a separate follow-up, exactly as for Source (#604
 stage 1.6).
 
+JOIN platform-led retained evidence (#604 FJD stages A+B+C, ADR-0125) is
+separately selected. `TestNativeJoinRetainedLifecycle`
+(`node_process_native`) proves the fresh `--config` first launch creating the
+participation and receiving histories, joined cancellation with producer
+removal, retained `--retained-config` relaunch, and SIGKILL crash refusal (the
+next retained opening refuses before listening). Its lifecycle legs are
+single-unit: one JOIN pair member owns its own participation root and sole
+node-duty fence; genuine paired JOIN byte transfer remains
+`TestNativeJoinDuplexAndReopenTCP` in `join-process-linux`.
+`TestNativeJoinPlatformInstalledLifecycle` under the `join_platform_native`
+build tag is the installed gate against the real platform systemd manager: the
+mandatory `platform check` ExecStartPre of `ardents-join.service`,
+`ardents-next node join --retained-config` as the shared fixed `ardents-node`
+main process, stop/relaunch/forward program change/rollback refusal, and crash
+recovery through the bounded `ardents-next node join repair-retained` against
+real failed-unit manager facts and per-unit cgroup quiescence. The repair
+abandons only the sole unresolved node-duty participation fence after the
+original read-only manager, stopped-policy and empty-scope proofs; spend
+obligations are never repairable, no root is initialized and no runtime starts.
+These are fixture-authority component/acceptance evidence with one operator,
+not independent participants, whole-host privacy qualification or bootstrap
+acceptance. The transitional JOIN orchestration and old preparation remain
+until the separately authorized stage D retirement; this evidence neither
+exercises nor retires them.
+
 `TestForwardingBuildRecordsAndSourceManifestRules` exercises the shared public
 build producer's exact source byte/mode grammar, duplicate refusal and actual
 compiled module projection without supplying a build or authority fixture. The
