@@ -2567,8 +2567,9 @@ AREP-v3 bundles, with LATEST/BY_DIGEST checks and separate State/profile
 acceptance/refusal. An invalid external second key fails and physically joins
 partial startup while the first Source remains separate; changed public PEM
 retires the original process without hot reload; restored paths do not revive
-it, and a separate new invocation readmits the restored original credential.
-Original process Wait and genuine State-root reopen follow retirement. Isolated
+it, and a separate new invocation refuses before listening while the failed
+completion's serving producer remains retained. Original process Wait and
+genuine State-root reopen follow retirement. Isolated
 external CA/leaf/State/Admission fixtures share one controller and prove no
 independent families, operational ceremony, installed startup, power loss or
 privacy qualification. The complete original Source cancellation/protection/

@@ -272,38 +272,54 @@ func TestNativeSourcePreparedCohort(t *testing.T) {
 		t.Fatal("restored path revived the retired lifetime")
 	}
 	processes[0] = launchNativeSource(t, binary, filepath.Join(output, "source-1-serve.json"))
-	var readmitted map[string]string
-	if err := json.NewDecoder(processes[0].stdout).Decode(&readmitted); err != nil || readmitted["phase"] != "listening" {
-		t.Fatal("separate new Source admission", readmitted, err)
+	// A failed original completion retains the serving producer. Restored input
+	// bytes cannot revive the retired lifetime, and a separate new invocation
+	// refuses before listening; only bounded recovery removes that producer.
+	refusal := processes[0].command.Wait()
+	processes[0].joined = true
+	if e := processes[0].stdout.Close(); e != nil && !errors.Is(e, os.ErrClosed) {
+		t.Fatal(e)
 	}
-	if response, e := planOwner.Fetch(t.Context(), 0, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(config.NetworkID)}); e != nil || response.Status != "ok" {
-		t.Fatal("separate readmitted original credential", e)
+	var refusedExit *exec.ExitError
+	if !errors.As(refusal, &refusedExit) || refusedExit.ExitCode() != 1 {
+		t.Fatal("separate new Source adopted a retained producer", refusal, processes[0].diagnostic.String())
+	}
+	var refusalTerminal struct {
+		Phase, Outcome string
+		First          string `json:"first_owner"`
+	}
+	if raw := bytes.TrimSpace([]byte(processes[0].diagnostic.String())); json.Unmarshal(raw, &refusalTerminal) != nil || refusalTerminal.Phase != "refused" || refusalTerminal.First != "state" {
+		t.Fatal("retained producer refusal cause", processes[0].diagnostic.String())
+	}
+	if response, e := planOwner.Fetch(t.Context(), 0, source.Message{Operation: "latest", NetworkDigest: source.NetworkDigest(config.NetworkID)}); e == nil && response.Status == "ok" {
+		t.Fatal("refused invocation left an accepting path")
 	}
 	if e := owner.Close(); e != nil {
 		t.Fatal(e)
 	}
-	for i, p := range processes {
-		if e := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGTERM", p.unit).Run(); e != nil {
-			t.Fatal(e)
-		}
-		err := p.command.Wait()
-		p.joined = true
-		// Cmd.Wait owns closing its StdoutPipe after original process join.
-		// A second Close observes that completed ownership, not a runtime error.
-		if e := p.stdout.Close(); e != nil && !errors.Is(e, os.ErrClosed) {
-			t.Fatal(e)
-		}
-		var exited *exec.ExitError
-		if !errors.As(err, &exited) || exited.ExitCode() != 130 {
-			t.Fatal("original physical Wait", i, err, p.diagnostic.String())
-		}
+	second := processes[1]
+	if e := exec.Command("systemctl", "kill", "--kill-whom=main", "--signal=SIGTERM", second.unit).Run(); e != nil {
+		t.Fatal(e)
+	}
+	waitErr := second.command.Wait()
+	second.joined = true
+	// Cmd.Wait owns closing its StdoutPipe after original process join.
+	// A second Close observes that completed ownership, not a runtime error.
+	if e := second.stdout.Close(); e != nil && !errors.Is(e, os.ErrClosed) {
+		t.Fatal(e)
+	}
+	var exited *exec.ExitError
+	if !errors.As(waitErr, &exited) || exited.ExitCode() != 130 {
+		t.Fatal("original physical Wait", waitErr, second.diagnostic.String())
+	}
+	for i := range networks {
 		reopened, e := networkStateConfig(&networks[i])
 		if e != nil {
 			t.Fatal(e)
 		}
 		next, e := state.Open(reopened)
 		if e != nil {
-			t.Fatal("original State lease retained after join", e)
+			t.Fatal("original State lease retained after join", i, e)
 		}
 		if e = next.Close(); e != nil {
 			t.Fatal(e)
