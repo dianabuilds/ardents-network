@@ -12,9 +12,15 @@
 // attempt, process/manager matching and stopping. CheckForwardingRecoveryQuiescent
 // remains the separate read-only per-unit kernel observation for explicit
 // Forwarding participation-producer abandonment, consumed by the retained
-// platform repair. CheckSourceRecoveryQuiescent is the separate read-only kernel
-// observation for explicit Source producer abandonment; the transitional Source
-// scope orchestration is retired (ADR-0125, #604).
+// platform repair. The transitional JOIN scope orchestration (JoinScope,
+// CheckJoinQuiescent and the RetainJoin* openers) is retired (ADR-0125, #604
+// FJD stage D); the platform-led JOIN lifecycle owns attempt, process/manager
+// matching and stopping. CheckJoinRecoveryQuiescent remains the separate
+// read-only per-unit kernel observation for explicit JOIN participation-producer
+// abandonment, consumed by the retained platform repair.
+// CheckSourceRecoveryQuiescent is the separate read-only kernel observation for
+// explicit Source producer abandonment; the transitional Source scope
+// orchestration is retired (ADR-0125, #604).
 // DescriptorScope separately retains its fixed original kernel scope and events
 // through root post-start or independent actual-self observations. Only literal
 // fixed-purpose openers reach the shared physical mechanism; ordinary files,

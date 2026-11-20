@@ -484,7 +484,6 @@ network-signing-check:
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/network/state -run '^TestSourceInspectionNative' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/systemd -run '^Test(NodeSlotsNative|SourceReferenceLibraryCloseCause)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/request -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/join -run '^TestJoin(Inputs|Preflight|Births)Native' -count=1 -v -timeout=3m
 
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNative(CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption|TemplateAndRequestLeaveRuntimeAbsent)$$' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/descriptor -run '^TestDescriptor(Inputs|Births)Native' -count=1 -v -timeout=3m
@@ -495,7 +494,6 @@ network-signing-compile-check: export CGO_ENABLED := 0
 network-signing-compile-check:
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags descriptor_installed_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-installed.test" ./internal/successor/installation/descriptor
-	go test -c -tags join_installed_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-installed.test" ./internal/successor/installation/join
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-signing.test" ./cmd/ardents-next
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-control-preparation.test" ./cmd/ardents-control
@@ -503,15 +501,7 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/successor/installation/infrastructure
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/successor/network/state
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/successor/installation/request
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/join-inputs.test" ./internal/successor/installation/join
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/successor/reachability
-
-.PHONY: join-installed-check
-JOIN_INSTALLED_TEST ?= TestJoinInstalledNativeProtectedStartupAndPair
-join-installed-check:
-	@test "$(HEADLESS_GOOS)" = linux || (echo "join-installed-check requires the selected isolated Ubuntu/systemd stand"; exit 2)
-	@case "$(JOIN_INSTALLED_TEST)" in TestJoinInstalledNativeProtectedStartupAndPair|TestJoinInstalledNativeForwardReplacement|TestJoinInstalledNativeReplacementRecovery) ;; *) echo 'select one registered JOIN installed scenario on a fresh stand' >&2; exit 2;; esac
-	go test -race -trimpath -buildvcs=false -tags join_installed_native ./internal/successor/installation/join -run '^$(JOIN_INSTALLED_TEST)$$' -count=1 -v -timeout=3m
 
 .PHONY: descriptor-initial-stopped-check
 descriptor-initial-stopped-check:

@@ -15,6 +15,8 @@ var (
 	errOldSourceInstallationRetired     = errors.New("old Source installation transactions are retired; use the platform-led Source lifecycle (ardents-next platform check, source serve-retained, source repair-retained)")
 	errOldForwardingInstalledRetired    = errors.New("old Forwarding start-installed orchestration is retired; use the platform-led Forwarding lifecycle (ardents-next node forwarding --retained-config, platform check/unit, systemctl start ardents-forwarding)")
 	errOldForwardingInstallationRetired = errors.New("old Forwarding installation transactions are retired; use the platform-led Forwarding lifecycle (ardents-next platform check, node forwarding --retained-config, forwarding repair-retained)")
+	errOldJoinInstalledRetired          = errors.New("old JOIN start-installed orchestration is retired; use the platform-led JOIN lifecycle (ardents-next node join --retained-config, platform check/unit, systemctl start ardents-join)")
+	errOldJoinInstallationRetired       = errors.New("old JOIN installation transactions are retired; use the platform-led JOIN lifecycle (ardents-next platform check, node join --retained-config, join repair-retained)")
 	errOldNodeConfigRetired             = errors.New("old Node --config runtime is retired; use ardents-next node <role> --retained-config")
 	errOldNodeDutyRetired               = errors.New("old Node duty reservation is retired")
 	errOldIssuerRetired                 = errors.New("old Node issuer initialize/serve is retired; use ardents-next node-identity/issuance/node issuer")

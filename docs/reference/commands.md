@@ -1196,34 +1196,17 @@ pin, authenticates a Release, or admits installed JOIN execution. Source and
 Forwarding inventories cannot be substituted. Other platforms refuse before
 input/output effects.
 
-### JOIN fixed request and template preparation
-
-```text
-ardents-control join prepare-template OUTPUT
-ardents-control join prepare-request --installation-root PATH --state-root PATH --participation-root PATH --spend-root PATH --hosting-root PATH --credential-directory PATH --plan PATH --certificate PATH --private-key PATH --clock PATH --output OUTPUT
-ardents-control join prepare-plan --request REQUEST --output OUTPUT --network-id HEX --node-id HEX --profile-authority HEX --authority HEX --threshold N --work-tx N --work-rx N --termination-tx N --termination-rx N --retirement-wait-ms N
-```
-
-All eleven request options are mandatory and unique. The request producer opens
-none of the declared runtime or credential paths; it exclusively writes
-`OUTPUT/join-request.json` after checking canonical independent paths, every
-retained journal sibling and the complete bounded completion-socket namespace.
-The output directory cannot overlap any of those paths. The template producer
-exclusively writes `OUTPUT/ardents-join.service`, the fixed unsigned release
-resource. Its declared future JOIN entrypoint is not a startup permission or
-proof that an installed Node supports it. Both commands retain the existing
-root-controlled native output/Close rules and public-only digest receipts.
-
-Plan preparation reads only the original protected public request. All twelve
-plan options are explicit and unique except `--authority`, which may be repeated
-for up to sixteen distinct State keys; threshold must fit that set. The output
-must be the request's exact future `join-plan.json` location, outside all other
-inputs, roots and retained journals. The producer binds declared installed
-credential names, retains original request/output custody through Close, and
-opens no private key, clock or semantic root. Its explicit traffic declarations
-and notice interval grant neither an allowance nor a completed join or runtime
-permission. Native installation and all live owners independently admit those
-facts before effects.
+`join prepare-hosting`, `join prepare-state`, `join prepare-template`,
+`join prepare-request` and `join prepare-plan` are retired (#604 FJD stage D,
+ADR-0125). Each returns its typed before-effect refusal (`old JOIN
+prepare-hosting is retired; use the platform-led JOIN lifecycle`, and the
+corresponding prepare-state/prepare-template/prepare-request/prepare-plan
+forms) before reading any input or attempting any effect.
+`ardents-next platform template` emits the exact canonical platform unit
+template (`infrastructure.PlatformUnitTemplate`); the platform-led JOIN
+lifecycle owns Hosting/State preparation and installed delivery. The generic
+network authority preparation below (profile/token-keys/epoch/node-*) and the
+descriptor/inventory preparation remain available.
 
 ### JOIN fixed Release preparation
 
@@ -1235,10 +1218,12 @@ The separate JOIN Release commands are:
 - `join prepare-release-plan` and `prepare-forward-release-plan`: the same nine
   explicit public flags `--network`, `--reference`, `--expires`, `--program`,
   `--descriptor`, `--template`, `--program-custom`, `--generation-custom`,
-  `--output`. They bind the canonical static Linux-amd64 Node executable,
-  exact JOIN descriptor and fixed template to reviewed common public claims.
-  Initial version is 1; forward version is strictly above 1. Output is the fresh
-  `join-release-plan.json`, without opening private keys or runtime roots.
+  `--output`. After the #604 FJD stage D signing cutover they bind the
+  canonical static Linux-amd64 `ardents-next` executable, exact JOIN descriptor
+  and the canonical platform unit template (`infrastructure.PlatformUnitTemplate`)
+  to reviewed common public claims. Initial version is 1; forward version is
+  strictly above 1. Output is the fresh `join-release-plan.json`, without
+  opening private keys or runtime roots.
 - `join sign-initial-release PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION`
   and `join sign-forward-release PLAN PRIVATE_KEYS FRESH_METADATA
   FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION`: fixed Node/JOIN targets only.
@@ -1247,83 +1232,49 @@ The separate JOIN Release commands are:
   strictly raises Targets/Snapshot/Timestamp versions. It cannot supply
   predecessor runtime retirement or permission for an installed replacement.
 
-`python3 -I -S scripts/installation/prepare-join-release-plan.py` prepares the
-same public plan from two actual matching canonical Node/Control build records,
-exact JOIN resources and separately pinned prestart evidence. Its flags match
-the existing Forwarding public tool, including the distinct `--forward` purpose.
-The shared builder's original evidence schemas remain unchanged; the JOIN plan
-and signed targets are separate. Two controlled executions do not establish
-independent builders. Signed metadata and independently produced inventory must
-be copied unchanged; separate initial trust and exact bootstrap acceptance
-remain required before isolated installed execution. No JOIN runtime is started
-by any of these operations. Original private input/output users join before
-acknowledgement; partial outputs remain retained and cannot be adopted.
+The former `prepare-join-release-plan.py` public build-plan tool and its
+build-records native control retired with the transitional JOIN orchestration
+(#604 FJD stage D, ADR-0125); a new-path JOIN candidate build and release plan
+builder is a separate follow-up. The shared `build-forwarding-candidate.py`
+records remain the build-scope reference for the retained JOIN/Descriptor
+cohorts. Signed metadata and independently produced inventory must be copied
+unchanged; separate initial trust and exact bootstrap acceptance remain required
+before isolated installed execution. No JOIN runtime is started by any of these
+operations. Original private input/output users join before acknowledgement;
+partial outputs remain retained and cannot be adopted.
 
+### Retired JOIN installation and runtime commands
 
-Canonical Node's separate `ardents-node join inspect-inputs REQUEST` performs
-only root-controlled original JOIN delivery and fresh read-only initial namespace
-observation. It joins original input/manager users before reporting
-`join-inputs-preflight-completed` with `installed:false`. It creates no account,
-unit, runtime root or history and supplies no later installation/Start permission.
+The transitional JOIN orchestration is retired (#604 FJD stage D, ADR-0125).
+`ardents-node join start-installed BINDING` returns `old JOIN start-installed
+orchestration is retired; use the platform-led JOIN lifecycle (ardents-next
+node join --retained-config, platform check/unit, systemctl start ardents-join)`
+before reading the binding or attempting any effect. Every other
+`ardents-node join ...` form (`inspect-inputs`, `install-initial-stopped`,
+`inspect-initial-history`, `start-initial`, `restart`, `stop`, `replace`,
+`recover`, `supervise-transition`) returns `old JOIN installation transactions
+are retired; use the platform-led JOIN lifecycle (ardents-next platform check,
+node join --retained-config, join repair-retained)` before reading inputs or
+attempting any effect. The former `installation/join` package, its fixed
+`join start-installed` unit and the OLD-path installed QA profile are removed.
+The platform-led JOIN lifecycle owns installed delivery: the canonical platform
+unit with the mandatory `platform check` ExecStartPre gate, `ardents-next node
+join --retained-config` and `ardents-next join repair-retained` for a dead
+retained producer. State and participation histories are reopened by their own
+semantic owners, never reset. A new candidate and the explicit
+relaunch/program-change scope require their own exact bootstrap receipt and
+direct Product Owner acceptance before any installed execution. The historical
+transaction contracts remain superseded provenance in the
+[Node owner](../technical/network-route-node.md#proposed-lifecycle-and-effect-admission).
 
-### JOIN initial stopped installation
-
-- `ardents-node join install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT NETWORK REQUEST` verifies the initial running program/pin and coherent Release pair, creates one protected stopped JOIN generation, and joins all original users before publishing completion. It never starts the role or initializes semantic histories.
-- `ardents-node join inspect-initial-history DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING` independently verifies complete original native history and fresh permission for the same payloads. It closes original readers/verifier before output; no startup right is returned.
-
-An existing account, root or retained partial journal refuses fresh initial
-installation. Preserve that prefix and its error evidence; these commands supply
-no adoption, rollback or recovery operation.
-
-`ardents-control join prepare-hosting --binding BINDING --provider PROVIDER
---start RFC3339 --end RFC3339 --unit UNIT --quantity QUANTITY --directions DIRECTIONS
---interfaces NAMES --initial-used-bytes FLOOR --low-watermark-bytes FLOOR`
-prepares the single known-born allowance after completed stopped JOIN installation.
-It requires root and all explicit flags; repeated or partial preparation refuses.
-This operation starts no Node and supplies no runtime authority.
-
-### JOIN protected first start
-
-`ardents-node join start-initial DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
-performs one explicitly admitted root first Start, original archival/ACK and joined
-observer publication. It refuses retained/partial first-start storage. The fixed
-unit alone invokes `ardents-node join start-installed BINDING` under the actual
-non-root Node account; independent Startup completes before genuine State/duty,
-Guard, Admission/Hosting and receiving JOIN construction.
-
-The separate canonical `ardents-control join` offline producers are
-`prepare-state-key`, `prepare-node-key`, `prepare-node-record`, `sign-node-record`,
-`prepare-node-certificate`, `prepare-epoch`, `sign-epoch`, `prepare-token-keys`,
-`prepare-profile`, `sign-profile` and `prepare-state PLAN BUNDLE SIGNED_PROFILE`.
-Each retains fixed-purpose input/output custody; signatures and accepted State
-are distinct from installed duty or bootstrap acceptance. State preparation runs
-only as the actual numeric system Node principal, on its known-born empty root.
-No first-start command grants retirement or replacement permission.
-`ardents-node join stop HISTORY BINDING` independently retains the original
-invocation and accepts its fresh completion report only after original domain
-and Startup users join. Clean original native exit and independent retirement
-readback precede publication. Missing reports and uncertain completion refuse.
-`ardents-node join restart DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
-requires every preceding committed retirement and fresh Release/native admission.
-It preserves the same generation, account, credentials and semantic histories;
-no automatic restart or missing-history initialization is admitted.
-
-### Explicit JOIN generation replacement
-
-`ardents-node join replace DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST`
-selects one strictly forward stopped JOIN generation after confirmed original
-domain/native retirement. It retains the account, keys and semantic histories;
-partial or unknown completion refuses. `join restart` separately admits the next
-protected invocation. Replacement grants no automatic restart or recovery.
-
-JOIN's explicit stopped recovery uses `ardents-node join recover DISTRIBUTION
-HISTORY ENVIRONMENT NETWORK BINDING REQUEST`. It requires a separately completed
-original cut at the complete stopped replacement boundary and never starts or
-reloads a unit. The bounded original controller is `ardents-node join
-supervise-transition --stop-after-record 62 --timeout-ms N -- replace
-DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING REQUEST` (N at most120000).
-Its result reports original physical cut completion only, never recovered or
-runtime-ready state. Unsupported/uncertain prefixes remain blocked.
+The separate canonical `ardents-control join` offline producers remain
+`prepare-state-key`, `prepare-node-key`, `prepare-node-record`,
+`sign-node-record`, `prepare-node-certificate`, `prepare-epoch`, `sign-epoch`,
+`prepare-token-keys`, `prepare-profile` and `sign-profile`. Each retains
+fixed-purpose input/output custody; signatures and accepted State are distinct
+from installed duty or bootstrap acceptance. The former `prepare-state`
+producer retired with the transitional JOIN orchestration; the platform-led
+JOIN lifecycle owns State preparation.
 
 ## Descriptor-role public preparation
 

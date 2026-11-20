@@ -90,32 +90,17 @@
       "timeout": "3m"
     },
     {
-      "id": "join-installed-linux",
-      "state": "active",
-      "make_target": "join-installed-check",
-      "surface": "canonical protected first JOIN start, independent actual non-root Startup and genuine signed-State/Stock/TLS paired duplex bytes, credit, EOF and terminal completion; one selected journey per fresh stand: original Stop/same-generation restart or explicit forward resource/program replacement; no full Route, Service or recovery qualification",
-      "prerequisites": [
-        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2/ext4 private manager and fixed all-five Node slot policy",
-        "exact retained source, matching two-build canonical Node/Control and SHA-256-pinned native race driver; genuine signed input and Custody/Allocation/issuance/Stock producers",
-        "completed exact bootstrap scope under current explicit Product Owner acceptance/delegation, actual protected numeric Node account and unchanged process limits",
-        "original manager/proc/cgroup/mount/root and input custody, shared development lock, bounded logs and cleanup only after actual original joins"
-      ],
-      "invalid_environment": "missing selected native/artifact/authority prerequisite fails; no passing skip",
-      "timeout": "3m"
-    },
-    {
       "id": "network-signing-linux",
       "state": "active",
       "make_target": "network-signing-check",
-      "surface": "genuine purpose-bound initial Record/Epoch/profile signing, public-only Source trust and infrastructure artifact preparation, independent transcripts to new State, retained Source and distinct signed Node State/zero-producer participation semantic-history inspections, plus distinct Receiving-spend and provider-period Hosting read-only inspections with original numeric principal/lease/copy/close, cancellation/held-user late-failure and missing/changed-history refusal without repair or creation, original protected input and finite durable output custody/refusals/process cuts; no operational trust ceremony or installed qualification; distinct fixed JOIN initial/forward Release keys, plans and signatures with actual shared canonical-command build records, original key/input/output custody and exact JOIN candidate predecessor verification; no installed JOIN or cross-role authority; separate read-only five-Node-slot observation with no unit/job object vocabulary, original descriptor return and causal cancellation/held-observer joined Close; separate original JOIN request/plan/Ed25519 delivery and protected file/ancestor custody, live root-clock access and canonical read-only JOIN initial preflight, no installation or runtime execution; distinct genuine canonical initial stopped JOIN installation and independently reopened original history, one fixed JOIN manager reload, no Start or runtime duty; original physical directory/private-file birth and joined failure controls; distinct offline Descriptor-role artifact/inventory/request/plan/template preparation using original root/ext4 public input/output custody and a separately SHA-256-pinned canonical Control, with no native installation or runtime authority",
+      "surface": "genuine purpose-bound initial Record/Epoch/profile signing, public-only Source trust and infrastructure artifact preparation, independent transcripts to new State, retained Source and distinct signed Node State/zero-producer participation semantic-history inspections, plus distinct Receiving-spend and provider-period Hosting read-only inspections with original numeric principal/lease/copy/close, cancellation/held-user late-failure and missing/changed-history refusal without repair or creation, original protected input and finite durable output custody/refusals/process cuts; no operational trust ceremony or installed qualification; distinct fixed JOIN initial/forward Release keys, plans and signatures bound to the static ardents-next program and canonical platform unit template, original key/input/output custody and exact JOIN candidate predecessor verification; no installed JOIN or cross-role authority; separate read-only five-Node-slot observation with no unit/job object vocabulary, original descriptor return and causal cancellation/held-observer joined Close; original protected delivery-file/ancestor custody and live root-clock observation without installation or runtime execution; distinct offline Descriptor-role artifact/inventory/request/plan/template preparation using original root/ext4 public input/output custody and a separately SHA-256-pinned canonical Control, with no native installation or runtime authority",
       "prerequisites": [
         "Linux root and root-owned non-group/other-writable direct ancestors; private 0700 TMPDIR on actual ext4; Descriptor public preparation additionally requires ARDENTS_DESCRIPTOR_CONTROL_PROGRAM and ARDENTS_DESCRIPTOR_CONTROL_PROGRAM_SHA256 for the same-source compiled Control; Descriptor original-input preflight requires ARDENTS_DESCRIPTOR_PREFLIGHT_NATIVE=1, independently pinned ARDENTS_DESCRIPTOR_NODE_PROGRAM and ARDENTS_DESCRIPTOR_NODE_PROGRAM_SHA256, actual systemd255, absent five Node slots/account and protected ext4",
         "selected Go1.27.4, immutable populated dependencies and race-capable C compiler",
         "same external development lock, complete source/artifact/config and actual mount pins; isolated test authorities only",
         "explicit separate root preparation marker /etc/ardents-forwarding-preparation-native-stand for the retained read-only Node-slot manager observation, and source offline expiry marker where those controls are selected",
-        "JOIN actual-build public-plan controls additionally require a completed original two-execution build scope, independently pinned READY/canonical Node/Control/public-preparer/prestart-evidence bytes and unchanged root-controlled actual build records; build outputs are read-only during preparation",
-        "JOIN manager/preflight and read-only Node-slot controls additionally require actual systemd255 on the original system bus, all five fixed Node slots and shared ardents-node account absent; no runtime execution",
-        "JOIN initial stopped selection requires a fresh private Ubuntu24.04/systemd255/ext4 root with all five Node slots/account absent, marker /etc/ardents-join-initial-native-stand, independently pinned actual matching two-build Node/Control records and public plan/evidence; TLS/runtime declarations remain prestart fixtures, never signed State or duty authority"
+        "JOIN Release signing additionally requires independently pinned ARDENTS_JOIN_CONTROL_PROGRAM/_SHA256 and static ARDENTS_JOIN_NEXT_PROGRAM/_SHA256; the canonical platform unit template is produced by ardents-next platform template",
+        "original delivery-file custody additionally requires the root preparation marker /etc/ardents-join-preparation-native-stand containing ardents-join-preparation-native-v1 plus LF and actual protected ext4; read-only Node-slot controls additionally require actual systemd255 on the original system bus, all five fixed Node slots and shared ardents-node account absent; no runtime execution"
       ],
       "invalid_environment": "missing native custody/durability prerequisite fails; no skips",
       "timeout": "3m"
@@ -194,7 +179,7 @@
       "id": "join-process-linux",
       "state": "active",
       "make_target": "node-join-check",
-      "surface": "original native Node JOIN command, genuine signed State/Stock/Admission/Hosting and paired TCP/TLS; original failure, join and reopen; bounded development only",
+      "surface": "platform-led JOIN runtime command, genuine signed State/Stock/Admission/Hosting and paired TCP/TLS; original failure, join and reopen; bounded development only",
       "prerequisites": [
         "Linux cgroup-v2 actual systemd manager and root driver outside sole original Node leaf",
         "exact JOIN CPU/memory/PID/FD/Go envelope and genuine proc/cgroup/PSI observations",
