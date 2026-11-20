@@ -24,7 +24,7 @@ const modulePath = "github.com/dianabuilds/ardents-network"
 // nativeTags are the selected native test/executable build tags. Including them
 // lets the analysis see native-tagged test coverage; deadcode only compiles the
 // program, it does not execute the native stands.
-const nativeTags = "network_signing_native,text_worker_installed,installation_native,node_process_native,descriptor_installed_native,join_installed_native,startup_manager_native,network_preparation_native,endpoint_platform_native,endpoint_launch_native,endpoint_pair_native,source_installed_native,forwarding_platform_native,heapdumpcapture"
+const nativeTags = "network_signing_native,text_worker_installed,installation_native,node_process_native,descriptor_installed_native,join_installed_native,startup_manager_native,network_preparation_native,endpoint_platform_native,endpoint_launch_native,endpoint_pair_native,source_installed_native,forwarding_platform_native,join_platform_native,heapdumpcapture"
 
 type reportPackage struct {
 	Path  string
