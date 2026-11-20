@@ -9,24 +9,12 @@ import (
 	"syscall"
 )
 
-// These intentional kernel links are opened only after the separate fixed
-// opener has matched its process. Observe brackets them with the retained proc
-// identity/start clock. Sharing this physical mechanism supplies no role policy.
-func (pin *Invocation) retainNamespaces(ctx context.Context) error {
-	pin.namespaces = make(map[string]*os.File)
-	for _, name := range []string{"mnt", "pid", "cgroup", "uts", "user", "net", "ipc"} {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		file, err := os.OpenFile(filepath.Join("/proc", strconv.FormatUint(uint64(pin.pid), 10), "ns", name), os.O_RDONLY|syscall.O_CLOEXEC, 0)
-		if err != nil {
-			return err
-		}
-		pin.namespaces[name] = file
-	}
-	return pin.observeNamespaces(ctx)
-}
-
+// The transitional role invocations opened these intentional kernel links after
+// matching their process; that opener retired with the last installed role
+// (#604 FJD stage D, ADR-0125). Observe still brackets any retained namespace
+// descriptors with the retained proc identity/start clock for the Endpoint and
+// Source recovery Invocation lifetimes. Sharing this physical mechanism supplies
+// no role policy.
 func (pin *Invocation) observeNamespaces(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err

@@ -5,8 +5,7 @@
 // lease, account, journal, generation selection, manager or startup authority.
 // ReadOwned refuses unsupported hosts. Native custody keeps existing Linux
 // ownership, canonical-path, inode, access, byte and cancellation checks.
-// Files separately retains a root caller's bounded original delivery files and
-// trusted ancestor descriptors through joined Close. It decodes no declaration;
-// JOIN's real input consumer retains all role/path/TLS matching policy. Its live
-// clock-file access observation grants no time acceptance or persisted floor.
+// The separate Linux Files delivery-file/ancestor lifetime retired with the
+// transitional role inputs/preflight orchestration (#604 FJD stage D, ADR-0125);
+// the platform-led lifecycles and Endpoint request facade own delivery custody.
 package request

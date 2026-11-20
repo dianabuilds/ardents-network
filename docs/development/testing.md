@@ -165,8 +165,8 @@ post-repair launch opens the Store cleanly and listens, and the committed
 publication still resolves byte-exact. These are fixture-authority
 component/acceptance evidence with one operator, not independent participants,
 whole-host privacy qualification or bootstrap acceptance. The transitional
-Descriptor orchestration is not exercised or retired by these gates; that
-retirement is the separately authorized stage D.
+Descriptor orchestration retired in stage D (#604 FJD stage D, ADR-0125); these
+retained repair/platform gates are independent of the removed package.
 
 The transitional JOIN orchestration native qualification is retired (#604
 FJD stage D, ADR-0125). The former `join-installed-linux` profile, its
@@ -186,10 +186,42 @@ workloads in `join-process-linux`, and the separately selected
 (`node_process_native`). JOIN Release signing is preserved and cut over to the
 static `ardents-next` program and `infrastructure.PlatformUnitTemplate`; the
 retained signing controls below remain required. The shared candidate builder
-`build-forwarding-candidate.py` remains the build-scope reference for the
-retained JOIN/Descriptor cohorts; a new-path JOIN candidate build and release
-plan builder is a separate follow-up, exactly as for Source (#604 stage 1.6)
-and Forwarding (#604 FJD stage D).
+`build-forwarding-candidate.py` remains the build-scope reference; after the
+Descriptor retirement its `ardents-node` cohort has no remaining role consumer,
+and a new-path candidate build and release plan builder is a separate follow-up,
+exactly as for Source (#604 stage 1.6), Forwarding and JOIN (#604 FJD stage D).
+
+The transitional Descriptor orchestration native qualification is retired (#604
+FJD stage D, ADR-0125). The former `descriptor-initial-stopped-linux`,
+`descriptor-startup-linux`, `descriptor-publish-linux`, `descriptor-restart-linux`,
+`descriptor-replacement-linux`, `descriptor-recovery-physical-linux` and
+`descriptor-recovery-linux` profiles and their `make` lanes, the
+`installation/descriptor` package, the OLD-path installed QA tests, the
+`descriptor prepare-template`, `prepare-request`, `prepare-plan`,
+`prepare-hosting` and `prepare-state` producers, the
+`prepare-descriptor-release-plan.py` public plan preparer and the
+`TestDescriptorPreparationNativeActualBuildRecordsAndPublicPlan` build-records
+control are removed. `ardents-node descriptor ...` returns typed before-effect
+refusals. The platform-led Descriptor lifecycle replaces them: the canonical
+platform unit with its mandatory `platform check` ExecStartPre gate,
+`ardents-next node descriptor --retained-config` and `ardents-next descriptor
+repair-retained`. Retained native evidence is
+`TestNativeDescriptorPlatformInstalledLifecycle` under the
+`descriptor_platform_native` build tag (the installed gate), the
+`TestNativeDescriptor*` workloads in `descriptor-process-linux`
+(`node-descriptor-check`), and the separately selected
+`TestNativeDescriptorRetainedLifecycle` retained-lifecycle evidence
+(`node_process_native`). Descriptor Release signing is preserved and cut over to
+the static `ardents-next` program and `infrastructure.PlatformUnitTemplate`; the
+retained `descriptor-forward-release-linux` signing lane and the
+`descriptor-store-inspection-linux` read-only Store mechanism lane remain
+required. The read-only retained-root inspection mechanisms
+(`state.OpenNodeInspection`, `duty.OpenNodeInspection`,
+`reachability.OpenStoreInspection`, `spending.OpenInspection`,
+`hosting.OpenInspection`) lose their last production consumer and are retained as
+reviewed mechanism code with genuine native coverage (deadcode allowlist); their
+shared custody/floor/reader helpers remain production-live through
+SourceInspection, the live Store and the bounded repair.
 
 `TestForwardingBuildRecordsAndSourceManifestRules` exercises the shared public
 build producer's exact source byte/mode grammar, duplicate refusal and actual
@@ -2052,8 +2084,9 @@ separately required.
 Windows and Linux production builds, then for their test executables, with the
 selected native build tags enabled (`network_signing_native`,
 `text_worker_installed`, `installation_native`, `node_process_native`,
-`descriptor_installed_native`, `startup_manager_native`,
-`network_preparation_native`, `heapdumpcapture`). The analyzer only compiles the
+`startup_manager_native`, `network_preparation_native`,
+`forwarding_platform_native`, `join_platform_native`,
+`descriptor_platform_native`, `heapdumpcapture`). The analyzer only compiles the
 program; it does not execute the native stands. Including the native tags lets
 native-tagged test coverage count, so a function exercised only by a native test
 is not reported as unreachable.
@@ -3668,123 +3701,49 @@ recycled case name refuse allocation. Every allocation still runs the same fresh
 batched equivalent-path/native reference scan, including disposed path names.
 Retained cases still require all original proofs and current native observations.
 
-### Descriptor-role offline public preparation
+### Descriptor-role offline public preparation (retained signing cutover)
 
-The checked `network_signing_native` profile selects the three
-`TestDescriptorPreparationNative` controls in canonical Control through
-`make network-signing-check`. Supply the same-source compiled command and SHA-256
-as `ARDENTS_DESCRIPTOR_CONTROL_PROGRAM` and
-`ARDENTS_DESCRIPTOR_CONTROL_PROGRAM_SHA256`, run as root with protected original
-ancestors and private0700 TMPDIR on actual ext4, under the shared own-job lock.
-These controls execute the actual command for independent artifact/inventory and
-request bytes, fixed template and public plan, wrong-role/extra/substituted input
-refusal, cancellation/late physical Close, partial-output adoption refusal and
-fresh positive counterparts. Runtime declarations remain absent. Ordinary
-Infrastructure/Enrollment/Installation tests check exact canonical bytes and
-the independent fifth Store root plus the complete Unix completion namespace.
-This is offline byte/custody evidence, not Release signing, first-pin, actual
-manager/Start, Store ACK or installed qualification. Missing prerequisites fail.
+The transitional Descriptor offline request/plan/template preparation, the
+root-only `ardents-node descriptor inspect-inputs` preflight, the
+`TestDescriptorInputsNative`/`TestDescriptorBirthsNative` controls and the
+`ARDENTS_DESCRIPTOR_PREFLIGHT_NATIVE`/`ARDENTS_DESCRIPTOR_NODE_PROGRAM` pins
+retired with the transitional orchestration (#604 FJD stage D, ADR-0125).
+`descriptor prepare-template`/`prepare-request`/`prepare-plan`/`prepare-hosting`/
+`prepare-state` return typed before-effect refusals; `ardents-next platform
+template` emits the canonical platform unit template.
 
+The checked `network_signing_native` profile retains the two
+`TestDescriptorPreparationNative` artifact/inventory controls in canonical
+Control through `make network-signing-check`
+(`CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption`). Supply the
+same-source compiled command and SHA-256 as `ARDENTS_DESCRIPTOR_CONTROL_PROGRAM`
+and `ARDENTS_DESCRIPTOR_CONTROL_PROGRAM_SHA256`, run as root with protected
+original ancestors and private0700 TMPDIR on actual ext4, under the shared
+own-job lock. These controls execute the actual command for independent
+artifact/inventory bytes, wrong-role/extra/substituted input refusal,
+cancellation/late physical Close, partial-output adoption refusal and fresh
+positive counterparts. This is offline byte/custody evidence, not Release
+signing, first-pin, actual manager/Start, Store ACK or installed qualification.
+Missing prerequisites fail.
 
-### Descriptor original-input preflight
+### Descriptor initial/forward Release signing (retained)
 
-The canonical root-only `ardents-node descriptor inspect-inputs REQUEST` opens
-its own original protected request/plan/TLS delivery and live root-clock ancestors.
-It independently checks all five fixed Node slots, unit search namespaces,
-account absence and every future resource, including the fifth Store root.
-No semantic history, Release verifier, account, unit or diagnostic socket is
-created. Every observation and reader joins before its public non-installed
-result; an original failure is retained across copied handles and restoration.
-The shared request.Files and NodeSlots mechanisms supply no role permission.
+`descriptor-forward-release-linux` runs `make descriptor-forward-release-check`
+(`TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors`)
+on the root/ext4 canonical artifact stand. It pins
+`ARDENTS_DESCRIPTOR_CONTROL_PROGRAM`/`_SHA256` and the static
+`ARDENTS_DESCRIPTOR_NEXT_PROGRAM`/`_SHA256`; the canonical platform unit template
+is produced by `ardents-next platform template` and byte-compared to
+`infrastructure.PlatformUnitTemplate`. The initial/forward chain proves unchanged
+initial Root bytes, strictly raised Targets/Snapshot/Timestamp floors, exact
+purpose and wrong-predecessor/key refusal. The initial Release-purpose/key-custody
+control (`TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody`)
+remains in the same signing profile; the former
+`TestDescriptorPreparationNativeActualBuildRecordsAndPublicPlan` build-records
+control and `prepare-descriptor-release-plan.py` retired with the orchestration.
+These are offline signing controls, not installed or independent-builder claims.
 
-The existing `network-signing-linux` profile includes three
-`TestDescriptorInputsNative` controls in `installation/descriptor`: original
-mutation/live clock, actual manager/independently pinned real Node command and
-retained Store refusal, and private-input/plan binding. Set
-`ARDENTS_DESCRIPTOR_PREFLIGHT_NATIVE=1`, `ARDENTS_DESCRIPTOR_NODE_PROGRAM` and
-its independently approved `ARDENTS_DESCRIPTOR_NODE_PROGRAM_SHA256`. These
-require root, protected ext4 and the actual systemd255 manager with all five
-Node slots and the shared Node account absent. Missing prerequisites fail.
-Generated TLS/public inputs prove original custody only, never Network duty,
-Release/bootstrap acceptance, installed startup or Store ACK.
-
-
-### Descriptor initial stopped native profile
-
-`make descriptor-initial-stopped-check` selects fixed initial Release-purpose/key
-custody controls, genuine existing two-execution build-record public preparation,
-and actual canonical initial stopped installation/independent history on a fresh
-Ubuntu24.04/systemd255/cgroup-v2/ext4 stand. `descriptor-initial-stopped-linux` in
-`tests/profiles/profiles.json` owns exact pinned-command/preparer/evidence and marker
-prerequisites. All five slots and account must initially be absent. TLS/public
-runtime declarations are physical prestart fixtures, never signed duty, Store ACK
-or installed runtime evidence. Five semantic roots must remain empty. Foreign pin,
-wrong purpose/resource/build record, repeated installation and native identity
-substitution refuse. Original failures/logs/source identities are retained. No
-Start or recovery campaign is selected by this profile.
-
-### Descriptor first-start native profile
-
-`descriptor-startup-linux` runs `make descriptor-startup-check` on a fresh
-isolated initial Descriptor stand using the initial profile's actual two-build
-artifact/preparer/evidence pins, plus `ARDENTS_DESCRIPTOR_BOOTSTRAP_DIRECTORY`
-for original public commitments and delegated exact-scope acceptance. Missing
-prerequisites fail. The unchanged three-minute case checks wrong pin, original
-Store birth substitution, duplicate Hosting initialization, non-root offline State,
-direct-process startup refusal, actual protected Start/non-root Startup, genuine
-semantic owners/listener and duplicate first Start refusal. It claims no Store
-ACK, publication/lookup, restart or replacement qualification. Failure evidence
-and original prefixes remain; native stop and original users precede cleanup.
-Queued-observation race controls check that late effects cannot reuse an earlier
-round and that Close retains held observations and late physical failures. Fixed
-manager vocabulary vectors reject foreign units/jobs/managers and unadmitted jobs.
-
-The separate `descriptor-publish-linux` profile (`make descriptor-publish-check`)
-uses a fresh installed stand with the same native prerequisites as startup. Its
-SHA-pinned `descriptor_installed_native` test binary first creates a genuine
-Custody Permission authority, then retains actual finite Allocation, issuance
-and Stock owners while canonical Control prepares signed State and the installed
-Node starts. Each operation durably presents a separate Control right before
-network bytes. Thirteen actual receiving operations verify signed publication and
-Store ACK, exact independent-Target lookup, invalid signature and foreign-profile
-and future-interval refusal, absent Target without fallback, same-revision conflict, higher-revision
-repair and stale-revision refusal. Results retain actual TLS and lower-channel
-termination. A separate genuine Service Credential authorizes the signed public
-fixture; it supplies no live Publisher, registered Introduction slot, Source
-prefix or Service readiness. Native teardown is not accepted Installation Stop,
-retirement, restart or replacement. Missing prerequisites fail, never skip.
-
-The same profile checks that every operation appends exactly one irreversible
-receiving spend without altering prior spends. After actual native test teardown,
-a separately launched original-UID reader requires the complete existing Store
-inventory and independently reopens the retained revision2. Exact proof bytes,
-native objects and complete Store contents must remain unchanged through Close;
-that readback grants no Installation retirement or restart permission.
-
-The four nonmutating refusals have independent rights/channels and run in pairs
-concurrently; all join before the next dependent Store operation. The three-minute
-native orchestration bound includes real Custody/issuance and setup. Every role
-channel retains its unchanged absolute limit (at most 30 seconds), with no token
-refund, guard change or additional protocol retry.
-
-
-`descriptor-restart-linux` (`make descriptor-restart-check`) uses a fresh native
-stand and the exact artifact/input prerequisites of the Descriptor publish
-profile. Five actual Control operations publish/read revision2, then independently
-read it after explicit Stop and retained restart, refuse revision1 and confirm
-revision2 again. The client retains its genuine original Stock and independent
-State; all physical channels join before server retirement. Each operation
-appends one irreversible spend to the same original journal. Native controls
-refuse restart before original retirement and repeated Stop, independently read
-completed history, preserve original Store bytes/Node key/account and require a
-new actual manager InvocationID. Both server invocations end through their own
-original report/native join. A separately launched original-UID existing-only
-Store readback follows. Pure storage controls refuse missing roots/marker/lock/
-records or uncertain staging without initialization or repair; typed frame and
-transcript controls reject partial, replayed or foreign completion. The unchanged
-three-minute orchestration includes real preparation; wire/runtime bounds remain
-unchanged. This profile supplies no forward replacement or recovery evidence.
-
+### Descriptor read-only Store inspection mechanism (retained)
 
 `make descriptor-store-inspection-check` selects root/ext4 mechanism controls
 with `ARDENTS_DESCRIPTOR_STORE_INSPECTION_NATIVE=1`: signed existing history and
@@ -3792,47 +3751,29 @@ exclusive read-only lease, missing/uncertain history with no repair, same-byte
 inode substitution/restoration, held reader/Close and actual late descriptor
 failure. The checked three-minute profile fails missing prerequisites and grants
 no installed/runtime/Release or original-retirement evidence. Its compilation is
-included in `network-signing-compile-check`.
+included in `network-signing-compile-check`. After the orchestration retirement
+this lane exercises `reachability.OpenStoreInspection` as reviewed mechanism code
+(deadcode allowlist); the parallel `state`/`duty`/`spending`/`hosting` inspection
+mechanisms keep their own genuine native coverage.
 
+### Descriptor retired installed orchestration lanes
 
-`make descriptor-replacement-check` selects exactly one of
-`TestDescriptorInstalledNativeReplacementPrerequisite`,
-`TestDescriptorInstalledNativeResourceReplacement` and
-`TestDescriptorInstalledNativeProgramReplacement`. Each has its unchanged
-three-minute bound and independently verifies the preceding committed original
-retirement through the canonical owner. The prerequisite performs two genuine
-Store operations and one joined Stop. Its fresh signed proof inputs use the
-existing 600-second maximum within their Credential/profile, leaving the
-separate five-minute Stop/restart fixture unchanged. No active operation,
-protocol limit or retained floor is renewed. The separate original profile
-retains permission-repeat controls; replacement holders each obtain a genuine
-new permission against the same retained quota without repeating that unchanged
-component control on every stage. Resource follows the installed baseline;
-program follows the accepted resource generation. Each new private holder uses
-genuine Custody/issuer issuance against the original retained quota/results;
-volatile unused tokens are neither reconstructed nor refunded. The actual
-receiving Store proof, floors, roots/account/keys and spends remain original.
-A new exact prepared artifact/input scope precedes every replacement and Start;
-no active protocol deadline is reset between stages.
-
-
-`make descriptor-recovery-physical-check` runs seven finite actual native
-process/channel/history controls under `network_signing_native`: ordinary
-progress, frozen cut, cancellation frozen or with outstanding ACK, held proof
-Close and independent original-reader/late-Close custody. Explicit root/ext4
-preparation marker and root-owned executable are mandatory. Detached declarations
-isolate physical mechanisms and cannot qualify installed recovery, Release,
-manager policy or original domain completion. Actual canonical stopped recovery
-must separately exercise genuine signed installed artifacts and original history.
-
-
-`make descriptor-recovery-check` separately exercises the actual complete stopped
-replacement cut, independent recovery admission and fresh protected invocation
-on exact signed installed artifacts. Original pending restart/replace, wrong
-history, absent/copied original-cut inode, partial recovery and replay must
-refuse while preserving original prefix and Store bytes. A subsequent actual
-program replacement checks recovered lineage with a new immutable program.
-Neither profile accepts earlier-prefix continuation or unknown domain completion.
+The former `descriptor-initial-stopped-linux`, `descriptor-startup-linux`,
+`descriptor-publish-linux`, `descriptor-restart-linux`,
+`descriptor-replacement-linux`, `descriptor-recovery-physical-linux` and
+`descriptor-recovery-linux` profiles and their `make` lanes retired with the
+transitional Descriptor orchestration (#604 FJD stage D, ADR-0125). The
+platform-led Descriptor lifecycle owns installed delivery; its retained native
+evidence is `TestNativeDescriptorPlatformInstalledLifecycle`
+(`descriptor_platform_native` installed gate), the `TestNativeDescriptor*`
+workloads in `descriptor-process-linux` (`make node-descriptor-check`,
+`node_process_native`, SHA-pinned `ARDENTS_NODE_NATIVE_COMMAND`/`_TEST`/
+`_RESOURCE_TEST`) and the separately selected
+`TestNativeDescriptorRetainedLifecycle` retained-lifecycle/SIGKILL evidence. The
+readiness oracle is the authenticated listener (`listening` event / TCP dial),
+never publication readiness; genuine publish/lookup is separate workload
+evidence. These component/acceptance gates are not independent participants,
+whole-host privacy qualification or bootstrap acceptance.
 
 
 Installed participant composition tests live with `internal/successor/endpoint`.

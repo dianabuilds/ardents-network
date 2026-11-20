@@ -6,8 +6,8 @@
 // Encode owns the shared closed 160-byte frame grammar used by the root
 // producer and independent startup peer. It conveys detached identities only.
 // The distinct Forwarding exchange/ACK retired with the transitional Forwarding
-// orchestration (#604 FJD stage D, ADR-0125); the shared physical exchange and
-// the Descriptor ACK remain.
+// orchestration (#604 FJD stage D, ADR-0125); the shared physical exchange
+// remains for the transitional Endpoint startup.
 // Installation observes its actual invocation before and after the exchange;
 // root separately authorizes, observes and durably archives the transition.
 // Calls are serialized by that owning operation; cancellation callbacks join
@@ -17,9 +17,12 @@
 // ADR-0125); the platform-led JOIN lifecycle owns completion through the
 // canonical retained runtime. No live foreign exchange or root journal is
 // borrowed.
-// DescriptorExchange owns its separate original root-peer exchange and complete
-// 161-byte ACK. The canonical first-start consumer accepts only initial history;
-// no sibling exchange, copied ACK or detached identity supplies Startup rights.
+// The distinct Descriptor exchange/ACK (DescriptorExchange/ConnectDescriptor/
+// EncodeDescriptorACK) retired with the transitional Descriptor orchestration
+// (#604 FJD stage D, ADR-0125); the platform-led Descriptor lifecycle owns
+// completion through the canonical retained runtime. The shared physical
+// exchange and 160-byte frame remain for the transitional Endpoint startup; no
+// live foreign exchange or root journal is borrowed.
 package completion
 
 import "errors"
