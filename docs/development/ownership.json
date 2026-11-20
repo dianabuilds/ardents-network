@@ -138,14 +138,6 @@
         {"package": "internal/endpoint", "test_pattern": "^Test.*(?:Qualification|Stream)"},
         {"package": "internal/node", "test_pattern": "^Test(?:Closed|Hosting)"}
       ]
-    },
-    {
-      "path_prefix": "tests/qualification/net32-idle-one-host/",
-      "race": true,
-      "owners": [
-        {"package": "cmd/ardents-qualification", "test_pattern": "^Test(?:Qualification|ResourceVerdict|Issue60|WholeOwner|FailedNET14V)"},
-        {"package": "internal/endpoint", "test_pattern": "^Test.*(?:Qualification|Stream)"}
-      ]
     }
   ],
     "qualification_lanes": [
@@ -223,11 +215,6 @@
       "id": "service-credential-response-linux",
       "owner": "network",
       "path": "tests/qualification/service-credential-response-linux"
-    },
-    {
-      "id": "net32-idle-one-host",
-      "owner": "network",
-      "path": "tests/qualification/net32-idle-one-host"
     },
     {
       "id": "stream-network-two-host",
