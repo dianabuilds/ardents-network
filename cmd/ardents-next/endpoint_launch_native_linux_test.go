@@ -184,6 +184,16 @@ type platformLedLaunchStand struct {
 
 func provisionPlatformLedLaunch(t *testing.T) *platformLedLaunchStand {
 	t.Helper()
+	return provisionPlatformLedLaunchRefresh(t, 1000)
+}
+
+// provisionPlatformLedLaunchRefresh provisions the platform-led launch stand with
+// an explicit State refresh cadence. The launch qualification uses the fast 1000 ms
+// fixture cadence; the NET-32 idle measurement uses a normal idle cadence (60000 ms)
+// so it observes ordinary refresh traffic, not the fast-test fixture's aggressive
+// polling (#652).
+func provisionPlatformLedLaunchRefresh(t *testing.T, refreshMS int) *platformLedLaunchStand {
+	t.Helper()
 	ctx := t.Context()
 	stand := &platformLedLaunchStand{binary: compiledCommand(t)}
 	stand.base = filepath.Join("/var/lib/ardents", fmt.Sprintf("ep-launch-%d-%d", os.Getpid(), time.Now().UnixNano()))
@@ -353,6 +363,10 @@ func provisionPlatformLedLaunch(t *testing.T) *platformLedLaunchStand {
 		request = strings.Replace(request, strings.Repeat("08", 32), hex.EncodeToString(sourcePins[i][:]), 1)
 	}
 	request = strings.Replace(request, "\"clock_observed_at\":\"2030-01-02T03:04:05Z\"", "\"clock_observed_at\":"+quoted(time.Now().UTC().Format(time.RFC3339)), 1)
+	if strings.Count(request, `"refresh_interval_ms":1000`) != 1 {
+		t.Fatal("platform-led launch fixture refresh interval changed")
+	}
+	request = strings.Replace(request, `"refresh_interval_ms":1000`, fmt.Sprintf(`"refresh_interval_ms":%d`, refreshMS), 1)
 	// The request lives below /etc/ardents: provision reads it as a root-owned
 	// canonical declaration, and the platform launch declaration binds it as its
 	// Configuration (the platform check requires Configuration below /etc/ardents).
