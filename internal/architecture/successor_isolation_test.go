@@ -1354,6 +1354,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "internal/successor/execution/worker/stream_activation_installed_linux_test.go" && dependency == modulePath+"/internal/application/streamqualification" {
 		return true
 	}
+	if (source == "internal/successor/execution/runtime/stream_qualification_linux.go" || source == "internal/successor/execution/runtime/stream_qualification_other.go" || source == "internal/successor/execution/runtime/stream_qualification_installed_linux_test.go") && dependency == modulePath+"/internal/application/streamqualification" {
+		return true
+	}
 	if (source == "internal/successor/connection/stream.go" || source == "internal/successor/connection/stream_test.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
@@ -1593,6 +1596,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"installed Stream activation test uses fixed qualification protocol", "internal/successor/execution/worker/stream_activation_installed_linux_test.go", modulePath + "/internal/application/streamqualification", true},
 		{"ordinary worker activation has no qualification protocol edge", "internal/successor/execution/worker/activate_linux.go", modulePath + "/internal/application/streamqualification", false},
 		{"ordinary Text INIT has no qualification protocol edge", "internal/successor/execution/runtime/initialization_linux.go", modulePath + "/internal/application/streamqualification", false},
+		{"trusted Stream qualification seam uses fixed qualification protocol", "internal/successor/execution/runtime/stream_qualification_linux.go", modulePath + "/internal/application/streamqualification", true},
+		{"common Execution launch has no qualification protocol edge", "internal/successor/execution/runtime/launch.go", modulePath + "/internal/application/streamqualification", false},
+		{"ordinary Text protocol has no qualification protocol edge", "internal/successor/execution/runtime/protocol.go", modulePath + "/internal/application/streamqualification", false},
 		{"Execution cannot borrow old Endpoint authority", "internal/successor/execution/runtime/initialization_linux.go", modulePath + "/internal/endpoint", false},
 		{"Execution cannot borrow old Broker", "internal/successor/execution/authority.go", modulePath + "/internal/application/broker", false},
 		{"old Endpoint cannot consume new Execution", "internal/endpoint/worker_grant_linux.go", modulePath + "/internal/successor/execution", false},

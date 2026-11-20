@@ -62,6 +62,25 @@ exchange over the successor attachment, and joined original-cgroup cleanup for
 both roles. It is worker-boundary component evidence, not the NET-14 workload
 measurement (3c-C) and not a whole-host privacy qualification.
 
+The shared runner also has one explicit stream-qualification case (#654 3c-B1),
+invoked as `sh run-ubuntu.sh stream-qualification` with the same independent
+digests and the same installed stream qualification inventory prerequisite. It
+runs TestInstalledStreamQualificationSeam from the successor execution/runtime
+package test binary: build it outside the repository with
+go test -c -tags text_worker_installed -trimpath -buildvcs=false -o OUTPUT ./internal/successor/execution/runtime
+and install it root:root mode 0555 at
+/usr/lib/ardents/qualification/execution-runtime.test. The temporary unit has the
+same shape and ExecStart flags with
+-test.run=^TestInstalledStreamQualificationSeam$. The test proves the trusted
+LaunchStreamQualification seam (stream worker activation, fixed INIT/READY,
+installed reobservation), the text inventory's refusal of the qualification
+unit, the one-use RunStreamConnections handoff guards, the bridge entry over the
+retained attachment (fast-fail on an incomplete stream set), and joined
+original-cgroup cleanup retaining the first failure, for both roles. It is
+runtime-seam component evidence; the positive 64/256-stream NET-14 workload
+through authenticated Service streams (3c-B2/3c-C) and whole-host privacy
+qualification are not established here.
+
 The shared runner also has one explicit tree profile, invoked only by
 text-worker-tree-check with its independent hostile artifact digest and exact
 TestInstalledTextWorkerHostileTree receipts. See the sibling profile README.

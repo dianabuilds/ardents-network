@@ -83,10 +83,10 @@ func (owner *Owner) prepareJob(job *execution.Job, surface execution.Surface) er
 }
 
 func (owner *Owner) launchJob(job *execution.Job, surface execution.Surface) (_ *Invocation, result error) {
-	return owner.launchInitializedJob(job, surface, nil, false, nil)
+	return owner.launchInitializedJob(job, surface, textProtocol{}, false, nil)
 }
 
-func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.Surface, snapshot []byte, publisher bool, readerCaller context.Context) (_ *Invocation, result error) {
+func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.Surface, protocol workerProtocol, publisher bool, readerCaller context.Context) (_ *Invocation, result error) {
 	bounded, cancel := context.WithTimeout(job.Context(), 15*time.Second)
 	defer cancel()
 	var activation *worker.Activation
@@ -137,11 +137,8 @@ func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.S
 	if err := job.Check(); err != nil {
 		return nil, err
 	}
-	role := "reader"
-	if surface == execution.Administration {
-		role = "publisher"
-	}
-	activation, err := worker.Activate(bounded, role)
+	role := protocol.role(surface)
+	activation, err := protocol.activate(bounded, role)
 	if err != nil {
 		return nil, err
 	}
@@ -160,13 +157,13 @@ func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.S
 	if err := activation.Attachment.SetDeadline(deadline); err != nil {
 		return nil, err
 	}
-	if err := initializeWorker(bounded, activation.Attachment, role, job.Nonce(), snapshot); err != nil {
+	if err := protocol.initialize(bounded, activation.Attachment, job.Nonce(), role); err != nil {
 		return nil, err
 	}
 	if err := activation.Artifact.Verify(); err != nil {
 		return nil, err
 	}
-	current, err := worker.ObserveInstance(bounded, activation.Instance.Name, role)
+	current, err := protocol.observe(bounded, activation.Instance.Name, role)
 	if err != nil || current != activation.Instance {
 		return nil, errors.Join(errors.New("original worker changed after READY"), err)
 	}
@@ -199,7 +196,8 @@ func (owner *Owner) launchInitializedJob(job *execution.Job, surface execution.S
 		return nil, err
 	}
 	invocation := &Invocation{job: job, activation: activation, cleanup: cleanup, grant: grant, lease: lease,
-		stop: stop, callbackDone: callbackDone, done: make(chan struct{}), publisher: publisher, readerCaller: readerCaller, surface: surface}
+		stop: stop, callbackDone: callbackDone, done: make(chan struct{}), publisher: publisher, readerCaller: readerCaller, surface: surface,
+		consumer: protocol.consumer()}
 	invocation.observeAttachment()
 	invocation.beginJoin()
 	transferred = true
