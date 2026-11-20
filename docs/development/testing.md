@@ -5236,6 +5236,49 @@ privacy journey remains separate #391 acceptance. The transitional installation
 orchestration is neither exercised nor retired here (ADR-0125 D6 gates retirement
 on proven replacement guarantees).
 
+## Source installed operator native qualification
+
+The `source_installed_native` build tag selects
+`cmd/ardents-next/source_installed_native_linux_test.go`
+(`TestNativeSourceInstalledLifecycle`). It is a real-host qualification run
+under a root driver on an admitted Ubuntu/systemd manager (systemd 249/255,
+`/usr/bin/busctl --system`, cgroup v2, kernel supplying the processresource
+memory-event counters); missing privileges or manager are an invalid
+environment and fail, never a passing skip. It is not a `make quick-check`
+lane: the ordinary suite excludes the tag, while `scripts/check-deadcode.go`
+compiles it so its native-test coverage counts.
+
+The test provisions genuine installed Source delivery on the real host: a
+dedicated `ardents-source` account (unique 100-999 UID/GID, nologin,
+`/nonexistent`), signed State/participation prepared through the actual
+`ardents-control source prepare-state` CLI as that account (repeated
+preparation refuses), a signed infrastructure distribution of the actual
+command bytes, the explicit first pin executed by the enrolled executable
+itself, the public runtime copy under `/usr/lib/ardents`, declaration and
+credential inputs under `/etc/ardents`, domain roots under
+`/var/lib/ardents/roles/source/`, and the rendered platform unit installed at
+`/etc/systemd/system/ardents-source.service` and loaded by `daemon-reload`.
+`systemctl start` then runs the mandatory privileged `platform check` as the
+actual `ExecStartPre` against the loaded manager and `serve-retained` as the
+fixed-account main process. The sequence proves authenticated distribution
+with canonical byte oracles, clean-stop joined-cancellation report and manager
+success with producer removal and exclusive State reopen, relaunch, a forward program
+change to a distinct working executable authenticated against retained floors
+(rollback refuses), and crash recovery: SIGKILL retains the producer, a plain
+start refuses, and `source repair-retained` as the fixed account observes real
+failed-unit manager facts, kernel cgroup and procfs quiescence before removing
+exactly that producer; the subsequent launch serves again. Repair refuses on a
+clean root and while the invocation is live; substituted program and foreign
+launch pin refuse before serving. Joined cleanup removes the account, unit,
+trust roots, configuration and domain roots.
+
+This is the native installed evidence gate for the Source cohort before the
+transitional Source orchestration retires (#604 stage 1.6, ADR-0125). One
+fixture Release authority and one operator — not independent participants,
+not whole-host privacy qualification; the forward executable is a distinct
+build of the same checked source. The transitional orchestration is neither
+exercised nor retired here.
+
 ## Protected Endpoint platform-led full-launch native qualification
 
 The `endpoint_launch_native` build tag selects
