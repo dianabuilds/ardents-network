@@ -34,7 +34,8 @@ discovered_resources=$("$ARDENTS_NODE_RESOURCE_TEST" -test.list='^TestOriginalNa
 test "$discovered_resources" = "$expected_resources" || { echo 'Source resource discovery differs' >&2; exit 2; }
 expected='TestNativeSourceAuthenticatedDistributionAndJoinedRetirement
 TestNativeSourceOriginalInputsRetire
-TestNativeSourcePreparedCohort'
+TestNativeSourcePreparedCohort
+TestNativeSourceRetainedLifecycle'
 discovered=$("$ARDENTS_NODE_NATIVE_TEST" -test.list='^TestNativeSource' | grep '^TestNativeSource' | sort)
 test "$discovered" = "$expected" || { echo 'Source workload discovery differs' >&2; exit 2; }
 
@@ -48,3 +49,6 @@ systemd-run --quiet --wait --pipe --collect --unit="$unit" \
     -- "$ARDENTS_NODE_RESOURCE_TEST" -test.v=true -test.run="^$resource_case$" -test.timeout=90s
 done
 "$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeSource(AuthenticatedDistributionAndJoinedRetirement|OriginalInputsRetire|PreparedCohort)$' -test.timeout=3m
+# The retained lifecycle is one sequential multi-invocation scenario; it keeps
+# its own bounded process so the original workload batch deadline is unchanged.
+"$ARDENTS_NODE_NATIVE_TEST" -test.v=true -test.run='^TestNativeSourceRetainedLifecycle$' -test.timeout=3m
