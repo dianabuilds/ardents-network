@@ -1095,7 +1095,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/node_process.go" && dependency == modulePath+"/internal/successor/processresource" {
 			return true
 		}
-		if source == "cmd/ardents-next/node_native_linux_test.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
+		if (source == "cmd/ardents-next/node_native_linux_test.go" || source == "cmd/ardents-next/forwarding_lifecycle_native_linux_test.go") && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
 		if source == "cmd/ardents-next/node_refill_native_linux_test.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/route/transport") {
