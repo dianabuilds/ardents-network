@@ -54,7 +54,7 @@ HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLES
 # packages from any host; the test binaries land in the quality cache, never in
 # the repository.
 INSTALLED_TAG_COMPILE_ROOT := $(QUALITY_CACHE_ROOT)/installed-tag-compile
-INSTALLED_TAG_COMPILE_PACKAGES := ./internal/endpoint ./tests/e2e/node ./internal/successor/execution/runtime ./cmd/ardents-next
+INSTALLED_TAG_COMPILE_PACKAGES := ./internal/endpoint ./tests/e2e/node ./internal/successor/execution/runtime ./internal/successor/execution/worker ./cmd/ardents-next
 
 ifeq ($(OS),Windows_NT)
 INSTALLED_TAG_COMPILE_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(INSTALLED_TAG_COMPILE_ROOT)') | Out-Null"

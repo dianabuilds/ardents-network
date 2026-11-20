@@ -12,15 +12,15 @@ import (
 // verifyWorkerProperties is only one input to a qualified launch receipt.
 // The caller must separately establish the pinned artifact, accepted socket's
 // kernel credentials, live process/cgroup identity and joined cleanup owner.
-func verifyPropertiesVersion(unit, service properties, name, role, cgroup string, pid uint32, version uint16) error {
+func verifyPropertiesVersion(inv inventory, unit, service properties, name, role, cgroup string, pid uint32, version uint16) error {
 	if version != 249 && version != 255 {
 		return errors.New("worker manager version unavailable")
 	}
-	if !cgroupPath(cgroup, name, role) || pid == 0 {
+	if !cgroupPath(inv, cgroup, name, role) || pid == 0 {
 		return errors.New("text worker process binding is invalid")
 	}
 	for key, want := range map[string]string{"Id": name, "LoadState": "loaded", "ActiveState": "active", "SubState": "running",
-		"FragmentPath": "/etc/systemd/system/" + workerPrefix + "-" + role + "@.service", "ControlGroup": cgroup, "CollectMode": "inactive-or-failed"} {
+		"FragmentPath": "/etc/systemd/system/" + inv.prefix + "-" + role + "@.service", "ControlGroup": cgroup, "CollectMode": "inactive-or-failed"} {
 		// ControlGroup is a Service property; Unit owns the remaining identity.
 		properties := unit
 		if key == "ControlGroup" {
@@ -42,12 +42,8 @@ func verifyPropertiesVersion(unit, service properties, name, role, cgroup string
 			return errors.New("text worker required hardening is unavailable")
 		}
 	}
-	userPrefix := workerUserPrefix("reader")
-	if role == "publisher" {
-		userPrefix = workerUserPrefix("publisher")
-	}
-	user := userPrefix + strings.TrimSuffix(strings.TrimPrefix(name, workerPrefix+"-"+role+"@"), ".service")
-	for key, want := range map[string]string{"User": user, "Group": user, "RootDirectory": workerRoot, "WorkingDirectory": "/",
+	user := inv.user(role) + strings.TrimSuffix(strings.TrimPrefix(name, inv.prefix+"-"+role+"@"), ".service")
+	for key, want := range map[string]string{"User": user, "Group": user, "RootDirectory": inv.root, "WorkingDirectory": "/",
 		"ProtectSystem": "strict", "ProtectHome": "yes", "Restart": "no", "KillMode": "control-group",
 		"StandardInput": "socket", "StandardOutput": "socket", "StandardError": "null", "NotifyAccess": "none",
 		"RootImage": "", "NetworkNamespacePath": "", "IPCNamespacePath": "", "PAMName": ""} {
@@ -81,7 +77,7 @@ func verifyPropertiesVersion(unit, service properties, name, role, cgroup string
 			return errors.New("text worker inherited resources are unavailable")
 		}
 	}
-	if !sliceVerified(service) {
+	if !sliceVerified(inv, service) {
 		return errors.New("text worker owner slice is unavailable")
 	}
 	if !service.exact("Environment", "as", []string{"GOMAXPROCS=2", "GOMEMLIMIT=96MiB"}) ||
@@ -89,17 +85,17 @@ func verifyPropertiesVersion(unit, service properties, name, role, cgroup string
 		!service.exact("RestrictAddressFamilies", "(bas)", []any{true, []string{"AF_UNIX"}}) {
 		return errors.New("text worker execution policy is unavailable")
 	}
-	if err := verifyExec(service, role, pid); err != nil {
+	if err := verifyExec(inv, service, role, pid); err != nil {
 		return err
 	}
 	return verifySyscalls(service)
 }
 
-func sliceVerified(service properties) bool {
-	return service.exact("Slice", "s", "system.slice")
+func sliceVerified(inv inventory, service properties) bool {
+	return service.exact("Slice", "s", inv.slice)
 }
 
-func verifyExec(service properties, role string, pid uint32) error {
+func verifyExec(inv inventory, service properties, role string, pid uint32) error {
 	value, ok := service["ExecStartEx"]
 	var entries [][]json.RawMessage
 	if !ok || value.Type != "a(sasasttttuii)" || json.Unmarshal(value.Data, &entries) != nil || len(entries) != 1 || len(entries[0]) != 10 {
@@ -109,7 +105,7 @@ func verifyExec(service properties, role string, pid uint32) error {
 	var program string
 	var arguments []string
 	var observedPID uint32
-	if json.Unmarshal(parts[0], &program) != nil || program != "/"+workerPrefix || json.Unmarshal(parts[1], &arguments) != nil ||
+	if json.Unmarshal(parts[0], &program) != nil || program != "/"+inv.prefix || json.Unmarshal(parts[1], &arguments) != nil ||
 		len(arguments) != 2 || arguments[0] != program || arguments[1] != "worker-"+role ||
 		strings.TrimSpace(string(parts[2])) != "[]" || json.Unmarshal(parts[7], &observedPID) != nil || observedPID != pid {
 		return errors.New("text worker executable binding is unavailable")

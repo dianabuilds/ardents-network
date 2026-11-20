@@ -23,20 +23,20 @@ type unitState struct {
 	pendingStart bool
 }
 
-func listInstances(ctx context.Context, role string) (listing, error) {
+func listInstances(ctx context.Context, inv inventory, role string) (listing, error) {
 	if role != "reader" && role != "publisher" || os.Getpid() <= 0 || os.Geteuid() <= 0 {
 		return nil, errors.New("text worker activation owner is unavailable")
 	}
 	suffix := "-" + strconv.Itoa(os.Getpid()) + "-" + strconv.Itoa(os.Geteuid()) + ".service"
 	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager",
-		"ListUnitsByPatterns", "asas", "0", "1", workerPrefix+"-"+role+"@*"+suffix)
+		"ListUnitsByPatterns", "asas", "0", "1", inv.prefix+"-"+role+"@*"+suffix)
 	if err != nil {
 		return nil, err
 	}
-	return decodeInstances(answer, role, suffix)
+	return decodeInstances(inv, answer, role, suffix)
 }
 
-func decodeInstances(answer value, role, suffix string) (listing, error) {
+func decodeInstances(inv inventory, answer value, role, suffix string) (listing, error) {
 	var payload [][][]json.RawMessage
 	if answer.Type != "a(ssssssouso)" || json.Unmarshal(answer.Data, &payload) != nil || len(payload) != 1 || payload[0] == nil || len(payload[0]) > 128 {
 		return nil, errors.New("text worker activation inventory is unavailable")
@@ -46,7 +46,7 @@ func decodeInstances(answer value, role, suffix string) (listing, error) {
 		var name, state, loaded, substate, jobType, jobPath string
 		var jobID uint32
 		if len(entry) != 10 || json.Unmarshal(entry[0], &name) != nil || json.Unmarshal(entry[3], &state) != nil ||
-			!validUnit(name, role) || !strings.HasSuffix(name, suffix) || state == "" {
+			!validUnit(inv, name, role) || !strings.HasSuffix(name, suffix) || state == "" {
 			return nil, errors.New("text worker activation inventory is invalid")
 		}
 		if json.Unmarshal(entry[2], &loaded) != nil || loaded == "" ||
@@ -93,18 +93,29 @@ func selectNewInstance(before, after listing, candidate string) (string, error) 
 	return selected, nil
 }
 
-// Instance binds manager-owned identity to one live activation.
+// ObserveInstance binds manager-owned identity to one live Text activation.
 // It still grants nothing: exact socket credentials, readiness, current job,
 // artifact and a cleanup owner must all be verified before a Principal exists.
 func ObserveInstance(ctx context.Context, name, role string) (Instance, error) {
-	if err := verifyActivationSocket(ctx, role); err != nil {
+	return observeInstance(ctx, textInventory, name, role)
+}
+
+// ObserveInstanceStream is the trusted qualification re-observation entry for the
+// Stream inventory. Ordinary text jobs use ObserveInstance; the architecture gate
+// restricts Stream callers to the qualification runner (no caller-visible selector).
+func ObserveInstanceStream(ctx context.Context, name, role string) (Instance, error) {
+	return observeInstance(ctx, streamInventory, name, role)
+}
+
+func observeInstance(ctx context.Context, inv inventory, name, role string) (Instance, error) {
+	if err := verifyActivationSocket(ctx, inv, role); err != nil {
 		return Instance{}, err
 	}
-	unit, service, err := readProperties(ctx, name, role)
+	unit, service, err := readProperties(ctx, inv, name, role)
 	if err != nil {
 		return Instance{}, err
 	}
-	observed := Instance{Name: name, Role: role}
+	observed := Instance{inv: inv, Name: name, Role: role}
 	pid, pidOK := service["MainPID"]
 	group, groupOK := service["ControlGroup"]
 	id, idOK := unit["InvocationID"]
@@ -113,21 +124,17 @@ func ObserveInstance(ctx context.Context, name, role string) (Instance, error) {
 		!idOK || !decodeInvocation(id, &observed.Invocation) {
 		return Instance{}, errors.New("text worker invocation is unavailable")
 	}
-	if observed.Invocation == [16]byte{} || !unit.exact("TriggeredBy", "as", []string{workerPrefix + "-" + role + ".socket"}) {
+	if observed.Invocation == [16]byte{} || !unit.exact("TriggeredBy", "as", []string{inv.prefix + "-" + role + ".socket"}) {
 		return Instance{}, errors.New("text worker socket activation is unavailable")
 	}
 	version, err := managerVersion(ctx)
 	if err != nil {
 		return Instance{}, err
 	}
-	if err := verifyPropertiesVersion(unit, service, name, role, observed.Cgroup, observed.PID, version); err != nil {
+	if err := verifyPropertiesVersion(inv, unit, service, name, role, observed.Cgroup, observed.PID, version); err != nil {
 		return Instance{}, err
 	}
-	userPrefix := workerUserPrefix("reader")
-	if role == "publisher" {
-		userPrefix = workerUserPrefix("publisher")
-	}
-	user := userPrefix + strings.TrimSuffix(strings.TrimPrefix(name, workerPrefix+"-"+role+"@"), ".service")
+	user := inv.user(role) + strings.TrimSuffix(strings.TrimPrefix(name, inv.prefix+"-"+role+"@"), ".service")
 	answer, err := managerCall(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "LookupDynamicUserByName", "s", user)
 	var users []uint32
 	if err != nil || answer.Type != "u" || json.Unmarshal(answer.Data, &users) != nil || len(users) != 1 || users[0] < 61184 || users[0] > 65519 || users[0] == uint32(os.Geteuid()) {

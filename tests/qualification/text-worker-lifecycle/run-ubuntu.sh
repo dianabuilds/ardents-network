@@ -6,6 +6,14 @@ fail() { printf '%s\n' "$*" >&2; exit 1; }
 maximum_polls=1500
 case "${1-lifecycle}" in
     lifecycle) test_root=TestInstalledTextWorkerLifecycle ;;
+    stream-activation)
+        test_root=TestInstalledStreamWorkerActivation
+        worker=/usr/lib/ardents/network-stream-worker-root/ardents-stream-qualification
+        [ -f "$worker" ] && [ ! -L "$worker" ] && [ "$(stat -c %u:%g:%a "$worker")" = 0:0:555 ] ||
+            fail 'invalid environment: installed stream qualification artifact required'
+        [ -f /etc/ardents/network-stream-worker-artifact.json ] ||
+            fail 'invalid environment: installed stream qualification manifest required'
+        ;;
     execution) test_root=TestInstalledExecutionLifecycle ;;
     execution-route) test_root=TestInstalledExecutionRouteTCP ;;
     connection-stream) test_root=TestInstalledConnectionStreamTCP ;;
@@ -69,6 +77,9 @@ if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ]; then
 fi
 if [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ]; then
     binary=/usr/lib/ardents/qualification/execution-runtime.test
+fi
+if [ "$test_root" = TestInstalledStreamWorkerActivation ]; then
+    binary=/usr/lib/ardents/qualification/worker-stream.test
 fi
 if [ "$test_root" = TestInstalledExecutionEndpointDeath ]; then
     binary=/usr/lib/ardents/qualification/execution-runtime.test

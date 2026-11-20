@@ -23,11 +23,11 @@ type value = systemd.Value
 
 type properties systemd.Properties
 
-func validUnit(unit, role string) bool {
+func validUnit(inv inventory, unit, role string) bool {
 	if role != "reader" && role != "publisher" {
 		return false
 	}
-	prefix := workerPrefix + "-" + role + "@"
+	prefix := inv.prefix + "-" + role + "@"
 	if !strings.HasPrefix(unit, prefix) || !strings.HasSuffix(unit, ".service") {
 		return false
 	}
@@ -45,14 +45,14 @@ func validUnit(unit, role string) bool {
 	return parts[1] != "0" && parts[2] != "0"
 }
 
-func readProperties(ctx context.Context, unit, role string) (properties, properties, error) {
-	return readNamedProperties(ctx, unit, role, managerCall)
+func readProperties(ctx context.Context, inv inventory, unit, role string) (properties, properties, error) {
+	return readNamedProperties(ctx, inv, unit, role, managerCall)
 }
 
 type managerQuery func(context.Context, string, string, string, string, ...string) (value, error)
 
 func readCleanupProperties(ctx context.Context, instance Instance, query managerQuery) (properties, properties, error) {
-	if ctx == nil || query == nil || !validUnit(instance.Name, instance.Role) || instance.Invocation == [16]byte{} {
+	if ctx == nil || query == nil || !validUnit(instance.inv, instance.Name, instance.Role) || instance.Invocation == [16]byte{} {
 		return nil, nil, errors.New("text worker cleanup identity is invalid")
 	}
 	// A name path may load a collected unit again without its invocation.
@@ -62,8 +62,8 @@ func readCleanupProperties(ctx context.Context, instance Instance, query manager
 	return readPropertiesAtPath(ctx, path, query)
 }
 
-func readNamedProperties(ctx context.Context, unit, role string, query managerQuery) (properties, properties, error) {
-	if ctx == nil || query == nil || !validUnit(unit, role) {
+func readNamedProperties(ctx context.Context, inv inventory, unit, role string, query managerQuery) (properties, properties, error) {
+	if ctx == nil || query == nil || !validUnit(inv, unit, role) {
 		return nil, nil, errors.New("text worker unit identity is invalid")
 	}
 	var paths []string

@@ -15,6 +15,7 @@ import (
 )
 
 type Artifact struct {
+	inv        inventory
 	files      map[string][32]byte
 	rootDevice uint64
 	rootInode  uint64
@@ -22,8 +23,8 @@ type Artifact struct {
 
 // loadArtifact reads only the root-installed local artifact
 // reference. Application input can neither select an inventory nor supply a digest.
-func loadArtifact() (*Artifact, error) {
-	body, err := readInstalledFile(artifactPath, 16<<10)
+func loadArtifact(inv inventory) (*Artifact, error) {
+	body, err := readInstalledFile(inv.manifest, 16<<10)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +34,7 @@ func loadArtifact() (*Artifact, error) {
 	}
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
-	if decoder.Decode(&manifest) != nil || manifest.Schema != "ardents-text-worker-artifact-v1" || len(manifest.Files) != 6 {
+	if decoder.Decode(&manifest) != nil || manifest.Schema != inv.schema || len(manifest.Files) != 6 {
 		return nil, errors.New("text worker artifact reference is invalid")
 	}
 	canonical, err := json.Marshal(manifest)
@@ -44,10 +45,10 @@ func loadArtifact() (*Artifact, error) {
 	if decoder.Decode(&extra) != io.EOF {
 		return nil, errors.New("text worker artifact reference has trailing data")
 	}
-	artifact := &Artifact{files: make(map[string][32]byte, 6)}
-	paths := []string{workerRoot + "/" + workerPrefix, stopRulePath}
+	artifact := &Artifact{inv: inv, files: make(map[string][32]byte, 6)}
+	paths := []string{inv.root + "/" + inv.prefix, inv.rule}
 	for _, role := range []string{"reader", "publisher"} {
-		paths = append(paths, "/etc/systemd/system/"+workerPrefix+"-"+role+"@.service", "/etc/systemd/system/"+workerPrefix+"-"+role+".socket")
+		paths = append(paths, "/etc/systemd/system/"+inv.prefix+"-"+role+"@.service", "/etc/systemd/system/"+inv.prefix+"-"+role+".socket")
 	}
 	for _, path := range paths {
 		encoded, ok := manifest.Files[path]
@@ -75,7 +76,7 @@ func (artifact *Artifact) Verify() error {
 	if artifact == nil || len(artifact.files) != 6 {
 		return errors.New("text worker artifact is unavailable")
 	}
-	root, err := installedPath(workerRoot, true)
+	root, err := installedPath(artifact.inv.root, true)
 	if err != nil || root.Mode().Perm() != 0555 {
 		return errors.New("text worker immutable root is unavailable")
 	}
@@ -86,12 +87,12 @@ func (artifact *Artifact) Verify() error {
 	if artifact.rootInode != 0 && (artifact.rootDevice != uint64(identity.Dev) || artifact.rootInode != identity.Ino) {
 		return errors.New("text worker private root was substituted")
 	}
-	if err := verifyRootInventory(); err != nil {
+	if err := verifyRootInventory(artifact.inv); err != nil {
 		return err
 	}
 	for path, digest := range artifact.files {
 		limit := int64(64 << 10)
-		if path == workerRoot+"/"+workerPrefix {
+		if path == artifact.inv.root+"/"+artifact.inv.prefix {
 			limit = 64 << 20
 		}
 		body, err := readInstalledFile(path, limit)
@@ -155,23 +156,23 @@ func readInstalledFile(path string, maximum int64) ([]byte, error) {
 
 // These are empty base mount points required by the selected systemd
 // confinement. No host data or arbitrary subtree is admitted into the image.
-func verifyRootInventory() error {
+func verifyRootInventory(inv inventory) error {
 	directories := map[string]bool{"dev": true, "proc": true, "sys": true, "run": true, "tmp": true,
 		"etc": true, "root": true, "usr": true, "var": true, "var/tmp": true}
 	seen := 0
-	err := filepath.WalkDir(workerRoot, func(path string, entry os.DirEntry, walkErr error) error {
+	err := filepath.WalkDir(inv.root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return errors.New("text worker root inventory is unavailable")
 		}
-		if path == workerRoot {
+		if path == inv.root {
 			return nil
 		}
-		relative, err := filepath.Rel(workerRoot, path)
+		relative, err := filepath.Rel(inv.root, path)
 		if err != nil {
 			return errors.New("text worker root path is invalid")
 		}
 		directory := directories[relative]
-		if !directory && relative != workerPrefix {
+		if !directory && relative != inv.prefix {
 			return errors.New("text worker root contains an extra resource")
 		}
 		info, err := installedPath(path, directory)

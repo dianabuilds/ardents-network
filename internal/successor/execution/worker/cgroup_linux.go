@@ -17,7 +17,7 @@ const cgroup2Magic = 0x63677270
 // A later pathname lookup cannot substitute another invocation's cgroup.
 // This is cleanup ownership, not evidence authorizing a Principal or Grant.
 func pinCgroup(instance Instance) (*os.File, error) {
-	if !cgroupPath(instance.Cgroup, instance.Name, instance.Role) {
+	if !cgroupPath(instance.inv, instance.Cgroup, instance.Name, instance.Role) {
 		return nil, errors.New("text worker cgroup identity is invalid")
 	}
 	return pinCgroupPath(instance.Cgroup)
@@ -58,12 +58,12 @@ func pinCgroupPath(group string) (*os.File, error) {
 	return events, nil
 }
 
-func cgroupPath(group, name, role string) bool {
-	if !validUnit(name, role) || len(group) > 4096 || !strings.HasSuffix(group, "/"+name) ||
+func cgroupPath(inv inventory, group, name, role string) bool {
+	if !validUnit(inv, name, role) || len(group) > 4096 || !strings.HasSuffix(group, "/"+name) ||
 		filepath.Clean(group) != group || strings.ContainsAny(group, "\x00\r\n") {
 		return false
 	}
-	return strings.HasPrefix(group, "/system.slice/") && !strings.Contains(strings.TrimPrefix(group, "/system.slice/"), "/")
+	return strings.HasPrefix(group, inv.cgroupPrefix) && !strings.Contains(strings.TrimPrefix(group, inv.cgroupPrefix), "/")
 }
 
 // readCgroup accepts ENODEV only on the already-pinned cgroup v2

@@ -367,18 +367,30 @@ func VerifyNoJob(unit managerProperties) error {
 }
 
 func VerifyListeningSocket(unit, socket managerProperties, role string) error {
-	return verifyActivationSocketState(unit, socket, role, "active", "listening")
+	return VerifyListeningSocketAt(unit, socket, role, "ardents-text-"+role+".socket", "/run/ardents-text/"+role+".sock")
+}
+
+// VerifyListeningSocketAt verifies an activation socket for an explicit worker
+// inventory (socket unit name and listen path). The Text wrappers above preserve
+// the ordinary text boundary; the qualification Stream inventory supplies its own
+// name/path. All other socket hardening is shared across inventories.
+func VerifyListeningSocketAt(unit, socket managerProperties, role, socketName, listenPath string) error {
+	return verifyActivationSocketState(unit, socket, role, "active", "listening", socketName, listenPath)
 }
 
 func VerifyStoppedSocket(unit, socket managerProperties, role string) error {
-	return verifyActivationSocketState(unit, socket, role, "inactive", "dead")
+	return VerifyStoppedSocketAt(unit, socket, role, "ardents-text-"+role+".socket", "/run/ardents-text/"+role+".sock")
 }
 
-func verifyActivationSocketState(unit, socket managerProperties, role, active, substate string) error {
+func VerifyStoppedSocketAt(unit, socket managerProperties, role, socketName, listenPath string) error {
+	return verifyActivationSocketState(unit, socket, role, "inactive", "dead", socketName, listenPath)
+}
+
+func verifyActivationSocketState(unit, socket managerProperties, role, active, substate, socketName, listenPath string) error {
 	if role != "reader" && role != "publisher" {
 		return ErrInput
 	}
-	name := "ardents-text-" + role + ".socket"
+	name := socketName
 	for key, wanted := range map[string]string{"Id": name, "LoadState": "loaded", "FragmentPath": "/etc/systemd/system/" + name, "ActiveState": active, "SubState": substate} {
 		if !systemd.Matches(unit, key, "s", wanted) {
 			return ErrBinding
@@ -393,7 +405,7 @@ func verifyActivationSocketState(unit, socket managerProperties, role, active, s
 		!systemd.Matches(socket, "DirectoryMode", "u", uint32(0711)) ||
 		!systemd.Matches(socket, "MaxConnections", "u", uint32(64)) ||
 		!systemd.Matches(socket, "RemoveOnStop", "b", true) ||
-		!systemd.Matches(socket, "Listen", "a(ss)", [][2]string{{"Stream", "/run/ardents-text/" + role + ".sock"}}) {
+		!systemd.Matches(socket, "Listen", "a(ss)", [][2]string{{"Stream", listenPath}}) {
 		return ErrBinding
 	}
 	for _, name := range []string{"ExecStartPre", "ExecStartPost", "ExecStopPre", "ExecStopPost"} {

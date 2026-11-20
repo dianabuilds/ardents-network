@@ -33,22 +33,33 @@ func TestTextWorkerCgroupPathRejectsTraversalAndForeignUnits(t *testing.T) {
 	name := "ardents-text-reader@0-12-997.service"
 	for _, group := range []string{"", "/" + name, "/system.slice/../" + name, "/system.slice//" + name,
 		"/system.slice/" + name + "/child", "/system.slice/other.service", "/system.slice/\n" + name} {
-		if cgroupPath(group, name, "reader") {
+		if cgroupPath(textInventory, group, name, "reader") {
 			t.Fatalf("foreign cgroup path accepted: %q", group)
 		}
 	}
-	if !cgroupPath("/system.slice/"+name, name, "reader") {
+	if !cgroupPath(textInventory, "/system.slice/"+name, name, "reader") {
 		t.Fatal("installed worker cgroup path refused")
 	}
-	if cgroupPath("/system.slice/foreign.scope/"+name, name, "reader") {
+	if cgroupPath(textInventory, "/system.slice/foreign.scope/"+name, name, "reader") {
 		t.Fatal("nested foreign text worker cgroup accepted")
 	}
 	streamName := "ardents-stream-qualification-reader@0-12-997.service"
 	const qualificationRoot = "/ardents.slice/ardents-qualification.slice/ardents-qualification-owner.slice/"
+	// The ordinary text inventory must never admit a qualification unit, even
+	// under the qualification root: inventory selection is not caller-visible.
 	for _, group := range []string{"/system.slice/" + streamName, qualificationRoot + streamName,
 		"/foreign" + qualificationRoot + streamName, qualificationRoot + "nested/" + streamName} {
-		if cgroupPath(group, streamName, "reader") {
+		if cgroupPath(textInventory, group, streamName, "reader") {
 			t.Fatalf("foreign qualification cgroup path accepted: %q", group)
+		}
+	}
+	if !cgroupPath(streamInventory, qualificationRoot+streamName, streamName, "reader") {
+		t.Fatal("installed qualification worker cgroup path refused")
+	}
+	for _, group := range []string{"/system.slice/" + streamName, "/foreign" + qualificationRoot + streamName,
+		qualificationRoot + "nested/" + streamName, qualificationRoot + name, "/system.slice/" + name} {
+		if cgroupPath(streamInventory, group, streamName, "reader") {
+			t.Fatalf("foreign stream cgroup path accepted: %q", group)
 		}
 	}
 }
@@ -90,7 +101,7 @@ func TestTextWorkerCleanupRejectsChangedOrUnknownInvocation(t *testing.T) {
 
 func cleanupObservation(t *testing.T) (Instance, properties, properties) {
 	t.Helper()
-	instance := Instance{Name: "ardents-text-reader@0-12-997.service", Role: "reader", PID: 42, UID: 61234, Invocation: [16]byte{1}}
+	instance := Instance{inv: textInventory, Name: "ardents-text-reader@0-12-997.service", Role: "reader", PID: 42, UID: 61234, Invocation: [16]byte{1}}
 	instance.Cgroup = "/system.slice/" + instance.Name
 	value := func(signature string, data any) value {
 		body, err := json.Marshal(data)
@@ -105,6 +116,29 @@ func cleanupObservation(t *testing.T) (Instance, properties, properties) {
 		"Restart": value("s", "no"), "KillMode": value("s", "control-group"), "Delegate": value("b", false),
 		"TimeoutStopUSec": value("t", uint64(2_000_000)), "ExecStop": value("a(sasbttttuii)", []any{}), "ExecStopPost": value("a(sasbttttuii)", []any{})}
 	return instance, unit, service
+}
+
+func TestStreamWorkerCleanupBindsOnlyQualificationInvocation(t *testing.T) {
+	instance, unit, service := cleanupObservation(t)
+	instance.inv = streamInventory
+	instance.Name = "ardents-stream-qualification-reader@0-12-997.service"
+	instance.Cgroup = "/ardents.slice/ardents-qualification.slice/ardents-qualification-owner.slice/" + instance.Name
+	unit["Id"] = value{Type: "s", Data: json.RawMessage(`"` + instance.Name + `"`)}
+	service["ControlGroup"] = value{Type: "s", Data: json.RawMessage(`"` + instance.Cgroup + `"`)}
+	if !sameCleanupInstance(instance, unit, service) {
+		t.Fatal("exact live qualification cleanup invocation refused")
+	}
+	// Cleanup ownership never crosses inventories: a qualification instance
+	// cannot join the ordinary text invocation, and a text unit identity is
+	// not admitted under the stream inventory.
+	textInstance, textUnit, textService := cleanupObservation(t)
+	if sameCleanupInstance(instance, textUnit, textService) {
+		t.Fatal("qualification cleanup accepted the ordinary text invocation")
+	}
+	textInstance.inv = streamInventory
+	if sameCleanupInstance(textInstance, unit, service) {
+		t.Fatal("stream inventory accepted a text unit identity")
+	}
 }
 
 func TestTextWorkerCleanupFailureCannotBecomeSuccessOnRepeat(t *testing.T) {

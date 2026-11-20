@@ -11,18 +11,18 @@ import (
 func TestTextWorkerInventoryRetainsFailedAndActivatingInstances(t *testing.T) {
 	body := `[[["ardents-text-reader@0-12-997.service","","loaded","failed","failed","","/unit/a",0,"","/"],["ardents-text-reader@1-12-997.service","","loaded","activating","start","","/unit/b",0,"","/"]]]`
 	answer := value{Type: "a(ssssssouso)", Data: json.RawMessage(body)}
-	found, err := decodeInstances(answer, "reader", "-12-997.service")
+	found, err := decodeInstances(textInventory, answer, "reader", "-12-997.service")
 	if err != nil || len(found) != 2 || found["ardents-text-reader@0-12-997.service"].Active != "failed" || found["ardents-text-reader@1-12-997.service"].Active != "activating" {
 		t.Fatalf("incomplete activation baseline: %v, %v", found, err)
 	}
 	for _, invalid := range []string{"null", "[null]", strings.Replace(body, "@1-12-997", "@1-13-997", 1), strings.Replace(body, "@1-12-997", "@0-12-997", 1), strings.Replace(body, `"activating"`, `null`, 1)} {
 		answer.Data = json.RawMessage(invalid)
-		if _, err := decodeInstances(answer, "reader", "-12-997.service"); err == nil {
+		if _, err := decodeInstances(textInventory, answer, "reader", "-12-997.service"); err == nil {
 			t.Fatal("ambiguous or incomplete system inventory admitted")
 		}
 	}
 	answer.Data = json.RawMessage(`[[]]`)
-	if found, err := decodeInstances(answer, "reader", "-12-997.service"); err != nil || found == nil || len(found) != 0 {
+	if found, err := decodeInstances(textInventory, answer, "reader", "-12-997.service"); err != nil || found == nil || len(found) != 0 {
 		t.Fatal("valid empty baseline refused")
 	}
 }
@@ -77,7 +77,7 @@ func TestTextWorkerInventoryWaitsForExactQueuedStart(t *testing.T) {
 		{"failed", strings.Replace(pending, `"inactive"`, `"failed"`, 1), false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			observed, err := decodeInstances(value{Type: "a(ssssssouso)", Data: json.RawMessage(test.body)}, "reader", "-12-997.service")
+			observed, err := decodeInstances(textInventory, value{Type: "a(ssssssouso)", Data: json.RawMessage(test.body)}, "reader", "-12-997.service")
 			var got string
 			if err == nil {
 				got, err = selectNewInstance(listing{}, observed, "")
@@ -89,6 +89,23 @@ func TestTextWorkerInventoryWaitsForExactQueuedStart(t *testing.T) {
 				t.Fatal("unverified queued activation selected")
 			}
 		})
+	}
+}
+
+func TestStreamWorkerInventoryIsSeparateFromText(t *testing.T) {
+	const streamName = "ardents-stream-qualification-reader@0-12-997.service"
+	body := `[[["` + streamName + `","","loaded","activating","start","","/unit/a",0,"","/"]]]`
+	answer := value{Type: "a(ssssssouso)", Data: json.RawMessage(body)}
+	found, err := decodeInstances(streamInventory, answer, "reader", "-12-997.service")
+	if err != nil || len(found) != 1 || found[streamName].Active != "activating" {
+		t.Fatalf("qualification activation baseline refused: %v, %v", found, err)
+	}
+	if _, err := decodeInstances(textInventory, answer, "reader", "-12-997.service"); err == nil {
+		t.Fatal("text inventory admitted a qualification unit")
+	}
+	textBody := `[[["ardents-text-reader@0-12-997.service","","loaded","active","running","","/unit/a",0,"","/"]]]`
+	if _, err := decodeInstances(streamInventory, value{Type: "a(ssssssouso)", Data: json.RawMessage(textBody)}, "reader", "-12-997.service"); err == nil {
+		t.Fatal("stream inventory admitted an ordinary text unit")
 	}
 }
 
