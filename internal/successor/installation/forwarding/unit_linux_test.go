@@ -28,7 +28,7 @@ func TestForwardingUnitIndependentFixedPolicy(t *testing.T) {
 			t.Fatal("changed fixed policy accepted", mutation)
 		}
 	}
-	for _, template := range []string{infrastructure.SourceTemplate, Template + "\nExecStartPost=/bin/true\n"} {
+	for _, template := range []string{infrastructure.PlatformUnitTemplate, Template + "\nExecStartPost=/bin/true\n"} {
 		if _, err := RenderUnit([]byte(template), r, generation); err == nil {
 			t.Fatal("foreign template accepted")
 		}

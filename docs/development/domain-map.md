@@ -294,14 +294,13 @@ issuance, operational trust delivery, effective family independence and installe
 qualification are not supplied by this operation. No universal Identity/PKI
 authority, private signer, new package or runtime format is introduced.
 
-Canonical Control's separate `source prepare-install-inputs` composes a single
-honest Source/client public observation through `source.ObservePublicContact`
-and emits fixed public credential copies plus the existing serving/request
-declarations. It retains independent public file commitments and original native
-custody. Runtime private-key paths, mutable roots and clock remain unopened
-declarations. Installation independently admits delivery and native effects;
-State owns acceptance/currentness. This creates no second family or acquisition
-Plan and supplies no installed or bootstrap acceptance.
+Canonical Control's former `source prepare-install-inputs` single-Source public
+input preparation is retired (#604 stage 1.6, ADR-0125): it returns a typed
+referral to the platform-led Source lifecycle before reading inputs, and
+`source.ObservePublicContact` is removed. The platform-led lifecycle
+(`source prepare-state`, `ardents-next platform initialize-trust`/`unit`,
+`systemctl start ardents-source`) owns installed Source delivery; State still
+owns acceptance/currentness. This supplies no installed or bootstrap acceptance.
 
 Initial Network provisioning has one finite offline key producer,
 `network prepare-initial-keys`, and three fixed-purpose offline signing consumers:
@@ -332,18 +331,19 @@ detached observations nor durable phase presence grant Release, mutation,
 Start, ACK replay or runtime rights. [Installation's current owner](../../internal/successor/installation/README.md)
 and [Release/Custody](../technical/release-update-custody.md) hold exact admission,
 record, recovery and fixed-resource rules.
-Source recovery is a distinct Infrastructure lifetime with its own original
-journal exclusion, independent native resources and immutable original-cut
-proof. It writes a separate completion suffix, retains every original failure
-and releases the original pending guard only after its own required joins and
-fresh Release checks. Release retains trust/floors; State alone supplies opaque
-signed/time/participation inspection. Initial recovery requires empty semantic
-roots and complete original account provenance; replacement requires genuine
-predecessor retirement. Native manager matching and zero-execution observations
-grant no semantic authority. Startup/retirement classification never replays
-Start, ACK, archival or retirement effects. The [Source lifecycle owner](../technical/network-route-node.md#initial-stopped-source-persistence)
-defines these separate boundaries; installed causal acceptance remains in the
-selected issue ledger.
+The transitional Source orchestration (initial stopped installation, first
+start, stop/restart, stopped replacement and original-cut recovery) is retired
+(#604 stage 1.6, ADR-0125). The platform-led Source lifecycle owns Source
+delivery: `source prepare-state`, `ardents-next platform initialize-trust`/`unit`,
+`systemctl start ardents-source` with the mandatory `platform check`
+ExecStartPre gate and `source serve-retained`, stop/relaunch/forward program
+change, and `source repair-retained` for a dead retained producer. Release
+retains trust/floors; State alone supplies opaque signed/time/participation
+inspection. Native manager matching and zero-execution observations grant no
+semantic authority. The [Source lifecycle owner](../technical/network-route-node.md#source-lifecycle-and-forward-program-change)
+and the [operator procedure](../operations/source-platform-lifecycle.md) define
+these boundaries; installed causal acceptance remains in the selected issue
+ledger.
 Private installed Startup reads fresh fixed manager facts on one bounded native
 connection per observation, retaining the unique manager across its original
 lifetime. Both complete property rounds, original file/process reobservations
@@ -369,7 +369,7 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Installation native observations | `installation/cgroup` owns bounded actual kernel inventory and original event-descriptor observations; `installation/systemd` owns bounded typed facts, canonical manager version, fixed unit/instance inventory and joined subprocess mechanisms for daemon-reload, fixed Endpoint start and fixed sockets/Endpoint stop | The separate `installation/process` owns original proc-directory/start clock and exact executable/argv/credentials/supplementary groups/cgroup/InvocationID observations. Root-only predecessor opening and actual non-root self opening remain separate; private startup inspection retains its own read Snapshot and process observations, consumed by independently admitted bounded startup after actual root archival/ACK. Installation retains Release admission, expected generation/protection and process binding, original lease, stop decision and first failure. Native Modules have no parent import, shared lease or startup authority; Installation admits stop/reload and retains original physical join; its root manager_binding_linux.go collects request projection and actual manager/activation checks across initial, predecessor, candidate and recovery lifetimes; typed bus facts and kernel observations do not qualify an installed invocation |
 | Installation fixed-unit contract | `installation/unit` owns closed Endpoint template validation, immutable original template/command-path retention and exact rendering of caller-admitted write paths, alongside pure expected Endpoint/activation protection, typed execution/invocation and distinct fresh-stopped/quiescent/running observations | Installation admits request write roots and transaction effects, systemd obtains actual typed manager facts, process/cgroup retain original physical custody. Detached configuration and property maps grant no Release or start/recovery authority |
 | Installation journals | `installation/journal` owns closed preparation grammar/order and opaque original preparation/transition directory/file custody; transition owns finite creation/directory/replacement groups, exact record bytes/access, durable append/resync and partial/first-failure custody through physical close; independently reopened recovery may retain an exact original replacement group and synchronize its directory links, including an empty group | Installation retains transition record schemas/phases, original caller/lease, Release proofs, account/root/fixed-resource effects and barrier ordering. Recovery consumes preparation grammar through separate provenance/fresh-proof admission. Detached journal bytes and presence grant no adoption, mutation, generation selection or startup right |
-| Installation local completion exchange | `installation/completion` owns the shared closed 160-byte frame encoding/validation consumed by root start-barrier production and independent startup inspection; it independently owns one original Unix connection, read-only directory/guard/socket-record metadata, actual root peer PID/UID/GID and exact finite frame/reply under its original deadline; cancellation physically joins its callback and Close | Private startup inspection consumes Connect/Wait between independent generation/process/manager observations. The exchange neither reads private intent nor borrows a writer lease or grants runtime/readiness authority. Root retains start observation, durable archival and ACK decision. A private producer now orders actual retained process/peer checks, a synced start record, archival and ACK; a private candidate-start lifetime now retains original process/scope custody and failed-attempt quiescence until join, with a positive actual-manager start/ACK/original-join scenario and bounded Source/permission consumer; complete installed Service acceptance remains separate |
+| Installation local completion exchange | `installation/completion` owns the shared closed 160-byte frame encoding/validation consumed by root start-barrier production and independent startup inspection; it independently owns one original Unix connection, read-only directory/guard/socket-record metadata, actual root peer PID/UID/GID and exact finite frame/reply under its original deadline; cancellation physically joins its callback and Close | Private startup inspection consumes Connect/Wait between independent generation/process/manager observations. The exchange neither reads private intent nor borrows a writer lease or grants runtime/readiness authority. Root retains start observation, durable archival and ACK decision. A private producer now orders actual retained process/peer checks, a synced start record, archival and ACK; a private candidate-start lifetime now retains original process/scope custody and failed-attempt quiescence until join, with a positive actual-manager start/ACK/original-join scenario and bounded permission consumer; complete installed Service acceptance remains separate |
 | Installation fixed-file mutation | `installation/fixedfile` owns independent original parent/file descriptors, exclusive empty birth, bounded prefix repair on an original inode, access/ctime rechecks after journal I/O, physical writes/sync and retained original cancellation through Close | Installation keeps allowed paths/bytes/access, exact birth/replacement records and phase admission, original lease, Release proofs, predecessor join, selection and recovery. Neither a detached inode nor this physical mechanism grants mutation authorization or installed startup; no shared live root or parent import |
 | Installation immutable generation files | `installation/generation` owns closed artifact names, exclusively created original directory/files, exact finite inventory, same-inode read-access promotion, detached bytes and retained partial/failure custody through physical close; independent read-only Snapshot owns sealed fifteen-file custody with its own descriptors, original file ctime/bytes and caller failure, without a writer lease or creation ownership | Installation records a mandatory closed file-inventory marker and each original per-file birth before artifact bytes; compatible complete recovery independently matches recorded native inodes and fresh-bound target facts. Installation retains fresh exact-byte proofs, original lease and caller, birth journal before writes, phase-appropriate container access, fixed-resource effects, selection, original predecessor join and startup. An independent physical Prefix retains recorded original incomplete leaves and directory, checks complete preimages, repairs only original inodes and seals complete inventory; Installation separately owns ordered writing-generation admission and fresh-proof continuation. Original successor recovery admission, continuation, terminal cleanup and close are collected with one retained owner in successor_recovery_linux.go; independent Prefix/Snapshot/process custody remains distinct. Filesystem/race admission and causal ordering controls do not prove actual-manager recovery or process-crash acceptance. Sealed files and copied physical facts grant no Release, adoption, selection or startup authority |
 | Process resource/lifecycle owner | Process-wide observation, pressure availability, supervision and terminal process outcome | New `processresource` measures original native placement/pressure; new `node` owns reaction and completion. Network accepted-state policy and Hosting provider-period budget remain separate; complete role/installed qualification is not inferred |
@@ -407,9 +407,12 @@ not additional product meanings or another execution ledger in this map.
 
 ### Transitional native consumers
 
-The existing canonical Source, Forwarding, JOIN and Descriptor installed
-consumers still use native deployment mechanisms. Their current source remains
-under `internal/successor/installation`; that placement grants no new domain
+The existing canonical Forwarding, JOIN and Descriptor installed consumers
+still use native deployment mechanisms. Source delivery cut over to the
+platform-led lifecycle (#604 stage 1.6, ADR-0125); its transitional
+orchestration is retired and the platform-led lifecycle owns Source delivery.
+The retained mechanisms' current source remains under
+`internal/successor/installation`; that placement grants no new domain
 or mandate to add an Introduction/Issuer installer. Endpoint Startup remains
 transitional separately from Node/Source. Preserve these consumers until their
 necessary guarantees have equivalent owners and evidence; no automatic data
@@ -427,7 +430,7 @@ consumer is admitted by the platform path in `cmd/ardents-next`.
 | Initial pin and immutable role inventory | Enrollment retains independent pin and actual mapped-program provenance; a candidate or copied inventory cannot establish initial trust |
 | Exact coherent program/generation permission | Release retains trust, monotonic floors and original opaque proofs; native composition matches exact role/resources and current verifier. RuntimeAuthorization is a separate platform pre-start result and cannot enter native effects |
 | Read-only request/native preflight | Role-specific bounded input custody plus independently opened fixed-purpose systemd observations. Absence/preflight grants no creation, Start, domain initialization or recovery permission |
-| Initial stopped native deployment | Existing Source/Forwarding/JOIN/Descriptor creators retain their own account/root/file births, exact Release binding, immutable generation, selection/unit and explicit Reload. Semantic roots remain with their future domain owners; pending publication follows actual joins |
+| Initial stopped native deployment | Existing Forwarding/JOIN/Descriptor creators retain their own account/root/file births, exact Release binding, immutable generation, selection/unit and explicit Reload. Semantic roots remain with their future domain owners; pending publication follows actual joins. Source first installation is platform-led (`source prepare-state`, `platform initialize-trust`/`unit`, `systemctl start ardents-source`), not a native stopped creator |
 | Existing native first Start and independent Startup | Root control retains its original manager/process/scope and archival-before-ACK ordering. Non-root Startup independently checks original files, actual invocation/protection and root completion. It grants no State, duty, spend, Store ACK or Service readiness |
 | Original runtime retirement and native stop | Runtime joins its actual Node/Route/Store/State/credential/Guard borrowers before its original challenge-bound report. Root independently joins actual process/scope/manager observers and retains failed/uncertain retirement. A timeout, missing path, ACK or process exit cannot supply domain completion |
 | Existing native restart | Fresh Release and new independent invocation after complete original retirement; all original principals, keys, allowance and semantic floors persist. No late original result binds a successor |
@@ -886,7 +889,9 @@ and joins its own observations; normal platform Release admission and a new
 Source Claim remain independent. Pending/wave/partial/foreign duties still
 refuse. The [Source owner](../technical/network-route-node.md#source-lifecycle-and-forward-program-change)
 defines the bounded abandonment contract; component tests supply no installed
-crash/relaunch qualification and do not retire transitional Source orchestration.
+crash/relaunch qualification. The transitional Source orchestration is retired
+(#604 stage 1.6, ADR-0125); installed crash/relaunch evidence is the
+`source_installed_native` gate.
 
 Apply the interaction contract below to these collaborations. The matrix names
 semantic dependencies; the package map separately permits each implemented

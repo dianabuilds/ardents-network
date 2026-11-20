@@ -37,7 +37,6 @@ type Invocation struct {
 	arguments, placement        string
 	programDevice, programInode uint64
 	namespaces                  map[string]*os.File // separately fixed Node/Source original kernel objects
-	sourceSignal                *sourceSignal       // shared original root Source signal lifetime
 }
 
 func Retain(ctx context.Context, expected Expected) (result *Invocation, returnedErr error) {
@@ -217,10 +216,6 @@ func (pin *Invocation) Close() error {
 		return nil
 	}
 	var err error
-	if pin.sourceSignal != nil && pin.sourceSignal.file != nil {
-		err = pin.sourceSignal.file.Close()
-		pin.sourceSignal.file = nil
-	}
 	for _, file := range pin.namespaces {
 		err = errors.Join(err, file.Close())
 	}

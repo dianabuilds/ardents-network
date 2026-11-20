@@ -11,58 +11,14 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 )
 
 // The signed template runs the existing runtime directly. systemd owns process
 // start/stop; no Ardents supervisor, startup ACK or recovery journal participates.
 // An unjoined runtime is never forcibly declared complete by a stop timeout.
-const platformUnitTemplate = `[Unit]
-Description=Ardents @ROLE@ runtime
-
-[Service]
-Type=exec
-User=@USER@
-Group=@USER@
-SupplementaryGroups=
-WorkingDirectory=/
-ExecStartPre=+:@CHECK_PROGRAM@ platform check @MANIFEST@ @SHA256@
-ExecStart=:@PROGRAM@ @RUNTIME@
-Restart=no
-KillMode=control-group
-TimeoutStopSec=infinity
-SendSIGKILL=no
-SuccessExitStatus=130
-UMask=0077
-NoNewPrivileges=yes
-CapabilityBoundingSet=
-AmbientCapabilities=
-ProtectSystem=strict
-ProtectHome=yes
-ReadWritePaths=@WRITABLE@
-PrivateTmp=yes
-ProtectControlGroups=yes
-ProtectKernelTunables=yes
-ProtectKernelModules=yes
-ProtectKernelLogs=yes
-RestrictSUIDSGID=yes
-LockPersonality=yes
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-CPUAccounting=yes
-MemoryAccounting=yes
-TasksAccounting=yes
-CPUQuota=100%
-CPUQuotaPeriodSec=100ms
-MemoryHigh=805306368
-MemoryMax=1073741824
-TasksMax=256
-LimitNOFILE=1024
-LimitCORE=0
-Environment=GOMAXPROCS=1 GOMEMLIMIT=536870912
-StandardInput=null
-StandardOutput=journal
-StandardError=journal
-`
+const platformUnitTemplate = infrastructure.PlatformUnitTemplate
 
 func platformUser(p platformLaunch) string {
 	if p.Role == "source" {

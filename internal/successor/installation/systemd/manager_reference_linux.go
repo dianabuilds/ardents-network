@@ -297,31 +297,6 @@ func (r *managerReference) matchManagerDeclaration(ctx context.Context) error {
 	return nil
 }
 
-func (r *managerReference) managerProperties() error {
-	for _, name := range []string{"Version", "UnitPath"} {
-		call, e := r.client.call(r.original, "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties.Get", "org.freedesktop.systemd1.Manager", name)
-		if e != nil {
-			return e
-		}
-		var v dbus.Variant
-		if e = call.Store(&v); e != nil {
-			return e
-		}
-		if name == "Version" {
-			value, ok := v.Value().(string)
-			if !ok || v.Signature().String() != "s" || value != r.version {
-				return ErrObservation
-			}
-		} else {
-			value, ok := v.Value().([]string)
-			if !ok || v.Signature().String() != "as" || strings.Join(value, "\x00") != strings.Join(r.paths, "\x00") {
-				return ErrObservation
-			}
-		}
-	}
-	return nil
-}
-
 func (r *managerReference) managerIdentity() (identity string, err error) {
 	if r == nil {
 		return "", ErrInput

@@ -8,14 +8,6 @@ import (
 	"syscall"
 )
 
-// CheckSourceQuiescent checks fresh absence or an empty fixed Source scope
-// before a new effect. It does not prove old domain or native completion;
-// Installation must already hold independently checked original retirement.
-// It never creates a cgroup, adopts an old events object or interrupts work.
-func CheckSourceQuiescent(ctx context.Context) (err error) {
-	return checkFixedQuiescent(ctx, "ardents-source.service")
-}
-
 // Only fixed-purpose public openers choose these literal physical scopes.
 func checkFixedQuiescent(ctx context.Context, unit string) (err error) {
 	if unit != "ardents-source.service" && unit != "ardents-forwarding.service" && unit != "ardents-join.service" && unit != "ardents-descriptor.service" {
