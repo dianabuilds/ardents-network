@@ -520,6 +520,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/platform_release_linux_test.go" && (dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/tests/epochfixture/network" || dependency == "github.com/theupdateframework/go-tuf/v2/metadata") {
 		return true
 	}
+	if source == "cmd/ardents-next/source_lifecycle_native_linux_test.go" && dependency == "github.com/theupdateframework/go-tuf/v2/metadata" {
+		return true
+	}
 	if descriptorStartupImportAllowed(source, dependency) || descriptorInitialImportAllowed(source, dependency) {
 		return true
 	}
@@ -1087,6 +1090,9 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/source_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/processresource") {
+			return true
+		}
+		if source == "cmd/ardents-next/source_lifecycle_native_linux_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/network/epoch" || dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
 		if source == "cmd/ardents-next/source_preparation_process_linux_test.go" && dependency == modulePath+"/internal/successor/network/source" {

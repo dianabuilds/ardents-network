@@ -2567,8 +2567,9 @@ AREP-v3 bundles, with LATEST/BY_DIGEST checks and separate State/profile
 acceptance/refusal. An invalid external second key fails and physically joins
 partial startup while the first Source remains separate; changed public PEM
 retires the original process without hot reload; restored paths do not revive
-it, and a separate new invocation readmits the restored original credential.
-Original process Wait and genuine State-root reopen follow retirement. Isolated
+it, and a separate new invocation refuses before listening while the failed
+completion's serving producer remains retained. Original process Wait and
+genuine State-root reopen follow retirement. Isolated
 external CA/leaf/State/Admission fixtures share one controller and prove no
 independent families, operational ceremony, installed startup, power loss or
 privacy qualification. The complete original Source cancellation/protection/
@@ -2592,6 +2593,30 @@ Another held original input Close checks the same failed completion notice,
 retained key descriptor and independent late native Close failure through join.
 These scheduling/fault fixtures do not supply successful process admission,
 installed startup or operational authority.
+
+`source-process-linux` also discovers and executes exactly
+`TestNativeSourceRetainedLifecycle` in its own bounded process: one sequential
+retained-invocation scenario over genuinely prepared State/participation roots
+and an explicit first pin of the actual pinned command bytes. Preparation
+composes the prepare-state owners once on vacant roots; repeated fresh
+preparation refuses. The first pin runs the genuine enrolled executable through
+the development authenticate-initial command (executable provenance binds
+/proc/self/exe); the platform initialize-trust fixed-path composition keeps its
+separate installed coverage. Each serving phase runs the genuine `source serve-retained`
+command under the unchanged Source envelope: cold retained opening refuses
+missing history, the first launch claims the original producer and distributes
+canonical signed bundles, requested stop joins completion and removes the
+producer, relaunch is a new independent invocation over the same histories, and
+a strictly forward signed generation authenticates against retained floors
+while rollback/mixed metadata refuse without rewriting State or participation
+bytes. A killed invocation supplies no completion evidence: the producer stays
+retained and the next retained opening refuses before listening. The
+command-level fixed-account preparation gate and fixed-path platform
+declaration gates keep their separate coverage; no installed unit,
+loaded-manager platform check pre-start or repair-retained manager qualification
+is supplied here — those remain the separate native installed evidence gate
+before transitional Source orchestration retires. One fixture operator, not
+independent participants.
 
 The existing `network-signing-linux` profile also checks initial State/Node key
 preparation through the real `prepare-initial-keys` command. It requires actual
