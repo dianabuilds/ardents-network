@@ -30,13 +30,14 @@ import (
 // It carries public signed inputs, actual permission requests/responses and
 // explicit fixture commands. No private key, live owner or accepting flag is sent.
 type installedPairMessage struct {
-	Operation string
-	Role      string
-	Nonce     string
-	Network   *installedStartupNetwork
-	Body      []byte
-	Link      string
-	Original  [3]string
+	Operation  string
+	Role       string
+	Nonce      string
+	Network    *installedStartupNetwork
+	Body       []byte
+	Link       string
+	Original   [3]string
+	Principals [3]string
 }
 
 func installedPairSend(t *testing.T, conn net.Conn, value installedPairMessage) {
