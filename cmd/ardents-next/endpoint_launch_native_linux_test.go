@@ -194,8 +194,19 @@ func provisionPlatformLedLaunch(t *testing.T) *platformLedLaunchStand {
 // polling (#652).
 func provisionPlatformLedLaunchRefresh(t *testing.T, refreshMS int) *platformLedLaunchStand {
 	t.Helper()
+	return provisionPlatformLedLaunchFixture(t, refreshMS, newNetworkAdmissionFixture(t))
+}
+
+// provisionPlatformLedLaunchFixture provisions the same platform-led launch stand
+// against an already-created Network admission fixture. The cold/warm latency
+// harness (#650) supplies the publication Route network fixture so the installed
+// participant reads through genuine Forwarding/Descriptor/Introduction/JOIN/
+// Responder/Issuer receivers; the launch and NET-32 qualifications supply the
+// ordinary idle fixture.
+func provisionPlatformLedLaunchFixture(t *testing.T, refreshMS int, f *networkAdmissionFixture) *platformLedLaunchStand {
+	t.Helper()
 	ctx := t.Context()
-	stand := &platformLedLaunchStand{binary: compiledCommand(t)}
+	stand := &platformLedLaunchStand{binary: compiledCommand(t), f: f}
 	stand.base = filepath.Join("/var/lib/ardents", fmt.Sprintf("ep-launch-%d-%d", os.Getpid(), time.Now().UnixNano()))
 	stand.etcDir = filepath.Join("/etc/ardents", fmt.Sprintf("ep-launch-%d-%d", os.Getpid(), time.Now().UnixNano()))
 	stand.installationRoot = filepath.Join(stand.base, "installation")
@@ -210,7 +221,6 @@ func provisionPlatformLedLaunchRefresh(t *testing.T, refreshMS int) *platformLed
 	t.Cleanup(func() { stand.cleanup(t) })
 
 	// Genuine Network authority + signed closed Epoch/profile.
-	stand.f = newNetworkAdmissionFixture(t)
 	epoch, err := networkfixture.BuildClosed(stand.f.spec)
 	if err != nil {
 		t.Fatal(err)

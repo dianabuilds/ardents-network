@@ -476,6 +476,11 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/endpoint_journey_native_linux_test.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/unit" || dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/route/transport" || dependency == modulePath+"/internal/successor/publication") {
 		return true
 	}
+	// The cold/warm latency root driver (#650) names the selected Carrier for the
+	// shared publication Route network exactly as the journey controller does.
+	if source == "cmd/ardents-next/endpoint_latency_native_linux_test.go" && dependency == modulePath+"/internal/successor/route/transport" {
+		return true
+	}
 	if (source == "cmd/ardents-next/platform_unit_linux.go" || source == "cmd/ardents-next/platform_linux_test.go" || source == "cmd/ardents-next/source_repair_linux.go" || source == "cmd/ardents-next/introduction_repair_linux.go" || source == "cmd/ardents-next/forwarding_repair_linux.go" || source == "cmd/ardents-next/join_repair_linux.go") && dependency == modulePath+"/internal/successor/installation/systemd" {
 		return true
 	}
@@ -1162,6 +1167,16 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/installed_pair_linux_test.go" || source == "cmd/ardents-next/endpoint_journey_native_linux_test.go" {
 		switch dependency {
 		case modulePath + "/internal/application/administration", modulePath + "/internal/application/connection", modulePath + "/internal/application/textdocument":
+			return true
+		}
+	}
+	// The cold/warm latency participant (#650) runs as the installed Endpoint
+	// MainPID and measures the ordinary Reader composition directly: it opens the
+	// public Connection request and reads the validated text response exactly as
+	// the installed reader adapter does. It owns no Application server.
+	if source == "internal/successor/endpoint/latency_native_linux_test.go" {
+		switch dependency {
+		case modulePath + "/internal/application/connection", modulePath + "/internal/application/textdocument":
 			return true
 		}
 	}
