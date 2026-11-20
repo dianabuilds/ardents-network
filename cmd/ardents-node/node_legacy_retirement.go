@@ -18,8 +18,6 @@ var (
 	errOldJoinInstalledRetired          = errors.New("old JOIN start-installed orchestration is retired; use the platform-led JOIN lifecycle (ardents-next node join --retained-config, platform check/unit, systemctl start ardents-join)")
 	errOldJoinInstallationRetired       = errors.New("old JOIN installation transactions are retired; use the platform-led JOIN lifecycle (ardents-next platform check, node join --retained-config, join repair-retained)")
 	errOldNodeConfigRetired             = errors.New("old Node --config runtime is retired; use ardents-next node <role> --retained-config")
-	errOldNodeDutyRetired               = errors.New("old Node duty reservation is retired")
 	errOldIssuerRetired                 = errors.New("old Node issuer initialize/serve is retired; use ardents-next node-identity/issuance/node issuer")
-	errOldTransitIssuerRetired          = errors.New("old Transit issuer start is retired")
 	errOldHostingRetired                = errors.New("old Node hosting initialize is retired; use ardents-next hosting initialize")
 )

@@ -641,44 +641,19 @@ Route cleanup failure, which remains failed despite known physical join.
 unavailable, with queue/timer counts explicitly unmeasured. It grants no duty,
 capacity, readiness, supported-host or privacy qualification.
 
-`ardents-node hosting initialize --config PATH` accepts a canonical
-`ardents-hosting-initialization-v1` plan and initializes the host-owned Resource
-policy root for one provider period. Later Node plans reopen that root; they
-cannot replace its policy.
+The generic Node, issuer and Hosting commands are retired before they read a
+plan or open a root. The command selects its refusal from the arguments alone.
 
-The accepted
+| Retired selector | Refusal prefix | Maintained owner |
+|---|---|---|
+| `ardents-node node --config PATH` | `old Node --config runtime is retired` | `ardents-next node <role> --retained-config` for the independently admitted installed role. |
+| `ardents-node issuer initialize` and `ardents-node issuer serve` | `old Node issuer initialize/serve is retired` | `ardents-next node-identity import`, `ardents-next issuance initialize-profile` and `ardents-next node issuer`. |
+| `ardents-node hosting initialize --config PATH` | `old Node hosting initialize is retired` | `ardents-next hosting initialize`. |
+
+Previously issued records and plans remain historical evidence. The
 [old-start retirement contract](../technical/network-route-node.md#old-start-retirement)
-selects refusal of the old Node reservations, Source
-`native_rendezvous_profile`, and Transit issuer initialize/serve before their
-first root, key, listener, supervisor, or Network effect. It preserves the
-separately named closed duties, closed Source profile, and closed issuer.
-The Node-reservation, Source-profile, and Transit issuer start command gates
-are integrated. The retired dedicated-host Contributor subcommand is removed
-entirely (ADR-0114): `contributor` is no longer a recognized command shape and
-fails with the standard usage error before any effect.
+records the previous reservation-level refusals.
 
-`ardents-node issuer initialize --config PATH` recognizes the bounded legacy
-`ardents-transit-issuer-initialize-v1` schema only to return
-`old Transit issuer start is retired`. That refusal follows bounded plan decode
-and precedes path validation, identity-key access, root creation and output.
-It does not convert, erase or reopen an existing Transit issuer root.
-
-`ardents-node issuer serve --config PATH` rejects a legacy `transit_issuer`
-reservation through the old-duty gate before plan-owned keys, certificates,
-State roots, issuer roots or listeners are opened. Its issuer validator accepts
-only one isolated `closed_issuer` runtime. The old Node-side Transit signer,
-listener, Handler, and mutable root ledger are absent. Existing root bytes are
-left untouched; no command reopens or migrates them. The signed-profile decoder
-and one-use client remain solely for the separate Endpoint acquisition path.
-
-The retained closed-profile issuer uses the `closed_issuer` stanza with
-an initialized signing root and a separate, existing owner-only admission_root
-for receiving Control-token spends, plus connection_limit and drain_timeout_ms.
-Both paths must be clean absolute paths and cannot identify the same root.
-The Node owns both roots until its listeners have joined. The current State
-profile still supplies the issuer identity, keys, recipients and validity;
-these local storage paths confer no network authority. Missing admission
-storage makes startup unavailable.
 `ardents-node source --config PATH` is retired before reading the plan, opening
 optional diagnostics, State, keys or listeners. It returns
 `old Source profile is retired` for the recognized complete selector; no old
@@ -908,48 +883,6 @@ public exact-artifact bootstrap receipt and its separate direct Product Owner
 acceptance. A compiled command, component pass or this command reference
 supplies no such acceptance or qualification.
 
-`ardents-node node --config PATH` runs one separately keyed Node process from
-an `ardents-node-plan-v1` input. The schema remains shared with current closed
-duties, but the old `rendezvous`, `initiator`, `introduction`, `responder`, and
-`transit_issuer` reservations return `old Node duty reservation is retired`
-after bounded plan recognition and before any plan-owned key, certificate,
-Source root, State root, listener, resource, or duty effect. A mixed old and
-closed plan receives the same refusal; omission never selects an old default or
-a closed fallback. The retained old stanza fields identify refused input. The
-Rendezvous, Initiator, Responder, Introduction, and Transit-issuance engines and
-their command composition are absent. Their plan stanzas remain only so the
-adapter can classify and refuse bounded input; none is a runnable command
-profile.
-
-A current closed Node process owns one admitted duty, pressure reaction, drain,
-withdrawal, and joined cleanup; lifecycle JSON uses
-`ardents-node-event-v1`. On Linux, `SIGTERM` and foreground interrupt request
-local withdrawal before process exit. An arbitrary Node config is not a
-supported Node operating profile; the bounded config cannot override State's
-duty selection.
-
-The generation-3 forwarding reservation is `closed_forwarding`, containing
-only an existing owner-only receiving-spend `root`, `connection_limit` (1–16)
-and `drain_timeout_ms` (1–60,000). It uses `node --config`, never `issuer serve`.
-Exactly one closed issuer, forwarding or resolution stanza may be selected, with no legacy
-native duty alongside it. `closed_profile_authority` must name an authority
-already pinned in the State plan; no new trust root is admitted. The Node
-runtime verifies the accepted State profile and its current adjacent/interior
-assignment before opening the listener. It derives the actual listener,
-Carrier and allowed next peers from State. The forwarding stanza accepts none
-of those facts. Plan parsing/owner dispatch does not itself prove a complete
-protected participant journey.
-
-The `closed_resolution` stanza contains absolute separate `root` (Descriptor
-Store) and `admission_root` paths, `connection_limit` (1–16), and
-`drain_timeout_ms` (1–60,000). It uses `node --config` and the same existing
-State-pinned `closed_profile_authority`; `issuer serve` refuses this plan.
-State must assign the local Node to the closed resolution duty before the
-listener opens. The stanza accepts no endpoint, peer, role, profile digest or
-verification/storage callback. Descriptor lookup and publication use actual
-Control admission and the durable Store; this configuration alone does not
-establish Publisher readiness or private Introduction registration.
-
 The retired dedicated-host Contributor subcommand (`apply`, `restart`,
 `diagnose`, `drain`, `withdraw`, `remove`) is removed entirely by ADR-0114: no
 live `ardents-rendezvous-contributor` installation remains, the owned-shutdown
@@ -1007,7 +940,7 @@ facts, and no unified replacement report is selected.
 
 | Route | Required flags | Result |
 |---|---|---|
-| `inspect-closed-issuer-profile` | `--profile PATH --node-key HEX --network HEX --node HEX` | Read-only offline inspection of the JSON public export from closed `ardents-node issuer initialize`. Verifies its schema, digest, Node signature and independently supplied Network/Node bindings. Reports `ardents-closed-issuer-inspection-v1`, including `NetworkID`, `IssuerNodeID`, `NotBefore`, `NotAfter` and `TokenKeys` in closed-profile-plan form. It does not accept State or decide current validity; future hourly keys may be provisioned before activation. |
+| `inspect-closed-issuer-profile` | `--profile PATH --node-key HEX --network HEX --node HEX` | Read-only offline inspection of a retained JSON public issuer-profile export. Verifies its schema, digest, Node signature and independently supplied Network/Node bindings. Reports `ardents-closed-issuer-inspection-v1`, including `NetworkID`, `IssuerNodeID`, `NotBefore`, `NotAfter` and `TokenKeys` in closed-profile-plan form. It does not accept State or decide current validity; future hourly keys may be provisioned before activation. |
 | `prepare-closed-profile` | `--plan PATH --output PATH` | Render the canonical unsigned `ARDCPR03` body from a bounded public plan into a new file. |
 | `sign-closed-profile` | `--plan PATH --authority-key PATH --output PATH` | Reread the exact public plan and sign only `ARDCPR03` with the owner-only PKCS#8 Ed25519 State-authority file; write a new file and report its digest without printing key or profile bytes. |
 | `inspect-closed-profile` | `--plan PATH --profile PATH --authority HEX --at RFC3339` | Read-only verification of the signed profile against the independently pinned State authority and exact Network/Epoch/time context. Durable State acceptance is separate. |

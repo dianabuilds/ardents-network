@@ -2110,16 +2110,14 @@ reviewed grammar group. Current closed TCP/TLS tests prove exact peer
 rejection, cancellation before handshake, caller-owned lifetime after a
 completed handshake, and unchanged Carrier profile bounds.
 
-Removing the old cross-platform Rendezvous listener once exposed the shared
-server-side Carrier and admission closure as production-dead. The current
-analysis reaches it through the composed `ardents-node node --config` command,
-and ADR-0101 resolved the last two Node entries that still carried the stale
-"no selected C0 command" claim: the `dutyFacts` DutyView test-seam projection
-moved into test scope and the unimplemented local admission-timeout helpers
-were retired, so `internal/node` holds no common deadcode allowance.
-ADR-0104 subsequently replaced the getter seam itself with one copied
-`state.NodeDuty` value, deleting the test-scope projection along with the
-Interface it satisfied.
+After the old cross-platform Rendezvous listener was removed, the generic
+Node command still reached the closed server-side Carrier and admission
+closure. ADR-0101 retired unused admission-timeout helpers and moved the
+DutyView projection into test scope. ADR-0104 then replaced that getter with
+one copied `state.NodeDuty` value. The generic Node command is now retired
+(#562). The deadcode registry classifies the predecessor Node functions by
+their remaining platform-specific test consumers. Current accepting Node
+coverage belongs to the successor role and lifecycle profiles.
 Additional shared framing leaves are unreachable only in the Windows
 projection and remain in its platform allowance because Linux production
 still has retained Route consumers. That allowance does not permit removing
@@ -2850,20 +2848,12 @@ the AAI2 codec/server/client and exclusive Endpoint adapter are absent, while
 the independent Administration client round trip remains covered. Shared
 directional-close evidence remains with AAI3 and native Service Connection.
 
-The `ardents-node node --config` retirement oracle submits each old
-`rendezvous`, `initiator`, `introduction`, `responder`, and `transit_issuer`
-reservation plus a mixed old/closed plan through the real command adapter. Each
-must return the typed old-duty retirement outcome while deliberately absent
-key, certificate, Source-root, State-root, and role-root paths remain absent.
-The complete command package retains independent positive and refusal coverage
-for `closed_issuer`, `closed_forwarding`, `closed_resolution`,
-`closed_introduction`, and `closed_data_join`. The old Initiator, Responder,
-Introduction, Transit-issuance, and Rendezvous engines and their direct server
-tests are absent. State and Node tests exercise the State-to-Node value
-interface, its projection, and the receipt-time bound. Historical file
-inventories do not guard these
-boundaries: command behavior proves the old starts refuse before effects, and
-the current closed-duty tests prove their accepting paths.
+The `TestLegacyNodeCommandPathsRefuseBeforeEffects` oracle exercises
+`ardents-node node --config`, `issuer initialize`, `issuer serve` and
+`hosting initialize` through the command adapter. Each returns its typed
+retirement result without output or a diagnostics socket. The selectors
+refuse before decoding the plan, including former closed plans. The current
+accepting Node roles use the separately selected successor profiles.
 
 The `ardents-node source --config` retirement oracle submits old-only and
 mixed old/closed `native_rendezvous_profile` plans through the real command
