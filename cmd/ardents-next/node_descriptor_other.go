@@ -14,3 +14,10 @@ func runNodeDescriptor(_ context.Context, _ []string, out, _ io.Writer) int {
 	}
 	return 1
 }
+
+func runDescriptorRepair(_ context.Context, _ []string, out, _ io.Writer) int {
+	if nodeDescriptorReport(out, "refused", "unsupported-platform", "", "") != nil {
+		return 2
+	}
+	return 1
+}

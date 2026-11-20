@@ -129,6 +129,45 @@ These are fixture-authority component/acceptance evidence with one operator,
 not independent participants, whole-host privacy qualification or bootstrap
 acceptance.
 
+Descriptor platform-led retained evidence (#604 FJD stages A+B+C, ADR-0125) is
+separately selected. `TestNativeDescriptorRetainedLifecycle`
+(`node_process_native`) proves the fresh `--config` first launch creating the
+participation and receiving histories and the Store root, joined cancellation
+with producer removal, retained `--retained-config` relaunch, and SIGKILL crash
+refusal (the next retained opening refuses before listening; the Store flock
+lease dies with the process and, with no publication in flight, the retained
+Store reopens without an uncertain stage). Its lifecycle legs are single-unit:
+one Descriptor member (id 17, domain 2, subrole 5) owns its own participation
+root, sole node-duty fence and Store root. The readiness oracle is the
+authenticated listener, NOT publication readiness; genuine publish/lookup over
+the Route prefix remains `TestNativeDescriptorPublishLookupAndReopenTCP` in
+`descriptor-process-linux`.
+`TestNativeDescriptorPlatformInstalledLifecycle` under the
+`descriptor_platform_native` build tag is the installed gate against the real
+platform systemd manager: the mandatory `platform check` ExecStartPre of
+`ardents-descriptor.service`, `ardents-next node descriptor --retained-config`
+as the shared fixed `ardents-node` main process, stop/relaunch/forward program
+change/rollback refusal, and crash recovery through the bounded
+`ardents-next node descriptor repair-retained` against real failed-unit manager
+facts and per-unit cgroup quiescence. The repair abandons only the sole
+unresolved node-duty participation fence after the original read-only manager,
+stopped-policy and empty-scope proofs; spend obligations and publication floors
+are never repairable, no root is initialized and no runtime starts. Descriptor
+adds a causal mid-Publish-crash Store stage-recovery leg: a genuine signed floor
+is committed through the real Store owner, the retained runtime is SIGKILLed, and
+the reserved uncertain `.record-stage` is left in the records directory (a
+bounded fixture of the crash shape, since the stand cannot deterministically
+interrupt the serialized network writer mid-Publish). A plain retained start
+refuses the uncertain stage; the bounded repair validates the committed floor
+first and removes only the staging under the exclusive Store lease
+(`reachability.RepairRetainedStoreStage`), then removes the producer; the
+post-repair launch opens the Store cleanly and listens, and the committed
+publication still resolves byte-exact. These are fixture-authority
+component/acceptance evidence with one operator, not independent participants,
+whole-host privacy qualification or bootstrap acceptance. The transitional
+Descriptor orchestration is not exercised or retired by these gates; that
+retirement is the separately authorized stage D.
+
 The transitional JOIN orchestration native qualification is retired (#604
 FJD stage D, ADR-0125). The former `join-installed-linux` profile, its
 `make join-installed-check` lane, the `installation/join` package, the OLD-path
