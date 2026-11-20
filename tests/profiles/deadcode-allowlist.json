@@ -111,11 +111,10 @@
         "internal/endpoint/replacement.writeExecutableAtomic",
         "internal/endpoint/runtimeplan.DecodeHeadless",
         "internal/endpoint/runtimeplan.validateTextFields",
-        "internal/enrollment.VerifyHeadless",
         "internal/release.Authorization.AcceptedDecision"
       ],
       "classification": "retired per-user Portable Endpoint command surface awaiting Endpoint cohort removal",
-      "rationale": "The per-user Portable Endpoint command surface is retired (ADR-0125, #617 S3.5): ardents endpoint enroll/enroll-installed/headless/user-unit/installed-user-unit/replace/rollback/replacement-self-test/replacement-recovery return typed refusals before input or root effects and their command implementations are removed. These exact symbols in internal/endpoint/portable, internal/endpoint/replacement, the former headless participant runtime, runtimeplan headless decoding, enrollment.VerifyHeadless and release.Authorization.AcceptedDecision lose their only maintained production caller (cmd/ardents) on both platforms. The owning Modules remain with its behavior tests until the separately gated Endpoint cohort removal; the portable public lifecycle API (DefaultConfig, FailureEvent, Runtime.Wait) retains genuine unit tests, so no test-only reachability is admitted. The canonical platform-led delivery/preparation/forward-only replacement composition lives in ardents-next. The former headless participant runtime and portable.validateDirectory symbols are linux-amd64-only production-dead (Windows qualification still reaches them); they are recorded in the linux-amd64 production allowlist instead.",
+      "rationale": "The per-user Portable Endpoint command surface is retired (ADR-0125, #617 S3.5): ardents endpoint enroll/enroll-installed/headless/user-unit/installed-user-unit/replace/rollback/replacement-self-test/replacement-recovery return typed refusals before input or root effects and their command implementations are removed. These exact symbols in internal/endpoint/portable, internal/endpoint/replacement, the former headless participant runtime, runtimeplan headless decoding and release.Authorization.AcceptedDecision lose their only maintained production caller (cmd/ardents) on both platforms. The owning Modules remain with its behavior tests until the separately gated Endpoint cohort removal; the portable public lifecycle API (DefaultConfig, FailureEvent, Runtime.Wait) retains genuine unit tests, so no test-only reachability is admitted. The canonical platform-led delivery/preparation/forward-only replacement composition lives in ardents-next. The former headless participant runtime and portable.validateDirectory symbols are linux-amd64-only production-dead (Windows qualification still reaches them); they are recorded in the linux-amd64 production allowlist instead.",
       "owner": "Product Owner and Codex; Endpoint",
       "retirement": "Remove each exact symbol when the gated Endpoint cohort removal retires its owning Module or former headless participant/declaration source, or when a separately selected genuine successor production caller reaches it. Lost production reachability elsewhere requires repair, not another allowance."
     },
@@ -142,30 +141,6 @@
     },
     {
       "symbols": [
-        "internal/enrollment.ExecutableArtifactName",
-        "internal/enrollment.ProtectedResourceNames",
-        "internal/enrollment.ValidateProtectedGeneration",
-        "internal/enrollment.Verify",
-        "internal/enrollment.descriptor.matches",
-        "internal/enrollment.digest",
-        "internal/enrollment.equalDigest",
-        "internal/enrollment.exactExecutable",
-        "internal/enrollment.exactInventory",
-        "internal/enrollment.parseDescriptor",
-        "internal/enrollment.parseManifest",
-        "internal/enrollment.projectProtectedInventory",
-        "internal/enrollment.readEnrollmentFile",
-        "internal/enrollment.readPackageArtifact",
-        "internal/enrollment.readPackageStatic",
-        "internal/enrollment.readRegular",
-        "internal/enrollment.validDescriptor",
-        "internal/enrollment.validName",
-        "internal/enrollment.validRequest",
-        "internal/enrollment.verify",
-        "internal/enrollment.verifyOwnedRegular",
-        "internal/enrollment.verifyPackageDirectory",
-        "internal/enrollment.verifyPackageFile",
-        "internal/enrollment.verifyPackageStaticRoot",
         "internal/network/epoch.PrepareInitialClosedEpoch",
         "internal/network/epoch.PrepareInitialClosedRecord",
         "internal/network/epoch.appendInitialPreparationText",
@@ -258,7 +233,7 @@
         "internal/release.writeSyncedFile"
       ],
       "classification": "retired ACA1 inspection and portable enrollment diagnosis; old Release/epoch-preparation owners awaiting legacy cohort removal",
-      "rationale": "ADR-0127 (#647) removed the ACA1 disclosure reader (internal/alphacontrol and internal/alphacontrol/inspection), retired inspect-bundle/inspect-transitions and the prepare-qualification-* routes with typed before-effect refusals, removed the alpha/network qualification scripts, retired the persisted three-argument enrollment-check form and cut the four-argument form over to internal/successor/enrollment.Verify. These exact symbols lose their last maintained production callers on both platforms: the predecessor enrollment verifier (Verify with its companion projection and static helpers; VerifyHeadless is already reviewed under the retired Portable surface), the old epoch initial-preparation functions (their only callers were the retired prepare-qualification-node-record/epoch routes, the retired inspection chain and sign-qualification-network.go), and the old Release owner (reached only through the retired inspection chain, the retired enrollment-check forms and the already-retired per-user replacement surface). The owning Modules remain with their behavior tests until the gated legacy cohort removal; no test-only reachability is admitted.",
+      "rationale": "ADR-0127 (#647) removed the ACA1 disclosure reader (internal/alphacontrol and internal/alphacontrol/inspection), retired inspect-bundle/inspect-transitions and the prepare-qualification-* routes with typed before-effect refusals, removed the alpha/network qualification scripts, retired the persisted three-argument enrollment-check form and cut the four-argument form over to internal/successor/enrollment.Verify. These exact symbols lose their last maintained production callers on both platforms: the old epoch initial-preparation functions (their only callers were the retired prepare-qualification-node-record/epoch routes, the retired inspection chain and sign-qualification-network.go), and the old Release owner (reached only through the retired inspection chain, the retired enrollment-check forms and the already-retired per-user replacement surface). The owning Modules remain with their behavior tests until the gated legacy cohort removal; no test-only reachability is admitted.",
       "owner": "Product Owner and Codex; legacy cohort removal #564/#565 (#497 M3)",
       "retirement": "Remove each exact symbol when the gated legacy cohort removal retires its owning Module, or when a separately selected genuine production caller reaches it. Lost production reachability elsewhere requires repair, not another allowance."
     }
@@ -920,23 +895,13 @@
       },
       {
         "symbols": [
-          "internal/enrollment.ReadHeadlessCandidate",
           "internal/release.Verifier.CurrentFloors",
           "internal/successor/route/selection.openInteriorStore"
         ],
-        "classification": "retired headless declaration/Release-floor and interior opening seams (linux-only production-dead)",
-        "rationale": "internal/enrollment.ReadHeadlessCandidate and internal/release.Verifier.CurrentFloors lost their headless/Portable operator consumers in the legacy command retirement (#615/#616, #617 S3.5); internal/successor/route/selection.openInteriorStore is a retained interior opening seam reached only by its behavior tests, with no current production caller. All retain behavior tests (none fully-dead). The owning Modules remain until the gated cohort removal or a selected genuine composition caller.",
+        "classification": "retired Release-floor and interior opening seams (linux-only production-dead)",
+        "rationale": "internal/release.Verifier.CurrentFloors lost its headless/Portable operator consumers in the legacy command retirement (#615/#616, #617 S3.5); internal/successor/route/selection.openInteriorStore is a retained interior opening seam reached only by its behavior tests, with no current production caller. All retain behavior tests (none fully-dead). The owning Modules remain until the gated cohort removal or a selected genuine composition caller.",
         "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
         "retirement": "Remove each exact symbol when its owning Module is retired by the gated cohort removal, or when a selected genuine production caller reaches it."
-      },
-      {
-        "symbols": [
-          "internal/enrollment.requestFromManifest"
-        ],
-        "classification": "retired portable enrollment diagnosis; Linux-only candidate-loading helper awaiting legacy cohort removal",
-        "rationale": "ADR-0127 (#647) removed internal/enrollment/input.go with the persisted v1 document parser and RequestFromManifestPin; requestFromManifest relocated to candidate_linux.go, whose sole caller ReadHeadlessCandidate is itself reviewed production-dead in the common allowlist. The helper therefore has no production caller on linux-amd64 and does not exist on windows-amd64. It remains with the candidate behavior tests until the gated legacy cohort removal.",
-        "owner": "Product Owner and Codex; legacy cohort removal #564/#565 (#497 M3)",
-        "retirement": "Remove this exact symbol when the gated legacy cohort removal retires the predecessor enrollment Module, or when a separately selected genuine production caller reaches it."
       },
       {
         "symbols": [

@@ -3,10 +3,8 @@
 Status: **current maintained technical contract.** This document defines the
 bounded first-artifact verification contract. The maintained
 `endpoint enrollment-check` command boundary consumes
-`internal/successor/enrollment`; the predecessor `internal/enrollment` Module
-retains the same grammar and its behavior tests until the gated legacy cohort
-removal (ADR-0127). It is not a release procedure, download guide, installer,
-updater, or qualification profile.
+`internal/successor/enrollment`. The current v3 inventory and refusal rules
+apply to the exact enrolled artifacts.
 
 ## Interface and ownership
 
@@ -210,17 +208,8 @@ retain their existing argv, stdout and exit-status contract and static-byte
 refusal boundary. The protected
 checker never rewrites the descriptor whose exact bytes Release must bind.
 
-### Predecessor owner
-
-`internal/enrollment` behavior tests cover pin-before-parse,
-inventory rejection, executable substitution, the typed refusal of retired
-v1/v2 descriptors and the generic refusal of unknown schemas, v3 companion
-separation including the partial-pair failure, package-owned artifact binding,
-Windows v3 manifest acceptance through the running-artifact identity gate in
-a re-executed enrolled child process. The retired ACA1 inspection chain and
-the legacy enrollment-check forms were its last production callers; the
-four-argument `endpoint enrollment-check` now consumes the successor owner
-(ADR-0127, #647). The Module remains with these behavior tests until the gated
-legacy cohort removal; its production-dead symbols are reviewed in the
-deadcode allowlist. Repository gates provide integration evidence;
-historical RC2 enrollment evidence does not qualify a future baseline.
+The maintained Enrollment tests cover pin-before-parse, inventory rejection,
+executable substitution, retired descriptor refusal, and separation of v3
+companion bytes from Release metadata. The headless artifact lane exercises
+these checks at the maintained owner. Historical receipts remain bound to
+their original artifacts.
