@@ -48,7 +48,31 @@ func TestTextWorkerSliceKeepsTheClosedOrdinaryCgroupRoot(t *testing.T) {
 			if test.value != nil {
 				service["Slice"] = *test.value
 			}
-			if got := sliceVerified(service); got != test.want {
+			if got := sliceVerified(textInventory, service); got != test.want {
+				t.Fatalf("slice verification = %t, want %t", got, test.want)
+			}
+		})
+	}
+}
+
+func TestStreamWorkerSliceKeepsTheQualificationOwnerSlice(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		value *value
+		want  bool
+	}{
+		{name: "qualification exact", value: &value{Type: "s", Data: json.RawMessage(`"ardents-qualification-owner.slice"`)}, want: true},
+		{name: "ordinary system slice", value: &value{Type: "s", Data: json.RawMessage(`"system.slice"`)}},
+		{name: "qualification missing"},
+		{name: "qualification wrong type", value: &value{Type: "as", Data: json.RawMessage(`["ardents-qualification-owner.slice"]`)}},
+		{name: "qualification template subslice", value: &value{Type: "s", Data: json.RawMessage(`"ardents-qualification-owner-ardents\\x2dstream.slice"`)}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			service := properties{}
+			if test.value != nil {
+				service["Slice"] = *test.value
+			}
+			if got := sliceVerified(streamInventory, service); got != test.want {
 				t.Fatalf("slice verification = %t, want %t", got, test.want)
 			}
 		})

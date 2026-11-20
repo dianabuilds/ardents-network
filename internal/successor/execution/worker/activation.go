@@ -19,6 +19,7 @@ type Activation struct {
 // Instance is one detached original invocation observation. It grants no
 // local permission, cleanup completion or right to signal a replacement.
 type Instance struct {
+	inv        inventory
 	Name       string
 	Role       string
 	Cgroup     string

@@ -81,24 +81,24 @@ func readEndpointProperties(ctx context.Context) (properties, properties, error)
 
 // readActivationSocketProperties observes a fixed text activation socket.
 // It grants no activation, launch or stop permission.
-func readActivationSocketProperties(ctx context.Context, role string) (properties, properties, error) {
+func readActivationSocketProperties(ctx context.Context, inv inventory, role string) (properties, properties, error) {
 	if ctx == nil || role != "reader" && role != "publisher" {
 		return nil, nil, errors.New("text activation socket observation is unavailable")
 	}
 	if err := verifyPlatform(ctx); err != nil {
 		return nil, nil, err
 	}
-	return readFixedUnitProperties(ctx, "ardents-text-"+role+".socket", "Socket")
+	return readFixedUnitProperties(ctx, inv.prefix+"-"+role+".socket", "Socket")
 }
 
 // Loaded socket facts are distinct from pinned on-disk artifact bytes. A
 // changed effective socket cannot authorize either activation or READY handoff.
-func verifyActivationSocket(ctx context.Context, role string) error {
-	observed, socket, err := readActivationSocketProperties(ctx, role)
+func verifyActivationSocket(ctx context.Context, inv inventory, role string) error {
+	observed, socket, err := readActivationSocketProperties(ctx, inv, role)
 	if err != nil {
 		return err
 	}
-	if err := unit.VerifyListeningSocket(systemd.Properties(observed), systemd.Properties(socket), role); err != nil {
+	if err := unit.VerifyListeningSocketAt(systemd.Properties(observed), systemd.Properties(socket), role, inv.prefix+"-"+role+".socket", inv.socket(role)); err != nil {
 		return errors.New("text worker effective activation socket differs")
 	}
 	return nil

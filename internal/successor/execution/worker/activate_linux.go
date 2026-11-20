@@ -19,22 +19,33 @@ import (
 // recheck, and new-instance observation. The caller owns the launch
 // permission, the bounding context, and cleanup on failure.
 func Activate(ctx context.Context, role string) (*Activation, error) {
+	return activate(ctx, textInventory, role)
+}
+
+// ActivateStream is the trusted qualification activation entry for the Stream
+// inventory. Ordinary text jobs use Activate; the architecture gate restricts
+// Stream callers to the qualification runner (no caller-visible selector).
+func ActivateStream(ctx context.Context, role string) (*Activation, error) {
+	return activate(ctx, streamInventory, role)
+}
+
+func activate(ctx context.Context, inv inventory, role string) (*Activation, error) {
 	if err := verifyEndpointService(ctx); err != nil {
 		return nil, err
 	}
-	artifact, err := loadArtifact()
+	artifact, err := loadArtifact(inv)
 	if err != nil {
 		return nil, err
 	}
-	if err := verifyActivationSocket(ctx, role); err != nil {
+	if err := verifyActivationSocket(ctx, inv, role); err != nil {
 		return nil, err
 	}
-	path := workerSocket(role)
-	socket, err := inspectActivationSocket(path)
+	path := inv.socket(role)
+	socket, err := inspectActivationSocket(inv, path)
 	if err != nil {
 		return nil, err
 	}
-	before, err := listInstances(ctx, role)
+	before, err := listInstances(ctx, inv, role)
 	if err != nil {
 		return nil, err
 	}
@@ -55,11 +66,11 @@ func Activate(ctx context.Context, role string) (*Activation, error) {
 	if err := prepareSocket(connection); err != nil {
 		return activation, err
 	}
-	afterSocket, err := inspectActivationSocket(path)
+	afterSocket, err := inspectActivationSocket(inv, path)
 	if err != nil || !os.SameFile(socket, afterSocket) {
 		return activation, errors.New("text worker activation socket changed")
 	}
-	observed, err := awaitInstance(ctx, before, role)
+	observed, err := awaitInstance(ctx, inv, before, role)
 	if err != nil {
 		return activation, err
 	}
@@ -68,8 +79,8 @@ func Activate(ctx context.Context, role string) (*Activation, error) {
 	return activation, nil
 }
 
-func inspectActivationSocket(path string) (os.FileInfo, error) {
-	if path != workerSocket("reader") && path != workerSocket("publisher") || os.Geteuid() == 0 {
+func inspectActivationSocket(inv inventory, path string) (os.FileInfo, error) {
+	if path != inv.socket("reader") && path != inv.socket("publisher") || os.Geteuid() == 0 {
 		return nil, errors.New("text worker activation address is unavailable")
 	}
 	if _, err := installedPath(filepath.Dir(path), true); err != nil {
@@ -86,13 +97,13 @@ func inspectActivationSocket(path string) (os.FileInfo, error) {
 	return info, nil
 }
 
-func awaitInstance(ctx context.Context, before listing, role string) (Instance, error) {
+func awaitInstance(ctx context.Context, inv inventory, before listing, role string) (Instance, error) {
 	ticker := time.NewTicker(25 * time.Millisecond)
 	defer ticker.Stop()
 	var candidate string
 	var observationErr error
 	for {
-		after, err := listInstances(ctx, role)
+		after, err := listInstances(ctx, inv, role)
 		if err != nil {
 			if ctx.Err() != nil && observationErr != nil {
 				return Instance{}, fmt.Errorf("text worker activation did not become verifiable (last observation: %w)", observationErr)
@@ -105,7 +116,7 @@ func awaitInstance(ctx context.Context, before listing, role string) (Instance, 
 		}
 		if name != "" {
 			candidate = name
-			observed, err := ObserveInstance(ctx, name, role)
+			observed, err := observeInstance(ctx, inv, name, role)
 			if err == nil {
 				return observed, nil
 			}

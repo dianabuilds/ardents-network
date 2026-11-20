@@ -797,14 +797,15 @@
       "id": "text-worker-lifecycle",
       "state": "active",
       "make_target": "text-worker-lifecycle-check",
-      "surface": "installed Endpoint text-worker launch, Grant and joined cgroup lifecycle; not full host qualification",
+      "surface": "installed Endpoint text-worker launch, Grant and joined cgroup lifecycle, plus the trusted Stream qualification activation/INIT/cleanup boundary (stream-activation case); not full host qualification",
       "prerequisites": [
         "dedicated Ubuntu 24.04 x86-64 with systemd 255, cgroup v2 and active polkit",
         "root driver and separate ardents-endpoint account",
         "exact installed worker artifacts and sockets",
         "root-owned Endpoint qualification test binary built with text_worker_installed tag",
         "independent binary and temporary service-unit SHA-256 values",
-        "fresh inactive temporary ardents-endpoint.service; no operational Endpoint"
+        "fresh inactive temporary ardents-endpoint.service; no operational Endpoint",
+        "stream-activation case: exact installed stream qualification artifact, manifest and sockets from packaging/stream-qualification-worker"
       ],
       "invalid_environment": "the declared dedicated installed worker lifecycle environment is unavailable"
     },

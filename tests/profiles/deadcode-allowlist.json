@@ -261,6 +261,16 @@
       "rationale": "ADR-0127 (#647) removed the ACA1 disclosure reader (internal/alphacontrol and internal/alphacontrol/inspection), retired inspect-bundle/inspect-transitions and the prepare-qualification-* routes with typed before-effect refusals, removed the alpha/network qualification scripts, retired the persisted three-argument enrollment-check form and cut the four-argument form over to internal/successor/enrollment.Verify. These exact symbols lose their last maintained production callers on both platforms: the predecessor enrollment verifier (Verify with its companion projection and static helpers; VerifyHeadless is already reviewed under the retired Portable surface), the old epoch initial-preparation functions (their only callers were the retired prepare-qualification-node-record/epoch routes, the retired inspection chain and sign-qualification-network.go), and the old Release owner (reached only through the retired inspection chain, the retired enrollment-check forms and the already-retired per-user replacement surface). The owning Modules remain with their behavior tests until the gated legacy cohort removal; no test-only reachability is admitted.",
       "owner": "Product Owner and Codex; legacy cohort removal #564/#565 (#497 M3)",
       "retirement": "Remove each exact symbol when the gated legacy cohort removal retires its owning Module, or when a separately selected genuine production caller reaches it. Lost production reachability elsewhere requires repair, not another allowance."
+    },
+    {
+      "symbols": [
+        "internal/successor/execution/worker.ActivateStream",
+        "internal/successor/execution/worker.ObserveInstanceStream"
+      ],
+      "classification": "accepted trusted Stream qualification activation entries with pending qualification runner composition (#654 3c-A)",
+      "rationale": "The trusted Stream activation and re-observation entries port the accepted predecessor Endpoint private Inventory design into successor execution/worker: identical confinement verification, qualification identity constants, owner slice and nested qualification cgroup root. The native-tagged installed test stream_activation_installed_linux_test.go exercises both entries against the real root-installed qualification inventory and system manager, including the fixed INIT/READY exchange and joined original-cgroup cleanup. They have no maintained production caller until the accepted qualification runner (3c-C) lands; ordinary text jobs use only Activate/ObserveInstance, and the architecture gate restricts Stream callers to the trusted qualification launch path. The unsupported-platform adapter returns only refusal.",
+      "owner": "Product Owner and Codex; successor Execution qualification (#654)",
+      "retirement": "Remove each exact allowance when the accepted qualification runner (3c-C) reaches it in production, or when the owning operation is retired. Lost Linux production reachability after runner wiring requires repair, not another allowance."
     }
   ],
   "production": {
@@ -3098,13 +3108,15 @@
       },
       {
         "symbols": [
+          "internal/successor/installation/unit.VerifyListeningSocketAt",
           "internal/successor/installation/unit.VerifyPlatformConfiguration",
           "internal/successor/installation/unit.VerifyPlatformRunning",
+          "internal/successor/installation/unit.VerifyStoppedSocketAt",
           "internal/successor/installation/unit.platformPreExecMatches",
           "internal/successor/installation/unit.verifyEndpointConfiguration"
         ],
         "classification": "Linux-native successor composition, no Windows production path (internal/successor/installation/unit)",
-        "rationale": "These exact internal/successor/installation/unit functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted.",
+        "rationale": "These exact internal/successor/installation/unit functions are reached by the genuine Linux native composition (platform unit/check, installed runtime, native manager observation) but Windows refuses the corresponding native operation before opening these owners. They are production-dead on windows-amd64 only; Linux production reachability is unchanged and required. Portable rule tests retain behavior coverage where applicable. No Windows native/runtime support is granted. VerifyListeningSocketAt and VerifyStoppedSocketAt carry the explicit socket name/listen path for the worker inventory parameterization; Linux reaches them through the installed worker activation socket observation and the text wrappers, while Windows production refuses native installation and worker activation before opening these owners.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows native composition reaches it, or when the owning operation is retired. Lost Linux production reachability requires repair, not another allowance."
       },
@@ -3797,6 +3809,16 @@
         "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/successor/route/selection)",
         "rationale": "These exact internal/successor/route/selection functions are covered by native-tagged Linux tests (network_signing_native/installation_native/text_worker_installed/node_process_native and siblings) and reached by Linux native production composition. Windows excludes the Linux-only native test executables and refuses the native production operation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
         "owner": "Product Owner and Codex; successor platform-led delivery",
+        "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
+      },
+      {
+        "symbols": [
+          "internal/successor/execution/worker.ActivateStream",
+          "internal/successor/execution/worker.ObserveInstanceStream"
+        ],
+        "classification": "Linux-native composition covered by native-tagged Linux tests, no Windows test path (internal/successor/execution/worker)",
+        "rationale": "These exact internal/successor/execution/worker functions are covered by the native-tagged Linux installed test (text_worker_installed) against the real qualification inventory and reached by the pending Linux qualification runner composition. Windows excludes the Linux-only native test executable and refuses native worker activation, so the functions are fully-dead in the windows-amd64 native-tag analysis only. This is reviewed platform-native coverage, not unreviewed test-only dead; Linux native-tag test analysis remains empty.",
+        "owner": "Product Owner and Codex; successor Execution qualification (#654)",
         "retirement": "Remove each exact Windows entry when a selected genuine Windows test or production path reaches it, or when the owning operation is retired. The Linux native-tag test analysis must remain empty."
       }
     ]

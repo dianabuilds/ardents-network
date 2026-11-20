@@ -78,7 +78,9 @@ func (owner *Cleanup) join() error {
 	defer cancel()
 	return owner.joinObserved(ctx, readCgroup, func(ctx context.Context, _, _ string) (properties, properties, error) {
 		return readCleanupProperties(ctx, owner.instance, managerCall)
-	}, stopInstance)
+	}, func(ctx context.Context, name, role string) error {
+		return stopInstance(ctx, owner.instance.inv, name, role)
+	})
 }
 
 func (owner *Cleanup) joinObserved(
@@ -149,7 +151,7 @@ func (owner *Cleanup) waitOriginalCgroup(
 
 func sameCleanupInstance(instance Instance, unit, service properties) bool {
 	var invocation [16]byte
-	if !cgroupPath(instance.Cgroup, instance.Name, instance.Role) || instance.PID == 0 ||
+	if !cgroupPath(instance.inv, instance.Cgroup, instance.Name, instance.Role) || instance.PID == 0 ||
 		!unit.exact("Id", "s", instance.Name) || !unit.exact("LoadState", "s", "loaded") ||
 		!decodeInvocation(unit["InvocationID"], &invocation) || invocation != instance.Invocation {
 		return false
@@ -167,8 +169,8 @@ func sameCleanupInstance(instance Instance, unit, service properties) bool {
 		service.exact("ExecStop", "a(sasbttttuii)", []any{}) && service.exact("ExecStopPost", "a(sasbttttuii)", []any{})
 }
 
-func stopInstance(ctx context.Context, name, role string) error {
-	if ctx == nil || ctx.Err() != nil || !validUnit(name, role) {
+func stopInstance(ctx context.Context, inv inventory, name, role string) error {
+	if ctx == nil || ctx.Err() != nil || !validUnit(inv, name, role) {
 		return errors.New("text worker stop identity is invalid")
 	}
 	// systemctl waits for the manager's stop job by default. The fixed command

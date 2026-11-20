@@ -21,7 +21,15 @@ func Activate(context.Context, string) (*Activation, error) {
 	return nil, errNativeUnavailable
 }
 
+func ActivateStream(context.Context, string) (*Activation, error) {
+	return nil, errNativeUnavailable
+}
+
 func ObserveInstance(context.Context, string, string) (Instance, error) {
+	return Instance{}, errNativeUnavailable
+}
+
+func ObserveInstanceStream(context.Context, string, string) (Instance, error) {
 	return Instance{}, errNativeUnavailable
 }
 

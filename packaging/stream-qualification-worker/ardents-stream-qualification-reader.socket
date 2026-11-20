@@ -1,5 +1,6 @@
 [Unit]
 Description=Ardents fixed qualification stream reader activation
+PartOf=ardents-endpoint.service
 
 [Socket]
 ListenStream=/run/ardents-stream-qualification/reader.sock

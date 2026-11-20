@@ -41,6 +41,27 @@ Absent digests, installed prerequisites or unverified results are failures,
 never passing skips. Retain failed attempts and complete source/dirty-tree,
 artifact, OS/kernel/package, driver and unit inventories outside Git.
 
+The shared runner also has one explicit stream-activation case (#654 3c-A),
+invoked as `sh run-ubuntu.sh stream-activation` with the same independent
+ARDENTS_TEXT_LIFECYCLE_SHA256 and ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256 digests.
+It runs TestInstalledStreamWorkerActivation from the successor worker package
+test binary: build it outside the repository with
+go test -c -tags text_worker_installed -trimpath -buildvcs=false -o OUTPUT ./internal/successor/execution/worker
+and install it root:root mode 0555 at
+/usr/lib/ardents/qualification/worker-stream.test. The temporary unit has the
+same shape and ExecStart flags with
+-test.run=^TestInstalledStreamWorkerActivation$. Before running, install the
+fixed stream qualification inventory as root from a prepared static
+CGO_ENABLED=0 linux/amd64 cmd/ardents-stream-qualification binary:
+python3 packaging/stream-qualification-worker/install.py PREPARED_BINARY
+(the separate ardents-endpoint account must already exist). The test proves
+the trusted ActivateStream confinement observation against the real system
+manager, the text inventory's refusal of the qualification unit,
+ObserveInstanceStream identity re-observation, the fixed stream INIT/READY
+exchange over the successor attachment, and joined original-cgroup cleanup for
+both roles. It is worker-boundary component evidence, not the NET-14 workload
+measurement (3c-C) and not a whole-host privacy qualification.
+
 The shared runner also has one explicit tree profile, invoked only by
 text-worker-tree-check with its independent hostile artifact digest and exact
 TestInstalledTextWorkerHostileTree receipts. See the sibling profile README.

@@ -1,5 +1,6 @@
 [Unit]
 Description=Ardents fixed qualification stream Publisher activation
+PartOf=ardents-endpoint.service
 
 [Socket]
 ListenStream=/run/ardents-stream-qualification/publisher.sock
@@ -8,7 +9,7 @@ SocketUser=ardents-endpoint
 SocketGroup=ardents-endpoint
 SocketMode=0600
 DirectoryMode=0711
-MaxConnections=256
+MaxConnections=64
 RemoveOnStop=yes
 
 [Install]
