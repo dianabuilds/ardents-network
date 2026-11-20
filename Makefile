@@ -103,12 +103,12 @@ platform-launch-unit:
 heapdump-capture:
 	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)
 	@test -n "$(ARDENTS_HEAPDUMP_REPORT)" || (echo "ARDENTS_HEAPDUMP_REPORT is required"; exit 2)
-	go test -tags heapdumpcapture ./internal/endpoint -run '^TestHeapDumpObservation$$' -count=1
+	go test -tags heapdumpcapture ./internal/diagnostics/process -run '^TestHeapDumpObservation$$' -count=1
 
 heapdump-role-map:
 	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)
 	@test -n "$(ARDENTS_HEAPDUMP_ROLE_MAP)" || (echo "ARDENTS_HEAPDUMP_ROLE_MAP is required"; exit 2)
-	go test -tags heapdumpcapture ./internal/endpoint -run '^TestHeapDumpRoleMapObservation$$' -count=1 -timeout=5m
+	go test -tags heapdumpcapture ./internal/diagnostics/process -run '^TestHeapDumpRoleMapObservation$$' -count=1 -timeout=5m
 
 e2e:
 	go test -p 1 $(filter-out $(NODE_PROCESS_PACKAGES),$(PROCESS_PACKAGES)) -shuffle=on -count=1

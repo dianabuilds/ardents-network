@@ -1,6 +1,6 @@
 //go:build heapdumpcapture
 
-package endpoint
+package process
 
 import (
 	"crypto/sha256"
@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 )
 
 var heapObservationPhases = []string{"startup", "published", "withdrawn"}

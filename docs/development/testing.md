@@ -1853,6 +1853,12 @@ These reservations do not qualify installed networking or systemd/cgroup use.
   timeout. This keeps the race-instrumented Linux Endpoint's cryptographic
   fixtures inside the checked profile without inheriting Go's shorter default;
   exceeding the bound remains a failure with the runtime's goroutine dump.
+- `make heapdump-capture` and `make heapdump-role-map` read existing
+  receipt-bound files through the process diagnostics package. For a receipt
+  bound to a retired source revision, give `ARDENTS_HEAPDUMP_SOURCE_ROOT` the
+  absolute directory of an independently retained source archive. The verifiers
+  still compare every recorded source digest and keep the report formats tied
+  to the original capture. These reports are point-in-time observations.
 - `make text-role-durable-state-capture` runs the Linux-only isolated Role
   publication/lookup/withdrawal observation. It requires
   `ARDENTS_TEXT_ROLE_OBSERVATIONS` to name a writable capture directory outside

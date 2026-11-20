@@ -1,6 +1,6 @@
 //go:build heapdumpcapture
 
-package endpoint
+package process
 
 import (
 	"crypto/sha256"
@@ -143,12 +143,17 @@ func verifiedObservationManifest(root string, allArtifacts bool) (observationMan
 	if err := json.Unmarshal(receipt, &manifest); err != nil {
 		return observationManifest{}, "", err
 	}
-	repository, err := heapDumpRepositoryRoot()
+	sourcePath, err := heapDumpSourcePath()
 	if err != nil {
 		return observationManifest{}, "", err
 	}
+	sources, err := os.OpenRoot(sourcePath)
+	if err != nil {
+		return observationManifest{}, "", err
+	}
+	defer sources.Close()
 	for _, source := range manifest.SourceFiles {
-		raw, err := os.ReadFile(filepath.Join(repository, source.Path))
+		raw, err := sources.ReadFile(source.Path)
 		if err != nil {
 			return observationManifest{}, "", err
 		}
@@ -183,7 +188,16 @@ func observationArtifactPath(root, artifact string) (string, error) {
 	return filepath.Join(root, relative), nil
 }
 
-func heapDumpRepositoryRoot() (string, error) {
+// A retained receipt can name source removed from the maintained checkout.
+// Read the exact historical files from a caller-provided source archive
+// and verify their original digests before interpreting the captured heaps.
+func heapDumpSourcePath() (string, error) {
+	if source := os.Getenv("ARDENTS_HEAPDUMP_SOURCE_ROOT"); source != "" {
+		if !filepath.IsAbs(source) {
+			return "", errors.New("heap dump source root must be absolute")
+		}
+		return source, nil
+	}
 	directory, err := os.Getwd()
 	if err != nil {
 		return "", err

@@ -735,6 +735,7 @@
       "surface": "one captured Go heap dump structural Target locator; not a P3 verdict or host qualification",
       "prerequisites": [
         "ARDENTS_HEAPDUMP_INPUT_ROOT naming the immutable composed-reader observation directory",
+        "source files matching all receipt digests in the checkout or an absolute ARDENTS_HEAPDUMP_SOURCE_ROOT archive",
         "ARDENTS_HEAPDUMP_REPORT naming an absolute writable report path",
         "receipt.json, target-presence.json, reader-input.json and selected resolution published.heap with matching SHA-256 values"
       ],
@@ -747,6 +748,7 @@
       "surface": "all 90 captured role heaps structurally mapped to receipt-bound role inputs and reader controls; not a P3 verdict or host qualification",
       "prerequisites": [
         "ARDENTS_HEAPDUMP_INPUT_ROOT naming the immutable composed-reader observation directory",
+        "source files matching all receipt digests in the checkout or an absolute ARDENTS_HEAPDUMP_SOURCE_ROOT archive",
         "ARDENTS_HEAPDUMP_ROLE_MAP naming an absolute writable report path",
         "receipt.json binding every source, role-input, reader-exchange and heap artifact"
       ],
