@@ -140,7 +140,7 @@ headless-evidence: headless-build
 	go test ./internal/successor/enrollment -run '^(TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner|TestBundleRefusalStagesReturnNoProvenance|TestBundleActualInventoryAndByteChangesRefuse)$$' -count=1
 	go test ./tests/e2e/endpoint -run '^(TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest|TestLegacyEnrollmentCheckFormIsRetiredBeforeEffects|TestRetiredControlRoutesRefuseBeforeEffectsAgainstExactArtifact)$$' -count=1
 	go test ./tests/e2e/network-source -run '^TestSourceSelectorRetiresBeforeRuntimeDiagnostics$$' -count=1
-	go test ./tests/e2e/node -run '^TestClosedSourceOwnersDistributeAcceptedState$$' -count=1
+	go test ./tests/e2e/node -run '^TestRetiredNodeSelectorsRefuseBeforeRootEffects$$' -count=1
 	go test ./tests/e2e/service -run '^TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses$$' -count=1
 
 headless-check: export ARDENTS_EXTRACTION_OWNER := network

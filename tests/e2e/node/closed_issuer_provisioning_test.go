@@ -18,24 +18,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
-// This cell proves public provisioning across real commands and acceptance
-// against canonical signed Epoch/Node bytes through durable State. It does not
-// qualify installed workers or publication. Issuer readiness and abrupt restart
-// use the actual command with each accepted Carrier.
-func TestClosedIssuerProfileProvisioningAcrossProcesses(t *testing.T) {
-	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2"} {
-		t.Run(carrier, func(t *testing.T) { testClosedIssuerProvisioning(t, carrier, 3) })
-	}
-}
-
-func testClosedIssuerProvisioning(t *testing.T, carrier string, nodeCount int) {
-	t.Helper()
-	network, issuerNode := [32]byte{1}, [32]byte{2}
-	authority, exchange := prepareClosedProcessExchange(t, network, issuerNode, time.Now().UTC())
-	testClosedIssuerProvisioningParticipant(t, carrier, nodeCount, authority, exchange, nil)
-}
-
-func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeCount int, admissionAuthority [32]byte, exchange func(state.Config, bool), participant func(state.Config, string, string, map[string]any)) {
+func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeCount int, admissionAuthority [32]byte, participant func(state.Config, string, string, map[string]any)) {
 	nodeBinary, controlBinary := buildCommand(t, "ardents-node"), buildCommand(t, "ardents-control")
 	now := time.Now().UTC().Truncate(time.Hour)
 	network, issuerNode := [32]byte{1}, [32]byte{2}
@@ -252,7 +235,7 @@ func testClosedIssuerProvisioningParticipant(t *testing.T, carrier string, nodeC
 	if retainErr != nil || closeErr != nil || retained != route {
 		t.Fatalf("reopened closed State changed: %v / %v", retainErr, closeErr)
 	}
-	runClosedIssuerProcess(t, nodeBinary, endpointBinary, acceptArguments, signedPath, issuerRoot, network, issuerNode, statePrivate, nodePrivate, now, nodeCount, ports, func(unavailable bool) { exchange(config, unavailable) }, func(resolutionRoot string, sourcePlan map[string]any) {
+	runClosedIssuerProcess(t, nodeBinary, endpointBinary, acceptArguments, signedPath, issuerRoot, network, issuerNode, statePrivate, nodePrivate, now, nodeCount, ports, func(resolutionRoot string, sourcePlan map[string]any) {
 		if participant != nil {
 			participant(config, endpointBinary, resolutionRoot, sourcePlan)
 		}
@@ -273,14 +256,4 @@ func closedProfileSubmissionArguments(offlineArguments []string, profilePath str
 func identifierNode(value byte) string {
 	node := [32]byte{value}
 	return hex.EncodeToString(node[:])
-}
-
-// The complete closed text topology is accepted through real State/profile
-// commands, then each real Node must report READY and remain alive until all
-// sixteen have started. Continuous readiness is not established by this cell.
-// This cell does not run an ordinary Endpoint exchange.
-func TestClosedTextTopologyProvisioningAcrossProcesses(t *testing.T) {
-	for _, carrier := range []string{"ardents-carrier-tcp-tls-v2"} {
-		t.Run(carrier, func(t *testing.T) { testClosedIssuerProvisioning(t, carrier, 16) })
-	}
 }

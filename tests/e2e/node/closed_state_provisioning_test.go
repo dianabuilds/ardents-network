@@ -1,3 +1,5 @@
+//go:build linux
+
 package state_test
 
 import (
@@ -19,13 +21,6 @@ import (
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 
-// Canonical test inputs still pass the production Epoch, Node Record and
-// durable State validators. No accepted projection is fabricated here.
-func closedProvisioningState(t *testing.T, network, issuer [32]byte, authority, issuerKey ed25519.PrivateKey, now time.Time, carrier string) (state.Config, state.Snapshot, []networkfixture.Record, string, []string) {
-	t.Helper()
-	config, snapshot, records, binary, arguments, _ := closedProvisioningStateSize(t, network, issuer, authority, issuerKey, now, carrier, 3)
-	return config, snapshot, records, binary, arguments
-}
 func closedProvisioningStateSize(t *testing.T, network, issuer [32]byte, authority, issuerKey ed25519.PrivateKey, now time.Time, carrier string, count int) (state.Config, state.Snapshot, []networkfixture.Record, string, []string, []*reservedProcessPort) {
 	t.Helper()
 	records := make([]networkfixture.Record, count)
@@ -125,10 +120,9 @@ func runProvisioningCommand(t *testing.T, binary string, arguments ...string) {
 }
 
 // closedTextTopologyRoles is the semantic closed Route topology: each entry is
-// a signed profile Role Domain number and its subrole. It lives in this
-// cross-platform file because closedProvisioningStateSize derives the Epoch
-// role-name domains and each record's family assignment from it on every
-// platform, while only the Linux process cells start the matching Node duties.
+// a signed profile Role Domain number and its subrole. The installed Linux
+// scenario derives its Epoch role-name domains and each record's family
+// assignment from the same topology that starts the matching Node duties.
 func closedTextTopologyRoles(count int) [][2]uint8 {
 	roles := [][2]uint8{{1, 1}, {2, 6}, {1, 2}}
 	if count == 16 {

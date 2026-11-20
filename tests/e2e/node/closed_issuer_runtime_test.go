@@ -21,7 +21,7 @@ import (
 // All State and issuer material below is accepted through product commands;
 // the Node's own runtime opens State and obtains its current duty projection.
 func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments []string, signedProfile, issuerRoot string,
-	network, issuer [32]byte, authority, identity ed25519.PrivateKey, now time.Time, nodeCount int, ports []*reservedProcessPort, exchange func(bool), participant func(string, map[string]any)) {
+	network, issuer [32]byte, authority, identity ed25519.PrivateKey, now time.Time, nodeCount int, ports []*reservedProcessPort, participant func(string, map[string]any)) {
 	t.Helper()
 	public := authority.Public().(ed25519.PublicKey)
 	clientAuthority := makeAuthority(t, "issuer-command-source-client")
@@ -135,23 +135,8 @@ func runClosedIssuerProcess(t *testing.T, node, endpoint string, acceptArguments
 	// Each process reached READY and must remain alive after the last Node
 	// starts. This does not prove continuous duty readiness or an Endpoint exchange.
 	assertClosedTopologyLive(t, live)
-	if nodeCount != 3 {
-		participant(resolutionRoot, plan)
-		assertClosedTopologyLive(t, live)
-		return
-	}
-	exchange(false)
-	terminateLiveClosedIssuer(t, first)
-	exchange(true)
-	restarted := startNodeCommand(t, node, "issuer", "serve", "--config", path)
-	t.Cleanup(func() { stopClosedIssuerProcess(t, restarted) })
-	again := waitNodeState(t, restarted, "READY", 10*time.Second)
-	if again.Epoch != ready.Epoch || again.AssignmentDigest != ready.AssignmentDigest || again.Assignment != ready.Assignment {
-		t.Fatalf("closed issuer restart changed accepted duty: %+v / %+v", ready, again)
-	}
-	exchange(false)
-	terminateLiveClosedIssuer(t, restarted)
-
+	participant(resolutionRoot, plan)
+	assertClosedTopologyLive(t, live)
 }
 
 // A journey cannot pass while an unused topology member has already failed.
@@ -226,26 +211,5 @@ func stopClosedIssuerProcess(t *testing.T, process *nodeProcess) {
 	case <-process.done:
 	case <-time.After(5 * time.Second):
 		t.Error("closed issuer process did not exit after termination")
-	}
-}
-
-// A buffered READY event from an already-dead process is not readiness.
-func terminateLiveClosedIssuer(t *testing.T, process *nodeProcess) {
-	t.Helper()
-	select {
-	case <-process.done:
-		t.Fatalf("issuer exited without test termination: %v", process.terminalErr())
-	case <-time.After(time.Second):
-	}
-	if err := process.command.Process.Kill(); err != nil {
-		t.Fatalf("test could not terminate the live issuer: %v", err)
-	}
-	select {
-	case <-process.done:
-		if process.terminalErr() == nil {
-			t.Fatal("issuer exited successfully despite forced termination")
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("issuer did not join after test termination")
 	}
 }

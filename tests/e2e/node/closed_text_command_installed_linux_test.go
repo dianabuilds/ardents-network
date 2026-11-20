@@ -53,7 +53,7 @@ func TestInstalledClosedTextCommandsThroughNodeProcesses(t *testing.T) {
 			} {
 				t.Run(document.name, func(t *testing.T) {
 					authority := createClosedCommandAuthority(t, [32]byte{1})
-					testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, nil, func(config state.Config, binary, resolutionRoot string, sourcePlan map[string]any) {
+					testClosedIssuerProvisioningParticipant(t, carrier, 16, authority.Public, func(config state.Config, binary, resolutionRoot string, sourcePlan map[string]any) {
 						runInstalledClosedTextParticipant(t, config, binary, resolutionRoot, authority, sourcePlan, document.body)
 					})
 				})

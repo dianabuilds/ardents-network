@@ -1,10 +1,11 @@
+//go:build linux
+
 package state_test
 
 import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -56,15 +57,6 @@ func makeLeaf(t *testing.T, authority processCert, name string, server bool) pro
 	return processCert{certificate: certificatePath,
 		key: writePEM(t, name+"-key.pem", "PRIVATE KEY", keyRaw), root: authority.root, private: private,
 		pin: sha256.Sum256(pinRaw), sourcePin: sha256.Sum256(sourceRaw)}
-}
-
-func loadCertificate(t *testing.T, value processCert) tls.Certificate {
-	t.Helper()
-	certificate, err := tls.LoadX509KeyPair(value.certificate, value.key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return certificate
 }
 
 func writePrivateKey(t *testing.T, name string, private ed25519.PrivateKey) string {
