@@ -408,6 +408,9 @@ func successorImportAllowed(source, dependency string) bool {
 		return dependency == modulePath+"/internal/successor/admission/issuerprofile" ||
 			dependency != "C" && dependency != "unsafe" && dependency != "" && !strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/")
 	}
+	if source == "cmd/ardents-next/connection_custody_terminal_installed_linux_test.go" && (dependency == "github.com/aymanbagabas/go-pty" || dependency == "golang.org/x/sys/unix") {
+		return true
+	}
 	if source == "scripts/sign-qualification-release.go" {
 		switch dependency {
 		case modulePath + "/internal/successor/enrollment", modulePath + "/internal/successor/release",
@@ -915,6 +918,12 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/node_completion_native_linux_test.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/connection_custody_instance_installed_linux_test.go" && dependency == modulePath+"/internal/successor/publication" {
+			return true
+		}
+		if source == "cmd/ardents-next/connection_accepted_request_installed_linux_test.go" && (dependency == modulePath+"/internal/successor/connection" || dependency == modulePath+"/internal/successor/execution/runtime" || dependency == modulePath+"/internal/successor/execution/worker" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
 		if source == "cmd/ardents-next/connection_response_loss_linux_test.go" && (dependency == modulePath+"/internal/successor/connection" || dependency == modulePath+"/internal/successor/execution/runtime" || dependency == modulePath+"/internal/successor/publication/runtime" || dependency == modulePath+"/internal/successor/route/transport") {
@@ -1478,6 +1487,12 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"installed Service scenario consumes real Connection", "cmd/ardents-next/connection_installed_linux_test.go", modulePath + "/internal/successor/connection", true},
 		{"hostile Publisher sibling tests the Application stream", "internal/successor/execution/runtime/hostile_snapshot_installed_linux_test.go", modulePath + "/internal/application/connection", true},
 		{"hostile Publisher sibling cannot acquire legacy Service authority", "internal/successor/execution/runtime/hostile_snapshot_installed_linux_test.go", modulePath + "/internal/service/connection", false},
+		{"recovery Custody process fixture has a terminal", "cmd/ardents-next/connection_custody_terminal_installed_linux_test.go", "github.com/aymanbagabas/go-pty", true},
+		{"ordinary recovery code cannot open a fixture terminal", "cmd/ardents-next/connection_reader_linux.go", "github.com/aymanbagabas/go-pty", false},
+		{"recovery issuance proof consumes the public verifier", "cmd/ardents-next/connection_custody_instance_installed_linux_test.go", modulePath + "/internal/successor/publication", true},
+		{"recovery issuance proof cannot open private Instance authority", "cmd/ardents-next/connection_custody_instance_installed_linux_test.go", modulePath + "/internal/successor/publication/instance", false},
+		{"accepted-request recovery observes genuine Connection", "cmd/ardents-next/connection_accepted_request_installed_linux_test.go", modulePath + "/internal/successor/connection", true},
+		{"accepted-request recovery cannot construct direct TLS", "cmd/ardents-next/connection_accepted_request_installed_linux_test.go", modulePath + "/internal/successor/route/transport/tls", false},
 		{"response loss observes original Connection", "cmd/ardents-next/connection_response_loss_linux_test.go", modulePath + "/internal/successor/connection", true},
 		{"response loss retains original Execution", "cmd/ardents-next/connection_response_loss_linux_test.go", modulePath + "/internal/successor/execution/runtime", true},
 		{"withdrawal invokes genuine original Publisher", "cmd/ardents-next/connection_response_loss_linux_test.go", modulePath + "/internal/successor/publication/runtime", true},

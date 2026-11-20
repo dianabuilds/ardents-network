@@ -654,6 +654,9 @@ func installedPublisherReceiversObserved(t *testing.T, f *networkAdmissionFixtur
 			config.Admit = admit
 			f.afterRouteJoin = append(f.afterRouteJoin, verify)
 		}
+		if proof := f.recoveryEvidence; proof != nil {
+			config.Admit = proof.observeAdmission(config.Admit, id, budget)
+		}
 		reservations[id]()
 		server, err := receiver.Listen(t.Context(), config)
 		if err != nil {

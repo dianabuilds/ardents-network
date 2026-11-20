@@ -6,6 +6,7 @@ package main
 // profile. The common signed-Network fixture supplies the same genuine owners.
 type networkAdmissionFixture struct {
 	networkAdmissionFixtureState
-	receiverReopen bool
-	afterRouteJoin []func() int
+	receiverReopen   bool
+	recoveryEvidence *installedRecoverySpends
+	afterRouteJoin   []func() int
 }

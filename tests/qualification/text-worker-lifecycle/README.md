@@ -73,3 +73,27 @@ qualification are not established here.
 
 The [Execution tree profile](../execution-tree/README.md) selects
 `TestInstalledExecutionHostileTree` through this same driver.
+
+## Connection recovery after the original request
+
+`make connection-request-recovery-check` uses the genuine Text worker and
+the same Ubuntu and manager prerequisites. Build all three candidates using
+the selected Go toolchain, `GOOS=linux`, `GOARCH=amd64` and `CGO_ENABLED=0`.
+Set `candidate` to a dedicated absolute build directory outside Git.
+
+    go test -c -tags text_worker_installed -trimpath -buildvcs=false -o "$candidate/execution-command.test" ./cmd/ardents-next
+    go build -trimpath -buildvcs=false -o "$candidate/ardents-next" ./cmd/ardents-next
+    go build -trimpath -buildvcs=false -o "$candidate/ardents-custody" ./cmd/ardents-custody
+
+Install the three independently pinned files in
+`/usr/lib/ardents/qualification` as root:root 0555. Use the dedicated inactive
+Endpoint unit described above with `RuntimeMaxSec=360s` and this command.
+
+    /usr/lib/ardents/qualification/execution-command.test -test.run=^TestInstalledConnectionAcceptedRequestRecoveryTCP$ -test.v -test.timeout=5m
+
+Supply the binary and unit pins to the driver. Supply the independent
+`ARDENTS_RECOVERY_INSTANCE_SHA256` and `ARDENTS_RECOVERY_CUSTODY_SHA256` to both
+the driver and the pinned temporary unit. The pinned original Endpoint
+journal must show the root test and the selected TCP/TLS case exactly once.
+The [test owner](../../../docs/development/testing.md) describes the single
+recovery episode and the observations it requires.

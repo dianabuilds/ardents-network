@@ -174,6 +174,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"custody-native-linux":               false,
 		"execution-lifecycle":                false,
 		"execution-route":                    false,
+		"connection-request-recovery":        false,
 		"connection-stream":                  false,
 		"connection-control":                 false,
 		"connection-control-received":        false,

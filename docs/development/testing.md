@@ -911,6 +911,22 @@ the actual ACK permits refresh and subsequent recovery. A causal exterior
 control admitting the pending pair before ACK must fail this refusal oracle.
 This does not establish two installed Endpoint acceptance.
 
+`make connection-request-recovery-check` selects
+`TestInstalledConnectionAcceptedRequestRecoveryTCP`. Before starting the
+Route, the driver verifies the independent pins for the installed
+`ardents-next` and `ardents-custody` executables. The original Endpoint unit
+receives the same pins in `ARDENTS_RECOVERY_INSTANCE_SHA256` and
+`ARDENTS_RECOVERY_CUSTODY_SHA256`. The commands issue a Credential through a
+real no-echo terminal and accept it on the original Instance. The profile interrupts
+the live original TCP/TLS Rendezvous at the first response write from the
+confined Publisher, after the exact 512-byte request and EOF. It checks one
+fresh JOIN pair against genuine receiving admission, the exact 65,523-byte
+document, independent Publisher terminal settlement, and joined original
+Reader and Publisher workers within five seconds of the fault. The Rendezvous
+releases its Hosting reservations at both joins. Pinned original cgroups and
+systemd unit collection are checked independently. This is a single component
+episode.
+
 `make connection-stream-check` selects `TestInstalledConnectionStreamTCP`
 from the independently pinned tagged command test binary at
 `/usr/lib/ardents/qualification/execution-command.test`. Both Carrier cases

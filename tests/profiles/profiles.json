@@ -317,6 +317,21 @@
       "invalid_environment": "selected installed Connection refresh environment unavailable; no passing skips"
     },
     {
+      "id": "connection-request-recovery",
+      "state": "active",
+      "make_target": "connection-request-recovery-check",
+      "surface": "TCP/TLS loss after the original Publisher worker accepts the exact request and EOF; one fresh JOIN pair, unchanged 65523-byte document, independently settled original Connection, and joined original workers within five seconds",
+      "prerequisites": [
+        "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
+        "genuine fixed root-installed Text artifact and activation units",
+        "original non-root Endpoint MainPID running independently pinned text_worker_installed cmd/ardents-next test binary at execution-command.test",
+        "pinned root-owned qualification unit selecting TestInstalledConnectionAcceptedRequestRecoveryTCP",
+        "separately pinned root-owned ardents-next and ardents-custody commands with a genuine no-echo terminal",
+        "root driver, private writable roots and loopback TCP"
+      ],
+      "invalid_environment": "selected accepted-request recovery environment unavailable; no passing skips"
+    },
+    {
       "id": "connection-reopen",
       "state": "active",
       "make_target": "connection-reopen-check",

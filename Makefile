@@ -320,6 +320,10 @@ startup-manager-check:
 connection-stream-check:
 	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-stream
 
+.PHONY: connection-request-recovery-check
+connection-request-recovery-check:
+	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh connection-request-recovery
+
 .PHONY: connection-control-check connection-control-received-check connection-control-delivery-check connection-authority-check
 
 connection-authority-check:

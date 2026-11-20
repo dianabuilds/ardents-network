@@ -25,6 +25,7 @@ case "${1-lifecycle}" in
     execution) test_root=TestInstalledExecutionLifecycle ;;
     execution-route) test_root=TestInstalledExecutionRouteTCP ;;
     connection-stream) test_root=TestInstalledConnectionStreamTCP ;;
+    connection-request-recovery) test_root=TestInstalledConnectionAcceptedRequestRecoveryTCP; maximum_polls=3600 ;;
     connection-control-received) test_root=TestInstalledConnectionControlReceivedTCP; maximum_polls=12600 ;;
     connection-control-delivery) test_root=TestInstalledConnectionControlDeliveryTCP; maximum_polls=12600 ;;
     connection-authority) test_root=TestInstalledConnectionAuthorityTCP; maximum_polls=12600 ;;
@@ -72,7 +73,7 @@ done
     fail 'invalid environment: Ubuntu 24.04 x86-64 required'
 [ "$(stat -fc %T /sys/fs/cgroup)" = cgroup2fs ] || fail 'invalid environment: cgroup v2 required'
 binary=/usr/lib/ardents/qualification/endpoint.test
-if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ]; then
+if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ] || [ "$test_root" = TestInstalledConnectionAcceptedRequestRecoveryTCP ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
 fi
 if [ "$test_root" = TestInstalledExecutionRepeatedLaunch ] || [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ] || [ "$test_root" = TestInstalledStreamQualificationSeam ]; then
@@ -92,6 +93,19 @@ if [ "$test_root" = TestInstalledExecutionEndpointDeath ]; then
 fi
 if [ "$test_root" = TestInstalledExecutionRouteTCP ] || [ "$test_root" = TestInstalledPublicationElapsedTCP ] || [ "$test_root" = TestInstalledConnectionStreamTCP ] || [ "$test_root" = TestInstalledConnectionAuthorityTCP ] || [ "$test_root" = TestInstalledConnectionControlDeliveryTCP ] || [ "$test_root" = TestInstalledConnectionControlReceivedTCP ] || [ "$test_root" = TestInstalledConnectionControlWritesTCP ] || [ "$test_root" = TestInstalledConnectionRefreshTCP ] || [ "$test_root" = TestInstalledConnectionWithdrawalTCP ] || [ "$test_root" = TestInstalledConnectionNonceTCP ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
+fi
+if [ "$test_root" = TestInstalledConnectionAcceptedRequestRecoveryTCP ]; then
+    [ -n "${ARDENTS_RECOVERY_INSTANCE_SHA256-}" ] && [ -n "${ARDENTS_RECOVERY_CUSTODY_SHA256-}" ] ||
+        fail 'invalid environment: independent Instance and Custody command digests required'
+    for artifact in ardents-next ardents-custody; do
+        path=/usr/lib/ardents/qualification/$artifact
+        [ -f "$path" ] && [ ! -L "$path" ] && [ "$(stat -c %u:%g:%a "$path")" = 0:0:555 ] ||
+            fail 'invalid environment: immutable root-owned Instance and Custody commands required'
+    done
+    printf '%s  %s\n' "$ARDENTS_RECOVERY_INSTANCE_SHA256" /usr/lib/ardents/qualification/ardents-next |
+        sha256sum --check --status || fail 'invalid environment: Instance command differs from candidate'
+    printf '%s  %s\n' "$ARDENTS_RECOVERY_CUSTODY_SHA256" /usr/lib/ardents/qualification/ardents-custody |
+        sha256sum --check --status || fail 'invalid environment: Custody command differs from candidate'
 fi
 unit=/run/systemd/system/ardents-endpoint.service
 [ -n "$ARDENTS_TEXT_LIFECYCLE_SHA256" ] && [ -n "$ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256" ] ||
@@ -152,7 +166,7 @@ printf '%s\n' "$journal"
     [ "$(systemctl show ardents-endpoint.service -p ExecMainStatus --value)" = 0 ] ||
     fail 'installed text-worker lifecycle failed or did not terminate'
 set -- "$test_root" "$test_root/reader" "$test_root/publisher"
-if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ]; then
+if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ] || [ "$test_root" = TestInstalledConnectionAcceptedRequestRecoveryTCP ]; then
     set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2"
 fi
 if [ "$test_root" = TestInstalledConnectionWithdrawalTCP ]; then
