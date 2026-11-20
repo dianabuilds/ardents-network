@@ -29,13 +29,15 @@ func TestInstalledExecutionHostileTree(t *testing.T) {
 		t.Run(string(surface), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
 			defer cancel()
-			principal, publisherPrincipal, readerPrincipal := [32]byte{2}, [32]byte{3}, [32]byte{4}
+			readerPrincipal, publisherPrincipal := [32]byte{2}, [32]byte{3}
 			grants := []execution.Grant{
-				{Principal: principal, Surface: surface},
+				{Principal: readerPrincipal, Surface: execution.Connection},
 				{Principal: publisherPrincipal, Surface: execution.Administration},
 			}
+			principal := readerPrincipal
 			if surface == execution.Administration {
-				grants = append(grants, execution.Grant{Principal: readerPrincipal, Surface: execution.Connection})
+				// The victim and Publisher use separate sessions on the same Local Grant.
+				principal = publisherPrincipal
 			}
 			owner, err := New(execution.Config{ID: [32]byte{1}, Grants: grants})
 			if err != nil {
