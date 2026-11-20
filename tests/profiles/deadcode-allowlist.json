@@ -34,27 +34,6 @@
     },
     {
       "symbols": [
-        "internal/endpoint/portable.DefaultConfig",
-        "internal/endpoint/portable.Error.Error",
-        "internal/endpoint/portable.Error.Unwrap",
-        "internal/endpoint/portable.FailureEvent",
-        "internal/endpoint/portable.Open",
-        "internal/endpoint/portable.Runtime.Attachment",
-        "internal/endpoint/portable.Runtime.Close",
-        "internal/endpoint/portable.Runtime.Wait",
-        "internal/endpoint/portable.Runtime.serveAttachment",
-        "internal/endpoint/portable.acquireOwnerLease",
-        "internal/endpoint/portable.ensureBaseDirectory",
-        "internal/endpoint/portable.ensureOwnedDirectory",
-        "internal/endpoint/portable.lifecycleError",
-        "internal/endpoint/portable.ownerLease.release",
-        "internal/endpoint/portable.prepareRoots",
-        "internal/endpoint/portable.probeAttachment",
-        "internal/endpoint/portable.recoverAttachment",
-        "internal/endpoint/portable.removeExpectedAttachment",
-        "internal/endpoint/portable.secureAttachment",
-        "internal/endpoint/portable.secureOwnedDirectory",
-        "internal/endpoint/portable.validateRuntimeBase",
         "internal/endpoint/replacement.CommitPrepared",
         "internal/endpoint/replacement.LoadBundle",
         "internal/endpoint/replacement.Prepare",
@@ -114,7 +93,7 @@
         "internal/release.Authorization.AcceptedDecision"
       ],
       "classification": "retired per-user Portable Endpoint command surface awaiting Endpoint cohort removal",
-      "rationale": "The per-user Portable Endpoint command surface is retired (ADR-0125, #617 S3.5): ardents endpoint enroll/enroll-installed/headless/user-unit/installed-user-unit/replace/rollback/replacement-self-test/replacement-recovery return typed refusals before input or root effects and their command implementations are removed. These exact symbols in internal/endpoint/portable, internal/endpoint/replacement, the former headless participant runtime, runtimeplan headless decoding and release.Authorization.AcceptedDecision lose their only maintained production caller (cmd/ardents) on both platforms. The owning Modules remain with its behavior tests until the separately gated Endpoint cohort removal; the portable public lifecycle API (DefaultConfig, FailureEvent, Runtime.Wait) retains genuine unit tests, so no test-only reachability is admitted. The canonical platform-led delivery/preparation/forward-only replacement composition lives in ardents-next. The former headless participant runtime and portable.validateDirectory symbols are linux-amd64-only production-dead (Windows qualification still reaches them); they are recorded in the linux-amd64 production allowlist instead.",
+      "rationale": "The per-user Portable Endpoint command surface is retired (ADR-0125, #617 S3.5): ardents endpoint enroll/enroll-installed/headless/user-unit/installed-user-unit/replace/rollback/replacement-self-test/replacement-recovery return typed refusals before input or root effects and their command implementations are removed. These exact symbols in internal/endpoint/replacement, the former headless participant runtime, runtimeplan headless decoding and release.Authorization.AcceptedDecision lose their only maintained production caller (cmd/ardents) on both platforms. The owning Modules retain their behavior tests pending legacy retirement. The canonical platform-led delivery/preparation/forward-only replacement composition lives in ardents-next. The Linux-specific allowance for the former headless participant runtime is recorded separately.",
       "owner": "Product Owner and Codex; Endpoint",
       "retirement": "Remove each exact symbol when the gated Endpoint cohort removal retires its owning Module or former headless participant/declaration source, or when a separately selected genuine successor production caller reaches it. Lost production reachability elsewhere requires repair, not another allowance."
     },
@@ -885,11 +864,10 @@
           "internal/endpoint.participantObservation.emit",
           "internal/endpoint.participantObservation.pendingFailure",
           "internal/endpoint.participantObservation.wait",
-          "internal/endpoint.runClosedParticipant",
-          "internal/endpoint/portable.validateDirectory"
+          "internal/endpoint.runClosedParticipant"
         ],
-        "classification": "retired headless participant runtime and portable directory check (linux-only production-dead)",
-        "rationale": "These exact internal/endpoint headless participant functions and internal/endpoint/portable.validateDirectory lost their cmd/ardents headless consumer in the per-user Portable cutover (#617 S3.5) and are production-dead on linux-amd64. Windows cmd/ardents-qualification still reaches them, so they are not Windows-dead and are recorded here rather than in the common allowlist. The owning legacy Modules remain with behavior tests until the gated cohort removal (#564/#565).",
+        "classification": "retired headless participant runtime (linux-only production-dead)",
+        "rationale": "These exact internal/endpoint headless participant functions lost their cmd/ardents headless consumer in the per-user Portable cutover (#617 S3.5) and are production-dead on linux-amd64. Windows cmd/ardents-qualification still reaches them, so they are not Windows-dead and are recorded here rather than in the common allowlist. The owning legacy Modules remain with behavior tests until the gated cohort removal (#564/#565).",
         "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
         "retirement": "Remove each exact symbol when the gated legacy cohort removal retires its owning Module, or when a selected genuine production caller reaches it on linux-amd64."
       },
@@ -2362,15 +2340,6 @@
         ],
         "classification": "retired legacy admission runtime awaiting legacy cohort removal (windows-amd64)",
         "rationale": "The old internal/admission legacy runtime lost its maintained operator consumers in the legacy command retirement (#615/#616); Windows refuses the native composition and reaches only the selected qualification subset. These exact functions are production-dead on windows-amd64. The successor composition lives in internal/successor. The owning legacy Module remains with behavior tests until the gated cohort removal (#564/#565).",
-        "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
-        "retirement": "Remove each exact symbol when the gated legacy cohort removal retires its owning Module, or when a selected genuine Windows production caller reaches it."
-      },
-      {
-        "symbols": [
-          "internal/endpoint/portable.setOwnerOnlyDACL"
-        ],
-        "classification": "retired legacy endpoint runtime awaiting legacy cohort removal (windows-amd64)",
-        "rationale": "The old internal/endpoint legacy runtime lost its maintained operator consumers in the legacy command retirement (#615/#616); Windows refuses the native composition and reaches only the selected qualification subset. These exact functions are production-dead on windows-amd64. The successor composition lives in internal/successor. The owning legacy Module remains with behavior tests until the gated cohort removal (#564/#565).",
         "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
         "retirement": "Remove each exact symbol when the gated legacy cohort removal retires its owning Module, or when a selected genuine Windows production caller reaches it."
       },
