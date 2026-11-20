@@ -14,6 +14,9 @@ func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int 
 		return inspectNodeProcess(ctx, out)
 	}
 	if args[0] == "forwarding" {
+		if len(args) > 1 && args[1] == "repair-retained" {
+			return runForwardingRepair(ctx, args[2:], out, diagnostic)
+		}
 		return runNodeForwarding(ctx, args[1:], out, diagnostic)
 	}
 	if args[0] == "issuer" {

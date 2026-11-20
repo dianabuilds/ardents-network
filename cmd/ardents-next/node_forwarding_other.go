@@ -14,3 +14,10 @@ func runNodeForwarding(_ context.Context, _ []string, out, _ io.Writer) int {
 	}
 	return 1
 }
+
+func runForwardingRepair(_ context.Context, _ []string, out, _ io.Writer) int {
+	if nodeReport(out, "refused", "unsupported-platform") != nil {
+		return 2
+	}
+	return 1
+}
