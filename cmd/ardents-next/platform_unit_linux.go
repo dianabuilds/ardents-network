@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
@@ -159,7 +160,7 @@ func verifyPlatformPrestart(unit, service systemd.Properties, p platformLaunch, 
 			return errPlatformInput
 		}
 	}
-	if !systemd.Matches(service, "RestrictAddressFamilies", "(bas)", []any{true, []string{"AF_UNIX", "AF_INET", "AF_INET6"}}) || !systemd.Matches(service, "SuccessExitStatus", "(aiai)", []any{[]int32{130}, []int32{}}) {
+	if !platformAddressFamilies(service) || !systemd.Matches(service, "SuccessExitStatus", "(aiai)", []any{[]int32{130}, []int32{}}) {
 		return errPlatformInput
 	}
 	check := filepath.Join(p.Distribution, "ardents-node-linux-amd64")
@@ -167,6 +168,28 @@ func verifyPlatformPrestart(unit, service systemd.Properties, p platformLaunch, 
 		return errPlatformInput
 	}
 	return nil
+}
+
+// The manager reports the address-family whitelist as a sorted set, not in the
+// template's spelling order. The protection is the exact admitted family set in
+// whitelist mode; an order-sensitive byte comparison would refuse the genuine
+// loaded policy on the real manager.
+func platformAddressFamilies(service systemd.Properties) bool {
+	value, found := service["RestrictAddressFamilies"]
+	if !found || value.Type != "(bas)" {
+		return false
+	}
+	var pair []json.RawMessage
+	if systemd.Decode(value.Data, &pair) != nil || len(pair) != 2 {
+		return false
+	}
+	var whitelist bool
+	var families []string
+	if json.Unmarshal(pair[0], &whitelist) != nil || json.Unmarshal(pair[1], &families) != nil {
+		return false
+	}
+	sort.Strings(families)
+	return whitelist && len(families) == 3 && families[0] == "AF_INET" && families[1] == "AF_INET6" && families[2] == "AF_UNIX"
 }
 
 func platformExec(service systemd.Properties, name string, args, flags []string) bool {
