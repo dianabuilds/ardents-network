@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
@@ -45,10 +46,16 @@ func runForwardingRepair(ctx context.Context, args []string, out, diagnostic io.
 // declaration's roots. It loads no transport private key and starts no runtime.
 type forwardingRepairPlan struct {
 	Network           *networkAuthorityPlan `json:"network"`
+	NodeID            [32]byte              `json:"node_id"`
 	ProcessProfile    string                `json:"process_profile"`
 	ParticipationRoot string                `json:"participation_root"`
 	SpendRoot         string                `json:"spend_root"`
 	HostingRoot       string                `json:"hosting_root"`
+	Certificate       string                `json:"certificate"`
+	PrivateKey        string                `json:"private_key"`
+	Work              hosting.Traffic       `json:"work"`
+	Termination       hosting.Traffic       `json:"termination"`
+	RetirementWaitMS  uint32                `json:"retirement_wait_ms"`
 }
 
 func repairForwardingInputs(ctx context.Context, path string) (operation error) {
