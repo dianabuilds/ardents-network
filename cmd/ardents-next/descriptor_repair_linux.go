@@ -1,0 +1,127 @@
+//go:build linux
+
+package main
+
+import (
+	"context"
+	"errors"
+	"io"
+	"syscall"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
+)
+
+// runDescriptorRepair is the operator recovery action for a Descriptor
+// invocation that died before its joined completion (recovery contract class G).
+// It runs as the shared fixed Node service principal and clears only the
+// unresolved node-duty participation fence after proving the original service is
+// defunct. Under the same proofs it also clears an uncertain Store staging file
+// left by a crash mid-Publish, validating every committed publication floor
+// first. It initializes no root, resets no floor and starts no runtime; spend
+// obligations and publication floors are never repaired. A subsequent retained
+// start is a new independently checked invocation.
+func runDescriptorRepair(ctx context.Context, args []string, out, diagnostic io.Writer) (code int) {
+	if ctx == nil || ctx.Err() != nil || len(args) != 1 {
+		return 2
+	}
+	bounded, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	operation := repairDescriptorInputs(bounded, args[0])
+	if operation != nil {
+		terminal := &sourceTerminal{firstOwner: "state", first: operation}
+		if sourceFailureReport(diagnostic, "repair", terminal, nil) != nil {
+			return 2
+		}
+		return 1
+	}
+	if _, err := io.WriteString(out, "repaired\n"); err != nil {
+		return 2
+	}
+	return 0
+}
+
+// descriptorRepairPlan retains only the original root-controlled public
+// declaration's roots. It loads no transport private key and starts no runtime.
+// The field set matches the retained Descriptor runtime plan exactly; the
+// process profile is the Descriptor-specific admission identity, not the shared
+// Node profile. DescriptorRoot is the fifth writable root (the Store).
+type descriptorRepairPlan struct {
+	Network           *networkAuthorityPlan `json:"network"`
+	NodeID            [32]byte              `json:"node_id"`
+	ProcessProfile    string                `json:"process_profile"`
+	ParticipationRoot string                `json:"participation_root"`
+	SpendRoot         string                `json:"spend_root"`
+	HostingRoot       string                `json:"hosting_root"`
+	DescriptorRoot    string                `json:"descriptor_root"`
+	Certificate       string                `json:"certificate"`
+	PrivateKey        string                `json:"private_key"`
+	Work              hosting.Traffic       `json:"work"`
+	Termination       hosting.Traffic       `json:"termination"`
+	RetirementWaitMS  uint32                `json:"retirement_wait_ms"`
+}
+
+func repairDescriptorInputs(ctx context.Context, path string) (operation error) {
+	inputs, plan, err := acquireDescriptorRepairInputs(ctx, path)
+	if err != nil {
+		return err
+	}
+	var config state.Config
+	defer func() {
+		operation = errors.Join(operation, inputs.Close())
+	}()
+	config, err = networkStateConfig(plan.Network)
+	if err != nil {
+		return err
+	}
+	config.LocalRoleStateRoot = plan.ParticipationRoot
+	check := func() error { return inputs.Check() }
+	config.PermitWork = check
+	writableRoots := []string{plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.DescriptorRoot}
+	manager, err := systemd.OpenDescriptorRuntime(ctx)
+	if manager != nil {
+		defer func() { operation = errors.Join(operation, manager.Close()) }()
+	}
+	if err != nil {
+		return err
+	}
+	return state.RepairRetainedDescriptorProducer(ctx, config, manager, path, writableRoots)
+}
+
+// Recovery retains only the original root-controlled public declaration. It loads
+// no transport private key and starts no observer goroutine or runtime.
+func acquireDescriptorRepairInputs(ctx context.Context, path string) (_ sourceInputs, plan descriptorRepairPlan, result error) {
+	if ctx == nil || ctx.Err() != nil {
+		return sourceInputs{}, plan, errSourceInput
+	}
+	admission, deny := context.WithCancel(ctx)
+	l := &sourceInputLifetime{ctx: admission, deny: deny, callback: make(chan struct{}), done: make(chan struct{})}
+	inputs := sourceInputs{l}
+	l.stop = context.AfterFunc(ctx, func() { l.refuse(ctx.Err()); close(l.callback) })
+	defer func() {
+		if result != nil {
+			result = errors.Join(result, inputs.Close())
+		}
+	}()
+	file, err := l.acquire(path, 16<<10, false)
+	if err != nil {
+		return sourceInputs{}, plan, err
+	}
+	native, ok := file.info.Sys().(*syscall.Stat_t)
+	if !ok || native.Uid != 0 || file.info.Mode().Perm()&0022 != 0 {
+		return sourceInputs{}, plan, errSourceInput
+	}
+	if decodeAdmissionObject(file.raw, &plan) != nil || plan.Network == nil || plan.ProcessProfile != processresource.DescriptorProfile {
+		return sourceInputs{}, plan, errSourceInput
+	}
+	if !validAdmissionAuthority("", plan.Network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.DescriptorRoot) || !independentRouteRoots(plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.DescriptorRoot) {
+		return sourceInputs{}, plan, errSourceInput
+	}
+	if err := inputs.Check(); err != nil {
+		return sourceInputs{}, plan, err
+	}
+	return inputs, plan, nil
+}

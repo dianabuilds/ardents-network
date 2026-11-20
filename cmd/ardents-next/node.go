@@ -23,6 +23,9 @@ func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int 
 		return runNodeIssuer(ctx, args[1:], out, diagnostic)
 	}
 	if args[0] == "descriptor" {
+		if len(args) > 1 && args[1] == "repair-retained" {
+			return runDescriptorRepair(ctx, args[2:], out, diagnostic)
+		}
 		return runNodeDescriptor(ctx, args[1:], out, diagnostic)
 	}
 	if args[0] == "introduction" {

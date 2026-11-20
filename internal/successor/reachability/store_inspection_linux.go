@@ -115,7 +115,7 @@ func openStoreInspection(ctx context.Context, config StoreConfig, uid, gid uint3
 		return result, err
 	}
 	floors := make(map[[32]byte]retainedFloor)
-	if err := restoreStoreFloors(s.custody, config.Network, floors, true); err != nil {
+	if err := restoreStoreFloors(s.custody, config.Network, floors, storeStageRefuse); err != nil {
 		clear(floors)
 		return result, err
 	}
