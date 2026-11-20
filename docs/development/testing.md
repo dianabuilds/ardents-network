@@ -2541,11 +2541,6 @@ The maintained local profiles are:
   by `make text-worker-network-check`; requires all four TCP document and elapsed-refresh cases,
   exact invocation evidence and terminal service success. State and authority setup
   remain explicit fixtures; ordinary command and full host qualification are separate.
-- `text-worker-recovery`, the installed confined-worker recovery smoke invoked by
-  `make text-worker-recovery-check`; it interrupts one accepted request over each
-  Carrier, requires one fresh matching Route and joined worker/Grant/cgroup cleanup.
-  Its two episodes do not establish NET-14 percentiles, impairment, directional
-  byte/bitrate accounting, P10 restart safety or complete Route Qualification.
 - `text-command-network`, the separately pinned installed ordinary-command journey
   invoked by `make text-command-network-check`; it exercises the real `ardents`,
   `ardents-custody`, `ardents-node` and `ardents-text` candidate binaries through
