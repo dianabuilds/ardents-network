@@ -31,7 +31,7 @@ script may be invoked.
 `ardents-node` and `ardents-control` twice under the outside controller's
 original development lock and joined build scope, and its
 `ardents-forwarding-build-execution-v1` records remain the exact build input of
-the retained JOIN/Descriptor public plan preparers. The complete read-only
+the retained Descriptor public plan preparer. The complete read-only
 source manifest records each file's `sha256` and Git `mode` (`100644` or
 `100755`). The tool checks both bytes and modes, the selected Go1.27.4
 Linux-amd64 toolchain, module integrity and actual compiled dependency closure.
@@ -63,6 +63,43 @@ ExecStartPre gate, `ardents-next node forwarding --retained-config`,
 `forwarding repair-retained`) owns installed delivery; a new candidate and the
 explicit relaunch/program-change scope require their own exact bootstrap receipt
 and direct Product Owner acceptance before any installed execution.
+
+## JOIN infrastructure artifact component
+
+The transitional JOIN orchestration and its OLD preparation are retired (#604
+FJD stage D, ADR-0125). `ardents-control join prepare-template`,
+`prepare-request`, `prepare-plan`, `prepare-hosting` and `prepare-state` return
+typed before-effect refusals; `ardents-next platform template` emits the exact
+canonical platform unit template (`infrastructure.PlatformUnitTemplate`). The
+former `scripts/installation/prepare-join-release-plan.py` public plan
+transformation and its build-records native control are removed with the
+orchestration; a new-path JOIN candidate build and release plan builder is a
+follow-up, exactly as for Source (#604 stage 1.6) and Forwarding (#604 FJD
+stage D). Until it lands, no deleted script may be invoked. The shared
+`build-forwarding-candidate.py` records remain the build-scope reference for the
+retained JOIN/Descriptor cohorts.
+
+The canonical JOIN signing purposes remain and are cut over to the platform-led
+runtime. Use `join sign-initial-release` for the initial plan and the distinct
+`join sign-forward-release` with the retained original five-key directory and
+complete predecessor distribution for an explicit forward candidate. After the
+#604 FJD stage D signing cutover the bound program is the static Linux-amd64
+`ardents-next` binary and the bound template is the exact canonical platform unit
+template (`infrastructure.PlatformUnitTemplate`); the signer refuses a
+substituted program or template. The public `join prepare-release-plan` /
+`prepare-forward-release-plan` flag-based producers emit the closed plans from
+reviewed public claims; the forward plan schema is
+`ardents-join-forward-release-plan-v1` with a strictly higher descriptor version.
+Root bytes remain unchanged; Targets/Snapshot/Timestamp and their exact version
+references advance by one. New metadata is independently verified in that fresh
+diagnostic history before output. This is offline preparation, not an
+installation history or first pin, a stopped replacement, original-prefix
+recovery or bootstrap acceptance. The platform-led JOIN lifecycle (canonical
+platform unit with the mandatory `platform check` ExecStartPre gate,
+`ardents-next node join --retained-config`, `join repair-retained`) owns
+installed delivery; a new candidate and the explicit relaunch/program-change
+scope require their own exact bootstrap receipt and direct Product Owner
+acceptance before any installed execution.
 
 ## Source infrastructure artifact component
 

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
-	joininstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/join"
 )
 
 type joinReleasePlan struct {
@@ -53,11 +52,11 @@ func validateJoinReleaseResources(plan joinReleasePlan, program, descriptor, tem
 	d, err := infrastructure.ValidateJoinResources(descriptor, program, template)
 	initial := plan.Schema == "ardents-join-initial-release-plan-v1"
 	forward := plan.Schema == "ardents-join-forward-release-plan-v1"
-	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(joininstallation.Template)) {
+	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(infrastructure.PlatformUnitTemplate)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))
-	if err != nil || info.Path != "github.com/dianabuilds/ardents-network/cmd/ardents-node" {
+	if err != nil || info.Path != "github.com/dianabuilds/ardents-network/cmd/ardents-next" {
 		return errors.Join(errSourceControlInput, err)
 	}
 	settings := map[string]string{}

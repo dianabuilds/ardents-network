@@ -30,7 +30,7 @@
 // lifecycle owns installation, start, stop and replacement through the canonical
 // platform unit. NodeSlots remains a separate root read-only connection for
 // absence of all five fixed Node service/socket slots, consumed by the retained
-// JOIN/Descriptor input preflight. It returns copied search paths and rejoins its
+// Descriptor input preflight. It returns copied search paths and rejoins its
 // own original observations through Close; its closed reply grammar accepts no
 // unit or job object. Native namespace, account, Release and transition decisions
 // stay with each Installation owner. Each fixed reply vocabulary is bound before
@@ -57,11 +57,14 @@
 // never process identity or join. Copies share original attempt/Close state;
 // cleanup cannot restore denied admission or reconnect. Native control and
 // observations grant no Release, Startup or Source serving authority.
-// JoinControl independently retains one fixed JOIN reference and one original
-// explicit Start; its Stop surface only cleans up that same attempted Start.
-// JoinRuntime is independently opened by the actual non-root caller and cannot
-// load/reference units or issue jobs. Neither purpose borrows another role's
-// mutation capability; all five Node slots retain their fixed absence policy.
+// The transitional JOIN orchestration mechanisms (JoinStopped, JoinControl,
+// JoinReplacement and the manager-declaration identity observer) are retired
+// (ADR-0125, #604 FJD stage D); the platform-led JOIN lifecycle owns
+// installation, start, stop and replacement through the canonical platform
+// unit. JoinRuntime independently observes only the fixed JOIN unit and the
+// other fixed Node slots, without loading, retaining or mutating a unit. The
+// platform-led retained-producer repair consumes it; it grants no Start/Stop,
+// installed admission or original domain/process completion.
 // Native typed JSON projection preserves complete property bytes, original
 // depth/size limits and numeric byte arrays. Primitive arrays and safe-ASCII
 // quoted lengths avoid redundant reflection/allocation without omitting facts
