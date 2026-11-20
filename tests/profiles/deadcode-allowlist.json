@@ -1815,7 +1815,7 @@
       {
         "classification": "Descriptor proof and portable exchange behind native command composition",
         "retirement": "Remove exact Windows entries when an accepted native Windows command composition reaches these functions, or retire the owning contract. Linux production and both-platform test analysis must continue to require actual callers.",
-        "rationale": "Real Linux ardents-next route receive and node descriptor open Reachability Store and dispatch actual purpose-3 publication/lookup. Original Node calls Store Check and Deny, then reads OperationalFailure after joined Store closure; retained native custody, operation borrows and directory synchronization belong to that Store call chain. Prefix descriptor_exchange uses History and canonical ardp bytes through route_linux holder closures. Reachability descriptor verification calls Publication Target/Verify/VerifyPublish and copied Delegation/Digest facts. Windows command composition refuses before native Route roots; component Store tests supply no installed Windows support. Every exact entry remains required to be reachable in Linux production and both-platform test analysis; no checker changes. The exact existing-only Store opener and shared custody/floor readers are also reached by genuine Linux installed Descriptor restart and stopped inspections. They remain behind the unavailable native Windows command composition; the existing portable Windows Store adapter is not declared unavailable. Linux/Windows component retained-Store tests exercise no-create/no-repair and signed-floor preservation. These five Windows-only symbol classifications add no Linux/common allowance, checker exemption, successful authority substitute or Windows installed qualification.",
+        "rationale": "Real Linux ardents-next route receive and node descriptor open Reachability Store and dispatch actual purpose-3 publication/lookup. Original Node calls Store Check and Deny, then reads OperationalFailure after joined Store closure; retained native custody, operation borrows and directory synchronization belong to that Store call chain. Prefix descriptor_exchange uses History and canonical ardp bytes through route_linux holder closures. Reachability descriptor verification calls Publication Target/Verify/VerifyPublish and copied Delegation/Digest facts. Windows command composition refuses before native Route roots; component Store tests supply no installed Windows support. Every exact entry remains required to be reachable in Linux production and both-platform test analysis; no checker changes. The exact existing-only Store opener and shared custody/floor readers are also reached by genuine Linux installed Descriptor restart and stopped inspections. They remain behind the unavailable native Windows command composition; the existing portable Windows Store adapter is not declared unavailable. Linux/Windows component retained-Store tests exercise no-create/no-repair and signed-floor preservation. The bounded RepairRetainedStoreStage mechanism is reached by the genuine Linux platform-led Descriptor participation repair (network/state/descriptor_repair_linux.go) after independent dead-unit manager/cgroup proofs and under the exclusive Store lease; Linux/Windows component repair tests exercise existing-only uncertain-stage removal, committed-floor preservation, no-promotion and held-lease refusal. It initializes no root and grants no publication, runtime or Windows installed composition. These five Windows-only symbol classifications add no Linux/common allowance, checker exemption, successful authority substitute or Windows installed qualification.",
         "symbols": [
           "internal/successor/publication.Proof.Digest",
           "internal/successor/publication.Verify",
@@ -1832,6 +1832,7 @@
           "internal/successor/reachability.Lookup.liveLocked",
           "internal/successor/reachability.OpenRetainedStore",
           "internal/successor/reachability.OpenStore",
+          "internal/successor/reachability.RepairRetainedStoreStage",
           "internal/successor/reachability.Store.Check",
           "internal/successor/reachability.Store.Close",
           "internal/successor/reachability.Store.Deny",
@@ -3155,6 +3156,8 @@
         "symbols": [
           "internal/successor/network/state.OpenFresh",
           "internal/successor/network/state.SourceCompletion.Finish",
+          "internal/successor/network/state.descriptorRepair.checkHistory",
+          "internal/successor/network/state.descriptorRepair.close",
           "internal/successor/network/state.forwardingRepair.checkHistory",
           "internal/successor/network/state.forwardingRepair.close",
           "internal/successor/network/state.introductionRepair.checkHistory",
@@ -3163,6 +3166,7 @@
           "internal/successor/network/state.joinRepair.close",
           "internal/successor/network/state.networkState.RetainSourceCompletion",
           "internal/successor/network/state.nodeDutyMember",
+          "internal/successor/network/state.openDescriptorRepair",
           "internal/successor/network/state.openForwardingRepair",
           "internal/successor/network/state.openIntroductionRepair",
           "internal/successor/network/state.openJoinRepair",
@@ -3707,6 +3711,8 @@
       },
       {
         "symbols": [
+          "internal/successor/network/state.descriptorRepair.checkHistory",
+          "internal/successor/network/state.descriptorRepair.close",
           "internal/successor/network/state.forwardingRepair.checkHistory",
           "internal/successor/network/state.forwardingRepair.close",
           "internal/successor/network/state.introductionRepair.checkHistory",
@@ -3714,6 +3720,7 @@
           "internal/successor/network/state.joinRepair.checkHistory",
           "internal/successor/network/state.joinRepair.close",
           "internal/successor/network/state.nodeDutyMember",
+          "internal/successor/network/state.openDescriptorRepair",
           "internal/successor/network/state.openForwardingRepair",
           "internal/successor/network/state.openIntroductionRepair",
           "internal/successor/network/state.openJoinRepair",

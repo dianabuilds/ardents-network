@@ -20,13 +20,30 @@ const (
 	storeStage = ".record-stage"
 )
 
+// storeStagePolicy selects how a restore treats the reserved uncertain staging
+// name after every committed floor has validated. Only the fresh opener and the
+// bounded repair (RepairRetainedStoreStage, called after independent dead-unit
+// proofs while holding the exclusive lease) may remove it; a retained opening
+// or stopped inspection refuses it.
+type storeStagePolicy uint8
+
+const (
+	storeStageRemove storeStagePolicy = iota
+	storeStageRefuse
+)
+
 func (store *Store) restore(retained bool) error {
-	return restoreStoreFloors(store.custody, store.network, store.floors, retained)
+	policy := storeStageRemove
+	if retained {
+		policy = storeStageRefuse
+	}
+	return restoreStoreFloors(store.custody, store.network, store.floors, policy)
 }
 
-// Read the same closed grammar for a live owner or independently leased stopped
-// inspection. Only the live opener may select existing stage removal.
-func restoreStoreFloors(custody *storeCustody, network [32]byte, floors map[[32]byte]retainedFloor, retained bool) error {
+// Read the same closed grammar for a live owner, an independently leased stopped
+// inspection or the bounded repair. Only the fresh opener and the bounded repair
+// may select existing stage removal; a retained opening refuses it.
+func restoreStoreFloors(custody *storeCustody, network [32]byte, floors map[[32]byte]retainedFloor, policy storeStagePolicy) error {
 	root := custody.records
 	directory, err := root.Open(".")
 	if err != nil {
@@ -80,7 +97,7 @@ func restoreStoreFloors(custody *storeCustody, network [32]byte, floors map[[32]
 	// Never rename/promote unacknowledged staging, reset the root or delete foreign
 	// entries. Sync its removal under the same exclusive lease before reopening.
 	if stage {
-		if retained {
+		if policy == storeStageRefuse {
 			return errors.New("reachability retained history has uncertain stage")
 		}
 		if err := root.Remove(storeStage); err != nil {
