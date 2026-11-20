@@ -193,76 +193,28 @@ Infrastructure retains a distinct opaque JOIN candidate pair for original
 predecessor verification. Forward public metadata cannot supply native
 replacement, first-pin provenance, domain retirement or runtime duty. Enrollment
 and each eventual native Installation lifetime retain their independent gates.
+The #604 FJD stage D signing cutover binds the static `ardents-next` program and
+the canonical platform unit template; the former initial admission entry point
+retired with the transitional orchestration.
 
-Canonical Node's separate `join inspect-inputs` retains original JOIN delivery
-through `installation/request.Files`, which owns only protected file/ancestor
-custody, independent byte/inode/access reobservation and joined secret erasure.
-JOIN alone decodes its request/plan, compares future paths and Ed25519 pair,
-and retains live root-clock access without time acceptance. Its independent
-NodeSlots connection checks all five absent roles; fresh future resources,
-journals and account remain absent. Neither read-only preflight nor shared
-physical source grants creation, Release, Startup or runtime permission.
-
-JOIN initial stopped Installation separately retains genuine Enrollment/Release
-admission, one fixed JOIN-only stopped manager, original account and native
-births, exact generation and pending publication after all original joins.
-The independent complete reader opens its own exclusive initial journal and
-native files; fresh artifact permission stays with Release. Shared RootBirth,
-fixed-file mutation and reload source transfer no role permission or live owner.
-Four semantic histories remain empty and unopened. No Start, runtime duty,
-replacement, recovery or installed qualification follows from initial completion.
-
-JOIN allowance preparation is a distinct Installation effect on its proven empty
-born root. Hosting initializes policy/counters; Installation retains the original
-root, exact numeric principal, stopped manager/namespace/cgroup observations and
-root-only journal/blocker until actual join. Independent completed inspection
-verifies the complete typed journal and original immutable pin/lock files without
-borrowing a live budget or freezing its mutable accounting. Neither creation nor
-an empty native scope grants Startup or original domain completion. Canonical
-installed JOIN composition is separately admitted by R01 only for
-`cmd/ardents-node/join_installed_linux.go` and its exact five imports; that boundary
-admits only that direct composition and grants no bootstrap receipt. Its separate
-root first-start owner retains fresh Release, original completed history and
-manager/process/scope through synced archive/ACK and observer joins. Non-root
-Startup independently owns immutable mount/file, process, namespace and read-only
-manager observations before constructing genuine State and Node JOIN. Fixed
-other-slot absence requests may run concurrently on that same original bounded
-connection, submitting independent read-only calls before awaiting replies;
-every exact name still requires both fresh absence results in each
-round, and all requests join before return. Bounded Startup phase counters are
-passive diagnostics, emitted after observation users join; they grant no
-accepting authority. No live
-root, Startup or role permission crosses from Source/Forwarding. First start
-supplies no domain-retirement, restart, replacement or recovery proof.
-JOIN explicit Stop separately retains original start-chain leases, process/pidfd,
-scope and manager. The original non-root command reports only after every domain,
-Startup/key/output user joins. Root independently joins original native resources
-and reads back committed retirement before publication. Same-generation Restart
-requires every predecessor retirement and fresh Release/native/independent Startup;
-existing-only State, participation and spend preserve their histories. No live
-owner transfers. Explicit JOIN stopped replacement independently retains fresh
-Release and original input/native custody, complete predecessor retirement and
-existing-only State/participation, Spending and Hosting inspections. The distinct
-selection envelope preserves immutable initial and predecessor images; original
-same-inode selection/unit mutation and one Reload precede independent readback,
-original observer/writer joins and final blocker publication. A new Startup is
-separately admitted; no live domain owner crosses generations. Original-prefix
-recovery separately admits only a proven complete stopped replacement prefix.
-Its original controller owns from-birth process denial/join and a separate cut;
-Installation owns fresh Release/native/semantic admission, immutable-prefix
-validation and guarded independent completion/readback. No physical cut grants
-original Node domain completion, Reload/Start replay or a mutable semantic root.
-Earlier/uncertain prefixes remain blocked; complete installed qualification is
-separate.
-
-Installation's separate `installation/join` declaration owner fixes the JOIN
-request/plan, four writable semantic roots, retained journal/completion namespace and
-closed non-root unit template. Canonical Control consumes it for public request
-and template preparation from explicit public flags. Hosting contributes only its
-Traffic value shape, never a budget, allowance or live borrow. The fixed template
-declares argv/protection only; it observes no
-native unit or process and grants no account adoption, original join, Start or
-runtime authority. This boundary shares no live Source or Forwarding owner.
+The transitional JOIN orchestration (read-only original-input preflight,
+initial stopped Installation, allowance preparation, root first Start and
+independent Startup, explicit Stop/same-generation Restart, stopped replacement
+and original-prefix recovery) and the `installation/join` declaration owner
+retired (#604 FJD stage D, ADR-0125) after the merged real-platform installed
+evidence. The platform-led JOIN lifecycle owns installation and runtime
+admission through the canonical platform unit, `ardents-next node join
+--retained-config` and `join repair-retained`; `ardents-node join ...` returns
+typed before-effect refusals. The former canonical installed JOIN composition
+(`cmd/ardents-node/join_installed_linux.go`) and its R01 five-import exception
+are removed; no old-command JOIN consumer remains. The retained repair
+mechanisms (`systemd.JoinRuntime`, `cgroup.CheckJoinRecoveryQuiescent` and the
+`network/state` producer repair) keep their independent read-only custody and
+grant no Start, Stop, domain initialization or installed qualification. Each
+JOIN pair participant owns a separate participation root and sole node-duty
+fence, so repair is per-invocation, never a shared pair effect. Platform-led
+operator preparation (a shared runtime plan codec across roles) is a separate
+follow-up slice.
 
 Local Node certificate provisioning is one offline supporting composition,
 `ardents-next network prepare-node-certificate` and the separate canonical
@@ -362,7 +314,7 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | `admission/issuerprofile/signing` | Independently pinned imported Ed25519 material, original lease/failure/Close and validated issuer-profile signing within Admission | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
-| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed JOIN and Descriptor files admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
+| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Descriptor file admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
 | State/Hosting/Route physical adapters | Byte verification, durable transactions, counters, sockets and Carrier mechanisms under their declared owners | Mechanisms cannot mint authority, reset floors or copy a second domain decision implementation |
 | Installation mutable-directory birth | `installation/directory` retains one original creation caller and private born inode state, exclusively creates caller-admitted paths and synchronizes same-inode account/mode promotion; checked Identity facts are detached, and Matches serves independent installed inspection | Root Installation selects paths/account, admits Release/journal/lease/effects and projects binding facts. Directory creation grants no adoption/recovery, selection, manager or startup authority; shared trusted-root predicates remain with Root lease/fixed/recovery lifetimes |
 | Installation request declarations and original input | `installation/request` owns canonical bounded declarations, detached copies, native direct root-owned input and opaque original byte/inode/access reobservation; the root Request facade is consumed by actual command and transaction composition | No Release authorization, writer lease, journal, account/root creation, generation selection, manager or startup authority. General trusted-path observations remain with root Installation lease/staging/inspection, independently of request provenance |
@@ -407,7 +359,7 @@ not additional product meanings or another execution ledger in this map.
 
 ### Transitional native consumers
 
-The existing canonical JOIN and Descriptor installed consumers still use native
+The existing canonical Descriptor installed consumer still uses native
 deployment mechanisms. Source delivery cut over to the platform-led lifecycle
 (#604 stage 1.6, ADR-0125); its transitional orchestration is retired and the
 platform-led lifecycle owns Source delivery. Forwarding delivery cut over in
@@ -416,7 +368,12 @@ evidence; its transitional orchestration, OLD-path installed QA test and
 `forwarding-installed-linux` profile are retired, and `ardents-node forwarding
 ...` returns typed before-effect refusals. Forwarding Release signing is
 preserved and bound to `cmd/ardents-next` plus the canonical platform unit
-template.
+template. JOIN delivery cut over in turn (#604 FJD stage D, ADR-0125) after the
+merged real-platform installed evidence; its transitional orchestration,
+OLD-path installed QA test and `join-installed-linux` profile are retired, and
+`ardents-node join ...` returns typed before-effect refusals. JOIN Release
+signing is preserved and bound to `cmd/ardents-next` plus the canonical platform
+unit template.
 The retained mechanisms' current source remains under
 `internal/successor/installation`; that placement grants no new domain
 or mandate to add an Introduction/Issuer installer. Endpoint Startup remains
@@ -424,12 +381,13 @@ transitional separately from Node/Source. Preserve these consumers until their
 necessary guarantees have equivalent owners and evidence; no automatic data
 conversion, adoption, reset or stored-root deletion follows from code retirement.
 
-The canonical new-Route exceptions remain exactly the two files and imports
+The canonical new-Route exception remains exactly the one file and imports
 admitted by [R01](route-migration-contract.md#r01-isolate-both-directions):
-`cmd/ardents-node/join_installed_linux.go` and `descriptor_installed_linux.go`.
-They directly construct genuine new owners. The former
-`forwarding_installed_linux.go` exception retired with the transitional
-Forwarding orchestration (#604 FJD stage D, ADR-0125).
+`cmd/ardents-node/descriptor_installed_linux.go`.
+It directly constructs genuine new owners. The former
+`forwarding_installed_linux.go` and `join_installed_linux.go` exceptions retired
+with the transitional Forwarding/JOIN orchestration (#604 FJD stage D,
+ADR-0125).
 No old-runtime wrapper, shared live root, role selector or additional canonical
 consumer is admitted by the platform path in `cmd/ardents-next`.
 
@@ -438,7 +396,7 @@ consumer is admitted by the platform path in `cmd/ardents-next`.
 | Initial pin and immutable role inventory | Enrollment retains independent pin and actual mapped-program provenance; a candidate or copied inventory cannot establish initial trust |
 | Exact coherent program/generation permission | Release retains trust, monotonic floors and original opaque proofs; native composition matches exact role/resources and current verifier. RuntimeAuthorization is a separate platform pre-start result and cannot enter native effects |
 | Read-only request/native preflight | Role-specific bounded input custody plus independently opened fixed-purpose systemd observations. Absence/preflight grants no creation, Start, domain initialization or recovery permission |
-| Initial stopped native deployment | Existing JOIN/Descriptor creators retain their own account/root/file births, exact Release binding, immutable generation, selection/unit and explicit Reload. Semantic roots remain with their future domain owners; pending publication follows actual joins. Source and Forwarding first installation are platform-led (`source prepare-state` / `platform initialize-trust`/`unit` / `systemctl start ardents-source`; canonical platform unit / `platform check` / `node forwarding --retained-config`), not native stopped creators |
+| Initial stopped native deployment | Existing Descriptor creators retain their own account/root/file births, exact Release binding, immutable generation, selection/unit and explicit Reload. Semantic roots remain with their future domain owners; pending publication follows actual joins. Source, Forwarding and JOIN first installation are platform-led (`source prepare-state` / `platform initialize-trust`/`unit` / `systemctl start ardents-source`; canonical platform unit / `platform check` / `node forwarding --retained-config` / `node join --retained-config`), not native stopped creators |
 | Existing native first Start and independent Startup | Root control retains its original manager/process/scope and archival-before-ACK ordering. Non-root Startup independently checks original files, actual invocation/protection and root completion. It grants no State, duty, spend, Store ACK or Service readiness |
 | Original runtime retirement and native stop | Runtime joins its actual Node/Route/Store/State/credential/Guard borrowers before its original challenge-bound report. Root independently joins actual process/scope/manager observers and retains failed/uncertain retirement. A timeout, missing path, ACK or process exit cannot supply domain completion |
 | Existing native restart | Fresh Release and new independent invocation after complete original retirement; all original principals, keys, allowance and semantic floors persist. No late original result binds a successor |

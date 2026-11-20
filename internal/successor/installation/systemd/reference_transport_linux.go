@@ -32,7 +32,6 @@ type referenceTransport struct {
 	unitReply      managerUnitReply // immutable before the decoder starts
 	sourceJobs     atomic.Bool      // only fixed root Source control admits canonical job replies
 	descriptorJobs atomic.Bool      // distinct fixed root Descriptor control
-	joinJobs       atomic.Bool      // only distinct root JOIN control
 	forwardingJobs atomic.Bool      // distinct fixed root Forwarding control; never Source permission
 }
 
@@ -121,8 +120,6 @@ func (t *referenceTransport) Read(p []byte) (int, error) {
 		var frameErr error
 		if t.unitReply == descriptorControlReply {
 			frameErr = verifyNodeManagerFrame(frame, owner, t.properties, false, false, t.descriptorJobs.Load(), descriptorControlReply)
-		} else if t.unitReply == joinControlReply {
-			frameErr = verifyNodeManagerFrame(frame, owner, t.properties, false, false, t.joinJobs.Load(), joinControlReply)
 		} else if t.unitReply == forwardingUnitReply {
 			frameErr = verifyForwardingManagerFrame(frame, owner, t.properties, t.forwardingJobs.Load())
 		} else {
@@ -274,7 +271,7 @@ func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, 
 			return ErrObservation
 		}
 		object, pos, err := referenceScalar(frame, int(bodyStart), len(frame), 'o', order)
-		allowJob := reply == sourceUnitReply && sourceJobs || reply == forwardingUnitReply && forwardingJobs || (reply == joinControlReply || reply == descriptorControlReply) && joinJobs
+		allowJob := reply == sourceUnitReply && sourceJobs || reply == forwardingUnitReply && forwardingJobs || reply == descriptorControlReply && joinJobs
 		if err != nil || pos != len(frame) || (object != reply.object() && (!allowJob || !managerJobPath(object))) {
 			return ErrObservation
 		}

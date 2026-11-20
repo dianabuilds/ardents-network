@@ -28,18 +28,6 @@ type joinRuntime struct {
 	closeErr  error
 }
 
-// JoinControl owns root's original fixed-unit reference and at most one
-// start/cleanup-stop attempt. Neither a reference nor job reply grants admission
-// or original process/domain join. Closing returns the original server reference.
-type JoinControl struct{ original *joinControl }
-
-type joinControl struct {
-	reference                     *managerReference
-	startAttempted, stopAttempted bool // original physical I/O serialization
-	once                          sync.Once
-	closeErr                      error
-}
-
 func OpenJoinRuntime(ctx context.Context) (*JoinRuntime, error) {
 	if ctx == nil || os.Geteuid() < 100 || os.Geteuid() > 999 || os.Getegid() != os.Geteuid() {
 		return nil, ErrInput
@@ -56,70 +44,6 @@ func OpenJoinRuntime(ctx context.Context) (*JoinRuntime, error) {
 		_, err = r.joinLoadedObservation()
 	}
 	return s, err
-}
-
-func OpenJoinControl(ctx context.Context) (*JoinControl, error) {
-	if ctx == nil || os.Geteuid() != 0 {
-		return nil, ErrInput
-	}
-	r, err := openManagerReference(ctx, joinControlReply)
-	if r == nil {
-		return nil, err
-	}
-	s := &JoinControl{original: &joinControl{reference: r}}
-	if err == nil {
-		err = r.initializeManagerDeclaration()
-	}
-	if err == nil {
-		err = r.retainJoinControlUnit()
-	}
-	if err == nil {
-		_, err = r.joinLoadedObservation()
-	}
-	if err == nil {
-		// Source and non-root/read-only vocabularies remain separate. Only this
-		// original fixed Join control may receive native job object replies.
-		r.client.transport.joinJobs.Store(true)
-	}
-	return s, err
-}
-
-func (r *managerReference) retainJoinControlUnit() (err error) {
-	if err = r.begin(); err != nil {
-		return err
-	}
-	defer r.uses.Done()
-	r.ioMu.Lock()
-	defer r.ioMu.Unlock()
-	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
-	defer cancel()
-	defer func() { err = r.managerResult(err, ctx) }()
-	if err = r.local(); err != nil {
-		return err
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return err
-	}
-	if err = r.matchManagerDeclaration(ctx); err != nil {
-		return err
-	}
-	call, err := r.client.call(ctx, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager.RefUnit", "ardents-join.service")
-	if err != nil {
-		return err
-	}
-	if len(call.Body) != 0 {
-		return ErrObservation
-	}
-	if err = r.matchManagerDeclaration(ctx); err != nil {
-		return err
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return err
-	}
-	if err = r.local(); err != nil {
-		return err
-	}
-	return r.client.transport.socket.SetDeadline(time.Time{})
 }
 
 func (r *managerReference) joinLoadedObservation() (result JoinObservation, err error) {
@@ -212,32 +136,7 @@ func (s *JoinRuntime) Observe() (JoinObservation, error) {
 	return s.original.reference.joinLoadedObservation()
 }
 
-func (s *JoinControl) Observe() (JoinObservation, error) {
-	if s == nil || s.original == nil || s.original.reference == nil {
-		return JoinObservation{}, ErrInput
-	}
-	return s.original.reference.joinLoadedObservation()
-}
-
-// ManagerIdentity returns fresh detached broker-instance/unique-manager facts
-// from this original connection, never another connection or accepting right.
-func (s *JoinControl) ManagerIdentity() (string, error) {
-	if s == nil || s.original == nil || s.original.reference == nil {
-		return "", ErrInput
-	}
-	return s.original.reference.managerIdentity()
-}
-
 func (s *JoinRuntime) Close() error {
-	if s == nil || s.original == nil || s.original.reference == nil {
-		return nil
-	}
-	o := s.original
-	o.once.Do(func() { o.closeErr = errors.Join(o.reference.close(), o.reference.original.Err()) })
-	return o.closeErr
-}
-
-func (s *JoinControl) Close() error {
 	if s == nil || s.original == nil || s.original.reference == nil {
 		return nil
 	}

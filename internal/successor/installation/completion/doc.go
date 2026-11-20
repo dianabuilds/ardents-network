@@ -7,15 +7,16 @@
 // producer and independent startup peer. It conveys detached identities only.
 // The distinct Forwarding exchange/ACK retired with the transitional Forwarding
 // orchestration (#604 FJD stage D, ADR-0125); the shared physical exchange and
-// the JOIN/Descriptor ACKs remain.
+// the Descriptor ACK remain.
 // Installation observes its actual invocation before and after the exchange;
 // root separately authorizes, observes and durably archives the transition.
 // Calls are serialized by that owning operation; cancellation callbacks join
 // before Wait returns and Close physically closes all retained descriptors.
-// JoinExchange owns a separate original root-peer exchange and exact161-byte
-// JOIN ACK. Only history-opening0 is supported: an old ACK cannot reopen State,
-// prove retirement or authorize another invocation. No live foreign exchange or
-// root journal is borrowed.
+// The distinct JOIN exchange/ACK (JoinExchange/ConnectJoin/EncodeJoinACK)
+// retired with the transitional JOIN orchestration (#604 FJD stage D,
+// ADR-0125); the platform-led JOIN lifecycle owns completion through the
+// canonical retained runtime. No live foreign exchange or root journal is
+// borrowed.
 // DescriptorExchange owns its separate original root-peer exchange and complete
 // 161-byte ACK. The canonical first-start consumer accepts only initial history;
 // no sibling exchange, copied ACK or detached identity supplies Startup rights.

@@ -1655,10 +1655,14 @@ stop/restart/replacement/recovery) is retired (#604 stage 1.6, ADR-0125); this
 platform-led lifecycle owns Source delivery. The transitional Forwarding
 orchestration is retired in turn (#604 FJD stage D, ADR-0125) after the merged
 real-platform installed evidence (`TestNativeForwardingPlatformInstalledLifecycle`);
-the platform-led Forwarding lifecycle owns Forwarding delivery. The remaining
-canonical native installed consumers (JOIN, Descriptor) remain transitional
-under ADR-0125 until equivalent real-platform evidence permits their removal;
-source relocation or these unit checks cannot supply it.
+the platform-led Forwarding lifecycle owns Forwarding delivery. The transitional
+JOIN orchestration is retired in turn (#604 FJD stage D, ADR-0125) after the
+merged real-platform installed evidence
+(`TestNativeJoinPlatformInstalledLifecycle`); the platform-led JOIN lifecycle
+owns JOIN delivery. The remaining canonical native installed consumer
+(Descriptor) remains transitional under ADR-0125 until equivalent real-platform
+evidence permits its removal; source relocation or these unit checks cannot
+supply it.
 
 ## Proposed installed infrastructure
 
@@ -2213,6 +2217,16 @@ runtime startup. Source and Forwarding readers still refuse JOIN declarations;
 JOIN refuses their descriptors and inventories. Future protected lifecycle
 composition must independently supply every installed admission and join proof.
 
+**Retired (#604 FJD stage D, ADR-0125).** The transitional `installation/join`
+declaration owner, its `join prepare-request`/`join prepare-plan`/
+`join prepare-template` producers and the fixed `join start-installed` unit are
+removed; the producers return typed before-effect refusals and
+`ardents-next platform template` emits the canonical platform unit template.
+The platform-led JOIN lifecycle (canonical platform unit with the mandatory
+`platform check` ExecStartPre gate, `ardents-next node join --retained-config`,
+`join repair-retained`) replaces this declaration. The contract text below is
+retained as superseded historical provenance, not an available operation.
+
 JOIN's separate closed declaration owner, `installation/join`, accepts only
 `ardents-join-installation-v1`, invocation `join` and process profile
 `ardents-join-process-v1`. Its canonical request declares installation, State,
@@ -2236,12 +2250,25 @@ declaration cannot adopt a preceding Forwarding account/allowance or invent
 cross-role retirement. Canonical public producers open none of these runtime
 paths; the live clock remains Network's separate observation.
 
+**JOIN orchestration retired (#604 FJD stage D, ADR-0125); Release signing
+preserved and cut over.** After the signing cutover the closed version-one
+purpose checks the actual static Linux-amd64 `ardents-next` program and the
+exact canonical platform unit template (`infrastructure.PlatformUnitTemplate`);
+the descriptor/inventory file identities below remain the retained compatibility
+names for the enrolled `ardents-next` bytes. The former
+`prepare-join-release-plan.py` public plan preparer and its build-records native
+control retired with the orchestration; a new-path JOIN candidate build and
+release plan builder is a separate follow-up, exactly as for Source (#604
+stage 1.6) and Forwarding (#604 FJD stage D). The shared candidate builder
+`build-forwarding-candidate.py` remains the build-scope reference for the
+retained JOIN/Descriptor cohorts.
+
 JOIN initial/forward Release preparation is a separate offline canonical
 Control purpose. Its fresh key ceremony uses the same five-key physical birth
 mechanism as Source and Forwarding, with separate purpose-specific commands
-and receipts. The signer accepts only Node/JOIN targets, exact JOIN template
-and descriptor/program commitments, one current finite reference and coherent
-reviewed build/policy claims. It keeps original protected inputs, five distinct
+and receipts. The signer accepts only Node/JOIN targets, the exact canonical
+platform unit template and descriptor/program commitments, one current finite
+reference and coherent reviewed build/policy claims. It keeps original protected inputs, five distinct
 private files and both exclusive future output parents through all signing,
 verification and physical Close. Failed or uncertain custody retains its first
 and cleanup causes and supplies no public success or reusable output prefix.
@@ -2254,14 +2281,24 @@ separate opaque `infrastructure.JoinAuthorization` is candidate verification,
 not first-pin provenance, account/native mutation, Startup or domain retirement.
 Initial installation still needs its separately admitted genuine initial
 Enrollment and Release lifetimes; these producers create no such permission.
-The public build-bound plan tool consumes the existing actual two-execution
-Node/Control record grammar without renaming historical evidence. Its proposed
-qualification is prestart-components-only, with no installed or independent
-builder/operator claim. No Source/Forwarding signing purpose or live owner is
-borrowed. Source/Forwarding behavior and original histories remain with those
-existing owners.
+The former public build-bound plan tool consumed the existing actual
+two-execution Node/Control record grammar; it retired with the transitional
+JOIN orchestration (#604 FJD stage D, ADR-0125). The existing canonical signer
+still independently validates the exact resources and obtains both fresh
+Release decisions before metadata output. No Source/Forwarding signing purpose
+or live owner is borrowed. Source/Forwarding behavior and original histories
+remain with those existing owners.
 
 #### Initial stopped JOIN persistence
+
+**Retired (#604 FJD stage D, ADR-0125).** `ardents-node join
+install-initial-stopped` and the installation transactions return typed
+before-effect refusals; the transitional `installation/join` orchestration is
+removed. The platform-led JOIN lifecycle (canonical platform unit with the
+mandatory `platform check` ExecStartPre gate, `ardents-next node join
+--retained-config`, `join repair-retained`) replaces this admission. The
+contract text below is retained as superseded historical provenance, not an
+available operation.
 
 `ardents-node join install-initial-stopped DISTRIBUTION PIN HISTORY ENVIRONMENT
 NETWORK REQUEST` independently verifies its running program and exact initial
@@ -2318,6 +2355,12 @@ original domain completion. This supplies neither Start nor non-root Startup.
 
 #### Protected first JOIN start and independent Startup
 
+**Retired (#604 FJD stage D, ADR-0125).** The transitional root first Start and
+independent non-root Startup return typed before-effect refusals; the
+platform-led JOIN runtime (`ardents-next node join --retained-config`) owns
+listening and retirement. The contract text below is retained as superseded
+historical provenance, not an available operation.
+
 Canonical `ardents-node join start-initial` separately reopens complete initial
 and Hosting provenance, obtains fresh coherent Node/JOIN Release proofs and
 matches the actual running controller. Root retains its own fixed manager,
@@ -2355,6 +2398,12 @@ It creates neither State nor keys and grants no installed invocation; each
 corresponding runtime owner must freshly verify its own facts before effects.
 
 #### Explicit stopped JOIN replacement
+
+**Retired (#604 FJD stage D, ADR-0125).** The transitional stopped replacement
+transaction returns typed before-effect refusals; the platform-led JOIN
+lifecycle owns forward program change through a newly signed strictly forward
+Release authenticated against retained floors. The contract text below is
+retained as superseded historical provenance, not an available operation.
 
 `ardents-node join replace DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING
 REQUEST` independently retains the complete initial, Hosting, selection,
@@ -2405,6 +2454,12 @@ Restart separately admits a new invocation and independent non-root Startup;
 replacement itself starts nothing. Original-prefix recovery is a separate gate.
 
 #### JOIN stopped original-prefix recovery
+
+**Retired (#604 FJD stage D, ADR-0125).** The transitional original-prefix
+recovery controller returns typed before-effect refusals; the platform-led
+retained-producer repair (`join repair-retained`) owns explicit participation
+abandonment. The contract text below is retained as superseded historical
+provenance, not an available operation.
 
 The separate canonical `join supervise-transition --stop-after-record 62
 --timeout-ms N -- replace ...` controller admits only the fixed JOIN replacement

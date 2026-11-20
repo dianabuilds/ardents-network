@@ -17,9 +17,8 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 	routeSource := strings.HasPrefix(source, directory+"/")
 	routeDependency := dependency == imported || strings.HasPrefix(dependency, imported+"/")
 	newSource := strings.HasPrefix(source, "internal/successor/") || strings.HasPrefix(source, "cmd/ardents-next/")
-	canonicalJoin := source == "cmd/ardents-node/join_installed_linux.go" && dependency == imported+"/role"
 	canonicalDescriptor := source == "cmd/ardents-node/descriptor_installed_linux.go" && dependency == imported+"/role"
-	if routeDependency && !newSource && !canonicalJoin && !canonicalDescriptor {
+	if routeDependency && !newSource && !canonicalDescriptor {
 		return false
 	}
 	if routeSource && strings.HasPrefix(dependency, modulePath+"/") && !strings.HasPrefix(dependency, modulePath+"/internal/successor/") {
@@ -72,11 +71,6 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"canonical Descriptor test denied", "cmd/ardents-node/descriptor_installed_linux_test.go", modulePath + "/internal/successor/route/role", false},
 		{"canonical Descriptor Route root denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/successor/route", false},
 		{"canonical Descriptor receiver denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/successor/route/receiver", false},
-		{"canonical installed JOIN role only", "cmd/ardents-node/join_installed_linux.go", modulePath + "/internal/successor/route/role", true},
-		{"canonical JOIN tests denied", "cmd/ardents-node/join_installed_linux_test.go", modulePath + "/internal/successor/route/role", false},
-		{"JOIN root adapter denied", "cmd/ardents-node/join_installation_linux.go", modulePath + "/internal/successor/route/role", false},
-		{"canonical JOIN Route root denied", "cmd/ardents-node/join_installed_linux.go", modulePath + "/internal/successor/route", false},
-		{"canonical JOIN receiver denied", "cmd/ardents-node/join_installed_linux.go", modulePath + "/internal/successor/route/receiver", false},
 		{"new Admission boundary", "internal/successor/route/receiving/admission.go", modulePath + "/internal/successor/admission/receiving", true},
 		{"new Network boundary", "internal/successor/route/selection.go", modulePath + "/internal/successor/network/state", true},
 		{"new Hosting boundary", "internal/successor/route/receiving/reservation.go", modulePath + "/internal/successor/hosting", true},

@@ -15,9 +15,10 @@
 // InterruptForwarding) is retired (ADR-0125, #604 FJD stage D); the platform-led
 // Forwarding lifecycle owns process delivery and stop through the canonical
 // platform unit.
-// JoinExpected, RetainJoin and RetainJoinSelf independently fix only JOIN argv,
-// unit and original native identity. They share physical source, not Source or
-// Forwarding process custody, root signal rights or startup authority.
+// The transitional JOIN invocation orchestration (JoinExpected,
+// RetainJoin/RetainJoinStop/RetainJoinSelf and InterruptJoin) is retired
+// (ADR-0125, #604 FJD stage D); the platform-led JOIN lifecycle owns process
+// delivery and stop through the canonical platform unit.
 // DescriptorExpected and its root/self openers fix Descriptor argv, original
 // process and unit independently. DescriptorInvocation exposes no signal right
 // or underlying Invocation and cannot borrow a sibling process observation.

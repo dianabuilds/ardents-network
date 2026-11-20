@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 )
 
 // Actual canonical programs and real fresh signatures exercise only the offline
@@ -21,7 +23,7 @@ import (
 func TestJoinPreparationNativeForwardReleasePreservesRootAndRaisesFloors(t *testing.T) {
 	parent := sourceArtifactNativeParent(t)
 	command, _ := sourceNativePinnedProgram(t, "ARDENTS_JOIN_CONTROL_PROGRAM")
-	program, node := sourceNativePinnedProgram(t, "ARDENTS_JOIN_NODE_PROGRAM")
+	program, nextBytes := sourceNativePinnedProgram(t, "ARDENTS_JOIN_NEXT_PROGRAM")
 	call := func(args ...string) []byte {
 		t.Helper()
 		raw, err := exec.CommandContext(t.Context(), command, append([]string{"join"}, args...)...).CombinedOutput()
@@ -46,9 +48,12 @@ func TestJoinPreparationNativeForwardReleasePreservesRootAndRaisesFloors(t *test
 	}
 	keys := filepath.Join(parent, "keys")
 	call("prepare-release-keys", keys)
-	templateDir := filepath.Join(parent, "template")
-	call("prepare-template", templateDir)
-	template := filepath.Join(templateDir, "ardents-join.service")
+	preparedTemplate, err := exec.CommandContext(t.Context(), program, "platform", "template").Output()
+	if err != nil || !bytes.Equal(preparedTemplate, []byte(infrastructure.PlatformUnitTemplate)) {
+		t.Fatal("canonical platform template producer", err)
+	}
+	template := filepath.Join(parent, "template")
+	write(template, preparedTemplate)
 	now := time.Now().UTC().Truncate(time.Second)
 	claims := func(version int, artifact []byte) []byte {
 		digest := sha256.Sum256(artifact)
@@ -75,7 +80,7 @@ func TestJoinPreparationNativeForwardReleasePreservesRootAndRaisesFloors(t *test
 		call("prepare-descriptor", fmt.Sprintf("forward-%d", version), fmt.Sprint(version), program, template, descriptorDir)
 		descriptor := filepath.Join(descriptorDir, "infrastructure-join.json")
 		programClaims, generationClaims := filepath.Join(base, "program-claims"), filepath.Join(base, "generation-claims")
-		write(programClaims, claims(version, node))
+		write(programClaims, claims(version, nextBytes))
 		write(generationClaims, claims(version, read(descriptor)))
 		planDir := filepath.Join(base, "plan")
 		prepare, sign := "prepare-release-plan", "sign-initial-release"
@@ -119,7 +124,7 @@ func TestJoinPreparationNativeForwardReleasePreservesRootAndRaisesFloors(t *test
 		if err := os.Mkdir(distribution, 0700); err != nil {
 			t.Fatal(err)
 		}
-		for name, raw := range map[string][]byte{"ardents-node-linux-amd64": node, "ardents-join.service": read(template), "infrastructure-join.json": read(descriptor), "root.json": root, "targets.json": read(filepath.Join(metadataDir, "targets.json")), "snapshot.json": read(filepath.Join(metadataDir, "snapshot.json")), "timestamp.json": read(filepath.Join(metadataDir, "timestamp.json"))} {
+		for name, raw := range map[string][]byte{"ardents-node-linux-amd64": nextBytes, "ardents-join.service": read(template), "infrastructure-join.json": read(descriptor), "root.json": root, "targets.json": read(filepath.Join(metadataDir, "targets.json")), "snapshot.json": read(filepath.Join(metadataDir, "snapshot.json")), "timestamp.json": read(filepath.Join(metadataDir, "timestamp.json"))} {
 			write(filepath.Join(distribution, name), raw)
 		}
 		inventory := filepath.Join(base, "inventory")

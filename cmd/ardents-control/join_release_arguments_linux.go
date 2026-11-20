@@ -4,8 +4,29 @@ import (
 	"encoding/json"
 	"flag"
 	"io"
+	"strings"
 	"time"
 )
+
+// Public flags cannot repeat a purpose-bound declaration under another spelling.
+// This shared public-option grammar outlived the retired prepare-hosting/request
+// producers (#604 FJD stage D); the retained JOIN/Descriptor argument parsers
+// consume the same uniqueness control.
+func joinUniqueOptions(args []string, repeatable string) bool {
+	seen := map[string]bool{}
+	for _, argument := range args {
+		if !strings.HasPrefix(argument, "-") {
+			continue
+		}
+		name := strings.TrimLeft(argument, "-")
+		name, _, _ = strings.Cut(name, "=")
+		if seen[name] && name != repeatable {
+			return false
+		}
+		seen[name] = true
+	}
+	return true
+}
 
 // Public declarations and existing artifact bytes only. No key, signature,
 // initial pin or qualification fact is manufactured by this preparer.

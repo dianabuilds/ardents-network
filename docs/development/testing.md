@@ -127,9 +127,30 @@ original read-only manager, stopped-policy and empty-scope proofs; spend
 obligations are never repairable, no root is initialized and no runtime starts.
 These are fixture-authority component/acceptance evidence with one operator,
 not independent participants, whole-host privacy qualification or bootstrap
-acceptance. The transitional JOIN orchestration and old preparation remain
-until the separately authorized stage D retirement; this evidence neither
-exercises nor retires them.
+acceptance.
+
+The transitional JOIN orchestration native qualification is retired (#604
+FJD stage D, ADR-0125). The former `join-installed-linux` profile, its
+`make join-installed-check` lane, the `installation/join` package, the OLD-path
+installed QA tests, the `join prepare-template`, `prepare-request`,
+`prepare-plan`, `prepare-hosting` and `prepare-state` producers, the
+`prepare-join-release-plan.py` public plan preparer and the
+`TestJoinPreparationNativeActualBuildRecordsAndPublicPlan` build-records control
+are removed. `ardents-node join ...` returns typed before-effect refusals. The
+platform-led JOIN lifecycle replaces them: the canonical platform unit with its
+mandatory `platform check` ExecStartPre gate, `ardents-next node join
+--retained-config` and `ardents-next join repair-retained`. Retained native
+evidence is `TestNativeJoinPlatformInstalledLifecycle` under the
+`join_platform_native` build tag (the installed gate), the `TestNativeJoin*`
+workloads in `join-process-linux`, and the separately selected
+`TestNativeJoinRetainedLifecycle` retained-lifecycle evidence
+(`node_process_native`). JOIN Release signing is preserved and cut over to the
+static `ardents-next` program and `infrastructure.PlatformUnitTemplate`; the
+retained signing controls below remain required. The shared candidate builder
+`build-forwarding-candidate.py` remains the build-scope reference for the
+retained JOIN/Descriptor cohorts; a new-path JOIN candidate build and release
+plan builder is a separate follow-up, exactly as for Source (#604 stage 1.6)
+and Forwarding (#604 FJD stage D).
 
 `TestForwardingBuildRecordsAndSourceManifestRules` exercises the shared public
 build producer's exact source byte/mode grammar, duplicate refusal and actual
@@ -1992,7 +2013,7 @@ separately required.
 Windows and Linux production builds, then for their test executables, with the
 selected native build tags enabled (`network_signing_native`,
 `text_worker_installed`, `installation_native`, `node_process_native`,
-`descriptor_installed_native`, `join_installed_native`, `startup_manager_native`,
+`descriptor_installed_native`, `startup_manager_native`,
 `network_preparation_native`, `heapdumpcapture`). The analyzer only compiles the
 program; it does not execute the native stands. Including the native tags lets
 native-tagged test coverage count, so a function exercised only by a native test
@@ -3470,6 +3491,11 @@ adoption refusal and fresh positive counterparts retain original errors.
 Ordinary infrastructure/Enrollment tests cover canonical byte/role separation.
 These are offline public-input/output controls, not Release signature, initial
 pin, unit-policy, protected startup, pair operation or installed qualification.
+The former `TestJoinPreparationNativeTemplateAndRequestLeaveRuntimeAbsent`
+request/plan/fixed-template preparation control retired with the transitional
+JOIN orchestration (#604 FJD stage D, ADR-0125); `prepare-descriptor`/
+`prepare-inventory` remain the generic public JOIN artifact surface and
+`ardents-next platform template` emits the canonical platform unit template.
 
 PR matrix delivery preserves each selected package/pattern/race group, its
 existing16-test ordinary bound, two-test expensive Endpoint bound and dedicated
@@ -3506,22 +3532,21 @@ and Close until its real release. The ordinary independent frame vectors refuse
 every Node/Source unit and job object on this absence-only reply vocabulary.
 These are native read-only observations, not Installation or startup admission.
 
-### JOIN original delivery and read-only preflight
+### Original delivery file custody
 
-The checked `network_signing_native` profile selects `TestJoinInputsNative*`,
-`TestJoinPreflightNativeDoesNotCreateResources` and `TestDeliveryFilesNative*`.
-Use a separate root/ext4 private manager stand with
-`/etc/ardents-join-preparation-native-stand` containing exactly
-`ardents-join-preparation-native-v1` plus LF, actual systemd255, absent fixed
-Node account and all five absent role slots. Pin actual canonical Node through
-`ARDENTS_JOIN_NODE_PROGRAM` and `ARDENTS_JOIN_NODE_PROGRAM_SHA256`.
-These controls exercise the real `join inspect-inputs`, exact request/plan/pair,
-foreign access/link/ancestor and unknown future-journal refusals, live clock
-updates/replacement, repeated actual FD return without GC, and canceled held
-physical reads/Close retaining independent late native failure and private bytes
-until original join. Detached byte copies cannot mutate original custody;
-same-byte replacement cannot substitute a new inode. Missing prerequisites fail.
-No installation, runtime, first-pin, State/time, spend or pair authority is supplied.
+The checked `network_signing_native` profile selects `TestDeliveryFilesNative*`
+in `installation/request`. Use a separate root/ext4 private preparation stand
+with `/etc/ardents-join-preparation-native-stand` containing exactly
+`ardents-join-preparation-native-v1` plus LF. These controls exercise the shared
+protected delivery-file mechanism: detached byte copies cannot mutate original
+custody, same-byte replacement cannot substitute a new inode, repeated actual FD
+return without GC, and canceled held physical reads/Close retain independent
+late native failure and private bytes until original join. Missing prerequisites
+fail. No installation, runtime, first-pin, State/time, spend or pair authority is
+supplied. The former JOIN-specific `TestJoinInputsNative*` /
+`TestJoinPreflightNativeDoesNotCreateResources` controls and the canonical
+`join inspect-inputs` read-only preflight retired with the transitional JOIN
+orchestration (#604 FJD stage D, ADR-0125).
 
 Original clock-file observation retains its own descriptor through held native
 metadata checks and Close. The native clean-close counterpart proves that the
@@ -3532,27 +3557,38 @@ This changes no live clock time, writer policy or State floor.
 ### JOIN offline Release production
 
 The existing root/ext4 `network_signing_native` profile additionally selects
-`TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody`,
-`TestJoinPreparationNativeActualBuildRecordsAndPublicPlan`, and
+`TestJoinPreparationNativeInitialReleasePurposeAndKeyCustody` and
 `TestJoinPreparationNativeForwardReleasePreservesRootAndRaisesFloors`.
-Supply independently pinned actual canonical Node/Control programs through
-`ARDENTS_JOIN_NODE_PROGRAM`, `ARDENTS_JOIN_CONTROL_PROGRAM` and their `_SHA256`
-values. The actual-build case also requires `ARDENTS_JOIN_BUILD_ROOT`,
-`ARDENTS_JOIN_BUILD_READY_SHA256`, `ARDENTS_JOIN_RELEASE_PREPARER`,
-`ARDENTS_JOIN_BUILD_EVIDENCE` and independent SHA-256 values for the last two.
-Both real build executions must match the actual command bytes. The public
-preparer is `scripts/installation/prepare-join-release-plan.py`; no record is
-relabeled as an independent build or installed qualification.
+After the #604 FJD stage D signing cutover they require independently pinned
+actual static canonical `ardents-next` and Control programs through
+`ARDENTS_JOIN_NEXT_PROGRAM` / `_SHA256` and `ARDENTS_JOIN_CONTROL_PROGRAM` /
+`_SHA256`. The tests execute `ardents-next platform template` for the exact
+canonical platform unit template, then the actual JOIN key, public-plan and
+initial/forward-signing commands; they verify five distinct private/public
+keys, ordinary three-of-five metadata signatures and exactly two target
+purposes, and refuse foreign plans and a substituted actual Control executable.
+The forward-release control retains one exact initial Root and increases each
+signed metadata version and reference across three successive versions;
+same-version predecessor and different-key controls refuse before creating
+metadata or diagnostic history.
+
+The former `TestJoinPreparationNativeActualBuildRecordsAndPublicPlan`
+build-records control and its `prepare-join-release-plan.py` public preparer
+retired with the transitional JOIN orchestration (#604 FJD stage D, ADR-0125):
+their controlled two-execution records bound the old `ardents-node` program.
+The shared candidate builder `build-forwarding-candidate.py` remains the
+build-scope reference for the retained JOIN/Descriptor cohorts; a new-path JOIN
+candidate build and release plan builder is a separate follow-up.
 
 The controls verify genuine fixed-purpose Root/Targets signatures, exact Node
 and JOIN commitments, five original private keys, unchanged Root through two
 strict forward successors and linked increasing metadata versions. Foreign
-purpose/descriptor/program, changed keys, non-forward predecessor, malformed
-build/SBOM/independence evidence and existing/partial outputs refuse. Actual
-cancellation plus descriptor Close after signing, file birth and commit retain
-both causes and no successful result. Source/Forwarding key-birth regressions
-exercise the same extracted physical factory. No Role, first pin, native
-Startup, domain retirement or installed replacement is supplied by these tests.
+purpose/descriptor/program, changed keys, non-forward predecessor and
+existing/partial outputs refuse. Actual cancellation plus descriptor Close
+after signing, file birth and commit retain both causes and no successful
+result. Source/Forwarding key-birth regressions exercise the same extracted
+physical factory. No Role, first pin, native Startup, domain retirement or
+installed replacement is supplied by these tests.
 
 The Source key-factory regression retains its separately pinned expiry observer
 and genuine private native-preparation stand. Its signed fixture Timestamp has
@@ -3561,74 +3597,26 @@ inventory I/O before the first outside observation. Both actual pre-expiry and
 post-expiry decisions, both wrong-phase refusals and unchanged floors remain
 required; no supplied reference time or product timeout replaces that crossing.
 
-### JOIN public declaration preparation
+### Shared physical birth and finalized native QA controls
 
-The same root/ext4 `network_signing_native` profile additionally selects
-`TestJoinPreparationNativeTemplateAndRequestLeaveRuntimeAbsent` with the
-independently pinned actual canonical Control. It checks fixed unsigned unit
-properties and independent request bytes, explicit plan trust/path/traffic
-declarations, duplicate/foreign flags and completed-output adoption refusal.
-Declared runtime inputs stay absent throughout public preparation; only the
-exact declared public plan output may be born. The new Installation declaration
-package's deterministic Linux profile independently verifies canonical plan
-bytes, bounded trust/notice grammar, complete retained-path collisions and fixed
-protection. These are public declaration and native output-custody controls;
-they do not authenticate a signed Epoch, Release, duty, spend, allowance or
-installed startup.
-
-### Initial stopped JOIN native boundary
-
-`network-signing-linux` additionally selects `TestJoinBirthsNative*` for original
-journal exclusion, actual directory/file births and same-inode delivery, retained
-sync/cancellation/Close failures and descriptor return. These physical fixtures
-grant no Release or installed authority. The ordinary fixed manager grammar
-admits only the JOIN object and rejects every other Node/Source object and all
-jobs, even when another role's job flags are supplied.
-
-`TestJoinPreparationNativeInitialStoppedAndIndependentHistory` requires a fresh
-private Ubuntu24.04/systemd255/ext4 stand with all five Node slots/account absent
-and `/etc/ardents-join-initial-native-stand` containing exactly
-`ardents-join-initial-native-v1` plus LF. Its externally pinned actual Node and
-Control, both matching controlled build records, public plan preparer and evidence
-are supplied through the existing `ARDENTS_JOIN_*` native environment. Genuine
-canonical Release, request/plan, inventory/pin and Node commands perform initial
-stopped installation and repeat independent history verification. A wrong pin
-refuses before any history/root effect, a fresh retry cannot adopt the completed
-prefix, four semantic roots stay empty and the actual manager reports PID0 /
-inactive/dead. TLS keys and unsigned runtime declarations are explicit prestart
-fixtures; no signed State, duty, installed runtime or bootstrap acceptance is
-provided. Missing prerequisites fail, never skip. The profile retains its3m bound.
+The former `TestJoinBirthsNative*` original journal/birth controls,
+`TestJoinPreparationNativeInitialStoppedAndIndependentHistory`, the JOIN
+known-born Hosting preparation scenario and the separate `join-installed-linux`
+profile (`make join-installed-check`, `join_installed_native`,
+`JOIN_INSTALLED_TEST` protected-startup/pair, forward-replacement and
+replacement-recovery journeys) retired with the transitional JOIN orchestration
+(#604 FJD stage D, ADR-0125). The platform-led JOIN lifecycle owns installed
+qualification; see `TestNativeJoinPlatformInstalledLifecycle` under the
+`join_platform_native` build tag and the retained repair mechanism. The ordinary
+fixed manager grammar still admits only the JOIN object on the retained
+read-only JoinRuntime vocabulary and rejects every other Node/Source object and
+all jobs, even when another role's job flags are supplied.
 
 `installation-native-linux` additionally exercises RootBirth's actual same-inode
 delivery/seal, cancellation, substituted inode, nonempty birth and retained data
 through physical Close. Fixedfile's root0600 birth controls verify same-inode
 private delivery, copied input and secret erasure only after native joins;
 complete-file replacement and foreign-group private births remain refused.
-
-JOIN known-born Hosting preparation is checked by the genuine canonical stopped
-installation native scenario under the existing network-signing Linux profile.
-It exercises actual allowance initialization, independent complete journal/native
-readback, repeat refusal and a same-byte foreign-inode pin refusal. The original
-initial journal and other semantic roots remain unchanged. This is prestart
-component evidence, without installed Startup, paired JOIN or runtime authority.
-
-The separate `join-installed-linux` profile (`make join-installed-check`,
-`join_installed_native`, three-minute finite driver per fresh stand) selects
-exactly one journey through `JOIN_INSTALLED_TEST`:
-
-- `TestJoinInstalledNativeProtectedStartupAndPair` retains the original two-pair
-  explicit Stop/same-generation Restart assertions and causal refusals.
-- `TestJoinInstalledNativeForwardReplacement` runs initial → resource replacement
-  → distinct program replacement, with a real pair and original domain/native
-  Stop at each generation, preserved roots/keys and causal transition refusals.
-
-Both require canonical first Start, independent non-root Startup and the same
-exact isolated manager/artifact/bootstrap prerequisites. No timer or safety bound
-is extended. Three genuinely issued pairs use the unchanged Admission/Hosting
-limits. Two actual matching-build source snapshots differ only in corrected JOIN
-usage text; this proves exact executable selection, not cross-version behavior
-migration. Full Service and original-prefix recovery remain separate boundaries.
-
 
 Finalized native development QA may retire duplicate raw cases and archived ELF
 payloads only after original scope/resource joins, a fresh zero-reference scan,
@@ -3640,23 +3628,6 @@ Missing disposition, changed proof, reappearing raw path, unfinalized case and
 recycled case name refuse allocation. Every allocation still runs the same fresh
 batched equivalent-path/native reference scan, including disposed path names.
 Retained cases still require all original proofs and current native observations.
-
-### JOIN stopped replacement recovery
-
-`JOIN_INSTALLED_TEST=TestJoinInstalledNativeReplacementRecovery make
-join-installed-check` selects one fresh isolated manager under the unchanged
-three-minute profile. It creates genuine initial JOIN authority, pair and original
-Stop, then runs the canonical from-birth replacement controller and freezes its
-actual62-record stopped boundary before SIGKILL/native join. Independent recovery
-requires fresh Release/native/semantic histories and separate suffix publication;
-retained Restart must complete independent non-root Startup, a second actual
-paired exchange/EOF/clean lower terminals and its own original Stop. Missing and
-same-byte foreign cut results, pending restart and completed-recovery replay must
-refuse; the original prefix hash and original account/keys/roots remain unchanged.
-Pure completion/coordinator tests exercise exact binding, finite earlier-prefix
-refusal, canonical bytes and parent-only deadlines; fixtures grant no real cut,
-manager, Release, domain join or installed acceptance. Broader interruption and
-whole-role acceptance remain with the selected issue and actual evidence.
 
 ### Descriptor-role offline public preparation
 
