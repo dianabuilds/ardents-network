@@ -69,8 +69,7 @@ type retiredNameRecordOperation struct {
 	SuccessorRecord    []byte   `json:"successor_record,omitempty"`
 }
 
-// prepareRetiredNameInputs materializes one authenticated State root, one
-// synthetic root shaped like the retired Namespace store, and plan/operation
+// prepareRetiredNameInputs materializes opaque retained State and Namespace files, and plan/operation
 // files shaped like the former name resolve / name control adapter inputs
 // (ADR-0090). ADR-0105 deleted the whole Namespace control subsystem: no
 // working-tree code can read, convert, or delete a real
@@ -85,11 +84,11 @@ func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 	root := t.TempDir()
 	now := time.Unix(1_800_000_000, 0).UTC()
 	deadline := now.Add(15 * time.Second)
-	stateFixture := prepareRetiredNameState(t, root, now,
-		[3]string{"127.0.0.1:7441", "127.0.0.1:7442", "127.0.0.1:7443"})
+	network := sha256.Sum256([]byte("retired-name-command-network"))
+	stateRoot := retiredNameSyntheticStateRoot(t, root)
 	namespaceRoot := retiredNameSyntheticNamespaceRoot(t, root)
 	isolation := [32]byte{1}
-	resolveDigest := retiredNameResolutionDigest(t, stateFixture.network, "alice", deadline.UnixNano())
+	resolveDigest := retiredNameResolutionDigest(t, network, "alice", deadline.UnixNano())
 	resolveChallenge := newRetiredNameChallenge(now, "resolution", resolveDigest, isolation, deadline, 1)
 	operation := retiredNameRecordOperation{Kind: "record", Name: "alice", Generation: 1,
 		ExpectedRevision: 1, Target: [32]byte{2}, RecordNotAfter: now.Add(time.Hour).Unix(),
@@ -101,11 +100,11 @@ func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 	controlDigest := sha256.Sum256(append([]byte("ardents-name-control-operation-v1\x00"), operationRaw...))
 	operation.OperationDigest = controlDigest
 	controlChallenge := newRetiredNameChallenge(now, "renewal-update", controlDigest, isolation, deadline, 2)
-	public := stateFixture.authorities[0].Public().(ed25519.PublicKey)
-	secondPublic := stateFixture.authorities[1].Public().(ed25519.PublicKey)
+	public := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{71}, ed25519.SeedSize)).Public().(ed25519.PublicKey)
+	secondPublic := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{78}, ed25519.SeedSize)).Public().(ed25519.PublicKey)
 	authorities := []string{hex.EncodeToString(public), hex.EncodeToString(secondPublic)}
 	sort.Strings(authorities)
-	base := retiredNamePlan{StateRoot: stateFixture.root, NetworkID: hex.EncodeToString(stateFixture.network[:]),
+	base := retiredNamePlan{StateRoot: stateRoot, NetworkID: hex.EncodeToString(network[:]),
 		AuthorityPublic: authorities, AuthorityThreshold: 2,
 		AcceptedProfile: "h3-role-probe-v1", SelectionAt: now.Format(time.RFC3339Nano),
 		Deadline: deadline.Format(time.RFC3339Nano), RelayNodeID: retiredNameNodeID(1),
@@ -122,7 +121,7 @@ func prepareRetiredNameInputs(t *testing.T) retiredNameInputs {
 		resolvePath:   retiredNameWriteJSON(t, root, "resolve.json", resolveInput),
 		controlPath:   retiredNameWriteJSON(t, root, "control.json", controlInput),
 		operationPath: retiredNameWriteJSON(t, root, "operation.json", operation),
-		stateRoot:     stateFixture.root, namespaceRoot: namespaceRoot,
+		stateRoot:     stateRoot, namespaceRoot: namespaceRoot,
 		isolation: hex.EncodeToString(isolation[:]),
 	}
 }
@@ -146,6 +145,25 @@ func newRetiredNameChallenge(now time.Time, purpose string, digest, isolation [3
 		IssuedAt: now.UnixMilli(), Purpose: purpose, Digest: hex.EncodeToString(digest[:]),
 		Isolation: hex.EncodeToString(isolation[:]), Deadline: deadline.UnixMilli(),
 		Counter: hex.EncodeToString([]byte{counter})}
+}
+
+// retiredNameSyntheticStateRoot supplies opaque retained State bytes and a
+// recognizable marker. These files are sentinels for unintended root effects.
+// The retired command must refuse before attempting to authenticate State.
+func retiredNameSyntheticStateRoot(t *testing.T, root string) string {
+	t.Helper()
+	stateRoot := filepath.Join(root, "network-state")
+	generations := filepath.Join(stateRoot, "generations")
+	if err := os.MkdirAll(generations, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(stateRoot, ".ardents-network-state-v1"), []byte("ardents-network-state-v1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(generations, "retained.bin"), []byte("opaque retained State bytes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return stateRoot
 }
 
 // retiredNameSyntheticNamespaceRoot writes opaque durable bytes shaped like

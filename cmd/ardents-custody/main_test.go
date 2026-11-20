@@ -3,16 +3,18 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/service/instance"
-	"github.com/dianabuilds/ardents-network/internal/successor/custody"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/successor/custody"
+	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 )
 
 func TestInspectEnvelopeRejectsMissingInputsBeforeCreatingCustodyState(t *testing.T) {
@@ -114,7 +116,7 @@ func TestVerifyRecordRejectsMissingPublicBindingBeforeSecretInput(t *testing.T) 
 }
 
 func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testing.T) {
-	vaultRoot, hostRoot := t.TempDir(), serviceInstanceFixtureRoot(t)
+	vaultRoot := t.TempDir()
 	environment, network, authorityRoot := [32]byte{11}, [32]byte{12}, [32]byte{13}
 	password := []byte("service custody command password")
 	createArguments := []string{"create-service-authority", "-vault-root", vaultRoot,
@@ -138,17 +140,7 @@ func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testin
 		bytes.Contains(createdOutput.Bytes(), password) {
 		t.Fatalf("Service Authority receipt = %+v / %v", created, err)
 	}
-	now := time.Now().UTC().Truncate(time.Second)
-	host, err := instance.Initialize(instance.InitializeConfig{Root: hostRoot, NetworkID: network,
-		NotBefore: now, NotAfter: now.Add(time.Hour)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	request, err := host.Request()
-	_ = host.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
+	request, requestView := serviceCredentialRequest(t, network)
 	requestPath := filepath.Join(t.TempDir(), "service-request.bin")
 	if err := os.WriteFile(requestPath, request, 0o600); err != nil {
 		t.Fatal(err)
@@ -200,8 +192,8 @@ func TestServiceAuthorityCommandsCreateAndIssueWithoutSecretDisclosure(t *testin
 		issued.RecordID == created.RecordID || len(issued.Response) == 0 || bytes.Contains(issuedOutput.Bytes(), password) {
 		t.Fatalf("Service Credential receipt = %+v / %v", issued, err)
 	}
-	if _, err := instance.ParseResponse(issued.Response); err != nil {
-		t.Fatalf("parse command response: %v", err)
+	if _, err := publication.VerifyServiceResponse(issued.Response, requestView); err != nil {
+		t.Fatalf("verify command response against the original request: %v", err)
 	}
 	persistedResponse, err := os.ReadFile(issueArguments[8])
 	if err != nil || !bytes.Equal(persistedResponse, issued.Response) || !bytes.Equal(committedResponse, issued.Response) {
@@ -221,7 +213,7 @@ func (failedServiceOutput) Write([]byte) (int, error) {
 }
 
 func TestIssueServiceCredentialRejectsSubstitutedRequestBeforePasswordOrMutation(t *testing.T) {
-	vaultRoot, hostRoot := t.TempDir(), serviceInstanceFixtureRoot(t)
+	vaultRoot := t.TempDir()
 	environment, network, authorityRoot := [32]byte{21}, [32]byte{22}, [32]byte{23}
 	password := []byte("service custody substitution password")
 	createArguments := []string{"create-service-authority", "-vault-root", vaultRoot,
@@ -240,16 +232,7 @@ func TestIssueServiceCredentialRejectsSubstitutedRequestBeforePasswordOrMutation
 	if err := json.Unmarshal(createdOutput.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
-	now := time.Now().UTC().Truncate(time.Second)
-	host, err := instance.Initialize(instance.InitializeConfig{Root: hostRoot, NetworkID: network,
-		NotBefore: now, NotAfter: now.Add(time.Hour)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	request, err := host.Request()
-	if closeErr := host.Close(); err != nil || closeErr != nil {
-		t.Fatalf("read substituted request: %v / %v", err, closeErr)
-	}
+	request, _ := serviceCredentialRequest(t, network)
 	requestPath := filepath.Join(t.TempDir(), "substituted-request.bin")
 	responsePath := filepath.Join(t.TempDir(), "response.bin")
 	if err := os.WriteFile(requestPath, request, 0o600); err != nil {
@@ -282,13 +265,21 @@ func TestIssueServiceCredentialRejectsSubstitutedRequestBeforePasswordOrMutation
 	}
 }
 
-func serviceInstanceFixtureRoot(t *testing.T) string {
+func serviceCredentialRequest(t *testing.T, network [32]byte) ([]byte, publication.RequestView) {
 	t.Helper()
-	root := filepath.Join(t.TempDir(), "service-instance-root")
-	if err := os.Mkdir(root, 0o700); err != nil {
+	public, _, err := ed25519.GenerateKey(nil)
+	if err != nil {
 		t.Fatal(err)
 	}
-	return root
+	now := time.Now().UTC().Truncate(time.Second)
+	view := publication.RequestView{
+		NetworkID:      network,
+		InstancePublic: [32]byte(public),
+		NotBefore:      now.Unix(),
+		NotAfter:       now.Add(time.Hour).Unix(),
+	}
+	view.Commitment = publication.ServiceRequestCommitment(view)
+	return publication.EncodeServiceRequest(view), view
 }
 
 func TestRecoveryBundleCommandsKeepAuthorityLockedOnRestore(t *testing.T) {

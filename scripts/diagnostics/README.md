@@ -192,9 +192,9 @@ docker compose -f scripts/diagnostics/compose.yaml --profile online run --rm onl
 diag test -package ./internal/diagnostics/process -run '^Test' \
   -race -out /evidence/process-race-a -timeout 2m
 # One package, explicit pattern; performance profiling is separate from race.
-diag test -package ./internal/route -run '^$' -bench '^Benchmark' \
-  -profile -raw -out /evidence/route-profile-a -timeout 5m
-diag analyze -dir /evidence/route-profile-a
+diag test -package ./internal/successor/installation/systemd -run '^$' -bench '^BenchmarkManagerPropertyMatch$' \
+  -profile -raw -out /evidence/unit-policy-profile-a -timeout 5m
+diag analyze -dir /evidence/unit-policy-profile-a
 ```
 
 Test profile files: `cpu.pprof`, `heap.pprof`, `block.pprof`, `mutex.pprof`,
@@ -203,9 +203,9 @@ artifacts. `analyze` runs offline pprof top tables. Inspect further with:
 
 ```sh
 docker compose -f scripts/diagnostics/compose.yaml run --rm --entrypoint go runner \
-  tool pprof -list 'Closed' /evidence/route-profile-a/cpu.pprof
+  tool pprof -list 'Matches' /evidence/unit-policy-profile-a/cpu.pprof
 docker compose -f scripts/diagnostics/compose.yaml run --rm --entrypoint go runner \
-  tool trace -pprof=sched /evidence/route-profile-a/runtime.trace
+  tool trace -pprof=sched /evidence/unit-policy-profile-a/runtime.trace
 # Redirect that binary output to a private sched.pprof, then use go tool pprof.
 ```
 
