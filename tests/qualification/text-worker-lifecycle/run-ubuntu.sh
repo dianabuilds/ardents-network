@@ -14,6 +14,14 @@ case "${1-lifecycle}" in
         [ -f /etc/ardents/network-stream-worker-artifact.json ] ||
             fail 'invalid environment: installed stream qualification manifest required'
         ;;
+    stream-qualification)
+        test_root=TestInstalledStreamQualificationSeam
+        worker=/usr/lib/ardents/network-stream-worker-root/ardents-stream-qualification
+        [ -f "$worker" ] && [ ! -L "$worker" ] && [ "$(stat -c %u:%g:%a "$worker")" = 0:0:555 ] ||
+            fail 'invalid environment: installed stream qualification artifact required'
+        [ -f /etc/ardents/network-stream-worker-artifact.json ] ||
+            fail 'invalid environment: installed stream qualification manifest required'
+        ;;
     execution) test_root=TestInstalledExecutionLifecycle ;;
     execution-route) test_root=TestInstalledExecutionRouteTCP ;;
     connection-stream) test_root=TestInstalledConnectionStreamTCP ;;
@@ -75,7 +83,7 @@ binary=/usr/lib/ardents/qualification/endpoint.test
 if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
 fi
-if [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ]; then
+if [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ] || [ "$test_root" = TestInstalledStreamQualificationSeam ]; then
     binary=/usr/lib/ardents/qualification/execution-runtime.test
 fi
 if [ "$test_root" = TestInstalledStreamWorkerActivation ]; then
