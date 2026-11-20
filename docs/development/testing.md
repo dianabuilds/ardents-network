@@ -5253,6 +5253,42 @@ qualification (#391 S2: two separately admitted managers, publish/link/read over
 the Carrier). The transitional guarded-start/ACK/recovery orchestration is neither
 exercised nor retired (ADR-0125 D6).
 
+## Protected Endpoint NET-32 user-idle native measurement
+
+The `endpoint_launch_native` build tag additionally selects
+`cmd/ardents-next/endpoint_idle_native_linux_test.go`
+(`TestNativeEndpointPlatformLedIdle`), a real-host root-driver measurement on an
+admitted Ubuntu/systemd manager (systemd 249/255, cgroup v2). Run it explicitly,
+for example `go test -tags endpoint_launch_native -run
+'^TestNativeEndpointPlatformLedIdle$' -count=1 -timeout=20m ./cmd/ardents-next`;
+missing privileges or manager are an invalid environment and fail, never a
+passing skip. Like the sibling native qualifications it is not a `make
+quick-check` lane and has no profiles.json entry; `scripts/check-deadcode.go`
+compiles the tag so its native-test coverage counts.
+
+It reuses the full-launch stand to provision ONE platform-led Endpoint to Service
+readiness and leaves it idle — no publication, no Application job — so the only
+traffic is the required State/time refresh. It reserves the proportional NET-32
+ceiling `floor(window*1e9/24h)+1` bytes per direction plus a separate 8 MiB
+termination reserve in the live shared Hosting budget, then observes a bounded
+ten-minute window at one-second cadence. The projection denominator is one host's
+monotonic interval from the first fresh sample's completion to the final fresh
+sample's start; the verdict requires >=600 samples, a complete monotonic
+interface-counter window, `ceil(aggregate*86400/duration) <= 1,000,000,000`
+projected tx+rx bytes, Hosting-ledger/interface reconciliation, whole-client
+cgroup RSS p95 <=512 MiB, mean CPU <=1% of one core, and a <=64 KiB State profile
+(privacy-qualification.md NET-32). The product Hosting API is unchanged: the
+harness reads the persisted Hosting reading (`budget.json`) and the Endpoint plus
+confined-worker cgroups directly for the interface/resource reconciliation.
+
+This is a ten-minute component measurement with an upper 24-hour projection — NOT
+a 24-hour observed run, NOT whole-host privacy qualification, and one fixture
+operator, not independent participants. Interface counters are host-wide (`lo`
+includes all processes), so a sufficiently quiet measurement window is required;
+non-Endpoint traffic that pushes the projection over the bound is a failed/invalid
+measurement, not a pass. Both admitted lanes (22.04/249 and 24.04/255) must be
+measured; a result on one lane is not a result on the other.
+
 ## Protected Endpoint two-manager platform-led launch native qualification
 
 The `endpoint_pair_native` build tag selects
