@@ -192,7 +192,7 @@ func platformLoadedFixture(p platformLaunch) (systemd.Properties, systemd.Proper
 	for name, signature := range map[string]string{"EnvironmentFiles": "a(sb)", "BindPaths": "a(ssbt)", "BindReadOnlyPaths": "a(ssbt)", "TemporaryFileSystem": "a(ss)", "ReadOnlyPaths": "as", "InaccessiblePaths": "as", "ExecSearchPath": "as", "ExecCondition": "a(sasbttttuii)", "ExecStartPost": "a(sasbttttuii)", "ExecReload": "a(sasbttttuii)", "ExecStop": "a(sasbttttuii)", "ExecStopPost": "a(sasbttttuii)"} {
 		set(s, name, signature, []any{})
 	}
-	set(s, "RestrictAddressFamilies", "(bas)", []any{true, []string{"AF_UNIX", "AF_INET", "AF_INET6"}})
+	set(s, "RestrictAddressFamilies", "(bas)", []any{true, []string{"AF_INET", "AF_INET6", "AF_UNIX"}})
 	set(s, "SuccessExitStatus", "(aiai)", []any{[]int{130}, []int{}})
 	check := filepath.Join(p.Distribution, "ardents-node-linux-amd64")
 	for name, value := range map[string][]any{
@@ -206,7 +206,7 @@ func platformLoadedFixture(p platformLaunch) (systemd.Properties, systemd.Proper
 
 func TestPlatformPrestartRejectsDifferentLoadedInvocationAndPolicy(t *testing.T) {
 	p := platformTestLaunch("introduction")
-	for _, scenario := range []string{"healthy", "foreign-control-pid", "dropin", "unconfined", "automatic-restart", "forced-kill", "wrong-config", "ignored-precheck", "extra-command", "writable-trust"} {
+	for _, scenario := range []string{"healthy", "foreign-control-pid", "dropin", "unconfined", "automatic-restart", "forced-kill", "wrong-config", "ignored-precheck", "extra-command", "writable-trust", "foreign-address-family"} {
 		t.Run(scenario, func(t *testing.T) {
 			u, s := platformLoadedFixture(p)
 			set := func(dst systemd.Properties, name, sig string, value any) {
@@ -233,6 +233,8 @@ func TestPlatformPrestartRejectsDifferentLoadedInvocationAndPolicy(t *testing.T)
 				set(s, "ExecStartPost", "a(sasbttttuii)", []any{[]any{"/bin/true"}})
 			case "writable-trust":
 				set(s, "ReadWritePaths", "as", append(append([]string{}, p.WritableRoots...), p.ReleaseRoot))
+			case "foreign-address-family":
+				set(s, "RestrictAddressFamilies", "(bas)", []any{true, []string{"AF_INET", "AF_INET6", "AF_NETLINK", "AF_UNIX"}})
 			}
 			err := verifyPlatformPrestart(u, s, p, manifest, strings.Repeat("b", 64), 123)
 			if (err == nil) != (scenario == "healthy") {
