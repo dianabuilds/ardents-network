@@ -2,7 +2,6 @@ package state
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/network/duty"
@@ -60,9 +59,12 @@ func openForwardingRepair(ctx context.Context, resolved config) (_ *forwardingRe
 	if err != nil {
 		return nil, errors.Join(ErrForwardingRepairUnavailable, err)
 	}
-	// Bind the discovered fence to the exact current generation's node identity.
-	// A substituted or foreign node-duty record cannot be abandoned by this repair.
-	if obligation.Identity != current.Snapshot.NodeID || obligation.Family != sha256.Sum256([]byte(current.Snapshot.DeclaredFamily)) || obligation.Class != "node-duty" || obligation.State != "live" {
+	// Bind the discovered fence to a genuine current-generation member. The
+	// node-duty producer is claimed with the member's NodeID and FamilyID, not
+	// the epoch primary snapshot identity; a substituted or foreign record (no
+	// matching accepted Candidate, or a differing family digest) cannot be
+	// abandoned by this repair.
+	if obligation.Class != "node-duty" || obligation.State != "live" || !nodeDutyMember(current, obligation) {
 		return nil, errors.Join(ErrForwardingRepairUnavailable, errors.New("retained node-duty obligation differs from the current generation"))
 	}
 	r.producer = producer
@@ -70,6 +72,20 @@ func openForwardingRepair(ctx context.Context, resolved config) (_ *forwardingRe
 		return nil, err
 	}
 	return r, nil
+}
+
+// nodeDutyMember reports whether the discovered node-duty obligation belongs to
+// an accepted Candidate of the current generation with the exact authenticated
+// family digest. The runtime claims the producer with the member's NodeID and
+// FamilyID, so the repair binds against the member record rather than the epoch
+// primary snapshot identity used by the deterministic Source serving producer.
+func nodeDutyMember(current *epoch.Decision, obligation duty.Duty) bool {
+	for _, candidate := range current.Candidates {
+		if candidate.NodeID == obligation.Identity {
+			return candidate.FamilyID == obligation.Family
+		}
+	}
+	return false
 }
 
 func (r *forwardingRepair) checkHistory() (*epoch.Decision, error) {
