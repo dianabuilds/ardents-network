@@ -19,16 +19,8 @@ func verifyPropertiesVersion(inv inventory, unit, service properties, name, role
 	if !cgroupPath(inv, cgroup, name, role) || pid == 0 {
 		return errors.New("text worker process binding is invalid")
 	}
-	for key, want := range map[string]string{"Id": name, "LoadState": "loaded", "ActiveState": "active", "SubState": "running",
-		"FragmentPath": "/etc/systemd/system/" + inv.prefix + "-" + role + "@.service", "ControlGroup": cgroup, "CollectMode": "inactive-or-failed"} {
-		// ControlGroup is a Service property; Unit owns the remaining identity.
-		properties := unit
-		if key == "ControlGroup" {
-			properties = service
-		}
-		if !properties.exact(key, "s", want) {
-			return errors.New("text worker unit binding is unavailable")
-		}
+	if !workerUnitBindingVerified(inv, unit, service, name, role, cgroup) {
+		return errors.New("text worker unit binding is unavailable")
 	}
 	if !unit.exact("BindsTo", "as", []string{"ardents-endpoint.service"}) || !unitAfterEndpoint(unit) {
 		return errors.New("text worker Endpoint lifetime binding is unavailable")
@@ -116,6 +108,21 @@ func verifyExec(inv inventory, service properties, role string, pid uint32) erro
 		return errors.New("text worker executable has not started")
 	}
 	return nil
+}
+
+func workerUnitBindingVerified(inv inventory, unit, service properties, name, role, cgroup string) bool {
+	for key, want := range map[string]string{"Id": name, "LoadState": "loaded", "ActiveState": "active", "SubState": "running",
+		"FragmentPath": "/etc/systemd/system/" + inv.prefix + "-" + role + "@.service", "ControlGroup": cgroup, "CollectMode": "inactive-or-failed"} {
+		// ControlGroup is a Service property; Unit owns the remaining identity.
+		properties := unit
+		if key == "ControlGroup" {
+			properties = service
+		}
+		if !properties.exact(key, "s", want) {
+			return false
+		}
+	}
+	return true
 }
 
 func verifySyscalls(service properties) error {

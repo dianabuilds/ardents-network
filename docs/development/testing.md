@@ -2499,10 +2499,11 @@ The maintained local profiles are:
 
 - `text-worker-policy`, the root-driven installed authorization matrix invoked
   by `make text-worker-policy-check`; it does not qualify the complete host.
-- `text-worker-lifecycle`, the separately selected installed Endpoint launch/Grant/
-  cgroup profile invoked by `make text-worker-lifecycle-check`; its tagged test binary
-  and exact temporary unit must be independently pinned. No-tests success is
-  refused; this profile does not replace hostile-worker or Service journey tests.
+- `text-worker-lifecycle`, invoked by `make text-worker-lifecycle-check`, selects
+  `TestInstalledExecutionRepeatedLaunch`. It requires twelve original qualified
+  launches per Text surface, actual cgroup/process join and collection of each
+  worker unit. The driver pins the current runtime binary and temporary unit and
+  requires all twenty-four exact launch receipts.
 - the fixed stream-qualification worker's deterministic scheduled-byte corpus is
   checked locally for all 256 byte values (including NUL and invalid UTF-8), exact
   verification across unequal fragment boundaries, wrong-offset/corrupted-byte

@@ -299,14 +299,13 @@ effective confinement, artifact, accepted peer and INIT checks remain required.
 See the selected [socket job enqueue path](https://github.com/systemd/systemd/blob/v255/src/core/socket.c#L2176-L2207)
 and [atomic inventory fields](https://github.com/systemd/systemd/blob/v255/src/core/dbus-manager.c#L829-L855).
 
-The selected [installed lifecycle profile](../../tests/qualification/text-worker-lifecycle/README.md)
-checks both worker roles through this actual launch and cleanup owner. It pins
-the binary and temporary Endpoint unit independently, captures the exact
-systemd invocation and requires both executed role tests to pass after the
-Endpoint process terminates. A zero exit status without the required tests is
-refused. Local owner authorization is an explicit fixture; the profile neither
-substitutes for protected command adoption nor completes the hostile-worker
-or end-to-end qualification matrix.
+The [installed lifecycle profile](../../tests/qualification/text-worker-lifecycle/README.md)
+checks twelve original qualified Execution launches on each Text surface. It
+pins the runtime binary and temporary Endpoint unit independently and verifies
+joined cgroup and process cleanup before checking manager collection of each
+original worker unit. Each launch has an exact receipt under the retained
+Endpoint invocation. The profile uses fixture local authorization and supplies
+component evidence for worker activation and cleanup.
 
 The separately pinned [hostile-tree profile](../../tests/qualification/text-worker-tree/README.md)
 uses an adversarial test artifact under those same installed restrictions. It

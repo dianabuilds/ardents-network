@@ -5,7 +5,7 @@ fail() { printf '%s\n' "$*" >&2; exit 1; }
 [ "$(id -u)" = 0 ] || fail 'invalid environment: root installed-profile driver required'
 maximum_polls=1500
 case "${1-lifecycle}" in
-    lifecycle) test_root=TestInstalledTextWorkerLifecycle ;;
+    lifecycle) test_root=TestInstalledExecutionRepeatedLaunch ;;
     stream-activation)
         test_root=TestInstalledStreamWorkerActivation
         worker=/usr/lib/ardents/network-stream-worker-root/ardents-stream-qualification
@@ -79,7 +79,7 @@ binary=/usr/lib/ardents/qualification/endpoint.test
 if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
 fi
-if [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ] || [ "$test_root" = TestInstalledStreamQualificationSeam ]; then
+if [ "$test_root" = TestInstalledExecutionRepeatedLaunch ] || [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ] || [ "$test_root" = TestInstalledStreamQualificationSeam ]; then
     binary=/usr/lib/ardents/qualification/execution-runtime.test
 fi
 if [ "$test_root" = TestInstalledStreamWorkerActivation ]; then
@@ -221,6 +221,15 @@ if [ "$test_root" = TestInstalledPublicationElapsedTCP ]; then
     set -- "$test_root"
     for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier" "$test_root/$carrier/initial-delayed-ack" "$test_root/$carrier/creation-refresh" "$test_root/$carrier/bounded-overlap"
+    done
+fi
+if [ "$test_root" = TestInstalledExecutionRepeatedLaunch ]; then
+    set -- "$test_root"
+    for surface in connection administration; do
+        set -- "$@" "$test_root/$surface"
+        for attempt in 01 02 03 04 05 06 07 08 09 10 11 12; do
+            set -- "$@" "$test_root/$surface/launch-$attempt"
+        done
     done
 fi
 if [ "$test_root" = TestInstalledExecutionLifecycle ]; then
