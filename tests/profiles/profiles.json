@@ -449,7 +449,7 @@
       "id": "execution-tree",
       "state": "active",
       "make_target": "execution-tree-check",
-      "surface": "new Execution qualified hostile-worker parent/child/grandchild join, synchronous operation denial after attachment loss and original sibling operation survival on both local surfaces; no private Service or whole-host qualification",
+      "surface": "qualified hostile worker lineage and joined cleanup on both local surfaces, independent Publisher snapshot progress, original EOF-triggered manager cleanup, and unit collection",
       "prerequisites": [
         "dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager",
         "separately pinned text_worker_hostile artifact and matching fixed root manifest",
@@ -650,19 +650,6 @@
         "49-minute Go test deadline within an independent 51-minute outer command limit"
       ],
       "invalid_environment": "the dedicated installed command-journey environment is unavailable"
-    },
-    {
-      "id": "text-worker-tree",
-      "state": "active",
-      "make_target": "text-worker-tree-check",
-      "surface": "root-pinned hostile worker child/grandchild cleanup and sibling snapshot progress; not full host qualification",
-      "prerequisites": [
-        "dedicated installed Ubuntu 24.04 x86-64/systemd255/cgroup v2 lifecycle environment",
-        "separately built text_worker_hostile artifact and exact root manifest",
-        "independent hostile executable, Endpoint test binary and temporary unit SHA-256 values",
-        "inactive temporary Endpoint test service selecting TestInstalledTextWorkerHostileTree"
-      ],
-      "invalid_environment": "the dedicated hostile installed worker qualification environment is unavailable"
     },
     {
       "id": "text-worker-lifecycle",

@@ -291,10 +291,6 @@ text-worker-policy-check:
 text-worker-lifecycle-check:
 	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh
 
-.PHONY: text-worker-tree-check
-text-worker-tree-check:
-	sh ./tests/qualification/text-worker-tree/run-ubuntu.sh
-
 .PHONY: text-worker-network-check text-worker-recovery-check text-command-network-build text-command-network-check
 text-worker-network-check:
 	sh ./tests/qualification/text-worker-network/run-ubuntu.sh

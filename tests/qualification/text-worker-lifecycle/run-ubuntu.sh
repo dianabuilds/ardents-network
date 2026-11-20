@@ -44,12 +44,8 @@ case "${1-lifecycle}" in
     execution-recovery) test_root=TestInstalledExecutionEndpointDeath ;;
     network) test_root=TestInstalledTextWorkersReadTargetThroughJoinedNetwork; maximum_polls=10000 ;;
     recovery) test_root=TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork; maximum_polls=3600 ;;
-    tree|execution-tree)
-        if [ "$1" = execution-tree ]; then
-            test_root=TestInstalledExecutionHostileTree
-        else
-            test_root=TestInstalledTextWorkerHostileTree
-        fi
+    execution-tree)
+        test_root=TestInstalledExecutionHostileTree
         worker=/usr/lib/ardents/text-worker-root/ardents-text
         [ -n "${ARDENTS_TEXT_HOSTILE_WORKER_SHA256-}" ] || fail 'hostile worker independent digest required'
         [ -f "$worker" ] && [ ! -L "$worker" ] && [ "$(stat -c %u:%g:%a "$worker")" = 0:0:555 ] ||

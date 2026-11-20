@@ -307,16 +307,6 @@ original worker unit. Each launch has an exact receipt under the retained
 Endpoint invocation. The profile uses fixture local authorization and supplies
 component evidence for worker activation and cleanup.
 
-The separately pinned [hostile-tree profile](../../tests/qualification/text-worker-tree/README.md)
-uses an adversarial test artifact under those same installed restrictions. It
-requires a live child and grandchild that ignore SIGTERM and retain the local
-attachment, then proves original cgroup cleanup and continued snapshot service
-from a distinct Publisher sibling. Artifact selection is a root qualification
-installation, never a caller option. This is distinct from the ordinary worker
-artifact and from complete abrupt-crash, escape and P6/P7 qualification.
-It also observes parent exit on attachment EOF and manager-owned descendant
-cleanup before invoking Endpoint Close for the remaining local job teardown.
-
 The [Execution escape profile](../../tests/qualification/execution-escape/README.md)
 pins a root-installed artifact that probes host TCP/UDP, DNS, file and Unix-IPC
 access, namespace creation and UID escalation before its ordinary handshake.
@@ -580,19 +570,15 @@ failure still refusing the case. Three source-matched native race repetitions
 passed, two observing and retaining that same failed receiving retirement.
 No production error is suppressed, and positive retirement remains clean.
 
-The separately pinned new Execution hostile-tree component uses actual qualified
-launches on both local surfaces. Original kernel event and proc-directory
-descriptors independently observe the live parent/child/grandchild lineage,
-worker UID, inherited hardening and TERM-ignoring descendants. Victim retirement
-joins that original tree while the other surface retains its exact sibling
-invocation, live tree and operation. A fresh worker's attachment loss denies
-effects before operation join and preserves the failed-use result after physical
-cleanup. An ordinary Text artifact fails the descendant positive control on
-both surfaces. The profile supplies local owner authorization and a separately
-root-installed adversarial artifact; it is neither a Service snapshot/stream
-consumer nor accepting product startup, logical recovery, escape qualification
-or whole-host protection. The descendant watchdog and test deadline never prove
-join. See the [Execution tree profile](../../tests/qualification/execution-tree/README.md).
+The [Execution tree profile](../../tests/qualification/execution-tree/README.md)
+uses a separately pinned adversarial worker and fixture local authorization.
+Original cgroup and proc descriptors observe the exact hostile lineage,
+worker identity and hardening. The independent Publisher keeps its invocation
+through victim cleanup, then returns its immutable snapshot over the actual
+Text worker protocol with a local stream fixture. Attachment EOF must retire the
+fresh original tree while the caller still holds the operation join. The
+runtime then retains the original failure, and the manager collects the
+retired units. This profile covers local lifetime and snapshot progress.
 
 The new Execution escape component separately root-pins the adversarial Text
 artifact and runs both local surfaces through actual qualified launch and one

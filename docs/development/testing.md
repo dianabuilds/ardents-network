@@ -2510,11 +2510,10 @@ The maintained local profiles are:
   refusal and a workload-verdict failure after one-byte truncation. This is
   binary-corpus conformance for the pinned laboratory caller, not an installed
   profile result or support for arbitrary Applications.
-- `text-worker-tree`, the separately pinned installed hostile child/grandchild cleanup
-  profile invoked by `make text-worker-tree-check`; it requires both role receipts,
-  original-cgroup cleanup and independent Publisher sibling snapshot progress. It
-  does not replace the escape matrix, protected Route admission or full host
-  qualification.
+- `execution-tree`, invoked by `make execution-tree-check`, observes original
+  hostile worker descendants and joined cleanup across both local surfaces.
+  It requires independent Publisher snapshot progress after victim retirement,
+  manager cleanup after original EOF and subsequent unit collection.
 - `execution-escape`, invoked by `make execution-escape-check`, runs the separately
   pinned installed P6/P7 escape matrix through the current Execution owner on both
   local surfaces. The fixture records independent host listeners, effective unit

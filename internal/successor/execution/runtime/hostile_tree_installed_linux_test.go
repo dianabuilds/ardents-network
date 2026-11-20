@@ -29,15 +29,15 @@ func TestInstalledExecutionHostileTree(t *testing.T) {
 		t.Run(string(surface), func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 45*time.Second)
 			defer cancel()
-			principal, siblingPrincipal := [32]byte{2}, [32]byte{3}
-			siblingSurface := execution.Administration
-			if surface == execution.Administration {
-				siblingSurface = execution.Connection
-			}
-			owner, err := New(execution.Config{ID: [32]byte{1}, Grants: []execution.Grant{
+			principal, publisherPrincipal, readerPrincipal := [32]byte{2}, [32]byte{3}, [32]byte{4}
+			grants := []execution.Grant{
 				{Principal: principal, Surface: surface},
-				{Principal: siblingPrincipal, Surface: siblingSurface},
-			}})
+				{Principal: publisherPrincipal, Surface: execution.Administration},
+			}
+			if surface == execution.Administration {
+				grants = append(grants, execution.Grant{Principal: readerPrincipal, Surface: execution.Connection})
+			}
+			owner, err := New(execution.Config{ID: [32]byte{1}, Grants: grants})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -46,13 +46,33 @@ func TestInstalledExecutionHostileTree(t *testing.T) {
 					t.Errorf("original owner cleanup: %v", err)
 				}
 			})
-			sibling, siblingOperation := launchHostileExecution(t, ctx, owner, siblingPrincipal, siblingSurface)
-			siblingTree := pinHostileExecutionTree(t, sibling.activation.Instance)
+			document := []byte("original Publisher snapshot survives hostile tree cleanup\n")
+			publisher, err := owner.LaunchPublisher(ctx, publisherPrincipal, document)
+			publisherOperation := beginHostileOperation(t, ctx, publisher, err)
+			publisherContext, err := publisherOperation.AdministrationContext()
+			if err != nil {
+				t.Fatal(err)
+			}
+			type siblingWorker struct {
+				invocation *Invocation
+				operation  *Operation
+				tree       *hostileExecutionTree
+			}
+			siblings := []siblingWorker{{publisher, publisherOperation, pinHostileExecutionTree(t, publisher.activation.Instance)}}
+			if surface == execution.Administration {
+				reader, readerOperation := launchHostileExecution(t, ctx, owner, readerPrincipal, execution.Connection)
+				siblings = append(siblings, siblingWorker{reader, readerOperation, pinHostileExecutionTree(t, reader.activation.Instance)})
+			}
 			victim, operation := launchHostileExecution(t, ctx, owner, principal, surface)
 			victimTree := pinHostileExecutionTree(t, victim.activation.Instance)
-			if victim.activation.Instance.UID == sibling.activation.Instance.UID ||
-				victim.activation.Instance.Cgroup == sibling.activation.Instance.Cgroup {
-				t.Fatal("live hostile siblings share an isolation identity")
+			instance := victim.activation.Instance
+			seenUIDs, seenGroups := map[uint32]bool{instance.UID: true}, map[string]bool{instance.Cgroup: true}
+			for _, sibling := range siblings {
+				identity := sibling.invocation.activation.Instance
+				if seenUIDs[identity.UID] || seenGroups[identity.Cgroup] {
+					t.Fatal("live hostile siblings share an isolation identity")
+				}
+				seenUIDs[identity.UID], seenGroups[identity.Cgroup] = true, true
 			}
 			operation.Close()
 			if err := victim.Close(); err != nil {
@@ -62,28 +82,45 @@ func TestInstalledExecutionHostileTree(t *testing.T) {
 			if !victim.CompletedCurrent() || operation.Check() == nil {
 				t.Fatal("joined victim result or revoked operation is incorrect")
 			}
-			if siblingOperation.Check() != nil || sibling.CompletedCurrent() {
-				t.Fatal("victim retirement revoked or completed the live sibling")
+			requireInstalledExecutionUnitCollected(t, ctx, victim.activation.Instance.Name)
+			for _, sibling := range siblings {
+				if sibling.operation.Check() != nil || sibling.invocation.CompletedCurrent() {
+					t.Fatal("victim retirement revoked or completed the live sibling")
+				}
+				original := sibling.invocation.activation.Instance
+				observed, err := worker.ObserveInstance(ctx, original.Name, original.Role)
+				if err != nil || observed != original {
+					t.Fatalf("victim cleanup changed original sibling invocation: %v", err)
+				}
+				if removed, populated, err := sibling.tree.observe(); err != nil || removed || !populated {
+					t.Fatalf("original sibling tree did not survive: %v", err)
+				}
 			}
-			observed, err := worker.ObserveInstance(ctx, sibling.activation.Instance.Name, sibling.activation.Instance.Role)
-			if err != nil || observed != sibling.activation.Instance {
-				t.Fatalf("victim cleanup changed original sibling invocation: %v", err)
+			requireHostilePublisherSnapshot(t, ctx, publisherOperation, document)
+			for _, sibling := range siblings {
+				sibling.operation.Close()
+				if sibling.invocation == publisher {
+					if err := publisherContext.session.Close(); err != nil {
+						t.Fatal(err)
+					}
+					if publisherContext.Context().Err() == nil || publisher.CompletedCurrent() {
+						t.Fatal("revoked Publisher Session retained completion provenance")
+					}
+				}
+				if err := sibling.invocation.Close(); err != nil {
+					t.Fatal(err)
+				}
+				sibling.tree.requireJoined(t)
+				requireInstalledExecutionUnitCollected(t, ctx, sibling.invocation.activation.Instance.Name)
 			}
-			if removed, populated, err := siblingTree.observe(); err != nil || removed || !populated {
-				t.Fatalf("original sibling tree did not survive: %v", err)
-			}
-			siblingOperation.Close()
-			if err := sibling.Close(); err != nil {
-				t.Fatal(err)
-			}
-			siblingTree.requireJoined(t)
 
 			// Peer loss retires the exact new Job before its operation joins.
 			// The original descriptors, rather than a replacement pathname or PID,
 			// remain the independent physical completion observers.
 			replacement, replacementOperation := launchHostileExecution(t, ctx, owner, principal, surface)
 			replacementTree := pinHostileExecutionTree(t, replacement.activation.Instance)
-			if replacement.job == victim.job || replacement.activation.Instance.Invocation == victim.activation.Instance.Invocation {
+			if replacement.job == victim.job || replacement.job.Nonce() == [32]byte{} || replacement.job.Nonce() == victim.job.Nonce() ||
+				replacement.activation.Instance.Invocation == victim.activation.Instance.Invocation {
 				t.Fatal("fresh launch inherited retired Job or physical invocation")
 			}
 			if err := replacement.activation.Attachment.Close(); err != nil {
@@ -102,21 +139,28 @@ func TestInstalledExecutionHostileTree(t *testing.T) {
 				t.Fatal("hostile invocation completed before its operation joined")
 			default:
 			}
+			replacementTree.awaitManagerRetirement(t, ctx, replacement.done)
 			replacementOperation.Close()
 			if err := replacement.Close(); !errors.Is(err, errUnexpectedWorkerEnd) {
 				t.Fatalf("original peer-loss result: %v", err)
 			}
 			replacementTree.requireJoined(t)
+			requireInstalledExecutionUnitCollected(t, ctx, replacement.activation.Instance.Name)
 			if replacement.CompletedCurrent() {
 				t.Fatal("failed worker use became a successful joined result")
 			}
 			if err := owner.Close(); err != nil {
 				t.Fatal(err)
 			}
-			if victim.CompletedCurrent() || sibling.CompletedCurrent() {
+			if victim.CompletedCurrent() {
 				t.Fatal("closed local generation retained completed-current permission")
 			}
-			t.Log("original hostile trees joined; sibling invocation and operation survived victim retirement; attachment loss denied effects before operation join")
+			for _, sibling := range siblings {
+				if sibling.invocation.CompletedCurrent() {
+					t.Fatal("closed local generation retained sibling completion")
+				}
+			}
+			t.Log("original hostile trees joined; Publisher answered after victim retirement; manager collected the original tree before invocation join")
 		})
 	}
 }
@@ -124,6 +168,11 @@ func TestInstalledExecutionHostileTree(t *testing.T) {
 func launchHostileExecution(t *testing.T, ctx context.Context, owner *Owner, principal [32]byte, surface execution.Surface) (*Invocation, *Operation) {
 	t.Helper()
 	invocation, err := owner.Launch(ctx, principal, surface)
+	return invocation, beginHostileOperation(t, ctx, invocation, err)
+}
+
+func beginHostileOperation(t *testing.T, ctx context.Context, invocation *Invocation, err error) *Operation {
+	t.Helper()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +189,7 @@ func launchHostileExecution(t *testing.T, ctx context.Context, owner *Owner, pri
 	if err != nil || operation.Check() != nil {
 		t.Fatalf("qualified hostile operation unavailable: %v", err)
 	}
-	return invocation, operation
+	return operation
 }
 
 type hostileExecutionTree struct {
@@ -293,10 +342,45 @@ func (tree *hostileExecutionTree) observe() (removed, populated bool, result err
 	return false, false, errors.New("original kernel populated observation absent")
 }
 
+// The caller holds the operation open, so its Execution owner cannot issue
+// cleanup.Close while the manager completes the original EOF-driven retirement.
+func (tree *hostileExecutionTree) awaitManagerRetirement(t *testing.T, ctx context.Context, invocationDone <-chan struct{}) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
+	defer cancel()
+	ticker := time.NewTicker(20 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-invocationDone:
+			t.Fatal("invocation joined before the held operation was released")
+		default:
+		}
+		joined, err := tree.joined()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if joined {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatal("attachment EOF did not retire the original hostile cgroup before invocation join")
+		case <-ticker.C:
+		}
+	}
+}
+
 func (tree *hostileExecutionTree) requireJoined(t *testing.T) {
 	t.Helper()
+	if joined, err := tree.joined(); err != nil || !joined {
+		t.Fatalf("original worker tree not joined: %v", err)
+	}
+}
+
+func (tree *hostileExecutionTree) joined() (bool, error) {
 	if removed, populated, err := tree.observe(); err != nil || !removed && populated {
-		t.Fatalf("original hostile tree not joined: %v", err)
+		return false, err
 	}
 	for _, process := range tree.processes {
 		stat, err := hostileExecutionProcRead(process, "stat")
@@ -304,12 +388,16 @@ func (tree *hostileExecutionTree) requireJoined(t *testing.T) {
 			continue
 		}
 		if err != nil {
-			t.Fatal(err)
+			return false, err
 		}
 		end := strings.LastIndex(string(stat), ")")
 		fields := strings.Fields(string(stat[end+1:]))
-		if end < 0 || len(fields) == 0 || fields[0] != "Z" && fields[0] != "X" {
-			t.Fatal("original hostile process survived physical cleanup")
+		if end < 0 || len(fields) == 0 {
+			return false, errors.New("original worker process state unavailable")
+		}
+		if fields[0] != "Z" && fields[0] != "X" {
+			return false, nil
 		}
 	}
+	return true, nil
 }

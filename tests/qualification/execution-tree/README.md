@@ -31,20 +31,25 @@ all pins, platform, original invocation and exact executed connection and
 administration receipts. It requires terminal successful qualification status;
 missing tests, missing descendants and no-tests exit zero fail.
 
-Both local surfaces retain two genuine qualified operations. Independent
-kernel event descriptors and original proc-directory descriptors require the
-exact live parent/child/grandchild lineage, worker UID, inherited hardening
-and TERM-ignoring descendants. Victim retirement must join its original tree
-while the sibling retains its exact invocation, live tree and operation.
-Sibling retirement then joins its own tree. A fresh launch loses its real
-attachment: it denies effects before operation join, retains the borrower and
-returns the original failed-use result only after physical cleanup. Closed
-local authority cannot retain completed-current permission.
+On each local surface, an independent Publisher retains its original Worker,
+Job and operation while the victim tree joins. The Administration case also
+retains a separate Connection operation. Kernel cgroup event and proc
+descriptors verify the original process lineage, distinct identities and
+TERM-ignoring descendants. After victim retirement the original Publisher
+returns its exact immutable document through the fixed Text worker using a
+local request and terminal fixture. Closing the Publisher Session revokes
+its provenance and joins the worker. The manager must collect the original
+units after the sibling trees and their operations join.
+
+A fresh invocation loses its original attachment. The test holds its
+operation join while independently observing that the original parent and
+cgroup retire after EOF. After release the Execution owner must report the
+original peer-loss result, join cleanup and expose a collected worker unit.
 
 Run against the ordinary worker as a negative environment control: absent
 hostile descendants must fail. The descendant watchdog and test timeout never
 prove join. Keep failures, exact source/artifact/unit pins, manager journal and
 platform inventory outside Git. Containers/WSL are explicitly labelled
-component evidence. No sibling Text snapshot, authenticated Service stream,
-logical recovery, escape matrix, independent security review or whole-host
-qualification follows from this profile.
+component evidence. The snapshot result covers the fixed worker with a local
+stream fixture; authenticated Service, logical recovery and whole-host
+qualification have their own profiles.

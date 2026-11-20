@@ -71,6 +71,5 @@ runtime-seam component evidence; the positive 64/256-stream NET-14 workload
 through authenticated Service streams (3c-B2/3c-C) and whole-host privacy
 qualification are not established here.
 
-The shared runner also has one explicit tree profile, invoked only by
-text-worker-tree-check with its independent hostile artifact digest and exact
-TestInstalledTextWorkerHostileTree receipts. See the sibling profile README.
+The [Execution tree profile](../execution-tree/README.md) selects
+`TestInstalledExecutionHostileTree` through this same driver.
