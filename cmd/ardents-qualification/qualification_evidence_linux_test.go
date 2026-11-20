@@ -13,7 +13,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
-	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
@@ -176,16 +175,16 @@ func qualificationNodeInputs(t *testing.T, ids []string) []nodeResultInput {
 			host = "reader"
 		}
 		input := nodeResultInput{ID: id, Host: host, PlanSHA256: fmt.Sprintf("%064x", index+1), InvocationID: fmt.Sprintf("%032x", index+1), BinarySHA256: strings.Repeat("ab", 32), ActiveState: "inactive", Result: "success", Slice: qualificationOwnerSlice}
-		ready, _ := json.Marshal(node.Event{Schema: "ardents-node-event-v1", Kind: "lifecycle", State: "READY", At: origin})
+		ready, _ := json.Marshal(recordedNodeEvent{Schema: "ardents-node-event-v1", Kind: "lifecycle", State: "READY", At: origin})
 		input.Journal = append(input.Journal, string(ready))
 		for second := 0; second < 598; second++ {
 			at := origin.Add(time.Duration(second) * time.Second)
 			hosting := hostingbudget.Sample{At: at, Policy: policy, Observation: hostingbudget.Observation{UsedBytes: uint64(second)}}
-			event, _ := json.Marshal(node.Event{Schema: "ardents-node-event-v1", Kind: "resource-sample", State: "OBSERVED", At: at, Resource: &resource.Sample{MemoryBytes: memory, RSSBytes: memory}, Hosting: &hosting})
+			event, _ := json.Marshal(recordedNodeEvent{Schema: "ardents-node-event-v1", Kind: "resource-sample", State: "OBSERVED", At: at, Resource: &resource.Sample{MemoryBytes: memory, RSSBytes: memory}, Hosting: &hosting})
 			input.Journal = append(input.Journal, string(event))
 			input.Samples = append(input.Samples, nodeOwnerSampleInput{MonotonicNS: uint64(second+1) * uint64(time.Second), At: at, MemoryCurrent: memory, CPUUsageNSec: uint64(second) * 10_000_000, IPIngressBytes: uint64(second) * 1000, IPEgressBytes: uint64(second) * 2000})
 		}
-		withdrawn, _ := json.Marshal(node.Event{Schema: "ardents-node-event-v1", Kind: "lifecycle", State: "WITHDRAWN", At: origin.Add(598 * time.Second)})
+		withdrawn, _ := json.Marshal(recordedNodeEvent{Schema: "ardents-node-event-v1", Kind: "lifecycle", State: "WITHDRAWN", At: origin.Add(598 * time.Second)})
 		input.Journal = append(input.Journal, string(withdrawn))
 		inputs = append(inputs, input)
 	}
@@ -308,7 +307,7 @@ func writeQualificationJSON(t *testing.T, value any) string {
 func setQualificationNodeRSS(t *testing.T, input *nodeResultInput, rss uint64) {
 	t.Helper()
 	for index, line := range input.Journal {
-		var event node.Event
+		var event recordedNodeEvent
 		if json.Unmarshal([]byte(line), &event) != nil || event.Kind != "resource-sample" || event.Resource == nil {
 			continue
 		}

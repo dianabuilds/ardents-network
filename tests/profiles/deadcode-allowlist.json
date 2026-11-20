@@ -527,7 +527,7 @@
           "internal/node/resolution.closedResolutionServer.stop"
         ],
         "classification": "retired legacy Node runtime awaiting legacy cohort removal",
-        "rationale": "The old internal/node runtime (forwarding, introduction, probe, hosting, resolution, join, issuer, outer, authority and duty composition) lost its maintained cmd/ardents-node operator consumers in the legacy command retirement (#615/#616); only cmd/ardents-qualification still reaches its selected verification subset. These exact functions are no longer reachable from any production main on linux-amd64. The successor Node composition lives in internal/successor/node. The owning legacy Module remains with its behavior tests until the separately gated cohort removal (#564/#565).",
+        "rationale": "The old internal/node runtime (forwarding, introduction, probe, hosting, resolution, join, issuer, outer, authority and duty composition) lost its maintained cmd/ardents-node operator consumers in the legacy command retirement (#615/#616). The cmd/ardents-qualification verifier decodes the retained v1 journal schema itself (#564). These exact functions are no longer reachable from any production main on linux-amd64. The successor Node composition lives in internal/successor/node. The owning legacy Module remains with its behavior tests until the separately gated cohort removal (#564/#565).",
         "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
         "retirement": "Remove each exact symbol when the gated legacy cohort removal retires its owning internal/node Module, or when a separately selected genuine production caller reaches it. Lost production reachability elsewhere requires repair, not another allowance."
       },

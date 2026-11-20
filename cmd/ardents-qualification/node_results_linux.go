@@ -13,9 +13,27 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
-	"github.com/dianabuilds/ardents-network/internal/node"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
+
+// recordedNodeEvent decodes the v1 observation in retained qualification
+// journals. Keep the original JSON field types so malformed known fields
+// invalidate the same records even after the predecessor runtime is gone.
+type recordedNodeEvent struct {
+	Elapsed          time.Duration         `json:"elapsed,omitempty"`
+	Hosting          *hostingbudget.Sample `json:"hosting,omitempty"`
+	Schema           string                `json:"schema"`
+	Kind             string                `json:"kind"`
+	State            string                `json:"state"`
+	At               time.Time             `json:"at"`
+	Epoch            uint64                `json:"epoch,omitempty"`
+	Generation       string                `json:"generation,omitempty"`
+	Assignment       string                `json:"assignment,omitempty"`
+	CarrierProfile   string                `json:"carrier_profile,omitempty"`
+	AssignmentDigest [32]byte              `json:"assignment_digest,omitempty"`
+	Reason           string                `json:"reason,omitempty"`
+	Resource         *resource.Sample      `json:"resource,omitempty"`
+}
 
 type nodeOwnerSampleInput struct {
 	At                            time.Time
@@ -179,7 +197,7 @@ func evaluateNodeOwner(input nodeResultInput) (nodeOwnerEvidence, bool) {
 	var hostingPolicy *hostingbudget.Policy
 	var hostingUsed uint64
 	for _, line := range input.Journal {
-		var event node.Event
+		var event recordedNodeEvent
 		if json.Unmarshal([]byte(line), &event) != nil || event.Schema != "ardents-node-event-v1" {
 			continue
 		}
@@ -393,7 +411,7 @@ func nodeRSSWindow(journal []string, started, stopped time.Time) (uint64, bool) 
 	}
 	var samples []observation
 	for _, line := range journal {
-		var event node.Event
+		var event recordedNodeEvent
 		if json.Unmarshal([]byte(line), &event) == nil && event.Schema == "ardents-node-event-v1" && event.Kind == "resource-sample" && event.State == "OBSERVED" && event.Resource != nil {
 			samples = append(samples, observation{at: event.At, rss: event.Resource.RSSBytes})
 		}
