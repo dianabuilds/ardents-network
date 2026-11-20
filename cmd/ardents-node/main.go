@@ -16,7 +16,7 @@ func main() {
 	defer stop()
 	arguments := os.Args[1:]
 	if err := runCommand(ctx, arguments, os.Stdout); err != nil {
-		if completedExplicitSourceStop(err) || completedExplicitForwardingStop(err) || completedJoinExplicitStop(err) || completedDescriptorExplicitStop(err) {
+		if completedExplicitForwardingStop(err) || completedJoinExplicitStop(err) || completedDescriptorExplicitStop(err) {
 			return
 		}
 		fmt.Fprintln(os.Stderr, err)
@@ -25,10 +25,9 @@ func main() {
 }
 
 func runCommand(ctx context.Context, arguments []string, output io.Writer) error {
-	// Installed Source and its retired selector reach their own admission before
-	// any optional diagnostic socket is opened. Installation is a distinct root
-	// operation, with no process diagnostic side effect either. The retired legacy
-	// Node/issuer/hosting paths likewise refuse before any diagnostic side effect.
+	// The retired Source orchestration and the retired legacy Node/issuer/hosting
+	// paths refuse before any optional diagnostic socket is opened. The maintained
+	// installed Forwarding/JOIN/Descriptor roles reach their own admission first.
 	if len(arguments) > 0 && (arguments[0] == "source" || arguments[0] == "installation" || arguments[0] == "forwarding" || arguments[0] == "join" || arguments[0] == "descriptor" || arguments[0] == "node" || arguments[0] == "issuer" || arguments[0] == "hosting") {
 		return run(ctx, arguments, output)
 	}
@@ -50,12 +49,12 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 			return errOldSourceProfileRetired
 		}
 		if len(arguments) == 3 && arguments[1] == "start-installed" {
-			return runInstalledSource(ctx, arguments[2], output)
+			return errOldSourceInstalledRetired
 		}
 		return errors.New("usage: ardents-node source start-installed BINDING")
 	}
 	if len(arguments) > 0 && arguments[0] == "installation" {
-		return runSourceInstallation(ctx, arguments[1:], output)
+		return errOldSourceInstallationRetired
 	}
 	if len(arguments) > 0 && arguments[0] == "issuer" {
 		return errOldIssuerRetired
@@ -66,5 +65,5 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if len(arguments) == 3 && arguments[0] == "node" && arguments[1] == "--config" {
 		return errOldNodeConfigRetired
 	}
-	return errors.New("usage: ardents-node source start-installed BINDING | installation ... | forwarding ... | join ... | descriptor ...")
+	return errors.New("usage: ardents-node forwarding ... | join ... | descriptor ...")
 }

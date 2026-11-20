@@ -65,61 +65,39 @@ receipt and separate direct acceptance before execution.
 
 ## Source infrastructure artifact component
 
-`python3 -I -S scripts/installation/build-source-candidate.py
---source-manifest PATH --source-manifest-sha256 SHA256 --source-revision REVISION
---output FRESH_OUTPUT` builds the fixed five-command inventory twice with the
-selected Go1.27.4 Linux-amd64 toolchain, no cgo and canonical flags. The outside
-controller retains the common development lock and whole build-scope join,
-supplies a read-only complete source snapshot, independently pinned manifest
-and checked module cache, and keeps output outside the repository. No network
-fetch or module replacement is admitted. Both executions use project control;
-the tool explicitly reports no builder independence or installed qualification.
-Each actual execution retains its own command hashes; the tool also retains
-canonical build inputs, actual compiled-package/module inventory and its scoped build SBOM, checks
-matching output and reobserves the original source/manifest and module integrity.
-The Go module files remain exact hashed inputs; ordinary module/dependency gates
-still cover their declared graph. The build SBOM inventories the five actual
-commands' compiled closure and selects no unused package or protocol.
-An unfinished output is preserved and never adopted. `READY` describes this
-build result only. A preliminary dirty snapshot must use the explicit revision
-`snapshot-sha256:<manifest pin>`; it cannot claim the old HEAD as its source.
-The final installed candidate uses the committed exact source revision and still
-requires every normal gate and the separately accepted exact bootstrap receipt.
+The former `scripts/installation/build-source-candidate.py` candidate builder
+and `scripts/installation/prepare-source-release-plan.py` public plan
+transformation are retired with the transitional Source orchestration (#604
+stage 1.6, ADR-0125). The platform-led Source lifecycle signs the `ardents-next`
+binary; a new-path Source candidate build and release plan builder is a
+follow-up. Until it lands, no deleted script may be invoked, and the ordinary
+canonical command build gates plus the retained Forwarding builder's
+build-scope discipline (double execution under the development lock, complete
+read-only source manifest with `sha256`/Git `mode` pins, checked Go1.27.4
+Linux-amd64 toolchain/module integrity, scoped SBOM, retained unfinished output
+and committed-exact-revision delivery) remain the reference for Source build
+commitments. A preliminary dirty snapshot still uses the explicit revision
+`snapshot-sha256:<manifest pin>`; the final installed candidate uses the
+committed exact source revision and still requires every normal gate and the
+separately accepted exact bootstrap receipt.
 
-The separate public plan transformation is:
-
-```text
-python3 -I -S scripts/installation/prepare-source-release-plan.py --build-root PATH --descriptor PATH --template PATH --network NAME --expires UTC_TIME --no-new-work-after UTC_TIME --terminate-after UTC_TIME --qualification-evidence PATH --qualification-evidence-sha256 SHA256 --output FRESH_OUTPUT
-```
-
-After the original build scope has joined, the controller delivers the exact
-public build outputs/records into root-controlled custody and rechecks their
-retained commitments; the preparer requires that custody, both actual command
-inventories and coherent source/input/module/SBOM records. It generates the
-existing Source signing-plan schema and two target-specific rebuild records,
-using actual current time and supplied finite bounds. It reads no private key.
-Supply separately reviewed, pinned prestart qualification evidence describing
-the exact candidate's checks and limits; the tool retains its digest in its
-public receipt. The existing metadata's proposed `qualified` value describes
-that bounded component evidence, never installed qualification or independent
-builders. Review the plan/receipt alongside that evidence before signing.
-The output is `source-release-plan.json`; no manual JSON editing is needed.
-For an explicit forward candidate, add `--forward` and supply its actual
-strictly higher descriptor version and matching build records. This prepares
-the distinct forward plan schema; it neither copies an installed history nor
-creates another initial pin. Use canonical `source sign-forward-release` with
-the retained original five-key directory and complete predecessor distribution.
-The signer preserves the exact Root, authenticates the predecessor pair, then
-authenticates the successor under that diagnostic history. Installation still
-requires fresh decisions under its own original retained history and floors.
-The native Source signer independently checks original plan/resource/key custody
-and obtains actual Release decisions. This public transformation and any signed
+The canonical signing purposes remain. Use `source sign-initial-release` for
+the initial plan and the distinct `source sign-forward-release` with the
+retained original five-key directory and complete predecessor distribution for
+an explicit forward candidate. The forward plan schema is
+`ardents-source-forward-release-plan-v1` with a strictly higher descriptor
+version; it neither copies an installed history nor creates another initial
+pin. The signer preserves the exact Root, authenticates the predecessor pair,
+then authenticates the successor under that diagnostic history. Installation
+still requires fresh decisions under its own original retained history and
+floors. The native Source signer independently checks original plan/resource/key
+custody and obtains actual Release decisions. Public preparation and any signed
 metadata still supply no direct PO bootstrap acceptance or runtime permission.
 
-For a causal Release-expiry control, `--timestamp-only` prepares the distinct
-`ardents-source-timestamp-release-plan-v1` schema from the same original build,
-resources, declarations and safety bounds. It is mutually exclusive with
-`--forward`. Canonical `source refresh-release-timestamp` additionally requires
+For a causal Release-expiry control, the distinct
+`ardents-source-timestamp-release-plan-v1` schema remains the timestamp-only
+purpose; its former `--timestamp-only` plan preparation belonged to the deleted
+builder and is part of the same follow-up. Canonical `source refresh-release-timestamp` additionally requires
 the complete current distribution and original matching five-key custody. It
 authenticates both existing Source targets through a fresh diagnostic verifier,
 requires exact artifact/descriptor/template and compact custom declarations,
@@ -139,18 +117,24 @@ directly prepare its public artifact bytes through new Infrastructure/Enrollment
 owners, without installing a program, account, unit or Source process. Temporary
 `ardents-next infrastructure` artifact consumers remain component mechanisms,
 separate from the canonical [command forms](../reference/commands.md).
-Use the actual canonical compiled Linux-amd64 command bytes, publicly supplied
-Source unit-template bytes, a release identity and positive version to prepare
-the descriptor in a fresh native output directory. Retain original protected
-inputs through physical output Close and readback. Preparation produces public
-unsigned bytes and grants no signing or trust authority.
-`source prepare-template` supplies that exact selected public template through
-the same fresh native output mechanism; no manual resource copying is required.
+Use the actual canonical compiled Linux-amd64 `ardents-next` command bytes, the
+canonical platform unit template, a release identity and positive version to
+prepare the descriptor in a fresh native output directory. Retain original
+protected inputs through physical output Close and readback. Preparation
+produces public unsigned bytes and grants no signing or trust authority.
+`ardents-next platform template` emits that exact canonical platform unit
+template (`infrastructure.PlatformUnitTemplate`). The former
+`source prepare-template` producer is retired (#604 stage 1.6, ADR-0125) and
+returns a typed refusal pointing to `ardents-next platform template`.
 
 The distinct canonical `ardents-control source sign-initial-release` producer
 describes only `ardents/linux-amd64/node` and
 `ardents/linux-amd64/infrastructure/source` in one initial signed set under the
-existing five-key/ordinary-three-signature and rebuild policy. Its separate
+existing five-key/ordinary-three-signature and rebuild policy. After the #604
+stage 1.6 signing cutover the bound program is the static Linux-amd64
+`ardents-next` binary and the bound template is the exact canonical platform
+unit template (`infrastructure.PlatformUnitTemplate`); the signer refuses a
+substituted program or template. Its separate
 [closed plan and original custody](../reference/commands.md) neither reinterpret
 the Endpoint signer below nor accept an arbitrary target/message. Supply fresh
 protected operational keys from the separate `source prepare-release-keys`
@@ -159,7 +143,8 @@ qualification facts; native fixture keys/declarations are not operational input.
 The actual Source candidate/normal preparation chain and its exact public
 bootstrap receipt remain separate from a tested signing mechanism. Assemble a
 separate seven-file public distribution with the
-program named `ardents-node-linux-amd64`, `ardents-source.service`,
+program named `ardents-node-linux-amd64` (the retained compatibility file name
+for the enrolled `ardents-next` bytes), `ardents-source.service`,
 `infrastructure-source.json`, `root.json`, `timestamp.json`, `snapshot.json` and
 `targets.json`. Inventory preparation requires exactly those original regular
 files and writes its canonical document to another fresh output directory.
@@ -186,114 +171,53 @@ ADR-0120 releases and Endpoint inventories retain their scope.
 
 ## Source read-only native preflight
 
-The separate `infrastructure preflight-initial` and `preflight-candidate`
-component commands consume the same genuine artifact admission in their original
-process, plus one root-controlled canonical Source preflight request. Their
-[technical owner](../technical/network-route-node.md#component-order-and-the-commandartifact-boundary)
-defines its exact fields and separates original source inputs from absent future
-installation, State, participation and credential destinations. No account,
-directory, credential, generation, selection or unit is created; no reload,
-start/stop/enable or Source runtime is invoked. Release authentication floor
-effects are separate and retained even when a later native check refuses.
-
-Run the registered `source-preflight-linux` profile only in its private finite
-Ubuntu24.04/systemd255/cgroup-v2/native-ext4 manager. The outside controller owns
-the common development exclusive lock; it supplies complete source manifest,
-canonical command and all three race test binary SHA-256 pins. The checked
-runner revalidates them before/after actual tests. Its private foreign account
-and unit fixtures are test prerequisites only and are never installed or run as
-Source. Missing manager identity, filesystem, namespace, binary or source pins
-is invalid environment. Preserve every earlier failure. See
-[testing](../development/testing.md) for the exact invocation and limitations.
-
-Success is a bounded read-only observation and transfers no native permission.
-Before any future mutation, repeat complete native admission. Credential delivery
-and initial stopped generation are separate selected boundaries. Before future
-isolated installed execution the exact bootstrap receipt still requires its
-separate Product Owner acceptance; preflight neither requires nor supplies it.
+Retired (#604 stage 1.6, ADR-0125). `infrastructure preflight-initial` and
+`preflight-candidate` return the refused receipt `source-orchestration-retired`
+before reading any input; the `ardents-source-preflight-v1` request grammar and
+the `source-preflight-linux` profile are removed with the transitional Source
+orchestration. The platform-led Source lifecycle replaces this admission path:
+the platform unit's mandatory `platform check` ExecStartPre gate and
+`source serve-retained` own pre-start admission. See the
+[operator procedure](source-platform-lifecycle.md). Retained
+`infrastructure authenticate-initial`/`authenticate-candidate` artifact
+admission remains separate. Before isolated installed execution the exact
+bootstrap receipt still requires its separate Product Owner acceptance.
 
 ## Initial stopped Source component
 
-The canonical `ardents-node installation install-initial-stopped` consumes the
-initial independently pinned distribution, two coherent fresh Release proofs and
-the canonical Source request in the same original root process. It repeats native
-admission; an earlier authentication/preflight receipt transfers no permission.
-Use only the registered `source-stopped-linux` private native profile for this
-component's qualification. It creates the fresh locked account, explicit runtime
-credential delivery, empty semantic directories, sealed twelve-file generation,
-selected binding and fixed unit, then performs one daemon reload and compares
-actual complete loaded stopped policy. It never starts or enables Source.
-
-Preserve the original signed inputs, independent Release history and
-`<installation_root>.source-initial-journal`, including every failed prefix.
-An ambiguous operation remains repair-required. A separately admitted explicit
-`recover-source` may continue only its proven supported original prefix; initial
-installation itself supplies no automatic repair, adoption or rollback. Do not remove an account, journal,
-floor, unit or generation to retry. The journal contains private local observations
-and must remain outside public receipts. A successful bounded stopped outcome
-does not accept the exact bootstrap receipt or permit installed execution; those
-remain separately admitted gates. See the [technical schema](../technical/network-route-node.md#initial-stopped-source-persistence)
-and [checked profile](../development/testing.md) for ownership and evidence.
+Retired (#604 stage 1.6, ADR-0125). `ardents-node installation
+install-initial-stopped` returns a typed refusal before reading inputs or
+attempting any effect; the `source-stopped-linux` profile and the transitional
+stopped-installation journal machinery are removed. The platform-led Source
+lifecycle owns first installation: `ardents-control source prepare-state`,
+`ardents-next platform initialize-trust`/`unit`, publication of the rendered
+`ardents-source.service` unit and `systemctl start ardents-source` with the
+mandatory `platform check` ExecStartPre gate and `source serve-retained`. See
+the [operator procedure](source-platform-lifecycle.md). Native installed
+evidence is `TestNativeSourceInstalledLifecycle` under the
+`source_installed_native` build tag. A successful bounded outcome does not
+accept the exact bootstrap receipt or permit installed execution; those remain
+separately admitted gates.
 
 ## Explicit Source stop and subsequent invocation
 
-Use canonical `ardents-node installation stop-source HISTORY BINDING` to stop
-the original running Source. This requires its complete retained initial/start
-history and actual original principal/process/manager/scope. Expired Release
-authorization does not prevent safe shutdown; fresh authorization is required
-again for startup. Keep the same original Release history and every start and
-retirement journal. The command's coarse result alone is not a restart right.
+Retired (#604 stage 1.6, ADR-0125). `ardents-node installation
+stop-source/restart-source/replace-source/recover-source` return typed refusals
+before reading inputs or attempting any effect; the `source-restart-linux`,
+`source-replacement-linux` and `source-recovery-linux` profiles, their make
+lanes and the transitional retirement/recovery journal machinery are removed.
+The platform-led Source lifecycle owns stop, relaunch, forward program change
+and recovery: `systemctl stop ardents-source` with clean-stop verification,
+`systemctl start ardents-source` re-running the mandatory `platform check`
+ExecStartPre gate and `source serve-retained`, forward program change through
+a newly signed strictly forward Release authenticated against retained floors,
+and `ardents-next source repair-retained` for a dead retained producer. State
+and participation histories are reopened by their own semantic owners, never
+reset. See the [operator procedure](source-platform-lifecycle.md).
 
-After independently proved complete retirement, use
-`ardents-node installation restart-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`
-with the same exact generation, account, roots and credentials. Each invocation
-gets a separate retained attempt and fresh admission; at most 64 total attempts
-are admitted without pruning. State and participation histories are reopened by
-their own semantic owners, never reset. A missing, uncertain or incomplete
-retirement leaves restart unavailable. Preserve the prefix. The explicit
-`ardents-node installation recover-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK REQUEST JOURNAL`
-obtains fresh admission against the same original history. It never replays
-Start/ACK or removes damaged history to clear another attempt. Controlled
-initial/replacement continuation requires the genuine guarded original-cut
-result and exact native resources. An invocation/retirement prefix remains
-repair-required unless the complete original start and committed retirement
-are independently proved; a stopped classification grants no restart right.
-No adoption or automatic recovery is supported. A new installed recovery
-cohort needs its own completed exact bootstrap receipt and direct acceptance
-before execution.
-
-The registered `source-recovery-linux` consumer uses
-`make source-replacement-check` with an explicitly selected
-`recovery-initial-N`, `recovery-replacement-N` or terminal
-`recovery-refusal-OPERATION-FAULT` case. `manager-reexec` changes only the
-private manager after all Source/native observers join; it must demonstrate a
-changed coherent broker/unique-owner identity before both fresh refusals, with
-original disk histories preserved and no recovery completion. No identity
-change is a failed causal control. An initial terminal refusal reports no
-Source scope birth, while replacement retains actual predecessor retirement.
-The
-[checked profile](../development/testing.md) owns the finite frontier inventory,
-same-source observer and matrix pins, native/private-stand prerequisites and
-positive cases' later separate Source contact/stop/restart obligations. A positive frontier run
-and the bounded terminal refusal set do not substitute for the full causal
-negative/unsafe-window matrix. A negative stand preserves its fault and is never
-repaired into a positive case. Retain substituted originals in a separate private
-same-filesystem evidence directory outside installation inventory and journal-name
-scans. Replacement-only missing-history cases retain exactly one original
-startup journal/archive or retirement journal/result after genuine A completion;
-both fresh recovery refusals must leave all remaining evidence unchanged and
-create no completion header. Keep
-the original failed command log, immutable original journal, physical cut proof
-and separate recovery completion private; only exact reviewed public evidence
-and hashes belong in bootstrap publication.
-
-The [technical owner](../technical/network-route-node.md#explicit-source-retirement-and-subsequent-invocation)
-defines the original domain/native completion and blocked durable transcript.
-The [checked native profiles](../development/testing.md) use only a private owned
-Ubuntu stand, retain every original descendant through join and keep raw evidence
-private. A new candidate and the explicit restart scope require their own exact
-bootstrap receipt and direct Product Owner acceptance before any installed
-execution. First-start receipts, file presence, old ACKs and test compilation
+A new candidate and the explicit relaunch/program-change scope require their
+own exact bootstrap receipt and direct Product Owner acceptance before any
+installed execution. Earlier receipts, file presence and test compilation
 cannot widen that acceptance. Qualification does not authorize deployment or
 independent-operation/privacy claims.
 

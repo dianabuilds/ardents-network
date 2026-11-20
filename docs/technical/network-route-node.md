@@ -1589,7 +1589,9 @@ completion ticket. The runtime independently repeats retained admission and
 producer Claim; a new competing original cannot be adopted after inspection
 closes. Same semantic root paths remain required across the program change.
 Actual manager/no-old-execution behavior and the complete old/new executable
-sequence still require native evidence before retiring stopped replacement.
+sequence are the native installed evidence gate (`source_installed_native`,
+`TestNativeSourceInstalledLifecycle`); the transitional stopped replacement is
+retired (#604 stage 1.6, ADR-0125).
 An absent producer from a runtime that did not retain command completion cannot
 be upgraded into proof of that older command's cleanup.
 
@@ -1642,19 +1644,28 @@ admission determines the next outcome. The command emits `repaired` only after
 its actual users and handles close successfully. Relaunch still requires the
 normal mandatory platform check and independent producer Claim. Other recovery
 classes remain refusals; no installation journal or general repair manager is
-introduced. Native crash/relaunch qualification remains a separate evidence gate
-before retiring the old orchestration.
+introduced. Native crash/relaunch qualification is the separate
+`source_installed_native` evidence gate; the old orchestration is retired
+(#604 stage 1.6, ADR-0125).
 
 The duplicate development `infrastructure start-source` transaction and its
-detached startup wait wrapper are retired. Canonical native installed consumers
-remain transitional under ADR-0125 until equivalent real-platform evidence
-permits their removal; source relocation or these unit checks cannot supply it.
+detached startup wait wrapper are retired. The transitional Source
+orchestration (preflight, initial stopped installation, first start,
+stop/restart/replacement/recovery) is retired (#604 stage 1.6, ADR-0125); this
+platform-led lifecycle owns Source delivery. The remaining canonical native
+installed consumers (Forwarding, JOIN, Descriptor) remain transitional under
+ADR-0125 until equivalent real-platform evidence permits their removal; source
+relocation or these unit checks cannot supply it.
 
 ## Proposed installed infrastructure
 
-**Status: accepted contract under ADR-0123. Source artifact/admission, read-only
-preflight and the bounded initial stopped transition have direct component
-consumers. Source startup and installed qualification remain separate.**
+**Status: accepted contract under ADR-0123. Source artifact/admission has direct
+component consumers. The transitional Source orchestration — read-only preflight,
+initial stopped transition, guarded startup and stop/restart/replacement/recovery
+transactions — is retired (#604 stage 1.6, ADR-0125) and replaced by the
+[platform-led Source lifecycle](#source-lifecycle-and-forward-program-change);
+the historical Source transaction contracts below are retained as superseded
+provenance. Source installed qualification remains separate.**
 [ADR-0123](../adr/0123-bind-installed-infrastructure-generations.md) isolates the
 consequential artifact, persisted binding and bootstrap decision. ADR-0119 and
 ADR-0120 retain their existing Endpoint/recorded-operation scope. This section
@@ -1823,7 +1834,11 @@ The unit is `Type=exec`, `Restart=no`, `KillMode=control-group`, working directo
 no command override or inherited listener. Root renders exactly one absolute
 generation executable and closed argv: `source start-installed` plus its
 absolute binding reference; role dispatch comes from the binding, never a first
-available duty. Canonical `ardents-node` implements this bounded entrypoint with independent Source Startup, followed by actual State and Guard composition; installed execution and qualification remain separately gated. Bind exact manager
+available duty. This proposed `source start-installed` unit binding is
+superseded (#604 stage 1.6, ADR-0125): the command returns a typed refusal and
+the platform-led lifecycle renders the canonical platform unit with the
+`platform check` ExecStartPre gate and `source serve-retained` main command.
+Installed execution and qualification remain separately gated. Bind exact manager
 unique owner/version/boot/start identity, fragment, loaded configuration, InvocationID,
 MainPID, proc inode/start clock, executable inode/bytes, complete argv, real/effective/
 saved IDs/groups, original cgroup inode/path and sole-process membership. Two
@@ -1865,11 +1880,13 @@ For Source runtime inputs the exact first engineering predecessor is limited to
 plan/certificate/private-key/client-CA custody. It must not silently freeze the
 clock file inode or change Network's live clock-admission semantics.
 
-The bounded Source initial stopped transaction implements fresh exclusive
+The bounded Source initial stopped transaction implemented fresh exclusive
 runtime-credential delivery, actual UID/access and same-inode transfer without
-copying offline authority. The five Node accounts' delivery remains separate.
-This is an Installation input-custody effect, not a new PKI or Custody authority;
-its presence alone qualifies no installed invocation.
+copying offline authority. It is retired with the transitional Source
+orchestration (#604 stage 1.6, ADR-0125); the platform-led lifecycle owns
+credential delivery. The five Node accounts' delivery remains separate.
+This was an Installation input-custody effect, not a new PKI or Custody authority;
+its presence alone qualified no installed invocation.
 
 ### Proposed lifecycle and effect admission
 
@@ -3480,6 +3497,15 @@ Release permission or installed qualification.
 
 #### Initial stopped Source persistence
 
+**Retired (#604 stage 1.6, ADR-0125).** `ardents-next infrastructure
+install-initial-stopped` returns the refused receipt
+`source-orchestration-retired` before reading inputs; the canonical
+`ardents-node installation install-initial-stopped` returns a typed refusal.
+The [platform-led Source lifecycle](#source-lifecycle-and-forward-program-change)
+([operator procedure](../operations/source-platform-lifecycle.md)) replaces this
+transition. The contract text below is retained as superseded historical
+provenance, not an available operation.
+
 `ardents-next infrastructure install-initial-stopped` consumes the original
 initial Enrollment provenance, the two fresh coherent Release authorizations
 and original Source request/input custody in one root operation. It has no
@@ -3725,6 +3751,15 @@ not inferred from process-kill controls.
 
 #### Explicit forward Source transition grammar
 
+**Retired (#604 stage 1.6, ADR-0125).** The transitional `stop-source` /
+`replace-source` / `restart-source` orchestration returns typed refusals; the
+[platform-led Source lifecycle](#source-lifecycle-and-forward-program-change)
+([operator procedure](../operations/source-platform-lifecycle.md)) owns forward
+program change through a newly signed strictly forward Release authenticated
+against retained floors. The separate `source sign-forward-release` signing
+purpose remains. The contract text below is retained as superseded historical
+provenance, not an available operation.
+
 The bounded manual replacement has three distinct operations, with no implicit
 stop or Start: prepare/sign a forward candidate, `stop-source` the original
 invocation, then `replace-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK
@@ -3840,6 +3875,14 @@ The replacement manager handle exposes fixed observations and one reload;
 it exposes no Start, Stop, Enable, arbitrary selector or reconnect operation.
 
 #### Explicit Source retirement and subsequent invocation
+
+**Retired (#604 stage 1.6, ADR-0125).** The transitional `stop-source` /
+`restart-source` / `recover-source` consumers return typed refusals; the
+[platform-led Source lifecycle](#source-lifecycle-and-forward-program-change)
+([operator procedure](../operations/source-platform-lifecycle.md)) owns
+systemctl stop/relaunch and `source repair-retained` for a dead retained
+producer. The contract text below is retained as superseded historical
+provenance, not an available operation.
 
 The supported root consumers are `ardents-node installation stop-source HISTORY
 BINDING` and `restart-source DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING`.
@@ -4010,6 +4053,16 @@ frame or diagnostic supplies this permission. Replacement and recovery remain
 separate independently admitted transitions.
 
 ### Component order and the command/artifact boundary
+
+**Partially retired (#604 stage 1.6, ADR-0125).** The Source read-only native
+preflight (`infrastructure preflight-initial`/`preflight-candidate`, the
+`ardents-source-preflight-v1` request grammar) and the initial stopped
+generation/guarded startup sequence described here are retired with the
+transitional Source orchestration; the
+[platform-led Source lifecycle](#source-lifecycle-and-forward-program-change)
+replaces them. The Source artifact authentication component and its public
+preparation remain. The preflight/startup contract text below is retained as
+superseded historical provenance.
 
 Source is the smallest real infrastructure consumer: State + Source + Guard.
 Its implemented development predecessor is original Source plan/certificate/private-key/CA

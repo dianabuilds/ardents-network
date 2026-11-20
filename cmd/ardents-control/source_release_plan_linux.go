@@ -96,11 +96,11 @@ func sourceDeclarationObject(raw []byte, value any, fields ...string) error {
 
 func validateSourceReleaseResources(plan sourceReleasePlan, program, descriptor, template []byte) error {
 	d, err := infrastructure.ValidateResources(descriptor, program, template)
-	if err != nil || (plan.Schema == "ardents-source-initial-release-plan-v1" && d.ReleaseVersion != 1) || !bytes.Equal(template, []byte(infrastructure.SourceTemplate)) {
+	if err != nil || (plan.Schema == "ardents-source-initial-release-plan-v1" && d.ReleaseVersion != 1) || !bytes.Equal(template, []byte(infrastructure.PlatformUnitTemplate)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))
-	if err != nil || info.Path != "github.com/dianabuilds/ardents-network/cmd/ardents-node" {
+	if err != nil || info.Path != "github.com/dianabuilds/ardents-network/cmd/ardents-next" {
 		return errors.Join(errSourceControlInput, err)
 	}
 	settings := map[string]string{}

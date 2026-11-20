@@ -54,12 +54,6 @@ func prepareSourceArtifact(ctx context.Context, args []string, observe func(stri
 	}()
 	var name, destination string
 	switch args[0] {
-	case "prepare-template":
-		if len(args) != 2 {
-			return nil, errSourceControlInput
-		}
-		result = []byte(infrastructure.SourceTemplate)
-		name, destination = infrastructure.TemplateName, args[1]
 	case "prepare-descriptor":
 		if len(args) != 6 {
 			return nil, errSourceControlInput

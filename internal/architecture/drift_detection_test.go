@@ -25,8 +25,6 @@ type driftPair struct {
 	minimum   float64
 }
 
-var roleVocabulary = [][2]string{{"forwarding", ""}, {"source", ""}}
-
 var phaseVocabulary = [][2]string{{"start", ""}, {"retirement", ""}, {"stop", ""}}
 
 const (
@@ -36,13 +34,6 @@ const (
 )
 
 var driftPairs = []driftPair{
-	{"systemd control", systemdDir + "forwarding_control_linux.go", systemdDir + "source_control_linux.go", roleVocabulary, 0.97},
-	{"transition scope", forwardingDir + "transition_scope_linux.go", infrastructureDir + "source_transition_scope_linux.go", roleVocabulary, 0.96},
-	{"principal", forwardingDir + "principal_linux.go", infrastructureDir + "source_principal_linux.go", roleVocabulary, 0.82},
-	{"transition process", forwardingDir + "transition_process_linux.go", infrastructureDir + "source_transition_process_linux.go", roleVocabulary, 0.95},
-	{"runtime identity", forwardingDir + "runtime_identity_linux.go", infrastructureDir + "source_runtime_identity_linux.go", roleVocabulary, 0.92},
-	{"account", forwardingDir + "account_linux.go", infrastructureDir + "source_account_linux.go", roleVocabulary, 0.76},
-	{"start barrier", forwardingDir + "start_barrier_linux.go", infrastructureDir + "source_start_barrier_linux.go", roleVocabulary, 0.87},
 	{"start/retirement storage", forwardingDir + "start_storage_linux.go", forwardingDir + "retirement_storage_linux.go", phaseVocabulary, 0.83},
 }
 
@@ -121,10 +112,9 @@ type driftFuncPair struct {
 	minimum   float64
 }
 
-var driftFuncPairs = []driftFuncPair{
-	{"storage record", infrastructureDir + "source_start_storage_linux.go", "record", infrastructureDir + "source_stop_storage_linux.go", "record", phaseVocabulary, 0.77},
-	{"storage publish", infrastructureDir + "source_start_storage_linux.go", "publishStart", infrastructureDir + "source_stop_storage_linux.go", "publishRetirement", phaseVocabulary, 0.75},
-}
+// The transitional Source storage twins retired with the Source orchestration
+// (ADR-0125, #604); the function-twin gate remains for future declared pairs.
+var driftFuncPairs = []driftFuncPair{}
 
 func driftFuncBody(t *testing.T, root, file, fn string) []byte {
 	t.Helper()

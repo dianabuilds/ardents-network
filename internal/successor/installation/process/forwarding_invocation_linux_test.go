@@ -15,9 +15,8 @@ func TestForwardingInvocationKeepsSeparateFixedPurpose(t *testing.T) {
 	if p.program != program || p.arguments != program+"\x00forwarding\x00start-installed\x00/var/lib/ardents-node-installation/binding.json\x00" || p.placement != "0::/system.slice/ardents-forwarding.service\n" {
 		t.Fatal("Forwarding did not select its exact closed native policy")
 	}
-	s := sourceInvocationPolicy(SourceExpected{InstallationRoot: e.InstallationRoot, Generation: e.Generation})
 	ep := endpointInvocationPolicy(Expected{InstallationRoot: e.InstallationRoot, Generation: e.Generation})
-	if p.arguments == s.arguments || p.arguments == ep.arguments || p.placement == s.placement || p.placement == ep.placement {
+	if p.arguments == ep.arguments || p.placement == ep.placement {
 		t.Fatal("another invocation policy authorized Forwarding")
 	}
 }

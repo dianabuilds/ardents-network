@@ -40,22 +40,18 @@ func sourceNativePinnedProgram(t *testing.T, variable string) (string, []byte) {
 func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T) {
 	parent := sourceArtifactNativeParent(t)
 	command, controlBytes := sourceNativePinnedProgram(t, "ARDENTS_SOURCE_CONTROL_PROGRAM")
-	_, nodeBytes := sourceNativePinnedProgram(t, "ARDENTS_SOURCE_NODE_PROGRAM")
-	templateOutput := filepath.Join(parent, "template-output")
-	if out, err := exec.CommandContext(t.Context(), command, "source", "prepare-template", templateOutput).CombinedOutput(); err != nil {
-		t.Fatal("actual fixed template producer", string(out), err)
-	}
-	preparedTemplate, err := os.ReadFile(filepath.Join(templateOutput, "ardents-source.service"))
-	if err != nil || !bytes.Equal(preparedTemplate, []byte(infrastructure.SourceTemplate)) {
-		t.Fatal("closed template differs", err)
+	nextPath, nextBytes := sourceNativePinnedProgram(t, "ARDENTS_SOURCE_NEXT_PROGRAM")
+	preparedTemplate, err := exec.CommandContext(t.Context(), nextPath, "platform", "template").Output()
+	if err != nil || !bytes.Equal(preparedTemplate, []byte(infrastructure.PlatformUnitTemplate)) {
+		t.Fatal("canonical platform template producer", err)
 	}
 	program, template, descriptor := filepath.Join(parent, "node"), filepath.Join(parent, "template"), filepath.Join(parent, "descriptor")
-	for path, raw := range map[string][]byte{program: nodeBytes, template: preparedTemplate} {
+	for path, raw := range map[string][]byte{program: nextBytes, template: preparedTemplate} {
 		if err := os.WriteFile(path, raw, 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	descriptorBytes, err := infrastructure.PrepareDescriptor("one", 1, nodeBytes, []byte(infrastructure.SourceTemplate))
+	descriptorBytes, err := infrastructure.PrepareDescriptor("one", 1, nextBytes, []byte(infrastructure.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +138,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 		}
 		return raw
 	}
-	plan := sourceReleasePlan{Schema: "ardents-source-initial-release-plan-v1", Network: "one-network", Reference: now, Expires: now.Add(time.Hour), Program: program, Descriptor: descriptor, Template: template, ProgramCustom: custom(nodeBytes), GenerationCustom: custom(descriptorBytes)}
+	plan := sourceReleasePlan{Schema: "ardents-source-initial-release-plan-v1", Network: "one-network", Reference: now, Expires: now.Add(time.Hour), Program: program, Descriptor: descriptor, Template: template, ProgramCustom: custom(nextBytes), GenerationCustom: custom(descriptorBytes)}
 	planPath := filepath.Join(parent, "plan")
 	writePlan := func() {
 		raw, err := json.Marshal(plan)
@@ -196,7 +192,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 			t.Fatal(err)
 		}
 	}
-	for name, raw := range map[string][]byte{infrastructure.ProgramName: nodeBytes, infrastructure.TemplateName: preparedTemplate, infrastructure.DescriptorName: descriptorBytes} {
+	for name, raw := range map[string][]byte{infrastructure.ProgramName: nextBytes, infrastructure.TemplateName: preparedTemplate, infrastructure.DescriptorName: descriptorBytes} {
 		if err := os.WriteFile(filepath.Join(previous, name), raw, 0600); err != nil {
 			t.Fatal(err)
 		}
@@ -213,8 +209,8 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 		t.Fatal(err)
 	}
 	exerciseSourceTimestampRefresh(t, sourceTimestampNativeInput{command: command, planPath: planPath, keys: keyRoot,
-		parent: parent, distribution: previous, plan: plan, program: nodeBytes, descriptor: descriptorBytes})
-	forwardDescriptor, err := infrastructure.PrepareDescriptor("two", 2, nodeBytes, preparedTemplate)
+		parent: parent, distribution: previous, plan: plan, program: nextBytes, descriptor: descriptorBytes})
+	forwardDescriptor, err := infrastructure.PrepareDescriptor("two", 2, nextBytes, preparedTemplate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +231,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	}
 	initialPlan := plan
 	plan.Schema = "ardents-source-forward-release-plan-v1"
-	plan.ProgramCustom, plan.GenerationCustom = forwardCustom(nodeBytes), forwardCustom(forwardDescriptor)
+	plan.ProgramCustom, plan.GenerationCustom = forwardCustom(nextBytes), forwardCustom(forwardDescriptor)
 	writePlan()
 	forwardOutput, forwardHistory := filepath.Join(parent, "forward-metadata"), filepath.Join(parent, "forward-verification")
 	forwardArgs := []string{planPath, keyRoot, forwardOutput, forwardHistory, previous}
@@ -275,7 +271,7 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	if err := os.WriteFile(descriptor, descriptorBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	plan.ProgramCustom, plan.GenerationCustom = custom(nodeBytes), custom(descriptorBytes)
+	plan.ProgramCustom, plan.GenerationCustom = custom(nextBytes), custom(descriptorBytes)
 	writePlan()
 	refusedOutput, refusedHistory := filepath.Join(parent, "equal-metadata"), filepath.Join(parent, "equal-verification")
 	if raw, err := signSourceRelease(t.Context(), []string{planPath, keyRoot, refusedOutput, refusedHistory, previous}, sourceReleaseForward, nil); err == nil || raw != nil {
@@ -288,12 +284,12 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	}
 	plan = initialPlan
 	writePlan()
-	// A real Control ELF cannot be substituted for the Node target, even with
+	// A real Control ELF cannot be substituted for the Source target, even with
 	// matching descriptor hashes and otherwise accepted fixture declarations.
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := infrastructure.PrepareDescriptor("one", 1, controlBytes, []byte(infrastructure.SourceTemplate))
+	badDescriptor, err := infrastructure.PrepareDescriptor("one", 1, controlBytes, []byte(infrastructure.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,13 +302,13 @@ func TestSourcePreparationNativeInitialReleasePurposeAndKeyCustody(t *testing.T)
 	if raw, err := signSourceRelease(t.Context(), []string{planPath, keyRoot, filepath.Join(parent, "wrong-program"), filepath.Join(parent, "wrong-verification")}, sourceReleaseInitial, func(string, *os.File) { signed = true }); err == nil || raw != nil || signed {
 		t.Fatal("wrong executable reached signing", err, signed)
 	}
-	if err := os.WriteFile(program, nodeBytes, 0600); err != nil {
+	if err := os.WriteFile(program, nextBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(descriptor, descriptorBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	plan.ProgramCustom, plan.GenerationCustom = custom(nodeBytes), custom(descriptorBytes)
+	plan.ProgramCustom, plan.GenerationCustom = custom(nextBytes), custom(descriptorBytes)
 	writePlan()
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()

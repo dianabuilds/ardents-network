@@ -44,32 +44,11 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 		}
 		return 0
 	}
-	preflight := args[0] == "preflight-initial" || args[0] == "preflight-candidate"
-	installStopped := args[0] == "install-initial-stopped"
-	var source infrastructure.SourceInputs
-	if preflight || installStopped {
-		if ((args[0] == "preflight-initial" || installStopped) && len(args) != 8) || (args[0] == "preflight-candidate" && len(args) != 7) {
-			return 2
-		}
-		duration := 30 * time.Second
-		if installStopped {
-			duration = 2 * time.Minute
-		}
-		original, cancel := context.WithTimeout(ctx, duration)
-		defer cancel()
-		ctx = original
-		var err error
-		source, err = infrastructure.ReadSourceInputs(ctx, args[len(args)-1])
-		if err != nil {
-			_ = source.Close()
-			return enrollmentReport(out, "source-preflight-inputs-refused", 1)
-		}
-		defer source.Close()
-		args = append([]string(nil), args[:len(args)-1]...)
-		args[0] = strings.Replace(args[0], "preflight-", "authenticate-", 1)
-		if installStopped {
-			args[0] = "authenticate-initial"
-		}
+	// The transitional Source preflight and install-initial-stopped orchestration
+	// is retired (ADR-0125, #604); the platform-led Source lifecycle replaces it.
+	// The refusal fires before any input is read or any effect is attempted.
+	if args[0] == "preflight-initial" || args[0] == "preflight-candidate" || args[0] == "install-initial-stopped" {
+		return enrollmentReport(out, "source-orchestration-retired", 1)
 	}
 	initial := args[0] == "authenticate-initial"
 	if (initial && len(args) != 7) || (!initial && (args[0] != "authenticate-candidate" || len(args) != 6)) {
@@ -86,9 +65,6 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	history := args[2+offset]
 	if !independentInfrastructureHistory(args[1], history) {
 		return enrollmentReport(out, "infrastructure-paths-refused", 2)
-	}
-	if (preflight || installStopped) && source.IndependentPaths(args[1], history) != nil {
-		return enrollmentReport(out, "source-preflight-paths-refused", 2)
 	}
 	local := release.LocalEnvironment{Platform: "linux-amd64", Architecture: "amd64", Environment: args[3+offset], Network: args[4+offset], RefTime: ref.UTC()}
 	var b enrollment.InfrastructureBundle
@@ -144,12 +120,6 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if err == nil {
 		err = a.Check(ctx, v)
 	}
-	if err == nil && preflight {
-		err = infrastructure.ObserveSource(v, a, source, args[1], history)
-	}
-	if err == nil && installStopped {
-		err = infrastructure.InstallInitialStoppedSource(v, a, source, args[1], history)
-	}
 	p, g := a.Targets()
 	pd, pok := p.AcceptedDecision()
 	gd, gok := g.AcceptedDecision()
@@ -157,21 +127,9 @@ func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {
 	if err == nil && (!pok || !gok || hasInitial != initial) {
 		err = infrastructure.ErrAuthorization
 	}
-	err = errors.Join(err, source.Close(), v.Close(), ctx.Err())
+	err = errors.Join(err, v.Close(), ctx.Err())
 	if err != nil {
 		return enrollmentReport(out, "infrastructure-authentication-refused", 1)
-	}
-	if installStopped {
-		if writeNetworkPreparationReceipt(ctx, out, []byte("{\"outcome\":\"source-initial-stopped-selected\"}\n")) != nil || ctx.Err() != nil {
-			return 1
-		}
-		return 0
-	}
-	if preflight {
-		if writeNetworkPreparationReceipt(ctx, out, []byte("{\"outcome\":\"source-read-only-preflight-observed\"}\n")) != nil || ctx.Err() != nil {
-			return 1
-		}
-		return 0
 	}
 	receipt, e := json.Marshal(struct {
 		Outcome           string          `json:"outcome"`

@@ -75,3 +75,14 @@ func prepareSourceInitialPlan(ctx context.Context, p sourceInitialNetworkPlan, o
 	}
 	return persistSourceArtifacts(ctx, output, []sourceArtifactFile{{"source-initial-network.json", raw}}, check, observe)
 }
+
+// sourcePublicID decodes one canonical lowercase 32-byte hex identifier.
+func sourcePublicID(text string) ([32]byte, error) {
+	var id [32]byte
+	raw, err := hex.DecodeString(text)
+	if err != nil || len(raw) != 32 || hex.EncodeToString(raw) != text {
+		return id, errSourceControlInput
+	}
+	copy(id[:], raw)
+	return id, nil
+}
