@@ -556,8 +556,8 @@ runtime-допущение следует за завершением требу
 на точные байты; Execution использует разрешённый установленный артефакт и
 владеет отдельным жизненным циклом worker.
 
-**Где искать обязанности:** `internal/endpoint/installation`,
-`internal/endpoint/replacement` и установочные command-адаптеры. Композиция
+**Где искать обязанности:** `internal/successor/installation/endpoint`
+и установочные command-адаптеры. Композиция
 и системные механизмы не получают полномочий Release.
 
 **Основа:** [Release и установка](../../../../docs/technical/release-update-custody.md),

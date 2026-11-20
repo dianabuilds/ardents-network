@@ -21,10 +21,9 @@ plans (F-27), `endpoint prepare-history` initializes the first histories, and
 `endpoint start-installed` runs the participant under the system unit. The
 successor Endpoint lifecycle is forward-only; rollback has no successor
 translation. The read-only `ardents endpoint enrollment-check` diagnostic and the
-`ardents endpoint withdraw` Administration Interface client remain. The
-`internal/endpoint/replacement` Module keeps its behavior tests pending the
-legacy retirement. Existing per-user roots and floors remain retained evidence.
-Their contents grant no authority for automatic migration.
+`ardents endpoint withdraw` Administration Interface client remain. Existing
+per-user roots and floors remain retained evidence. Their contents grant no
+authority for automatic migration.
 
 
 The fixed Endpoint template is validated and retained by the separately owned

@@ -3,6 +3,8 @@ package release
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -204,15 +206,48 @@ func TestOriginalCancellationAfterCommitRetainsFloorsWithoutHandoff(t *testing.T
 
 func TestSignedVectorAuthorizationAndReopen(t *testing.T) {
 	in := publicVector(t)
+	expectedRaw, err := os.ReadFile(filepath.Join("testdata", "r049-public-vector-v1", "expected.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var expected struct {
+		Schema         string `json:"schema"`
+		RefTime        string `json:"ref_time"`
+		TargetPath     string `json:"target_path"`
+		ArtifactSHA256 string `json:"artifact_sha256"`
+		Outcome        string `json:"outcome"`
+		BuildSafety    string `json:"build_safety"`
+		Protocol       string `json:"protocol"`
+		RootVersion    int64  `json:"root_version"`
+	}
+	if err := json.Unmarshal(expectedRaw, &expected); err != nil {
+		t.Fatal(err)
+	}
+	if expected.Schema != "ardents-r049-public-vector-v1" {
+		t.Fatalf("unexpected frozen public vector schema: %q", expected.Schema)
+	}
+	refTime, err := time.Parse(time.RFC3339, expected.RefTime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantNoNewWork := time.Date(2030, time.February, 1, 3, 4, 5, 0, time.UTC)
+	wantTerminate := time.Date(2030, time.July, 1, 3, 4, 5, 0, time.UTC)
 	root := filepath.Join(t.TempDir(), "history")
 	v, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = v.Close() })
 	d := v.Evaluate(context.Background(), in)
-	if d.Outcome != OutcomeReleaseAccepted {
-		_ = v.Close()
-		t.Fatalf("actual signed vector refused: %s %v", d.Outcome, d.Err())
+	if string(d.Outcome) != expected.Outcome || d.Outcome != OutcomeReleaseAccepted ||
+		string(d.BuildSafety) != expected.BuildSafety || string(d.Protocol) != expected.Protocol ||
+		d.RootVersion != expected.RootVersion || d.Path != expected.TargetPath ||
+		hex.EncodeToString(d.Digest) != expected.ArtifactSHA256 {
+		t.Fatalf("frozen public vector decision = %+v, error = %v", d, d.Err())
+	}
+	if !d.ReferenceTime.Equal(refTime) || !d.BuildSafetyNoNewWorkAfter.Equal(wantNoNewWork) ||
+		!d.BuildSafetyTerminateAfter.Equal(wantTerminate) || !d.ProtocolTransitionDeadline.IsZero() {
+		t.Fatalf("frozen public vector time facts = %+v", d)
 	}
 	a, ok := d.Authorization()
 	if !ok {
