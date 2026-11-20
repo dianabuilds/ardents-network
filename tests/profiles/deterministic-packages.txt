@@ -29,7 +29,6 @@ github.com/dianabuilds/ardents-network/internal/node/issuer
 github.com/dianabuilds/ardents-network/internal/node/introduction
 github.com/dianabuilds/ardents-network/internal/node/join
 github.com/dianabuilds/ardents-network/internal/node/outer
-github.com/dianabuilds/ardents-network/internal/node/probe
 github.com/dianabuilds/ardents-network/internal/node/resolution
 github.com/dianabuilds/ardents-network/internal/qualification
 github.com/dianabuilds/ardents-network/internal/hosting

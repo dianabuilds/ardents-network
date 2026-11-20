@@ -41,6 +41,7 @@ func projectRoleInputs(config runtimeConfig) roleInputs {
 	}
 }
 
+const retiredRoleProbeReason = "role-probe profile is retired"
 const nativeRouteUnavailableReason = "native Route assignment is not implemented"
 const closedRouteUnavailableReason = "closed Route assignment is not locally implemented"
 
@@ -85,10 +86,8 @@ func startDuty(config runtimeConfig, snapshot state.NodeDuty) (*dutyHandle, erro
 	if snapshot.Profile == route.Profile {
 		return nil, errors.New(nativeRouteUnavailableReason)
 	}
-	selected, err := config.probe.Start(newProbeDuty(snapshot))
-	if err != nil {
-		return nil, err
+	if snapshot.Profile == "h3-role-probe-v1" {
+		return nil, errors.New(retiredRoleProbeReason)
 	}
-	return &dutyHandle{Done: selected.Done, Protect: selected.Protect, Usage: selected.Usage,
-		Stop: selected.Stop, Drain: selected.Drain}, nil
+	return nil, errors.New("profile or deterministic assignment is inactive")
 }

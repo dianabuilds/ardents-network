@@ -9,7 +9,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node/forwarding"
-	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 	"github.com/dianabuilds/ardents-network/internal/route"
 	"github.com/dianabuilds/ardents-network/internal/route/ardp"
@@ -49,17 +48,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 	if now == nil {
 		now = time.Now
 	}
-	var (
-		probePlan *probe.Plan
-		err       error
-	)
-	if input.Probe.ListenAddress != "" {
-		probePlan, err = probe.NewPlan(input.Probe, input.IdentityKey.Public().(ed25519.PublicKey), now)
-		if err != nil {
-			return runtimeConfig{}, err
-		}
-	}
-	if probePlan == nil && input.ClosedIssuer.Certificate.PrivateKey == nil && input.ClosedForwarding.Certificate.PrivateKey == nil &&
+	if input.ClosedIssuer.Certificate.PrivateKey == nil && input.ClosedForwarding.Certificate.PrivateKey == nil &&
 		input.ClosedResolution.Certificate.PrivateKey == nil && input.ClosedIntroduction.Certificate.PrivateKey == nil && input.ClosedDataJoin.Certificate.PrivateKey == nil {
 		return runtimeConfig{}, errors.New("node needs one local listener profile")
 	}
@@ -75,7 +64,10 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 			return runtimeConfig{}, errors.New("node resource profile is not supported")
 		}
 	}
-	var guard *resource.Guard
+	var (
+		guard *resource.Guard
+		err   error
+	)
 	if enforcePressure {
 		guard, err = resource.New(resource.Config{Profile: input.ResourceProfile, Interval: input.PollInterval,
 			Measure: input.ResourceMeasure, StorageRoots: []string{input.NetworkStateRoot, input.LocalRoleStateRoot}})
@@ -89,7 +81,7 @@ func resolveConfig(input Config) (runtimeConfig, error) {
 		input.CheckPlacement = func() error { return nil }
 	}
 	input.IdentityKey = append(ed25519.PrivateKey(nil), input.IdentityKey...)
-	config := runtimeConfig{Config: input, now: func() time.Time { return now().UTC() }, probe: probePlan}
+	config := runtimeConfig{Config: input, now: func() time.Time { return now().UTC() }}
 	if enforcePressure {
 		config.pressure = guard
 	}
@@ -146,22 +138,10 @@ func assessAdmission(config runtimeConfig, snapshot state.NodeDuty) admission {
 	if snapshot.Profile == route.Profile {
 		return admission{kind: admissionPrepared, reason: nativeRouteUnavailableReason}
 	}
-	if snapshot.Profile != "h3-role-probe-v1" || snapshot.Assignment == "" || snapshot.ProbeCapacity == 0 {
-		return admission{kind: admissionPrepared, reason: "profile or deterministic assignment is inactive"}
+	if snapshot.Profile == "h3-role-probe-v1" {
+		return admission{kind: admissionFailed, reason: retiredRoleProbeReason}
 	}
-	if snapshot.ProbeEndpoint != config.Probe.ListenAddress {
-		return admission{kind: admissionFailed, reason: "role-probe listener does not match the accepted Node Record"}
-	}
-	terminal := now.Add(config.Probe.MaximumDuty)
-	if snapshot.Conflicting || !snapshot.Fresh || now.Before(snapshot.EpochValidFrom) ||
-		now.Before(snapshot.RecordValidFrom) || !terminal.Before(snapshot.ValidUntil) ||
-		!terminal.Before(snapshot.RecordValidUntil) {
-		return admission{kind: admissionPrepared, reason: "freshness, validity, or terminal duty bound is not satisfied"}
-	}
-	if err := config.CheckPlacement(); err != nil {
-		return admission{kind: admissionPrepared, reason: "resource placement is not ready: " + boundedReason(err)}
-	}
-	return admission{kind: admissionReady}
+	return admission{kind: admissionPrepared, reason: "profile or deterministic assignment is inactive"}
 }
 
 func boundedReason(err error) string {

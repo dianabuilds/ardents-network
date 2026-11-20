@@ -12,8 +12,7 @@
 // holds their supervision surface. The authority child borrows
 // current State and verifies selected-profile tokens; hosting bounds shared
 // reservations and class-2 reserve-before-spend policy. The outer child owns
-// one accepted Carrier's inner lanes, writer and joined cleanup. The probe
-// child owns its private TLS listener, work and joined drain. Hosting owns
+// one accepted Carrier's inner lanes, writer and joined cleanup. Hosting owns
 // reservation policy for all admitted classes; lifecycle_event.go publishes
 // observations through platform writers. Retired native duties remain unavailable.
 package node

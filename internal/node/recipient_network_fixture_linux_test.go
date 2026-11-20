@@ -445,3 +445,20 @@ func finishRecipientTerminal(t *testing.T, fixture *resolutionNetworkFixture, co
 		return
 	}
 }
+
+const testLifecycleWait = 15 * time.Second
+
+func waitForStateEvent(t *testing.T, events <-chan Event, state string) Event {
+	t.Helper()
+	deadline := time.After(testLifecycleWait)
+	for {
+		select {
+		case event := <-events:
+			if event.State == state {
+				return event
+			}
+		case <-deadline:
+			t.Fatalf("Node did not reach %s", state)
+		}
+	}
+}

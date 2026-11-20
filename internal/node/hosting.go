@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"time"
 
 	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
@@ -12,34 +11,6 @@ import (
 )
 
 type closedHostingHandle = hosting.Handle
-
-// The shared period is opened once for the complete Node lifecycle, before
-// listener activation, and retained until every admitted child has joined.
-func (config *runtimeConfig) openClosedHosting() error {
-	closed := config.ClosedForwarding.Certificate.PrivateKey != nil || config.ClosedIssuer.Certificate.PrivateKey != nil ||
-		config.ClosedResolution.Certificate.PrivateKey != nil || config.ClosedIntroduction.Certificate.PrivateKey != nil ||
-		config.ClosedDataJoin.Certificate.PrivateKey != nil
-	if !closed {
-		return nil
-	}
-	root := config.HostingRoot
-	for _, selected := range []string{config.ClosedForwarding.HostingRoot, config.ClosedDataJoin.HostingRoot} {
-		if selected == "" {
-			continue
-		}
-		if root != "" && root != selected {
-			return errors.New("node duties selected different host periods")
-		}
-		root = selected
-	}
-	if root == "" || !filepath.IsAbs(root) || filepath.Clean(root) != root {
-		return errors.New("closed Node hosting period unavailable")
-	}
-	config.measurementOrigin = time.Now()
-	var err error
-	config.host, err = hosting.Open(root)
-	return err
-}
 
 func (config *runtimeConfig) hostingPressure() (pressureLevel, error) {
 	if config.host == nil {

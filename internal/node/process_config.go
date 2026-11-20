@@ -7,13 +7,10 @@ import (
 
 	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/node/probe"
 	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
-// Config binds one local identity, authenticated duty facts, and private role-probe listener.
-type ProbeConfig = probe.Config
-
+// Config binds one local identity, authenticated duty facts, and the selected local role configuration.
 type Config struct {
 	// HostingRoot is the single installed provider period shared by all closed duties on this host.
 	HostingRoot string
@@ -29,7 +26,6 @@ type Config struct {
 	// Network State persistence, source, retry, or pending metadata. Node
 	// revalidates its bounds on receipt and retains its per-poll copy.
 	Current      func() (state.NodeDuty, error)
-	Probe        ProbeConfig
 	ClosedIssuer ClosedIssuerProfile
 	// ClosedForwarding supplies the isolated receiving spend journal and Node
 	// TLS key for an accepted generation-3 adjacent/interior forwarding duty.
@@ -74,6 +70,5 @@ type runtimeConfig struct {
 	hostingLevel      pressureLevel
 	Config
 	now      func() time.Time
-	probe    *probe.Plan
 	pressure *resource.Guard
 }

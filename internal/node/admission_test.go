@@ -21,7 +21,7 @@ import (
 )
 
 func TestResolvePinsLocalRoleRootAcrossWorkingDirectoryChange(t *testing.T) {
-	fixture := newLifecycleFixture(t)
+	fixture := newClosedAdmissionFixture(t)
 	workingDirectory, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -37,7 +37,7 @@ func TestResolvePinsLocalRoleRootAcrossWorkingDirectoryChange(t *testing.T) {
 	fixture.config.LocalRoleStateRoot = relativeRoot
 	fixture.config.Current = func() (state.NodeDuty, error) { return fixture.snapshot, nil }
 	fixture.config.Emit = func(context.Context, Event) error { return nil }
-	config, err := resolveConfig(fixture.config)
+	config, err := resolveConfig(fixture.config.Config)
 	if err != nil || config.LocalRoleStateRoot != roleRoot {
 		t.Fatalf("resolved local role root = %q, %v, want %q", config.LocalRoleStateRoot, err, roleRoot)
 	}
@@ -70,19 +70,8 @@ func TestResolvePinsLocalRoleRootAcrossWorkingDirectoryChange(t *testing.T) {
 
 func TestAdmissionRequiresEveryPrerequisite(t *testing.T) {
 	t.Parallel()
-	public, private, err := ed25519.GenerateKey(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	now := time.Unix(2_000_000_000, 0).UTC()
-	config := runtimeConfig{Config: Config{NetworkID: [32]byte{1}, NodeID: [32]byte{2}, IdentityKey: private,
-		Probe:          ProbeConfig{ListenAddress: "127.0.0.1:4101", MaximumDuty: time.Second},
-		CheckPlacement: func() error { return nil }}, now: func() time.Time { return now }}
-	snapshot := state.NodeDuty{NetworkID: config.NetworkID, NodeID: config.NodeID, RecordPresent: true,
-		EpochValidFrom: now.Add(-time.Hour), ValidUntil: now.Add(time.Hour), RecordValidFrom: now.Add(-time.Hour),
-		RecordValidUntil: now.Add(time.Hour), Profile: "h3-role-probe-v1", Assignment: "domain-a",
-		ProbeEndpoint: config.Probe.ListenAddress, ProbeCapacity: 1, Fresh: true}
-	copy(snapshot.NodePublicKey[:], public)
+	fixture := newClosedAdmissionFixture(t)
+	now, config, snapshot := fixture.now, fixture.config, fixture.snapshot
 	if got := assessAdmission(config, snapshot); got.kind != admissionReady {
 		t.Fatalf("complete admission = %+v", got)
 	}
@@ -96,13 +85,10 @@ func TestAdmissionRequiresEveryPrerequisite(t *testing.T) {
 		{"key", func(s *state.NodeDuty, _ *runtimeConfig) { s.NodePublicKey[0]++ }, admissionFailed},
 		{"network", func(s *state.NodeDuty, _ *runtimeConfig) { s.NetworkID[0]++ }, admissionFailed},
 		{"profile", func(s *state.NodeDuty, _ *runtimeConfig) { s.Profile = "other" }, admissionPrepared},
-		{"assignment", func(s *state.NodeDuty, _ *runtimeConfig) { s.Assignment = "" }, admissionPrepared},
-		{"capacity", func(s *state.NodeDuty, _ *runtimeConfig) { s.ProbeCapacity = 0 }, admissionPrepared},
-		{"endpoint", func(s *state.NodeDuty, _ *runtimeConfig) { s.ProbeEndpoint = "127.0.0.1:9" }, admissionFailed},
 		{"conflict", func(s *state.NodeDuty, _ *runtimeConfig) { s.Conflicting = true }, admissionPrepared},
 		{"freshness", func(s *state.NodeDuty, _ *runtimeConfig) { s.Fresh = false }, admissionPrepared},
-		{"epoch boundary", func(s *state.NodeDuty, _ *runtimeConfig) { s.ValidUntil = now.Add(time.Second) }, admissionPrepared},
-		{"record boundary", func(s *state.NodeDuty, _ *runtimeConfig) { s.RecordValidUntil = now.Add(time.Second) }, admissionPrepared},
+		{"epoch boundary", func(s *state.NodeDuty, _ *runtimeConfig) { s.ValidUntil = now }, admissionPrepared},
+		{"record boundary", func(s *state.NodeDuty, _ *runtimeConfig) { s.RecordValidUntil = now }, admissionPrepared},
 		{"placement", func(_ *state.NodeDuty, c *runtimeConfig) {
 			c.CheckPlacement = func() error { return errors.New("pressure") }
 		}, admissionPrepared},
@@ -115,6 +101,21 @@ func TestAdmissionRequiresEveryPrerequisite(t *testing.T) {
 				t.Fatalf("admission = %+v, want %v", got, test.want)
 			}
 		})
+	}
+}
+
+func TestRetiredRoleProbeRefusesAdmissionAndStartup(t *testing.T) {
+	fixture := newClosedAdmissionFixture(t)
+	fixture.snapshot.Profile = "h3-role-probe-v1"
+	fixture.snapshot.Assignment = "domain-a"
+	fixture.snapshot.ProbeCapacity = 1
+	outcome := assessAdmission(fixture.config, fixture.snapshot)
+	if outcome.kind != admissionFailed || outcome.reason != retiredRoleProbeReason {
+		t.Fatalf("retired role-probe admission = %+v", outcome)
+	}
+	handle, err := startDuty(fixture.config, fixture.snapshot)
+	if handle != nil || err == nil || err.Error() != retiredRoleProbeReason {
+		t.Fatalf("retired role-probe start = %v, %v", handle, err)
 	}
 }
 
@@ -163,7 +164,8 @@ func newClosedBootstrapFixture(t *testing.T) *closedBootstrapFixture {
 	return fixture
 }
 
-func TestClosedAdmissionUsesOneConsistentRouteProjection(t *testing.T) {
+func newClosedAdmissionFixture(t *testing.T) *closedBootstrapFixture {
+	t.Helper()
 	fixture := newClosedBootstrapFixture(t)
 	identity := ed25519.NewKeyFromSeed(make([]byte, ed25519.SeedSize))
 	copy(fixture.snapshot.NodePublicKey[:], identity.Public().(ed25519.PublicKey))
@@ -179,6 +181,13 @@ func TestClosedAdmissionUsesOneConsistentRouteProjection(t *testing.T) {
 	fixture.config.ClosedForwarding = ClosedForwardingProfile{Root: t.TempDir(), HostingRoot: t.TempDir(),
 		Certificate: tlsCertificate(identity), ConnectionLimit: 1, DrainTimeout: time.Second,
 		AdmissionTraffic: hostingbudget.Traffic{Tx: 1}, TerminationTraffic: hostingbudget.Traffic{Tx: 1}}
+	fixture.config.LocalRoleStateRoot = localRoleStateRoot(t)
+	fixture.config.PollInterval = 10 * time.Millisecond
+	return fixture
+}
+
+func TestClosedAdmissionUsesOneConsistentRouteProjection(t *testing.T) {
+	fixture := newClosedAdmissionFixture(t)
 	calls := 0
 	fixture.config.CurrentClosedRoute = func() (state.ClosedRouteView, error) {
 		calls++
