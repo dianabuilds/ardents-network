@@ -71,6 +71,26 @@ func TestNativeEndpointPlatformPrestartTrustTransfer(t *testing.T) {
 	// platform delivery against the real system manager and retained Release.
 	// This first evaluation obtains a fresh release-accepted program proof and
 	// advances the retained floor; causal refusals below refuse before Release.
+	for _, name := range []string{"start-guard.json", "start-socket.json", "start-completion.socket"} {
+		t.Run("retained-"+name, func(t *testing.T) {
+			path := filepath.Join(stand.installationRoot, name)
+			record := []byte("unresolved")
+			if err := os.WriteFile(path, record, 0600); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := os.Remove(path); err != nil {
+					t.Error(err)
+				}
+			})
+			if out, err := exec.Command(stand.binary, "platform", "check", stand.manifest, stand.pin).CombinedOutput(); err == nil {
+				t.Fatalf("platform pre-start accepted unresolved guarded-start artifact %s: %s", name, out)
+			}
+			if got, err := os.ReadFile(path); err != nil || !bytes.Equal(got, record) {
+				t.Fatalf("platform pre-start changed guarded-start artifact %s: %v", name, err)
+			}
+		})
+	}
 	out, err := exec.Command(stand.binary, "platform", "check", stand.manifest, stand.pin).CombinedOutput()
 	if err != nil {
 		t.Fatalf("genuine F-25 platform check refused: %v\n%s", err, out)

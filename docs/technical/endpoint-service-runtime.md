@@ -363,7 +363,10 @@ intent. The transitional root guarded-start retains a private `start-guard.json`
 and the participant joins its bounded completion exchange before yielding plans.
 Platform-led delivery (ADR-0125) has no root start operation: `start-guard.json`
 is absent, systemd owns start, and the ExecStartPre `platform check` transferred
-accepted current-program identity before this invocation. In that mode the
+accepted current-program identity before this invocation. The platform check
+refuses before opening retained Release state if any guarded-start intent,
+socket birth record or completion socket remains, even when the intent itself
+is absent. It leaves the observed artifacts in place. In platform-led mode the
 participant skips the root completion exchange and validates the running
 invocation against the complete platform confinement (`VerifyPlatformRunning`,
 the sole privileged F-25 pre-start argv read from the loaded `ExecStartPreEx`)
