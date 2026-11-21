@@ -26,8 +26,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/installation/unit"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/publication"
@@ -387,8 +385,10 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 	resources := endpointPlatformNativeResources()
 	resources["ardents-text-linux-amd64"] = journeyBuildWorkerBinary(t)
 	bundle, pin, initialProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 1, 1)
+	bundle, initialProgram = platformNativeDistribution(t, bundle, filepath.Join(base, "initial-distribution"))
 	// Advance the signed metadata while retaining the exact staged release and descriptor.
 	candidateBundle, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 2, 1)
+	candidateBundle, _ = platformNativeDistribution(t, candidateBundle, filepath.Join(base, "candidate-distribution"))
 	request := string(installationRequestBytes(t, bundle, pin, filepath.Join(base, "floors")))
 	request = installedServiceDeclaration(t, request, base)
 	if strings.Count(request, `"refresh_interval_ms":1000`) != 1 {
@@ -443,22 +443,7 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 	request = strings.Replace(request, "\"clock_observed_at\":\"2030-01-02T03:04:05Z\"", "\"clock_observed_at\":"+quoted(time.Now().UTC().Format(time.RFC3339)), 1)
 	requestPath := filepath.Join(etcDir, "request.json")
 	installedStartupWrite(t, requestPath, []byte(request), 0600)
-	installedStartupCommand(t, initialProgram, nil, "installed-stopped", "installation", "provision", "--request", requestPath)
-	account, err := user.Lookup("ardents-endpoint")
-	if err != nil {
-		t.Fatal(err)
-	}
-	uid, err := strconv.ParseUint(account.Uid, 10, 32)
-	if err != nil || uid == 0 {
-		t.Fatal("invalid installed UID", err)
-	}
-	gid, err := strconv.ParseUint(account.Gid, 10, 32)
-	if err != nil || gid == 0 {
-		t.Fatal("invalid installed GID", err)
-	}
-	if err := os.Chown(keyPath, int(uid), int(gid)); err != nil {
-		t.Fatal(err)
-	}
+	uid, gid := stagePlatformNativeEndpoint(t, requestPath, initialProgram, pin, candidateBundle, keyPath)
 	installationRoot := filepath.Join(base, "installation")
 	selection, err := os.ReadFile(filepath.Join(installationRoot, "selection.json"))
 	if err != nil {
@@ -512,10 +497,10 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 	budgetPath := filepath.Join(bootstrap, "hosting.json")
 	installedStartupWrite(t, budgetPath, budgetInput, 0644)
 	installedStartupCommand(t, program, credential, "completed", "hosting", "initialize", "--config", budgetPath)
-	journeyInstallPlatformUnit(t, etcDir, requestPath, program, installationRoot, candidateBundle, filepath.Join(base, "floors"))
+	installPlatformNativeUnit(t, requestPath, candidateBundle, program)
 	original := journeyStartPlatformLed(t)
 	installedServiceInstance(t, program, credential, base, network.NetworkID)
-	journeyGrantPermissions(t, base, original, uid, gid, approve)
+	journeyGrantPermissions(t, base, original, uint64(uid), uint64(gid), approve)
 	if current := installedStartupIdentity(t); current != original {
 		t.Fatal("accepted permission lost original invocation", current)
 	}
@@ -552,84 +537,6 @@ func journeyBuildWorkerBinary(t *testing.T) []byte {
 		t.Fatal(err)
 	}
 	return raw
-}
-
-func journeyInstallPlatformUnit(t *testing.T, etcDir, requestPath, program, installationRoot, distribution, floors string) {
-	t.Helper()
-	requestRaw, err := os.ReadFile(requestPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	decl, err := platformEndpointDeclaration(requestRaw)
-	if err != nil {
-		t.Fatal(err)
-	}
-	roots, err := platformEndpointRoots(decl)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, root := range roots {
-		if err := os.MkdirAll(root, 0755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	certBytes, err := os.ReadFile(filepath.Join(etcDir, "client.crt"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	keyBytes, err := os.ReadFile(filepath.Join(etcDir, "client.key"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	certDigest := sha256.Sum256(certBytes)
-	keyDigest := sha256.Sum256(keyBytes)
-	configDigest := sha256.Sum256(requestRaw)
-	launch := platformLaunch{
-		Role: "endpoint", Distribution: distribution, ReleaseRoot: floors,
-		Environment: "h3-test", Network: "new-release-test", Program: program,
-		Configuration: requestPath, ConfigSHA256: hex.EncodeToString(configDigest[:]),
-		WritableRoots: roots,
-		Inputs: map[string]string{
-			filepath.Join(etcDir, "client.crt"): hex.EncodeToString(certDigest[:]),
-			filepath.Join(etcDir, "client.key"): hex.EncodeToString(keyDigest[:]),
-		},
-	}
-	launchRaw, err := json.Marshal(launch)
-	if err != nil {
-		t.Fatal(err)
-	}
-	launchRaw = append(launchRaw, '\n')
-	launchDigest := sha256.Sum256(launchRaw)
-	pin := hex.EncodeToString(launchDigest[:])
-	manifest := filepath.Join(etcDir, "launch.json")
-	installedStartupWrite(t, manifest, launchRaw, 0644)
-	candidate, err := enrollment.ReadCandidate(t.Context(), distribution, enrollment.Headless)
-	if err != nil {
-		t.Fatal(err)
-	}
-	template, ok := candidate.File("ardents-endpoint.service")
-	if !ok {
-		t.Fatal("enrolled endpoint template absent")
-	}
-	prepared, err := endpointunit.PrepareEndpointTemplate(template, installationRoot, filepath.Dir(program))
-	if err != nil {
-		t.Fatal(err)
-	}
-	base, err := prepared.Render(roots)
-	if err != nil {
-		t.Fatal(err)
-	}
-	checkProgram := filepath.Join(distribution, "ardents-linux-amd64")
-	unit, err := renderEndpointPlatformUnit(base, checkProgram, manifest, pin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile("/etc/systemd/system/ardents-endpoint.service", unit, 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := exec.Command("systemctl", "daemon-reload").Run(); err != nil {
-		t.Fatal("daemon-reload:", err)
-	}
 }
 
 func journeyStartPlatformLed(t *testing.T) [3]string {
