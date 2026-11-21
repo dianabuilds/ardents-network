@@ -43,7 +43,7 @@ case "${1-lifecycle}" in
         test_root=TestInstalledPublicationElapsedTCP; maximum_polls=9000
         ;;
     execution-recovery) test_root=TestInstalledExecutionEndpointDeath ;;
-    network) test_root=TestInstalledTextWorkersReadTargetThroughJoinedNetwork; maximum_polls=10000 ;;
+    network) test_root=TestInstalledTextCommandsThroughJoinedNetworkTCP; maximum_polls=10000 ;;
     execution-tree)
         test_root=TestInstalledExecutionHostileTree
         worker=/usr/lib/ardents/text-worker-root/ardents-text
@@ -72,7 +72,7 @@ done
     fail 'invalid environment: Ubuntu 24.04 x86-64 required'
 [ "$(stat -fc %T /sys/fs/cgroup)" = cgroup2fs ] || fail 'invalid environment: cgroup v2 required'
 binary=/usr/lib/ardents/qualification/endpoint.test
-if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ] || [ "$test_root" = TestInstalledConnectionAcceptedRequestRecoveryTCP ]; then
+if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ] || [ "$test_root" = TestInstalledConnectionAcceptedRequestRecoveryTCP ] || [ "$test_root" = TestInstalledTextCommandsThroughJoinedNetworkTCP ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
 fi
 if [ "$test_root" = TestInstalledExecutionRepeatedLaunch ] || [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ] || [ "$test_root" = TestInstalledStreamQualificationSeam ]; then
@@ -93,7 +93,7 @@ fi
 if [ "$test_root" = TestInstalledExecutionRouteTCP ] || [ "$test_root" = TestInstalledPublicationElapsedTCP ] || [ "$test_root" = TestInstalledConnectionStreamTCP ] || [ "$test_root" = TestInstalledConnectionAuthorityTCP ] || [ "$test_root" = TestInstalledConnectionControlDeliveryTCP ] || [ "$test_root" = TestInstalledConnectionControlReceivedTCP ] || [ "$test_root" = TestInstalledConnectionControlWritesTCP ] || [ "$test_root" = TestInstalledConnectionRefreshTCP ] || [ "$test_root" = TestInstalledConnectionWithdrawalTCP ] || [ "$test_root" = TestInstalledConnectionNonceTCP ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
 fi
-if [ "$test_root" = TestInstalledConnectionAcceptedRequestRecoveryTCP ]; then
+if [ "$test_root" = TestInstalledConnectionAcceptedRequestRecoveryTCP ] || [ "$test_root" = TestInstalledTextCommandsThroughJoinedNetworkTCP ]; then
     [ -n "${ARDENTS_RECOVERY_INSTANCE_SHA256-}" ] && [ -n "${ARDENTS_RECOVERY_CUSTODY_SHA256-}" ] ||
         fail 'invalid environment: independent Instance and Custody command digests required'
     for artifact in ardents-next ardents-custody; do
@@ -260,7 +260,7 @@ if [ "$test_root" = TestInstalledExecutionRouteTCP ]; then
         set -- "$@" "$test_root/$carrier/publication" "$test_root/$carrier/publication-ack" "$test_root/$carrier/publication-ack/initial" "$test_root/$carrier/publication-ack/replacement" "$test_root/$carrier/publication-withdraw-ack" "$test_root/$carrier/publication-withdraw-ack/initial" "$test_root/$carrier/publication-withdraw-ack/replacement" "$test_root/$carrier/publication-caller-ack" "$test_root/$carrier/publication-caller-ack/initial" "$test_root/$carrier/publication-caller-ack/replacement" "$test_root/$carrier/joined" "$test_root/$carrier/worker-loss" "$test_root/$carrier/worker-loss-io" "$test_root/$carrier/clock-loss-io" "$test_root/$carrier/caller-loss-io"
     done
 fi
-if [ "$test_root" = TestInstalledTextWorkersReadTargetThroughJoinedNetwork ]; then
+if [ "$test_root" = TestInstalledTextCommandsThroughJoinedNetworkTCP ]; then
     set -- "$test_root"
     for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier"

@@ -2537,10 +2537,14 @@ The maintained local profiles are:
   its last source revision is retained in Git as `6ac9cba0856a7a0b92f2e8a4e11b246625f6716d`;
   current enrolled-bundle and retired-route refusal regressions stay with
   `headless-evidence` and its owned package tests;
-- `text-worker-network`, the installed confined worker/network composition invoked
-  by `make text-worker-network-check`; requires all four TCP document and elapsed-refresh cases,
-  exact invocation evidence and terminal service success. State and authority setup
-  remain explicit fixtures; ordinary command and full host qualification are separate.
+- `text-worker-network`, invoked by `make text-worker-network-check`, exercises
+  genuine installed `ardents-text publish`, `link` and `read` against successor
+  Reader and Publisher on one installed Endpoint. It requires empty, 64 KiB and
+  4 MiB documents and a fresh read after elapsed refresh and predecessor refusal.
+  Each case obtains the Service Credential through pinned `ardents-next` and
+  `ardents-custody` commands. Network provisioning uses the signed fixture.
+  `publication-timing` checks the original creation and ACK timing brackets;
+  the Instance owner tests retain joined recipient key erasure coverage.
 - `text-command-network`, the separately pinned installed ordinary-command journey
   invoked by `make text-command-network-check`; it exercises the real `ardents`,
   `ardents-custody`, `ardents-node` and `ardents-text` candidate binaries through

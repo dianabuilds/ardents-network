@@ -944,6 +944,16 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-next/node_completion_native_linux_test.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
+		if source == "cmd/ardents-next/text_command_installed_linux_test.go" {
+			switch dependency {
+			case modulePath + "/internal/successor/execution",
+				modulePath + "/internal/successor/execution/runtime",
+				modulePath + "/internal/successor/publication",
+				modulePath + "/internal/successor/reachability",
+				modulePath + "/internal/successor/route/transport":
+				return true
+			}
+		}
 		if source == "cmd/ardents-next/connection_custody_instance_installed_linux_test.go" && dependency == modulePath+"/internal/successor/publication" {
 			return true
 		}
@@ -1173,7 +1183,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/endpoint/participant_linux.go" || source == "cmd/ardents-next/installed_service_linux_test.go") && dependency == modulePath+"/internal/application/administration" {
 		return true
 	}
-	if source == "cmd/ardents-next/installed_pair_linux_test.go" || source == "cmd/ardents-next/endpoint_journey_native_linux_test.go" {
+	if source == "cmd/ardents-next/installed_pair_linux_test.go" || source == "cmd/ardents-next/endpoint_journey_native_linux_test.go" || source == "cmd/ardents-next/text_command_installed_linux_test.go" {
 		switch dependency {
 		case modulePath + "/internal/application/administration", modulePath + "/internal/application/connection", modulePath + "/internal/application/textdocument":
 			return true
