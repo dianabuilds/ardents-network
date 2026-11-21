@@ -49,65 +49,6 @@ func TestParseClosedProfileRejectsChangedStateAndNoncanonicalEntries(t *testing.
 	}
 }
 
-func TestPrepareSignAndVerifyUsesOnePurposeBoundSigner(t *testing.T) {
-	now := time.Unix(1_800_003_600, 0).UTC()
-	signer := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{9}, ed25519.SeedSize))
-	network := sha256.Sum256([]byte("closed profile network"))
-	generation := sha256.Sum256([]byte("closed profile generation"))
-	epochDigest := sha256.Sum256([]byte("closed profile epoch"))
-	issuer := sha256.Sum256([]byte("closed profile issuer"))
-	other := sha256.Sum256([]byte("closed profile other"))
-	nodes := []NodeInput{
-		{NodeID: other, RecordDigest: sha256.Sum256([]byte("other record")), RoleDomain: 1, Subrole: 1, DutyGeneration: 2},
-		{NodeID: issuer, RecordDigest: sha256.Sum256([]byte("issuer record")), RoleDomain: 2, Subrole: 6, DutyGeneration: 3},
-	}
-	if bytes.Compare(nodes[0].NodeID[:], nodes[1].NodeID[:]) > 0 {
-		nodes[0], nodes[1] = nodes[1], nodes[0]
-	}
-	input := Input{NetworkID: network, StateGeneration: generation, EpochDigest: epochDigest, Epoch: 7,
-		IssuerNodeID: issuer, IssuanceAuthorityKey: sha256.Sum256([]byte("admission authority")), NotBefore: now, NotAfter: now.Add(time.Hour),
-		Nodes: nodes, TokenKeys: []TokenKeyInput{{WindowStart: now, Class: 1, SPKI: testClosedProfileSPKI(t)}}}
-	body, err := Prepare(input)
-	if err != nil || !bytes.HasPrefix(body, []byte(profileMagic)) {
-		t.Fatalf("prepare closed profile = %x / %v", body, err)
-	}
-	raw, err := Sign(input, signer)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(raw) != len(body)+ed25519.SignatureSize || !bytes.Equal(raw[:len(body)], body) {
-		t.Fatal("signed profile changed the prepared canonical body")
-	}
-	view, err := Verify(raw, Context{StateGeneration: generation, NetworkID: network, EpochDigest: epochDigest, Epoch: 7, Authority: signer.Public().(ed25519.PublicKey), Now: now})
-	if err != nil || view.NetworkID != network || view.StateGeneration != generation || view.EpochDigest != epochDigest || view.Epoch != 7 || view.Digest != sha256.Sum256(raw) || view.IssuerNodeID != issuer || len(view.Keys) != 1 ||
-		view.Keys[0].WindowStart != uint64(now.Unix()) || view.Keys[0].Class != 1 || !bytes.Equal(view.Keys[0].SPKI, input.TokenKeys[0].SPKI) {
-		t.Fatalf("inspect closed profile = %+v / %v", view, err)
-	}
-	issuerFound := false
-	for _, node := range view.Nodes {
-		if node.NodeID == issuer {
-			issuerFound = node.DutyGeneration == 3
-		}
-	}
-	if !issuerFound {
-		t.Fatal("verified profile lost the issuer duty generation")
-	}
-	originalSPKI := append([]byte(nil), view.Keys[0].SPKI...)
-	raw[len(raw)-ed25519.SignatureSize-1] ^= 1
-	if !bytes.Equal(view.Keys[0].SPKI, originalSPKI) {
-		t.Fatal("verified profile retained caller-owned SPKI bytes")
-	}
-	if _, err := Sign(input, nil); err == nil {
-		t.Fatal("signed closed profile without an authority")
-	}
-	unordered := input
-	unordered.Nodes = append([]NodeInput(nil), input.Nodes...)
-	unordered.Nodes[0], unordered.Nodes[1] = unordered.Nodes[1], unordered.Nodes[0]
-	if _, err := Prepare(unordered); err == nil {
-		t.Fatal("prepared a profile with noncanonical Node order")
-	}
-}
-
 func verifyFixture(raw []byte, generation, network, digest [32]byte, number uint64, authority ed25519.PublicKey, now time.Time) (Profile, error) {
 	return Verify(raw, Context{StateGeneration: generation, NetworkID: network, EpochDigest: digest,
 		Epoch: number, Authority: authority, Now: now})

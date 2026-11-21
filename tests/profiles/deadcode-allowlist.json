@@ -31,29 +31,6 @@
       "rationale": "BuildClosed and its SPKI helper construct real signed State for new Network and Route tests. They are test composition, never a maintained runtime authority or command.",
       "owner": "Product Owner and Codex; test composition",
       "retirement": "Remove the exact entries when the signed-State fixture is retired or a separately accepted fixture command consumes them."
-    },
-    {
-      "symbols": [
-        "internal/network/closedprofile.Prepare",
-        "internal/network/closedprofile.Sign"
-      ],
-      "classification": "retired legacy closed-profile owner awaiting legacy cohort removal",
-      "rationale": "cmd/ardents-control/closed_profile.go cut over to the successor closed-profile owner (#493), removing the last main-package production caller of the old internal/network/closedprofile Prepare/Sign on both platforms. The old closed-profile owner remains reached only by the Linux old network/state and admission cluster (itself production-dead, allowlisted) and by its own behavior tests on both platforms, so these symbols are production-dead but not test-only dead. The owning legacy Module remains until the gated cohort removal (#564/#565).",
-      "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
-      "retirement": "Remove each exact symbol when the gated legacy cohort removal retires the old closed-profile owner, or when a selected genuine production caller reaches it."
-    },
-    {
-      "symbols": [
-        "internal/network/epoch.PrepareInitialClosedEpoch",
-        "internal/network/epoch.PrepareInitialClosedRecord",
-        "internal/network/epoch.appendInitialPreparationText",
-        "internal/network/epoch.encodeInitialClosedEpoch",
-        "internal/network/epoch.initialPreparationInterval"
-      ],
-      "classification": "old Epoch initial-preparation functions awaiting legacy retirement",
-      "rationale": "ADR-0127 retired prepare-qualification-node-record/epoch, the ACA1 inspection chain and sign-qualification-network.go. These old Epoch initial-preparation functions remain covered by old Epoch behavior tests.",
-      "owner": "Product Owner and Codex; legacy cohort removal #564/#565 (#497 M3)",
-      "retirement": "Remove each exact symbol when the gated legacy cohort removal retires its owning Module, or when a separately selected genuine production caller reaches it. Lost production reachability elsewhere requires repair, not another allowance."
     }
   ],
   "production": {
