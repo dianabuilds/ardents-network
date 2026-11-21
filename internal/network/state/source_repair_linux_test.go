@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
 
 // Detached policy fixtures grant no manager/cgroup proof. The public adapter

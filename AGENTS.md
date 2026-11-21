@@ -156,6 +156,10 @@ verification, or acceptance obligations.
 
 ## Go project and experiments
 
+- Windows, Ubuntu and macOS are mandatory target platforms under
+  [ADR-0129](docs/adr/0129-require-platform-portability.md). Keep contracts,
+  domain rules and implementation portable wherever possible. Use native code
+  only for the host operation that requires it and keep the code at that boundary.
 - The repository has one root Go module. Maintained Go code belongs in thin
   `cmd/<name>` adapters and cohesive deep modules under `internal/<domain>`.
 - Do not create empty packages, speculative interfaces, or generic dumping

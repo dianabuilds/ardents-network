@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 )
 
 func runInfrastructure(ctx context.Context, args []string, out io.Writer) int {

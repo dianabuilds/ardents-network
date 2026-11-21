@@ -11,14 +11,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
 
 // The signed template runs the existing runtime directly. systemd owns process
 // start/stop; no Ardents supervisor, startup ACK or recovery journal participates.
 // An unjoined runtime is never forcibly declared complete by a stop timeout.
-const platformUnitTemplate = infrastructure.PlatformUnitTemplate
+const platformUnitTemplate = systemd.PlatformUnitTemplate
 
 func platformUser(p platformLaunch) string {
 	if p.Role == "source" {

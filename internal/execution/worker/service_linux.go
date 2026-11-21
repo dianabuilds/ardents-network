@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/unit"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/unit"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
 
 // The calling Endpoint must be the installed system service's main process.

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
 
 // value retains the D-Bus signature: an absent, null or differently

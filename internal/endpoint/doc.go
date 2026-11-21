@@ -1,5 +1,3 @@
-//go:build linux
-
 // Package endpoint owns one original installed participant: Startup, local
 // Execution, State, permission exchange, shared funding parents and IPC children.
 // It joins children before returning their original roots. Domain authority and

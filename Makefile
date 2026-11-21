@@ -97,7 +97,7 @@ platform-launch-unit:
 	go test ./internal/network/state -run '^Test(Source(Participation|Completion).*|FreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory|RetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor|RetainedStateDoesNotInitializeAbsentOrEmptiedRoot)$$' -count=1 -timeout=3m
 	go test ./internal/network/duty -run '^TestSourceCompletionInspectionPolicyRefusesUnjoinedProducer$$' -count=1 -timeout=3m
 	go test ./internal/route/introduction -run '^TestRetainedReceivingRegistryPreservesClaimAndRejectsErasedHistory$$' -count=1 -timeout=3m
-	go test ./internal/platform/installation/systemd -run '^TestPlatformSiblingVocabularyPreservesFixedNodeExclusion$$' -count=1 -timeout=3m
+	go test ./internal/platform/systemd -run '^TestPlatformSiblingVocabularyPreservesFixedNodeExclusion$$' -count=1 -timeout=3m
 
 heapdump-capture:
 	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)
@@ -195,7 +195,7 @@ installed-tag-compile-check: export GOOS := linux
 installed-tag-compile-check: export GOARCH := amd64
 installed-tag-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
-	go test -c -tags startup_manager_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-startup-native.test" ./internal/platform/installation/systemd
+	go test -c -tags startup_manager_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-startup-native.test" ./internal/platform/systemd
 	$(foreach package,$(INSTALLED_TAG_COMPILE_PACKAGES),go test -c -tags text_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/$(subst /,_,$(package)).test" $(package)$(newline))
 
 .PHONY: node-process-check
@@ -371,26 +371,25 @@ installation-native-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "installation-native-check requires Linux"; exit 2)
 	@test "$$(id -u)" = 0 || (echo "installation-native-check requires root"; exit 2)
 	@test -n "$(ARDENTS_INSTALLATION_NATIVE_ROOT)" || (echo "ARDENTS_INSTALLATION_NATIVE_ROOT must name a trusted root-owned temporary parent"; exit 2)
-	go test -race -tags installation_native ./internal/platform/installation/... -run '^TestInstallationNative' -count=1 -timeout=1m
+	go test -race -tags installation_native ./internal/endpoint/launch ./internal/endpoint/plan ./internal/endpoint/generation ./internal/endpoint/unit ./internal/platform/cgroup ./internal/platform/process ./internal/platform/systemd ./internal/release/endpoint ./internal/release/infrastructure -run '^TestInstallationNative' -count=1 -timeout=1m
 
 installation-native-compile-check: export GOOS := linux
 installation-native-compile-check: export GOARCH := amd64
 installation-native-compile-check: export CGO_ENABLED := 0
 installation-native-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-native.test" ./internal/platform/installation
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-endpoint-native.test" ./internal/platform/installation/endpoint
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-request-native.test" ./internal/platform/installation/request
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-directory-native.test" ./internal/platform/installation/directory
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-cgroup-native.test" ./internal/platform/installation/cgroup
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-native.test" ./internal/platform/installation/systemd
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-process-native.test" ./internal/platform/installation/process
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-generation-native.test" ./internal/platform/installation/generation
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-native.test" ./internal/release/endpoint
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-endpoint-native.test" ./internal/endpoint/launch
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-request-native.test" ./internal/endpoint/plan
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-cgroup-native.test" ./internal/platform/cgroup
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-native.test" ./internal/platform/systemd
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-process-native.test" ./internal/platform/process
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-generation-native.test" ./internal/endpoint/generation
 
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/hosting ./internal/publication/... ./internal/connection/... ./internal/reachability/... ./internal/enrollment/... ./internal/release/... ./internal/platform/installation/... ./internal/execution/... ./internal/route/... ./internal/endpoint/session ./internal/endpoint ./internal/endpoint/funding ./internal/endpoint/reader ./internal/endpoint/publisher ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/hosting ./internal/publication/... ./internal/connection/... ./internal/reachability/... ./internal/enrollment/... ./internal/release/... ./internal/platform/... ./internal/execution/... ./internal/route/... ./internal/endpoint/... ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired)$$' -count=1
 
 hosting-check:
@@ -442,8 +441,8 @@ network-signing-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-signing-check requires Linux root and root-controlled native ext4 TMPDIR"; exit 2)
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/state -run '^TestSourceInspectionNative' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/installation/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/installation/request -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/endpoint/plan -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
 
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNative(CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption)$$' -count=1 -v -timeout=3m
 
@@ -454,10 +453,10 @@ network-signing-compile-check:
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-signing.test" ./cmd/ardents-next
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-control-preparation.test" ./cmd/ardents-control
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/platform/installation/systemd
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/platform/installation/infrastructure
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/platform/systemd
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/release/infrastructure
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/network/state
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/platform/installation/request
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/endpoint/plan
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/reachability
 
 .PHONY: descriptor-store-inspection-check

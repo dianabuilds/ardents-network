@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	endpointrelease "github.com/dianabuilds/ardents-network/internal/release/endpoint"
 )
 
 // These portable authentication tests model the selected linux-amd64 bundle,
@@ -49,7 +49,7 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 			}
 		}
 	}()
-	initial, err := installation.AuthenticateInitial(t.Context(), v, bundle, in)
+	initial, err := endpointrelease.AuthenticateInitial(t.Context(), v, bundle, in)
 	if err != nil {
 		_ = v.Close()
 		t.Fatal(err)
@@ -94,7 +94,7 @@ func TestInstallationFreshPairAndCandidateUseGenuineOwners(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accepted, err := installation.AuthenticateCandidate(t.Context(), v, c, candidateInput)
+	accepted, err := endpointrelease.AuthenticateCandidate(t.Context(), v, c, candidateInput)
 	closeErr := v.Close()
 	if err != nil || closeErr != nil {
 		t.Fatalf("retained candidate: %v %v", err, closeErr)
@@ -129,10 +129,10 @@ func TestInstallationSecondTargetRefusalRetainsRealFloors(t *testing.T) {
 					}
 				}
 			}()
-			a, err := installation.AuthenticateInitial(t.Context(), v, bundle, in)
-			want := installation.ErrAuthorization
+			a, err := endpointrelease.AuthenticateInitial(t.Context(), v, bundle, in)
+			want := endpointrelease.ErrAuthorization
 			if scenario == "incoherent-generation" {
-				want = installation.ErrBinding
+				want = endpointrelease.ErrBinding
 			}
 			if !errors.Is(err, want) {
 				_ = v.Close()
@@ -182,7 +182,7 @@ func TestInstallationCandidateCannotBootstrapCompleteTrust(t *testing.T) {
 			t.Error(err)
 		}
 	}()
-	_, err = installation.AuthenticateCandidate(t.Context(), v, c, in)
+	_, err = endpointrelease.AuthenticateCandidate(t.Context(), v, c, in)
 	floors, floorErr := v.CurrentFloors(t.Context())
 	closeErr := v.Close()
 	if !errors.Is(err, release.ErrTrustUnavailable) || floorErr != nil || closeErr != nil || floors.RootVersion != 0 || floors.TargetsVersion != 0 {
@@ -222,7 +222,7 @@ func TestInstallationSnapshotSubstitutionRefusesBeforeTrustFloors(t *testing.T) 
 					t.Error(err)
 				}
 			}()
-			if _, err := installation.AuthenticateInitial(t.Context(), v, bundle, in); !errors.Is(err, installation.ErrBinding) {
+			if _, err := endpointrelease.AuthenticateInitial(t.Context(), v, bundle, in); !errors.Is(err, endpointrelease.ErrBinding) {
 				t.Fatalf("snapshot substitution: %v", err)
 			}
 			floors, err := v.CurrentFloors(t.Context())
@@ -285,7 +285,7 @@ func TestInstallationOriginalCancellationAtPairHandoffRetainsFloors(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := installation.AuthenticateInitial(canceled, v, bundle, in)
+	a, err := endpointrelease.AuthenticateInitial(canceled, v, bundle, in)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("late original cancellation lost: %v", err)
 	}

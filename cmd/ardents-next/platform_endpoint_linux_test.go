@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	requestinput "github.com/dianabuilds/ardents-network/internal/platform/installation/request"
+	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
 )
 
 func endpointDeclFixture() requestinput.Declaration {

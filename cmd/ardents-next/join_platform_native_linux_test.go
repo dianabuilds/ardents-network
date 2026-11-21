@@ -22,8 +22,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	"github.com/dianabuilds/ardents-network/internal/network/duty"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )

@@ -8,7 +8,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 )
 
 type joinReleasePlan struct {
@@ -52,7 +53,7 @@ func validateJoinReleaseResources(plan joinReleasePlan, program, descriptor, tem
 	d, err := infrastructure.ValidateJoinResources(descriptor, program, template)
 	initial := plan.Schema == "ardents-join-initial-release-plan-v1"
 	forward := plan.Schema == "ardents-join-forward-release-plan-v1"
-	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(infrastructure.PlatformUnitTemplate)) {
+	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(systemd.PlatformUnitTemplate)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))

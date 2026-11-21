@@ -188,7 +188,7 @@ distinct infrastructure program and invocation-generation targets. Infrastructur
 admission must consume two fresh coherent opaque authorizations from one frozen
 input; Release retains signature, policy, expiry and floor authority. This
 contract has distinct Source, Forwarding, JOIN and Descriptor pair owners in
-`installation/infrastructure`. Native installation and each role lifecycle retain
+`release/infrastructure`. Native installation and each role lifecycle retain
 separate owners and acceptance scopes; existing Endpoint targets remain unchanged.
 Descriptor initial admission requires its own independently pinned running Node
 program and entirely unborn Release floors. Its candidate reader requires complete
@@ -240,13 +240,11 @@ external trials retain the deliberately killed Root's failure and do not qualify
 the installed Service. The
 complete interruption matrix and installed Service acceptance remain unproven; these consumers do
 not borrow the predecessor runtime or Release history.
-Portable `internal/platform/installation` owns only the fresh coherent pair,
-private initial-pin provenance and immutable inventory. The separate
-`internal/platform/installation/endpoint` owns installed binding, original
-transaction effects and startup/recovery lifetimes. It consumes the pair through
-opaque proofs and copied observations, without access to the private pair fields;
-stored facts remain constraints rather than authorization. Command composition
-calls both owners directly, and native physical Modules retain their mechanisms.
+Portable `internal/release/endpoint` binds the exact program and protected
+generation using fresh coherent Release proofs and original Enrollment
+provenance. `internal/endpoint/launch` consumes those proofs to stage the
+generation and independently checks installed binding and startup. Native
+observations supply physical facts while Release retains trust floors.
 Portable metadata/target/safety rules remain
 distinct from native history mechanisms. The new-domain
 [design](../../internal/release/README.md) preserves the accepted

@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 )
 
 func TestInfrastructureOriginalLoaderAndVerifierSurviveToHandoff(t *testing.T) {

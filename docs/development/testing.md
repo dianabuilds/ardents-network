@@ -3188,7 +3188,7 @@ substituted program/unit/credential, wrong account and foreign manifest pin.
 Joined cleanup removes the account, units, worker instances, trust roots and
 configuration; the test is repeatable (`-count=2`).
 
-Supporting production repair (same change): `installation/endpoint`
+Supporting production repair (same change): `endpoint/launch`
 `createEndpointAccount` allocates a dedicated uid==gid account (the infrastructure
 Source and platform pre-start account contract; `useradd --user-group` previously
 produced uid!=gid that the platform check refuses), and `inspectFixedResources`
@@ -3547,7 +3547,7 @@ These are native read-only observations, not Installation or startup admission.
 ### Original delivery file custody
 
 The checked `network_signing_native` profile selects `TestDeliveryFilesNative*`
-in `installation/request`. Use a separate root/ext4 private preparation stand
+in `endpoint/plan`. Use a separate root/ext4 private preparation stand
 with `/etc/ardents-join-preparation-native-stand` containing exactly
 `ardents-join-preparation-native-v1` plus LF. These controls exercise the shared
 protected delivery-file mechanism: detached byte copies cannot mutate original

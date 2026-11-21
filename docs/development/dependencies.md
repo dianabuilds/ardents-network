@@ -244,7 +244,7 @@ admits only the declared isolated stopped-transition profile.
 
 Reviewed 2026-10-21 before changing the module graph. The Source read-only
 preflight adds a third narrow consumer of the existing private godbus mechanism,
-`installation/systemd/source_preflight_linux.go`. It uses only fixed read-only
+`installation/systemd/source_preflight_linux.go` at that revision. It uses only fixed read-only
 manager/namespace calls on the original root Unix connection, retains its unique
 owner, and joins original I/O and cancellation through Close. Existing bounded
 frame validation remains mandatory; no reconnect, address discovery, FD passing,
@@ -600,13 +600,13 @@ with Go 1.27.1 found no known vulnerability in their scanned package closure.
 These probes are dependency-review evidence, not product binary or integration
 acceptance; the complete owning artifact and repository gates remain required.
 
-Owner: `installation/systemd`, through one private fixed-address connection
+Owner: `platform/systemd`, through one private fixed-address connection
 and the original manager's unique bus identity. No shared singleton, environment
 address discovery, cookie authentication, reconnect, exported object, or Unix
 FD negotiation is selected. Root privileges permit the fixed RefUnit/UnrefUnit
 operation; no credential, permission, plan or artifact bytes enter this client.
-Installation retains generation/protection checks, Release proofs, original
-caller and process quiescence. A unit reference grants no start or readiness.
+Endpoint launch retains generation and protection checks, Release proofs,
+original caller and process quiescence. A unit reference grants no start or readiness.
 
 Source review shows that client Close interrupts the connection but exposes no
 reader join. The owning implementation must therefore bound authentication and

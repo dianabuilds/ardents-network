@@ -13,14 +13,14 @@ import (
 	"runtime"
 	"strconv"
 
+	endpointlaunch "github.com/dianabuilds/ardents-network/internal/endpoint/launch"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/platform/installation"
-	installation "github.com/dianabuilds/ardents-network/internal/platform/installation/endpoint"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
 )
 
 func runPlatformStageEndpoint(ctx context.Context, filename string, out io.Writer) int {
-	request, err := installation.ReadOwnedRequest(ctx, filename, true)
+	request, err := endpointlaunch.ReadOwnedRequest(ctx, filename, true)
 	if err != nil {
 		return reportSoftwareDeliveryFailure(ctx, out, err)
 	}
@@ -48,7 +48,7 @@ func runPlatformStageEndpoint(ctx context.Context, filename string, out io.Write
 	}
 	authorization, err := generationauthorization.AuthenticateInitial(ctx, verifier, bundle, input)
 	if err == nil {
-		err = installation.StagePlatformGeneration(ctx, request, authorization, verifier)
+		err = endpointlaunch.StagePlatformGeneration(ctx, request, authorization, verifier)
 	}
 	if err = errors.Join(err, verifier.Close(), ctx.Err()); err != nil {
 		return reportSoftwareDeliveryFailure(ctx, out, err)
@@ -64,7 +64,7 @@ func runPlatformStageEndpointSuccessor(ctx context.Context, filename, previousMa
 }
 
 func stagePlatformEndpointSuccessor(ctx context.Context, filename, previousManifest string) (returnedErr error) {
-	request, err := installation.ReadOwnedRequest(ctx, filename, false)
+	request, err := endpointlaunch.ReadOwnedRequest(ctx, filename, false)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func stagePlatformEndpointSuccessor(ctx context.Context, filename, previousManif
 		return err
 	}
 	defer func() { returnedErr = errors.Join(returnedErr, verifier.Close(), ctx.Err()) }()
-	return installation.StagePlatformSuccessor(ctx, request, candidate, input, verifier, decl.InstallationRoot,
+	return endpointlaunch.StagePlatformSuccessor(ctx, request, candidate, input, verifier, decl.InstallationRoot,
 		filepath.Join(previous.Distribution, "ardents-linux-amd64"), previousManifest, platformDigest(raw))
 }
 

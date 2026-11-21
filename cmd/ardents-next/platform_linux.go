@@ -18,8 +18,8 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 )
 
 // A launch declaration is operator configuration, not a domain identity or a

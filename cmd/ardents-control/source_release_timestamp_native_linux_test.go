@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 

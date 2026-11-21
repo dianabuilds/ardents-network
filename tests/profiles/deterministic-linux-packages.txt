@@ -1,2 +1,1 @@
-github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure
-github.com/dianabuilds/ardents-network/internal/endpoint
+

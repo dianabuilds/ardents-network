@@ -10,7 +10,7 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 	switch source {
 	case "cmd/ardents-control/descriptor_artifact_linux.go":
 		switch dependency {
-		case "github.com/dianabuilds/ardents-network/internal/enrollment", "github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure":
+		case "github.com/dianabuilds/ardents-network/internal/enrollment", "github.com/dianabuilds/ardents-network/internal/release/infrastructure":
 			return true
 		}
 	case "cmd/ardents-control/descriptor_epoch_plan_linux.go":
@@ -53,17 +53,17 @@ func descriptorStartupImportAllowed(source, dependency string) bool {
 		case "github.com/dianabuilds/ardents-network/internal/admission/issuance":
 			return true
 		}
-	case "internal/platform/installation/infrastructure/descriptor_admission.go":
+	case "internal/release/infrastructure/descriptor_admission.go":
 		switch dependency {
 		case "github.com/dianabuilds/ardents-network/internal/enrollment", "github.com/dianabuilds/ardents-network/internal/release":
 			return true
 		}
-	case "internal/platform/installation/systemd/descriptor_manager_linux.go":
+	case "internal/platform/systemd/descriptor_manager_linux.go":
 		switch dependency {
 		case "github.com/godbus/dbus/v5":
 			return true
 		}
-	case "internal/platform/installation/systemd/manager_reference_linux.go":
+	case "internal/platform/systemd/manager_reference_linux.go":
 		switch dependency {
 		case "github.com/godbus/dbus/v5":
 			return true

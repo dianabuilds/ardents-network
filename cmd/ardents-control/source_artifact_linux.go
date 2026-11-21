@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 )
 
 func runSourceArtifactPreparation(args []string, out io.Writer) error {

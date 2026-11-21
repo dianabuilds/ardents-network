@@ -11,7 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/node"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 

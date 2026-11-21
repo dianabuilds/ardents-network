@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
+	endpointunit "github.com/dianabuilds/ardents-network/internal/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	requestinput "github.com/dianabuilds/ardents-network/internal/platform/installation/request"
-	endpointunit "github.com/dianabuilds/ardents-network/internal/platform/installation/unit"
 	"github.com/dianabuilds/ardents-network/internal/release"
 )
 

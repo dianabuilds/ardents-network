@@ -19,7 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )
 
@@ -28,7 +29,7 @@ func TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 	command, controlBytes := sourceNativePinnedProgram(t, "ARDENTS_DESCRIPTOR_CONTROL_PROGRAM")
 	nextPath, nextBytes := sourceNativePinnedProgram(t, "ARDENTS_DESCRIPTOR_NEXT_PROGRAM")
 	preparedTemplate, err := exec.CommandContext(t.Context(), nextPath, "platform", "template").Output()
-	if err != nil || !bytes.Equal(preparedTemplate, []byte(infrastructure.PlatformUnitTemplate)) {
+	if err != nil || !bytes.Equal(preparedTemplate, []byte(systemd.PlatformUnitTemplate)) {
 		t.Fatal("canonical platform template producer", err)
 	}
 	program, template, descriptor := filepath.Join(parent, "node"), filepath.Join(parent, "template"), filepath.Join(parent, "descriptor")
@@ -37,7 +38,7 @@ func TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 			t.Fatal(err)
 		}
 	}
-	descriptorBytes, err := infrastructure.PrepareDescriptorArtifact("one", 1, nextBytes, []byte(infrastructure.PlatformUnitTemplate))
+	descriptorBytes, err := infrastructure.PrepareDescriptorArtifact("one", 1, nextBytes, []byte(systemd.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +236,7 @@ func TestDescriptorPreparationNativeInitialReleasePurposeAndKeyCustody(t *testin
 	if err := os.WriteFile(program, controlBytes, 0600); err != nil {
 		t.Fatal(err)
 	}
-	badDescriptor, err := infrastructure.PrepareDescriptorArtifact("one", 1, controlBytes, []byte(infrastructure.PlatformUnitTemplate))
+	badDescriptor, err := infrastructure.PrepareDescriptorArtifact("one", 1, controlBytes, []byte(systemd.PlatformUnitTemplate))
 	if err != nil {
 		t.Fatal(err)
 	}

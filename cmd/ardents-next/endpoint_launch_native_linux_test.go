@@ -27,8 +27,8 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
 	"github.com/dianabuilds/ardents-network/internal/network/source"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/cgroup"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 

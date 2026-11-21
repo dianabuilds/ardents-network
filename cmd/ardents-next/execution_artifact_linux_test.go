@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	endpointrelease "github.com/dianabuilds/ardents-network/internal/platform/installation"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	endpointrelease "github.com/dianabuilds/ardents-network/internal/release/endpoint"
 )
 
 // Actual program/worker/unit bytes are necessary for installed startup. This

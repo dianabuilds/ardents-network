@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 )
 
 // Forwarding has a separate closed artifact consumer. The shared native input

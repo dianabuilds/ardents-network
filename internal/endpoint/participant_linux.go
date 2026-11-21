@@ -14,6 +14,7 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
+	endpointlaunch "github.com/dianabuilds/ardents-network/internal/endpoint/launch"
 	endpointpublisher "github.com/dianabuilds/ardents-network/internal/endpoint/publisher"
 	endpointreader "github.com/dianabuilds/ardents-network/internal/endpoint/reader"
 	"github.com/dianabuilds/ardents-network/internal/execution"
@@ -21,7 +22,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/hosting"
 	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
-	installation "github.com/dianabuilds/ardents-network/internal/platform/installation/endpoint"
 )
 
 // ErrUnavailable retains an unsuccessful participant operation separately from
@@ -49,7 +49,7 @@ func Run(ctx context.Context, root string, report func(Progress) error) (phase s
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	startup, err := installation.OpenStartup(ctx, root)
+	startup, err := endpointlaunch.OpenStartup(ctx, root)
 	if err != nil {
 		return phase, errors.Join(ErrUnavailable, err)
 	}

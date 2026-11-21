@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
 
 // Actual canonical programs and real fresh signatures exercise only the offline
@@ -49,7 +49,7 @@ func TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors(t
 	keys := filepath.Join(parent, "keys")
 	call("prepare-release-keys", keys)
 	preparedTemplate, err := exec.CommandContext(t.Context(), program, "platform", "template").Output()
-	if err != nil || !bytes.Equal(preparedTemplate, []byte(infrastructure.PlatformUnitTemplate)) {
+	if err != nil || !bytes.Equal(preparedTemplate, []byte(systemd.PlatformUnitTemplate)) {
 		t.Fatal("canonical platform template producer", err)
 	}
 	template := filepath.Join(parent, "template")

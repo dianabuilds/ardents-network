@@ -149,8 +149,10 @@ distributions and architectures receive no Public Beta compatibility or release 
 The required Public Beta infrastructure reference class is an Ubuntu LTS `x86-64`
 server or VPS with `2 vCPU`, `2 GiB RAM`, and a symmetric `100 Mbit/s` link.
 Each selected role must be useful on that class; it is neither a capacity
-ceiling nor additional trust. macOS and mobile are later targets rather than
-current performance or release promises.
+ceiling nor additional trust. macOS is a required product platform with a
+separate qualification profile to be selected. Mobile remains a later target.
+[ADR-0129](../adr/0129-require-platform-portability.md) defines the platform
+requirements.
 
 The core does not, by default, execute untrusted application code, retain
 application payloads for offline recipients, replicate a site's content, define

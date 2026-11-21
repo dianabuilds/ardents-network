@@ -196,7 +196,7 @@ docker compose -f scripts/diagnostics/compose.yaml --profile online run --rm onl
 diag test -package ./internal/diagnostics/process -run '^Test' \
   -race -out /evidence/process-race-a -timeout 2m
 # One package, explicit pattern; performance profiling is separate from race.
-diag test -package ./internal/platform/installation/systemd -run '^$' -bench '^BenchmarkManagerPropertyMatch$' \
+diag test -package ./internal/platform/systemd -run '^$' -bench '^BenchmarkManagerPropertyMatch$' \
   -profile -raw -out /evidence/unit-policy-profile-a -timeout 5m
 diag analyze -dir /evidence/unit-policy-profile-a
 ```

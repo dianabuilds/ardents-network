@@ -9,7 +9,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 )
 
 type sourceReleasePurpose uint8
@@ -96,7 +97,7 @@ func sourceDeclarationObject(raw []byte, value any, fields ...string) error {
 
 func validateSourceReleaseResources(plan sourceReleasePlan, program, descriptor, template []byte) error {
 	d, err := infrastructure.ValidateResources(descriptor, program, template)
-	if err != nil || (plan.Schema == "ardents-source-initial-release-plan-v1" && d.ReleaseVersion != 1) || !bytes.Equal(template, []byte(infrastructure.PlatformUnitTemplate)) {
+	if err != nil || (plan.Schema == "ardents-source-initial-release-plan-v1" && d.ReleaseVersion != 1) || !bytes.Equal(template, []byte(systemd.PlatformUnitTemplate)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))

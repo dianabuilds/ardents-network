@@ -12,16 +12,15 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
+	requestinput "github.com/dianabuilds/ardents-network/internal/endpoint/plan"
+	endpointunit "github.com/dianabuilds/ardents-network/internal/endpoint/unit"
 	"github.com/dianabuilds/ardents-network/internal/enrollment"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/platform/installation"
-	requestinput "github.com/dianabuilds/ardents-network/internal/platform/installation/request"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
-	endpointunit "github.com/dianabuilds/ardents-network/internal/platform/installation/unit"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 	"github.com/dianabuilds/ardents-network/internal/release"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/release/endpoint"
 )
 
 // validEndpointPlatformLaunch admits the protected text Endpoint declaration shape.
@@ -74,45 +73,19 @@ func platformEndpointDeclaration(raw []byte) (requestinput.Declaration, error) {
 	return decl, nil
 }
 
-// platformEndpointRoots mirrors the fixed Endpoint write allowance: the mutable
-// semantic roots plus the socket/permission parent directories. A writable parent
-// must not enclose immutable artifacts or retained trust. It selects no root.
+// platformEndpointRoots checks that the Endpoint write allowances can be
+// rendered as literal path arguments by the installed platform unit.
 func platformEndpointRoots(decl requestinput.Declaration) ([]string, error) {
-	paths := requestinput.MutableRoots(decl.Headless)
-	for _, file := range []string{
-		decl.Headless.ApplicationSocket,
-		decl.Headless.ReaderPermission.RequestPath,
-		decl.Headless.ReaderPermission.ResponsePath,
-	} {
-		paths = append(paths, path.Dir(file))
-	}
-	if decl.Headless.Role == "" {
-		for _, file := range []string{
-			decl.Headless.AdministrationSocket,
-			decl.Headless.PublisherPermission.RequestPath,
-			decl.Headless.PublisherPermission.ResponsePath,
-		} {
-			paths = append(paths, path.Dir(file))
-		}
+	paths, err := requestinput.WritableDirectories(decl)
+	if err != nil {
+		return nil, errPlatformInput
 	}
 	for _, writable := range paths {
-		if !platformPath(writable) || writable == "/" {
+		if !platformPath(writable) {
 			return nil, errPlatformInput
 		}
-		for _, immutable := range []string{decl.BundleRoot, decl.InstallationRoot, decl.ReleaseFloorRoot} {
-			if pathsOverlapPlatform(writable, immutable) {
-				return nil, errPlatformInput
-			}
-		}
 	}
-	sort.Strings(paths)
-	distinct := make([]string, 0, len(paths))
-	for _, writable := range paths {
-		if len(distinct) == 0 || writable != distinct[len(distinct)-1] {
-			distinct = append(distinct, writable)
-		}
-	}
-	return distinct, nil
+	return paths, nil
 }
 
 // platformEndpointInputs binds the Source credential pair exactly; both remain

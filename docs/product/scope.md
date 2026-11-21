@@ -32,8 +32,13 @@ The existing native installation code is transitional implementation. Removing
 it requires equivalent ownership of necessary authorization, configuration,
 predecessor completion and failure guarantees; neither source moves nor unit
 tests qualify a platform replacement. Existing data and floors are preserved.
-Linux, macOS and Windows are product directions, not a claim of qualified native
-runtime support on each platform.
+
+Windows, Ubuntu and macOS are mandatory product targets. The product contract
+and every behavior that can be implemented portably are shared across them.
+Platform-specific code is reserved for required host operations or guarantees
+that cannot be supplied portably. The C0 qualification profile below covers
+the selected Ubuntu LTS `x86-64` candidate.
+[ADR-0129](../adr/0129-require-platform-portability.md) owns the portability decision.
 
 Status: **current C0 candidate contract.** This document names the maintained
 product surfaces that may enter the next architecture and security audit. It is
@@ -190,25 +195,14 @@ resource; cancellation or timeout; and closed Service Connection. A lower
 level diagnostic may add detail but cannot silently reinterpret one of these
 classes as success or fallback.
 
-The generic `ardents endpoint open` route is selected for retirement rather
-than translation to AAI3. There is no current product consumer for its
-arbitrary binary file-to-file workload. The protected text reader is a distinct
-typed Application with a fixed workload and confinement contract; it is not a
-generic successor. The retirement transition refuses the recognized command
-before opening either input or output path, dialing its local socket, or
-starting Endpoint or Network work. The accepting file client has been removed;
-the uncalled AAI2 codec/server/client and exclusive Endpoint adapter have also
-been removed. AAI2 supplies no C0 readiness or compatibility surface. The
-per-user Portable enrollment route (`endpoint enroll`/`enroll-installed`) is
-retired under ADR-0125 (#617 S3.5) in favor of the platform-led protected
-system-unit delivery; it returns a typed refusal before input or root effects.
-The read-only `endpoint enrollment-check` diagnostic remains: it receives only
-the bundle root and an independently delivered manifest SHA-256 pin, verifies
-that pin before parsing the manifest through the successor enrollment verifier,
-and derives the remaining enrollment facts from its bound `RELEASE` descriptor.
-The historical persisted `alpha-enrollment.json` document form is retired and
-refuses before any file read (ADR-0127). This does not bypass Endpoint-owned
-Resolution, Route, or authority boundaries.
+The generic AAI2 Endpoint Connection route and the per-user Portable
+enrollment commands were removed with the old CLI. The protected text
+Application has its own fixed workload and confinement contract. Endpoint
+delivery uses the protected platform unit (ADR-0125). The read-only
+`ardents-next enrollment verify` operation checks the manifest against the
+independent pin before parsing its enrollment facts. The historical persisted
+`alpha-enrollment.json` form was retired by ADR-0127. Enrollment verification
+grants no Resolution or Route authority.
 
 The selected Endpoint startup transition retires acceptance of
 `ardents-headless-runtime-v1` rather than converting it into the protected v2

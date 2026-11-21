@@ -13,8 +13,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/cgroup"
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/cgroup"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
 )
 
 // RepairRetainedJoinProducer explicitly abandons a dead platform JOIN's sole

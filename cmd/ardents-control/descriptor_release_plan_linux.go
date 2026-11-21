@@ -8,7 +8,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/platform/systemd"
+	"github.com/dianabuilds/ardents-network/internal/release/infrastructure"
 )
 
 type descriptorReleasePlan struct {
@@ -52,7 +53,7 @@ func validateDescriptorReleaseResources(plan descriptorReleasePlan, program, des
 	d, err := infrastructure.ValidateDescriptorResources(descriptor, program, template)
 	initial := plan.Schema == "ardents-descriptor-initial-release-plan-v1"
 	forward := plan.Schema == "ardents-descriptor-forward-release-plan-v1"
-	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(infrastructure.PlatformUnitTemplate)) {
+	if err != nil || !initial && !forward || initial && d.ReleaseVersion != 1 || forward && d.ReleaseVersion <= 1 || !bytes.Equal(template, []byte(systemd.PlatformUnitTemplate)) {
 		return errors.Join(errSourceControlInput, err)
 	}
 	info, err := buildinfo.Read(bytes.NewReader(program))
