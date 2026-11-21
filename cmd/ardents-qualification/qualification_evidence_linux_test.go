@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
-	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
 func TestQualificationNodeResultsRequireEveryBoundedRouteOwner(t *testing.T) {
@@ -165,7 +164,7 @@ func qualificationOwnerSliceInputs() []ownerSliceResultInput {
 func qualificationNodeInputs(t *testing.T, ids []string) []nodeResultInput {
 	t.Helper()
 	origin := time.Unix(1000, 0).UTC()
-	policy := hostingbudget.Policy{Provider: "provider", Start: origin.Add(-time.Hour), End: origin.Add(time.Hour), Unit: "byte", Quantity: 1 << 40, Directions: "tx+rx", Interfaces: []string{"eth0"}, LowWatermarkBytes: 1}
+	policy := recordedHostingPolicy{Provider: "provider", Start: origin.Add(-time.Hour), End: origin.Add(time.Hour), Unit: "byte", Quantity: 1 << 40, Directions: "tx+rx", Interfaces: []string{"eth0"}, LowWatermarkBytes: 1}
 	inputs := make([]nodeResultInput, 0, len(ids))
 	for index, id := range ids {
 		host := "publisher"
@@ -178,7 +177,7 @@ func qualificationNodeInputs(t *testing.T, ids []string) []nodeResultInput {
 		input.Journal = append(input.Journal, string(ready))
 		for second := 0; second < 598; second++ {
 			at := origin.Add(time.Duration(second) * time.Second)
-			hosting := hostingbudget.Sample{At: at, Policy: policy, Observation: hostingbudget.Observation{UsedBytes: uint64(second)}}
+			hosting := recordedHostingSample{At: at, Policy: policy, Observation: recordedHostingObservation{UsedBytes: uint64(second)}}
 			event, _ := json.Marshal(recordedNodeEvent{Schema: "ardents-node-event-v1", Kind: "resource-sample", State: "OBSERVED", At: at, Resource: &recordedProcessSample{MemoryBytes: memory, RSSBytes: memory}, Hosting: &hosting})
 			input.Journal = append(input.Journal, string(event))
 			input.Samples = append(input.Samples, nodeOwnerSampleInput{MonotonicNS: uint64(second+1) * uint64(time.Second), At: at, MemoryCurrent: memory, CPUUsageNSec: uint64(second) * 10_000_000, IPIngressBytes: uint64(second) * 1000, IPEgressBytes: uint64(second) * 2000})
