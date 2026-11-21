@@ -16,29 +16,19 @@ func (run *publisherRun) Withdraw(ctx context.Context) error {
 		return errors.New("text publication withdrawal unavailable")
 	}
 	if ctx == nil || ctx.Err() != nil {
-		run.owner.reportWithdrawalFailure("caller-context")
 		return errors.New("text publication withdrawal unavailable")
 	}
 	run.mu.Lock()
 	if run.ending || run.withdrawDone != nil {
 		run.mu.Unlock()
-		run.owner.reportWithdrawalFailure("publisher-ended")
 		return errors.New("text publication already ending")
 	}
 	owner := run.owner
 	owner.mu.Lock()
-	failure := ""
-	if owner.publication.pair.DrainingLocked() {
-		failure = "publication-draining"
-	} else if owner.publication.pair.CurrentLocked() == nil {
-		failure = "registration-absent"
-	} else if !owner.liveLocked(owner.endpoint, owner.surface) {
-		failure = "publisher-not-live"
-	}
-	if failure != "" {
+	if owner.publication.pair.DrainingLocked() || owner.publication.pair.CurrentLocked() == nil ||
+		!owner.liveLocked(owner.endpoint, owner.surface) {
 		owner.mu.Unlock()
 		run.mu.Unlock()
-		owner.reportWithdrawalFailure(failure)
 		return errors.New("text publication withdrawal owner unavailable")
 	}
 	bounded, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -63,14 +53,5 @@ func (run *publisherRun) Withdraw(ctx context.Context) error {
 	}
 	boundedErr := bounded.Err()
 	cancel()
-	if withdrawalErr != nil {
-		owner.reportWithdrawalFailure("registration")
-	}
-	if run.err != nil {
-		owner.reportWithdrawalFailure("publisher-drain")
-	}
-	if boundedErr != nil {
-		owner.reportWithdrawalFailure("deadline")
-	}
 	return errors.Join(withdrawalErr, run.err, boundedErr)
 }

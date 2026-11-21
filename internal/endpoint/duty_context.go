@@ -50,17 +50,6 @@ func (owner *dutyContext) reportOperationFailure(failure string) {
 	}
 }
 
-// reportWithdrawalFailure exposes one fixed local operational category.
-// It never serializes a wrapped error, peer, route, document, or authority.
-func (owner *dutyContext) reportWithdrawalFailure(failure string) {
-	owner.mu.Lock()
-	report := owner.publication.withdrawalFailure
-	owner.mu.Unlock()
-	if report != nil {
-		report(failure)
-	}
-}
-
 // beginDutyContext consumes existing local authority before any worker launch
 // or destination-dependent effect. Caller-supplied identifiers cannot create
 // a context or change a Connection authorization into a Publisher role.

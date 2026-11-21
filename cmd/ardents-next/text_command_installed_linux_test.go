@@ -168,6 +168,9 @@ func runInstalledTextCommandsThroughJoinedNetwork(t *testing.T, snapshot []byte,
 	if _, err := administration.RequestPublishedLink(ctx, publishSocket); err == nil {
 		t.Fatal("retired Publisher retained a current Link")
 	}
+	if outcome, err := administration.Request(ctx, publishSocket, administration.Withdraw); outcome != "" || err == nil || err.Error() != "local Service Administration request failed" {
+		t.Fatalf("repeated withdrawal must refuse through Administration: %q, %v", outcome, err)
+	}
 }
 
 func awaitInstalledTextCommandRefresh(t *testing.T, ctx context.Context, store *reachability.Store, target [32]byte, f *networkAdmissionFixture) {

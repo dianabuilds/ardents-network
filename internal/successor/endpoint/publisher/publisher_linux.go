@@ -247,7 +247,7 @@ func (owner *Publisher) Withdraw(caller context.Context) (result error) {
 	owner.busy = true
 	owner.mu.Unlock()
 	if active == nil {
-		return errors.Join(request.Check(), caller.Err(), owner.ctx.Err(), owner.check())
+		return errors.Join(errors.New("installed Publication is unavailable"), request.Check(), caller.Err(), owner.ctx.Err(), owner.check())
 	}
 	active.retiring.Store(true)
 	return errors.Join(active.handle.owner.Withdraw(request.Context()), active.Close(), request.Check(), caller.Err(), owner.ctx.Err(), owner.check())

@@ -651,15 +651,6 @@
       },
       {
         "symbols": [
-          "internal/endpoint.dutyContext.openAdministration"
-        ],
-        "classification": "legacy Administration adapter behavior tests",
-        "rationale": "The legacy Administration adapter retains its separate authority, publication cancellation and link tests. Its retired headless runtime caller was removed (#564).",
-        "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
-        "retirement": "Remove each exact symbol when the gated legacy cohort removal retires its owning Module, or when a selected genuine production caller reaches it on linux-amd64."
-      },
-      {
-        "symbols": [
           "internal/successor/route/selection.openInteriorStore"
         ],
         "classification": "retained interior opening seam (linux-only production-dead)",

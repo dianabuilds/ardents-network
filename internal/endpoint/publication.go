@@ -9,8 +9,8 @@ import (
 
 // publicationOwner is the single local owner of one context's publication
 // state: the Registration pair lifecycle, the refresh scheduler identity, the
-// installed Publisher startup/drain barriers, and the two fixed failure
-// reporting callbacks. Like every Context owner, the pair state carries no
+// installed Publisher startup/drain barriers, and the fixed refresh
+// failure reporting callback. Like every Context owner, the pair state carries no
 // mutex of its own: its ...Locked methods run under dutyContext.mu. Only the
 // refresh lifecycle keeps a private mutex for scheduler identity, which now
 // lives in the publication subpackage.
@@ -20,12 +20,11 @@ import (
 // without a package-name collision; the dutyContextState field stays
 // `publication`, so every owner.publication selector is unchanged.
 type publicationOwner struct {
-	pair              introduction.PairLifecycle
-	refresh           publication.RefreshLifecycle
-	starting          bool
-	drain             chan struct{}
-	refreshFailure    func(string)
-	withdrawalFailure func(string)
+	pair           introduction.PairLifecycle
+	refresh        publication.RefreshLifecycle
+	starting       bool
+	drain          chan struct{}
+	refreshFailure func(string)
 }
 
 // beginStartLocked claims the startup barrier for one installed Publisher run.

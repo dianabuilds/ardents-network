@@ -26,21 +26,6 @@ type publisherRun struct {
 	err          error
 }
 
-// startPublisher performs installed qualification before any registration
-// or Descriptor effect. The separately authorized context must already hold
-// its genuine offline permission; a snapshot cannot supply that authority.
-func (owner *dutyContext) startPublisher(ctx context.Context, snapshot []byte) (*publisherRun, error) {
-	worker, err := owner.launchWorker(ctx, snapshot)
-	if err != nil {
-		return nil, err
-	}
-	run, err := worker.startPublication(ctx)
-	if err != nil {
-		return nil, errors.Join(err, worker.Close(), owner.Close())
-	}
-	return run, nil
-}
-
 func (worker *qualifiedWorker) startPublication(ctx context.Context) (_ *publisherRun, resultErr error) {
 	if worker == nil || worker.job == nil || ctx == nil || ctx.Err() != nil {
 		return nil, errors.New("text Publisher startup unavailable")
