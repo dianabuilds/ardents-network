@@ -13,6 +13,6 @@
 // current State and verifies selected-profile tokens; hosting bounds shared
 // reservations and class-2 reserve-before-spend policy. The outer child owns
 // one accepted Carrier's inner lanes, writer and joined cleanup. Hosting owns
-// reservation policy for all admitted classes; lifecycle_event.go publishes
-// observations through platform writers. Retired native duties remain unavailable.
+// reservation policy for all admitted classes; lifecycle_event.go declares
+// observations used by the retained lifecycle fixtures.
 package node

@@ -272,7 +272,6 @@
       },
       {
         "symbols": [
-          "internal/node.EventEmitter",
           "internal/node.Run",
           "internal/node.assessAdmission",
           "internal/node.boundedReason",
@@ -320,7 +319,6 @@
           "internal/node.validateClosedResolutionProfile",
           "internal/node.withdraw",
           "internal/node.withdrawForResourcePressure",
-          "internal/node.writeEvent",
           "internal/node/authority.ProfileMatchesSnapshot",
           "internal/node/authority.Source.PeerCurrent",
           "internal/node/authority.Source.Receiver",
@@ -2260,7 +2258,6 @@
       },
       {
         "symbols": [
-          "internal/node.EventEmitter",
           "internal/node.assessAdmission",
           "internal/node.boundedReason",
           "internal/node.closedListenAddress",
@@ -2306,7 +2303,6 @@
           "internal/node.validateClosedResolutionProfile",
           "internal/node.withdraw",
           "internal/node.withdrawForResourcePressure",
-          "internal/node.writeEvent",
           "internal/node/authority.ProfileMatchesSnapshot",
           "internal/node/authority.Source.PeerCurrent",
           "internal/node/authority.Source.Receiver",

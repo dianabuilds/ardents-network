@@ -682,16 +682,11 @@ implementation descriptions below cover the selected TCP/TLS release. Mandatory 
 or canonical artifact requires new affected evidence; exclusion is not QUIC
 security qualification or permission to change other protection parameters.
 
-Node's `event_writer_linux_test.go` exercises the actual lifecycle writer on
-saturated pipes and Unix stream sockets: finite deadline, cancellation, exact
-2048-byte line delivery after drain, partial-offset continuation and retained
-closed-peer write errors. The partial-write mechanism fixture deliberately
-exceeds the emitter's line bound to force a positive partial socket write;
-it does not expand the public event grammar. Tests own and join all fixture
-actors. The Linux command emitter regression preserves
-the prior diagnostic on failed output and checks exact wire/diagnostic bytes
-after drain. These tests run in the existing deterministic and race profiles;
-they supply no installed Node or systemd qualification.
+The predecessor Node file writer and its pipe and socket tests have been
+retired. Lifecycle fixtures still observe events through their supplied
+callbacks. The qualification reader and diagnostic timeline tests exercise
+the retained `ardents-node-event-v1` journal input, including bounded Node
+evidence and refusal of malformed records.
 
 Deferred-QUIC refusal controls exercise the retained factories and genuine new
 signed State, selection, Receiver and Stock. They require the unsupported
