@@ -30,7 +30,8 @@ after original physical join. Any other connection or datagram fails, and all
 listener goroutines join before the final no-contact assertion. The host file
 is world-readable so ordinary UID permissions cannot supply its denial oracle.
 Original kernel cgroup event and proc-directory descriptors separately observe
-actual cleanup. Both local surfaces must retire their exact operation and
+actual cleanup. The manager must then collect the original worker unit.
+Both local surfaces must retire their exact operation and
 retain completed-current provenance without retaining byte effects.
 
 An ordinary worker can pass readiness without performing these probes; it is

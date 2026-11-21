@@ -40,7 +40,7 @@ func TestInteriorBorrowRefusesWithoutChangingRetainedRoot(t *testing.T) {
 				if scenario == "wrong-domain" {
 					domain = 4
 				}
-				owner, err := openInteriorStore(root, [32]byte{networkID}, domain)
+				owner, err := openInteriorStoreMode(root, [32]byte{networkID}, domain, closedSetEither)
 				if err != nil {
 					t.Fatal(err)
 				}

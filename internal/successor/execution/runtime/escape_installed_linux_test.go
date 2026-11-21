@@ -8,8 +8,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"strconv"
-	"syscall"
 	"testing"
 	"time"
 
@@ -56,42 +54,7 @@ func TestInstalledExecutionEscapeMatrix(t *testing.T) {
 			if err != nil || operation.Check() != nil {
 				t.Fatalf("qualified escape operation unavailable: %v", err)
 			}
-			// Retain original kernel/proc descriptors independently of runtime
-			// cleanup. Pathname disappearance or manager MainPID=0 is no join.
-			group, err := os.OpenRoot("/sys/fs/cgroup" + invocation.activation.Instance.Cgroup)
-			if err != nil {
-				t.Fatal(err)
-			}
-			events, openErr := group.Open("cgroup.events")
-			if err := errors.Join(openErr, group.Close()); err != nil {
-				if events != nil {
-					_ = events.Close()
-				}
-				t.Fatal(err)
-			}
-			observer := &hostileExecutionTree{events: events}
-			t.Cleanup(func() {
-				for _, process := range observer.processes {
-					if err := process.Close(); err != nil {
-						t.Error(err)
-					}
-				}
-				if err := events.Close(); err != nil {
-					t.Error(err)
-				}
-			})
-			var filesystem syscall.Statfs_t
-			if syscall.Fstatfs(int(events.Fd()), &filesystem) != nil || filesystem.Type != 0x63677270 {
-				t.Fatal("escape observer is not an original kernel cgroup-v2 descriptor")
-			}
-			process, err := os.Open("/proc/" + strconv.FormatUint(uint64(invocation.activation.Instance.PID), 10))
-			if err != nil {
-				t.Fatal(err)
-			}
-			observer.processes = append(observer.processes, process)
-			if gone, populated, err := observer.observe(); err != nil || gone || !populated {
-				t.Fatalf("escape scope positive control unavailable: %v", err)
-			}
+			observer := pinInstalledExecutionWorker(t, invocation.activation.Instance)
 			operation.Close()
 			if err := invocation.Close(); err != nil {
 				t.Fatal(err)
@@ -100,6 +63,7 @@ func TestInstalledExecutionEscapeMatrix(t *testing.T) {
 			if !invocation.CompletedCurrent() || operation.Check() == nil {
 				t.Fatal("joined escape operation retained effects or lost exact completion")
 			}
+			requireInstalledExecutionUnitCollected(t, ctx, invocation.activation.Instance.Name)
 			probes.requireControls(t)
 			probes.requireNoContact(t)
 		})

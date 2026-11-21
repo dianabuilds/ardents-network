@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"sort"
 	"strings"
@@ -226,28 +225,28 @@ func sourceContainsIdentifier(root, directory, name, identifier string) (string,
 
 func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 	root := repositoryRoot(t)
-	retiredConnection := "github.com/dianabuilds/ardents-network/internal/application/interfacev1/connection"
-	if listedDirectImports(t, root, "./cmd/ardents")[retiredConnection] {
+	if listedDirectImports(t, root, "./cmd/ardents")[retiredAAI2ConnectionPath] {
 		t.Error("./cmd/ardents directly imports the retired generic AAI2 Connection client")
 	}
-	selectedConnection := "github.com/dianabuilds/ardents-network/internal/application/connection"
-	selectedAdapters := []string{"./cmd/ardents-text"}
-	if runtime.GOOS == "linux" {
-		selectedAdapters = append(selectedAdapters, "./internal/endpoint")
+
+	connection := ardentsModulePath + "/internal/application/connection"
+	administration := ardentsModulePath + "/internal/application/administration"
+	if !listedDependencies(t, root, "./cmd/ardents-text")[connection] {
+		t.Error("./cmd/ardents-text does not use the selected protected text Connection Module")
 	}
-	for _, packagePath := range selectedAdapters {
-		if !listedDependencies(t, root, packagePath)[selectedConnection] {
-			t.Errorf("%s does not use the selected protected text Connection Module", packagePath)
-		}
+	if !listedDependencies(t, root, "./cmd/ardents")[administration] {
+		t.Error("./cmd/ardents does not use the shared Application Administration Module")
 	}
-	administration := "github.com/dianabuilds/ardents-network/internal/application/administration"
-	administrationAdapters := []string{"./cmd/ardents"}
-	if runtime.GOOS == "linux" {
-		administrationAdapters = append(administrationAdapters, "./internal/endpoint")
-	}
-	for _, packagePath := range administrationAdapters {
-		if !listedDependencies(t, root, packagePath)[administration] {
-			t.Errorf("%s does not use the shared Application Administration Module", packagePath)
+
+	// Inspect the installed server closure even when the test runs on macOS or Windows.
+	t.Setenv("GOOS", "linux")
+	t.Setenv("GOARCH", "amd64")
+	t.Setenv("CGO_ENABLED", "0")
+	const endpoint = "./internal/successor/endpoint"
+	dependencies := listedDependencies(t, root, endpoint)
+	for _, seam := range []string{connection, administration} {
+		if !dependencies[seam] {
+			t.Errorf("%s does not use the selected Application Module %s", endpoint, seam)
 		}
 	}
 }

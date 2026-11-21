@@ -714,16 +714,11 @@ implementation descriptions below cover the selected TCP/TLS release. Mandatory 
 or canonical artifact requires new affected evidence; exclusion is not QUIC
 security qualification or permission to change other protection parameters.
 
-Node's `event_writer_linux_test.go` exercises the actual lifecycle writer on
-saturated pipes and Unix stream sockets: finite deadline, cancellation, exact
-2048-byte line delivery after drain, partial-offset continuation and retained
-closed-peer write errors. The partial-write mechanism fixture deliberately
-exceeds the emitter's line bound to force a positive partial socket write;
-it does not expand the public event grammar. Tests own and join all fixture
-actors. The Linux command emitter regression preserves
-the prior diagnostic on failed output and checks exact wire/diagnostic bytes
-after drain. These tests run in the existing deterministic and race profiles;
-they supply no installed Node or systemd qualification.
+The predecessor Node file writer and its pipe and socket tests have been
+retired. Lifecycle fixtures still observe events through their supplied
+callbacks. The qualification reader and diagnostic timeline tests exercise
+the retained `ardents-node-event-v1` journal input, including bounded Node
+evidence and refusal of malformed records.
 
 Deferred-QUIC refusal controls exercise the retained factories and genuine new
 signed State, selection, Receiver and Stock. They require the unsupported
@@ -1013,6 +1008,22 @@ SubmissionRefusal status1 while both original Streams remain live; only releasin
 the actual ACK permits refresh and subsequent recovery. A causal exterior
 control admitting the pending pair before ACK must fail this refusal oracle.
 This does not establish two installed Endpoint acceptance.
+
+`make connection-request-recovery-check` selects
+`TestInstalledConnectionAcceptedRequestRecoveryTCP`. Before starting the
+Route, the driver verifies the independent pins for the installed
+`ardents-next` and `ardents-custody` executables. The original Endpoint unit
+receives the same pins in `ARDENTS_RECOVERY_INSTANCE_SHA256` and
+`ARDENTS_RECOVERY_CUSTODY_SHA256`. The commands issue a Credential through a
+real no-echo terminal and accept it on the original Instance. The profile interrupts
+the live original TCP/TLS Rendezvous at the first response write from the
+confined Publisher, after the exact 512-byte request and EOF. It checks one
+fresh JOIN pair against genuine receiving admission, the exact 65,523-byte
+document, independent Publisher terminal settlement, and joined original
+Reader and Publisher workers within five seconds of the fault. The Rendezvous
+releases its Hosting reservations at both joins. Pinned original cgroups and
+systemd unit collection are checked independently. This is a single component
+episode.
 
 `make connection-stream-check` selects `TestInstalledConnectionStreamTCP`
 from the independently pinned tagged command test binary at
@@ -1860,10 +1871,8 @@ selected Carriers.
   the same owned source is represented as a Git repository or as a VCS-free
   extraction.
 - `make check` runs unit, process, race, command build, formatting,
-  Staticcheck, and vulnerability checks. On Linux it also runs the bounded
-  two-host qualification fixture command tests through `fixture-network-test`;
-  invoking that target elsewhere fails with an invalid environment. This is
-  the pre-integration gate. Pull request CI uses `scripts/select-pr-checks.go`
+  Staticcheck, and vulnerability checks. On Linux it also runs the Ubuntu
+  package installation check. This is the pre-integration gate. Pull request CI uses `scripts/select-pr-checks.go`
   to run the changed Go owners,
   their imported consumers, and explicitly registered non-Go fixture owners;
   affected valid Fuzz declarations execute their deterministic seed corpus through
@@ -1940,17 +1949,18 @@ These reservations do not qualify installed networking or systemd/cgroup use.
   timeout. This keeps the race-instrumented Linux Endpoint's cryptographic
   fixtures inside the checked profile without inheriting Go's shorter default;
   exceeding the bound remains a failure with the runtime's goroutine dump.
+- `make heapdump-capture` and `make heapdump-role-map` read existing
+  receipt-bound files through the process diagnostics package. For a receipt
+  bound to a retired source revision, give `ARDENTS_HEAPDUMP_SOURCE_ROOT` the
+  absolute directory of an independently retained source archive. The verifiers
+  still compare every recorded source digest and keep the report formats tied
+  to the original capture. These reports are point-in-time observations.
 - `make text-role-durable-state-capture` runs the Linux-only isolated Role
   publication/lookup/withdrawal observation. It requires
   `ARDENTS_TEXT_ROLE_OBSERVATIONS` to name a writable capture directory outside
   Git; the test writes secret-bearing raw observations there and retains them
   locally. A non-Linux host or missing capture directory is an invalid profile,
   not a passing skip.
-- The installed `text-command-network` runner can retain its complete raw
-  output in an explicitly supplied owner-private directory outside Git. It
-  prints the file path before the long-running test and keeps failures and
-  timeouts for diagnosis; the caller retains candidate and host inventories
-  separately.
 - `make fuzz` mutation-fuzzes the selected State target for a bounded
   30 seconds. State owns canonical Epoch/Node Record framing and checks
   successful parser digest/key/raw invariants. The command fails if the named
@@ -2192,16 +2202,14 @@ reviewed grammar group. Current closed TCP/TLS tests prove exact peer
 rejection, cancellation before handshake, caller-owned lifetime after a
 completed handshake, and unchanged Carrier profile bounds.
 
-Removing the old cross-platform Rendezvous listener once exposed the shared
-server-side Carrier and admission closure as production-dead. The current
-analysis reaches it through the composed `ardents-node node --config` command,
-and ADR-0101 resolved the last two Node entries that still carried the stale
-"no selected C0 command" claim: the `dutyFacts` DutyView test-seam projection
-moved into test scope and the unimplemented local admission-timeout helpers
-were retired, so `internal/node` holds no common deadcode allowance.
-ADR-0104 subsequently replaced the getter seam itself with one copied
-`state.NodeDuty` value, deleting the test-scope projection along with the
-Interface it satisfied.
+After the old cross-platform Rendezvous listener was removed, the generic
+Node command still reached the closed server-side Carrier and admission
+closure. ADR-0101 retired unused admission-timeout helpers and moved the
+DutyView projection into test scope. ADR-0104 then replaced that getter with
+one copied `state.NodeDuty` value. The generic Node command is now retired
+(#562). The deadcode registry classifies the predecessor Node functions by
+their remaining platform-specific test consumers. Current accepting Node
+coverage belongs to the successor role and lifecycle profiles.
 Additional shared framing leaves are unreachable only in the Windows
 projection and remain in its platform allowance because Linux production
 still has retained Route consumers. That allowance does not permit removing
@@ -2582,45 +2590,35 @@ The maintained local profiles are:
   its last source revision is retained in Git as `6ac9cba0856a7a0b92f2e8a4e11b246625f6716d`;
   current enrolled-bundle and retired-route refusal regressions stay with
   `headless-evidence` and its owned package tests;
-- `text-worker-network`, the installed confined worker/network composition invoked
-  by `make text-worker-network-check`; requires all four TCP document and elapsed-refresh cases,
-  exact invocation evidence and terminal service success. State and authority setup
-  remain explicit fixtures; ordinary command and full host qualification are separate.
-- `text-worker-recovery`, the installed confined-worker recovery smoke invoked by
-  `make text-worker-recovery-check`; it interrupts one accepted request over each
-  Carrier, requires one fresh matching Route and joined worker/Grant/cgroup cleanup.
-  Its two episodes do not establish NET-14 percentiles, impairment, directional
-  byte/bitrate accounting, P10 restart safety or complete Route Qualification.
-- `text-command-network`, the separately pinned installed ordinary-command journey
-  invoked by `make text-command-network-check`; it exercises the real `ardents`,
-  `ardents-custody`, `ardents-node` and `ardents-text` candidate binaries through
-  TCP/TLS, with exact empty, 64 KiB and 4 MiB command cases. It supplies
-  journey evidence with each Node's separate systemd scope and actual single-
-  process membership verified at READY, joined empty-scope cleanup, and no
-  observed topology loss of READY before completion. Orchestrator commands
-  remain outside Node pressure owners. This is not continuous-duty evidence.
-  It does not qualify full host, privacy, hostile-network or p95 behavior.
-
+- `text-worker-network`, invoked by `make text-worker-network-check`, exercises
+  genuine installed `ardents-text publish`, `link` and `read` against successor
+  Reader and Publisher on one installed Endpoint. It requires empty, 64 KiB and
+  4 MiB documents and a fresh read after elapsed refresh and predecessor refusal.
+  Each case obtains the Service Credential through pinned `ardents-next` and
+  `ardents-custody` commands. Network provisioning uses the signed fixture.
+  `publication-timing` checks the original creation and ACK timing brackets;
+  the Instance owner tests retain joined recipient key erasure coverage.
 - `text-worker-policy`, the root-driven installed authorization matrix invoked
   by `make text-worker-policy-check`; it does not qualify the complete host.
-- `text-worker-lifecycle`, the separately selected installed Endpoint launch/Grant/
-  cgroup profile invoked by `make text-worker-lifecycle-check`; its tagged test binary
-  and exact temporary unit must be independently pinned. No-tests success is
-  refused; this profile does not replace hostile-worker or Service journey tests.
+- `text-worker-lifecycle`, invoked by `make text-worker-lifecycle-check`, selects
+  `TestInstalledExecutionRepeatedLaunch`. It requires twelve original qualified
+  launches per Text surface, actual cgroup/process join and collection of each
+  worker unit. The driver pins the current runtime binary and temporary unit and
+  requires all twenty-four exact launch receipts.
 - the fixed stream-qualification worker's deterministic scheduled-byte corpus is
   checked locally for all 256 byte values (including NUL and invalid UTF-8), exact
   verification across unequal fragment boundaries, wrong-offset/corrupted-byte
   refusal and a workload-verdict failure after one-byte truncation. This is
   binary-corpus conformance for the pinned laboratory caller, not an installed
   profile result or support for arbitrary Applications.
-- `text-worker-tree`, the separately pinned installed hostile child/grandchild cleanup
-  profile invoked by `make text-worker-tree-check`; it requires both role receipts,
-  original-cgroup cleanup and independent Publisher sibling snapshot progress. It
-  does not replace the escape matrix, protected Route admission or full host
-  qualification.
-- `text-worker-escape`, the separately pinned installed P6/P7 escape matrix invoked
-  by `make text-worker-escape-check`; it tests hostile worker access attempts under
-  the effective selected unit policy and does not establish whole-host qualification.
+- `execution-tree`, invoked by `make execution-tree-check`, observes original
+  hostile worker descendants and joined cleanup across both local surfaces.
+  It requires independent Publisher snapshot progress after victim retirement,
+  manager cleanup after original EOF and subsequent unit collection.
+- `execution-escape`, invoked by `make execution-escape-check`, runs the separately
+  pinned installed P6/P7 escape matrix through the current Execution owner on both
+  local surfaces. The fixture records independent host listeners, effective unit
+  policy and joined original cleanup.
 
 Profile, target, directory, build-tag, environment-variable, and test names use
 domain language. Historical wire, persisted, release, and artifact identities
@@ -2633,9 +2631,7 @@ product claim, environment, fixture, and Product Owner decision.
 ## Candidate boundaries
 
 The C0 Network candidate is exercised by the deterministic/process/race lanes,
-`headless-check`, and the selected Network qualifications. This includes the
-Endpoint-owned `internal/application/broker`; its directory is not a separate
-Application product. Protected text AAI3 and the separate Administration v1
+`headless-check`, and the selected Network qualifications. Protected text AAI3 and the separate Administration v1
 Interface remain covered at their selected seams. The deleted AAI2 package and
 vectors are neither a generic Endpoint workload nor compatibility surface. No
 Browser command, Browser implementation, Browser artifact, or Browser
@@ -2931,20 +2927,12 @@ the AAI2 codec/server/client and exclusive Endpoint adapter are absent, while
 the independent Administration client round trip remains covered. Shared
 directional-close evidence remains with AAI3 and native Service Connection.
 
-The `ardents-node node --config` retirement oracle submits each old
-`rendezvous`, `initiator`, `introduction`, `responder`, and `transit_issuer`
-reservation plus a mixed old/closed plan through the real command adapter. Each
-must return the typed old-duty retirement outcome while deliberately absent
-key, certificate, Source-root, State-root, and role-root paths remain absent.
-The complete command package retains independent positive and refusal coverage
-for `closed_issuer`, `closed_forwarding`, `closed_resolution`,
-`closed_introduction`, and `closed_data_join`. The old Initiator, Responder,
-Introduction, Transit-issuance, and Rendezvous engines and their direct server
-tests are absent. State and Node tests exercise the State-to-Node value
-interface, its projection, and the receipt-time bound. Historical file
-inventories do not guard these
-boundaries: command behavior proves the old starts refuse before effects, and
-the current closed-duty tests prove their accepting paths.
+The `TestLegacyNodeCommandPathsRefuseBeforeEffects` oracle exercises
+`ardents-node node --config`, `issuer initialize`, `issuer serve` and
+`hosting initialize` through the command adapter. Each returns its typed
+retirement result without output or a diagnostics socket. The selectors
+refuse before decoding the plan, including former closed plans. The current
+accepting Node roles use the separately selected successor profiles.
 
 The `ardents-node source --config` retirement oracle submits old-only and
 mixed old/closed `native_rendezvous_profile` plans through the real command

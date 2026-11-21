@@ -523,12 +523,12 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		}
 		t.Cleanup(controlGate.unblock)
 	}
-	if authorityFault == "" && controlGate == nil && timing != "terminal-body" && timing != "" && timing != "before-request" && timing != "responder-parent" && timing != "source-parent" && timing != "source-stock-exhaustion" && timing != "publisher-source-parent" && timing != "response" && timing != "refresh-response" && timing != "refresh-pending" && timing != "publication-withdrawal" && timing != "request-terminal" && timing != "caller-observation" && timing != "close-observation" && timing != "publisher-observation" && timing != "publisher-close-observation" {
+	if authorityFault == "" && controlGate == nil && timing != "terminal-body" && timing != "" && timing != "before-request" && timing != "responder-parent" && timing != "source-parent" && timing != "source-stock-exhaustion" && timing != "publisher-source-parent" && timing != "response" && timing != "refresh-response" && timing != "refresh-pending" && timing != "publication-withdrawal" && timing != "request-terminal" && timing != acceptedRequestRecovery && timing != "caller-observation" && timing != "close-observation" && timing != "publisher-observation" && timing != "publisher-close-observation" {
 		t.Fatal("unknown Connection loss boundary")
 	}
 	pendingACK := timing == "refresh-pending"
 	refresh := timing == "refresh-response" || pendingACK
-	loss := controlGate != nil || timing == "terminal-body" || timing == "before-request" || timing == "response" || refresh || timing == "request-terminal"
+	loss := controlGate != nil || timing == "terminal-body" || timing == "before-request" || timing == "response" || refresh || timing == "request-terminal" || timing == acceptedRequestRecovery
 	parentLoss := timing == "responder-parent"
 	stockLoss := timing == "source-stock-exhaustion"
 	sourceLoss := timing == "source-parent" || stockLoss
@@ -543,6 +543,11 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	var expectedSourceClose, expectedPublicationClose error
 	f, reservations, certificates := installedPublisherNetwork(t, carrier, sourceLoss || publisherSourceLoss)
 	f.receiverReopen = reopen
+	var smoke *installedRecoverySpends
+	if timing == acceptedRequestRecovery {
+		smoke = &installedRecoverySpends{}
+		f.recoveryEvidence = smoke
+	}
 	readerNetwork, publisherNetwork := f, f
 	var faultNetwork *networkAdmissionFixture
 	if authorityFault == "network" {
@@ -562,6 +567,13 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		observeBody = observe
 		t.Cleanup(release)
 	}
+	var plan publicationPlan
+	var target [32]byte
+	if smoke != nil {
+		plan, target = installedRecoveryInstance(t, f.profile.NetworkID)
+	} else {
+		plan, target = installedPublisherInstance(t, f.profile.NetworkID)
+	}
 	ctx, cancel := context.WithTimeout(t.Context(), 75*time.Second)
 	defer cancel()
 	var observationDelay func()
@@ -571,7 +583,6 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		observationDelay, armObservation, releaseObservation, observationEntered = installedConnectionObservationDelay()
 		t.Cleanup(releaseObservation)
 	}
-	plan, target := installedPublisherInstance(t, f.profile.NetworkID)
 	storeRoot := t.TempDir()
 	descriptorGate := &publicationACKGate{root: storeRoot}
 	defer descriptorGate.release()
@@ -611,7 +622,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		}
 		return false
 	}, func(id [32]byte, config receiver.ReceiverConfig, server *receiver.Receiver) {
-		if id == [32]byte{41} {
+		if id == installedRecoveryRendezvous {
 			originalJoin, originalJoinConfig = server, config
 		}
 		if parentLoss && (id == [32]byte{33} || id == [32]byte{34}) {
@@ -635,6 +646,9 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		}
 	})
 	snapshot := strings.Repeat("bounded recovered Text response\n", 16000)
+	if smoke != nil {
+		snapshot = strings.Repeat("r", installedRecoveryDocumentBytes)
+	}
 	publisherCaller := ctx
 	cancelPublisher := func() {}
 	if publisherObservation || withdrawal {
@@ -1047,6 +1061,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		}
 		t.Log("actual accepting Publication refreshed before original Connection response loss")
 	}
+	var restartedJoin *receiver.Receiver
 	loseOriginal := func() {
 		// Stop only the exact actual Rendezvous receiving transport. Original
 		// operation, worker, Source and receiving spends/root remain unchanged.
@@ -1064,6 +1079,9 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 		default:
 			t.Fatal("original Rendezvous did not join before replacement")
 		}
+		if smoke != nil {
+			smoke.requireJoinBudgetReleased(t, ctx)
+		}
 		injectedJoinMu.Lock()
 		originalInterrupted = true
 		injectedJoinMu.Unlock()
@@ -1076,6 +1094,7 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 				t.Error(err)
 			}
 		})
+		restartedJoin = replacement
 		// The original retained pointer remains a historical failed actor.
 		// The replacement listener does not replace either Connection owner.
 	}
@@ -1159,6 +1178,20 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	deliverPublisher := func() (bool, error) {
 		return publisherOperation.DeliverPublisherStream(ctx, publisherContract, publisherOutcome)
 	}
+	var acceptedObserved *installedAcceptedRequestStream
+	var originalWorkers [2]installedRecoveryWorker
+	if smoke != nil {
+		originalWorkers[0] = pinInstalledRecoveryWorker(t, ctx, readerWorker, "reader")
+		originalWorkers[1] = pinInstalledRecoveryWorker(t, ctx, publisherWorker, "publisher")
+		if originalWorkers[0].instance.Cgroup == originalWorkers[1].instance.Cgroup {
+			t.Fatal("original Reader and Publisher share a cgroup")
+		}
+		acceptedObserved = &installedAcceptedRequestStream{observedConnectionOutcome: publisherOutcome, ctx: ctx, writing: make(chan struct{}), resume: make(chan struct{})}
+		t.Cleanup(acceptedObserved.release)
+		deliverPublisher = func() (bool, error) {
+			return publisherOperation.DeliverPublisherStream(ctx, publisherContract, acceptedObserved)
+		}
+	}
 	var terminalObserved *observedConnectionEOF
 	if timing == "request-terminal" {
 		observed := &observedConnectionEOF{Stream: peer.stream, outcome: publisherOutcome, ctx: ctx, arrived: make(chan struct{}), resume: make(chan struct{})}
@@ -1173,7 +1206,10 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	}
 	var transferred bool
 	var result *executionruntime.ReaderResult
-	if timing == "response" || refresh {
+	var recoveryStarted time.Time
+	if smoke != nil {
+		transferred, result, recoveryStarted, err = deliverReaderAfterAcceptedRequestLoss(t, ctx, cancel, readerOperation, readerContract, stream, acceptedObserved, smoke, loseOriginal)
+	} else if timing == "response" || refresh {
 		transferred, result, err = deliverReaderAfterResponseLoss(t, ctx, cancel, readerOperation, readerContract, stream, len(snapshot)+13, loseOriginal)
 	} else if timing == "terminal-body" || controlGate != nil {
 		type readerReturn struct {
@@ -1273,6 +1309,37 @@ func runInstalledConnectionTextLoss(t *testing.T, carrier transport.CarrierProfi
 	publisherOperation.Close()
 	if err := publisherWorker.Close(); err != nil {
 		t.Fatal("original Publisher worker join", err)
+	}
+	if smoke != nil {
+		elapsed := time.Since(recoveryStarted)
+		for _, participant := range []struct {
+			role       string
+			invocation *executionruntime.Invocation
+			check      func() error
+		}{
+			{"Reader", readerWorker, readerOperation.CheckReader},
+			{"Publisher", publisherWorker, publisherOperation.CheckPublisher},
+		} {
+			if physical, joined := participant.invocation.CleanupResult(); !joined || physical != nil || participant.check() == nil {
+				t.Fatalf("%s original invocation did not join and revoke: joined=%t cleanup=%v", participant.role, joined, physical)
+			}
+		}
+		if recoveryStarted.IsZero() || elapsed > 5*time.Second {
+			t.Fatalf("accepted request recovery took %v from interruption through joined workers, want at most 5s", elapsed)
+		}
+		if restartedJoin == nil {
+			t.Fatal("original recovery did not create an independently joined replacement listener")
+		}
+		if err := restartedJoin.Close(); err != nil {
+			t.Fatal("replacement Rendezvous cleanup", err)
+		}
+		smoke.requireJoinBudgetReleased(t, ctx)
+		smoke.require(t, 4)
+		acceptedObserved.requireRequest(t)
+		for _, original := range originalWorkers {
+			original.requireJoined(t, ctx)
+		}
+		t.Logf("exact %d-byte recovered document after one new JOIN pair; workers joined in %v", len(snapshot), elapsed)
 	}
 	for _, server := range servers {
 		if _, stopped := sourceParents[server]; stopped {

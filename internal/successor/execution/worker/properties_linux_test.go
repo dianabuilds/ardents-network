@@ -8,6 +8,39 @@ import (
 	"testing"
 )
 
+func TestTextWorkerUnitBindingRequiresExactCollectionPolicy(t *testing.T) {
+	const name = "ardents-text-reader@1-2-3.service"
+	const cgroup = "/system.slice/" + name
+	unit := properties{
+		"Id":           {Type: "s", Data: json.RawMessage(`"` + name + `"`)},
+		"LoadState":    {Type: "s", Data: json.RawMessage(`"loaded"`)},
+		"ActiveState":  {Type: "s", Data: json.RawMessage(`"active"`)},
+		"SubState":     {Type: "s", Data: json.RawMessage(`"running"`)},
+		"FragmentPath": {Type: "s", Data: json.RawMessage(`"/etc/systemd/system/ardents-text-reader@.service"`)},
+		"CollectMode":  {Type: "s", Data: json.RawMessage(`"inactive-or-failed"`)},
+	}
+	service := properties{"ControlGroup": {Type: "s", Data: json.RawMessage(`"` + cgroup + `"`)}}
+	verified := func() bool { return workerUnitBindingVerified(textInventory, unit, service, name, "reader", cgroup) }
+	if !verified() {
+		t.Fatal("exact manager collection policy refused")
+	}
+	for _, invalid := range []value{
+		{Type: "s", Data: json.RawMessage(`"inactive"`)},
+		{Type: "s", Data: json.RawMessage(`"unknown"`)},
+		{Type: "s", Data: json.RawMessage(`null`)},
+		{Type: "as", Data: json.RawMessage(`["inactive-or-failed"]`)},
+	} {
+		unit["CollectMode"] = invalid
+		if verified() {
+			t.Fatalf("invalid manager collection policy accepted: %+v", invalid)
+		}
+	}
+	delete(unit, "CollectMode")
+	if verified() {
+		t.Fatal("missing manager collection policy accepted")
+	}
+}
+
 func TestTextWorkerSyscallObservationAcceptsNativeAMD64Expansion(t *testing.T) {
 	// systemd reports the effective native-architecture seccomp set. Ubuntu
 	// 24.04/systemd 255 on amd64 therefore omits the s390-only PCI syscalls

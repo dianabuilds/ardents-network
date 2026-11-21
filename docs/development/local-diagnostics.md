@@ -212,7 +212,8 @@ for these lifecycle checks.
 | Source command events | Ready, wave accepted, terminal background/cleanup categories | Process survival does not establish current State or Source readiness. |
 | `internal/diagnostics/timeline` | Existing safe streaming operator timeline, direct JSON/journal input | Human-readable projection; no resource/time series store. Continue using its existing command for exact timeline semantics. |
 | qualification command | Set-wide stream/latency/throughput/resource verdicts and invalidations | Purpose-selected installed environment; Docker fixture results cannot replace its verdicts. |
-| Endpoint Role/heap capture tests | Isolated role durable-state observations and Go heap dumps | Secret-bearing, explicit profiles and inputs; not routine always-on collection. |
+| Endpoint Role capture tests | Isolated role durable-state observations and Go heap collection | Secret-bearing inputs and outputs retained only in the selected capture profile. |
+| Process diagnostics heap-report tests | Offline analysis of receipt-bound heap captures | The source archive must match the receipt. The reports describe the selected point-in-time observations. |
 | test/process/race/fuzz owners | Go JSON, timeout stacks, race reports and bounded mutation scenarios | Separate checked profiles; a passing subset is not a full gate. |
 
 The local collector joins currently available event and numeric resource

@@ -15,6 +15,12 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 )
 
+func readTransferredReader(ctx context.Context, worker io.ReadWriteCloser, stream connection.Stream) ([]byte, error) {
+	incoming := make(chan connection.Stream, 1)
+	incoming <- stream
+	return awaitTransferredReader(ctx, worker, incoming)
+}
+
 // These transfer fixtures release completion immediately. They exercise the
 // same retained reader contract used by the real Execution consumer.
 func awaitTransferredReader(ctx context.Context, worker io.ReadWriteCloser, incoming <-chan connection.Stream) ([]byte, error) {

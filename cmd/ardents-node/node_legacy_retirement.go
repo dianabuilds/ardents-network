@@ -20,8 +20,6 @@ var (
 	errOldDescriptorInstalledRetired    = errors.New("old Descriptor start-installed orchestration is retired; use the platform-led Descriptor lifecycle (ardents-next node descriptor --retained-config, platform check/unit, systemctl start ardents-descriptor)")
 	errOldDescriptorInstallationRetired = errors.New("old Descriptor installation transactions are retired; use the platform-led Descriptor lifecycle (ardents-next platform check, node descriptor --retained-config, descriptor repair-retained)")
 	errOldNodeConfigRetired             = errors.New("old Node --config runtime is retired; use ardents-next node <role> --retained-config")
-	errOldNodeDutyRetired               = errors.New("old Node duty reservation is retired")
 	errOldIssuerRetired                 = errors.New("old Node issuer initialize/serve is retired; use ardents-next node-identity/issuance/node issuer")
-	errOldTransitIssuerRetired          = errors.New("old Transit issuer start is retired")
 	errOldHostingRetired                = errors.New("old Node hosting initialize is retired; use ardents-next hosting initialize")
 )

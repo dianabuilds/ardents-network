@@ -556,8 +556,8 @@ runtime-допущение следует за завершением требу
 на точные байты; Execution использует разрешённый установленный артефакт и
 владеет отдельным жизненным циклом worker.
 
-**Где искать обязанности:** `internal/endpoint/installation`,
-`internal/endpoint/replacement` и установочные command-адаптеры. Композиция
+**Где искать обязанности:** `internal/successor/installation/endpoint`
+и установочные command-адаптеры. Композиция
 и системные механизмы не получают полномочий Release.
 
 **Основа:** [Release и установка](../../../../docs/technical/release-update-custody.md),
@@ -810,8 +810,8 @@ initial stopped recovery имеют новые consumers; successor transition �
 выполняет genuine Source refresh и qualified permission bootstrap. Successor
 recovery имеет собственные bounded consumers; полная interruption matrix и
 installed acceptance остаются отдельными обязательствами.
-Старый `internal/endpoint/runtimeplan` остаётся независимым владельцем
-predecessor consumers; его импорт в новый путь запрещён.
+Старые команды headless и `refresh-sources` отказывают до чтения своих
+деклараций. Новый установочный путь использует собственные декодеры.
 
 Есть отдельное противоречие platform admission: current confinement owner
 указывает Ubuntu24/systemd255, installation owner — пары 22/249 и 24/255;
@@ -831,7 +831,7 @@ Unknown/missing protection никогда не является принимаю
 |---|---|---|
 | Coherent fresh pair | `internal/endpoint/installation/release_authentication.go` | Перепроверить по новому Enrollment/Release; private proofs вместо mutable public Decision |
 | Existing trust continuity | `successor_authentication_linux.go` | Portable rule; actual complete floors и binding constraints, никакого initial-pin bootstrap |
-| Request and declaration consistency | `request.go`, `internal/endpoint/runtimeplan` | Сохранить grammar/limits; отделить pure declarations от acquisition/credentials |
+| Request and declaration consistency | `request.go`, удалённый predecessor runtime plan | Сохранить grammar/limits; отделить pure declarations от acquisition/credentials |
 | Frozen generation assembly | `generation_assembly.go`, `unit_rendering.go` | Portable deterministic bytes; actual inode/account facts проверяются native owner |
 | Ownership and journal writes | `generation_ownership_linux.go`, `resource_creation_linux.go`, `resource_replacement_linux.go` | Native identity/durability; canonical records и переходы отдельно от syscalls |
 | Original process termination | `predecessor_linux.go` | Exact invocation + original pins, no replacement-generation completion |

@@ -1,45 +1,35 @@
 # Installed text-worker lifecycle
 
-This explicitly selected profile runs TestInstalledTextWorkerLifecycle from a
-Linux amd64 Endpoint test binary built with tag text_worker_installed. It uses
-a fixture only for the local owner's authorization. Actual Endpoint code must
-verify Ubuntu 24.04/systemd 255, the parent MainPID/account, installed artifact,
-accepted socket and worker invocation before INIT/readiness and a scoped Grant.
-Twelve activations for each role require fresh jobs and pinned cgroups that are
-empty or removed before cleanup returns. Worker loss preserves its context;
-context revoke prevents late launch and old completion. After that independent
-kernel cleanup proof, each retired unit must disappear from the manager inventory
-within three seconds. Effective collection policy is checked on the actual live
-unit, including rejection of missing, malformed and nonselected observations.
+`make text-worker-lifecycle-check` selects `TestInstalledExecutionRepeatedLaunch`
+from the current Execution runtime on a dedicated Ubuntu 24.04 x86-64
+qualification host with systemd 255, cgroup v2 and polkit. The fixed
+Endpoint account, Text artifacts and activation units must be installed.
+Local grant declarations are fixtures.
 
-This is installed lifecycle evidence, not the complete hostile-worker matrix,
-normal protected Service journey, command adoption, or full #56 acceptance.
-Never run it against an operational Endpoint. The operator must prepare a
-dedicated clean Ubuntu 24.04 x86-64 VM/host, security-updated packages, cgroup v2,
-active systemd 255/polkit, the separate ardents-endpoint account and all exact
-candidate worker artifacts. Containers/WSL remain separately labelled evidence.
+Build `execution-runtime.test` outside the repository using the selected Go
+toolchain:
 
-Build the test binary with the selected Go toolchain, outside the repository:
-go test -c -tags text_worker_installed -trimpath -buildvcs=false -o OUTPUT ./internal/endpoint
+    go test -c -tags text_worker_installed -trimpath -buildvcs=false -o OUTPUT ./internal/successor/execution/runtime
 
-Install it root:root mode 0555 at /usr/lib/ardents/qualification/endpoint.test.
-Install a root:root mode 0644 temporary /run/systemd/system/ardents-endpoint.service
-with User/Group=ardents-endpoint, Type=exec, RemainAfterExit=no, ExitType=main,
-Restart=no, RestartMode=normal, RuntimeMaxSec=150s and ExecStart pointing to that
-exact binary with -test.run=^TestInstalledTextWorkerLifecycle$, -test.v and
--test.timeout=2m. The service must be initially inactive, have no drop-ins, and
-be loaded from that exact temporary path. The binary is a qualification driver,
-not the protected product Endpoint command.
+Install it at `/usr/lib/ardents/qualification/execution-runtime.test`, owned
+by root with mode 0555. The root-owned temporary
+`/run/systemd/system/ardents-endpoint.service` selects only
+`-test.run=^TestInstalledExecutionRepeatedLaunch$`, `-test.v` and `-test.timeout=2m`,
+`RuntimeMaxSec=150s`, the fixed Endpoint user and group, `Type=exec`,
+`RemainAfterExit=no`, `ExitType=main`, `Restart=no` and `RestartMode=normal`.
+The service must begin inactive with no drop-ins. Supply independently
+recorded `ARDENTS_TEXT_LIFECYCLE_SHA256` and
+`ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256` to the root driver.
 
-Supply independently recorded ARDENTS_TEXT_LIFECYCLE_SHA256 and
-ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256 to make text-worker-lifecycle-check as root.
-The runner checks its exact binary/unit and platform before starting only that
-declared unit, preserves the exact invocation journal, requires both role tests to have run
-and passed, and waits for an inactive Endpoint with MainPID=0. No-tests success
-and intermediate deactivation are refused.
-Absent digests, installed prerequisites or unverified results are failures,
-never passing skips. Retain failed attempts and complete source/dirty-tree,
-artifact, OS/kernel/package, driver and unit inventories outside Git.
+Both local surfaces perform twelve actual qualified launches on one original
+Session per surface. Each launch uses a distinct Job nonce and systemd
+invocation. The test observes the original cgroup and process before and
+after joined cleanup. The manager must collect each original worker unit
+within three seconds after the join. Replacement invalidates the previous
+Job's completion provenance, and Session retirement refuses another Job.
+The driver requires exact PASS receipts for all twenty-four launches and the
+terminal successful Endpoint status. Retain failed attempts and exact
+candidate, platform and manager receipts outside Git.
 
 The shared runner also has one explicit stream-activation case (#654 3c-A),
 invoked as `sh run-ubuntu.sh stream-activation` with the same independent
@@ -81,6 +71,29 @@ runtime-seam component evidence; the positive 64/256-stream NET-14 workload
 through authenticated Service streams (3c-B2/3c-C) and whole-host privacy
 qualification are not established here.
 
-The shared runner also has one explicit tree profile, invoked only by
-text-worker-tree-check with its independent hostile artifact digest and exact
-TestInstalledTextWorkerHostileTree receipts. See the sibling profile README.
+The [Execution tree profile](../execution-tree/README.md) selects
+`TestInstalledExecutionHostileTree` through this same driver.
+
+## Connection recovery after the original request
+
+`make connection-request-recovery-check` uses the genuine Text worker and
+the same Ubuntu and manager prerequisites. Build all three candidates using
+the selected Go toolchain, `GOOS=linux`, `GOARCH=amd64` and `CGO_ENABLED=0`.
+Set `candidate` to a dedicated absolute build directory outside Git.
+
+    go test -c -tags text_worker_installed -trimpath -buildvcs=false -o "$candidate/execution-command.test" ./cmd/ardents-next
+    go build -trimpath -buildvcs=false -o "$candidate/ardents-next" ./cmd/ardents-next
+    go build -trimpath -buildvcs=false -o "$candidate/ardents-custody" ./cmd/ardents-custody
+
+Install the three independently pinned files in
+`/usr/lib/ardents/qualification` as root:root 0555. Use the dedicated inactive
+Endpoint unit described above with `RuntimeMaxSec=360s` and this command.
+
+    /usr/lib/ardents/qualification/execution-command.test -test.run=^TestInstalledConnectionAcceptedRequestRecoveryTCP$ -test.v -test.timeout=5m
+
+Supply the binary and unit pins to the driver. Supply the independent
+`ARDENTS_RECOVERY_INSTANCE_SHA256` and `ARDENTS_RECOVERY_CUSTODY_SHA256` to both
+the driver and the pinned temporary unit. The pinned original Endpoint
+journal must show the root test and the selected TCP/TLS case exactly once.
+The [test owner](../../../docs/development/testing.md) describes the single
+recovery episode and the observations it requires.

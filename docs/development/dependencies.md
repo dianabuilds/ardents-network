@@ -1119,9 +1119,8 @@ does not authorize a first-party fork.
 ## Current release-verifier closure
 
 Status: **current maintained dependency.** R-049 selected the following exact
-reviewed module closure. Maintained `internal/release` and separately isolated
-`internal/successor/release` verification owners consume the reviewed library
-mechanisms under their own behavior tests, callers and exact package-map imports.
+reviewed module closure. The maintained `internal/successor/release` verifier consumes these mechanisms
+under its own behavior tests, callers and exact package-map imports.
 
 | Module | Present pin | License | Purpose |
 |---|---:|---|---|

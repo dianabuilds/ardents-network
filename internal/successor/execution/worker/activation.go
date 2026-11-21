@@ -15,15 +15,3 @@ type Activation struct {
 	// has no worker identity and permits only the caller's physical cleanup.
 	Attachment *Attachment
 }
-
-// Instance is one detached original invocation observation. It grants no
-// local permission, cleanup completion or right to signal a replacement.
-type Instance struct {
-	inv        inventory
-	Name       string
-	Role       string
-	Cgroup     string
-	PID        uint32
-	UID        uint32
-	Invocation [16]byte
-}

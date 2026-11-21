@@ -402,10 +402,23 @@ func TestNetworkIntegrationImportIsolation(t *testing.T) {
 }
 
 func successorImportAllowed(source, dependency string) bool {
+	switch source {
+	case "internal/diagnostics/process/heapdump_role_map_capture_test.go":
+		if dependency == modulePath+"/internal/successor/admission" {
+			return true
+		}
+		fallthrough
+	case "internal/diagnostics/process/heapdump_parser_test.go", "internal/diagnostics/process/heapdump_capture_test.go":
+		first, _, _ := strings.Cut(dependency, "/")
+		return dependency != "C" && dependency != "unsafe" && dependency != "" && !strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/")
+	}
 	if source == "cmd/ardents-control/closed_issuer_inspection.go" {
 		first := strings.Split(dependency, "/")[0]
 		return dependency == modulePath+"/internal/successor/admission/issuerprofile" ||
 			dependency != "C" && dependency != "unsafe" && dependency != "" && !strings.Contains(first, ".") && path.Clean(dependency) == dependency && !strings.HasPrefix(dependency, "/")
+	}
+	if source == "cmd/ardents-next/connection_custody_terminal_installed_linux_test.go" && (dependency == "github.com/aymanbagabas/go-pty" || dependency == "golang.org/x/sys/unix") {
+		return true
 	}
 	if source == "scripts/sign-qualification-release.go" {
 		switch dependency {
@@ -685,12 +698,12 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-node/source_installation_linux.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/state" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
-		if (source == "tests/e2e/service/service_custody_process_linux_test.go" || source == "tests/e2e/service/headless_instance_acquisition_process_test.go") && dependency == modulePath+"/internal/successor/publication" {
+		if (source == "cmd/ardents-custody/main_test.go" || source == "tests/e2e/service/service_custody_process_linux_test.go" || source == "tests/e2e/service/headless_instance_acquisition_process_test.go") && dependency == modulePath+"/internal/successor/publication" {
 			return true
 		}
 		if dependency == modulePath+"/internal/successor/custody" {
 			switch source {
-			case "cmd/ardents-custody/command.go", "cmd/ardents-custody/terminal_secret.go", "cmd/ardents-custody/main_test.go", "cmd/ardents-custody/service_authority.go", "cmd/ardents-custody/admission_authority.go", "cmd/ardents-custody/verify_record.go", "cmd/ardents-custody/recovery_bundle.go", "cmd/ardents-custody/purge_record.go", "cmd/ardents-custody/inspect_envelope.go", "cmd/ardents-custody/admission_permission_client_linux_test.go", "internal/endpoint/permission_test.go", "internal/endpoint/issuance_test.go", "internal/endpoint/permission_files_linux_test.go", "internal/endpoint/network_fixture_window_test.go", "internal/endpoint/replacement/custody_nonmutation_test.go":
+			case "cmd/ardents-custody/command.go", "cmd/ardents-custody/terminal_secret.go", "cmd/ardents-custody/main_test.go", "cmd/ardents-custody/service_authority.go", "cmd/ardents-custody/admission_authority.go", "cmd/ardents-custody/verify_record.go", "cmd/ardents-custody/recovery_bundle.go", "cmd/ardents-custody/purge_record.go", "cmd/ardents-custody/inspect_envelope.go", "cmd/ardents-custody/admission_permission_client_linux_test.go", "internal/endpoint/permission_test.go", "internal/endpoint/issuance_test.go", "internal/endpoint/permission_files_linux_test.go", "internal/endpoint/network_fixture_window_test.go":
 				return true
 			}
 		}
@@ -912,6 +925,22 @@ func successorImportAllowed(source, dependency string) bool {
 			return true
 		}
 		if source == "cmd/ardents-next/node_completion_native_linux_test.go" && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/duty" || dependency == modulePath+"/internal/successor/route/transport") {
+			return true
+		}
+		if source == "cmd/ardents-next/text_command_installed_linux_test.go" {
+			switch dependency {
+			case modulePath + "/internal/successor/execution",
+				modulePath + "/internal/successor/execution/runtime",
+				modulePath + "/internal/successor/publication",
+				modulePath + "/internal/successor/reachability",
+				modulePath + "/internal/successor/route/transport":
+				return true
+			}
+		}
+		if source == "cmd/ardents-next/connection_custody_instance_installed_linux_test.go" && dependency == modulePath+"/internal/successor/publication" {
+			return true
+		}
+		if source == "cmd/ardents-next/connection_accepted_request_installed_linux_test.go" && (dependency == modulePath+"/internal/successor/connection" || dependency == modulePath+"/internal/successor/execution/runtime" || dependency == modulePath+"/internal/successor/execution/worker" || dependency == modulePath+"/internal/successor/route/transport") {
 			return true
 		}
 		if source == "cmd/ardents-next/connection_response_loss_linux_test.go" && (dependency == modulePath+"/internal/successor/connection" || dependency == modulePath+"/internal/successor/execution/runtime" || dependency == modulePath+"/internal/successor/publication/runtime" || dependency == modulePath+"/internal/successor/route/transport") {
@@ -1145,7 +1174,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/endpoint/participant_linux.go" || source == "cmd/ardents-next/installed_service_linux_test.go") && dependency == modulePath+"/internal/application/administration" {
 		return true
 	}
-	if source == "cmd/ardents-next/installed_pair_linux_test.go" || source == "cmd/ardents-next/endpoint_journey_native_linux_test.go" {
+	if source == "cmd/ardents-next/installed_pair_linux_test.go" || source == "cmd/ardents-next/endpoint_journey_native_linux_test.go" || source == "cmd/ardents-next/text_command_installed_linux_test.go" {
 		switch dependency {
 		case modulePath + "/internal/application/administration", modulePath + "/internal/application/connection", modulePath + "/internal/application/textdocument":
 			return true
@@ -1173,7 +1202,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/execution/runtime/reader_worker_linux.go" || source == "internal/successor/execution/runtime/reader_stream.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
-	if (source == "internal/successor/execution/runtime/publisher_worker_linux.go" || source == "internal/successor/execution/runtime/publisher_stream.go") && dependency == modulePath+"/internal/application/connection" {
+	if (source == "internal/successor/execution/runtime/publisher_worker_linux.go" || source == "internal/successor/execution/runtime/publisher_stream.go" || source == "internal/successor/execution/runtime/hostile_snapshot_installed_linux_test.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
 	if source == "internal/successor/execution/worker/stream_activation_installed_linux_test.go" && dependency == modulePath+"/internal/application/streamqualification" {
@@ -1299,6 +1328,9 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"Endpoint release producer has no Route runtime", "scripts/sign-qualification-release.go", modulePath + "/internal/successor/route/role", false},
 		{"Endpoint release producer retains TUF mechanism", "scripts/sign-qualification-release.go", "github.com/theupdateframework/go-tuf/v2/metadata", true},
 		{"Endpoint release producer retains signing mechanism", "scripts/sign-qualification-release.go", "github.com/sigstore/sigstore/pkg/signature", true},
+		{"retained heap map validates the public Permission framing", "internal/diagnostics/process/heapdump_role_map_capture_test.go", modulePath + "/internal/successor/admission", true},
+		{"retained heap map cannot open a spending root", "internal/diagnostics/process/heapdump_role_map_capture_test.go", modulePath + "/internal/successor/admission/spending", false},
+		{"retained heap map does not import predecessor Endpoint", "internal/diagnostics/process/heapdump_role_map_capture_test.go", modulePath + "/internal/endpoint", false},
 		{"Endpoint release producer retains native files", "scripts/sign-qualification-release.go", "golang.org/x/sys/unix", true},
 		{"Endpoint release producer excludes foreign library", "scripts/sign-qualification-release.go", "example.org/foreign", false},
 		{"packaging identity uses new Enrollment", "scripts/enrollment-artifact-name.go", modulePath + "/internal/successor/enrollment", true},
@@ -1491,6 +1523,14 @@ func TestSuccessorIsolationPolicy(t *testing.T) {
 		{"installed Execution scenario excludes direct TLS construction", "cmd/ardents-next/execution_installed_linux_test.go", modulePath + "/internal/successor/route/transport/tls", false},
 		{"installed Execution scenario excludes direct QUIC construction", "cmd/ardents-next/execution_installed_linux_test.go", modulePath + "/internal/successor/route/transport/quic", false},
 		{"installed Service scenario consumes real Connection", "cmd/ardents-next/connection_installed_linux_test.go", modulePath + "/internal/successor/connection", true},
+		{"hostile Publisher sibling tests the Application stream", "internal/successor/execution/runtime/hostile_snapshot_installed_linux_test.go", modulePath + "/internal/application/connection", true},
+		{"hostile Publisher sibling cannot acquire legacy Service authority", "internal/successor/execution/runtime/hostile_snapshot_installed_linux_test.go", modulePath + "/internal/service/connection", false},
+		{"recovery Custody process fixture has a terminal", "cmd/ardents-next/connection_custody_terminal_installed_linux_test.go", "github.com/aymanbagabas/go-pty", true},
+		{"ordinary recovery code cannot open a fixture terminal", "cmd/ardents-next/connection_reader_linux.go", "github.com/aymanbagabas/go-pty", false},
+		{"recovery issuance proof consumes the public verifier", "cmd/ardents-next/connection_custody_instance_installed_linux_test.go", modulePath + "/internal/successor/publication", true},
+		{"recovery issuance proof cannot open private Instance authority", "cmd/ardents-next/connection_custody_instance_installed_linux_test.go", modulePath + "/internal/successor/publication/instance", false},
+		{"accepted-request recovery observes genuine Connection", "cmd/ardents-next/connection_accepted_request_installed_linux_test.go", modulePath + "/internal/successor/connection", true},
+		{"accepted-request recovery cannot construct direct TLS", "cmd/ardents-next/connection_accepted_request_installed_linux_test.go", modulePath + "/internal/successor/route/transport/tls", false},
 		{"response loss observes original Connection", "cmd/ardents-next/connection_response_loss_linux_test.go", modulePath + "/internal/successor/connection", true},
 		{"response loss retains original Execution", "cmd/ardents-next/connection_response_loss_linux_test.go", modulePath + "/internal/successor/execution/runtime", true},
 		{"withdrawal invokes genuine original Publisher", "cmd/ardents-next/connection_response_loss_linux_test.go", modulePath + "/internal/successor/publication/runtime", true},

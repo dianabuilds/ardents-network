@@ -19,7 +19,7 @@ func TestInteriorReopenRetainsPairDeadlineAndFloor(t *testing.T) {
 	entries := [2]route.Member{member(1), member(2)}
 	candidates := []route.Member{member(3), member(4), member(5)}
 	root := filepath.Join(t.TempDir(), "interior")
-	owner, err := openInteriorStore(root, [32]byte{1}, 1)
+	owner, err := openInteriorStoreMode(root, [32]byte{1}, 1, closedSetEither)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestInteriorReopenRetainsPairDeadlineAndFloor(t *testing.T) {
 	if err := owner.close(); err != nil {
 		t.Fatal(err)
 	}
-	owner, err = openInteriorStore(root, [32]byte{1}, 1)
+	owner, err = openInteriorStoreMode(root, [32]byte{1}, 1, closedSetEither)
 	if err != nil {
 		t.Fatal(err)
 	}

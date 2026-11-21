@@ -31,7 +31,7 @@ func TestReaderWorkerUsesOneAdmittedServiceStreamAndJoinsItsResult(t *testing.T)
 			worker, _ := startTextWorker(t, textdocument.ReaderWorker, nil)
 			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 			defer cancel()
-			actual, err := textdocument.ReadWorkerConnection(ctx, worker, stream)
+			actual, err := readTransferredReader(ctx, worker, stream)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -62,7 +62,7 @@ func TestReaderWorkerNeverReturnsContentOnInterruptedServiceOrCleanup(t *testing
 			worker, _ := startTextWorker(t, textdocument.ReaderWorker, nil)
 			ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 			defer cancel()
-			body, err := textdocument.ReadWorkerConnection(ctx, worker, stream)
+			body, err := readTransferredReader(ctx, worker, stream)
 			if err == nil || body != nil || !stream.closed {
 				t.Fatal("failed Connection or cleanup returned content")
 			}
@@ -103,7 +103,7 @@ func TestReaderWorkerTransfersThroughAAI3WithoutSecondOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 	worker, _ := startTextWorker(t, textdocument.ReaderWorker, nil)
-	actual, err := textdocument.ReadWorkerConnection(ctx, worker, stream)
+	actual, err := readTransferredReader(ctx, worker, stream)
 	if err != nil {
 		t.Fatal(err)
 	}

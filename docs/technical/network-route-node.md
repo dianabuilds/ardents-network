@@ -191,14 +191,15 @@ subsequently removed entirely together with the whole retirement mechanism
 (ADR-0114); an unrecognized `contributor` command shape fails with the
 standard usage error before any effect.
 
-Each adapter must identify and refuse its old selection before opening or
-creating a state root or key, binding a listener, invoking a supervisor, or
-starting Network work. Refusal cannot select another profile or fall back to a
-closed duty. The plan and command schemas are not retired wholesale: probe
-behavior is outside this decision, and `closed_issuer`, `closed_forwarding`,
-`closed_resolution`, `closed_introduction`, `closed_data_join`, the explicit
-closed Source profile, and closed issuer initialize/serve retain their exact
-existing authority checks.
+The original retirement required each adapter to refuse its old selection
+before constructing authority or starting Network work. At that stage the
+closed roles retained their own authority checks. The later generic Node
+command retirement (#562, ADR-0125) moved the effect boundary to the command
+selector. `ardents-node node --config`, `issuer initialize/serve` and
+`hosting initialize` return their command-level refusals before opening a plan,
+diagnostic listener, State, key or runtime root. The maintained `ardents-next`
+roles own their current inputs and lifecycle. See the
+[command reference](../reference/commands.md#ardents-node).
 
 Existing old roots, keys, floors, plans, and installation records remain
 unchanged evidence. No maintained reader authenticates an old installation
@@ -207,10 +208,10 @@ its mechanism (ADR-0114). Historical profile recognition cannot authorize
 execution of an old duty or rewrite persisted identity. The old Rendezvous, Initiator,
 Responder, Introduction, and Transit-issuance engines and their command
 composition have been deleted after the command refusal became current. Their
-old plan stanzas remain only at that typed refusal boundary. The Initiator
+old plan stanzas remain provenance of the earlier typed refusal boundary. The Initiator
 Entry-admission adapter is also absent. The old Transit-issuance
 signer/listener/root-mutation engine is absent;
-the typed command refusal and signed-profile decoder remain. ADR-0092 also
+the current command-level refusal and retained signed-profile decoder remain. ADR-0092 also
 removed the uncomposed Endpoint Transit acquisition client; neither side
 provides a selected old-Transit receiving path.
 The adjacent production-dead Initiator Entry admission, receiving relay grammar,
@@ -234,21 +235,17 @@ files. Compatibility readers and separately owned retirement surfaces remain
 until later bounded changes prove their accepting callers and other consumers
 absent.
 
-The Node-plan gate is integrated: all five old reservations return the stable
-`old Node duty reservation is retired` outcome immediately after bounded plan
-decoding and schema/completeness recognition, before key, certificate, Source
-root, State root, listener, resource, or duty construction. A mixed old and
-closed plan receives that same refusal and cannot use the closed reservation as
-a fallback. The Contributor start gate was superseded by complete removal:
-ADR-0114 deleted the subcommand, its module, and its runbook because no live
-installation remains, so every `contributor` command shape now fails with the
-standard usage error before any platform, bundle, installation, root,
-supervisor, output, or Network effect. The Source gate is also integrated: a recognized
-`native_rendezvous_profile` returns `old Source profile is retired` after
-bounded Source-plan recognition and before trust-map, root, key, listener or
-Network work. Mixing that selector with the closed profile receives the same
-retirement outcome and cannot fall back. The explicit closed profile and its
-already pinned authority retain their previous State and Source behavior.
+The original Node-plan gate rejected all five retired reservations after
+bounded plan decoding and blocked fallback through mixed reservations. The
+command-level retirement now refuses the entire generic Node plan route before
+decoding. The complete `ardents-node source --config` selector also refuses
+before reading a plan or opening diagnostics. The maintained Source owner uses
+the [platform-led lifecycle](../operations/source-platform-lifecycle.md).
+
+The legacy `h3-role-probe-v1` listener and its private request/response codec
+are removed from the retained Node composition. A historical assignment for
+that profile remains ineligible for a listener. Legacy records and their
+persisted identities retain their existing State compatibility boundary.
 
 ## Module ownership
 
@@ -271,7 +268,6 @@ already pinned authority retain their previous State and Source behavior.
 | internal/node/introduction | Own the closed Introduction listener, registration slots, capsule deliveries, spend ledger and joined drain. | Process admission, State custody, Hosting pressure, or Route capsule grammar. |
 | internal/node/join | Own the closed data JOIN listener, pair set, spend ledger and leased Hosting handle through joined shutdown. Node opens the handle and supplies current State; `node/hosting` supplies its class-2 reservation policy. | Process admission, State custody, global Hosting pressure, or Route pair grammar. |
 | internal/node/outer | Serve one accepted authenticated outer Carrier, serialize inner-lane writes, interrupt and join inner handlers on cancellation. The receiving Node duty retains admission, durable roots and the accepted connection's final close result. | Node duty selection, token admission, physical Carrier authentication, or durable-root close. |
-| internal/node/probe | Own the private role-probe TLS listener, validated credential copy, fixed request/response, bounded nonce replay memory and joined shutdown; expose a handle for Node supervision. | Authenticated duty selection, State-root custody, process pressure or a separate probe runtime. |
 | internal/node/resolution | Own the closed resolution listener, accepted children, Descriptor store and spend ledger; retain terminal and cleanup outcomes after joined drain. | State-root custody, process admission, other Node duties, or Route wire grammar. |
 
 Each Module exposes one consumer-relevant Interface while retaining codec,

@@ -16,7 +16,7 @@ continues to describe the currently implemented ownership and authority floors.
 authorizes one operator-prepared isolated qualification release. Codex owns
 its technical preparation and the Product Owner accepts the completed public
 bootstrap receipt before installed execution. This does not add a Release
-signing interface to `internal/release`, revive retired seed ceremonies, or
+signing interface to `internal/successor/release`, revive retired seed ceremonies, or
 establish independent initial distribution. Participant enrollment retains
 its independent first-pin contract; existing roots and floors are preserved.
 The [qualification release operation](../operations/qualification-release.md)
@@ -209,12 +209,9 @@ as the executable. The installation owner consumes two fresh coherent opaque
 authorizations, verifies their shared Targets floors and release/local facts,
 and binds all resource bytes through the authenticated generation descriptor.
 The initial pin never authorizes successors; changed resources require a newer
-generation even when executable bytes are unchanged. Existing executable-only
-replacement remains its current implementation; it does not implement this
-selected generation transaction. No signing API or independent-builder claim
-is added.
+generation even when executable bytes are unchanged.
 
-internal/release is the sole owner of release trust roots and non-decreasing
+`internal/successor/release` is the sole owner of release trust roots and non-decreasing
 release floors. It verifies the selected TUF-compatible metadata profile,
 consecutive root rotation, exact target identity, protocol/build state, and
 the captured reference time. Its output is a bounded public Decision and
@@ -255,16 +252,16 @@ distinct from native history mechanisms. The new-domain
 [design](../../internal/successor/release/README.md) preserves the accepted
 metadata and durable identities; source presence and component checks do not
 establish complete Release acceptance, installed replacement or qualification.
-The predecessor remains an independent owner for its unchanged old consumers;
-no shared live root or automatic installed-history adoption is authorized.
+Existing predecessor Release roots remain independent retained evidence.
+The current verifier grants no automatic installed-history adoption.
 
 ADR-0050 through ADR-0052 historically assigned the first closed-alpha release
 seeds and fixed RC1/RC2 assembly to a separate Product Owner boundary. ADR-0059
 retired assembly after the completed ceremonies, and ADR-0067 retires the
 remaining seed initializer/inspector and its private envelope as maintained
 interfaces. Their exact records and receipts are provenance only and no future
-release accepts them automatically. `internal/release` remains the current
-Release verification owner and has no signing or custody interface.
+release accepts them automatically. The Release verifier has no signing or
+Custody interface.
 
 A fresh executable cannot use its own Release Decision code to authenticate
 itself before first execution. `RootBytes` and the first executable therefore
@@ -287,57 +284,13 @@ accepted root/floors before reporting network readiness. The pin is neither a
 Release Module input nor successor authority; it authorizes only this first
 bundle and makes no public or independent release-control claim.
 
-The per-user foreground replacement command surface is retired (#617 S3.5):
+The per-user foreground replacement command surface is retired (#617 S3.5).
 `ardents endpoint replace/rollback/replacement-self-test/replacement-recovery`
-return typed refusals before input or root effects, and the successor Endpoint
-lifecycle is forward-only (`ardents-next installation upgrade-installed` /
-`recover-installed`). The `internal/endpoint/replacement` Module keeps its
-behavior tests but has no maintained production caller; its removal is the
-separately gated Endpoint cohort step. The contract below is retained historical
-evidence for that Module, not a live command route. Existing per-user roots and
-floors remain retained evidence, not authority for an automatic migration.
-
-`internal/endpoint/replacement` consumes only the opaque Release authorization
-and exact candidate bytes. It owns the selected Ubuntu foreground replacement:
-direct-file admission, immutable staging beside the program, retained
-predecessor, stopped exact user unit, atomic activation, no-network candidate
-self-test, durable journal, explicit recovery, and separately authorized
-rollback. It never receives a Vault, password, Authority root, downloader, or
-generic Custody writer.
-
-The replacement writer and reader share one closed set of bounded temporary
-file forms for `marker`, `current`, `prepared`, `journal`, and retained
-predecessor writes. A direct regular file in one exact writer form is only
-interrupted-write residue: read-only startup verification and recovery may
-continue from a valid committed `current` record, but never treat that residue
-as an authorized record or remove it. A foreign name, malformed temporary
-form, symlink, non-regular file, or oversized residue remains an explicit
-failure. Any state mutation still belongs to a locked replacement operation;
-the read-only paths do not repair, delete, roll back, or alter Release floors.
-
-### Foreground replacement retry (retired command surface)
-
-Release commits its non-decreasing floors before the foreground replacement
-writer opens Endpoint state. Therefore a repeat of the same explicit `endpoint
-replace` bundle can receive a fresh opaque `no-update` authorization even when
-the earlier attempt did not activate its candidate. `internal/endpoint/replacement`
-alone joins that fresh authorization to the durable replacement evidence; the
-command only passes the exact candidate bytes and opaque authorization through.
-
-| Durable observation after a fresh Release check | Permitted action | Safe outcome |
-|---|---|---|
-| Current executable matches the exact candidate record | Do not stop, stage, activate, or delete retained evidence. | Return the existing committed outcome. |
-| No journal, or an exact `prepared` record without a journal, and an authenticated forward candidate | A `release-accepted` authorization starts the transaction. A `no-update` authorization may start only a candidate whose exact authenticated release version is newer than the committed current record. | Prepare the exact candidate and retain the current executable before activation. This covers a failure after Release committed floors but before a replacement journal existed. |
-| `prepared` journal | Require the exact current executable, candidate record, program path, and journal predecessor. Retain or verify the predecessor, then continue. | Continue only that preactivation transaction. |
-| `rollback-retained` or `staged` journal | Require the exact current executable, candidate record, program path, retained predecessor, and journal digests. Restage the exact candidate before another unit stop. | A transient staging or stop refusal can be retried with a fresh authorization without deleting the journal or predecessor. |
-| `activated` or `self-test-failed` journal | Do not use preactivation retry. | Recovery remains classification-only; a failed self-test requires separately Release-authorized rollback. |
-| Different candidate, current digest, program path, journal, missing/invalid Release authorization, or non-forward unbound `no-update` candidate | Do not mutate replacement state. | Return an explicit refusal or repair-required outcome. |
-
-The replacement writer serializes every row with its existing exclusive state
-lease. Release still exclusively evaluates signature, expiry, revocation,
-compatibility, and floors on every attempt; no stored authorization becomes a
-reusable permission, and a retry never decreases a floor or introduces an
-automatic rollback.
+return typed refusals before input or root effects. Existing per-user roots,
+retained programs, journals and floors remain on disk as evidence. The
+maintained forward-only lifecycle uses `ardents-next installation upgrade-installed`
+and `recover-installed` with freshly authenticated exact artifacts and retained
+continuity evidence.
 
 The former generic `internal/update` transaction had no production caller and
 is retired. Its distinct schema-copy and adapter choreography are not part of
@@ -359,10 +312,11 @@ qualification remain unselected.
 
 ## Verification
 
-Focused Release, Custody, and Endpoint replacement behavior tests cover metadata
-rejection, root/floor progression, interruption/recovery, rollback, residue,
-encrypted Vault non-mutation during Linux replacement, export/restore,
-reconciliation, and sealed Name-control signing. Run the normal repository gate
+Focused Release, Custody, and Endpoint replacement behavior tests exercise the
+frozen public Release vector, metadata rejection, root and floor progression,
+interruption and recovery, residue refusal, Vault export and restore, and
+reconciliation. The retired Endpoint entrypoints retain pre-effect refusal
+tests. Run the normal repository gate
 during development and the full check before integration. Platform crash,
 power-loss, permissions, and supported lifecycle qualification are not
 satisfied by these tests.

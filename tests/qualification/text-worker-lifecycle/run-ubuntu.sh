@@ -5,7 +5,7 @@ fail() { printf '%s\n' "$*" >&2; exit 1; }
 [ "$(id -u)" = 0 ] || fail 'invalid environment: root installed-profile driver required'
 maximum_polls=1500
 case "${1-lifecycle}" in
-    lifecycle) test_root=TestInstalledTextWorkerLifecycle ;;
+    lifecycle) test_root=TestInstalledExecutionRepeatedLaunch ;;
     stream-activation)
         test_root=TestInstalledStreamWorkerActivation
         worker=/usr/lib/ardents/network-stream-worker-root/ardents-stream-qualification
@@ -25,6 +25,7 @@ case "${1-lifecycle}" in
     execution) test_root=TestInstalledExecutionLifecycle ;;
     execution-route) test_root=TestInstalledExecutionRouteTCP ;;
     connection-stream) test_root=TestInstalledConnectionStreamTCP ;;
+    connection-request-recovery) test_root=TestInstalledConnectionAcceptedRequestRecoveryTCP; maximum_polls=3600 ;;
     connection-control-received) test_root=TestInstalledConnectionControlReceivedTCP; maximum_polls=12600 ;;
     connection-control-delivery) test_root=TestInstalledConnectionControlDeliveryTCP; maximum_polls=12600 ;;
     connection-authority) test_root=TestInstalledConnectionAuthorityTCP; maximum_polls=12600 ;;
@@ -42,14 +43,9 @@ case "${1-lifecycle}" in
         test_root=TestInstalledPublicationElapsedTCP; maximum_polls=9000
         ;;
     execution-recovery) test_root=TestInstalledExecutionEndpointDeath ;;
-    network) test_root=TestInstalledTextWorkersReadTargetThroughJoinedNetwork; maximum_polls=10000 ;;
-    recovery) test_root=TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork; maximum_polls=3600 ;;
-    tree|execution-tree)
-        if [ "$1" = execution-tree ]; then
-            test_root=TestInstalledExecutionHostileTree
-        else
-            test_root=TestInstalledTextWorkerHostileTree
-        fi
+    network) test_root=TestInstalledTextCommandsThroughJoinedNetworkTCP; maximum_polls=10000 ;;
+    execution-tree)
+        test_root=TestInstalledExecutionHostileTree
         worker=/usr/lib/ardents/text-worker-root/ardents-text
         [ -n "${ARDENTS_TEXT_HOSTILE_WORKER_SHA256-}" ] || fail 'hostile worker independent digest required'
         [ -f "$worker" ] && [ ! -L "$worker" ] && [ "$(stat -c %u:%g:%a "$worker")" = 0:0:555 ] ||
@@ -57,12 +53,8 @@ case "${1-lifecycle}" in
         printf '%s  %s\n' "$ARDENTS_TEXT_HOSTILE_WORKER_SHA256" "$worker" | sha256sum --check --status ||
             fail 'invalid environment: hostile artifact differs from declared candidate'
         ;;
-    escape|execution-escape)
-        if [ "$1" = execution-escape ]; then
-            test_root=TestInstalledExecutionEscapeMatrix
-        else
-            test_root=TestInstalledTextWorkerEscapeMatrix
-        fi
+    execution-escape)
+        test_root=TestInstalledExecutionEscapeMatrix
         worker=/usr/lib/ardents/text-worker-root/ardents-text
         [ -n "${ARDENTS_TEXT_ESCAPE_WORKER_SHA256-}" ] || fail 'escape worker independent digest required'
         [ -f "$worker" ] && [ ! -L "$worker" ] && [ "$(stat -c %u:%g:%a "$worker")" = 0:0:555 ] ||
@@ -80,10 +72,10 @@ done
     fail 'invalid environment: Ubuntu 24.04 x86-64 required'
 [ "$(stat -fc %T /sys/fs/cgroup)" = cgroup2fs ] || fail 'invalid environment: cgroup v2 required'
 binary=/usr/lib/ardents/qualification/endpoint.test
-if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ]; then
+if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ] || [ "$test_root" = TestInstalledConnectionAcceptedRequestRecoveryTCP ] || [ "$test_root" = TestInstalledTextCommandsThroughJoinedNetworkTCP ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
 fi
-if [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ] || [ "$test_root" = TestInstalledStreamQualificationSeam ]; then
+if [ "$test_root" = TestInstalledExecutionRepeatedLaunch ] || [ "$test_root" = TestInstalledExecutionLifecycle ] || [ "$test_root" = TestInstalledExecutionHostileTree ] || [ "$test_root" = TestInstalledExecutionEscapeMatrix ] || [ "$test_root" = TestInstalledStreamQualificationSeam ]; then
     binary=/usr/lib/ardents/qualification/execution-runtime.test
 fi
 if [ "$test_root" = TestInstalledStreamWorkerActivation ]; then
@@ -100,6 +92,19 @@ if [ "$test_root" = TestInstalledExecutionEndpointDeath ]; then
 fi
 if [ "$test_root" = TestInstalledExecutionRouteTCP ] || [ "$test_root" = TestInstalledPublicationElapsedTCP ] || [ "$test_root" = TestInstalledConnectionStreamTCP ] || [ "$test_root" = TestInstalledConnectionAuthorityTCP ] || [ "$test_root" = TestInstalledConnectionControlDeliveryTCP ] || [ "$test_root" = TestInstalledConnectionControlReceivedTCP ] || [ "$test_root" = TestInstalledConnectionControlWritesTCP ] || [ "$test_root" = TestInstalledConnectionRefreshTCP ] || [ "$test_root" = TestInstalledConnectionWithdrawalTCP ] || [ "$test_root" = TestInstalledConnectionNonceTCP ]; then
     binary=/usr/lib/ardents/qualification/execution-command.test
+fi
+if [ "$test_root" = TestInstalledConnectionAcceptedRequestRecoveryTCP ] || [ "$test_root" = TestInstalledTextCommandsThroughJoinedNetworkTCP ]; then
+    [ -n "${ARDENTS_RECOVERY_INSTANCE_SHA256-}" ] && [ -n "${ARDENTS_RECOVERY_CUSTODY_SHA256-}" ] ||
+        fail 'invalid environment: independent Instance and Custody command digests required'
+    for artifact in ardents-next ardents-custody; do
+        path=/usr/lib/ardents/qualification/$artifact
+        [ -f "$path" ] && [ ! -L "$path" ] && [ "$(stat -c %u:%g:%a "$path")" = 0:0:555 ] ||
+            fail 'invalid environment: immutable root-owned Instance and Custody commands required'
+    done
+    printf '%s  %s\n' "$ARDENTS_RECOVERY_INSTANCE_SHA256" /usr/lib/ardents/qualification/ardents-next |
+        sha256sum --check --status || fail 'invalid environment: Instance command differs from candidate'
+    printf '%s  %s\n' "$ARDENTS_RECOVERY_CUSTODY_SHA256" /usr/lib/ardents/qualification/ardents-custody |
+        sha256sum --check --status || fail 'invalid environment: Custody command differs from candidate'
 fi
 unit=/run/systemd/system/ardents-endpoint.service
 [ -n "$ARDENTS_TEXT_LIFECYCLE_SHA256" ] && [ -n "$ARDENTS_TEXT_LIFECYCLE_UNIT_SHA256" ] ||
@@ -160,7 +165,7 @@ printf '%s\n' "$journal"
     [ "$(systemctl show ardents-endpoint.service -p ExecMainStatus --value)" = 0 ] ||
     fail 'installed text-worker lifecycle failed or did not terminate'
 set -- "$test_root" "$test_root/reader" "$test_root/publisher"
-if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ]; then
+if [ "$test_root" = TestInstalledConnectionDurableReopenTCP ] || [ "$test_root" = TestInstalledConnectionAcceptedRequestRecoveryTCP ]; then
     set -- "$test_root" "$test_root/ardents-carrier-tcp-tls-v2"
 fi
 if [ "$test_root" = TestInstalledConnectionWithdrawalTCP ]; then
@@ -227,6 +232,15 @@ if [ "$test_root" = TestInstalledPublicationElapsedTCP ]; then
         set -- "$@" "$test_root/$carrier" "$test_root/$carrier/initial-delayed-ack" "$test_root/$carrier/creation-refresh" "$test_root/$carrier/bounded-overlap"
     done
 fi
+if [ "$test_root" = TestInstalledExecutionRepeatedLaunch ]; then
+    set -- "$test_root"
+    for surface in connection administration; do
+        set -- "$@" "$test_root/$surface"
+        for attempt in 01 02 03 04 05 06 07 08 09 10 11 12; do
+            set -- "$@" "$test_root/$surface/launch-$attempt"
+        done
+    done
+fi
 if [ "$test_root" = TestInstalledExecutionLifecycle ]; then
     set -- "$test_root" "$test_root/Publisher-snapshot-operation" "$test_root/ordinary-Reader-operation" "$test_root/connection" "$test_root/connection/live-operation" "$test_root/connection/attachment-loss" "$test_root/administration" "$test_root/administration/live-operation" "$test_root/administration/attachment-loss" "$test_root/cleanup-failure"
 fi
@@ -246,19 +260,13 @@ if [ "$test_root" = TestInstalledExecutionRouteTCP ]; then
         set -- "$@" "$test_root/$carrier/publication" "$test_root/$carrier/publication-ack" "$test_root/$carrier/publication-ack/initial" "$test_root/$carrier/publication-ack/replacement" "$test_root/$carrier/publication-withdraw-ack" "$test_root/$carrier/publication-withdraw-ack/initial" "$test_root/$carrier/publication-withdraw-ack/replacement" "$test_root/$carrier/publication-caller-ack" "$test_root/$carrier/publication-caller-ack/initial" "$test_root/$carrier/publication-caller-ack/replacement" "$test_root/$carrier/joined" "$test_root/$carrier/worker-loss" "$test_root/$carrier/worker-loss-io" "$test_root/$carrier/clock-loss-io" "$test_root/$carrier/caller-loss-io"
     done
 fi
-if [ "$test_root" = TestInstalledTextWorkersReadTargetThroughJoinedNetwork ]; then
+if [ "$test_root" = TestInstalledTextCommandsThroughJoinedNetworkTCP ]; then
     set -- "$test_root"
     for carrier in ardents-carrier-tcp-tls-v2; do
         set -- "$@" "$test_root/$carrier"
         for size in empty reference maximum refresh; do
             set -- "$@" "$test_root/$carrier/$size"
         done
-    done
-fi
-if [ "$test_root" = TestInstalledTextWorkersRecoverAcceptedRequestAcrossJoinedNetwork ]; then
-    set -- "$test_root"
-    for carrier in ardents-carrier-tcp-tls-v2; do
-        set -- "$@" "$test_root/$carrier"
     done
 fi
 for test do
