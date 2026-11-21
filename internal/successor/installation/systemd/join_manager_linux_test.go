@@ -5,20 +5,18 @@ import "testing"
 // The transitional JOIN control vocabulary retired with the orchestration
 // (#604 FJD stage D, ADR-0125). The retained read-only JoinRuntime vocabulary
 // admits only its own fixed unit object; no job admission flag grants it a
-// mutation right, and the shared job admission belongs to Descriptor control.
+// mutation right, and the shared job admission belongs to Source/Forwarding control.
 func TestJoinRuntimeReplyVocabularyIsPurposeAndAdmissionBound(t *testing.T) {
 	const manager = ":1.4"
 	for _, object := range []string{"/org/freedesktop/systemd1/unit/ardents_2djoin_2eservice", "/org/freedesktop/systemd1/job/1", "/org/freedesktop/systemd1/unit/ardents_2dforwarding_2eservice", "/org/freedesktop/systemd1/unit/ardents_2dsource_2eservice", "/org/freedesktop/systemd1/job/01", "/org/freedesktop/systemd1/job/4294967296"} {
 		frame := sourceObjectReplyVector(manager, object)
-		for _, enabled := range []bool{false, true} {
-			want := object == "/org/freedesktop/systemd1/unit/ardents_2djoin_2eservice"
-			err := verifyNodeManagerFrame(frame, manager, true, true, true, enabled, joinUnitReply)
-			if (err == nil) != want {
-				t.Fatal("JOIN mutation vocabulary escaped its original purpose", object, enabled, err)
-			}
-			if verifyNodeManagerFrame(frame, ":1.5", true, true, true, enabled, joinUnitReply) == nil {
-				t.Fatal("foreign original manager accepted")
-			}
+		want := object == "/org/freedesktop/systemd1/unit/ardents_2djoin_2eservice"
+		err := verifyNodeManagerFrame(frame, manager, true, true, true, joinUnitReply)
+		if (err == nil) != want {
+			t.Fatal("JOIN mutation vocabulary escaped its original purpose", object, err)
+		}
+		if verifyNodeManagerFrame(frame, ":1.5", true, true, true, joinUnitReply) == nil {
+			t.Fatal("foreign original manager accepted")
 		}
 	}
 }

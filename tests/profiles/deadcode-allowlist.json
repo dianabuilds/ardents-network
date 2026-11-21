@@ -705,6 +705,88 @@
         "rationale": "The transitional installation/forwarding orchestration and its canonical Node initial/start consumers retired (#604 FJD stage D, ADR-0125). The retained Forwarding forward-Release predecessor verification consumes AuthenticateForwardingCandidate/Check in production; the exact target-pair and no-initial-facts assertions remain exercised by the genuine signed-artifact integration in cmd/ardents-next/forwarding_artifact_linux_test.go. Platform-led installed admission uses the mandatory platform check, not this candidate pair. Linux-native only; the file is excluded on Windows.",
         "owner": "Product Owner and Codex",
         "retirement": "Remove them if the forward-Release candidate admission loses its signed-artifact integration coverage or gains a production consumer again."
+      },
+      {
+        "symbols": [
+          "internal/successor/network/state.OpenNodeInspection",
+          "internal/successor/network/state.openNodeInspection",
+          "internal/successor/network/state.nodeInspection.inspect",
+          "internal/successor/network/state.NodeInspection.Check",
+          "internal/successor/network/state.NodeInspection.Close",
+          "internal/successor/network/state.nodeInspection.close",
+          "internal/successor/network/state.nodeInspectionLocalClosure",
+          "internal/successor/network/duty.OpenNodeInspection",
+          "internal/successor/network/duty.nodeInspectionRecords",
+          "internal/successor/network/duty.NodeInspection.Check",
+          "internal/successor/network/duty.NodeInspection.Close",
+          "internal/successor/reachability.OpenStoreInspection",
+          "internal/successor/reachability.openStoreInspection",
+          "internal/successor/reachability.storeInspectionAccess",
+          "internal/successor/reachability.sameStoreInspectionObject",
+          "internal/successor/reachability.storeInspection.local",
+          "internal/successor/reachability.storeInspection.check",
+          "internal/successor/reachability.storeInspection.nativeRoot",
+          "internal/successor/reachability.StoreInspection.Check",
+          "internal/successor/reachability.StoreInspection.Close",
+          "internal/successor/reachability.storeInspection.close",
+          "internal/successor/admission/spending.OpenInspection",
+          "internal/successor/admission/spending.openInspection",
+          "internal/successor/admission/spending.spendInspection.openDirectory",
+          "internal/successor/admission/spending.spendInspection.openLeaf",
+          "internal/successor/admission/spending.spendInspection.local",
+          "internal/successor/admission/spending.spendInspection.readJournal",
+          "internal/successor/admission/spending.sameSpendInspectionFile",
+          "internal/successor/admission/spending.spendInspection.check",
+          "internal/successor/admission/spending.spendInspection.checkNativeRoot",
+          "internal/successor/admission/spending.Inspection.Check",
+          "internal/successor/admission/spending.Inspection.Close",
+          "internal/successor/admission/spending.spendInspection.close",
+          "internal/successor/hosting.OpenInspection",
+          "internal/successor/hosting.openInspection",
+          "internal/successor/hosting.periodInspection.openDirectory",
+          "internal/successor/hosting.periodInspection.openLeaf",
+          "internal/successor/hosting.periodInspection.local",
+          "internal/successor/hosting.periodInspection.read",
+          "internal/successor/hosting.samePeriodInspectionFile",
+          "internal/successor/hosting.periodInspection.identities",
+          "internal/successor/hosting.periodInspection.nativeRoot",
+          "internal/successor/hosting.periodInspection.check",
+          "internal/successor/hosting.Inspection.Check",
+          "internal/successor/hosting.Inspection.Close",
+          "internal/successor/hosting.periodInspection.close"
+        ],
+        "classification": "retired transitional Descriptor replacement orchestration; retained read-only inspection mechanism test coverage",
+        "rationale": "The transitional installation/descriptor replacement orchestration and its canonical Node consumer retired (#604 FJD stage D, ADR-0125); replacement_inspections_linux.go was the sole production caller of these read-only retained-root inspection openers. The platform-led Descriptor lifecycle owns replacement through systemd and the canonical platform unit, and the bounded retained-producer repair uses its own dead-unit/lease openers, so these inspection openers have no remaining production consumer. They are retained as reviewed mechanism code because genuine Linux native tests exercise their exact numeric-principal custody, exclusive read-only lease, signed-floor/uncertain-history refusal without creation or repair, inode-restoration refusal, held-reader and physical Close join, and cancellation semantics: state/node_inspection_native_linux_test.go, duty/inspection_native_linux_test.go (which also covers the retained SourceInspection exposure policy), reachability/store_inspection_native_linux_test.go and store_inspection_join_native_linux_test.go (the descriptor-store-inspection-check lane), spending/inspection_native_linux_test.go and hosting/inspection_native_linux_test.go. The shared custody/floor/reader helpers they call (durable.OpenInspection, readRetainedInspection, participationInspection, checkRetainedStoreRoot, retainStoreCustody, restoreStoreFloors, inspectStoreCustody) remain production-live through SourceInspection, the live Store and the bounded repair, and are not listed here. Linux-native only; these files are excluded on Windows. No Linux/common checker exemption, successful authority substitute or installed qualification is added.",
+        "owner": "Product Owner and Codex; Network State/duty, Reachability Store, Admission spending and Hosting inspection owners",
+        "retirement": "Remove each allowance when its genuine native mechanism coverage is retired or a production consumer reaches it again; keep the exact Linux production and both-platform test deadcode checks."
+      },
+      {
+        "symbols": [
+          "internal/successor/installation/directory.CreateRoot",
+          "internal/successor/installation/directory.rootBirthParent",
+          "internal/successor/installation/directory.rootBirthAccess",
+          "internal/successor/installation/directory.RootBirth.record",
+          "internal/successor/installation/directory.RootBirth.observeParent",
+          "internal/successor/installation/directory.RootBirth.syncParent",
+          "internal/successor/installation/directory.RootBirth.Observe",
+          "internal/successor/installation/directory.RootBirth.Identity",
+          "internal/successor/installation/directory.RootBirth.Deliver",
+          "internal/successor/installation/directory.RootBirth.SealRoot",
+          "internal/successor/installation/directory.RootBirth.Close"
+        ],
+        "classification": "retired transitional initial-installation root birth; retained native mechanism test coverage",
+        "rationale": "directory.CreateRoot/RootBirth retained one original root-owned directory birth/delivery/seal for the transitional initial stopped installations. The Source, Forwarding, JOIN and Descriptor initial-installation orchestration all retired (#604 stage 1.6 and #604 FJD stage D, ADR-0125); installation/descriptor/initial_birth_linux.go was the last production caller, so this mechanism has no remaining production consumer. The platform-led lifecycles initialize their roots through the canonical platform path, not this transitional birth. It is retained as reviewed mechanism code because the genuine installation_native test directory/root_birth_native_linux_test.go exercises original root-owned birth, delivery/seal, cancellation and substitution refusal. The shared directory.New/Matches creation mechanism remains production-live through installation/endpoint and is not listed here. Linux-native only; the file is excluded on Windows. No checker exemption, successful authority substitute or installed qualification is added.",
+        "owner": "Product Owner and Codex; Installation directory owner",
+        "retirement": "Remove this allowance when its genuine native mechanism coverage is retired or a production consumer reaches it again; keep the exact Linux production and both-platform test deadcode checks."
+      },
+      {
+        "symbols": [
+          "internal/successor/enrollment.ValidateInfrastructureInventory"
+        ],
+        "classification": "retired transitional role selected-generation validation; retained canonical inventory mechanism test coverage",
+        "rationale": "ValidateInfrastructureInventory checks the closed seven-file infrastructure byte grammar against caller-supplied immutable images and returns copied declarations/digests. Its production consumers were the transitional JOIN/Descriptor selected-generation validation in the retired installation orchestration (#604 FJD stage D, ADR-0125); the retained prepare-inventory producers use PrepareInfrastructureInventory and the retained predecessor/candidate admission uses VerifyInfrastructure/ReadInfrastructureCandidate, so this validator has no remaining production caller. It is retained as reviewed mechanism code because genuine kept Linux tests exercise its exact canonical-byte equality, foreign-role and mutated-inventory refusal: enrollment/infrastructure_inventory_test.go and enrollment/descriptor_inventory_linux_test.go. The shared parseInfrastructureInventory/PrepareInfrastructureInventory helpers remain production-live and are not listed here. Linux-native only; the file is excluded on Windows. No checker exemption, successful authority substitute or installed qualification is added.",
+        "owner": "Product Owner and Codex; Enrollment inventory owner",
+        "retirement": "Remove this allowance when its genuine mechanism coverage is retired or a production consumer reaches it again; keep the exact Linux production and both-platform test deadcode checks."
       }
     ],
     "windows-amd64": [
@@ -1573,7 +1655,7 @@
       {
         "classification": "Descriptor proof and portable exchange behind native command composition",
         "retirement": "Remove exact Windows entries when an accepted native Windows command composition reaches these functions, or retire the owning contract. Linux production and both-platform test analysis must continue to require actual callers.",
-        "rationale": "Real Linux ardents-next route receive and node descriptor open Reachability Store and dispatch actual purpose-3 publication/lookup. Original Node calls Store Check and Deny, then reads OperationalFailure after joined Store closure; retained native custody, operation borrows and directory synchronization belong to that Store call chain. Prefix descriptor_exchange uses History and canonical ardp bytes through route_linux holder closures. Reachability descriptor verification calls Publication Target/Verify/VerifyPublish and copied Delegation/Digest facts. Windows command composition refuses before native Route roots; component Store tests supply no installed Windows support. Every exact entry remains required to be reachable in Linux production and both-platform test analysis; no checker changes. The exact existing-only Store opener and shared custody/floor readers are also reached by genuine Linux installed Descriptor restart and stopped inspections. They remain behind the unavailable native Windows command composition; the existing portable Windows Store adapter is not declared unavailable. Linux/Windows component retained-Store tests exercise no-create/no-repair and signed-floor preservation. The bounded RepairRetainedStoreStage mechanism is reached by the genuine Linux platform-led Descriptor participation repair (network/state/descriptor_repair_linux.go) after independent dead-unit manager/cgroup proofs and under the exclusive Store lease; Linux/Windows component repair tests exercise existing-only uncertain-stage removal, committed-floor preservation, no-promotion and held-lease refusal. It initializes no root and grants no publication, runtime or Windows installed composition. These five Windows-only symbol classifications add no Linux/common allowance, checker exemption, successful authority substitute or Windows installed qualification.",
+        "rationale": "Real Linux ardents-next route receive and node descriptor open Reachability Store and dispatch actual purpose-3 publication/lookup. Original Node calls Store Check and Deny, then reads OperationalFailure after joined Store closure; retained native custody, operation borrows and directory synchronization belong to that Store call chain. Prefix descriptor_exchange uses History and canonical ardp bytes through route_linux holder closures. Reachability descriptor verification calls Publication Target/Verify/VerifyPublish and copied Delegation/Digest facts. Windows command composition refuses before native Route roots; component Store tests supply no installed Windows support. Every exact entry remains required to be reachable in Linux production and both-platform test analysis; no checker changes. The exact existing-only Store opener and shared custody/floor readers are also reached by the genuine Linux platform-led Descriptor runtime (node descriptor --retained-config) and its read-only Store custody checks; the transitional installed Descriptor restart and stopped inspections retired with the orchestration (#604 FJD stage D, ADR-0125). They remain behind the unavailable native Windows command composition; the existing portable Windows Store adapter is not declared unavailable. Linux/Windows component retained-Store tests exercise no-create/no-repair and signed-floor preservation. The bounded RepairRetainedStoreStage mechanism is reached by the genuine Linux platform-led Descriptor participation repair (network/state/descriptor_repair_linux.go) after independent dead-unit manager/cgroup proofs and under the exclusive Store lease; Linux/Windows component repair tests exercise existing-only uncertain-stage removal, committed-floor preservation, no-promotion and held-lease refusal. It initializes no root and grants no publication, runtime or Windows installed composition. These five Windows-only symbol classifications add no Linux/common allowance, checker exemption, successful authority substitute or Windows installed qualification.",
         "symbols": [
           "internal/successor/publication.Proof.Digest",
           "internal/successor/publication.Verify",

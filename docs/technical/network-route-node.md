@@ -1655,10 +1655,17 @@ the platform-led Forwarding lifecycle owns Forwarding delivery. The transitional
 JOIN orchestration is retired in turn (#604 FJD stage D, ADR-0125) after the
 merged real-platform installed evidence
 (`TestNativeJoinPlatformInstalledLifecycle`); the platform-led JOIN lifecycle
-owns JOIN delivery. The remaining canonical native installed consumer
-(Descriptor) remains transitional under ADR-0125 until equivalent real-platform
-evidence permits its removal; source relocation or these unit checks cannot
-supply it.
+owns JOIN delivery. The transitional Descriptor orchestration is retired last
+(#604 FJD stage D, ADR-0125) after the merged real-platform installed evidence
+(`TestNativeDescriptorPlatformInstalledLifecycle`); the platform-led Descriptor
+lifecycle owns Descriptor delivery, and `ardents-node descriptor ...` returns
+typed before-effect refusals. Descriptor was the last canonical native installed
+consumer, so no transitional installed role consumer remains; source relocation
+or these unit checks cannot supply installed qualification. Descriptor Release
+signing is preserved and bound to `cmd/ardents-next` plus the canonical platform
+unit template (`infrastructure.PlatformUnitTemplate`); the former
+`descriptorinstallation.Template` and `cmd/ardents-node` program binding retired
+with the orchestration.
 
 ## Proposed installed infrastructure
 

@@ -168,13 +168,37 @@ same report; no old runtime or root is borrowed by this leaf consumer.
 
 Descriptor-role public preparation is fixed offline command composition.
 Infrastructure binds only its exact descriptor/program/template bytes; Enrollment
-owns the distinct seven-file inventory. Installation's separate `descriptor`
-declaration owner binds five independent State/participation/spend/Hosting/Store
-roots and the fixed non-root template. Canonical Control retains original public
+owns the distinct seven-file inventory. Canonical Control retains original public
 input and exclusive output custody through physical joins. These bytes confer
 neither native policy acceptance nor Release, Startup, Store ACK or runtime duty.
 Reachability remains the sole Store/proof/history owner. No live owner or role
 permission crosses from Source, Forwarding or JOIN through shared physical I/O.
+The #604 FJD stage D signing cutover binds the static `ardents-next` program and
+the canonical platform unit template; the former initial admission entry point
+and detached inventory accessors retired with the transitional orchestration.
+
+The transitional Descriptor orchestration (read-only original-input preflight,
+initial stopped Installation, allowance preparation, root first Start and
+independent Startup, explicit Stop/same-generation Restart, stopped replacement
+and original-prefix recovery) and the `installation/descriptor` declaration owner
+retired (#604 FJD stage D, ADR-0125) after the merged real-platform installed
+evidence. The platform-led Descriptor lifecycle owns installation and runtime
+admission through the canonical platform unit, `ardents-next node descriptor
+--retained-config` and `descriptor repair-retained`; `ardents-node descriptor ...`
+returns typed before-effect refusals. The former canonical installed Descriptor
+composition (`cmd/ardents-node/descriptor_installed_linux.go`) and its R01
+five-import exception are removed; Descriptor was the last canonical installed
+role, so R01 now has zero installed exceptions and no old-command role consumer
+remains. The retained repair mechanisms (`systemd.DescriptorRuntime`,
+`cgroup.CheckDescriptorRecoveryQuiescent`, the `network/state` producer repair and
+`reachability.RepairRetainedStoreStage`) keep their independent read-only custody
+and grant no Start, Stop, domain initialization or installed qualification. The
+Store lease is flock and dies with the process, so the bounded repair validates
+every committed publication floor and removes only an uncertain `.record-stage`
+under the exclusive Store lease, never initializing a missing root or resetting a
+floor; slot claims, spend obligations and publication floors are never repairable.
+Platform-led operator preparation (a shared runtime plan codec across roles) is a
+separate follow-up slice.
 
 JOIN public artifact preparation is a separate offline Control composition.
 Infrastructure owns only its exact descriptor/program/template byte binding;
@@ -314,7 +338,7 @@ keep their independent custody; no accepting cache crosses these lifetimes.
 | Owner | Scope | Boundary to preserve |
 |---|---|---|
 | `admission/issuerprofile/signing` | Independently pinned imported Ed25519 material, original lease/failure/Close and validated issuer-profile signing within Admission | It grants no duty and is not Person/Device/Persona, Network membership or a generic runtime Node identity service |
-| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route beyond the exact canonical installed Descriptor file admitted by [R01](route-migration-contract.md#r01-isolate-both-directions) |
+| Endpoint / Node composition | Construct genuine domain owners, perform live operation ordering and supervise their lifetimes | Composition must not accumulate domain policy or become the new version of the old monolithic owner; old composers cannot consume new Route — [R01](route-migration-contract.md#r01-isolate-both-directions) now admits zero canonical installed exceptions after the Descriptor retirement |
 | State/Hosting/Route physical adapters | Byte verification, durable transactions, counters, sockets and Carrier mechanisms under their declared owners | Mechanisms cannot mint authority, reset floors or copy a second domain decision implementation |
 | Installation mutable-directory birth | `installation/directory` retains one original creation caller and private born inode state, exclusively creates caller-admitted paths and synchronizes same-inode account/mode promotion; checked Identity facts are detached, and Matches serves independent installed inspection | Root Installation selects paths/account, admits Release/journal/lease/effects and projects binding facts. Directory creation grants no adoption/recovery, selection, manager or startup authority; shared trusted-root predicates remain with Root lease/fixed/recovery lifetimes |
 | Installation request declarations and original input | `installation/request` owns canonical bounded declarations, detached copies, native direct root-owned input and opaque original byte/inode/access reobservation; the root Request facade is consumed by actual command and transaction composition | No Release authorization, writer lease, journal, account/root creation, generation selection, manager or startup authority. General trusted-path observations remain with root Installation lease/staging/inspection, independently of request provenance |
@@ -359,21 +383,26 @@ not additional product meanings or another execution ledger in this map.
 
 ### Transitional native consumers
 
-The existing canonical Descriptor installed consumer still uses native
-deployment mechanisms. Source delivery cut over to the platform-led lifecycle
-(#604 stage 1.6, ADR-0125); its transitional orchestration is retired and the
-platform-led lifecycle owns Source delivery. Forwarding delivery cut over in
-turn (#604 FJD stage D, ADR-0125) after the merged real-platform installed
-evidence; its transitional orchestration, OLD-path installed QA test and
-`forwarding-installed-linux` profile are retired, and `ardents-node forwarding
-...` returns typed before-effect refusals. Forwarding Release signing is
-preserved and bound to `cmd/ardents-next` plus the canonical platform unit
-template. JOIN delivery cut over in turn (#604 FJD stage D, ADR-0125) after the
+All four canonical installed role consumers have cut over to the platform-led
+lifecycle; no transitional installed role consumer remains. Source delivery cut
+over to the platform-led lifecycle (#604 stage 1.6, ADR-0125); its transitional
+orchestration is retired and the platform-led lifecycle owns Source delivery.
+Forwarding delivery cut over in turn (#604 FJD stage D, ADR-0125) after the
 merged real-platform installed evidence; its transitional orchestration,
-OLD-path installed QA test and `join-installed-linux` profile are retired, and
-`ardents-node join ...` returns typed before-effect refusals. JOIN Release
-signing is preserved and bound to `cmd/ardents-next` plus the canonical platform
-unit template.
+OLD-path installed QA test and `forwarding-installed-linux` profile are retired,
+and `ardents-node forwarding ...` returns typed before-effect refusals.
+Forwarding Release signing is preserved and bound to `cmd/ardents-next` plus the
+canonical platform unit template. JOIN delivery cut over in turn (#604 FJD stage
+D, ADR-0125) after the merged real-platform installed evidence; its transitional
+orchestration, OLD-path installed QA test and `join-installed-linux` profile are
+retired, and `ardents-node join ...` returns typed before-effect refusals. JOIN
+Release signing is preserved and bound to `cmd/ardents-next` plus the canonical
+platform unit template. Descriptor delivery cut over last (#604 FJD stage D,
+ADR-0125) after the merged real-platform installed evidence; its transitional
+orchestration and OLD-path installed QA tests/profiles are retired, and
+`ardents-node descriptor ...` returns typed before-effect refusals. Descriptor
+Release signing is preserved and bound to `cmd/ardents-next` plus the canonical
+platform unit template.
 The retained mechanisms' current source remains under
 `internal/successor/installation`; that placement grants no new domain
 or mandate to add an Introduction/Issuer installer. Endpoint Startup remains
@@ -381,13 +410,13 @@ transitional separately from Node/Source. Preserve these consumers until their
 necessary guarantees have equivalent owners and evidence; no automatic data
 conversion, adoption, reset or stored-root deletion follows from code retirement.
 
-The canonical new-Route exception remains exactly the one file and imports
-admitted by [R01](route-migration-contract.md#r01-isolate-both-directions):
-`cmd/ardents-node/descriptor_installed_linux.go`.
-It directly constructs genuine new owners. The former
-`forwarding_installed_linux.go` and `join_installed_linux.go` exceptions retired
-with the transitional Forwarding/JOIN orchestration (#604 FJD stage D,
-ADR-0125).
+[R01](route-migration-contract.md#r01-isolate-both-directions) now admits ZERO
+canonical installed exceptions. The former `forwarding_installed_linux.go`,
+`join_installed_linux.go` and `descriptor_installed_linux.go` exceptions retired
+with the transitional Forwarding/JOIN/Descriptor orchestration (#604 FJD stage D,
+ADR-0125); Descriptor was the last canonical installed role. New Route belongs
+only in `internal/successor/route`, composed only by `cmd/ardents-next`, which
+directly constructs genuine new owners.
 No old-runtime wrapper, shared live root, role selector or additional canonical
 consumer is admitted by the platform path in `cmd/ardents-next`.
 
@@ -396,11 +425,11 @@ consumer is admitted by the platform path in `cmd/ardents-next`.
 | Initial pin and immutable role inventory | Enrollment retains independent pin and actual mapped-program provenance; a candidate or copied inventory cannot establish initial trust |
 | Exact coherent program/generation permission | Release retains trust, monotonic floors and original opaque proofs; native composition matches exact role/resources and current verifier. RuntimeAuthorization is a separate platform pre-start result and cannot enter native effects |
 | Read-only request/native preflight | Role-specific bounded input custody plus independently opened fixed-purpose systemd observations. Absence/preflight grants no creation, Start, domain initialization or recovery permission |
-| Initial stopped native deployment | Existing Descriptor creators retain their own account/root/file births, exact Release binding, immutable generation, selection/unit and explicit Reload. Semantic roots remain with their future domain owners; pending publication follows actual joins. Source, Forwarding and JOIN first installation are platform-led (`source prepare-state` / `platform initialize-trust`/`unit` / `systemctl start ardents-source`; canonical platform unit / `platform check` / `node forwarding --retained-config` / `node join --retained-config`), not native stopped creators |
+| Initial stopped native deployment | Source, Forwarding, JOIN and Descriptor first installation are all platform-led (`source prepare-state` / `platform initialize-trust`/`unit` / `systemctl start ardents-source`; canonical platform unit / `platform check` / `node forwarding --retained-config` / `node join --retained-config` / `node descriptor --retained-config`), not native stopped creators. The transitional Descriptor stopped creator retired (#604 FJD stage D, ADR-0125). Semantic roots remain with their domain owners; pending publication follows actual joins |
 | Existing native first Start and independent Startup | Root control retains its original manager/process/scope and archival-before-ACK ordering. Non-root Startup independently checks original files, actual invocation/protection and root completion. It grants no State, duty, spend, Store ACK or Service readiness |
 | Original runtime retirement and native stop | Runtime joins its actual Node/Route/Store/State/credential/Guard borrowers before its original challenge-bound report. Root independently joins actual process/scope/manager observers and retains failed/uncertain retirement. A timeout, missing path, ACK or process exit cannot supply domain completion |
 | Existing native restart | Fresh Release and new independent invocation after complete original retirement; all original principals, keys, allowance and semantic floors persist. No late original result binds a successor |
-| Existing stopped replacement | Native composition admits only a separately proven retired predecessor and fresh forward Release, with original selection/unit/native custody. State, Receiving, Hosting and Descriptor Store supply their own independently leased existing-only inspections; no foreign mutable root or successful ACK is borrowed |
+| Existing stopped replacement | The transitional role replacement orchestration retired (#604 FJD stage D, ADR-0125); the platform-led lifecycle and systemd own replacement through the canonical platform unit. State, Receiving, Hosting and Descriptor Store retain their own independently leased existing-only read-only inspections as reviewed mechanism code with genuine native coverage; no foreign mutable root or successful ACK is borrowed, and the inspections grant no replacement, repair or runtime authority |
 | Existing bounded recovery | Distinct original-cut custody, fresh Release/native admission, independent original prefix/completion and physical join. No adoption, earlier-effect/report replay, invented birth, semantic completion, reset or generic recovery controller is authorized |
 | Canonical offline preparation/signing | Command composition retains original protected inputs, reviewed commitments and finite output custody. Network authenticates Records/Epoch/profile/State; Admission owns token keys/quota/results; Release authenticates signed software. Unsigned preparation, fixture keys or signatures alone grant no current runtime or installed qualification |
 
@@ -627,9 +656,10 @@ Source's `serve-retained` and Node's `--retained-config` require existing
 semantic histories; Introduction uses Receiving's existing-only opening and
 Route's `OpenRetainedReceivingRegistry`, while Issuer keeps quota/keys/results
 with Admission. Those components do not establish first initialization,
-predecessor completion or installed qualification. Existing canonical installed
-consumers and Endpoint Startup remain transitional until their equivalent
-platform ownership and evidence are established under ADR-0125.
+predecessor completion or installed qualification. The canonical installed role
+consumers are all retired (#604 FJD stage D, ADR-0125); Endpoint Startup alone
+remains transitional until its equivalent platform ownership and evidence are
+established under ADR-0125.
 
 The semantic owner below decides transitions. Storage, crypto and operating
 system adapters enforce its declared mechanism; they cannot acquire the rule.

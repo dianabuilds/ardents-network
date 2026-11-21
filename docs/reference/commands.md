@@ -1211,115 +1211,61 @@ JOIN lifecycle owns State preparation.
 
 ## Descriptor-role public preparation
 
-Linux canonical Control provides these fixed offline commands (fresh OUTPUT
-directories; original inputs must have protected root-owned ancestors):
+The transitional Descriptor orchestration and its OLD preparation are retired
+(#604 FJD stage D, ADR-0125). `ardents-node descriptor start-installed BINDING`
+and every `ardents-node descriptor ...` installation transaction
+(`install-initial-stopped`, `inspect-initial-history`, `start-initial`, `stop`,
+`inspect-started-history`, `restart`, `replace`, `recover`,
+`supervise-transition`, `inspect-inputs`) return one typed before-effect
+retirement error pointing to the platform-led Descriptor lifecycle
+(`ardents-next node descriptor --retained-config`, `platform check/unit`,
+`systemctl start ardents-descriptor`, `descriptor repair-retained`). The former
+`descriptor_installed_linux.go`/`descriptor_installation_linux.go` compositions
+and the `installation/descriptor` package are removed; Descriptor was the last
+canonical installed role consumer.
+
+Linux canonical Control retains these fixed offline artifact/signing commands
+(fresh OUTPUT directories; original inputs must have protected root-owned
+ancestors):
 
 ```text
-ardents-control descriptor prepare-template OUTPUT
 ardents-control descriptor prepare-artifact ID VERSION PROGRAM TEMPLATE OUTPUT
 ardents-control descriptor prepare-inventory DISTRIBUTION OUTPUT
-ardents-control descriptor prepare-request --installation-root PATH --state-root PATH --participation-root PATH --spend-root PATH --hosting-root PATH --descriptor-root PATH --credential-directory PATH --plan PATH --certificate PATH --private-key PATH --clock PATH --output OUTPUT
-ardents-control descriptor prepare-plan --request REQUEST --output OUTPUT --network-id HEX --node-id HEX --profile-authority HEX --authority HEX --threshold N --work-tx N --work-rx N --termination-tx N --termination-rx N --retirement-wait-ms N
-```
-
-The exact immutable resources are `infrastructure-descriptor.json` and
-`ardents-descriptor.service` alongside the Node program and four Release metadata
-files. `prepare-artifact` binds supplied program/template bytes; it neither
-validates loaded unit policy nor signs metadata. The request keeps Store separate
-from State, participation, spending and the one Hosting root. The plan retains
-explicit public trust declarations; repeated `--authority` is allowed within its
-finite bound, other duplicate options refuse. Declared runtime inputs/roots are
-not opened or created. Input/output users join before the public hash receipt.
-These operations supply no initial trust, Release permission, installed startup,
-Store ACK, publication readiness or live Node duty. Other platforms refuse.
-
-
-The distinct root-only `ardents-node descriptor inspect-inputs REQUEST` retains
-original delivery and independently observes the actual manager/all five absent
-Node slots, future resource namespaces and account. The result
-`descriptor-inputs-preflight-completed` follows original native/input joins and
-explicitly reports `installed:false`. It opens no Release verifier or semantic
-root, creates no account/unit and grants no future creation/Startup permission.
-
-
-### Descriptor initial Release and stopped installation
-
-```sh
 ardents-control descriptor prepare-release-keys FRESH_PRIVATE_KEYS
 ardents-control descriptor prepare-release-plan --network NETWORK --reference UTC --expires UTC --program PROGRAM --descriptor ARTIFACT --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_OUTPUT
+ardents-control descriptor prepare-forward-release-plan --network NETWORK --reference UTC --expires UTC --program PROGRAM --descriptor ARTIFACT --template TEMPLATE --program-custom PUBLIC_CLAIMS --generation-custom PUBLIC_CLAIMS --output FRESH_OUTPUT
 ardents-control descriptor sign-initial-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION
-ardents-node descriptor install-initial-stopped DISTRIBUTION INDEPENDENT_PIN HISTORY ENVIRONMENT NETWORK REQUEST
-ardents-node descriptor inspect-initial-history DISTRIBUTION HISTORY ENVIRONMENT NETWORK BINDING
+ardents-control descriptor sign-forward-release PUBLIC_PLAN PRIVATE_KEYS FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION
 ```
+
+`descriptor prepare-template`, `prepare-request`, `prepare-plan`,
+`prepare-hosting` and `prepare-state` return typed before-effect refusals;
+`ardents-next platform template` emits the canonical platform unit template
+(`infrastructure.PlatformUnitTemplate`). After the #604 FJD stage D signing
+cutover the bound program is the static Linux-amd64 `ardents-next` binary and the
+bound template is that canonical platform unit template; the signer refuses a
+substituted program or template. The exact immutable resources are
+`infrastructure-descriptor.json` and `ardents-descriptor.service` alongside the
+program and four Release metadata files. `prepare-artifact` binds supplied
+program/template bytes; it neither validates loaded unit policy nor signs
+metadata. `sign-forward-release` independently verifies the exact original signed
+predecessor and unchanged root/key purposes before raising
+Targets/Snapshot/Timestamp versions. Input/output users join before the public
+hash receipt. These operations supply no initial trust, Release permission,
+installed startup, Store ACK, publication readiness or live Node duty. Other
+platforms refuse.
 
 The separate public `scripts/installation/prepare-descriptor-release-plan.py`
-consumes original actual two-execution canonical build records with explicit
-prestart evidence. Its initial purpose is fixed; it signs nothing. The key
-receipt states shared project-controlled custody and supplies no trust or
-independence. Initial installation verifies the independent inventory pin and
-actual running executable before opening Release history. It creates one fixed
-stopped unit and five empty semantic roots, including Store, and never starts
-Node or initializes any semantic history. Independent history inspection uses
-its own native journal lease and fresh retained Release permission; output grants
-no runtime authority. Uncertain or existing native prefixes remain blocking.
+build-records preparer and its native build-records control retired with the
+orchestration; a new-path Descriptor candidate build and release plan builder is
+a separate follow-up. The shared `build-forwarding-candidate.py` records remain
+the build-scope reference with no remaining role-specific plan preparer.
 
-Descriptor first startup additionally provides fixed canonical Control operations
-`descriptor prepare-node-key`, `prepare-node-record`, `sign-node-record`,
-`prepare-node-certificate`, `prepare-state-key`, `prepare-epoch`, `sign-epoch`,
-`prepare-token-keys`, `prepare-profile`, `sign-profile`, `prepare-hosting` and
-non-root `prepare-state`. Their finite public/offline formats are separate from
-runtime duty. Hosting takes explicit binding/provider/period/unit/quantity/
-directions/interfaces/initial-used-bytes/low-watermark-bytes options and never
-reinitializes an existing allowance.
-
-`ardents-node descriptor start-initial DISTRIBUTION HISTORY ENVIRONMENT NETWORK
-BINDING` admits only the first completed stopped generation under fresh retained
-Release floors. The fixed unit alone invokes `descriptor start-installed BINDING`
-as `ardents-node`; ordinary execution cannot supply its original native Startup
-or root-peer exchange. Listening is not Store ACK, Service readiness or lifecycle
-acceptance. No automatic restart, key reload, adoption or rollback is provided.
-
-
-Descriptor original lifecycle commands:
-
-- `ardents-node descriptor stop RELEASE-HISTORY BINDING`: explicitly retire the
-  original invocation through actual domain/native completion. Missing completion
-  stays blocking; this command does not admit restart.
-- `ardents-node descriptor inspect-started-history RELEASE-HISTORY BINDING`:
-  independently verify the complete retained invocation/retirement chain without
-  runtime permission or history repair.
-- `ardents-node descriptor restart DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING`:
-  fresh exact-artifact/native admission and independent non-root startup for the
-  same generation after committed original retirement. Missing histories refuse.
-
-
-`ardents-node descriptor replace DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK
-BINDING REQUEST` selects an explicit strictly forward stopped Descriptor resource
-or program generation after complete original retirement. It preserves account,
-credentials and all five semantic histories; fresh Release, independent existing
-history checks and joined native readback precede completion. It does not Start
-the candidate. Partial/uncertain transitions retain their blockers.
-
-
-`ardents-control descriptor prepare-forward-release-plan` uses the same explicit
-public flags as `prepare-release-plan`, with a separate forward schema.
-`ardents-control descriptor sign-forward-release PUBLIC_PLAN PRIVATE_KEYS
-FRESH_METADATA FRESH_VERIFICATION PREDECESSOR_DISTRIBUTION` independently verifies
-the exact original signed predecessor and unchanged root/key purposes before
-raising Targets/Snapshot/Timestamp versions. Its output grants no installation
-or runtime permission. The root-only actual-build preparer accepts `--forward`
-for this distinct reviewed purpose; the initial default still requires version1.
-
-
-Descriptor stopped recovery uses two distinct canonical operations:
-
-```text
-ardents-node descriptor supervise-transition --stop-after-record 62 --timeout-ms 120000 -- replace DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING REQUEST
-ardents-node descriptor recover DISTRIBUTION RELEASE-HISTORY ENVIRONMENT NETWORK BINDING REQUEST
-```
-
-The first owns an original interrupted replacement and its separate physical cut;
-it grants no recovery or runtime authority. The second admits only the complete
-stopped prefix with fresh proofs and original predecessor completion. It neither
-starts a Node nor repeats Reload. Partial or uncertain prefixes retain their
-blockers and require repair; files alone supply no recovery permission.
+The separate canonical `ardents-control descriptor` offline network authority
+producers remain `prepare-state-key`, `prepare-node-key`, `prepare-node-record`,
+`sign-node-record`, `prepare-node-certificate`, `prepare-epoch`, `sign-epoch`,
+`prepare-token-keys`, `prepare-profile` and `sign-profile`. Each retains
+fixed-purpose input/output custody; signatures and accepted State are distinct
+from installed duty or bootstrap acceptance. The former `prepare-hosting` and
+`prepare-state` producers retired with the transitional orchestration; the
+platform-led Descriptor lifecycle owns Hosting allowance and State preparation.

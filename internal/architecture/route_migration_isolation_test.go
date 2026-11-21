@@ -17,8 +17,10 @@ func routeMigrationBoundaryPermits(source, dependency string) bool {
 	routeSource := strings.HasPrefix(source, directory+"/")
 	routeDependency := dependency == imported || strings.HasPrefix(dependency, imported+"/")
 	newSource := strings.HasPrefix(source, "internal/successor/") || strings.HasPrefix(source, "cmd/ardents-next/")
-	canonicalDescriptor := source == "cmd/ardents-node/descriptor_installed_linux.go" && dependency == imported+"/role"
-	if routeDependency && !newSource && !canonicalDescriptor {
+	// R01 has zero canonical installed exceptions after the Descriptor retirement
+	// (#604 FJD stage D, ADR-0125): new Route is composed only by cmd/ardents-next
+	// and the successor tree; no old-command role consumer is admitted.
+	if routeDependency && !newSource {
 		return false
 	}
 	if routeSource && strings.HasPrefix(dependency, modulePath+"/") && !strings.HasPrefix(dependency, modulePath+"/internal/successor/") {
@@ -67,10 +69,8 @@ func TestRouteMigrationIsolationPolicy(t *testing.T) {
 		{"old Node dependency in test", "internal/successor/route/role_test.go", modulePath + "/internal/node/outer", false},
 		{"external fixture dependency", "internal/successor/route/selection_test.go", modulePath + "/tests/epochfixture/network", false},
 		{"new command boundary", "cmd/ardents-next/route.go", modulePath + "/internal/successor/route", true},
-		{"canonical installed Descriptor role only", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/successor/route/role", true},
-		{"canonical Descriptor test denied", "cmd/ardents-node/descriptor_installed_linux_test.go", modulePath + "/internal/successor/route/role", false},
-		{"canonical Descriptor Route root denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/successor/route", false},
-		{"canonical Descriptor receiver denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/successor/route/receiver", false},
+		{"retired canonical installed Descriptor role denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/successor/route/role", false},
+		{"retired canonical Descriptor Route root denied", "cmd/ardents-node/descriptor_installed_linux.go", modulePath + "/internal/successor/route", false},
 		{"new Admission boundary", "internal/successor/route/receiving/admission.go", modulePath + "/internal/successor/admission/receiving", true},
 		{"new Network boundary", "internal/successor/route/selection.go", modulePath + "/internal/successor/network/state", true},
 		{"new Hosting boundary", "internal/successor/route/receiving/reservation.go", modulePath + "/internal/successor/hosting", true},

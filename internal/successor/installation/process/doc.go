@@ -19,9 +19,11 @@
 // RetainJoin/RetainJoinStop/RetainJoinSelf and InterruptJoin) is retired
 // (ADR-0125, #604 FJD stage D); the platform-led JOIN lifecycle owns process
 // delivery and stop through the canonical platform unit.
-// DescriptorExpected and its root/self openers fix Descriptor argv, original
-// process and unit independently. DescriptorInvocation exposes no signal right
-// or underlying Invocation and cannot borrow a sibling process observation.
+// The transitional Descriptor invocation orchestration (DescriptorExpected,
+// RetainDescriptor/RetainDescriptorStop/RetainDescriptorSelf and
+// InterruptDescriptor) is retired (ADR-0125, #604 FJD stage D); the platform-led
+// Descriptor lifecycle owns process delivery and stop through the canonical
+// platform unit.
 // CheckSourceRecoveryQuiescent independently excludes other processes of the
 // actual Source principal, including commands outside the fixed unit. State
 // separately retains semantic leases, manager and cgroup checks; procfs absence
