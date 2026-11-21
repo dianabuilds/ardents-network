@@ -3270,8 +3270,10 @@ the tag while `scripts/check-deadcode.go` compiles it so native coverage counts.
 It proves the FULL platform-led launch chain to protected text Service readiness
 for ONE dual-role (publisher+reader) Endpoint (#391 S1): genuine Network State +
 live Source servers + fixture Release authority + enrolled protected candidate;
-`installation provision` delivery staging creates the installed-stopped root (no
-`start-guard.json`, hence platform-led compatible); `endpoint prepare-history` and
+the host prepares the dedicated account, vacant roots and signed Worker resources;
+`platform initialize-trust` authenticates the independent pin and
+`platform stage-endpoint` seals the installed generation without a start exchange.
+`endpoint prepare-history` and
 `hosting initialize` prepare the genuine histories; the platform main unit (sole
 privileged F-25 `ExecStartPre`) and canonical socket-activated worker units are
 installed; systemd starts the participant (no root ACK); the F-25 pre-start check
@@ -3385,7 +3387,8 @@ the participant receives only public signed Network material and actual
 permission requests/responses over a local fixture channel, independently
 provisions and platform-led-launches a dual-role Endpoint with its own random
 declared Broker/Connection/Administration principals against that Network
-(delivery staging → prepare-history → hosting → platform main unit +
+(platform account and resources → initialize-trust → stage-endpoint →
+prepare-history → hosting → platform main unit +
 canonical socket-activated workers → systemd start without root ACK → F-25
 pre-start transfer → start-installed platform-led → independent fixture
 permission approval → original-process listeners), and exercises the

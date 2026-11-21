@@ -453,6 +453,32 @@ the exact account and root identities, writes the complete sealed inventory
 and publishes selection. It refuses existing or partial roots, leaves
 Release floors intact and installs no Worker resources or systemd units.
 
+For a fresh platform delivery, prepare the dedicated `ardents-endpoint`
+system account with its private group and matching UID/GID between 100
+and 999. Its home is `/nonexistent`, its shell is `/usr/sbin/nologin`,
+and it has no supplementary groups. The host prepares the declared
+writable directories with mode `0700` and the account's UID/GID before staging.
+
+Deliver the signed Text Worker executable into
+`/usr/lib/ardents/text-worker-root/ardents-text` with mode `0555`.
+The Worker root and its fixed subdirectories are root-owned with mode
+`0555`. Deliver both signed Worker service templates and both sockets
+to `/etc/systemd/system`, the signed polkit rule to
+`/usr/share/polkit-1/rules.d` and the signed tmpfiles declaration to
+`/usr/lib/tmpfiles.d`. These files are root-owned with mode `0644`.
+Create `/run/ardents-text` with mode `0710`, root ownership and the
+Endpoint group. The root-owned mode-`0644`
+`/etc/ardents/text-worker-artifact.json` carries schema
+`ardents-text-worker-artifact-v1` and the SHA-256 map keyed by installed
+paths for the executable, the four Worker units and the polkit rule.
+Endpoint independently compares these files to the sealed generation.
+
+After staging, initialize the domain histories through their owning
+commands. Install the output of `ardents-next platform unit <launch>`
+as the fixed Endpoint system unit, reload systemd, and start that unit.
+Its pre-start check and the Endpoint's original runtime observations
+still determine whether the launch can accept work.
+
 | Route | Purpose |
 |---|---|
 | `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH --profile ardents-route-v3 --closed-profile-authority HEX [--closed-profile PATH]` | Accept one complete authenticated offline Network State generation through the successor State owner. The live State selects only the closed Route profile (`ardents-route-v3`) and requires its pinned closed-profile authority; retired-profile Epochs are refused, not published. When `--closed-profile` is supplied, the command accepts that signed profile **after** committing the Epoch; a profile refusal does not undo the accepted generation. Success emits one `ardents-state-event-v1` `generation-accepted` JSON event, with `closed_profile_sha256` when the profile was also accepted. |

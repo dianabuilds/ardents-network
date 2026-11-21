@@ -14,7 +14,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -25,8 +24,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/allocation"
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/installation/unit"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
@@ -42,9 +39,9 @@ type platformLedNetwork struct {
 
 // This native qualification proves the FULL platform-led launch chain to
 // protected text Service readiness for ONE dual-role (publisher+reader) Endpoint
-// on the real admitted Ubuntu/systemd host (#391 S1). It reuses the justified
-// delivery staging (`installation provision` creates an installed-stopped root
-// with no start-guard.json, hence platform-led compatible), prepares the genuine
+// on the real admitted Ubuntu/systemd host (#391 S1). Platform preparation
+// sets up the account and Worker resources, independently initializes trust,
+// seals the generation via the production platform command and prepares the genuine
 // histories, installs the platform main unit (sole privileged F-25 ExecStartPre),
 // lets systemd start the participant (no root ACK), grants permissions through an
 // independent fixture granter and observes the original-process listeners.
@@ -347,10 +344,11 @@ func provisionPlatformLedLaunchFixture(t *testing.T, refreshMS int, f *networkAd
 	// placeholder bytes: socket activation spawns it under confinement.
 	resources["ardents-text-linux-amd64"] = buildEndpointWorkerBinary(t)
 	bundle, pin, initialProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 1, 1)
+	bundle, initialProgram = platformNativeDistribution(t, bundle, filepath.Join(stand.base, "initial-distribution"))
 	// Provision establishes Release floors at metadata version 1.
 	// Advance the signed metadata while retaining the exact staged release and descriptor.
 	candidateBundle, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 2, 1)
-	stand.distribution = candidateBundle
+	stand.distribution, _ = platformNativeDistribution(t, candidateBundle, filepath.Join(stand.base, "candidate-distribution"))
 	request := string(installationRequestBytes(t, bundle, pin, stand.floors))
 	request = platformLedDualDeclaration(t, request, stand.base)
 	quoted := func(s string) string {
@@ -396,27 +394,7 @@ func provisionPlatformLedLaunchFixture(t *testing.T, refreshMS int, f *networkAd
 	stand.applicationSock = filepath.Join(stand.base, "application", "reader")
 	stand.administrationSock = filepath.Join(stand.base, "administration", "socket")
 
-	// Genuine delivery staging creates the installed-stopped root + account +
-	// fixed resources. No start-guard.json is created → platform-led compatible.
-	// The provision command runs as the enrolled program itself so its executable
-	// provenance matches the signed inventory (os.Executable == enrolled program).
-	launchCommand(t, initialProgram, nil, "installed-stopped", "installation", "provision", "--request", stand.requestPath)
-	account, err := user.Lookup("ardents-endpoint")
-	if err != nil {
-		t.Fatal(err)
-	}
-	uid, err := strconv.ParseUint(account.Uid, 10, 32)
-	if err != nil || uid == 0 {
-		t.Fatal("invalid installed UID", err)
-	}
-	gid, err := strconv.ParseUint(account.Gid, 10, 32)
-	if err != nil || gid == 0 {
-		t.Fatal("invalid installed GID", err)
-	}
-	stand.uid, stand.gid = uint32(uid), uint32(gid)
-	if err := os.Chown(keyPath, int(uid), int(gid)); err != nil {
-		t.Fatal(err)
-	}
+	stand.uid, stand.gid = stagePlatformNativeEndpoint(t, stand.requestPath, initialProgram, pin, stand.distribution, keyPath)
 	selection, err := os.ReadFile(filepath.Join(stand.installationRoot, "selection.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -475,7 +453,7 @@ func provisionPlatformLedLaunchFixture(t *testing.T, refreshMS int, f *networkAd
 	launchWrite(t, budgetPath, budgetInput, 0644)
 	launchCommand(t, stand.program, credential, "completed", "hosting", "initialize", "--config", budgetPath)
 
-	stand.installPlatformUnit(t, request)
+	stand.manifest, stand.pin = installPlatformNativeUnit(t, stand.requestPath, stand.distribution, stand.program)
 	return stand
 }
 
@@ -505,84 +483,6 @@ func platformLedDualDeclaration(t *testing.T, raw, base string) string {
 		raw = strings.Replace(raw, change[0], change[1], 1)
 	}
 	return raw
-}
-
-func (s *platformLedLaunchStand) installPlatformUnit(t *testing.T, request string) {
-	t.Helper()
-	decl, err := platformEndpointDeclaration([]byte(request))
-	if err != nil {
-		t.Fatal(err)
-	}
-	roots, err := platformEndpointRoots(decl)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, root := range roots {
-		if err := os.MkdirAll(root, 0755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	certBytes, err := os.ReadFile(filepath.Join(s.etcDir, "client.crt"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	keyBytes, err := os.ReadFile(filepath.Join(s.etcDir, "client.key"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	certDigest := sha256.Sum256(certBytes)
-	keyDigest := sha256.Sum256(keyBytes)
-	requestRaw, err := os.ReadFile(s.requestPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	configDigest := sha256.Sum256(requestRaw)
-	launch := platformLaunch{
-		Role: "endpoint", Distribution: s.distribution, ReleaseRoot: s.floors,
-		Environment: "h3-test", Network: "new-release-test", Program: s.program,
-		Configuration: s.requestPath, ConfigSHA256: hex.EncodeToString(configDigest[:]),
-		WritableRoots: roots,
-		Inputs: map[string]string{
-			filepath.Join(s.etcDir, "client.crt"): hex.EncodeToString(certDigest[:]),
-			filepath.Join(s.etcDir, "client.key"): hex.EncodeToString(keyDigest[:]),
-		},
-	}
-	launchRaw, err := json.Marshal(launch)
-	if err != nil {
-		t.Fatal(err)
-	}
-	launchRaw = append(launchRaw, '\n')
-	launchDigest := sha256.Sum256(launchRaw)
-	s.pin = hex.EncodeToString(launchDigest[:])
-	s.manifest = filepath.Join(s.etcDir, "launch.json")
-	launchWrite(t, s.manifest, launchRaw, 0644)
-	candidate, err := enrollment.ReadCandidate(t.Context(), s.distribution, enrollment.Headless)
-	if err != nil {
-		t.Fatal(err)
-	}
-	template, ok := candidate.File("ardents-endpoint.service")
-	if !ok {
-		t.Fatal("enrolled endpoint template absent")
-	}
-	prepared, err := endpointunit.PrepareEndpointTemplate(template, s.installationRoot, filepath.Dir(s.program))
-	if err != nil {
-		t.Fatal(err)
-	}
-	base, err := prepared.Render(roots)
-	if err != nil {
-		t.Fatal(err)
-	}
-	checkProgram := filepath.Join(s.distribution, "ardents-linux-amd64")
-	unit, err := renderEndpointPlatformUnit(base, checkProgram, s.manifest, s.pin)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile("/etc/systemd/system/ardents-endpoint.service", unit, 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := exec.Command("systemctl", "daemon-reload").Run(); err != nil {
-		t.Fatal("daemon-reload:", err)
-	}
 }
 
 func (s *platformLedLaunchStand) startPlatformLed(t *testing.T) [3]string {
