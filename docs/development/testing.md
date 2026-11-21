@@ -1554,6 +1554,23 @@ that successful chain. Original Source native regressions retain their own polic
 coverage. These controls grant no installed retirement, replacement or recovery
 qualification; explicit bound facts in the Duty-only cases remain local fixtures.
 
+`TestIntroductionRepairRootsNative` in `network/state` is a separate owner
+selection in the same root/ext4 `network-signing-linux` profile:
+`go test -race -tags network_signing_native ./internal/network/state -run '^TestIntroductionRepairRootsNative' -count=1 -timeout=3m`
+(also run by `make network-signing-check`). It binds the real root-owned
+`/var/lib/ardents/roles/introduction` parent chain and validates the complete
+ordered writable-root set the `node introduction repair-retained` command
+supplies (network, participation, spend, hosting, introduction), which already
+contains the State and local-role roots. The positive command-shape path must
+proceed; a duplicate root and a nested root pair must each refuse while every
+root remains individually valid (0700, euid/egid-owned, root-owned no-world-write
+ancestors, pairwise disjoint). This pins the E1-1 regression where the adapter
+re-appended the State/local-role roots and refused every invocation before any
+lease open. It is a bounded root-check regression, not installed recovery
+qualification: a full Introduction repair platform gate mirroring
+`join_platform_native`'s repair leg against a real failed unit and per-unit
+cgroup quiescence remains separate Linux/systemd evidence.
+
 `TestHostingInspectionNative*` is a separate owner selection in the same
 root/ext4 `network-signing-linux` profile:
 `go test -race -tags network_signing_native ./internal/hosting -run '^TestHostingInspectionNative' -count=1 -timeout=2m`.

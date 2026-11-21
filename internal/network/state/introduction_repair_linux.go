@@ -100,7 +100,10 @@ func RepairRetainedIntroductionProducer(ctx context.Context, input Config, origi
 }
 
 func checkIntroductionRepairRoots(cfg config, writableRoots []string) error {
-	roots := append([]string{cfg.root, cfg.localRoles}, writableRoots...)
+	// writableRoots is the complete ordered platform write set (network,
+	// participation, spend, hosting, introduction); it already includes the State
+	// and local-role roots, so no extra roots are appended.
+	roots := writableRoots
 	for i, root := range roots {
 		for _, other := range roots[i+1:] {
 			if root == other || strings.HasPrefix(root, other+"/") || strings.HasPrefix(other, root+"/") {
