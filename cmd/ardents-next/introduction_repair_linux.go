@@ -11,6 +11,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/node"
 	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
 )
 
@@ -41,17 +42,6 @@ func runIntroductionRepair(ctx context.Context, args []string, out, diagnostic i
 	return 0
 }
 
-// introductionRepairPlan retains only the original root-controlled public
-// declaration's roots. It loads no transport private key and starts no runtime.
-type introductionRepairPlan struct {
-	Network           *networkAuthorityPlan `json:"network"`
-	ProcessProfile    string                `json:"process_profile"`
-	ParticipationRoot string                `json:"participation_root"`
-	SpendRoot         string                `json:"spend_root"`
-	HostingRoot       string                `json:"hosting_root"`
-	IntroductionRoot  string                `json:"introduction_root"`
-}
-
 func repairIntroductionInputs(ctx context.Context, path string) (operation error) {
 	inputs, plan, err := acquireIntroductionRepairInputs(ctx, path)
 	if err != nil {
@@ -61,14 +51,15 @@ func repairIntroductionInputs(ctx context.Context, path string) (operation error
 	defer func() {
 		operation = errors.Join(operation, inputs.Close())
 	}()
-	config, err = networkStateConfig(plan.Network)
+	network := (*networkAuthorityPlan)(plan.Network)
+	config, err = networkStateConfig(network)
 	if err != nil {
 		return err
 	}
 	config.LocalRoleStateRoot = plan.ParticipationRoot
 	check := func() error { return inputs.Check() }
 	config.PermitWork = check
-	writableRoots := []string{plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot}
+	writableRoots := []string{network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot}
 	manager, err := systemd.OpenIntroductionRuntime(ctx)
 	if manager != nil {
 		defer func() { operation = errors.Join(operation, manager.Close()) }()
@@ -81,7 +72,7 @@ func repairIntroductionInputs(ctx context.Context, path string) (operation error
 
 // Recovery retains only the original root-controlled public declaration. It loads
 // no transport private key and starts no observer goroutine or runtime.
-func acquireIntroductionRepairInputs(ctx context.Context, path string) (_ sourceInputs, plan introductionRepairPlan, result error) {
+func acquireIntroductionRepairInputs(ctx context.Context, path string) (_ sourceInputs, plan node.IntroductionPlan, result error) {
 	if ctx == nil || ctx.Err() != nil {
 		return sourceInputs{}, plan, errSourceInput
 	}
@@ -102,10 +93,12 @@ func acquireIntroductionRepairInputs(ctx context.Context, path string) (_ source
 	if !ok || native.Uid != 0 || file.info.Mode().Perm()&0022 != 0 {
 		return sourceInputs{}, plan, errSourceInput
 	}
-	if decodeAdmissionObject(file.raw, &plan) != nil || plan.Network == nil || plan.ProcessProfile != processresource.IntroductionProfile {
+	plan, err = node.DecodeIntroductionPlan(file.raw)
+	if err != nil || plan.Network == nil || plan.ProcessProfile != processresource.IntroductionProfile {
 		return sourceInputs{}, plan, errSourceInput
 	}
-	if !validAdmissionAuthority("", plan.Network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) || !independentRouteRoots(plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) {
+	network := (*networkAuthorityPlan)(plan.Network)
+	if !validAdmissionAuthority("", network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) || !independentRouteRoots(network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) {
 		return sourceInputs{}, plan, errSourceInput
 	}
 	if err := inputs.Check(); err != nil {

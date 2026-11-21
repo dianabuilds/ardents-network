@@ -9,9 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/successor/node"
 	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
 )
 
@@ -42,22 +42,6 @@ func runForwardingRepair(ctx context.Context, args []string, out, diagnostic io.
 	return 0
 }
 
-// forwardingRepairPlan retains only the original root-controlled public
-// declaration's roots. It loads no transport private key and starts no runtime.
-type forwardingRepairPlan struct {
-	Network           *networkAuthorityPlan `json:"network"`
-	NodeID            [32]byte              `json:"node_id"`
-	ProcessProfile    string                `json:"process_profile"`
-	ParticipationRoot string                `json:"participation_root"`
-	SpendRoot         string                `json:"spend_root"`
-	HostingRoot       string                `json:"hosting_root"`
-	Certificate       string                `json:"certificate"`
-	PrivateKey        string                `json:"private_key"`
-	Work              hosting.Traffic       `json:"work"`
-	Termination       hosting.Traffic       `json:"termination"`
-	RetirementWaitMS  uint32                `json:"retirement_wait_ms"`
-}
-
 func repairForwardingInputs(ctx context.Context, path string) (operation error) {
 	inputs, plan, err := acquireForwardingRepairInputs(ctx, path)
 	if err != nil {
@@ -67,14 +51,15 @@ func repairForwardingInputs(ctx context.Context, path string) (operation error) 
 	defer func() {
 		operation = errors.Join(operation, inputs.Close())
 	}()
-	config, err = networkStateConfig(plan.Network)
+	network := (*networkAuthorityPlan)(plan.Network)
+	config, err = networkStateConfig(network)
 	if err != nil {
 		return err
 	}
 	config.LocalRoleStateRoot = plan.ParticipationRoot
 	check := func() error { return inputs.Check() }
 	config.PermitWork = check
-	writableRoots := []string{plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot}
+	writableRoots := []string{network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot}
 	manager, err := systemd.OpenForwardingRuntime(ctx)
 	if manager != nil {
 		defer func() { operation = errors.Join(operation, manager.Close()) }()
@@ -87,7 +72,7 @@ func repairForwardingInputs(ctx context.Context, path string) (operation error) 
 
 // Recovery retains only the original root-controlled public declaration. It loads
 // no transport private key and starts no observer goroutine or runtime.
-func acquireForwardingRepairInputs(ctx context.Context, path string) (_ sourceInputs, plan forwardingRepairPlan, result error) {
+func acquireForwardingRepairInputs(ctx context.Context, path string) (_ sourceInputs, plan node.ForwardingPlan, result error) {
 	if ctx == nil || ctx.Err() != nil {
 		return sourceInputs{}, plan, errSourceInput
 	}
@@ -108,10 +93,12 @@ func acquireForwardingRepairInputs(ctx context.Context, path string) (_ sourceIn
 	if !ok || native.Uid != 0 || file.info.Mode().Perm()&0022 != 0 {
 		return sourceInputs{}, plan, errSourceInput
 	}
-	if decodeAdmissionObject(file.raw, &plan) != nil || plan.Network == nil || plan.ProcessProfile != processresource.Profile {
+	plan, err = node.DecodeForwardingPlan(file.raw)
+	if err != nil || plan.Network == nil || plan.ProcessProfile != processresource.Profile {
 		return sourceInputs{}, plan, errSourceInput
 	}
-	if !validAdmissionAuthority("", plan.Network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot) || !independentRouteRoots(plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot) {
+	network := (*networkAuthorityPlan)(plan.Network)
+	if !validAdmissionAuthority("", network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot) || !independentRouteRoots(network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot) {
 		return sourceInputs{}, plan, errSourceInput
 	}
 	if err := inputs.Check(); err != nil {

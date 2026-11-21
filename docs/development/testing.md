@@ -81,6 +81,38 @@ projection unit binds the exact two retained roots without transport creation.
 Actual root/ext4 SourceInspection and mandatory pre-start invocation remain
 native evidence; these units supply no fake accepting inspection or manager.
 
+### Node-role declaration codec and prepare-plan command
+
+The node domain's pure runtime-plan declaration codec
+(`internal/successor/node/plan_declaration.go`, #673, ADR-0125 decision 6) has
+portable behavior tests (`plan_declaration_test.go`): full per-role grammar
+acceptance, exact closed role field sets (a foreign role extension refuses),
+duplicate/null/unknown-member and short/overlong 32-byte array refusal, exact
+Traffic member shapes, and the embedded Network declaration grammar. The codec
+preserves the existing runtime byte grammar, including omitted zero-valued members
+(the partial-plan acceptance the runtime relied on before); it adds null refusal
+and opens no resource. It performs no State acceptance, root creation, Hosting
+initialization or processresource policy.
+
+`cmd/ardents-next/node_prepare_plan_test.go` exercises the `node prepare-plan`
+operator command portably (host quick-check): positive plan production for all five
+roles, where each produced plan must decode through the runtime node codec AND be
+accepted by the same runtime admission gate (`validAdmissionAuthority` +
+`independentRouteRoots` + per-role profile + retirement bounds; Issuer also decodes
+its initialize-results sub-plan), plus causal before-effect refusals (unknown role,
+missing/unknown/duplicate/foreign-role flag, short node-id, relative root, out-of-
+bounds retirement, overlapping roots, bad Traffic, missing Issuer issuance,
+existing-output clobber refusal and canceled-context refusal) that create no output
+file. These are command/grammar checks, not native installed qualification.
+
+The platform installed gates (`forwarding_platform_native`, `join_platform_native`,
+`descriptor_platform_native`) construct their plans as `map[string]any`; the codec
+refactor keeps those plan maps admissible because the allowed field set and shapes
+are unchanged. Introduction retained repair now consumes the full Introduction
+declaration grammar (the former six-field repair subset is normalized); no native
+gate built the divergent subset. Native installed acceptance remains separate
+Linux/systemd evidence owned by those gates.
+
 The transitional Forwarding orchestration native qualification is retired (#604
 FJD stage D, ADR-0125). The former `forwarding-installed-linux` profile, its
 `make forwarding-installed-check` lane, the `run-forwarding-installed.py` runner,
