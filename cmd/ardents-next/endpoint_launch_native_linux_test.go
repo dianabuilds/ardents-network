@@ -347,11 +347,9 @@ func provisionPlatformLedLaunchFixture(t *testing.T, refreshMS int, f *networkAd
 	// placeholder bytes: socket activation spawns it under confinement.
 	resources["ardents-text-linux-amd64"] = buildEndpointWorkerBinary(t)
 	bundle, pin, initialProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 1, 1)
-	// Provision establishes Release floors at version 1. The platform pre-start
-	// check requires a fresh release-accepted program proof, so the delivered
-	// candidate is one release newer (same enrolled program bytes); its program
-	// still matches the staged generation executable exactly.
-	candidateBundle, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 2, resources, rootAuthority, 2, 2)
+	// Provision establishes Release floors at metadata version 1.
+	// Advance the signed metadata while retaining the exact staged release and descriptor.
+	candidateBundle, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 2, 1)
 	stand.distribution = candidateBundle
 	request := string(installationRequestBytes(t, bundle, pin, stand.floors))
 	request = platformLedDualDeclaration(t, request, stand.base)

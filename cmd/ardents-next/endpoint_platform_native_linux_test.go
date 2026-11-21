@@ -66,6 +66,30 @@ func TestNativeEndpointPlatformPrestartTrustTransfer(t *testing.T) {
 		t.Fatal("real platform systemd manager unavailable:", err)
 	}
 	stand := provisionEndpointPlatformNativeStand(t)
+	t.Run("foreign-generation-path", func(t *testing.T) {
+		if out, err := exec.Command(stand.binary, "platform", "unit", stand.manifest).CombinedOutput(); err != nil || !bytes.Equal(out, stand.unit) {
+			t.Fatalf("genuine generation unit refused or changed: %v: %s", err, out)
+		}
+		foreign := stand.launch
+		foreign.Program = filepath.Join(stand.installationRoot, "generations", strings.Repeat("0", 64), "ardents-linux-amd64")
+		if err := os.Mkdir(filepath.Dir(foreign.Program), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(foreign.Program, stand.binaryBytes, 0555); err != nil {
+			t.Fatal(err)
+		}
+		raw, err := json.Marshal(foreign)
+		if err != nil {
+			t.Fatal(err)
+		}
+		manifest := filepath.Join(filepath.Dir(stand.manifest), "foreign-generation.json")
+		if err := os.WriteFile(manifest, append(raw, '\n'), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := exec.Command(stand.binary, "platform", "unit", manifest).CombinedOutput(); err == nil || len(out) != 0 {
+			t.Fatalf("foreign generation produced a platform unit: %v: %s", err, out)
+		}
+	})
 	// Positive: the actual privileged consumer accepts the genuine provisioned
 	// platform delivery against the real system manager and retained Release.
 	// This first evaluation obtains a fresh release-accepted program proof and

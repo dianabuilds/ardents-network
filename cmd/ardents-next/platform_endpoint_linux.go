@@ -174,6 +174,10 @@ func executeEndpointPlatformCheck(ctx context.Context, args []string, out io.Wri
 	if err != nil {
 		return err
 	}
+	descriptor, ok := candidate.File("protected-endpoint.json")
+	if !ok || launch.Program != filepath.Join(decl.InstallationRoot, "generations", platformDigest(descriptor), "ardents-linux-amd64") {
+		return errPlatformInput
+	}
 	template, ok := candidate.File("ardents-endpoint.service")
 	if !ok {
 		return errPlatformInput
