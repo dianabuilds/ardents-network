@@ -962,6 +962,14 @@ func successorImportAllowed(source, dependency string) bool {
 		if (source == "cmd/ardents-next/source_linux.go" || source == "cmd/ardents-next/source_repair_linux.go" || source == "cmd/ardents-next/introduction_repair_linux.go" || source == "cmd/ardents-next/forwarding_repair_linux.go" || source == "cmd/ardents-next/join_repair_linux.go" || source == "cmd/ardents-next/descriptor_repair_linux.go") && (dependency == modulePath+"/internal/successor/processresource" || dependency == modulePath+"/internal/successor/network/state") {
 			return true
 		}
+		// The node-role repair commands and the prepare-plan operator command consume
+		// the node domain's pure declaration grammar (no State acceptance or provisioning).
+		if (source == "cmd/ardents-next/forwarding_repair_linux.go" || source == "cmd/ardents-next/join_repair_linux.go" || source == "cmd/ardents-next/descriptor_repair_linux.go" || source == "cmd/ardents-next/introduction_repair_linux.go" || source == "cmd/ardents-next/node_prepare_plan.go" || source == "cmd/ardents-next/node_prepare_plan_test.go") && dependency == modulePath+"/internal/successor/node" {
+			return true
+		}
+		if (source == "cmd/ardents-next/node_prepare_plan.go" || source == "cmd/ardents-next/node_prepare_plan_test.go") && dependency == modulePath+"/internal/successor/processresource" {
+			return true
+		}
 		if source == "cmd/ardents-next/source_preparation_linux.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/processresource") {
 			return true
 		}

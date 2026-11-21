@@ -13,6 +13,9 @@ func runNode(ctx context.Context, args []string, out, diagnostic io.Writer) int 
 	if len(args) == 1 && args[0] == "inspect-process" {
 		return inspectNodeProcess(ctx, out)
 	}
+	if args[0] == "prepare-plan" {
+		return runNodePreparePlan(ctx, args[1:], out)
+	}
 	if args[0] == "forwarding" {
 		if len(args) > 1 && args[1] == "repair-retained" {
 			return runForwardingRepair(ctx, args[2:], out, diagnostic)

@@ -197,8 +197,9 @@ Store lease is flock and dies with the process, so the bounded repair validates
 every committed publication floor and removes only an uncertain `.record-stage`
 under the exclusive Store lease, never initializing a missing root or resetting a
 floor; slot claims, spend obligations and publication floors are never repairable.
-Platform-led operator preparation (a shared runtime plan codec across roles) is a
-separate follow-up slice.
+Platform-led operator preparation is realized by the node domain's pure
+runtime-plan declaration codec and `ardents-next node prepare-plan` (#673,
+ADR-0125); the shared byte grammar supplies no universal role policy.
 
 JOIN public artifact preparation is a separate offline Control composition.
 Infrastructure owns only its exact descriptor/program/template byte binding;
@@ -237,8 +238,9 @@ mechanisms (`systemd.JoinRuntime`, `cgroup.CheckJoinRecoveryQuiescent` and the
 grant no Start, Stop, domain initialization or installed qualification. Each
 JOIN pair participant owns a separate participation root and sole node-duty
 fence, so repair is per-invocation, never a shared pair effect. Platform-led
-operator preparation (a shared runtime plan codec across roles) is a separate
-follow-up slice.
+operator preparation is realized by the node domain's pure runtime-plan
+declaration codec and `ardents-next node prepare-plan` (#673, ADR-0125); it
+supplies no universal role policy.
 
 Local Node certificate provisioning is one offline supporting composition,
 `ardents-next network prepare-node-certificate` and the separate canonical
@@ -409,6 +411,24 @@ or mandate to add an Introduction/Issuer installer. Endpoint Startup remains
 transitional separately from Node/Source. Preserve these consumers until their
 necessary guarantees have equivalent owners and evidence; no automatic data
 conversion, adoption, reset or stored-root deletion follows from code retirement.
+
+The node-role runtime invocation declaration grammar is owned by
+`internal/successor/node` (`plan_declaration.go`): a pure closed byte codec
+mirroring `network/source.ServingDeclaration`, shared by the five node-role
+runtime commands, the four retained repair commands (Forwarding/JOIN/Descriptor/
+Introduction) and the `ardents-next node prepare-plan` operator command (#673,
+ADR-0125 decision 6 keeps configuration validation with the runtime owner). It
+returns declaration facts only; it performs no State acceptance, root creation,
+hosting initialization or signing, and supplies no universal role policy. The
+`state.Config` conversion (`networkStateConfig`) and the per-role process profile
+and root-separation policy stay in `cmd/ardents-next` composition; the node domain
+does not import `network/state`. Introduction retained repair now consumes the
+same full Introduction declaration grammar as its runtime (the former six-field
+repair subset is normalized). `node prepare-plan` writes the role's exact plan
+JSON from operator inputs with before-effect typed refusals; it codifies the
+native installed provisioning recipe without acquiring any provisioning effect.
+Source's separate serving declaration grammar is unchanged. The operator
+procedure is recorded in `docs/operations/node-role-platform-lifecycle.md`.
 
 [R01](route-migration-contract.md#r01-isolate-both-directions) now admits ZERO
 canonical installed exceptions. The former `forwarding_installed_linux.go`,

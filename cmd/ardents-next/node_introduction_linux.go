@@ -7,7 +7,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/node"
 	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
@@ -29,27 +28,25 @@ func runNodeIntroduction(ctx context.Context, args []string, out, diagnostic io.
 		}
 		return 130
 	}
-	var plan struct {
-		Network           *networkAuthorityPlan `json:"network"`
-		NodeID            [32]byte              `json:"node_id"`
-		ProcessProfile    string                `json:"process_profile"`
-		ParticipationRoot string                `json:"participation_root"`
-		SpendRoot         string                `json:"spend_root"`
-		HostingRoot       string                `json:"hosting_root"`
-		IntroductionRoot  string                `json:"introduction_root"`
-		Certificate       string                `json:"certificate"`
-		PrivateKey        string                `json:"private_key"`
-		Work              hosting.Traffic       `json:"work"`
-		Termination       hosting.Traffic       `json:"termination"`
-		RetirementWaitMS  uint32                `json:"retirement_wait_ms"`
-	}
-	if admissionConfig(args, &plan) != nil || plan.Network == nil || plan.ProcessProfile != processresource.IntroductionProfile || plan.RetirementWaitMS == 0 || plan.RetirementWaitMS > 5000 {
+	if len(args) != 2 || args[0] != "--config" {
 		return 2
 	}
-	if !validAdmissionAuthority("", plan.Network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) || !independentRouteRoots(plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) {
+	raw, err := readBounded(args[1], 16<<10)
+	if err != nil {
 		return 2
 	}
-	config, err := networkStateConfig(plan.Network)
+	plan, err := node.DecodeIntroductionPlan(raw)
+	if err != nil {
+		return 2
+	}
+	network := (*networkAuthorityPlan)(plan.Network)
+	if plan.Network == nil || plan.ProcessProfile != processresource.IntroductionProfile || plan.RetirementWaitMS == 0 || plan.RetirementWaitMS > 5000 {
+		return 2
+	}
+	if !validAdmissionAuthority("", network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) || !independentRouteRoots(network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, plan.IntroductionRoot) {
+		return 2
+	}
+	config, err := networkStateConfig(network)
 	if err != nil {
 		return 2
 	}
