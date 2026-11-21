@@ -167,6 +167,9 @@ func executeEndpointPlatformCheck(ctx context.Context, args []string, out io.Wri
 			return errPlatformInput
 		}
 	}
+	if args[0] == "initialize-trust" {
+		return initializeEndpointPlatformTrust(ctx, files, launch, decl, args[2])
+	}
 	candidate, err := enrollment.ReadCandidate(ctx, launch.Distribution, enrollment.Headless)
 	if err != nil {
 		return err
@@ -196,9 +199,6 @@ func executeEndpointPlatformCheck(ctx context.Context, args []string, out io.Wri
 		_, err = out.Write(unit)
 		return err
 	}
-	if args[0] == "initialize-trust" {
-		return errEndpointPlatformInitialPending
-	}
 	return verifyEndpointPlatformPrestart(ctx, files, launch, decl, roots, unit, candidate, checkProgram, manifest, pin)
 }
 
@@ -223,9 +223,63 @@ func renderEndpointPlatformUnit(base []byte, checkProgram, manifest, pin string)
 	return unit, nil
 }
 
-// errEndpointPlatformInitialPending refuses offline first-pin setup until the
-// Endpoint initial-trust composition is owned by a separate bounded step.
-var errEndpointPlatformInitialPending = errors.New("endpoint platform initialize-trust is not yet available")
+// initializeEndpointPlatformTrust admits the independently pinned initial bundle
+// through Enrollment and Release. It does not stage an installed generation.
+func initializeEndpointPlatformTrust(ctx context.Context, files *platformFiles, launch platformLaunch, decl requestinput.Declaration, pin string) error {
+	if launch.Distribution != decl.BundleRoot || launch.ReleaseRoot != decl.ReleaseFloorRoot ||
+		(decl.ManifestSHA256 != "" && decl.ManifestSHA256 != pin) ||
+		pathsOverlapPlatform(launch.Distribution, launch.ReleaseRoot) {
+		return errPlatformInput
+	}
+	if err := files.RetainDirectory(launch.Distribution); err != nil {
+		return err
+	}
+	if err := files.RetainDirectory(filepath.Dir(launch.ReleaseRoot)); err != nil {
+		return err
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	bundle, err := enrollment.Verify(ctx, enrollment.Request{
+		BundleRoot: launch.Distribution, ExecutablePath: executable, ManifestSHA256: pin, Scope: enrollment.Headless,
+	})
+	if err != nil {
+		return err
+	}
+	facts, ok := bundle.Facts()
+	if !ok || facts.Environment != launch.Environment || facts.Network != launch.Network {
+		return errPlatformInput
+	}
+	program, ok := bundle.File(facts.Artifact)
+	if !ok {
+		return errPlatformInput
+	}
+	if err := platformOwnExecutable(filepath.Join(launch.Distribution, facts.Artifact), program); err != nil {
+		return err
+	}
+	refTime, err := time.Parse(time.RFC3339Nano, decl.ReferenceTime)
+	if err != nil {
+		return err
+	}
+	input, ok := initialReleaseInputs(bundle, refTime)
+	if !ok {
+		return errPlatformInput
+	}
+	if err := files.Check(ctx); err != nil {
+		return err
+	}
+	verifier, err := release.Open(launch.ReleaseRoot)
+	if err != nil {
+		return err
+	}
+	authorization, err := generationauthorization.AuthenticateInitial(ctx, verifier, bundle, input)
+	if err == nil {
+		programProof, generationProof := authorization.Targets()
+		err = verifier.CheckAuthorizations(ctx, programProof, generationProof)
+	}
+	return errors.Join(err, verifier.Close())
+}
 
 // verifyEndpointPlatformPrestart is the privileged F-25 pre-start trust transfer. It
 // verifies the fixed account, the installed main unit against the rendered enrolled
