@@ -25,7 +25,7 @@ func (s *networkState) RetainSourceCompletion() (SourceCompletion, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closing || !s.config.sourceInfo.Serving || s.serverDone == nil || s.sourceCompletion != nil {
-		return SourceCompletion{}, errors.New("Source completion retention unavailable")
+		return SourceCompletion{}, errors.New("source completion retention unavailable")
 	}
 	c := &sourceCompletion{owner: s, joined: make(chan error, 1)}
 	s.sourceCompletion = c
@@ -41,7 +41,7 @@ func (s *networkState) RetainSourceCompletion() (SourceCompletion, error) {
 // and every command-owned observation/input/process user have joined.
 func (c SourceCompletion) Finish(commandResult error) error {
 	if c.original == nil {
-		return errors.New("Source completion absent")
+		return errors.New("source completion absent")
 	}
 	o := c.original
 	o.once.Do(func() {

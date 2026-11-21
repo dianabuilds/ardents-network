@@ -31,10 +31,6 @@ type interiorStore struct {
 	failure    error
 }
 
-func openInteriorStore(root string, network [32]byte, domain uint8) (_ *interiorStore, result error) {
-	return openInteriorStoreMode(root, network, domain, closedSetEither)
-}
-
 func openInteriorStoreMode(root string, network [32]byte, domain uint8, opening closedSetOpening) (_ *interiorStore, result error) {
 	absolute, err := filepath.Abs(root)
 	if err != nil {
@@ -48,7 +44,7 @@ func openInteriorStoreMode(root string, network [32]byte, domain uint8, opening 
 	} else {
 		info, err := os.Lstat(root)
 		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-			return nil, errors.Join(errors.New("Interior requires an existing directory"), err)
+			return nil, errors.Join(errors.New("interior requires an existing directory"), err)
 		}
 	}
 	if err := validateRootPermissions(root); err != nil {
@@ -60,7 +56,7 @@ func openInteriorStoreMode(root string, network [32]byte, domain uint8, opening 
 	}
 	fresh := len(entries) == 0
 	if opening == closedSetFresh && !fresh || opening == closedSetRetained && fresh {
-		return nil, errors.New("Interior history does not match the requested opening")
+		return nil, errors.New("interior history does not match the requested opening")
 	}
 	acquire := acquireRootLease
 	if opening == closedSetFresh {

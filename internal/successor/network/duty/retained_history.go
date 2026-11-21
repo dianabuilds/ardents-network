@@ -61,7 +61,7 @@ func (store *store) CheckSourceProducer(producer [32]byte, expected Duty) error 
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed || store.failed != nil || producer == ([32]byte{}) || expected.Class != "direct-source" || expected.State != "live" {
-		return errors.New("Source producer inspection is unavailable")
+		return errors.New("source producer inspection is unavailable")
 	}
 	found := false
 	for _, record := range store.state.Duties {
@@ -91,7 +91,7 @@ func (store *store) CheckNodeProducer() ([32]byte, Duty, error) {
 	store.mu.Lock()
 	defer store.mu.Unlock()
 	if store.closed || store.failed != nil {
-		return [32]byte{}, Duty{}, errors.New("Node producer inspection is unavailable")
+		return [32]byte{}, Duty{}, errors.New("node producer inspection is unavailable")
 	}
 	var found bool
 	var producer [32]byte
