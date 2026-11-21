@@ -3301,6 +3301,17 @@ qualification (#391 S2: two separately admitted managers, publish/link/read over
 the Carrier). The transitional guarded-start/ACK/recovery orchestration is neither
 exercised nor retired (ADR-0125 D6).
 
+With both `endpoint_launch_native` and `text_worker_installed`, the
+`TestNativeEndpointReplacementWithPublisher` driver requests an actual Text
+Snapshot through the public Administration socket and requires an accepting Link.
+It checks that the original publisher unit's cgroup contains the installed
+Worker executable and pins the scope before signaling the original Endpoint
+main process. After the Endpoint joins its own work, the platform stops the
+activation sockets. The test requires a successful original exit, joined
+original scopes, an empty current scope inventory and a different signed
+Endpoint reaching readiness with the retained Release and domain histories.
+This is real-host replacement evidence with a live Worker and fixture authority.
+
 ## Protected Endpoint NET-32 user-idle native measurement
 
 The `endpoint_launch_native` build tag additionally selects

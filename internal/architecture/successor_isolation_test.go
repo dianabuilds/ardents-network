@@ -478,6 +478,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/endpoint_journey_native_linux_test.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/route/transport" || dependency == modulePath+"/internal/successor/publication") {
 		return true
 	}
+	if source == "cmd/ardents-next/endpoint_replacement_worker_native_linux_test.go" && dependency == modulePath+"/internal/successor/route/transport" {
+		return true
+	}
 	// The cold/warm latency root driver (#650) names the selected Carrier for the
 	// shared publication Route network exactly as the journey controller does.
 	if source == "cmd/ardents-next/endpoint_latency_native_linux_test.go" && dependency == modulePath+"/internal/successor/route/transport" {
@@ -1174,7 +1177,7 @@ func successorImportAllowed(source, dependency string) bool {
 	if (source == "internal/successor/endpoint/reader/reader_linux.go" || source == "internal/successor/endpoint/participant_linux.go") && dependency == modulePath+"/internal/application/connection" {
 		return true
 	}
-	if (source == "internal/successor/endpoint/participant_linux.go" || source == "cmd/ardents-next/installed_service_linux_test.go") && dependency == modulePath+"/internal/application/administration" {
+	if (source == "internal/successor/endpoint/participant_linux.go" || source == "cmd/ardents-next/installed_service_linux_test.go" || source == "cmd/ardents-next/endpoint_replacement_worker_native_linux_test.go") && dependency == modulePath+"/internal/application/administration" {
 		return true
 	}
 	if source == "cmd/ardents-next/installed_pair_linux_test.go" || source == "cmd/ardents-next/endpoint_journey_native_linux_test.go" || source == "cmd/ardents-next/text_command_installed_linux_test.go" {
