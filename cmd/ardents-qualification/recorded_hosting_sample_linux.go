@@ -2,7 +2,10 @@
 
 package main
 
-import "time"
+import (
+	"slices"
+	"time"
+)
 
 // recordedHostingSample preserves the Hosting fields of qualification journals,
 // including fields whose types are checked during decoding but are unused by verdicts.
@@ -39,4 +42,11 @@ type recordedHostingObservation struct {
 	RemainingBytes uint64
 	Protect        bool
 	Drain          bool
+}
+
+func sameHostingPolicy(left, right recordedHostingPolicy) bool {
+	return left.Provider == right.Provider && left.Start.Equal(right.Start) && left.End.Equal(right.End) &&
+		left.Unit == right.Unit && left.Quantity == right.Quantity && left.Directions == right.Directions &&
+		left.InitialUsedBytes == right.InitialUsedBytes && left.LowWatermarkBytes == right.LowWatermarkBytes &&
+		slices.Equal(left.Interfaces, right.Interfaces)
 }

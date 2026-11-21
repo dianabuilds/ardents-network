@@ -136,3 +136,16 @@ func evidenceLine(data []byte, atEOF bool) (int, []byte, error) {
 	}
 	return 0, nil, nil
 }
+
+func decodeExact(body []byte, value any) error {
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(value); err != nil {
+		return err
+	}
+	var trailing any
+	if decoder.Decode(&trailing) != io.EOF {
+		return errors.New("qualification plan trailing data")
+	}
+	return nil
+}

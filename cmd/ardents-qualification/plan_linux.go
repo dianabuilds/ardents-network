@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"encoding/json"
 	"errors"
@@ -128,17 +127,4 @@ func decodePlan(input io.Reader) (decodedQualificationPlan, error) {
 		return decodedQualificationPlan{}, errors.New("qualification User owner plan must contain all four Readers")
 	}
 	return decodedQualificationPlan{Mode: plan.Mode, Configs: configs}, nil
-}
-
-func decodeExact(body []byte, value any) error {
-	decoder := json.NewDecoder(bytes.NewReader(body))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(value); err != nil {
-		return err
-	}
-	var trailing any
-	if decoder.Decode(&trailing) != io.EOF {
-		return errors.New("qualification plan trailing data")
-	}
-	return nil
 }

@@ -19,25 +19,6 @@ type resourceObservation struct {
 }
 type resourceMeasurements struct{ samples []resourceObservation }
 
-type ownerNetworkVerdict struct {
-	Started, Stopped                                         time.Time
-	InterfaceTx, InterfaceRx                                 uint64
-	CountedBytes, HostingLedgerDelta                         uint64
-	UsefulTx, UsefulRx                                       uint64
-	DirectionalWire, DirectionalUseful                       uint64
-	DirectionalOverhead                                      uint64
-	DirectionalCarrierRatio                                  float64
-	TxP95BitsPerSecond                                       float64
-	RxP95BitsPerSecond                                       float64
-	OneSecondSampleCount                                     int
-	P95RSSBytes                                              uint64
-	MeanCPUPercent                                           float64
-	HostingProvider                                          string
-	HostingPeriodStart, HostingPeriodEnd                     time.Time
-	HostingUnit, HostingDirections                           string
-	HostingQuantity, HostingInitialUsed, HostingLowWatermark uint64
-}
-
 func (series *resourceMeasurements) observe(event endpoint.StreamQualificationEvent) {
 	if event.Kind == "resource-sample" && event.Host != nil && event.Usage != nil {
 		host := recordedHostingSample{
@@ -55,13 +36,6 @@ func (series *resourceMeasurements) observe(event endpoint.StreamQualificationEv
 			at: event.Elapsed, memory: event.Usage.RSSBytes, cpu: event.Usage.CPUUsageUsec, host: host,
 		})
 	}
-}
-
-func sameHostingPolicy(left, right recordedHostingPolicy) bool {
-	return left.Provider == right.Provider && left.Start.Equal(right.Start) && left.End.Equal(right.End) &&
-		left.Unit == right.Unit && left.Quantity == right.Quantity && left.Directions == right.Directions &&
-		left.InitialUsedBytes == right.InitialUsedBytes && left.LowWatermarkBytes == right.LowWatermarkBytes &&
-		slices.Equal(left.Interfaces, right.Interfaces)
 }
 
 // evaluateOwnerNetwork reconciles the shared host ledger and the useful
