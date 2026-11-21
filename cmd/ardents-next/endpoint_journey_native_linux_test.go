@@ -387,7 +387,8 @@ func runPlatformLedJourneyParticipant(t *testing.T, base, etcDir string, network
 	resources := endpointPlatformNativeResources()
 	resources["ardents-text-linux-amd64"] = journeyBuildWorkerBinary(t)
 	bundle, pin, initialProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 1, 1)
-	candidateBundle, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 2, resources, rootAuthority, 2, 2)
+	// Advance the signed metadata while retaining the exact staged release and descriptor.
+	candidateBundle, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, rootAuthority, 2, 1)
 	request := string(installationRequestBytes(t, bundle, pin, filepath.Join(base, "floors")))
 	request = installedServiceDeclaration(t, request, base)
 	if strings.Count(request, `"refresh_interval_ms":1000`) != 1 {

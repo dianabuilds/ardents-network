@@ -18,8 +18,9 @@ platform-led system-unit composition in `ardents-next`. An explicit
 `platform initialize-trust <launch> <independent-enrollment-pin>` authenticates
 the initial protected Endpoint bundle through Enrollment and establishes both
 target floors through Release. The operation uses the actual enrolled executable
-and the declared Release root. It stages no installed generation. The platform unit's
-ExecStartPre `platform check` transfers accepted current-program identity before
+and the declared Release root. It stages no installed generation. Platform unit
+rendering and pre-start bind the executable path to the digest of the enrolled
+protected Endpoint descriptor. The platform unit's ExecStartPre `platform check` transfers accepted current-program identity before
 runtime start (F-25), `endpoint construct-plan` renders authenticated preparation
 plans (F-27), `endpoint prepare-history` initializes the first histories, and
 `endpoint start-installed` runs the participant under the system unit. The
