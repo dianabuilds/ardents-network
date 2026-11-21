@@ -273,7 +273,6 @@
       {
         "symbols": [
           "internal/node.EventEmitter",
-          "internal/node.IdentityKey",
           "internal/node.Run",
           "internal/node.assessAdmission",
           "internal/node.boundedReason",
@@ -293,7 +292,6 @@
           "internal/node.newClosedIntroductionServer",
           "internal/node.nodeAuthority",
           "internal/node.projectRoleInputs",
-          "internal/node.readIdentityFile",
           "internal/node.releaseLocalDuty",
           "internal/node.resolveConfig",
           "internal/node.resourcePressureFailureReason",
@@ -2263,7 +2261,6 @@
       {
         "symbols": [
           "internal/node.EventEmitter",
-          "internal/node.IdentityKey",
           "internal/node.assessAdmission",
           "internal/node.boundedReason",
           "internal/node.closedListenAddress",
@@ -2282,7 +2279,6 @@
           "internal/node.newClosedIntroductionServer",
           "internal/node.nodeAuthority",
           "internal/node.projectRoleInputs",
-          "internal/node.readIdentityFile",
           "internal/node.releaseLocalDuty",
           "internal/node.resolveConfig",
           "internal/node.resourcePressureFailureReason",
