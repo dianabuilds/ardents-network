@@ -208,12 +208,6 @@ func (registered *Registration) RefreshScheduleLocked() (refreshAt, expiry time.
 	return registered.refreshAt, registered.request.Expiry
 }
 
-// LinkVisibleAtLocked reports whether the committed registration is visible to
-// a canonical Link projection now.
-func (registered *Registration) LinkVisibleAtLocked(now time.Time) bool {
-	return registered.published && !registered.refreshAt.IsZero() && now.Before(registered.request.Expiry)
-}
-
 // RevisionExhausted reports that no successor revision exists.
 func (registered *Registration) RevisionExhausted() bool {
 	return registered.request.Revision == ^uint64(0)
