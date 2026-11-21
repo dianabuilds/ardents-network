@@ -50,8 +50,8 @@ import (
 //
 // It is component/acceptance evidence with fixture Release/Network authority for
 // two independently admitted managers. It is NOT the whole-host two-participant
-// privacy qualification. Descriptor automatic-refresh timing, QUIC pre-effect
-// refusal and full containment observations are stated residuals (S2.3). The
+// privacy qualification. The cross-host controller also checks Descriptor
+// refresh. QUIC pre-effect refusal and full containment remain separate. The
 // transitional guarded-start/ACK/recovery orchestration is neither exercised nor
 // retired (ADR-0125 D6).
 
@@ -94,7 +94,13 @@ func TestNativeEndpointPlatformLedJourneyParticipant(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.Close()
-	_ = conn.SetDeadline(time.Now().Add(6 * time.Minute))
+	deadline := time.Now().Add(6 * time.Minute)
+	if testDeadline, ok := t.Deadline(); ok {
+		deadline = testDeadline
+	}
+	if err := conn.SetDeadline(deadline); err != nil {
+		t.Fatal("bound journey participant channel", err)
+	}
 	installedPairSend(t, conn, installedPairMessage{Operation: "hello", Role: role, Nonce: nonce})
 	input := installedPairReceive(t, conn)
 	if input.Operation != "network" || input.Network == nil {
@@ -1124,7 +1130,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 	t.Cleanup(func() { routeFixtureBindHost = previousBind })
 
 	carrier := string(transport.ClosedCarrierTCP)
-	f, _ := installedServiceNetwork(t, carrier)
+	f, store := installedServiceNetwork(t, carrier)
 	network := installedSignedNetwork(t, f)
 	for _, node := range f.spec.Nodes {
 		t.Logf("fixture route node %d endpoint %s", node.NodeID[0], node.Endpoint)
@@ -1139,6 +1145,12 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 
 	repoRoot := pairRepoRoot(t)
 	participantBinary, nextBinary, textBinary := journeyCrossHostBinaries(t, repoRoot)
+	const participantTimeout = 12 * time.Minute
+	// The existing refresh oracle needs the original token hour throughout the
+	// refresh and signed-predecessor overlap. Check after the cold build.
+	if time.Until(time.Now().UTC().Truncate(time.Hour).Add(time.Hour)) < 16*time.Minute {
+		t.Fatal("invalid environment: cross-host refresh needs sixteen minutes in the original token hour")
+	}
 	var runNonce [32]byte
 	if _, err := rand.Read(runNonce[:]); err != nil {
 		t.Fatal(err)
@@ -1214,10 +1226,10 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 			script := fmt.Sprintf("exec env PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"+
 				" ARDENTS_PREBUILT_NEXT=%s/ardents-next ARDENTS_PREBUILT_TEXT=%s/ardents-text"+
 				" %s=%s %s=%s %s=%s %s=%s"+
-				" %s/journey.test -test.run='^TestNativeEndpointPlatformLedJourneyParticipant$' -test.v -test.timeout=6m\n",
+				" %s/journey.test -test.run='^TestNativeEndpointPlatformLedJourneyParticipant$' -test.v -test.timeout=%s\n",
 				remoteDir, remoteDir,
 				journeyRootEnv, bases[i], journeyRoleEnv, role, journeyNonceEnv, nonces[i], journeyAddressEnv, address,
-				remoteDir)
+				remoteDir, participantTimeout)
 			command := exec.CommandContext(t.Context(), "ssh", append(crossHostSSHArgs(), publisherSSH, "bash", "-s")...)
 			command.Stdin = strings.NewReader(script)
 			command.Stdout, command.Stderr = &outputs[i], &outputs[i]
@@ -1228,7 +1240,7 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 			return
 		}
 		command := exec.CommandContext(t.Context(), participantBinary,
-			"-test.run=^TestNativeEndpointPlatformLedJourneyParticipant$", "-test.v", "-test.timeout=6m")
+			"-test.run=^TestNativeEndpointPlatformLedJourneyParticipant$", "-test.v", "-test.timeout="+participantTimeout.String())
 		command.Env = append(os.Environ(),
 			"ARDENTS_PREBUILT_NEXT="+nextBinary,
 			"ARDENTS_PREBUILT_TEXT="+textBinary,
@@ -1264,7 +1276,10 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 				}
 				t.Fatalf("journey participants did not connect: %v (%s; %s)\n%s\n%s", err, alive[0], alive[1], outputs[0].String(), outputs[1].String())
 			}
-			_ = conn.SetDeadline(time.Now().Add(6 * time.Minute))
+			if err := conn.SetDeadline(time.Now().Add(participantTimeout)); err != nil {
+				_ = conn.Close()
+				t.Fatal("bound cross-host journey channel", err)
+			}
 			hello := installedPairReceive(t, conn)
 			matched := -1
 			for j := range nonces {
@@ -1323,10 +1338,9 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 
 	// Admit both participants before the exchange: the publisher runs on its own
 	// dedicated host manager, so the reader's provisioning on the controller host
-	// does not contend with the finite blind-token publication issuance. Reading
-	// immediately after publication keeps the exchange inside the publisher's
-	// initial route-context lifetime; descriptor automatic-refresh timing across
-	// a long publish/read gap is a stated residual (S2.3), not exercised here.
+	// does not contend with the finite blind-token publication issuance. First
+	// prove the original publication, then observe a real automatic refresh and
+	// read through the same Link while both original invocations remain live.
 	body := []byte("one platform-led request across two real admitted host managers\n")
 	identities := [2][3]string{}
 	startParticipant(0, "publisher", true)
@@ -1342,18 +1356,42 @@ func TestNativeEndpointCrossHostJourney(t *testing.T) {
 			t.Fatal("participants share a declared principal")
 		}
 	}
+	publishStarted := time.Now()
 	published := exchange(0, installedPairMessage{Operation: "publish", Body: body})
-	if published.Link == "" {
-		t.Fatal("installed publisher supplied no Link")
+	if published.Link == "" || published.Original != identities[0] {
+		t.Fatal("installed publisher supplied no Link for its original invocation")
 	}
-	if _, _, err := publication.ParseTargetLink(published.Link); err != nil {
-		t.Fatal("cross-host canonical Link", err)
+	first := installedPairStoredProof(t, store, f, published.Link)
+	read := func() {
+		result := exchange(1, installedPairMessage{Operation: "read", Link: published.Link})
+		if !bytes.Equal(result.Body, body) || result.Original != identities[1] {
+			t.Fatal("installed reader changed Application bytes or invocation")
+		}
 	}
-	read := exchange(1, installedPairMessage{Operation: "read", Link: published.Link})
-	if !bytes.Equal(read.Body, body) {
-		t.Fatal("installed reader returned different Application bytes")
+	read()
+	installedPairAwaitRefresh(t, store, f, published.Link, first, publishStarted)
+	replacement := installedPairStoredProof(t, store, f, published.Link)
+	// Store commit precedes ACK. Wait through the predecessor overlap, then
+	// challenge the old recipient while its signed proof is still valid.
+	overlap := time.NewTimer(62 * time.Second)
+	defer overlap.Stop()
+	select {
+	case <-t.Context().Done():
+		t.Fatal("cross-host predecessor retirement observation interrupted", t.Context().Err())
+	case <-overlap.C:
 	}
-	exchange(0, installedPairMessage{Operation: "withdraw"})
+	if err := first.Current(time.Now()); err != nil {
+		t.Fatal("original signed Descriptor expired before predecessor refusal", err)
+	}
+	installedPublisherSubmitNonce(t, f, first, false)
+	if current := installedPairStoredProof(t, store, f, published.Link); current.Digest() != replacement.Digest() {
+		t.Fatal("cross-host predecessor retirement changed the accepting replacement")
+	}
+	read()
+	if withdrawn := exchange(0, installedPairMessage{Operation: "withdraw"}); withdrawn.Original != identities[0] {
+		t.Fatal("refreshed publication was withdrawn by a different invocation")
+	}
+	t.Log("cross-host Descriptor refresh, signed predecessor refusal and unchanged document verified")
 	// Platform-led restart continuity on both real hosts: each participant stops
 	// and starts its Endpoint under a new InvocationID with the same immutable
 	// selection and retained durable floors. The fresh invocation erased its
