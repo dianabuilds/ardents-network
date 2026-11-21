@@ -651,15 +651,6 @@
       },
       {
         "symbols": [
-          "internal/successor/route/selection.openInteriorStore"
-        ],
-        "classification": "retained interior opening seam (linux-only production-dead)",
-        "rationale": "This retained interior opening seam has exact behavior-test coverage and no current production caller.",
-        "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
-        "retirement": "Remove each exact symbol when its owning Module is retired by the gated cohort removal, or when a selected genuine production caller reaches it."
-      },
-      {
-        "symbols": [
           "internal/successor/installation/infrastructure.ForwardingAuthorization.InitialFacts",
           "internal/successor/installation/infrastructure.ForwardingAuthorization.Targets"
         ],
@@ -3034,7 +3025,6 @@
           "internal/successor/route/selection.openClosedSetsMode",
           "internal/successor/route/selection.openClosedSetsWithLease",
           "internal/successor/route/selection.openInstallation",
-          "internal/successor/route/selection.openInteriorStore",
           "internal/successor/route/selection.openInteriorStoreMode",
           "internal/successor/route/selection.openRootLease",
           "internal/successor/route/selection.readBounded",
@@ -3578,7 +3568,6 @@
           "internal/successor/route/selection.openClosedSetsMode",
           "internal/successor/route/selection.openClosedSetsWithLease",
           "internal/successor/route/selection.openInstallation",
-          "internal/successor/route/selection.openInteriorStore",
           "internal/successor/route/selection.openInteriorStoreMode",
           "internal/successor/route/selection.openRootLease",
           "internal/successor/route/selection.readBounded",
