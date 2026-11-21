@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux && (endpoint_platform_native || endpoint_launch_native || endpoint_pair_native)
 
 package main
 

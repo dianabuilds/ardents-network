@@ -14,6 +14,18 @@ import (
 // listing is a system-manager observation, not a launch receipt.
 // Keep failed and activating units too: filtering to active units would let a
 // delayed previous activation masquerade as the next job's new worker.
+// Instance is one detached original invocation observation. It grants no
+// local permission, cleanup completion or right to signal a replacement.
+type Instance struct {
+	inv        inventory
+	Name       string
+	Role       string
+	Cgroup     string
+	PID        uint32
+	UID        uint32
+	Invocation [16]byte
+}
+
 type listing map[string]unitState
 
 type unitState struct {

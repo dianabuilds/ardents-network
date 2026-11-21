@@ -17,6 +17,17 @@ type Artifact struct{}
 type Attachment struct{}
 type Cleanup struct{}
 
+// Instance is one detached original invocation observation. It grants no
+// local permission, cleanup completion or right to signal a replacement.
+type Instance struct {
+	Name       string
+	Role       string
+	Cgroup     string
+	PID        uint32
+	UID        uint32
+	Invocation [16]byte
+}
+
 func Activate(context.Context, string) (*Activation, error) {
 	return nil, errNativeUnavailable
 }
