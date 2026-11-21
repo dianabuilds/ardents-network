@@ -28,11 +28,6 @@ type driftPair struct {
 	minimum   float64
 }
 
-const (
-	infrastructureDir = "internal/successor/installation/infrastructure/"
-	systemdDir        = "internal/successor/installation/systemd/"
-)
-
 var driftPairs = []driftPair{}
 
 var (
