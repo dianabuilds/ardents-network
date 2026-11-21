@@ -24,6 +24,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/allocation"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
@@ -80,8 +81,42 @@ func TestNativeEndpointPlatformLedLaunch(t *testing.T) {
 			t.Error("release Endpoint unit:", err)
 		}
 	}()
+	pid, err := strconv.ParseUint(original[0], 10, 32)
+	if err != nil {
+		t.Fatal("parse original Endpoint PID:", err)
+	}
+	scopes, err := cgroup.Retain(t.Context(), uint32(pid), stand.uid)
+	if err != nil {
+		t.Fatal("retain original Endpoint and worker scopes:", err)
+	}
+	defer func() {
+		if err := scopes.Close(); err != nil {
+			t.Error("release original scopes:", err)
+		}
+	}()
+	if joined, err := scopes.Joined(); err != nil || joined {
+		t.Fatalf("live Endpoint did not retain a populated scope: joined=%v err=%v", joined, err)
+	}
 	stand.stopParticipant(t, original)
 	stand.requireJoinedParticipant(t, original)
+	if joined, err := scopes.Joined(); err != nil || !joined {
+		t.Fatalf("original scopes did not join: joined=%v err=%v", joined, err)
+	}
+	for _, role := range []string{"reader", "publisher"} {
+		unit, _, err := systemd.Activation(t.Context(), role)
+		if err != nil {
+			t.Fatalf("observe stopped %s activation socket: %v", role, err)
+		}
+		if !systemd.Matches(unit, "Id", "s", "ardents-text-"+role+".socket") ||
+			!systemd.Matches(unit, "ActiveState", "s", "inactive") ||
+			!systemd.Matches(unit, "SubState", "s", "dead") ||
+			!systemd.Matches(unit, "Job", "(uo)", []any{uint32(0), "/"}) {
+			t.Fatalf("activation socket %s did not stop cleanly", role)
+		}
+	}
+	if err := cgroup.ObserveEmpty(t.Context()); err != nil {
+		t.Fatal("observe empty Endpoint and worker scope inventory:", err)
+	}
 	if err := manager.Observe(t.Context()); err != nil {
 		t.Fatal("observe original manager after Stop:", err)
 	}
