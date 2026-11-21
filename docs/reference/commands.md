@@ -444,6 +444,15 @@ platform unit` with `endpoint construct-plan` and `prepare-history`, then
 [independently pinned Ubuntu verification procedure](portable-enrollment.md)
 still applies before running a downloaded program.
 
+After Endpoint `platform initialize-trust`, `ardents-next platform
+stage-endpoint <request>` seals the independently pinned generation using
+the already committed Release metadata. Run it as the enrolled executable.
+The host must provide the dedicated Endpoint account and its empty private
+mutable roots. The installation root must be absent. The command binds
+the exact account and root identities, writes the complete sealed inventory
+and publishes selection. It refuses existing or partial roots, leaves
+Release floors intact and installs no Worker resources or systemd units.
+
 | Route | Purpose |
 |---|---|
 | `accept-offline --state-root PATH --network-id HEX --authorities HEX,... --threshold N --at RFC3339 --epoch PATH --inputs PATH --materialization PATH --profile ardents-route-v3 --closed-profile-authority HEX [--closed-profile PATH]` | Accept one complete authenticated offline Network State generation through the successor State owner. The live State selects only the closed Route profile (`ardents-route-v3`) and requires its pinned closed-profile authority; retired-profile Epochs are refused, not published. When `--closed-profile` is supplied, the command accepts that signed profile **after** committing the Epoch; a profile refusal does not undo the accepted generation. Success emits one `ardents-state-event-v1` `generation-accepted` JSON event, with `closed_profile_sha256` when the profile was also accepted. |

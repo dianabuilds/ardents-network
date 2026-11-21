@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -142,6 +143,110 @@ func TestNativeEndpointPlatformPrestartTrustTransfer(t *testing.T) {
 				t.Fatalf("causal refusal missing for %s: %s", fault, out)
 			}
 		})
+	}
+}
+
+func TestNativeEndpointPlatformStagesGeneration(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Fatal("endpoint platform native qualification requires a root driver")
+	}
+	stand := provisionEndpointPlatformNativeStand(t)
+	decl := stand.decl
+	decl.InstallationRoot = filepath.Join(stand.base, "platform-staged")
+	roots := requestinput.MutableRoots(decl.Headless)
+	for _, root := range roots {
+		if err := os.Chown(root, stand.accountUID, stand.accountUID); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(root, 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	request, err := json.Marshal(decl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requestPath := filepath.Join(filepath.Dir(stand.requestPath), "stage-request.json")
+	if err := os.WriteFile(requestPath, append(request, '\n'), 0600); err != nil {
+		t.Fatal(err)
+	}
+	program := filepath.Join(decl.BundleRoot, "ardents-linux-amd64")
+	newer := decl
+	newer.BundleRoot = stand.distribution
+	newerManifest, err := os.ReadFile(filepath.Join(newer.BundleRoot, "SHA256SUMS"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	newer.ManifestSHA256 = platformDigest(newerManifest)
+	raw, err := json.Marshal(newer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newerRequest := filepath.Join(filepath.Dir(requestPath), "newer-stage-request.json")
+	if err := os.WriteFile(newerRequest, append(raw, '\n'), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(filepath.Join(newer.BundleRoot, "ardents-linux-amd64"), "platform", "stage-endpoint", newerRequest).CombinedOutput(); err == nil {
+		t.Fatalf("staging accepted metadata beyond its retained floors: %s", out)
+	}
+	if _, err := os.Lstat(decl.InstallationRoot); !os.IsNotExist(err) {
+		t.Fatalf("refused metadata created the installation root: %v", err)
+	}
+	verifier, err := release.OpenRetained(decl.ReleaseFloorRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	floors, err := verifier.CurrentFloors(t.Context())
+	if err = errors.Join(err, verifier.Close()); err != nil || floors.TargetsVersion != 1 {
+		t.Fatalf("refused staging changed the target floor: version=%d err=%v", floors.TargetsVersion, err)
+	}
+	marker := filepath.Join(roots[0], "existing-history")
+	if err := os.WriteFile(marker, []byte("retain"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(program, "platform", "stage-endpoint", requestPath).CombinedOutput(); err == nil {
+		t.Fatalf("nonempty platform root accepted: %s", out)
+	}
+	if _, err := os.Lstat(decl.InstallationRoot); !os.IsNotExist(err) {
+		t.Fatalf("refused staging created the installation root: %v", err)
+	}
+	if raw, err := os.ReadFile(marker); err != nil || string(raw) != "retain" {
+		t.Fatalf("refused staging changed retained data: %v", err)
+	}
+	if err := os.Remove(marker); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command(program, "platform", "stage-endpoint", requestPath).CombinedOutput(); err != nil {
+		t.Fatalf("genuine platform generation staging refused: %v: %s", err, out)
+	}
+	selectedPath := filepath.Join(decl.InstallationRoot, "selection.json")
+	selectedBytes, err := os.ReadFile(selectedPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	descriptor, err := os.ReadFile(filepath.Join(decl.BundleRoot, "protected-endpoint.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := platformDigest(descriptor)
+	if !bytes.Contains(selectedBytes, []byte(digest)) {
+		t.Fatal("selection does not identify the independently pinned descriptor")
+	}
+	sealed := filepath.Join(decl.InstallationRoot, "generations", digest)
+	entries, err := os.ReadDir(sealed)
+	if err != nil || len(entries) != 15 {
+		t.Fatalf("sealed inventory incomplete: entries=%d err=%v", len(entries), err)
+	}
+	for _, path := range []string{"writer.lock", "preparation", "journals", "transition.json", "start-guard.json", "start-socket.json", "start-completion.socket"} {
+		if _, err := os.Lstat(filepath.Join(decl.InstallationRoot, path)); !os.IsNotExist(err) {
+			t.Fatalf("platform staging created transitional artifact %s: %v", path, err)
+		}
+	}
+	if out, err := exec.Command(program, "platform", "stage-endpoint", requestPath).CombinedOutput(); err == nil {
+		t.Fatalf("repeat staging accepted: %s", out)
+	}
+	if raw, err := os.ReadFile(selectedPath); err != nil || !bytes.Equal(raw, selectedBytes) {
+		t.Fatalf("repeat staging changed selection: %v", err)
 	}
 }
 

@@ -460,6 +460,9 @@ func successorImportAllowed(source, dependency string) bool {
 	if source == "cmd/ardents-next/platform_unit_linux.go" && dependency == modulePath+"/internal/successor/installation/infrastructure" {
 		return true
 	}
+	if source == "cmd/ardents-next/platform_endpoint_staging_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/installation/endpoint" || dependency == modulePath+"/internal/successor/release") {
+		return true
+	}
 	if source == "cmd/ardents-next/platform_endpoint_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/request" || dependency == modulePath+"/internal/successor/installation/unit" || dependency == modulePath+"/internal/successor/installation" || dependency == modulePath+"/internal/successor/installation/systemd" || dependency == modulePath+"/internal/successor/release") {
 		return true
 	}
