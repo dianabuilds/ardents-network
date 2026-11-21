@@ -111,8 +111,7 @@ operational evidence, but cannot retroactively qualify an earlier build.
 For C0, the headless Network candidate and neutral Application Interface are
 joined only by `ardents-application-interface-v1`. The audit corpus uses
 [`ownership.json`](ownership.json) rather than inferring ownership from
-directory names. `internal/application/broker` remains Network-owned; the
-former Browser implementation and qualification lanes are historical evidence
+directory names. The former Browser implementation and qualification lanes are historical evidence
 only under ADR-0069.
 
 The Product Owner activates the campaign by selecting one bounded **audit

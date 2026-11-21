@@ -18,7 +18,7 @@ else
 RACE_TEST_PREFIX := umask 077;
 endif
 
-.PHONY: architecture artifact-representation-check build check deadcode e2e fixture-network-test format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check mod-check package-e2e package-ubuntu-deb qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
+.PHONY: architecture artifact-representation-check build check deadcode e2e format format-check fuzz headless-build headless-check headless-evidence heapdump-capture heapdump-role-map installed-tag-compile-check mod-check package-e2e package-ubuntu-deb qualification-service-credential-response-linux quick-check staticcheck test test-race text-role-durable-state-capture tools-check tools-install unit vet vuln
 
 define newline
 
@@ -54,7 +54,7 @@ HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLES
 # packages from any host; the test binaries land in the quality cache, never in
 # the repository.
 INSTALLED_TAG_COMPILE_ROOT := $(QUALITY_CACHE_ROOT)/installed-tag-compile
-INSTALLED_TAG_COMPILE_PACKAGES := ./internal/endpoint ./tests/e2e/node ./internal/successor/execution/runtime ./internal/successor/execution/worker ./cmd/ardents-next
+INSTALLED_TAG_COMPILE_PACKAGES := ./tests/e2e/node ./internal/successor/execution/runtime ./internal/successor/execution/worker ./cmd/ardents-next
 
 ifeq ($(OS),Windows_NT)
 INSTALLED_TAG_COMPILE_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(INSTALLED_TAG_COMPILE_ROOT)') | Out-Null"
@@ -113,10 +113,6 @@ heapdump-role-map:
 e2e:
 	go test -p 1 $(filter-out $(NODE_PROCESS_PACKAGES),$(PROCESS_PACKAGES)) -shuffle=on -count=1
 	$(NODE_PROCESS_TEST_COMMAND) test -p 1 $(NODE_PROCESS_PACKAGES) -shuffle=on -count=1
-
-fixture-network-test:
-	@test "$(HEADLESS_GOOS)" = linux || (echo "fixture-network-test requires Linux"; exit 2)
-	go test ./tests/qualification/stream-network-two-host/fixturecommand/qualification-network -count=1
 
 package-e2e:
 	sudo env "PATH=$$PATH" "GOTOOLCHAIN=$(GOTOOLCHAIN)" "GOENV=$(GOENV)" "GOFLAGS=$(GOFLAGS)" "GOCACHE=$(GOCACHE)" "GOMODCACHE=$(GOMODCACHE)" go test -tags packagee2e ./tests/e2e/endpoint -run '^TestUbuntuDebInstallsOnlyProgramAndStaticEnrollmentBytes$$' -shuffle=on -count=1
@@ -253,7 +249,6 @@ check:
 	$(MAKE) --output-sync=target -j 4 $(QUICK_CHECK_TARGETS) staticcheck vuln deadcode
 	$(MAKE) --output-sync=target e2e
 ifeq ($(HEADLESS_GOOS),linux)
-	$(MAKE) --output-sync=target fixture-network-test
 	$(MAKE) --output-sync=target package-e2e
 endif
 	$(MAKE) --output-sync=target test-race
@@ -291,15 +286,9 @@ text-worker-policy-check:
 text-worker-lifecycle-check:
 	sh ./tests/qualification/text-worker-lifecycle/run-ubuntu.sh
 
-.PHONY: text-worker-network-check text-command-network-build text-command-network-check
+.PHONY: text-worker-network-check
 text-worker-network-check:
 	sh ./tests/qualification/text-worker-network/run-ubuntu.sh
-
-text-command-network-build:
-	sh ./tests/qualification/text-command-network/build-candidate.sh
-
-text-command-network-check:
-	sh ./tests/qualification/text-command-network/run-ubuntu.sh
 
 .PHONY: execution-lifecycle-check
 execution-lifecycle-check:

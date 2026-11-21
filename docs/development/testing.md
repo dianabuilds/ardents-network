@@ -1839,10 +1839,8 @@ selected Carriers.
   the same owned source is represented as a Git repository or as a VCS-free
   extraction.
 - `make check` runs unit, process, race, command build, formatting,
-  Staticcheck, and vulnerability checks. On Linux it also runs the bounded
-  two-host qualification fixture command tests through `fixture-network-test`;
-  invoking that target elsewhere fails with an invalid environment. This is
-  the pre-integration gate. Pull request CI uses `scripts/select-pr-checks.go`
+  Staticcheck, and vulnerability checks. On Linux it also runs the Ubuntu
+  package installation check. This is the pre-integration gate. Pull request CI uses `scripts/select-pr-checks.go`
   to run the changed Go owners,
   their imported consumers, and explicitly registered non-Go fixture owners;
   affected valid Fuzz declarations execute their deterministic seed corpus through
@@ -1931,11 +1929,6 @@ These reservations do not qualify installed networking or systemd/cgroup use.
   Git; the test writes secret-bearing raw observations there and retains them
   locally. A non-Linux host or missing capture directory is an invalid profile,
   not a passing skip.
-- The installed `text-command-network` runner can retain its complete raw
-  output in an explicitly supplied owner-private directory outside Git. It
-  prints the file path before the long-running test and keeps failures and
-  timeouts for diagnosis; the caller retains candidate and host inventories
-  separately.
 - `make fuzz` mutation-fuzzes the selected State target for a bounded
   30 seconds. State owns canonical Epoch/Node Record framing and checks
   successful parser digest/key/raw invariants. The command fails if the named
@@ -2573,16 +2566,6 @@ The maintained local profiles are:
   `ardents-custody` commands. Network provisioning uses the signed fixture.
   `publication-timing` checks the original creation and ACK timing brackets;
   the Instance owner tests retain joined recipient key erasure coverage.
-- `text-command-network`, the separately pinned installed ordinary-command journey
-  invoked by `make text-command-network-check`; it exercises the real `ardents`,
-  `ardents-custody`, `ardents-node` and `ardents-text` candidate binaries through
-  TCP/TLS, with exact empty, 64 KiB and 4 MiB command cases. It supplies
-  journey evidence with each Node's separate systemd scope and actual single-
-  process membership verified at READY, joined empty-scope cleanup, and no
-  observed topology loss of READY before completion. Orchestrator commands
-  remain outside Node pressure owners. This is not continuous-duty evidence.
-  It does not qualify full host, privacy, hostile-network or p95 behavior.
-
 - `text-worker-policy`, the root-driven installed authorization matrix invoked
   by `make text-worker-policy-check`; it does not qualify the complete host.
 - `text-worker-lifecycle`, invoked by `make text-worker-lifecycle-check`, selects
@@ -2616,9 +2599,7 @@ product claim, environment, fixture, and Product Owner decision.
 ## Candidate boundaries
 
 The C0 Network candidate is exercised by the deterministic/process/race lanes,
-`headless-check`, and the selected Network qualifications. This includes the
-Endpoint-owned `internal/application/broker`; its directory is not a separate
-Application product. Protected text AAI3 and the separate Administration v1
+`headless-check`, and the selected Network qualifications. Protected text AAI3 and the separate Administration v1
 Interface remain covered at their selected seams. The deleted AAI2 package and
 vectors are neither a generic Endpoint workload nor compatibility surface. No
 Browser command, Browser implementation, Browser artifact, or Browser

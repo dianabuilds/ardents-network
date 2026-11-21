@@ -269,10 +269,9 @@ The Network audit candidate is the headless maintained product surface:
 - Network State and Source, Entry, Route and Carrier, Node duties, Endpoint,
   Service publication/connection/instance/reachability, enrollment,
   Release, Custody, control-inspection, and resource Modules;
-- the `internal/application/broker` used by the Network Endpoint for local
-  Grant admission and session lifecycle;
-- the Network-owned server implementations of the selected typed local
-  Application Interfaces in `internal/endpoint`: protected text Connection
+- the Local Grant and session lifecycle owned by `internal/successor/execution`;
+- the selected typed local Application Interfaces for the successor Endpoint:
+  protected text Connection
   under `internal/application/connection` and separately
   authorized Administration under
   `internal/application/administration`;
@@ -303,8 +302,8 @@ admitted only by the protected text composition and does not authorize a
 generic workload. The maintained Administration surface remains the separate
 v1 contract in `internal/application/administration`. Each owns its
 versioned local contract, bounds, lifecycle, outcome grammar, local transport,
-and conformance evidence. Network implements the server behavior in
-`internal/endpoint`, and maintained commands use only the selected interface
+and conformance evidence. The successor Endpoint composes the server behavior,
+and maintained commands use only the selected interface
 seam. The former `internal/application/interfacev1/connection` AAI2 grammar and
 exclusive Endpoint adapter are absent; AAI3 rejects an AAI2 request before
 Application owner I/O. No Browser client, presentation, native

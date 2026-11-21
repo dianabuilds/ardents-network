@@ -50,7 +50,6 @@ boundaries; they are not alpha-bundle artifacts.
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
 | Isolated domain composition | ardents-next | maintained domain consumer | New-domain commands and bounded native consumers; no old-runtime imports, installed Service or final artifact cutover implied. |
 | Installed Application | ardents-text | keep | Trusted local text UI and fixed confined Reader/Publisher worker entrypoints. |
-| Installed qualification | ardents-qualification | keep as verification tooling | Drives the selected installed network qualification run and records evidence. |
 | Installed qualification | ardents-stream-qualification | keep as verification tooling | Fixed NET-14 stream-test Application worker entrypoints. |
 
 The root cmd directory is Go's conventional collection of thin executable
@@ -79,7 +78,6 @@ and the headless command inventory under tests/profiles.
 | ardents-control | prepare-qualification-node-record, prepare-qualification-epoch | retirement refusal at dispatch pointing at ardents-next network prepare-initial-node-record/prepare-initial-epoch; the qualification-network scripts are removed (ADR-0127, #647) |
 | ardents-custody | create-service-authority, issue-service-credential, create-admission-authority, issue-admission-permission, inspect-envelope, verify-record, export-recovery-bundle, restore-recovery-bundle, purge-record | keep |
 | ardents-text | read, publish, link; worker-reader/worker-publisher | keep; trusted local UI routes and fixed installed worker entrypoints |
-| ardents-qualification | run from a local plan; preflight, verify-run, verify-pair, verify-network-manifest, verify-net14v, verify-failed-net14v | keep as installed verification tooling; never a participant route |
 | ardents-stream-qualification | worker-reader, worker-publisher | keep as fixed installed verification workers; never an operator route |
 
 The former `endpoint enroll`/`enroll-installed` Portable per-user profile and

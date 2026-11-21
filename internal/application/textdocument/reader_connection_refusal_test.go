@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
 )
 
 type blockedReaderService struct {
@@ -56,7 +55,7 @@ func TestReaderWorkerRefusesUnsolicitedOutputBeforeServiceCompletion(t *testing.
 			joined := make(chan struct{})
 			go func() {
 				defer close(joined)
-				body, err := textdocument.ReadWorkerConnection(ctx, endpoint, service)
+				body, err := readTransferredReader(ctx, endpoint, service)
 				if body != nil {
 					t.Error("refused worker returned document bytes")
 				}
@@ -105,7 +104,7 @@ func TestReaderWorkerCancellationJoinsBlockedServiceAndWorkerIO(t *testing.T) {
 	joined := make(chan struct{})
 	go func() {
 		defer close(joined)
-		_, err := textdocument.ReadWorkerConnection(ctx, endpoint, service)
+		_, err := readTransferredReader(ctx, endpoint, service)
 		finished <- err
 	}()
 	t.Cleanup(func() {
@@ -147,7 +146,7 @@ func TestReaderWorkerRejectsOversizedFrameBeforePayloadRead(t *testing.T) {
 	joined := make(chan struct{})
 	go func() {
 		defer close(joined)
-		_, err := textdocument.ReadWorkerConnection(ctx, endpoint, service)
+		_, err := readTransferredReader(ctx, endpoint, service)
 		finished <- err
 	}()
 	t.Cleanup(func() {

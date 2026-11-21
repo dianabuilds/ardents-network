@@ -95,7 +95,7 @@ func TestReaderWorkerRequestMayUseOneByteFramesWithoutQueueDeadlock(t *testing.T
 	stream := &responseStream{input: bytes.NewReader([]byte("ARDTXT01\x00\x00\x00\x00\x02ok")), done: make(chan connection.Outcome, 1)}
 	stream.done <- connection.Outcome{Class: connection.CleanClose}
 	close(stream.done)
-	body, err := textdocument.ReadWorkerConnection(ctx, endpoint, stream)
+	body, err := readTransferredReader(ctx, endpoint, stream)
 	if err != nil || string(body) != "ok" || stream.request.Len() != 512 || !stream.inputClosed || !stream.closed {
 		t.Fatalf("fragmented exchange: %q %v request=%d", body, err, stream.request.Len())
 	}
@@ -123,7 +123,7 @@ func TestReaderWorkerMalformedRequestNeverReachesService(t *testing.T) {
 	stream := &responseStream{input: bytes.NewReader([]byte("ARDTXT01\x00\x00\x00\x00\x02ok")), done: make(chan connection.Outcome, 1)}
 	stream.done <- connection.Outcome{Class: connection.CleanClose}
 	close(stream.done)
-	body, err := textdocument.ReadWorkerConnection(ctx, endpoint, stream)
+	body, err := readTransferredReader(ctx, endpoint, stream)
 	if err == nil || body != nil || stream.request.Len() != 0 || !stream.closed {
 		t.Fatalf("malformed request reached Service: bytes=%d result=%q err=%v", stream.request.Len(), body, err)
 	}

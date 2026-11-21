@@ -122,21 +122,8 @@
       "path_prefix": "packaging/stream-qualification-worker/",
       "race": true,
       "owners": [
-        {"package": "cmd/ardents-qualification", "test_pattern": "^Test"},
         {"package": "cmd/ardents-stream-qualification", "test_pattern": "^Test"},
         {"package": "internal/application/streamqualification", "test_pattern": "^Test"}
-      ]
-    },
-    {
-      "path_prefix": "tests/qualification/stream-network-two-host/",
-      "race": true,
-      "owners": [
-        {"package": "cmd/ardents-qualification", "test_pattern": "^Test(?:Qualification|ResourceVerdict|Issue60|WholeOwner|FailedNET14V)"},
-        {"package": "tests/e2e/node/fixturecommand/netem-relay", "test_pattern": "^Test(?:RelayConfiguration|CopyRelayDirection|QualificationNetworkCells)"},
-        {"package": "tests/epochfixture/network", "test_pattern": "^Test"},
-        {"package": "tests/qualification/stream-network-two-host/fixturecommand/qualification-network", "test_pattern": "^Test"},
-        {"package": "internal/endpoint", "test_pattern": "^Test.*(?:Qualification|Stream)"},
-        {"package": "internal/node", "test_pattern": "^Test(?:Closed|Hosting)"}
       ]
     }
   ],
@@ -182,11 +169,6 @@
       "path": "tests/qualification/text-worker-network"
     },
     {
-      "id": "text-command-network",
-      "owner": "network",
-      "path": "tests/qualification/text-command-network"
-    },
-    {
       "id": "text-worker-lifecycle",
       "owner": "network",
       "path": "tests/qualification/text-worker-lifecycle"
@@ -200,11 +182,6 @@
       "id": "service-credential-response-linux",
       "owner": "network",
       "path": "tests/qualification/service-credential-response-linux"
-    },
-    {
-      "id": "stream-network-two-host",
-      "owner": "network",
-      "path": "tests/qualification/stream-network-two-host"
     }
   ],
   "artifact_lanes": [

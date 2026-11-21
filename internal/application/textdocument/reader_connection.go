@@ -12,22 +12,6 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/connection"
 )
 
-// ReadWorkerConnection forwards one already-authorized Service Connection to
-// an initialized reader worker. Endpoint retains destination/Grant ownership.
-// The returned bytes have passed local RESULT checks and joined stream I/O;
-// Endpoint must additionally join the worker cgroup and check its current job
-// before presenting them. No failure opens another Connection or retries.
-func ReadWorkerConnection(ctx context.Context, attachment io.ReadWriteCloser, service connection.Stream) (body []byte, resultErr error) {
-	if ctx == nil || attachment == nil || service == nil {
-		return nil, errors.New("text reader Connection is unavailable")
-	}
-	owner := startReaderConnectionIO(ctx, attachment)
-	if err := owner.attachService(service); err != nil {
-		return nil, errors.Join(err, service.Close(), owner.close())
-	}
-	return readWorkerConnection(owner, nil, nil)
-}
-
 // AwaitRetainedWorkerConnection keeps the original Reader awaiting its final
 // local RESULT acknowledgement while the caller joins its remaining owners.
 // Ready transfers bounded checked bytes, not permission or a joined result.
@@ -124,7 +108,7 @@ func readWorkerConnection(owner *readerConnectionIO, ready chan<- []byte, releas
 				return nil, err
 			}
 			if complete {
-				if ready != nil && state.status == 0 {
+				if state.status == 0 {
 					// Local completion can retain a terminal-control tail. Keep
 					// that original stream and the worker's RESULT barrier while
 					// the caller holds these still-private pending bytes.
