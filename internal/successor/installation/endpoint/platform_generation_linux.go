@@ -16,7 +16,7 @@ import (
 // StagePlatformGeneration seals a fresh Endpoint generation against the actual
 // platform-prepared account and empty mutable roots. It installs no system
 // resources and never resumes or overwrites an earlier staging attempt.
-func StagePlatformGeneration(ctx context.Context, request Request, authorization Authorization, verifier *release.Verifier) (returnedErr error) {
+func StagePlatformGeneration(ctx context.Context, request Request, authorization Authorization, verifier *release.Verifier) error {
 	if ctx == nil || os.Geteuid() != 0 || request.declared == nil || verifier == nil {
 		return ErrInput
 	}
@@ -27,7 +27,6 @@ func StagePlatformGeneration(ctx context.Context, request Request, authorization
 	if !initial || facts.ManifestSHA256 != request.ManifestSHA256() {
 		return ErrAuthorization
 	}
-	program, descriptor := authorization.Targets()
 	uid, gid, err := observeEndpointAccount()
 	if err != nil || uid != gid || uid < 100 || uid > 999 {
 		return errors.Join(ErrNativeUnavailable, err)
@@ -40,6 +39,20 @@ func StagePlatformGeneration(ctx context.Context, request Request, authorization
 		}
 		prepared.roots = append(prepared.roots, identity)
 	}
+	return sealPlatformGeneration(ctx, request, authorization, verifier, prepared, func() error {
+		for _, before := range prepared.roots {
+			after, err := observeVacantPlatformRoot(before.Path, uid, gid)
+			if err != nil || after != before {
+				return errors.Join(ErrBinding, err)
+			}
+		}
+		return nil
+	})
+}
+
+func sealPlatformGeneration(ctx context.Context, request Request, authorization Authorization, verifier *release.Verifier, prepared preparedInstallation, observeRoots func() error) (returnedErr error) {
+	program, descriptor := authorization.Targets()
+	gid := prepared.gid
 	directory := request.declared.InstallationRoot
 	ancestors, err := rootDirectoryAncestors(filepath.Dir(directory))
 	if err != nil {
@@ -61,11 +74,8 @@ func StagePlatformGeneration(ctx context.Context, request Request, authorization
 				return errors.Join(ErrBinding, err)
 			}
 		}
-		for _, before := range prepared.roots {
-			after, err := observeVacantPlatformRoot(before.Path, uid, gid)
-			if err != nil || after != before {
-				return errors.Join(ErrBinding, err)
-			}
+		if err := observeRoots(); err != nil {
+			return err
 		}
 		return errors.Join(observeRequestCustody(ctx, request),
 			reader.observeAccountAndRoots(inspectedGeneration{binding: binding}),
