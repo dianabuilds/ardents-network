@@ -58,16 +58,7 @@ func TestPlatformConfigurationAdmitsSolePrivilegedPreStartCheck(t *testing.T) {
 	if err := VerifyPlatformConfiguration("249.11", unit, service, request, digest, platformTestCheckProgram, platformTestManifest, platformTestPin()); err != nil {
 		t.Fatal("older admitted manager platform configuration refused", err)
 	}
-	// The transitional configuration keeps ExecStartPre empty and never admits the
-	// platform pre-start check through its own admission path.
-	transitional, transitionalService, transitionalRequest, transitionalDigest := stoppedEndpointFixture(t)
-	if err := VerifyConfiguration("255.4", transitional, transitionalService, transitionalRequest, transitionalDigest); err != nil {
-		t.Fatal("transitional configuration refused", err)
-	}
-	freshUnit, freshService, freshRequest, freshDigest := platformEndpointFixture(t)
-	if err := VerifyConfiguration("255.4", freshUnit, freshService, freshRequest, freshDigest); !errors.Is(err, ErrBinding) {
-		t.Fatal("transitional admission accepted the platform pre-start check", err)
-	}
+
 }
 
 func TestPlatformConfigurationRefusesUnadmittedManagerOrGeneration(t *testing.T) {
@@ -398,11 +389,7 @@ func TestPlatformRunningAdmitsSolePrivilegedPreStartCheck(t *testing.T) {
 	if err := verifyPlatformRunning(unit, service, request, digest, invocation); err != nil {
 		t.Fatal("valid platform running invocation refused", err)
 	}
-	// The transitional running admission keeps ExecStartPre empty and refuses the
-	// platform pre-start check; the two running modes do not cross-admit.
-	if err := VerifyRunning("255.4", unit, service, request, digest, 123, invocation); !errors.Is(err, ErrBinding) {
-		t.Fatal("transitional running admission accepted the platform pre-start check", err)
-	}
+
 	for _, change := range []string{"replacement-pid", "replacement-invocation", "different-cgroup", "stopped", "weak-protection", "hook", "foreign-executable", "foreign-pre-start", "zero-start-clock"} {
 		t.Run(change, func(t *testing.T) {
 			unit, service, request, digest, invocation := platformRunningEndpointFixture(t)

@@ -14,18 +14,6 @@ import (
 
 // Preserve current native refusal while #359's separate capability repair is
 // unresolved. This is not another accepting version policy or qualification.
-func observeInstallationPlatform(ctx context.Context) error {
-	if ctx == nil {
-		return ErrInput
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if os.Geteuid() != 0 || runtime.GOARCH != "amd64" {
-		return ErrNativeUnavailable
-	}
-	return observeNativePlatform(ctx)
-}
 
 func observeStartupPlatform(ctx context.Context) error {
 	if ctx == nil {

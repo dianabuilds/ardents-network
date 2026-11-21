@@ -149,11 +149,6 @@
         "path": "tests/qualification/execution-tree"
       },
     {
-      "id": "execution-installed",
-      "owner": "network",
-      "path": "tests/qualification/execution-installed"
-    },
-    {
       "id": "installation-startup-manager",
       "owner": "network",
       "path": "tests/qualification/installation-startup-manager"

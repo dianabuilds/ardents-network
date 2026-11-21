@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -86,26 +87,14 @@ func verifyNativeEndpointReplacement(t *testing.T, stand *platformLedLaunchStand
 			t.Error("release Endpoint unit:", err)
 		}
 	}()
-	pid, err := strconv.ParseUint(original[0], 10, 32)
-	if err != nil {
-		t.Fatal("parse original Endpoint PID:", err)
-	}
 	stand.requireReplacementRefusal(t, "live predecessor")
 	var worker string
 	if activeWorker != nil {
 		worker = activeWorker(t, original)
 	}
-	scopes, err := cgroup.Retain(t.Context(), uint32(pid), stand.uid)
-	if err != nil {
-		t.Fatal("retain original Endpoint and worker scopes:", err)
-	}
-	defer func() {
-		if err := scopes.Close(); err != nil {
-			t.Error("release original scopes:", err)
-		}
-	}()
-	if joined, err := scopes.Joined(); err != nil || joined {
-		t.Fatalf("live Endpoint did not retain a populated scope: joined=%v err=%v", joined, err)
+	scopes := []*os.File{retainLaunchScope(t, "/sys/fs/cgroup/system.slice/ardents-endpoint.service")}
+	if worker != "" {
+		scopes = append(scopes, retainLaunchScope(t, worker))
 	}
 	if worker != "" {
 		if !liveSnapshotWorker(worker) {
@@ -117,8 +106,10 @@ func verifyNativeEndpointReplacement(t *testing.T, stand *platformLedLaunchStand
 		stand.stopParticipant(t, original)
 	}
 	stand.requireJoinedParticipant(t, original)
-	if joined, err := scopes.Joined(); err != nil || !joined {
-		t.Fatalf("original scopes did not join: joined=%v err=%v", joined, err)
+	for _, originalScope := range scopes {
+		if populated, err := launchScopePopulated(originalScope); err != nil || populated {
+			t.Fatalf("original scope did not join: populated=%v err=%v", populated, err)
+		}
 	}
 	for _, role := range []string{"reader", "publisher"} {
 		unit, _, err := systemd.Activation(t.Context(), role)
@@ -160,6 +151,53 @@ func verifyNativeEndpointReplacement(t *testing.T, stand *platformLedLaunchStand
 		t.Fatal(err)
 	}
 	stand.startReplacement(t, original)
+}
+
+// Retain the independent kernel descriptor before Stop. Path disappearance
+// alone cannot report that the original cgroup joined.
+func retainLaunchScope(t *testing.T, directory string) *os.File {
+	t.Helper()
+	file, err := os.Open(filepath.Join(directory, "cgroup.events"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := file.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	var fs syscall.Statfs_t
+	if err := syscall.Fstatfs(int(file.Fd()), &fs); err != nil || fs.Type != 0x63677270 {
+		t.Fatal("original scope is not cgroup v2:", err)
+	}
+	if populated, err := launchScopePopulated(file); err != nil || !populated {
+		t.Fatalf("expected populated original scope: populated=%v err=%v", populated, err)
+	}
+	return file
+}
+
+func launchScopePopulated(file *os.File) (bool, error) {
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		if errors.Is(err, syscall.ENODEV) {
+			return false, nil
+		}
+		return false, err
+	}
+	body, err := io.ReadAll(io.LimitReader(file, 1025))
+	if errors.Is(err, syscall.ENODEV) && len(body) == 0 {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	switch {
+	case bytes.HasPrefix(body, []byte("populated 0\n")):
+		return false, nil
+	case bytes.HasPrefix(body, []byte("populated 1\n")):
+		return true, nil
+	default:
+		return false, fmt.Errorf("unrecognized original cgroup.events: %q", body)
+	}
 }
 
 // A systemd stop transaction tears down dependent workers before their

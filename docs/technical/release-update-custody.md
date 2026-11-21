@@ -288,9 +288,9 @@ The per-user foreground replacement command surface is retired (#617 S3.5).
 `ardents endpoint replace/rollback/replacement-self-test/replacement-recovery`
 return typed refusals before input or root effects. Existing per-user roots,
 retained programs, journals and floors remain on disk as evidence. The
-maintained forward-only lifecycle uses `ardents-next installation upgrade-installed`
-and `recover-installed` with freshly authenticated exact artifacts and retained
-continuity evidence.
+maintained forward-only lifecycle uses `ardents-next platform stage-endpoint
+<request> <previous-launch>` with freshly authenticated exact artifacts and
+retained continuity evidence.
 
 The former generic `internal/update` transaction had no production caller and
 is retired. Its distinct schema-copy and adapter choreography are not part of

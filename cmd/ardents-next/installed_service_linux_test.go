@@ -4,7 +4,7 @@ package main
 
 import (
 	"bytes"
-	"context"
+
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/sha256"
@@ -12,28 +12,19 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
-	"os/exec"
+
 	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/allocation"
 	"github.com/dianabuilds/ardents-network/internal/successor/publication"
 	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
 	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
 )
-
-func TestInstalledServicePublication(t *testing.T) {
-	carrier := os.Getenv("ARDENTS_EXECUTION_START_CARRIER")
-	if carrier != string(transport.ClosedCarrierTCP) && carrier != string(transport.ClosedCarrierQUIC) {
-		t.Fatal("invalid environment: independently selected installed Carrier required")
-	}
-	t.Run(carrier, func(t *testing.T) { runInstalledServiceStartup(t, true, carrier) })
-}
 
 func installedServiceNetwork(t *testing.T, carrier string) (*networkAdmissionFixture, *reachability.Store) {
 	f, reservations, certificates := publicationRouteNetwork(t, transport.CarrierProfile(carrier), true)
@@ -75,51 +66,6 @@ func installedServiceDeclaration(t *testing.T, raw, base string) string {
 		raw = strings.Replace(raw, change[0], change[1], 1)
 	}
 	return raw
-}
-
-func installedServicePermissions(t *testing.T, base string, original [3]string, uid, gid uint64, approve func(string, string, []byte) []byte, dual bool) {
-	roles := []string{"reader"}
-	if dual {
-		roles = append(roles, "publisher")
-	}
-	for _, role := range roles {
-		installedStartupWait(t, func() ([]byte, bool) {
-			raw, err := exec.CommandContext(t.Context(), "journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID="+original[1]).CombinedOutput()
-			if err != nil {
-				t.Fatal("original permission journal", err)
-			}
-			return raw, installedServiceEvent(raw, "permission-pending", role)
-		})
-		directory := filepath.Join(base, "permission")
-		if role == "publisher" {
-			directory = filepath.Join(base, "publisher-permission")
-		}
-		request, err := os.ReadFile(filepath.Join(directory, "request"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		response := approve(base, role, request)
-		pending := filepath.Join(directory, "response.pending")
-		installedStartupWrite(t, pending, response, 0600)
-		if err := os.Chown(pending, int(uid), int(gid)); err != nil {
-			t.Fatal(err)
-		}
-		installedStartupSync(t, pending)
-		if _, err := os.Lstat(filepath.Join(directory, "response")); !os.IsNotExist(err) {
-			t.Fatal("refuse existing permission response", err)
-		}
-		if err := os.Rename(pending, filepath.Join(directory, "response")); err != nil {
-			t.Fatal(err)
-		}
-		installedStartupSync(t, directory)
-		installedStartupWait(t, func() ([]byte, bool) {
-			raw, err := exec.CommandContext(t.Context(), "journalctl", "--no-pager", "-o", "cat", "_SYSTEMD_INVOCATION_ID="+original[1]).CombinedOutput()
-			if err != nil {
-				t.Fatal(err)
-			}
-			return raw, installedServiceEvent(raw, "permission-accepted", role)
-		})
-	}
 }
 
 // Approval stays with the fixture authority. A participant receives only the
@@ -194,50 +140,6 @@ func installedServiceInstance(t *testing.T, program string, credential *syscall.
 	path := filepath.Join(base, "bootstrap", "credential-response")
 	installedStartupWrite(t, path, response, 0644)
 	installedStartupCommand(t, program, credential, "instance-response-accepted", "publication", "instance-accept", filepath.Join(base, "instance"), path)
-}
-
-func installedServicePublication(t *testing.T, base string, original [3]string) {
-	socket := filepath.Join(base, "administration", "socket")
-	installedStartupWait(t, func() ([]byte, bool) { _, err := os.Lstat(socket); return nil, err == nil })
-	requestLink := func() (string, error) {
-		ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
-		defer cancel()
-		return administration.RequestPublishedLink(ctx, socket)
-	}
-	if _, err := requestLink(); err == nil {
-		t.Fatal("unpublished owner supplied a Link")
-	}
-	ctx, cancel := context.WithTimeout(t.Context(), administration.SnapshotTimeout)
-	if _, err := administration.RequestSnapshot(ctx, socket, []byte("genuine installed snapshot\n")); err != nil {
-		cancel()
-		t.Fatal("installed snapshot publication", err)
-	}
-	cancel()
-	link, err := requestLink()
-	if err != nil || link == "" {
-		t.Fatal("actual committed Link", err)
-	}
-	if _, _, err := publication.ParseTargetLink(link); err != nil {
-		t.Fatal("canonical Link", err)
-	}
-	ctx, cancel = context.WithTimeout(t.Context(), 15*time.Second)
-	if _, err := administration.Request(ctx, socket, administration.Withdraw); err != nil {
-		cancel()
-		t.Fatal("installed withdrawal", err)
-	}
-	cancel()
-	if _, err := requestLink(); err == nil {
-		t.Fatal("withdrawn publication retained accepting Link")
-	}
-	if installedStartupIdentity(t) != original {
-		t.Fatal("withdrawal replaced or retired the installed participant")
-	}
-	t.Log("original installed qualified Publisher published via real issuer/REGISTER/Store ACK and withdrew; no Reader Service stream accepted")
-}
-
-func installedPairRefreshObserver(t *testing.T, store *reachability.Store, f *networkAdmissionFixture, link string, publishStarted time.Time) func() {
-	first := installedPairStoredProof(t, store, f, link)
-	return func() { installedPairAwaitRefresh(t, store, f, link, first, publishStarted) }
 }
 
 func installedPairStoredProof(t *testing.T, store *reachability.Store, f *networkAdmissionFixture, link string) reachability.Descriptor {

@@ -3,28 +3,11 @@
 package cgroup
 
 import (
-	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 )
-
-func TestInstallationNativeStartedScopeRefusesBeforeOpening(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	for _, pid := range []uint32{0, 1} {
-		if lifetime, err := RetainStarted(nil, pid, 65534); lifetime != nil || !errors.Is(err, errInput) {
-			t.Fatal("missing original caller obtained scope custody", lifetime, err)
-		}
-		if lifetime, err := RetainStarted(ctx, pid, 65534); lifetime != nil || !errors.Is(err, context.Canceled) {
-			t.Fatal("cancelled caller obtained pending/start scope custody", lifetime, err)
-		}
-	}
-	if lifetime, err := Retain(t.Context(), 0, 65534); lifetime != nil || !errors.Is(err, errInput) {
-		t.Fatal("pending-start exception entered ordinary predecessor pin", lifetime, err)
-	}
-}
 
 // Valid-looking bytes on an ordinary filesystem are not kernel completion.
 // This failure-only control supplies no successful cgroup or stop authority.
@@ -99,40 +82,4 @@ func nativeDirectory(t *testing.T) string {
 		}
 	})
 	return directory
-}
-
-func TestInstallationNativeLifetimeRefusesOrdinaryKernelImitation(t *testing.T) {
-	name := filepath.Join(nativeDirectory(t), "events")
-	if err := os.WriteFile(name, []byte("populated 0\nfrozen 0\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	file, err := os.Open(name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	identity, err := file.Stat()
-	if err != nil {
-		file.Close()
-		t.Fatal(err)
-	}
-	lifetime := &Lifetime{pins: []*pin{{events: file, identity: identity}}}
-	t.Cleanup(func() { lifetime.Close() })
-	if err := lifetime.Observe(); err == nil {
-		t.Fatal("ordinary file became live kernel lifetime")
-	}
-	if joined, err := lifetime.Joined(); err == nil || joined {
-		t.Fatal("ordinary file became original join", joined, err)
-	}
-	if _, err := file.Stat(); err != nil {
-		t.Fatal("failed observation released original descriptor", err)
-	}
-	if err := lifetime.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := file.Stat(); err == nil {
-		t.Fatal("physical close retained descriptor")
-	}
-	if joined, err := lifetime.Joined(); err == nil || joined {
-		t.Fatal("closed custody became join", joined, err)
-	}
 }

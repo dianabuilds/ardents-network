@@ -11,7 +11,23 @@ import (
 )
 
 func TestInstallationNativeStartupRefusesRootBeforeInstallationEffects(t *testing.T) {
-	directory := filepath.Join(nativeRequestDirectory(t), "absent-installation")
+	parent := os.Getenv("ARDENTS_INSTALLATION_NATIVE_ROOT")
+	if os.Geteuid() != 0 || parent == "" {
+		t.Fatal("invalid environment: installation_native requires root and an explicit trusted temporary parent")
+	}
+	if _, err := rootDirectoryAncestors(parent); err != nil {
+		t.Fatalf("invalid environment: untrusted temporary parent: %v", err)
+	}
+	temporary, err := os.MkdirTemp(parent, "startup-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(temporary); err != nil {
+			t.Error(err)
+		}
+	})
+	directory := filepath.Join(temporary, "absent-installation")
 	if owner, err := OpenStartup(t.Context(), directory); owner != nil || !errors.Is(err, ErrNativeUnavailable) {
 		if owner != nil {
 			owner.Close()

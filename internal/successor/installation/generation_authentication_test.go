@@ -40,7 +40,7 @@ func TestDetachedInventoryCannotMutateOrMintPrivateProofs(t *testing.T) {
 	copy["foreign"] = original
 	descriptor := observed.Descriptor()
 	descriptor[0] ^= 1
-	body, ok := observed.Resource("program")
+	body, ok := observed.Resources()["program"]
 	if !ok || !bytes.Equal(body, original) || !bytes.Equal(observed.Descriptor(), original) || len(observed.Resources()) != 1 {
 		t.Fatal("detached bytes changed the retained inventory")
 	}

@@ -39,15 +39,8 @@ type Invocation struct {
 	namespaces                  map[string]*os.File // separately fixed Node/Source original kernel objects
 }
 
-func Retain(ctx context.Context, expected Expected) (result *Invocation, returnedErr error) {
-	if os.Geteuid() != 0 {
-		return nil, errInput
-	}
-	return retain(ctx, expected)
-}
-
 // RetainSelf observes only the calling non-root service process. It cannot
-// inspect another PID or replace the privileged predecessor opening. Exact
+// inspect another PID. Exact
 // executable, arguments, kernel protection and manager cgroup checks still run.
 func RetainSelf(ctx context.Context, expected Expected) (*Invocation, error) {
 	if os.Geteuid() == 0 || expected.PID != uint32(os.Getpid()) ||

@@ -2,8 +2,6 @@ package endpoint
 
 import (
 	"bytes"
-	"context"
-	"errors"
 	"path"
 	"strings"
 	"testing"
@@ -17,7 +15,7 @@ func inventoryFixture(t *testing.T) (Request, map[string][]byte, generationSelec
 		t.Fatal(err)
 	}
 	files["binding.json"] = raw
-	request, err := DecodeRequest(t.Context(), files["request.json"], true)
+	request, err := decodeTestRequest(t.Context(), files["request.json"], true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,25 +176,6 @@ func TestInstalledGenerationRefusesCoherentlyRehashedForeignFacts(t *testing.T) 
 			mutate(&b, files)
 			if err := inspectObservationFixture(t, s, b, files); err == nil {
 				t.Fatal("rehashed foreign installed observation accepted")
-			}
-		})
-	}
-}
-
-func TestInstalledCheckRefusesMissingContextAndOriginalCancellation(t *testing.T) {
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	for _, test := range []struct {
-		name string
-		ctx  context.Context
-		want error
-	}{
-		{"missing-context", nil, ErrInput},
-		{"original-cancellation", ctx, context.Canceled},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if result, err := Check(test.ctx, "/installation"); !errors.Is(err, test.want) || result != (CheckResult{}) {
-				t.Fatal(result, err)
 			}
 		})
 	}

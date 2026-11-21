@@ -89,11 +89,14 @@ func fillGeneration(t *testing.T, owned *Owner) map[string][]byte {
 
 func TestInstallationNativeGenerationOwnerKeepsExactOriginalBytesAccessAndClose(t *testing.T) {
 	directory, owned := nativeGeneration(t)
-	born := owned.Identity()
+	born, err := os.Lstat(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
 	bodies := fillGeneration(t, owned)
-	complete := owned.Identity()
-	if complete.Device != born.Device || complete.Inode != born.Inode || complete.Mode != os.ModeDir|0750 || complete.GID != 65534 {
-		t.Fatal("seal replaced the original directory or its intended access")
+	complete, err := os.Lstat(directory)
+	if err != nil || !os.SameFile(born, complete) || complete.Mode() != os.ModeDir|0750 || complete.Sys().(*syscall.Stat_t).Gid != 65534 {
+		t.Fatal("seal replaced the original directory or its intended access", err)
 	}
 	for name, wanted := range bodies {
 		filename := filepath.Join(directory, name)
@@ -113,14 +116,7 @@ func TestInstallationNativeGenerationOwnerKeepsExactOriginalBytesAccessAndClose(
 		if info.Mode() != mode || native.Uid != 0 || native.Gid != 65534 || native.Nlink != 1 {
 			t.Fatal("physical access differs", name)
 		}
-		returned := owned.Bytes(name)
-		if !bytes.Equal(returned, wanted) {
-			t.Fatal("detached bytes differ", name)
-		}
-		returned[0] ^= 1
-		if !bytes.Equal(owned.Bytes(name), wanted) {
-			t.Fatal("caller changed retained bytes", name)
-		}
+
 	}
 	// Installation separately owns this exact container promotion. The
 	// generation owner must keep the same parent inode across permitted access.
@@ -147,7 +143,7 @@ func TestInstallationNativeGenerationOwnerKeepsExactOriginalBytesAccessAndClose(
 	if _, err := originalFile.Stat(); err == nil {
 		t.Fatal("Close retained original sync descriptor")
 	}
-	if err := owned.Observe(); err == nil || owned.Bytes("source.json") != nil {
+	if err := owned.Observe(); err == nil {
 		t.Fatal("closed custody became generation facts")
 	}
 }
@@ -170,9 +166,7 @@ func TestInstallationNativeGenerationOwnerRetainsForeignInventoryFailure(t *test
 	if err := owned.Observe(); !errors.Is(err, ErrBinding) {
 		t.Fatal("foreign removal renewed failed generation", err)
 	}
-	if owned.Bytes("source.json") != nil {
-		t.Fatal("failed generation returned accepting bytes")
-	}
+
 	if err := owned.Close(); !errors.Is(err, ErrBinding) {
 		t.Fatal("physical close lost first failure", err)
 	}

@@ -178,10 +178,7 @@ func TestTestProfileRegistryIsFactualAndWired(t *testing.T) {
 		"connection-withdrawal":             false,
 		"connection-nonce":                  false,
 		"publication-timing":                false,
-		"execution-installed":               false,
-		"execution-installed-publication":   false,
-		"execution-installed-pair":          false,
-		"execution-installed-timing":        false,
+
 		"execution-tree":                    false,
 		"execution-escape":                  false,
 		"execution-recovery":                false,

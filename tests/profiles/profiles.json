@@ -82,35 +82,6 @@
       "timeout": "90m"
     },
     {
-      "id": "execution-installed-timing",
-      "state": "active",
-      "make_target": "execution-installed-timing-check",
-      "surface": "canonical independently Installation-admitted original participants, real post-ACK Root cut/fresh recovery and exact Text exchange, unchanged-clock automatic Publication refresh proven by independently verified Store revision and second real Reader exchange, withdrawal/join/restart refusal; no full interruption or whole-host qualification",
-      "prerequisites": [
-        "all execution-installed pair original manager, namespace, artifact pin and fresh-root prerequisites",
-        "fifteen-minute timing controller and participant profiles, retained outer managers RuntimeMaxSec at least 920s",
-        "at least sixteen minutes remaining in original token hour",
-        "TCP/TLS selected for each fresh pair; deferred QUIC must refuse"
-      ],
-      "invalid_environment": "selected installed timing environment or original token hour unavailable; no passing skips",
-      "timeout": "15m"
-    },
-    {
-      "id": "execution-installed-pair",
-      "state": "active",
-      "make_target": "execution-installed-pair-check",
-      "surface": "two independently installed participants with genuine permission approvals, public signed Network inputs, actual Snapshot/Link and AAI3 text exchange, Withdraw/Link refusal, joined original participants and actual new-process Startup refusal with retained regular-file bytes and actual post-ACK cut/fresh-proof recovery; no full interruption or whole-host qualification",
-      "prerequisites": [
-        "root Linux x86-64 controller outside two fresh Ubuntu24.04/systemd255 managers with distinct PID/mount/cgroup namespaces and shared fixture loopback",
-        "independently pinned canonical participant/Text/resource inventory and text_worker_installed test binary in controller and both managers",
-        "ARDENTS_EXECUTION_PAIR_MANAGERS names the two original manager PIDs; ARDENTS_EXECUTION_START_CARRIER selects one Carrier per fresh pair",
-        "each manager contains /root/startup.test, /root/artifacts, /root/run-profile.sh and trusted /var/lib/profile-root; four-minute checked participant profile",
-        "fresh controller root and all retained logs outside the repository"
-      ],
-      "invalid_environment": "selected independently installed pair environment unavailable; no passing skips",
-      "timeout": "8m"
-    },
-    {
       "id": "join-process-linux",
       "state": "active",
       "make_target": "node-join-check",
@@ -408,37 +379,6 @@
         "root driver and actual readable kernel cgroup/proc observers"
       ],
       "invalid_environment": "selected hostile Execution component environment unavailable; missing descendants or prerequisites fail without passing skips"
-    },
-    {
-      "id": "execution-installed",
-      "state": "active",
-      "make_target": "execution-installed-check",
-      "surface": "actual new installed program startup, independent Installation Root completion, qualified joined permission preparation, genuine TLS Source and Stock permission import, explicit Hosting initialization and original-process AAI3 listener; no accepted Service request or whole-host qualification",
-      "prerequisites": [
-        "fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager without Ardents accounts or fixed resources",
-        "root driver outside the Endpoint unit",
-        "independently pinned root-owned canonical participant/Text/resource inventory and text_worker_installed command test binary",
-        "trusted fresh filesystem root outside the repository and private root-owned temporary directory",
-        "loopback TCP and genuine signed Epoch/profile/Release fixtures"
-      ],
-      "invalid_environment": "selected fresh installed startup environment unavailable; no passing skips",
-      "timeout": "4m"
-    },
-    {
-      "id": "execution-installed-publication",
-      "state": "active",
-      "make_target": "execution-installed-publication-check",
-      "surface": "canonical installed dual-role participant, original Root completion, qualified snapshot worker, genuine issuer token acquisition, REGISTER and Descriptor Store ACK, accepting Link and joined withdrawal; no two-Endpoint Connection or whole-host qualification",
-      "prerequisites": [
-        "fresh dedicated Ubuntu24.04 x86-64/systemd255/cgroup-v2 manager without Ardents accounts or fixed resources; own cgroup namespace and pivoted root",
-        "root driver outside the Endpoint unit",
-        "independently pinned canonical participant/Text/resource inventory and text_worker_installed command test binary",
-        "ARDENTS_EXECUTION_START_CARRIER selects ardents-carrier-tcp-tls-v2; deferred QUIC refuses before installation effects",
-        "trusted fresh filesystem root and retained log outside the repository",
-        "real loopback role/issuer/Source servers, signed Network/Release and independently approved fixture permissions and public Service Credential"
-      ],
-      "invalid_environment": "selected fresh installed publication environment unavailable; no passing skips",
-      "timeout": "4m"
     },
     {
       "id": "execution-lifecycle",

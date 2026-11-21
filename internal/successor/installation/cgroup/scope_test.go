@@ -33,12 +33,11 @@ func TestInstallationWorkerScopeOriginalIdentity(t *testing.T) {
 		"ardents-text-reader@0-123-996.service",
 		"ardents-text-publisher@4294967295-123-996.service",
 	} {
-		if !workerMatches(unit, 123, 996) || !scopeUnit(unit) {
+		pid, uid, valid := workerScope(unit)
+		if !valid || pid != 123 || uid != 996 || !scopeUnit(unit) {
 			t.Fatalf("canonical original worker refused: %s", unit)
 		}
-		if workerMatches(unit, 124, 996) || workerMatches(unit, 123, 997) {
-			t.Fatalf("replacement process or account adopted: %s", unit)
-		}
+
 	}
 	for _, unit := range []string{
 		"ardents-endpoint.service",
@@ -54,7 +53,7 @@ func TestInstallationWorkerScopeOriginalIdentity(t *testing.T) {
 		"ardents-qualification-reader@1-123-996.service",
 		"../ardents-text-reader@1-123-996.service",
 	} {
-		if workerMatches(unit, 123, 996) {
+		if _, _, valid := workerScope(unit); valid {
 			t.Fatalf("foreign scope admitted: %s", unit)
 		}
 		if unit != "ardents-endpoint.service" && scopeUnit(unit) {

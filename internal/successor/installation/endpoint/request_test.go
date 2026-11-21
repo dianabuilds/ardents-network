@@ -5,6 +5,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
 )
 
 // Independent exact schema bytes: this fixture never calls the production
@@ -17,7 +19,7 @@ func requestFixture() []byte {
 
 func TestInstallationRequestPortableAdmission(t *testing.T) {
 	raw := requestFixture()
-	r, err := DecodeRequest(t.Context(), raw, true)
+	r, err := decodeTestRequest(t.Context(), raw, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,13 +31,13 @@ func TestInstallationRequestPortableAdmission(t *testing.T) {
 		t.Fatal("request retained caller bytes")
 	}
 	withoutPin := strings.Replace(string(requestFixture()), `"manifest_sha256":"`+strings.Repeat("01", 32)+`",`, "", 1)
-	if _, err := DecodeRequest(t.Context(), []byte(withoutPin), false); err != nil {
+	if _, err := decodeTestRequest(t.Context(), []byte(withoutPin), false); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := DecodeRequest(t.Context(), []byte(withoutPin), true); !errors.Is(err, ErrInput) {
+	if _, err := decodeTestRequest(t.Context(), []byte(withoutPin), true); !errors.Is(err, ErrInput) {
 		t.Fatal("initial request accepted without independent pin")
 	}
-	if _, err := DecodeRequest(t.Context(), requestFixture(), false); !errors.Is(err, ErrInput) {
+	if _, err := decodeTestRequest(t.Context(), requestFixture(), false); !errors.Is(err, ErrInput) {
 		t.Fatal("successor request accepted initial pin")
 	}
 	publisher := strings.NewReplacer(
@@ -45,7 +47,7 @@ func TestInstallationRequestPortableAdmission(t *testing.T) {
 		`"publication_root":""`, `"publication_root":"/publication","service_instance_root":"/instance"`,
 		`"administration_principal":""`, `"administration_principal":"`+strings.Repeat("09", 32)+`"`,
 	).Replace(string(requestFixture()))
-	if _, err := DecodeRequest(t.Context(), []byte(publisher), true); err != nil {
+	if _, err := decodeTestRequest(t.Context(), []byte(publisher), true); err != nil {
 		t.Fatalf("ordinary participant declarations refused: %v", err)
 	}
 }
@@ -66,7 +68,7 @@ func (c *requestHandoffCancellation) Err() error {
 func TestInstallationRequestOriginalCancellationAtHandoff(t *testing.T) {
 	// A bounded CPU decode still owes its original caller a final handoff check.
 	ctx := &requestHandoffCancellation{Context: context.Background()}
-	r, err := DecodeRequest(ctx, requestFixture(), true)
+	r, err := decodeTestRequest(ctx, requestFixture(), true)
 	if !errors.Is(err, context.Canceled) || r.declared != nil {
 		t.Fatal("late cancellation published checked declarations")
 	}
@@ -103,7 +105,7 @@ func TestInstallationRequestCausalRefusals(t *testing.T) {
 		"oversized":      func(s string) string { return s + strings.Repeat(" ", 64<<10) },
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := DecodeRequest(t.Context(), []byte(mutation(string(requestFixture()))), true); !errors.Is(err, ErrInput) {
+			if _, err := decodeTestRequest(t.Context(), []byte(mutation(string(requestFixture()))), true); !errors.Is(err, ErrInput) {
 				t.Fatalf("invalid declaration accepted: %v", err)
 			}
 		})
@@ -116,7 +118,7 @@ func TestInstallationRequestCausalRefusals(t *testing.T) {
 		want error
 	}{{"original-cancellation", ctx, context.Canceled}, {"nil-context", nil, ErrInput}} {
 		t.Run(input.name, func(t *testing.T) {
-			if _, err := DecodeRequest(input.ctx, requestFixture(), true); !errors.Is(err, input.want) {
+			if _, err := decodeTestRequest(input.ctx, requestFixture(), true); !errors.Is(err, input.want) {
 				t.Fatalf("invalid context admitted: %v", err)
 			}
 		})
@@ -134,8 +136,17 @@ func TestOwnedRequestRefusesBeforeAcquiringCustody(t *testing.T) {
 			t.Fatalf("invalid native input acquired custody: %v", err)
 		}
 	}
-	request, err := DecodeRequest(t.Context(), requestFixture(), true)
+	request, err := decodeTestRequest(t.Context(), requestFixture(), true)
 	if err != nil || request.custody != nil {
 		t.Fatal("portable declarations became native provenance")
 	}
+}
+
+// decodeTestRequest admits canonical portable declarations without native custody.
+func decodeTestRequest(ctx context.Context, raw []byte, initial bool) (Request, error) {
+	document, err := requestinput.Decode(ctx, raw, initial)
+	if err != nil {
+		return Request{}, err
+	}
+	return retainRequest(document), nil
 }

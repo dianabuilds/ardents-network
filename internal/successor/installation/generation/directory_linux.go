@@ -1,7 +1,6 @@
 package generation
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -11,15 +10,6 @@ import (
 	"syscall"
 )
 
-// Identity is detached directory provenance, never adoption or startup authority.
-type Identity struct {
-	Device, Inode uint64
-	GID           uint32
-	Mode          os.FileMode
-}
-
-// Owner retains the original created directory and files, including partial
-// birth or failed writes. It never removes residue or adopts an existing name.
 type Owner struct {
 	parent, root             *os.Root
 	file                     *os.File
@@ -280,26 +270,6 @@ func (owned *Owner) Observe() (returnedErr error) {
 }
 
 // Identity returns only copied physical facts, never internal handles or maps.
-func (owned *Owner) Identity() Identity {
-	if owned == nil || owned.identity == nil {
-		return Identity{}
-	}
-	native, ok := owned.identity.Sys().(*syscall.Stat_t)
-	if !ok {
-		return Identity{}
-	}
-	return Identity{Device: uint64(native.Dev), Inode: native.Ino, GID: native.Gid, Mode: owned.identity.Mode()}
-}
-
-// Bytes returns detached bytes only from a sealed, unfailed, still-open owner.
-// Installation must Observe before using them for any physical effect.
-func (owned *Owner) Bytes(name string) []byte {
-	if owned == nil || !owned.sealed || owned.terminal != nil || owned.root == nil {
-		return nil
-	}
-	return bytes.Clone(owned.files[name].body)
-}
-
 func (owned *Owner) Close() error {
 	if owned == nil {
 		return nil
