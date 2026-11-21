@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/installation"
 	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
 	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/installation/unit"
 	"github.com/dianabuilds/ardents-network/internal/successor/release"
@@ -141,14 +140,6 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 	// Version 1 establishes complete retained Release floors through genuine
 	// initial-pin provenance and the actual two-target authorization.
 	firstDir, firstPin, firstProgram := signedConsumerRelease(t, "linux-amd64", true, true, 1, resources, authority, 1, 1)
-	firstBundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: firstDir, ExecutablePath: firstProgram, ManifestSHA256: firstPin, Scope: enrollment.Headless})
-	if err != nil {
-		t.Fatal("genuine initial enrollment:", err)
-	}
-	firstInput, ok := initialReleaseInputs(firstBundle, ref)
-	if !ok {
-		t.Fatal("initial release projection refused")
-	}
 
 	stand := &endpointPlatformNativeStand{binary: binary, binaryBytes: binaryBytes}
 	stand.base = filepath.Join("/var/lib/ardents", fmt.Sprintf("ep-proof-%d-%d", os.Getpid(), time.Now().UnixNano()))
@@ -162,16 +153,31 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 	if err := os.Chmod(stand.releaseFloorRoot, 0700); err != nil {
 		t.Fatal(err)
 	}
-	verifier, err := release.Open(stand.releaseFloorRoot)
+
+	// First-pin distribution must have root-controlled ancestors.
+	initialDistribution := filepath.Join(stand.base, "initial-distribution")
+	if err := os.Mkdir(initialDistribution, 0700); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(firstDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := generationauthorization.AuthenticateInitial(ctx, verifier, firstBundle, firstInput); err != nil {
-		t.Fatal("genuine initial Release authorization:", err)
+	for _, entry := range entries {
+		info, err := entry.Info()
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := os.ReadFile(filepath.Join(firstDir, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(initialDistribution, entry.Name()), data, info.Mode().Perm()); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := verifier.Close(); err != nil {
-		t.Fatal(err)
-	}
+	firstDir = initialDistribution
+	firstProgram = filepath.Join(firstDir, filepath.Base(firstProgram))
 
 	// Version 2 is the enrolled protected candidate the platform delivers. Its
 	// program bytes are the actual compiled consumer; the generation executable
@@ -199,11 +205,14 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 	if err := os.MkdirAll(etcDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { cleanupEndpointPlatformNativeStand(t, stand, etcDir) })
 	stand.requestPath = filepath.Join(etcDir, "request.json")
 	stand.manifest = filepath.Join(etcDir, "launch.json")
 	stand.certPath = filepath.Join(etcDir, "client.crt")
 	stand.keyPath = filepath.Join(etcDir, "client.key")
 	stand.decl = endpointPlatformNativeDeclaration(t, stand)
+	stand.decl.BundleRoot = firstDir
+	stand.decl.ManifestSHA256 = firstPin
 	requestRaw, err := json.Marshal(stand.decl)
 	if err != nil {
 		t.Fatal(err)
@@ -260,6 +269,38 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 		t.Fatal(err)
 	}
 
+	initial := stand.launch
+	initial.Distribution = firstDir
+	initialRaw, err := json.Marshal(initial)
+	if err != nil {
+		t.Fatal(err)
+	}
+	initialPath := filepath.Join(etcDir, "initialize.json")
+	if err := os.WriteFile(initialPath, append(initialRaw, '\n'), 0644); err != nil {
+		t.Fatal(err)
+	}
+	wrongPin := strings.Repeat("0", 64)
+	if out, err := exec.Command(firstProgram, "platform", "initialize-trust", initialPath, wrongPin).CombinedOutput(); err == nil {
+		t.Fatalf("wrong independent pin accepted: %s", out)
+	}
+	if out, err := exec.Command(stand.binary, "platform", "initialize-trust", initialPath, firstPin).CombinedOutput(); err == nil {
+		t.Fatalf("non-enrolled executable accepted: %s", out)
+	}
+	if retained, err := release.OpenRetained(stand.releaseFloorRoot); err == nil {
+		_ = retained.Close()
+		t.Fatal("refused pin created retained Release history")
+	}
+	if out, err := exec.Command(firstProgram, "platform", "initialize-trust", initialPath, firstPin).CombinedOutput(); err != nil {
+		t.Fatalf("platform Endpoint first pin refused: %v: %s", err, out)
+	}
+	retained, err := release.OpenRetained(stand.releaseFloorRoot)
+	if err != nil {
+		t.Fatal("platform initialization did not establish complete Release history:", err)
+	}
+	if err := retained.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	template, ok := candidate.File("ardents-endpoint.service")
 	if !ok {
 		t.Fatal("enrolled endpoint template absent")
@@ -284,7 +325,6 @@ func provisionEndpointPlatformNativeStand(t *testing.T) *endpointPlatformNativeS
 	if err := exec.Command("systemctl", "daemon-reload").Run(); err != nil {
 		t.Fatal("daemon-reload:", err)
 	}
-	t.Cleanup(func() { cleanupEndpointPlatformNativeStand(t, stand, etcDir) })
 	return stand
 }
 

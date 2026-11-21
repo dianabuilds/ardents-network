@@ -14,7 +14,11 @@ The per-user Portable Endpoint command surface is retired under the same ADR
 installed-user-unit/replace/rollback/replacement-self-test/replacement-recovery`
 return typed refusals before input or root effects, and their legacy command
 implementations are removed. The canonical protected text Endpoint launch is the
-platform-led system-unit composition in `ardents-next` — the platform unit's
+platform-led system-unit composition in `ardents-next`. An explicit
+`platform initialize-trust <launch> <independent-enrollment-pin>` authenticates
+the initial protected Endpoint bundle through Enrollment and establishes both
+target floors through Release. The operation uses the actual enrolled executable
+and the declared Release root. It stages no installed generation. The platform unit's
 ExecStartPre `platform check` transfers accepted current-program identity before
 runtime start (F-25), `endpoint construct-plan` renders authenticated preparation
 plans (F-27), `endpoint prepare-history` initializes the first histories, and
