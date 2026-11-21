@@ -24,6 +24,7 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission"
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/allocation"
+	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
@@ -70,7 +71,20 @@ func TestNativeEndpointPlatformLedLaunch(t *testing.T) {
 	stand.waitServiceReady(t, original)
 	stand.requireNoStartupExchange(t)
 	t.Logf("platform-led Endpoint reached Service readiness; MainPID=%s InvocationID=%s", original[0], original[1])
+	manager, err := systemd.RetainEndpoint(t.Context())
+	if err != nil {
+		t.Fatal("retain original Endpoint unit:", err)
+	}
+	defer func() {
+		if err := manager.Close(); err != nil {
+			t.Error("release Endpoint unit:", err)
+		}
+	}()
 	stand.stopParticipant(t, original)
+	stand.requireJoinedParticipant(t, original)
+	if err := manager.Observe(t.Context()); err != nil {
+		t.Fatal("observe original manager after Stop:", err)
+	}
 	stand.requireNoStartupExchange(t)
 }
 
@@ -604,6 +618,37 @@ func (s *platformLedLaunchStand) stopParticipant(t *testing.T, original [3]strin
 	}
 	if out, err := exec.Command("systemctl", "stop", "ardents-endpoint.service").CombinedOutput(); err != nil {
 		t.Errorf("original stop: %v: %s", err, out)
+	}
+}
+
+// Check the manager's result before a reload or reset can discard the
+// original exit observation. Stop job success alone does not establish it.
+func (s *platformLedLaunchStand) requireJoinedParticipant(t *testing.T, original [3]string) {
+	t.Helper()
+	out, err := exec.CommandContext(t.Context(), "systemctl", "show", "ardents-endpoint.service",
+		"--all", "--property=ActiveState,SubState,MainPID,ExecMainPID,ExecMainCode,ExecMainStatus,Result,Job").Output()
+	if err != nil {
+		t.Fatal("observe stopped Endpoint:", err)
+	}
+	properties := make(map[string]string)
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		name, value, ok := strings.Cut(line, "=")
+		if !ok {
+			t.Fatalf("invalid stopped Endpoint property %q", line)
+		}
+		properties[name] = value
+	}
+	for name, want := range map[string]string{
+		"ActiveState": "inactive", "SubState": "dead", "MainPID": "0", "ExecMainPID": original[0],
+		"ExecMainCode": "1", "ExecMainStatus": "0", "Result": "success", "Job": "",
+	} {
+		got, ok := properties[name]
+		if !ok || got != want {
+			t.Fatalf("stopped Endpoint %s = %q, want %q", name, got, want)
+		}
+	}
+	if _, err := os.Stat(filepath.Join("/proc", original[0])); !os.IsNotExist(err) {
+		t.Fatalf("original Endpoint PID %s still present or unobservable: %v", original[0], err)
 	}
 }
 
