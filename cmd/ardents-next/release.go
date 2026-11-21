@@ -96,3 +96,34 @@ func initialReleaseInputs(bundle enrollment.Bundle, ref time.Time) (release.Inpu
 	}
 	return release.Inputs{RootBytes: root, Files: files, TargetPath: f.TargetPath, Artifact: artifact, Local: release.LocalEnvironment{Environment: f.Environment, Network: f.Network, Platform: f.Platform, Architecture: runtime.GOARCH, RefTime: ref.UTC()}}, true
 }
+
+func candidateReleaseInputs(c enrollment.Candidate, ref time.Time) (release.Inputs, bool) {
+	f, ok := c.Facts()
+	if !ok {
+		return release.Inputs{}, false
+	}
+	root, rootOK := c.File(f.TrustedRoot)
+	program, programOK := c.File(f.Artifact)
+	if !rootOK || !programOK {
+		return release.Inputs{}, false
+	}
+	files := make(map[string][]byte)
+	for _, name := range c.MetadataNames() {
+		files["https://release.invalid/metadata/"+name], _ = c.File(name)
+	}
+	return release.Inputs{RootBytes: root, Artifact: program, Files: files, TargetPath: f.TargetPath,
+		Local: release.LocalEnvironment{Platform: f.Platform, Architecture: runtime.GOARCH,
+			Environment: f.Environment, Network: f.Network, RefTime: ref.UTC()}}, true
+}
+
+// Software delivery retains the existing CLI outcomes independently of
+// the transitional installer's recovery-specific result.
+func softwareDeliveryFailure(ctx context.Context, err error) (outcome string, code int) {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
+		return "installation-canceled", 130
+	}
+	if errors.Is(err, release.ErrTrustUnavailable) {
+		return "installation-trust-unavailable", 1
+	}
+	return "installation-refused", 1
+}

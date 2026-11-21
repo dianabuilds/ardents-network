@@ -175,34 +175,10 @@ func runInstallationProvision(ctx context.Context, filename string, out io.Write
 	return enrollmentReport(out, result.Status, 0)
 }
 
-func candidateReleaseInputs(c enrollment.Candidate, ref time.Time) (release.Inputs, bool) {
-	f, ok := c.Facts()
-	if !ok {
-		return release.Inputs{}, false
-	}
-	root, rootOK := c.File(f.TrustedRoot)
-	program, programOK := c.File(f.Artifact)
-	if !rootOK || !programOK {
-		return release.Inputs{}, false
-	}
-	files := make(map[string][]byte)
-	for _, name := range c.MetadataNames() {
-		files["https://release.invalid/metadata/"+name], _ = c.File(name)
-	}
-	return release.Inputs{RootBytes: root, Artifact: program, Files: files, TargetPath: f.TargetPath,
-		Local: release.LocalEnvironment{Platform: f.Platform, Architecture: runtime.GOARCH,
-			Environment: f.Environment, Network: f.Network, RefTime: ref.UTC()}}, true
-}
-
 func installationFailure(ctx context.Context, out io.Writer, err error) int {
-	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
-		return enrollmentReport(out, "installation-canceled", 130)
+	outcome, code := softwareDeliveryFailure(ctx, err)
+	if outcome == "installation-refused" && errors.Is(err, installation.ErrRepairRequired) {
+		outcome = "installation-repair-required"
 	}
-	if errors.Is(err, release.ErrTrustUnavailable) {
-		return enrollmentReport(out, "installation-trust-unavailable", 1)
-	}
-	if errors.Is(err, installation.ErrRepairRequired) {
-		return enrollmentReport(out, "installation-repair-required", 1)
-	}
-	return enrollmentReport(out, "installation-refused", 1)
+	return enrollmentReport(out, outcome, code)
 }

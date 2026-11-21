@@ -22,16 +22,16 @@ import (
 func runPlatformStageEndpoint(ctx context.Context, filename string, out io.Writer) int {
 	request, err := installation.ReadOwnedRequest(ctx, filename, true)
 	if err != nil {
-		return installationFailure(ctx, out, err)
+		return reportSoftwareDeliveryFailure(ctx, out, err)
 	}
 	program, err := os.Executable()
 	if err != nil {
-		return installationFailure(ctx, out, err)
+		return reportSoftwareDeliveryFailure(ctx, out, err)
 	}
 	bundle, err := enrollment.Verify(ctx, enrollment.Request{BundleRoot: request.BundleRoot(), ExecutablePath: program,
 		ManifestSHA256: request.ManifestSHA256(), Scope: enrollment.Headless})
 	if err != nil {
-		return installationFailure(ctx, out, err)
+		return reportSoftwareDeliveryFailure(ctx, out, err)
 	}
 	input, ok := initialReleaseInputs(bundle, request.ReferenceTime())
 	if !ok || input.Local.Platform != runtime.GOOS+"-"+runtime.GOARCH {
@@ -39,26 +39,26 @@ func runPlatformStageEndpoint(ctx context.Context, filename string, out io.Write
 	}
 	verifier, err := release.OpenRetained(request.ReleaseHistoryRoot())
 	if err != nil {
-		return installationFailure(ctx, out, err)
+		return reportSoftwareDeliveryFailure(ctx, out, err)
 	}
 	// Staging may use only the exact metadata already committed by the
 	// first-pin step. It cannot advance trust before a later staging refusal.
 	if err := verifyStageReleaseMetadata(ctx, verifier, input); err != nil {
-		return installationFailure(ctx, out, errors.Join(err, verifier.Close()))
+		return reportSoftwareDeliveryFailure(ctx, out, errors.Join(err, verifier.Close()))
 	}
 	authorization, err := generationauthorization.AuthenticateInitial(ctx, verifier, bundle, input)
 	if err == nil {
 		err = installation.StagePlatformGeneration(ctx, request, authorization, verifier)
 	}
 	if err = errors.Join(err, verifier.Close(), ctx.Err()); err != nil {
-		return installationFailure(ctx, out, err)
+		return reportSoftwareDeliveryFailure(ctx, out, err)
 	}
 	return enrollmentReport(out, "generation-staged", 0)
 }
 
 func runPlatformStageEndpointSuccessor(ctx context.Context, filename, previousManifest string, out io.Writer) int {
 	if err := stagePlatformEndpointSuccessor(ctx, filename, previousManifest); err != nil {
-		return installationFailure(ctx, out, err)
+		return reportSoftwareDeliveryFailure(ctx, out, err)
 	}
 	return enrollmentReport(out, "generation-staged", 0)
 }
@@ -131,4 +131,9 @@ func verifyStageReleaseMetadata(ctx context.Context, verifier *release.Verifier,
 		}
 	}
 	return ctx.Err()
+}
+
+func reportSoftwareDeliveryFailure(ctx context.Context, out io.Writer, err error) int {
+	outcome, code := softwareDeliveryFailure(ctx, err)
+	return enrollmentReport(out, outcome, code)
 }
