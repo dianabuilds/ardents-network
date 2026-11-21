@@ -71,8 +71,19 @@ func TestNativeEndpointPlatformLedLaunch(t *testing.T) {
 	original := stand.startPlatformLed(t)
 	stand.grantPermissions(t, original)
 	stand.waitServiceReady(t, original)
+	stand.requireNoStartupExchange(t)
 	t.Logf("platform-led Endpoint reached Service readiness; MainPID=%s InvocationID=%s", original[0], original[1])
 	stand.stopParticipant(t, original)
+	stand.requireNoStartupExchange(t)
+}
+
+func (s *platformLedLaunchStand) requireNoStartupExchange(t *testing.T) {
+	t.Helper()
+	for _, name := range []string{"start-guard.json", "start-socket.json", "start-completion.socket"} {
+		if _, err := os.Lstat(filepath.Join(s.installationRoot, name)); !os.IsNotExist(err) {
+			t.Fatalf("platform-led Endpoint retained guarded-start artifact %s: %v", name, err)
+		}
+	}
 }
 
 // TestNativeEndpointPlatformLedLaunchRefusals verifies the platform pre-start

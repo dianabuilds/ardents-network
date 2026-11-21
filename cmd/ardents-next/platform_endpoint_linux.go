@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"os"
 	"path"
 	"path/filepath"
 	"sort"
@@ -265,6 +266,14 @@ func verifyEndpointPlatformPrestart(ctx context.Context, files *platformFiles, l
 	generationDigest := path.Base(filepath.Dir(launch.Program))
 	if err := endpointunit.VerifyPlatformConfiguration(version, unitProps, serviceProps, endpointunit.Configuration{InstallationRoot: decl.InstallationRoot, WritePaths: roots}, generationDigest, checkProgram, manifest, pin); err != nil {
 		return errPlatformInput
+	}
+	// The platform manager cannot complete an interrupted guarded start.
+	// Refuse before opening Release state, even if only part of the exchange
+	// remains and the original guard is already absent.
+	for _, name := range []string{"start-guard.json", "start-socket.json", "start-completion.socket"} {
+		if _, err := os.Lstat(filepath.Join(decl.InstallationRoot, name)); !errors.Is(err, os.ErrNotExist) {
+			return errors.Join(errPlatformInput, err)
+		}
 	}
 	refTime, err := time.Parse(time.RFC3339Nano, decl.ReferenceTime)
 	if err != nil {
