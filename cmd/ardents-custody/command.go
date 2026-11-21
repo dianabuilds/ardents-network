@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/custody"
+	"github.com/dianabuilds/ardents-network/internal/custody"
 )
 
 func run(ctx context.Context, arguments []string, output io.Writer, input custody.SecretInput) error {

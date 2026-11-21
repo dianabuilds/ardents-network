@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 

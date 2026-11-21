@@ -1,15 +1,14 @@
 #!/bin/sh
 set -eu
 
-if [ "$#" -ne 5 ]; then
-  echo 'usage: test.sh <platform> <ardents-artifact> <ardents-node-artifact> <ardents-control-artifact> <ardents-custody-artifact>' >&2
+if [ "$#" -ne 4 ]; then
+  echo 'usage: test.sh <platform> <ardents-artifact> <ardents-control-artifact> <ardents-custody-artifact>' >&2
   exit 2
 fi
 ARDENTS_HEADLESS_PLATFORM=$1
 ARDENTS_HEADLESS_ENDPOINT=$2
-ARDENTS_HEADLESS_NODE=$3
-ARDENTS_HEADLESS_CONTROL=$4
-ARDENTS_HEADLESS_CUSTODY=$5
+ARDENTS_HEADLESS_CONTROL=$3
+ARDENTS_HEADLESS_CUSTODY=$4
 
 repository=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 artifact_name() {
@@ -26,18 +25,16 @@ mkdir "$static_root"
 chmod 700 "$static_root"
 platform=$ARDENTS_HEADLESS_PLATFORM
 endpoint_name=$(artifact_name ardents "$platform")
-node_name=$(artifact_name ardents-node "$platform")
 control_name=$(artifact_name ardents-control "$platform")
 custody_name=$(artifact_name ardents-custody "$platform")
 test -f "$ARDENTS_HEADLESS_ENDPOINT"
-test -f "$ARDENTS_HEADLESS_NODE"
 test -f "$ARDENTS_HEADLESS_CONTROL"
 test -f "$ARDENTS_HEADLESS_CUSTODY"
 for name in 1.root.json 1.snapshot.json 1.targets.json catalog.ac1 catalog.pub compatibility.ac1 compatibility.pub corpus.pub network.ac1 network.pub release.ac1 release.pub timestamp.json; do
   printf '%s\n' "$name" > "$static_root/$name"
 done
 cat > "$static_root/RELEASE" <<EOF
-schema=ardents-closed-alpha-enrollment-v3
+schema=ardents-closed-alpha-enrollment-v4
 cohort=alpha-test
 release=usable-alpha-test-1
 platform=$platform
@@ -63,7 +60,6 @@ build() {
   ARDENTS_ALPHA_BUNDLE_RELEASE=usable-alpha-test-1 \
   ARDENTS_ALPHA_BUNDLE_PLATFORM="$platform" \
   ARDENTS_ALPHA_BUNDLE_ENDPOINT="$ARDENTS_HEADLESS_ENDPOINT" \
-  ARDENTS_ALPHA_BUNDLE_NODE="$ARDENTS_HEADLESS_NODE" \
   ARDENTS_ALPHA_BUNDLE_CONTROL="$ARDENTS_HEADLESS_CONTROL" \
   ARDENTS_ALPHA_BUNDLE_CUSTODY="$ARDENTS_HEADLESS_CUSTODY" \
   ARDENTS_ALPHA_BUNDLE_TEXT="${protected_text:-}" \
@@ -81,7 +77,6 @@ tar -xzf "$scratch/first.tar.gz" -C "$scratch"
 bundle="$scratch/ardents-alpha-usable-alpha-test-1-$platform"
 
 cmp -s "$ARDENTS_HEADLESS_ENDPOINT" "$bundle/$endpoint_name"
-cmp -s "$ARDENTS_HEADLESS_NODE" "$bundle/$node_name"
 cmp -s "$ARDENTS_HEADLESS_CONTROL" "$bundle/$control_name"
 cmp -s "$ARDENTS_HEADLESS_CUSTODY" "$bundle/$custody_name"
 
@@ -121,7 +116,6 @@ if [ "$(tar -tzf "$scratch/first.tar.gz")" != "$(printf '%s\n' \
   "ardents-alpha-usable-alpha-test-1-$platform/SHA256SUMS" \
   "ardents-alpha-usable-alpha-test-1-$platform/$control_name" \
   "ardents-alpha-usable-alpha-test-1-$platform/$custody_name" \
-  "ardents-alpha-usable-alpha-test-1-$platform/$node_name" \
   "ardents-alpha-usable-alpha-test-1-$platform/$endpoint_name" \
   "ardents-alpha-usable-alpha-test-1-$platform/catalog.ac1" \
   "ardents-alpha-usable-alpha-test-1-$platform/catalog.pub" \
@@ -183,7 +177,7 @@ ardents-text.conf"
   mkdir "$protected_unpack"
   tar -xzf "$scratch/protected-first.tar.gz" -C "$protected_unpack"
   protected_bundle="$protected_unpack/ardents-alpha-usable-alpha-test-1-$platform"
-  test "$(wc -l < "$protected_bundle/SHA256SUMS" | tr -d ' ')" = 27
+  test "$(wc -l < "$protected_bundle/SHA256SUMS" | tr -d ' ')" = 26
   (cd "$protected_bundle" && sha256sum --strict --check SHA256SUMS)
   cmp -s "$static_root/protected-endpoint.json" "$protected_bundle/protected-endpoint.json"
   printf 'substitution\n' > "$static_root/ardents-text.conf"

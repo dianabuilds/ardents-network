@@ -10,15 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/admission/token"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/funding"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/prefix"
+	"github.com/dianabuilds/ardents-network/internal/route/selection"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // These are genuine Route/Stock exchanges, not qualified Service operations.

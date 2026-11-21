@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"io"
 )
 

@@ -23,12 +23,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/allocation"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/cgroup"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/cgroup"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 

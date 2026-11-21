@@ -8,7 +8,7 @@ import (
 	"encoding/pem"
 	"math/big"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 // Exact Node transport leaf profile from the current TLS material owner. This

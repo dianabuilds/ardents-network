@@ -1,6 +1,6 @@
 package main
 
-import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"io"
 	"runtime"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
 type admissionResult struct {

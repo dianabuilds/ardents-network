@@ -8,12 +8,12 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/reader"
-	"github.com/dianabuilds/ardents-network/internal/successor/execution"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
-	"github.com/dianabuilds/ardents-network/internal/successor/network"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/reader"
+	"github.com/dianabuilds/ardents-network/internal/execution"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	"github.com/dianabuilds/ardents-network/internal/network"
 )
 
 // This ordinary Reader consumes already provisioned finite Stock and a verified

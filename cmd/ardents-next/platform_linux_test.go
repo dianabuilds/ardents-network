@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
 )
 
 func TestPlatformRetiresDetachedSourceStartBeforeEffects(t *testing.T) {

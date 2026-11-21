@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
-	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
 func TestSourcePreparationConfigHasNoServingOrAcquisition(t *testing.T) {

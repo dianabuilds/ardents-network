@@ -16,12 +16,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/installation"
-	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
-	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/installation/unit"
-	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/platform/installation"
+	requestinput "github.com/dianabuilds/ardents-network/internal/platform/installation/request"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
+	endpointunit "github.com/dianabuilds/ardents-network/internal/platform/installation/unit"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 // validEndpointPlatformLaunch admits the protected text Endpoint declaration shape.

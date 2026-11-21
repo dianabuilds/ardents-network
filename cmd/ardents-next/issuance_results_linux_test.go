@@ -2,7 +2,7 @@
 
 package main
 
-import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
 import (
 	"bytes"
@@ -25,8 +25,8 @@ import (
 
 	"github.com/cloudflare/circl/blindsign/blindrsa"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 )
 
 func issuanceResultCommandPlan(t *testing.T) (issuancePlan, map[string]any, map[string]any, func([]byte)) {

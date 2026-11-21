@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
 func runSourceInspection(args []string, out io.Writer) error {

@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
 )
 
 // Actual canonical programs and real fresh signatures exercise only the offline

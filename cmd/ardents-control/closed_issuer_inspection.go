@@ -11,7 +11,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 )
 
 // inspectClosedIssuerProfile verifies public Node-signed inventory for offline State

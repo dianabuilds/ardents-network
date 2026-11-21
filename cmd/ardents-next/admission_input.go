@@ -1,6 +1,6 @@
 package main
 
-import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
 import (
 	"bytes"
@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 )
 
 type admissionBindingInput struct {

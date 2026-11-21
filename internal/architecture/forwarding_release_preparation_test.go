@@ -16,9 +16,10 @@ func TestForwardingBuildRecordsAndSourceManifestRules(t *testing.T) {
 import json, runpy, sys
 tool = runpy.run_path(sys.argv[1])
 assert tool["COMMANDS"] == ("ardents-node", "ardents-control")
+assert tool["COMMAND_PACKAGES"] == {"ardents-node": "ardents-next", "ardents-control": "ardents-control"}
 record = tool["source_record"]
 for mode in ("100644", "100755"):
-    assert record("cmd/ardents-node/main.go", {"sha256":"a"*64, "mode":mode}) == ("a"*64, int(mode[-3:], 8))
+    assert record("cmd/ardents-next/main.go", {"sha256":"a"*64, "mode":mode}) == ("a"*64, int(mode[-3:], 8))
 for name, value in (
     ("../outside", {"sha256":"a"*64, "mode":"100644"}),
     ("/outside", {"sha256":"a"*64, "mode":"100644"}),

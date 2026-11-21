@@ -6,12 +6,12 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/session"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
-	"github.com/dianabuilds/ardents-network/internal/successor/network"
-	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	"github.com/dianabuilds/ardents-network/internal/network"
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 )
 
 type holderCommand struct {

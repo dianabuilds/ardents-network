@@ -10,7 +10,6 @@ artifact_name() {
 : "${ARDENTS_ALPHA_BUNDLE_RELEASE:?ARDENTS_ALPHA_BUNDLE_RELEASE is required}"
 : "${ARDENTS_ALPHA_BUNDLE_PLATFORM:?ARDENTS_ALPHA_BUNDLE_PLATFORM is required}"
 : "${ARDENTS_ALPHA_BUNDLE_ENDPOINT:?ARDENTS_ALPHA_BUNDLE_ENDPOINT is required}"
-: "${ARDENTS_ALPHA_BUNDLE_NODE:?ARDENTS_ALPHA_BUNDLE_NODE is required}"
 : "${ARDENTS_ALPHA_BUNDLE_CONTROL:?ARDENTS_ALPHA_BUNDLE_CONTROL is required}"
 : "${ARDENTS_ALPHA_BUNDLE_CUSTODY:?ARDENTS_ALPHA_BUNDLE_CUSTODY is required}"
 : "${ARDENTS_ALPHA_BUNDLE_STATIC_ROOT:?ARDENTS_ALPHA_BUNDLE_STATIC_ROOT is required}"
@@ -19,7 +18,6 @@ artifact_name() {
 
 platform=$ARDENTS_ALPHA_BUNDLE_PLATFORM
 endpoint_name=$(artifact_name ardents "$platform")
-node_name=$(artifact_name ardents-node "$platform")
 control_name=$(artifact_name ardents-control "$platform")
 custody_name=$(artifact_name ardents-custody "$platform")
 bundle_name="ardents-alpha-${ARDENTS_ALPHA_BUNDLE_RELEASE}-${platform}"
@@ -41,7 +39,7 @@ case "$ARDENTS_ALPHA_BUNDLE_OUTPUT" in
   *) echo 'ARDENTS_ALPHA_BUNDLE_OUTPUT must be an absolute path' >&2; exit 2 ;;
 esac
 
-for input in "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$ARDENTS_ALPHA_BUNDLE_NODE" "$ARDENTS_ALPHA_BUNDLE_CONTROL" "$ARDENTS_ALPHA_BUNDLE_CUSTODY"; do
+for input in "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$ARDENTS_ALPHA_BUNDLE_CONTROL" "$ARDENTS_ALPHA_BUNDLE_CUSTODY"; do
   if [ ! -f "$input" ] || [ -L "$input" ]; then
     echo 'alpha bundle executable input must be a direct regular file' >&2
     exit 2
@@ -133,7 +131,7 @@ if [ "$actual_names" != "$(printf '%s\n' "$static_names" | LC_ALL=C sort)" ]; th
 fi
 release_descriptor="$ARDENTS_ALPHA_BUNDLE_STATIC_ROOT/RELEASE"
 for entry in \
-  "schema=ardents-closed-alpha-enrollment-v3" \
+  "schema=ardents-closed-alpha-enrollment-v4" \
   "cohort=$ARDENTS_ALPHA_BUNDLE_COHORT" \
   "release=$ARDENTS_ALPHA_BUNDLE_RELEASE" \
   "platform=$platform" \
@@ -165,7 +163,6 @@ trap cleanup EXIT HUP INT TERM
 bundle="$stage/$bundle_name"
 mkdir -m 700 "$bundle"
 install -m 700 "$ARDENTS_ALPHA_BUNDLE_ENDPOINT" "$bundle/$endpoint_name"
-install -m 700 "$ARDENTS_ALPHA_BUNDLE_NODE" "$bundle/$node_name"
 install -m 700 "$ARDENTS_ALPHA_BUNDLE_CONTROL" "$bundle/$control_name"
 install -m 700 "$ARDENTS_ALPHA_BUNDLE_CUSTODY" "$bundle/$custody_name"
 if [ "$protected" = true ]; then

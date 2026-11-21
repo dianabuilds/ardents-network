@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/spending"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
+	"github.com/dianabuilds/ardents-network/internal/admission/spending"
 )
 
 // Linux is required for the genuine State, participation and Hosting durable

@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/allocation"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/token"
-	"github.com/dianabuilds/ardents-network/internal/successor/network"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/allocation"
+	"github.com/dianabuilds/ardents-network/internal/admission/quota"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/admission/token"
+	"github.com/dianabuilds/ardents-network/internal/network"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 

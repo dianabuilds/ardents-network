@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/publication/instance"
+	"github.com/dianabuilds/ardents-network/internal/publication/instance"
 )
 
 func runInstance(ctx context.Context, args []string, out io.Writer) int {

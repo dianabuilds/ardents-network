@@ -5,7 +5,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/node"
+	"github.com/dianabuilds/ardents-network/internal/node"
 )
 
 // Preserve the original one-object/string-field role report. The encoded local

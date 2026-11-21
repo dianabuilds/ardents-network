@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
 func networkDiscardPayload(reader io.Reader, count int64) error {

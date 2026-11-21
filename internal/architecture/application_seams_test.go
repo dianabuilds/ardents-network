@@ -242,7 +242,7 @@ func TestSelectedApplicationSeamsMatchTheirAdapters(t *testing.T) {
 	t.Setenv("GOOS", "linux")
 	t.Setenv("GOARCH", "amd64")
 	t.Setenv("CGO_ENABLED", "0")
-	const endpoint = "./internal/successor/endpoint"
+	const endpoint = "./internal/endpoint"
 	dependencies := listedDependencies(t, root, endpoint)
 	for _, seam := range []string{connection, administration} {
 		if !dependencies[seam] {

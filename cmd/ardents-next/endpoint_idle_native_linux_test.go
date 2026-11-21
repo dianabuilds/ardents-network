@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
 // NET-32 user-idle component measurement (M2 slice 3a, #652). It provisions ONE

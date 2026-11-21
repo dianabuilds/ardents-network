@@ -6,9 +6,9 @@ import (
 	"io"
 	"runtime"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
 )
 
 func runIssuerProfile(ctx context.Context, operation string, args []string, out, diagnostic io.Writer) int {

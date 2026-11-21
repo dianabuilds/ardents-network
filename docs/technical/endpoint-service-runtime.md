@@ -258,7 +258,7 @@ The local runtime has separate Modules and Interfaces:
 |---|---|---|
 | internal/application/connection | Carry one typed Target-Link request and the fixed protected text exchange under AAI3; refuse reserved Name requests and join terminal/cancellation cleanup. It is not a generic binary Application interface. | State, Entry, Target, Route, worker authority, confinement, Service keys, retries, fallback, and Network diagnostics. |
 | internal/application/administration | Carry one separately authorized `publish` or `withdraw` request and its closed success/unavailable result under the same interface version and vectors. | Connection bytes, publication inputs, Credential/key material, State, Route, Target, and Network diagnostics. |
-| internal/successor/endpoint | Compose the platform-led protected text participant over the maintained AAI3 and Administration Interfaces, with joined shutdown of its role owners. | Execution session admission, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
+| internal/endpoint | Compose the platform-led protected text participant over the maintained AAI3 and Administration Interfaces, with joined shutdown of its role owners. | Execution session admission, authenticated State/Entry/Target projection, TLS carrier setup, publication acquisition, and Connection invocation. |
 | internal/service/publication | Open, publish, acquire, unpublish, and close one exclusive Service Instance generation. | Crash-atomic public record/floor persistence, volatile Instance signer, live-reference accounting, drain, and private-material erasure. |
 | internal/service/connection | Carry one logical authenticated Service Connection across fresh Route Attachments, preserve directional Application EOF through its existing authenticated Terminal record, and return one terminal outcome. | Exact Instance challenge/proof, continuity MAC, ordered data/acknowledgement offsets, replay handling, recovery deadline, and attachment cleanup. |
 
@@ -1567,7 +1567,7 @@ provenance. General trusted-path observations for lease, staging and inspection
 remain distinct from request-file provenance.
 
 
-The new installed participant lifetime is owned by `internal/successor/endpoint`.
+The new installed participant lifetime is owned by `internal/endpoint`.
 Its `Run` opens and retains the original Installation Startup, decodes only its
 bound declarations, prepares the local Execution provenance, refreshes genuine
 State and performs exact permission-file handover before opening shared funding

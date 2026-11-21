@@ -258,7 +258,7 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 		t.Errorf("headless Network make target = %q, want headless-check", headlessProfile.MakeTarget)
 	}
 	commands := strings.Fields(string(readProjectFile(t, root, "tests/profiles/headless-commands.txt")))
-	want := []string{"./cmd/ardents", "./cmd/ardents-node", "./cmd/ardents-control", "./cmd/ardents-custody"}
+	want := []string{"./cmd/ardents", "./cmd/ardents-control", "./cmd/ardents-custody"}
 	if len(commands) != len(want) {
 		t.Fatalf("headless command inventory = %v, want %v", commands, want)
 	}
@@ -276,7 +276,6 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 		"$(notdir $(command))-$(HEADLESS_PLATFORM)",
 		"headless-evidence: export ARDENTS_E2E_COMMAND := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))",
 		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))",
-		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_NODE := $(abspath $(HEADLESS_NODE_ARTIFACT))",
 		"headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_CUSTODY := $(abspath $(HEADLESS_CUSTODY_ARTIFACT))",
 		"headless-evidence: export ARDENTS_E2E_CONTROL := $(abspath $(HEADLESS_CONTROL_ARTIFACT))",
 		"TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses",
@@ -289,7 +288,7 @@ func TestHeadlessNetworkProfileHasClosedCommandAndArtifactBoundary(t *testing.T)
 
 func TestHeadlessCommandsHaveBrowserFreeDependencyGraphs(t *testing.T) {
 	root := repositoryRoot(t)
-	for _, commandPath := range []string{"./cmd/ardents", "./cmd/ardents-control", "./cmd/ardents-node", "./cmd/ardents-custody"} {
+	for _, commandPath := range []string{"./cmd/ardents", "./cmd/ardents-control", "./cmd/ardents-custody"} {
 		t.Run(filepath.Base(commandPath), func(t *testing.T) {
 			dependencies := listedDependencies(t, root, commandPath)
 			for _, forbidden := range []string{
@@ -409,7 +408,7 @@ func TestRouteProfileSerializesWholeInterfaceMeasurements(t *testing.T) {
 		t.Fatal("Route profile boundary absent")
 	}
 	body := makefile[start : start+end]
-	if !strings.Contains(body, "go test -p 1 -race ./internal/successor/network/...") || !strings.Contains(body, "./cmd/ardents-next -count=1 -timeout=5m") {
+	if !strings.Contains(body, "go test -p 1 -race ./internal/network/...") || !strings.Contains(body, "./cmd/ardents-next -count=1 -timeout=5m") {
 		t.Fatal("Route profile must serialize whole-interface borrowers without changing its full inventory or package bound")
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
 // inspectNodeProcess drives the same genuine process owner as the original

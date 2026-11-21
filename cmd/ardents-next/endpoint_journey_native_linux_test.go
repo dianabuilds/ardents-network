@@ -26,10 +26,10 @@ import (
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/application/textdocument"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
-	"github.com/dianabuilds/ardents-network/internal/successor/publication"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/publication"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // This native qualification proves the two-Endpoint platform-led text journey

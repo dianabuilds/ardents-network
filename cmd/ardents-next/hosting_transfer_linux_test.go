@@ -5,7 +5,7 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 	"testing"
 	"time"
 )

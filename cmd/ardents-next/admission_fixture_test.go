@@ -1,6 +1,6 @@
 package main
 
-import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
 import (
 	"crypto/ed25519"
@@ -9,8 +9,8 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/binary"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 	"math/big"
 	"testing"
 	"time"

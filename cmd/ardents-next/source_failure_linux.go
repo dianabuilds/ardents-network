@@ -7,7 +7,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
 func sourceStartupFailure(out io.Writer, owner string, cause, cleanup error) int {

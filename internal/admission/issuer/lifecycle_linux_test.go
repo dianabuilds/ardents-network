@@ -1,0 +1,83 @@
+//go:build linux
+
+package issuer
+
+import "github.com/dianabuilds/ardents-network/internal/admission/quota"
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+)
+
+func issuancePlan(t *testing.T) Plan {
+	t.Helper()
+	base := t.TempDir()
+	start := time.Unix(3600, 0).UTC()
+	keys := issuance.Binding{Network: [32]byte{1}, Issuer: [32]byte{2}, Signer: [32]byte{3}, Start: start, End: start.Add(time.Hour)}
+	p := Plan{AdmissionRoot: filepath.Join(base, "admission"), KeyRoot: filepath.Join(base, "keys"), ResultRoot: filepath.Join(base, "results"), KeyBinding: keys}
+	if err := issuance.Initialize(t.Context(), p.KeyRoot, keys); err != nil {
+		t.Fatal(err)
+	}
+	store, err := issuance.Open(t.Context(), p.KeyRoot, keys)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inventory, err := store.Inventory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.AdmissionBinding = quota.LedgerBinding{Network: keys.Network, Issuer: keys.Issuer, Authority: [32]byte{4}, Profile: [32]byte{5}, Duty: 1, Start: keys.Start, End: keys.End}
+	p.AdmissionBinding.Keys = inventory.Keys
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := quota.Initialize(p.AdmissionRoot, p.AdmissionBinding); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestInitializeClosesOwnersAndRetainsResultRoot(t *testing.T) {
+	p := issuancePlan(t)
+	if got := Initialize(t.Context(), p); got.Outcome != "initialized-results" {
+		t.Fatal(got)
+	}
+	before, err := os.ReadFile(filepath.Join(p.ResultRoot, "results.pin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := Initialize(t.Context(), p); got.Outcome != "storage-unavailable" {
+		t.Fatal(got)
+	}
+	after, err := os.ReadFile(filepath.Join(p.ResultRoot, "results.pin"))
+	if err != nil || string(before) != string(after) {
+		t.Fatal("replacement", err)
+	}
+	if got := Issue(t.Context(), p, nil, admission.Facts{}, quota.Bootstrap); got.Outcome == "busy" || got.Response != nil {
+		t.Fatal(got)
+	}
+	ledger, err := quota.Open(p.AdmissionRoot, p.AdmissionBinding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = ledger.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err := issuance.Open(t.Context(), p.KeyRoot, p.KeyBinding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	results, err := issuance.OpenResults(t.Context(), p.ResultRoot, store, p.AdmissionBinding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = results.Close(); err != nil {
+		t.Fatal(err)
+	}
+}

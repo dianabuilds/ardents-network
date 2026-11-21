@@ -9,16 +9,16 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 

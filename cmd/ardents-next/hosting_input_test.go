@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
 func TestHostingPlanExactFields(t *testing.T) {

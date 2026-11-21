@@ -6,8 +6,8 @@ import (
 	"io"
 	"runtime"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
 )
 
 func runIssuanceResults(ctx context.Context, args []string, out, diagnostic io.Writer) int {

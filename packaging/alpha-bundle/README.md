@@ -7,7 +7,7 @@ release publisher. Private release/control keys never enter this script, its
 environment, its output, or the repository.
 
 The caller supplies one explicit `<goos>-<goarch>` and the exact already-built
-Endpoint, Node, control, and Authority Custody binaries for it, plus
+Endpoint, control, and Authority Custody binaries for it, plus
 one direct static directory already prepared by the applicable Release and
 alpha-control authority operations. That directory must contain exactly one
 matching,
@@ -26,16 +26,15 @@ For a fixed approved successor, only the pair changes together (for example,
 `1.root.json`. The assembler rejects a mixed, duplicated, or unexpected
 inventory rather than guessing a metadata generation.
 
-The `RELEASE` descriptor must be enrollment-v3, name the supplied cohort,
+The `RELEASE` descriptor must be enrollment-v4, name the supplied cohort,
 release, platform, the Endpoint/control executable names fixed by enrollment
-v3, `environment=alpha`, and
+v4, `environment=alpha`, and
 the initial trusted root. The assembler copies no unlisted entry, writes the
 complete `SHA256SUMS` inventory, and creates one gzip stream with normalized
-name order, ownership, and timestamp. Enrollment v3 deliberately contains no
-Browser native host or XPI; those remain separately verifiable Adapter
-artifacts. The manifest additionally pins the canonical Node and Custody
-companions; `VerifyHeadless` requires both while ordinary `Verify` preserves
-the accepted ADR-0042 v3 grammar. The output must be a previously absent
+name order, ownership, and timestamp. The manifest pins the canonical
+Custody companion. Enrollment verifies existing v3 headless bundles against
+their original manifest, which includes both Node and Custody. Browser
+artifacts use separate verification. The output must be a previously absent
 absolute path outside the repository.
 
 Run it on an Ubuntu release workstation with GNU `tar`, `gzip`, `sha256sum`,
@@ -46,7 +45,6 @@ ARDENTS_ALPHA_BUNDLE_COHORT=alpha-1 \
 ARDENTS_ALPHA_BUNDLE_RELEASE=usable-alpha-1 \
 ARDENTS_ALPHA_BUNDLE_PLATFORM=linux-amd64 \
 ARDENTS_ALPHA_BUNDLE_ENDPOINT=/absolute/path/ardents-linux-amd64 \
-ARDENTS_ALPHA_BUNDLE_NODE=/absolute/path/ardents-node-linux-amd64 \
 ARDENTS_ALPHA_BUNDLE_CONTROL=/absolute/path/ardents-control-linux-amd64 \
 ARDENTS_ALPHA_BUNDLE_CUSTODY=/absolute/path/ardents-custody-linux-amd64 \
 ARDENTS_ALPHA_BUNDLE_STATIC_ROOT=/absolute/path/already-authenticated-static \
@@ -55,15 +53,13 @@ SOURCE_DATE_EPOCH=1767225600 \
 sh ./packaging/alpha-bundle/build.sh
 ```
 
-`make headless-check` builds real host-named `ardents`, `ardents-node`,
-`ardents-control`, and `ardents-custody` artifacts outside the repository,
-then supplies all four exact executable byte strings to the deterministic
+`make headless-check` builds real host-named `ardents`, `ardents-control`,
+and `ardents-custody` artifacts outside the repository, then supplies the
+three exact executable byte strings to the deterministic
 inventory test. The test packs,
 unpacks, verifies, and byte-compares those artifacts; it does not substitute
-fixture text for executable bytes. The same target passes those exact built
-Endpoint and Node paths into the selected enrollment, Source, native-duty, and
-Service-readiness process scenarios; those scenarios cannot silently rebuild a
-different temporary command from source.
+fixture text for executable bytes. The target passes the same Endpoint
+artifact to the selected enrollment and process scenarios.
 
 ```sh
 make headless-check
@@ -82,8 +78,8 @@ For the selected linux-amd64 successor, additionally set
 static root must then contain `protected-endpoint.json`, the two worker service
 units, two worker sockets, `50-ardents-text.rules`, `ardents-text.conf` and
 `ardents-endpoint.service`. Any one of these inputs selects the whole required
-group; partial presence refuses. The existing general bundle remains 18
-manifest entries; a complete protected bundle has 27, within the existing cap.
+group; partial presence refuses. The headless bundle has 17 manifest entries. A complete protected bundle has
+26, within the existing cap.
 
 The descriptor must already exist before its exact bytes are signed as the
 protected target in the same Release set as the Endpoint executable. The

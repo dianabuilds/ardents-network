@@ -16,10 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
-	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 // A launch declaration is operator configuration, not a domain identity or a

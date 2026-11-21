@@ -13,10 +13,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
-	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
 // Offline acceptance opens no Source listener, runtime key, process guard or

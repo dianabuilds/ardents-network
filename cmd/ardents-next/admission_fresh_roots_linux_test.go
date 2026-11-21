@@ -14,8 +14,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 )
 
 // These are command/storage controls with fixture bindings, not authenticated

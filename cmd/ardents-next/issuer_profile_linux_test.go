@@ -20,7 +20,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
 )
 
 func profileCommand(t *testing.T, operation string, plan map[string]any, collector string) (issuanceResult, error) {

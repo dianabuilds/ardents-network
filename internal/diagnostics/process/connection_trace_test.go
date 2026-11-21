@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+func observeBoundConnection(ctx context.Context, stage ConnectionStage) func(error) {
+	var capture *ConnectionTrace
+	if ctx != nil {
+		capture, _ = ctx.Value(captureContextKey{}).(*ConnectionTrace)
+	}
+	return capture.Observe(stage, ctx)
+}
+
 func TestConnectionCapturePreservesDisabledContextAndDeadline(t *testing.T) {
 	parent, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
@@ -41,7 +49,7 @@ func TestConnectionCapturePreservesDisabledContextAndDeadline(t *testing.T) {
 	if before != after || bound.Done() != independent.Done() {
 		t.Fatal("authority Context changed")
 	}
-	end := ObserveConnection(bound, Admission)
+	end := observeBoundConnection(bound, Admission)
 	end(errors.New("private target and key"))
 	end(nil)
 	capture.Finish(context.Canceled)
@@ -88,7 +96,7 @@ func TestConnectionCaptureExpiresAndBoundsRecords(t *testing.T) {
 func TestConnectionCaptureConcurrentClaimsAndSnapshots(t *testing.T) {
 	capture := newConnectionCapture()
 	ctx := context.WithValue(t.Context(), sessionCaptureContextKey{}, capture)
-	ObserveConnection(ctx, ServiceAuthentication)(nil)
+	observeBoundConnection(ctx, ServiceAuthentication)(nil)
 	if len(capture.snapshot().Records) != 0 {
 		t.Fatal("session leaked operation observations")
 	}

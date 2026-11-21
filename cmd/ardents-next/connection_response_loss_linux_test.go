@@ -14,12 +14,12 @@ import (
 	"time"
 
 	application "github.com/dianabuilds/ardents-network/internal/application/connection"
-	"github.com/dianabuilds/ardents-network/internal/successor/connection"
-	endpointpublisher "github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
-	"github.com/dianabuilds/ardents-network/internal/successor/network"
-	publicationruntime "github.com/dianabuilds/ardents-network/internal/successor/publication/runtime"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/connection"
+	endpointpublisher "github.com/dianabuilds/ardents-network/internal/endpoint/publisher"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	"github.com/dianabuilds/ardents-network/internal/network"
+	publicationruntime "github.com/dianabuilds/ardents-network/internal/publication/runtime"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // Publisher JOIN starts only after its original delivery completed RESULT/CLOSE.
@@ -32,8 +32,8 @@ func (g *publicationDeliveryCloseGate) observePublisherJoin(current func() (netw
 	joinOpening, publisher := false, false
 	for {
 		frame, more := frames.Next()
-		joinOpening = joinOpening || frame.Function == "github.com/dianabuilds/ardents-network/internal/successor/route/join.(*JoinAcquisition).Join"
-		publisher = publisher || frame.Function == "github.com/dianabuilds/ardents-network/internal/successor/publication/runtime.(*Publisher).NextAuthentication"
+		joinOpening = joinOpening || frame.Function == "github.com/dianabuilds/ardents-network/internal/route/join.(*JoinAcquisition).Join"
+		publisher = publisher || frame.Function == "github.com/dianabuilds/ardents-network/internal/publication/runtime.(*Publisher).NextAuthentication"
 		if !more {
 			break
 		}
@@ -287,7 +287,7 @@ func (gate *installedControlWriteGate) observeReceived() {
 	reader := false
 	for {
 		frame, more := frames.Next()
-		if frame.Function == "github.com/dianabuilds/ardents-network/internal/successor/connection.(*Stream).readRecords" {
+		if frame.Function == "github.com/dianabuilds/ardents-network/internal/connection.(*Stream).readRecords" {
 			reader = true
 		}
 		if !more {
@@ -350,12 +350,12 @@ func (gate *installedControlWriteGate) observe() {
 	for {
 		frame, more := frames.Next()
 		switch frame.Function {
-		case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*Stream).readRecords":
+		case "github.com/dianabuilds/ardents-network/internal/connection.(*Stream).readRecords":
 			progressRead = frame.Line == connectionProgressReadLine
 			progressCommit = frame.Line == connectionProgressCommitLine
-		case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*Stream).writeRecords":
+		case "github.com/dianabuilds/ardents-network/internal/connection.(*Stream).writeRecords":
 			actor = true
-		case "github.com/dianabuilds/ardents-network/internal/successor/publication/instance.(*ServiceAttachment).Write":
+		case "github.com/dianabuilds/ardents-network/internal/publication/instance.(*ServiceAttachment).Write":
 			if gate.role == "publisher" {
 				line := connectionPublisherControlWriteBeforeLine
 				if gate.after {
@@ -364,7 +364,7 @@ func (gate *installedControlWriteGate) observe() {
 				boundary = frame.Line == line
 				before = frame.Line == connectionPublisherControlWriteBeforeLine
 			}
-		case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*initiatorAttachment).Write":
+		case "github.com/dianabuilds/ardents-network/internal/connection.(*initiatorAttachment).Write":
 			if gate.role == "initiator" {
 				line := connectionInitiatorControlWriteBeforeLine
 				if gate.after {
@@ -373,15 +373,15 @@ func (gate *installedControlWriteGate) observe() {
 				boundary = frame.Line == line
 				before = frame.Line == connectionInitiatorControlWriteBeforeLine
 			}
-		case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*ResponderScope).Check":
+		case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*ResponderScope).Check":
 			direct = true
-		case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*ResponderJoinBorrow).CheckOriginal":
+		case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*ResponderJoinBorrow).CheckOriginal":
 			responderBorrow = true
-		case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*Prefix).originalCurrent":
+		case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*Prefix).originalCurrent":
 			physicalDepth++
-		case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*SourceScope).Check":
+		case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*SourceScope).Check":
 			source = true
-		case "github.com/dianabuilds/ardents-network/internal/successor/route/join.(*Joined).CheckSourceCaller":
+		case "github.com/dianabuilds/ardents-network/internal/route/join.(*Joined).CheckSourceCaller":
 			source = true
 		}
 		if !more {
@@ -486,19 +486,19 @@ func installedPublisherTerminalBodyDelay() (observe func(), release func(), ente
 		for {
 			frame, more := frames.Next()
 			switch frame.Function {
-			case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*attachmentRecordReader).Read":
+			case "github.com/dianabuilds/ardents-network/internal/connection.(*attachmentRecordReader).Read":
 				body = frame.Line == connectionControlFramingReadLine
-			case "github.com/dianabuilds/ardents-network/internal/successor/publication/instance.(*ServiceAttachment).Read":
+			case "github.com/dianabuilds/ardents-network/internal/publication/instance.(*ServiceAttachment).Read":
 				post = frame.Line == connectionControlReadRecheckLine
-			case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*ResponderScope).Check":
+			case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*ResponderScope).Check":
 				scope = true
-			case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*ResponderJoinBorrow).CheckOriginal":
+			case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*ResponderJoinBorrow).CheckOriginal":
 				responderBorrow = true
-			case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*Prefix).originalCurrent":
+			case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*Prefix).originalCurrent":
 				physicalDepth++
-			case "github.com/dianabuilds/ardents-network/internal/successor/route/prefix.(*SourceScope).Check":
+			case "github.com/dianabuilds/ardents-network/internal/route/prefix.(*SourceScope).Check":
 				source = true
-			case "github.com/dianabuilds/ardents-network/internal/successor/connection.(*Stream).readRecords":
+			case "github.com/dianabuilds/ardents-network/internal/connection.(*Stream).readRecords":
 				actor = true
 			}
 			if !more {
@@ -582,7 +582,7 @@ func installedConnectionObservationDelay() (observe, arm, release func(), entere
 		applicationRead := false
 		for {
 			frame, more := frames.Next()
-			if frame.Function == "github.com/dianabuilds/ardents-network/internal/successor/connection.(*Stream).Read" {
+			if frame.Function == "github.com/dianabuilds/ardents-network/internal/connection.(*Stream).Read" {
 				applicationRead = true
 				break
 			}

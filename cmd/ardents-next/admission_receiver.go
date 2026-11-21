@@ -7,8 +7,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
 )
 
 // This local consumer spends tokens and retains finite allowance receipts. It

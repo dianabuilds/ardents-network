@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 // The public declaration has one initial Node Record purpose. It contains no

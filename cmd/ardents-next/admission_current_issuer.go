@@ -6,9 +6,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/admission/quota"
 )
 
 func runAdmissionCurrentIssuer(ctx context.Context, args []string, out io.Writer) int {

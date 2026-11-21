@@ -4,10 +4,10 @@ package main
 
 import (
 	"context"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint/session"
-	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/endpoint/session"
+	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/route/introduction"
 	"net"
 	"time"
 )

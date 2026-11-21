@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/node"
-	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
+	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
 func writePreparePlanNetwork(t *testing.T, base string) {

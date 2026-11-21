@@ -12,15 +12,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	"github.com/dianabuilds/ardents-network/internal/successor/publication/durable"
-	"github.com/dianabuilds/ardents-network/internal/successor/publication/instance"
-	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/publication/durable"
+	"github.com/dianabuilds/ardents-network/internal/publication/instance"
+	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/route/receiver"
+	"github.com/dianabuilds/ardents-network/internal/route/role"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 func TestInstalledConnectionDurableReopenTCP(t *testing.T) {

@@ -1,6 +1,6 @@
 package main
 
-import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
 import (
 	"bytes"
@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile/signing"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuer"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile/signing"
 )
 
 func profileConfigObject(raw []byte, names ...string) (map[string]json.RawMessage, error) {

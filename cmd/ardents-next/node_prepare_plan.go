@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	"github.com/dianabuilds/ardents-network/internal/successor/node"
-	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
 // runNodePreparePlan codifies the platform-led node-role provisioning recipe: it

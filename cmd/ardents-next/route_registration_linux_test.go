@@ -6,8 +6,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	routeprefix "github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
-	routereceiver "github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
+	routeprefix "github.com/dianabuilds/ardents-network/internal/route/prefix"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
 	"os"
 	"path/filepath"
 	"sync"
@@ -15,17 +15,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
-	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
+	"github.com/dianabuilds/ardents-network/internal/route/introduction"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/route/role"
+	"github.com/dianabuilds/ardents-network/internal/route/selection"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // This uses signed current State, genuine Publisher allocation/blind issuance,

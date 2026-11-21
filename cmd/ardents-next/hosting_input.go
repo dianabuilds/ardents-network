@@ -7,7 +7,7 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
 )
 
 type hostingPlan struct {

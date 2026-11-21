@@ -7,6 +7,10 @@ Generated evidence, profiles, state and caches always remain outside Git.
 
 ## Start here: debugging handover
 
+Examples using `ardents-node node --config` document captures from older
+revisions. Use the matching historical checkout to reproduce those captures.
+Current installed Node roles run through `ardents-next`.
+
 Use the current source and explicitly built helper; an old `:local` image does
 not acquire new CLI features when the repository changes. Windows operators use
 Docker Desktop's native Linux containers through `invoke.ps1`; the private
@@ -192,7 +196,7 @@ docker compose -f scripts/diagnostics/compose.yaml --profile online run --rm onl
 diag test -package ./internal/diagnostics/process -run '^Test' \
   -race -out /evidence/process-race-a -timeout 2m
 # One package, explicit pattern; performance profiling is separate from race.
-diag test -package ./internal/successor/installation/systemd -run '^$' -bench '^BenchmarkManagerPropertyMatch$' \
+diag test -package ./internal/platform/installation/systemd -run '^$' -bench '^BenchmarkManagerPropertyMatch$' \
   -profile -raw -out /evidence/unit-policy-profile-a -timeout 5m
 diag analyze -dir /evidence/unit-policy-profile-a
 ```
@@ -289,7 +293,7 @@ Loki/Grafana receive them. Ordinary monitoring enables no debug socket or profil
 
 ## Live network process debug mode
 
-`ardents` and `ardents-node` accept the explicit `ARDENTS_DEBUG_SOCKET`
+`ardents` accepts the explicit `ARDENTS_DEBUG_SOCKET`
 environment variable. Without it there are no diagnostic effects. Set it
 separately for each process; the absolute socket parent must already exist,
 be owned by that process UID with 0700 permissions and contain no symlink.

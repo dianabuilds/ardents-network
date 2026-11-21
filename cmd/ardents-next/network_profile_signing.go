@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
 // This declaration admits only closed-profile signing. The State authority is

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 const maximumForwardingEpochPlan = 8 << 20

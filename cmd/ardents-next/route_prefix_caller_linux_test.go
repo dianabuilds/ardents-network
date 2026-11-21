@@ -6,8 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	routeprefix "github.com/dianabuilds/ardents-network/internal/successor/route/prefix"
-	routereceiver "github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
+	routeprefix "github.com/dianabuilds/ardents-network/internal/route/prefix"
+	routereceiver "github.com/dianabuilds/ardents-network/internal/route/receiver"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -15,17 +15,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/stock"
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	"github.com/dianabuilds/ardents-network/internal/successor/network"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
-	framing "github.com/dianabuilds/ardents-network/internal/successor/route/channel"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
+	"github.com/dianabuilds/ardents-network/internal/admission/stock"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	framing "github.com/dianabuilds/ardents-network/internal/route/channel"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/selection"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/route/role"
+	"github.com/dianabuilds/ardents-network/internal/route/selection"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // Each observation returns genuine signed Network facts. Only scheduling of

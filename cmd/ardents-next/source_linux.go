@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
-	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
 func runSource(ctx context.Context, args []string, out, diagnostic io.Writer) (code int) {

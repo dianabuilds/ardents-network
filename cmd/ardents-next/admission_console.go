@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
+	"github.com/dianabuilds/ardents-network/internal/admission"
 )
 
 // Local command facts are explicit operator assertions, never Network authority.

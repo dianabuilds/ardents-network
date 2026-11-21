@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
 type sourceInitialID [32]byte

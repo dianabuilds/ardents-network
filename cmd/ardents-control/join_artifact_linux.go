@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
 )
 
 type joinControlFailure struct{ cause error }

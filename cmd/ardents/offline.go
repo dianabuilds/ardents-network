@@ -11,7 +11,7 @@ import (
 	"os"
 
 	"github.com/dianabuilds/ardents-network/internal/diagnostics/timeline"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 // refresh-sources is retired (#493): the successor State owner never samples
@@ -50,7 +50,7 @@ func runWithInput(ctx context.Context, arguments []string, input io.ReadCloser, 
 		return runAcceptClosedProfile(arguments[1:], output)
 	}
 	if len(arguments) == 0 || arguments[0] != "accept-offline" {
-		return errors.New("usage: ardents <accept-offline|accept-closed-profile|diagnostics|endpoint|entry|name> arguments")
+		return errors.New("usage: ardents <accept-offline|accept-closed-profile|diagnostics|endpoint> arguments")
 	}
 	return runAcceptOffline(ctx, arguments[1:], output)
 }

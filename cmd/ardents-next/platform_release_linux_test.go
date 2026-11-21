@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
-	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/release"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 	"github.com/theupdateframework/go-tuf/v2/metadata"
 )

@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
 // The v2 declaration supplies only storage targets and pins here. Preparation

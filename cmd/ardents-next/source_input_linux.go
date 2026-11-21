@@ -2,7 +2,7 @@
 
 package main
 
-import "github.com/dianabuilds/ardents-network/internal/successor/network/source"
+import "github.com/dianabuilds/ardents-network/internal/network/source"
 
 // sourceServePlan declares only distribution. State owns current evidence and
 // local serving guards; this command cannot acquire or refresh an Epoch.

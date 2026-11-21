@@ -7,8 +7,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 // Each operation owns its root lease. Epoch intake and profile acceptance are

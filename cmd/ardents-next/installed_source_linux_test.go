@@ -12,7 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
 	"math/big"
 	"net"
 	"os"
@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 

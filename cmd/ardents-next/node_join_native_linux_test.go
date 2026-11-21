@@ -18,11 +18,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
-	routejoin "github.com/dianabuilds/ardents-network/internal/successor/route/join"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
+	routejoin "github.com/dianabuilds/ardents-network/internal/route/join"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 

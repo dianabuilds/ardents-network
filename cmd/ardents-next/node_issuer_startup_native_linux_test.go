@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/duty"
-	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/network/duty"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 	networkfixture "github.com/dianabuilds/ardents-network/tests/epochfixture/network"
 )
 

@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
-	"github.com/dianabuilds/ardents-network/internal/successor/node"
-	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
 )
 
 // runJoinRepair is the operator recovery action for a JOIN invocation that died

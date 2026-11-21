@@ -38,14 +38,14 @@ resolves it by selecting the platform-led successor instead.
 
 ## Process boundaries
 
-The alpha bundle contains four headless participant and control binaries.
+New headless alpha bundles contain three participant and control binaries.
+Enrollment verifies earlier inventories according to their pinned schema.
 The installed text Application and qualification workers are separate process
 boundaries; they are not alpha-bundle artifacts.
 
 | Artifact lane | Binary | Disposition | Boundary |
 |---|---|---|---|
 | Network participant | ardents | keep and deepen | Headless Endpoint, Network State and selected closed Service interfaces; Entry Invite and Name routes are retired. |
-| Network participant | ardents-node | keep | Source, Node duty, and closed issuer process lifecycle. |
 | Network participant | ardents-control | keep after contraction | Bounded closed-profile operator adapter and offline infrastructure preparation compositions; the ACA1 disclosure/transition reader and ACA2 corpus intake/inspection are retired (ADR-0110, ADR-0127). |
 | Network participant | ardents-custody | keep and deepen | Separate interactive Authority trust zone. It is intentionally not merged into Endpoint or Node. |
 | Isolated domain composition | ardents-next | maintained domain consumer | New-domain commands and bounded native consumers; no old-runtime imports, installed Service or final artifact cutover implied. |
@@ -56,6 +56,10 @@ The root cmd directory is Go's conventional collection of thin executable
 adapters; it is not a product ownership boundary. Source and artifact ownership
 are enforced separately by ownership.json, import tests, extraction checks,
 and the headless command inventory under tests/profiles.
+
+The retired `cmd/ardents-node` executable and its refusal routes were removed
+under [ADR-0128](../adr/0128-retire-headless-node-companion.md). Installed
+Node roles run `ardents-next` through the platform-led Infrastructure delivery.
 
 ## Retained routes
 
@@ -71,7 +75,6 @@ and the headless command inventory under tests/profiles.
 | ardents | endpoint replacement-self-test | retirement refusal at dispatch; the per-user replacement controller is retired (#617 S3.5) |
 | ardents | diagnostics timeline | keep local, read-only projection of bounded runtime events from standard input; no storage, authority, or network effect |
 | ardents | name encode/resolve/control | retired at command dispatch before arguments or effects; no successor or fallback is implied (ADR-0113) |
-| ardents-node | source (including the explicit current closed profile), node with closed reservations, issuer initialize/serve, hosting initialize | keep; old Source selector and Node duty reservations retired |
 | ardents-control | prepare-closed-profile, sign-closed-profile, inspect-closed-profile, inspect-closed-issuer-profile | keep |
 | ardents-control | inspect-bundle, inspect-transitions | retirement refusal at dispatch before arguments, files, roots, or floors; the ACA1 reader/report Modules are removed and no unified replacement is selected (ADR-0127, #647) |
 | ardents-control | prepare-qualification-evidence, prepare-qualification-catalog | retirement refusal at dispatch; the ACA1 preparation scripts are removed with the reader (ADR-0127, #647) |

@@ -4,7 +4,7 @@ package main
 
 import (
 	"encoding/hex"
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 // The offline producer writes Installation's bound schemas. Runtime decoding

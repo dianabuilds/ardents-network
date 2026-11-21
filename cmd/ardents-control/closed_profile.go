@@ -16,7 +16,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
 )
 
 const maximumClosedProfilePlanBytes = 64 << 10

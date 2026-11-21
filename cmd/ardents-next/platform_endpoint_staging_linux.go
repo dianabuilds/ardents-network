@@ -13,10 +13,10 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	generationauthorization "github.com/dianabuilds/ardents-network/internal/successor/installation"
-	installation "github.com/dianabuilds/ardents-network/internal/successor/installation/endpoint"
-	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	generationauthorization "github.com/dianabuilds/ardents-network/internal/platform/installation"
+	installation "github.com/dianabuilds/ardents-network/internal/platform/installation/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 func runPlatformStageEndpoint(ctx context.Context, filename string, out io.Writer) int {

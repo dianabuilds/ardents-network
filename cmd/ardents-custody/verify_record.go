@@ -8,7 +8,7 @@ import (
 	"flag"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/custody"
+	"github.com/dianabuilds/ardents-network/internal/custody"
 )
 
 func verifyRecord(ctx context.Context, arguments []string, output io.Writer, input custody.SecretInput) (resultErr error) {

@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
 // The non-root child is an explicit numeric system-UID fixture, not an

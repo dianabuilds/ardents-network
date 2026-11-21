@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/publication"
-	"github.com/dianabuilds/ardents-network/internal/successor/publication/durable"
-	"github.com/dianabuilds/ardents-network/internal/successor/publication/instance"
-	"github.com/dianabuilds/ardents-network/internal/successor/reachability"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/capsule"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/introduction"
+	"github.com/dianabuilds/ardents-network/internal/publication"
+	"github.com/dianabuilds/ardents-network/internal/publication/durable"
+	"github.com/dianabuilds/ardents-network/internal/publication/instance"
+	"github.com/dianabuilds/ardents-network/internal/reachability"
+	"github.com/dianabuilds/ardents-network/internal/route/capsule"
+	"github.com/dianabuilds/ardents-network/internal/route/introduction"
 )
 
 // The caller supplies a genuine both-Carrier REGISTER, not a fixture ACK.

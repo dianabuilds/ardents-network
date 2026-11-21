@@ -108,7 +108,7 @@ for the real accepted boundary. Summaries do not override the contract.
 
 ### R01: Isolate both directions
 
-New Route belongs in the new-domain tree at `internal/successor/route`.
+New Route belongs in the new-domain tree at `internal/route`.
 Its development composition consumer belongs in `cmd/ardents-next`. The narrow
 canonical installed Forwarding exception (Product Owner authorization
 2026-10-27, recorded in [#542](https://github.com/dianabuilds/ardents-network/issues/542#issuecomment-6436276753))
@@ -145,9 +145,10 @@ installed exceptions. All other R01 restrictions remain. Bootstrap acceptance
 remains separately required by ADR-0123 Decision 6. Exact packages require normal
 complete registration.
 
-New Route must not import or execute old `internal/route`, `internal/entry`,
-`internal/endpoint`, `internal/node`, `internal/admission`, `internal/hosting`,
-`internal/service` or another old runtime owner. Old packages, commands and
+The current Route implementation lives at `internal/route`. Its local imports
+are restricted to the current registered owners and exact package-map edges.
+It must never import or execute a predecessor implementation, including code
+formerly at these same canonical paths before legacy retirement. Old packages, commands and
 tests must not consume new Route; no canonical installed exception remains. The
 prohibition includes subpackages,
 build-tagged code, external-package tests, transitive imports, alias imports,

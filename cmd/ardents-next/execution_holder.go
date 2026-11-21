@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	endpointpublisher "github.com/dianabuilds/ardents-network/internal/successor/endpoint/publisher"
+	endpointpublisher "github.com/dianabuilds/ardents-network/internal/endpoint/publisher"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission"
-	"github.com/dianabuilds/ardents-network/internal/successor/execution"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
+	"github.com/dianabuilds/ardents-network/internal/admission"
+	"github.com/dianabuilds/ardents-network/internal/execution"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
 )
 
 // Installed preparation retains the exact volatile holder while the owner

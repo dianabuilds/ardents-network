@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/publication"
+	"github.com/dianabuilds/ardents-network/internal/publication"
 )
 
 func TestServiceCustodyBuiltTerminalAndNewInstanceAcceptance(t *testing.T) {

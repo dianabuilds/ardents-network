@@ -11,8 +11,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/infrastructure"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
 )
 
 // The signed template runs the existing runtime directly. systemd owns process

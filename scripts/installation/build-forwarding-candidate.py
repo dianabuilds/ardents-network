@@ -18,7 +18,10 @@ import subprocess
 import sys
 
 
-COMMANDS = ("ardents-node", "ardents-control")
+# The platform inventory retains its program filename. The executable comes
+# from the platform-led command composition.
+COMMAND_PACKAGES = {"ardents-node": "ardents-next", "ardents-control": "ardents-control"}
+COMMANDS = tuple(COMMAND_PACKAGES)
 FLAGS = ["-trimpath", "-buildvcs=false", "-ldflags=-w"]
 
 
@@ -152,7 +155,7 @@ def main():
     if command(["go", "version"], root, env) != b"go version go1.27.4 linux/amd64\n":
         raise RuntimeError("selected Go1.27.4 Linux-amd64 toolchain required")
     command(["go", "mod", "verify"], root, env)
-    used_modules, used_packages = compiled_dependencies(command(["go", "list", "-deps", "-json", *["./cmd/" + name for name in COMMANDS]], root, env))
+    used_modules, used_packages = compiled_dependencies(command(["go", "list", "-deps", "-json", *["./cmd/" + package for package in COMMAND_PACKAGES.values()]], root, env))
     dependency = canonical(used_modules)
     write_new(p.output / "modules.json", dependency)
     sbom = canonical({"schema": "ardents-forwarding-build-sbom-v1", "source_revision": p.source_revision,
@@ -170,7 +173,7 @@ def main():
         target = p.output / ("build-" + str(number))
         target.mkdir(mode=0o700)
         for name in COMMANDS:
-            command(["go", "build", *FLAGS, "-o", str(target / name), "./cmd/" + name], root, env)
+            command(["go", "build", *FLAGS, "-o", str(target / name), "./cmd/" + COMMAND_PACKAGES[name]], root, env)
         inventory = {name: file_digest(direct(target / name)) for name in COMMANDS}
         check_source(root, manifest)
         receipt = {"schema": "ardents-forwarding-build-execution-v1", "source_revision": p.source_revision,

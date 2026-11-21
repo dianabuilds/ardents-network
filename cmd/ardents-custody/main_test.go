@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/custody"
-	"github.com/dianabuilds/ardents-network/internal/successor/publication"
+	"github.com/dianabuilds/ardents-network/internal/custody"
+	"github.com/dianabuilds/ardents-network/internal/publication"
 )
 
 func TestInspectEnvelopeRejectsMissingInputsBeforeCreatingCustodyState(t *testing.T) {

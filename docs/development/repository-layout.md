@@ -29,23 +29,15 @@ co-location grants none of them access to another zone's authority material.
 
 ## Stable top-level zones
 
-### Temporary successor source isolation
+### Domain source and Route isolation
 
-The Product Owner selected `internal/successor/` as a temporary grouping zone
-for independently developed replacement components on 2026-10-02. It has no
-root Go package and creates no runtime, wire or domain identity. The reserved
-composition command path is `cmd/ardents-next`; it is added only with real
-behavior. Source and test imports are restricted to the standard library and
-the successor zone by the architecture gate. Existing product packages cannot
-import the zone. Exact cross-package imports are registered in the package map;
-directory nesting grants no implicit permission. The reviewed third-party
-exceptions are the enumerated OpenTelemetry command/test imports and CIRCL
-blindrsa in `admission/issuance`. The public `admission/issuerprofile` grammar
-and Hosting use only the standard library. Admission issuer-profile Signing depends only on that
-public profile contract; its pure parent cannot import Signing, and Signing cannot import Admission's ledger or issuance owner.
-Each real child package still requires the normal registration, behavior tests,
-non-test caller and permitted imports. Existing contracts and qualification
-obligations remain in force. See `internal/successor/README.md`.
+Maintained components use their domain paths under `internal/`. The
+[domain map](domain-map.md) records ownership and the
+[package map](package-map.md) registers exact cross-package imports.
+Directory nesting grants no implicit permission. The [Route migration
+contract](route-migration-contract.md) and its independent import check restrict
+both directions of the Route boundary, including tests and platform-specific
+files. The `cmd/ardents-next` command composes the current runtime.
 
 | Zone | Purpose |
 |---|---|

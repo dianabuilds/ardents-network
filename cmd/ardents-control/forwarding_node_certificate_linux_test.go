@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 func TestForwardingCertificateHasOnlyExactNodeTransportProfile(t *testing.T) {

@@ -15,8 +15,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/closedprofile"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 // The declaration embeds the exact public preparation plan, not arbitrary

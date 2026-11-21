@@ -7,10 +7,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
-	"github.com/dianabuilds/ardents-network/internal/successor/node"
-	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/role"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/node"
+	"github.com/dianabuilds/ardents-network/internal/processresource"
+	"github.com/dianabuilds/ardents-network/internal/route/role"
 )
 
 // The command owns genuine State; it closes that owner after original Node join.

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // TestNativeEndpointColdWarmLatency is the root driver for the cold/warm latency
@@ -220,7 +220,7 @@ func latencyInstallParticipant(t *testing.T) string {
 	} else {
 		repoRoot := latencyRepoRoot(t)
 		out := filepath.Join(t.TempDir(), "latency-participant.test")
-		cmd := exec.CommandContext(t.Context(), "go", "test", "-c", "-tags=endpoint_launch_native", "-trimpath", "-buildvcs=false", "-o", out, "./internal/successor/endpoint")
+		cmd := exec.CommandContext(t.Context(), "go", "test", "-c", "-tags=endpoint_launch_native", "-trimpath", "-buildvcs=false", "-o", out, "./internal/endpoint")
 		cmd.Dir = repoRoot
 		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 		if output, err := cmd.CombinedOutput(); err != nil {

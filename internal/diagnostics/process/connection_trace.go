@@ -144,23 +144,6 @@ func (capture *ConnectionTrace) Observe(stage ConnectionStage, ctx context.Conte
 	}
 }
 
-// ObserveConnection observes the capture already carried by ctx, without
-// claiming another Reader operation or changing the Context.
-func ObserveConnection(ctx context.Context, stage ConnectionStage) func(error) {
-	return ConnectionTraceFor(ctx).Observe(stage, ctx)
-}
-
-// ConnectionTraceFor returns only the explicitly bound Reader handle, never the
-// session's unclaimed capture. Owners use it to observe their actual bounded
-// Context after re-parenting without changing that Context.
-func ConnectionTraceFor(ctx context.Context) *ConnectionTrace {
-	if ctx == nil {
-		return nil
-	}
-	capture, _ := ctx.Value(captureContextKey{}).(*ConnectionTrace)
-	return capture
-}
-
 func ignoreConnectionOutcome(error) {}
 
 func connectionOutcome(err error) string {

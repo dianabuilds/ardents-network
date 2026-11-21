@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/publication"
+	"github.com/dianabuilds/ardents-network/internal/publication"
 )
 
 func installedRecoveryInstance(t *testing.T, network [32]byte) (publicationPlan, [32]byte) {

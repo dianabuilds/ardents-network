@@ -14,11 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
-	networkdomain "github.com/dianabuilds/ardents-network/internal/successor/network"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/closedprofile"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/epoch"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
+	networkdomain "github.com/dianabuilds/ardents-network/internal/network"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
 const maximumForwardingProfilePlan = 2 << 20

@@ -46,7 +46,6 @@ endif
 HEADLESS_SUFFIX := $(if $(filter windows,$(HEADLESS_GOOS)),.exe,)
 HEADLESS_ARTIFACT_ROOT ?= $(QUALITY_CACHE_ROOT)/headless-artifacts/$(HEADLESS_PLATFORM)
 HEADLESS_ENDPOINT_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
-HEADLESS_NODE_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-node-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 HEADLESS_CONTROL_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-control-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLESS_PLATFORM)$(HEADLESS_SUFFIX)
 # The text_worker_installed surface only runs on dedicated Ubuntu hosts, so no
@@ -54,7 +53,7 @@ HEADLESS_CUSTODY_ARTIFACT := $(HEADLESS_ARTIFACT_ROOT)/ardents-custody-$(HEADLES
 # packages from any host; the test binaries land in the quality cache, never in
 # the repository.
 INSTALLED_TAG_COMPILE_ROOT := $(QUALITY_CACHE_ROOT)/installed-tag-compile
-INSTALLED_TAG_COMPILE_PACKAGES := ./tests/e2e/node ./internal/successor/execution/runtime ./internal/successor/execution/worker ./cmd/ardents-next
+INSTALLED_TAG_COMPILE_PACKAGES := ./tests/e2e/node ./internal/execution/runtime ./internal/execution/worker ./cmd/ardents-next
 
 ifeq ($(OS),Windows_NT)
 INSTALLED_TAG_COMPILE_MKDIR = powershell -NoProfile -Command "[System.IO.Directory]::CreateDirectory('$(INSTALLED_TAG_COMPILE_ROOT)') | Out-Null"
@@ -95,10 +94,10 @@ platform-launch-unit:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "platform-launch-unit requires Linux"; exit 2)
 	go test ./cmd/ardents-next -run '^Test(Platform.*|SourceCancellationJoinsWaitCloseAndInputsBeforeCompletion|NodeRolesRefuseMissingNetworkHistoryWithoutInitializing)$$' -count=1 -timeout=3m
 	go test ./cmd/ardents-control -run '^TestSource(InitialPreparation.*|Preparation.*)$$' -count=1 -timeout=3m
-	go test ./internal/successor/network/state -run '^Test(Source(Participation|Completion).*|FreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory|RetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor|RetainedStateDoesNotInitializeAbsentOrEmptiedRoot)$$' -count=1 -timeout=3m
-	go test ./internal/successor/network/duty -run '^TestSourceCompletionInspectionPolicyRefusesUnjoinedProducer$$' -count=1 -timeout=3m
-	go test ./internal/successor/route/introduction -run '^TestRetainedReceivingRegistryPreservesClaimAndRejectsErasedHistory$$' -count=1 -timeout=3m
-	go test ./internal/successor/installation/systemd -run '^TestPlatformSiblingVocabularyPreservesFixedNodeExclusion$$' -count=1 -timeout=3m
+	go test ./internal/network/state -run '^Test(Source(Participation|Completion).*|FreshStateAuthenticatesOnceAndRetainedOpeningKeepsHistory|RetainedStateReopensRealSignedHistoryAndKeepsSuccessorFloor|RetainedStateDoesNotInitializeAbsentOrEmptiedRoot)$$' -count=1 -timeout=3m
+	go test ./internal/network/duty -run '^TestSourceCompletionInspectionPolicyRefusesUnjoinedProducer$$' -count=1 -timeout=3m
+	go test ./internal/route/introduction -run '^TestRetainedReceivingRegistryPreservesClaimAndRejectsErasedHistory$$' -count=1 -timeout=3m
+	go test ./internal/platform/installation/systemd -run '^TestPlatformSiblingVocabularyPreservesFixedNodeExclusion$$' -count=1 -timeout=3m
 
 heapdump-capture:
 	@test -n "$(ARDENTS_HEAPDUMP_INPUT_ROOT)" || (echo "ARDENTS_HEAPDUMP_INPUT_ROOT is required"; exit 2)
@@ -127,16 +126,13 @@ headless-build:
 
 headless-evidence: export ARDENTS_E2E_COMMAND := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))
 headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS := $(abspath $(HEADLESS_ENDPOINT_ARTIFACT))
-headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_NODE := $(abspath $(HEADLESS_NODE_ARTIFACT))
 headless-evidence: export ARDENTS_E2E_PRODUCT_ARDENTS_CUSTODY := $(abspath $(HEADLESS_CUSTODY_ARTIFACT))
 headless-evidence: export ARDENTS_E2E_CONTROL := $(abspath $(HEADLESS_CONTROL_ARTIFACT))
 headless-evidence: headless-build
 	@test "$(HEADLESS_GOOS)" = linux && test "$(HEADLESS_GOARCH)" = amd64 || (echo "headless-evidence requires Linux x86-64"; exit 2)
-	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))" "$(abspath $(HEADLESS_NODE_ARTIFACT))" "$(abspath $(HEADLESS_CONTROL_ARTIFACT))" "$(abspath $(HEADLESS_CUSTODY_ARTIFACT))"
-	go test ./internal/successor/enrollment -run '^(TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner|TestBundleRefusalStagesReturnNoProvenance|TestBundleActualInventoryAndByteChangesRefuse)$$' -count=1
+	"$(HEADLESS_ARTIFACT_SHELL)" ./packaging/alpha-bundle/test.sh "$(HEADLESS_PLATFORM)" "$(abspath $(HEADLESS_ENDPOINT_ARTIFACT))" "$(abspath $(HEADLESS_CONTROL_ARTIFACT))" "$(abspath $(HEADLESS_CUSTODY_ARTIFACT))"
+	go test ./internal/enrollment -run '^(TestBundleMetadataProjectionKeepsStaticInventoryWithItsOwner|TestBundleHeadlessCompanionsFollowPinnedSchema|TestBundleRefusalStagesReturnNoProvenance|TestBundleActualInventoryAndByteChangesRefuse)$$' -count=1
 	go test ./tests/e2e/endpoint -run '^(TestEnrollmentCheckAcceptsExactRunningBundleAndRejectsChangedManifest|TestLegacyEnrollmentCheckFormIsRetiredBeforeEffects|TestRetiredControlRoutesRefuseBeforeEffectsAgainstExactArtifact)$$' -count=1
-	go test ./tests/e2e/network-source -run '^TestSourceSelectorRetiresBeforeRuntimeDiagnostics$$' -count=1
-	go test ./tests/e2e/node -run '^TestRetiredNodeSelectorsRefuseBeforeRootEffects$$' -count=1
 	go test ./tests/e2e/service -run '^TestHeadlessServiceInstanceAcquisitionIsAtMostOnceAcrossProcesses$$' -count=1
 
 headless-check: export ARDENTS_EXTRACTION_OWNER := network
@@ -199,7 +195,7 @@ installed-tag-compile-check: export GOOS := linux
 installed-tag-compile-check: export GOARCH := amd64
 installed-tag-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
-	go test -c -tags startup_manager_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-startup-native.test" ./internal/successor/installation/systemd
+	go test -c -tags startup_manager_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-startup-native.test" ./internal/platform/installation/systemd
 	$(foreach package,$(INSTALLED_TAG_COMPILE_PACKAGES),go test -c -tags text_worker_installed -o "$(INSTALLED_TAG_COMPILE_ROOT)/$(subst /,_,$(package)).test" $(package)$(newline))
 
 .PHONY: node-process-check
@@ -375,52 +371,52 @@ installation-native-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "installation-native-check requires Linux"; exit 2)
 	@test "$$(id -u)" = 0 || (echo "installation-native-check requires root"; exit 2)
 	@test -n "$(ARDENTS_INSTALLATION_NATIVE_ROOT)" || (echo "ARDENTS_INSTALLATION_NATIVE_ROOT must name a trusted root-owned temporary parent"; exit 2)
-	go test -race -tags installation_native ./internal/successor/installation/... -run '^TestInstallationNative' -count=1 -timeout=1m
+	go test -race -tags installation_native ./internal/platform/installation/... -run '^TestInstallationNative' -count=1 -timeout=1m
 
 installation-native-compile-check: export GOOS := linux
 installation-native-compile-check: export GOARCH := amd64
 installation-native-compile-check: export CGO_ENABLED := 0
 installation-native-compile-check:
 	$(INSTALLED_TAG_COMPILE_MKDIR)
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-native.test" ./internal/successor/installation
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-endpoint-native.test" ./internal/successor/installation/endpoint
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-request-native.test" ./internal/successor/installation/request
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-directory-native.test" ./internal/successor/installation/directory
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-cgroup-native.test" ./internal/successor/installation/cgroup
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-native.test" ./internal/successor/installation/systemd
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-process-native.test" ./internal/successor/installation/process
-	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-generation-native.test" ./internal/successor/installation/generation
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-native.test" ./internal/platform/installation
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-endpoint-native.test" ./internal/platform/installation/endpoint
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-request-native.test" ./internal/platform/installation/request
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-directory-native.test" ./internal/platform/installation/directory
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-cgroup-native.test" ./internal/platform/installation/cgroup
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-systemd-native.test" ./internal/platform/installation/systemd
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-process-native.test" ./internal/platform/installation/process
+	go test -c -tags installation_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/installation-generation-native.test" ./internal/platform/installation/generation
 
 # Hosting measures whole interfaces shared by these packages.
 .PHONY: route-check
 route-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/successor/network/... ./internal/successor/admission/... ./internal/successor/hosting ./internal/successor/publication/... ./internal/successor/connection/... ./internal/successor/reachability/... ./internal/successor/enrollment/... ./internal/successor/release/... ./internal/successor/installation/... ./internal/successor/execution/... ./internal/successor/route/... ./internal/successor/endpoint/session ./internal/successor/endpoint ./internal/successor/endpoint/funding ./internal/successor/endpoint/reader ./internal/successor/endpoint/publisher ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -p 1 -race ./internal/network/... ./internal/admission/... ./internal/hosting ./internal/publication/... ./internal/connection/... ./internal/reachability/... ./internal/enrollment/... ./internal/release/... ./internal/platform/installation/... ./internal/execution/... ./internal/route/... ./internal/endpoint/session ./internal/endpoint ./internal/endpoint/funding ./internal/endpoint/reader ./internal/endpoint/publisher ./cmd/ardents-next -count=1 -timeout=5m,$(error route-check requires Linux))
 	go test ./internal/architecture -run '^(TestRouteMigration(ImportIsolation|IsolationPolicy)|TestSuccessor.*|TestPackageProfileMembershipIsComplete|TestProfilePackageEntriesAreCurrent|TestLinuxOnlyProfileNamesActualPlatformPackages|TestTestProfileRegistryIsFactualAndWired)$$' -count=1
 
 hosting-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/hosting ./cmd/ardents-next -count=1 -timeout=3m,$(error hosting-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/hosting ./cmd/ardents-next -count=1 -timeout=3m,$(error hosting-check requires Linux))
 
 .PHONY: admission-check
 admission-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission/... ./cmd/ardents-next -count=1 -timeout=5m,$(error admission-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission/... ./cmd/ardents-next -count=1 -timeout=5m,$(error admission-check requires Linux))
 
 .PHONY: issuance-check
 issuance-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission/issuance ./cmd/ardents-next -count=1 -timeout=3m,$(error issuance-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission/issuance ./cmd/ardents-next -count=1 -timeout=3m,$(error issuance-check requires Linux))
 
 .PHONY: token-issuance-check
 token-issuance-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/admission/issuerprofile ./internal/successor/admission/issuance ./internal/successor/admission/issuer ./cmd/ardents-next -count=1 -timeout=5m,$(error token-issuance-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission ./internal/admission/issuerprofile ./internal/admission/issuance ./internal/admission/issuer ./cmd/ardents-next -count=1 -timeout=5m,$(error token-issuance-check requires Linux))
 
 .PHONY: issuer-profile-check
 issuer-profile-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/admission ./internal/successor/admission/issuerprofile ./internal/successor/admission/issuerprofile/signing ./internal/successor/admission/issuance ./internal/successor/admission/issuer ./cmd/ardents-next -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
-	go test ./internal/successor/admission/issuerprofile -run '^$$' -fuzz '^FuzzIssuerProfile$$' -fuzztime=30s -parallel=2 -timeout=90s
-	go test ./internal/successor/admission/issuerprofile/signing -run '^$$' -fuzz '^FuzzNodeIdentityPEM$$' -fuzztime=30s -parallel=2 -timeout=90s
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/admission ./internal/admission/issuerprofile ./internal/admission/issuerprofile/signing ./internal/admission/issuance ./internal/admission/issuer ./cmd/ardents-next -count=1 -timeout=5m,$(error issuer-profile-check requires Linux))
+	go test ./internal/admission/issuerprofile -run '^$$' -fuzz '^FuzzIssuerProfile$$' -fuzztime=30s -parallel=2 -timeout=90s
+	go test ./internal/admission/issuerprofile/signing -run '^$$' -fuzz '^FuzzNodeIdentityPEM$$' -fuzztime=30s -parallel=2 -timeout=90s
 
 .PHONY: custody-check
 custody-check:
-	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/successor/custody ./cmd/ardents-custody ./tests/e2e/service -count=1 -timeout=3m,$(error custody-check requires Linux))
+	$(if $(filter linux,$(shell go env GOOS)),go test -race ./internal/custody ./cmd/ardents-custody ./tests/e2e/service -count=1 -timeout=3m,$(error custody-check requires Linux))
 	go test golang.org/x/crypto/argon2 -run '^(TestArgon2|TestVectors)$$' -count=1
 
 .PHONY: source-process-check
@@ -445,9 +441,9 @@ network-preparation-compile-check:
 network-signing-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-signing-check requires Linux root and root-controlled native ext4 TMPDIR"; exit 2)
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/network/state -run '^TestSourceInspectionNative' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/request -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/network/state -run '^TestSourceInspectionNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/installation/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/platform/installation/request -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
 
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNative(CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption)$$' -count=1 -v -timeout=3m
 
@@ -458,16 +454,16 @@ network-signing-compile-check:
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-signing.test" ./cmd/ardents-next
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-control-preparation.test" ./cmd/ardents-control
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/successor/installation/systemd
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/successor/installation/infrastructure
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/successor/network/state
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/successor/installation/request
-	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/successor/reachability
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-manager.test" ./internal/platform/installation/systemd
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-preflight-owner.test" ./internal/platform/installation/infrastructure
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/network/state
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/platform/installation/request
+	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/reachability
 
 .PHONY: descriptor-store-inspection-check
 descriptor-store-inspection-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-store-inspection-check requires explicit Linux root/ext4 stand"; exit 2)
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/reachability -run '^TestDescriptorStoreInspectionNative' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/reachability -run '^TestDescriptorStoreInspectionNative' -count=1 -v -timeout=3m
 
 .PHONY: descriptor-forward-release-check
 descriptor-forward-release-check:

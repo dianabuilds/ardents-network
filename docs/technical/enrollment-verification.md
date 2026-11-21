@@ -69,20 +69,17 @@ It returns `Verified`: exact bytes for Release Decision plus separately scoped
 alpha-control, corpus and optional protected-generation companions;
 `ProtectedDescriptor` and `ProtectedFiles` grant no installation authority and
 are excluded from `Inputs.Files`. `VerifyHeadless` additionally requires
-the manifest-pinned Node and Authority Custody companions. It never executes
+the manifest-pinned headless companion inventory for the descriptor schema.
+It never executes
 or installs any byte, writes a Release or control floor, downloads from a
 source, or grants authority to a Release, State, Namespace, Route, or Endpoint.
 
-The sole accepted Network enrollment descriptor grammar is
-`ardents-closed-alpha-enrollment-v3` (ADR-0112). A recognized v1 or v2 schema
-is refused with the typed exported `ErrLegacyEnrollmentDescriptor`; existing
-legacy bundle bytes stay on disk unchanged and no converter or compatibility
-reader exists.
-
-Browser enrollment-v4 is not part of the maintained verifier or artifact
-surface, and an unknown schema keeps its generic invalid refusal rather than
-the typed retirement classification. Its former inputs and results remain only
-in the non-executable compatibility evidence tree.
+The accepted Network enrollment schemas are
+`ardents-closed-alpha-enrollment-v3` (ADR-0112) and
+`ardents-closed-alpha-enrollment-v4` (ADR-0128). Recognized v1 and v2 schemas
+are refused with the typed exported `ErrLegacyEnrollmentDescriptor`.
+Browser enrollment remains outside this verifier. An unknown schema returns
+a generic inventory error.
 
 The historical `ardents-alpha-enrollment-input-v1` persisted document is
 retired (ADR-0127, #647). Its former consumers — the three-argument
@@ -112,21 +109,17 @@ facts.
    declared package-owned artifact, then construct Release Decision inputs.
 7. Project disclosed companions outside Release metadata: catalog and its
    roots, the pinned `corpus.pub` authority, the platform-named control
-   executable, and the separately required headless Node/Custody pair when
-   `VerifyHeadless` is used.
+   executable, and the headless companions required by the pinned schema.
 
 `ExecutableArtifactName` is the sole package-owned constructor for enrolled
 command identities. It appends the declared platform to the command and also
 appends the native executable suffix: accepted Windows `ardents-control`, Node,
 Custody, and Endpoint command artifacts end in `.exe`; non-Windows names do
-not. The sole accepted Network enrollment-v3 descriptor parsing and bundle
-construction/testing use that same identity rather than reconstructing it
-locally.
+not. Enrollment verification and bundle construction use the same identity.
 
 The verifier permits at most 32 inventory entries, each no larger than 64 MiB.
 Names are direct file names only. Manifest and descriptor require canonical
-newline-terminated forms; the v3 descriptor has one fixed field ordering and
-fixed companion identities.
+newline-terminated forms; both schemas share the same fixed field ordering.
 
 ## Failure behavior
 
@@ -144,14 +137,11 @@ The former `VerifyRunningCompanion` companion proof was retired by ADR-0113;
 exact-file identity check, and the Windows v3 re-execution contract proves it
 against the enrolled endpoint artifact.
 
-`VerifyHeadless` preserves the accepted enrollment-v3 `RELEASE` grammar but
-requires the exact manifest to contain the canonical platform-named
-`ardents-node` and `ardents-custody` companions. Those bytes are returned
-outside Release metadata, alongside the already separate control artifact.
-The distinction from ordinary `Verify` is companion inventory scope, not
-version (ADR-0112): `Verify` accepts the same sole v3 grammar and the ADR-0042
-inventory without the headless pair; a partial Node/Custody pair fails closed
-on both entry points.
+A v3 headless bundle requires the platform-named Node and Custody pair.
+Ordinary `Verify` also accepts the original v3 inventory with neither
+companion. Both scopes reject a partial pair. A v4 bundle requires the
+platform-named Custody artifact and rejects the legacy Node companion in
+either scope. Companion bytes remain outside Release metadata.
 
 ## Verification owner
 
@@ -209,7 +199,7 @@ refusal boundary. The protected
 checker never rewrites the descriptor whose exact bytes Release must bind.
 
 The maintained Enrollment tests cover pin-before-parse, inventory rejection,
-executable substitution, retired descriptor refusal, and separation of v3
+executable substitution, retired descriptor refusal, and separation of v3 and v4
 companion bytes from Release metadata. The headless artifact lane exercises
 these checks at the maintained owner. Historical receipts remain bound to
 their original artifacts.

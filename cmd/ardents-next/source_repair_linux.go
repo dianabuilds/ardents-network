@@ -8,8 +8,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/installation/systemd"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation/systemd"
 )
 
 // runSourceRepair is the operator recovery action for a Source invocation that

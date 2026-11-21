@@ -10,8 +10,8 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/closedprofile"
-	"github.com/dianabuilds/ardents-network/internal/successor/network/epoch"
+	"github.com/dianabuilds/ardents-network/internal/network/closedprofile"
+	"github.com/dianabuilds/ardents-network/internal/network/epoch"
 )
 
 const maximumNetworkPreparationPlan = 8 << 20

@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/application/administration"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 // TestNativeEndpointReplacementWithPublisher joins an already admitted Worker

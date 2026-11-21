@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/installation"
-	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/platform/installation"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 // These portable authentication tests model the selected linux-amd64 bundle,

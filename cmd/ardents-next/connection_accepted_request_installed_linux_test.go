@@ -16,14 +16,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/receiving"
-	"github.com/dianabuilds/ardents-network/internal/successor/connection"
-	executionruntime "github.com/dianabuilds/ardents-network/internal/successor/execution/runtime"
-	"github.com/dianabuilds/ardents-network/internal/successor/execution/worker"
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/ardp"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/receiver"
-	"github.com/dianabuilds/ardents-network/internal/successor/route/transport"
+	"github.com/dianabuilds/ardents-network/internal/admission/receiving"
+	"github.com/dianabuilds/ardents-network/internal/connection"
+	executionruntime "github.com/dianabuilds/ardents-network/internal/execution/runtime"
+	"github.com/dianabuilds/ardents-network/internal/execution/worker"
+	"github.com/dianabuilds/ardents-network/internal/hosting"
+	"github.com/dianabuilds/ardents-network/internal/route/ardp"
+	"github.com/dianabuilds/ardents-network/internal/route/receiver"
+	"github.com/dianabuilds/ardents-network/internal/route/transport"
 )
 
 const acceptedRequestRecovery = "accepted-request-smoke"

@@ -19,7 +19,7 @@ import (
 // owner tests and the two-host qualification preparation consumer.
 func TestAcceptOfflineCommandRefusesFrozenRetiredProfile(t *testing.T) {
 	t.Parallel()
-	base := filepath.Join("..", "..", "internal", "successor", "network", "state", "testdata")
+	base := filepath.Join("..", "..", "internal", "network", "state", "testdata")
 	fixture := t.TempDir()
 	inputs := filepath.Join(fixture, "inputs")
 	if err := os.Mkdir(inputs, 0o700); err != nil {
@@ -96,7 +96,7 @@ func TestNameRouteRejectsIncompleteCommand(t *testing.T) {
 func TestRootUsageListsRetainedRoutes(t *testing.T) {
 	t.Parallel()
 	err := run(t.Context(), nil, &bytes.Buffer{})
-	if err == nil || err.Error() != "usage: ardents <accept-offline|accept-closed-profile|diagnostics|endpoint|entry|name> arguments" {
+	if err == nil || err.Error() != "usage: ardents <accept-offline|accept-closed-profile|diagnostics|endpoint> arguments" {
 		t.Fatalf("root usage error = %v", err)
 	}
 }

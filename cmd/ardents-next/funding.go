@@ -1,6 +1,6 @@
 package main
 
-import "github.com/dianabuilds/ardents-network/internal/successor/endpoint/funding"
+import "github.com/dianabuilds/ardents-network/internal/endpoint/funding"
 
 func fundingPlan(plan routePrefixPlan) funding.Plan {
 	return funding.Plan{EntryRoot: plan.EntryRoot, InteriorRoot: plan.InteriorRoot,

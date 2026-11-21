@@ -435,7 +435,7 @@ func TestLiveConnectionSnapshotIsReaderOnlyAndJoins(t *testing.T) {
 			return snapshot, err
 		}
 		trace := ReaderTrace(ctx)
-		ObserveConnection(ctx, ServiceAuthentication)(nil)
+		observeBoundConnection(ctx, ServiceAuthentication)(nil)
 		snapshot, err := read()
 		if err != nil {
 			return err
@@ -444,7 +444,7 @@ func TestLiveConnectionSnapshotIsReaderOnlyAndJoins(t *testing.T) {
 			return errors.New("foreign process operation entered capture")
 		}
 		operation := trace.Bind(ctx)
-		ended := ObserveConnection(operation, DocumentExchange)
+		ended := observeBoundConnection(operation, DocumentExchange)
 		ended(nil)
 		snapshot, err = read()
 		if err != nil {

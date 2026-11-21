@@ -2,7 +2,7 @@
 
 package main
 
-import "github.com/dianabuilds/ardents-network/internal/successor/admission/quota"
+import "github.com/dianabuilds/ardents-network/internal/admission/quota"
 
 import (
 	"bytes"
@@ -10,8 +10,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuerprofile"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuerprofile"
 	"io"
 	"net/http"
 	"net/http/httptest"

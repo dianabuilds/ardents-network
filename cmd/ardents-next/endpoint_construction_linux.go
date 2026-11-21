@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/endpoint"
+	"github.com/dianabuilds/ardents-network/internal/endpoint"
 )
 
 // The bounded operator declaration carries local storage roots, sockets,

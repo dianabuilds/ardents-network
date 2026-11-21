@@ -634,7 +634,7 @@
       "id": "headless-network",
       "state": "active",
       "make_target": "headless-check",
-      "surface": "headless Network command build, bounded process journey, and enrollment-v3 artifact inventory",
+      "surface": "headless Network command build, bounded process journey, and enrollment-v4 artifact inventory",
       "prerequisites": [
         "Linux x86-64 host",
         "local process execution",
@@ -678,12 +678,6 @@
     }
   ],
   "suite_roots": [
-    {
-      "id": "e2e-network-source",
-      "path": "tests/e2e/network-source",
-      "profile": "process",
-      "owner": "network source adapter process behavior"
-    },
     {
       "id": "e2e-node",
       "path": "tests/e2e/node",

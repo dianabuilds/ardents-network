@@ -19,10 +19,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	requestinput "github.com/dianabuilds/ardents-network/internal/successor/installation/request"
-	endpointunit "github.com/dianabuilds/ardents-network/internal/successor/installation/unit"
-	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	requestinput "github.com/dianabuilds/ardents-network/internal/platform/installation/request"
+	endpointunit "github.com/dianabuilds/ardents-network/internal/platform/installation/unit"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 // This native qualification exercises the protected text Endpoint platform-led

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"testing/synctest"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
+	"github.com/dianabuilds/ardents-network/internal/network/state"
 )
 
 // These barriers model only the supervisor's physical join contract. They do

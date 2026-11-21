@@ -132,8 +132,16 @@ func buildCanonicalArtifacts(t *testing.T, repository string) map[string][]byte 
 		"CANONICAL_GO_BUILD_FLAGS=-trimpath")
 
 	platform := runtime.GOOS + "-" + runtime.GOARCH
+	expected := map[string]bool{
+		"./cmd/ardents":         true,
+		"./cmd/ardents-control": true,
+		"./cmd/ardents-custody": true,
+	}
 	result := make(map[string][]byte)
 	for _, command := range strings.Fields(string(readProjectFile(t, repository, "tests/profiles/headless-commands.txt"))) {
+		if !expected[command] {
+			t.Fatalf("unexpected selected headless artifact %s", command)
+		}
 		path := filepath.Join(headlessRoot, filepath.Base(command)+"-"+platform+executableSuffix())
 		raw, err := os.ReadFile(path)
 		if err != nil {
@@ -145,8 +153,10 @@ func buildCanonicalArtifacts(t *testing.T, repository string) map[string][]byte 
 		assertNoVCSBuildSettings(t, path)
 		result[command] = raw
 	}
-	if len(result) != 4 {
-		t.Fatalf("selected post-retirement artifact set has %d commands, want 4", len(result))
+	for command := range expected {
+		if _, built := result[command]; !built {
+			t.Errorf("missing selected headless artifact %s", command)
+		}
 	}
 	return result
 }

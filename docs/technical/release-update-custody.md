@@ -16,16 +16,16 @@ continues to describe the currently implemented ownership and authority floors.
 authorizes one operator-prepared isolated qualification release. Codex owns
 its technical preparation and the Product Owner accepts the completed public
 bootstrap receipt before installed execution. This does not add a Release
-signing interface to `internal/successor/release`, revive retired seed ceremonies, or
+signing interface to `internal/release`, revive retired seed ceremonies, or
 establish independent initial distribution. Participant enrollment retains
 its independent first-pin contract; existing roots and floors are preserved.
 The [qualification release operation](../operations/qualification-release.md)
 owns preparation, protected key files, bounded signing, retained refusals and
 the completed public bootstrap receipt. It changes no runtime verifier policy.
 
-`internal/successor/custody` owns the bounded encrypted-record, Admission and
+`internal/custody` owns the bounded encrypted-record, Admission and
 Service operations consumed directly by `cmd/ardents-custody`. Pure
-`internal/successor/publication` owns Service v3 request/response bytes,
+`internal/publication` owns Service v3 request/response bytes,
 unsigned fixed-purpose Credential transcript and exact public verification.
 Neither Custody nor its command imports live Publication/Instance for parsing
 or delegates signing through the predecessor backend. Each uses independent development
@@ -67,7 +67,7 @@ independently transferred SHA-256 commitment. It returns a public digest
 receipt and writes the signed 228-byte permission only to the specified
 owner-only, same-directory no-replace output. Linux exact output retry refuses
 group/other access and checks the originally observed file before reading it.
-The [Admission allocation owner](../../internal/successor/admission/allocation/doc.go)
+The [Admission allocation owner](../../internal/admission/allocation/doc.go)
 validates the current-hour request and journal transition. Custody retains the
 key, signing and serialized encrypted persistence. The Vault record advances its
 encrypted allocation successor, exact readback and monotonic floor before acknowledgement; neither command accepts
@@ -176,8 +176,8 @@ implementation defects in the current Module.
 ## Evidence
 
 - [ADR-0021](../adr/0021-use-password-derived-authority-custody.md)
-- `internal/successor/custody/record_refusal_test.go` and `bundle_publication_test.go` (retained envelope/refusal and Bundle publication oracles)
-- `internal/successor/custody` behavior, independent envelope and native failure tests
+- `internal/custody/record_refusal_test.go` and `bundle_publication_test.go` (retained envelope/refusal and Bundle publication oracles)
+- `internal/custody` behavior, independent envelope and native failure tests
 - `tests/e2e/service/admission_custody_process_test.go` (canonical built terminal consumer)
 - `make custody-check` and the ordinary checked deterministic/process/race inventories
 
@@ -211,7 +211,7 @@ and binds all resource bytes through the authenticated generation descriptor.
 The initial pin never authorizes successors; changed resources require a newer
 generation even when executable bytes are unchanged.
 
-`internal/successor/release` is the sole owner of release trust roots and non-decreasing
+`internal/release` is the sole owner of release trust roots and non-decreasing
 release floors. It verifies the selected TUF-compatible metadata profile,
 consecutive root rotation, exact target identity, protocol/build state, and
 the captured reference time. Its output is a bounded public Decision and
@@ -219,7 +219,7 @@ opaque authorization. It does not download artifacts, run a repository,
 maintain an ambient cache, sign metadata, select a mirror, or expose its floor
 storage.
 
-The isolated new-domain composition uses `internal/successor/release` with
+The isolated new-domain composition uses `internal/release` with
 its own history and the genuine `ardents-next release verify-initial` consumer.
 It consumes new Enrollment's authenticated facts and frozen bytes, not the
 predecessor verifier or installed roots. The new owner serializes evaluations,
@@ -240,16 +240,16 @@ external trials retain the deliberately killed Root's failure and do not qualify
 the installed Service. The
 complete interruption matrix and installed Service acceptance remain unproven; these consumers do
 not borrow the predecessor runtime or Release history.
-Portable `internal/successor/installation` owns only the fresh coherent pair,
+Portable `internal/platform/installation` owns only the fresh coherent pair,
 private initial-pin provenance and immutable inventory. The separate
-`internal/successor/installation/endpoint` owns installed binding, original
+`internal/platform/installation/endpoint` owns installed binding, original
 transaction effects and startup/recovery lifetimes. It consumes the pair through
 opaque proofs and copied observations, without access to the private pair fields;
 stored facts remain constraints rather than authorization. Command composition
 calls both owners directly, and native physical Modules retain their mechanisms.
 Portable metadata/target/safety rules remain
 distinct from native history mechanisms. The new-domain
-[design](../../internal/successor/release/README.md) preserves the accepted
+[design](../../internal/release/README.md) preserves the accepted
 metadata and durable identities; source presence and component checks do not
 establish complete Release acceptance, installed replacement or qualification.
 Existing predecessor Release roots remain independent retained evidence.

@@ -10,7 +10,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/custody"
+	"github.com/dianabuilds/ardents-network/internal/custody"
 )
 
 type serviceRequestCommitmentInput interface {

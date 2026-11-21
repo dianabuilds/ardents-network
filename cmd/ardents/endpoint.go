@@ -10,7 +10,7 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
 
 var errEndpointOpenRetired = errors.New("endpoint open is retired")

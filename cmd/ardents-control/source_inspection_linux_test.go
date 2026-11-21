@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/network/source"
+	"github.com/dianabuilds/ardents-network/internal/network/source"
 )
 
 // A command/transport control with actual generated TLS, original files and

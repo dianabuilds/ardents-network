@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
 
 func main() {

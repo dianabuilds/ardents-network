@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
 )
 
 func runEnrollment(ctx context.Context, args []string, out io.Writer) int {

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/publication/durable"
+	"github.com/dianabuilds/ardents-network/internal/publication/durable"
 )
 
 // Preparation reconciles only durable public history. A ready result is never

@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 	"io"
 	"os"
 	"path/filepath"

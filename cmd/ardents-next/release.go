@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	"github.com/dianabuilds/ardents-network/internal/successor/release"
+	"github.com/dianabuilds/ardents-network/internal/enrollment"
+	"github.com/dianabuilds/ardents-network/internal/release"
 )
 
 // verify-initial requires independently pinned bytes and keeps Release history

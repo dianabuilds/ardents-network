@@ -4,7 +4,7 @@ package main
 
 import (
 	"context"
-	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuance"
+	"github.com/dianabuilds/ardents-network/internal/admission/issuance"
 )
 
 func checkIssuanceOutput(context.Context, string) error          { return issuance.ErrUnsupported }

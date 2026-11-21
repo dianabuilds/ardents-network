@@ -78,10 +78,10 @@ explains component prerequisites, not a separate issue queue or acceptance check
 | Consumer boundary | Required genuine components | Current contract owner |
 |---|---|---|
 | Protected Route transport | Authenticated Network observations, finite Admission rights/spend and physical Hosting reservations | [Route protocol](../technical/protected-route-protocol.md), [migration contract](route-migration-contract.md) |
-| Qualified local operation | Authorized installed bytes and native invocation checks; separate Execution session, Job and joined original worker | [Installation](../../internal/successor/installation/README.md), [Execution](../technical/application-execution.md), [confinement](../technical/application-confinement.md) |
+| Qualified local operation | Authorized installed bytes and native invocation checks; separate Execution session, Job and joined original worker | [Installation](../../internal/platform/installation/README.md), [Execution](../technical/application-execution.md), [confinement](../technical/application-confinement.md) |
 | Accepting publication | Live Execution operation, purpose-scoped Instance, Route REGISTER and independent Reachability Store ACK | [Publication/Service](../technical/endpoint-service-runtime.md), [Reachability](../technical/private-reachability.md) |
 | Authenticated logical Service stream | Exact Target proof and recipient, live original Execution, Publication authority and existing Route delivery/JOIN | [Connection/Service](../technical/endpoint-service-runtime.md), [delivery/JOIN](route-delivery-join-boundary.md) |
-| Complete installed journey | Accepted Service consumers, genuine installed manager/artifact inputs and the full interruption/protection matrix | [Installation](../../internal/successor/installation/README.md), [qualification](privacy-qualification.md) |
+| Complete installed journey | Accepted Service consumers, genuine installed manager/artifact inputs and the full interruption/protection matrix | [Installation](../../internal/platform/installation/README.md), [qualification](privacy-qualification.md) |
 
 Installation's existing artifact/startup component supports Execution and
 Connection without requiring full Installation acceptance. Connection consumes
