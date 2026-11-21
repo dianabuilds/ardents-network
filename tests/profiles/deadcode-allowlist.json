@@ -651,16 +651,10 @@
       },
       {
         "symbols": [
-          "internal/endpoint.dutyContext.openAdministration",
-          "internal/endpoint.endpoint.runInterfaces",
-          "internal/endpoint.newParticipantObservation",
-          "internal/endpoint.participantObservation.background",
-          "internal/endpoint.participantObservation.emit",
-          "internal/endpoint.participantObservation.pendingFailure",
-          "internal/endpoint.participantObservation.wait"
+          "internal/endpoint.dutyContext.openAdministration"
         ],
-        "classification": "retired headless participant runtime (linux-only production-dead)",
-        "rationale": "These Linux headless participant functions retain legacy behavior tests. The command stopped starting the old participant in the Portable cutover (#617 S3.5).",
+        "classification": "legacy Administration adapter behavior tests",
+        "rationale": "The legacy Administration adapter retains its separate authority, publication cancellation and link tests. Its retired headless runtime caller was removed (#564).",
         "owner": "Product Owner and Codex; legacy cohort removal #564/#565",
         "retirement": "Remove each exact symbol when the gated legacy cohort removal retires its owning Module, or when a selected genuine production caller reaches it on linux-amd64."
       },

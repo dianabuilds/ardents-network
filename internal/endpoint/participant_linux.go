@@ -8,9 +8,6 @@ import (
 	"errors"
 	"time"
 
-	applicationadministration "github.com/dianabuilds/ardents-network/internal/application/administration"
-	"github.com/dianabuilds/ardents-network/internal/application/broker"
-	applicationconnection "github.com/dianabuilds/ardents-network/internal/application/connection"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/service/instance"
 )
@@ -90,100 +87,4 @@ func useParticipant(ctx context.Context, config ClosedParticipantConfig, withdra
 		return err
 	}
 	return run(owner)
-}
-
-func (endpoint *endpoint) runInterfaces(ctx context.Context, config ClosedParticipantConfig) (outcome error) {
-	clock := config.Clock
-	if clock == nil {
-		clock = time.Now
-	}
-	output := newParticipantObservation(config.Observe, clock)
-	defer func() { outcome = errors.Join(outcome, output.pendingFailure()) }()
-	roles := []struct {
-		principal [32]byte
-		surface   broker.Surface
-		files     PermissionFiles
-	}{{config.ConnectionPrincipal, broker.Connection, config.ReaderPermission}, {config.AdministrationPrincipal, broker.Administration, config.PublisherPermission}}
-	if config.ReaderOnly {
-		roles = roles[:1]
-	}
-	contexts := make([]*dutyContext, len(roles))
-	for index, role := range roles {
-		capability, err := endpoint.Admit(role.principal, role.surface)
-		if err != nil {
-			return err
-		}
-		owner, err := endpoint.beginDutyContext(ctx, capability, role.principal, role.surface)
-		if err != nil {
-			return err
-		}
-		defer func() { outcome = errors.Join(outcome, owner.Close()) }()
-		contexts[index] = owner
-		if err := owner.provisionPermission(ctx, role.files.RequestPath, role.files.ResponsePath, role.files.Maxima, func(reportCtx context.Context, digest [32]byte) error {
-			return output.emit(reportCtx, ClosedParticipantEvent{Kind: "permission-required", NetworkID: endpoint.network, Surface: string(role.surface), RequestDigest: digest})
-		}); err != nil {
-			return err
-		}
-		if role.surface == broker.Administration {
-			owner.mu.Lock()
-			owner.publication.refreshFailure = func(failure string) {
-				// A failed refresh is local operational state. Its fixed category
-				// exposes neither a wrapped transport error nor private route data.
-				output.background(ClosedParticipantEvent{Kind: "publication-refresh-failed", NetworkID: endpoint.network, Failure: failure})
-			}
-			owner.publication.withdrawalFailure = func(failure string) {
-				// The category identifies the trusted local boundary that rejected an
-				// administrative withdrawal without exposing a wrapped error or data.
-				output.background(ClosedParticipantEvent{Kind: "publication-withdrawal-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
-			}
-			owner.mu.Unlock()
-		}
-		if role.surface == broker.Connection {
-			owner.mu.Lock()
-			owner.operationFailure = func(failure string) {
-				// The category tells a local operator which trusted boundary failed
-				// without serializing a peer, route, document, or wrapped error.
-				output.background(ClosedParticipantEvent{Kind: "connection-operation-failed", NetworkID: endpoint.network, Surface: string(role.surface), Failure: failure})
-			}
-			owner.mu.Unlock()
-		}
-	}
-	for _, owner := range contexts {
-		owner.mu.Lock()
-		profile, now, err := owner.permissionProfileLocked()
-		current := err == nil && owner.tokens.PermissionLocked().CurrentFor(profile, now)
-		owner.mu.Unlock()
-		if !current {
-			return errors.New("text participant permission expired before command exposure")
-		}
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	reader, err := contexts[0].openConnection()
-	if err != nil {
-		return err
-	}
-	defer func() { outcome = errors.Join(outcome, reader.Close()) }()
-	readServer, err := applicationconnection.Listen(config.ApplicationAddress, reader)
-	if err != nil {
-		return err
-	}
-	defer func() { outcome = errors.Join(outcome, readServer.Close()) }()
-	if !config.ReaderOnly {
-		publisher, err := contexts[1].openAdministration()
-		if err != nil {
-			return err
-		}
-		defer func() { outcome = errors.Join(outcome, publisher.Close()) }()
-		adminServer, err := applicationadministration.Listen(config.AdministrationAddress, publisher)
-		if err != nil {
-			return err
-		}
-		defer func() { outcome = errors.Join(outcome, adminServer.Close()) }()
-	}
-	if err := output.emit(ctx, ClosedParticipantEvent{Kind: "ready", NetworkID: endpoint.network, ApplicationAddress: config.ApplicationAddress, AdministrationAddress: config.AdministrationAddress}); err != nil {
-		return err
-	}
-	return output.wait(ctx)
 }

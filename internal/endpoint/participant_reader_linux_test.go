@@ -4,56 +4,13 @@ package endpoint
 
 import (
 	"context"
-	"errors"
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/dianabuilds/ardents-network/internal/application/broker"
 	"github.com/dianabuilds/ardents-network/internal/network/state"
 	"github.com/dianabuilds/ardents-network/internal/route/carrier"
 )
-
-func TestReaderParticipantRefusesUnqualifiedWorkerBeforeExposure(t *testing.T) {
-	root := t.TempDir()
-	if err := os.Chmod(root, 0700); err != nil {
-		t.Fatal(err)
-	}
-	path := func(name string) string { return filepath.Join(root, name) }
-	principal := [32]byte{3}
-	owner, err := newEndpoint(setup{NetworkID: [32]byte{1}, BrokerID: [32]byte{2}, ConnectionPrincipal: principal})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer owner.Close()
-	config := ClosedParticipantConfig{ReaderOnly: true, ConnectionPrincipal: principal, ApplicationAddress: path("reader.sock"),
-		ReaderPermission: PermissionFiles{RequestPath: path("request"), ResponsePath: path("response"), Maxima: [3]uint32{1}},
-		Observe: func(context.Context, ClosedParticipantEvent) error {
-			t.Error("unqualified worker exposed output")
-			return nil
-		},
-	}
-	if err := owner.runInterfaces(t.Context(), config); err == nil {
-		t.Fatal("unqualified Reader exposed commands")
-	} else {
-		t.Logf("retained startup refusal: %v", err)
-		if !strings.Contains(err.Error(), "text worker") {
-			t.Fatalf("startup failed before the worker boundary: %v", err)
-		}
-	}
-	for _, path := range []string{config.ApplicationAddress, config.ReaderPermission.RequestPath, config.ReaderPermission.ResponsePath} {
-		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
-			t.Fatalf("unqualified Reader created %q: %v", path, err)
-		}
-	}
-	owner.dutyMu.Lock()
-	retained := len(owner.dutyContexts)
-	owner.dutyMu.Unlock()
-	if retained != 0 {
-		t.Fatal("failed Reader retained context")
-	}
-}
 
 func TestReaderParticipantRequiresOnlyItsOwnInputs(t *testing.T) {
 	root := t.TempDir()
