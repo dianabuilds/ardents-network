@@ -275,6 +275,7 @@ remain. No old Forwarding, JOIN or Descriptor runtime is used.
 | File `cmd/ardents-next/platform_linux.go` | File `internal/successor/enrollment`; `internal/successor/release`; `internal/successor/installation/infrastructure`; `internal/successor/network/state` for original retained SourceInspection |
 | File `cmd/ardents-next/platform_endpoint_staging_linux.go` | File `internal/successor/enrollment`; `internal/successor/installation`; `internal/successor/installation/endpoint`; `internal/successor/release` for first-delivery floor verification and signed successor staging under the retained Release lease |
 | File `cmd/ardents-next/platform_release_linux_test.go` | File `internal/successor/enrollment`; `internal/successor/release`; `internal/successor/installation/infrastructure`; `internal/successor/network/state`; `internal/successor/network/duty`; `tests/epochfixture/network`; `github.com/theupdateframework/go-tuf/v2/metadata` |
+| File `cmd/ardents-next/endpoint_replacement_worker_native_linux_test.go` | File `internal/application/administration` for a genuine published Snapshot and Link, and `internal/successor/route/transport` for the selected TCP/TLS fixture Carrier |
 | File `cmd/ardents-next/platform_unit_linux.go` | File `internal/successor/installation/systemd` |
 | File `cmd/ardents-next/platform_linux_test.go` | File `internal/successor/installation/systemd` |
 

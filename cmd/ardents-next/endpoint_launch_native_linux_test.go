@@ -61,6 +61,11 @@ func TestNativeEndpointPlatformLedLaunch(t *testing.T) {
 		t.Fatal("real platform systemd manager unavailable:", err)
 	}
 	stand := provisionPlatformLedLaunchFixtureWithSuccessor(t, 1000, newNetworkAdmissionFixture(t), true)
+	verifyNativeEndpointReplacement(t, stand, nil)
+}
+
+func verifyNativeEndpointReplacement(t *testing.T, stand *platformLedLaunchStand, activeWorker func(*testing.T, [3]string) string) {
+	t.Helper()
 	t.Cleanup(func() {
 		if t.Failed() {
 			journal, _ := exec.Command("journalctl", "--no-pager", "-u", "ardents-endpoint.service", "-n", "40", "-o", "cat").CombinedOutput()
@@ -85,6 +90,11 @@ func TestNativeEndpointPlatformLedLaunch(t *testing.T) {
 	if err != nil {
 		t.Fatal("parse original Endpoint PID:", err)
 	}
+	stand.requireReplacementRefusal(t, "live predecessor")
+	var worker string
+	if activeWorker != nil {
+		worker = activeWorker(t, original)
+	}
 	scopes, err := cgroup.Retain(t.Context(), uint32(pid), stand.uid)
 	if err != nil {
 		t.Fatal("retain original Endpoint and worker scopes:", err)
@@ -97,8 +107,15 @@ func TestNativeEndpointPlatformLedLaunch(t *testing.T) {
 	if joined, err := scopes.Joined(); err != nil || joined {
 		t.Fatalf("live Endpoint did not retain a populated scope: joined=%v err=%v", joined, err)
 	}
-	stand.requireReplacementRefusal(t, "live predecessor")
-	stand.stopParticipant(t, original)
+	if worker != "" {
+		if !liveSnapshotWorker(worker) {
+			t.Fatal("Publisher worker ended before the original Endpoint Stop")
+		}
+		t.Logf("draining Endpoint with live Publisher worker in %s", filepath.Base(worker))
+		stand.drainParticipant(t, original)
+	} else {
+		stand.stopParticipant(t, original)
+	}
 	stand.requireJoinedParticipant(t, original)
 	if joined, err := scopes.Joined(); err != nil || !joined {
 		t.Fatalf("original scopes did not join: joined=%v err=%v", joined, err)
@@ -143,6 +160,51 @@ func TestNativeEndpointPlatformLedLaunch(t *testing.T) {
 		t.Fatal(err)
 	}
 	stand.startReplacement(t, original)
+}
+
+// A systemd stop transaction tears down dependent workers before their
+// Endpoint can close them. Signal its main process first so its own runtime
+// joins the original borrowers before the platform stops the fixed sockets.
+func (s *platformLedLaunchStand) drainParticipant(t *testing.T, original [3]string) {
+	t.Helper()
+	if current := launchIdentity(t); current != original {
+		t.Fatalf("original Endpoint changed before drain: %v", current)
+	}
+	if output, err := exec.CommandContext(t.Context(), "systemctl", "kill", "--kill-who=main", "--signal=SIGTERM", "ardents-endpoint.service").CombinedOutput(); err != nil {
+		t.Fatalf("signal original Endpoint: %v: %s", err, output)
+	}
+	launchWait(t, func() ([]byte, bool) {
+		if _, err := os.Stat(filepath.Join("/proc", original[0])); !os.IsNotExist(err) {
+			return nil, false
+		}
+		state := launchIdentity(t)
+		return nil, state[2] == "inactive" || state[2] == "failed"
+	})
+	s.requireJoinedParticipant(t, original)
+	if output, err := exec.CommandContext(t.Context(), "systemctl", "stop", "ardents-text-reader.socket", "ardents-text-publisher.socket").CombinedOutput(); err != nil {
+		t.Fatalf("stop original activation sockets: %v: %s", err, output)
+	}
+}
+
+func liveSnapshotWorker(scope string) bool {
+	body, err := os.ReadFile(filepath.Join(scope, "cgroup.procs"))
+	if err != nil {
+		return false
+	}
+	executable, err := os.Stat("/usr/lib/ardents/text-worker-root/ardents-text")
+	if err != nil {
+		return false
+	}
+	for _, pid := range strings.Fields(string(body)) {
+		if _, err := strconv.ParseUint(pid, 10, 32); err != nil {
+			return false
+		}
+		active, err := os.Stat(filepath.Join("/proc", pid, "exe"))
+		if err == nil && os.SameFile(executable, active) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *platformLedLaunchStand) requireReplacementRefusal(t *testing.T, reason string) {
