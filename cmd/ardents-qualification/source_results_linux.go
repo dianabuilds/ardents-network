@@ -7,8 +7,6 @@ import (
 	"math"
 	"sort"
 	"time"
-
-	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 func sourceResourceWindow(input nodeResultInput, started, stopped time.Time) (uint64, float64, bool) {
@@ -61,7 +59,7 @@ func sourceRSSWindow(journal []string, started, stopped time.Time) (uint64, bool
 			Schema   string
 			Kind     string
 			At       time.Time
-			Resource resource.Sample
+			Resource recordedProcessSample
 		}
 		if json.Unmarshal([]byte(line), &event) == nil && event.Schema == "ardents-h3-resource-sample-v1" &&
 			event.Kind == "resource-sample" {

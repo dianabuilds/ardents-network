@@ -13,7 +13,6 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 func TestQualificationNodeResultsRequireEveryBoundedRouteOwner(t *testing.T) {
@@ -180,7 +179,7 @@ func qualificationNodeInputs(t *testing.T, ids []string) []nodeResultInput {
 		for second := 0; second < 598; second++ {
 			at := origin.Add(time.Duration(second) * time.Second)
 			hosting := hostingbudget.Sample{At: at, Policy: policy, Observation: hostingbudget.Observation{UsedBytes: uint64(second)}}
-			event, _ := json.Marshal(recordedNodeEvent{Schema: "ardents-node-event-v1", Kind: "resource-sample", State: "OBSERVED", At: at, Resource: &resource.Sample{MemoryBytes: memory, RSSBytes: memory}, Hosting: &hosting})
+			event, _ := json.Marshal(recordedNodeEvent{Schema: "ardents-node-event-v1", Kind: "resource-sample", State: "OBSERVED", At: at, Resource: &recordedProcessSample{MemoryBytes: memory, RSSBytes: memory}, Hosting: &hosting})
 			input.Journal = append(input.Journal, string(event))
 			input.Samples = append(input.Samples, nodeOwnerSampleInput{MonotonicNS: uint64(second+1) * uint64(time.Second), At: at, MemoryCurrent: memory, CPUUsageNSec: uint64(second) * 10_000_000, IPIngressBytes: uint64(second) * 1000, IPEgressBytes: uint64(second) * 2000})
 		}
@@ -204,7 +203,7 @@ func qualificationSourceInputs(t *testing.T) []nodeResultInput {
 		for second := 0; second < 598; second++ {
 			at := origin.Add(time.Duration(second) * time.Second)
 			event, _ := json.Marshal(map[string]any{"schema": "ardents-h3-resource-sample-v1", "kind": "resource-sample",
-				"at": at, "resource": resource.Sample{MemoryBytes: 4 << 20, RSSBytes: 4 << 20}})
+				"at": at, "resource": recordedProcessSample{MemoryBytes: 4 << 20, RSSBytes: 4 << 20}})
 			input.Journal = append(input.Journal, string(event))
 			input.Samples = append(input.Samples, nodeOwnerSampleInput{MonotonicNS: uint64(second+1) * uint64(time.Second), At: at, MemoryCurrent: 4 << 20,
 				CPUUsageNSec: uint64(second) * 1_000_000, IPIngressBytes: uint64(second) * 100, IPEgressBytes: uint64(second) * 200})

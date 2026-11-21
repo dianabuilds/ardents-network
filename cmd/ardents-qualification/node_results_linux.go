@@ -13,26 +13,25 @@ import (
 
 	"github.com/dianabuilds/ardents-network/internal/application/streamqualification"
 	hostingbudget "github.com/dianabuilds/ardents-network/internal/hosting"
-	"github.com/dianabuilds/ardents-network/internal/resource"
 )
 
 // recordedNodeEvent decodes the v1 observation in retained qualification
 // journals. Keep the original JSON field types so malformed known fields
 // invalidate the same records even after the predecessor runtime is gone.
 type recordedNodeEvent struct {
-	Elapsed          time.Duration         `json:"elapsed,omitempty"`
-	Hosting          *hostingbudget.Sample `json:"hosting,omitempty"`
-	Schema           string                `json:"schema"`
-	Kind             string                `json:"kind"`
-	State            string                `json:"state"`
-	At               time.Time             `json:"at"`
-	Epoch            uint64                `json:"epoch,omitempty"`
-	Generation       string                `json:"generation,omitempty"`
-	Assignment       string                `json:"assignment,omitempty"`
-	CarrierProfile   string                `json:"carrier_profile,omitempty"`
-	AssignmentDigest [32]byte              `json:"assignment_digest,omitempty"`
-	Reason           string                `json:"reason,omitempty"`
-	Resource         *resource.Sample      `json:"resource,omitempty"`
+	Elapsed          time.Duration          `json:"elapsed,omitempty"`
+	Hosting          *hostingbudget.Sample  `json:"hosting,omitempty"`
+	Schema           string                 `json:"schema"`
+	Kind             string                 `json:"kind"`
+	State            string                 `json:"state"`
+	At               time.Time              `json:"at"`
+	Epoch            uint64                 `json:"epoch,omitempty"`
+	Generation       string                 `json:"generation,omitempty"`
+	Assignment       string                 `json:"assignment,omitempty"`
+	CarrierProfile   string                 `json:"carrier_profile,omitempty"`
+	AssignmentDigest [32]byte               `json:"assignment_digest,omitempty"`
+	Reason           string                 `json:"reason,omitempty"`
+	Resource         *recordedProcessSample `json:"resource,omitempty"`
 }
 
 type nodeOwnerSampleInput struct {
@@ -266,7 +265,7 @@ func evaluateSourceOwner(input nodeResultInput) (sourceOwnerEvidence, bool) {
 		var event struct {
 			Schema   string
 			Kind     string
-			Resource resource.Sample
+			Resource recordedProcessSample
 		}
 		if json.Unmarshal([]byte(line), &event) != nil {
 			continue
