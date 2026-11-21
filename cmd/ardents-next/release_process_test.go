@@ -106,6 +106,9 @@ func signedConsumerRelease(t *testing.T, platform string, protected, generation 
 		t.Fatal(err)
 	}
 	program := "ardents-" + platform
+	if supplied, ok := resources[program]; protected && ok {
+		binary = supplied
+	}
 	control := "ardents-control-" + platform
 	if !protected && runtime.GOOS == "windows" {
 		program += ".exe"

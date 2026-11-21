@@ -56,6 +56,11 @@ func runPlatform(ctx context.Context, args []string, out io.Writer) int {
 		defer cancel()
 		return runPlatformStageEndpoint(bounded, args[1], out)
 	}
+	if args[0] == "stage-endpoint" && len(args) == 3 {
+		bounded, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		return runPlatformStageEndpointSuccessor(bounded, args[1], args[2], out)
+	}
 	initial := args[0] == "initialize-trust"
 	if (args[0] != "unit" && args[0] != "check" && !initial) || (args[0] == "unit" && len(args) != 2) || (args[0] != "unit" && len(args) != 3) {
 		return 2

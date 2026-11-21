@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 
@@ -53,6 +54,60 @@ func runPlatformStageEndpoint(ctx context.Context, filename string, out io.Write
 		return installationFailure(ctx, out, err)
 	}
 	return enrollmentReport(out, "generation-staged", 0)
+}
+
+func runPlatformStageEndpointSuccessor(ctx context.Context, filename, previousManifest string, out io.Writer) int {
+	if err := stagePlatformEndpointSuccessor(ctx, filename, previousManifest); err != nil {
+		return installationFailure(ctx, out, err)
+	}
+	return enrollmentReport(out, "generation-staged", 0)
+}
+
+func stagePlatformEndpointSuccessor(ctx context.Context, filename, previousManifest string) (returnedErr error) {
+	request, err := installation.ReadOwnedRequest(ctx, filename, false)
+	if err != nil {
+		return err
+	}
+	if !platformBelow("/etc/ardents", previousManifest) {
+		return errPlatformInput
+	}
+	files := &platformFiles{}
+	defer func() { returnedErr = errors.Join(returnedErr, files.Close()) }()
+	raw, err := files.Read(previousManifest, 16<<10, false)
+	if err != nil {
+		return err
+	}
+	var previous platformLaunch
+	if decodeAdmissionObject(raw, &previous) != nil || previous.Role != "endpoint" ||
+		!validEndpointPlatformLaunch(previous) || previous.ReleaseRoot != request.ReleaseHistoryRoot() {
+		return errPlatformInput
+	}
+	body, err := files.Read(previous.Configuration, 64<<10, false)
+	if err != nil || platformDigest(body) != previous.ConfigSHA256 {
+		return errors.Join(errPlatformInput, err)
+	}
+	decl, err := platformEndpointDeclaration(body)
+	if err != nil || decl.ReleaseFloorRoot != previous.ReleaseRoot {
+		return errors.Join(errPlatformInput, err)
+	}
+	candidate, err := enrollment.ReadCandidate(ctx, request.BundleRoot(), enrollment.Headless)
+	if err != nil {
+		return err
+	}
+	input, ok := candidateReleaseInputs(candidate, request.ReferenceTime())
+	if !ok || input.Local.Platform != runtime.GOOS+"-"+runtime.GOARCH {
+		return errPlatformInput
+	}
+	if err := files.Check(ctx); err != nil {
+		return err
+	}
+	verifier, err := release.OpenRetained(request.ReleaseHistoryRoot())
+	if err != nil {
+		return err
+	}
+	defer func() { returnedErr = errors.Join(returnedErr, verifier.Close(), ctx.Err()) }()
+	return installation.StagePlatformSuccessor(ctx, request, candidate, input, verifier, decl.InstallationRoot,
+		filepath.Join(previous.Distribution, "ardents-linux-amd64"), previousManifest, platformDigest(raw))
 }
 
 func verifyStageReleaseMetadata(ctx context.Context, verifier *release.Verifier, input release.Inputs) error {

@@ -60,7 +60,7 @@ func TestNativeEndpointPlatformLedLaunch(t *testing.T) {
 	if _, err := exec.Command("/usr/bin/busctl", "--system", "--no-pager", "call", "org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.DBus.Properties", "Get", "ss", "org.freedesktop.systemd1.Manager", "Version").Output(); err != nil {
 		t.Fatal("real platform systemd manager unavailable:", err)
 	}
-	stand := provisionPlatformLedLaunch(t)
+	stand := provisionPlatformLedLaunchFixtureWithSuccessor(t, 1000, newNetworkAdmissionFixture(t), true)
 	t.Cleanup(func() {
 		if t.Failed() {
 			journal, _ := exec.Command("journalctl", "--no-pager", "-u", "ardents-endpoint.service", "-n", "40", "-o", "cat").CombinedOutput()
@@ -97,6 +97,7 @@ func TestNativeEndpointPlatformLedLaunch(t *testing.T) {
 	if joined, err := scopes.Joined(); err != nil || joined {
 		t.Fatalf("live Endpoint did not retain a populated scope: joined=%v err=%v", joined, err)
 	}
+	stand.requireReplacementRefusal(t, "live predecessor")
 	stand.stopParticipant(t, original)
 	stand.requireJoinedParticipant(t, original)
 	if joined, err := scopes.Joined(); err != nil || !joined {
@@ -121,6 +122,64 @@ func TestNativeEndpointPlatformLedLaunch(t *testing.T) {
 		t.Fatal("observe original manager after Stop:", err)
 	}
 	stand.requireNoStartupExchange(t)
+	guard := filepath.Join(stand.installationRoot, "start-guard.json")
+	launchWrite(t, guard, []byte("interrupted transition fixture"), 0600)
+	stand.requireReplacementRefusal(t, "uncertain predecessor")
+	if err := os.Remove(guard); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(stand.successorRoot, 0700); err != nil {
+		t.Fatal(err)
+	}
+	partial := filepath.Join(stand.successorRoot, "interrupted")
+	launchWrite(t, partial, []byte("incomplete original candidate"), 0600)
+	if out, err := exec.CommandContext(t.Context(), stand.binary, "platform", "stage-endpoint", stand.successorRequest, stand.manifest).CombinedOutput(); err == nil {
+		t.Fatalf("staging adopted interrupted candidate: %s", out)
+	}
+	if body, err := os.ReadFile(partial); err != nil || string(body) != "incomplete original candidate" {
+		t.Fatalf("staging changed interrupted candidate: %v", err)
+	}
+	if err := os.RemoveAll(stand.successorRoot); err != nil {
+		t.Fatal(err)
+	}
+	stand.startReplacement(t, original)
+}
+
+func (s *platformLedLaunchStand) requireReplacementRefusal(t *testing.T, reason string) {
+	t.Helper()
+	if out, err := exec.CommandContext(t.Context(), s.binary, "platform", "stage-endpoint", s.successorRequest, s.manifest).CombinedOutput(); err == nil {
+		t.Fatalf("staging admitted %s: %s", reason, out)
+	}
+	if _, err := os.Lstat(s.successorRoot); !os.IsNotExist(err) {
+		t.Fatalf("staging %s touched the successor root: %v", reason, err)
+	}
+}
+
+func (s *platformLedLaunchStand) startReplacement(t *testing.T, original [3]string) {
+	t.Helper()
+	if out, err := exec.CommandContext(t.Context(), s.binary, "platform", "stage-endpoint", s.successorRequest, s.manifest).CombinedOutput(); err != nil {
+		t.Fatalf("platform successor staging: %v: %s", err, out)
+	}
+	if out, err := exec.CommandContext(t.Context(), "systemctl", "start", "ardents-endpoint.service").CombinedOutput(); err == nil {
+		t.Fatalf("superseded Release was still admitted: %s", out)
+	}
+	if err := os.Remove("/etc/systemd/system/ardents-endpoint.service"); err != nil {
+		t.Fatal(err)
+	}
+	launch := platformNativeLaunch(t, s.successorRequest, s.successorDistribution)
+	installPlatformNativeUnit(t, s.successorRequest, s.successorDistribution, launch.Program)
+	next := s.startPlatformLed(t)
+	if next[1] == original[1] {
+		t.Fatal("replacement reused original invocation")
+	}
+	s.grantPermissions(t, next)
+	s.waitServiceReady(t, next)
+	output, err := os.Readlink(filepath.Join("/proc", next[0], "exe"))
+	if err != nil || output != launch.Program {
+		t.Fatalf("replacement executable = %q, want %q: %v", output, launch.Program, err)
+	}
+	s.stopParticipant(t, next)
+	t.Logf("different signed Endpoint artifact reached Service readiness; InvocationID=%s", next[1])
 }
 
 func (s *platformLedLaunchStand) requireNoStartupExchange(t *testing.T) {
@@ -218,25 +277,26 @@ func mutateLaunchFault(t *testing.T, s *platformLedLaunchStand, fault string) fu
 }
 
 type platformLedLaunchStand struct {
-	base               string
-	etcDir             string
-	binary             string
-	distribution       string
-	floors             string
-	installationRoot   string
-	generationDigest   string
-	program            string
-	requestPath        string
-	manifest           string
-	pin                string
-	uid, gid           uint32
-	f                  *networkAdmissionFixture
-	network            platformLedNetwork
-	sourceServers      []interface{ Close() error }
-	permissionDir      string
-	publisherDir       string
-	applicationSock    string
-	administrationSock string
+	base                                                   string
+	etcDir                                                 string
+	binary                                                 string
+	distribution                                           string
+	floors                                                 string
+	installationRoot                                       string
+	generationDigest                                       string
+	program                                                string
+	requestPath                                            string
+	manifest                                               string
+	pin                                                    string
+	uid, gid                                               uint32
+	f                                                      *networkAdmissionFixture
+	network                                                platformLedNetwork
+	sourceServers                                          []interface{ Close() error }
+	permissionDir                                          string
+	publisherDir                                           string
+	applicationSock                                        string
+	administrationSock                                     string
+	successorRequest, successorRoot, successorDistribution string
 }
 
 func provisionPlatformLedLaunch(t *testing.T) *platformLedLaunchStand {
@@ -261,6 +321,11 @@ func provisionPlatformLedLaunchRefresh(t *testing.T, refreshMS int) *platformLed
 // Responder/Issuer receivers; the launch and NET-32 qualifications supply the
 // ordinary idle fixture.
 func provisionPlatformLedLaunchFixture(t *testing.T, refreshMS int, f *networkAdmissionFixture) *platformLedLaunchStand {
+	t.Helper()
+	return provisionPlatformLedLaunchFixtureWithSuccessor(t, refreshMS, f, false)
+}
+
+func provisionPlatformLedLaunchFixtureWithSuccessor(t *testing.T, refreshMS int, f *networkAdmissionFixture, successor bool) *platformLedLaunchStand {
 	t.Helper()
 	ctx := t.Context()
 	stand := &platformLedLaunchStand{binary: compiledCommand(t), f: f}
@@ -443,6 +508,26 @@ func provisionPlatformLedLaunchFixture(t *testing.T, refreshMS int, f *networkAd
 	stand.applicationSock = filepath.Join(stand.base, "application", "reader")
 	stand.administrationSock = filepath.Join(stand.base, "administration", "socket")
 
+	if successor {
+		original, err := os.ReadFile(initialProgram)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resources["ardents-linux-amd64"] = append(original, []byte("signed successor fixture")...)
+		updated, _, _ := signedConsumerRelease(t, "linux-amd64", true, true, 2, resources, rootAuthority, 3, 2)
+		stand.successorDistribution, _ = platformNativeDistribution(t, updated, filepath.Join(stand.base, "successor-distribution"))
+		stand.successorRoot = filepath.Join(stand.base, "successor")
+		candidate := strings.Replace(request, quoted(bundle), quoted(stand.successorDistribution), 1)
+		candidate = strings.Replace(candidate, quoted(stand.installationRoot), quoted(stand.successorRoot), 1)
+		candidate = strings.Replace(candidate, ",\"manifest_sha256\":"+quoted(pin), "", 1)
+		successorConfig := filepath.Join(stand.etcDir, "successor")
+		if err := os.Mkdir(successorConfig, 0755); err != nil {
+			t.Fatal(err)
+		}
+		stand.successorRequest = filepath.Join(successorConfig, "request.json")
+		launchWrite(t, stand.successorRequest, []byte(candidate), 0600)
+	}
+
 	stand.uid, stand.gid = stagePlatformNativeEndpoint(t, stand.requestPath, initialProgram, pin, stand.distribution, keyPath)
 	selection, err := os.ReadFile(filepath.Join(stand.installationRoot, "selection.json"))
 	if err != nil {
@@ -594,15 +679,26 @@ func (s *platformLedLaunchStand) approve(t *testing.T, role string, request []by
 	if err != nil {
 		t.Fatal(err)
 	}
-	decision, err := prepared.Decide(nil, s.f.profile.IssuanceAuthorityKey, time.Now())
+	journal := filepath.Join(s.base, "allocation-"+role)
+	prior, err := os.ReadFile(journal)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	decision, err := prepared.Decide(prior, s.f.profile.IssuanceAuthorityKey, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
-	journal := filepath.Join(s.base, "allocation-"+role)
-	launchWrite(t, journal, decision.Journal(), 0600)
-	readback, err := os.ReadFile(journal)
-	if err != nil || !bytes.Equal(readback, decision.Journal()) {
-		t.Fatal("allocation durable readback", err)
+	if !decision.Repeated() {
+		pending := journal + ".next"
+		launchWrite(t, pending, decision.Journal(), 0600)
+		if err := os.Rename(pending, journal); err != nil {
+			t.Fatal(err)
+		}
+		launchSync(t, s.base)
+		readback, err := os.ReadFile(journal)
+		if err != nil || !bytes.Equal(readback, decision.Journal()) {
+			t.Fatal("allocation durable readback", err)
+		}
 	}
 	permission := decision.Permission()
 	copy(permission.Signature[:], ed25519.Sign(s.f.spec.Authority, admission.PermissionTranscript(permission)))

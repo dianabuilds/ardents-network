@@ -23,8 +23,24 @@ and the declared Release root. With that exact history already committed,
 account and vacant mutable roots. It rejects later Release metadata, preexisting
 installation roots and nonempty mutable roots. The full original generation and
 selection are synced before the service account can traverse the installation
-root. The stage installs no Worker resources or systemd units. Platform unit
-rendering and pre-start bind the executable path to the digest of the enrolled
+root. The stage installs no Worker resources or systemd units.
+
+For signed replacement, `platform stage-endpoint <request> <previous-launch>`
+uses the existing Release history and prepares a different immutable
+installation root. The platform caller retains the original unit reference
+through systemd Stop and staging. Staging verifies its bound successful
+execution, both stopped activation sockets and the empty kernel scope
+inventory before authenticating the candidate against the retained Release
+floors. A lost original exit observation, transitional records, queued or
+running work, or an existing candidate root refuse. The account, Network ID,
+mutable root paths and original directory identities are retained. Only after
+the new generation is sealed does the platform operator install the new fixed
+resources and unit and ask systemd to start it. Initial pin and domain history
+creation are first-delivery actions. A failed stage may leave an inaccessible
+partial candidate root or advanced Release floors. The command never resets
+floors or overwrites the partial root.
+
+Platform unit rendering and pre-start bind the executable path to the digest of the enrolled
 protected Endpoint descriptor. The platform unit's ExecStartPre `platform check` transfers accepted current-program identity before
 runtime start (F-25), `endpoint construct-plan` renders authenticated preparation
 plans (F-27), `endpoint prepare-history` initializes the first histories, and
