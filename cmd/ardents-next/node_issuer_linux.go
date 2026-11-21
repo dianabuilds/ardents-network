@@ -4,12 +4,10 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/admission/issuer"
-	"github.com/dianabuilds/ardents-network/internal/successor/hosting"
 	"github.com/dianabuilds/ardents-network/internal/successor/network/state"
 	"github.com/dianabuilds/ardents-network/internal/successor/node"
 	"github.com/dianabuilds/ardents-network/internal/successor/processresource"
@@ -22,29 +20,26 @@ func runNodeIssuer(ctx context.Context, args []string, out, diagnostic io.Writer
 	if retained {
 		args = []string{"--config", args[1]}
 	}
-	var plan struct {
-		Network           *networkAuthorityPlan `json:"network"`
-		NodeID            [32]byte              `json:"node_id"`
-		ProcessProfile    string                `json:"process_profile"`
-		ParticipationRoot string                `json:"participation_root"`
-		SpendRoot         string                `json:"spend_root"`
-		HostingRoot       string                `json:"hosting_root"`
-		Certificate       string                `json:"certificate"`
-		PrivateKey        string                `json:"private_key"`
-		Issuance          json.RawMessage       `json:"issuance"`
-		Work              hosting.Traffic       `json:"work"`
-		BootstrapWork     hosting.Traffic       `json:"bootstrap_work"`
-		Termination       hosting.Traffic       `json:"termination"`
-		RetirementWaitMS  uint32                `json:"retirement_wait_ms"`
+	if ctx == nil || len(args) != 2 || args[0] != "--config" {
+		return 2
 	}
-	if ctx == nil || admissionConfig(args, &plan) != nil || plan.Network == nil || plan.ProcessProfile != processresource.IssuerProfile || plan.RetirementWaitMS == 0 || plan.RetirementWaitMS > 5000 {
+	raw, err := readBounded(args[1], 16<<10)
+	if err != nil {
+		return 2
+	}
+	plan, err := node.DecodeIssuerPlan(raw)
+	if err != nil {
+		return 2
+	}
+	network := (*networkAuthorityPlan)(plan.Network)
+	if plan.Network == nil || plan.ProcessProfile != processresource.IssuerProfile || plan.RetirementWaitMS == 0 || plan.RetirementWaitMS > 5000 {
 		return 2
 	}
 	prepared, err := decodeIssuanceResultPlan(plan.Issuance, "initialize-results")
-	if err != nil || !validAdmissionAuthority("", plan.Network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, prepared.Admission.Root, prepared.Keys.Root, prepared.Root) || !independentRouteRoots(plan.Network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, prepared.Admission.Root, prepared.Keys.Root, prepared.Root) {
+	if err != nil || !validAdmissionAuthority("", network, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, prepared.Admission.Root, prepared.Keys.Root, prepared.Root) || !independentRouteRoots(network.Root, plan.ParticipationRoot, plan.SpendRoot, plan.HostingRoot, prepared.Admission.Root, prepared.Keys.Root, prepared.Root) {
 		return 2
 	}
-	config, err := networkStateConfig(plan.Network)
+	config, err := networkStateConfig(network)
 	if err != nil {
 		return 2
 	}
