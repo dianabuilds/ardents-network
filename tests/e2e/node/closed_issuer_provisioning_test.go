@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux && text_worker_installed
 
 package state_test
 
@@ -251,9 +251,4 @@ func closedProfileSubmissionArguments(offlineArguments []string, profilePath str
 		arguments = append(arguments, offlineArguments[index], offlineArguments[index+1])
 	}
 	return append(arguments, "--closed-profile", profilePath)
-}
-
-func identifierNode(value byte) string {
-	node := [32]byte{value}
-	return hex.EncodeToString(node[:])
 }

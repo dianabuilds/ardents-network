@@ -104,3 +104,8 @@ func decodeClosedCustodyReceipt(t *testing.T, output []byte, target any) {
 		t.Fatal(err)
 	}
 }
+
+func identifierNode(value byte) string {
+	node := [32]byte{value}
+	return hex.EncodeToString(node[:])
+}

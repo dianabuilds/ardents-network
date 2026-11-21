@@ -1,4 +1,4 @@
-//go:build linux
+//go:build linux && text_worker_installed
 
 package state_test
 
