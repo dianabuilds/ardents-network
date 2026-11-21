@@ -8,7 +8,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -236,15 +235,6 @@ func networkHostingRootWithQuantity(t *testing.T, quantity uint64) string {
 	}
 	return root
 }
-func networkPrivateRoot(t *testing.T) string {
-	t.Helper()
-	root := t.TempDir()
-	if err := os.Chmod(root, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	return root
-}
-
 func reserveNetworkAddress(t *testing.T, carrier routecarrier.CarrierProfile) (string, func()) {
 	t.Helper()
 	var address string
