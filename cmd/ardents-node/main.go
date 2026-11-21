@@ -16,19 +16,15 @@ func main() {
 	defer stop()
 	arguments := os.Args[1:]
 	if err := runCommand(ctx, arguments, os.Stdout); err != nil {
-		if completedDescriptorExplicitStop(err) {
-			return
-		}
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
 }
 
 func runCommand(ctx context.Context, arguments []string, output io.Writer) error {
-	// The retired Source/Forwarding/JOIN orchestration and the retired legacy
-	// Node/issuer/hosting paths refuse before any optional diagnostic socket is
-	// opened. The maintained installed Descriptor role reaches its own
-	// admission first.
+	// The retired Source/Forwarding/JOIN/Descriptor orchestration and the retired
+	// legacy Node/issuer/hosting paths refuse before any optional diagnostic
+	// socket is opened. No canonical installed role consumer remains.
 	if len(arguments) > 0 && (arguments[0] == "source" || arguments[0] == "installation" || arguments[0] == "forwarding" || arguments[0] == "join" || arguments[0] == "descriptor" || arguments[0] == "node" || arguments[0] == "issuer" || arguments[0] == "hosting") {
 		return run(ctx, arguments, output)
 	}
@@ -37,7 +33,10 @@ func runCommand(ctx context.Context, arguments []string, output io.Writer) error
 
 func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if len(arguments) > 0 && arguments[0] == "descriptor" {
-		return runDescriptorInstallation(ctx, arguments[1:], output)
+		if len(arguments) == 3 && arguments[1] == "start-installed" {
+			return errOldDescriptorInstalledRetired
+		}
+		return errOldDescriptorInstallationRetired
 	}
 	if len(arguments) > 0 && arguments[0] == "join" {
 		if len(arguments) == 3 && arguments[1] == "start-installed" {
@@ -72,5 +71,5 @@ func run(ctx context.Context, arguments []string, output io.Writer) error {
 	if len(arguments) == 3 && arguments[0] == "node" && arguments[1] == "--config" {
 		return errOldNodeConfigRetired
 	}
-	return errors.New("usage: ardents-node descriptor ...")
+	return errors.New("usage: ardents-node orchestration is retired; use the platform-led ardents-next lifecycle")
 }

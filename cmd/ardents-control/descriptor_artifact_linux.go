@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/dianabuilds/ardents-network/internal/successor/enrollment"
-	descriptorinstallation "github.com/dianabuilds/ardents-network/internal/successor/installation/descriptor"
 	"github.com/dianabuilds/ardents-network/internal/successor/installation/infrastructure"
 )
 
@@ -25,6 +24,18 @@ type descriptorControlFailure struct{ cause error }
 
 func (e *descriptorControlFailure) Error() string { return "Descriptor artifact preparation refused" }
 func (e *descriptorControlFailure) Unwrap() error { return e.cause }
+
+// The transitional Descriptor preparation is retired (ADR-0125, #604 FJD stage D);
+// the platform-led Descriptor lifecycle replaces it. Each refusal fires before any
+// input is read or any effect is attempted. Release signing is preserved and
+// bound to the canonical platform template and ardents-next program.
+var (
+	errDescriptorPrepareTemplateRetired = errors.New("old Descriptor prepare-template is retired; use ardents-next platform template")
+	errDescriptorPrepareRequestRetired  = errors.New("old Descriptor prepare-request is retired; use the platform-led Descriptor lifecycle")
+	errDescriptorPreparePlanRetired     = errors.New("old Descriptor prepare-plan is retired; use the platform-led Descriptor lifecycle")
+	errDescriptorPrepareHostingRetired  = errors.New("old Descriptor prepare-hosting is retired; use the platform-led Descriptor lifecycle")
+	errDescriptorPrepareStateRetired    = errors.New("old Descriptor prepare-state is retired; use the platform-led Descriptor lifecycle")
+)
 
 // Descriptor has its own closed public producers. Shared native readers/writers own
 // only physical input/output custody; no Source or Forwarding right is reused.
@@ -40,9 +51,9 @@ func runDescriptorControl(args []string, out io.Writer) error {
 		case "prepare-node-key", "prepare-node-record", "sign-node-record", "prepare-node-certificate":
 			return runDescriptorNodeProvision(args, out)
 		case "prepare-state":
-			return runDescriptorStatePreparation(args[1:], out)
+			return errDescriptorPrepareStateRetired
 		case "prepare-hosting":
-			return runDescriptorHostingPreparation(args[1:], out)
+			return errDescriptorPrepareHostingRetired
 		case "prepare-release-keys":
 			return runDescriptorReleaseKeys(args[1:], out)
 		case "sign-forward-release":
@@ -91,17 +102,11 @@ func prepareDescriptorArtifact(ctx context.Context, args []string, observe func(
 		result, destination, returned = descriptorReleasePlanArguments(args[1:], inputs)
 		name = "descriptor-release-plan.json"
 	case "prepare-template":
-		if len(args) != 2 {
-			return nil, errSourceControlInput
-		}
-		result = []byte(descriptorinstallation.Template)
-		name, destination = infrastructure.DescriptorTemplateName, args[1]
+		return nil, errDescriptorPrepareTemplateRetired
 	case "prepare-request":
-		result, destination, returned = descriptorRequestArguments(args[1:])
-		name = "descriptor-request.json"
+		return nil, errDescriptorPrepareRequestRetired
 	case "prepare-plan":
-		result, destination, returned = descriptorPlanArguments(args[1:], inputs)
-		name = "descriptor-plan.json"
+		return nil, errDescriptorPreparePlanRetired
 	case "prepare-artifact":
 		if len(args) != 6 {
 			return nil, errSourceControlInput

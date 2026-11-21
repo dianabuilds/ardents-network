@@ -31,7 +31,6 @@ type referenceTransport struct {
 	properties     bool             // closed read-only Startup replies; references keep scalar admission
 	unitReply      managerUnitReply // immutable before the decoder starts
 	sourceJobs     atomic.Bool      // only fixed root Source control admits canonical job replies
-	descriptorJobs atomic.Bool      // distinct fixed root Descriptor control
 	forwardingJobs atomic.Bool      // distinct fixed root Forwarding control; never Source permission
 }
 
@@ -118,9 +117,7 @@ func (t *referenceTransport) Read(p []byte) (int, error) {
 		}
 		owner, _ := t.owner.Load().(string)
 		var frameErr error
-		if t.unitReply == descriptorControlReply {
-			frameErr = verifyNodeManagerFrame(frame, owner, t.properties, false, false, t.descriptorJobs.Load(), descriptorControlReply)
-		} else if t.unitReply == forwardingUnitReply {
+		if t.unitReply == forwardingUnitReply {
 			frameErr = verifyForwardingManagerFrame(frame, owner, t.properties, t.forwardingJobs.Load())
 		} else {
 			frameErr = verifyManagerFrame(frame, owner, t.properties, t.sourceJobs.Load(), t.unitReply)
@@ -185,10 +182,10 @@ func verifyForwardingManagerFrame(frame []byte, owner string, properties, forwar
 }
 
 func verifyClosedManagerFrame(frame []byte, owner string, properties, sourceJobs, forwardingJobs bool, reply managerUnitReply) error {
-	return verifyNodeManagerFrame(frame, owner, properties, sourceJobs, forwardingJobs, false, reply)
+	return verifyNodeManagerFrame(frame, owner, properties, sourceJobs, forwardingJobs, reply)
 }
 
-func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, forwardingJobs, joinJobs bool, reply managerUnitReply) error {
+func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, forwardingJobs bool, reply managerUnitReply) error {
 	if len(frame) < 16 || len(frame) > 65536 || !reply.valid() {
 		return ErrObservation
 	}
@@ -271,7 +268,7 @@ func verifyNodeManagerFrame(frame []byte, owner string, properties, sourceJobs, 
 			return ErrObservation
 		}
 		object, pos, err := referenceScalar(frame, int(bodyStart), len(frame), 'o', order)
-		allowJob := reply == sourceUnitReply && sourceJobs || reply == forwardingUnitReply && forwardingJobs || reply == descriptorControlReply && joinJobs
+		allowJob := reply == sourceUnitReply && sourceJobs || reply == forwardingUnitReply && forwardingJobs
 		if err != nil || pos != len(frame) || (object != reply.object() && (!allowJob || !managerJobPath(object))) {
 			return ErrObservation
 		}

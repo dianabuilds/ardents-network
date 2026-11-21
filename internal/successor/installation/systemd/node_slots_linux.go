@@ -3,86 +3,16 @@ package systemd
 import (
 	"context"
 	"errors"
-	"os"
-	"sync"
 
 	"github.com/godbus/dbus/v5"
 )
 
-// NodeSlots retains one root caller's independent read-only manager connection
-// and the absence of all five fixed Node service/socket slots. Every call
-// reobserves the original manager and search paths. These copied observations
-// grant no account, filesystem, Reload, LoadUnit, Start or runtime permission.
-type NodeSlots struct{ original *nodeSlots }
-
-type nodeSlots struct {
-	reference *managerReference
-	once      sync.Once
-	result    error
-}
-
-// OpenNodeSlots returns every partially acquired connection to its creator for
-// Close. It accepts no unit selector and shares no other owner's live client.
-func OpenNodeSlots(ctx context.Context) (*NodeSlots, error) {
-	if ctx == nil || os.Geteuid() != 0 {
-		return nil, ErrInput
-	}
-	r, err := openManagerReference(ctx, nodeSlotsReply)
-	if r == nil {
-		return nil, err
-	}
-	s := &NodeSlots{original: &nodeSlots{reference: r}}
-	if err == nil {
-		err = r.initializeManagerDeclaration()
-	}
-	if err == nil {
-		_, err = s.CheckAbsent()
-	}
-	return s, err
-}
-
-// CheckAbsent loads or references nothing. Present, installed, uncertain or
-// malformed service/socket observations all refuse, including inactive units.
-func (s *NodeSlots) CheckAbsent() ([]string, error) {
-	if s == nil || s.original == nil || s.original.reference == nil {
-		return nil, ErrInput
-	}
-	r := s.original.reference
-	if err := r.performOriginal(observeNodeSlotsAbsent); err != nil {
-		return nil, err
-	}
-	return append([]string(nil), r.paths...), nil
-}
-
-// CheckOriginal retains this same original manager after the caller's separate
-// native observations. A later absence decision still requires CheckAbsent.
-func (s *NodeSlots) CheckOriginal() error {
-	if s == nil || s.original == nil || s.original.reference == nil {
-		return ErrInput
-	}
-	return s.original.reference.performOriginal(func(context.Context, *managerReference) error { return nil })
-}
-
-// Close first denies and interrupts, then joins the original manager users and
-// physical transport. Copies share the same retained completion result.
-func (s *NodeSlots) Close() error {
-	if s == nil || s.original == nil {
-		return nil
-	}
-	p := s.original
-	p.once.Do(func() { p.result = errors.Join(p.reference.close(), p.reference.original.Err()) })
-	return p.result
-}
-
-func observeNodeSlotsAbsent(ctx context.Context, r *managerReference) error {
-	for _, unit := range nodeUnitNames {
-		if err := nodeSlotAbsent(ctx, r, unit); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
+// The fixed Node service/socket slot absence observation is shared by the
+// platform sibling-absence check and the retained read-only role managers. The
+// transitional root NodeSlots custody wrapper retired with the last installed
+// Descriptor preflight (#604 FJD stage D, ADR-0125); these copied absence
+// observations grant no account, filesystem, Reload, LoadUnit, Start or runtime
+// permission. Every call reobserves the original manager on its own connection.
 var nodeUnitNames = [...]string{
 	"ardents-forwarding.service", "ardents-issuer.service",
 	"ardents-descriptor.service", "ardents-introduction.service", "ardents-join.service",

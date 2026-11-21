@@ -132,21 +132,24 @@ no old-command JOIN consumer or five-import exception remains. All other R01
 restrictions remain. Bootstrap acceptance remains separately required by
 ADR-0123 Decision 6. Exact packages require normal complete registration.
 
-The Product Owner separately selected installed Descriptor in the approved
-completion plan and the direct startup request, recorded in
-[#548](https://github.com/dianabuilds/ardents-network/issues/548). Only
-`cmd/ardents-node/descriptor_installed_linux.go` may compose exactly
-`internal/successor/installation/descriptor`, `internal/successor/network`,
-`internal/successor/network/state`, `internal/successor/node` and
-`internal/successor/route/role`. No other command/test file, role selector,
-legacy bridge or shared live root is admitted. This grants no bootstrap
-acceptance; ADR-0123 Decision 6 remains separate.
+The narrow canonical installed Descriptor exception (Product Owner selection
+through the approved completion plan and the direct startup request, recorded in
+[#548](https://github.com/dianabuilds/ardents-network/issues/548)) is retired
+(#604 FJD stage D, ADR-0125): the transitional Descriptor orchestration and
+`cmd/ardents-node/descriptor_installed_linux.go` are removed after the merged
+real-platform installed evidence, and `ardents-node descriptor ...` returns typed
+before-effect refusals. The platform-led Descriptor lifecycle owns installed
+delivery; no old-command Descriptor consumer or five-import exception remains.
+Descriptor was the last canonical installed role, so R01 now has ZERO canonical
+installed exceptions. All other R01 restrictions remain. Bootstrap acceptance
+remains separately required by ADR-0123 Decision 6. Exact packages require normal
+complete registration.
 
 New Route must not import or execute old `internal/route`, `internal/entry`,
 `internal/endpoint`, `internal/node`, `internal/admission`, `internal/hosting`,
 `internal/service` or another old runtime owner. Old packages, commands and
-tests must not consume new Route, apart from the exact canonical installed
-Descriptor file explicitly admitted above. The prohibition includes subpackages,
+tests must not consume new Route; no canonical installed exception remains. The
+prohibition includes subpackages,
 build-tagged code, external-package tests, transitive imports, alias imports,
 wrappers, callback adapters, plugins and local protocol bridges to old runtime.
 Renaming or moving an old bridge to another directory does not make it new.

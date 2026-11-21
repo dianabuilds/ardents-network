@@ -148,7 +148,6 @@ func TestInfrastructureExecutableMechanismHasExactPlatformSelection(t *testing.T
 			}
 			for _, name := range []string{
 				"internal/successor/network/state/source_inspection_native_linux_test.go",
-				"internal/successor/installation/systemd/node_slots_native_linux_test.go",
 				"cmd/ardents-control/join_release_native_linux_test.go",
 				"cmd/ardents-control/join_forward_release_native_linux_test.go",
 				"internal/successor/network/state/node_inspection_native_linux_test.go",
@@ -549,10 +548,7 @@ func successorImportAllowed(source, dependency string) bool {
 		if source == "cmd/ardents-control/source_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
 			return true
 		}
-		if source == "cmd/ardents-control/descriptor_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/installation/descriptor") {
-			return true
-		}
-		if (source == "cmd/ardents-control/descriptor_request_linux.go" || source == "cmd/ardents-control/descriptor_plan_linux.go") && dependency == modulePath+"/internal/successor/installation/descriptor" {
+		if source == "cmd/ardents-control/descriptor_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
 			return true
 		}
 		if source == "cmd/ardents-control/join_artifact_linux.go" && (dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure") {
@@ -686,9 +682,6 @@ func successorImportAllowed(source, dependency string) bool {
 				}
 			}
 		}
-		if source == "cmd/ardents-node/descriptor_installation_linux.go" && dependency == modulePath+"/internal/successor/installation/descriptor" {
-			return true
-		}
 		if source == "cmd/ardents-node/source_installation_linux.go" && (dependency == modulePath+"/internal/successor/network/source" || dependency == modulePath+"/internal/successor/network/state" || dependency == modulePath+"/internal/successor/enrollment" || dependency == modulePath+"/internal/successor/installation/infrastructure" || dependency == modulePath+"/internal/successor/release") {
 			return true
 		}
@@ -707,15 +700,6 @@ func successorImportAllowed(source, dependency string) bool {
 		return !zoneDependency
 	}
 	if source == "internal/successor/route/introduction/receiving_history_linux.go" && dependency == modulePath+"/internal/successor/admission/receiving" {
-		return true
-	}
-	if source == "internal/successor/installation/descriptor/inputs_linux.go" && dependency == modulePath+"/internal/successor/installation/request" {
-		return true
-	}
-	if source == "internal/successor/installation/descriptor/preflight_linux.go" && dependency == modulePath+"/internal/successor/installation/systemd" {
-		return true
-	}
-	if source == "internal/successor/installation/descriptor/plan_linux.go" && dependency == modulePath+"/internal/successor/hosting" {
 		return true
 	}
 	// Match exact Go packages. A parent folder grants no child/sibling imports.
@@ -758,7 +742,6 @@ func successorImportAllowed(source, dependency string) bool {
 		"internal/successor/execution/worker":                {"installation/systemd", "installation/unit"},
 		"internal/successor/installation":                    {"enrollment", "release", "installation/request"},
 		"internal/successor/installation/infrastructure":     {"enrollment", "release"},
-		"internal/successor/installation/descriptor":         {},
 		"internal/successor/installation/endpoint":           {"installation", "enrollment", "release", "installation/cgroup", "installation/systemd", "installation/journal", "installation/process", "installation/generation", "installation/completion", "installation/fixedfile", "installation/unit", "installation/request", "installation/directory"},
 		"internal/successor/installation/cgroup":             {},
 		"internal/successor/installation/request":            {},

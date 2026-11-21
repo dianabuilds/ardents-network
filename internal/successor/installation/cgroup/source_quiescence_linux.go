@@ -8,17 +8,6 @@ import (
 	"syscall"
 )
 
-// Only fixed-purpose public openers choose these literal physical scopes.
-func checkFixedQuiescent(ctx context.Context, unit string) (err error) {
-	if unit != "ardents-source.service" && unit != "ardents-forwarding.service" && unit != "ardents-descriptor.service" {
-		return errInput
-	}
-	if ctx == nil || os.Geteuid() != 0 {
-		return errInput
-	}
-	return observeFixedQuiescent(ctx, unit)
-}
-
 // CheckSourceRecoveryQuiescent is the independent read-only kernel observation
 // for explicit Source producer abandonment. It grants no original completion,
 // manager, State or participation authority. Only the fixed service principal

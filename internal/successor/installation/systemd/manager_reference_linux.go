@@ -43,15 +43,14 @@ type managerUnitReply uint8
 const (
 	sourceUnitReply managerUnitReply = iota
 	forwardingUnitReply
-	nodeSlotsReply         // Absence-only connection: no unit or job object replies.
-	descriptorControlReply // Fixed root Descriptor Start and failed-start cleanup only.
-	descriptorUnitReply    // Fixed Descriptor unit only; no jobs.
-	joinUnitReply          // Fixed JOIN unit only; the read-only repair runtime admits no jobs.
-	introductionUnitReply  // Fixed Introduction unit only; no jobs.
+	nodeSlotsReply        // Absence-only connection: no unit or job object replies.
+	descriptorUnitReply   // Fixed Descriptor unit only; the read-only repair runtime admits no jobs.
+	joinUnitReply         // Fixed JOIN unit only; the read-only repair runtime admits no jobs.
+	introductionUnitReply // Fixed Introduction unit only; no jobs.
 )
 
 func (reply managerUnitReply) valid() bool {
-	return reply == sourceUnitReply || reply == forwardingUnitReply || reply == nodeSlotsReply || reply == joinUnitReply || reply == descriptorUnitReply || reply == descriptorControlReply || reply == introductionUnitReply
+	return reply == sourceUnitReply || reply == forwardingUnitReply || reply == nodeSlotsReply || reply == joinUnitReply || reply == descriptorUnitReply || reply == introductionUnitReply
 }
 
 func (reply managerUnitReply) object() string {
@@ -60,7 +59,7 @@ func (reply managerUnitReply) object() string {
 		return "/org/freedesktop/systemd1/unit/ardents_2dsource_2eservice"
 	case forwardingUnitReply:
 		return "/org/freedesktop/systemd1/unit/ardents_2dforwarding_2eservice"
-	case descriptorUnitReply, descriptorControlReply:
+	case descriptorUnitReply:
 		return "/org/freedesktop/systemd1/unit/ardents_2ddescriptor_2eservice"
 	case joinUnitReply:
 		return "/org/freedesktop/systemd1/unit/ardents_2djoin_2eservice"
@@ -294,58 +293,6 @@ func (r *managerReference) matchManagerDeclaration(ctx context.Context) error {
 		return ErrObservation
 	}
 	return nil
-}
-
-func (r *managerReference) managerIdentity() (identity string, err error) {
-	if r == nil {
-		return "", ErrInput
-	}
-	if err = r.begin(); err != nil {
-		return "", err
-	}
-	defer r.uses.Done()
-	r.ioMu.Lock()
-	defer r.ioMu.Unlock()
-	ctx, cancel := context.WithTimeout(r.original, 3*time.Second)
-	defer cancel()
-	defer func() {
-		err = r.managerResult(err, ctx)
-		if err != nil {
-			identity = ""
-		}
-	}()
-	if err = r.local(); err != nil {
-		return "", err
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return "", err
-	}
-	answer, err := r.client.request(ctx, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus.GetId")
-	if err != nil {
-		return "", err
-	}
-	var broker string
-	if err = answer.Store(&broker); err != nil {
-		return "", err
-	}
-	if len(broker) != 32 || !strings.HasPrefix(r.client.manager, ":") || len(r.client.manager) > 255 {
-		return "", ErrObservation
-	}
-	for _, c := range broker {
-		if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F') {
-			return "", ErrObservation
-		}
-	}
-	if err = r.client.sameOwner(ctx, r.client.manager); err != nil {
-		return "", err
-	}
-	if err = errors.Join(r.client.transport.socket.SetDeadline(time.Time{}), r.local()); err != nil {
-		return "", err
-	}
-	// GetId's128-bit UUID is32 hex digits. Normalize the textual case before
-	// comparison; it identifies the broker instance, not the machine.
-	// https://dbus.freedesktop.org/doc/dbus-specification.html#bus-messages-get-id
-	return strings.ToLower(broker) + "/" + r.client.manager, nil
 }
 
 // Private fixed-purpose callers share original physical I/O, never another

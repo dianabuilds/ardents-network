@@ -30,8 +30,11 @@ script may be invoked.
 --output FRESH_OUTPUT` remains the shared candidate builder: it builds exactly
 `ardents-node` and `ardents-control` twice under the outside controller's
 original development lock and joined build scope, and its
-`ardents-forwarding-build-execution-v1` records remain the exact build input of
-the retained Descriptor public plan preparer. The complete read-only
+`ardents-forwarding-build-execution-v1` records remain the shared build-scope
+reference. After the Descriptor retirement (#604 FJD stage D, ADR-0125) its
+`ardents-node` cohort has no remaining role-specific public plan preparer; a
+new-path candidate build and release plan builder is a separate follow-up. The
+complete read-only
 source manifest records each file's `sha256` and Git `mode` (`100644` or
 `100755`). The tool checks both bytes and modes, the selected Go1.27.4
 Linux-amd64 toolchain, module integrity and actual compiled dependency closure.
@@ -76,8 +79,8 @@ transformation and its build-records native control are removed with the
 orchestration; a new-path JOIN candidate build and release plan builder is a
 follow-up, exactly as for Source (#604 stage 1.6) and Forwarding (#604 FJD
 stage D). Until it lands, no deleted script may be invoked. The shared
-`build-forwarding-candidate.py` records remain the build-scope reference for the
-retained JOIN/Descriptor cohorts.
+`build-forwarding-candidate.py` records remain the build-scope reference; after
+the Descriptor retirement no role-specific public plan preparer remains.
 
 The canonical JOIN signing purposes remain and are cut over to the platform-led
 runtime. Use `join sign-initial-release` for the initial plan and the distinct
@@ -100,6 +103,44 @@ platform unit with the mandatory `platform check` ExecStartPre gate,
 installed delivery; a new candidate and the explicit relaunch/program-change
 scope require their own exact bootstrap receipt and direct Product Owner
 acceptance before any installed execution.
+
+## Descriptor infrastructure artifact component
+
+The transitional Descriptor orchestration and its OLD preparation are retired
+(#604 FJD stage D, ADR-0125). `ardents-control descriptor prepare-template`,
+`prepare-request`, `prepare-plan`, `prepare-hosting` and `prepare-state` return
+typed before-effect refusals; `ardents-next platform template` emits the exact
+canonical platform unit template (`infrastructure.PlatformUnitTemplate`). The
+former `scripts/installation/prepare-descriptor-release-plan.py` public plan
+transformation and its build-records native control are removed with the
+orchestration; a new-path Descriptor candidate build and release plan builder is
+a follow-up, exactly as for Source (#604 stage 1.6), Forwarding and JOIN (#604
+FJD stage D). Until it lands, no deleted script may be invoked. Descriptor was
+the last canonical installed role; the shared `build-forwarding-candidate.py`
+records remain the build-scope reference with no remaining role-specific plan
+preparer.
+
+The canonical Descriptor signing purposes remain and are cut over to the
+platform-led runtime. Use `descriptor sign-initial-release` for the initial plan
+and the distinct `descriptor sign-forward-release` with the retained original
+five-key directory and complete predecessor distribution for an explicit forward
+candidate. After the #604 FJD stage D signing cutover the bound program is the
+static Linux-amd64 `ardents-next` binary and the bound template is the exact
+canonical platform unit template (`infrastructure.PlatformUnitTemplate`); the
+signer refuses a substituted program or template. The public
+`descriptor prepare-release-plan` / `prepare-forward-release-plan` flag-based
+producers emit the closed plans from reviewed public claims; the forward plan
+schema is `ardents-descriptor-forward-release-plan-v1` with a strictly higher
+descriptor version. Root bytes remain unchanged; Targets/Snapshot/Timestamp and
+their exact version references advance by one. New metadata is independently
+verified in that fresh diagnostic history before output. This is offline
+preparation, not an installation history or first pin, a stopped replacement,
+original-prefix recovery or bootstrap acceptance. The platform-led Descriptor
+lifecycle (canonical platform unit with the mandatory `platform check`
+ExecStartPre gate, `ardents-next node descriptor --retained-config`,
+`descriptor repair-retained`) owns installed delivery; a new candidate and the
+explicit relaunch/program-change scope require their own exact bootstrap receipt
+and direct Product Owner acceptance before any installed execution.
 
 ## Source infrastructure artifact component
 
@@ -673,8 +714,14 @@ separate acceptance evidence.
 ### Descriptor-role public resource preparation
 
 Use the canonical Descriptor public commands in the [command reference](../reference/commands.md#descriptor-role-public-preparation).
-Keep the actual Node program, fixed template, infrastructure descriptor and four
-Release metadata files as the exact seven-file inventory input; public preparation
-cannot supply signatures, independently delivered first trust or operational build
-qualification. Record original input/output hashes and retain failures. No live
-Store, State, credential, allowance or process is opened by these public commands.
+After the #604 FJD stage D signing cutover the bound program is the static
+`ardents-next` binary and the bound template is the canonical platform unit
+template (`infrastructure.PlatformUnitTemplate`, emitted by `ardents-next
+platform template`). Keep the actual program, platform template, infrastructure
+descriptor and four Release metadata files as the exact seven-file inventory
+input; public preparation cannot supply signatures, independently delivered
+first trust or operational build qualification. Record original input/output
+hashes and retain failures. No live Store, State, credential, allowance or
+process is opened by these public commands. The former fixed
+`descriptorinstallation.Template` and `cmd/ardents-node` program binding retired
+with the transitional orchestration.

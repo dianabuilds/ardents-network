@@ -2,33 +2,8 @@ package systemd
 
 import (
 	"bytes"
-	"context"
-	"errors"
 	"testing"
 )
-
-func TestNodeSlotsEmptyCustodyGrantsNoObservation(t *testing.T) {
-	for _, h := range []*NodeSlots{nil, {}, {original: &nodeSlots{}}} {
-		if paths, err := h.CheckAbsent(); paths != nil || !errors.Is(err, ErrInput) {
-			t.Fatal("unacquired custody supplied absence", paths, err)
-		}
-		if !errors.Is(h.CheckOriginal(), ErrInput) {
-			t.Fatal("unacquired custody supplied manager provenance")
-		}
-	}
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	for _, caller := range []context.Context{nil, ctx} {
-		if h, err := OpenNodeSlots(caller); h != nil || err == nil || caller == nil && !errors.Is(err, ErrInput) {
-			_ = h.Close()
-			t.Fatal("unavailable original caller opened custody", h, err)
-		}
-	}
-	var h *NodeSlots
-	if h.Close() != nil || new(NodeSlots).Close() != nil {
-		t.Fatal("empty original custody cannot fail physical completion")
-	}
-}
 
 func TestNodeSlotsReplyGrammarRefusesEveryUnitAndJobObject(t *testing.T) {
 	for _, path := range []string{

@@ -482,18 +482,15 @@ network-signing-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "network-signing-check requires Linux root and root-controlled native ext4 TMPDIR"; exit 2)
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-next -run '^Test(NetworkSigning|SourcePreparationNative)' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/network/state -run '^TestSourceInspectionNative' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/systemd -run '^Test(NodeSlotsNative|SourceReferenceLibraryCloseCause)' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/systemd -run '^TestSourceReferenceLibraryCloseCause' -count=1 -v -timeout=3m
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/request -run '^TestDeliveryFilesNative' -count=1 -v -timeout=3m
 
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNative(CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption|TemplateAndRequestLeaveRuntimeAbsent)$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/descriptor -run '^TestDescriptor(Inputs|Births)Native' -count=1 -v -timeout=3m
+	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNative(CanonicalBytesAndInventory|RetainsFailureAndRejectsAdoption)$$' -count=1 -v -timeout=3m
 
 network-signing-compile-check: export GOOS := linux
 network-signing-compile-check: export GOARCH := amd64
 network-signing-compile-check: export CGO_ENABLED := 0
 network-signing-compile-check:
-	@$(INSTALLED_TAG_COMPILE_MKDIR)
-	go test -c -tags descriptor_installed_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-installed.test" ./internal/successor/installation/descriptor
 	@$(INSTALLED_TAG_COMPILE_MKDIR)
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/network-signing.test" ./cmd/ardents-next
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-control-preparation.test" ./cmd/ardents-control
@@ -502,23 +499,6 @@ network-signing-compile-check:
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/source-state-inspection.test" ./internal/successor/network/state
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/delivery-files.test" ./internal/successor/installation/request
 	go test -c -tags network_signing_native -o "$(INSTALLED_TAG_COMPILE_ROOT)/descriptor-store-inspection.test" ./internal/successor/reachability
-
-.PHONY: descriptor-initial-stopped-check
-descriptor-initial-stopped-check:
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNative(InitialReleasePurposeAndKeyCustody|ActualBuildRecordsAndPublicPlan)$$' -count=1 -v -timeout=3m
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNativeInitialStoppedAndIndependentHistory$$' -count=1 -v -timeout=3m
-
-.PHONY: descriptor-startup-check
-descriptor-startup-check:
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNativeProtectedStartAndIndependentStartup$$' -count=1 -v -timeout=3m
-
-.PHONY: descriptor-publish-check
-descriptor-publish-check:
-	go test -race -trimpath -buildvcs=false -tags descriptor_installed_native ./internal/successor/installation/descriptor -run '^TestDescriptorInstalledNativePublishLookup$$' -count=1 -v -timeout=3m
-
-.PHONY: descriptor-restart-check
-descriptor-restart-check:
-	go test -race -trimpath -buildvcs=false -tags descriptor_installed_native ./internal/successor/installation/descriptor -run '^TestDescriptorInstalledNativeStopAndRestart$$' -count=1 -v -timeout=3m
 
 .PHONY: descriptor-store-inspection-check
 descriptor-store-inspection-check:
@@ -530,19 +510,3 @@ descriptor-forward-release-check:
 	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-forward-release-check requires explicit root/ext4 canonical artifact stand"; exit 2)
 	go test -race -trimpath -buildvcs=false -tags network_signing_native ./cmd/ardents-control -run '^TestDescriptorPreparationNativeForwardReleasePreservesRootAndRaisesFloors$$' -count=1 -v -timeout=3m
 
-.PHONY: descriptor-replacement-check
-DESCRIPTOR_REPLACEMENT_TEST ?= TestDescriptorInstalledNativeResourceReplacement
-descriptor-replacement-check:
-	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-replacement-check requires the selected isolated Ubuntu/systemd stand"; exit 2)
-	@case "$(DESCRIPTOR_REPLACEMENT_TEST)" in TestDescriptorInstalledNativeReplacementPrerequisite|TestDescriptorInstalledNativeResourceReplacement|TestDescriptorInstalledNativeProgramReplacement) ;; *) echo 'select one registered Descriptor replacement stage' >&2; exit 2;; esac
-	go test -race -trimpath -buildvcs=false -tags descriptor_installed_native ./internal/successor/installation/descriptor -run '^$(DESCRIPTOR_REPLACEMENT_TEST)$$' -count=1 -v -timeout=3m
-
-.PHONY: descriptor-recovery-physical-check
-descriptor-recovery-physical-check:
-	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-recovery-physical-check requires explicit root/ext4 preparation stand"; exit 2)
-	go test -race -trimpath -buildvcs=false -tags network_signing_native ./internal/successor/installation/descriptor -run '^TestDescriptorTransitionScopeNativeFromBirth$$' -count=1 -v -timeout=3m
-
-.PHONY: descriptor-recovery-check
-descriptor-recovery-check:
-	@test "$(HEADLESS_GOOS)" = linux || (echo "descriptor-recovery-check requires exact accepted artifacts and original Ubuntu/systemd installed stand"; exit 2)
-	go test -race -trimpath -buildvcs=false -tags descriptor_installed_native ./internal/successor/installation/descriptor -run '^TestDescriptorInstalledNativeRecoveredResourceReplacement$$' -count=1 -v -timeout=3m

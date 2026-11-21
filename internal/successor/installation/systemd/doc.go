@@ -28,11 +28,12 @@
 // ForwardingControl, ForwardingReplacement and the manager-declaration identity
 // observer) are retired (ADR-0125, #604 FJD stage D); the platform-led Forwarding
 // lifecycle owns installation, start, stop and replacement through the canonical
-// platform unit. NodeSlots remains a separate root read-only connection for
-// absence of all five fixed Node service/socket slots, consumed by the retained
-// Descriptor input preflight. It returns copied search paths and rejoins its
-// own original observations through Close; its closed reply grammar accepts no
-// unit or job object. Native namespace, account, Release and transition decisions
+// platform unit. The transitional root NodeSlots custody wrapper retired with
+// the last installed Descriptor input preflight (#604 FJD stage D, ADR-0125);
+// the shared fixed Node service/socket slot absence observation remains for the
+// platform sibling-absence check and the retained read-only role managers. Its
+// absence-only reply grammar accepts no unit or job object. Native namespace,
+// account, Release and transition decisions
 // stay with each Installation owner. Each fixed reply vocabulary is bound before
 // decoder startup. A Source connection refuses Forwarding objects; a Forwarding
 // connection refuses Source, other units and job replies. This is native frame
@@ -69,10 +70,15 @@
 // depth/size limits and numeric byte arrays. Primitive arrays and safe-ASCII
 // quoted lengths avoid redundant reflection/allocation without omitting facts
 // or caching any observation.
-// DescriptorStopped, DescriptorControl and DescriptorRuntime are distinct fixed
-// Descriptor connections: stopped preparation, one root Start/cleanup attempt,
-// and independently acquired non-root read-only observations respectively.
-// Their literal unit and reply vocabulary grant no sibling role capability.
+// The transitional Descriptor orchestration mechanisms (DescriptorStopped,
+// DescriptorControl, DescriptorReplacement and the manager-declaration identity
+// observer) are retired (ADR-0125, #604 FJD stage D); the platform-led Descriptor
+// lifecycle owns installation, start, stop and replacement through the canonical
+// platform unit. DescriptorRuntime independently observes only the fixed
+// Descriptor unit and the other fixed Node slots, without loading, retaining or
+// mutating a unit. The platform-led retained-producer repair consumes it; it
+// grants no Start/Stop, installed admission or original domain/process completion.
+// Its literal unit and reply vocabulary grant no sibling role capability.
 package systemd
 
 import "errors"

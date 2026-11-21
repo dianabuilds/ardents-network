@@ -21,10 +21,16 @@
 // CheckSourceRecoveryQuiescent is the separate read-only kernel observation for
 // explicit Source producer abandonment; the transitional Source scope
 // orchestration is retired (ADR-0125, #604).
-// DescriptorScope separately retains its fixed original kernel scope and events
-// through root post-start or independent actual-self observations. Only literal
-// fixed-purpose openers reach the shared physical mechanism; ordinary files,
-// pathname absence and a replacement empty scope cannot prove original join.
+// The transitional Descriptor scope orchestration (DescriptorScope,
+// CheckDescriptorQuiescent and the RetainDescriptor* openers) is retired
+// (ADR-0125, #604 FJD stage D); the platform-led Descriptor lifecycle owns
+// attempt, process/manager matching and stopping. CheckDescriptorRecoveryQuiescent
+// remains the separate read-only per-unit kernel observation for explicit
+// Descriptor participation-producer abandonment, consumed by the retained
+// platform repair. The shared processScope/retainProcessScope start/stop kernel
+// custody used by the retired Retain{Source,Forwarding,Join,Descriptor}
+// invocations is removed; RetainStarted partial post-start custody and the
+// fixed-scope quiescence mechanism remain for Endpoint and the retained repair.
 package cgroup
 
 import "errors"
